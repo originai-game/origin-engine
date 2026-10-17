@@ -1,0 +1,10 @@
+[package]
+name = "og-blob"
+version = "0.0.1"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Origin Engine .ogb: the one cooked blob container (header with type hash, schema version and cook stamp; named, aligned sections)."
+
+[dependencies]
+bytemuck = { workspace = true }

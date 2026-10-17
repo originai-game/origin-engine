@@ -1,0 +1,1146 @@
+//! The runtime loaders: `cooked/` blobs into the renderer's input types and
+//! plain scene data. Nothing here touches the ECS or the GPU; the host spawns
+//! what [`SceneDesc`] describes and adds what [`CookedModel::add_to`] returns.
+//!
+//! A [`Bundle`] is the cook manifest (`cooked/.cook.ogt`) read as an index:
+//! asset id to output file, type and cook stamp. Every load names an asset id
+//! (the source path under `assets/`, `assets/` prefix optional; a glTF's
+//! textures are `<model>#tex<n>`), finds the output in the manifest and
+//! refuses a blob whose type, schema version or cook stamp disagrees with it
+//! (`docs/design.md` §6). Bytes come from the host (`fetch` on the web); on
+//! native targets [`Bundle::open`] and the `load_*` methods read files.
+
+use crate::format::{self, *};
+use crate::{ktx2, meshopt_codec, qoa};
+use glam::{Mat4, Quat, Vec3};
+use og_blob::{Blob, BlobError, Expect};
+use og_core::ogt::{Block, Document};
+use og_render::{
+    AlphaMode, ColorSpace, Material, MaterialHandle, MeshData, MeshHandle, Mips, RenderScene,
+    TextureData, Vertex,
+};
+use std::collections::BTreeMap;
+use std::fmt;
+
+/// The manifest's file name inside `cooked/`.
+pub const MANIFEST: &str = ".cook.ogt";
+
+/// Why a load was refused. Converts into `og_core::Error` for the API.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum LoadError {
+    /// The manifest has no such asset: it was never cooked or failed to cook.
+    NotCooked { id: String },
+    /// The blob was refused (stale stamp, wrong type, damaged).
+    Blob(BlobError),
+    /// Reading a file failed.
+    Io { path: String, reason: String },
+    /// The blob is structurally valid but its content is not.
+    Invalid { path: String, reason: String },
+    /// The manifest could not be read.
+    Manifest(String),
+}
+
+impl fmt::Display for LoadError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            LoadError::NotCooked { id } => write!(
+                f,
+                "{id}: not in cooked/ (run og cook; check the cook report for its error)"
+            ),
+            LoadError::Blob(e) => e.fmt(f),
+            LoadError::Io { path, reason } => write!(f, "{path}: {reason}"),
+            LoadError::Invalid { path, reason } => write!(f, "{path}: {reason}"),
+            LoadError::Manifest(reason) => write!(f, "cooked/{MANIFEST}: {reason}"),
+        }
+    }
+}
+
+impl std::error::Error for LoadError {}
+
+impl From<BlobError> for LoadError {
+    fn from(e: BlobError) -> LoadError {
+        LoadError::Blob(e)
+    }
+}
+
+impl From<LoadError> for og_core::Error {
+    fn from(e: LoadError) -> og_core::Error {
+        let kind = match &e {
+            LoadError::NotCooked { .. } => og_core::ErrorKind::NotFound,
+            LoadError::Blob(BlobError::StampMismatch { .. })
+            | LoadError::Blob(BlobError::TypeMismatch { .. })
+            | LoadError::Blob(BlobError::SchemaVersion { .. }) => og_core::ErrorKind::Schema,
+            _ => og_core::ErrorKind::Parse,
+        };
+        og_core::Error::new(kind, e.to_string())
+    }
+}
+
+/// One cooked output as the manifest records it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ManifestOutput {
+    /// The asset id (`models/ship.glb`, `models/ship.glb#tex0`).
+    pub id: String,
+    /// The blob type (`og.Model`, `og.Texture`, ...).
+    pub ty: String,
+    /// The file under `cooked/`.
+    pub file: String,
+    pub stamp: u64,
+    /// FNV-1a of the file's bytes.
+    pub hash: u64,
+    pub bytes: u64,
+}
+
+/// One source asset as the manifest records it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ManifestAsset {
+    /// The path under `assets/`.
+    pub source: String,
+    pub kind: String,
+    /// FNV-1a over the source and its import settings.
+    pub source_hash: u64,
+    pub source_bytes: u64,
+    pub outputs: Vec<ManifestOutput>,
+}
+
+/// `cooked/.cook.ogt`: what was cooked from what.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Manifest {
+    pub cooker: String,
+    /// Per asset kind, the option text its stamps cover.
+    pub options: BTreeMap<String, String>,
+    /// Sorted by source path.
+    pub assets: Vec<ManifestAsset>,
+}
+
+fn hex(v: u64) -> String {
+    format!("{v:016x}")
+}
+
+fn unhex(s: &str) -> Option<u64> {
+    (s.len() == 16)
+        .then(|| u64::from_str_radix(s, 16).ok())
+        .flatten()
+}
+
+impl Manifest {
+    /// Parses the manifest text.
+    pub fn parse(text: &str) -> Result<Manifest, LoadError> {
+        let bad = |r: String| LoadError::Manifest(r);
+        let doc = Document::parse(text).map_err(|e| bad(e.to_string()))?;
+        if doc.ty != "cook" || doc.version != 1 {
+            return Err(bad(format!(
+                "expected a 'cook' version 1 document, got '{}' version {}",
+                doc.ty, doc.version
+            )));
+        }
+        let mut m = Manifest {
+            cooker: doc
+                .body
+                .get("cooker")
+                .and_then(|e| e.string(0).ok())
+                .unwrap_or_default()
+                .to_string(),
+            ..Default::default()
+        };
+        if let Some(block) = doc.body.get("options").and_then(|e| e.block.as_ref()) {
+            for e in &block.entries {
+                m.options.insert(
+                    e.key.clone(),
+                    e.string(0).map_err(|e| bad(e.to_string()))?.to_string(),
+                );
+            }
+        }
+        let field = |b: &Block, key: &str, line: usize| -> Result<String, LoadError> {
+            let e = b
+                .get(key)
+                .ok_or_else(|| bad(format!("line {line}: missing '{key}'")))?;
+            e.values
+                .first()
+                .and_then(|v| {
+                    v.as_str()
+                        .or(v.as_word())
+                        .map(str::to_string)
+                        .or(v.as_number().map(|n| n.text().to_string()))
+                })
+                .ok_or_else(|| bad(format!("line {}: '{key}' has no value", e.line)))
+        };
+        let hexf = |b: &Block, key: &str, line: usize| -> Result<u64, LoadError> {
+            let s = field(b, key, line)?;
+            unhex(&s).ok_or_else(|| bad(format!("line {line}: '{key}' is not 16 hex digits")))
+        };
+        let num = |b: &Block, key: &str, line: usize| -> Result<u64, LoadError> {
+            field(b, key, line)?
+                .parse()
+                .map_err(|_| bad(format!("line {line}: '{key}' is not a number")))
+        };
+        for a in doc.body.get_all("asset") {
+            let block = a
+                .block
+                .as_ref()
+                .ok_or_else(|| bad(format!("line {}: asset without a block", a.line)))?;
+            let mut asset = ManifestAsset {
+                source: a.string(0).map_err(|e| bad(e.to_string()))?.to_string(),
+                kind: field(block, "kind", a.line)?,
+                source_hash: hexf(block, "source", a.line)?,
+                source_bytes: num(block, "bytes", a.line)?,
+                outputs: Vec::new(),
+            };
+            for o in block.get_all("output") {
+                let ob = o
+                    .block
+                    .as_ref()
+                    .ok_or_else(|| bad(format!("line {}: output without a block", o.line)))?;
+                asset.outputs.push(ManifestOutput {
+                    id: o.string(0).map_err(|e| bad(e.to_string()))?.to_string(),
+                    ty: field(ob, "type", o.line)?,
+                    file: field(ob, "file", o.line)?,
+                    stamp: hexf(ob, "stamp", o.line)?,
+                    hash: hexf(ob, "hash", o.line)?,
+                    bytes: num(ob, "bytes", o.line)?,
+                });
+            }
+            m.assets.push(asset);
+        }
+        Ok(m)
+    }
+
+    /// The canonical text (what the cook writes).
+    pub fn to_text(&self) -> String {
+        use og_core::ogt::{Entry, Number, Value};
+        let s = |v: &str| Value::String(v.to_string());
+        let w = |v: &str| Value::Word(v.to_string());
+        let n = |v: u64| Value::Number(Number::from(v));
+        let mut doc = Document::new("cook", 1);
+        doc.body.push(Entry::new("cooker").with(s(&self.cooker)));
+        let mut options = Block::new();
+        for (k, v) in &self.options {
+            options.push(Entry::new(k.clone()).with(s(v)));
+        }
+        doc.body.push(Entry::new("options").with_block(options));
+        for a in &self.assets {
+            let mut b = Block::new()
+                .with(Entry::new("kind").with(w(&a.kind)))
+                .with(Entry::new("source").with(s(&hex(a.source_hash))))
+                .with(Entry::new("bytes").with(n(a.source_bytes)));
+            for o in &a.outputs {
+                let ob = Block::new()
+                    .with(Entry::new("type").with(w(&o.ty)))
+                    .with(Entry::new("file").with(s(&o.file)))
+                    .with(Entry::new("stamp").with(s(&hex(o.stamp))))
+                    .with(Entry::new("hash").with(s(&hex(o.hash))))
+                    .with(Entry::new("bytes").with(n(o.bytes)));
+                b.push(Entry::new("output").with(s(&o.id)).with_block(ob));
+            }
+            doc.body
+                .push(Entry::new("asset").with(s(&a.source)).with_block(b));
+        }
+        doc.to_text()
+            .expect("manifest keys and words are identifiers")
+    }
+
+    /// Every output, by asset id.
+    pub fn outputs(&self) -> impl Iterator<Item = &ManifestOutput> {
+        self.assets.iter().flat_map(|a| a.outputs.iter())
+    }
+}
+
+/// Normalises an asset id: `assets/x` and `x` name the same asset.
+pub fn asset_id(path: &str) -> &str {
+    path.strip_prefix("assets/").unwrap_or(path)
+}
+
+/// The cooked bundle a game loads from.
+#[derive(Clone, Debug)]
+pub struct Bundle {
+    manifest: Manifest,
+    index: BTreeMap<String, usize>,
+    outputs: Vec<ManifestOutput>,
+    #[cfg(not(target_arch = "wasm32"))]
+    dir: Option<std::path::PathBuf>,
+}
+
+impl Bundle {
+    /// A bundle from the manifest text (the host fetched `cooked/.cook.ogt`).
+    pub fn from_manifest(text: &str) -> Result<Bundle, LoadError> {
+        let manifest = Manifest::parse(text)?;
+        let outputs: Vec<ManifestOutput> = manifest.outputs().cloned().collect();
+        let index = outputs
+            .iter()
+            .enumerate()
+            .map(|(i, o)| (o.id.clone(), i))
+            .collect();
+        Ok(Bundle {
+            manifest,
+            index,
+            outputs,
+            #[cfg(not(target_arch = "wasm32"))]
+            dir: None,
+        })
+    }
+
+    /// Opens `cooked/` on disk (native targets).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn open(cooked: &std::path::Path) -> Result<Bundle, LoadError> {
+        let path = cooked.join(MANIFEST);
+        let text = std::fs::read_to_string(&path).map_err(|e| LoadError::Io {
+            path: path.display().to_string(),
+            reason: format!("{e} (run og cook)"),
+        })?;
+        let mut b = Bundle::from_manifest(&text)?;
+        b.dir = Some(cooked.to_path_buf());
+        Ok(b)
+    }
+
+    pub fn manifest(&self) -> &Manifest {
+        &self.manifest
+    }
+
+    /// The manifest entry of an asset id.
+    pub fn output(&self, id: &str) -> Result<&ManifestOutput, LoadError> {
+        let id = asset_id(id);
+        self.index
+            .get(id)
+            .map(|&i| &self.outputs[i])
+            .ok_or_else(|| LoadError::NotCooked { id: id.to_string() })
+    }
+
+    /// Reads an asset's blob from `cooked/` into 16-aligned memory (native).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn read(&self, id: &str) -> Result<og_blob::AlignedBytes, LoadError> {
+        let out = self.output(id)?;
+        let dir = self.dir.as_ref().ok_or_else(|| LoadError::Io {
+            path: out.file.clone(),
+            reason: "the bundle was not opened from a directory".into(),
+        })?;
+        let path = dir.join(&out.file);
+        let bytes = std::fs::read(&path).map_err(|e| LoadError::Io {
+            path: path.display().to_string(),
+            reason: e.to_string(),
+        })?;
+        Ok(og_blob::AlignedBytes::from_slice(&bytes))
+    }
+
+    /// Validates `bytes` as the blob of `id`: type, schema version and the
+    /// manifest's cook stamp.
+    pub fn blob<'a, K: BlobKind>(&self, id: &str, bytes: &'a [u8]) -> Result<Blob<'a>, LoadError> {
+        let out = self.output(id)?;
+        if out.ty != K::NAME {
+            return Err(LoadError::Invalid {
+                path: format!("cooked/{}", out.file),
+                reason: format!("is a {}, not a {}", out.ty, K::NAME),
+            });
+        }
+        let expect = Expect {
+            type_hash: K::type_hash(),
+            schema_version: K::schema_version(),
+            stamp: Some(out.stamp),
+        };
+        Ok(Blob::open(bytes, &format!("cooked/{}", out.file), &expect)?)
+    }
+
+    /// Decodes a model blob.
+    pub fn model(&self, id: &str, bytes: &[u8]) -> Result<CookedModel, LoadError> {
+        let blob = self.blob::<format::Model>(id, bytes)?;
+        CookedModel::decode(asset_id(id), &blob)
+    }
+
+    /// Decodes a texture blob (the KTX2 stays encoded until
+    /// [`CookedTexture::to_texture_data`]).
+    pub fn texture(&self, id: &str, bytes: &[u8]) -> Result<CookedTexture, LoadError> {
+        let blob = self.blob::<format::Texture>(id, bytes)?;
+        let meta = one::<TextureMeta>(&blob)?;
+        let ktx2 = blob.raw("ktx2")?.to_vec();
+        ktx2::parse(&ktx2).map_err(|reason| invalid(&blob, reason))?;
+        Ok(CookedTexture {
+            id: asset_id(id).to_string(),
+            meta,
+            ktx2,
+        })
+    }
+
+    /// Decodes a sound blob (the QOA stays encoded until [`CookedSound::decode`]).
+    pub fn sound(&self, id: &str, bytes: &[u8]) -> Result<CookedSound, LoadError> {
+        let blob = self.blob::<format::Sound>(id, bytes)?;
+        Ok(CookedSound {
+            id: asset_id(id).to_string(),
+            meta: one::<SoundMeta>(&blob)?,
+            qoa: blob.raw("qoa")?.to_vec(),
+        })
+    }
+
+    /// Decodes a font blob, inflating its atlas pages.
+    pub fn font(&self, id: &str, bytes: &[u8]) -> Result<CookedFont, LoadError> {
+        let blob = self.blob::<format::Font>(id, bytes)?;
+        let meta = one::<FontMeta>(&blob)?;
+        let glyphs = blob
+            .table::<GlyphRow>("glyphs", row_hash::<GlyphRow>())?
+            .into_owned();
+        let mut pages = Vec::new();
+        for p in 0..meta.page_count {
+            let ktx = blob.raw(&format!("atlas.{p}"))?;
+            let (width, height, rgba) =
+                ktx2::decode_rgba8(ktx, 0).map_err(|r| invalid(&blob, r))?;
+            pages.push(TextureData {
+                width,
+                height,
+                rgba,
+                color_space: ColorSpace::Linear,
+                mips: Mips::None,
+            });
+        }
+        Ok(CookedFont {
+            id: asset_id(id).to_string(),
+            meta,
+            glyphs,
+            pages,
+        })
+    }
+
+    /// Decodes a scene blob.
+    pub fn scene(&self, id: &str, bytes: &[u8]) -> Result<SceneDesc, LoadError> {
+        let blob = self.blob::<format::Scene>(id, bytes)?;
+        SceneDesc::decode(asset_id(id), &blob)
+    }
+
+    /// Reads and decodes a model (native).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn load_model(&self, id: &str) -> Result<CookedModel, LoadError> {
+        self.model(id, &self.read(id)?)
+    }
+
+    /// Reads a texture (native).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn load_texture(&self, id: &str) -> Result<CookedTexture, LoadError> {
+        self.texture(id, &self.read(id)?)
+    }
+
+    /// Reads a sound (native).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn load_sound(&self, id: &str) -> Result<CookedSound, LoadError> {
+        self.sound(id, &self.read(id)?)
+    }
+
+    /// Reads a font (native).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn load_font(&self, id: &str) -> Result<CookedFont, LoadError> {
+        self.font(id, &self.read(id)?)
+    }
+
+    /// Reads a scene (native).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn load_scene(&self, id: &str) -> Result<SceneDesc, LoadError> {
+        self.scene(id, &self.read(id)?)
+    }
+
+    /// Reads a model and transcodes its textures to RGBA8 (native, feature
+    /// `transcode`): everything [`CookedModel::add_to`] needs.
+    #[cfg(all(feature = "transcode", not(target_arch = "wasm32")))]
+    pub fn load_model_with_textures(
+        &self,
+        id: &str,
+    ) -> Result<(CookedModel, Vec<TextureData>), LoadError> {
+        let model = self.load_model(id)?;
+        let textures = model
+            .textures
+            .iter()
+            .map(|t| self.load_texture(&t.id)?.to_texture_data())
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok((model, textures))
+    }
+}
+
+fn invalid(blob: &Blob, reason: impl Into<String>) -> LoadError {
+    LoadError::Invalid {
+        path: blob.path().to_string(),
+        reason: reason.into(),
+    }
+}
+
+fn one<T: og_core::Reflect + bytemuck::Pod>(blob: &Blob) -> Result<T, LoadError> {
+    let rows = blob.table::<T>("meta", row_hash::<T>())?;
+    rows.first()
+        .copied()
+        .ok_or_else(|| invalid(blob, "empty meta section"))
+}
+
+fn table<T: og_core::Reflect + bytemuck::Pod>(
+    blob: &Blob,
+    name: &str,
+) -> Result<Vec<T>, LoadError> {
+    Ok(blob.table::<T>(name, row_hash::<T>())?.into_owned())
+}
+
+fn opt(i: u32) -> Option<usize> {
+    (i != NONE).then_some(i as usize)
+}
+
+/// One level of detail of a [`CookedPrimitive`].
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Lod {
+    pub first: usize,
+    pub count: usize,
+    /// Simplification error relative to the primitive's extent (0 for LOD 0).
+    pub error: f32,
+}
+
+/// A decoded mesh primitive: every LOD shares the vertices.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CookedPrimitive {
+    pub material: usize,
+    pub vertices: Vec<Vertex>,
+    /// Per vertex `xyz` tangent and bitangent sign `w`; empty when not cooked.
+    pub tangents: Vec<[f32; 4]>,
+    /// All LODs' triangles, LOD 0 first.
+    pub indices: Vec<u32>,
+    pub lods: Vec<Lod>,
+    /// Exact local bounds of the source positions.
+    pub min: Vec3,
+    pub max: Vec3,
+}
+
+impl CookedPrimitive {
+    /// The geometry of one LOD (0 is the full mesh) for [`RenderScene::add_mesh`].
+    pub fn mesh(&self, lod: usize) -> MeshData {
+        let l = self.lods[lod.min(self.lods.len() - 1)];
+        MeshData {
+            vertices: self.vertices.clone(),
+            indices: self.indices[l.first..l.first + l.count].to_vec(),
+        }
+    }
+
+    pub fn triangle_count(&self, lod: usize) -> usize {
+        self.lods[lod.min(self.lods.len() - 1)].count / 3
+    }
+}
+
+/// A glTF mesh: a range of [`CookedModel::primitives`].
+#[derive(Clone, Debug, PartialEq)]
+pub struct CookedMesh {
+    pub name: String,
+    pub primitives: std::ops::Range<usize>,
+}
+
+/// A material with its textures as indices into [`CookedModel::textures`].
+#[derive(Clone, Debug, PartialEq)]
+pub struct CookedMaterial {
+    pub name: String,
+    pub base_color: [f32; 4],
+    pub metallic: f32,
+    pub roughness: f32,
+    pub normal_scale: f32,
+    pub occlusion_strength: f32,
+    pub emissive: [f32; 3],
+    pub alpha_mode: u32,
+    pub alpha_cutoff: f32,
+    pub double_sided: bool,
+    pub base_color_texture: Option<usize>,
+    pub metallic_roughness_texture: Option<usize>,
+    pub normal_texture: Option<usize>,
+    pub emissive_texture: Option<usize>,
+    pub occlusion_texture: Option<usize>,
+}
+
+/// A texture a model uses.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TextureRef {
+    pub id: String,
+    pub kind: u32,
+}
+
+/// A node of the model's scene graph.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CookedNode {
+    pub name: String,
+    pub parent: Option<usize>,
+    pub mesh: Option<usize>,
+    pub translation: Vec3,
+    pub rotation: Quat,
+    pub scale: Vec3,
+}
+
+impl CookedNode {
+    pub fn local(&self) -> Mat4 {
+        Mat4::from_scale_rotation_translation(self.scale, self.rotation, self.translation)
+    }
+}
+
+/// A glTF scene: its root nodes.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CookedScene {
+    pub name: String,
+    pub roots: Vec<usize>,
+}
+
+/// A decoded model (one glTF file).
+#[derive(Clone, Debug, PartialEq)]
+pub struct CookedModel {
+    pub id: String,
+    /// In glTF mesh-primitive order (`GltfInfo.geometries`).
+    pub primitives: Vec<CookedPrimitive>,
+    pub meshes: Vec<CookedMesh>,
+    /// In glTF order, then the default material.
+    pub materials: Vec<CookedMaterial>,
+    pub textures: Vec<TextureRef>,
+    /// Parents precede children.
+    pub nodes: Vec<CookedNode>,
+    pub scenes: Vec<CookedScene>,
+    pub default_scene: Option<usize>,
+    /// Bounds of the default scene with node transforms applied.
+    pub min: Vec3,
+    pub max: Vec3,
+    pub skipped_animations: u32,
+    pub skipped_skins: u32,
+}
+
+/// What [`CookedModel::add_to`] added: per part the mesh, the material and
+/// the node's transform within the model.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ModelParts {
+    pub parts: Vec<(MeshHandle, MaterialHandle, Mat4)>,
+}
+
+impl ModelParts {
+    /// Submits one instance of the whole model at `transform`.
+    pub fn instance(&self, scene: &mut RenderScene, transform: Mat4) {
+        for &(mesh, material, local) in &self.parts {
+            scene.add_instance(mesh, material, transform * local);
+        }
+    }
+}
+
+impl CookedModel {
+    fn decode(id: &str, blob: &Blob) -> Result<CookedModel, LoadError> {
+        let meta = one::<ModelMeta>(blob)?;
+        let prims = table::<PrimitiveRow>(blob, "primitives")?;
+        let lods = table::<LodRow>(blob, "lods")?;
+        let meshes = table::<MeshRow>(blob, "meshes")?;
+        let materials = table::<MaterialRow>(blob, "materials")?;
+        let textures = table::<TextureRefRow>(blob, "textures")?;
+        let nodes = table::<NodeRow>(blob, "nodes")?;
+        let scenes = table::<SceneRow>(blob, "scenes")?;
+        let roots = blob.table::<u32>("roots", 0)?;
+        let strings = blob.raw("strings")?;
+        let vertices = blob.raw("vertices")?;
+        let indices = blob.raw("indices")?;
+        let bad = |r: String| invalid(blob, r);
+        let s = |o: u32, l: u32| {
+            pool_str(strings, o, l)
+                .map(str::to_string)
+                .ok_or_else(|| bad("string out of range".into()))
+        };
+        let range = |data: &'_ [u8],
+                     o: u32,
+                     l: u32,
+                     what: &str|
+         -> Result<std::ops::Range<usize>, LoadError> {
+            let (o, l) = (o as usize, l as usize);
+            (o + l <= data.len())
+                .then_some(o..o + l)
+                .ok_or_else(|| bad(format!("{what} out of range")))
+        };
+        let mut primitives = Vec::with_capacity(prims.len());
+        for (i, p) in prims.iter().enumerate() {
+            let vb = &vertices[range(vertices, p.vertex_offset, p.vertex_size, "vertex stream")?];
+            let ib = &indices[range(indices, p.index_offset, p.index_size, "index stream")?];
+            let raw = meshopt_codec::decode_vertex_buffer(
+                vb,
+                p.vertex_count as usize,
+                p.vertex_stride as usize,
+            )
+            .map_err(|e| bad(format!("primitive {i}: {e}")))?;
+            let idx = meshopt_codec::decode_index_buffer(ib, p.index_count as usize)
+                .map_err(|e| bad(format!("primitive {i}: {e}")))?;
+            if idx.iter().any(|&v| v >= p.vertex_count) {
+                return Err(bad(format!("primitive {i}: index out of range")));
+            }
+            let (verts, tangents) = dequantize(p, &raw);
+            let lod_rows = lods
+                .get(p.lod_first as usize..(p.lod_first + p.lod_count) as usize)
+                .ok_or_else(|| bad(format!("primitive {i}: LOD range out of range")))?;
+            let mut prim_lods = Vec::new();
+            for l in lod_rows {
+                if (l.index_first + l.index_count) as usize > idx.len() || l.index_count % 3 != 0 {
+                    return Err(bad(format!("primitive {i}: LOD indices out of range")));
+                }
+                prim_lods.push(Lod {
+                    first: l.index_first as usize,
+                    count: l.index_count as usize,
+                    error: l.error,
+                });
+            }
+            if prim_lods.is_empty() {
+                return Err(bad(format!("primitive {i} has no LOD")));
+            }
+            if p.material as usize >= materials.len() {
+                return Err(bad(format!("primitive {i}: material out of range")));
+            }
+            let min = Vec3::new(p.pos_offset_x, p.pos_offset_y, p.pos_offset_z);
+            primitives.push(CookedPrimitive {
+                material: p.material as usize,
+                vertices: verts,
+                tangents,
+                indices: idx,
+                lods: prim_lods,
+                min,
+                max: min + Vec3::new(p.pos_scale_x, p.pos_scale_y, p.pos_scale_z),
+            });
+        }
+        let tex = |i: u32| -> Result<Option<usize>, LoadError> {
+            match opt(i) {
+                Some(t) if t >= textures.len() => Err(bad("texture index out of range".into())),
+                t => Ok(t),
+            }
+        };
+        let mut mats = Vec::with_capacity(materials.len());
+        for m in &materials {
+            mats.push(CookedMaterial {
+                name: s(m.name_offset, m.name_len)?,
+                base_color: [m.base_r, m.base_g, m.base_b, m.base_a],
+                metallic: m.metallic,
+                roughness: m.roughness,
+                normal_scale: m.normal_scale,
+                occlusion_strength: m.occlusion_strength,
+                emissive: [m.emissive_r, m.emissive_g, m.emissive_b],
+                alpha_mode: m.alpha_mode,
+                alpha_cutoff: m.alpha_cutoff,
+                double_sided: m.double_sided != 0,
+                base_color_texture: tex(m.base_color_texture)?,
+                metallic_roughness_texture: tex(m.metallic_roughness_texture)?,
+                normal_texture: tex(m.normal_texture)?,
+                emissive_texture: tex(m.emissive_texture)?,
+                occlusion_texture: tex(m.occlusion_texture)?,
+            });
+        }
+        let mut model_nodes = Vec::with_capacity(nodes.len());
+        for (i, n) in nodes.iter().enumerate() {
+            let parent = opt(n.parent);
+            if parent.is_some_and(|p| p >= i) {
+                return Err(bad(format!("node {i}: parent does not precede it")));
+            }
+            let mesh = opt(n.mesh);
+            if mesh.is_some_and(|m| m >= meshes.len()) {
+                return Err(bad(format!("node {i}: mesh out of range")));
+            }
+            model_nodes.push(CookedNode {
+                name: s(n.name_offset, n.name_len)?,
+                parent,
+                mesh,
+                translation: Vec3::new(n.tx, n.ty, n.tz),
+                rotation: Quat::from_xyzw(n.rx, n.ry, n.rz, n.rw),
+                scale: Vec3::new(n.sx, n.sy, n.sz),
+            });
+        }
+        let mut model_meshes = Vec::with_capacity(meshes.len());
+        for m in &meshes {
+            let r = m.primitive_first as usize..(m.primitive_first + m.primitive_count) as usize;
+            if r.end > primitives.len() {
+                return Err(bad("mesh primitive range out of range".into()));
+            }
+            model_meshes.push(CookedMesh {
+                name: s(m.name_offset, m.name_len)?,
+                primitives: r,
+            });
+        }
+        let mut model_scenes = Vec::with_capacity(scenes.len());
+        for sc in &scenes {
+            let r = sc.root_first as usize..(sc.root_first + sc.root_count) as usize;
+            let rs = roots
+                .get(r)
+                .ok_or_else(|| bad("scene roots out of range".into()))?;
+            if rs.iter().any(|&n| n as usize >= model_nodes.len()) {
+                return Err(bad("scene root out of range".into()));
+            }
+            model_scenes.push(CookedScene {
+                name: s(sc.name_offset, sc.name_len)?,
+                roots: rs.iter().map(|&n| n as usize).collect(),
+            });
+        }
+        let mut texture_refs = Vec::with_capacity(textures.len());
+        for t in &textures {
+            texture_refs.push(TextureRef {
+                id: s(t.id_offset, t.id_len)?,
+                kind: t.kind,
+            });
+        }
+        Ok(CookedModel {
+            id: id.to_string(),
+            primitives,
+            meshes: model_meshes,
+            materials: mats,
+            textures: texture_refs,
+            nodes: model_nodes,
+            scenes: model_scenes,
+            default_scene: opt(meta.default_scene),
+            min: Vec3::new(meta.min_x, meta.min_y, meta.min_z),
+            max: Vec3::new(meta.max_x, meta.max_y, meta.max_z),
+            skipped_animations: meta.skipped_animations,
+            skipped_skins: meta.skipped_skins,
+        })
+    }
+
+    /// Every node's model-space transform.
+    pub fn node_world(&self) -> Vec<Mat4> {
+        let mut world: Vec<Mat4> = Vec::with_capacity(self.nodes.len());
+        for n in &self.nodes {
+            let parent = n.parent.map_or(Mat4::IDENTITY, |p| world[p]);
+            world.push(parent * n.local());
+        }
+        world
+    }
+
+    /// The nodes of `scene` (all descendants of its roots) in depth-first order.
+    pub fn scene_nodes(&self, scene: usize) -> Vec<usize> {
+        let mut children: Vec<Vec<usize>> = vec![Vec::new(); self.nodes.len()];
+        for (i, n) in self.nodes.iter().enumerate() {
+            if let Some(p) = n.parent {
+                children[p].push(i);
+            }
+        }
+        let mut out = Vec::new();
+        let mut stack: Vec<usize> = self
+            .scenes
+            .get(scene)
+            .map(|s| s.roots.iter().rev().copied().collect())
+            .unwrap_or_default();
+        while let Some(n) = stack.pop() {
+            out.push(n);
+            stack.extend(children[n].iter().rev());
+        }
+        out
+    }
+
+    /// Adds the model's textures, materials and LOD-0 meshes to `scene` and
+    /// returns the parts of its default scene (every mesh node's primitives
+    /// with the node's transform). `textures` are the decoded
+    /// [`CookedModel::textures`], in order.
+    pub fn add_to(&self, scene: &mut RenderScene, textures: &[TextureData]) -> ModelParts {
+        let handles: Vec<_> = textures
+            .iter()
+            .map(|t| scene.add_texture(t.clone()))
+            .collect();
+        let tex = |i: Option<usize>| i.and_then(|i| handles.get(i).copied());
+        let materials: Vec<MaterialHandle> = self
+            .materials
+            .iter()
+            .map(|m| {
+                scene.add_material(Material {
+                    base_color: m.base_color,
+                    base_color_texture: tex(m.base_color_texture),
+                    metallic: m.metallic,
+                    roughness: m.roughness,
+                    metallic_roughness_texture: tex(m.metallic_roughness_texture),
+                    normal_texture: tex(m.normal_texture),
+                    normal_scale: m.normal_scale,
+                    emissive: m.emissive,
+                    emissive_texture: tex(m.emissive_texture),
+                    alpha_mode: if m.alpha_mode == alpha::MASK {
+                        AlphaMode::Mask {
+                            cutoff: m.alpha_cutoff,
+                        }
+                    } else {
+                        AlphaMode::Opaque
+                    },
+                })
+            })
+            .collect();
+        let meshes: Vec<MeshHandle> = self
+            .primitives
+            .iter()
+            .map(|p| scene.add_mesh(p.mesh(0)))
+            .collect();
+        let world = self.node_world();
+        let mut parts = Vec::new();
+        if let Some(s) = self.default_scene {
+            for n in self.scene_nodes(s) {
+                if let Some(m) = self.nodes[n].mesh {
+                    for p in self.meshes[m].primitives.clone() {
+                        parts.push((meshes[p], materials[self.primitives[p].material], world[n]));
+                    }
+                }
+            }
+        }
+        ModelParts { parts }
+    }
+}
+
+fn oct_decode(x: f32, y: f32) -> Vec3 {
+    let mut v = Vec3::new(x, y, 1.0 - x.abs() - y.abs());
+    if v.z < 0.0 {
+        let (ox, oy) = (v.x, v.y);
+        v.x = (1.0 - oy.abs()) * ox.signum();
+        v.y = (1.0 - ox.abs()) * oy.signum();
+    }
+    v.normalize_or_zero()
+}
+
+fn dequantize(p: &PrimitiveRow, raw: &[u8]) -> (Vec<Vertex>, Vec<[f32; 4]>) {
+    let stride = p.vertex_stride as usize;
+    let off = [p.pos_offset_x, p.pos_offset_y, p.pos_offset_z];
+    let scale = [p.pos_scale_x, p.pos_scale_y, p.pos_scale_z];
+    let u16_at = |v: &[u8], at: usize| u16::from_le_bytes([v[at], v[at + 1]]);
+    let i16_at = |v: &[u8], at: usize| i16::from_le_bytes([v[at], v[at + 1]]);
+    let snorm = |q: i16| (q as f32 / 32767.0).max(-1.0);
+    let mut verts = Vec::with_capacity(p.vertex_count as usize);
+    let mut tangents = Vec::new();
+    for v in raw.chunks_exact(stride) {
+        let mut position = [0.0f32; 3];
+        for a in 0..3 {
+            position[a] = off[a] + u16_at(v, a * 2) as f32 / 65535.0 * scale[a];
+        }
+        let normal = oct_decode(snorm(i16_at(v, 8)), snorm(i16_at(v, 10))).to_array();
+        let mut at = 12;
+        let mut uv = [0.0f32; 2];
+        if p.attributes & attr::UV != 0 {
+            uv = [
+                p.uv_offset_x + u16_at(v, at) as f32 / 65535.0 * p.uv_scale_x,
+                p.uv_offset_y + u16_at(v, at + 2) as f32 / 65535.0 * p.uv_scale_y,
+            ];
+            at += 4;
+        }
+        let mut color = [1.0f32; 4];
+        if p.attributes & attr::COLOR != 0 {
+            for (c, out) in color.iter_mut().enumerate() {
+                *out = v[at + c] as f32 / 255.0;
+            }
+            at += 4;
+        }
+        if p.attributes & attr::TANGENT != 0 {
+            let t = oct_decode(snorm(i16_at(v, at)), snorm(i16_at(v, at + 2)));
+            let w = if i16_at(v, at + 4) < 0 { -1.0 } else { 1.0 };
+            tangents.push([t.x, t.y, t.z, w]);
+        }
+        verts.push(Vertex {
+            position,
+            normal,
+            uv,
+            color,
+        });
+    }
+    (verts, tangents)
+}
+
+/// A cooked texture: its metadata and KTX2 file.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CookedTexture {
+    pub id: String,
+    pub meta: TextureMeta,
+    pub ktx2: Vec<u8>,
+}
+
+impl CookedTexture {
+    /// Level 0 as RGBA8 for og-render (which uploads RGBA8 and builds its own
+    /// mips today). RGBA8 textures decode everywhere; Basis Universal ones
+    /// need the `transcode` feature (native) and are refused without it.
+    pub fn to_texture_data(&self) -> Result<TextureData, LoadError> {
+        let bad = |reason: String| LoadError::Invalid {
+            path: self.id.clone(),
+            reason,
+        };
+        let color_space = if self.meta.color_space == 0 {
+            ColorSpace::Srgb
+        } else {
+            ColorSpace::Linear
+        };
+        let (width, height, rgba) = match self.meta.codec {
+            codec::RGBA8 => ktx2::decode_rgba8(&self.ktx2, 0).map_err(bad)?,
+            _ => self.transcode_basis().map_err(bad)?,
+        };
+        Ok(TextureData {
+            width,
+            height,
+            rgba,
+            color_space,
+            mips: Mips::Generate,
+        })
+    }
+
+    #[cfg(feature = "transcode")]
+    fn transcode_basis(&self) -> Result<(u32, u32, Vec<u8>), String> {
+        use basis_universal::{TranscodeParameters, Transcoder, TranscoderTextureFormat};
+        let basis = ktx2::to_basis(&self.ktx2)?;
+        let mut t = Transcoder::new();
+        t.prepare_transcoding(&basis)
+            .map_err(|_| "basisu refused the texture".to_string())?;
+        let rgba = t
+            .transcode_image_level(
+                &basis,
+                TranscoderTextureFormat::RGBA32,
+                TranscodeParameters {
+                    image_index: 0,
+                    level_index: 0,
+                    ..Default::default()
+                },
+            )
+            .map_err(|e| format!("basisu transcode failed: {e:?}"))?;
+        t.end_transcoding();
+        Ok((self.meta.width, self.meta.height, rgba))
+    }
+
+    #[cfg(not(feature = "transcode"))]
+    fn transcode_basis(&self) -> Result<(u32, u32, Vec<u8>), String> {
+        Err("a Basis Universal texture needs a transcoder: the host's (web) or og-cook's `transcode` feature (native)".into())
+    }
+}
+
+/// A cooked sound.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CookedSound {
+    pub id: String,
+    pub meta: SoundMeta,
+    pub qoa: Vec<u8>,
+}
+
+impl CookedSound {
+    /// Interleaved 16-bit PCM.
+    pub fn decode(&self) -> Result<qoa::Decoded, LoadError> {
+        qoa::decode(&self.qoa).map_err(|reason| LoadError::Invalid {
+            path: self.id.clone(),
+            reason,
+        })
+    }
+}
+
+/// A cooked font: metrics, glyphs sorted by code point, atlas pages (RGBA8,
+/// linear; RGB is the MSDF, A the true SDF).
+#[derive(Clone, Debug, PartialEq)]
+pub struct CookedFont {
+    pub id: String,
+    pub meta: FontMeta,
+    pub glyphs: Vec<GlyphRow>,
+    pub pages: Vec<TextureData>,
+}
+
+impl CookedFont {
+    pub fn glyph(&self, c: char) -> Option<&GlyphRow> {
+        self.glyphs
+            .binary_search_by_key(&(c as u32), |g| g.codepoint)
+            .ok()
+            .map(|i| &self.glyphs[i])
+    }
+}
+
+/// One entity of a scene.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct EntityDesc {
+    pub name: String,
+    pub parent: Option<usize>,
+    /// The asset id of a model this entity instantiates (its default scene
+    /// becomes the entity's children).
+    pub instance: Option<String>,
+}
+
+/// One component type's values in a scene.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ComponentTable {
+    pub name: String,
+    /// The schema the rows are packed with (from the cook's schema set, or
+    /// inferred from the scene text when `inferred`). A host migrates rows to
+    /// its registered layout by field name.
+    pub schema: og_core::Schema,
+    pub inferred: bool,
+    /// `(entity index, packed field bytes)`.
+    pub rows: Vec<(usize, Vec<u8>)>,
+}
+
+impl ComponentTable {
+    /// The packed value of `entity`, if it has this component.
+    pub fn get(&self, entity: usize) -> Option<&[u8]> {
+        self.rows
+            .iter()
+            .find(|r| r.0 == entity)
+            .map(|r| r.1.as_slice())
+    }
+}
+
+/// A decoded scene: plain data for the host to spawn.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SceneDesc {
+    pub id: String,
+    pub name: String,
+    /// Parents precede children.
+    pub entities: Vec<EntityDesc>,
+    /// Sorted by type name.
+    pub components: Vec<ComponentTable>,
+}
+
+impl SceneDesc {
+    fn decode(id: &str, blob: &Blob) -> Result<SceneDesc, LoadError> {
+        let meta = one::<SceneMeta>(blob)?;
+        let entities = table::<EntityRow>(blob, "entities")?;
+        let refs = table::<RefRow>(blob, "refs")?;
+        let comps = table::<ComponentRow>(blob, "components")?;
+        let strings = blob.raw("strings")?;
+        let bad = |r: String| invalid(blob, r);
+        let s = |o: u32, l: u32| {
+            pool_str(strings, o, l)
+                .map(str::to_string)
+                .ok_or_else(|| bad("string out of range".into()))
+        };
+        let ref_ids = refs
+            .iter()
+            .map(|r| s(r.id_offset, r.id_len))
+            .collect::<Result<Vec<_>, _>>()?;
+        let mut out = Vec::with_capacity(entities.len());
+        for (i, e) in entities.iter().enumerate() {
+            let parent = opt(e.parent);
+            if parent.is_some_and(|p| p >= i) {
+                return Err(bad(format!("entity {i}: parent does not precede it")));
+            }
+            out.push(EntityDesc {
+                name: s(e.name_offset, e.name_len)?,
+                parent,
+                instance: match opt(e.instance) {
+                    Some(r) => Some(
+                        ref_ids
+                            .get(r)
+                            .cloned()
+                            .ok_or_else(|| bad("instance out of range".into()))?,
+                    ),
+                    None => None,
+                },
+            });
+        }
+        let mut components = Vec::with_capacity(comps.len());
+        for c in &comps {
+            let name = s(c.name_offset, c.name_len)?;
+            let json = std::str::from_utf8(blob.raw(&format!("s.{name}"))?)
+                .map_err(|_| bad(format!("schema of {name} is not UTF-8")))?;
+            let schema = og_core::Schema::from_json(json)
+                .map_err(|e| bad(format!("schema of {name}: {e}")))?;
+            let hash = (c.layout_hash_hi as u64) << 32 | c.layout_hash_lo as u64;
+            if schema.layout_hash() != hash {
+                return Err(bad(format!(
+                    "schema of {name} does not match its layout hash"
+                )));
+            }
+            let (bytes, stride) = blob.rows(&format!("c.{name}"), hash)?;
+            let size = og_core::Layout::of(&schema).size();
+            if stride != 4 + size {
+                return Err(bad(format!(
+                    "{name}: {stride}-byte rows for a {size}-byte layout"
+                )));
+            }
+            let mut rows = Vec::with_capacity(bytes.len() / stride);
+            for r in bytes.chunks_exact(stride) {
+                let entity = u32::from_le_bytes(r[..4].try_into().expect("4 bytes")) as usize;
+                if entity >= out.len() {
+                    return Err(bad(format!("{name}: entity index out of range")));
+                }
+                rows.push((entity, r[4..].to_vec()));
+            }
+            components.push(ComponentTable {
+                name,
+                schema,
+                inferred: c.inferred != 0,
+                rows,
+            });
+        }
+        Ok(SceneDesc {
+            id: id.to_string(),
+            name: s(meta.name_offset, meta.name_len)?,
+            entities: out,
+            components,
+        })
+    }
+}

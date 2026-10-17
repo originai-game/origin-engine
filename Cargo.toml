@@ -20,3 +20,14 @@ log = "0.4"
 opt-level = 3
 lto = "thin"
 codegen-units = 1
+
+# The cook's encoders are unusable at -O0 (a debug cook takes a minute and
+# basisu writes different UASTC bytes than release); keep them optimised in dev.
+[profile.dev.package.basis-universal-sys]
+opt-level = 3
+[profile.dev.package.basis-universal]
+opt-level = 3
+[profile.dev.package.meshopt]
+opt-level = 3
+[profile.dev.package.fdsm]
+opt-level = 3

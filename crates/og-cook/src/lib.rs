@@ -1,1 +1,31 @@
-//! Origin Engine `og-cook`. See docs/design.md and docs/phase-1.md.
+//! Origin Engine `og-cook`: the cook (`assets/` → `cooked/`) and the runtime
+//! loaders that read what it writes (`docs/design.md` §2.5, `README.md`).
+//!
+//! | module | feature | what it owns |
+//! |---|---|---|
+//! | [`format`] | always | the asset blobs: reflected root and row structs, type hashes, section names |
+//! | [`runtime`] | `runtime` | [`runtime::Bundle`] (the manifest as an index), loaders into og-render types and [`runtime::SceneDesc`] |
+//! | [`ktx2`] | `runtime` | KTX2 parsing, lossless RGBA8 textures; `.basis` ↔ KTX2 with `basis`/`transcode` |
+//! | [`meshopt_codec`] | `runtime` | pure-Rust meshoptimizer vertex and index decoders |
+//! | [`qoa`] | `runtime` | the QOA audio codec |
+//! | [`cook`] | `cook` | [`cook::cook_project`], options, the report, the importers |
+//!
+//! `runtime` alone builds for `wasm32-unknown-unknown` (no C, no cook
+//! dependencies). `transcode` adds native Basis Universal transcoding to
+//! RGBA8; `cook` (the default) adds the importers and encoders.
+
+pub mod format;
+#[cfg(feature = "runtime")]
+pub mod ktx2;
+#[cfg(feature = "runtime")]
+pub mod meshopt_codec;
+#[cfg(feature = "runtime")]
+pub mod qoa;
+#[cfg(feature = "runtime")]
+pub mod runtime;
+
+#[cfg(feature = "cook")]
+pub mod cook;
+
+#[cfg(feature = "cook")]
+pub use cook::{cook_project, CookError, CookOptions, Report};

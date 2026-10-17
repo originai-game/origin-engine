@@ -1,0 +1,24 @@
+{
+  "what": "FNV-1a 64 over every (path, bytes) of cooked/, two cooks of templates/game/assets in fresh directories",
+  "cook_all_cores": "144c7d7dec1211cc",
+  "cook_one_thread": "144c7d7dec1211cc",
+  "files": 11,
+  "source_bytes": 4866726,
+  "cooked_bytes": 1735738,
+  "ratio": 0.3567,
+  "cook_ms_all_cores": 5138,
+  "cook_ms_one_thread": 14541,
+  "per_file": {
+    ".cook.ogt": "2bc5494d0a438a45",
+    "audio/blip.wav.ogb": "cd11ce25b4dbbb2a",
+    "fonts/NotoSansSC-Regular-subset.ttf.ogb": "5103099aa5abf65e",
+    "models/dropship.glb.ogb": "e2232dfb406e7ad4",
+    "models/trickster.glb.ogb": "143b03f5ca3579f2",
+    "models/trickster.glb.tex0.ogb": "89317a22722723ff",
+    "models/trickster.glb.tex1.ogb": "5e65e87a338e1d99",
+    "models/trickster.glb.tex2.ogb": "d847222482d920ca",
+    "scenes/main.ogt.ogb": "424e26d89afa7903",
+    "textures/stone.png.ogb": "6697696875e2e22c",
+    "textures/stone_n.png.ogb": "0c5f8d4b307c86ea"
+  }
+}

@@ -1,0 +1,1 @@
+{"tier": "metal", "reference": "crates/og-tests/references/metal/gltf-reference.png", "rmse": 0.00429, "rmse_bound": 0.02, "max_channel_diff": 247, "outliers": 79, "pixels": 921600, "draw_calls": 113, "instances": 926, "triangles": 878827}

@@ -4,6 +4,48 @@ version = "0.0.1"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "Origin Engine: og-cook (phase 1 scaffold)"
+description = "Origin Engine cook: assets/ to cooked/ .ogb blobs (meshopt meshes, KTX2 Basis textures, QOA audio, MSDF fonts, scene tables), and the runtime loaders that read them."
+
+[features]
+default = ["cook", "basis", "transcode"]
+# The loaders: cooked/ .ogb blobs into og-render's input types and plain scene
+# data. Pure Rust, builds for wasm32-unknown-unknown.
+runtime = []
+# Native Basis Universal transcoding of cooked KTX2 textures to RGBA8 for
+# og-render (C++ through basis-universal; not for wasm32, where the host
+# transcodes with Binomial's wasm transcoder).
+transcode = ["runtime", "dep:basis-universal", "dep:ruzstd"]
+# The cook itself (native only): importers, encoders, the incremental manifest.
+cook = ["runtime", "dep:gltf", "dep:image", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:hound", "dep:ruzstd", "dep:serde_json", "dep:nalgebra"]
+# Encode textures with the basis-universal crate (a default). Without it the
+# cook looks for KTX-Software's `toktx` on PATH.
+basis = ["dep:basis-universal", "dep:ruzstd"]
 
 [dependencies]
+og-blob = { path = "../og-blob" }
+og-core = { path = "../og-core" }
+og-render = { path = "../og-render" }
+glam = { workspace = true }
+bytemuck = { workspace = true }
+miniz_oxide = "0.8"
+basis-universal = { version = "0.3.1", optional = true }
+ruzstd = { version = "0.9.1", optional = true }
+gltf = { workspace = true, optional = true }
+image = { workspace = true, optional = true }
+meshopt = { version = "0.6.2", optional = true }
+mikktspace = { version = "0.3.0", default-features = false, features = ["glam"], optional = true }
+fdsm = { version = "0.8.0", optional = true }
+fdsm-ttf-parser = { version = "0.2.0", optional = true }
+ttf-parser = { version = "0.25.1", optional = true }
+hound = { version = "3.5.1", optional = true }
+serde_json = { version = "1", optional = true }
+nalgebra = { version = "0.34.1", optional = true }
+
+[dev-dependencies]
+og-tests = { path = "../og-tests" }
+image = { workspace = true }
+
+[[bin]]
+name = "og-cook"
+path = "src/bin/og-cook.rs"
+required-features = ["cook"]
