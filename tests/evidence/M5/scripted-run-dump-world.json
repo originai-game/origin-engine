@@ -1,0 +1,73 @@
+{
+  "dump": {
+    "archetypes": [
+      {
+        "components": [
+          "og.Transform",
+          "Mover",
+          "Velocity",
+          "Health"
+        ],
+        "count": 1
+      },
+      {
+        "components": [
+          "og.Transform",
+          "Health"
+        ],
+        "count": 1
+      },
+      {
+        "components": [
+          "og.Transform"
+        ],
+        "count": 3
+      }
+    ],
+    "entities": 5,
+    "hash": "1afc8f3a5b1544c7",
+    "kind": "world",
+    "resources": [
+      "og.Time",
+      "og.Rng",
+      "og.Camera",
+      "Stats",
+      "og.Input"
+    ],
+    "systems": [
+      {
+        "matched": 1,
+        "ms": null,
+        "name": "steer",
+        "reads": [
+          "og.Input"
+        ],
+        "writes": [
+          "Velocity"
+        ]
+      },
+      {
+        "matched": 1,
+        "ms": null,
+        "name": "move",
+        "reads": [
+          "Velocity",
+          "Mover"
+        ],
+        "writes": [
+          "og.Transform"
+        ]
+      },
+      {
+        "matched": null,
+        "ms": null,
+        "name": "draw",
+        "reads": null,
+        "writes": null
+      }
+    ],
+    "tick": 90
+  },
+  "script": "0.5:seed:7;1.0:advance:30;1.5:dump_world;2.0:quit",
+  "world": "crates/og-probe/tests/support/mod.rs (seed 1)"
+}

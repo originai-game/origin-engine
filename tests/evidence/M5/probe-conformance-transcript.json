@@ -1,0 +1,4455 @@
+{
+  "checks": 133,
+  "exchanges": [
+    {
+      "answer": {
+        "id": 1,
+        "jsonrpc": "2.0",
+        "result": {
+          "build": "dev",
+          "engine": "origin-engine 0.0.1",
+          "members": [
+            "hello",
+            "tick",
+            "state",
+            "advance",
+            "pause",
+            "resume",
+            "input",
+            "accepted",
+            "pick",
+            "entity",
+            "bounds",
+            "patch",
+            "run",
+            "capture",
+            "sweep",
+            "reload",
+            "snapshot",
+            "restore",
+            "dump",
+            "commands"
+          ],
+          "protocol": 5,
+          "substrate": "origin-engine",
+          "ticksPerSecond": 60,
+          "tier": "vulkan",
+          "wire": 1
+        }
+      },
+      "call": {
+        "id": 1,
+        "jsonrpc": "2.0",
+        "method": "hello",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "id": 2,
+        "jsonrpc": "2.0",
+        "result": 0
+      },
+      "call": {
+        "id": 2,
+        "jsonrpc": "2.0",
+        "method": "tick",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "id": 3,
+        "jsonrpc": "2.0",
+        "result": {
+          "entities": [
+            {
+              "id": "player"
+            },
+            {
+              "id": "crate"
+            }
+          ],
+          "facts": {
+            "draws": 0
+          },
+          "paused": false,
+          "seed": 7,
+          "tick": 0,
+          "timings": {
+            "frameMs": 0.0,
+            "render": 0.0,
+            "step": 0.0
+          }
+        }
+      },
+      "call": {
+        "id": 3,
+        "jsonrpc": "2.0",
+        "method": "state",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "id": 4,
+        "jsonrpc": "2.0",
+        "result": {
+          "entities": [
+            {
+              "id": "player"
+            },
+            {
+              "id": "crate"
+            }
+          ],
+          "facts": {
+            "draws": 0
+          },
+          "paused": false,
+          "seed": 7,
+          "tick": 0,
+          "timings": {
+            "frameMs": 5.5,
+            "render": 4.0,
+            "step": 1.5
+          }
+        }
+      },
+      "call": {
+        "id": 4,
+        "jsonrpc": "2.0",
+        "method": "state",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "id": 5,
+        "jsonrpc": "2.0",
+        "result": true
+      },
+      "call": {
+        "id": 5,
+        "jsonrpc": "2.0",
+        "method": "pause",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "id": 6,
+        "jsonrpc": "2.0",
+        "result": {
+          "entities": [
+            {
+              "id": "player"
+            },
+            {
+              "id": "crate"
+            }
+          ],
+          "facts": {
+            "draws": 0
+          },
+          "paused": true,
+          "seed": 7,
+          "tick": 0,
+          "timings": {
+            "frameMs": 5.5,
+            "render": 4.0,
+            "step": 1.5
+          }
+        }
+      },
+      "call": {
+        "id": 6,
+        "jsonrpc": "2.0",
+        "method": "state",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "id": 7,
+        "jsonrpc": "2.0",
+        "result": 60
+      },
+      "call": {
+        "id": 7,
+        "jsonrpc": "2.0",
+        "method": "advance",
+        "params": {
+          "steps": 60
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 8,
+        "jsonrpc": "2.0",
+        "result": true
+      },
+      "call": {
+        "id": 8,
+        "jsonrpc": "2.0",
+        "method": "resume",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "id": 9,
+        "jsonrpc": "2.0",
+        "result": {
+          "entities": [
+            {
+              "id": "player"
+            },
+            {
+              "id": "crate"
+            }
+          ],
+          "facts": {
+            "draws": 60
+          },
+          "paused": false,
+          "seed": 7,
+          "tick": 60,
+          "timings": {
+            "frameMs": 5.5,
+            "render": 4.0,
+            "step": 1.5
+          }
+        }
+      },
+      "call": {
+        "id": 9,
+        "jsonrpc": "2.0",
+        "method": "state",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "id": 10,
+        "jsonrpc": "2.0",
+        "result": 60
+      },
+      "call": {
+        "id": 10,
+        "jsonrpc": "2.0",
+        "method": "tick",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "id": 11,
+        "jsonrpc": "2.0",
+        "result": 60
+      },
+      "call": {
+        "id": 11,
+        "jsonrpc": "2.0",
+        "method": "advance",
+        "params": {
+          "steps": 0
+        }
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32602,
+          "message": "steps must be an integer in [0, 3600]"
+        },
+        "id": 12,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 12,
+        "jsonrpc": "2.0",
+        "method": "advance",
+        "params": {
+          "steps": -1
+        }
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32602,
+          "message": "steps must be an integer in [0, 3600]"
+        },
+        "id": 13,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 13,
+        "jsonrpc": "2.0",
+        "method": "advance",
+        "params": {
+          "steps": 3601
+        }
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32602,
+          "message": "steps must be an integer in [0, 3600]"
+        },
+        "id": 14,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 14,
+        "jsonrpc": "2.0",
+        "method": "advance",
+        "params": {
+          "steps": "5"
+        }
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32602,
+          "message": "steps must be an integer in [0, 3600]"
+        },
+        "id": 15,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 15,
+        "jsonrpc": "2.0",
+        "method": "advance",
+        "params": {
+          "steps": 1.5
+        }
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32602,
+          "message": "steps must be an integer in [0, 3600]"
+        },
+        "id": 16,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 16,
+        "jsonrpc": "2.0",
+        "method": "advance",
+        "params": {
+          "steps": null
+        }
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32602,
+          "message": "steps must be an integer in [0, 3600]"
+        },
+        "id": 17,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 17,
+        "jsonrpc": "2.0",
+        "method": "advance",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "id": 18,
+        "jsonrpc": "2.0",
+        "result": 60
+      },
+      "call": {
+        "id": 18,
+        "jsonrpc": "2.0",
+        "method": "tick",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "id": 19,
+        "jsonrpc": "2.0",
+        "result": true
+      },
+      "call": {
+        "id": 19,
+        "jsonrpc": "2.0",
+        "method": "input",
+        "params": {
+          "event": {
+            "action": "down",
+            "key": "ArrowRight",
+            "kind": "key"
+          }
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 20,
+        "jsonrpc": "2.0",
+        "result": 90
+      },
+      "call": {
+        "id": 20,
+        "jsonrpc": "2.0",
+        "method": "advance",
+        "params": {
+          "steps": 30
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 21,
+        "jsonrpc": "2.0",
+        "result": true
+      },
+      "call": {
+        "id": 21,
+        "jsonrpc": "2.0",
+        "method": "input",
+        "params": {
+          "event": {
+            "action": "up",
+            "key": "ArrowRight",
+            "kind": "key",
+            "modifiers": {
+              "alt": false,
+              "control": false,
+              "platform": false,
+              "shift": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 22,
+        "jsonrpc": "2.0",
+        "result": false
+      },
+      "call": {
+        "id": 22,
+        "jsonrpc": "2.0",
+        "method": "input",
+        "params": {
+          "event": {
+            "kind": "gamepad"
+          }
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 23,
+        "jsonrpc": "2.0",
+        "result": false
+      },
+      "call": {
+        "id": 23,
+        "jsonrpc": "2.0",
+        "method": "input",
+        "params": {
+          "event": {
+            "action": "down",
+            "key": "NotAKey",
+            "kind": "key"
+          }
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 24,
+        "jsonrpc": "2.0",
+        "result": false
+      },
+      "call": {
+        "id": 24,
+        "jsonrpc": "2.0",
+        "method": "input",
+        "params": {
+          "event": {
+            "action": "down",
+            "key": "",
+            "kind": "key"
+          }
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 25,
+        "jsonrpc": "2.0",
+        "result": false
+      },
+      "call": {
+        "id": 25,
+        "jsonrpc": "2.0",
+        "method": "input",
+        "params": {
+          "event": {
+            "action": "tap",
+            "key": "KeyA",
+            "kind": "key"
+          }
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 26,
+        "jsonrpc": "2.0",
+        "result": false
+      },
+      "call": {
+        "id": 26,
+        "jsonrpc": "2.0",
+        "method": "input",
+        "params": {
+          "event": {
+            "action": "down",
+            "key": "KeyA",
+            "kind": "key",
+            "modifiers": {
+              "alt": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 27,
+        "jsonrpc": "2.0",
+        "result": false
+      },
+      "call": {
+        "id": 27,
+        "jsonrpc": "2.0",
+        "method": "input",
+        "params": {
+          "event": {
+            "action": "move",
+            "button": "none",
+            "kind": "pointer",
+            "x": "1",
+            "y": 0
+          }
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 28,
+        "jsonrpc": "2.0",
+        "result": false
+      },
+      "call": {
+        "id": 28,
+        "jsonrpc": "2.0",
+        "method": "input",
+        "params": {
+          "event": {
+            "action": "move",
+            "button": "back",
+            "kind": "pointer",
+            "x": 1,
+            "y": 0
+          }
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 29,
+        "jsonrpc": "2.0",
+        "result": false
+      },
+      "call": {
+        "id": 29,
+        "jsonrpc": "2.0",
+        "method": "input",
+        "params": {
+          "event": {
+            "deltaX": 0,
+            "kind": "wheel",
+            "x": 0,
+            "y": 0
+          }
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 30,
+        "jsonrpc": "2.0",
+        "result": false
+      },
+      "call": {
+        "id": 30,
+        "jsonrpc": "2.0",
+        "method": "input",
+        "params": {
+          "event": null
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 31,
+        "jsonrpc": "2.0",
+        "result": true
+      },
+      "call": {
+        "id": 31,
+        "jsonrpc": "2.0",
+        "method": "input",
+        "params": {
+          "event": {
+            "action": "click",
+            "button": "left",
+            "kind": "pointer",
+            "x": 3,
+            "y": 4.5
+          }
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 32,
+        "jsonrpc": "2.0",
+        "result": true
+      },
+      "call": {
+        "id": 32,
+        "jsonrpc": "2.0",
+        "method": "input",
+        "params": {
+          "event": {
+            "deltaX": 0,
+            "deltaY": -120,
+            "kind": "wheel",
+            "x": 3,
+            "y": 4.5
+          }
+        }
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32602,
+          "message": "event is required"
+        },
+        "id": 33,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 33,
+        "jsonrpc": "2.0",
+        "method": "input",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "id": 34,
+        "jsonrpc": "2.0",
+        "result": 4
+      },
+      "call": {
+        "id": 34,
+        "jsonrpc": "2.0",
+        "method": "accepted",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "id": 35,
+        "jsonrpc": "2.0",
+        "result": {
+          "entity": "player",
+          "source": "player.ts::move",
+          "world": [
+            5.0,
+            3.0,
+            0.0
+          ]
+        }
+      },
+      "call": {
+        "id": 35,
+        "jsonrpc": "2.0",
+        "method": "pick",
+        "params": {
+          "x": 5,
+          "y": 3
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 36,
+        "jsonrpc": "2.0",
+        "result": null
+      },
+      "call": {
+        "id": 36,
+        "jsonrpc": "2.0",
+        "method": "pick",
+        "params": {
+          "x": 50,
+          "y": 3
+        }
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32602,
+          "message": "x and y must be finite numbers"
+        },
+        "id": 37,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 37,
+        "jsonrpc": "2.0",
+        "method": "pick",
+        "params": {
+          "x": "a",
+          "y": 3
+        }
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32602,
+          "message": "x and y must be finite numbers"
+        },
+        "id": 38,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 38,
+        "jsonrpc": "2.0",
+        "method": "pick",
+        "params": {
+          "x": 1
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 39,
+        "jsonrpc": "2.0",
+        "result": {
+          "Health.hp": 100.0,
+          "Mover.speed": 2.0
+        }
+      },
+      "call": {
+        "id": 39,
+        "jsonrpc": "2.0",
+        "method": "entity",
+        "params": {
+          "id": "player"
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 40,
+        "jsonrpc": "2.0",
+        "result": null
+      },
+      "call": {
+        "id": 40,
+        "jsonrpc": "2.0",
+        "method": "entity",
+        "params": {
+          "id": "ghost"
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 41,
+        "jsonrpc": "2.0",
+        "result": {
+          "Health.hp": 30.0
+        }
+      },
+      "call": {
+        "id": 41,
+        "jsonrpc": "2.0",
+        "method": "entity",
+        "params": {
+          "id": "#1.1"
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 42,
+        "jsonrpc": "2.0",
+        "result": null
+      },
+      "call": {
+        "id": 42,
+        "jsonrpc": "2.0",
+        "method": "entity",
+        "params": {
+          "id": "#99.1"
+        }
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32602,
+          "message": "id must be a string"
+        },
+        "id": 43,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 43,
+        "jsonrpc": "2.0",
+        "method": "entity",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32602,
+          "message": "id must be a string"
+        },
+        "id": 44,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 44,
+        "jsonrpc": "2.0",
+        "method": "entity",
+        "params": {
+          "id": 3
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 45,
+        "jsonrpc": "2.0",
+        "result": {
+          "Health.hp": {
+            "label": "Hit points",
+            "max": 1000.0,
+            "min": 0.0,
+            "path": "Health.hp"
+          },
+          "Mover.speed": {
+            "label": "Speed",
+            "max": 20.0,
+            "min": 0.0,
+            "path": "Mover.speed"
+          }
+        }
+      },
+      "call": {
+        "id": 45,
+        "jsonrpc": "2.0",
+        "method": "bounds",
+        "params": {
+          "id": "player"
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 46,
+        "jsonrpc": "2.0",
+        "result": null
+      },
+      "call": {
+        "id": 46,
+        "jsonrpc": "2.0",
+        "method": "bounds",
+        "params": {
+          "id": "ghost"
+        }
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32602,
+          "message": "id must be a string"
+        },
+        "id": 47,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 47,
+        "jsonrpc": "2.0",
+        "method": "bounds",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "id": 48,
+        "jsonrpc": "2.0",
+        "result": true
+      },
+      "call": {
+        "id": 48,
+        "jsonrpc": "2.0",
+        "method": "patch",
+        "params": {
+          "id": "player",
+          "parameter": "Mover.speed",
+          "value": 4
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 49,
+        "jsonrpc": "2.0",
+        "result": {
+          "Health.hp": 100.0,
+          "Mover.speed": 4.0
+        }
+      },
+      "call": {
+        "id": 49,
+        "jsonrpc": "2.0",
+        "method": "entity",
+        "params": {
+          "id": "player"
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 50,
+        "jsonrpc": "2.0",
+        "result": 150
+      },
+      "call": {
+        "id": 50,
+        "jsonrpc": "2.0",
+        "method": "advance",
+        "params": {
+          "steps": 60
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 51,
+        "jsonrpc": "2.0",
+        "result": true
+      },
+      "call": {
+        "id": 51,
+        "jsonrpc": "2.0",
+        "method": "patch",
+        "params": {
+          "id": "player",
+          "parameter": "Mover.speed",
+          "value": 0.1
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 52,
+        "jsonrpc": "2.0",
+        "result": {
+          "Health.hp": 100.0,
+          "Mover.speed": 0.1
+        }
+      },
+      "call": {
+        "id": 52,
+        "jsonrpc": "2.0",
+        "method": "entity",
+        "params": {
+          "id": "player"
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 53,
+        "jsonrpc": "2.0",
+        "result": false
+      },
+      "call": {
+        "id": 53,
+        "jsonrpc": "2.0",
+        "method": "patch",
+        "params": {
+          "id": "ghost",
+          "parameter": "Mover.speed",
+          "value": 1
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 54,
+        "jsonrpc": "2.0",
+        "result": false
+      },
+      "call": {
+        "id": 54,
+        "jsonrpc": "2.0",
+        "method": "patch",
+        "params": {
+          "id": "player",
+          "parameter": "Mover.jump",
+          "value": 1
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 55,
+        "jsonrpc": "2.0",
+        "result": false
+      },
+      "call": {
+        "id": 55,
+        "jsonrpc": "2.0",
+        "method": "patch",
+        "params": {
+          "id": "player",
+          "parameter": "Jump.speed",
+          "value": 1
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 56,
+        "jsonrpc": "2.0",
+        "result": false
+      },
+      "call": {
+        "id": 56,
+        "jsonrpc": "2.0",
+        "method": "patch",
+        "params": {
+          "id": "player",
+          "parameter": "speed",
+          "value": 1
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 57,
+        "jsonrpc": "2.0",
+        "result": false
+      },
+      "call": {
+        "id": 57,
+        "jsonrpc": "2.0",
+        "method": "patch",
+        "params": {
+          "id": "player",
+          "parameter": "Mover.lane",
+          "value": 2
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 58,
+        "jsonrpc": "2.0",
+        "result": false
+      },
+      "call": {
+        "id": 58,
+        "jsonrpc": "2.0",
+        "method": "patch",
+        "params": {
+          "id": "player",
+          "parameter": "Health.max",
+          "value": 2
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 59,
+        "jsonrpc": "2.0",
+        "result": false
+      },
+      "call": {
+        "id": 59,
+        "jsonrpc": "2.0",
+        "method": "patch",
+        "params": {
+          "id": "player",
+          "parameter": "Mover.speed",
+          "value": "fast"
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 60,
+        "jsonrpc": "2.0",
+        "result": false
+      },
+      "call": {
+        "id": 60,
+        "jsonrpc": "2.0",
+        "method": "patch",
+        "params": {
+          "id": "player",
+          "parameter": "Mover.speed",
+          "value": 25
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 61,
+        "jsonrpc": "2.0",
+        "result": false
+      },
+      "call": {
+        "id": 61,
+        "jsonrpc": "2.0",
+        "method": "patch",
+        "params": {
+          "id": "player",
+          "parameter": "Mover.speed",
+          "value": -1
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 62,
+        "jsonrpc": "2.0",
+        "result": false
+      },
+      "call": {
+        "id": 62,
+        "jsonrpc": "2.0",
+        "method": "patch",
+        "params": {
+          "id": "player",
+          "parameter": "Mover.speed",
+          "value": [
+            1,
+            2
+          ]
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 63,
+        "jsonrpc": "2.0",
+        "result": false
+      },
+      "call": {
+        "id": 63,
+        "jsonrpc": "2.0",
+        "method": "patch",
+        "params": {
+          "id": "crate",
+          "parameter": "Mover.speed",
+          "value": 1
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 64,
+        "jsonrpc": "2.0",
+        "result": {
+          "Health.hp": 100.0,
+          "Mover.speed": 0.1
+        }
+      },
+      "call": {
+        "id": 64,
+        "jsonrpc": "2.0",
+        "method": "entity",
+        "params": {
+          "id": "player"
+        }
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32602,
+          "message": "value is required"
+        },
+        "id": 65,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 65,
+        "jsonrpc": "2.0",
+        "method": "patch",
+        "params": {
+          "id": "player",
+          "parameter": "Mover.speed"
+        }
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32602,
+          "message": "parameter must be a string"
+        },
+        "id": 66,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 66,
+        "jsonrpc": "2.0",
+        "method": "patch",
+        "params": {
+          "id": "player",
+          "value": 1
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 67,
+        "jsonrpc": "2.0",
+        "result": 150
+      },
+      "call": {
+        "id": 67,
+        "jsonrpc": "2.0",
+        "method": "tick",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "id": 68,
+        "jsonrpc": "2.0",
+        "result": {
+          "refused": 7,
+          "results": [
+            true,
+            152,
+            null,
+            {
+              "entity": "player",
+              "source": "player.ts::move",
+              "world": [
+                1.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "state": {
+                "entities": [
+                  {
+                    "id": "player"
+                  },
+                  {
+                    "id": "crate"
+                  }
+                ],
+                "facts": {
+                  "draws": 152
+                },
+                "paused": true,
+                "seed": 7,
+                "tick": 152,
+                "timings": {
+                  "frameMs": 5.5,
+                  "render": 4.0,
+                  "step": 1.5
+                }
+              },
+              "tick": 152
+            },
+            true,
+            {
+              "Health.hp": 30.0
+            }
+          ],
+          "tick": 152
+        }
+      },
+      "call": {
+        "id": 68,
+        "jsonrpc": "2.0",
+        "method": "run",
+        "params": {
+          "program": [
+            {
+              "op": "pause"
+            },
+            {
+              "op": "advance",
+              "steps": 2
+            },
+            {
+              "op": "pick",
+              "x": 50,
+              "y": 0
+            },
+            {
+              "op": "pick",
+              "x": 1,
+              "y": 0
+            },
+            {
+              "op": "read"
+            },
+            {
+              "event": {
+                "action": "press",
+                "key": "KeyA",
+                "kind": "key"
+              },
+              "op": "input"
+            },
+            {
+              "id": "crate",
+              "op": "entity"
+            },
+            {
+              "id": "ghost",
+              "op": "entity"
+            },
+            {
+              "op": "advance",
+              "steps": 5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 69,
+        "jsonrpc": "2.0",
+        "result": true
+      },
+      "call": {
+        "id": 69,
+        "jsonrpc": "2.0",
+        "method": "resume",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "id": 70,
+        "jsonrpc": "2.0",
+        "result": {
+          "refused": 0,
+          "results": [],
+          "tick": 152
+        }
+      },
+      "call": {
+        "id": 70,
+        "jsonrpc": "2.0",
+        "method": "run",
+        "params": {
+          "program": [
+            {
+              "op": "advance",
+              "steps": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 71,
+        "jsonrpc": "2.0",
+        "result": {
+          "refused": 1,
+          "results": [
+            true
+          ],
+          "tick": 152
+        }
+      },
+      "call": {
+        "id": 71,
+        "jsonrpc": "2.0",
+        "method": "run",
+        "params": {
+          "program": [
+            {
+              "op": "resume"
+            },
+            {
+              "op": "advance",
+              "steps": 3601
+            }
+          ]
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 72,
+        "jsonrpc": "2.0",
+        "result": {
+          "refused": 0,
+          "results": [],
+          "tick": 152
+        }
+      },
+      "call": {
+        "id": 72,
+        "jsonrpc": "2.0",
+        "method": "run",
+        "params": {
+          "program": [
+            {
+              "op": "teleport"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 73,
+        "jsonrpc": "2.0",
+        "result": {
+          "refused": 0,
+          "results": [],
+          "tick": 152
+        }
+      },
+      "call": {
+        "id": 73,
+        "jsonrpc": "2.0",
+        "method": "run",
+        "params": {
+          "program": [
+            {
+              "event": {
+                "kind": "gamepad"
+              },
+              "op": "input"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 74,
+        "jsonrpc": "2.0",
+        "result": {
+          "refused": 0,
+          "results": [],
+          "tick": 152
+        }
+      },
+      "call": {
+        "id": 74,
+        "jsonrpc": "2.0",
+        "method": "run",
+        "params": {
+          "program": [
+            {
+              "op": "pick",
+              "x": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 75,
+        "jsonrpc": "2.0",
+        "result": {
+          "refused": 0,
+          "results": [],
+          "tick": 152
+        }
+      },
+      "call": {
+        "id": 75,
+        "jsonrpc": "2.0",
+        "method": "run",
+        "params": {
+          "program": [
+            {
+              "op": "entity"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 76,
+        "jsonrpc": "2.0",
+        "result": {
+          "refused": 0,
+          "results": [],
+          "tick": 152
+        }
+      },
+      "call": {
+        "id": 76,
+        "jsonrpc": "2.0",
+        "method": "run",
+        "params": {
+          "program": [
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            },
+            {
+              "op": "pause"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 77,
+        "jsonrpc": "2.0",
+        "result": {
+          "refused": null,
+          "results": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "tick": 152
+        }
+      },
+      "call": {
+        "id": 77,
+        "jsonrpc": "2.0",
+        "method": "run",
+        "params": {
+          "program": [
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            },
+            {
+              "op": "resume"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 78,
+        "jsonrpc": "2.0",
+        "result": {
+          "refused": null,
+          "results": [],
+          "tick": 152
+        }
+      },
+      "call": {
+        "id": 78,
+        "jsonrpc": "2.0",
+        "method": "run",
+        "params": {
+          "program": []
+        }
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32602,
+          "message": "program must be an array"
+        },
+        "id": 79,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 79,
+        "jsonrpc": "2.0",
+        "method": "run",
+        "params": {
+          "program": {
+            "op": "pause"
+          }
+        }
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32602,
+          "message": "program must be an array"
+        },
+        "id": 80,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 80,
+        "jsonrpc": "2.0",
+        "method": "run",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "id": 81,
+        "jsonrpc": "2.0",
+        "result": 152
+      },
+      "call": {
+        "id": 81,
+        "jsonrpc": "2.0",
+        "method": "tick",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "id": 82,
+        "jsonrpc": "2.0",
+        "result": {
+          "height": 36,
+          "png": "NjR4MzYgdGljaz0xNTIgeD05LjAwMzM=",
+          "tick": 152,
+          "width": 64
+        }
+      },
+      "call": {
+        "id": 82,
+        "jsonrpc": "2.0",
+        "method": "capture",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "id": 83,
+        "jsonrpc": "2.0",
+        "result": {
+          "height": 18,
+          "png": "MzJ4MTggdGljaz0xNTIgeD05LjAwMzM=",
+          "tick": 152,
+          "width": 32
+        }
+      },
+      "call": {
+        "id": 83,
+        "jsonrpc": "2.0",
+        "method": "capture",
+        "params": {
+          "height": 18,
+          "width": 32
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 84,
+        "jsonrpc": "2.0",
+        "result": {
+          "height": 36,
+          "png": "NjR4MzYgdGljaz0xNTIgeD05LjAwMzM=",
+          "tick": 152,
+          "width": 64
+        }
+      },
+      "call": {
+        "id": 84,
+        "jsonrpc": "2.0",
+        "method": "capture",
+        "params": {
+          "height": 0,
+          "width": 0
+        }
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32602,
+          "message": "width and height go together"
+        },
+        "id": 85,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 85,
+        "jsonrpc": "2.0",
+        "method": "capture",
+        "params": {
+          "width": 32
+        }
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32602,
+          "message": "width and height must be integers in [0, 4096]"
+        },
+        "id": 86,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 86,
+        "jsonrpc": "2.0",
+        "method": "capture",
+        "params": {
+          "height": 10,
+          "width": 5000
+        }
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32602,
+          "message": "width and height must be integers in [0, 4096]"
+        },
+        "id": 87,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 87,
+        "jsonrpc": "2.0",
+        "method": "capture",
+        "params": {
+          "height": 10,
+          "width": -1
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 88,
+        "jsonrpc": "2.0",
+        "result": {
+          "bytes": 779,
+          "hash": "7e3a88b523979e0b",
+          "id": "s1",
+          "tick": 152
+        }
+      },
+      "call": {
+        "id": 88,
+        "jsonrpc": "2.0",
+        "method": "snapshot",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "id": 89,
+        "jsonrpc": "2.0",
+        "result": 162
+      },
+      "call": {
+        "id": 89,
+        "jsonrpc": "2.0",
+        "method": "advance",
+        "params": {
+          "steps": 10
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 90,
+        "jsonrpc": "2.0",
+        "result": true
+      },
+      "call": {
+        "id": 90,
+        "jsonrpc": "2.0",
+        "method": "patch",
+        "params": {
+          "id": "player",
+          "parameter": "Health.hp",
+          "value": 1
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 91,
+        "jsonrpc": "2.0",
+        "result": true
+      },
+      "call": {
+        "id": 91,
+        "jsonrpc": "2.0",
+        "method": "restore",
+        "params": {
+          "id": "s1"
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 92,
+        "jsonrpc": "2.0",
+        "result": 152
+      },
+      "call": {
+        "id": 92,
+        "jsonrpc": "2.0",
+        "method": "tick",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "id": 93,
+        "jsonrpc": "2.0",
+        "result": {
+          "Health.hp": 100.0,
+          "Mover.speed": 0.1
+        }
+      },
+      "call": {
+        "id": 93,
+        "jsonrpc": "2.0",
+        "method": "entity",
+        "params": {
+          "id": "player"
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 94,
+        "jsonrpc": "2.0",
+        "result": false
+      },
+      "call": {
+        "id": 94,
+        "jsonrpc": "2.0",
+        "method": "restore",
+        "params": {
+          "id": "s99"
+        }
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32602,
+          "message": "id must be a string"
+        },
+        "id": 95,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 95,
+        "jsonrpc": "2.0",
+        "method": "restore",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "id": 96,
+        "jsonrpc": "2.0",
+        "result": {
+          "archetypes": [
+            {
+              "components": [
+                "og.Transform",
+                "Mover",
+                "Velocity",
+                "Health"
+              ],
+              "count": 1
+            },
+            {
+              "components": [
+                "og.Transform",
+                "Health"
+              ],
+              "count": 1
+            },
+            {
+              "components": [
+                "og.Transform"
+              ],
+              "count": 3
+            }
+          ],
+          "entities": 5,
+          "hash": "7e3a88b523979e0b",
+          "kind": "world",
+          "resources": [
+            "og.Time",
+            "og.Rng",
+            "og.Camera",
+            "Stats",
+            "og.Input"
+          ],
+          "systems": [
+            {
+              "matched": 1,
+              "ms": null,
+              "name": "steer",
+              "reads": [
+                "og.Input"
+              ],
+              "writes": [
+                "Velocity"
+              ]
+            },
+            {
+              "matched": 1,
+              "ms": null,
+              "name": "move",
+              "reads": [
+                "Velocity",
+                "Mover"
+              ],
+              "writes": [
+                "og.Transform"
+              ]
+            },
+            {
+              "matched": null,
+              "ms": null,
+              "name": "draw",
+              "reads": null,
+              "writes": null
+            }
+          ],
+          "tick": 152
+        }
+      },
+      "call": {
+        "id": 96,
+        "jsonrpc": "2.0",
+        "method": "dump",
+        "params": {
+          "what": "world"
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 97,
+        "jsonrpc": "2.0",
+        "result": {
+          "components": {
+            "Health": {
+              "hp": 100.0,
+              "max": 100.0
+            },
+            "Mover": {
+              "lane": 1,
+              "speed": 0.1
+            },
+            "Velocity": {
+              "v": [
+                1.0,
+                0.0,
+                0.0
+              ]
+            },
+            "og.Transform": {
+              "position": [
+                9.003327,
+                0.0,
+                0.0
+              ],
+              "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            }
+          },
+          "id": "player",
+          "kind": "entity",
+          "name": "player"
+        }
+      },
+      "call": {
+        "id": 97,
+        "jsonrpc": "2.0",
+        "method": "dump",
+        "params": {
+          "id": "player",
+          "what": "entity"
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 98,
+        "jsonrpc": "2.0",
+        "result": {
+          "components": {
+            "og.Transform": {
+              "position": [
+                -1.0,
+                0.0,
+                0.0
+              ],
+              "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            }
+          },
+          "id": "#2.1",
+          "kind": "entity",
+          "name": null
+        }
+      },
+      "call": {
+        "id": 98,
+        "jsonrpc": "2.0",
+        "method": "dump",
+        "params": {
+          "id": "#2.1",
+          "what": "entity"
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 99,
+        "jsonrpc": "2.0",
+        "result": null
+      },
+      "call": {
+        "id": 99,
+        "jsonrpc": "2.0",
+        "method": "dump",
+        "params": {
+          "id": "ghost",
+          "what": "entity"
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 100,
+        "jsonrpc": "2.0",
+        "result": {
+          "elements": [
+            {
+              "height": 40.0,
+              "id": "Menu",
+              "parent": "",
+              "text": "",
+              "width": 100.0,
+              "x": 0.0,
+              "y": 0.0
+            },
+            {
+              "height": 40.0,
+              "id": "Start",
+              "parent": "Menu",
+              "text": "Start game",
+              "width": 100.0,
+              "x": 10.0,
+              "y": 10.0
+            },
+            {
+              "height": 40.0,
+              "id": "Options",
+              "parent": "Menu",
+              "text": "Options",
+              "width": 100.0,
+              "x": 10.0,
+              "y": 60.0
+            },
+            {
+              "height": 40.0,
+              "id": "Dialog",
+              "parent": "",
+              "text": "",
+              "width": 100.0,
+              "x": 200.0,
+              "y": 0.0
+            },
+            {
+              "height": 40.0,
+              "id": "Start",
+              "parent": "Dialog",
+              "text": "Start",
+              "width": 100.0,
+              "x": 210.0,
+              "y": 10.0
+            }
+          ],
+          "kind": "ui",
+          "tick": 152
+        }
+      },
+      "call": {
+        "id": 100,
+        "jsonrpc": "2.0",
+        "method": "dump",
+        "params": {
+          "what": "ui"
+        }
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32602,
+          "message": "id must be a string"
+        },
+        "id": 101,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 101,
+        "jsonrpc": "2.0",
+        "method": "dump",
+        "params": {
+          "what": "entity"
+        }
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32602,
+          "message": "what must be world, entity or ui"
+        },
+        "id": 102,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 102,
+        "jsonrpc": "2.0",
+        "method": "dump",
+        "params": {
+          "what": "scene"
+        }
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32602,
+          "message": "what must be a string"
+        },
+        "id": 103,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 103,
+        "jsonrpc": "2.0",
+        "method": "dump",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "id": 104,
+        "jsonrpc": "2.0",
+        "result": 152
+      },
+      "call": {
+        "id": 104,
+        "jsonrpc": "2.0",
+        "method": "tick",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "id": 105,
+        "jsonrpc": "2.0",
+        "result": {
+          "scheduled": 3,
+          "untilTick": 212,
+          "warnings": [
+            "1s: unknown action 'spawn_wave'; it is skipped unless registered before tick 212 (`help` lists the actions)"
+          ]
+        }
+      },
+      "call": {
+        "id": 105,
+        "jsonrpc": "2.0",
+        "method": "commands",
+        "params": {
+          "script": "0:advance:10;0.5:seed:3;1:spawn_wave:4"
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 106,
+        "jsonrpc": "2.0",
+        "result": null
+      },
+      "call": {
+        "id": 106,
+        "jsonrpc": "2.0",
+        "method": "commands",
+        "params": {
+          "script": "x:advance"
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 107,
+        "jsonrpc": "2.0",
+        "result": null
+      },
+      "call": {
+        "id": 107,
+        "jsonrpc": "2.0",
+        "method": "commands",
+        "params": {
+          "script": "1:Advance"
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 108,
+        "jsonrpc": "2.0",
+        "result": null
+      },
+      "call": {
+        "id": 108,
+        "jsonrpc": "2.0",
+        "method": "commands",
+        "params": {
+          "script": "2:pause;1:resume"
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 109,
+        "jsonrpc": "2.0",
+        "result": null
+      },
+      "call": {
+        "id": 109,
+        "jsonrpc": "2.0",
+        "method": "commands",
+        "params": {
+          "script": "-1:pause"
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 110,
+        "jsonrpc": "2.0",
+        "result": null
+      },
+      "call": {
+        "id": 110,
+        "jsonrpc": "2.0",
+        "method": "commands",
+        "params": {
+          "script": "1.0"
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 111,
+        "jsonrpc": "2.0",
+        "result": null
+      },
+      "call": {
+        "id": 111,
+        "jsonrpc": "2.0",
+        "method": "commands",
+        "params": {
+          "script": "1:"
+        }
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32602,
+          "message": "script must be a string"
+        },
+        "id": 112,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 112,
+        "jsonrpc": "2.0",
+        "method": "commands",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "id": 113,
+        "jsonrpc": "2.0",
+        "result": null
+      },
+      "call": {
+        "id": 113,
+        "jsonrpc": "2.0",
+        "method": "reload",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32601,
+          "message": "method not found: teleport"
+        },
+        "id": 114,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 114,
+        "jsonrpc": "2.0",
+        "method": "teleport",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32601,
+          "message": "method not found: version"
+        },
+        "id": 115,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 115,
+        "jsonrpc": "2.0",
+        "method": "version",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32601,
+          "message": "method not found: entities"
+        },
+        "id": 116,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 116,
+        "jsonrpc": "2.0",
+        "method": "entities",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32601,
+          "message": "method not found: record"
+        },
+        "id": 117,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 117,
+        "jsonrpc": "2.0",
+        "method": "record",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32601,
+          "message": "method not found: Hello"
+        },
+        "id": 118,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 118,
+        "jsonrpc": "2.0",
+        "method": "Hello",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32601,
+          "message": "method not found: "
+        },
+        "id": 119,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 119,
+        "jsonrpc": "2.0",
+        "method": "",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32700,
+          "message": "parse error"
+        },
+        "id": null,
+        "jsonrpc": "2.0"
+      },
+      "call": "{not json"
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32600,
+          "message": "batching is not supported"
+        },
+        "id": null,
+        "jsonrpc": "2.0"
+      },
+      "call": [
+        {
+          "id": 1,
+          "jsonrpc": "2.0",
+          "method": "tick"
+        }
+      ]
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32600,
+          "message": "a numeric or string id is required (notifications are not served)"
+        },
+        "id": null,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "jsonrpc": "2.0",
+        "method": "tick"
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32600,
+          "message": "a numeric or string id is required (notifications are not served)"
+        },
+        "id": null,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": null,
+        "jsonrpc": "2.0",
+        "method": "tick"
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32600,
+          "message": "jsonrpc must be \"2.0\""
+        },
+        "id": 1,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 1,
+        "jsonrpc": "1.0",
+        "method": "tick"
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32600,
+          "message": "method must be a string"
+        },
+        "id": 1,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 1,
+        "jsonrpc": "2.0",
+        "method": 7
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32602,
+          "message": "params must be an object"
+        },
+        "id": 1,
+        "jsonrpc": "2.0"
+      },
+      "call": {
+        "id": 1,
+        "jsonrpc": "2.0",
+        "method": "tick",
+        "params": [
+          1
+        ]
+      }
+    },
+    {
+      "answer": {
+        "error": {
+          "code": -32600,
+          "message": "a call is a JSON object"
+        },
+        "id": null,
+        "jsonrpc": "2.0"
+      },
+      "call": 7
+    },
+    {
+      "answer": {
+        "id": "s",
+        "jsonrpc": "2.0",
+        "result": 152
+      },
+      "call": {
+        "id": "s",
+        "jsonrpc": "2.0",
+        "method": "tick"
+      }
+    },
+    {
+      "answer": {
+        "id": 1,
+        "jsonrpc": "2.0",
+        "result": {
+          "build": "dev",
+          "engine": "origin-engine 0.0.1",
+          "members": [
+            "hello",
+            "tick",
+            "state",
+            "advance",
+            "pause",
+            "resume",
+            "input",
+            "accepted",
+            "pick",
+            "entity",
+            "bounds",
+            "patch",
+            "run",
+            "capture",
+            "sweep",
+            "reload",
+            "snapshot",
+            "restore",
+            "dump",
+            "commands"
+          ],
+          "protocol": 5,
+          "substrate": "origin-engine",
+          "ticksPerSecond": 60,
+          "tier": "none",
+          "wire": 1
+        }
+      },
+      "call": {
+        "id": 1,
+        "jsonrpc": "2.0",
+        "method": "hello",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "id": 2,
+        "jsonrpc": "2.0",
+        "result": null
+      },
+      "call": {
+        "id": 2,
+        "jsonrpc": "2.0",
+        "method": "capture",
+        "params": {}
+      }
+    },
+    {
+      "answer": {
+        "id": 3,
+        "jsonrpc": "2.0",
+        "result": null
+      },
+      "call": {
+        "id": 3,
+        "jsonrpc": "2.0",
+        "method": "pick",
+        "params": {
+          "x": 1,
+          "y": 1
+        }
+      }
+    },
+    {
+      "answer": {
+        "id": 4,
+        "jsonrpc": "2.0",
+        "result": null
+      },
+      "call": {
+        "id": 4,
+        "jsonrpc": "2.0",
+        "method": "sweep",
+        "params": {
+          "id": "player",
+          "parameter": "Mover.speed",
+          "steps": 1,
+          "values": [
+            1,
+            2
+          ]
+        }
+      }
+    }
+  ],
+  "suite": "og-probe protocol 5 conformance (crates/og-probe/tests/conformance.rs)"
+}

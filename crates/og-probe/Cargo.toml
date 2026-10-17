@@ -4,6 +4,23 @@ version = "0.0.1"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "Origin Engine: og-probe (phase 1 scaffold)"
+description = "Origin Engine probe: the command channel, RuntimeProbe protocol 5 and the engine's wire members over JSON-RPC 2.0 (loopback WebSocket on native, in-page calls on the web)."
+
+[features]
+default = ["ws"]
+# The native loopback WebSocket server at 127.0.0.1:<port>/probe. Ignored on wasm32.
+ws = ["dep:tungstenite"]
+# A published game: only hello, tick, state, pick, entity, input and capture answer;
+# every other member is -32601, as if it did not exist.
+publish = []
 
 [dependencies]
+og-core = { path = "../og-core" }
+og-ecs = { path = "../og-ecs" }
+serde_json = "1"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tungstenite = { version = "=0.30.0", default-features = false, features = ["handshake"], optional = true }
+
+[dev-dependencies]
+tungstenite = { version = "=0.30.0", default-features = false, features = ["handshake"] }
