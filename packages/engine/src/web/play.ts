@@ -98,6 +98,7 @@ export async function play(): Promise<Shell> {
       webgl: query.get("webgl") === "1" || !("gpu" in navigator),
       autoplay: query.get("autoplay") !== "0",
       ...(seed === undefined ? {} : { seed }),
+      profile: document.querySelector<HTMLMetaElement>('meta[name="og-profile"]')?.content === "2d" ? "2d" : "3d",
       onProgress: (v) => boot.set(v),
     });
     const probe: Record<string, unknown> = { version: 5 };

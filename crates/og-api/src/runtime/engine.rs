@@ -256,6 +256,15 @@ pub(crate) struct State {
     pub outputs: Vec<og_probe::Output>,
     /// A rebuilt bundle's state, waiting for the probe's reload to swap it in.
     pub reloaded: Option<Box<Assembled>>,
+    /// The physics profile (2 or 3), from the host's options.
+    pub profile: u32,
+    /// The engine modules' handles: physics (meshes, queries) and the UI.
+    pub physics: Option<og_physics::PhysicsSystem>,
+    pub ui: Option<og_ui::SharedUi>,
+    /// Every mesh registered with physics, replayed into a reload's physics.
+    pub physics_meshes: BTreeMap<u64, og_physics::MeshDesc>,
+    /// UI warnings already logged, so a repeated one is logged once.
+    pub ui_warned: BTreeSet<String>,
 }
 
 pub(crate) struct Engine {
@@ -535,6 +544,8 @@ pub(crate) struct Assembled {
     pub commands: BTreeMap<String, CommandDecl>,
     pub warnings: Vec<String>,
     pub game: GameDecl,
+    /// Physics, the UI and the audio link of the new world.
+    pub mounted: super::modules::Mounted,
 }
 
 /// Engine-owned records og-probe or og-input register themselves.
@@ -552,7 +563,13 @@ const REGISTERED_BY_MODULES: &[&str] = &[
 /// engine's records (IDL order), the game's records (declaration order), the
 /// probe (which registers `og.Input`), then the systems (declared order with
 /// `after`/`before`).
-pub(crate) fn assemble(game: u32, seed: Option<u32>, engine_id: u32) -> Result<Assembled, String> {
+pub(crate) fn assemble(
+    game: u32,
+    seed: Option<u32>,
+    engine_id: u32,
+    profile: u32,
+    previous: Option<(&og_ui::SharedUi, og_audio::AudioLink)>,
+) -> Result<Assembled, String> {
     let (decl, records, errors, all_systems, commands) = DECL.with(|d| {
         let d = d.borrow();
         (
@@ -638,6 +655,11 @@ pub(crate) fn assemble(game: u32, seed: Option<u32>, engine_id: u32) -> Result<A
         layouts.insert(layout.schema.clone(), layout);
     }
 
+    // The modules' systems before the game's (physics' collider recording,
+    // the UI's begin), then the game's, then the modules' after them.
+    let ui = super::modules::new_ui(game.tick, previous.as_ref().map(|p| p.0));
+    let physics = super::modules::mount_front(&mut world, engine_id, profile, &ui)?;
+
     // Systems: the game's, ordered.
     let mut systems_decl = Vec::new();
     for &s in &game.systems {
@@ -713,6 +735,8 @@ pub(crate) fn assemble(game: u32, seed: Option<u32>, engine_id: u32) -> Result<A
             },
         );
     }
+    let mounted =
+        super::modules::mount_back(&mut world, engine_id, physics, ui, previous.map(|p| p.1))?;
     let names_by_id = world.schemas().into_iter().map(|s| s.name).collect();
     Ok(Assembled {
         world,
@@ -724,6 +748,7 @@ pub(crate) fn assemble(game: u32, seed: Option<u32>, engine_id: u32) -> Result<A
         commands: all_commands,
         warnings,
         game,
+        mounted,
     })
 }
 
@@ -748,7 +773,16 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
     let options = parse(Some(options))?;
     let engine_id = ENGINES.with(|e| e.borrow().len() as u32);
     let seed = options["seed"].as_u64().map(|s| s as u32);
-    let mut a = assemble(game, seed, engine_id)?;
+    let profile = match options["profile"].as_str() {
+        None | Some("3d") => og_physics::PROFILE_3D,
+        Some("2d") => og_physics::PROFILE_2D,
+        Some(other) => {
+            return Err(format!(
+                "options.profile is '{other}'; a project's profile is \"2d\" or \"3d\""
+            ))
+        }
+    };
+    let mut a = assemble(game, seed, engine_id, profile, None)?;
     let probe = a.probe.take().expect("assemble makes a probe");
     let state = State {
         layouts: a.layouts,
@@ -771,8 +805,15 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         log: Vec::new(),
         outputs: Vec::new(),
         reloaded: None,
+        profile,
+        physics: Some(a.mounted.physics.clone()),
+        ui: Some(a.mounted.ui.clone()),
+        physics_meshes: BTreeMap::new(),
+        ui_warned: BTreeSet::new(),
     };
+    og_audio::publish_link(engine_id, a.mounted.audio.clone());
     let render = Rc::new(RefCell::new(RenderState::new(a.game.render.clone())));
+    render.borrow_mut().ui = Some(a.mounted.ui.clone());
     let engine = Rc::new(Engine {
         id: engine_id,
         world: UnsafeCell::new(a.world),
@@ -805,7 +846,11 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         engine.state.borrow_mut().boot_scene = Some(path.clone());
         boot_scene(&engine);
     }
-    run_start(&engine)?;
+    // `deferStart`: the host attaches its renderer and reports the viewport
+    // first; start then runs at the first tick boundary.
+    if !options["deferStart"].as_bool().unwrap_or(false) {
+        run_start(&engine)?;
+    }
     Ok(engine_id)
 }
 
@@ -870,6 +915,7 @@ pub fn destroy(id: u32) -> bool {
         return false;
     }
     before_structural(&eng);
+    og_audio::retire_link(id);
     ENGINES.with(|e| {
         if let Some(slot) = e.borrow_mut().get_mut(id as usize) {
             *slot = None;
@@ -914,7 +960,9 @@ fn advance_probe(eng: &Engine, steps: u64) -> Result<u64, String> {
     let mut left = steps;
     let tick = loop {
         let chunk = left.min(og_probe::PLAYTEST_MAX_TICKS);
-        let tick = rprobe::with_probe(eng, false, |p, w| p.advance(w, chunk))?.map_err(err)?;
+        let stepped = rprobe::with_probe(eng, false, |p, w| p.advance(w, chunk));
+        super::modules::end_of_ticks();
+        let tick = stepped?.map_err(err)?;
         left -= chunk;
         if left == 0 || eng.probe.borrow().quit_requested() {
             break tick;
@@ -966,7 +1014,9 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     };
     tick_boundary(&eng);
     let t0 = rprobe::now_ms();
-    let ticks = match rprobe::with_probe(&eng, false, |p, w| p.frame(w, due)) {
+    let stepped = rprobe::with_probe(&eng, false, |p, w| p.frame(w, due));
+    super::modules::end_of_ticks();
+    let ticks = match stepped {
         Ok(Ok(n)) => n,
         Ok(Err(e)) => return refuse(err(e)),
         Err(e) => return refuse(e),
@@ -992,7 +1042,7 @@ fn render(eng: &Engine) -> Result<bool, String> {
         return Ok(false);
     }
     let t0 = rprobe::now_ms();
-    {
+    let notes = {
         let world = eng.world()?;
         let mut rs = eng.render.borrow_mut();
         super::extract::extract(world, &mut rs);
@@ -1000,8 +1050,16 @@ fn render(eng: &Engine) -> Result<bool, String> {
         if let Some(b) = rs.backend.as_mut() {
             b.render(&rs.scene)?;
         }
+        std::mem::take(&mut rs.notes)
+    };
+    let mut st = eng.state.borrow_mut();
+    st.render_ms = rprobe::now_ms() - t0;
+    for n in notes {
+        if st.ui_warned.insert(n.clone()) {
+            st.log
+                .push(json!({ "tick": 0, "warning": true, "text": n }));
+        }
     }
-    eng.state.borrow_mut().render_ms = rprobe::now_ms() - t0;
     Ok(true)
 }
 
@@ -1186,6 +1244,46 @@ pub fn command(id: u32, action: &str, args: &str) -> String {
 
 /// `og_engine_write_resource`.
 pub fn write_resource(world: u32, resource: &str, value: &str) -> String {
+    if let Some(f) = running(world) {
+        // Inside a system: through its context, which refuses a resource
+        // the system did not declare among its writes.
+        let result = (|| {
+            let eng = engine(world)?;
+            let value = parse(Some(value))?;
+            let (layout, id) = {
+                let st = eng.state.borrow();
+                let layout = st
+                    .layouts
+                    .get(resource)
+                    .filter(|l| l.kind == RecordKind::Resource)
+                    .ok_or_else(|| format!("'{resource}' is not a registered resource"))?
+                    .clone();
+                let id = st
+                    .names_by_id
+                    .iter()
+                    .position(|n| n == resource)
+                    .map(|i| SchemaId::from_index(i as u32))
+                    .ok_or_else(|| format!("'{resource}' is not registered with this world"))?;
+                (layout, id)
+            };
+            if let Some(field) = layout
+                .fields
+                .iter()
+                .find(|fl| fl.readonly && value.get(&fl.name).is_some())
+            {
+                return Err(format!("{resource}.{} is read only", field.name));
+            }
+            // SAFETY: the frame is published while its system runs.
+            let ctx = unsafe { f.ctx() };
+            let current = ctx.resource_bytes(id).map_err(err)?;
+            let bytes = layout.encode(Some(&current), Some(&value))?;
+            ctx.set_resource_bytes(id, &bytes).map_err(err)
+        })();
+        return match result {
+            Ok(()) => super::ok_void(),
+            Err(e) => refuse(e),
+        };
+    }
     let result = (|| {
         let eng = engine(world)?;
         let value = parse(Some(value))?;

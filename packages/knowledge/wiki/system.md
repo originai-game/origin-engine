@@ -18,7 +18,7 @@ module system {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 377</sub>
+<sub>`api.ogt` line 383</sub>
 
 ## Contents
 
@@ -61,7 +61,7 @@ fn defineSystem {
 }
 ```
 
-<sub>`api.ogt` line 406</sub>
+<sub>`api.ogt` line 412</sub>
 
 ## Interfaces
 
@@ -77,7 +77,7 @@ interface System {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 399</sub>
+<sub>`api.ogt` line 405</sub>
 
 <a id="member-System-name"></a>
 
@@ -95,7 +95,7 @@ Binding symbol `og_system_get_name` · publish builds: kept
 prop name String "The system's unique name."
 ```
 
-<sub>`api.ogt` line 401</sub>
+<sub>`api.ogt` line 407</sub>
 
 <a id="member-System-reads"></a>
 
@@ -113,7 +113,7 @@ Binding symbol `og_system_get_reads` · publish builds: kept
 prop reads List.AnyReflected "What it reads."
 ```
 
-<sub>`api.ogt` line 402</sub>
+<sub>`api.ogt` line 408</sub>
 
 <a id="member-System-writes"></a>
 
@@ -131,7 +131,7 @@ Binding symbol `og_system_get_writes` · publish builds: kept
 prop writes List.AnyReflected "What it writes."
 ```
 
-<sub>`api.ogt` line 403</sub>
+<sub>`api.ogt` line 409</sub>
 
 ## Types
 
@@ -145,8 +145,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `reads` | `readonly AnyReflected[]` | `[]` | — | — | — | Components and resources the system reads. Components here also shape its query. |
-| `writes` | `readonly AnyReflected[]` | `[]` | — | — | — | Components and resources the system writes. Components here also shape its query. |
+| `reads` | `readonly (AnyReflected \| AnyEvent)[]` | `[]` | — | — | — | Components, resources and events the system reads (world.events). Components here also shape its query. |
+| `writes` | `readonly (AnyReflected \| AnyEvent)[]` | `[]` | — | — | — | Components, resources and events the system writes (world.emit). Components here also shape its query. |
 | `without` | `readonly AnyComponent[]` | `[]` | — | — | — | Components a matched entity must not have. |
 | `after` | `readonly string[]` | `[]` | — | — | — | Names of systems that must run before this one. |
 | `before` | `readonly string[]` | `[]` | — | — | — | Names of systems that must run after this one. |
@@ -155,15 +155,15 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 struct SystemDesc {
   doc "A system's declared access and order."
   desc true
-  field reads List.AnyReflected "Components and resources the system reads. Components here also shape its query."
-  field writes List.AnyReflected "Components and resources the system writes. Components here also shape its query."
+  field reads List.OneOf.AnyReflected.AnyEvent "Components, resources and events the system reads (world.events). Components here also shape its query."
+  field writes List.OneOf.AnyReflected.AnyEvent "Components, resources and events the system writes (world.emit). Components here also shape its query."
   field without List.AnyComponent "Components a matched entity must not have."
   field after List.String "Names of systems that must run before this one."
   field before List.String "Names of systems that must run after this one."
 }
 ```
 
-<sub>`api.ogt` line 382</sub>
+<sub>`api.ogt` line 388</sub>
 
 <a id="type-SystemRun"></a>
 
@@ -192,4 +192,4 @@ callback SystemRun {
 }
 ```
 
-<sub>`api.ogt` line 392</sub>
+<sub>`api.ogt` line 398</sub>

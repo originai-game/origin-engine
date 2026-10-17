@@ -24,6 +24,7 @@ declare module "node:fs" {
   export function writeFileSync(path: string, data: string | Uint8Array): void;
   export function rmSync(path: string, options?: { recursive?: boolean; force?: boolean }): void;
   export function mkdirSync(path: string, options?: { recursive?: boolean }): void;
+  export function copyFileSync(from: string, to: string): void;
   export function statSync(path: string): { mtimeMs: number; size: number; isDirectory(): boolean };
   export function watch(path: string, listener: (event: string, file: string | null) => void): { close(): void };
 }
@@ -40,6 +41,8 @@ declare module "bun:test" {
     toBeFalse(): void;
     toBeGreaterThan(value: number): void;
     toBeLessThan(value: number): void;
+    toBeCloseTo(value: number, digits?: number): void;
+    toBeNull(): void;
     toMatch(pattern: RegExp | string): void;
     toContain(value: unknown): void;
     toThrow(pattern?: RegExp | string): void;
@@ -54,6 +57,7 @@ declare const process: {
   readonly arch: string;
   readonly argv: string[];
   readonly version: string;
+  readonly pid: number;
   exit(code?: number): never;
   readonly stdout: { write(text: string): boolean };
   readonly stderr: { write(text: string): boolean };

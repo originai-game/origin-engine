@@ -79,13 +79,13 @@ pub struct RigidBody {
     #[reflect(min = 0, unit = "kg", tunable)]
     pub mass: f32,
     /// How fast linear velocity decays, per second (0 = none).
-    #[reflect(min = 0, max = 100, unit = "1/s", tunable)]
+    #[reflect(name = "linearDamping", min = 0, max = 100, unit = "1/s", tunable)]
     pub linear_damping: f32,
     /// How fast angular velocity decays, per second (0 = none).
-    #[reflect(min = 0, max = 100, unit = "1/s", tunable)]
+    #[reflect(name = "angularDamping", min = 0, max = 100, unit = "1/s", tunable)]
     pub angular_damping: f32,
     /// Multiplies og.Physics.gravity for this body (0 = floats, 1 = normal).
-    #[reflect(min = -10, max = 10, default = 1, tunable)]
+    #[reflect(name = "gravityScale", min = -10, max = 10, default = 1, tunable)]
     pub gravity_scale: f32,
     /// Locked axes, a sum of bits: 1/2/4 no translation along x/y/z, 8/16/32 no rotation about x/y/z (2D uses 1, 2 and 32).
     #[reflect(min = 0, max = 63)]
@@ -307,10 +307,17 @@ pub struct Physics {
     #[reflect(min = 1, max = 16, default = 1, tunable)]
     pub substeps: u32,
     /// Solver iterations per step (rapier's internal substeps).
-    #[reflect(min = 1, max = 32, default = 4, tunable)]
+    #[reflect(name = "solverIterations", min = 1, max = 32, default = 4, tunable)]
     pub solver_iterations: u32,
     /// A dynamic body touching something whose speed stays below this before and after a step holds still (velocity zeroed, pose kept); 0 disables. Same number in m/s and rad/s.
-    #[reflect(min = 0, max = 1, unit = "m/s", default = 0.02, tunable)]
+    #[reflect(
+        name = "restSpeed",
+        min = 0,
+        max = 1,
+        unit = "m/s",
+        default = 0.02,
+        tunable
+    )]
     pub rest_speed: f32,
 }
 

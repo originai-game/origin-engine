@@ -20,7 +20,7 @@ module load {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1226</sub>
+<sub>`api.ogt` line 1491</sub>
 
 ## Contents
 
@@ -30,6 +30,7 @@ module load {
 | [`Font`](#type-Font) | handle | A cooked MSDF font: its glyph table and one or more atlas pages. |
 | [`Sound`](#type-Sound) | handle | A cooked sound: QOA-encoded PCM the audio module plays. |
 | [`Asset()`](#column-Asset) | column kind | An Asset handle field. |
+| [`Sound()`](#column-Sound) | column kind | A Sound handle field. |
 | [`LoadStatus`](#type-LoadStatus) | enum | Where a load is. |
 | [`GltfDesc`](#type-GltfDesc) | desc struct | How to load a glTF, as three.js GLTFLoader options where they apply. |
 | [`GltfInfo`](#type-GltfInfo) | struct | What a loaded glTF holds. |
@@ -45,6 +46,7 @@ module load {
 | [`og.load.font`](#fn-font) | function | Load a cooked MSDF font for og.render.text. |
 | [`og.load.fontInfo`](#fn-fontInfo) | function | A loaded font's metrics. |
 | [`og.load.sound`](#fn-sound) | function | Load a cooked sound for the audio module. |
+| [`og.load.texture`](#fn-texture) | function | Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load. |
 | [`og.load.soundInfo`](#fn-soundInfo) | function | A loaded sound's format and length. |
 | [`og.load.status`](#fn-status) | function | Where a load is. |
 | [`og.load.error`](#fn-error) | function | Why a load failed. |
@@ -82,7 +84,7 @@ fn bundle {
 }
 ```
 
-<sub>`api.ogt` line 1300</sub>
+<sub>`api.ogt` line 1572</sub>
 
 <a id="fn-bundleInfo"></a>
 
@@ -112,7 +114,7 @@ fn bundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 1307</sub>
+<sub>`api.ogt` line 1579</sub>
 
 <a id="fn-defaultBundle"></a>
 
@@ -140,7 +142,7 @@ fn defaultBundle {
 }
 ```
 
-<sub>`api.ogt` line 1314</sub>
+<sub>`api.ogt` line 1586</sub>
 
 <a id="fn-gltf"></a>
 
@@ -172,7 +174,7 @@ fn gltf {
 }
 ```
 
-<sub>`api.ogt` line 1320</sub>
+<sub>`api.ogt` line 1592</sub>
 
 <a id="fn-scene"></a>
 
@@ -202,7 +204,7 @@ fn scene {
 }
 ```
 
-<sub>`api.ogt` line 1328</sub>
+<sub>`api.ogt` line 1600</sub>
 
 <a id="fn-font"></a>
 
@@ -232,7 +234,7 @@ fn font {
 }
 ```
 
-<sub>`api.ogt` line 1335</sub>
+<sub>`api.ogt` line 1607</sub>
 
 <a id="fn-fontInfo"></a>
 
@@ -262,7 +264,7 @@ fn fontInfo {
 }
 ```
 
-<sub>`api.ogt` line 1342</sub>
+<sub>`api.ogt` line 1614</sub>
 
 <a id="fn-sound"></a>
 
@@ -292,7 +294,37 @@ fn sound {
 }
 ```
 
-<sub>`api.ogt` line 1349</sub>
+<sub>`api.ogt` line 1621</sub>
+
+<a id="fn-texture"></a>
+
+### `og.load.texture`
+
+Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load.
+
+```ts
+og.load.texture(world: World, path: string): Result<Texture>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the texture. |
+| `path` | `string` | no | The texture's asset id, such as `textures/stone.png`. |
+
+**Returns** `Result<Texture>`.
+
+Binding symbol `og_load_texture` · publish builds: kept
+
+```ogt
+fn texture {
+  doc "Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load."
+  param world World "The world whose renderer owns the texture."
+  param path String "The texture's asset id, such as `textures/stone.png`."
+  returns Result.Texture
+}
+```
+
+<sub>`api.ogt` line 1628</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -322,7 +354,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 1356</sub>
+<sub>`api.ogt` line 1635</sub>
 
 <a id="fn-status"></a>
 
@@ -352,7 +384,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 1363</sub>
+<sub>`api.ogt` line 1642</sub>
 
 <a id="fn-error"></a>
 
@@ -382,7 +414,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 1370</sub>
+<sub>`api.ogt` line 1649</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -412,7 +444,7 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 1377</sub>
+<sub>`api.ogt` line 1656</sub>
 
 ## Components, resources and events
 
@@ -435,7 +467,7 @@ component Model {
 }
 ```
 
-<sub>`api.ogt` line 1295</sub>
+<sub>`api.ogt` line 1567</sub>
 
 <a id="record-AssetReady"></a>
 
@@ -458,7 +490,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 1384</sub>
+<sub>`api.ogt` line 1663</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -483,7 +515,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 1390</sub>
+<sub>`api.ogt` line 1669</sub>
 
 ## Types
 
@@ -499,7 +531,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Asset "A loaded bundle, scene or glTF asset."
 ```
 
-<sub>`api.ogt` line 1231</sub>
+<sub>`api.ogt` line 1496</sub>
 
 <a id="type-Font"></a>
 
@@ -513,7 +545,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Font "A cooked MSDF font: its glyph table and one or more atlas pages."
 ```
 
-<sub>`api.ogt` line 1232</sub>
+<sub>`api.ogt` line 1497</sub>
 
 <a id="type-Sound"></a>
 
@@ -527,7 +559,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Sound "A cooked sound: QOA-encoded PCM the audio module plays."
 ```
 
-<sub>`api.ogt` line 1233</sub>
+<sub>`api.ogt` line 1498</sub>
 
 <a id="type-LoadStatus"></a>
 
@@ -552,7 +584,7 @@ enum LoadStatus {
 }
 ```
 
-<sub>`api.ogt` line 1242</sub>
+<sub>`api.ogt` line 1514</sub>
 
 <a id="type-GltfDesc"></a>
 
@@ -578,7 +610,7 @@ struct GltfDesc {
 }
 ```
 
-<sub>`api.ogt` line 1249</sub>
+<sub>`api.ogt` line 1521</sub>
 
 <a id="type-GltfInfo"></a>
 
@@ -603,7 +635,7 @@ struct GltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 1257</sub>
+<sub>`api.ogt` line 1529</sub>
 
 <a id="type-BundleInfo"></a>
 
@@ -626,7 +658,7 @@ struct BundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 1265</sub>
+<sub>`api.ogt` line 1537</sub>
 
 <a id="type-FontInfo"></a>
 
@@ -657,7 +689,7 @@ struct FontInfo {
 }
 ```
 
-<sub>`api.ogt` line 1272</sub>
+<sub>`api.ogt` line 1544</sub>
 
 <a id="type-SoundInfo"></a>
 
@@ -686,7 +718,7 @@ struct SoundInfo {
 }
 ```
 
-<sub>`api.ogt` line 1283</sub>
+<sub>`api.ogt` line 1555</sub>
 
 ## Column kinds
 
@@ -695,6 +727,7 @@ Each is a factory, `Asset(value?, options?)`, that makes one field of a componen
 | Column | Value | Typed array | Stride | Doc |
 |---|---|---|---|---|
 | <a id="column-Asset"></a>`Asset` | `Asset` | `Uint32Array` | 2 | An Asset handle field. |
+| <a id="column-Sound"></a>`Sound` | `Sound` | `Uint32Array` | 2 | A Sound handle field. |
 
 ```ogt
 column Asset {
@@ -705,4 +738,15 @@ column Asset {
 }
 ```
 
-<sub>`api.ogt` line 1235</sub>
+<sub>`api.ogt` line 1500</sub>
+
+```ogt
+column Sound {
+  doc "A Sound handle field."
+  array Uint32Array
+  stride 2
+  value Sound
+}
+```
+
+<sub>`api.ogt` line 1507</sub>

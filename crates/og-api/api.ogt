@@ -20,6 +20,12 @@ unit ticks "fixed simulation steps"
 unit cssPx "CSS pixels of the play surface, origin at the top left"
 unit ratio "a fraction between 0 and 1"
 unit bytes "bytes"
+unit kg "kilograms"
+unit mps "metres per second"
+unit mps2 "metres per second squared"
+unit radps "radians per second"
+unit perSecond "a rate per second: the fraction of a value that decays in one second"
+unit kgPerM3 "kilograms per cubic metre (per square metre in the 2D profile)"
 
 # ── math ──────────────────────────────────────────────────────────────────
 
@@ -382,8 +388,8 @@ module system {
   struct SystemDesc {
     doc "A system's declared access and order."
     desc true
-    field reads List.AnyReflected "Components and resources the system reads. Components here also shape its query."
-    field writes List.AnyReflected "Components and resources the system writes. Components here also shape its query."
+    field reads List.OneOf.AnyReflected.AnyEvent "Components, resources and events the system reads (world.events). Components here also shape its query."
+    field writes List.OneOf.AnyReflected.AnyEvent "Components, resources and events the system writes (world.emit). Components here also shape its query."
     field without List.AnyComponent "Components a matched entity must not have."
     field after List.String "Names of systems that must run before this one."
     field before List.String "Names of systems that must run after this one."
@@ -873,6 +879,7 @@ module input {
 
 module camera {
   doc "The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names."
+  doc "Camera controllers are components (OrbitCamera, FollowCamera, Follow2D) on the entity the camera orbits or follows; the systems that drive them ship in TypeScript as og.systems.cameras."
 
   resource Camera {
     doc "The camera the frame is rendered from. Rendering reads it after the tick; it never feeds back into the simulation."
@@ -932,6 +939,122 @@ module camera {
       param x f32 "Horizontal position in CSS pixels."
       param y f32 "Vertical position in CSS pixels."
       returns Ray
+    }
+  }
+
+  component OrbitCamera {
+    doc "Orbits og.Camera around the entity carrying it, as three.js OrbitControls: a left-button drag on the play surface turns it, the wheel zooms, autoRotate turns it on its own."
+    doc "Camera controllers are game-level systems the engine ships in TypeScript (og.systems.cameras); list them in GameDesc.systems: `systems: [...og.systems.cameras, ...yours]`. The first entity carrying one, in query order, drives the camera."
+    doc "The camera sits `distance` from the orbited point (the entity's position plus `target`) in the direction given by `azimuth` about +Y and `polar` from +Y, and looks at the point. Every angle is computed with deterministic arithmetic, so a replay moves the camera identically on every host."
+    field target Vector3 "The orbited point, relative to the entity's position." {
+      unit m
+    }
+    field distance f32 "How far the camera is from the orbited point, as three.js OrbitControls' distance." {
+      default 10
+      min 0.01
+      unit m
+      tunable true
+    }
+    field minDistance f32 "The closest the wheel zooms in, as three.js OrbitControls.minDistance." {
+      default 1
+      min 0.01
+      unit m
+    }
+    field maxDistance f32 "The farthest the wheel zooms out, as three.js OrbitControls.maxDistance." {
+      default 100
+      min 0.01
+      unit m
+    }
+    field azimuth f32 "The horizontal angle about +Y; 0 puts the camera on the +Z side of the point." {
+      unit rad
+      tunable true
+    }
+    field polar f32 "The angle from +Y: near 0 looks straight down, half pi is level with the point." {
+      default 1.1
+      min 0
+      max 3.1416
+      unit rad
+      tunable true
+    }
+    field minPolarAngle f32 "The smallest polar angle a drag reaches, as three.js OrbitControls.minPolarAngle." {
+      default 0.05
+      min 0
+      max 3.1416
+      unit rad
+    }
+    field maxPolarAngle f32 "The largest polar angle a drag reaches, as three.js OrbitControls.maxPolarAngle." {
+      default 3.0916
+      min 0
+      max 3.1416
+      unit rad
+    }
+    field rotateSpeed f32 "Drag sensitivity, as three.js OrbitControls.rotateSpeed: at 1, dragging the play surface's height turns a full circle." {
+      default 1
+      min 0
+      tunable true
+    }
+    field zoomSpeed f32 "Wheel sensitivity, as three.js OrbitControls.zoomSpeed: at 1, 100 CSS pixels of wheel change the distance by a tenth." {
+      default 1
+      min 0
+      tunable true
+    }
+    field autoRotate bool "Turn about the point on its own while not dragged, as three.js OrbitControls.autoRotate."
+    field autoRotateSpeed f32 "How fast autoRotate turns." {
+      default 0.5
+      unit radps
+      tunable true
+    }
+    field enabled bool "Read the pointer and the wheel; false keeps only autoRotate and the fields' own values." {
+      default true
+    }
+    field dragging bool "Controller state: a left-button drag that started on the play surface is in progress." {
+      readonly true
+    }
+    field pointer Vector2 "Controller state: where the pointer was on the previous tick of a drag." {
+      readonly true
+      unit cssPx
+    }
+  }
+
+  component FollowCamera {
+    doc "Chases the entity carrying it with og.Camera: a third-person 3D view that eases towards a point offset from the entity and looks at it. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera."
+    field offset Vector3 "Where the camera sits relative to the entity: in the entity's own axes with followRotation, else in world axes." {
+      default 0 2 6
+      unit m
+    }
+    field lookOffset Vector3 "The point the camera looks at, relative to the entity's position." {
+      default 0 1 0
+      unit m
+    }
+    field followRotation bool "Turn the offset with the entity's rotation, so the camera stays behind it."
+    field smoothTime f32 "Roughly how long the camera takes to catch up with a moved entity; 0 snaps it there every tick." {
+      default 0.25
+      min 0
+      unit s
+      tunable true
+    }
+  }
+
+  component Follow2D {
+    doc "Keeps og.Camera on the entity carrying it in the xy plane, for 2D games: the camera moves only when the entity leaves the dead zone, eases by smoothTime and, with clamp, stays inside the bounds. The camera keeps its z, rotation and projection. Driven by og.systems.cameras."
+    field offset Vector2 "Where the camera centre sits relative to the entity." {
+      unit m
+    }
+    field deadZone Vector2 "Half the width and height of the box around the camera centre inside which the entity moves without moving the camera." {
+      unit m
+    }
+    field smoothTime f32 "Roughly how long the camera takes to catch up; 0 snaps it every tick." {
+      default 0.15
+      min 0
+      unit s
+      tunable true
+    }
+    field clamp bool "Keep the camera centre between boundsMin and boundsMax."
+    field boundsMin Vector2 "The smallest x and y the camera centre takes with clamp." {
+      unit m
+    }
+    field boundsMax Vector2 "The largest x and y the camera centre takes with clamp." {
+      unit m
     }
   }
 }
@@ -1177,6 +1300,148 @@ module render {
       max 1
     }
     field layer i32 "Draw order among sprites and text; higher draws on top."
+    field align TextAlign "How each line sits on `position`: start puts its left end there, center its middle, end its right end."
+  }
+
+  struct TextMeasureDesc {
+    doc "Text to measure with og.render.measureText, laid out as og.render.text lays it out."
+    desc true
+    field font Option.Font "The font from og.load.font."
+    field text String "The text; `\\n` starts a new line."
+    field size f32 "The em size in world units." {
+      default 1
+      min 0
+    }
+  }
+
+  struct TextMetrics {
+    doc "The extent of a laid-out text, in world units."
+    field width f32 "The widest line's advance."
+    field height f32 "Lines times the font's line height."
+    field lines u32 "How many lines."
+  }
+
+  struct SpriteDesc {
+    doc "A textured or solid quad in the world's xy plane facing +z, drawn this frame only (immediate mode, as og.render.text): submit it every tick it should show. Sprites and text are sorted by layer and drawn over the 3D scene."
+    desc true
+    field texture Option.Texture "The texture from og.load.texture; null draws a solid quad of the colour."
+    field position Vector3 "Where the anchor point is." {
+      unit m
+    }
+    field width f32 "Its width in world units." {
+      default 1
+      min 0
+      unit m
+    }
+    field height f32 "Its height in world units." {
+      default 1
+      min 0
+      unit m
+    }
+    field anchor Vector2 "The point of the quad at `position`, as a fraction of its size from the bottom-left corner: (0.5, 0.5) is the centre." {
+      default 0.5 0.5
+    }
+    field rotation f32 "Counter-clockwise rotation about the anchor." {
+      unit rad
+    }
+    field color Color "A linear colour multiplied with the texture." {
+      default 1 1 1
+    }
+    field opacity f32 "The alpha." {
+      default 1
+      min 0
+      max 1
+    }
+    field uv Option.Array.f32.4 "The texture region drawn, [u0, v0, u1, v1] with v down; null is the whole texture (a sheet's frame for animation)."
+    field layer i32 "Draw order among sprites and text; higher draws on top."
+  }
+
+  fn sprite {
+    doc "Draw a sprite this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the sprite should show."
+    param world World "The world whose renderer draws it."
+    param desc SpriteDesc "The texture, placement, region and colour."
+    returns Result.Void "Refused for a dead texture."
+  }
+
+  fn measureText {
+    doc "The size text takes when og.render.text draws it, for centring, wrapping and layout."
+    param world World "The world whose renderer owns the font."
+    param desc TextMeasureDesc "The font, text and size."
+    returns Result.TextMetrics "Refused for a dead font."
+  }
+
+  struct BoxGeometryDesc {
+    doc "A box centred at the origin, as three.js BoxGeometry(width, height, depth)."
+    desc true
+    field width f32 "Its extent along x." {
+      default 1
+      min 0
+      unit m
+    }
+    field height f32 "Its extent along y." {
+      default 1
+      min 0
+      unit m
+    }
+    field depth f32 "Its extent along z." {
+      default 1
+      min 0
+      unit m
+    }
+  }
+
+  struct PlaneGeometryDesc {
+    doc "A rectangle in the xy plane facing +z, centred at the origin, as three.js PlaneGeometry(width, height); turn it -pi/2 about x for a floor."
+    desc true
+    field width f32 "Its extent along x." {
+      default 1
+      min 0
+      unit m
+    }
+    field height f32 "Its extent along y." {
+      default 1
+      min 0
+      unit m
+    }
+  }
+
+  struct SphereGeometryDesc {
+    doc "A UV sphere centred at the origin, as three.js SphereGeometry(radius, widthSegments, heightSegments)."
+    desc true
+    field radius f32 "Its radius." {
+      default 1
+      min 0
+      unit m
+    }
+    field widthSegments u32 "Segments around the equator." {
+      default 32
+      min 3
+    }
+    field heightSegments u32 "Rings from pole to pole." {
+      default 16
+      min 2
+    }
+  }
+
+  fn boxGeometry {
+    doc "Make a box geometry for og.Mesh. Physics can use it as a convex or triangle-mesh Collider.mesh too."
+    param world World "The world whose renderer owns the geometry."
+    param desc BoxGeometryDesc "Its extents."
+    returns Result.Geometry
+  }
+
+  fn planeGeometry {
+    doc "Make a plane geometry for og.Mesh. Physics can use it as a triangle-mesh Collider.mesh too."
+    param world World "The world whose renderer owns the geometry."
+    param desc PlaneGeometryDesc "Its extents."
+    returns Result.Geometry
+  }
+
+  fn sphereGeometry {
+    doc "Make a sphere geometry for og.Mesh (give its body a sphere Collider, not this mesh)."
+    param world World "The world whose renderer owns the geometry."
+    param desc SphereGeometryDesc "Its radius and tessellation."
+    returns Result.Geometry
   }
 
   const MAX_LIGHTS u32 8 "The most point and spot lights one frame draws."
@@ -1237,6 +1502,13 @@ module load {
     array Uint32Array
     stride 2
     value Asset
+  }
+
+  column Sound {
+    doc "A Sound handle field."
+    array Uint32Array
+    stride 2
+    value Sound
   }
 
   enum LoadStatus {
@@ -1353,6 +1625,13 @@ module load {
     returns Result.Sound
   }
 
+  fn texture {
+    doc "Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load."
+    param world World "The world whose renderer owns the texture."
+    param path String "The texture's asset id, such as `textures/stone.png`."
+    returns Result.Texture
+  }
+
   fn soundInfo {
     doc "A loaded sound's format and length."
     param world World "The world that owns the sound."
@@ -1393,6 +1672,1055 @@ module load {
     field path String "The path it was loaded from."
     field reason String "Why, naming the fix."
   }
+}
+
+# ── physics ───────────────────────────────────────────────────────────────
+
+module physics {
+  doc "Rigid bodies over rapier (rapier3d in the 3D profile, rapier2d in 2D, both with enhanced determinism): game code owns the components, the engine's og.physics system steps them after the game's systems and writes the dynamic bodies back."
+  doc "The profile is the project's (`profile \"2d\"` or `\"3d\"` in project.ogt). In 2D, bodies move in the xy plane and rotate about z; a transform keeps its z. A collider without a RigidBody is static at its transform."
+  doc "The rapier world persists between ticks and is world state: snapshots, restore and the world hash cover the whole simulation. Events sent in tick N are read in tick N + 1."
+
+  const BODY_DYNAMIC u32 0 "RigidBody.kind: moved by the solver; its Transform and Velocity are written back every tick."
+  const BODY_STATIC u32 1 "RigidBody.kind: never moves; collides with dynamic bodies."
+  const BODY_KINEMATIC u32 2 "RigidBody.kind: moved by game code through its Transform; its Velocity, if any, is how fast it pushes."
+  const LOCK_TRANSLATION_X u32 1 "RigidBody.lock bit: no translation along x."
+  const LOCK_TRANSLATION_Y u32 2 "RigidBody.lock bit: no translation along y."
+  const LOCK_TRANSLATION_Z u32 4 "RigidBody.lock bit: no translation along z."
+  const LOCK_ROTATION_X u32 8 "RigidBody.lock bit: no rotation about x."
+  const LOCK_ROTATION_Y u32 16 "RigidBody.lock bit: no rotation about y."
+  const LOCK_ROTATION_Z u32 32 "RigidBody.lock bit: no rotation about z (the 2D profile's only rotation)."
+  const SHAPE_BOX u32 0 "Collider.shape: a box of `size` (both profiles)."
+  const SHAPE_SPHERE u32 1 "Collider.shape: a sphere of `radius` (a circle in 2D)."
+  const SHAPE_CAPSULE u32 2 "Collider.shape: a capsule along y of `radius`, with `height` between the cap centres (both profiles)."
+  const SHAPE_CYLINDER u32 3 "Collider.shape: a cylinder along y of `radius` and `height` (3D only)."
+  const SHAPE_CONVEX u32 4 "Collider.shape: the convex hull of the vertices of `mesh` (3D), or of their xy (a convex polygon, 2D)."
+  const SHAPE_TRIMESH u32 5 "Collider.shape: the triangles of `mesh` (3D only; for static and kinematic bodies)."
+  const PROFILE_2D u32 2 "Physics.profile: rapier2d, bodies in the xy plane rotating about z."
+  const PROFILE_3D u32 3 "Physics.profile: rapier3d."
+
+  component RigidBody {
+    doc "A body the physics step simulates. It needs an og.Transform and usually has an og.Collider; a dynamic body without an og.Velocity gets one."
+    doc "Changing a RigidBody, a Collider or Transform.scale rebuilds the body (it loses its contacts' warm starts); a Transform or Velocity that game code changed moves it (a teleport)."
+    field kind u32 "BODY_DYNAMIC (0, simulated and written back), BODY_STATIC (1, never moves) or BODY_KINEMATIC (2, moved by game code through its Transform)." {
+      min 0
+      max 2
+      label "Kind"
+    }
+    field mass f32 "Mass; 0 derives it from the collider's density and volume." {
+      min 0
+      unit kg
+      tunable true
+    }
+    field linearDamping f32 "How fast linear velocity decays (0: none)." {
+      min 0
+      max 100
+      unit perSecond
+      tunable true
+    }
+    field angularDamping f32 "How fast angular velocity decays (0: none)." {
+      min 0
+      max 100
+      unit perSecond
+      tunable true
+    }
+    field gravityScale f32 "Multiplies Physics.gravity for this body: 0 floats, 1 is normal." {
+      default 1
+      min -10
+      max 10
+      tunable true
+    }
+    field lock u32 "Locked axes, a sum of the LOCK_* bits: 1, 2, 4 no translation along x, y, z; 8, 16, 32 no rotation about x, y, z (2D uses 1, 2 and 32)." {
+      min 0
+      max 63
+    }
+    field ccd u32 "1 enables continuous collision detection, for fast small bodies that must not tunnel; 0 off." {
+      min 0
+      max 1
+    }
+  }
+
+  component Collider {
+    doc "The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale."
+    field shape u32 "One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (3D)." {
+      min 0
+      max 5
+      label "Shape"
+    }
+    field size Vector3 "Full extents of a box, as three.js BoxGeometry(width, height, depth)." {
+      default 1 1 1
+      min 0
+      unit m
+      tunable true
+    }
+    field radius f32 "Radius of a sphere, circle, capsule or cylinder." {
+      default 0.5
+      min 0
+      unit m
+      tunable true
+    }
+    field height f32 "A capsule's distance between its cap centres (three.js CapsuleGeometry length); a cylinder's height." {
+      default 1
+      min 0
+      unit m
+      tunable true
+    }
+    field mesh Geometry "The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh."
+    field offset Vector3 "Position of the shape relative to the entity." {
+      unit m
+    }
+    field rotation Quaternion "Rotation of the shape relative to the entity."
+    field friction f32 "Coulomb friction (0 is ice, 1 rubber); a pair uses the mean of both colliders." {
+      default 0.5
+      min 0
+      max 2
+      tunable true
+    }
+    field restitution f32 "Bounciness (0 no bounce, 1 elastic); a pair uses the mean of both colliders." {
+      min 0
+      max 1
+      tunable true
+    }
+    field density f32 "Density, used when RigidBody.mass is 0." {
+      default 1
+      min 0
+      unit kgPerM3
+      tunable true
+    }
+    field sensor u32 "1 makes this a sensor: it reports SensorEntered and SensorExited and pushes nothing; 0 a solid." {
+      min 0
+      max 1
+    }
+    field layers u32 "The collision layers this collider is on, as bits." {
+      default 1
+    }
+    field mask u32 "The layers it collides with, as bits. Two colliders interact when each one's layers meet the other's mask." {
+      default 4294967295
+    }
+  }
+
+  component Velocity {
+    doc "Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing), read for kinematic ones; set it to launch or stop a body."
+    field linear Vector3 "The linear velocity (2D uses x and y)." {
+      unit mps
+      tunable true
+    }
+    field angular Vector3 "The angular velocity about each axis (2D uses z)." {
+      unit radps
+      tunable true
+    }
+  }
+
+  resource Physics {
+    doc "The physics settings of the world. The profile is the project's; the same components serve both profiles."
+    field profile u32 "PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt." {
+      default 3
+      min 2
+      max 3
+      label "Profile"
+      readonly true
+    }
+    field gravity Vector3 "The acceleration of every dynamic body, times its gravityScale; 2D uses x and y." {
+      default 0 -9.81 0
+      unit mps2
+      tunable true
+    }
+    field substeps u32 "Physics steps per tick, each of dt / substeps: more is stiffer stacks and less tunnelling, at more cost." {
+      default 1
+      min 1
+      max 16
+      tunable true
+    }
+    field solverIterations u32 "Solver iterations per step." {
+      default 4
+      min 1
+      max 32
+      tunable true
+    }
+    field restSpeed f32 "A dynamic body touching something, supported with at most 2 mm of overlap and slower than this before and after a step, keeps its pose and loses its residual velocity (the same number in m/s and rad/s); 0 disables it." {
+      default 0.02
+      min 0
+      max 1
+      unit mps
+      tunable true
+    }
+  }
+
+  event CollisionStarted {
+    doc "Two solid colliders started touching during the tick."
+    field a Entity "The entity with the lower id."
+    field b Entity "The entity with the higher id."
+    field point Vector3 "The deepest contact point in world space (z is 0 in 2D)."
+    field normal Vector3 "The contact normal, from a towards b."
+  }
+
+  event CollisionEnded {
+    doc "Two solid colliders stopped touching, or one of them went away."
+    field a Entity "The entity with the lower id."
+    field b Entity "The entity with the higher id."
+  }
+
+  event SensorEntered {
+    doc "A collider started overlapping a sensor."
+    field sensor Entity "The entity whose collider is the sensor."
+    field other Entity "The entity that entered it."
+  }
+
+  event SensorExited {
+    doc "A collider stopped overlapping a sensor, or one of them went away."
+    field sensor Entity "The entity whose collider is the sensor."
+    field other Entity "The entity that left it."
+  }
+
+  event Contact {
+    doc "One pair in contact at the end of a step, sent every tick for every touching pair: how a game asks what is touching what right now."
+    field a Entity "The entity with the lower id."
+    field b Entity "The entity with the higher id."
+    field sensor u32 "0 for two solids; an overlap with a sensor otherwise: 1 a is the sensor, 2 b is, 3 both are."
+  }
+
+  struct QueryFilter {
+    doc "Which colliders a scene query considers. The zero value considers every solid collider on every layer."
+    desc true
+    field mask u32 "Layers to consider: a collider counts when its layers meet this; 0 means every layer."
+    field includeSensors bool "Also report sensors."
+    field exclude Option.Entity "An entity to ignore, such as the caster itself."
+  }
+
+  struct RaycastDesc {
+    doc "A ray for og.physics.raycast."
+    desc true
+    field origin Vector3 "Where the ray starts." {
+      unit m
+    }
+    field direction Vector3 "Where it points; it need not be normalised and must not be zero (in 2D, not zero in xy)." {
+      default 0 -1 0
+    }
+    field maxDistance f32 "How far it reaches; 0 is unbounded." {
+      min 0
+      unit m
+    }
+    field filter QueryFilter "Which colliders count."
+  }
+
+  struct RaycastHit {
+    doc "The nearest collider a ray meets."
+    field entity Entity "The collider's entity."
+    field distance f32 "From the origin along the normalised direction." {
+      unit m
+    }
+    field point Vector3 "Where the ray meets the collider."
+    field normal Vector3 "The surface normal there (z is 0 in 2D)."
+  }
+
+  struct ShapeDesc {
+    doc "The shape of a shape cast or an overlap test: the shape fields of a Collider. The zero value is a 1 m box."
+    desc true
+    field shape u32 "One of the SHAPE_* codes." {
+      min 0
+      max 5
+    }
+    field size Vector3 "Full extents of a box." {
+      default 1 1 1
+      unit m
+    }
+    field radius f32 "Radius of a sphere, circle, capsule or cylinder." {
+      default 0.5
+      unit m
+    }
+    field height f32 "Capsule or cylinder height." {
+      default 1
+      unit m
+    }
+    field mesh Geometry "The geometry of a convex or triangle-mesh shape."
+  }
+
+  struct ShapeCastDesc {
+    doc "A shape swept along a direction for og.physics.shapeCast."
+    desc true
+    field shape ShapeDesc "The swept shape."
+    field position Vector3 "Where the sweep starts." {
+      unit m
+    }
+    field rotation Quaternion "The shape's rotation; a zero quaternion is no rotation."
+    field direction Vector3 "Where it sweeps; it need not be normalised and must not be zero." {
+      default 0 -1 0
+    }
+    field maxDistance f32 "How far it sweeps; 0 is unbounded." {
+      min 0
+      unit m
+    }
+    field filter QueryFilter "Which colliders count."
+  }
+
+  struct ShapeCastHit {
+    doc "The first collider a swept shape meets."
+    field entity Entity "The collider's entity."
+    field distance f32 "How far the shape travelled before touching." {
+      unit m
+    }
+    field point Vector3 "The contact point on the hit collider, in world space."
+    field normal Vector3 "The hit collider's surface normal there, in world space."
+  }
+
+  struct OverlapDesc {
+    doc "A shape placed in the world for og.physics.overlap."
+    desc true
+    field shape ShapeDesc "The shape."
+    field position Vector3 "Where it is." {
+      unit m
+    }
+    field rotation Quaternion "Its rotation; a zero quaternion is no rotation."
+    field filter QueryFilter "Which colliders count."
+  }
+
+  struct MeshDesc {
+    doc "Geometry for convex and triangle-mesh colliders, in the mesh's own space."
+    desc true
+    field positions List.Vector3 "Vertex positions (2D polygons use x and y)."
+    field indices List.u32 "Triangles as triples of indices into positions; a convex hull ignores them."
+  }
+
+  fn raycast {
+    doc "The nearest collider along a ray. Inside a system it sees the colliders as they were at the start of the tick (og.physics.queries records them before the game's systems); between ticks, as the world holds them."
+    param world World "The world."
+    param desc RaycastDesc "The ray and the filter."
+    returns Result.Option.RaycastHit "The hit, or null when nothing is hit; refused for a zero direction."
+  }
+
+  fn shapeCast {
+    doc "The first collider a shape meets when swept along a direction; the same view of the colliders as raycast."
+    param world World "The world."
+    param desc ShapeCastDesc "The shape, its sweep and the filter."
+    returns Result.Option.ShapeCastHit "The hit, or null; refused for a zero direction or an unknown mesh."
+  }
+
+  fn overlap {
+    doc "Every collider overlapping a shape, sorted by entity id; the same view of the colliders as raycast."
+    param world World "The world."
+    param desc OverlapDesc "The shape, its placement and the filter."
+    returns Result.List.Entity
+  }
+
+  fn setMesh {
+    doc "Register (or replace) the geometry a convex or triangle-mesh Collider names by its mesh handle. Loaded glTF geometries are registered under their own handles already; meshes are assets, not world state."
+    param world World "The world."
+    param mesh Geometry "The handle colliders name in Collider.mesh."
+    param desc MeshDesc "Positions and triangles."
+    returns Result.Void "Refused for an empty, non-finite or out-of-range mesh."
+  }
+}
+
+# ── audio ─────────────────────────────────────────────────────────────────
+
+module audio {
+  doc "Sound: inside the tick, the engine's og.audio system (after the game's systems and physics) turns AudioSource changes into a deterministic, time-stamped command stream; outside the tick the host's mixer renders it (an AudioWorklet on the web, the output device, a capture or a null sink natively)."
+  doc "The stream, not the PCM, is world state: snapshots, restore and the world hash cover it, and nothing a sink does reaches the world. Load sounds with og.load.sound; inserting a source plays it, setting `playing` false stops it, and a one-shot sets `playing` back to false when it ends."
+  doc "Spatial gain and pan are computed in the tick from the source's og.Transform relative to the first AudioListener (three.js convention: the listener looks down -Z, +X is right; with none, the origin looking down -Z)."
+
+  const SOUND_FINISHED u32 0 "SoundEnded.reason: a one-shot played to its end."
+  const SOUND_STOPPED u32 1 "SoundEnded.reason: `playing` was set to false."
+  const SOUND_REMOVED u32 2 "SoundEnded.reason: the AudioSource was removed from a living entity."
+  const SOUND_REPLACED u32 3 "SoundEnded.reason: `sound` changed while it played."
+
+  enum AudioBus {
+    doc "The bus a source plays on; every bus passes through master."
+    variant master "The master bus: what every bus passes through."
+    variant music "Music."
+    variant sfx "Sound effects."
+    variant ui "Interface sounds."
+  }
+
+  column AudioBus {
+    doc "An AudioBus field: the variant's index."
+    array Uint32Array
+    stride 1
+    value AudioBus
+  }
+
+  component AudioSource {
+    doc "A sound an entity plays. Level-triggered: while `playing` is true it plays (inserting a source plays it), setting it false stops it, and a one-shot that reaches its end sets it back to false and sends og.SoundEnded."
+    doc "A one-shot of F frames at rate R and pitch p started in tick S ends in tick S + ceil(F * tickRate / (R * p)) - 1. A despawned entity's voice is silenced without an event."
+    field sound Sound "The sound, from og.load.sound; 0 plays nothing. A handle not yet loaded waits and starts on the first tick it is there."
+    field bus AudioBus "The bus it plays on." {
+      default sfx
+    }
+    field volume f32 "Linear gain." {
+      default 1
+      min 0
+      max 4
+      tunable true
+    }
+    field pitch f32 "Playback rate: 2 is an octave up and half as long." {
+      default 1
+      min 0.0625
+      max 16
+      tunable true
+    }
+    field pan f32 "Stereo position of a non-spatial source, -1 left to 1 right." {
+      min -1
+      max 1
+      tunable true
+    }
+    field loop bool "Loop between loopStart and loopEnd, seamlessly."
+    field loopStart f32 "Where a loop restarts." {
+      min 0
+      unit s
+    }
+    field loopEnd f32 "Where a loop wraps; 0 is the sound's end." {
+      min 0
+      unit s
+    }
+    field spatial bool "Attenuate and pan by the entity's og.Transform relative to the listener."
+    field refDistance f32 "Full volume up to this distance, as Web Audio's PannerNode.refDistance." {
+      default 1
+      min 0
+      unit m
+      tunable true
+    }
+    field maxDistance f32 "No quieter past this distance, as Web Audio's PannerNode.maxDistance." {
+      default 100
+      min 0
+      unit m
+      tunable true
+    }
+    field rolloffFactor f32 "How fast volume falls with distance, in Web Audio's inverse model: ref / (ref + rolloff * (clamp(d, ref, max) - ref))." {
+      default 1
+      min 0
+      tunable true
+    }
+    field playing bool "Plays while true; the engine sets it false when a one-shot ends." {
+      default true
+    }
+  }
+
+  component AudioListener {
+    doc "Where spatial sources are heard from: the entity's og.Transform, looking down its -Z with +X to the right. The first listener in query order is used."
+    field volume f32 "A gain on every spatial source this listener hears." {
+      default 1
+      min 0
+      max 4
+      tunable true
+    }
+  }
+
+  resource Audio {
+    doc "Bus volumes; master scales every bus. A change ramps over 256 frames in the mixer."
+    field master f32 "Gain of the master bus, applied to every sound." {
+      default 1
+      min 0
+      max 2
+      tunable true
+    }
+    field music f32 "Gain of the music bus." {
+      default 1
+      min 0
+      max 2
+      tunable true
+    }
+    field sfx f32 "Gain of the sfx bus." {
+      default 1
+      min 0
+      max 2
+      tunable true
+    }
+    field ui f32 "Gain of the ui bus." {
+      default 1
+      min 0
+      max 2
+      tunable true
+    }
+  }
+
+  event SoundStarted {
+    doc "A source started, sent in the tick it happens (systems read it the tick after)."
+    field entity Entity "The entity whose AudioSource started."
+    field sound Sound "The sound."
+    field voice u32 "The voice id in the command stream."
+  }
+
+  event SoundEnded {
+    doc "A sound ended, sent in the tick it happens (systems read it the tick after)."
+    field entity Entity "The entity whose AudioSource ended."
+    field sound Sound "The sound."
+    field voice u32 "The voice id in the command stream."
+    field reason u32 "Why: SOUND_FINISHED (0), SOUND_STOPPED (1), SOUND_REMOVED (2) or SOUND_REPLACED (3)."
+  }
+}
+
+# ── ui ────────────────────────────────────────────────────────────────────
+
+module ui {
+  doc "The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, themes it with the platform's design tokens, draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it."
+  doc "The engine opens the frame before the game's systems (from og.Input and the play surface) and closes it after them, so calls belong inside systems; outside one they do nothing and log a warning. Interaction is decided against the previous tick's rectangles, which are also what the probe resolves, so a scripted touch_move_to and a click agree; response edges (clicked, changed, submitted) last one tick."
+  doc "Lengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Ids: an element's id is unique among its siblings (`idi(\"Slot\", 3)` is `Slot#3`); a path `Inventory/Slot#3` names it after its nearest ancestors. The UI state (hover, press, focus, caret, scroll) is world state: snapshots and the world hash carry it."
+
+  enum Direction {
+    doc "Which way a container lays out its children."
+    variant row "Left to right."
+    variant column "Top to bottom."
+  }
+
+  enum Align {
+    doc "Where children sit along the main axis."
+    variant start "At the start."
+    variant center "Centred."
+    variant end "At the end."
+    variant spaceBetween "The free space split evenly between children."
+  }
+
+  enum Cross {
+    doc "Where children sit across the main axis."
+    variant start "At the start."
+    variant center "Centred."
+    variant end "At the end."
+    variant stretch "Stretched to the container's inner size."
+  }
+
+  enum TextAlign {
+    doc "How the lines of a label align."
+    variant start "To the start (left)."
+    variant center "Centred."
+    variant end "To the end (right)."
+  }
+
+  enum FontRole {
+    doc "Which configured font text uses; display and mono fall back to body."
+    variant body "The body font."
+    variant display "The display font."
+    variant mono "The monospaced font."
+  }
+
+  enum ButtonVariant {
+    doc "Button looks, as the design language's buttons."
+    variant secondary "A neutral fill (the default)."
+    variant primary "The amber action: one per screen."
+    variant quiet "Text until hovered."
+    variant danger "A destructive action: danger ink on a neutral fill."
+  }
+
+  enum ControlSize {
+    doc "Control heights from the density (h-control-sm, -md, -lg)."
+    variant medium "The medium control height."
+    variant small "The small control height."
+    variant large "The large control height."
+  }
+
+  enum Scheme {
+    doc "The palette: games run on a stage, so dark is the default."
+    variant dark "The dark palette."
+    variant light "The light palette."
+  }
+
+  enum DensityMode {
+    doc "Control sizes: auto picks touch sizes on a coarse pointer or a play surface under 768 px, compact otherwise."
+    variant auto "Touch sizes on a coarse pointer or a narrow surface, compact otherwise."
+    variant compact "Compact controls."
+    variant comfortable "Comfortable controls."
+    variant touch "Touch-sized controls."
+  }
+
+  enum ThemeColor {
+    doc "A semantic colour of the design tokens (tokens.json `color`, in the current scheme)."
+    variant accent "accent: the amber action colour."
+    variant accentActive "accent-active."
+    variant accentFg "accent-fg: ink on the accent."
+    variant accentHover "accent-hover."
+    variant accentInk "accent-ink: the accent as text."
+    variant accentSoft "accent-soft: a translucent accent wash."
+    variant bg "bg: the page."
+    variant bgSubtle "bg-subtle."
+    variant border "border."
+    variant borderStrong "border-strong."
+    variant danger "danger."
+    variant fg "fg: the primary ink."
+    variant fgInverse "fg-inverse."
+    variant fgMuted "fg-muted."
+    variant fgSubtle "fg-subtle: placeholders."
+    variant fill "fill: neutral control fills."
+    variant fillStrong "fill-strong."
+    variant focus "focus: the focus ring."
+    variant info "info."
+    variant materialControl "material-control."
+    variant materialControlHover "material-control-hover."
+    variant materialEdge "material-edge."
+    variant materialGlow "material-glow."
+    variant materialRegular "material-regular."
+    variant materialRimSoft "material-rim-soft."
+    variant materialSheen "material-sheen."
+    variant materialShine "material-shine."
+    variant materialThick "material-thick."
+    variant materialThin "material-thin."
+    variant scrim "scrim."
+    variant shadow "shadow."
+    variant sheen "sheen."
+    variant stage "stage: the game stage."
+    variant stageBorder "stage-border."
+    variant stageDanger "stage-danger."
+    variant stageFg "stage-fg."
+    variant stageMuted "stage-muted."
+    variant stageRaised "stage-raised."
+    variant stageSurface "stage-surface."
+    variant success "success."
+    variant surface "surface: cards and panels."
+    variant surfaceHover "surface-hover."
+    variant surfaceRaised "surface-raised: tooltips."
+    variant thumb "thumb: slider and switch thumbs."
+    variant warn "warn."
+  }
+
+  enum TypeStepName {
+    doc "A step of the type ramp (tokens.json `font.scale`)."
+    variant body "text-body, the default."
+    variant xs "text-xs."
+    variant meta "text-meta."
+    variant caption "text-caption."
+    variant sm "text-sm."
+    variant reading "text-reading."
+    variant base "text-base."
+    variant lg "text-lg."
+    variant xl "text-xl."
+    variant xl2 "text-2xl."
+    variant xl3 "text-3xl."
+    variant xl4 "text-4xl."
+    variant xl5 "text-5xl."
+    variant xl6 "text-6xl."
+    variant xl7 "text-7xl."
+    variant xl8 "text-8xl."
+    variant displaySm "text-display-sm."
+    variant displayMd "text-display-md."
+    variant displayLg "text-display-lg."
+    variant displayXl "text-display-xl."
+    variant displayXl2 "text-display-2xl."
+  }
+
+  struct SizeRange {
+    doc "The bounds of a fit or grow size."
+    field min f32 "The smallest size." {
+      optional true
+      unit cssPx
+    }
+    field max f32 "The largest size; absent is unbounded." {
+      optional true
+      unit cssPx
+    }
+  }
+
+  struct FixedSize {
+    doc "A fixed size."
+    field px f32 "The size." {
+      unit cssPx
+    }
+  }
+
+  struct PercentSize {
+    doc "A size relative to the parent."
+    field fraction f32 "The fraction of the parent's inner size." {
+      unit ratio
+    }
+  }
+
+  union Size {
+    doc "A size along one axis. Absent (null) is fit: the content's size."
+    tag kind
+    case fit SizeRange "The content's size, within the range."
+    case grow SizeRange "The content's size, then a share of the parent's free space, within the range."
+    case fixed FixedSize "Exactly this size."
+    case percent PercentSize "A fraction of the parent's inner size."
+  }
+
+  struct Insets {
+    doc "Padding or margins on four sides."
+    field left f32 "The left side." {
+      unit cssPx
+    }
+    field top f32 "The top side." {
+      unit cssPx
+    }
+    field right f32 "The right side." {
+      unit cssPx
+    }
+    field bottom f32 "The bottom side." {
+      unit cssPx
+    }
+  }
+
+  struct Paint {
+    doc "A colour: a theme token, or an sRGB colour as authored (components 0 to 1), with an alpha. Neither is white."
+    desc true
+    field token Option.ThemeColor "A semantic colour of the theme."
+    field color Option.Color "An sRGB colour as authored, when no token is given."
+    field alpha f32 "The opacity." {
+      default 1
+      min 0
+      max 1
+    }
+  }
+
+  struct ElementDesc {
+    doc "A container: its layout and its look."
+    desc true
+    field direction Direction "Which way it lays out its children."
+    field width Option.Size "Its width; null fits the content."
+    field height Option.Size "Its height; null fits the content."
+    field padding Insets "Space inside its edges."
+    field gap f32 "Space between children." {
+      unit cssPx
+    }
+    field align Align "Where children sit along the main axis."
+    field cross Cross "Where children sit across it."
+    field wrap bool "Break a row into lines at its inner width."
+    field scroll bool "Scroll its content vertically and clip it."
+    field interactive bool "Report a Response from close(), as a button does."
+    field background Option.Paint "Its fill; null draws none."
+    field radius f32 "Corner radius." {
+      unit cssPx
+    }
+  }
+
+  struct LabelDesc {
+    doc "How a label draws its text."
+    desc true
+    field step Option.TypeStepName "The type step; null is body."
+    field color Option.Paint "The ink; null is fg."
+    field align TextAlign "How the lines align."
+    field nowrap bool "Keep to one line (breaking only at `\\n`)."
+    field width Option.Size "Its width; null fits the text."
+    field font FontRole "Which font."
+  }
+
+  struct ButtonDesc {
+    doc "A button's look."
+    desc true
+    field variant ButtonVariant "The look."
+    field size ControlSize "The control height."
+    field disabled bool "Neutral and inert."
+    field width Option.Size "Its width; null fits the label."
+  }
+
+  struct PanelDesc {
+    doc "A card: surface, the card radius, padded and spaced by the tokens."
+    desc true
+    field row bool "Lay children left to right (the default is top to bottom)."
+    field width Option.Size "Its width; null fits the content."
+    field height Option.Size "Its height; null fits the content."
+    field padding Option.Insets "Space inside; null is space.lg on every side."
+    field gap Option.f32 "Space between children; null is space.md."
+    field align Align "Where children sit along the main axis."
+    field cross Cross "Where children sit across it."
+    field background Option.Paint "Its fill; null is surface."
+  }
+
+  struct ScrollDesc {
+    doc "A vertical scroll container: the wheel or a drag scrolls it, it clips its content, a capsule indicator shows the position."
+    desc true
+    field width Option.Size "Its width; null fits the content."
+    field height Option.Size "Its height; null fits the content."
+    field padding Insets "Space inside."
+    field gap f32 "Space between children." {
+      unit cssPx
+    }
+  }
+
+  struct ImageDesc {
+    doc "A texture region, or a solid rectangle without a texture."
+    desc true
+    field texture Option.Texture "The texture; null draws a solid rectangle of the tint."
+    field uv Option.Array.f32.4 "The region drawn, [u0, v0, u1, v1] with v down; null is the whole texture."
+    field tint Option.Paint "Multiplies the texture; null is white."
+    field width Option.Size "Its width; null fits."
+    field height Option.Size "Its height; null fits."
+  }
+
+  struct ProgressDesc {
+    doc "A progress bar."
+    desc true
+    field width Option.Size "Its width; null grows into the free space."
+  }
+
+  struct SliderDesc {
+    doc "A slider's range and width."
+    desc true
+    field min f32 "The smallest value; min equal to max (the zero value) means 0 to 1."
+    field max f32 "The largest value."
+    field step f32 "Snap to multiples of step from min; 0 is continuous." {
+      min 0
+    }
+    field width Option.Size "Its width; null grows."
+  }
+
+  struct FieldDesc {
+    doc "A one-line text field."
+    desc true
+    field placeholder String "Shown, dimmed, while the field is empty."
+    field width Option.Size "Its width; null grows."
+    field maxChars u32 "The most characters it takes; 0 is no limit."
+  }
+
+  struct Response {
+    doc "What happened to an element this tick. Edges (clicked, changed, submitted) are true for exactly one tick."
+    field hovered bool "The pointer is over it and no other element holds the press."
+    field pressed bool "The press that started on it is still held."
+    field clicked bool "Pressed and released inside it."
+    field changed bool "Its value changed (slider, toggle, text field)."
+    field focused bool "It has keyboard focus (text field)."
+    field submitted bool "Enter was pressed in it (text field)."
+  }
+
+  struct SliderResult {
+    doc "A slider's response and its value after this tick's input."
+    field response Response "What happened to it."
+    field value f32 "The value, to keep in game state and pass back next tick."
+  }
+
+  struct ToggleResult {
+    doc "A toggle's response and its state after this tick's input."
+    field response Response "What happened to it."
+    field on bool "The state, to keep in game state and pass back next tick."
+  }
+
+  struct FieldResult {
+    doc "A text field's response and its text after this tick's input."
+    field response Response "What happened to it."
+    field value String "The text, to keep in game state and pass back next tick."
+  }
+
+  struct Viewport {
+    doc "The play surface the UI lays out in."
+    field width f32 "Its width." {
+      unit cssPx
+    }
+    field height f32 "Its height." {
+      unit cssPx
+    }
+    field dpr f32 "Device pixels per CSS pixel; rectangles snap to device pixels." {
+      default 1
+    }
+    field safeArea Insets "The device's unsafe margins (notch, home indicator); the root pads by them."
+    field coarsePointer bool "A touch screen or another coarse pointer."
+  }
+
+  struct UiDesc {
+    doc "How the UI looks: the scheme, the density and its fonts."
+    desc true
+    field scheme Scheme "The palette."
+    field density DensityMode "The control sizes."
+    field font Option.Font "The body font, from og.load.font; null measures text at half an em per character and draws none."
+    field displayFont Option.Font "The display font; null uses the body font."
+    field monoFont Option.Font "The monospaced font; null uses the body font."
+  }
+
+  struct TypeStep {
+    doc "One step of the type ramp."
+    field size f32 "The font size." {
+      unit cssPx
+    }
+    field lineHeight f32 "The leading of Latin text." {
+      unit cssPx
+    }
+    field trackingEm f32 "Latin tracking, in em."
+    field cjkLineHeight f32 "The leading text with Chinese, Japanese or Korean characters takes." {
+      unit cssPx
+    }
+  }
+
+  struct ControlSizes {
+    doc "The control, row and header heights and the gutter of the density in effect."
+    field controlSm f32 "h-control-sm." {
+      unit cssPx
+    }
+    field controlMd f32 "h-control-md." {
+      unit cssPx
+    }
+    field controlLg f32 "h-control-lg." {
+      unit cssPx
+    }
+    field gutter f32 "The gutter." {
+      unit cssPx
+    }
+    field header f32 "The header height." {
+      unit cssPx
+    }
+    field row f32 "The row height." {
+      unit cssPx
+    }
+    field section f32 "The section spacing." {
+      unit cssPx
+    }
+  }
+
+  struct UiTheme {
+    doc "The design tokens the UI draws with, read-only."
+    field scheme Scheme "The palette in use."
+    field palette Map.String "Each ThemeColor as `#rrggbb` or `#rrggbbaa` (sRGB as authored)."
+    field space Map.f32 "The spacing scale by name (xxs, xs, sm, md, lg, xl, xxl, xl3), in CSS pixels."
+    field radius Map.f32 "The radius scale by name (control, field, block, card, panel, sheet, button), in CSS pixels."
+    field typeRamp Map.TypeStep "Each TypeStepName's step."
+    field sizes ControlSizes "The control sizes of the density in effect."
+    field durationsMs Map.f32 "The motion durations by name (instant, fast, base, slow, spring, bounce), in milliseconds."
+  }
+
+  callback UiBuild {
+    doc "Builds a container's children: ui calls made inside it nest under the container."
+  }
+
+  fn configure {
+    doc "Set the scheme, the density and the fonts, typically in GameDesc.start. Takes effect from the next tick."
+    param world World "The world whose UI is configured."
+    param desc UiDesc "The scheme, density and fonts."
+    returns Result.Void "Refused for a dead font."
+  }
+
+  fn viewport {
+    doc "This tick's play surface: the render target's size in CSS pixels, its DPR and safe area, as the host reports them."
+    param world World "The world."
+    returns Viewport
+  }
+
+  fn theme {
+    doc "The design tokens the UI draws with."
+    param world World "The world."
+    returns UiTheme
+  }
+
+  fn open {
+    doc "Open a container; the calls until its close() build its children."
+    param id String "Its id, unique among its siblings."
+    param desc ElementDesc "Its layout and look."
+    returns Void
+  }
+
+  fn openPanel {
+    doc "Open a card, closed by close(): og.ui.panel without the callback."
+    param id String "Its id."
+    param desc PanelDesc "Its layout and look."
+    returns Void
+  }
+
+  fn openScroll {
+    doc "Open a vertical scroll container, closed by close(): og.ui.scroll without the callback."
+    param id String "Its id."
+    param desc ScrollDesc "Its size and spacing."
+    returns Void
+  }
+
+  fn close {
+    doc "Close the open container."
+    returns Response "Its response, for an interactive container; the zero response otherwise."
+  }
+
+  fn row {
+    doc "A row built by `build`: open(id, {...desc, direction: row}), build(), close()."
+    host false
+    param id String "Its id."
+    param desc ElementDesc "Its layout and look; direction is row."
+    param build UiBuild "Makes its children."
+    returns Response "Its response, for an interactive row."
+  }
+
+  fn column {
+    doc "A column built by `build`: open(id, {...desc, direction: column}), build(), close()."
+    host false
+    param id String "Its id."
+    param desc ElementDesc "Its layout and look; direction is column."
+    param build UiBuild "Makes its children."
+    returns Response "Its response, for an interactive column."
+  }
+
+  fn panel {
+    doc "A card built by `build`: openPanel(id, desc), build(), close()."
+    host false
+    param id String "Its id."
+    param desc PanelDesc "Its layout and look."
+    param build UiBuild "Makes its children."
+    returns Void
+  }
+
+  fn scroll {
+    doc "A vertical scroll container built by `build`: openScroll(id, desc), build(), close()."
+    host false
+    param id String "Its id."
+    param desc ScrollDesc "Its size and spacing."
+    param build UiBuild "Makes its children."
+    returns Void
+  }
+
+  fn label {
+    doc "MSDF text that wraps at its width (word breaks, any CJK character, long words between characters) unless nowrap. The probe reads its text."
+    param id String "Its id."
+    param text String "The text."
+    param desc LabelDesc "Type step, ink, alignment, wrapping, width and font."
+    returns Void
+  }
+
+  fn button {
+    doc "A capsule button with a label; `clicked` is a press and a release inside it. The probe reads its label."
+    param id String "Its id."
+    param text String "The label."
+    param desc ButtonDesc "Variant, size, disabled and width."
+    returns Response
+  }
+
+  fn image {
+    doc "A texture region, or a solid rectangle."
+    param id String "Its id."
+    param desc ImageDesc "Texture, region, tint and size."
+    returns Void
+  }
+
+  fn progress {
+    doc "A capsule track filled to a fraction."
+    param id String "Its id."
+    param value f32 "How full it is, from 0 to 1."
+    param desc ProgressDesc "Its width."
+    returns Void
+  }
+
+  fn slider {
+    doc "A track with a fill and a thumb: a press anywhere on it sets the value and dragging follows. Pass back the value it answers next tick."
+    param id String "Its id."
+    param value f32 "The value from game state."
+    param desc SliderDesc "Range, step and width."
+    returns SliderResult
+  }
+
+  fn toggle {
+    doc "A switch with a label; a click flips it. Pass back the state it answers next tick. The probe reads its label."
+    param id String "Its id."
+    param on bool "The state from game state."
+    param label String "The label."
+    returns ToggleResult
+  }
+
+  fn textField {
+    doc "One line of text: a press focuses it with the caret at the press, typed text inserts at the caret, Backspace, Delete, arrows, Home and End edit, Enter submits and leaves, Escape leaves. Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty."
+    param id String "Its id."
+    param value String "The text from game state."
+    param desc FieldDesc "Placeholder, width and length limit."
+    returns FieldResult
+  }
+
+  fn tooltip {
+    doc "A tooltip for the element just built: shown below it (above without room) once the pointer has rested on it for the slow motion duration, drawn over everything. The probe reads its text."
+    param text String "The text."
+    returns Void
+  }
+
+  fn idi {
+    doc "The id of the index-th of several siblings of one name: `idi(\"Slot\", 3)` is `Slot#3`."
+    host false
+    param name String "The name."
+    param index u32 "The index."
+    returns String
+  }
+}
+
+# ── systems ───────────────────────────────────────────────────────────────
+
+module systems {
+  doc "Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for."
+
+  value cameras List.System "The camera controllers, in this order: og.orbitCamera (og.OrbitCamera), og.followCamera (og.FollowCamera) and og.follow2D (og.Follow2D). Each moves og.Camera only while an entity carries its component. List them before the game's systems that read og.Camera: `systems: [...og.systems.cameras, ...yours]`."
 }
 
 # ── commands ──────────────────────────────────────────────────────────────

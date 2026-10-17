@@ -191,6 +191,10 @@ pub(crate) struct Shared {
     pub shapes3: BTreeMap<ShapeKey, rapier3d::prelude::SharedShape>,
     #[cfg(feature = "physics2d")]
     pub shapes2: BTreeMap<ShapeKey, rapier2d::prelude::SharedShape>,
+    /// The colliders [`PhysicsSystem::query_system`] recorded this tick, and
+    /// the query view built from them on the first query that asked.
+    pub recorded: Option<(Physics, Scene)>,
+    pub recorded_query: Option<Arc<QueryInner>>,
 }
 
 /// At most this many mesh-derived shapes are cached (a scale animated every
@@ -314,10 +318,97 @@ impl StateBlock for PhysicsState {
 /// Install it after the systems that move kinematic bodies and before the
 /// ones that read the simulated transforms.
 pub fn install(world: &mut World, settings: Physics) -> Result<PhysicsSystem> {
-    check_profile(settings.profile)?;
-    let ids = Arc::new(Ids::register(world)?);
-    world.insert_resource(settings)?;
-    let shared = Arc::new(Mutex::new(Shared::default()));
+    let physics = PhysicsSystem::register(world, settings)?;
+    physics.schedule(world)?;
+    Ok(physics)
+}
+
+/// The name of the system [`PhysicsSystem::query_system`] returns.
+pub const QUERY_SYSTEM_NAME: &str = "og.physics.queries";
+
+impl PhysicsSystem {
+    /// The first half of [`install`]: registers the types and inserts
+    /// `settings` as `og.Physics`, scheduling nothing. A host that runs
+    /// [`Self::query_system`] before its own systems calls this, adds that
+    /// system, adds its systems, then calls [`Self::schedule`].
+    pub fn register(world: &mut World, settings: Physics) -> Result<PhysicsSystem> {
+        check_profile(settings.profile)?;
+        let ids = Arc::new(Ids::register(world)?);
+        world.insert_resource(settings)?;
+        Ok(PhysicsSystem {
+            shared: Arc::new(Mutex::new(Shared::default())),
+            ids,
+        })
+    }
+
+    /// The second half of [`install`]: schedules `og.physics` at the end of
+    /// the schedule, with its `og.physics` state block.
+    pub fn schedule(&self, world: &mut World) -> Result<()> {
+        schedule(world, &self.shared, &self.ids)
+    }
+
+    /// A read-only system that records the colliders as the world holds
+    /// them at its point in the schedule, so [`Self::tick_query`] answers
+    /// scene queries from inside the systems after it in the same tick
+    /// (game code cannot hand a `&World` to [`Self::query`] while the world
+    /// steps). Recording copies the components; the query view is built only
+    /// when a query asks. Add it with `world.add_system(desc, run)` before
+    /// the systems that query.
+    pub fn query_system(
+        &self,
+    ) -> (
+        SystemDesc,
+        impl Fn(&mut SystemContext<'_>) -> Result<()> + Send + 'static,
+    ) {
+        let mut desc = SystemDesc::new(QUERY_SYSTEM_NAME)
+            .read::<Physics>()
+            .read::<RigidBody>()
+            .read::<Collider>()
+            .read::<Velocity>();
+        desc.reads.push(gather::TRANSFORM.to_string());
+        for q in QUERIES {
+            desc = desc.query(q.desc(false));
+        }
+        let (shared, ids) = (self.shared.clone(), self.ids.clone());
+        let run = move |ctx: &mut SystemContext<'_>| {
+            let settings = *ctx.resource::<Physics>()?;
+            let scene = gather::gather(&|i| ctx.query(i), &ids)?;
+            let mut shared = lock(&shared);
+            shared.recorded = Some((settings, scene));
+            shared.recorded_query = None;
+            Ok(())
+        };
+        (desc, run)
+    }
+
+    /// Scene queries over the colliders [`Self::query_system`] recorded in
+    /// the current tick (the same answers [`Self::query`] gives over the
+    /// world at that point). Refused before that system has run.
+    pub fn tick_query(&self) -> Result<PhysicsQuery> {
+        let mut shared = lock(&self.shared);
+        if let Some(q) = &shared.recorded_query {
+            return Ok(PhysicsQuery {
+                inner: q.clone(),
+                shared: self.shared.clone(),
+            });
+        }
+        let Some((settings, scene)) = shared.recorded.take() else {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!("no tick has recorded the colliders yet: {QUERY_SYSTEM_NAME} runs at the start of each tick; between ticks, query the world"),
+            ));
+        };
+        let built = QueryInner::build(settings.profile, &scene, &mut shared);
+        let inner = Arc::new(built?);
+        shared.recorded_query = Some(inner.clone());
+        Ok(PhysicsQuery {
+            inner,
+            shared: self.shared.clone(),
+        })
+    }
+}
+
+fn schedule(world: &mut World, shared: &Arc<Mutex<Shared>>, ids: &Arc<Ids>) -> Result<()> {
     let mut desc = SystemDesc::new(SYSTEM_NAME)
         .read::<Physics>()
         .read::<RigidBody>()
@@ -336,7 +427,7 @@ pub fn install(world: &mut World, settings: Physics) -> Result<PhysicsSystem> {
     let (s, i) = (shared.clone(), ids.clone());
     world.add_system(desc, move |ctx| run(ctx, &i, &s))?;
     world.add_state_block(SYSTEM_NAME, Box::new(PhysicsState(shared.clone())))?;
-    Ok(PhysicsSystem { shared, ids })
+    Ok(())
 }
 
 fn check_profile(profile: u32) -> Result<()> {
@@ -418,13 +509,7 @@ impl PhysicsSystem {
         let settings = *world.resource::<Physics>()?;
         let scene = gather::gather(&|i| world.query(&QUERIES[i].desc(false)), &self.ids)?;
         let mut shared = lock(&self.shared);
-        let inner = match settings.profile {
-            #[cfg(feature = "physics3d")]
-            PROFILE_3D => QueryInner::D3(dim3::QueryWorld::build(&scene, &mut shared)?),
-            #[cfg(feature = "physics2d")]
-            PROFILE_2D => QueryInner::D2(dim2::QueryWorld::build(&scene, &mut shared)?),
-            other => return Err(check_profile(other).unwrap_err()),
-        };
+        let inner = Arc::new(QueryInner::build(settings.profile, &scene, &mut shared)?);
         Ok(PhysicsQuery {
             inner,
             shared: self.shared.clone(),
@@ -436,15 +521,27 @@ impl PhysicsSystem {
 /// Results depend only on the colliders, so they are as deterministic as the
 /// world they were built from.
 pub struct PhysicsQuery {
-    inner: QueryInner,
+    inner: Arc<QueryInner>,
     shared: Arc<Mutex<Shared>>,
 }
 
-enum QueryInner {
+pub(crate) enum QueryInner {
     #[cfg(feature = "physics3d")]
     D3(dim3::QueryWorld),
     #[cfg(feature = "physics2d")]
     D2(dim2::QueryWorld),
+}
+
+impl QueryInner {
+    fn build(profile: u32, scene: &Scene, shared: &mut Shared) -> Result<QueryInner> {
+        Ok(match profile {
+            #[cfg(feature = "physics3d")]
+            PROFILE_3D => QueryInner::D3(dim3::QueryWorld::build(scene, shared)?),
+            #[cfg(feature = "physics2d")]
+            PROFILE_2D => QueryInner::D2(dim2::QueryWorld::build(scene, shared)?),
+            other => return Err(check_profile(other).unwrap_err()),
+        })
+    }
 }
 
 /// `v` normalised; refused when zero (or zero in the profile's plane).
@@ -483,7 +580,7 @@ impl PhysicsQuery {
     /// The nearest collider along a ray.
     pub fn raycast(&self, desc: &RaycastDesc) -> Result<Option<RaycastHit>> {
         let max = max_distance(desc.max_distance);
-        match &self.inner {
+        match &*self.inner {
             #[cfg(feature = "physics3d")]
             QueryInner::D3(q) => q.raycast(desc.origin, desc.direction, max, &desc.filter),
             #[cfg(feature = "physics2d")]
@@ -495,7 +592,7 @@ impl PhysicsQuery {
     pub fn shape_cast(&self, desc: &ShapeCastDesc) -> Result<Option<ShapeCastHit>> {
         let max = max_distance(desc.max_distance);
         let mut shared = lock(&self.shared);
-        match &self.inner {
+        match &*self.inner {
             #[cfg(feature = "physics3d")]
             QueryInner::D3(q) => q.shape_cast(desc, max, &mut shared),
             #[cfg(feature = "physics2d")]
@@ -506,7 +603,7 @@ impl PhysicsQuery {
     /// Every collider overlapping a shape, sorted by entity id.
     pub fn overlap(&self, desc: &OverlapDesc) -> Result<Vec<Entity>> {
         let mut shared = lock(&self.shared);
-        match &self.inner {
+        match &*self.inner {
             #[cfg(feature = "physics3d")]
             QueryInner::D3(q) => q.overlap(desc, &mut shared),
             #[cfg(feature = "physics2d")]

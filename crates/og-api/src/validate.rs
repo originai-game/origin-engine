@@ -146,7 +146,10 @@ impl<'a> Validator<'a, '_> {
                 format!("module `{}`", module.name)
             });
             if module.place == Place::Namespace
-                && module.items.iter().any(|i| matches!(i, Item::Fn(_)))
+                && module
+                    .items
+                    .iter()
+                    .any(|i| matches!(i, Item::Fn(_) | Item::Value(_)))
                 && !og_members.insert(module.name.clone())
             {
                 self.error(module.line, format!("duplicate name `og.{}`", module.name));
@@ -176,6 +179,33 @@ impl<'a> Validator<'a, '_> {
                             );
                         }
                         self.function(f, &format!("fn `{}.{}`", module.name, f.name));
+                    }
+                    Item::Value(v) => {
+                        if !fns.insert(v.name.as_str()) {
+                            self.error(
+                                v.line,
+                                format!("duplicate name `{}` in module `{}`", v.name, module.name),
+                            );
+                        }
+                        let clash = match module.place {
+                            Place::Top => !top_values.insert(v.name.clone()),
+                            Place::Root => !og_members.insert(v.name.clone()),
+                            Place::Namespace => false,
+                        };
+                        if clash {
+                            self.error(
+                                v.line,
+                                format!(
+                                    "duplicate name `{}`: another export already uses it",
+                                    v.name
+                                ),
+                            );
+                        }
+                        self.name(camel, &v.name, v.line, "value", "lowerCamelCase");
+                        self.doc(&v.doc, v.line, || {
+                            format!("value `{}.{}`", module.name, v.name)
+                        });
+                        self.ty(&v.ty, &[], v.line);
                     }
                     Item::Const(c) => self.constant(c),
                     Item::Handle(h) => {
@@ -532,10 +562,11 @@ impl<'a> Validator<'a, '_> {
                     );
                 }
             }
-            let numeric = self
-                .ix
-                .flat(&f.ty)
-                .is_some_and(|fl| fl.iter().all(|s| *s != "bool"));
+            let numeric = !matches!(self.ix.decl(f.ty.name()), Some(TypeDecl::Enum(_)))
+                && self
+                    .ix
+                    .flat(&f.ty)
+                    .is_some_and(|fl| fl.iter().all(|s| *s != "bool"));
             if (f.min.is_some() || f.max.is_some() || f.step.is_some() || f.tunable) && !numeric {
                 self.error(
                     f.line,

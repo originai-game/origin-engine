@@ -205,8 +205,8 @@ fn body_kind(b: &Body) -> Result<rp::RigidBodyType> {
     };
     for (what, x) in [
         ("mass", b.body.mass),
-        ("linear_damping", b.body.linear_damping),
-        ("angular_damping", b.body.angular_damping),
+        ("linearDamping", b.body.linear_damping),
+        ("angularDamping", b.body.angular_damping),
     ] {
         if !(x >= 0.0 && x.is_finite()) {
             return Err(Error::new(

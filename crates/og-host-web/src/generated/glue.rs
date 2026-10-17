@@ -359,6 +359,31 @@ pub fn og_camera_screen_to_ray(world: u32, x: f64, y: f64) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_render_sprite(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_sprite(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_render_measure_text(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_measure_text(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_render_box_geometry(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_box_geometry(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_render_plane_geometry(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_plane_geometry(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_render_sphere_geometry(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_sphere_geometry(&Host, world, desc)
+}
+
+#[wasm_bindgen]
 pub fn og_render_standard_material(world: u32, desc: Option<String>) -> String {
     <Host as RenderApi>::og_render_standard_material(&Host, world, desc)
 }
@@ -419,6 +444,11 @@ pub fn og_load_sound(world: u32, path: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_load_texture(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_texture(&Host, world, path)
+}
+
+#[wasm_bindgen]
 pub fn og_load_sound_info(world: u32, sound: f64) -> String {
     <Host as LoadApi>::og_load_sound_info(&Host, world, sound)
 }
@@ -436,6 +466,101 @@ pub fn og_load_error(world: u32, asset: f64) -> String {
 #[wasm_bindgen]
 pub fn og_load_gltf_info(world: u32, asset: f64) -> String {
     <Host as LoadApi>::og_load_gltf_info(&Host, world, asset)
+}
+
+#[wasm_bindgen]
+pub fn og_physics_raycast(world: u32, desc: Option<String>) -> String {
+    <Host as PhysicsApi>::og_physics_raycast(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_physics_shape_cast(world: u32, desc: Option<String>) -> String {
+    <Host as PhysicsApi>::og_physics_shape_cast(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_physics_overlap(world: u32, desc: Option<String>) -> String {
+    <Host as PhysicsApi>::og_physics_overlap(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_physics_set_mesh(world: u32, mesh: f64, desc: Option<String>) -> String {
+    <Host as PhysicsApi>::og_physics_set_mesh(&Host, world, mesh, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_configure(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_viewport(world: u32) -> String {
+    <Host as UiApi>::og_ui_viewport(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_theme(world: u32) -> String {
+    <Host as UiApi>::og_ui_theme(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_open(id: String, desc: Option<String>) {
+    <Host as UiApi>::og_ui_open(&Host, id, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_open_panel(id: String, desc: Option<String>) {
+    <Host as UiApi>::og_ui_open_panel(&Host, id, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_open_scroll(id: String, desc: Option<String>) {
+    <Host as UiApi>::og_ui_open_scroll(&Host, id, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_close() -> String {
+    <Host as UiApi>::og_ui_close(&Host)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_label(id: String, text: String, desc: Option<String>) {
+    <Host as UiApi>::og_ui_label(&Host, id, text, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_button(id: String, text: String, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_button(&Host, id, text, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_image(id: String, desc: Option<String>) {
+    <Host as UiApi>::og_ui_image(&Host, id, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_progress(id: String, value: f64, desc: Option<String>) {
+    <Host as UiApi>::og_ui_progress(&Host, id, value, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_slider(id: String, value: f64, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_slider(&Host, id, value, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_toggle(id: String, on: bool, label: String) -> String {
+    <Host as UiApi>::og_ui_toggle(&Host, id, on, label)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_text_field(id: String, value: String, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_text_field(&Host, id, value, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_tooltip(text: String) {
+    <Host as UiApi>::og_ui_tooltip(&Host, text)
 }
 
 #[cfg(not(feature = "publish"))]

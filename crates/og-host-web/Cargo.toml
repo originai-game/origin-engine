@@ -22,6 +22,7 @@ og-cook = { path = "../og-cook", default-features = false, features = ["runtime"
 wasm-bindgen = "=0.2.127"
 js-sys = "=0.3.104"
 og-audio = { path = "../og-audio" }
+serde_json = "1"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wgpu = { workspace = true }

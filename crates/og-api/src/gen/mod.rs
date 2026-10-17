@@ -61,6 +61,7 @@ pub fn bindings<'a>(ix: &Index<'a>) -> Vec<Binding<'a>> {
     for module in &ix.api.modules {
         for item in &module.items {
             match item {
+                Item::Fn(f) if !f.host => {}
                 Item::Fn(f) => out.push(Binding {
                     kind: "fn",
                     module,

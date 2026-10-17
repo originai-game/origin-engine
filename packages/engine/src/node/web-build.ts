@@ -55,11 +55,13 @@ export interface WebBuild {
   readonly reason?: string;
 }
 
-const PAGE = `<!doctype html>
+/** The page; `profile` is project.ogt's physics profile, read by play.ts. */
+const pageHtml = (profile: string) => `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="og-profile" content="${profile}">
 <title>Origin Engine</title>
 <style>html,body{margin:0;height:100%;background:#14161b;overscroll-behavior:none}canvas{display:block;width:100vw;height:100dvh;touch-action:none}</style>
 </head>
@@ -127,7 +129,9 @@ export async function webBuild(project: string, entry: string, out: string, publ
   const page = await Bun.build({ entrypoints: [join(here, "..", "web", "play.ts")], target: "browser", format: "esm", minify: publish });
   if (!page.success) return fail(`bundling the play page: ${page.logs.map(String).join("\n")}`);
   writeFileSync(join(out, "play.js"), await page.outputs[0]!.text());
-  writeFileSync(join(out, "index.html"), PAGE);
+  const manifest = existsSync(join(project, "project.ogt")) ? readFileSync(join(project, "project.ogt"), "utf8") : "";
+  const profile = /^\s*profile\s+"(2d|3d)"/m.exec(manifest)?.[1] ?? "3d";
+  writeFileSync(join(out, "index.html"), pageHtml(profile));
   for (const f of ["origin-engine.js", "origin-engine_bg.wasm"]) cpSync(join(host, f), join(out, f));
   cpSync(vendor, join(out, "basis"), { recursive: true });
   cpSync(cooked, join(out, "cooked"), { recursive: true });

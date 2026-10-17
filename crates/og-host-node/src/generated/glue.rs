@@ -429,6 +429,36 @@ pub fn og_camera_screen_to_ray(env: Env, world: u32, x: f64, y: f64) -> String {
     <Host as CameraApi>::og_camera_screen_to_ray(&Host, world, x, y)
 }
 
+#[napi(js_name = "og_render_sprite")]
+pub fn og_render_sprite(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_sprite(&Host, world, desc)
+}
+
+#[napi(js_name = "og_render_measure_text")]
+pub fn og_render_measure_text(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_measure_text(&Host, world, desc)
+}
+
+#[napi(js_name = "og_render_box_geometry")]
+pub fn og_render_box_geometry(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_box_geometry(&Host, world, desc)
+}
+
+#[napi(js_name = "og_render_plane_geometry")]
+pub fn og_render_plane_geometry(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_plane_geometry(&Host, world, desc)
+}
+
+#[napi(js_name = "og_render_sphere_geometry")]
+pub fn og_render_sphere_geometry(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_sphere_geometry(&Host, world, desc)
+}
+
 #[napi(js_name = "og_render_standard_material")]
 pub fn og_render_standard_material(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -501,6 +531,12 @@ pub fn og_load_sound(env: Env, world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_sound(&Host, world, path)
 }
 
+#[napi(js_name = "og_load_texture")]
+pub fn og_load_texture(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_texture(&Host, world, path)
+}
+
 #[napi(js_name = "og_load_sound_info")]
 pub fn og_load_sound_info(env: Env, world: u32, sound: f64) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -523,6 +559,120 @@ pub fn og_load_error(env: Env, world: u32, asset: f64) -> String {
 pub fn og_load_gltf_info(env: Env, world: u32, asset: f64) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as LoadApi>::og_load_gltf_info(&Host, world, asset)
+}
+
+#[napi(js_name = "og_physics_raycast")]
+pub fn og_physics_raycast(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_raycast(&Host, world, desc)
+}
+
+#[napi(js_name = "og_physics_shape_cast")]
+pub fn og_physics_shape_cast(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_shape_cast(&Host, world, desc)
+}
+
+#[napi(js_name = "og_physics_overlap")]
+pub fn og_physics_overlap(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_overlap(&Host, world, desc)
+}
+
+#[napi(js_name = "og_physics_set_mesh")]
+pub fn og_physics_set_mesh(env: Env, world: u32, mesh: f64, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_set_mesh(&Host, world, mesh, desc)
+}
+
+#[napi(js_name = "og_ui_configure")]
+pub fn og_ui_configure(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_configure(&Host, world, desc)
+}
+
+#[napi(js_name = "og_ui_viewport")]
+pub fn og_ui_viewport(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_viewport(&Host, world)
+}
+
+#[napi(js_name = "og_ui_theme")]
+pub fn og_ui_theme(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_theme(&Host, world)
+}
+
+#[napi(js_name = "og_ui_open")]
+pub fn og_ui_open(env: Env, id: String, desc: Option<String>) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_open(&Host, id, desc)
+}
+
+#[napi(js_name = "og_ui_open_panel")]
+pub fn og_ui_open_panel(env: Env, id: String, desc: Option<String>) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_open_panel(&Host, id, desc)
+}
+
+#[napi(js_name = "og_ui_open_scroll")]
+pub fn og_ui_open_scroll(env: Env, id: String, desc: Option<String>) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_open_scroll(&Host, id, desc)
+}
+
+#[napi(js_name = "og_ui_close")]
+pub fn og_ui_close(env: Env) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_close(&Host)
+}
+
+#[napi(js_name = "og_ui_label")]
+pub fn og_ui_label(env: Env, id: String, text: String, desc: Option<String>) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_label(&Host, id, text, desc)
+}
+
+#[napi(js_name = "og_ui_button")]
+pub fn og_ui_button(env: Env, id: String, text: String, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_button(&Host, id, text, desc)
+}
+
+#[napi(js_name = "og_ui_image")]
+pub fn og_ui_image(env: Env, id: String, desc: Option<String>) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_image(&Host, id, desc)
+}
+
+#[napi(js_name = "og_ui_progress")]
+pub fn og_ui_progress(env: Env, id: String, value: f64, desc: Option<String>) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_progress(&Host, id, value, desc)
+}
+
+#[napi(js_name = "og_ui_slider")]
+pub fn og_ui_slider(env: Env, id: String, value: f64, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_slider(&Host, id, value, desc)
+}
+
+#[napi(js_name = "og_ui_toggle")]
+pub fn og_ui_toggle(env: Env, id: String, on: bool, label: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_toggle(&Host, id, on, label)
+}
+
+#[napi(js_name = "og_ui_text_field")]
+pub fn og_ui_text_field(env: Env, id: String, value: String, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_text_field(&Host, id, value, desc)
+}
+
+#[napi(js_name = "og_ui_tooltip")]
+pub fn og_ui_tooltip(env: Env, text: String) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_tooltip(&Host, text)
 }
 
 #[cfg(not(feature = "publish"))]

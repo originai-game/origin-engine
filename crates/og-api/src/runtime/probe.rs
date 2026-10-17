@@ -181,6 +181,9 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
         .collect();
     let mut probe = eng.probe.borrow_mut();
     probe.set_engine_version(format!("origin-engine {}", env!("CARGO_PKG_VERSION")));
+    if let Some(ui) = eng.state.borrow().ui.as_ref() {
+        probe.set_ui(ui.probe());
+    }
     for (name, usage, doc) in commands {
         register_one(&mut probe, id, &name, &usage, &doc)?;
     }
@@ -216,13 +219,22 @@ impl Reloader for RuntimeReloader {
             .checked_sub(1)
             .ok_or("no game was declared; the bundle must export og.game(...)")?;
         let seed = current.resource::<og_core::Rng>().map(|r| r.seed()).ok();
-        let mut a = assemble(game as u32, seed, self.engine)?;
+        let eng = engine(self.engine)?;
+        let (profile, ui) = {
+            let st = eng.state.borrow();
+            (st.profile, st.ui.clone())
+        };
+        let link = og_audio::link(self.engine);
+        let previous = match (&ui, link) {
+            (Some(u), Some(l)) => Some((u, l)),
+            _ => None,
+        };
+        let mut a = assemble(game as u32, seed, self.engine, profile, previous)?;
         a.probe = None;
         let world = std::mem::replace(
             &mut a.world,
             World::new(&og_ecs::WorldDesc::default()).map_err(|e| e.reason().to_string())?,
         );
-        let eng = engine(self.engine)?;
         eng.state.borrow_mut().reloaded = Some(Box::new(a));
         Ok(Rebuilt {
             world,
@@ -255,7 +267,7 @@ pub(crate) fn after_reload(eng: &Engine, swapped: bool) {
             .map(|(k, v)| (k.clone(), v.usage.clone(), v.doc.clone()))
             .collect()
     };
-    {
+    let meshes = {
         let mut st = eng.state.borrow_mut();
         st.layouts = a.layouts;
         st.names_by_id = a.names_by_id;
@@ -264,11 +276,21 @@ pub(crate) fn after_reload(eng: &Engine, swapped: bool) {
         st.commands = a.commands;
         st.facts = a.game.facts;
         st.warnings.extend(a.warnings);
+        st.physics = Some(a.mounted.physics.clone());
+        st.ui = Some(a.mounted.ui.clone());
+        st.physics_meshes.clone()
+    };
+    // Meshes are assets: the new physics gets every one the old one had.
+    for (handle, mesh) in meshes {
+        let _ = a.mounted.physics.set_mesh(handle, mesh);
     }
+    og_audio::publish_link(eng.id, a.mounted.audio.clone());
+    eng.render.borrow_mut().ui = Some(a.mounted.ui.clone());
     if let Ok(mut probe) = eng.probe.try_borrow_mut() {
         for (name, usage, doc) in new_commands {
             let _ = register_one(&mut probe, eng.id, &name, &usage, &doc);
         }
+        probe.set_ui(a.mounted.ui.probe());
     }
     let (camera, settings, draw) = extract_layouts(eng);
     let mut rs = eng.render.borrow_mut();
@@ -329,7 +351,7 @@ fn ide_tier(tier: &str) -> String {
 
 /// The engine modules beyond the core this runtime was built with.
 pub(crate) fn modules() -> Vec<&'static str> {
-    vec!["cook", "render"]
+    vec!["audio", "cook", "physics", "render", "ui"]
 }
 
 /// Outputs as the `og_engine_take_outputs` JSON.

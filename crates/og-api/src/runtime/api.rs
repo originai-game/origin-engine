@@ -66,6 +66,29 @@ fn component(eng: &Engine, name: &str) -> Result<(Layout, og_ecs::SchemaId), Str
     Ok((layout, id))
 }
 
+/// A record's layout and id while a system runs (the world is borrowed by
+/// the step, so the id comes from the runtime's own table).
+fn running_record(
+    eng: &Engine,
+    name: &str,
+    kind: RecordKind,
+) -> Result<(Layout, og_ecs::SchemaId), String> {
+    let st = eng.state.borrow();
+    let layout = st
+        .layouts
+        .get(name)
+        .filter(|l| l.kind == kind)
+        .cloned()
+        .ok_or_else(|| format!("'{name}' is not a registered {}", kind.as_str()))?;
+    let id = st
+        .names_by_id
+        .iter()
+        .position(|n| n == name)
+        .map(|i| og_ecs::SchemaId::from_index(i as u32))
+        .ok_or_else(|| format!("'{name}' is not registered with this world"))?;
+    Ok((layout, id))
+}
+
 // ── reflect ─────────────────────────────────────────────────────────────────
 
 fn define_record(name: String, fields: &str, kind: RecordKind) -> String {
@@ -177,9 +200,45 @@ fn spawn(eng: &Engine, desc: &Value) -> Result<Entity, String> {
     Ok(e)
 }
 
+/// `world.spawn` inside a system: queued, applied when the system returns
+/// (its id is usable at once); every component it gets must be among the
+/// system's writes.
+fn spawn_in_system(eng: &Engine, f: &super::engine::Frame, desc: &Value) -> Result<Entity, String> {
+    let name = desc["name"].as_str().unwrap_or_default().to_string();
+    if !name.is_empty() && eng.state.borrow().names.contains_key(&name) {
+        return Err(format!("an entity named '{name}' already exists"));
+    }
+    let mut components = Vec::new();
+    if !desc["bare"].as_bool().unwrap_or(false) {
+        let (layout, id) = running_record(eng, "og.Transform", RecordKind::Component)?;
+        let mut value = serde_json::Map::new();
+        for key in ["position", "quaternion", "scale"] {
+            if let Some(v) = desc.get(key).filter(|v| !v.is_null()) {
+                value.insert(key.to_string(), v.clone());
+            }
+        }
+        components.push((id, layout.encode(None, Some(&Value::Object(value)))?));
+    }
+    if let Some(p) = desc.get("parent").and_then(Value::as_f64) {
+        let (layout, id) = running_record(eng, "og.Parent", RecordKind::Component)?;
+        components.push((id, layout.encode(None, Some(&json!({ "entity": p })))?));
+    }
+    queued_structural();
+    // SAFETY: the frame is published while its system runs.
+    let e = unsafe { f.ctx() }.spawn_bytes(components).map_err(err)?;
+    if !name.is_empty() {
+        set_name(eng, e, &name);
+    }
+    Ok(e)
+}
+
 pub fn og_world_spawn(world: u32, desc: Option<String>) -> String {
-    if running(world).is_some() {
-        return refuse("spawning inside a system needs og-ecs SystemContext::spawn_bytes (requested from Core); spawn in a command meanwhile");
+    if let Some(f) = running(world) {
+        return result((|| {
+            let eng = engine(world)?;
+            let desc = parse(desc.as_deref())?;
+            spawn_in_system(&eng, f, &desc).map(entity_number)
+        })());
     }
     result((|| {
         let eng = engine(world)?;
@@ -286,8 +345,16 @@ fn in_system(what: &str) -> String {
 }
 
 pub fn og_world_insert(world: u32, entity_id: f64, comp: String, value: Option<String>) -> String {
-    if running(world).is_some() {
-        return refuse(in_system("world.insert"));
+    if let Some(f) = running(world) {
+        return result_void((|| {
+            let eng = engine(world)?;
+            let e = entity(entity_id)?;
+            let (layout, id) = running_record(&eng, &comp, RecordKind::Component)?;
+            let bytes = layout.encode(None, Some(&parse(value.as_deref())?))?;
+            queued_structural();
+            // SAFETY: the frame is published while its system runs.
+            unsafe { f.ctx() }.insert_bytes(e, id, &bytes).map_err(err)
+        })());
     }
     result_void((|| {
         let eng = engine(world)?;
@@ -305,8 +372,15 @@ pub fn og_world_insert(world: u32, entity_id: f64, comp: String, value: Option<S
 }
 
 pub fn og_world_remove(world: u32, entity_id: f64, comp: String) -> String {
-    if running(world).is_some() {
-        return refuse(in_system("world.remove"));
+    if let Some(f) = running(world) {
+        return result_void((|| {
+            let eng = engine(world)?;
+            let e = entity(entity_id)?;
+            let (_, id) = running_record(&eng, &comp, RecordKind::Component)?;
+            queued_structural();
+            // SAFETY: the frame is published while its system runs.
+            unsafe { f.ctx() }.remove_id(e, id).map_err(err)
+        })());
     }
     result_void((|| {
         let eng = engine(world)?;
@@ -318,8 +392,15 @@ pub fn og_world_remove(world: u32, entity_id: f64, comp: String) -> String {
 }
 
 pub fn og_world_get(world: u32, entity_id: f64, comp: String) -> String {
-    if running(world).is_some() {
-        return refuse(in_system("world.get"));
+    if let Some(f) = running(world) {
+        return result((|| {
+            let eng = engine(world)?;
+            let e = entity(entity_id)?;
+            let (layout, id) = running_record(&eng, &comp, RecordKind::Component)?;
+            // SAFETY: the frame is published while its system runs.
+            let bytes = unsafe { f.ctx() }.get_bytes(e, id).map_err(err)?;
+            Ok(layout.decode(&bytes))
+        })());
     }
     result((|| {
         let eng = engine(world)?;
@@ -331,8 +412,18 @@ pub fn og_world_get(world: u32, entity_id: f64, comp: String) -> String {
 }
 
 pub fn og_world_set(world: u32, entity_id: f64, comp: String, value: String) -> String {
-    if running(world).is_some() {
-        return refuse(in_system("world.set"));
+    if let Some(f) = running(world) {
+        return result_void((|| {
+            let eng = engine(world)?;
+            let e = entity(entity_id)?;
+            let (layout, id) = running_record(&eng, &comp, RecordKind::Component)?;
+            let value = parse(Some(&value))?;
+            // SAFETY: the frame is published while its system runs.
+            let ctx = unsafe { f.ctx() };
+            let current = ctx.get_bytes(e, id).map_err(err)?;
+            let bytes = layout.encode(Some(&current), Some(&value))?;
+            ctx.set_bytes(e, id, &bytes).map_err(err)
+        })());
     }
     result_void((|| {
         let eng = engine(world)?;
@@ -384,7 +475,10 @@ pub(crate) fn resource_value(eng: &Engine, name: &str) -> Result<Value, String> 
                 .map(|i| input_json(&i))
                 .map_err(err);
         }
-        return Err(in_system(&format!("reading resource '{name}'")));
+        drop(st);
+        let (layout, id) = running_record(eng, name, RecordKind::Resource)?;
+        let bytes = ctx.resource_bytes(id).map_err(err)?;
+        return Ok(layout.decode(&bytes));
     }
     let w = eng.world()?;
     if name == Time::NAME {
@@ -489,15 +583,37 @@ fn event_layout(eng: &Engine, name: &str) -> Result<(Layout, og_ecs::SchemaId), 
     }
 }
 
+/// `world.events`: inside a system, the events delivered this tick (sent
+/// during the previous one), which the system must declare among its reads;
+/// between ticks, the events sent since the last tick, which the next tick
+/// delivers. The IDL answers a list, so a refusal is an empty list.
 pub fn og_world_events(world: u32, event: String) -> String {
-    // The IDL answers a list; a refusal is an empty list.
-    let _ = (world, event);
-    "[]".into()
+    let list = (|| -> Result<Vec<Value>, String> {
+        let eng = engine(world)?;
+        let bytes = if let Some(f) = running(world) {
+            let (layout, id) = running_record(&eng, &event, RecordKind::Event)?;
+            // SAFETY: the frame is published while its system runs.
+            let all = unsafe { f.ctx() }.events_bytes(id).map_err(err)?;
+            (layout, all)
+        } else {
+            let (layout, id) = event_layout(&eng, &event)?;
+            let all = eng.world()?.pending_events_bytes(id).map_err(err)?;
+            (layout, all)
+        };
+        Ok(bytes.1.iter().map(|b| bytes.0.decode(b)).collect())
+    })();
+    Value::Array(list.unwrap_or_default()).to_string()
 }
 
 pub fn og_world_emit(world: u32, event: String, payload: String) -> String {
-    if running(world).is_some() {
-        return refuse(in_system("world.emit"));
+    if let Some(f) = running(world) {
+        return result_void((|| {
+            let eng = engine(world)?;
+            let (layout, id) = running_record(&eng, &event, RecordKind::Event)?;
+            let bytes = layout.encode(None, Some(&parse(Some(&payload))?))?;
+            // SAFETY: the frame is published while its system runs.
+            unsafe { f.ctx() }.send_bytes(id, &bytes).map_err(err)
+        })());
     }
     result_void((|| {
         let eng = engine(world)?;
@@ -935,10 +1051,10 @@ pub fn og_input_button_released(world: u32, b: String) -> bool {
 
 // ── camera ──────────────────────────────────────────────────────────────────
 
+/// The play surface in CSS pixels (the unit of og.Input and the probe).
 fn surface_size(eng: &Engine) -> (f32, f32) {
-    let rs = eng.render.borrow();
-    let (w, h) = rs.backend.as_ref().map_or((1280, 720), |b| b.size());
-    (w.max(1) as f32, h.max(1) as f32)
+    let v = super::modules::viewport_of(eng.id);
+    (v.width.max(1.0), v.height.max(1.0))
 }
 
 pub fn og_camera_look_at(world: u32, target: String) {
@@ -1141,15 +1257,193 @@ pub fn og_render_text(world: u32, desc: Option<String>) -> String {
         let num = |v: &Value, k: &str, def: f64| v[k].as_f64().unwrap_or(def) as f32;
         let c = &d["color"];
         let mut rs = eng.render.borrow_mut();
-        if rs.texts_tick != tick {
-            rs.texts.clear();
-            rs.texts_tick = tick;
+        new_frame(&mut rs, tick);
+        let text = d["text"].as_str().unwrap_or_default().to_string();
+        let size = num(&d, "size", 1.0);
+        let rotation = num(&d, "rotation", 0.0);
+        let position = vec3(&d["position"]);
+        let color = [
+            num(c, "r", 1.0),
+            num(c, "g", 1.0),
+            num(c, "b", 1.0),
+            num(&d, "opacity", 1.0),
+        ];
+        let layer = d["layer"].as_i64().unwrap_or(0) as i32;
+        let shift = match d["align"].as_str() {
+            Some("center") => 0.5,
+            Some("end") => 1.0,
+            _ => 0.0,
+        };
+        if shift == 0.0 {
+            rs.texts.push(super::extract::QueuedText {
+                font: render,
+                text,
+                position,
+                size,
+                rotation,
+                color,
+                layer,
+            });
+            return Ok(());
         }
-        rs.texts.push(super::extract::QueuedText {
-            font: render,
-            text: d["text"].as_str().unwrap_or_default().to_string(),
+        // Aligned: each line is placed on its own, moved left along the
+        // text's baseline by its advance times `shift`.
+        let (metrics, line_height) = font_metrics(&rs, render)?;
+        let (sin, cos) = og_core::math::sin_cos(rotation);
+        let along = glam::Vec3::new(cos, sin, 0.0);
+        let down = glam::Vec3::new(sin, -cos, 0.0);
+        for (i, line) in text.split('\n').enumerate() {
+            let w = metrics.measure(line, size);
+            rs.texts.push(super::extract::QueuedText {
+                font: render,
+                text: line.to_string(),
+                position: position - along * (w * shift) + down * (i as f32 * line_height * size),
+                size,
+                rotation,
+                color,
+                layer,
+            });
+        }
+        Ok(())
+    })())
+}
+
+/// Adds a generated geometry; `physics` also registers it as a physics mesh
+/// under its handle.
+fn add_geometry(world: u32, mesh: og_render::MeshData, physics: bool) -> Result<Value, String> {
+    let eng = engine(world)?;
+    let handle = {
+        let mut rs = eng.render.borrow_mut();
+        let h = rs.scene.add_mesh(mesh.clone());
+        rs.geometries.push(h);
+        assets::handle(rs.geometries.len() - 1)
+    };
+    if physics {
+        super::modules::set_mesh(&eng, handle, super::modules::mesh_of(&mesh))?;
+    }
+    Ok(json!(handle as f64))
+}
+
+fn size_of(d: &Value, key: &str, default: f64) -> Result<f32, String> {
+    let v = d[key].as_f64().unwrap_or(default);
+    if !(v.is_finite() && v >= 0.0) {
+        return Err(format!("{key} must be finite and at least 0, got {v}"));
+    }
+    Ok(v as f32)
+}
+
+pub fn og_render_box_geometry(world: u32, desc: Option<String>) -> String {
+    result((|| {
+        let d = parse(desc.as_deref())?;
+        let size = glam::Vec3::new(
+            size_of(&d, "width", 1.0)?,
+            size_of(&d, "height", 1.0)?,
+            size_of(&d, "depth", 1.0)?,
+        );
+        add_geometry(world, og_render::shapes::cuboid(size), true)
+    })())
+}
+
+pub fn og_render_plane_geometry(world: u32, desc: Option<String>) -> String {
+    result((|| {
+        let d = parse(desc.as_deref())?;
+        let (w, h) = (
+            size_of(&d, "width", 1.0)? / 2.0,
+            size_of(&d, "height", 1.0)? / 2.0,
+        );
+        let v = |x: f32, y: f32, u: f32, t: f32| og_render::Vertex {
+            position: [x, y, 0.0],
+            normal: [0.0, 0.0, 1.0],
+            uv: [u, t],
+            color: [1.0; 4],
+        };
+        let mesh = og_render::MeshData {
+            vertices: vec![
+                v(-w, -h, 0.0, 1.0),
+                v(w, -h, 1.0, 1.0),
+                v(w, h, 1.0, 0.0),
+                v(-w, h, 0.0, 0.0),
+            ],
+            indices: vec![0, 1, 2, 0, 2, 3],
+        };
+        add_geometry(world, mesh, true)
+    })())
+}
+
+pub fn og_render_sphere_geometry(world: u32, desc: Option<String>) -> String {
+    result((|| {
+        let d = parse(desc.as_deref())?;
+        let radius = size_of(&d, "radius", 1.0)?;
+        let seg = d["widthSegments"].as_u64().unwrap_or(32).clamp(3, 512) as u32;
+        let rings = d["heightSegments"].as_u64().unwrap_or(16).clamp(2, 512) as u32;
+        let mut mesh = og_render::shapes::sphere(seg, rings);
+        for v in &mut mesh.vertices {
+            for c in &mut v.position {
+                *c *= radius * 2.0;
+            }
+        }
+        add_geometry(world, mesh, false)
+    })())
+}
+
+/// Starts the queued draws of a new tick.
+fn new_frame(rs: &mut super::extract::RenderState, tick: u64) {
+    if rs.texts_tick != tick {
+        rs.texts.clear();
+        rs.sprites.clear();
+        rs.texts_tick = tick;
+    }
+}
+
+/// A loaded font's layout metrics (its first page carries every advance)
+/// and its line height in em.
+fn font_metrics(
+    rs: &super::extract::RenderState,
+    render: usize,
+) -> Result<(og_ui::FontMetrics, f32), String> {
+    let first = rs
+        .fonts
+        .get(render)
+        .and_then(|p| p.pages.first().copied())
+        .ok_or("the font has no pages")?;
+    let msdf = rs
+        .scene
+        .font(first)
+        .ok_or("the font's first page is missing")?;
+    Ok((og_ui::FontMetrics::from_msdf(msdf), msdf.line_height))
+}
+
+pub fn og_render_sprite(world: u32, desc: Option<String>) -> String {
+    result_void((|| {
+        let eng = engine(world)?;
+        let d = parse(desc.as_deref())?;
+        let num = |v: &Value, k: &str, def: f64| v[k].as_f64().unwrap_or(def) as f32;
+        let tick = og_world_get_tick(world) as u64;
+        let mut rs = eng.render.borrow_mut();
+        let texture = match d["texture"].as_f64() {
+            None => None,
+            Some(t) => Some(
+                index_of(t)
+                    .and_then(|i| rs.textures.get(i).copied())
+                    .ok_or_else(|| format!("texture {t} is not alive"))?,
+            ),
+        };
+        let uv = d["uv"]
+            .as_array()
+            .filter(|a| a.len() == 4)
+            .map(|a| {
+                let n = |i: usize| a[i].as_f64().unwrap_or(0.0) as f32;
+                [n(0), n(1), n(2), n(3)]
+            })
+            .unwrap_or([0.0, 0.0, 1.0, 1.0]);
+        let c = &d["color"];
+        let anchor = &d["anchor"];
+        new_frame(&mut rs, tick);
+        rs.sprites.push(og_render::Sprite {
+            texture,
             position: vec3(&d["position"]),
-            size: num(&d, "size", 1.0),
+            size: glam::Vec2::new(num(&d, "width", 1.0), num(&d, "height", 1.0)),
+            anchor: glam::Vec2::new(num(anchor, "x", 0.5), num(anchor, "y", 0.5)),
             rotation: num(&d, "rotation", 0.0),
             color: [
                 num(c, "r", 1.0),
@@ -1157,10 +1451,45 @@ pub fn og_render_text(world: u32, desc: Option<String>) -> String {
                 num(c, "b", 1.0),
                 num(&d, "opacity", 1.0),
             ],
+            uv_rect: uv,
             layer: d["layer"].as_i64().unwrap_or(0) as i32,
         });
         Ok(())
     })())
+}
+
+pub fn og_render_measure_text(world: u32, desc: Option<String>) -> String {
+    result((|| {
+        let eng = engine(world)?;
+        let d = parse(desc.as_deref())?;
+        let font = d["font"]
+            .as_f64()
+            .ok_or("TextMeasureDesc.font is null: load one with og.load.font")?;
+        let fi = index_of(font).ok_or_else(|| format!("{font} is not a font handle"))?;
+        let render = eng
+            .assets
+            .borrow()
+            .fonts
+            .get(fi)
+            .map(|f| f.render)
+            .ok_or_else(|| format!("font {font} is not alive"))?;
+        let size = d["size"].as_f64().unwrap_or(1.0) as f32;
+        let text = d["text"].as_str().unwrap_or_default();
+        let rs = eng.render.borrow();
+        let (metrics, line_height) = font_metrics(&rs, render)?;
+        let lines: Vec<&str> = text.split('\n').collect();
+        let width = lines
+            .iter()
+            .map(|l| metrics.measure(l, size))
+            .fold(0.0f32, f32::max);
+        Ok(
+            json!({ "width": width, "height": lines.len() as f32 * line_height * size, "lines": lines.len() }),
+        )
+    })())
+}
+
+pub fn og_load_texture(world: u32, path: String) -> String {
+    result(engine(world).and_then(|eng| assets::load_texture(&eng, &path).map(asset_value)))
 }
 
 // ── load ────────────────────────────────────────────────────────────────────
@@ -1234,14 +1563,19 @@ pub fn og_load_font_info(world: u32, font: f64) -> String {
 }
 
 pub fn og_load_sound(world: u32, path: String) -> String {
-    result(engine(world).and_then(|eng| assets::load_sound(&eng, &path).map(asset_value)))
+    result(engine(world).and_then(|eng| {
+        let i = assets::load_sound(&eng, &path)?;
+        let handle = eng.assets.borrow().sound_handles[i];
+        Ok(json!(handle as f64))
+    }))
 }
 
 pub fn og_load_sound_info(world: u32, sound: f64) -> String {
     result((|| {
         let eng = engine(world)?;
+        let i = assets::sound_index(&eng, sound);
         let a = eng.assets.borrow();
-        let s = index_of(sound)
+        let s = i
             .and_then(|i| a.sounds.get(i))
             .ok_or_else(|| format!("sound {sound} is not alive"))?;
         let m = &s.meta;

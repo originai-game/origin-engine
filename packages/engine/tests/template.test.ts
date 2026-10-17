@@ -34,7 +34,7 @@ test("a scaffolded game cooks, passes its playtest and leaves the frame and dump
 
   const tested = run(["cargo", "run", "-q", "-p", "og-cli", "--", "test", game]);
   if (tested.code !== 0) throw new Error(tested.out);
-  expect(tested.out).toMatch(/PASS smoke \(5 checks/);
+  expect(tested.out).toMatch(/PASS smoke \(8 checks/);
   expect(tested.out).toContain("1 suite(s) passed");
 
   const out = join(game, "og-out", "test", "smoke");
@@ -46,4 +46,6 @@ test("a scaffolded game cooks, passes its playtest and leaves the frame and dump
   };
   expect(world.entities).toBeGreaterThan(3);
   expect(world.systems.find((s) => s.name === "Rotate")?.matched).toBe(1);
+  const ui = JSON.parse(readFileSync(join(out, "ui.json"), "utf8")) as { elements: Array<{ id: string; text: string }> };
+  expect(ui.elements.find((e) => e.id === "Start")?.text).toBe("Started");
 }, 600_000);

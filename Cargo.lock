@@ -1592,16 +1592,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "og-anim"
+version = "0.0.1"
+dependencies = [
+ "glam 0.34.1",
+ "og-core",
+ "og-ecs",
+]
+
+[[package]]
 name = "og-api"
 version = "0.0.1"
 dependencies = [
  "glam 0.34.1",
  "miniz_oxide 0.8.9",
+ "og-audio",
  "og-cook",
  "og-core",
  "og-ecs",
+ "og-physics",
  "og-probe",
  "og-render",
+ "og-ui",
  "serde_json",
 ]
 
@@ -1713,6 +1725,7 @@ dependencies = [
  "og-cook",
  "og-probe",
  "og-render",
+ "serde_json",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",

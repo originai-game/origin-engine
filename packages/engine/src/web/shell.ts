@@ -24,6 +24,8 @@ export interface ShellOptions {
   readonly root?: string;
   /** The Basis transcoder's script and module URLs (as the Worker resolves them). */
   readonly basis?: { readonly js: string; readonly wasm: string };
+  /** The project's physics profile (project.ogt `profile`); omitted is 3d. */
+  readonly profile?: "2d" | "3d";
   /** Boot progress, 0 to 1, with the stage (`wasm`, `bundle`, `fetch`, `transcode`, `ready`). */
   readonly onProgress?: (value: number, stage: string) => void;
 }
@@ -119,6 +121,8 @@ export class Shell {
         autoplay: options.autoplay ?? true,
         root: options.root,
         basis: options.basis,
+        profile: options.profile,
+        viewport: { width: canvas.clientWidth || canvas.width / dpr, height: canvas.clientHeight || canvas.height / dpr, dpr, coarsePointer: globalThis.matchMedia?.("(pointer: coarse)").matches ?? false },
       },
       [offscreen],
     );

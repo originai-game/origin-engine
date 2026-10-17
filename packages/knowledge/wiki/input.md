@@ -17,7 +17,7 @@ module input {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 634</sub>
+<sub>`api.ogt` line 640</sub>
 
 ## Contents
 
@@ -199,7 +199,7 @@ resource Input {
 }
 ```
 
-<sub>`api.ogt` line 714</sub>
+<sub>`api.ogt` line 720</sub>
 
 <a id="member-Input-down"></a>
 
@@ -227,7 +227,7 @@ fn down {
 }
 ```
 
-<sub>`api.ogt` line 788</sub>
+<sub>`api.ogt` line 794</sub>
 
 <a id="member-Input-pressed"></a>
 
@@ -255,7 +255,7 @@ fn pressed {
 }
 ```
 
-<sub>`api.ogt` line 793</sub>
+<sub>`api.ogt` line 799</sub>
 
 <a id="member-Input-released"></a>
 
@@ -283,7 +283,7 @@ fn released {
 }
 ```
 
-<sub>`api.ogt` line 798</sub>
+<sub>`api.ogt` line 804</sub>
 
 <a id="member-Input-axis"></a>
 
@@ -313,7 +313,7 @@ fn axis {
 }
 ```
 
-<sub>`api.ogt` line 803</sub>
+<sub>`api.ogt` line 809</sub>
 
 <a id="member-Input-axis2"></a>
 
@@ -347,7 +347,7 @@ fn axis2 {
 }
 ```
 
-<sub>`api.ogt` line 809</sub>
+<sub>`api.ogt` line 815</sub>
 
 <a id="member-Input-buttonDown"></a>
 
@@ -375,7 +375,7 @@ fn buttonDown {
 }
 ```
 
-<sub>`api.ogt` line 817</sub>
+<sub>`api.ogt` line 823</sub>
 
 <a id="member-Input-buttonPressed"></a>
 
@@ -403,7 +403,7 @@ fn buttonPressed {
 }
 ```
 
-<sub>`api.ogt` line 822</sub>
+<sub>`api.ogt` line 828</sub>
 
 <a id="member-Input-buttonReleased"></a>
 
@@ -431,7 +431,7 @@ fn buttonReleased {
 }
 ```
 
-<sub>`api.ogt` line 827</sub>
+<sub>`api.ogt` line 833</sub>
 
 <a id="record-KeyDown"></a>
 
@@ -454,7 +454,7 @@ event KeyDown {
 }
 ```
 
-<sub>`api.ogt` line 834</sub>
+<sub>`api.ogt` line 840</sub>
 
 <a id="record-KeyUp"></a>
 
@@ -475,7 +475,7 @@ event KeyUp {
 }
 ```
 
-<sub>`api.ogt` line 840</sub>
+<sub>`api.ogt` line 846</sub>
 
 <a id="record-PointerDown"></a>
 
@@ -500,7 +500,7 @@ event PointerDown {
 }
 ```
 
-<sub>`api.ogt` line 845</sub>
+<sub>`api.ogt` line 851</sub>
 
 <a id="record-PointerUp"></a>
 
@@ -525,7 +525,7 @@ event PointerUp {
 }
 ```
 
-<sub>`api.ogt` line 852</sub>
+<sub>`api.ogt` line 858</sub>
 
 <a id="record-PointerMove"></a>
 
@@ -548,7 +548,7 @@ event PointerMove {
 }
 ```
 
-<sub>`api.ogt` line 859</sub>
+<sub>`api.ogt` line 865</sub>
 
 <a id="record-Wheel"></a>
 
@@ -571,7 +571,7 @@ event Wheel {
 }
 ```
 
-<sub>`api.ogt` line 865</sub>
+<sub>`api.ogt` line 871</sub>
 
 ## Types
 
@@ -598,7 +598,7 @@ enum KeyAction {
 }
 ```
 
-<sub>`api.ogt` line 638</sub>
+<sub>`api.ogt` line 644</sub>
 
 <a id="type-PointerAction"></a>
 
@@ -625,7 +625,7 @@ enum PointerAction {
 }
 ```
 
-<sub>`api.ogt` line 645</sub>
+<sub>`api.ogt` line 651</sub>
 
 <a id="type-PointerButton"></a>
 
@@ -652,7 +652,7 @@ enum PointerButton {
 }
 ```
 
-<sub>`api.ogt` line 653</sub>
+<sub>`api.ogt` line 659</sub>
 
 <a id="type-Modifiers"></a>
 
@@ -677,7 +677,7 @@ struct Modifiers {
 }
 ```
 
-<sub>`api.ogt` line 661</sub>
+<sub>`api.ogt` line 667</sub>
 
 <a id="type-KeyInput"></a>
 
@@ -702,7 +702,7 @@ struct KeyInput {
 }
 ```
 
-<sub>`api.ogt` line 669</sub>
+<sub>`api.ogt` line 675</sub>
 
 <a id="type-PointerInput"></a>
 
@@ -731,7 +731,7 @@ struct PointerInput {
 }
 ```
 
-<sub>`api.ogt` line 678</sub>
+<sub>`api.ogt` line 684</sub>
 
 <a id="type-WheelInput"></a>
 
@@ -764,7 +764,7 @@ struct WheelInput {
 }
 ```
 
-<sub>`api.ogt` line 690</sub>
+<sub>`api.ogt` line 696</sub>
 
 <a id="type-InjectedInput"></a>
 
@@ -790,4 +790,4 @@ union InjectedInput {
 }
 ```
 
-<sub>`api.ogt` line 706</sub>
+<sub>`api.ogt` line 712</sub>

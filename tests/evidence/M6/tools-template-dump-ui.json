@@ -1,0 +1,51 @@
+{
+  "elements": [
+    {
+      "height": 192.0,
+      "id": "Hud",
+      "parent": "",
+      "text": "",
+      "width": 264.0,
+      "x": 0.0,
+      "y": 0.0
+    },
+    {
+      "height": 144.0,
+      "id": "Menu",
+      "parent": "Hud",
+      "text": "",
+      "width": 216.0,
+      "x": 24.0,
+      "y": 24.0
+    },
+    {
+      "height": 32.0,
+      "id": "Title",
+      "parent": "Menu",
+      "text": "Origin Engine",
+      "width": 176.0,
+      "x": 44.0,
+      "y": 40.0
+    },
+    {
+      "height": 20.0,
+      "id": "Status",
+      "parent": "Menu",
+      "text": "开始游戏  1.5 rad/s",
+      "width": 119.0,
+      "x": 44.0,
+      "y": 84.0
+    },
+    {
+      "height": 36.0,
+      "id": "Start",
+      "parent": "Menu",
+      "text": "Started",
+      "width": 81.0,
+      "x": 44.0,
+      "y": 116.0
+    }
+  ],
+  "kind": "ui",
+  "tick": 138
+}

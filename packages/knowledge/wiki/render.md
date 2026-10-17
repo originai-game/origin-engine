@@ -14,7 +14,7 @@ module render {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 941</sub>
+<sub>`api.ogt` line 1064</sub>
 
 ## Contents
 
@@ -36,6 +36,17 @@ module render {
 | [`og.SpotLight`](#record-SpotLight) | component | A cone of light along the entity's local -Z, as three.js SpotLight. |
 | [`og.RenderSettings`](#record-RenderSettings) | resource | The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure. |
 | [`TextDesc`](#type-TextDesc) | desc struct | A line or block of MSDF text in the world's xy plane facing +z, drawn this frame only (immediate mode: submit it every tick it should show). |
+| [`TextMeasureDesc`](#type-TextMeasureDesc) | desc struct | Text to measure with og.render.measureText, laid out as og.render.text lays it out. |
+| [`TextMetrics`](#type-TextMetrics) | struct | The extent of a laid-out text, in world units. |
+| [`SpriteDesc`](#type-SpriteDesc) | desc struct | A textured or solid quad in the world's xy plane facing +z, drawn this frame only (immediate mode, as og.render.text): submit it every tick it should show. Sprites and text are sorted by layer and drawn over the 3D scene. |
+| [`og.render.sprite`](#fn-sprite) | function | Draw a sprite this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the sprite should show. |
+| [`og.render.measureText`](#fn-measureText) | function | The size text takes when og.render.text draws it, for centring, wrapping and layout. |
+| [`BoxGeometryDesc`](#type-BoxGeometryDesc) | desc struct | A box centred at the origin, as three.js BoxGeometry(width, height, depth). |
+| [`PlaneGeometryDesc`](#type-PlaneGeometryDesc) | desc struct | A rectangle in the xy plane facing +z, centred at the origin, as three.js PlaneGeometry(width, height); turn it -pi/2 about x for a floor. |
+| [`SphereGeometryDesc`](#type-SphereGeometryDesc) | desc struct | A UV sphere centred at the origin, as three.js SphereGeometry(radius, widthSegments, heightSegments). |
+| [`og.render.boxGeometry`](#fn-boxGeometry) | function | Make a box geometry for og.Mesh. Physics can use it as a convex or triangle-mesh Collider.mesh too. |
+| [`og.render.planeGeometry`](#fn-planeGeometry) | function | Make a plane geometry for og.Mesh. Physics can use it as a triangle-mesh Collider.mesh too. |
+| [`og.render.sphereGeometry`](#fn-sphereGeometry) | function | Make a sphere geometry for og.Mesh (give its body a sphere Collider, not this mesh). |
 | [`MAX_LIGHTS`](#const-MAX_LIGHTS) | constant | The most point and spot lights one frame draws. |
 | [`RenderCapabilities`](#type-RenderCapabilities) | struct | What the renderer can do on this device. Backend limits are reported here, never by missing members. |
 | [`og.render.standardMaterial`](#fn-standardMaterial) | function | Create a standard material. |
@@ -44,6 +55,156 @@ module render {
 | [`og.render.text`](#fn-text) | function | Draw text this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the text should show. Multi-page fonts are drawn page by page with one layout. |
 
 ## Functions
+
+<a id="fn-sprite"></a>
+
+### `og.render.sprite`
+
+Draw a sprite this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the sprite should show.
+
+```ts
+og.render.sprite(world: World, desc?: SpriteDesc): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer draws it. |
+| `desc` | `SpriteDesc` | yes | The texture, placement, region and colour. |
+
+**Returns** `Result<void>`: Refused for a dead texture.
+
+Binding symbol `og_render_sprite` · publish builds: kept
+
+```ogt
+fn sprite {
+  doc "Draw a sprite this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the sprite should show."
+  param world World "The world whose renderer draws it."
+  param desc SpriteDesc "The texture, placement, region and colour."
+  returns Result.Void "Refused for a dead texture."
+}
+```
+
+<sub>`api.ogt` line 1359</sub>
+
+<a id="fn-measureText"></a>
+
+### `og.render.measureText`
+
+The size text takes when og.render.text draws it, for centring, wrapping and layout.
+
+```ts
+og.render.measureText(world: World, desc?: TextMeasureDesc): Result<TextMetrics>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the font. |
+| `desc` | `TextMeasureDesc` | yes | The font, text and size. |
+
+**Returns** `Result<TextMetrics>`: Refused for a dead font.
+
+Binding symbol `og_render_measure_text` · publish builds: kept
+
+```ogt
+fn measureText {
+  doc "The size text takes when og.render.text draws it, for centring, wrapping and layout."
+  param world World "The world whose renderer owns the font."
+  param desc TextMeasureDesc "The font, text and size."
+  returns Result.TextMetrics "Refused for a dead font."
+}
+```
+
+<sub>`api.ogt` line 1366</sub>
+
+<a id="fn-boxGeometry"></a>
+
+### `og.render.boxGeometry`
+
+Make a box geometry for og.Mesh. Physics can use it as a convex or triangle-mesh Collider.mesh too.
+
+```ts
+og.render.boxGeometry(world: World, desc?: BoxGeometryDesc): Result<Geometry>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the geometry. |
+| `desc` | `BoxGeometryDesc` | yes | Its extents. |
+
+**Returns** `Result<Geometry>`.
+
+Binding symbol `og_render_box_geometry` · publish builds: kept
+
+```ogt
+fn boxGeometry {
+  doc "Make a box geometry for og.Mesh. Physics can use it as a convex or triangle-mesh Collider.mesh too."
+  param world World "The world whose renderer owns the geometry."
+  param desc BoxGeometryDesc "Its extents."
+  returns Result.Geometry
+}
+```
+
+<sub>`api.ogt` line 1426</sub>
+
+<a id="fn-planeGeometry"></a>
+
+### `og.render.planeGeometry`
+
+Make a plane geometry for og.Mesh. Physics can use it as a triangle-mesh Collider.mesh too.
+
+```ts
+og.render.planeGeometry(world: World, desc?: PlaneGeometryDesc): Result<Geometry>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the geometry. |
+| `desc` | `PlaneGeometryDesc` | yes | Its extents. |
+
+**Returns** `Result<Geometry>`.
+
+Binding symbol `og_render_plane_geometry` · publish builds: kept
+
+```ogt
+fn planeGeometry {
+  doc "Make a plane geometry for og.Mesh. Physics can use it as a triangle-mesh Collider.mesh too."
+  param world World "The world whose renderer owns the geometry."
+  param desc PlaneGeometryDesc "Its extents."
+  returns Result.Geometry
+}
+```
+
+<sub>`api.ogt` line 1433</sub>
+
+<a id="fn-sphereGeometry"></a>
+
+### `og.render.sphereGeometry`
+
+Make a sphere geometry for og.Mesh (give its body a sphere Collider, not this mesh).
+
+```ts
+og.render.sphereGeometry(world: World, desc?: SphereGeometryDesc): Result<Geometry>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the geometry. |
+| `desc` | `SphereGeometryDesc` | yes | Its radius and tessellation. |
+
+**Returns** `Result<Geometry>`.
+
+Binding symbol `og_render_sphere_geometry` · publish builds: kept
+
+```ogt
+fn sphereGeometry {
+  doc "Make a sphere geometry for og.Mesh (give its body a sphere Collider, not this mesh)."
+  param world World "The world whose renderer owns the geometry."
+  param desc SphereGeometryDesc "Its radius and tessellation."
+  returns Result.Geometry
+}
+```
+
+<sub>`api.ogt` line 1440</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -73,7 +234,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 1195</sub>
+<sub>`api.ogt` line 1460</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -105,7 +266,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 1202</sub>
+<sub>`api.ogt` line 1467</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -133,7 +294,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 1210</sub>
+<sub>`api.ogt` line 1475</sub>
 
 <a id="fn-text"></a>
 
@@ -163,7 +324,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 1216</sub>
+<sub>`api.ogt` line 1481</sub>
 
 ## Components, resources and events
 
@@ -199,7 +360,7 @@ component Mesh {
 }
 ```
 
-<sub>`api.ogt` line 1043</sub>
+<sub>`api.ogt` line 1166</sub>
 
 <a id="record-DirectionalLight"></a>
 
@@ -241,7 +402,7 @@ component DirectionalLight {
 }
 ```
 
-<sub>`api.ogt` line 1055</sub>
+<sub>`api.ogt` line 1178</sub>
 
 <a id="record-PointLight"></a>
 
@@ -282,7 +443,7 @@ component PointLight {
 }
 ```
 
-<sub>`api.ogt` line 1076</sub>
+<sub>`api.ogt` line 1199</sub>
 
 <a id="record-SpotLight"></a>
 
@@ -334,7 +495,7 @@ component SpotLight {
 }
 ```
 
-<sub>`api.ogt` line 1096</sub>
+<sub>`api.ogt` line 1219</sub>
 
 <a id="record-RenderSettings"></a>
 
@@ -386,7 +547,7 @@ resource RenderSettings {
 }
 ```
 
-<sub>`api.ogt` line 1127</sub>
+<sub>`api.ogt` line 1250</sub>
 
 ## Types
 
@@ -402,7 +563,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Geometry "Vertex and index data, as three.js BufferGeometry. Comes from a loaded glTF."
 ```
 
-<sub>`api.ogt` line 944</sub>
+<sub>`api.ogt` line 1067</sub>
 
 <a id="type-Material"></a>
 
@@ -416,7 +577,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Material "A material instance."
 ```
 
-<sub>`api.ogt` line 945</sub>
+<sub>`api.ogt` line 1068</sub>
 
 <a id="type-Texture"></a>
 
@@ -430,7 +591,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Texture "A cooked texture."
 ```
 
-<sub>`api.ogt` line 946</sub>
+<sub>`api.ogt` line 1069</sub>
 
 <a id="type-Side"></a>
 
@@ -455,7 +616,7 @@ enum Side {
 }
 ```
 
-<sub>`api.ogt` line 962</sub>
+<sub>`api.ogt` line 1085</sub>
 
 <a id="type-RenderTier"></a>
 
@@ -484,7 +645,7 @@ enum RenderTier {
 }
 ```
 
-<sub>`api.ogt` line 969</sub>
+<sub>`api.ogt` line 1092</sub>
 
 <a id="type-Antialias"></a>
 
@@ -511,7 +672,7 @@ enum Antialias {
 }
 ```
 
-<sub>`api.ogt` line 978</sub>
+<sub>`api.ogt` line 1101</sub>
 
 <a id="type-RenderOptions"></a>
 
@@ -539,7 +700,7 @@ struct RenderOptions {
 }
 ```
 
-<sub>`api.ogt` line 986</sub>
+<sub>`api.ogt` line 1109</sub>
 
 <a id="type-StandardMaterialDesc"></a>
 
@@ -621,7 +782,7 @@ struct StandardMaterialDesc {
 }
 ```
 
-<sub>`api.ogt` line 997</sub>
+<sub>`api.ogt` line 1120</sub>
 
 <a id="type-TextDesc"></a>
 
@@ -641,6 +802,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `color` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The linear colour. |
 | `opacity` | `number` | `1` | 0 … 1 | — | — | The alpha. |
 | `layer` | `number` | `0` | — | — | — | Draw order among sprites and text; higher draws on top. |
+| `align` | `TextAlign` | `"start"` | — | — | — | How each line sits on `position`: start puts its left end there, center its middle, end its right end. |
 
 ```ogt
 struct TextDesc {
@@ -667,10 +829,229 @@ struct TextDesc {
     max 1
   }
   field layer i32 "Draw order among sprites and text; higher draws on top."
+  field align TextAlign "How each line sits on `position`: start puts its left end there, center its middle, end its right end."
 }
 ```
 
-<sub>`api.ogt` line 1156</sub>
+<sub>`api.ogt` line 1279</sub>
+
+<a id="type-TextMeasureDesc"></a>
+
+### `TextMeasureDesc` (desc struct)
+
+Text to measure with og.render.measureText, laid out as og.render.text lays it out.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `font` | `Font \| null` | `null` | — | — | — | The font from og.load.font. |
+| `text` | `string` | `""` | — | — | — | The text; `\n` starts a new line. |
+| `size` | `number` | `1` | ≥ 0 | — | — | The em size in world units. |
+
+```ogt
+struct TextMeasureDesc {
+  doc "Text to measure with og.render.measureText, laid out as og.render.text lays it out."
+  desc true
+  field font Option.Font "The font from og.load.font."
+  field text String "The text; `\\n` starts a new line."
+  field size f32 "The em size in world units." {
+    default 1
+    min 0
+  }
+}
+```
+
+<sub>`api.ogt` line 1306</sub>
+
+<a id="type-TextMetrics"></a>
+
+### `TextMetrics` (struct)
+
+The extent of a laid-out text, in world units.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `width` | `number` | `0` | — | — | — | The widest line's advance. |
+| `height` | `number` | `0` | — | — | — | Lines times the font's line height. |
+| `lines` | `number` | `0` | — | — | — | How many lines. |
+
+```ogt
+struct TextMetrics {
+  doc "The extent of a laid-out text, in world units."
+  field width f32 "The widest line's advance."
+  field height f32 "Lines times the font's line height."
+  field lines u32 "How many lines."
+}
+```
+
+<sub>`api.ogt` line 1317</sub>
+
+<a id="type-SpriteDesc"></a>
+
+### `SpriteDesc` (desc struct)
+
+A textured or solid quad in the world's xy plane facing +z, drawn this frame only (immediate mode, as og.render.text): submit it every tick it should show. Sprites and text are sorted by layer and drawn over the 3D scene.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `texture` | `Texture \| null` | `null` | — | — | — | The texture from og.load.texture; null draws a solid quad of the colour. |
+| `position` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where the anchor point is. |
+| `width` | `number` | `1` | ≥ 0 | `m` | — | Its width in world units. |
+| `height` | `number` | `1` | ≥ 0 | `m` | — | Its height in world units. |
+| `anchor` | `Vector2` | `{ x: 0.5, y: 0.5 }` | — | — | — | The point of the quad at `position`, as a fraction of its size from the bottom-left corner: (0.5, 0.5) is the centre. |
+| `rotation` | `number` | `0` | — | `rad` | — | Counter-clockwise rotation about the anchor. |
+| `color` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | A linear colour multiplied with the texture. |
+| `opacity` | `number` | `1` | 0 … 1 | — | — | The alpha. |
+| `uv` | `[number, number, number, number] \| null` | `null` | — | — | — | The texture region drawn, [u0, v0, u1, v1] with v down; null is the whole texture (a sheet's frame for animation). |
+| `layer` | `number` | `0` | — | — | — | Draw order among sprites and text; higher draws on top. |
+
+```ogt
+struct SpriteDesc {
+  doc "A textured or solid quad in the world's xy plane facing +z, drawn this frame only (immediate mode, as og.render.text): submit it every tick it should show. Sprites and text are sorted by layer and drawn over the 3D scene."
+  desc true
+  field texture Option.Texture "The texture from og.load.texture; null draws a solid quad of the colour."
+  field position Vector3 "Where the anchor point is." {
+    unit m
+  }
+  field width f32 "Its width in world units." {
+    default 1
+    min 0
+    unit m
+  }
+  field height f32 "Its height in world units." {
+    default 1
+    min 0
+    unit m
+  }
+  field anchor Vector2 "The point of the quad at `position`, as a fraction of its size from the bottom-left corner: (0.5, 0.5) is the centre." {
+    default 0.5 0.5
+  }
+  field rotation f32 "Counter-clockwise rotation about the anchor." {
+    unit rad
+  }
+  field color Color "A linear colour multiplied with the texture." {
+    default 1 1 1
+  }
+  field opacity f32 "The alpha." {
+    default 1
+    min 0
+    max 1
+  }
+  field uv Option.Array.f32.4 "The texture region drawn, [u0, v0, u1, v1] with v down; null is the whole texture (a sheet's frame for animation)."
+  field layer i32 "Draw order among sprites and text; higher draws on top."
+}
+```
+
+<sub>`api.ogt` line 1324</sub>
+
+<a id="type-BoxGeometryDesc"></a>
+
+### `BoxGeometryDesc` (desc struct)
+
+A box centred at the origin, as three.js BoxGeometry(width, height, depth).
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `width` | `number` | `1` | ≥ 0 | `m` | — | Its extent along x. |
+| `height` | `number` | `1` | ≥ 0 | `m` | — | Its extent along y. |
+| `depth` | `number` | `1` | ≥ 0 | `m` | — | Its extent along z. |
+
+```ogt
+struct BoxGeometryDesc {
+  doc "A box centred at the origin, as three.js BoxGeometry(width, height, depth)."
+  desc true
+  field width f32 "Its extent along x." {
+    default 1
+    min 0
+    unit m
+  }
+  field height f32 "Its extent along y." {
+    default 1
+    min 0
+    unit m
+  }
+  field depth f32 "Its extent along z." {
+    default 1
+    min 0
+    unit m
+  }
+}
+```
+
+<sub>`api.ogt` line 1373</sub>
+
+<a id="type-PlaneGeometryDesc"></a>
+
+### `PlaneGeometryDesc` (desc struct)
+
+A rectangle in the xy plane facing +z, centred at the origin, as three.js PlaneGeometry(width, height); turn it -pi/2 about x for a floor.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `width` | `number` | `1` | ≥ 0 | `m` | — | Its extent along x. |
+| `height` | `number` | `1` | ≥ 0 | `m` | — | Its extent along y. |
+
+```ogt
+struct PlaneGeometryDesc {
+  doc "A rectangle in the xy plane facing +z, centred at the origin, as three.js PlaneGeometry(width, height); turn it -pi/2 about x for a floor."
+  desc true
+  field width f32 "Its extent along x." {
+    default 1
+    min 0
+    unit m
+  }
+  field height f32 "Its extent along y." {
+    default 1
+    min 0
+    unit m
+  }
+}
+```
+
+<sub>`api.ogt` line 1393</sub>
+
+<a id="type-SphereGeometryDesc"></a>
+
+### `SphereGeometryDesc` (desc struct)
+
+A UV sphere centred at the origin, as three.js SphereGeometry(radius, widthSegments, heightSegments).
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `radius` | `number` | `1` | ≥ 0 | `m` | — | Its radius. |
+| `widthSegments` | `number` | `32` | ≥ 3 | — | — | Segments around the equator. |
+| `heightSegments` | `number` | `16` | ≥ 2 | — | — | Rings from pole to pole. |
+
+```ogt
+struct SphereGeometryDesc {
+  doc "A UV sphere centred at the origin, as three.js SphereGeometry(radius, widthSegments, heightSegments)."
+  desc true
+  field radius f32 "Its radius." {
+    default 1
+    min 0
+    unit m
+  }
+  field widthSegments u32 "Segments around the equator." {
+    default 32
+    min 3
+  }
+  field heightSegments u32 "Rings from pole to pole." {
+    default 16
+    min 2
+  }
+}
+```
+
+<sub>`api.ogt` line 1408</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -701,7 +1082,7 @@ struct RenderCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 1184</sub>
+<sub>`api.ogt` line 1449</sub>
 
 ## Column kinds
 
@@ -721,7 +1102,7 @@ column Geometry {
 }
 ```
 
-<sub>`api.ogt` line 948</sub>
+<sub>`api.ogt` line 1071</sub>
 
 ```ogt
 column Material {
@@ -732,7 +1113,7 @@ column Material {
 }
 ```
 
-<sub>`api.ogt` line 955</sub>
+<sub>`api.ogt` line 1078</sub>
 
 ## Constants
 
@@ -744,4 +1125,4 @@ column Material {
 const MAX_LIGHTS u32 8 "The most point and spot lights one frame draws."
 ```
 
-<sub>`api.ogt` line 1182</sub>
+<sub>`api.ogt` line 1447</sub>

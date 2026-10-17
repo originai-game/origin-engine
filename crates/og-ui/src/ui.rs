@@ -598,6 +598,15 @@ impl Ui {
 
     /// A card: `surface`, `radius.card`, padded and spaced by the tokens.
     pub fn panel(&mut self, id: impl Into<Id>, desc: PanelDesc, f: impl FnOnce(&mut Ui)) {
+        self.open_panel(id, desc);
+        f(self);
+        self.close();
+    }
+
+    /// Opens a card ([`Ui::panel`] without the closure); its children follow
+    /// until [`Ui::close`]. For hosts whose build code cannot pass a closure
+    /// (the TypeScript binding).
+    pub fn open_panel(&mut self, id: impl Into<Id>, desc: PanelDesc) {
         let t = self.theme;
         let el = Element {
             direction: if desc.row {
@@ -618,12 +627,18 @@ impl Ui {
         let id = id.into();
         let i = self.push("panel", id, el);
         self.stack.push(i);
-        f(self);
-        self.close();
     }
 
     /// A vertically scrolling, clipping column built by `f`.
     pub fn scroll(&mut self, id: impl Into<Id>, desc: ScrollDesc, f: impl FnOnce(&mut Ui)) {
+        self.open_scroll(id, desc);
+        f(self);
+        self.close();
+    }
+
+    /// Opens a scroll column ([`Ui::scroll`] without the closure); its
+    /// children follow until [`Ui::close`].
+    pub fn open_scroll(&mut self, id: impl Into<Id>, desc: ScrollDesc) {
         self.open(
             id,
             Element {
@@ -636,8 +651,6 @@ impl Ui {
                 ..Element::default()
             },
         );
-        f(self);
-        self.close();
     }
 
     fn leaf(&mut self, kind: &'static str, id: Id, el: Element) -> usize {

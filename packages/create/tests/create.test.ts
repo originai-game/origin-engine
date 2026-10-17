@@ -83,3 +83,15 @@ test("build output in the template is never copied", () => {
   expect(r.exitCode).toBe(0);
   expect(walk(join(scratch, "clean")).sort()).toEqual(["project.ogt", "src/main.ts"]);
 });
+
+test("--archetype scaffolds an archetype game instead of the template", () => {
+  const archetype = join(pkg, "..", "..", "templates", "archetypes", "runner");
+  const r = cli("dash", "--archetype", "runner", "--name", "Dash");
+  expect(r.code).toBe(0);
+  const want = walk(archetype).filter((f) => !/^(cooked|dist|node_modules|og-out|\.og)\//.test(f)).sort();
+  expect(walk(join(scratch, "dash")).sort()).toEqual(want);
+  expect(readFileSync(join(scratch, "dash", "project.ogt"), "utf8")).toContain('name "Dash"');
+  const unknown = cli("nope", "--archetype", "no-such-game");
+  expect(unknown.code).not.toBe(0);
+  expect(unknown.err).toContain("runner");
+});

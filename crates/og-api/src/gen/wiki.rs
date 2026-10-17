@@ -188,6 +188,9 @@ fn anchor_type(name: &str) -> String {
 fn anchor_member(owner: &str, name: &str) -> String {
     format!("member-{owner}-{name}")
 }
+fn anchor_value(name: &str) -> String {
+    format!("value-{name}")
+}
 fn anchor_const(name: &str) -> String {
     format!("const-{name}")
 }
@@ -325,6 +328,8 @@ fn callable(
             b.symbol,
             publish_text(b.publish)
         );
+    } else if !f.host {
+        out.push_str("Implemented by the TypeScript runtime over the members of this module: no binding symbol.\n\n");
     }
     quote(out, &block(&ix.api.source, f.line), f.line, None);
 }
@@ -576,8 +581,36 @@ fn module_page(ix: &Index<'_>, m: &Module, binds: &[Binding<'_>]) -> String {
         out.push_str("## Functions\n\n");
         for f in fns {
             let bind = find(binds, &m.name, None, &f.name);
-            let path = bind.map_or_else(|| f.name.clone(), |b| b.path.clone());
+            let path = bind.map_or_else(|| value_path(m, &f.name), |b| b.path.clone());
             callable(&mut out, ix, f, &path, bind, &anchor_fn(&f.name), "###");
+        }
+    }
+
+    let values: Vec<&ValueDecl> = m
+        .items
+        .iter()
+        .filter_map(|i| match i {
+            Item::Value(v) => Some(v),
+            _ => None,
+        })
+        .collect();
+    if !values.is_empty() {
+        out.push_str("## Values\n\nProvided by the TypeScript runtime: no binding symbol.\n\n");
+        for v in values {
+            let path = value_path(m, &v.name);
+            let _ = writeln!(
+                out,
+                "<a id=\"{}\"></a>\n\n### `{path}`\n",
+                anchor_value(&v.name)
+            );
+            paragraphs(&mut out, &v.doc);
+            let _ = writeln!(
+                out,
+                "```ts\nconst {}: {}\n```\n",
+                v.name,
+                ts::type_text(ix, &v.ty, &[])
+            );
+            quote(&mut out, &block(&ix.api.source, v.line), v.line, None);
         }
     }
 
@@ -709,6 +742,7 @@ fn item_doc(item: &Item) -> &[String] {
         Item::Callback(x) => &x.doc,
         Item::Column(x) => &x.doc,
         Item::Record(x) => &x.doc,
+        Item::Value(x) => &x.doc,
     }
 }
 
@@ -744,6 +778,20 @@ fn item_label(m: &Module, item: &Item) -> (String, String, String) {
         Item::Handle(h) => (h.name.clone(), "handle".into(), anchor_type(&h.name)),
         Item::Interface(i) => (i.name.clone(), "interface".into(), anchor_type(&i.name)),
         Item::Callback(c) => (c.name.clone(), "callback".into(), anchor_type(&c.name)),
+        Item::Value(v) => (
+            value_path(m, &v.name),
+            "value".into(),
+            anchor_value(&v.name),
+        ),
+    }
+}
+
+/// Where a module-level name appears in TypeScript.
+fn value_path(m: &Module, name: &str) -> String {
+    match m.place {
+        Place::Top => name.to_string(),
+        Place::Root => format!("og.{name}"),
+        Place::Namespace => format!("og.{}.{name}", m.name),
     }
 }
 

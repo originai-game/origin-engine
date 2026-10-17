@@ -49,6 +49,7 @@ pub fn world_with(bank: &SoundBank, systems: impl FnOnce(&mut World)) -> (World,
         &mut world,
         &AudioDesc {
             bank: Some(bank.clone()),
+            ..AudioDesc::default()
         },
     )
     .expect("install");

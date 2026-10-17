@@ -27,3 +27,29 @@ test("the native and the web host agree on the world hash after 600 ticks", () =
   expect(node.hash).not.toBe(node.hashAtLoad);
   expect(hello("node", "--seed", "7").hash).not.toBe(node.hash);
 }, 120_000);
+
+function physics(host: string, ...extra: string[]) {
+  const r = Bun.spawnSync(["bun", "tests/support/physics-hash.ts", "--host", host, ...extra], { cwd: pkg });
+  const out = new TextDecoder().decode(r.stdout);
+  if (r.exitCode !== 0) throw new Error(`${host} host: ${new TextDecoder().decode(r.stderr)}${out}`);
+  return JSON.parse(out.trim().split("\n").pop()!) as {
+    tick: number; hash: string; hashAtLoad: string; body63: { y: number } | null; tally: { entered: number; started: number } | null;
+  };
+}
+
+for (const profile of ["3d", "2d"]) {
+  test(`a ${profile} physics scene gives the same world hash on both hosts after 600 ticks`, () => {
+    const node = physics("node", "--profile", profile);
+    const web = physics("web", "--profile", profile);
+    expect(node.tick).toBe(600);
+    expect(web.hash).toBe(node.hash);
+    expect(web.body63).toEqual(node.body63);
+    // The simulation ran: bodies fell and settled above the floor, and the
+    // collision and sensor events reached a system.
+    expect(node.hash).not.toBe(node.hashAtLoad);
+    expect(node.body63!.y).toBeGreaterThan(0);
+    expect(node.body63!.y).toBeLessThan(6);
+    expect(node.tally!.started).toBeGreaterThan(0);
+    expect(node.tally!.entered).toBeGreaterThan(0);
+  }, 180_000);
+}

@@ -22,6 +22,7 @@ pub enum Kind {
     Geometry,
     Material,
     Asset,
+    Sound,
     /// Bounded UTF-8 text (events only): str64 or str256.
     Str,
     /// An enum: a u32 index into the field's variants.
@@ -45,6 +46,7 @@ impl Kind {
             "Geometry" => Kind::Geometry,
             "Material" => Kind::Material,
             "Asset" => Kind::Asset,
+            "Sound" => Kind::Sound,
             "String" => Kind::Str,
             _ => return None,
         })
@@ -73,7 +75,7 @@ impl Kind {
             Kind::Vector2 => FieldType::Vec2,
             Kind::Vector3 | Kind::Color => FieldType::Vec3,
             Kind::Quaternion => FieldType::Quat,
-            Kind::Entity | Kind::Geometry | Kind::Material | Kind::Asset => FieldType::U64,
+            Kind::Entity | Kind::Geometry | Kind::Material | Kind::Asset | Kind::Sound => FieldType::U64,
             Kind::Bool => FieldType::Bool,
             Kind::Matrix4 => FieldType::Mat4,
             Kind::Enum => FieldType::Enum,
@@ -146,6 +148,15 @@ pub struct Layout {
     pub fields: Vec<FieldLayout>,
 }
 
+/// The variants of an IDL enum column (`AudioBus`), from the engine's records.
+fn enum_variants(column: &str) -> Option<Vec<String>> {
+    crate::host::RECORDS
+        .iter()
+        .flat_map(|r| r.fields.iter())
+        .find(|f| f.column == column && !f.variants.is_empty())
+        .map(|f| f.variants.iter().map(|v| v.to_string()).collect())
+}
+
 fn number(v: &Value, what: &str) -> Result<f64, String> {
     v.as_f64()
         .ok_or_else(|| format!("{what} is a number, got {v}"))
@@ -165,9 +176,13 @@ impl Layout {
                 .ok_or_else(|| format!("'{schema}': a field without a name"))?
                 .to_string();
             let kind_name = f["kind"].as_str().unwrap_or_default();
-            let k = Kind::parse(kind_name).ok_or_else(|| {
-                format!("'{schema}.{name}': `{kind_name}` is not a column kind; use a column factory such as f32() or Vector3()")
-            })?;
+            let variants = enum_variants(kind_name);
+            let k = match variants {
+                Some(_) => Kind::Enum,
+                None => Kind::parse(kind_name).ok_or_else(|| {
+                    format!("'{schema}.{name}': `{kind_name}` is not a column kind; use a column factory such as f32() or Vector3()")
+                })?,
+            };
             let ty = k
                 .field_type(kind == RecordKind::Component)
                 .map_err(|e| format!("'{schema}.{name}': {e}"))?;
@@ -192,7 +207,7 @@ impl Layout {
                 unit: opt_str("unit"),
                 label: opt_str("label"),
                 doc: opt_str("doc").unwrap_or_default(),
-                variants: Vec::new(),
+                variants: variants.unwrap_or_default(),
             });
         }
         let layout = Layout {
@@ -214,12 +229,16 @@ impl Layout {
         };
         let mut fields = Vec::new();
         for f in decl.fields {
-            let k = Kind::parse(f.column).ok_or_else(|| {
-                format!(
-                    "'{}.{}' has type {}, which og-core cannot store yet",
-                    decl.schema, f.name, f.column
-                )
-            })?;
+            let k = if f.variants.is_empty() {
+                Kind::parse(f.column).ok_or_else(|| {
+                    format!(
+                        "'{}.{}' has type {}, which og-core cannot store yet",
+                        decl.schema, f.name, f.column
+                    )
+                })?
+            } else {
+                Kind::Enum
+            };
             let ty = k
                 .field_type(kind == RecordKind::Component)
                 .map_err(|e| format!("'{}.{}': {e}", decl.schema, f.name))?;
@@ -230,13 +249,13 @@ impl Layout {
                 default: serde_json::from_str(f.default).unwrap_or(Value::Null),
                 readonly: f.readonly,
                 tunable: f.tunable,
-                min: None,
-                max: None,
-                step: None,
-                unit: None,
-                label: None,
-                doc: String::new(),
-                variants: Vec::new(),
+                min: f.min,
+                max: f.max,
+                step: f.step,
+                unit: (!f.unit.is_empty()).then(|| f.unit.to_string()),
+                label: (!f.label.is_empty()).then(|| f.label.to_string()),
+                doc: f.doc.to_string(),
+                variants: f.variants.iter().map(|v| v.to_string()).collect(),
             });
         }
         Ok(Layout {
@@ -436,7 +455,7 @@ fn encode_field(f: &FieldLayout, v: &Value, out: &mut Vec<u8>) -> Result<(), Str
             };
             out.extend_from_slice(&(index as u32).to_le_bytes())
         }
-        Kind::Entity | Kind::Geometry | Kind::Material | Kind::Asset => {
+        Kind::Entity | Kind::Geometry | Kind::Material | Kind::Asset | Kind::Sound => {
             let n = number(v, "a handle")?;
             if n.fract() != 0.0 || !(0.0..9_007_199_254_740_992.0).contains(&n) {
                 return Err(format!("{n} is not a handle"));
@@ -479,7 +498,7 @@ fn decode_field(f: &FieldLayout, b: &[u8]) -> Value {
             let i = u32::from_le_bytes(b[..4].try_into().expect("4 bytes")) as usize;
             f.variants.get(i).map_or_else(|| json!(i), |n| json!(n))
         }
-        Kind::Entity | Kind::Geometry | Kind::Material | Kind::Asset => {
+        Kind::Entity | Kind::Geometry | Kind::Material | Kind::Asset | Kind::Sound => {
             json!(u64::from_le_bytes(b[..8].try_into().expect("8 bytes")))
         }
         Kind::Vector2 | Kind::Vector3 | Kind::Quaternion | Kind::Color => {

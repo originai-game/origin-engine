@@ -165,6 +165,12 @@ fn pack(schema: &Schema, row: &Pending, out: &mut Vec<u8>) -> Result<(), CookErr
                 FieldType::U64 => {
                     out.extend_from_slice(&(int(0.0, 9.007e15)? as u64).to_le_bytes())
                 }
+                // og-core packs a bool in one byte and an enum as its u32
+                // variant index; four f32 bytes would break the row stride.
+                FieldType::Bool => out.push(int(0.0, 1.0)? as u8),
+                FieldType::Enum => {
+                    out.extend_from_slice(&(int(0.0, u32::MAX as f64)? as u32).to_le_bytes())
+                }
                 _ => out.extend_from_slice(&(v as f32).to_le_bytes()),
             }
         }

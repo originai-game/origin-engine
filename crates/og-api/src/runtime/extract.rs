@@ -88,12 +88,26 @@ pub(crate) struct RenderState {
     /// Text queued during the current tick, and that tick.
     pub texts: Vec<QueuedText>,
     pub texts_tick: u64,
+    /// Sprites queued during the current tick (`og.render.sprite`).
+    pub sprites: Vec<og_render::Sprite>,
+    /// Textures by Texture handle index (`og.load.texture`).
+    pub textures: Vec<og_render::TextureHandle>,
     /// Layouts of the engine records extraction reads.
     pub camera: Option<Layout>,
     pub settings: Option<Layout>,
     pub draw: DrawLayouts,
     /// The game's RenderOptions (antialias, shadowMapSize).
     pub options: Value,
+    /// The play surface the host reported (`set_viewport`); `None` uses the
+    /// render target at one CSS pixel per device pixel.
+    pub viewport: Option<og_ui::Viewport>,
+    /// The engine's UI, drawn over every frame, and its atlas once added.
+    pub ui: Option<og_ui::SharedUi>,
+    pub ui_atlas: Option<og_render::TextureHandle>,
+    /// A UI font's first atlas page → every page, so text is drawn per page.
+    pub ui_pages: BTreeMap<FontHandle, Vec<FontHandle>>,
+    /// Warnings of the last extraction, for the engine's log.
+    pub notes: Vec<String>,
 }
 
 impl RenderState {
@@ -107,10 +121,17 @@ impl RenderState {
             fonts: Vec::new(),
             texts: Vec::new(),
             texts_tick: 0,
+            sprites: Vec::new(),
+            textures: Vec::new(),
             camera: None,
             settings: None,
             draw: DrawLayouts::default(),
             options,
+            viewport: None,
+            ui: None,
+            ui_atlas: None,
+            ui_pages: BTreeMap::new(),
+            notes: Vec::new(),
         }
     }
 }
@@ -276,6 +297,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     scene.instances.clear();
     scene.lights.clear();
     scene.texts.clear();
+    scene.sprites.clear();
 
     // Camera.
     let mut exposure = 1.0f32;
@@ -441,6 +463,14 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 layer: t.layer,
             });
         }
+    }
+
+    // Sprites queued this tick.
+    rs.scene.sprites.extend(rs.sprites.iter().cloned());
+
+    // The UI, over everything else.
+    if !super::modules::emit(rs) {
+        rs.notes.push("og.ui: the UI is not drawn while og.Camera turns away from -Z: og-render has no screen-space overlay yet, so the UI lies on a plane in front of the camera; it still answers the pointer and the probe".into());
     }
 }
 

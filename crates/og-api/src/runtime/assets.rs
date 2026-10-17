@@ -75,6 +75,9 @@ pub(crate) struct Assets {
     pub by_path: BTreeMap<String, usize>,
     pub fonts: Vec<LoadedFont>,
     pub sounds: Vec<CookedSound>,
+    /// Each sound's handle in the engine's audio bank, by `sounds` index:
+    /// what og.load.sound answers and AudioSource.sound names.
+    pub sound_handles: Vec<u64>,
     pub warnings: Vec<String>,
 }
 
@@ -294,6 +297,21 @@ pub(crate) fn load_gltf(eng: &Engine, path: &str) -> Result<usize, String> {
     );
     rs.models.insert(handle(index), parts.parts);
     assets.by_path.insert(format!("gltf:{id}"), index);
+    // Its geometries become physics meshes under their Geometry handles, for
+    // convex and triangle-mesh colliders.
+    let meshes: Vec<(u64, og_physics::MeshDesc)> = rs
+        .geometries
+        .iter()
+        .enumerate()
+        .filter_map(|(g, m)| Some((handle(g), super::modules::mesh_of(rs.scene.mesh(*m)?))))
+        .collect();
+    drop(assets);
+    drop(rs);
+    for (h, mesh) in meshes {
+        if !eng.state.borrow().physics_meshes.contains_key(&h) {
+            let _ = super::modules::set_mesh(eng, h, mesh);
+        }
+    }
     Ok(index)
 }
 
@@ -341,6 +359,39 @@ pub(crate) fn load_font(eng: &Engine, path: &str) -> Result<usize, String> {
     Ok(assets.fonts.len() - 1)
 }
 
+/// `og.load.texture`: a cooked texture added to the renderer once; the
+/// answer is its index in the render state's textures.
+pub(crate) fn load_texture(eng: &Engine, path: &str) -> Result<usize, String> {
+    let id = og_cook::runtime::asset_id(path).to_string();
+    if let Some(&i) = eng.assets.borrow().by_path.get(&format!("texture:{id}")) {
+        return Ok(i);
+    }
+    let data = {
+        let assets = eng.assets.borrow();
+        let (bytes, bundle) = assets.blob(&id)?;
+        let tex = bundle
+            .texture(&id, bytes.bytes())
+            .map_err(|e| e.to_string())?;
+        match hooks().map(|h| h.texture(&tex)) {
+            Some(Fetch::Ready(d)) => d,
+            Some(Fetch::Pending) => {
+                return Err(format!("{id}: the texture is still being transcoded"))
+            }
+            Some(Fetch::Failed(e)) => return Err(format!("{id}: {e}")),
+            None => return Err("no host is installed to decode textures".into()),
+        }
+    };
+    let mut rs = eng.render.borrow_mut();
+    let handle = rs.scene.add_texture(data);
+    rs.textures.push(handle);
+    let i = rs.textures.len() - 1;
+    eng.assets
+        .borrow_mut()
+        .by_path
+        .insert(format!("texture:{id}"), i);
+    Ok(i)
+}
+
 pub(crate) fn load_sound(eng: &Engine, path: &str) -> Result<usize, String> {
     let id = og_cook::runtime::asset_id(path).to_string();
     if let Some(i) = eng.assets.borrow().sounds.iter().position(|s| s.id == id) {
@@ -353,9 +404,33 @@ pub(crate) fn load_sound(eng: &Engine, path: &str) -> Result<usize, String> {
             .sound(&id, bytes.bytes())
             .map_err(|e| e.to_string())?
     };
+    // The engine's audio bank holds the sound the mixer plays; its handle is
+    // the one AudioSource.sound names.
+    let handle = match og_audio::link(eng.id) {
+        Some(link) => link
+            .bank()
+            .insert_qoa(&sound.id, &sound.qoa)
+            .map_err(|e| e.reason().to_string())?,
+        None => return Err(format!("{id}: this engine has no audio")),
+    };
     let mut assets = eng.assets.borrow_mut();
     assets.sounds.push(sound);
+    assets.sound_handles.push(handle);
     Ok(assets.sounds.len() - 1)
+}
+
+/// The `sounds` index of a sound handle.
+pub(crate) fn sound_index(eng: &Engine, handle: f64) -> Option<usize> {
+    let bits = handle as u64;
+    (handle >= 0.0 && handle.fract() == 0.0)
+        .then(|| {
+            eng.assets
+                .borrow()
+                .sound_handles
+                .iter()
+                .position(|h| *h == bits)
+        })
+        .flatten()
 }
 
 // ── scene spawning ──────────────────────────────────────────────────────────

@@ -267,7 +267,9 @@ pub fn host_rs(ix: &Index<'_>) -> String {
          //! callables, each method a binding symbol with its wire signature (see\n\
          //! `og_api::gen::host` for the wire forms). `og-host-web` and\n\
          //! `og-host-node` implement every trait, and their generated glue calls\n\
-         //! the methods, so a member missing on either host is a build error.\n\n",
+         //! the methods, so a member missing on either host is a build error.\n\n\
+         // Field metadata (min, max, step) is written as the IDL states it.\n\
+         #![allow(clippy::approx_constant)]\n\n",
     );
     out.push_str(
         "/// What aliases engine memory, chosen per host.\n\
@@ -339,7 +341,7 @@ pub fn host_rs(ix: &Index<'_>) -> String {
 
     out.push_str(
         "\n/// One field of an engine-owned record.\n\
-         #[derive(Clone, Copy, Debug, PartialEq, Eq)]\n\
+         #[derive(Clone, Copy, Debug, PartialEq)]\n\
          pub struct FieldDecl {\n\
          \x20   pub name: &'static str,\n\
          \x20   /// The column kind (components, resources) or the type (events).\n\
@@ -348,9 +350,21 @@ pub fn host_rs(ix: &Index<'_>) -> String {
          \x20   pub default: &'static str,\n\
          \x20   pub readonly: bool,\n\
          \x20   pub tunable: bool,\n\
+         \x20   /// The meaningful range and Tune's increment; `None` when unstated.\n\
+         \x20   pub min: Option<f64>,\n\
+         \x20   pub max: Option<f64>,\n\
+         \x20   pub step: Option<f64>,\n\
+         \x20   /// A unit of the API's unit table, or empty.\n\
+         \x20   pub unit: &'static str,\n\
+         \x20   /// The person-facing name, or empty.\n\
+         \x20   pub label: &'static str,\n\
+         \x20   /// The field's docs, joined.\n\
+         \x20   pub doc: &'static str,\n\
+         \x20   /// An enum column's variants in index order; empty otherwise.\n\
+         \x20   pub variants: &'static [&'static str],\n\
          }\n\n\
          /// An engine-owned component, resource or event.\n\
-         #[derive(Clone, Copy, Debug, PartialEq, Eq)]\n\
+         #[derive(Clone, Copy, Debug, PartialEq)]\n\
          pub struct RecordDecl {\n\
          \x20   /// `component`, `resource` or `event`.\n\
          \x20   pub kind: &'static str,\n\
@@ -376,9 +390,33 @@ pub fn host_rs(ix: &Index<'_>) -> String {
                 let default = default_json(ix, &f.ty, f.default.as_deref())
                     .map(|j| j.compact())
                     .unwrap_or_else(|| "null".to_string());
+                let opt = |v: Option<f64>| match v {
+                    Some(x) => format!("Some({x:?})"),
+                    None => "None".to_string(),
+                };
+                let variants = match ix.decl(f.ty.name()) {
+                    Some(crate::index::TypeDecl::Enum(e)) => e
+                        .variants
+                        .iter()
+                        .map(|v| format!("{:?}", v.name))
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                    _ => String::new(),
+                };
                 out.push_str(&format!(
-                    "            FieldDecl {{\n                name: \"{}\",\n                column: \"{}\",\n                default: {:?},\n                readonly: {},\n                tunable: {},\n            }},\n",
-                    f.name, f.ty, default, f.readonly, f.tunable
+                    "            FieldDecl {{\n                name: \"{}\",\n                column: \"{}\",\n                default: {:?},\n                readonly: {},\n                tunable: {},\n                min: {},\n                max: {},\n                step: {},\n                unit: {:?},\n                label: {:?},\n                doc: {:?},\n                variants: &[{}],\n            }},\n",
+                    f.name,
+                    f.ty,
+                    default,
+                    f.readonly,
+                    f.tunable,
+                    opt(f.min),
+                    opt(f.max),
+                    opt(f.step),
+                    f.unit.as_deref().unwrap_or_default(),
+                    f.label.as_deref().unwrap_or_default(),
+                    f.doc.join(" "),
+                    variants
                 ));
             }
             out.push_str("        ],\n    },\n");

@@ -2,12 +2,6 @@
   "archetypes": [
     {
       "components": [
-        "og.Transform"
-      ],
-      "count": 1
-    },
-    {
-      "components": [
         "og.Transform",
         "og.Model"
       ],
@@ -23,25 +17,69 @@
     {
       "components": [
         "og.Transform",
+        "og.Mesh",
+        "og.Collider"
+      ],
+      "count": 1
+    },
+    {
+      "components": [
+        "og.Transform",
         "og.Model",
         "Health",
-        "Spin",
-        "Label"
+        "Spin"
+      ],
+      "count": 1
+    },
+    {
+      "components": [
+        "og.Transform",
+        "og.Mesh",
+        "og.RigidBody",
+        "og.Collider",
+        "og.Velocity",
+        "og.AudioSource"
       ],
       "count": 1
     }
   ],
-  "entities": 4,
-  "hash": "3525b51239f84004",
+  "entities": 5,
+  "hash": "81b7720166b533b5",
   "kind": "world",
   "resources": [
     "og.Time",
     "og.Rng",
     "og.Camera",
     "og.RenderSettings",
-    "og.Input"
+    "og.Physics",
+    "og.Audio",
+    "Run",
+    "og.Input",
+    "og.AudioStream"
   ],
   "systems": [
+    {
+      "matched": 4,
+      "ms": null,
+      "name": "og.physics.queries",
+      "reads": [
+        "og.Transform",
+        "og.RigidBody",
+        "og.Collider",
+        "og.Velocity",
+        "og.Physics"
+      ],
+      "writes": []
+    },
+    {
+      "matched": 0,
+      "ms": null,
+      "name": "og.ui.begin",
+      "reads": [
+        "og.Input"
+      ],
+      "writes": []
+    },
     {
       "matched": 0,
       "ms": null,
@@ -56,12 +94,45 @@
     {
       "matched": 1,
       "ms": null,
-      "name": "StartOnInput",
+      "name": "Menu",
       "reads": [
+        "Spin",
         "og.Input"
       ],
       "writes": [
+        "Run"
+      ]
+    },
+    {
+      "matched": 1,
+      "ms": null,
+      "name": "StartSpin",
+      "reads": [
+        "Run"
+      ],
+      "writes": [
         "Spin"
+      ]
+    },
+    {
+      "matched": 1,
+      "ms": null,
+      "name": "Drop",
+      "reads": [
+        "Run"
+      ],
+      "writes": [
+        "og.RigidBody"
+      ]
+    },
+    {
+      "matched": 1,
+      "ms": null,
+      "name": "Chime",
+      "reads": [],
+      "writes": [
+        "og.AudioSource",
+        "Run"
       ]
     },
     {
@@ -76,15 +147,47 @@
       ]
     },
     {
+      "matched": 0,
+      "ms": null,
+      "name": "og.ui.end",
+      "reads": [],
+      "writes": []
+    },
+    {
+      "matched": 4,
+      "ms": null,
+      "name": "og.physics",
+      "reads": [
+        "og.RigidBody",
+        "og.Collider",
+        "og.Physics"
+      ],
+      "writes": [
+        "og.Transform",
+        "og.Velocity",
+        "og.CollisionStarted",
+        "og.CollisionEnded",
+        "og.SensorEntered",
+        "og.SensorExited",
+        "og.Contact"
+      ]
+    },
+    {
       "matched": 1,
       "ms": null,
-      "name": "Hud",
+      "name": "og.audio",
       "reads": [
         "og.Transform",
-        "Spin",
-        "Label"
+        "og.AudioListener",
+        "og.Audio"
       ],
-      "writes": []
+      "writes": [
+        "og.AudioSource",
+        "og.SoundStarted",
+        "og.SoundEnded",
+        "og.AudioPlayback",
+        "og.AudioStream"
+      ]
     }
   ],
   "tick": 132

@@ -7,7 +7,7 @@
   "bin": {
     "create-game": "bin/create.ts"
   },
-  "files": ["bin", "template", "README.md"],
+  "files": ["bin", "template", "archetypes", "README.md"],
   "scripts": {
     "prepack": "bun scripts/pack-template.ts",
     "test": "bun test tests/"

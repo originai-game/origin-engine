@@ -147,6 +147,16 @@ export interface HostAbi<A, V> {
   og_camera_world_to_screen(world: number, point: string): string;
   /** `Camera.screenToRay` */
   og_camera_screen_to_ray(world: number, x: number, y: number): string;
+  /** `og.render.sprite` */
+  og_render_sprite(world: number, desc: string | undefined): string;
+  /** `og.render.measureText` */
+  og_render_measure_text(world: number, desc: string | undefined): string;
+  /** `og.render.boxGeometry` */
+  og_render_box_geometry(world: number, desc: string | undefined): string;
+  /** `og.render.planeGeometry` */
+  og_render_plane_geometry(world: number, desc: string | undefined): string;
+  /** `og.render.sphereGeometry` */
+  og_render_sphere_geometry(world: number, desc: string | undefined): string;
   /** `og.render.standardMaterial` */
   og_render_standard_material(world: number, desc: string | undefined): string;
   /** `og.render.updateMaterial` */
@@ -171,6 +181,8 @@ export interface HostAbi<A, V> {
   og_load_font_info(world: number, font: number): string;
   /** `og.load.sound` */
   og_load_sound(world: number, path: string): string;
+  /** `og.load.texture` */
+  og_load_texture(world: number, path: string): string;
   /** `og.load.soundInfo` */
   og_load_sound_info(world: number, sound: number): string;
   /** `og.load.status` */
@@ -179,6 +191,44 @@ export interface HostAbi<A, V> {
   og_load_error(world: number, asset: number): string;
   /** `og.load.gltfInfo` */
   og_load_gltf_info(world: number, asset: number): string;
+  /** `og.physics.raycast` */
+  og_physics_raycast(world: number, desc: string | undefined): string;
+  /** `og.physics.shapeCast` */
+  og_physics_shape_cast(world: number, desc: string | undefined): string;
+  /** `og.physics.overlap` */
+  og_physics_overlap(world: number, desc: string | undefined): string;
+  /** `og.physics.setMesh` */
+  og_physics_set_mesh(world: number, mesh: number, desc: string | undefined): string;
+  /** `og.ui.configure` */
+  og_ui_configure(world: number, desc: string | undefined): string;
+  /** `og.ui.viewport` */
+  og_ui_viewport(world: number): string;
+  /** `og.ui.theme` */
+  og_ui_theme(world: number): string;
+  /** `og.ui.open` */
+  og_ui_open(id: string, desc: string | undefined): void;
+  /** `og.ui.openPanel` */
+  og_ui_open_panel(id: string, desc: string | undefined): void;
+  /** `og.ui.openScroll` */
+  og_ui_open_scroll(id: string, desc: string | undefined): void;
+  /** `og.ui.close` */
+  og_ui_close(): string;
+  /** `og.ui.label` */
+  og_ui_label(id: string, text: string, desc: string | undefined): void;
+  /** `og.ui.button` */
+  og_ui_button(id: string, text: string, desc: string | undefined): string;
+  /** `og.ui.image` */
+  og_ui_image(id: string, desc: string | undefined): void;
+  /** `og.ui.progress` */
+  og_ui_progress(id: string, value: number, desc: string | undefined): void;
+  /** `og.ui.slider` */
+  og_ui_slider(id: string, value: number, desc: string | undefined): string;
+  /** `og.ui.toggle` */
+  og_ui_toggle(id: string, on: boolean, label: string): string;
+  /** `og.ui.textField` */
+  og_ui_text_field(id: string, value: string, desc: string | undefined): string;
+  /** `og.ui.tooltip` */
+  og_ui_tooltip(text: string): void;
   /** `og.commands.register` */
   og_commands_register(name: string, handler: number, desc: string | undefined): string;
   /** `og.commands.parse` */
@@ -292,6 +342,11 @@ export const SYMBOLS: readonly string[] = [
   "og_camera_look_at",
   "og_camera_world_to_screen",
   "og_camera_screen_to_ray",
+  "og_render_sprite",
+  "og_render_measure_text",
+  "og_render_box_geometry",
+  "og_render_plane_geometry",
+  "og_render_sphere_geometry",
   "og_render_standard_material",
   "og_render_update_material",
   "og_render_capabilities",
@@ -304,10 +359,30 @@ export const SYMBOLS: readonly string[] = [
   "og_load_font",
   "og_load_font_info",
   "og_load_sound",
+  "og_load_texture",
   "og_load_sound_info",
   "og_load_status",
   "og_load_error",
   "og_load_gltf_info",
+  "og_physics_raycast",
+  "og_physics_shape_cast",
+  "og_physics_overlap",
+  "og_physics_set_mesh",
+  "og_ui_configure",
+  "og_ui_viewport",
+  "og_ui_theme",
+  "og_ui_open",
+  "og_ui_open_panel",
+  "og_ui_open_scroll",
+  "og_ui_close",
+  "og_ui_label",
+  "og_ui_button",
+  "og_ui_image",
+  "og_ui_progress",
+  "og_ui_slider",
+  "og_ui_toggle",
+  "og_ui_text_field",
+  "og_ui_tooltip",
   "og_commands_register",
   "og_commands_parse",
   "og_commands_help",

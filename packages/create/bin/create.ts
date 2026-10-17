@@ -2,10 +2,12 @@
 // `npm create @origingame/game` (and `bun create`): scaffolds the Origin
 // Engine project template (templates/game) into a directory, naming the game.
 //
-//   create [dir] [--name "Name"] [--id slug] [--force]
+//   create [dir] [--name "Name"] [--id slug] [--archetype runner|match3|...] [--force]
 //
 // The template comes from ./template/ in the published package (prepack:
-// scripts/pack-template.ts) or ../../templates/game in the engine repository.
+// scripts/pack-template.ts) or ../../templates/game in the engine repository;
+// an archetype (a complete small game to start from) from ./archetypes/<name>/
+// or ../../templates/archetypes/<name>/.
 
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
@@ -19,6 +21,8 @@ export interface CreateOptions {
   readonly name?: string;
   readonly id?: string;
   readonly force?: boolean;
+  /** Start from an archetype (`runner`, `match3`) instead of the project template. */
+  readonly archetype?: string;
   /** The template directory; found next to this file when omitted. */
   readonly template?: string;
 }
@@ -50,8 +54,16 @@ function title(id: string): string {
 }
 
 /** The template this copy of the package scaffolds. */
-export function templateDir(): string {
+export function templateDir(archetype?: string): string {
   const here = dirname(fileURLToPath(import.meta.url));
+  if (archetype !== undefined) {
+    const roots = [join(here, "..", "archetypes"), join(here, "..", "..", "..", "templates", "archetypes")];
+    for (const root of roots) {
+      if (existsSync(join(root, archetype, "project.ogt"))) return join(root, archetype);
+    }
+    const known = roots.filter(existsSync).flatMap((r) => readdirSync(r).filter((d) => existsSync(join(r, d, "project.ogt"))));
+    throw new Error(`no archetype '${archetype}': choose one of ${[...new Set(known)].sort().join(", ") || "(none shipped)"}`);
+  }
   for (const candidate of [join(here, "..", "template"), join(here, "..", "..", "..", "templates", "game")]) {
     if (existsSync(join(candidate, "project.ogt"))) return candidate;
   }
@@ -96,7 +108,7 @@ export function create(options: CreateOptions): Created {
       throw new Error(`${dir} is not empty; pick an empty directory, or pass --force to write the template over it`);
     }
   }
-  const template = options.template ?? templateDir();
+  const template = options.template ?? templateDir(options.archetype);
   const list = files(template);
   mkdirSync(dir, { recursive: true });
   for (const file of list) {
@@ -114,11 +126,12 @@ export function create(options: CreateOptions): Created {
   return { dir, name, id, files: list };
 }
 
-const USAGE = `usage: create [dir] [--name "Name"] [--id slug] [--force]
+const USAGE = `usage: create [dir] [--name "Name"] [--id slug] [--archetype name] [--force]
 
 Scaffolds an Origin Engine game into dir (default: ./origin-game).
   --name   the game's display name (default: from the id or the directory)
   --id     the game's id, lowercase-hyphen (default: from the name)
+  --archetype  start from a complete archetype game (runner, match3) instead of the template
   --force  write into a directory that is not empty`;
 
 function main(argv: string[]): number {
@@ -126,6 +139,7 @@ function main(argv: string[]): number {
   let name: string | undefined;
   let id: string | undefined;
   let force = false;
+  let archetype: string | undefined;
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!;
     const value = () => {
@@ -136,6 +150,7 @@ function main(argv: string[]): number {
     if (a === "--name") name = value();
     else if (a === "--id") id = value();
     else if (a === "--force") force = true;
+    else if (a === "--archetype") archetype = value();
     else if (a === "-h" || a === "--help") {
       console.log(USAGE);
       return 0;
@@ -143,7 +158,7 @@ function main(argv: string[]): number {
     else if (dir === undefined) dir = a;
     else throw new Error(`one directory only, got '${dir}' and '${a}'. ${USAGE}`);
   }
-  const made = create({ dir: dir ?? (id ?? (name ? slug(name) : "origin-game")), ...(name ? { name } : {}), ...(id ? { id } : {}), force });
+  const made = create({ dir: dir ?? (id ?? (name ? slug(name) : "origin-game")), ...(name ? { name } : {}), ...(id ? { id } : {}), ...(archetype ? { archetype } : {}), force });
   const shown = relative(process.cwd(), made.dir) || ".";
   console.log(`Created ${made.name} (${made.id}) in ${shown}: ${made.files.length} files.
 

@@ -15,7 +15,7 @@ module math {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 26</sub>
+<sub>`api.ogt` line 32</sub>
 
 ## Contents
 
@@ -49,7 +49,7 @@ struct Vector2 {
 }
 ```
 
-<sub>`api.ogt` line 30</sub>
+<sub>`api.ogt` line 36</sub>
 
 <a id="type-Vector3"></a>
 
@@ -72,7 +72,7 @@ struct Vector3 {
 }
 ```
 
-<sub>`api.ogt` line 36</sub>
+<sub>`api.ogt` line 42</sub>
 
 <a id="type-Quaternion"></a>
 
@@ -99,7 +99,7 @@ struct Quaternion {
 }
 ```
 
-<sub>`api.ogt` line 43</sub>
+<sub>`api.ogt` line 49</sub>
 
 <a id="type-Matrix4"></a>
 
@@ -120,7 +120,7 @@ struct Matrix4 {
 }
 ```
 
-<sub>`api.ogt` line 53</sub>
+<sub>`api.ogt` line 59</sub>
 
 <a id="type-Color"></a>
 
@@ -143,7 +143,7 @@ struct Color {
 }
 ```
 
-<sub>`api.ogt` line 60</sub>
+<sub>`api.ogt` line 66</sub>
 
 <a id="type-Ray"></a>
 
@@ -164,4 +164,4 @@ struct Ray {
 }
 ```
 
-<sub>`api.ogt` line 67</sub>
+<sub>`api.ogt` line 73</sub>

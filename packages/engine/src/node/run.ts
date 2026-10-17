@@ -4,7 +4,8 @@
 //
 //   bun src/node/run.ts --entry <game.js|.ts> [--root <project>] [--ticks N] [--seed S]
 //       [--setup action[:arg...]]... [--commands "t:action[:args];..."] [--out <dir>]
-//       [--port P] [--size WxH] [--realtime] [--watch <bundle.js>] [--no-render] [--json]
+//       [--port P] [--size WxH] [--realtime] [--watch <bundle.js>] [--no-render]
+//       [--audio null|device|<out.wav>] [--json]
 //
 // - Without --commands, --port or --watch: advance --ticks N at once and print
 //   the world hash (M2's hello world).
@@ -19,10 +20,11 @@
 //   line per reload with the latency from the file write to the first frame
 //   of the new bundle.
 
-import { mkdirSync, statSync, watch, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, watch, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { loadNativeHost, native } from "./index.ts";
+import { openAudio, type AudioSink } from "./audio.ts";
 import { beginBundle, createEngine, type Engine, type GameToken } from "../runtime.ts";
 
 const argv = process.argv.slice(2);
@@ -38,6 +40,7 @@ let realtime = false;
 let watchFile: string | undefined;
 let render = true;
 let asJson = false;
+let audioOut = "null";
 const setup: string[] = [];
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i]!;
@@ -62,6 +65,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--watch") watchFile = resolve(next());
   else if (a === "--no-render") render = false;
   else if (a === "--json") asJson = true;
+  else if (a === "--audio") audioOut = next();
   else if (a === "--headless") {
     // Native runs are always headless; accepted for `og run --headless`.
   } else fail(`unknown argument '${a}'`);
@@ -80,18 +84,44 @@ if (port !== undefined && (!Number.isInteger(port) || port < 0 || port > 65535))
 loadNativeHost();
 const extras = native();
 let version = 0;
+/**
+ * Import a bundle as a fresh module. A re-import goes through a copy under
+ * its own name: bun keys file:// modules by path and ignores a query, so
+ * `game.js?v=2` would answer the module already evaluated, declaring nothing.
+ */
 async function importGame(file: string): Promise<GameToken> {
-  const url = pathToFileURL(resolve(file)).href + (version ? `?v=${version}` : "");
+  let path = resolve(file);
+  if (version > 0) {
+    const copy = path.replace(/(\.[cm]?[jt]s)?$/, (ext) => `.reload-${version}${ext || ".js"}`);
+    copyFileSync(path, copy);
+    path = copy;
+  }
+  const url = pathToFileURL(path).href;
   version++;
   const mod = (await import(url)) as { default?: GameToken };
+  if (path !== resolve(file)) rmSync(path, { force: true });
   if (!mod.default) fail(`${file} has no default export: export default og.game({ ... })`);
   return mod.default!;
 }
 
+/** project.ogt's `profile` ("2d" or "3d"), which chooses the physics profile. */
+function projectProfile(dir: string | undefined): "2d" | "3d" | undefined {
+  if (!dir || !existsSync(join(dir, "project.ogt"))) return undefined;
+  const m = /^\s*profile\s+"(2d|3d)"/m.exec(readFileSync(join(dir, "project.ogt"), "utf8"));
+  return m ? (m[1] as "2d" | "3d") : undefined;
+}
+
 const game = await importGame(entry);
-const created = createEngine(game, { ...(seed === undefined ? {} : { seed }), ...(root ? { root } : {}) });
+const profile = projectProfile(root);
+const created = createEngine(game, { ...(seed === undefined ? {} : { seed }), ...(root ? { root } : {}), ...(profile ? { profile } : {}) });
 if (!created.ok) fail(`${entry}: ${created.reason}`);
 const engine: Engine = created.value;
+// One sink per engine, pumped after every step (crates/og-audio/README.md
+// §Host contract): null keeps the stream drained, a .wav path captures it.
+const audioMode = audioOut === "device" ? "device" : audioOut === "null" ? "null" : "capture";
+const opened = openAudio(engine.id, audioMode);
+if (!opened.ok) fail(`--audio ${audioOut}: ${opened.reason}`);
+const sink: AudioSink = opened.value;
 const outputs: string[] = [];
 const warnings: string[] = [];
 
@@ -158,8 +188,13 @@ let quit = false;
 if (!probing) {
   const advanced = engine.advance(ticks ?? 0);
   if (!advanced.ok) fail(advanced.reason);
+  sink.pump();
 } else {
   let pendingReload: { mtimeMs: number } | null = null;
+  // Imports in flight: a reload swaps only once the last one has declared
+  // everything (a second write of the bundle starts another import, whose
+  // beginBundle clears the declarations the first one made).
+  let importing = 0;
   if (watchFile) {
     let busy = false;
     watch(watchFile, () => {
@@ -168,12 +203,15 @@ if (!probing) {
       setTimeout(async () => {
         busy = false;
         const mtimeMs = statSync(watchFile!).mtimeMs;
+        importing++;
         try {
           beginBundle();
           await importGame(watchFile!);
           pendingReload = { mtimeMs };
         } catch (e) {
           process.stderr.write(`WARN reload: the bundle failed to import (${e instanceof Error ? e.message : String(e)}); the old one keeps running\n`);
+        } finally {
+          importing--;
         }
       }, 5);
     });
@@ -181,7 +219,7 @@ if (!probing) {
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
   let last = performance.now();
   for (;;) {
-    if (pendingReload) {
+    if (pendingReload && importing === 0) {
       const { mtimeMs } = pendingReload as { mtimeMs: number };
       pendingReload = null;
       const report = engine.probe.reload() as { ms: number; tick: number } | null;
@@ -198,6 +236,7 @@ if (!probing) {
       frameFailed = answer.reason ?? "the frame failed";
       break;
     }
+    sink.pump();
     if (listening !== undefined) extras.og_node_probe_serve(engine.id);
     drain();
     const tick = answer.tick ?? 0;
@@ -212,6 +251,14 @@ if (!probing) {
 }
 const ms = performance.now() - t0;
 drain();
+if (audioMode === "capture") {
+  const wavPath = resolve(audioOut);
+  mkdirSync(dirname(wavPath), { recursive: true });
+  writeFileSync(wavPath, sink.wav());
+  outputs.push(wavPath);
+}
+const audioStats = sink.stats();
+sink.close();
 if (frameFailed) process.stderr.write(`og run: ${frameFailed}\n`);
 const dump = engine.probe.dump({ what: "world" }) as { hash: string; entities: number; tick: number };
 const summary = {
@@ -224,6 +271,7 @@ const summary = {
   runtime: typeof Bun !== "undefined" ? `bun ${Bun.version}` : `node ${process.version}`,
   tier,
   quit,
+  audio: { mode: audioMode, commands: audioStats.commands, receivedHash: audioStats.receivedHash },
   outputs,
   warnings,
 };

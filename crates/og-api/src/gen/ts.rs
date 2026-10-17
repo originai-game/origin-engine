@@ -242,6 +242,12 @@ impl<'a> Gen<'a, '_> {
                     ));
                 }
                 Item::Record(r) => self.record_value(r),
+                Item::Value(v) if m.place == Place::Top => {
+                    self.jsdoc("", &v.doc, &[]);
+                    let ty = self.ty(&v.ty, &[]);
+                    self.line(&format!("export declare const {}: {ty};", v.name));
+                }
+                Item::Value(_) => continue,
             }
             self.line("");
         }
@@ -345,11 +351,31 @@ impl<'a> Gen<'a, '_> {
                     _ => None,
                 })
                 .collect();
-            if m.place == Place::Namespace && !fns.is_empty() {
+            let values: Vec<&ValueDecl> = m
+                .items
+                .iter()
+                .filter_map(|i| match i {
+                    Item::Value(v) => Some(v),
+                    _ => None,
+                })
+                .collect();
+            if m.place == Place::Root {
+                for v in &values {
+                    self.jsdoc("  ", &v.doc, &[]);
+                    let ty = self.ty(&v.ty, &[]);
+                    self.line(&format!("  const {}: {ty};", v.name));
+                }
+            }
+            if m.place == Place::Namespace && !(fns.is_empty() && values.is_empty()) {
                 self.jsdoc("  ", &m.doc, &[]);
                 self.line(&format!("  namespace {} {{", m.name));
                 for f in fns {
                     self.function("    function ", f);
+                }
+                for v in values {
+                    self.jsdoc("    ", &v.doc, &[]);
+                    let ty = self.ty(&v.ty, &[]);
+                    self.line(&format!("    const {}: {ty};", v.name));
                 }
                 self.line("  }");
             }

@@ -1,0 +1,98 @@
+{
+  "what": "og dev on a fresh copy of templates/game: five edits of src/main.ts 2.5 s apart; each line is one hot reload, latency from the save to the first frame of the new bundle (rebuild = save to bundle written, swap = bundle written to first new frame)",
+  "budgetMs": 300,
+  "reloads": [
+    {
+      "budgetMs": 300.0,
+      "event": "reload",
+      "n": 1,
+      "ok": true,
+      "rebuildMs": 79.3,
+      "report": {
+        "dropped": [],
+        "migrated": [],
+        "ms": 0.5039170000000013,
+        "tick": 134,
+        "warnings": []
+      },
+      "swapMs": 138.7,
+      "tick": 134,
+      "totalMs": 218.0,
+      "withinBudget": true
+    },
+    {
+      "budgetMs": 300.0,
+      "event": "reload",
+      "n": 2,
+      "ok": true,
+      "rebuildMs": 34.3,
+      "report": {
+        "dropped": [],
+        "migrated": [],
+        "ms": 0.41629199999988487,
+        "tick": 282,
+        "warnings": []
+      },
+      "swapMs": 196.0,
+      "tick": 282,
+      "totalMs": 230.3,
+      "withinBudget": true
+    },
+    {
+      "budgetMs": 300.0,
+      "event": "reload",
+      "n": 3,
+      "ok": true,
+      "rebuildMs": 31.1,
+      "report": {
+        "dropped": [],
+        "migrated": [],
+        "ms": 0.3468750000001819,
+        "tick": 419,
+        "warnings": []
+      },
+      "swapMs": 211.6,
+      "tick": 419,
+      "totalMs": 242.7,
+      "withinBudget": true
+    },
+    {
+      "budgetMs": 300.0,
+      "event": "reload",
+      "n": 4,
+      "ok": true,
+      "rebuildMs": 31.3,
+      "report": {
+        "dropped": [],
+        "migrated": [],
+        "ms": 0.5070839999989403,
+        "tick": 561,
+        "warnings": []
+      },
+      "swapMs": 67.7,
+      "tick": 561,
+      "totalMs": 99.0,
+      "withinBudget": true
+    },
+    {
+      "budgetMs": 300.0,
+      "event": "reload",
+      "n": 5,
+      "ok": true,
+      "rebuildMs": 26.8,
+      "report": {
+        "dropped": [],
+        "migrated": [],
+        "ms": 0.6163750000014261,
+        "tick": 710,
+        "warnings": []
+      },
+      "swapMs": 42.7,
+      "tick": 710,
+      "totalMs": 69.5,
+      "withinBudget": true
+    }
+  ],
+  "maxTotalMs": 242.7,
+  "allOk": true
+}

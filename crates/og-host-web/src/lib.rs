@@ -243,6 +243,20 @@ pub fn og_web_texture_ktx2(manifest: String, id: String, bytes: Vec<u8>) -> Vec<
     }
 }
 
+/// The play surface the UI lays out in: `{ width, height, dpr, safeArea?,
+/// coarsePointer? }` in CSS pixels. Answers wire JSON.
+#[wasm_bindgen]
+pub fn og_web_set_viewport(engine: u32, viewport: String) -> String {
+    let parsed: Result<serde_json::Value, _> = serde_json::from_str(&viewport);
+    match parsed
+        .map_err(|e| e.to_string())
+        .and_then(|v| og_api::runtime::set_viewport(engine, v))
+    {
+        Ok(()) => r#"{"ok":true}"#.to_string(),
+        Err(e) => serde_json::json!({ "ok": false, "reason": e }).to_string(),
+    }
+}
+
 /// Routes Rust panics to the console instead of an opaque `unreachable`.
 #[wasm_bindgen]
 pub fn og_web_init() {

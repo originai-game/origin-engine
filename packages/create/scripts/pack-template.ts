@@ -19,3 +19,14 @@ cpSync(source, target, {
   filter: (path) => !(dirname(path) === source && SKIPPED.has(basename(path))),
 });
 console.log(`pack-template: ${source} -> ${target}`);
+// The archetypes, each a complete project, under ./archetypes/<name>/.
+const archetypes = join(pkg, "..", "..", "templates", "archetypes");
+const archTarget = join(pkg, "archetypes");
+rmSync(archTarget, { recursive: true, force: true });
+if (existsSync(archetypes)) {
+  cpSync(archetypes, archTarget, {
+    recursive: true,
+    filter: (path) => !SKIPPED.has(basename(path)),
+  });
+  console.log(`pack-template: ${archetypes} -> ${archTarget}`);
+}

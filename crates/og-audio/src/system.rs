@@ -28,6 +28,10 @@ pub const MAX_QUEUED_PACKETS: usize = 1024;
 pub struct AudioDesc {
     /// The bank sources' `sound` handles index; a fresh one when `None`.
     pub bank: Option<SoundBank>,
+    /// Continue this link (and its bank) instead of making a new one, so a
+    /// sink attached to it keeps receiving: a hot reload's rebuilt world
+    /// passes the old world's link. Ignored when its tick rate differs.
+    pub link: Option<AudioLink>,
 }
 
 #[derive(Default)]
@@ -194,10 +198,17 @@ pub fn install(world: &mut World, desc: &AudioDesc) -> Result<AudioLink> {
         tick_rate,
         bus_sent: Vec4::splat(-1.0),
     })?;
-    let link = AudioLink {
-        state: Arc::new(Mutex::new(LinkState::default())),
-        bank: desc.bank.clone().unwrap_or_default(),
-        tick_rate,
+    let link = match &desc.link {
+        Some(l) if l.tick_rate == tick_rate => {
+            // The new world's first tick resyncs the sink (a gap in ticks).
+            l.state.lock().expect("audio link").resync = true;
+            l.clone()
+        }
+        _ => AudioLink {
+            state: Arc::new(Mutex::new(LinkState::default())),
+            bank: desc.bank.clone().unwrap_or_default(),
+            tick_rate,
+        },
     };
     let system_link = link.clone();
     world.add_system(

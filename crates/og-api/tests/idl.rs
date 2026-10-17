@@ -35,6 +35,10 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
         "camera",
         "render",
         "load",
+        "physics",
+        "audio",
+        "ui",
+        "systems",
         "commands",
         "probe",
     ] {
@@ -82,6 +86,7 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
             "font",
             "fontInfo",
             "sound",
+            "texture",
             "soundInfo",
             "status",
             "error",

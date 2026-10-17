@@ -75,7 +75,8 @@ several `doc` lines are paragraphs, joined by newlines.
 
 | Declaration | Form | Means |
 |---|---|---|
-| `fn` | `fn name { doc; generic N Bound; param ...; returns Type "doc"; publish bool }` | a function; in an interface or resource, a method |
+| `fn` | `fn name { doc; generic N Bound; param ...; returns Type "doc"; publish bool; host bool }` | a function; in an interface or resource, a method; `host false` is TypeScript sugar the runtime implements over other members (`og.ui.panel`): no binding symbol, no trait method |
+| `value` | `value name Type "doc"` | a value the TypeScript runtime provides under the module's path (`og.systems.cameras`); no binding symbol |
 | `param` | `param name Type "doc" { default ...; optional true; flatten true }` | a parameter; `flatten` spreads a desc's fields into the wire params |
 | `const` | `const NAME Type value "doc"` | a constant (u32, i32, f32, f64, String or bool) |
 | `handle` | `handle Name "doc"` | a generational handle |
@@ -126,7 +127,10 @@ and diagnostics show the angle-bracket form.
   functions, params, fields, props and units lowerCamelCase, consts
   SCREAMING_SNAKE_CASE, variants and cases lowercase-first;
 - component and resource fields whose type is not a declared column kind;
-  `tunable`/`readonly` outside them; `optional` outside plain structs;
+  `tunable`/`readonly` outside them; `optional` outside plain structs (an
+  enum may be a column, `column AudioBus { array Uint32Array; stride 1;
+  value AudioBus }`: it stores the variant's index, and the generated record
+  table carries the variants, which are part of the layout hash);
 - desc fields (and record fields) without a zero value or a `default`;
   defaults of the wrong type or outside `min`..`max`; a range on a
   non-numeric field; an unknown unit;
@@ -234,17 +238,25 @@ view tables. Both hosts depend on it with the feature; `og-cli` does not.
   structural change outside systems goes through the runtime, and a running
   system's only structural command in M2 is `despawn`, which the runtime
   records; a new structural path must call `queued_structural`.
-- **Inside a system**, the world serves the system's views, `Time`, `Rng`
-  (declared), `alive`, `despawn`, `find`, `nameOf`, `tick` and (from its own
-  views) `has`. `spawn`, `insert`, `remove`, `get`, `set`, `emit` and other
-  resources are refused with a reason: `og_ecs::SystemContext` has no
-  packed-byte access for host-declared layouts yet.
-- **Not yet**: column kinds `bool` and `Matrix4` for components (og-core has
-  no one-byte or 4x4 field type), so `og.Mesh` and `og.MatrixWorld` are not
-  registered and a game component with a `bool` field is refused at
-  declaration; resources store a `bool` as a `u32` 0 or 1. Events with
-  string or enum fields are not registered; `world.events` answers `[]`.
-  `og.load.*` and `world.instantiate` refuse until the cook (M4); scheduling
-  commands and the probe's `sweep`, `reload`, `pick` and `commands` answer
-  their refusal until og-probe (M5). Entity names live in the runtime, not in
-  snapshots or the world hash.
+- **Inside a system**, the world serves the system's views, `Time`, `Rng`,
+  `alive`, `find`, `nameOf`, `tick`, `has` (from its own views), and through
+  `og_ecs::SystemContext`'s packed-byte calls `get`/`set` (immediate),
+  `spawn`/`insert`/`remove`/`despawn` (queued, applied when the system
+  returns; the system's views retire as moving), `events` (delivered this
+  tick), `emit`, and reading and writing any resource; each is refused by
+  the context unless the system declared the type among its reads or writes
+  (events too). `instantiate` is still refused inside systems (scenes spawn
+  between ticks).
+- **Modules** (`runtime/modules.rs`): every world gets physics, the UI and
+  audio. The schedule is `og.physics.queries` (records the colliders so
+  `og.physics.raycast` answers inside systems), `og.ui.begin`, the game's
+  systems, `og.ui.end`, `og.physics`, `og.audio`; the `og.ui` state block
+  carries the UI's interaction state. The host's options choose the physics
+  profile (`profile: "2d" | "3d"`, from project.ogt) and may defer
+  `GameDesc.start` to the first tick boundary (`deferStart`: the web Worker
+  attaches its canvas first); the web host reports the CSS viewport
+  (`og_web_set_viewport`), native hosts use the render target. The UI is
+  drawn on a plane in front of a camera that looks down -Z (og-render has no
+  screen-space overlay yet); with any other camera it is not drawn and the
+  log says so, while the probe and the pointer still use it.
+- Entity names live in the runtime, not in snapshots or the world hash.

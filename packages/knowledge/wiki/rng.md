@@ -14,7 +14,7 @@ module rng {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 561</sub>
+<sub>`api.ogt` line 567</sub>
 
 ## Contents
 
@@ -76,7 +76,7 @@ resource Rng {
 }
 ```
 
-<sub>`api.ogt` line 595</sub>
+<sub>`api.ogt` line 601</sub>
 
 <a id="member-Rng-next"></a>
 
@@ -99,7 +99,7 @@ fn next {
 }
 ```
 
-<sub>`api.ogt` line 603</sub>
+<sub>`api.ogt` line 609</sub>
 
 <a id="member-Rng-range"></a>
 
@@ -129,7 +129,7 @@ fn range {
 }
 ```
 
-<sub>`api.ogt` line 607</sub>
+<sub>`api.ogt` line 613</sub>
 
 <a id="member-Rng-integer"></a>
 
@@ -159,7 +159,7 @@ fn integer {
 }
 ```
 
-<sub>`api.ogt` line 613</sub>
+<sub>`api.ogt` line 619</sub>
 
 <a id="member-Rng-chance"></a>
 
@@ -187,7 +187,7 @@ fn chance {
 }
 ```
 
-<sub>`api.ogt` line 619</sub>
+<sub>`api.ogt` line 625</sub>
 
 <a id="member-Rng-fork"></a>
 
@@ -215,7 +215,7 @@ fn fork {
 }
 ```
 
-<sub>`api.ogt` line 624</sub>
+<sub>`api.ogt` line 630</sub>
 
 ## Interfaces
 
@@ -231,7 +231,7 @@ interface RngStream {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 564</sub>
+<sub>`api.ogt` line 570</sub>
 
 <a id="member-RngStream-seed"></a>
 
@@ -249,7 +249,7 @@ Binding symbol `og_rng_stream_get_seed` · publish builds: kept
 prop seed u32 "The stream's derived seed."
 ```
 
-<sub>`api.ogt` line 566</sub>
+<sub>`api.ogt` line 572</sub>
 
 <a id="member-RngStream-next"></a>
 
@@ -272,7 +272,7 @@ fn next {
 }
 ```
 
-<sub>`api.ogt` line 567</sub>
+<sub>`api.ogt` line 573</sub>
 
 <a id="member-RngStream-range"></a>
 
@@ -302,7 +302,7 @@ fn range {
 }
 ```
 
-<sub>`api.ogt` line 571</sub>
+<sub>`api.ogt` line 577</sub>
 
 <a id="member-RngStream-integer"></a>
 
@@ -332,7 +332,7 @@ fn integer {
 }
 ```
 
-<sub>`api.ogt` line 577</sub>
+<sub>`api.ogt` line 583</sub>
 
 <a id="member-RngStream-chance"></a>
 
@@ -360,7 +360,7 @@ fn chance {
 }
 ```
 
-<sub>`api.ogt` line 583</sub>
+<sub>`api.ogt` line 589</sub>
 
 <a id="member-RngStream-fork"></a>
 
@@ -388,4 +388,4 @@ fn fork {
 }
 ```
 
-<sub>`api.ogt` line 588</sub>
+<sub>`api.ogt` line 594</sub>

@@ -450,8 +450,10 @@ function liveResource(world: WorldImpl, token: Token, value: Record<string, unkn
       pressed: (key: string) => abi().og_input_pressed(id, key),
       released: (key: string) => abi().og_input_released(id, key),
       axis: (negative: string, positive: string) => abi().og_input_axis(id, negative, positive),
+      axis2: (left: string, right: string, down: string, up: string) => parse(abi().og_input_axis2(id, left, right, down, up)),
       buttonDown: (button: string) => abi().og_input_button_down(id, button),
       buttonPressed: (button: string) => abi().og_input_button_pressed(id, button),
+      buttonReleased: (button: string) => abi().og_input_button_released(id, button),
     });
   }
   if (token.name === "og.Camera") {
@@ -614,6 +616,10 @@ export interface CreateOptions {
   readonly seed?: number;
   /** The project directory (native) or URL base (web) whose `cooked/` bundle the engine opens before the first tick. */
   readonly root?: string;
+  /** The physics profile, project.ogt's `profile`: `3d` (the default) or `2d`. */
+  readonly profile?: "2d" | "3d";
+  /** Run GameDesc.start at the first tick boundary instead of now, so a host can attach its renderer and report the viewport first (the web Worker does). */
+  readonly deferStart?: boolean;
 }
 
 /** A file the command channel produced (`og_engine_take_outputs`). */
@@ -760,6 +766,11 @@ export const render = Object.freeze({
     parse(abi().og_render_update_material(world.id, material, json(desc))),
   capabilities: (world: WorldImpl) => parse(abi().og_render_capabilities(world.id)),
   text: (world: WorldImpl, desc?: unknown) => parse(abi().og_render_text(world.id, json(desc))),
+  sprite: (world: WorldImpl, desc?: unknown) => parse(abi().og_render_sprite(world.id, json(desc))),
+  measureText: (world: WorldImpl, desc?: unknown) => parse(abi().og_render_measure_text(world.id, json(desc))),
+  boxGeometry: (world: WorldImpl, desc?: unknown) => parse(abi().og_render_box_geometry(world.id, json(desc))),
+  planeGeometry: (world: WorldImpl, desc?: unknown) => parse(abi().og_render_plane_geometry(world.id, json(desc))),
+  sphereGeometry: (world: WorldImpl, desc?: unknown) => parse(abi().og_render_sphere_geometry(world.id, json(desc))),
 });
 
 export const load = Object.freeze({
@@ -771,6 +782,7 @@ export const load = Object.freeze({
   font: (world: WorldImpl, path: string) => parse(abi().og_load_font(world.id, path)),
   fontInfo: (world: WorldImpl, font: number) => parse(abi().og_load_font_info(world.id, font)),
   sound: (world: WorldImpl, path: string) => parse(abi().og_load_sound(world.id, path)),
+  texture: (world: WorldImpl, path: string) => parse(abi().og_load_texture(world.id, path)),
   soundInfo: (world: WorldImpl, sound: number) => parse(abi().og_load_sound_info(world.id, sound)),
   status: (world: WorldImpl, asset: number) => abi().og_load_status(world.id, asset),
   error: (world: WorldImpl, asset: number) => parse(abi().og_load_error(world.id, asset)),
@@ -782,4 +794,52 @@ export const commands = Object.freeze({
   parse: (script: string) => parse(abi().og_commands_parse(script)),
   schedule: (world: WorldImpl, script: string) => parse(abi().og_commands_schedule(world.id, script)),
   help: (world: WorldImpl) => parse(abi().og_commands_help(world.id)),
+});
+
+export const physics = Object.freeze({
+  raycast: (world: WorldImpl, desc?: unknown) => parse(abi().og_physics_raycast(world.id, json(desc))),
+  shapeCast: (world: WorldImpl, desc?: unknown) => parse(abi().og_physics_shape_cast(world.id, json(desc))),
+  overlap: (world: WorldImpl, desc?: unknown) => parse(abi().og_physics_overlap(world.id, json(desc))),
+  setMesh: (world: WorldImpl, mesh: number, desc?: unknown) => parse(abi().og_physics_set_mesh(world.id, mesh, json(desc))),
+});
+
+/** Runs `build` between an open and its close, closing even when it throws. */
+function within<T>(open: () => void, build: () => void): T {
+  open();
+  try {
+    build();
+  } catch (e) {
+    abi().og_ui_close();
+    throw e;
+  }
+  return parse<T>(abi().og_ui_close());
+}
+
+export const ui = Object.freeze({
+  configure: (world: WorldImpl, desc?: unknown) => parse(abi().og_ui_configure(world.id, json(desc))),
+  viewport: (world: WorldImpl) => parse(abi().og_ui_viewport(world.id)),
+  theme: (world: WorldImpl) => parse(abi().og_ui_theme(world.id)),
+  open: (id: string, desc?: unknown) => abi().og_ui_open(id, json(desc)),
+  openPanel: (id: string, desc?: unknown) => abi().og_ui_open_panel(id, json(desc)),
+  openScroll: (id: string, desc?: unknown) => abi().og_ui_open_scroll(id, json(desc)),
+  close: () => parse(abi().og_ui_close()),
+  row: (id: string, desc: Record<string, unknown> | undefined, build: () => void) =>
+    within(() => abi().og_ui_open(id, JSON.stringify({ ...(desc ?? {}), direction: "row" })), build),
+  column: (id: string, desc: Record<string, unknown> | undefined, build: () => void) =>
+    within(() => abi().og_ui_open(id, JSON.stringify({ ...(desc ?? {}), direction: "column" })), build),
+  panel: (id: string, desc: unknown, build: () => void): void => {
+    within(() => abi().og_ui_open_panel(id, json(desc)), build);
+  },
+  scroll: (id: string, desc: unknown, build: () => void): void => {
+    within(() => abi().og_ui_open_scroll(id, json(desc)), build);
+  },
+  label: (id: string, text: string, desc?: unknown) => abi().og_ui_label(id, text, json(desc)),
+  button: (id: string, text: string, desc?: unknown) => parse(abi().og_ui_button(id, text, json(desc))),
+  image: (id: string, desc?: unknown) => abi().og_ui_image(id, json(desc)),
+  progress: (id: string, value: number, desc?: unknown) => abi().og_ui_progress(id, value, json(desc)),
+  slider: (id: string, value: number, desc?: unknown) => parse(abi().og_ui_slider(id, value, json(desc))),
+  toggle: (id: string, on: boolean, label: string) => parse(abi().og_ui_toggle(id, on, label)),
+  textField: (id: string, value: string, desc?: unknown) => parse(abi().og_ui_text_field(id, value, json(desc))),
+  tooltip: (text: string) => abi().og_ui_tooltip(text),
+  idi: (name: string, index: number) => `${name}#${index}`,
 });

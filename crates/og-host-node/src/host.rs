@@ -267,6 +267,21 @@ impl CameraApi for NodeHost {
 }
 
 impl RenderApi for NodeHost {
+    fn og_render_box_geometry(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_box_geometry(world, desc)
+    }
+    fn og_render_plane_geometry(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_plane_geometry(world, desc)
+    }
+    fn og_render_sphere_geometry(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_sphere_geometry(world, desc)
+    }
+    fn og_render_sprite(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_sprite(world, desc)
+    }
+    fn og_render_measure_text(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_measure_text(world, desc)
+    }
     fn og_render_standard_material(&self, world: u32, desc: Option<String>) -> String {
         rt::og_render_standard_material(world, desc)
     }
@@ -282,6 +297,9 @@ impl RenderApi for NodeHost {
 }
 
 impl LoadApi for NodeHost {
+    fn og_load_texture(&self, world: u32, path: String) -> String {
+        rt::og_load_texture(world, path)
+    }
     fn og_load_gltf(&self, world: u32, path: String, desc: Option<String>) -> String {
         rt::og_load_gltf(world, path, desc)
     }
@@ -317,6 +335,69 @@ impl LoadApi for NodeHost {
     }
     fn og_load_error(&self, world: u32, asset: f64) -> String {
         rt::og_load_error(world, asset)
+    }
+}
+
+impl PhysicsApi for NodeHost {
+    fn og_physics_raycast(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_physics_raycast(world, desc)
+    }
+    fn og_physics_shape_cast(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_physics_shape_cast(world, desc)
+    }
+    fn og_physics_overlap(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_physics_overlap(world, desc)
+    }
+    fn og_physics_set_mesh(&self, world: u32, mesh: f64, desc: Option<String>) -> String {
+        rt::og_physics_set_mesh(world, mesh, desc)
+    }
+}
+
+impl UiApi for NodeHost {
+    fn og_ui_configure(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_ui_configure(world, desc)
+    }
+    fn og_ui_viewport(&self, world: u32) -> String {
+        rt::og_ui_viewport(world)
+    }
+    fn og_ui_theme(&self, world: u32) -> String {
+        rt::og_ui_theme(world)
+    }
+    fn og_ui_open(&self, id: String, desc: Option<String>) {
+        rt::og_ui_open(id, desc)
+    }
+    fn og_ui_open_panel(&self, id: String, desc: Option<String>) {
+        rt::og_ui_open_panel(id, desc)
+    }
+    fn og_ui_open_scroll(&self, id: String, desc: Option<String>) {
+        rt::og_ui_open_scroll(id, desc)
+    }
+    fn og_ui_close(&self) -> String {
+        rt::og_ui_close()
+    }
+    fn og_ui_label(&self, id: String, text: String, desc: Option<String>) {
+        rt::og_ui_label(id, text, desc)
+    }
+    fn og_ui_button(&self, id: String, text: String, desc: Option<String>) -> String {
+        rt::og_ui_button(id, text, desc)
+    }
+    fn og_ui_image(&self, id: String, desc: Option<String>) {
+        rt::og_ui_image(id, desc)
+    }
+    fn og_ui_progress(&self, id: String, value: f64, desc: Option<String>) {
+        rt::og_ui_progress(id, value, desc)
+    }
+    fn og_ui_slider(&self, id: String, value: f64, desc: Option<String>) -> String {
+        rt::og_ui_slider(id, value, desc)
+    }
+    fn og_ui_toggle(&self, id: String, on: bool, label: String) -> String {
+        rt::og_ui_toggle(id, on, label)
+    }
+    fn og_ui_text_field(&self, id: String, value: String, desc: Option<String>) -> String {
+        rt::og_ui_text_field(id, value, desc)
+    }
+    fn og_ui_tooltip(&self, text: String) {
+        rt::og_ui_tooltip(text)
     }
 }
 

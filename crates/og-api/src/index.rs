@@ -138,7 +138,7 @@ impl<'a> Index<'a> {
                         }
                         continue;
                     }
-                    Item::Fn(_) => continue,
+                    Item::Fn(_) | Item::Value(_) => continue,
                 };
                 let name = item.name();
                 if is_builtin(name) {
@@ -237,6 +237,8 @@ impl<'a> Index<'a> {
         }
         match self.decl(name)? {
             TypeDecl::Handle(_) => Some(vec!["u32", "u32"]),
+            // An enum column stores the variant's index.
+            TypeDecl::Enum(_) => Some(vec!["u32"]),
             TypeDecl::Struct(s) if !s.desc => {
                 let mut out = Vec::new();
                 for f in &s.fields {

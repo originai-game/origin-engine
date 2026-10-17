@@ -112,11 +112,21 @@ impl Loader {
             "component" => Item::Record(self.record(node, RecordKind::Component)?),
             "resource" => Item::Record(self.record(node, RecordKind::Resource)?),
             "event" => Item::Record(self.record(node, RecordKind::Event)?),
+            "value" => {
+                let name = self.name(node, "value")?;
+                let ty = self.decl_type(node, "value")?;
+                Item::Value(ValueDecl {
+                    doc: self.doc(node, 2),
+                    name,
+                    ty,
+                    line: node.line,
+                })
+            }
             other => {
                 self.error(
                     node.line,
                     format!(
-                        "unknown key `{other}` in a module: expected doc, place, publish, fn, const, handle, struct, enum, union, interface, callback, column, component, resource or event"
+                        "unknown key `{other}` in a module: expected doc, place, publish, fn, const, value, handle, struct, enum, union, interface, callback, column, component, resource or event"
                     ),
                 );
                 return None;
@@ -134,6 +144,7 @@ impl Loader {
             returns: TypeRef::named("Void"),
             returns_doc: Vec::new(),
             publish: None,
+            host: true,
             line: node.line,
         };
         for child in children(node) {
@@ -167,9 +178,10 @@ impl Loader {
                     f.returns_doc = self.doc(child, 1);
                 }
                 "publish" => f.publish = self.bool_value(child),
+                "host" => f.host = self.bool_value(child).unwrap_or(true),
                 other => self.error(
                     child.line,
-                    format!("unknown key `{other}` in fn `{}`: expected doc, generic, param, returns or publish", f.name),
+                    format!("unknown key `{other}` in fn `{}`: expected doc, generic, param, returns, publish or host", f.name),
                 ),
             }
         }

@@ -11,10 +11,13 @@ import {
   defineRecord,
   defineSystem as defineSystemImpl,
   load,
+  physics,
   render,
   transform,
+  ui,
   type FieldSpec,
 } from "./runtime.ts";
+import { cameras } from "./systems/cameras.ts";
 
 const spec = (kind: string, value: unknown, options: unknown): FieldSpec =>
   Object.freeze({ kind, default: value, options: Object.freeze({ ...((options as object | undefined) ?? {}) }) });
@@ -37,6 +40,8 @@ export const Entity = ((value = 0 as Api.Entity, options) => spec("Entity", valu
 export const Geometry = ((value = 0 as Api.Geometry, options) => spec("Geometry", value, options)) as typeof Api.Geometry;
 export const Material = ((value = 0 as Api.Material, options) => spec("Material", value, options)) as typeof Api.Material;
 export const Asset = ((value = 0 as Api.Asset, options) => spec("Asset", value, options)) as typeof Api.Asset;
+export const Sound = ((value = 0 as Api.Sound, options) => spec("Sound", value, options)) as typeof Api.Sound;
+export const AudioBus = ((value = "master" as Api.AudioBus, options) => spec("AudioBus", value, options)) as typeof Api.AudioBus;
 
 export const defineComponent: typeof Api.defineComponent = (name, fields) =>
   defineRecord("component", name, fields as unknown as Record<string, FieldSpec>) as never;
@@ -54,6 +59,27 @@ export const REPLAY_SEED_PARAM: typeof Api.REPLAY_SEED_PARAM = "replay-seed";
 export const PLAYTEST_MAX_TICKS: typeof Api.PLAYTEST_MAX_TICKS = 3600;
 export const PROBE_PROGRAM_MAX_OPERATIONS: typeof Api.PROBE_PROGRAM_MAX_OPERATIONS = 256;
 export const MAX_LIGHTS: typeof Api.MAX_LIGHTS = 8;
+export const BODY_DYNAMIC: typeof Api.BODY_DYNAMIC = 0;
+export const BODY_STATIC: typeof Api.BODY_STATIC = 1;
+export const BODY_KINEMATIC: typeof Api.BODY_KINEMATIC = 2;
+export const LOCK_TRANSLATION_X: typeof Api.LOCK_TRANSLATION_X = 1;
+export const LOCK_TRANSLATION_Y: typeof Api.LOCK_TRANSLATION_Y = 2;
+export const LOCK_TRANSLATION_Z: typeof Api.LOCK_TRANSLATION_Z = 4;
+export const LOCK_ROTATION_X: typeof Api.LOCK_ROTATION_X = 8;
+export const LOCK_ROTATION_Y: typeof Api.LOCK_ROTATION_Y = 16;
+export const LOCK_ROTATION_Z: typeof Api.LOCK_ROTATION_Z = 32;
+export const SHAPE_BOX: typeof Api.SHAPE_BOX = 0;
+export const SHAPE_SPHERE: typeof Api.SHAPE_SPHERE = 1;
+export const SHAPE_CAPSULE: typeof Api.SHAPE_CAPSULE = 2;
+export const SHAPE_CYLINDER: typeof Api.SHAPE_CYLINDER = 3;
+export const SHAPE_CONVEX: typeof Api.SHAPE_CONVEX = 4;
+export const SHAPE_TRIMESH: typeof Api.SHAPE_TRIMESH = 5;
+export const PROFILE_2D: typeof Api.PROFILE_2D = 2;
+export const PROFILE_3D: typeof Api.PROFILE_3D = 3;
+export const SOUND_FINISHED: typeof Api.SOUND_FINISHED = 0;
+export const SOUND_STOPPED: typeof Api.SOUND_STOPPED = 1;
+export const SOUND_REMOVED: typeof Api.SOUND_REMOVED = 2;
+export const SOUND_REPLACED: typeof Api.SOUND_REPLACED = 3;
 
 export const og: typeof Api.og = Object.freeze({
   ...BUILTINS,
@@ -62,4 +88,7 @@ export const og: typeof Api.og = Object.freeze({
   render,
   load,
   commands,
+  physics,
+  ui,
+  systems: Object.freeze({ cameras }),
 }) as unknown as typeof Api.og;

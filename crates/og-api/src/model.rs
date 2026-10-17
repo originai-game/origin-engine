@@ -69,6 +69,7 @@ pub enum Item {
     Callback(Callback),
     Column(Column),
     Record(Record),
+    Value(ValueDecl),
 }
 
 impl Item {
@@ -84,6 +85,7 @@ impl Item {
             Item::Callback(x) => &x.name,
             Item::Column(x) => &x.name,
             Item::Record(x) => &x.name,
+            Item::Value(x) => &x.name,
         }
     }
 
@@ -99,6 +101,7 @@ impl Item {
             Item::Callback(x) => x.line,
             Item::Column(x) => x.line,
             Item::Record(x) => x.line,
+            Item::Value(x) => x.line,
         }
     }
 }
@@ -239,6 +242,10 @@ pub struct Function {
     pub returns_doc: Vec<String>,
     /// `None` inherits the container's publish flag.
     pub publish: Option<bool>,
+    /// `false`: implemented by the TypeScript runtime over other members
+    /// (sugar such as `og.ui.panel`), so it has no binding symbol and no
+    /// host trait method.
+    pub host: bool,
     pub line: usize,
 }
 
@@ -247,6 +254,16 @@ pub struct Const {
     pub name: String,
     pub ty: TypeRef,
     pub value: Value,
+    pub doc: Vec<String>,
+    pub line: usize,
+}
+
+/// A value the TypeScript runtime provides under the module's path
+/// (`og.systems.cameras`): data or tokens, never a host call.
+#[derive(Debug, Clone)]
+pub struct ValueDecl {
+    pub name: String,
+    pub ty: TypeRef,
     pub doc: Vec<String>,
     pub line: usize,
 }

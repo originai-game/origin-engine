@@ -86,6 +86,18 @@
       "array": "Uint32Array",
       "stride": 2,
       "value": "Asset"
+    },
+    {
+      "name": "Sound",
+      "array": "Uint32Array",
+      "stride": 2,
+      "value": "Sound"
+    },
+    {
+      "name": "AudioBus",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "AudioBus"
     }
   ],
   "components": [
@@ -156,6 +168,192 @@
     },
     {
       "id": 3,
+      "name": "OrbitCamera",
+      "schema": "og.OrbitCamera",
+      "module": "camera",
+      "fields": [
+        {
+          "name": "target",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "distance",
+          "column": "f32",
+          "default": 10,
+          "tunable": true
+        },
+        {
+          "name": "minDistance",
+          "column": "f32",
+          "default": 1
+        },
+        {
+          "name": "maxDistance",
+          "column": "f32",
+          "default": 100
+        },
+        {
+          "name": "azimuth",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "polar",
+          "column": "f32",
+          "default": 1.1,
+          "tunable": true
+        },
+        {
+          "name": "minPolarAngle",
+          "column": "f32",
+          "default": 0.05
+        },
+        {
+          "name": "maxPolarAngle",
+          "column": "f32",
+          "default": 3.0916
+        },
+        {
+          "name": "rotateSpeed",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "zoomSpeed",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "autoRotate",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "autoRotateSpeed",
+          "column": "f32",
+          "default": 0.5,
+          "tunable": true
+        },
+        {
+          "name": "enabled",
+          "column": "bool",
+          "default": true
+        },
+        {
+          "name": "dragging",
+          "column": "bool",
+          "default": false,
+          "readonly": true
+        },
+        {
+          "name": "pointer",
+          "column": "Vector2",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "FollowCamera",
+      "schema": "og.FollowCamera",
+      "module": "camera",
+      "fields": [
+        {
+          "name": "offset",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 2,
+            "z": 6
+          }
+        },
+        {
+          "name": "lookOffset",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          }
+        },
+        {
+          "name": "followRotation",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "smoothTime",
+          "column": "f32",
+          "default": 0.25,
+          "tunable": true
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Follow2D",
+      "schema": "og.Follow2D",
+      "module": "camera",
+      "fields": [
+        {
+          "name": "offset",
+          "column": "Vector2",
+          "default": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "name": "deadZone",
+          "column": "Vector2",
+          "default": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "name": "smoothTime",
+          "column": "f32",
+          "default": 0.15,
+          "tunable": true
+        },
+        {
+          "name": "clamp",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "boundsMin",
+          "column": "Vector2",
+          "default": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "name": "boundsMax",
+          "column": "Vector2",
+          "default": {
+            "x": 0,
+            "y": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 6,
       "name": "Mesh",
       "schema": "og.Mesh",
       "module": "render",
@@ -188,7 +386,7 @@
       ]
     },
     {
-      "id": 4,
+      "id": 7,
       "name": "DirectionalLight",
       "schema": "og.DirectionalLight",
       "module": "render",
@@ -221,7 +419,7 @@
       ]
     },
     {
-      "id": 5,
+      "id": 8,
       "name": "PointLight",
       "schema": "og.PointLight",
       "module": "render",
@@ -255,7 +453,7 @@
       ]
     },
     {
-      "id": 6,
+      "id": 9,
       "name": "SpotLight",
       "schema": "og.SpotLight",
       "module": "render",
@@ -300,7 +498,7 @@
       ]
     },
     {
-      "id": 7,
+      "id": 10,
       "name": "Model",
       "schema": "og.Model",
       "module": "load",
@@ -309,6 +507,266 @@
           "name": "asset",
           "column": "Asset",
           "default": 0
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "name": "RigidBody",
+      "schema": "og.RigidBody",
+      "module": "physics",
+      "fields": [
+        {
+          "name": "kind",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "mass",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "linearDamping",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "angularDamping",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "gravityScale",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "lock",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "ccd",
+          "column": "u32",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "name": "Collider",
+      "schema": "og.Collider",
+      "module": "physics",
+      "fields": [
+        {
+          "name": "shape",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "size",
+          "column": "Vector3",
+          "default": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          },
+          "tunable": true
+        },
+        {
+          "name": "radius",
+          "column": "f32",
+          "default": 0.5,
+          "tunable": true
+        },
+        {
+          "name": "height",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "mesh",
+          "column": "Geometry",
+          "default": 0
+        },
+        {
+          "name": "offset",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "rotation",
+          "column": "Quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        {
+          "name": "friction",
+          "column": "f32",
+          "default": 0.5,
+          "tunable": true
+        },
+        {
+          "name": "restitution",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "density",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "sensor",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "layers",
+          "column": "u32",
+          "default": 1
+        },
+        {
+          "name": "mask",
+          "column": "u32",
+          "default": 4294967295
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "name": "Velocity",
+      "schema": "og.Velocity",
+      "module": "physics",
+      "fields": [
+        {
+          "name": "linear",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "tunable": true
+        },
+        {
+          "name": "angular",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "tunable": true
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "name": "AudioSource",
+      "schema": "og.AudioSource",
+      "module": "audio",
+      "fields": [
+        {
+          "name": "sound",
+          "column": "Sound",
+          "default": 0
+        },
+        {
+          "name": "bus",
+          "column": "AudioBus",
+          "default": "sfx"
+        },
+        {
+          "name": "volume",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "pitch",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "pan",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "loop",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "loopStart",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "loopEnd",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "spatial",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "refDistance",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "maxDistance",
+          "column": "f32",
+          "default": 100,
+          "tunable": true
+        },
+        {
+          "name": "rolloffFactor",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "playing",
+          "column": "bool",
+          "default": true
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "name": "AudioListener",
+      "schema": "og.AudioListener",
+      "module": "audio",
+      "fields": [
+        {
+          "name": "volume",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
         }
       ]
     }
@@ -642,6 +1100,80 @@
           "default": true
         }
       ]
+    },
+    {
+      "id": 5,
+      "name": "Physics",
+      "schema": "og.Physics",
+      "module": "physics",
+      "fields": [
+        {
+          "name": "profile",
+          "column": "u32",
+          "default": 3,
+          "readonly": true
+        },
+        {
+          "name": "gravity",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": -9.81,
+            "z": 0
+          },
+          "tunable": true
+        },
+        {
+          "name": "substeps",
+          "column": "u32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "solverIterations",
+          "column": "u32",
+          "default": 4,
+          "tunable": true
+        },
+        {
+          "name": "restSpeed",
+          "column": "f32",
+          "default": 0.02,
+          "tunable": true
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Audio",
+      "schema": "og.Audio",
+      "module": "audio",
+      "fields": [
+        {
+          "name": "master",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "music",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "sfx",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "ui",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        }
+      ]
     }
   ],
   "events": [
@@ -796,6 +1328,170 @@
           "name": "reason",
           "type": "String",
           "default": ""
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "CollisionStarted",
+      "schema": "og.CollisionStarted",
+      "module": "physics",
+      "fields": [
+        {
+          "name": "a",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "b",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "point",
+          "type": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "normal",
+          "type": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "CollisionEnded",
+      "schema": "og.CollisionEnded",
+      "module": "physics",
+      "fields": [
+        {
+          "name": "a",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "b",
+          "type": "Entity",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "name": "SensorEntered",
+      "schema": "og.SensorEntered",
+      "module": "physics",
+      "fields": [
+        {
+          "name": "sensor",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "other",
+          "type": "Entity",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "name": "SensorExited",
+      "schema": "og.SensorExited",
+      "module": "physics",
+      "fields": [
+        {
+          "name": "sensor",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "other",
+          "type": "Entity",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "name": "Contact",
+      "schema": "og.Contact",
+      "module": "physics",
+      "fields": [
+        {
+          "name": "a",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "b",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "sensor",
+          "type": "u32",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "name": "SoundStarted",
+      "schema": "og.SoundStarted",
+      "module": "audio",
+      "fields": [
+        {
+          "name": "entity",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "sound",
+          "type": "Sound",
+          "default": 0
+        },
+        {
+          "name": "voice",
+          "type": "u32",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "name": "SoundEnded",
+      "schema": "og.SoundEnded",
+      "module": "audio",
+      "fields": [
+        {
+          "name": "entity",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "sound",
+          "type": "Sound",
+          "default": 0
+        },
+        {
+          "name": "voice",
+          "type": "u32",
+          "default": 0
+        },
+        {
+          "name": "reason",
+          "type": "u32",
+          "default": 0
         }
       ]
     }
@@ -1971,6 +2667,116 @@
     {
       "id": 59,
       "kind": "fn",
+      "path": "og.render.sprite",
+      "symbol": "og_render_sprite",
+      "module": "render",
+      "name": "sprite",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "SpriteDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 60,
+      "kind": "fn",
+      "path": "og.render.measureText",
+      "symbol": "og_render_measure_text",
+      "module": "render",
+      "name": "measureText",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "TextMeasureDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<TextMetrics>",
+      "publish": true
+    },
+    {
+      "id": 61,
+      "kind": "fn",
+      "path": "og.render.boxGeometry",
+      "symbol": "og_render_box_geometry",
+      "module": "render",
+      "name": "boxGeometry",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "BoxGeometryDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Geometry>",
+      "publish": true
+    },
+    {
+      "id": 62,
+      "kind": "fn",
+      "path": "og.render.planeGeometry",
+      "symbol": "og_render_plane_geometry",
+      "module": "render",
+      "name": "planeGeometry",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "PlaneGeometryDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Geometry>",
+      "publish": true
+    },
+    {
+      "id": 63,
+      "kind": "fn",
+      "path": "og.render.sphereGeometry",
+      "symbol": "og_render_sphere_geometry",
+      "module": "render",
+      "name": "sphereGeometry",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "SphereGeometryDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Geometry>",
+      "publish": true
+    },
+    {
+      "id": 64,
+      "kind": "fn",
       "path": "og.render.standardMaterial",
       "symbol": "og_render_standard_material",
       "module": "render",
@@ -1991,7 +2797,7 @@
       "publish": true
     },
     {
-      "id": 60,
+      "id": 65,
       "kind": "fn",
       "path": "og.render.updateMaterial",
       "symbol": "og_render_update_material",
@@ -2018,7 +2824,7 @@
       "publish": true
     },
     {
-      "id": 61,
+      "id": 66,
       "kind": "fn",
       "path": "og.render.capabilities",
       "symbol": "og_render_capabilities",
@@ -2035,7 +2841,7 @@
       "publish": true
     },
     {
-      "id": 62,
+      "id": 67,
       "kind": "fn",
       "path": "og.render.text",
       "symbol": "og_render_text",
@@ -2057,7 +2863,7 @@
       "publish": true
     },
     {
-      "id": 63,
+      "id": 68,
       "kind": "fn",
       "path": "og.load.bundle",
       "symbol": "og_load_bundle",
@@ -2079,7 +2885,7 @@
       "publish": true
     },
     {
-      "id": 64,
+      "id": 69,
       "kind": "fn",
       "path": "og.load.bundleInfo",
       "symbol": "og_load_bundle_info",
@@ -2101,7 +2907,7 @@
       "publish": true
     },
     {
-      "id": 65,
+      "id": 70,
       "kind": "fn",
       "path": "og.load.defaultBundle",
       "symbol": "og_load_default_bundle",
@@ -2118,7 +2924,7 @@
       "publish": true
     },
     {
-      "id": 66,
+      "id": 71,
       "kind": "fn",
       "path": "og.load.gltf",
       "symbol": "og_load_gltf",
@@ -2145,7 +2951,7 @@
       "publish": true
     },
     {
-      "id": 67,
+      "id": 72,
       "kind": "fn",
       "path": "og.load.scene",
       "symbol": "og_load_scene",
@@ -2167,7 +2973,7 @@
       "publish": true
     },
     {
-      "id": 68,
+      "id": 73,
       "kind": "fn",
       "path": "og.load.font",
       "symbol": "og_load_font",
@@ -2189,7 +2995,7 @@
       "publish": true
     },
     {
-      "id": 69,
+      "id": 74,
       "kind": "fn",
       "path": "og.load.fontInfo",
       "symbol": "og_load_font_info",
@@ -2211,7 +3017,7 @@
       "publish": true
     },
     {
-      "id": 70,
+      "id": 75,
       "kind": "fn",
       "path": "og.load.sound",
       "symbol": "og_load_sound",
@@ -2233,7 +3039,29 @@
       "publish": true
     },
     {
-      "id": 71,
+      "id": 76,
+      "kind": "fn",
+      "path": "og.load.texture",
+      "symbol": "og_load_texture",
+      "module": "load",
+      "name": "texture",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Texture>",
+      "publish": true
+    },
+    {
+      "id": 77,
       "kind": "fn",
       "path": "og.load.soundInfo",
       "symbol": "og_load_sound_info",
@@ -2255,7 +3083,7 @@
       "publish": true
     },
     {
-      "id": 72,
+      "id": 78,
       "kind": "fn",
       "path": "og.load.status",
       "symbol": "og_load_status",
@@ -2277,7 +3105,7 @@
       "publish": true
     },
     {
-      "id": 73,
+      "id": 79,
       "kind": "fn",
       "path": "og.load.error",
       "symbol": "og_load_error",
@@ -2299,7 +3127,7 @@
       "publish": true
     },
     {
-      "id": 74,
+      "id": 80,
       "kind": "fn",
       "path": "og.load.gltfInfo",
       "symbol": "og_load_gltf_info",
@@ -2321,7 +3149,434 @@
       "publish": true
     },
     {
-      "id": 75,
+      "id": 81,
+      "kind": "fn",
+      "path": "og.physics.raycast",
+      "symbol": "og_physics_raycast",
+      "module": "physics",
+      "name": "raycast",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "RaycastDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Option<RaycastHit>>",
+      "publish": true
+    },
+    {
+      "id": 82,
+      "kind": "fn",
+      "path": "og.physics.shapeCast",
+      "symbol": "og_physics_shape_cast",
+      "module": "physics",
+      "name": "shapeCast",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "ShapeCastDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Option<ShapeCastHit>>",
+      "publish": true
+    },
+    {
+      "id": 83,
+      "kind": "fn",
+      "path": "og.physics.overlap",
+      "symbol": "og_physics_overlap",
+      "module": "physics",
+      "name": "overlap",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "OverlapDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<List<Entity>>",
+      "publish": true
+    },
+    {
+      "id": 84,
+      "kind": "fn",
+      "path": "og.physics.setMesh",
+      "symbol": "og_physics_set_mesh",
+      "module": "physics",
+      "name": "setMesh",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "mesh",
+          "type": "Geometry",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "MeshDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 85,
+      "kind": "fn",
+      "path": "og.ui.configure",
+      "symbol": "og_ui_configure",
+      "module": "ui",
+      "name": "configure",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "UiDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 86,
+      "kind": "fn",
+      "path": "og.ui.viewport",
+      "symbol": "og_ui_viewport",
+      "module": "ui",
+      "name": "viewport",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        }
+      ],
+      "returns": "Viewport",
+      "publish": true
+    },
+    {
+      "id": 87,
+      "kind": "fn",
+      "path": "og.ui.theme",
+      "symbol": "og_ui_theme",
+      "module": "ui",
+      "name": "theme",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        }
+      ],
+      "returns": "UiTheme",
+      "publish": true
+    },
+    {
+      "id": 88,
+      "kind": "fn",
+      "path": "og.ui.open",
+      "symbol": "og_ui_open",
+      "module": "ui",
+      "name": "open",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "ElementDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Void",
+      "publish": true
+    },
+    {
+      "id": 89,
+      "kind": "fn",
+      "path": "og.ui.openPanel",
+      "symbol": "og_ui_open_panel",
+      "module": "ui",
+      "name": "openPanel",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "PanelDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Void",
+      "publish": true
+    },
+    {
+      "id": 90,
+      "kind": "fn",
+      "path": "og.ui.openScroll",
+      "symbol": "og_ui_open_scroll",
+      "module": "ui",
+      "name": "openScroll",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "ScrollDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Void",
+      "publish": true
+    },
+    {
+      "id": 91,
+      "kind": "fn",
+      "path": "og.ui.close",
+      "symbol": "og_ui_close",
+      "module": "ui",
+      "name": "close",
+      "params": [],
+      "returns": "Response",
+      "publish": true
+    },
+    {
+      "id": 92,
+      "kind": "fn",
+      "path": "og.ui.label",
+      "symbol": "og_ui_label",
+      "module": "ui",
+      "name": "label",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "text",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "LabelDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Void",
+      "publish": true
+    },
+    {
+      "id": 93,
+      "kind": "fn",
+      "path": "og.ui.button",
+      "symbol": "og_ui_button",
+      "module": "ui",
+      "name": "button",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "text",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "ButtonDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Response",
+      "publish": true
+    },
+    {
+      "id": 94,
+      "kind": "fn",
+      "path": "og.ui.image",
+      "symbol": "og_ui_image",
+      "module": "ui",
+      "name": "image",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "ImageDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Void",
+      "publish": true
+    },
+    {
+      "id": 95,
+      "kind": "fn",
+      "path": "og.ui.progress",
+      "symbol": "og_ui_progress",
+      "module": "ui",
+      "name": "progress",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "value",
+          "type": "f32",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "ProgressDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Void",
+      "publish": true
+    },
+    {
+      "id": 96,
+      "kind": "fn",
+      "path": "og.ui.slider",
+      "symbol": "og_ui_slider",
+      "module": "ui",
+      "name": "slider",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "value",
+          "type": "f32",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "SliderDesc",
+          "optional": true
+        }
+      ],
+      "returns": "SliderResult",
+      "publish": true
+    },
+    {
+      "id": 97,
+      "kind": "fn",
+      "path": "og.ui.toggle",
+      "symbol": "og_ui_toggle",
+      "module": "ui",
+      "name": "toggle",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "on",
+          "type": "bool",
+          "optional": false
+        },
+        {
+          "name": "label",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "ToggleResult",
+      "publish": true
+    },
+    {
+      "id": 98,
+      "kind": "fn",
+      "path": "og.ui.textField",
+      "symbol": "og_ui_text_field",
+      "module": "ui",
+      "name": "textField",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "value",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "FieldDesc",
+          "optional": true
+        }
+      ],
+      "returns": "FieldResult",
+      "publish": true
+    },
+    {
+      "id": 99,
+      "kind": "fn",
+      "path": "og.ui.tooltip",
+      "symbol": "og_ui_tooltip",
+      "module": "ui",
+      "name": "tooltip",
+      "params": [
+        {
+          "name": "text",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Void",
+      "publish": true
+    },
+    {
+      "id": 100,
       "kind": "fn",
       "path": "og.commands.register",
       "symbol": "og_commands_register",
@@ -2348,7 +3603,7 @@
       "publish": false
     },
     {
-      "id": 76,
+      "id": 101,
       "kind": "fn",
       "path": "og.commands.parse",
       "symbol": "og_commands_parse",
@@ -2365,7 +3620,7 @@
       "publish": false
     },
     {
-      "id": 77,
+      "id": 102,
       "kind": "fn",
       "path": "og.commands.help",
       "symbol": "og_commands_help",
@@ -2382,7 +3637,7 @@
       "publish": false
     },
     {
-      "id": 78,
+      "id": 103,
       "kind": "fn",
       "path": "og.commands.schedule",
       "symbol": "og_commands_schedule",
@@ -2404,7 +3659,7 @@
       "publish": false
     },
     {
-      "id": 79,
+      "id": 104,
       "kind": "prop",
       "path": "RuntimeProbe.version",
       "symbol": "og_runtime_probe_get_version",
@@ -2415,7 +3670,7 @@
       "publish": true
     },
     {
-      "id": 80,
+      "id": 105,
       "kind": "method",
       "path": "RuntimeProbe.tick",
       "symbol": "og_runtime_probe_tick",
@@ -2427,7 +3682,7 @@
       "publish": true
     },
     {
-      "id": 81,
+      "id": 106,
       "kind": "method",
       "path": "RuntimeProbe.state",
       "symbol": "og_runtime_probe_state",
@@ -2439,7 +3694,7 @@
       "publish": true
     },
     {
-      "id": 82,
+      "id": 107,
       "kind": "method",
       "path": "RuntimeProbe.advance",
       "symbol": "og_runtime_probe_advance",
@@ -2457,7 +3712,7 @@
       "publish": false
     },
     {
-      "id": 83,
+      "id": 108,
       "kind": "method",
       "path": "RuntimeProbe.pause",
       "symbol": "og_runtime_probe_pause",
@@ -2469,7 +3724,7 @@
       "publish": false
     },
     {
-      "id": 84,
+      "id": 109,
       "kind": "method",
       "path": "RuntimeProbe.resume",
       "symbol": "og_runtime_probe_resume",
@@ -2481,7 +3736,7 @@
       "publish": false
     },
     {
-      "id": 85,
+      "id": 110,
       "kind": "method",
       "path": "RuntimeProbe.input",
       "symbol": "og_runtime_probe_input",
@@ -2499,7 +3754,7 @@
       "publish": true
     },
     {
-      "id": 86,
+      "id": 111,
       "kind": "method",
       "path": "RuntimeProbe.accepted",
       "symbol": "og_runtime_probe_accepted",
@@ -2511,7 +3766,7 @@
       "publish": false
     },
     {
-      "id": 87,
+      "id": 112,
       "kind": "method",
       "path": "RuntimeProbe.pick",
       "symbol": "og_runtime_probe_pick",
@@ -2534,7 +3789,7 @@
       "publish": true
     },
     {
-      "id": 88,
+      "id": 113,
       "kind": "method",
       "path": "RuntimeProbe.entity",
       "symbol": "og_runtime_probe_entity",
@@ -2552,7 +3807,7 @@
       "publish": true
     },
     {
-      "id": 89,
+      "id": 114,
       "kind": "method",
       "path": "RuntimeProbe.bounds",
       "symbol": "og_runtime_probe_bounds",
@@ -2570,7 +3825,7 @@
       "publish": false
     },
     {
-      "id": 90,
+      "id": 115,
       "kind": "method",
       "path": "RuntimeProbe.patch",
       "symbol": "og_runtime_probe_patch",
@@ -2598,7 +3853,7 @@
       "publish": false
     },
     {
-      "id": 91,
+      "id": 116,
       "kind": "method",
       "path": "RuntimeProbe.run",
       "symbol": "og_runtime_probe_run",
@@ -2616,7 +3871,7 @@
       "publish": false
     },
     {
-      "id": 92,
+      "id": 117,
       "kind": "method",
       "path": "EngineProbe.hello",
       "symbol": "og_engine_probe_hello",
@@ -2628,7 +3883,7 @@
       "publish": true
     },
     {
-      "id": 93,
+      "id": 118,
       "kind": "method",
       "path": "EngineProbe.capture",
       "symbol": "og_engine_probe_capture",
@@ -2653,7 +3908,7 @@
       "publish": true
     },
     {
-      "id": 94,
+      "id": 119,
       "kind": "method",
       "path": "EngineProbe.sweep",
       "symbol": "og_engine_probe_sweep",
@@ -2672,7 +3927,7 @@
       "publish": false
     },
     {
-      "id": 95,
+      "id": 120,
       "kind": "method",
       "path": "EngineProbe.reload",
       "symbol": "og_engine_probe_reload",
@@ -2684,7 +3939,7 @@
       "publish": false
     },
     {
-      "id": 96,
+      "id": 121,
       "kind": "method",
       "path": "EngineProbe.snapshot",
       "symbol": "og_engine_probe_snapshot",
@@ -2696,7 +3951,7 @@
       "publish": false
     },
     {
-      "id": 97,
+      "id": 122,
       "kind": "method",
       "path": "EngineProbe.restore",
       "symbol": "og_engine_probe_restore",
@@ -2714,7 +3969,7 @@
       "publish": false
     },
     {
-      "id": 98,
+      "id": 123,
       "kind": "method",
       "path": "EngineProbe.dump",
       "symbol": "og_engine_probe_dump",
@@ -2733,7 +3988,7 @@
       "publish": false
     },
     {
-      "id": 99,
+      "id": 124,
       "kind": "method",
       "path": "EngineProbe.commands",
       "symbol": "og_engine_probe_commands",
@@ -2796,6 +4051,12 @@
           "optional": false
         }
       ],
+      "returns": "Void"
+    },
+    {
+      "name": "UiBuild",
+      "module": "ui",
+      "params": [],
       "returns": "Void"
     },
     {

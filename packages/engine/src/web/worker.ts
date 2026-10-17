@@ -25,6 +25,7 @@
 import { createEngine, type Engine, type GameToken } from "../runtime.ts";
 import { loadWebHost, type WebGlue } from "./host.ts";
 import { drainRing, type InjectedInput } from "./input.ts";
+import { WorkerAudio, type AudioMessage, type WebAudioGlue } from "./audio.ts";
 import { readFrames, waitForFrames, writeFrame, type RpcRings } from "./rpc-ring.ts";
 import {
   compressionsFromWebGl2,
@@ -51,6 +52,10 @@ interface Start {
   root?: string;
   /** The Basis transcoder's script and module. */
   basis?: { js: string; wasm: string };
+  /** The project's physics profile (project.ogt `profile`). */
+  profile?: "2d" | "3d";
+  /** The play surface in CSS pixels, its DPR and safe area: what the UI lays out in. */
+  viewport?: { width: number; height: number; dpr: number; safeArea?: Record<string, number>; coarsePointer?: boolean };
 }
 
 interface Call {
@@ -65,7 +70,9 @@ type Message =
   | Call
   | { type: "input"; event: InjectedInput }
   | { type: "play"; on: boolean }
-  | { type: "rpc"; frame: string };
+  | { type: "rpc"; frame: string }
+  | { type: "viewport"; viewport: NonNullable<Start["viewport"]> }
+  | AudioMessage;
 
 interface WorkerScope {
   onmessage: ((e: { data: Message }) => void) | null;
@@ -84,6 +91,7 @@ export interface WebExtras {
   og_web_bundle_files(manifest: string): string;
   og_web_texture_ktx2(manifest: string, id: string, bytes: Uint8Array): Uint8Array;
   og_web_attach_canvas(engine: number, canvas: OffscreenCanvas, webgl: boolean): Promise<string>;
+  og_web_set_viewport(engine: number, viewport: string): string;
 }
 
 /** Where the runtime asks for a bundle's files: `<root>/cooked/<file>` (crates/og-api/src/runtime/assets.rs). */
@@ -202,6 +210,8 @@ export function startWorker(game: GameToken): void {
   let playing = false;
   let scheduled = false;
   let last = 0;
+  let glueRef: (WebGlue & WebExtras & WebAudioGlue) | null = null;
+  let audio: WorkerAudio | null = null;
   /** Captures waiting for their readback (requested on tick N, answered on N + 1). */
   const retries: Array<{ frame: string; left: number; viaRing: boolean }> = [];
 
@@ -253,6 +263,7 @@ export function startWorker(game: GameToken): void {
         self.postMessage({ type: "error", message: answered.reason });
         return;
       }
+      audio?.pump();
     }
     last = now;
     if (playing || retries.length > 0) schedule();
@@ -288,7 +299,8 @@ export function startWorker(game: GameToken): void {
       try {
         const progress = (value: number, stage: string) => self.postMessage({ type: "progress", value, stage });
         progress(0, "wasm");
-        const glue = (await import(data.glue)) as WebGlue & WebExtras;
+        const glue = (await import(data.glue)) as WebGlue & WebExtras & WebAudioGlue;
+        glueRef = glue;
         await loadWebHost(glue, data.wasm);
         progress(0.1, "bundle");
         let loaded: Preloaded | null = null;
@@ -302,9 +314,15 @@ export function startWorker(game: GameToken): void {
             );
           });
         }
-        const created = createEngine(game, { ...(data.seed === undefined ? {} : { seed: data.seed }), ...(data.root === undefined ? {} : { root: data.root }) });
+        const created = createEngine(game, {
+          ...(data.seed === undefined ? {} : { seed: data.seed }),
+          ...(data.root === undefined ? {} : { root: data.root }),
+          ...(data.profile === undefined ? {} : { profile: data.profile }),
+          deferStart: true,
+        });
         if (!created.ok) throw new Error(created.reason);
         engine = created.value;
+        if (data.viewport) glue.og_web_set_viewport(engine.id, JSON.stringify(data.viewport));
         ring = data.ring;
         rpc = data.rpc;
         let tier = "none";
@@ -335,6 +353,12 @@ export function startWorker(game: GameToken): void {
     }
     if (!engine) return;
     if (data.type === "input") engine.probe.input(data.event);
+    if (data.type === "viewport" && glueRef) glueRef.og_web_set_viewport(engine.id, JSON.stringify(data.viewport));
+    if (data.type === "audio" && glueRef && !audio) {
+      const attached = WorkerAudio.attach(glueRef, engine.id, data);
+      if (attached.ok) audio = attached.value;
+      else self.postMessage({ type: "error", message: `audio: ${attached.reason}` });
+    }
     if (data.type === "rpc") {
       serve(data.frame, false);
       if (retries.length > 0) schedule();

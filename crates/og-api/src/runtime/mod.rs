@@ -32,6 +32,7 @@ mod assets;
 mod codec;
 mod engine;
 mod extract;
+mod modules;
 mod probe;
 
 pub use api::*;
@@ -41,6 +42,13 @@ pub use engine::{
     advance, answer_call, begin_bundle, call_rpc, command, create, destroy, frame, render_options,
     set_render_backend, take_log, take_outputs, view_columns, view_entities, write_resource,
     ColumnPtr, Dispatch, Hooks, RenderBackend,
+};
+pub use modules::{
+    og_physics_overlap, og_physics_raycast, og_physics_set_mesh, og_physics_shape_cast,
+    og_ui_button, og_ui_close, og_ui_configure, og_ui_image, og_ui_label, og_ui_open,
+    og_ui_open_panel, og_ui_open_scroll, og_ui_progress, og_ui_slider, og_ui_text_field,
+    og_ui_theme, og_ui_toggle, og_ui_tooltip, og_ui_viewport, set_viewport, THEME_COLORS,
+    TYPE_STEPS,
 };
 pub use probe::png;
 

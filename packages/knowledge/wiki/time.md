@@ -14,7 +14,7 @@ module time {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 535</sub>
+<sub>`api.ogt` line 541</sub>
 
 ## Contents
 
@@ -61,4 +61,4 @@ resource Time {
 }
 ```
 
-<sub>`api.ogt` line 538</sub>
+<sub>`api.ogt` line 544</sub>

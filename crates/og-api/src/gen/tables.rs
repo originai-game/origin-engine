@@ -202,6 +202,7 @@ pub fn schema(ix: &Index<'_>) -> String {
         let mut interfaces = Vec::new();
         let mut callbacks = Vec::new();
         let mut consts = Vec::new();
+        let mut values = Vec::new();
         for item in &m.items {
             match item {
                 Item::Fn(f) => fns.push(function_json(ix, f, f.publish.unwrap_or(m.publish))),
@@ -251,6 +252,12 @@ pub fn schema(ix: &Index<'_>) -> String {
                 Item::Column(c) => {
                     types.push(c.name.clone());
                 }
+                Item::Value(v) => values.push(
+                    Json::obj()
+                        .with("name", Json::str(v.name.clone()))
+                        .with("type", Json::str(v.ty.to_string()))
+                        .with("doc", Json::str(joined(&v.doc))),
+                ),
                 other => {
                     types.push(other.name().to_string());
                     if let Some(def) = def_json(ix, m, other) {
@@ -261,6 +268,9 @@ pub fn schema(ix: &Index<'_>) -> String {
         }
         catalog.set("types", strings(types.iter().map(String::as_str)));
         catalog.set("consts", Json::Arr(consts));
+        if !values.is_empty() {
+            catalog.set("values", Json::Arr(values));
+        }
         catalog.set("functions", Json::Arr(fns));
         catalog.set("interfaces", Json::Arr(interfaces));
         catalog.set("callbacks", Json::Arr(callbacks));
@@ -296,6 +306,9 @@ fn function_json(ix: &Index<'_>, f: &Function, publish: bool) -> Json {
         o.set("returnsDoc", Json::str(joined(&f.returns_doc)));
     }
     o.set("publish", Json::Bool(publish));
+    if !f.host {
+        o.set("host", Json::Bool(false));
+    }
     o
 }
 

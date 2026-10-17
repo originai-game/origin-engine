@@ -110,6 +110,10 @@ export interface ColumnKinds {
   Material: { readonly array: Uint32Array; readonly stride: 2; readonly value: Material };
   /** An Asset handle field. */
   Asset: { readonly array: Uint32Array; readonly stride: 2; readonly value: Asset };
+  /** A Sound handle field. */
+  Sound: { readonly array: Uint32Array; readonly stride: 2; readonly value: Sound };
+  /** An AudioBus field: the variant's index. */
+  AudioBus: { readonly array: Uint32Array; readonly stride: 1; readonly value: AudioBus };
 }
 
 // ── math ────────────────────────────────────────────────────────
@@ -597,17 +601,17 @@ export interface ArchetypeView {
  */
 export interface SystemDesc {
   /**
-   * Components and resources the system reads. Components here also shape its query.
+   * Components, resources and events the system reads (world.events). Components here also shape its query.
    *
    * @default []
    */
-  readonly reads?: readonly AnyReflected[];
+  readonly reads?: readonly (AnyReflected | AnyEvent)[];
   /**
-   * Components and resources the system writes. Components here also shape its query.
+   * Components, resources and events the system writes (world.emit). Components here also shape its query.
    *
    * @default []
    */
-  readonly writes?: readonly AnyReflected[];
+  readonly writes?: readonly (AnyReflected | AnyEvent)[];
   /**
    * Components a matched entity must not have.
    *
@@ -1329,6 +1333,7 @@ export interface Wheel {
 
 // ── camera ──────────────────────────────────────────────────────
 // The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names.
+// Camera controllers are components (OrbitCamera, FollowCamera, Follow2D) on the entity the camera orbits or follows; the systems that drive them ship in TypeScript as og.systems.cameras.
 
 /**
  * The camera the frame is rendered from. Rendering reads it after the tick; it never feeds back into the simulation.
@@ -1421,6 +1426,202 @@ export interface Camera {
    * @param y Vertical position in CSS pixels.
    */
   screenToRay(x: number, y: number): Ray;
+}
+
+/**
+ * Orbits og.Camera around the entity carrying it, as three.js OrbitControls: a left-button drag on the play surface turns it, the wheel zooms, autoRotate turns it on its own.
+ * Camera controllers are game-level systems the engine ships in TypeScript (og.systems.cameras); list them in GameDesc.systems: `systems: [...og.systems.cameras, ...yours]`. The first entity carrying one, in query order, drives the camera.
+ * The camera sits `distance` from the orbited point (the entity's position plus `target`) in the direction given by `azimuth` about +Y and `polar` from +Y, and looks at the point. Every angle is computed with deterministic arithmetic, so a replay moves the camera identically on every host.
+ *
+ * The value of the `OrbitCamera` component (token `og.OrbitCamera`).
+ */
+export interface OrbitCamera {
+  /**
+   * The orbited point, relative to the entity's position.
+   *
+   * @unit m (metres)
+   */
+  target: Vector3;
+  /**
+   * How far the camera is from the orbited point, as three.js OrbitControls' distance.
+   *
+   * @default 10
+   * @range 0.01..
+   * @unit m (metres)
+   * @tunable
+   */
+  distance: number;
+  /**
+   * The closest the wheel zooms in, as three.js OrbitControls.minDistance.
+   *
+   * @default 1
+   * @range 0.01..
+   * @unit m (metres)
+   */
+  minDistance: number;
+  /**
+   * The farthest the wheel zooms out, as three.js OrbitControls.maxDistance.
+   *
+   * @default 100
+   * @range 0.01..
+   * @unit m (metres)
+   */
+  maxDistance: number;
+  /**
+   * The horizontal angle about +Y; 0 puts the camera on the +Z side of the point.
+   *
+   * @unit rad (radians)
+   * @tunable
+   */
+  azimuth: number;
+  /**
+   * The angle from +Y: near 0 looks straight down, half pi is level with the point.
+   *
+   * @default 1.1
+   * @range 0..3.1416
+   * @unit rad (radians)
+   * @tunable
+   */
+  polar: number;
+  /**
+   * The smallest polar angle a drag reaches, as three.js OrbitControls.minPolarAngle.
+   *
+   * @default 0.05
+   * @range 0..3.1416
+   * @unit rad (radians)
+   */
+  minPolarAngle: number;
+  /**
+   * The largest polar angle a drag reaches, as three.js OrbitControls.maxPolarAngle.
+   *
+   * @default 3.0916
+   * @range 0..3.1416
+   * @unit rad (radians)
+   */
+  maxPolarAngle: number;
+  /**
+   * Drag sensitivity, as three.js OrbitControls.rotateSpeed: at 1, dragging the play surface's height turns a full circle.
+   *
+   * @default 1
+   * @range 0..
+   * @tunable
+   */
+  rotateSpeed: number;
+  /**
+   * Wheel sensitivity, as three.js OrbitControls.zoomSpeed: at 1, 100 CSS pixels of wheel change the distance by a tenth.
+   *
+   * @default 1
+   * @range 0..
+   * @tunable
+   */
+  zoomSpeed: number;
+  /**
+   * Turn about the point on its own while not dragged, as three.js OrbitControls.autoRotate.
+   */
+  autoRotate: boolean;
+  /**
+   * How fast autoRotate turns.
+   *
+   * @default 0.5
+   * @unit radps (radians per second)
+   * @tunable
+   */
+  autoRotateSpeed: number;
+  /**
+   * Read the pointer and the wheel; false keeps only autoRotate and the fields' own values.
+   *
+   * @default true
+   */
+  enabled: boolean;
+  /**
+   * Controller state: a left-button drag that started on the play surface is in progress.
+   *
+   * @readonly written by the engine
+   */
+  readonly dragging: boolean;
+  /**
+   * Controller state: where the pointer was on the previous tick of a drag.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   * @readonly written by the engine
+   */
+  readonly pointer: Vector2;
+}
+
+/**
+ * Chases the entity carrying it with og.Camera: a third-person 3D view that eases towards a point offset from the entity and looks at it. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera.
+ *
+ * The value of the `FollowCamera` component (token `og.FollowCamera`).
+ */
+export interface FollowCamera {
+  /**
+   * Where the camera sits relative to the entity: in the entity's own axes with followRotation, else in world axes.
+   *
+   * @default { x: 0, y: 2, z: 6 }
+   * @unit m (metres)
+   */
+  offset: Vector3;
+  /**
+   * The point the camera looks at, relative to the entity's position.
+   *
+   * @default { x: 0, y: 1, z: 0 }
+   * @unit m (metres)
+   */
+  lookOffset: Vector3;
+  /** Turn the offset with the entity's rotation, so the camera stays behind it. */
+  followRotation: boolean;
+  /**
+   * Roughly how long the camera takes to catch up with a moved entity; 0 snaps it there every tick.
+   *
+   * @default 0.25
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  smoothTime: number;
+}
+
+/**
+ * Keeps og.Camera on the entity carrying it in the xy plane, for 2D games: the camera moves only when the entity leaves the dead zone, eases by smoothTime and, with clamp, stays inside the bounds. The camera keeps its z, rotation and projection. Driven by og.systems.cameras.
+ *
+ * The value of the `Follow2D` component (token `og.Follow2D`).
+ */
+export interface Follow2D {
+  /**
+   * Where the camera centre sits relative to the entity.
+   *
+   * @unit m (metres)
+   */
+  offset: Vector2;
+  /**
+   * Half the width and height of the box around the camera centre inside which the entity moves without moving the camera.
+   *
+   * @unit m (metres)
+   */
+  deadZone: Vector2;
+  /**
+   * Roughly how long the camera takes to catch up; 0 snaps it every tick.
+   *
+   * @default 0.15
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  smoothTime: number;
+  /** Keep the camera centre between boundsMin and boundsMax. */
+  clamp: boolean;
+  /**
+   * The smallest x and y the camera centre takes with clamp.
+   *
+   * @unit m (metres)
+   */
+  boundsMin: Vector2;
+  /**
+   * The largest x and y the camera centre takes with clamp.
+   *
+   * @unit m (metres)
+   */
+  boundsMax: Vector2;
 }
 
 // ── render ──────────────────────────────────────────────────────
@@ -1885,7 +2086,216 @@ export interface TextDesc {
    * @default 0
    */
   readonly layer?: number;
+  /**
+   * How each line sits on `position`: start puts its left end there, center its middle, end its right end.
+   *
+   * @default "start"
+   */
+  readonly align?: TextAlign;
 }
+
+/**
+ * Text to measure with og.render.measureText, laid out as og.render.text lays it out.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TextMeasureDesc {
+  /**
+   * The font from og.load.font.
+   *
+   * @default null
+   */
+  readonly font?: Font | null;
+  /**
+   * The text; `\n` starts a new line.
+   *
+   * @default ""
+   */
+  readonly text?: string;
+  /**
+   * The em size in world units.
+   *
+   * @default 1
+   * @range 0..
+   */
+  readonly size?: number;
+}
+
+/** The extent of a laid-out text, in world units. */
+export interface TextMetrics {
+  /** The widest line's advance. */
+  readonly width: number;
+  /** Lines times the font's line height. */
+  readonly height: number;
+  /** How many lines. */
+  readonly lines: number;
+}
+
+/**
+ * A textured or solid quad in the world's xy plane facing +z, drawn this frame only (immediate mode, as og.render.text): submit it every tick it should show. Sprites and text are sorted by layer and drawn over the 3D scene.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SpriteDesc {
+  /**
+   * The texture from og.load.texture; null draws a solid quad of the colour.
+   *
+   * @default null
+   */
+  readonly texture?: Texture | null;
+  /**
+   * Where the anchor point is.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly position?: Vector3;
+  /**
+   * Its width in world units.
+   *
+   * @default 1
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly width?: number;
+  /**
+   * Its height in world units.
+   *
+   * @default 1
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly height?: number;
+  /**
+   * The point of the quad at `position`, as a fraction of its size from the bottom-left corner: (0.5, 0.5) is the centre.
+   *
+   * @default { x: 0.5, y: 0.5 }
+   */
+  readonly anchor?: Vector2;
+  /**
+   * Counter-clockwise rotation about the anchor.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly rotation?: number;
+  /**
+   * A linear colour multiplied with the texture.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  readonly color?: Color;
+  /**
+   * The alpha.
+   *
+   * @default 1
+   * @range 0..1
+   */
+  readonly opacity?: number;
+  /**
+   * The texture region drawn, [u0, v0, u1, v1] with v down; null is the whole texture (a sheet's frame for animation).
+   *
+   * @default null
+   */
+  readonly uv?: [number, number, number, number] | null;
+  /**
+   * Draw order among sprites and text; higher draws on top.
+   *
+   * @default 0
+   */
+  readonly layer?: number;
+}
+
+
+
+/**
+ * A box centred at the origin, as three.js BoxGeometry(width, height, depth).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface BoxGeometryDesc {
+  /**
+   * Its extent along x.
+   *
+   * @default 1
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly width?: number;
+  /**
+   * Its extent along y.
+   *
+   * @default 1
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly height?: number;
+  /**
+   * Its extent along z.
+   *
+   * @default 1
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly depth?: number;
+}
+
+/**
+ * A rectangle in the xy plane facing +z, centred at the origin, as three.js PlaneGeometry(width, height); turn it -pi/2 about x for a floor.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PlaneGeometryDesc {
+  /**
+   * Its extent along x.
+   *
+   * @default 1
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly width?: number;
+  /**
+   * Its extent along y.
+   *
+   * @default 1
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly height?: number;
+}
+
+/**
+ * A UV sphere centred at the origin, as three.js SphereGeometry(radius, widthSegments, heightSegments).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SphereGeometryDesc {
+  /**
+   * Its radius.
+   *
+   * @default 1
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly radius?: number;
+  /**
+   * Segments around the equator.
+   *
+   * @default 32
+   * @range 3..
+   */
+  readonly widthSegments?: number;
+  /**
+   * Rings from pole to pole.
+   *
+   * @default 16
+   * @range 2..
+   */
+  readonly heightSegments?: number;
+}
+
+
+
 
 /** The most point and spot lights one frame draws. */
 export declare const MAX_LIGHTS: 8;
@@ -1948,6 +2358,15 @@ export type Sound = number & { readonly [handleType]: "Sound" };
  * @param options Range, unit, label, docs and the tunable flag.
  */
 export declare function Asset(value?: Asset, options?: FieldOptions): FieldSpec<"Asset">;
+
+/**
+ * A Sound handle field.
+ *
+ * A `Sound` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function Sound(value?: Sound, options?: FieldOptions): FieldSpec<"Sound">;
 
 /**
  * Where a load is.
@@ -2067,6 +2486,7 @@ export interface Model {
 
 
 
+
 /**
  * A load completed.
  *
@@ -2092,6 +2512,1657 @@ export interface AssetFailed {
   /** Why, naming the fix. */
   readonly reason: string;
 }
+
+// ── physics ─────────────────────────────────────────────────────
+// Rigid bodies over rapier (rapier3d in the 3D profile, rapier2d in 2D, both with enhanced determinism): game code owns the components, the engine's og.physics system steps them after the game's systems and writes the dynamic bodies back.
+// The profile is the project's (`profile "2d"` or `"3d"` in project.ogt). In 2D, bodies move in the xy plane and rotate about z; a transform keeps its z. A collider without a RigidBody is static at its transform.
+// The rapier world persists between ticks and is world state: snapshots, restore and the world hash cover the whole simulation. Events sent in tick N are read in tick N + 1.
+
+/**
+ * RigidBody.kind: moved by the solver; its Transform and Velocity are written back every tick.
+ */
+export declare const BODY_DYNAMIC: 0;
+
+/** RigidBody.kind: never moves; collides with dynamic bodies. */
+export declare const BODY_STATIC: 1;
+
+/**
+ * RigidBody.kind: moved by game code through its Transform; its Velocity, if any, is how fast it pushes.
+ */
+export declare const BODY_KINEMATIC: 2;
+
+/** RigidBody.lock bit: no translation along x. */
+export declare const LOCK_TRANSLATION_X: 1;
+
+/** RigidBody.lock bit: no translation along y. */
+export declare const LOCK_TRANSLATION_Y: 2;
+
+/** RigidBody.lock bit: no translation along z. */
+export declare const LOCK_TRANSLATION_Z: 4;
+
+/** RigidBody.lock bit: no rotation about x. */
+export declare const LOCK_ROTATION_X: 8;
+
+/** RigidBody.lock bit: no rotation about y. */
+export declare const LOCK_ROTATION_Y: 16;
+
+/** RigidBody.lock bit: no rotation about z (the 2D profile's only rotation). */
+export declare const LOCK_ROTATION_Z: 32;
+
+/** Collider.shape: a box of `size` (both profiles). */
+export declare const SHAPE_BOX: 0;
+
+/** Collider.shape: a sphere of `radius` (a circle in 2D). */
+export declare const SHAPE_SPHERE: 1;
+
+/**
+ * Collider.shape: a capsule along y of `radius`, with `height` between the cap centres (both profiles).
+ */
+export declare const SHAPE_CAPSULE: 2;
+
+/** Collider.shape: a cylinder along y of `radius` and `height` (3D only). */
+export declare const SHAPE_CYLINDER: 3;
+
+/**
+ * Collider.shape: the convex hull of the vertices of `mesh` (3D), or of their xy (a convex polygon, 2D).
+ */
+export declare const SHAPE_CONVEX: 4;
+
+/** Collider.shape: the triangles of `mesh` (3D only; for static and kinematic bodies). */
+export declare const SHAPE_TRIMESH: 5;
+
+/** Physics.profile: rapier2d, bodies in the xy plane rotating about z. */
+export declare const PROFILE_2D: 2;
+
+/** Physics.profile: rapier3d. */
+export declare const PROFILE_3D: 3;
+
+/**
+ * A body the physics step simulates. It needs an og.Transform and usually has an og.Collider; a dynamic body without an og.Velocity gets one.
+ * Changing a RigidBody, a Collider or Transform.scale rebuilds the body (it loses its contacts' warm starts); a Transform or Velocity that game code changed moves it (a teleport).
+ *
+ * The value of the `RigidBody` component (token `og.RigidBody`).
+ */
+export interface RigidBody {
+  /**
+   * BODY_DYNAMIC (0, simulated and written back), BODY_STATIC (1, never moves) or BODY_KINEMATIC (2, moved by game code through its Transform).
+   *
+   * @range 0..2
+   * @label Kind
+   */
+  kind: number;
+  /**
+   * Mass; 0 derives it from the collider's density and volume.
+   *
+   * @range 0..
+   * @unit kg (kilograms)
+   * @tunable
+   */
+  mass: number;
+  /**
+   * How fast linear velocity decays (0: none).
+   *
+   * @range 0..100
+   * @unit perSecond (a rate per second: the fraction of a value that decays in one second)
+   * @tunable
+   */
+  linearDamping: number;
+  /**
+   * How fast angular velocity decays (0: none).
+   *
+   * @range 0..100
+   * @unit perSecond (a rate per second: the fraction of a value that decays in one second)
+   * @tunable
+   */
+  angularDamping: number;
+  /**
+   * Multiplies Physics.gravity for this body: 0 floats, 1 is normal.
+   *
+   * @default 1
+   * @range -10..10
+   * @tunable
+   */
+  gravityScale: number;
+  /**
+   * Locked axes, a sum of the LOCK_* bits: 1, 2, 4 no translation along x, y, z; 8, 16, 32 no rotation about x, y, z (2D uses 1, 2 and 32).
+   *
+   * @range 0..63
+   */
+  lock: number;
+  /**
+   * 1 enables continuous collision detection, for fast small bodies that must not tunnel; 0 off.
+   *
+   * @range 0..1
+   */
+  ccd: number;
+}
+
+/**
+ * The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale.
+ *
+ * The value of the `Collider` component (token `og.Collider`).
+ */
+export interface Collider {
+  /**
+   * One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (3D).
+   *
+   * @range 0..5
+   * @label Shape
+   */
+  shape: number;
+  /**
+   * Full extents of a box, as three.js BoxGeometry(width, height, depth).
+   *
+   * @default { x: 1, y: 1, z: 1 }
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  size: Vector3;
+  /**
+   * Radius of a sphere, circle, capsule or cylinder.
+   *
+   * @default 0.5
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  radius: number;
+  /**
+   * A capsule's distance between its cap centres (three.js CapsuleGeometry length); a cylinder's height.
+   *
+   * @default 1
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  height: number;
+  /**
+   * The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh.
+   */
+  mesh: Geometry;
+  /**
+   * Position of the shape relative to the entity.
+   *
+   * @unit m (metres)
+   */
+  offset: Vector3;
+  /** Rotation of the shape relative to the entity. */
+  rotation: Quaternion;
+  /**
+   * Coulomb friction (0 is ice, 1 rubber); a pair uses the mean of both colliders.
+   *
+   * @default 0.5
+   * @range 0..2
+   * @tunable
+   */
+  friction: number;
+  /**
+   * Bounciness (0 no bounce, 1 elastic); a pair uses the mean of both colliders.
+   *
+   * @range 0..1
+   * @tunable
+   */
+  restitution: number;
+  /**
+   * Density, used when RigidBody.mass is 0.
+   *
+   * @default 1
+   * @range 0..
+   * @unit kgPerM3 (kilograms per cubic metre (per square metre in the 2D profile))
+   * @tunable
+   */
+  density: number;
+  /**
+   * 1 makes this a sensor: it reports SensorEntered and SensorExited and pushes nothing; 0 a solid.
+   *
+   * @range 0..1
+   */
+  sensor: number;
+  /**
+   * The collision layers this collider is on, as bits.
+   *
+   * @default 1
+   */
+  layers: number;
+  /**
+   * The layers it collides with, as bits. Two colliders interact when each one's layers meet the other's mask.
+   *
+   * @default 4294967295
+   */
+  mask: number;
+}
+
+/**
+ * Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing), read for kinematic ones; set it to launch or stop a body.
+ *
+ * The value of the `Velocity` component (token `og.Velocity`).
+ */
+export interface Velocity {
+  /**
+   * The linear velocity (2D uses x and y).
+   *
+   * @unit mps (metres per second)
+   * @tunable
+   */
+  linear: Vector3;
+  /**
+   * The angular velocity about each axis (2D uses z).
+   *
+   * @unit radps (radians per second)
+   * @tunable
+   */
+  angular: Vector3;
+}
+
+/**
+ * The physics settings of the world. The profile is the project's; the same components serve both profiles.
+ *
+ * The `Physics` resource (token `og.Physics`).
+ */
+export interface Physics {
+  /**
+   * PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt.
+   *
+   * @default 3
+   * @range 2..3
+   * @label Profile
+   * @readonly written by the engine
+   */
+  readonly profile: number;
+  /**
+   * The acceleration of every dynamic body, times its gravityScale; 2D uses x and y.
+   *
+   * @default { x: 0, y: -9.81, z: 0 }
+   * @unit mps2 (metres per second squared)
+   * @tunable
+   */
+  gravity: Vector3;
+  /**
+   * Physics steps per tick, each of dt / substeps: more is stiffer stacks and less tunnelling, at more cost.
+   *
+   * @default 1
+   * @range 1..16
+   * @tunable
+   */
+  substeps: number;
+  /**
+   * Solver iterations per step.
+   *
+   * @default 4
+   * @range 1..32
+   * @tunable
+   */
+  solverIterations: number;
+  /**
+   * A dynamic body touching something, supported with at most 2 mm of overlap and slower than this before and after a step, keeps its pose and loses its residual velocity (the same number in m/s and rad/s); 0 disables it.
+   *
+   * @default 0.02
+   * @range 0..1
+   * @unit mps (metres per second)
+   * @tunable
+   */
+  restSpeed: number;
+}
+
+/**
+ * Two solid colliders started touching during the tick.
+ *
+ * The payload of the `CollisionStarted` event (token `og.CollisionStarted`).
+ */
+export interface CollisionStarted {
+  /** The entity with the lower id. */
+  readonly a: Entity;
+  /** The entity with the higher id. */
+  readonly b: Entity;
+  /** The deepest contact point in world space (z is 0 in 2D). */
+  readonly point: Vector3;
+  /** The contact normal, from a towards b. */
+  readonly normal: Vector3;
+}
+
+/**
+ * Two solid colliders stopped touching, or one of them went away.
+ *
+ * The payload of the `CollisionEnded` event (token `og.CollisionEnded`).
+ */
+export interface CollisionEnded {
+  /** The entity with the lower id. */
+  readonly a: Entity;
+  /** The entity with the higher id. */
+  readonly b: Entity;
+}
+
+/**
+ * A collider started overlapping a sensor.
+ *
+ * The payload of the `SensorEntered` event (token `og.SensorEntered`).
+ */
+export interface SensorEntered {
+  /** The entity whose collider is the sensor. */
+  readonly sensor: Entity;
+  /** The entity that entered it. */
+  readonly other: Entity;
+}
+
+/**
+ * A collider stopped overlapping a sensor, or one of them went away.
+ *
+ * The payload of the `SensorExited` event (token `og.SensorExited`).
+ */
+export interface SensorExited {
+  /** The entity whose collider is the sensor. */
+  readonly sensor: Entity;
+  /** The entity that left it. */
+  readonly other: Entity;
+}
+
+/**
+ * One pair in contact at the end of a step, sent every tick for every touching pair: how a game asks what is touching what right now.
+ *
+ * The payload of the `Contact` event (token `og.Contact`).
+ */
+export interface Contact {
+  /** The entity with the lower id. */
+  readonly a: Entity;
+  /** The entity with the higher id. */
+  readonly b: Entity;
+  /**
+   * 0 for two solids; an overlap with a sensor otherwise: 1 a is the sensor, 2 b is, 3 both are.
+   */
+  readonly sensor: number;
+}
+
+/**
+ * Which colliders a scene query considers. The zero value considers every solid collider on every layer.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface QueryFilter {
+  /**
+   * Layers to consider: a collider counts when its layers meet this; 0 means every layer.
+   *
+   * @default 0
+   */
+  readonly mask?: number;
+  /**
+   * Also report sensors.
+   *
+   * @default false
+   */
+  readonly includeSensors?: boolean;
+  /**
+   * An entity to ignore, such as the caster itself.
+   *
+   * @default null
+   */
+  readonly exclude?: Entity | null;
+}
+
+/**
+ * A ray for og.physics.raycast.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RaycastDesc {
+  /**
+   * Where the ray starts.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly origin?: Vector3;
+  /**
+   * Where it points; it need not be normalised and must not be zero (in 2D, not zero in xy).
+   *
+   * @default { x: 0, y: -1, z: 0 }
+   */
+  readonly direction?: Vector3;
+  /**
+   * How far it reaches; 0 is unbounded.
+   *
+   * @default 0
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly maxDistance?: number;
+  /**
+   * Which colliders count.
+   *
+   * @default {}
+   */
+  readonly filter?: QueryFilter;
+}
+
+/** The nearest collider a ray meets. */
+export interface RaycastHit {
+  /** The collider's entity. */
+  readonly entity: Entity;
+  /**
+   * From the origin along the normalised direction.
+   *
+   * @unit m (metres)
+   */
+  readonly distance: number;
+  /** Where the ray meets the collider. */
+  readonly point: Vector3;
+  /** The surface normal there (z is 0 in 2D). */
+  readonly normal: Vector3;
+}
+
+/**
+ * The shape of a shape cast or an overlap test: the shape fields of a Collider. The zero value is a 1 m box.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ShapeDesc {
+  /**
+   * One of the SHAPE_* codes.
+   *
+   * @default 0
+   * @range 0..5
+   */
+  readonly shape?: number;
+  /**
+   * Full extents of a box.
+   *
+   * @default { x: 1, y: 1, z: 1 }
+   * @unit m (metres)
+   */
+  readonly size?: Vector3;
+  /**
+   * Radius of a sphere, circle, capsule or cylinder.
+   *
+   * @default 0.5
+   * @unit m (metres)
+   */
+  readonly radius?: number;
+  /**
+   * Capsule or cylinder height.
+   *
+   * @default 1
+   * @unit m (metres)
+   */
+  readonly height?: number;
+  /**
+   * The geometry of a convex or triangle-mesh shape.
+   *
+   * @default 0
+   */
+  readonly mesh?: Geometry;
+}
+
+/**
+ * A shape swept along a direction for og.physics.shapeCast.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ShapeCastDesc {
+  /**
+   * The swept shape.
+   *
+   * @default {}
+   */
+  readonly shape?: ShapeDesc;
+  /**
+   * Where the sweep starts.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly position?: Vector3;
+  /**
+   * The shape's rotation; a zero quaternion is no rotation.
+   *
+   * @default { x: 0, y: 0, z: 0, w: 1 }
+   */
+  readonly rotation?: Quaternion;
+  /**
+   * Where it sweeps; it need not be normalised and must not be zero.
+   *
+   * @default { x: 0, y: -1, z: 0 }
+   */
+  readonly direction?: Vector3;
+  /**
+   * How far it sweeps; 0 is unbounded.
+   *
+   * @default 0
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly maxDistance?: number;
+  /**
+   * Which colliders count.
+   *
+   * @default {}
+   */
+  readonly filter?: QueryFilter;
+}
+
+/** The first collider a swept shape meets. */
+export interface ShapeCastHit {
+  /** The collider's entity. */
+  readonly entity: Entity;
+  /**
+   * How far the shape travelled before touching.
+   *
+   * @unit m (metres)
+   */
+  readonly distance: number;
+  /** The contact point on the hit collider, in world space. */
+  readonly point: Vector3;
+  /** The hit collider's surface normal there, in world space. */
+  readonly normal: Vector3;
+}
+
+/**
+ * A shape placed in the world for og.physics.overlap.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface OverlapDesc {
+  /**
+   * The shape.
+   *
+   * @default {}
+   */
+  readonly shape?: ShapeDesc;
+  /**
+   * Where it is.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly position?: Vector3;
+  /**
+   * Its rotation; a zero quaternion is no rotation.
+   *
+   * @default { x: 0, y: 0, z: 0, w: 1 }
+   */
+  readonly rotation?: Quaternion;
+  /**
+   * Which colliders count.
+   *
+   * @default {}
+   */
+  readonly filter?: QueryFilter;
+}
+
+/**
+ * Geometry for convex and triangle-mesh colliders, in the mesh's own space.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface MeshDesc {
+  /**
+   * Vertex positions (2D polygons use x and y).
+   *
+   * @default []
+   */
+  readonly positions?: readonly Vector3[];
+  /**
+   * Triangles as triples of indices into positions; a convex hull ignores them.
+   *
+   * @default []
+   */
+  readonly indices?: readonly number[];
+}
+
+
+
+
+
+// ── audio ───────────────────────────────────────────────────────
+// Sound: inside the tick, the engine's og.audio system (after the game's systems and physics) turns AudioSource changes into a deterministic, time-stamped command stream; outside the tick the host's mixer renders it (an AudioWorklet on the web, the output device, a capture or a null sink natively).
+// The stream, not the PCM, is world state: snapshots, restore and the world hash cover it, and nothing a sink does reaches the world. Load sounds with og.load.sound; inserting a source plays it, setting `playing` false stops it, and a one-shot sets `playing` back to false when it ends.
+// Spatial gain and pan are computed in the tick from the source's og.Transform relative to the first AudioListener (three.js convention: the listener looks down -Z, +X is right; with none, the origin looking down -Z).
+
+/** SoundEnded.reason: a one-shot played to its end. */
+export declare const SOUND_FINISHED: 0;
+
+/** SoundEnded.reason: `playing` was set to false. */
+export declare const SOUND_STOPPED: 1;
+
+/** SoundEnded.reason: the AudioSource was removed from a living entity. */
+export declare const SOUND_REMOVED: 2;
+
+/** SoundEnded.reason: `sound` changed while it played. */
+export declare const SOUND_REPLACED: 3;
+
+/**
+ * The bus a source plays on; every bus passes through master.
+ * - `"master"`: The master bus: what every bus passes through.
+ * - `"music"`: Music.
+ * - `"sfx"`: Sound effects.
+ * - `"ui"`: Interface sounds.
+ */
+export type AudioBus = "master" | "music" | "sfx" | "ui";
+
+/**
+ * An AudioBus field: the variant's index.
+ *
+ * A `AudioBus` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function AudioBus(value?: AudioBus, options?: FieldOptions): FieldSpec<"AudioBus">;
+
+/**
+ * A sound an entity plays. Level-triggered: while `playing` is true it plays (inserting a source plays it), setting it false stops it, and a one-shot that reaches its end sets it back to false and sends og.SoundEnded.
+ * A one-shot of F frames at rate R and pitch p started in tick S ends in tick S + ceil(F * tickRate / (R * p)) - 1. A despawned entity's voice is silenced without an event.
+ *
+ * The value of the `AudioSource` component (token `og.AudioSource`).
+ */
+export interface AudioSource {
+  /**
+   * The sound, from og.load.sound; 0 plays nothing. A handle not yet loaded waits and starts on the first tick it is there.
+   */
+  sound: Sound;
+  /**
+   * The bus it plays on.
+   *
+   * @default "sfx"
+   */
+  bus: AudioBus;
+  /**
+   * Linear gain.
+   *
+   * @default 1
+   * @range 0..4
+   * @tunable
+   */
+  volume: number;
+  /**
+   * Playback rate: 2 is an octave up and half as long.
+   *
+   * @default 1
+   * @range 0.0625..16
+   * @tunable
+   */
+  pitch: number;
+  /**
+   * Stereo position of a non-spatial source, -1 left to 1 right.
+   *
+   * @range -1..1
+   * @tunable
+   */
+  pan: number;
+  /** Loop between loopStart and loopEnd, seamlessly. */
+  loop: boolean;
+  /**
+   * Where a loop restarts.
+   *
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  loopStart: number;
+  /**
+   * Where a loop wraps; 0 is the sound's end.
+   *
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  loopEnd: number;
+  /** Attenuate and pan by the entity's og.Transform relative to the listener. */
+  spatial: boolean;
+  /**
+   * Full volume up to this distance, as Web Audio's PannerNode.refDistance.
+   *
+   * @default 1
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  refDistance: number;
+  /**
+   * No quieter past this distance, as Web Audio's PannerNode.maxDistance.
+   *
+   * @default 100
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  maxDistance: number;
+  /**
+   * How fast volume falls with distance, in Web Audio's inverse model: ref / (ref + rolloff * (clamp(d, ref, max) - ref)).
+   *
+   * @default 1
+   * @range 0..
+   * @tunable
+   */
+  rolloffFactor: number;
+  /**
+   * Plays while true; the engine sets it false when a one-shot ends.
+   *
+   * @default true
+   */
+  playing: boolean;
+}
+
+/**
+ * Where spatial sources are heard from: the entity's og.Transform, looking down its -Z with +X to the right. The first listener in query order is used.
+ *
+ * The value of the `AudioListener` component (token `og.AudioListener`).
+ */
+export interface AudioListener {
+  /**
+   * A gain on every spatial source this listener hears.
+   *
+   * @default 1
+   * @range 0..4
+   * @tunable
+   */
+  volume: number;
+}
+
+/**
+ * Bus volumes; master scales every bus. A change ramps over 256 frames in the mixer.
+ *
+ * The `Audio` resource (token `og.Audio`).
+ */
+export interface Audio {
+  /**
+   * Gain of the master bus, applied to every sound.
+   *
+   * @default 1
+   * @range 0..2
+   * @tunable
+   */
+  master: number;
+  /**
+   * Gain of the music bus.
+   *
+   * @default 1
+   * @range 0..2
+   * @tunable
+   */
+  music: number;
+  /**
+   * Gain of the sfx bus.
+   *
+   * @default 1
+   * @range 0..2
+   * @tunable
+   */
+  sfx: number;
+  /**
+   * Gain of the ui bus.
+   *
+   * @default 1
+   * @range 0..2
+   * @tunable
+   */
+  ui: number;
+}
+
+/**
+ * A source started, sent in the tick it happens (systems read it the tick after).
+ *
+ * The payload of the `SoundStarted` event (token `og.SoundStarted`).
+ */
+export interface SoundStarted {
+  /** The entity whose AudioSource started. */
+  readonly entity: Entity;
+  /** The sound. */
+  readonly sound: Sound;
+  /** The voice id in the command stream. */
+  readonly voice: number;
+}
+
+/**
+ * A sound ended, sent in the tick it happens (systems read it the tick after).
+ *
+ * The payload of the `SoundEnded` event (token `og.SoundEnded`).
+ */
+export interface SoundEnded {
+  /** The entity whose AudioSource ended. */
+  readonly entity: Entity;
+  /** The sound. */
+  readonly sound: Sound;
+  /** The voice id in the command stream. */
+  readonly voice: number;
+  /** Why: SOUND_FINISHED (0), SOUND_STOPPED (1), SOUND_REMOVED (2) or SOUND_REPLACED (3). */
+  readonly reason: number;
+}
+
+// ── ui ──────────────────────────────────────────────────────────
+// The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, themes it with the platform's design tokens, draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it.
+// The engine opens the frame before the game's systems (from og.Input and the play surface) and closes it after them, so calls belong inside systems; outside one they do nothing and log a warning. Interaction is decided against the previous tick's rectangles, which are also what the probe resolves, so a scripted touch_move_to and a click agree; response edges (clicked, changed, submitted) last one tick.
+// Lengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Ids: an element's id is unique among its siblings (`idi("Slot", 3)` is `Slot#3`); a path `Inventory/Slot#3` names it after its nearest ancestors. The UI state (hover, press, focus, caret, scroll) is world state: snapshots and the world hash carry it.
+
+/**
+ * Which way a container lays out its children.
+ * - `"row"`: Left to right.
+ * - `"column"`: Top to bottom.
+ */
+export type Direction = "row" | "column";
+
+/**
+ * Where children sit along the main axis.
+ * - `"start"`: At the start.
+ * - `"center"`: Centred.
+ * - `"end"`: At the end.
+ * - `"spaceBetween"`: The free space split evenly between children.
+ */
+export type Align = "start" | "center" | "end" | "spaceBetween";
+
+/**
+ * Where children sit across the main axis.
+ * - `"start"`: At the start.
+ * - `"center"`: Centred.
+ * - `"end"`: At the end.
+ * - `"stretch"`: Stretched to the container's inner size.
+ */
+export type Cross = "start" | "center" | "end" | "stretch";
+
+/**
+ * How the lines of a label align.
+ * - `"start"`: To the start (left).
+ * - `"center"`: Centred.
+ * - `"end"`: To the end (right).
+ */
+export type TextAlign = "start" | "center" | "end";
+
+/**
+ * Which configured font text uses; display and mono fall back to body.
+ * - `"body"`: The body font.
+ * - `"display"`: The display font.
+ * - `"mono"`: The monospaced font.
+ */
+export type FontRole = "body" | "display" | "mono";
+
+/**
+ * Button looks, as the design language's buttons.
+ * - `"secondary"`: A neutral fill (the default).
+ * - `"primary"`: The amber action: one per screen.
+ * - `"quiet"`: Text until hovered.
+ * - `"danger"`: A destructive action: danger ink on a neutral fill.
+ */
+export type ButtonVariant = "secondary" | "primary" | "quiet" | "danger";
+
+/**
+ * Control heights from the density (h-control-sm, -md, -lg).
+ * - `"medium"`: The medium control height.
+ * - `"small"`: The small control height.
+ * - `"large"`: The large control height.
+ */
+export type ControlSize = "medium" | "small" | "large";
+
+/**
+ * The palette: games run on a stage, so dark is the default.
+ * - `"dark"`: The dark palette.
+ * - `"light"`: The light palette.
+ */
+export type Scheme = "dark" | "light";
+
+/**
+ * Control sizes: auto picks touch sizes on a coarse pointer or a play surface under 768 px, compact otherwise.
+ * - `"auto"`: Touch sizes on a coarse pointer or a narrow surface, compact otherwise.
+ * - `"compact"`: Compact controls.
+ * - `"comfortable"`: Comfortable controls.
+ * - `"touch"`: Touch-sized controls.
+ */
+export type DensityMode = "auto" | "compact" | "comfortable" | "touch";
+
+/**
+ * A semantic colour of the design tokens (tokens.json `color`, in the current scheme).
+ * - `"accent"`: accent: the amber action colour.
+ * - `"accentActive"`: accent-active.
+ * - `"accentFg"`: accent-fg: ink on the accent.
+ * - `"accentHover"`: accent-hover.
+ * - `"accentInk"`: accent-ink: the accent as text.
+ * - `"accentSoft"`: accent-soft: a translucent accent wash.
+ * - `"bg"`: bg: the page.
+ * - `"bgSubtle"`: bg-subtle.
+ * - `"border"`: border.
+ * - `"borderStrong"`: border-strong.
+ * - `"danger"`: danger.
+ * - `"fg"`: fg: the primary ink.
+ * - `"fgInverse"`: fg-inverse.
+ * - `"fgMuted"`: fg-muted.
+ * - `"fgSubtle"`: fg-subtle: placeholders.
+ * - `"fill"`: fill: neutral control fills.
+ * - `"fillStrong"`: fill-strong.
+ * - `"focus"`: focus: the focus ring.
+ * - `"info"`: info.
+ * - `"materialControl"`: material-control.
+ * - `"materialControlHover"`: material-control-hover.
+ * - `"materialEdge"`: material-edge.
+ * - `"materialGlow"`: material-glow.
+ * - `"materialRegular"`: material-regular.
+ * - `"materialRimSoft"`: material-rim-soft.
+ * - `"materialSheen"`: material-sheen.
+ * - `"materialShine"`: material-shine.
+ * - `"materialThick"`: material-thick.
+ * - `"materialThin"`: material-thin.
+ * - `"scrim"`: scrim.
+ * - `"shadow"`: shadow.
+ * - `"sheen"`: sheen.
+ * - `"stage"`: stage: the game stage.
+ * - `"stageBorder"`: stage-border.
+ * - `"stageDanger"`: stage-danger.
+ * - `"stageFg"`: stage-fg.
+ * - `"stageMuted"`: stage-muted.
+ * - `"stageRaised"`: stage-raised.
+ * - `"stageSurface"`: stage-surface.
+ * - `"success"`: success.
+ * - `"surface"`: surface: cards and panels.
+ * - `"surfaceHover"`: surface-hover.
+ * - `"surfaceRaised"`: surface-raised: tooltips.
+ * - `"thumb"`: thumb: slider and switch thumbs.
+ * - `"warn"`: warn.
+ */
+export type ThemeColor = "accent" | "accentActive" | "accentFg" | "accentHover" | "accentInk" | "accentSoft" | "bg" | "bgSubtle" | "border" | "borderStrong" | "danger" | "fg" | "fgInverse" | "fgMuted" | "fgSubtle" | "fill" | "fillStrong" | "focus" | "info" | "materialControl" | "materialControlHover" | "materialEdge" | "materialGlow" | "materialRegular" | "materialRimSoft" | "materialSheen" | "materialShine" | "materialThick" | "materialThin" | "scrim" | "shadow" | "sheen" | "stage" | "stageBorder" | "stageDanger" | "stageFg" | "stageMuted" | "stageRaised" | "stageSurface" | "success" | "surface" | "surfaceHover" | "surfaceRaised" | "thumb" | "warn";
+
+/**
+ * A step of the type ramp (tokens.json `font.scale`).
+ * - `"body"`: text-body, the default.
+ * - `"xs"`: text-xs.
+ * - `"meta"`: text-meta.
+ * - `"caption"`: text-caption.
+ * - `"sm"`: text-sm.
+ * - `"reading"`: text-reading.
+ * - `"base"`: text-base.
+ * - `"lg"`: text-lg.
+ * - `"xl"`: text-xl.
+ * - `"xl2"`: text-2xl.
+ * - `"xl3"`: text-3xl.
+ * - `"xl4"`: text-4xl.
+ * - `"xl5"`: text-5xl.
+ * - `"xl6"`: text-6xl.
+ * - `"xl7"`: text-7xl.
+ * - `"xl8"`: text-8xl.
+ * - `"displaySm"`: text-display-sm.
+ * - `"displayMd"`: text-display-md.
+ * - `"displayLg"`: text-display-lg.
+ * - `"displayXl"`: text-display-xl.
+ * - `"displayXl2"`: text-display-2xl.
+ */
+export type TypeStepName = "body" | "xs" | "meta" | "caption" | "sm" | "reading" | "base" | "lg" | "xl" | "xl2" | "xl3" | "xl4" | "xl5" | "xl6" | "xl7" | "xl8" | "displaySm" | "displayMd" | "displayLg" | "displayXl" | "displayXl2";
+
+/** The bounds of a fit or grow size. */
+export interface SizeRange {
+  /**
+   * The smallest size.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly min?: number;
+  /**
+   * The largest size; absent is unbounded.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly max?: number;
+}
+
+/** A fixed size. */
+export interface FixedSize {
+  /**
+   * The size.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly px: number;
+}
+
+/** A size relative to the parent. */
+export interface PercentSize {
+  /**
+   * The fraction of the parent's inner size.
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly fraction: number;
+}
+
+/** A size along one axis. Absent (null) is fit: the content's size. */
+export type Size =
+  /** The content's size, within the range. */
+  | ({ readonly kind: "fit" } & SizeRange)
+  /** The content's size, then a share of the parent's free space, within the range. */
+  | ({ readonly kind: "grow" } & SizeRange)
+  /** Exactly this size. */
+  | ({ readonly kind: "fixed" } & FixedSize)
+  /** A fraction of the parent's inner size. */
+  | ({ readonly kind: "percent" } & PercentSize);
+
+/** Padding or margins on four sides. */
+export interface Insets {
+  /**
+   * The left side.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly left: number;
+  /**
+   * The top side.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly top: number;
+  /**
+   * The right side.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly right: number;
+  /**
+   * The bottom side.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly bottom: number;
+}
+
+/**
+ * A colour: a theme token, or an sRGB colour as authored (components 0 to 1), with an alpha. Neither is white.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface Paint {
+  /**
+   * A semantic colour of the theme.
+   *
+   * @default null
+   */
+  readonly token?: ThemeColor | null;
+  /**
+   * An sRGB colour as authored, when no token is given.
+   *
+   * @default null
+   */
+  readonly color?: Color | null;
+  /**
+   * The opacity.
+   *
+   * @default 1
+   * @range 0..1
+   */
+  readonly alpha?: number;
+}
+
+/**
+ * A container: its layout and its look.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ElementDesc {
+  /**
+   * Which way it lays out its children.
+   *
+   * @default "row"
+   */
+  readonly direction?: Direction;
+  /**
+   * Its width; null fits the content.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Its height; null fits the content.
+   *
+   * @default null
+   */
+  readonly height?: Size | null;
+  /**
+   * Space inside its edges.
+   *
+   * @default { left: 0, top: 0, right: 0, bottom: 0 }
+   */
+  readonly padding?: Insets;
+  /**
+   * Space between children.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly gap?: number;
+  /**
+   * Where children sit along the main axis.
+   *
+   * @default "start"
+   */
+  readonly align?: Align;
+  /**
+   * Where children sit across it.
+   *
+   * @default "start"
+   */
+  readonly cross?: Cross;
+  /**
+   * Break a row into lines at its inner width.
+   *
+   * @default false
+   */
+  readonly wrap?: boolean;
+  /**
+   * Scroll its content vertically and clip it.
+   *
+   * @default false
+   */
+  readonly scroll?: boolean;
+  /**
+   * Report a Response from close(), as a button does.
+   *
+   * @default false
+   */
+  readonly interactive?: boolean;
+  /**
+   * Its fill; null draws none.
+   *
+   * @default null
+   */
+  readonly background?: Paint | null;
+  /**
+   * Corner radius.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly radius?: number;
+}
+
+/**
+ * How a label draws its text.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LabelDesc {
+  /**
+   * The type step; null is body.
+   *
+   * @default null
+   */
+  readonly step?: TypeStepName | null;
+  /**
+   * The ink; null is fg.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+  /**
+   * How the lines align.
+   *
+   * @default "start"
+   */
+  readonly align?: TextAlign;
+  /**
+   * Keep to one line (breaking only at `\n`).
+   *
+   * @default false
+   */
+  readonly nowrap?: boolean;
+  /**
+   * Its width; null fits the text.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Which font.
+   *
+   * @default "body"
+   */
+  readonly font?: FontRole;
+}
+
+/**
+ * A button's look.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ButtonDesc {
+  /**
+   * The look.
+   *
+   * @default "secondary"
+   */
+  readonly variant?: ButtonVariant;
+  /**
+   * The control height.
+   *
+   * @default "medium"
+   */
+  readonly size?: ControlSize;
+  /**
+   * Neutral and inert.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+  /**
+   * Its width; null fits the label.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+}
+
+/**
+ * A card: surface, the card radius, padded and spaced by the tokens.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PanelDesc {
+  /**
+   * Lay children left to right (the default is top to bottom).
+   *
+   * @default false
+   */
+  readonly row?: boolean;
+  /**
+   * Its width; null fits the content.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Its height; null fits the content.
+   *
+   * @default null
+   */
+  readonly height?: Size | null;
+  /**
+   * Space inside; null is space.lg on every side.
+   *
+   * @default null
+   */
+  readonly padding?: Insets | null;
+  /**
+   * Space between children; null is space.md.
+   *
+   * @default null
+   */
+  readonly gap?: number | null;
+  /**
+   * Where children sit along the main axis.
+   *
+   * @default "start"
+   */
+  readonly align?: Align;
+  /**
+   * Where children sit across it.
+   *
+   * @default "start"
+   */
+  readonly cross?: Cross;
+  /**
+   * Its fill; null is surface.
+   *
+   * @default null
+   */
+  readonly background?: Paint | null;
+}
+
+/**
+ * A vertical scroll container: the wheel or a drag scrolls it, it clips its content, a capsule indicator shows the position.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ScrollDesc {
+  /**
+   * Its width; null fits the content.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Its height; null fits the content.
+   *
+   * @default null
+   */
+  readonly height?: Size | null;
+  /**
+   * Space inside.
+   *
+   * @default { left: 0, top: 0, right: 0, bottom: 0 }
+   */
+  readonly padding?: Insets;
+  /**
+   * Space between children.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly gap?: number;
+}
+
+/**
+ * A texture region, or a solid rectangle without a texture.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ImageDesc {
+  /**
+   * The texture; null draws a solid rectangle of the tint.
+   *
+   * @default null
+   */
+  readonly texture?: Texture | null;
+  /**
+   * The region drawn, [u0, v0, u1, v1] with v down; null is the whole texture.
+   *
+   * @default null
+   */
+  readonly uv?: [number, number, number, number] | null;
+  /**
+   * Multiplies the texture; null is white.
+   *
+   * @default null
+   */
+  readonly tint?: Paint | null;
+  /**
+   * Its width; null fits.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Its height; null fits.
+   *
+   * @default null
+   */
+  readonly height?: Size | null;
+}
+
+/**
+ * A progress bar.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ProgressDesc {
+  /**
+   * Its width; null grows into the free space.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+}
+
+/**
+ * A slider's range and width.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SliderDesc {
+  /**
+   * The smallest value; min equal to max (the zero value) means 0 to 1.
+   *
+   * @default 0
+   */
+  readonly min?: number;
+  /**
+   * The largest value.
+   *
+   * @default 0
+   */
+  readonly max?: number;
+  /**
+   * Snap to multiples of step from min; 0 is continuous.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly step?: number;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+}
+
+/**
+ * A one-line text field.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface FieldDesc {
+  /**
+   * Shown, dimmed, while the field is empty.
+   *
+   * @default ""
+   */
+  readonly placeholder?: string;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * The most characters it takes; 0 is no limit.
+   *
+   * @default 0
+   */
+  readonly maxChars?: number;
+}
+
+/**
+ * What happened to an element this tick. Edges (clicked, changed, submitted) are true for exactly one tick.
+ */
+export interface Response {
+  /** The pointer is over it and no other element holds the press. */
+  readonly hovered: boolean;
+  /** The press that started on it is still held. */
+  readonly pressed: boolean;
+  /** Pressed and released inside it. */
+  readonly clicked: boolean;
+  /** Its value changed (slider, toggle, text field). */
+  readonly changed: boolean;
+  /** It has keyboard focus (text field). */
+  readonly focused: boolean;
+  /** Enter was pressed in it (text field). */
+  readonly submitted: boolean;
+}
+
+/** A slider's response and its value after this tick's input. */
+export interface SliderResult {
+  /** What happened to it. */
+  readonly response: Response;
+  /** The value, to keep in game state and pass back next tick. */
+  readonly value: number;
+}
+
+/** A toggle's response and its state after this tick's input. */
+export interface ToggleResult {
+  /** What happened to it. */
+  readonly response: Response;
+  /** The state, to keep in game state and pass back next tick. */
+  readonly on: boolean;
+}
+
+/** A text field's response and its text after this tick's input. */
+export interface FieldResult {
+  /** What happened to it. */
+  readonly response: Response;
+  /** The text, to keep in game state and pass back next tick. */
+  readonly value: string;
+}
+
+/** The play surface the UI lays out in. */
+export interface Viewport {
+  /**
+   * Its width.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly width: number;
+  /**
+   * Its height.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly height: number;
+  /**
+   * Device pixels per CSS pixel; rectangles snap to device pixels.
+   *
+   * @default 1
+   */
+  readonly dpr: number;
+  /** The device's unsafe margins (notch, home indicator); the root pads by them. */
+  readonly safeArea: Insets;
+  /** A touch screen or another coarse pointer. */
+  readonly coarsePointer: boolean;
+}
+
+/**
+ * How the UI looks: the scheme, the density and its fonts.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface UiDesc {
+  /**
+   * The palette.
+   *
+   * @default "dark"
+   */
+  readonly scheme?: Scheme;
+  /**
+   * The control sizes.
+   *
+   * @default "auto"
+   */
+  readonly density?: DensityMode;
+  /**
+   * The body font, from og.load.font; null measures text at half an em per character and draws none.
+   *
+   * @default null
+   */
+  readonly font?: Font | null;
+  /**
+   * The display font; null uses the body font.
+   *
+   * @default null
+   */
+  readonly displayFont?: Font | null;
+  /**
+   * The monospaced font; null uses the body font.
+   *
+   * @default null
+   */
+  readonly monoFont?: Font | null;
+}
+
+/** One step of the type ramp. */
+export interface TypeStep {
+  /**
+   * The font size.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly size: number;
+  /**
+   * The leading of Latin text.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly lineHeight: number;
+  /** Latin tracking, in em. */
+  readonly trackingEm: number;
+  /**
+   * The leading text with Chinese, Japanese or Korean characters takes.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly cjkLineHeight: number;
+}
+
+/** The control, row and header heights and the gutter of the density in effect. */
+export interface ControlSizes {
+  /**
+   * h-control-sm.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly controlSm: number;
+  /**
+   * h-control-md.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly controlMd: number;
+  /**
+   * h-control-lg.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly controlLg: number;
+  /**
+   * The gutter.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly gutter: number;
+  /**
+   * The header height.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly header: number;
+  /**
+   * The row height.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly row: number;
+  /**
+   * The section spacing.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly section: number;
+}
+
+/** The design tokens the UI draws with, read-only. */
+export interface UiTheme {
+  /** The palette in use. */
+  readonly scheme: Scheme;
+  /** Each ThemeColor as `#rrggbb` or `#rrggbbaa` (sRGB as authored). */
+  readonly palette: Readonly<Record<string, string>>;
+  /** The spacing scale by name (xxs, xs, sm, md, lg, xl, xxl, xl3), in CSS pixels. */
+  readonly space: Readonly<Record<string, number>>;
+  /**
+   * The radius scale by name (control, field, block, card, panel, sheet, button), in CSS pixels.
+   */
+  readonly radius: Readonly<Record<string, number>>;
+  /** Each TypeStepName's step. */
+  readonly typeRamp: Readonly<Record<string, TypeStep>>;
+  /** The control sizes of the density in effect. */
+  readonly sizes: ControlSizes;
+  /**
+   * The motion durations by name (instant, fast, base, slow, spring, bounce), in milliseconds.
+   */
+  readonly durationsMs: Readonly<Record<string, number>>;
+}
+
+/** Builds a container's children: ui calls made inside it nest under the container. */
+export type UiBuild = () => void;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ── systems ─────────────────────────────────────────────────────
+// Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.
 
 // ── commands ────────────────────────────────────────────────────
 // The command channel: actions scheduled on simulation time, from `og run --commands "t:action[:args];..."` or the probe's commands().
@@ -2837,6 +4908,20 @@ export declare namespace og {
    */
   const Camera: ResourceType<{ readonly position: FieldSpec<"Vector3">; readonly quaternion: FieldSpec<"Quaternion">; readonly fov: FieldSpec<"f32">; readonly near: FieldSpec<"f32">; readonly far: FieldSpec<"f32">; readonly zoom: FieldSpec<"f32">; readonly orthographic: FieldSpec<"bool">; readonly height: FieldSpec<"f32">; readonly background: FieldSpec<"Color">; readonly exposure: FieldSpec<"f32"> }, Camera>;
   /**
+   * Orbits og.Camera around the entity carrying it, as three.js OrbitControls: a left-button drag on the play surface turns it, the wheel zooms, autoRotate turns it on its own.
+   * Camera controllers are game-level systems the engine ships in TypeScript (og.systems.cameras); list them in GameDesc.systems: `systems: [...og.systems.cameras, ...yours]`. The first entity carrying one, in query order, drives the camera.
+   * The camera sits `distance` from the orbited point (the entity's position plus `target`) in the direction given by `azimuth` about +Y and `polar` from +Y, and looks at the point. Every angle is computed with deterministic arithmetic, so a replay moves the camera identically on every host.
+   */
+  const OrbitCamera: ComponentType<{ readonly target: FieldSpec<"Vector3">; readonly distance: FieldSpec<"f32">; readonly minDistance: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly azimuth: FieldSpec<"f32">; readonly polar: FieldSpec<"f32">; readonly minPolarAngle: FieldSpec<"f32">; readonly maxPolarAngle: FieldSpec<"f32">; readonly rotateSpeed: FieldSpec<"f32">; readonly zoomSpeed: FieldSpec<"f32">; readonly autoRotate: FieldSpec<"bool">; readonly autoRotateSpeed: FieldSpec<"f32">; readonly enabled: FieldSpec<"bool">; readonly dragging: FieldSpec<"bool">; readonly pointer: FieldSpec<"Vector2"> }, OrbitCamera>;
+  /**
+   * Chases the entity carrying it with og.Camera: a third-person 3D view that eases towards a point offset from the entity and looks at it. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera.
+   */
+  const FollowCamera: ComponentType<{ readonly offset: FieldSpec<"Vector3">; readonly lookOffset: FieldSpec<"Vector3">; readonly followRotation: FieldSpec<"bool">; readonly smoothTime: FieldSpec<"f32"> }, FollowCamera>;
+  /**
+   * Keeps og.Camera on the entity carrying it in the xy plane, for 2D games: the camera moves only when the entity leaves the dead zone, eases by smoothTime and, with clamp, stays inside the bounds. The camera keeps its z, rotation and projection. Driven by og.systems.cameras.
+   */
+  const Follow2D: ComponentType<{ readonly offset: FieldSpec<"Vector2">; readonly deadZone: FieldSpec<"Vector2">; readonly smoothTime: FieldSpec<"f32">; readonly clamp: FieldSpec<"bool">; readonly boundsMin: FieldSpec<"Vector2">; readonly boundsMax: FieldSpec<"Vector2"> }, Follow2D>;
+  /**
    * Draws a geometry with a material at the entity's MatrixWorld, as a three.js Mesh.
    * The material is a handle from og.render.standardMaterial or from a loaded glTF (GltfInfo.materials); its StandardMaterialDesc maps to the renderer as that struct's docs say.
    */
@@ -2861,6 +4946,43 @@ export declare namespace og {
    * What is drawn: meshes with materials. Draws are instanced by (geometry, material) automatically; there is no per-object draw call.
    */
   namespace render {
+    /**
+     * Draw a sprite this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the sprite should show.
+     *
+     * @param world The world whose renderer draws it.
+     * @param desc The texture, placement, region and colour.
+     * @returns Refused for a dead texture.
+     */
+    function sprite(world: World, desc?: SpriteDesc): Result<void>;
+    /**
+     * The size text takes when og.render.text draws it, for centring, wrapping and layout.
+     *
+     * @param world The world whose renderer owns the font.
+     * @param desc The font, text and size.
+     * @returns Refused for a dead font.
+     */
+    function measureText(world: World, desc?: TextMeasureDesc): Result<TextMetrics>;
+    /**
+     * Make a box geometry for og.Mesh. Physics can use it as a convex or triangle-mesh Collider.mesh too.
+     *
+     * @param world The world whose renderer owns the geometry.
+     * @param desc Its extents.
+     */
+    function boxGeometry(world: World, desc?: BoxGeometryDesc): Result<Geometry>;
+    /**
+     * Make a plane geometry for og.Mesh. Physics can use it as a triangle-mesh Collider.mesh too.
+     *
+     * @param world The world whose renderer owns the geometry.
+     * @param desc Its extents.
+     */
+    function planeGeometry(world: World, desc?: PlaneGeometryDesc): Result<Geometry>;
+    /**
+     * Make a sphere geometry for og.Mesh (give its body a sphere Collider, not this mesh).
+     *
+     * @param world The world whose renderer owns the geometry.
+     * @param desc Its radius and tessellation.
+     */
+    function sphereGeometry(world: World, desc?: SphereGeometryDesc): Result<Geometry>;
     /**
      * Create a standard material.
      *
@@ -2968,6 +5090,13 @@ export declare namespace og {
      */
     function sound(world: World, path: string): Result<Sound>;
     /**
+     * Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load.
+     *
+     * @param world The world whose renderer owns the texture.
+     * @param path The texture's asset id, such as `textures/stone.png`.
+     */
+    function texture(world: World, path: string): Result<Texture>;
+    /**
      * A loaded sound's format and length.
      *
      * @param world The world that owns the sound.
@@ -2998,6 +5127,254 @@ export declare namespace og {
      * @returns Refused for a pending, failed or non-glTF asset.
      */
     function gltfInfo(world: World, asset: Asset): Result<GltfInfo>;
+  }
+  /**
+   * A body the physics step simulates. It needs an og.Transform and usually has an og.Collider; a dynamic body without an og.Velocity gets one.
+   * Changing a RigidBody, a Collider or Transform.scale rebuilds the body (it loses its contacts' warm starts); a Transform or Velocity that game code changed moves it (a teleport).
+   */
+  const RigidBody: ComponentType<{ readonly kind: FieldSpec<"u32">; readonly mass: FieldSpec<"f32">; readonly linearDamping: FieldSpec<"f32">; readonly angularDamping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly lock: FieldSpec<"u32">; readonly ccd: FieldSpec<"u32"> }, RigidBody>;
+  /**
+   * The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale.
+   */
+  const Collider: ComponentType<{ readonly shape: FieldSpec<"u32">; readonly size: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly mesh: FieldSpec<"Geometry">; readonly offset: FieldSpec<"Vector3">; readonly rotation: FieldSpec<"Quaternion">; readonly friction: FieldSpec<"f32">; readonly restitution: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly sensor: FieldSpec<"u32">; readonly layers: FieldSpec<"u32">; readonly mask: FieldSpec<"u32"> }, Collider>;
+  /**
+   * Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing), read for kinematic ones; set it to launch or stop a body.
+   */
+  const Velocity: ComponentType<{ readonly linear: FieldSpec<"Vector3">; readonly angular: FieldSpec<"Vector3"> }, Velocity>;
+  /**
+   * The physics settings of the world. The profile is the project's; the same components serve both profiles.
+   */
+  const Physics: ResourceType<{ readonly profile: FieldSpec<"u32">; readonly gravity: FieldSpec<"Vector3">; readonly substeps: FieldSpec<"u32">; readonly solverIterations: FieldSpec<"u32">; readonly restSpeed: FieldSpec<"f32"> }, Physics>;
+  /** Two solid colliders started touching during the tick. */
+  const CollisionStarted: EventType<CollisionStarted>;
+  /** Two solid colliders stopped touching, or one of them went away. */
+  const CollisionEnded: EventType<CollisionEnded>;
+  /** A collider started overlapping a sensor. */
+  const SensorEntered: EventType<SensorEntered>;
+  /** A collider stopped overlapping a sensor, or one of them went away. */
+  const SensorExited: EventType<SensorExited>;
+  /**
+   * One pair in contact at the end of a step, sent every tick for every touching pair: how a game asks what is touching what right now.
+   */
+  const Contact: EventType<Contact>;
+  /**
+   * Rigid bodies over rapier (rapier3d in the 3D profile, rapier2d in 2D, both with enhanced determinism): game code owns the components, the engine's og.physics system steps them after the game's systems and writes the dynamic bodies back.
+   * The profile is the project's (`profile "2d"` or `"3d"` in project.ogt). In 2D, bodies move in the xy plane and rotate about z; a transform keeps its z. A collider without a RigidBody is static at its transform.
+   * The rapier world persists between ticks and is world state: snapshots, restore and the world hash cover the whole simulation. Events sent in tick N are read in tick N + 1.
+   */
+  namespace physics {
+    /**
+     * The nearest collider along a ray. Inside a system it sees the colliders as they were at the start of the tick (og.physics.queries records them before the game's systems); between ticks, as the world holds them.
+     *
+     * @param world The world.
+     * @param desc The ray and the filter.
+     * @returns The hit, or null when nothing is hit; refused for a zero direction.
+     */
+    function raycast(world: World, desc?: RaycastDesc): Result<RaycastHit | null>;
+    /**
+     * The first collider a shape meets when swept along a direction; the same view of the colliders as raycast.
+     *
+     * @param world The world.
+     * @param desc The shape, its sweep and the filter.
+     * @returns The hit, or null; refused for a zero direction or an unknown mesh.
+     */
+    function shapeCast(world: World, desc?: ShapeCastDesc): Result<ShapeCastHit | null>;
+    /**
+     * Every collider overlapping a shape, sorted by entity id; the same view of the colliders as raycast.
+     *
+     * @param world The world.
+     * @param desc The shape, its placement and the filter.
+     */
+    function overlap(world: World, desc?: OverlapDesc): Result<readonly Entity[]>;
+    /**
+     * Register (or replace) the geometry a convex or triangle-mesh Collider names by its mesh handle. Loaded glTF geometries are registered under their own handles already; meshes are assets, not world state.
+     *
+     * @param world The world.
+     * @param mesh The handle colliders name in Collider.mesh.
+     * @param desc Positions and triangles.
+     * @returns Refused for an empty, non-finite or out-of-range mesh.
+     */
+    function setMesh(world: World, mesh: Geometry, desc?: MeshDesc): Result<void>;
+  }
+  /**
+   * A sound an entity plays. Level-triggered: while `playing` is true it plays (inserting a source plays it), setting it false stops it, and a one-shot that reaches its end sets it back to false and sends og.SoundEnded.
+   * A one-shot of F frames at rate R and pitch p started in tick S ends in tick S + ceil(F * tickRate / (R * p)) - 1. A despawned entity's voice is silenced without an event.
+   */
+  const AudioSource: ComponentType<{ readonly sound: FieldSpec<"Sound">; readonly bus: FieldSpec<"AudioBus">; readonly volume: FieldSpec<"f32">; readonly pitch: FieldSpec<"f32">; readonly pan: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly loopStart: FieldSpec<"f32">; readonly loopEnd: FieldSpec<"f32">; readonly spatial: FieldSpec<"bool">; readonly refDistance: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly rolloffFactor: FieldSpec<"f32">; readonly playing: FieldSpec<"bool"> }, AudioSource>;
+  /**
+   * Where spatial sources are heard from: the entity's og.Transform, looking down its -Z with +X to the right. The first listener in query order is used.
+   */
+  const AudioListener: ComponentType<{ readonly volume: FieldSpec<"f32"> }, AudioListener>;
+  /** Bus volumes; master scales every bus. A change ramps over 256 frames in the mixer. */
+  const Audio: ResourceType<{ readonly master: FieldSpec<"f32">; readonly music: FieldSpec<"f32">; readonly sfx: FieldSpec<"f32">; readonly ui: FieldSpec<"f32"> }, Audio>;
+  /** A source started, sent in the tick it happens (systems read it the tick after). */
+  const SoundStarted: EventType<SoundStarted>;
+  /** A sound ended, sent in the tick it happens (systems read it the tick after). */
+  const SoundEnded: EventType<SoundEnded>;
+  /**
+   * The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, themes it with the platform's design tokens, draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it.
+   * The engine opens the frame before the game's systems (from og.Input and the play surface) and closes it after them, so calls belong inside systems; outside one they do nothing and log a warning. Interaction is decided against the previous tick's rectangles, which are also what the probe resolves, so a scripted touch_move_to and a click agree; response edges (clicked, changed, submitted) last one tick.
+   * Lengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Ids: an element's id is unique among its siblings (`idi("Slot", 3)` is `Slot#3`); a path `Inventory/Slot#3` names it after its nearest ancestors. The UI state (hover, press, focus, caret, scroll) is world state: snapshots and the world hash carry it.
+   */
+  namespace ui {
+    /**
+     * Set the scheme, the density and the fonts, typically in GameDesc.start. Takes effect from the next tick.
+     *
+     * @param world The world whose UI is configured.
+     * @param desc The scheme, density and fonts.
+     * @returns Refused for a dead font.
+     */
+    function configure(world: World, desc?: UiDesc): Result<void>;
+    /**
+     * This tick's play surface: the render target's size in CSS pixels, its DPR and safe area, as the host reports them.
+     *
+     * @param world The world.
+     */
+    function viewport(world: World): Viewport;
+    /**
+     * The design tokens the UI draws with.
+     *
+     * @param world The world.
+     */
+    function theme(world: World): UiTheme;
+    /**
+     * Open a container; the calls until its close() build its children.
+     *
+     * @param id Its id, unique among its siblings.
+     * @param desc Its layout and look.
+     */
+    function open(id: string, desc?: ElementDesc): void;
+    /**
+     * Open a card, closed by close(): og.ui.panel without the callback.
+     *
+     * @param id Its id.
+     * @param desc Its layout and look.
+     */
+    function openPanel(id: string, desc?: PanelDesc): void;
+    /**
+     * Open a vertical scroll container, closed by close(): og.ui.scroll without the callback.
+     *
+     * @param id Its id.
+     * @param desc Its size and spacing.
+     */
+    function openScroll(id: string, desc?: ScrollDesc): void;
+    /**
+     * Close the open container.
+     *
+     * @returns Its response, for an interactive container; the zero response otherwise.
+     */
+    function close(): Response;
+    /**
+     * A row built by `build`: open(id, {...desc, direction: row}), build(), close().
+     *
+     * @param id Its id.
+     * @param desc Its layout and look; direction is row.
+     * @param build Makes its children.
+     * @returns Its response, for an interactive row.
+     */
+    function row(id: string, desc: ElementDesc, build: UiBuild): Response;
+    /**
+     * A column built by `build`: open(id, {...desc, direction: column}), build(), close().
+     *
+     * @param id Its id.
+     * @param desc Its layout and look; direction is column.
+     * @param build Makes its children.
+     * @returns Its response, for an interactive column.
+     */
+    function column(id: string, desc: ElementDesc, build: UiBuild): Response;
+    /**
+     * A card built by `build`: openPanel(id, desc), build(), close().
+     *
+     * @param id Its id.
+     * @param desc Its layout and look.
+     * @param build Makes its children.
+     */
+    function panel(id: string, desc: PanelDesc, build: UiBuild): void;
+    /**
+     * A vertical scroll container built by `build`: openScroll(id, desc), build(), close().
+     *
+     * @param id Its id.
+     * @param desc Its size and spacing.
+     * @param build Makes its children.
+     */
+    function scroll(id: string, desc: ScrollDesc, build: UiBuild): void;
+    /**
+     * MSDF text that wraps at its width (word breaks, any CJK character, long words between characters) unless nowrap. The probe reads its text.
+     *
+     * @param id Its id.
+     * @param text The text.
+     * @param desc Type step, ink, alignment, wrapping, width and font.
+     */
+    function label(id: string, text: string, desc?: LabelDesc): void;
+    /**
+     * A capsule button with a label; `clicked` is a press and a release inside it. The probe reads its label.
+     *
+     * @param id Its id.
+     * @param text The label.
+     * @param desc Variant, size, disabled and width.
+     */
+    function button(id: string, text: string, desc?: ButtonDesc): Response;
+    /**
+     * A texture region, or a solid rectangle.
+     *
+     * @param id Its id.
+     * @param desc Texture, region, tint and size.
+     */
+    function image(id: string, desc?: ImageDesc): void;
+    /**
+     * A capsule track filled to a fraction.
+     *
+     * @param id Its id.
+     * @param value How full it is, from 0 to 1.
+     * @param desc Its width.
+     */
+    function progress(id: string, value: number, desc?: ProgressDesc): void;
+    /**
+     * A track with a fill and a thumb: a press anywhere on it sets the value and dragging follows. Pass back the value it answers next tick.
+     *
+     * @param id Its id.
+     * @param value The value from game state.
+     * @param desc Range, step and width.
+     */
+    function slider(id: string, value: number, desc?: SliderDesc): SliderResult;
+    /**
+     * A switch with a label; a click flips it. Pass back the state it answers next tick. The probe reads its label.
+     *
+     * @param id Its id.
+     * @param on The state from game state.
+     * @param label The label.
+     */
+    function toggle(id: string, on: boolean, label: string): ToggleResult;
+    /**
+     * One line of text: a press focuses it with the caret at the press, typed text inserts at the caret, Backspace, Delete, arrows, Home and End edit, Enter submits and leaves, Escape leaves. Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty.
+     *
+     * @param id Its id.
+     * @param value The text from game state.
+     * @param desc Placeholder, width and length limit.
+     */
+    function textField(id: string, value: string, desc?: FieldDesc): FieldResult;
+    /**
+     * A tooltip for the element just built: shown below it (above without room) once the pointer has rested on it for the slow motion duration, drawn over everything. The probe reads its text.
+     *
+     * @param text The text.
+     */
+    function tooltip(text: string): void;
+    /**
+     * The id of the index-th of several siblings of one name: `idi("Slot", 3)` is `Slot#3`.
+     *
+     * @param name The name.
+     * @param index The index.
+     */
+    function idi(name: string, index: number): string;
+  }
+  /**
+   * Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.
+   */
+  namespace systems {
+    /**
+     * The camera controllers, in this order: og.orbitCamera (og.OrbitCamera), og.followCamera (og.FollowCamera) and og.follow2D (og.Follow2D). Each moves og.Camera only while an entity carries its component. List them before the game's systems that read og.Camera: `systems: [...og.systems.cameras, ...yours]`.
+     */
+    const cameras: readonly System[];
   }
   /**
    * The command channel: actions scheduled on simulation time, from `og run --commands "t:action[:args];..."` or the probe's commands().

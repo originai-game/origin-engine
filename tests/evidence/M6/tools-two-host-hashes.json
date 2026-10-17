@@ -1,0 +1,200 @@
+{
+  "what": "world hash after 600 ticks on the native addon and the web host, this revision",
+  "hello": {
+    "how": "bun tests/support/hello-hash.ts --host node|web (10,000 entities, Move)",
+    "node": {
+      "host": "node",
+      "tick": 600,
+      "hash": "4c8c4d3325affc62",
+      "hashAtLoad": "68de2353b80949a3",
+      "entities": 10000,
+      "advanceMs": 40.33
+    },
+    "web": {
+      "host": "web",
+      "tick": 600,
+      "hash": "4c8c4d3325affc62",
+      "hashAtLoad": "68de2353b80949a3",
+      "entities": 10000,
+      "advanceMs": 175.57
+    },
+    "equal": true
+  },
+  "physics": {
+    "how": "bun tests/support/physics-hash.ts --host node|web --profile 3d|2d (floor, ramp, kinematic paddle, sensor, 64 bodies; events counted inside a system)",
+    "3d": {
+      "node": {
+        "host": "node",
+        "profile": "3d",
+        "tick": 600,
+        "hash": "791420074b007dd6",
+        "hashAtLoad": "8a25cb9940858762",
+        "entities": 68,
+        "body63": {
+          "x": -5.244500637054443,
+          "y": 0.3499220013618469,
+          "z": -5.459596157073975
+        },
+        "tally": {
+          "entered": 23,
+          "started": 359
+        },
+        "advanceMs": 259.78
+      },
+      "web": {
+        "host": "web",
+        "profile": "3d",
+        "tick": 600,
+        "hash": "791420074b007dd6",
+        "hashAtLoad": "8a25cb9940858762",
+        "entities": 68,
+        "body63": {
+          "x": -5.244500637054443,
+          "y": 0.3499220013618469,
+          "z": -5.459596157073975
+        },
+        "tally": {
+          "entered": 23,
+          "started": 359
+        },
+        "advanceMs": 628.44
+      },
+      "equal": true
+    },
+    "2d": {
+      "node": {
+        "host": "node",
+        "profile": "2d",
+        "tick": 600,
+        "hash": "da72952ce122d61b",
+        "hashAtLoad": "99c64efe1e45c6dc",
+        "entities": 68,
+        "body63": {
+          "x": 8.658873558044434,
+          "y": 0.3498975336551666,
+          "z": 0
+        },
+        "tally": {
+          "entered": 25,
+          "started": 604
+        },
+        "advanceMs": 101.7
+      },
+      "web": {
+        "host": "web",
+        "profile": "2d",
+        "tick": 600,
+        "hash": "da72952ce122d61b",
+        "hashAtLoad": "99c64efe1e45c6dc",
+        "entities": 68,
+        "body63": {
+          "x": 8.658873558044434,
+          "y": 0.3498975336551666,
+          "z": 0
+        },
+        "tally": {
+          "entered": 25,
+          "started": 604
+        },
+        "advanceMs": 421.42
+      },
+      "equal": true
+    }
+  },
+  "games": {
+    "how": "og run <game> --headless --commands \"<script>;10:dump_world:w600-N.json;10.05:quit\" twice, and og build + headless Chrome for Testing 150 (WebGPU, 1280x720 surface, probe commands + advance 600 + dump) per tests/evidence/M6/games-web-procedure.md; scripts: the template taps Start (0.5:touch_move_to:Start;0.6:touch_start;0.7:touch_end), the archetypes use games-world-hash-600-two-hosts.json's",
+    "results": {
+      "template": {
+        "native": [
+          {
+            "tick": 600,
+            "hash": "f72bb7369f6c71c3",
+            "entities": 5
+          },
+          {
+            "tick": 600,
+            "hash": "f72bb7369f6c71c3",
+            "entities": 5
+          }
+        ],
+        "web": {
+          "tick": 600,
+          "hash": "f72bb7369f6c71c3",
+          "entities": 5,
+          "tier": "webgpu",
+          "facts": {
+            "crateY": 0.4992085099220276,
+            "spin": 1.5,
+            "started": true
+          }
+        },
+        "equal": true
+      },
+      "runner": {
+        "native": [
+          {
+            "tick": 600,
+            "hash": "decf0102130633f6",
+            "entities": 57
+          },
+          {
+            "tick": 600,
+            "hash": "decf0102130633f6",
+            "entities": 57
+          }
+        ],
+        "web": {
+          "tick": 600,
+          "hash": "decf0102130633f6",
+          "entities": 57,
+          "tier": "webgpu",
+          "facts": {
+            "best": 81,
+            "coins": 0,
+            "distance": 12.14,
+            "phase": "running",
+            "rounds": 2,
+            "score": 12,
+            "speed": 6.24
+          }
+        },
+        "equal": true
+      },
+      "match3": {
+        "native": [
+          {
+            "tick": 600,
+            "hash": "cfffe33448665add",
+            "entities": 102
+          },
+          {
+            "tick": 600,
+            "hash": "cfffe33448665add",
+            "entities": 102
+          }
+        ],
+        "web": {
+          "tick": 600,
+          "hash": "cfffe33448665add",
+          "entities": 102,
+          "tier": "webgpu",
+          "facts": {
+            "best": 0,
+            "cleared": 3,
+            "maxChain": 1,
+            "movesLeft": 19,
+            "phase": "idle",
+            "pointer": {
+              "pxPerM": 60,
+              "x0": 640,
+              "y0": 390
+            },
+            "rounds": 1,
+            "score": 30
+          }
+        },
+        "equal": true
+      }
+    }
+  }
+}
