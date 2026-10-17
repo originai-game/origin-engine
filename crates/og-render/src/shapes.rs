@@ -59,6 +59,38 @@ pub fn plane(size: f32, uv_repeat: f32) -> MeshData {
     }
 }
 
+/// An axis-aligned box of `size` centred at the origin, with flat normals and
+/// UVs 0..1 on every face (three.js `BoxGeometry`).
+pub fn cuboid(size: Vec3) -> MeshData {
+    let h = size * 0.5;
+    let mut vertices = Vec::with_capacity(24);
+    let mut indices = Vec::with_capacity(36);
+    // (normal, u axis, v axis) per face; corners = n*h ± u*h ± v*h.
+    let faces = [
+        (Vec3::X, Vec3::NEG_Z, Vec3::Y),
+        (Vec3::NEG_X, Vec3::Z, Vec3::Y),
+        (Vec3::Y, Vec3::X, Vec3::NEG_Z),
+        (Vec3::NEG_Y, Vec3::X, Vec3::Z),
+        (Vec3::Z, Vec3::X, Vec3::Y),
+        (Vec3::NEG_Z, Vec3::NEG_X, Vec3::Y),
+    ];
+    for (n, u, v) in faces {
+        let base = vertices.len() as u32;
+        for (cu, cv) in [(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)] {
+            let p = (n + u * cu + v * cv) * h;
+            vertices.push(Vertex {
+                position: p.to_array(),
+                normal: n.to_array(),
+                uv: [(cu + 1.0) * 0.5, (1.0 - cv) * 0.5],
+                color: [1.0; 4],
+            });
+        }
+        // Counter-clockwise seen from outside (u x v = n).
+        indices.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+    }
+    MeshData { vertices, indices }
+}
+
 /// A grey checkerboard of `size`x`size` texels with `cells` squares per side
 /// (sRGB, mips generated).
 pub fn checker(size: u32, cells: u32) -> TextureData {

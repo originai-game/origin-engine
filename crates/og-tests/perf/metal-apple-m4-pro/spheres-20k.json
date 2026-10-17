@@ -1,0 +1,10 @@
+{
+  "scene": "spheres-20k",
+  "tier": "metal",
+  "adapter": "Apple M4 Pro",
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 100,
+  "runs_ms": [6.675, 7.967, 8.005, 8.200, 8.415, 8.605, 8.833],
+  "frame_ms": 6.675
+}

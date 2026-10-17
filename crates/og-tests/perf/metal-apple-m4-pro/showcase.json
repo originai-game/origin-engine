@@ -1,0 +1,10 @@
+{
+  "scene": "showcase",
+  "tier": "metal",
+  "adapter": "Apple M4 Pro",
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 100,
+  "runs_ms": [3.245, 3.311, 3.442, 3.670, 3.805, 4.371, 4.402],
+  "frame_ms": 3.245
+}

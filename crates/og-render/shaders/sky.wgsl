@@ -17,7 +17,9 @@ fn vs_sky(@builtin(vertex_index) i: u32) -> SkyOut {
 
 @fragment
 fn fs_sky(in: SkyOut) -> @location(0) vec4<f32> {
-  let far = camera.inv_view_proj * vec4<f32>(in.ndc, 1.0, 1.0);
-  let dir = normalize(far.xyz / far.w - camera.view_pos.xyz);
+  // The view ray through the pixel: near point to far point (perspective and orthographic).
+  let near = frame.inv_view_proj * vec4<f32>(in.ndc, 0.0, 1.0);
+  let far = frame.inv_view_proj * vec4<f32>(in.ndc, 1.0, 1.0);
+  let dir = normalize(far.xyz / far.w - near.xyz / near.w);
   return vec4<f32>(textureSampleLevel(sky_map, ibl_sampler, dir, 0.0).rgb, 1.0);
 }

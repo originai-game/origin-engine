@@ -1,0 +1,60 @@
+{
+  "tier": "metal",
+  "adapter": "Apple M4 Pro",
+  "method": "best of 7 runs of 100 frames, 1280x720, release; tolerance 15 %",
+  "scenes": {
+    "gltf-reference": {
+      "frame_ms": 1.385,
+      "runs_ms": [
+        1.385,
+        1.446,
+        1.498,
+        1.625,
+        1.643,
+        1.768,
+        1.797
+      ]
+    },
+    "showcase": {
+      "frame_ms": 3.245,
+      "runs_ms": [
+        3.245,
+        3.311,
+        3.442,
+        3.67,
+        3.805,
+        4.371,
+        4.402
+      ]
+    },
+    "spheres-20k": {
+      "frame_ms": 6.675,
+      "runs_ms": [
+        6.675,
+        7.967,
+        8.005,
+        8.2,
+        8.415,
+        8.605,
+        8.833
+      ]
+    },
+    "sprites-20k": {
+      "frame_ms": 1.051,
+      "runs_ms": [
+        1.051,
+        1.326,
+        1.535,
+        2.137,
+        2.137,
+        2.162,
+        2.39
+      ]
+    }
+  },
+  "vulkan_cpu_lavapipe_e2b": {
+    "note": "og-gfx --frames 10 in the E2B probe sandbox (2 vCPU, llvmpipe LLVM 15, Mesa 25.0.7); not a baseline",
+    "gltf-reference_ms": 243.1,
+    "sprites-20k_ms": 65.3
+  }
+}

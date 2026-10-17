@@ -6,7 +6,7 @@
 //! `OG_GFX_CAPTURE=scene-a,scene-b` records only those scenes.
 
 use crate::compare::{compare, Comparison};
-use crate::scenes;
+use crate::scenes::{self, GfxScene};
 use og_render::{FrameStats, RenderInfo, RenderTarget, Renderer, RgbaImage};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -28,14 +28,22 @@ impl std::fmt::Display for GfxReport {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "gfx {} [{} on {}]: draws={} batches={} instances={} triangles={}",
+            "gfx {} [{} on {}, aa {:?}]: draws={} batches={} instances={} culled={} triangles={} shadow_passes={} shadow_casters={} lights={} sprites={} glyphs={} sprite_draws={}",
             self.scene,
             self.tier,
             self.info.adapter,
+            self.info.antialias,
             self.stats.draw_calls,
             self.stats.batches,
             self.stats.instances,
-            self.stats.triangles
+            self.stats.culled,
+            self.stats.triangles,
+            self.stats.shadow_passes,
+            self.stats.shadow_casters,
+            self.stats.lights,
+            self.stats.sprites,
+            self.stats.glyphs,
+            self.stats.sprite_draws
         )?;
         match &self.comparison {
             Some(c) => write!(
@@ -51,9 +59,13 @@ impl std::fmt::Display for GfxReport {
     }
 }
 
-/// The directory committed reference frames live in.
+/// The directory committed reference frames live in, or `OG_TEST_REFERENCES`
+/// (the sandbox run compares against frames it captured itself).
 pub fn references_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("references")
+    match std::env::var_os("OG_TEST_REFERENCES") {
+        Some(dir) => PathBuf::from(dir),
+        None => PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("references"),
+    }
 }
 
 pub fn reference_path(tier: &str, scene: &str) -> PathBuf {
@@ -77,14 +89,20 @@ pub struct Rendered {
     pub setup_ms: f64,
 }
 
-/// Renders `scene` once, headless.
-pub fn render(scene: &str) -> Result<Rendered, String> {
-    let built = scenes::build(scene)?;
+/// Renders a built scene headless: `frames` frames (calling its update
+/// before each), then reads the last one back.
+pub fn render_built(built: &mut GfxScene) -> Result<Rendered, String> {
     let t0 = Instant::now();
     let mut renderer = Renderer::new_blocking(&built.desc).map_err(|e| e.to_string())?;
-    let stats = renderer
-        .render(&built.scene, &RenderTarget::Offscreen)
-        .map_err(|e| e.to_string())?;
+    let mut stats = FrameStats::default();
+    for frame in 0..built.frames.max(1) {
+        if let Some(update) = built.update {
+            update(&mut built.scene, frame);
+        }
+        stats = renderer
+            .render(&built.scene, &RenderTarget::Offscreen)
+            .map_err(|e| e.to_string())?;
+    }
     let image = renderer.read_offscreen().map_err(|e| e.to_string())?;
     Ok(Rendered {
         image,
@@ -119,12 +137,27 @@ pub fn load_png(path: &Path) -> Result<RgbaImage, String> {
     })
 }
 
+/// Renders the scene called `scene` headless (see [`render_built`]).
+pub fn render(scene: &str) -> Result<Rendered, String> {
+    render_built(&mut scenes::build(scene)?)
+}
+
 /// Renders `scene` and compares it with its reference (or records the
 /// reference when capture is requested). On a mismatch, writes
 /// `<out_dir>/<tier>/<scene>.actual.png` and `.diff.png` and returns `Err`.
+/// A scene that does not apply to the adapter's tier (TAA on GL, MSAA on
+/// WebGPU-class backends) is an error here: callers check
+/// [`GfxScene::applies`] first and assert something else instead.
 pub fn check(scene: &str, out_dir: &Path) -> Result<GfxReport, String> {
-    let built = scenes::build(scene)?;
-    let rendered = render(scene)?;
+    let mut built = scenes::build(scene)?;
+    let rendered = render_built(&mut built)?;
+    if !built.applies.includes(rendered.info.tier) {
+        return Err(format!(
+            "gfx {scene} has no reference on the {:?} tier ({})",
+            rendered.info.tier,
+            rendered.info.backend_tier()
+        ));
+    }
     let tier = rendered.info.backend_tier();
     let reference = reference_path(&tier, scene);
     let mut report = GfxReport {

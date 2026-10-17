@@ -154,6 +154,10 @@ handle!(
     /// A texture added to a [`RenderScene`].
     TextureHandle
 );
+handle!(
+    /// An MSDF font added to a [`RenderScene`].
+    FontHandle
+);
 
 /// One object to draw: a mesh with a material at a world transform. Callers
 /// submit instances one by one; the renderer batches all instances that share
@@ -166,19 +170,78 @@ pub struct Instance {
     pub transform: Mat4,
 }
 
-/// A perspective camera looking from `position` at `target` (right-handed,
-/// y up by default). The aspect ratio is the render target's.
+/// How a [`Camera`] projects the world onto the target.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Projection {
+    /// Perspective with a vertical field of view in degrees.
+    Perspective { fov_y_degrees: f32 },
+    /// Orthographic: `height` world units fill the target vertically; the
+    /// width follows the target's aspect ratio. The 2D camera mode.
+    Orthographic { height: f32 },
+}
+
+impl Default for Projection {
+    fn default() -> Self {
+        Projection::Perspective {
+            fov_y_degrees: 50.0,
+        }
+    }
+}
+
+/// How bright the HDR image is made before tonemapping. One EV is one stop:
+/// +1 doubles the image, -1 halves it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Exposure {
+    /// A fixed exposure: the image is multiplied by `2^ev` (0 leaves it as lit).
+    Manual { ev: f32 },
+    /// Metered from the frame being drawn: the log-average luminance is
+    /// brought to middle grey (0.18), then `compensation` is added and the
+    /// result is clamped to `min_ev..=max_ev`. It reads only the current
+    /// frame (no adaptation over time), so the same frame always gets the same
+    /// exposure.
+    Auto {
+        compensation: f32,
+        min_ev: f32,
+        max_ev: f32,
+    },
+}
+
+impl Exposure {
+    /// A manual exposure from a linear multiplier (`linear(0.8)` scales the
+    /// image by 0.8).
+    pub fn linear(multiplier: f32) -> Exposure {
+        Exposure::Manual {
+            ev: multiplier.max(1e-12).log2(),
+        }
+    }
+
+    /// Auto exposure with no compensation over a wide range (-10..=10 EV).
+    pub fn auto() -> Exposure {
+        Exposure::Auto {
+            compensation: 0.0,
+            min_ev: -10.0,
+            max_ev: 10.0,
+        }
+    }
+}
+
+impl Default for Exposure {
+    fn default() -> Self {
+        Exposure::Manual { ev: 0.0 }
+    }
+}
+
+/// A camera looking from `position` at `target` (right-handed, y up by
+/// default, depth 0..1). The aspect ratio is the render target's.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Camera {
     pub position: Vec3,
     pub target: Vec3,
     pub up: Vec3,
-    /// Vertical field of view in degrees.
-    pub fov_y_degrees: f32,
+    pub projection: Projection,
     pub near: f32,
     pub far: f32,
-    /// Linear multiplier applied to the HDR image before tonemapping.
-    pub exposure: f32,
+    pub exposure: Exposure,
 }
 
 impl Default for Camera {
@@ -187,26 +250,44 @@ impl Default for Camera {
             position: Vec3::new(0.0, 2.0, 6.0),
             target: Vec3::ZERO,
             up: Vec3::Y,
-            fov_y_degrees: 50.0,
+            projection: Projection::default(),
             near: 0.1,
             far: 1000.0,
-            exposure: 1.0,
+            exposure: Exposure::default(),
         }
     }
 }
 
-/// The region the directional light's shadow map covers.
+impl Camera {
+    /// The 2D camera: orthographic, looking down -z at `center` on the z = 0
+    /// plane, `height` world units tall, y up. Sprites and text at z = 0 face it.
+    pub fn orthographic_2d(center: glam::Vec2, height: f32) -> Camera {
+        Camera {
+            position: center.extend(100.0),
+            target: center.extend(0.0),
+            up: Vec3::Y,
+            projection: Projection::Orthographic { height },
+            near: 0.0,
+            far: 200.0,
+            exposure: Exposure::default(),
+        }
+    }
+}
+
+/// What the directional light's cascaded shadow maps must cover.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum ShadowBounds {
-    /// Fit to the world bounds of every submitted instance.
+    /// The world bounds of every submitted instance: cascades reach from the
+    /// camera's near plane to the far side of those bounds, and every instance
+    /// in them can cast.
     #[default]
     Auto,
-    /// A sphere around `center` with `radius` (the shadow map is an orthographic
-    /// box of half-size `radius` looking at `center` from the light).
+    /// A sphere around `center` with `radius`: cascades reach to its far side
+    /// and casters inside it are kept.
     Sphere { center: Vec3, radius: f32 },
 }
 
-/// The sun: one directional light with a shadow map.
+/// The sun: one directional light with three cascaded shadow maps.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DirectionalLight {
     /// Points from the scene towards the light (need not be normalized).
@@ -216,6 +297,10 @@ pub struct DirectionalLight {
     pub intensity: f32,
     pub cast_shadows: bool,
     pub shadow_bounds: ShadowBounds,
+    /// How far from the camera shadows reach (they fade out over the last
+    /// tenth). The cascades cover the nearer of this and the far side of
+    /// `shadow_bounds`, so a smaller distance means sharper shadows.
+    pub max_shadow_distance: f32,
 }
 
 impl Default for DirectionalLight {
@@ -226,6 +311,59 @@ impl Default for DirectionalLight {
             intensity: 3.0,
             cast_shadows: true,
             shadow_bounds: ShadowBounds::Auto,
+            max_shadow_distance: 200.0,
+        }
+    }
+}
+
+/// The most local lights one frame draws ([`RenderScene::lights`] beyond this
+/// are ignored and counted in [`crate::FrameStats::lights_dropped`]).
+pub const MAX_LIGHTS: usize = 8;
+/// How many local lights can cast shadows in one frame: the first ones in
+/// [`RenderScene::lights`] with `cast_shadows` set.
+pub const MAX_SHADOWED_LIGHTS: usize = 2;
+
+/// The shape of a local light.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum LightKind {
+    /// Shines in every direction (three.js `PointLight`).
+    Point,
+    /// A cone along `direction` (three.js `SpotLight`): `angle_degrees` is the
+    /// half-angle of the outer cone, `penumbra` (0..1) the fraction of it over
+    /// which the light fades out.
+    Spot {
+        direction: Vec3,
+        angle_degrees: f32,
+        penumbra: f32,
+    },
+}
+
+/// A point or spot light. Its radiance at distance `d` is
+/// `color * intensity / d²`, faded smoothly to zero at `range`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Light {
+    pub kind: LightKind,
+    pub position: Vec3,
+    /// Linear colour.
+    pub color: Vec3,
+    /// Luminous intensity (candela-like: the radiance at 1 m).
+    pub intensity: f32,
+    /// The distance at which the light reaches zero.
+    pub range: f32,
+    /// Shadows from this light (a cube for a point light, one map for a spot);
+    /// only the first [`MAX_SHADOWED_LIGHTS`] shadowed lights get them.
+    pub cast_shadows: bool,
+}
+
+impl Default for Light {
+    fn default() -> Self {
+        Light {
+            kind: LightKind::Point,
+            position: Vec3::new(0.0, 2.0, 0.0),
+            color: Vec3::ONE,
+            intensity: 10.0,
+            range: 10.0,
+            cast_shadows: false,
         }
     }
 }
@@ -277,6 +415,159 @@ impl Default for Environment {
     }
 }
 
+/// The tonemapping curve from linear HDR to the display range.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum Tonemap {
+    /// ACES (the fitted curve).
+    #[default]
+    Aces,
+    /// None: the exposed linear colour is clamped to 0..1. With exposure 0 EV,
+    /// sprite and text colours come out exactly as authored (the 2D choice).
+    None,
+}
+
+/// Bloom: light above a threshold bleeds into its surroundings.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Bloom {
+    /// Brightness (after exposure) where bloom starts; 1.0 is display white.
+    pub threshold: f32,
+    /// Softens the threshold over `threshold ± knee` (0 = a hard cut).
+    pub knee: f32,
+    /// How much of the blurred light is added back.
+    pub intensity: f32,
+}
+
+impl Default for Bloom {
+    fn default() -> Self {
+        Bloom {
+            threshold: 1.0,
+            knee: 0.5,
+            intensity: 0.6,
+        }
+    }
+}
+
+/// Post-processing after the lit image: bloom and the tonemap. Exposure
+/// belongs to the [`Camera`].
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct PostEffects {
+    /// `None` turns bloom off (no passes run).
+    pub bloom: Option<Bloom>,
+    pub tonemap: Tonemap,
+}
+
+/// A diagnostic view in place of the lit image.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum DebugView {
+    #[default]
+    None,
+    /// Each lit pixel coloured by the shadow cascade that covers it: red,
+    /// green, blue for cascades 0, 1, 2; black beyond the last one.
+    Cascades,
+}
+
+/// A textured quad in the world's xy plane, facing +z (towards the 2D
+/// camera). Callers submit sprites one by one; the renderer sorts them by
+/// (`layer`, texture) and draws each run in one instanced draw.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Sprite {
+    /// `None` draws a solid quad of `color`.
+    pub texture: Option<TextureHandle>,
+    /// World position of the anchor point.
+    pub position: Vec3,
+    /// Width and height in world units.
+    pub size: glam::Vec2,
+    /// The point of the quad at `position`, as a fraction of its size from the
+    /// bottom-left corner: (0.5, 0.5) is the centre.
+    pub anchor: glam::Vec2,
+    /// Counter-clockwise rotation around the anchor, in radians.
+    pub rotation: f32,
+    /// Linear RGBA multiplied with the texture (alpha blends).
+    pub color: [f32; 4],
+    /// The texture region drawn: `[u0, v0, u1, v1]` with v down (the image's
+    /// first row is v = 0). The default is the whole texture.
+    pub uv_rect: [f32; 4],
+    /// Draw order: higher layers draw over lower ones. Within a layer, sprites
+    /// are grouped by texture, then drawn in submission order.
+    pub layer: i32,
+}
+
+impl Default for Sprite {
+    fn default() -> Self {
+        Sprite {
+            texture: None,
+            position: Vec3::ZERO,
+            size: glam::Vec2::ONE,
+            anchor: glam::Vec2::splat(0.5),
+            rotation: 0.0,
+            color: [1.0; 4],
+            uv_rect: [0.0, 0.0, 1.0, 1.0],
+            layer: 0,
+        }
+    }
+}
+
+/// One glyph of an MSDF atlas (the layout `msdf-atlas-gen` writes).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Glyph {
+    pub codepoint: char,
+    /// Horizontal advance in em.
+    pub advance: f32,
+    /// The quad around the glyph relative to the pen on the baseline, in em,
+    /// y up: `[left, bottom, right, top]`. All zero for blank glyphs (space).
+    pub plane_bounds: [f32; 4],
+    /// The glyph's region in the atlas in pixels, y down from the first row:
+    /// `[left, top, right, bottom]`.
+    pub atlas_bounds: [f32; 4],
+}
+
+/// A multi-channel signed distance field font: an atlas texture plus its
+/// glyph table. The atlas is produced ahead of time (the cook's job); it must
+/// be an RGB(A) MSDF uploaded with [`ColorSpace::Linear`] and [`Mips::None`].
+#[derive(Clone, Debug, PartialEq)]
+pub struct MsdfFont {
+    pub atlas: TextureHandle,
+    /// The distance field's range in atlas pixels (`msdf-atlas-gen -pxrange`).
+    pub distance_range: f32,
+    /// Baseline-to-baseline distance in em.
+    pub line_height: f32,
+    pub glyphs: Vec<Glyph>,
+}
+
+/// A run of text drawn with an MSDF font, laid out left to right from the
+/// pen at `position` (the first line's baseline), lines split at `\n`.
+/// Characters missing from the font are skipped and counted in
+/// [`crate::FrameStats::missing_glyphs`].
+#[derive(Clone, Debug, PartialEq)]
+pub struct Text {
+    pub font: FontHandle,
+    pub text: String,
+    pub position: Vec3,
+    /// Em size in world units.
+    pub size: f32,
+    /// Counter-clockwise rotation around `position`, in radians.
+    pub rotation: f32,
+    /// Linear RGBA.
+    pub color: [f32; 4],
+    /// Sorted together with sprites: higher layers draw over lower ones.
+    pub layer: i32,
+}
+
+impl Text {
+    /// White text of em size 1 at the origin on layer 0.
+    pub fn new(font: FontHandle, text: impl Into<String>) -> Text {
+        Text {
+            font,
+            text: text.into(),
+            position: Vec3::ZERO,
+            size: 1.0,
+            rotation: 0.0,
+            color: [1.0; 4],
+            layer: 0,
+        }
+    }
+}
+
 static NEXT_SCENE_ID: AtomicU64 = AtomicU64::new(1);
 
 /// Everything one frame draws. See the module documentation.
@@ -287,11 +578,20 @@ pub struct RenderScene {
     textures: Vec<TextureData>,
     materials: Vec<Material>,
     material_revisions: Vec<u64>,
+    fonts: Vec<MsdfFont>,
     /// Objects to draw this frame, in any order.
     pub instances: Vec<Instance>,
     pub camera: Camera,
     pub light: DirectionalLight,
+    /// Point and spot lights; the first [`MAX_LIGHTS`] are drawn.
+    pub lights: Vec<Light>,
     pub environment: Environment,
+    pub post: PostEffects,
+    /// 2D quads drawn after the 3D scene, blended, sorted by layer.
+    pub sprites: Vec<Sprite>,
+    /// MSDF text, sorted with the sprites by layer.
+    pub texts: Vec<Text>,
+    pub debug: DebugView,
 }
 
 impl Default for RenderScene {
@@ -308,10 +608,16 @@ impl RenderScene {
             textures: Vec::new(),
             materials: Vec::new(),
             material_revisions: Vec::new(),
+            fonts: Vec::new(),
             instances: Vec::new(),
             camera: Camera::default(),
             light: DirectionalLight::default(),
+            lights: Vec::new(),
             environment: Environment::default(),
+            post: PostEffects::default(),
+            sprites: Vec::new(),
+            texts: Vec::new(),
+            debug: DebugView::None,
         }
     }
 
@@ -353,6 +659,21 @@ impl RenderScene {
         });
     }
 
+    /// Adds an MSDF font whose atlas is a texture of this scene.
+    pub fn add_font(&mut self, font: MsdfFont) -> FontHandle {
+        self.fonts.push(font);
+        FontHandle(self.fonts.len() as u32 - 1)
+    }
+
+    /// Adds one sprite (the same as pushing onto [`RenderScene::sprites`]).
+    pub fn add_sprite(&mut self, sprite: Sprite) {
+        self.sprites.push(sprite);
+    }
+
+    pub fn font(&self, handle: FontHandle) -> Option<&MsdfFont> {
+        self.fonts.get(handle.index())
+    }
+
     pub fn mesh(&self, handle: MeshHandle) -> Option<&MeshData> {
         self.meshes.get(handle.index())
     }
@@ -383,6 +704,10 @@ impl RenderScene {
 
     pub(crate) fn meshes(&self) -> &[MeshData] {
         &self.meshes
+    }
+
+    pub(crate) fn fonts(&self) -> &[MsdfFont] {
+        &self.fonts
     }
 
     pub(crate) fn textures(&self) -> &[TextureData] {

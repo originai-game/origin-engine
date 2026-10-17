@@ -1,165 +1,242 @@
 # og-render
 
-The Origin Engine renderer (`docs/design.md` §2.6): wgpu, WGSL shaders in
-`crates/og-render/shaders/` at the repository root, one code path for native (Metal, Vulkan,
-headless for executors) and the browser (WebGPU, WebGL2 through wgpu's GL
-backend). It started as the spike's renderer (`crates/og-spike`) moved
-behind a crate boundary; M0 reproduced the spike's frame byte for byte
-(`tests/evidence/M0/spike-frame-reproduced.png`) before the sky pass and mips
-were added.
+The Origin Engine renderer (`docs/design.md` §2.6, M3 in `docs/phase-1.md`):
+wgpu, WGSL shaders in `crates/og-render/shaders/`, one code path for native
+(Metal, Vulkan, headless for executors) and the browser (WebGPU, WebGL2
+through wgpu's GL backend). It started as the spike's renderer; M0
+reproduced the spike's frame byte for byte
+(`tests/evidence/M0/spike-frame-reproduced.png`).
 
-The crate knows nothing about the ECS. Its whole input is a `RenderScene`; the
-world → scene extraction belongs to the layer above.
+The crate knows nothing about the ECS. Its whole input is a `RenderScene`;
+the world → scene extraction belongs to the layer above.
 
 ## Public types
 
 | Type | What it is |
 |---|---|
-| `RenderDesc` | How to create a renderer: `width`, `height`, `backend` (`Auto`, `WebGpu`, `WebGl2`, `Metal`, `Vulkan`), `output_format` (`None` = `Rgba8UnormSrgb` offscreen, the surface's choice on a surface). Default 1280×720, `Auto`. |
-| `Renderer` | `Renderer::new(&desc).await` (headless), `Renderer::with_surface(&desc, &instance, surface).await` (presents), `render(&scene, &target) -> Result<FrameStats>`, `resize`, `info`. Native only: `new_blocking`, `wait_idle`, `read_offscreen() -> RgbaImage`. |
-| `render_to_rgba(&desc, &scene)` | Native, blocking: one frame headless → `RgbaImage` (RGBA8, rows top to bottom). The executor and capture path. |
-| `RenderTarget` | `Offscreen` (the renderer's own texture, readable), `Surface` (acquire, draw, present), `View(&TextureView)` (a caller's view of the output format and size). |
-| `RenderScene` | Resources with handles (`add_mesh`, `add_texture`, `add_material` → `MeshHandle`, `TextureHandle`, `MaterialHandle`; `set_material` replaces one), and the per-frame public fields `instances`, `camera`, `light`, `environment`. Resources are append-only; the renderer uploads what is new or changed since the last frame. |
-| `MeshData`, `Vertex` | Triangle lists: position, normal, uv, colour; `u32` indices. |
-| `TextureData` | RGBA8 pixels with `color_space` (`Srgb`, `Linear`) and `mips` (`Generate`, `None`). |
-| `Material` | glTF metallic-roughness as a plain struct: base colour, metallic, roughness, normal scale, emissive, their optional textures, `alpha_mode` (`Opaque`, `Mask { cutoff }`). The reflected material asset of M3 will map onto it. |
-| `Instance` | `(mesh, material, transform)`. Callers submit instances one by one; the renderer batches them. |
-| `Camera` | `position`, `target`, `up`, `fov_y_degrees`, `near`, `far`, `exposure`. Perspective, right-handed, depth 0..1. |
-| `DirectionalLight` | `direction_to_light`, `color`, `intensity`, `cast_shadows`, `shadow_bounds` (`Auto` fits the instances' world bounds; `Sphere { center, radius }`). |
-| `Environment` | `sky: ProceduralSky { sun_direction, sun_color }`, `intensity` (IBL strength), `background` (`Sky` or `Color(linear rgb)`). |
-| `FrameStats` | `draw_calls` (every pass), `batches`, `instances`, `triangles` (main pass). |
-| `RenderInfo` | Adapter, backend, device type, `Tier` (`Full`, `NoCompute`), `backend_tier()`: the reference-frame directory name. |
+| `RenderDesc` | How to create a renderer: `width`, `height`, `backend` (`Auto`, `WebGpu`, `WebGl2`, `Metal`, `Vulkan`), `output_format` (`None` = `Rgba8UnormSrgb` offscreen, the surface's choice on a surface), `antialias`. Default 1280×720, `Auto`, `Antialias::Off`. |
+| `Antialias` | `Off`, `Tier` (TAA on the full tier, 4× MSAA on the no-compute tier), and the explicit `Msaa4` and `Taa` (any tier). `RenderInfo::antialias` reports what was resolved; `Msaa4` falls back to `Off` where the HDR format cannot be multisampled. |
+| `Renderer` | `Renderer::new(&desc).await` (headless), `Renderer::with_surface(&desc, &instance, surface).await` (presents), `render(&scene, &target) -> Result<FrameStats>`, `resize`, `info`, `reset_history` (TAA, on a camera cut), `capture().await -> RgbaImage` and `poll()` on every host. Native only: `new_blocking`, `wait_idle`, `read_offscreen()` (= `capture` blocking). |
+| `render_to_rgba(&desc, &scene)` | Native, blocking: one frame headless → `RgbaImage` (RGBA8, rows top to bottom). |
+| `RenderTarget` | `Offscreen` (the renderer's own texture, readable), `Surface` (acquire, draw, present), `View(&TextureView)`. |
+| `RenderScene` | Resources with handles (`add_mesh`, `add_texture`, `add_material`, `add_font` → handles; `set_material` replaces one), and the per-frame public fields `instances`, `camera`, `light`, `lights`, `environment`, `post`, `sprites`, `texts`, `debug`. Resources are append-only; the renderer uploads what is new or changed. |
+| `MeshData`, `Vertex`, `TextureData`, `Material` | As before: triangle lists; RGBA8 with `color_space` and `mips`; glTF metallic-roughness with `alpha_mode` (`Opaque`, `Mask`). |
+| `Instance` | `(mesh, material, transform)`, submitted one by one; batched by (mesh, material). |
+| `Camera` | `position`, `target`, `up`, `projection` (`Perspective { fov_y_degrees }`, `Orthographic { height }`), `near`, `far`, `exposure`. `Camera::orthographic_2d(center, height)` is the 2D camera (looking down −z at the z = 0 plane). |
+| `Exposure` | `Manual { ev }` (×2^ev; `Exposure::linear(k)` from a multiplier) or `Auto { compensation, min_ev, max_ev }`: the frame's log-average luminance brought to 0.18, from the current frame only, so the same frame always gets the same exposure. |
+| `DirectionalLight` | `direction_to_light`, `color`, `intensity`, `cast_shadows`, `shadow_bounds` (`Auto`: the instances' bounds; `Sphere`), `max_shadow_distance` (default 200 m; shadows fade over its last tenth). Three cascades. |
+| `Light`, `LightKind` | Point and spot lights (`Point`; `Spot { direction, angle_degrees, penumbra }`) with `position`, `color`, `intensity` (radiance at 1 m), `range`, `cast_shadows`. `MAX_LIGHTS` = 8 per frame (the rest are counted in `FrameStats::lights_dropped`); the first `MAX_SHADOWED_LIGHTS` = 2 with `cast_shadows` get shadows. |
+| `PostEffects`, `Bloom`, `Tonemap` | `bloom: Option<Bloom { threshold, knee, intensity }>` (threshold in exposed units: 1.0 is display white), `tonemap: Aces` (default) or `None` (clamp: authored 2D colours come out exact). |
+| `Sprite` | A textured quad in the world xy plane facing +z: `texture` (`None` = solid), `position`, `size`, `anchor`, `rotation`, `color` (linear RGBA), `uv_rect` (v down), `layer`. Sorted by (layer, texture); within a layer and texture, submission order. |
+| `MsdfFont`, `Glyph`, `Text` | An MSDF atlas (`TextureHandle`, linear, no mips) plus `distance_range`, `line_height` and the glyph table (`advance`, `plane_bounds` in em y up, `atlas_bounds` in pixels y down: msdf-atlas-gen's layout). `Text { font, text, position, size, rotation, color, layer }` lays out left to right with `\n`; missing characters are counted in `FrameStats::missing_glyphs`. Text sorts with the sprites. |
+| `DebugView` | `None`, `Cascades` (red/green/blue per cascade, black beyond). |
+| `FrameStats` | `draw_calls` (every pass), `batches`, `instances`, `culled`, `triangles` (main pass), `shadow_passes`, `shadow_casters`, `lights`, `lights_dropped`, `sprites`, `glyphs`, `sprite_draws`, `missing_glyphs`, `frame`. |
+| `RenderInfo` | Adapter, backend, device type, `Tier` (`Full`, `NoCompute`), `antialias`, `backend_tier()`: the reference-frame directory name. |
 | `RenderError` | `NoAdapter`, `NoDevice`, `Surface`, `InvalidHandle`, `Readback`, `Unsupported`, `InvalidData`. |
-| `shapes` | `sphere(segments, rings)`, `plane(size, uv_repeat)`, `checker(size, cells)`. |
-| `gltf` (feature `gltf`) | `load_glb(bytes) -> GltfModel` (node transforms baked into the meshes), `GltfModel::add_to(&mut scene) -> ModelParts`, `ModelParts::instance(&mut scene, transform)`. A bridge until the cook (M4); the runtime wasm leaves the feature off. |
+| `shapes` | `sphere`, `plane`, `cuboid(size)`, `checker`. |
+| `gltf` (feature `gltf`) | `load_glb(bytes) -> GltfModel`, `GltfModel::add_to(&mut scene) -> ModelParts`, `ModelParts::instance`. A bridge until the cook (M4). |
+| `wgpu` | The wgpu this crate is built on, re-exported for hosts. |
 
-## The render graph as it is now
+## The render graph
 
-A fixed sequence, not yet a graph object. Per `render` call:
+A fixed, feature-gated pass sequence per `render` call (not yet a graph
+object; see below). Passes whose feature is off are not recorded.
 
-1. **Sync.** New meshes become vertex and index buffers; new textures are
-   uploaded (level 0 via `write_texture`) and, with `Mips::Generate`, get a
-   full mip chain from the **mip pass** (one fullscreen triangle per level,
-   sampling the level above through a single-level view with a linear filter:
-   a 2×2 box filter in linear space, since sRGB is decoded on sampling and
-   re-encoded on write). New or changed materials get a uniform buffer and a
-   bind group. When `environment.sky` differs from the last frame's, the
-   **IBL passes** run (below).
-2. **Batch.** Instances are stably sorted by (mesh, material); each run is a
-   batch. All transforms go into one instance buffer, batch after batch; a
-   draw binds its batch as a buffer slice (not `first_instance`, which WebGL2
-   lacks). Instances of an empty mesh are skipped.
-3. **Uniforms.** View-projection and its inverse, the light's orthographic
-   shadow box around `shadow_bounds` (looking at the centre from
-   `2 × radius` along the light), radiance, IBL intensity, exposure.
-4. **Shadow pass** (when `cast_shadows`): depth from the light into a 2048²
-   `Depth32Float` and, in the same pass, into an `R32Float` colour target.
-   Front faces culled, depth bias 2 / slope 2. One instanced draw per batch.
-5. **Main pass** into the `Rgba16Float` HDR target with `Depth32Float`:
-   forward PBR (`pbr.wgsl`): GGX direct light × a 3×3 PCF shadow factor
-   (explicit compares on `textureLoad` of the `R32Float` copy), split-sum IBL
-   (irradiance cube, prefiltered specular mips, BRDF LUT), emissive, alpha
-   mask by discard, normal maps with a cotangent frame from screen
-   derivatives (no vertex tangents). One instanced draw per batch.
-6. **Sky pass**, in the main pass, when `background` is `Sky`: a fullscreen
-   triangle at the far plane (`LessEqual`, no depth write) that unprojects each
-   pixel and samples the sky cubemap. Drawn after the opaque batches, so it
-   shades only uncovered pixels. With `Color(c)` the HDR target is cleared to
-   `c` instead.
-7. **Post pass**: HDR × exposure → ACES (fitted) → the output. An sRGB output
-   format is encoded by the hardware; a non-sRGB one (WebGPU canvases are
-   `Bgra8Unorm`) by the shader (`fs_srgb_encode`). Draw calls per frame are
-   therefore `2 × batches + 2` with shadows and the sky.
+1. **Sync.** New meshes, textures (with the **mip pass**: one fullscreen
+   triangle per level, linear-space box filter), materials, fonts. When the
+   sky changes, the **IBL passes** run (sky cube, irradiance, GGX prefilter,
+   BRDF LUT; render passes only, so WebGL2 runs them).
+2. **Batch and cull** (CPU). Instances stably sorted by (mesh, material);
+   each sorted instance gets a world bounding sphere. Every pass gets a draw
+   list per batch: the instances whose sphere touches the pass's volume. A
+   batch that loses less than a tenth of its instances is drawn whole (no
+   copy); otherwise its visible transforms are appended to the instance
+   buffer. Draws bind a buffer slice, never `first_instance` (WebGL2).
+   Sprites and glyphs are sorted by (layer, kind, texture or font) into runs.
+3. **Cascaded shadows** for the directional light (`frame.rs`): splits
+   between the near plane and the nearer of `max_shadow_distance` and the
+   far side of `shadow_bounds`, λ = 0.8 between logarithmic and uniform.
+   Each cascade is the bounding sphere of its camera slice (its size does
+   not change as the camera turns), its centre snapped to the shadow map's
+   texel grid in light space (texels do not swim), its depth range reaching
+   towards the light to the top of the scene bounds. Casters are culled to
+   the cascade's box **and** to the camera slice swept towards the light
+   (the slice planes whose normal faces the light); on `gltf-reference` and
+   `spheres-20k` this draws 45 % and 36 % fewer casters with identical
+   frames. Three passes into a 2048² `R32Float` array (depth also written as
+   colour) with a shared depth buffer, front faces culled.
+4. **Local shadows**: per shadowed light (at most two), six cube faces (point)
+   or one perspective view (spot), each a pass into a 512² `R32Float` array
+   layer storing distance / range, casters culled to the face frustum.
+5. **Main pass** into the `Rgba16Float` HDR target (4× multisampled with a
+   resolve when MSAA is on): forward PBR (`pbr.wgsl`) with the directional
+   light, its cascade picked by view depth (the same slices its casters were
+   culled to), up to eight point/spot lights in a per-fragment loop
+   (inverse square windowed to the range, smooth spot cone), split-sum IBL,
+   emissive, alpha mask, derivative normal maps. Shadow lookups are bilinear
+   PCF with explicit compares on `textureLoad` (the WebGL2-safe path).
+   **Shadow bias works at any scale:** the normal offset and the depth bias
+   are in world units proportional to the cascade's texel size (the depth
+   bias then converted to that cascade's normalized depth), where the old
+   single map spent a fixed bias in normalized depth over the whole scene
+   (about a metre on a 400 m field). The **sky pass** draws the sky cube at
+   the far plane over uncovered pixels. **Sprites and text** follow, alpha
+   blended, depth-tested against the scene without writing depth: one
+   instanced draw per run, quads built from the vertex index; text uses the
+   MSDF median with a screen-space distance range from `fwidth`.
+6. **TAA** (when on): a Halton(2,3) jitter of 8 positions is applied to the
+   projection as a clip-space translation; the TAA pass reprojects the
+   history through the depth buffer with the unjittered matrices (camera
+   motion), clamps it to the current 3×3 neighbourhood in YCoCg and blends
+   10 % of the current frame with luminance weights. History ping-pongs
+   between two targets and restarts on resize, a new scene or
+   `reset_history`.
+7. **Metering** (auto exposure): log2 luminance into 64², then 8×8 averages
+   to 8² and 1² (`textureLoad`, no float filtering), read by the bloom
+   prefilter and the tonemap through `textureLoad`.
+8. **Bloom**: a 13-tap prefilter with exposure and a soft-knee threshold into
+   a half-resolution chain (up to 6 levels), 13-tap downsamples, then tent
+   upsamples added back level by level.
+9. **Tonemap**: exposure × (HDR + bloom × intensity) → ACES or clamp → the
+   output. An sRGB output is encoded by the hardware; a non-sRGB one
+   (WebGPU canvases are `Bgra8Unorm`) by the shader (`fs_srgb_encode`).
 
-**IBL passes** (`ibl.wgsl`, only when the sky changes; render passes, no
-compute, so WebGL2 runs them): the procedural sky into a 256² cubemap, its
-mip chain, a 32² irradiance convolution, a 128² GGX-prefiltered cube with 5
-roughness mips (filtered importance sampling), and a 256² BRDF LUT. The sky
-cube is also what the sky pass draws. The spike's cube-face mapping flipped
-`v` a second time, which mirrored the sky vertically (invisible in the spike,
-which never drew the sky, but it also mirrored the ambient light on vertical
-surfaces); `face_dir` now follows the WebGPU/Vulkan cube convention and the
-background shows the horizon where it is.
+**Capture** (`capture.rs`): the offscreen target copied to a buffer and
+mapped. One async function on both hosts: natively it polls the device; on
+the web the mapping completes through WebGPU's `mapAsync` or, on WebGL2, on
+the next submit or `Renderer::poll()`. It reads only the offscreen target, so
+a page needs no `preserveDrawingBuffer`; a probe capture renders a frame to
+`Offscreen` first. Compiled and clippy-clean for `wasm32-unknown-unknown`,
+not yet run in a browser.
 
 ## Backend tiers
 
-| Tier | Backends | Reference directory | Notes |
+| Tier | Backends | Reference directory | Antialiasing (`Tier`) |
 |---|---|---|---|
-| `Full` | Metal, Vulkan (GPU or lavapipe), WebGPU | `metal`, `vulkan`, `vulkan-cpu`, `webgpu` | compute available, unused so far |
-| `NoCompute` | WebGL2 (wgpu GL) | `webgl2` (`gl` natively) | the same passes; constraints below |
+| `Full` | Metal, Vulkan (GPU or lavapipe), WebGPU | `metal`, `vulkan`, `vulkan-cpu`, `webgpu` | TAA |
+| `NoCompute` | WebGL2 (wgpu GL), native GL | `webgl2`, `gl` | 4× MSAA |
 
 Both tiers request `Limits::downlevel_webgl2_defaults()` at the adapter's
-resolution, so one code path runs everywhere. The WebGL2 constraints the spike
-solved stay in place: the shadow depth is also written to an `R32Float` colour
-target and read with `textureLoad` (WebGL2 can neither filter nor
-`textureLod` a depth texture), and PCF compares are explicit; the HDR target is
-`Rgba16Float` (`EXT_color_buffer_float`); IBL and mips are render passes; no
-`first_instance`; the GL surface is RGBA (sRGB when offered, otherwise encoded
-in the post shader).
-
-On 2026-10-17 a throwaway wasm page drew the `gltf-reference` scene through
-`Renderer::with_surface` in headless Chrome 150 (ANGLE Metal) and was captured
-over CDP: WebGPU (`Bgra8Unorm`, shader encode) RMSE 0.00068 and WebGL2
-(`Rgba8UnormSrgb`) RMSE 0.00052 against the native Metal reference, 78 draws
-on both. That page is not in the repository (see the open questions in the
-M3 list).
+resolution; nothing uses compute yet, so both run the same passes. The
+WebGL2 constraints stay designed in: shadow maps are `R32Float` colour
+arrays read with `textureLoad` and compared explicitly (WebGL2 can neither
+filter, `textureLod` nor gather a depth texture), the HDR target is
+`Rgba16Float` (`EXT_color_buffer_float`), IBL, mips, metering and bloom are
+render passes, there is no `first_instance`, and the uniform arrays stay far
+below the 16 KB WebGL2 uniform block limit (the frame uniform is 1.7 KB).
 
 ## Testing
 
 `crates/og-tests` is the gfx reference harness. Each named scene renders
-headless at 1280×720 and is compared with
-`crates/og-tests/references/<backend-tier>/<scene>.png`: a pixel is an outlier
-when a channel differs by more than 32/255; the frame fails above 0.5 %
-outliers or an RGB RMSE above 0.01. On failure the actual frame and a diff
-(differences ×4, outliers red) go to `target/…/tmp/og-gfx/<tier>/`. A missing
-reference fails and says how to record one.
+headless at 1280×720 (after its warm-up frames, with its per-frame update)
+and is compared with `crates/og-tests/references/<backend-tier>/<scene>.png`:
+a pixel is an outlier when a channel differs by more than 32/255; the frame
+fails above 0.5 % outliers or an RGB RMSE above 0.01. On failure the actual
+frame and a diff go to `target/…/tmp/og-gfx/<tier>/`. A missing reference
+fails; a scene with no reference on the adapter's tier (TAA on GL, MSAA on
+the full tier) asserts the tier's antialiasing choice instead.
 
-| Scene | What it proves |
-|---|---|
-| `gltf-reference` | The spike's reference scene (trickster + dropship × 25, checker ground, the spike's camera at t = 59/60 s, exposure 0.8) with the sky pass, mips and the auto-fitted shadow box. |
-| `spheres-20k` | 20,000 spheres (`shapes::sphere(16, 12)`, 384 triangles) submitted one instance at a time: 2 batches, 6 draw calls, 7,680,002 triangles. |
+| Scene | What it proves | Tiers |
+|---|---|---|
+| `gltf-reference` | The spike's scene (trickster + dropship × 25) with CSM, sky, mips. | all |
+| `spheres-20k` | 20,000 spheres submitted one by one: 2 batches, ≤ 10 draws. | all |
+| `cascades-200m` | A 420 m field, pillars to 190 m, a wall at 200 m, short kerbs and blocks: shadows in every cascade. | all |
+| `point-spot-lights` | Night, 7 local lights, a shadowed spot and a shadowed point light (7 shadow passes). | all |
+| `taa` | Thin poles and bars after 16 TAA frames. | full |
+| `msaa` | The same geometry with 4× MSAA. | no-compute |
+| `bloom` | Emissive spheres with bloom. | all |
+| `exposure` | A dim dusk scene metered to middle grey. | all |
+| `sprites-20k` | 20,000 sprites (3 textures, one a 2×2 atlas, 2 layers), orthographic: 3 sprite draws. | all |
+| `text-msdf` | Latin and CJK MSDF text from 0.32 to 4.5 world units, rotated. | all |
+| `sky-only` | The sky with the sun in view: 2 draws. | all |
+| `showcase` | Models, CSM, a shadowed spot and point light, bloom, auto exposure, world-space text and sprites, the tier's antialiasing. | all |
+
+Behaviour tests in `tests/gfx.rs` read frames rather than code: the cascade
+debug view puts cascade 0 at the camera's feet and cascade 2 at the horizon;
+short casters (0.5 m blocks, 0.6 m kerbs) shadow pixels in every cascade of
+the 400 m scene (fails with the old normalized bias); local shadows darken
+the ground; MSAA and TAA turn black/white edges into partial coverage; bloom
+brightens the surroundings of emitters; metered exposure gives the same
+brightness for a scene lit 16× brighter (manual does not); higher sprite
+layers draw on top; missing glyphs and foreign font handles are reported;
+a BGRA non-sRGB output captures the same picture as RGBA sRGB; lights past
+eight are counted. Each was checked by breaking the code it covers.
 
 ```sh
 export CARGO_TARGET_DIR=$PWD/target/agent-render   # any target dir works
 cargo test --release -p og-tests                   # gfx + the wasm32 compile check
-OG_GFX_CAPTURE=1 cargo test --release -p og-tests --test gfx              # re-record every reference
+OG_GFX_CAPTURE=1 cargo test --release -p og-tests --test gfx              # re-record this tier
 OG_GFX_CAPTURE=spheres-20k cargo test --release -p og-tests --test gfx    # one scene
+cargo test --release -p og-tests --test perf -- --ignored perf            # perf vs crates/og-tests/perf/
+OG_PERF_RECORD=1 cargo test --release -p og-tests --test perf -- --ignored perf --test-threads=1
 cargo run --release -p og-tests --bin og-gfx -- --all --frames 120        # stats, timings, RMSE
-cargo run --release -p og-tests --bin og-gfx -- gltf-reference --out frame.png
+cargo run --release -p og-tests --bin og-gfx -- --costs                   # the feature-cost table
+OG_GFX_DEBUG_CASCADES=1 cargo run --release -p og-tests --bin og-gfx -- cascades-200m --out c.png
 ```
 
-References were recorded from release builds and are bit-for-bit stable
-between release runs. A debug build differs slightly (RMSE 0.0035 and
-0.0057, within tolerance) because `cos` of the constant camera angle is
-constant-folded by LLVM in release and computed by the platform libm in
-debug, one ulp apart.
+**The `vulkan-cpu` tier** (Mesa lavapipe, what CI runs on) is recorded in the
+platform's E2B probe sandbox: cross-build `og-gfx` and the gfx test binary
+with `cargo zigbuild --release --target x86_64-unknown-linux-gnu.2.31 -p
+og-tests --bin og-gfx --test gfx`, then `bun
+crates/og-tests/scripts/capture-vulkan-cpu.ts` (after `bun install --cwd
+tools/bench` once). One sandbox run (about a minute) captures every scene,
+runs the gfx tests against the captured frames (all pass, RMSE 0: lavapipe
+is deterministic), times two scenes, and writes the frames to
+`references/vulkan-cpu/` and the logs to `$CARGO_TARGET_DIR/vulkan-cpu/`.
+The sandbox's Mesa (25.0.7, LLVM 15) may differ from CI's; the tolerance is
+expected to absorb it (Metal vs lavapipe is RMSE 0.001–0.007 per scene).
 
-Native frame times on an M4 Pro (Metal, 1280×720, `og-gfx --frames 120`):
-`gltf-reference` 1.63 ms (spike 1.64 ms), `spheres-20k` 7.8 ms (spike, static,
-8.0 ms), including the per-frame sort and instance upload and the sky pass.
+**The MSDF test atlas** (`crates/og-tests/assets/fonts/noto-sans-sc-msdf.*`)
+is Noto Sans SC (the platform template's OFL subset; `OFL.txt` alongside),
+ASCII plus 原点引擎文字渲染, generated with
+[msdf-atlas-gen](https://github.com/Chlumsky/msdf-atlas-gen) (built from
+source, commit 6148900):
+`msdf-atlas-gen -font NotoSansSC-Regular-subset.ttf -charset noto-sans-sc-msdf.charset -type msdf -format png -size 32 -pxrange 4 -dimensions 512 256 -yorigin top -imageout noto-sans-sc-msdf.png -csv noto-sans-sc-msdf.csv -json noto-sans-sc-msdf.json`.
+`og_tests::scenes::load_font` reads the PNG, the CSV (glyphs) and two numbers
+of the JSON (`distanceRange`, `lineHeight`). The cook (M4) owns producing
+atlases; the renderer only takes a texture and a glyph table.
 
-## What M3 still owes
+## Performance
 
-- **Render graph object** in place of the fixed pass sequence; a depth
-  prepass and Forward+ clustered lights (CPU tile table on WebGL2).
-- **Material system** from reflected material assets (this crate's `Material`
-  is the plain struct they will map to); transparency and blending,
-  double-sided materials, a normal matrix for non-uniform scale, vertex
-  tangents.
-- **3-cascade CSM** for the directional light. The current single
-  orthographic box spends its depth bias in normalized depth over the whole
-  scene, so on large scenes the bias exceeds small-object scale: in
-  `spheres-20k` shadows have no visible effect at all.
-- **Point and spot lights** with shadows by tier.
-- **MSAA (GL) / TAA (WebGPU)**; nothing is antialiased today.
-- **Bloom, auto exposure, AgX and a grading LUT**; SSAO/GTAO.
-- **2D sprite batch and MSDF text.**
-- **Capture readback on the web** (`read_offscreen` is native only; the
-  offscreen target already exists on both) and a committed browser runner for
-  the `webgpu`/`webgl2` reference tiers.
-- Instance upload is the whole buffer every frame; dirty tracking and frustum
-  culling come with the graph. Resources cannot be removed yet. Textures are
-  uncompressed RGBA8 (KTX2/Basis is M4) and sampled without anisotropy.
-- Shaders are WGSL compiled by naga at pipeline creation; cooking per backend
-  at build time is still to do. `include_str!` reaches `crates/og-render/shaders/` outside the
-  crate directory, which `cargo package` would reject.
+M4 Pro, Metal, 1280×720, on a machine shared with other builds and an iOS
+simulator (load average 20–60), so numbers carry ±10 % noise. Interleaved
+A/B against the M0 renderer (same glam `scalar-math`), 9 rounds of 200
+frames, median: `gltf-reference` 1.58 ms (M0: 1.59 ms), `spheres-20k` 6.78 ms
+(M0: 8.04 ms). The new shadow pipeline costs nothing on these scenes: three
+cascades draw fewer casters than M0's single map because of the swept-slice
+culling, and the main pass culls to the frustum. `sprites-20k`, 20,000
+sprites moved and resubmitted every frame, takes 1.0–1.3 ms (the M3 budget
+is 2 ms). Per-feature costs are in `tests/evidence/M3/feature-costs.md`
+(`og-gfx --costs`); perf baselines are in `crates/og-tests/perf/` per tier
+and adapter, compared with 15 % tolerance.
+
+## What phase 2 owes
+
+- **A render graph object** with declared resources and passes in place of
+  the fixed sequence; a depth prepass; Forward+ clustered lights (CPU tile
+  table on WebGL2) beyond the 8-light uniform loop.
+- **GL-tier references**: the `msaa` scene and the other ten have no `gl` /
+  `webgl2` references. Native GL needs wgpu's `gles`/`angle` features
+  (Cargo.lock change, ANGLE dylibs on macOS) and was not set up; a committed
+  browser runner for `webgpu` and `webgl2` is still owed, and with it a run
+  of `Renderer::capture` in a browser.
+- **Material system** from reflected material assets; transparency and
+  blending for meshes; double-sided materials; a normal matrix for
+  non-uniform scale; vertex tangents; clearcoat.
+- Shadows: cascade blending at split boundaries, PCSS/soft shadows, point
+  shadows by tier (dual-paraboloid on WebGL2 if cube faces cost too much),
+  more than two shadowed local lights, a smaller shadow atlas for mobile
+  (three 2048² `R32Float` cascades plus depth are 64 MB).
+- TAA: per-object motion vectors (moving objects rely on the clamp today),
+  Catmull-Rom history sampling, a sharpening pass; FXAA on the GL tier as an
+  MSAA alternative.
+- Post: AgX, a grading LUT, temporal exposure adaptation (deterministic per
+  tick), SSAO/GTAO, fog.
+- 2D: per-texture filtering (nearest for pixel art), screen-space UI
+  layering (sprites are world-space today), billboards, kerning and RTL
+  shaping (rustybuzz), CJK fallback atlases.
+- Instance upload is the whole buffer every frame; dirty tracking, GPU
+  culling on the full tier. Resources cannot be removed. Textures are
+  uncompressed RGBA8 (KTX2/Basis is M4), no anisotropy. Shaders are WGSL
+  compiled by naga at pipeline creation; cooking per backend at build time is
+  still to do.

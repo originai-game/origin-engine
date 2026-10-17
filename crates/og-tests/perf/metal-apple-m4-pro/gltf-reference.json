@@ -1,0 +1,10 @@
+{
+  "scene": "gltf-reference",
+  "tier": "metal",
+  "adapter": "Apple M4 Pro",
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 100,
+  "runs_ms": [1.385, 1.446, 1.498, 1.625, 1.643, 1.768, 1.797],
+  "frame_ms": 1.385
+}

@@ -1,6 +1,13 @@
-// Depth-only pass from the directional light.
-struct ShadowCamera { view_proj: mat4x4<f32> };
-@group(0) @binding(0) var<uniform> shadow_camera: ShadowCamera;
+// Shadow passes: depth from the directional light's cascades, or distance /
+// range from a point or spot light. The value also goes to an R32Float colour
+// target: every backend (WebGL2 included) can fetch it as a plain texture, so
+// the PCF compares are explicit and identical everywhere. One uniform slot per
+// pass, selected with a dynamic offset.
+struct ShadowPass {
+  view_proj: mat4x4<f32>,
+  light: vec4<f32>,  // xyz: light position, w: range (0: directional, write depth)
+};
+@group(0) @binding(0) var<uniform> shadow_pass: ShadowPass;
 
 struct VertexIn {
   @location(0) position: vec3<f32>,
@@ -14,16 +21,25 @@ struct InstanceIn {
   @location(6) m2: vec4<f32>,
   @location(7) m3: vec4<f32>,
 };
+struct VsOut {
+  @builtin(position) clip: vec4<f32>,
+  @location(0) world: vec3<f32>,
+};
 
 @vertex
-fn vs(v: VertexIn, i: InstanceIn) -> @builtin(position) vec4<f32> {
+fn vs(v: VertexIn, i: InstanceIn) -> VsOut {
   let model = mat4x4<f32>(i.m0, i.m1, i.m2, i.m3);
-  return shadow_camera.view_proj * model * vec4<f32>(v.position, 1.0);
+  let world = model * vec4<f32>(v.position, 1.0);
+  var o: VsOut;
+  o.clip = shadow_pass.view_proj * world;
+  o.world = world.xyz;
+  return o;
 }
 
-// Depth also goes to an R32Float colour target: every backend (WebGL2 included) can
-// fetch it as a plain texture, so the PCF compares are explicit and identical everywhere.
 @fragment
-fn fs(@builtin(position) p: vec4<f32>) -> @location(0) vec4<f32> {
-  return vec4<f32>(p.z, 0.0, 0.0, 1.0);
+fn fs(in: VsOut) -> @location(0) vec4<f32> {
+  if (shadow_pass.light.w > 0.0) {
+    return vec4<f32>(length(in.world - shadow_pass.light.xyz) / shadow_pass.light.w, 0.0, 0.0, 1.0);
+  }
+  return vec4<f32>(in.clip.z, 0.0, 0.0, 1.0);
 }
