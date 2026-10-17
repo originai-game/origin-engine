@@ -4,6 +4,24 @@ version = "0.0.1"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "Origin Engine: og-render (phase 1 scaffold)"
+description = "Origin Engine renderer: wgpu forward PBR with shadows, IBL, sky and post, native headless and web."
+
+[features]
+default = []
+# glTF 2.0 (.glb/.gltf) import into RenderScene meshes, materials and textures.
+# A bridge until the cook (M4) produces .ogb meshes; the runtime wasm leaves it off.
+gltf = ["dep:gltf"]
 
 [dependencies]
+wgpu = { workspace = true }
+glam = { workspace = true }
+bytemuck = { workspace = true }
+log = { workspace = true }
+gltf = { workspace = true, optional = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+wgpu = { workspace = true, features = ["metal", "vulkan"] }
+pollster = { workspace = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wgpu = { workspace = true, features = ["webgpu", "webgl"] }
