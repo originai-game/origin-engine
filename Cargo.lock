@@ -875,6 +875,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "og-api"
+version = "0.0.1"
+
+[[package]]
+name = "og-cli"
+version = "0.0.1"
+
+[[package]]
+name = "og-cook"
+version = "0.0.1"
+
+[[package]]
+name = "og-core"
+version = "0.0.1"
+
+[[package]]
+name = "og-ecs"
+version = "0.0.1"
+
+[[package]]
+name = "og-host-node"
+version = "0.0.1"
+
+[[package]]
+name = "og-host-web"
+version = "0.0.1"
+
+[[package]]
+name = "og-probe"
+version = "0.0.1"
+
+[[package]]
+name = "og-render"
+version = "0.0.1"
+
+[[package]]
 name = "og-spike"
 version = "0.0.1"
 dependencies = [
@@ -893,6 +929,10 @@ dependencies = [
  "web-sys",
  "wgpu",
 ]
+
+[[package]]
+name = "og-tests"
+version = "0.0.1"
 
 [[package]]
 name = "once_cell"

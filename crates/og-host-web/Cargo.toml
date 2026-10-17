@@ -1,0 +1,9 @@
+[package]
+name = "og-host-web"
+version = "0.0.1"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Origin Engine: og-host-web (phase 1 scaffold)"
+
+[dependencies]

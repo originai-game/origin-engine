@@ -1,11 +1,11 @@
 [workspace]
 resolver = "2"
-members = ["crates/og-spike"]
+members = ["crates/og-spike", "crates/og-core", "crates/og-ecs", "crates/og-api", "crates/og-render", "crates/og-cook", "crates/og-probe", "crates/og-host-web", "crates/og-host-node", "crates/og-cli", "crates/og-tests"]
 
 [workspace.package]
 edition = "2021"
 license = "MIT"
-rust-version = "1.85"
+rust-version = "1.97"
 
 [workspace.dependencies]
 wgpu = { version = "30.0.1", default-features = false, features = ["wgsl"] }
