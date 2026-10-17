@@ -170,10 +170,10 @@ impl<'a> Gen<'a, '_> {
                 Item::Const(c) => {
                     self.jsdoc("", &c.doc, &[]);
                     let lit = match &c.value {
-                        crate::ogt::Value::Str(s) => {
+                        og_core::ogt::Value::String(s) => {
                             Json::str(s.clone()).render().trim_end().to_string()
                         }
-                        v => v.to_string().trim_start_matches('+').to_string(),
+                        v => crate::values::show(v),
                     };
                     self.line(&format!("export declare const {}: {lit};", c.name));
                 }

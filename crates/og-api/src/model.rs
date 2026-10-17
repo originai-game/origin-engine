@@ -2,7 +2,7 @@
 //!
 //! Every declaration keeps its source line so diagnostics name it.
 
-use crate::ogt::Value;
+use og_core::ogt::Value;
 use std::fmt;
 
 #[derive(Debug, Clone, Default)]

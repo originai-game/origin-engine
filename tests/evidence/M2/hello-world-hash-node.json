@@ -1,0 +1,41 @@
+{
+  "scenario": "packages/engine/examples/hello.ts (design \u00a73.2, unchanged): spawn_wave:10000 through its own command, then 600 fixed ticks of its Move system",
+  "node": {
+    "og-run-headless-bun": {
+      "entry": "packages/engine/examples/hello.ts",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "3eb4283597417a0a",
+      "entities": 10000,
+      "advanceMs": 14.53,
+      "runtime": "bun 1.4.2"
+    },
+    "og-run-runner-under-node": {
+      "entry": "packages/engine/examples/hello.ts",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "3eb4283597417a0a",
+      "entities": 10000,
+      "advanceMs": 21.52,
+      "runtime": "node v26.3.0"
+    },
+    "native-addon-bun": {
+      "host": "node",
+      "tick": 600,
+      "hash": "3eb4283597417a0a",
+      "hashAtLoad": "5b1f5e65486966cf",
+      "entities": 10000,
+      "advanceMs": 14.33
+    },
+    "wasm-module-under-bun": {
+      "host": "web",
+      "tick": 600,
+      "hash": "3eb4283597417a0a",
+      "hashAtLoad": "5b1f5e65486966cf",
+      "entities": 10000,
+      "advanceMs": 26.39
+    }
+  },
+  "hashAtLoad": "5b1f5e65486966cf",
+  "agree": true
+}

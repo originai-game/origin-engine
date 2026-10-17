@@ -4,6 +4,27 @@ version = "0.0.1"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "Origin Engine: og-host-node (phase 1 scaffold)"
+description = "Origin Engine native host: the binding symbols as a napi addon (origin-engine.node), headless, rendering offscreen."
+
+[lib]
+crate-type = ["cdylib"]
+# The addon resolves napi_* from the JavaScript runtime that loads it; a test
+# harness binary would have nothing to resolve them against. Its tests are
+# the TypeScript suite in packages/engine (bun run test).
+test = false
+doctest = false
+
+[features]
+default = []
+# A published game: the commands module and the probe's non-player members are not exported.
+publish = []
 
 [dependencies]
+og-api = { path = "../og-api", features = ["runtime"] }
+og-render = { path = "../og-render" }
+napi = { version = "3", default-features = false, features = ["napi8"] }
+napi-derive = "3"
+pollster = { workspace = true }
+
+[build-dependencies]
+napi-build = "2"

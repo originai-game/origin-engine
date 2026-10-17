@@ -5,8 +5,14 @@
 //! are the validator's.
 
 use crate::model::*;
-use crate::ogt::{Node, Value};
+use crate::values::{as_f64, show};
 use crate::Diagnostic;
+use og_core::ogt::{Entry as Node, Value};
+
+/// The entries of a block, or none for a line without one.
+fn children(node: &Node) -> &[Node] {
+    node.block.as_ref().map_or(&[], |b| b.entries.as_slice())
+}
 
 pub(crate) struct Loader {
     pub diags: Vec<Diagnostic>,
@@ -65,7 +71,7 @@ impl Loader {
             items: Vec::new(),
             line: node.line,
         };
-        for child in &node.children {
+        for child in children(node) {
             match child.key.as_str() {
                 "doc" => module.doc.extend(self.doc_line(child)),
                 "place" => match child.values.first().and_then(Value::as_word) {
@@ -130,7 +136,7 @@ impl Loader {
             publish: None,
             line: node.line,
         };
-        for child in &node.children {
+        for child in children(node) {
             match child.key.as_str() {
                 "doc" => f.doc.extend(self.doc_line(child)),
                 "generic" => {
@@ -182,7 +188,7 @@ impl Loader {
             flatten: false,
             line: node.line,
         };
-        for child in &node.children {
+        for child in children(node) {
             match child.key.as_str() {
                 "doc" => p.doc.extend(self.doc_line(child)),
                 "default" => p.default = Some(child.values.clone()),
@@ -226,7 +232,7 @@ impl Loader {
             fields: Vec::new(),
             line: node.line,
         };
-        for child in &node.children {
+        for child in children(node) {
             match child.key.as_str() {
                 "doc" => s.doc.extend(self.doc_line(child)),
                 "desc" => s.desc = self.bool_value(child).unwrap_or(false),
@@ -265,7 +271,7 @@ impl Loader {
             optional: false,
             line: node.line,
         };
-        for child in &node.children {
+        for child in children(node) {
             match child.key.as_str() {
                 "doc" => f.doc.extend(self.doc_line(child)),
                 "default" => f.default = Some(child.values.clone()),
@@ -302,7 +308,7 @@ impl Loader {
             variants: Vec::new(),
             line: node.line,
         };
-        for child in &node.children {
+        for child in children(node) {
             match child.key.as_str() {
                 "doc" => e.doc.extend(self.doc_line(child)),
                 "variant" => {
@@ -336,7 +342,7 @@ impl Loader {
             cases: Vec::new(),
             line: node.line,
         };
-        for child in &node.children {
+        for child in children(node) {
             match child.key.as_str() {
                 "doc" => u.doc.extend(self.doc_line(child)),
                 "tag" => {
@@ -389,7 +395,7 @@ impl Loader {
             members: Vec::new(),
             line: node.line,
         };
-        for child in &node.children {
+        for child in children(node) {
             match child.key.as_str() {
                 "doc" => i.doc.extend(self.doc_line(child)),
                 "extends" => i.extends = child.values.first().and_then(Value::as_word).map(str::to_string),
@@ -408,7 +414,7 @@ impl Loader {
                         publish: None,
                         line: child.line,
                     };
-                    for g in &child.children {
+                    for g in children(child) {
                         match g.key.as_str() {
                             "doc" => prop.doc.extend(self.doc_line(g)),
                             "publish" => prop.publish = self.bool_value(g),
@@ -440,7 +446,7 @@ impl Loader {
             returns: TypeRef::named("Void"),
             line: node.line,
         };
-        for child in &node.children {
+        for child in children(node) {
             match child.key.as_str() {
                 "doc" => c.doc.extend(self.doc_line(child)),
                 "param" => {
@@ -479,7 +485,7 @@ impl Loader {
             value: TypeRef::named(""),
             line: node.line,
         };
-        for child in &node.children {
+        for child in children(node) {
             match child.key.as_str() {
                 "doc" => c.doc.extend(self.doc_line(child)),
                 "array" => {
@@ -515,7 +521,7 @@ impl Loader {
             methods: Vec::new(),
             line: node.line,
         };
-        for child in &node.children {
+        for child in children(node) {
             match child.key.as_str() {
                 "doc" => r.doc.extend(self.doc_line(child)),
                 "field" => {
@@ -573,15 +579,15 @@ impl Loader {
         if parsed.is_none() {
             self.error(
                 line,
-                format!("`{value}` is not a type expression: write `Name`, or a built-in generic with its arguments after dots, as `List.Entity`, `Map.Option.f32` or `Array.f32.16`"),
+                format!("`{}` is not a type expression: write `Name`, or a built-in generic with its arguments after dots, as `List.Entity`, `Map.Option.f32` or `Array.f32.16`", show(value)),
             );
         }
         parsed
     }
 
     fn doc_line(&mut self, node: &Node) -> Option<String> {
-        match (node.values.as_slice(), node.block) {
-            ([Value::Str(s)], false) => Some(s.clone()),
+        match (node.values.as_slice(), node.block.is_some()) {
+            ([Value::String(s)], false) => Some(s.clone()),
             _ => {
                 self.error(node.line, "`doc` takes exactly one quoted string");
                 None
@@ -592,7 +598,7 @@ impl Loader {
     /// Inline trailing doc strings after `skip` values, plus `doc` children.
     fn doc(&mut self, node: &Node, skip: usize) -> Vec<String> {
         let mut doc = self.inline(node, skip);
-        for child in &node.children {
+        for child in children(node) {
             if child.key == "doc" {
                 doc.extend(self.doc_line(child));
             } else {
@@ -611,11 +617,12 @@ impl Loader {
         let mut doc = Vec::new();
         for v in node.values.iter().skip(skip) {
             match v {
-                Value::Str(s) => doc.push(s.clone()),
+                Value::String(s) => doc.push(s.clone()),
                 other => self.error(
                     node.line,
                     format!(
-                        "unexpected `{other}` on a `{}` line: only a quoted doc may follow",
+                        "unexpected `{}` on a `{}` line: only a quoted doc may follow",
+                        show(other),
                         node.key
                     ),
                 ),
@@ -626,7 +633,7 @@ impl Loader {
 
     fn string_value(&mut self, node: &Node) -> Option<String> {
         match node.values.as_slice() {
-            [Value::Str(s)] => Some(s.clone()),
+            [Value::String(s)] => Some(s.clone()),
             _ => {
                 self.error(node.line, format!("`{}` takes one quoted string", node.key));
                 None
@@ -636,7 +643,7 @@ impl Loader {
 
     fn bool_value(&mut self, node: &Node) -> Option<bool> {
         match node.values.as_slice() {
-            [Value::Bool(b)] => Some(*b),
+            [v] if v.as_bool().is_some() => v.as_bool(),
             _ => {
                 self.error(node.line, format!("`{}` takes true or false", node.key));
                 None
@@ -646,7 +653,7 @@ impl Loader {
 
     fn number_value(&mut self, node: &Node) -> Option<f64> {
         match node.values.as_slice() {
-            [v @ Value::Num(_)] => v.as_f64(),
+            [v @ Value::Number(_)] => as_f64(v),
             _ => {
                 self.error(node.line, format!("`{}` takes one bare number", node.key));
                 None

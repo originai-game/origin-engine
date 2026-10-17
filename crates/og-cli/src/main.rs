@@ -1,10 +1,12 @@
 //! The `og` tool. See docs/design.md §2.1 and docs/phase-1.md.
 //!
-//! Phase 1 week 2 ships `og --version`, `og doctor`, `og api gen` and
-//! `og api check`. Every other planned subcommand answers that it is not
-//! there yet and exits non-zero, so no script mistakes it for success.
+//! Phase 1 ships `og --version`, `og doctor`, `og api gen`, `og api check`
+//! and `og run --headless` (M2: load, advance, hash). Every other planned
+//! subcommand answers that it is not there yet and exits non-zero, so no
+//! script mistakes it for success.
 
 mod doctor;
+mod run;
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -20,18 +22,20 @@ commands:
   doctor              check the toolchain against the repository's pins, naming each fix
   api gen             regenerate packages/engine/{types,schema} from crates/og-api/api.ogt
   api check           exit 1 when the generated files differ from crates/og-api/api.ogt
+                      (the .d.ts, binding table, schema, host traits, both hosts' glue)
+  run --headless <project> [--ticks N] [--seed S] [--setup action[:arg]]... [--json]
+                      load the game on the native host, advance N ticks, print the world hash
 
 options:
   --version           print the og version
   --root <dir>        for `api`: the repository root (default: found from the current directory)
 
-planned, not in phase 1 week 2: build, run, cook, probe, test
+planned: build (M2), run --commands (M5), cook (M4), probe (M5), test (M5)
 ";
 
 /// Planned subcommands and the milestone of docs/phase-1.md that brings them.
 const PLANNED: &[(&str, &str)] = &[
     ("build", "M2"),
-    ("run", "M2"),
     ("cook", "M4"),
     ("probe", "M5"),
     ("test", "M5"),
@@ -50,6 +54,7 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         ["doctor"] => doctor::run(),
+        ["run", rest @ ..] => run::run(rest),
         ["api", "gen", rest @ ..] => match root_option(rest) {
             Ok(root) => api_gen(&root),
             Err(code) => code,
@@ -65,7 +70,7 @@ fn main() -> ExitCode {
                 .map(|p| p.1)
                 .unwrap_or("");
             eprintln!(
-                "og {cmd} is not in phase 1 week 2; it lands with milestone {milestone} of docs/phase-1.md. Nothing was done."
+                "og {cmd} is not here yet; it lands with milestone {milestone} of docs/phase-1.md. Nothing was done."
             );
             ExitCode::from(2)
         }

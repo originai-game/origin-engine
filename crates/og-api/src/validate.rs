@@ -3,8 +3,9 @@
 
 use crate::index::{Index, TypeDecl, ARRAYS, GENERICS, META, PRIMITIVES};
 use crate::model::*;
-use crate::ogt::Value;
+use crate::values::{as_f64, is_number, show as show_value};
 use crate::Diagnostic;
+use og_core::ogt::Value;
 use std::collections::BTreeSet;
 
 pub(crate) fn validate(api: &Api) -> Vec<Diagnostic> {
@@ -566,7 +567,7 @@ impl<'a> Validator<'a, '_> {
                             format!("default of field `{owner}.{}`: {e}", f.name),
                         ),
                         Ok(()) => {
-                            for n in d.iter().filter_map(Value::as_f64) {
+                            for n in d.iter().filter_map(as_f64) {
                                 if f.min.is_some_and(|lo| n < lo) || f.max.is_some_and(|hi| n > hi)
                                 {
                                     self.error(f.line, format!("default of field `{owner}.{}` ({n}) is outside its range", f.name));
@@ -724,7 +725,7 @@ impl<'a> Validator<'a, '_> {
             }
             "String" => {
                 return match values {
-                    [Value::Str(_)] => Ok(()),
+                    [Value::String(_)] => Ok(()),
                     _ => Err(format!(
                         "a String default is one quoted string, got {}",
                         show(values)
@@ -759,10 +760,15 @@ impl<'a> Validator<'a, '_> {
         }
         for (scalar, v) in flat.iter().zip(values) {
             match (*scalar, v) {
-                ("bool", Value::Bool(_)) => {}
-                ("bool", other) => return Err(format!("expected true or false, got `{other}`")),
-                (s, Value::Num(_)) => {
-                    let n = v.as_f64().unwrap_or(f64::NAN);
+                ("bool", v) if v.as_bool().is_some() => {}
+                ("bool", other) => {
+                    return Err(format!(
+                        "expected true or false, got `{}`",
+                        show_value(other)
+                    ))
+                }
+                (s, v) if is_number(v) => {
+                    let n = as_f64(v).unwrap_or(f64::NAN);
                     let int_ok = |lo: f64, hi: f64| n.fract() == 0.0 && n >= lo && n <= hi;
                     let ok = match s {
                         "u32" => int_ok(0.0, u32::MAX as f64),
@@ -770,10 +776,15 @@ impl<'a> Validator<'a, '_> {
                         _ => n.is_finite(),
                     };
                     if !ok {
-                        return Err(format!("`{v}` is not a valid {s}"));
+                        return Err(format!("`{}` is not a valid {s}", show_value(v)));
                     }
                 }
-                (s, other) => return Err(format!("expected a bare {s} number, got `{other}`")),
+                (s, other) => {
+                    return Err(format!(
+                        "expected a bare {s} number, got `{}`",
+                        show_value(other)
+                    ))
+                }
             }
         }
         Ok(())
@@ -786,7 +797,7 @@ fn show(values: &[Value]) -> String {
     }
     values
         .iter()
-        .map(|v| format!("`{v}`"))
+        .map(|v| format!("`{}`", show_value(v)))
         .collect::<Vec<_>>()
         .join(" ")
 }

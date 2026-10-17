@@ -4,6 +4,23 @@ version = "0.0.1"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "Origin Engine: og-host-web (phase 1 scaffold)"
+description = "Origin Engine web host: the binding symbols as a wasm-bindgen module over the world and the renderer, run in a Worker on an OffscreenCanvas."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+# A published game: the commands module and the probe's non-player members are not exported.
+publish = []
 
 [dependencies]
+og-api = { path = "../og-api", features = ["runtime"] }
+og-render = { path = "../og-render" }
+wasm-bindgen = "=0.2.127"
+js-sys = "=0.3.104"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wgpu = { workspace = true }
+wasm-bindgen-futures = "=0.4.77"
+web-sys = { version = "=0.3.104", features = ["OffscreenCanvas"] }

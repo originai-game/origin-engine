@@ -1,0 +1,59 @@
+{
+  "entities": 10000,
+  "ticksPerSample": 2000,
+  "runs": 7,
+  "results": [
+    {
+      "variant": "node host, aliased views (bun)",
+      "runtime": "bun 1.4.2",
+      "views": "alias",
+      "rawLoopMs": 0.0123,
+      "engineTickMs": 0.0182,
+      "moveSystemCallMs": 0.0145,
+      "tickOverRaw": 1.48,
+      "systemCallOverRaw": 1.18
+    },
+    {
+      "variant": "node host, copied views (bun)",
+      "runtime": "bun 1.4.2",
+      "views": "copy",
+      "rawLoopMs": 0.012,
+      "engineTickMs": 0.0334,
+      "moveSystemCallMs": 0.0288,
+      "tickOverRaw": 2.78,
+      "systemCallOverRaw": 2.4
+    },
+    {
+      "variant": "web host, wasm memory (bun)",
+      "runtime": "bun 1.4.2",
+      "views": "wasm memory",
+      "rawLoopMs": 0.0123,
+      "engineTickMs": 0.0248,
+      "moveSystemCallMs": 0.0156,
+      "tickOverRaw": 2.02,
+      "systemCallOverRaw": 1.27
+    },
+    {
+      "variant": "node host, aliased views (node)",
+      "runtime": "node v26.3.0",
+      "views": "alias",
+      "rawLoopMs": 0.0204,
+      "engineTickMs": 0.0243,
+      "moveSystemCallMs": 0.0206,
+      "tickOverRaw": 1.19,
+      "systemCallOverRaw": 1.01
+    }
+  ],
+  "chrome-150": {
+    "rawLoopMs": 0.0253,
+    "engineTickMs": 0.0388,
+    "ratio": 1.53,
+    "variant": "web host in the engine Worker (Chrome 150, WebGPU, COOP/COEP), raw loop on the page"
+  },
+  "tools-bench-views-ts": {
+    "entities": 10000,
+    "batchMs": 0.0149,
+    "twoSystemsMs": 0.0287,
+    "accessorMs": 0.4753
+  }
+}

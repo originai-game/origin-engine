@@ -14,16 +14,11 @@
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
     "skipLibCheck": false,
-    "noEmit": true,
-    "paths": {
-      "@origingame/engine": [
-        "./types/index.d.ts"
-      ]
-    }
+    "noEmit": true
   },
   "include": [
     "types/index.d.ts",
     "examples/*.ts",
-    "tests/*.ts"
+    "tests/contract.ts"
   ]
 }

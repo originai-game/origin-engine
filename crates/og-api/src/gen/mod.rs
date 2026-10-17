@@ -1,14 +1,22 @@
 //! Generators from the validated model. Shared helpers live here.
 
+pub mod host;
 pub mod tables;
 pub mod ts;
 
 use crate::index::{Index, TypeDecl};
 use crate::json::Json;
 use crate::model::*;
-use crate::ogt::Value;
+use og_core::ogt::Value;
 
 pub const GENERATED_BY: &str = "Generated from crates/og-api/api.ogt by `og api gen`. Do not edit: `og api check` fails on any difference; change api.ogt and regenerate.";
+
+/// The schema name an engine-owned record registers under: dotted, so it
+/// is the TypeScript token's path (`og.Transform`) and never collides with a
+/// game's own PascalCase names.
+pub fn schema_name(record: &str) -> String {
+    format!("og.{record}")
+}
 
 /// `defineComponent` → `define_component`, `RuntimeProbe` → `runtime_probe`.
 pub fn snake(name: &str) -> String {
@@ -160,6 +168,9 @@ pub fn default_json(ix: &Index<'_>, ty: &TypeRef, explicit: Option<&[Value]>) ->
 
 fn literal_json(ix: &Index<'_>, ty: &TypeRef, values: &[Value]) -> Json {
     if let [single] = values {
+        if let Some(b) = single.as_bool() {
+            return Json::Bool(b);
+        }
         match single {
             Value::Word(w) if w == "null" => {
                 return if matches!(ix.decl(ty.name()), Some(TypeDecl::Handle(_))) {
@@ -169,14 +180,13 @@ fn literal_json(ix: &Index<'_>, ty: &TypeRef, values: &[Value]) -> Json {
                 };
             }
             Value::Word(w) => return Json::str(w.clone()),
-            Value::Str(s) => return Json::str(s.clone()),
-            Value::Bool(b) => return Json::Bool(*b),
-            Value::Num(n)
+            Value::String(s) => return Json::str(s.clone()),
+            Value::Number(n)
                 if ix.flat(ty).is_some_and(|f| f.len() == 1)
                     || ty.name() == "Option"
                     || ty.name() == "Json" =>
             {
-                return Json::Num(n.trim_start_matches('+').to_string());
+                return Json::Num(n.text().to_string());
             }
             _ => {}
         }
@@ -208,9 +218,9 @@ fn build_flat<'v>(
         }
     }
     match values.next() {
-        Some(Value::Num(n)) => Json::Num(n.trim_start_matches('+').to_string()),
-        Some(Value::Bool(b)) => Json::Bool(*b),
-        Some(Value::Str(s)) => Json::str(s.clone()),
+        Some(v) if v.as_bool().is_some() => Json::Bool(v.as_bool() == Some(true)),
+        Some(Value::Number(n)) => Json::Num(n.text().to_string()),
+        Some(Value::String(s)) => Json::str(s.clone()),
         _ => Json::Null,
     }
 }

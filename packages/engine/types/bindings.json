@@ -86,6 +86,7 @@
     {
       "id": 0,
       "name": "Transform",
+      "schema": "og.Transform",
       "module": "transform",
       "fields": [
         {
@@ -121,6 +122,7 @@
     {
       "id": 1,
       "name": "Parent",
+      "schema": "og.Parent",
       "module": "transform",
       "fields": [
         {
@@ -133,6 +135,7 @@
     {
       "id": 2,
       "name": "MatrixWorld",
+      "schema": "og.MatrixWorld",
       "module": "transform",
       "fields": [
         {
@@ -148,6 +151,7 @@
     {
       "id": 3,
       "name": "Mesh",
+      "schema": "og.Mesh",
       "module": "render",
       "fields": [
         {
@@ -182,6 +186,7 @@
     {
       "id": 0,
       "name": "Time",
+      "schema": "og.Time",
       "module": "time",
       "fields": [
         {
@@ -213,6 +218,7 @@
     {
       "id": 1,
       "name": "Rng",
+      "schema": "og.Rng",
       "module": "rng",
       "fields": [
         {
@@ -232,6 +238,7 @@
     {
       "id": 2,
       "name": "Input",
+      "schema": "og.Input",
       "module": "input",
       "fields": [
         {
@@ -263,6 +270,7 @@
     {
       "id": 3,
       "name": "Camera",
+      "schema": "og.Camera",
       "module": "camera",
       "fields": [
         {
@@ -338,6 +346,7 @@
     {
       "id": 0,
       "name": "KeyDown",
+      "schema": "og.KeyDown",
       "module": "input",
       "fields": [
         {
@@ -355,6 +364,7 @@
     {
       "id": 1,
       "name": "KeyUp",
+      "schema": "og.KeyUp",
       "module": "input",
       "fields": [
         {
@@ -367,6 +377,7 @@
     {
       "id": 2,
       "name": "PointerDown",
+      "schema": "og.PointerDown",
       "module": "input",
       "fields": [
         {
@@ -389,6 +400,7 @@
     {
       "id": 3,
       "name": "PointerUp",
+      "schema": "og.PointerUp",
       "module": "input",
       "fields": [
         {
@@ -411,6 +423,7 @@
     {
       "id": 4,
       "name": "PointerMove",
+      "schema": "og.PointerMove",
       "module": "input",
       "fields": [
         {
@@ -428,6 +441,7 @@
     {
       "id": 5,
       "name": "Wheel",
+      "schema": "og.Wheel",
       "module": "input",
       "fields": [
         {
@@ -445,6 +459,7 @@
     {
       "id": 6,
       "name": "AssetReady",
+      "schema": "og.AssetReady",
       "module": "load",
       "fields": [
         {
@@ -462,6 +477,7 @@
     {
       "id": 7,
       "name": "AssetFailed",
+      "schema": "og.AssetFailed",
       "module": "load",
       "fields": [
         {

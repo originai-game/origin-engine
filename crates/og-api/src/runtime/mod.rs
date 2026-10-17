@@ -1,0 +1,97 @@
+//! The host-neutral runtime both hosts wrap (feature `runtime`).
+//!
+//! `og-host-web` and `og-host-node` implement the generated `og_api::host`
+//! traits; almost every method is a call into this module with the same wire
+//! arguments. What differs per host stays in the host: how column memory is
+//! handed to JavaScript, how the dispatcher is called, and the renderer's
+//! surface. The model:
+//!
+//! - **Declarations** (`defineComponent`, `defineResource`, `defineSystem`,
+//!   `og.game`, `og.commands.register`) are recorded per thread in call
+//!   order, before any world exists, exactly as the bundle makes them.
+//! - **Engines** (`og_engine_create`) assemble an `og_ecs::World` from a game
+//!   and every declaration: engine-owned records first (in IDL order), then
+//!   the game's components and resources (in declaration order), then its
+//!   systems (declaration order, then `after`/`before`). The order is a
+//!   function of the bundle, so both hosts build the same world.
+//! - **Systems** are registered with `og-ecs` as one closure each that calls
+//!   the host's dispatcher with the system's callback id (`Fn + Send`, so it
+//!   captures ids only). While a system runs, its columns are borrowed and
+//!   published as views; the JavaScript body calls back into the host, which
+//!   serves those calls from the running system's context.
+//! - **Views** are stamped: a view handle is valid for the system call (or,
+//!   outside systems, until the next structural change) it was made in, and
+//!   the host refuses it after. The TypeScript runtime throws on a stale view
+//!   with its tick and system.
+//!
+//! Single-threaded by construction: every table is thread-local, and an
+//! engine never leaves the thread that created it.
+
+mod api;
+mod codec;
+mod engine;
+
+pub use api::*;
+pub use codec::{Kind, Layout, RecordKind};
+pub use engine::{
+    advance, command, create, destroy, frame, set_render_backend, view_columns, view_entities,
+    write_resource, ColumnPtr, Dispatch, Hooks, RenderBackend,
+};
+
+use serde_json::{json, Value};
+
+/// `{ ok: true, value }` as wire text.
+pub(crate) fn ok(value: Value) -> String {
+    json!({ "ok": true, "value": value }).to_string()
+}
+
+/// `{ ok: true }`: a successful `Result<void>`.
+pub(crate) fn ok_void() -> String {
+    r#"{"ok":true}"#.to_string()
+}
+
+/// `{ ok: false, reason }` as wire text.
+pub(crate) fn refuse(reason: impl Into<String>) -> String {
+    json!({ "ok": false, "reason": reason.into() }).to_string()
+}
+
+/// Parses wire JSON; an absent optional argument is `null`.
+pub(crate) fn parse(text: Option<&str>) -> Result<Value, String> {
+    match text {
+        None => Ok(Value::Null),
+        Some(t) if t.is_empty() || t == "undefined" => Ok(Value::Null),
+        Some(t) => serde_json::from_str(t).map_err(|e| format!("malformed JSON argument: {e}")),
+    }
+}
+
+/// Installs the host's hooks (its dispatcher, view hand-out and clock).
+pub fn set_hooks(hooks: std::rc::Rc<dyn Hooks>) {
+    engine::HOOKS.with(|h| *h.borrow_mut() = Some(hooks));
+}
+
+// The lifecycle members under their binding names, so a host's
+// `Lifecycle` impl reads like its module impls.
+
+pub fn og_engine_create(game: u32, options: String) -> String {
+    create(game, &options)
+}
+
+pub fn og_engine_destroy(engine: u32) -> bool {
+    destroy(engine)
+}
+
+pub fn og_engine_advance(engine: u32, steps: u32) -> String {
+    advance(engine, steps)
+}
+
+pub fn og_engine_command(engine: u32, action: String, args: String) -> String {
+    command(engine, &action, &args)
+}
+
+pub fn og_engine_frame(engine: u32, elapsed_ms: f64) -> String {
+    frame(engine, elapsed_ms)
+}
+
+pub fn og_engine_write_resource(world: u32, resource: String, value: String) -> String {
+    write_resource(world, &resource, &value)
+}

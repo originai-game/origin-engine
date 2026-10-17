@@ -154,18 +154,54 @@ fn api_gen_refuses_an_invalid_idl_and_names_the_line() {
 
 #[test]
 fn planned_subcommands_refuse_rather_than_pretend() {
-    for cmd in ["build", "run", "cook", "probe", "test"] {
+    for cmd in ["build", "cook", "probe", "test"] {
         let out = og().arg(cmd).output().unwrap();
         assert_eq!(out.status.code(), Some(2), "og {cmd}");
         let t = text(&out);
         assert!(
-            t.contains(&format!("og {cmd} is not in phase 1 week 2")),
+            t.contains(&format!("og {cmd} is not here yet")),
             "og {cmd}: {t}"
         );
         assert!(t.contains("Nothing was done."), "og {cmd}: {t}");
     }
     let unknown = og().arg("frobnicate").output().unwrap();
     assert_eq!(unknown.status.code(), Some(2));
+}
+
+/// `og run` runs headless only, refuses the M5 command channel instead of
+/// ignoring it, and names a missing project. (A real run, which needs the
+/// native addon, is `packages/engine/tests/og-run.test.ts`.)
+#[test]
+fn run_refuses_what_m2_does_not_do() {
+    let windowed = og().args(["run", "game.ts"]).output().unwrap();
+    assert_eq!(windowed.status.code(), Some(2));
+    assert!(
+        text(&windowed).contains("only --headless"),
+        "{}",
+        text(&windowed)
+    );
+
+    let scheduled = og()
+        .args(["run", "--headless", "game.ts", "--commands", "0:quit"])
+        .output()
+        .unwrap();
+    assert_eq!(scheduled.status.code(), Some(2));
+    assert!(
+        text(&scheduled).contains("lands with M5"),
+        "{}",
+        text(&scheduled)
+    );
+
+    let missing = og()
+        .args(["run", "--headless", "/nonexistent/game.ts", "--ticks", "1"])
+        .output()
+        .unwrap();
+    assert!(!missing.status.success());
+    assert!(
+        text(&missing).contains("neither a game entry nor a project directory"),
+        "{}",
+        text(&missing)
+    );
 }
 
 /// The pins as the repository's own files state them.

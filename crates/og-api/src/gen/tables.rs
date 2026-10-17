@@ -95,6 +95,7 @@ pub fn bindings(ix: &Index<'_>) -> String {
                         Json::obj()
                             .with("id", Json::num(id))
                             .with("name", Json::str(r.name.clone()))
+                            .with("schema", Json::str(super::schema_name(&r.name)))
                             .with("module", Json::str(m.name.clone()))
                             .with("fields", Json::Arr(fields)),
                     );

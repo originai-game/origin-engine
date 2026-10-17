@@ -1,21 +1,27 @@
 {
   "name": "@origingame/engine",
   "version": "0.0.1",
-  "description": "Origin Engine: the TypeScript API, generated from crates/og-api/api.ogt.",
+  "description": "Origin Engine: the TypeScript API, generated from crates/og-api/api.ogt, and its runtime on the web (wasm in a Worker) and native (napi addon) hosts.",
   "license": "MIT",
   "private": true,
   "type": "module",
   "types": "./types/index.d.ts",
   "exports": {
     ".": {
-      "types": "./types/index.d.ts"
+      "types": "./types/index.d.ts",
+      "default": "./src/index.ts"
     },
+    "./node": "./src/node/index.ts",
+    "./web/worker": "./src/web/worker.ts",
+    "./web/shell": "./src/web/shell.ts",
+    "./runtime": "./src/runtime.ts",
     "./bindings.json": "./types/bindings.json",
     "./schema.json": "./schema/api.schema.json"
   },
-  "files": ["types", "schema"],
+  "files": ["types", "schema", "src", "native", "dist"],
   "scripts": {
-    "typecheck": "bun x --package typescript@5.9.3 tsc --noEmit -p tsconfig.json",
-    "test": "bun run typecheck"
+    "build": "sh scripts/build.sh",
+    "typecheck": "bun x --package typescript@5.9.3 tsc --noEmit -p tsconfig.json && bun x --package typescript@5.9.3 tsc --noEmit -p tsconfig.runtime.json",
+    "test": "bun run typecheck && sh scripts/build.sh && bun test tests/"
   }
 }

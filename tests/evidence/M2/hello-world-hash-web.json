@@ -1,0 +1,60 @@
+{
+  "scenario": "packages/engine/examples/hello.ts (design \u00a73.2, unchanged): spawn_wave:10000 through its own command, then 600 fixed ticks of its Move system",
+  "web": {
+    "chrome-150-webgpu-isolated": {
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/150.0.0.0 Safari/537.36",
+      "crossOriginIsolated": true,
+      "transport": "ring",
+      "tier": "webgpu",
+      "tick": 600,
+      "hash": "3eb4283597417a0a",
+      "entities": 10000,
+      "spawnMs": 100.2,
+      "advanceMs": 32.2,
+      "inputAccepted": 2,
+      "views": {
+        "rawLoopMs": 0.0253,
+        "engineTickMs": 0.0388,
+        "ratio": 1.53
+      },
+      "framesRendered": 3
+    },
+    "chrome-150-webgl2-isolated": {
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/150.0.0.0 Safari/537.36",
+      "crossOriginIsolated": true,
+      "transport": "ring",
+      "tier": "webgl2",
+      "tick": 600,
+      "hash": "3eb4283597417a0a",
+      "entities": 10000,
+      "spawnMs": 94.6,
+      "advanceMs": 33.5,
+      "inputAccepted": 2,
+      "views": {
+        "rawLoopMs": 0.0282,
+        "engineTickMs": 0.0418,
+        "ratio": 1.48
+      },
+      "framesRendered": 3
+    },
+    "chrome-150-webgpu-not-isolated": {
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/150.0.0.0 Safari/537.36",
+      "crossOriginIsolated": false,
+      "transport": "message",
+      "tier": "webgpu",
+      "tick": 600,
+      "hash": "3eb4283597417a0a",
+      "entities": 10000,
+      "spawnMs": 87.7,
+      "advanceMs": 28,
+      "inputAccepted": 2,
+      "views": {
+        "rawLoopMs": 0.0214,
+        "engineTickMs": 0.033,
+        "ratio": 1.54
+      },
+      "framesRendered": 3
+    }
+  },
+  "agree": true
+}

@@ -1,7 +1,7 @@
 type api
 version 1
 ---
-# expect: 28: `List<u32>` is not a number, string or word
+# expect: 28: 'List<u32>' is not a number, string or word
 package "@origingame/fixture"
 doc "A fixture: the smallest valid API plus one mistake below."
 

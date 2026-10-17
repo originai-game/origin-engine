@@ -145,6 +145,12 @@ fn broken_idls_are_refused_with_the_right_reason() {
     if let Err(d) = og_api::parse(&valid) {
         panic!("valid.ogt refused: {d:?}");
     }
+    // og-core's reader is the IDL's reader: comments and blank lines may
+    // precede the header, and diagnostics keep the lines of the file.
+    let commented = format!("# The fixture API.\n\n{valid}");
+    if let Err(d) = og_api::parse(&commented) {
+        panic!("valid.ogt behind a comment refused: {d:?}");
+    }
     let mut checked = 0;
     let mut entries: Vec<_> = std::fs::read_dir(&dir)
         .unwrap()

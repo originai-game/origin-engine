@@ -7,12 +7,19 @@
 //! directory and compares, which is the drift check behind `og api check`.
 
 mod gen;
+/// The host contract generated from the IDL: the traits `og-host-web` and
+/// `og-host-node` implement (`og api gen` writes `src/generated/host.rs`).
+#[rustfmt::skip]
+#[path = "generated/host.rs"]
+pub mod host;
 mod index;
 mod json;
 mod load;
 pub mod model;
-mod ogt;
+#[cfg(feature = "runtime")]
+pub mod runtime;
 mod validate;
+mod values;
 
 pub use index::Index;
 pub use model::Api;
@@ -25,7 +32,14 @@ pub const IDL_PATH: &str = "crates/og-api/api.ogt";
 
 /// Directories whose every file is generated from the IDL, relative to the
 /// repository root. A file in them that the generator does not write is drift.
-pub const OUTPUT_DIRS: &[&str] = &["packages/engine/types", "packages/engine/schema"];
+pub const OUTPUT_DIRS: &[&str] = &[
+    "packages/engine/types",
+    "packages/engine/schema",
+    "packages/engine/src/generated",
+    "crates/og-api/src/generated",
+    "crates/og-host-web/src/generated",
+    "crates/og-host-node/src/generated",
+];
 
 /// One problem in an IDL, with the 1-based line it was found on.
 #[derive(Debug, Clone, PartialEq)]
@@ -43,20 +57,15 @@ impl fmt::Display for Diagnostic {
 /// Parse, load and validate IDL text. Every problem found is returned, in
 /// line order; an API is returned only when there are none.
 pub fn parse(text: &str) -> Result<Api, Vec<Diagnostic>> {
-    let doc = ogt::parse(text).map_err(|e| {
-        vec![Diagnostic {
-            line: e.line,
-            message: e.message,
-        }]
-    })?;
-    if doc.kind != "api" {
+    let doc = og_core::ogt::parse(text).map_err(|e| vec![syntax_diagnostic(e.reason())])?;
+    if doc.ty != "api" {
         return Err(vec![Diagnostic {
             line: 1,
-            message: format!("this is a `{}` document; the IDL is `type api`", doc.kind),
+            message: format!("this is a `{}` document; the IDL is `type api`", doc.ty),
         }]);
     }
     let mut loader = load::Loader { diags: Vec::new() };
-    let api = loader.api(doc.version, &doc.nodes);
+    let api = loader.api(doc.version, &doc.body.entries);
     let mut diags = loader.diags;
     diags.extend(validate::validate(&api));
     diags.sort_by_key(|d| d.line);
@@ -64,6 +73,24 @@ pub fn parse(text: &str) -> Result<Api, Vec<Diagnostic>> {
         Ok(api)
     } else {
         Err(diags)
+    }
+}
+
+/// og-core's `.ogt` errors read `line N: reason`; a header error names no line.
+fn syntax_diagnostic(reason: &str) -> Diagnostic {
+    let parsed = reason.strip_prefix("line ").and_then(|rest| {
+        let (n, message) = rest.split_once(": ")?;
+        Some((n.parse().ok()?, message))
+    });
+    match parsed {
+        Some((line, message)) => Diagnostic {
+            line,
+            message: message.to_string(),
+        },
+        None => Diagnostic {
+            line: 1,
+            message: reason.to_string(),
+        },
     }
 }
 
@@ -124,6 +151,22 @@ pub fn generate(api: &Api) -> Vec<Generated> {
         Generated {
             path: "packages/engine/schema/api.schema.json",
             contents: gen::tables::schema(&ix),
+        },
+        Generated {
+            path: "packages/engine/src/generated/abi.ts",
+            contents: gen::host::abi_ts(&ix),
+        },
+        Generated {
+            path: "crates/og-api/src/generated/host.rs",
+            contents: gen::host::host_rs(&ix),
+        },
+        Generated {
+            path: "crates/og-host-web/src/generated/glue.rs",
+            contents: gen::host::glue(&ix, gen::host::Target::Web),
+        },
+        Generated {
+            path: "crates/og-host-node/src/generated/glue.rs",
+            contents: gen::host::glue(&ix, gen::host::Target::Node),
         },
     ]
 }

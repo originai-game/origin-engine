@@ -10,7 +10,7 @@ wasm_core_brotli_bytes 4194304
 # optional: a scaffold with no cdylib crate yet passes the size gate with
 #           nothing to measure.
 # required: the gate fails when the wasm build produced no artifact.
-wasm_artifacts optional
+wasm_artifacts required
 
 # optional: missing `og api check` prints SKIPPED and the step passes.
 # required: missing `og api check` fails the gate (flip once og-cli ships it).
