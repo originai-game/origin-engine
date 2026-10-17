@@ -1134,7 +1134,7 @@ impl Probe {
     fn save(&self, world: &World) -> Saved {
         let bytes = world.snapshot();
         Saved {
-            hash: og_core::hash::hash_bytes(&bytes),
+            hash: world.world_hash(),
             world: bytes,
             names: self.names.clone(),
             tick: world.time().tick,
