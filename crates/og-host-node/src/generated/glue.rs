@@ -45,6 +45,30 @@ pub fn og_engine_frame(env: Env, engine: u32, elapsed_ms: f64) -> String {
     <Host as Lifecycle>::og_engine_frame(&Host, engine, elapsed_ms)
 }
 
+#[napi(js_name = "og_host_begin_bundle")]
+pub fn og_host_begin_bundle(env: Env) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_host_begin_bundle(&Host)
+}
+
+#[napi(js_name = "og_engine_call")]
+pub fn og_engine_call(env: Env, engine: u32, frame: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_engine_call(&Host, engine, frame)
+}
+
+#[napi(js_name = "og_engine_take_outputs")]
+pub fn og_engine_take_outputs(env: Env, engine: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_engine_take_outputs(&Host, engine)
+}
+
+#[napi(js_name = "og_engine_take_log")]
+pub fn og_engine_take_log(env: Env, engine: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_engine_take_log(&Host, engine)
+}
+
 #[napi(js_name = "og_engine_write_resource")]
 pub fn og_engine_write_resource(env: Env, world: u32, resource: String, value: String) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -363,6 +387,12 @@ pub fn og_input_axis(env: Env, world: u32, negative: String, positive: String) -
     <Host as InputApi>::og_input_axis(&Host, world, negative, positive)
 }
 
+#[napi(js_name = "og_input_axis2")]
+pub fn og_input_axis2(env: Env, world: u32, left: String, right: String, down: String, up: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_axis2(&Host, world, left, right, down, up)
+}
+
 #[napi(js_name = "og_input_button_down")]
 pub fn og_input_button_down(env: Env, world: u32, button: String) -> bool {
     let _env = crate::EnvScope::enter(&env);
@@ -373,6 +403,12 @@ pub fn og_input_button_down(env: Env, world: u32, button: String) -> bool {
 pub fn og_input_button_pressed(env: Env, world: u32, button: String) -> bool {
     let _env = crate::EnvScope::enter(&env);
     <Host as InputApi>::og_input_button_pressed(&Host, world, button)
+}
+
+#[napi(js_name = "og_input_button_released")]
+pub fn og_input_button_released(env: Env, world: u32, button: String) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_button_released(&Host, world, button)
 }
 
 #[napi(js_name = "og_camera_look_at")]
@@ -411,6 +447,30 @@ pub fn og_render_capabilities(env: Env, world: u32) -> String {
     <Host as RenderApi>::og_render_capabilities(&Host, world)
 }
 
+#[napi(js_name = "og_render_text")]
+pub fn og_render_text(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_text(&Host, world, desc)
+}
+
+#[napi(js_name = "og_load_bundle")]
+pub fn og_load_bundle(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_bundle(&Host, world, path)
+}
+
+#[napi(js_name = "og_load_bundle_info")]
+pub fn og_load_bundle_info(env: Env, world: u32, asset: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_bundle_info(&Host, world, asset)
+}
+
+#[napi(js_name = "og_load_default_bundle")]
+pub fn og_load_default_bundle(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_default_bundle(&Host, world)
+}
+
 #[napi(js_name = "og_load_gltf")]
 pub fn og_load_gltf(env: Env, world: u32, path: String, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -423,10 +483,40 @@ pub fn og_load_scene(env: Env, world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_scene(&Host, world, path)
 }
 
+#[napi(js_name = "og_load_font")]
+pub fn og_load_font(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_font(&Host, world, path)
+}
+
+#[napi(js_name = "og_load_font_info")]
+pub fn og_load_font_info(env: Env, world: u32, font: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_font_info(&Host, world, font)
+}
+
+#[napi(js_name = "og_load_sound")]
+pub fn og_load_sound(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_sound(&Host, world, path)
+}
+
+#[napi(js_name = "og_load_sound_info")]
+pub fn og_load_sound_info(env: Env, world: u32, sound: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_sound_info(&Host, world, sound)
+}
+
 #[napi(js_name = "og_load_status")]
 pub fn og_load_status(env: Env, world: u32, asset: f64) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as LoadApi>::og_load_status(&Host, world, asset)
+}
+
+#[napi(js_name = "og_load_error")]
+pub fn og_load_error(env: Env, world: u32, asset: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_error(&Host, world, asset)
 }
 
 #[napi(js_name = "og_load_gltf_info")]
@@ -447,6 +537,13 @@ pub fn og_commands_register(env: Env, name: String, handler: u32, desc: Option<S
 pub fn og_commands_parse(env: Env, script: String) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as CommandsApi>::og_commands_parse(&Host, script)
+}
+
+#[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_commands_help")]
+pub fn og_commands_help(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as CommandsApi>::og_commands_help(&Host, world)
 }
 
 #[cfg(not(feature = "publish"))]

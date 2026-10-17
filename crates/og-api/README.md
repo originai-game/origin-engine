@@ -13,15 +13,22 @@ hosts wrap.
 | wasm-bindgen glue | `crates/og-host-web/src/generated/glue.rs` | the web host's exports |
 | napi glue | `crates/og-host-node/src/generated/glue.rs` | the native host's exports |
 | host ABI interface | `packages/engine/src/generated/abi.ts` | the TypeScript runtime (`HostAbi`, `SYMBOLS`) |
+| wiki: one page per module and `index.md` | `packages/knowledge/wiki/` | agents, through `@origingame/engine-knowledge` (mounted as the `og-game` skill's `reference/`) |
 
-The wiki pages come next. Every generated file starts with a line saying it
-is generated from `api.ogt`. `og api gen` writes them; `og api check`
+Every generated file starts with a line saying it is generated from
+`api.ogt`. Wiki pages quote each declaration's IDL text with the line it
+starts on, its TypeScript form, its docs, its fields' defaults, ranges and
+units, and its binding symbol; `index.md` maps every module, type, function
+and member to its anchor (`crates/og-api/tests/wiki.rs` holds the quotes to
+the IDL and every link to an anchor). `og api gen` writes them (`--wiki`
+writes the wiki alone and removes a page whose module is gone); `og api check`
 regenerates into a temporary directory and fails on any difference, including
 a file in one of the generated directories (`og_api::OUTPUT_DIRS`) that the
 generator does not write.
 
 ```
 og api gen     # after editing api.ogt
+og api gen --wiki   # the wiki pages alone
 og api check   # CI: exit 1 and the differing files on drift
 ```
 

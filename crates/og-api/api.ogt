@@ -326,7 +326,8 @@ module world {
     }
 
     fn instantiate {
-      doc "Spawn a loaded scene or glTF asset into the world as a tree of entities."
+      doc "Spawn a loaded scene or glTF asset into the world: a root entity from the desc, then (for a scene) every scene entity under it with its components and names, or (for a glTF) a Model on the root."
+      doc "Scene entity names must be free: a name already in use refuses the whole instantiation before anything spawns."
       param asset Asset "A ready asset from og.load."
       param desc SpawnDesc "Name, parent and transform of the root entity."
       returns Result.Entity "The root entity, or why it was refused (an asset still loading, a failed asset)."
@@ -423,6 +424,11 @@ module game {
     returns Json
   }
 
+  callback StartFn {
+    doc "The game's setup: called once before the first tick, after GameDesc.scene has spawned. Spawn, insert, load and set resources here; systems then only read and write their views."
+    param world World "The world."
+  }
+
   struct GameDesc {
     doc "A game: its tick, scenes, systems and commands."
     desc true
@@ -447,6 +453,8 @@ module game {
       unit ticks
     }
     field facts Option.FactsFn "The game's own facts for the probe's state()."
+    field start Option.StartFn "Called once before the first tick, after the first scene spawned."
+    field render RenderOptions "How the renderer is created: antialiasing and shadow map size. Read once, when the host attaches the renderer."
   }
 
   interface Game {
@@ -704,17 +712,78 @@ module input {
   }
 
   resource Input {
-    doc "The input state at the start of this tick. Edges (pressed, released) last exactly one tick."
+    doc "The input state at the start of this tick (og-input's og.Input, version 2). Edges (pressed, released) last exactly one tick; read the state through the methods."
+    doc "Key sets are 128 bits over og-input's KEY_CODES (KeyboardEvent.code names): code i is bit i % 32 of word i / 32. Button masks: left 1, middle 2, right 4."
     field pointer Vector2 "The pointer position." {
       readonly true
       unit cssPx
     }
-    field pointerInside bool "Whether the pointer is over the play surface." {
+    field pointerInside bool "Whether a pointer event has placed the pointer over the play surface." {
       readonly true
     }
     field wheel Vector2 "Scroll accumulated during this tick." {
       readonly true
       unit cssPx
+    }
+    field buttons u32 "Held pointer buttons, as a mask." {
+      readonly true
+    }
+    field buttonsPressed u32 "Buttons that went down this tick." {
+      readonly true
+    }
+    field buttonsReleased u32 "Buttons that went up this tick." {
+      readonly true
+    }
+    field buttonsReleaseNext u32 "Buttons a click releases at the end of the next tick." {
+      readonly true
+    }
+    field keys0 u32 "Held keys, word 0: codes 0 to 31 of KEY_CODES." {
+      readonly true
+    }
+    field keys1 u32 "Held keys, word 1: codes 32 to 63 of KEY_CODES." {
+      readonly true
+    }
+    field keys2 u32 "Held keys, word 2: codes 64 to 95 of KEY_CODES." {
+      readonly true
+    }
+    field keys3 u32 "Held keys, word 3: codes 96 to 127 of KEY_CODES." {
+      readonly true
+    }
+    field pressed0 u32 "Keys that went down this tick, word 0: codes 0 to 31 of KEY_CODES." {
+      readonly true
+    }
+    field pressed1 u32 "Keys that went down this tick, word 1: codes 32 to 63 of KEY_CODES." {
+      readonly true
+    }
+    field pressed2 u32 "Keys that went down this tick, word 2: codes 64 to 95 of KEY_CODES." {
+      readonly true
+    }
+    field pressed3 u32 "Keys that went down this tick, word 3: codes 96 to 127 of KEY_CODES." {
+      readonly true
+    }
+    field released0 u32 "Keys that went up this tick, word 0: codes 0 to 31 of KEY_CODES." {
+      readonly true
+    }
+    field released1 u32 "Keys that went up this tick, word 1: codes 32 to 63 of KEY_CODES." {
+      readonly true
+    }
+    field released2 u32 "Keys that went up this tick, word 2: codes 64 to 95 of KEY_CODES." {
+      readonly true
+    }
+    field released3 u32 "Keys that went up this tick, word 3: codes 96 to 127 of KEY_CODES." {
+      readonly true
+    }
+    field releaseNext0 u32 "Keys a press releases at the end of the next tick, word 0: codes 0 to 31 of KEY_CODES." {
+      readonly true
+    }
+    field releaseNext1 u32 "Keys a press releases at the end of the next tick, word 1: codes 32 to 63 of KEY_CODES." {
+      readonly true
+    }
+    field releaseNext2 u32 "Keys a press releases at the end of the next tick, word 2: codes 64 to 95 of KEY_CODES." {
+      readonly true
+    }
+    field releaseNext3 u32 "Keys a press releases at the end of the next tick, word 3: codes 96 to 127 of KEY_CODES." {
+      readonly true
     }
     fn down {
       doc "Whether a key is held."
@@ -737,6 +806,14 @@ module input {
       param positive String "The key for +1."
       returns f32
     }
+    fn axis2 {
+      doc "A 2D axis from four keys, such as `axis2(\"KeyA\", \"KeyD\", \"KeyS\", \"KeyW\")`: each component -1, 0 or 1."
+      param left String "The key for x = -1."
+      param right String "The key for x = +1."
+      param down String "The key for y = -1."
+      param up String "The key for y = +1."
+      returns Vector2
+    }
     fn buttonDown {
       doc "Whether a pointer button is held."
       param button PointerButton "The button."
@@ -747,10 +824,15 @@ module input {
       param button PointerButton "The button."
       returns bool
     }
+    fn buttonReleased {
+      doc "Whether a pointer button went up this tick."
+      param button PointerButton "The button."
+      returns bool
+    }
   }
 
   event KeyDown {
-    doc "A key went down."
+    doc "A key went down (a down for a held key is a repeat and sets no edge). Input events are sent between ticks and read by the next tick's systems."
     field key String "The physical key code."
     field repeat bool "Whether this is an auto-repeat."
   }
@@ -893,8 +975,29 @@ module render {
     variant none "No renderer: frames are not produced and capture refuses."
   }
 
+  enum Antialias {
+    doc "Antialiasing, as og-render's Antialias. RenderCapabilities.antialias reports what the device resolved."
+    variant tier "The tier's method: TAA on the full tier (WebGPU, Metal, Vulkan), 4x MSAA on WebGL2."
+    variant off "One sample per pixel."
+    variant msaa4 "4x MSAA on any tier: sharp sprites and text, no temporal blur; off where the HDR format cannot be multisampled."
+    variant taa "Temporal antialiasing on any tier: a sub-pixel jitter per frame and a reprojected history; converges over about eight frames."
+  }
+
+  struct RenderOptions {
+    doc "How the renderer is created for a game (GameDesc.render). The host reads it once, when it attaches the renderer."
+    desc true
+    field antialias Antialias "The antialiasing method."
+    field shadowMapSize u32 "The side of each of the directional light's three cascade maps, in texels; smaller saves memory on phones (three 2048 maps are 64 MB)." {
+      default 2048
+      min 256
+      max 4096
+    }
+  }
+
   struct StandardMaterialDesc {
     doc "A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names."
+    doc "Mapping to the renderer (og-render Material): color and opacity are the base colour and its alpha; map the base colour texture; metalness and roughness the factors; metalnessMap and roughnessMap are one glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; normalMap the normal texture; emissive times emissiveIntensity the emitted colour, emissiveMap its texture; alphaTest above 0 is alpha masking with that cutoff."
+    doc "Accepted and kept but not drawn yet: aoMap, transparent (blending), side (meshes draw front faces), flatShading and envMapIntensity; the renderer's own phase-2 list owns them."
     desc true
     field color Color "The base colour." {
       default 1 1 1
@@ -939,6 +1042,7 @@ module render {
 
   component Mesh {
     doc "Draws a geometry with a material at the entity's MatrixWorld, as a three.js Mesh."
+    doc "The material is a handle from og.render.standardMaterial or from a loaded glTF (GltfInfo.materials); its StandardMaterialDesc maps to the renderer as that struct's docs say."
     field geometry Geometry "The geometry."
     field material Material "The material."
     field castShadow bool "Cast shadows, as three.js Object3D.castShadow."
@@ -948,11 +1052,142 @@ module render {
     }
   }
 
+  component DirectionalLight {
+    doc "The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). The first one found is drawn, with three shadow cascades."
+    doc "Without one, the renderer's default sun (from above and to the side, intensity 3) lights the scene."
+    field color Color "The light's linear colour." {
+      default 1 1 1
+    }
+    field intensity f32 "The radiance multiplier, as three.js DirectionalLight.intensity." {
+      default 3
+      min 0
+      tunable true
+    }
+    field castShadow bool "Cast shadows through three cascades, as three.js Light.castShadow." {
+      default true
+    }
+    field shadowDistance f32 "How far from the camera shadows reach; they fade over the last tenth. Smaller is sharper." {
+      default 200
+      min 1
+      unit m
+    }
+  }
+
+  component PointLight {
+    doc "A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance."
+    doc "Up to MAX_LIGHTS point and spot lights are drawn per frame (the rest are counted, not drawn); the first two with castShadow get cube shadows."
+    field color Color "The light's linear colour." {
+      default 1 1 1
+    }
+    field intensity f32 "The radiance at one metre." {
+      default 10
+      min 0
+      tunable true
+    }
+    field distance f32 "Where the light reaches zero, as three.js PointLight.distance (never infinite here)." {
+      default 10
+      min 0.01
+      unit m
+      tunable true
+    }
+    field castShadow bool "Cast cube shadows."
+  }
+
+  component SpotLight {
+    doc "A cone of light along the entity's local -Z, as three.js SpotLight."
+    field color Color "The light's linear colour." {
+      default 1 1 1
+    }
+    field intensity f32 "The radiance at one metre on the axis." {
+      default 10
+      min 0
+      tunable true
+    }
+    field distance f32 "Where the light reaches zero." {
+      default 10
+      min 0.01
+      unit m
+      tunable true
+    }
+    field angle f32 "The half-angle of the outer cone, as three.js SpotLight.angle." {
+      default 0.5236
+      min 0
+      max 1.5708
+      unit rad
+      tunable true
+    }
+    field penumbra f32 "The fraction of the cone over which the light fades out, as three.js SpotLight.penumbra." {
+      min 0
+      max 1
+      unit ratio
+    }
+    field castShadow bool "Cast a shadow map."
+  }
+
+  resource RenderSettings {
+    doc "The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure."
+    field environmentIntensity f32 "The strength of the image-based ambient light from the procedural sky." {
+      default 0.55
+      min 0
+      tunable true
+    }
+    field sky bool "Draw the procedural sky behind the scene instead of Camera.background."
+    field bloom bool "Light above the threshold bleeds into its surroundings."
+    field bloomThreshold f32 "Brightness after exposure where bloom starts; 1 is display white." {
+      default 1
+      min 0
+      tunable true
+    }
+    field bloomKnee f32 "Softens the threshold over threshold plus or minus knee; 0 is a hard cut." {
+      default 0.5
+      min 0
+    }
+    field bloomIntensity f32 "How much of the blurred light is added back." {
+      default 0.6
+      min 0
+      tunable true
+    }
+    field autoExposure bool "Meter every frame to middle grey (deterministic: the current frame only), then apply Camera.exposure as compensation."
+    field toneMapped bool "ACES tone mapping; false clamps, so 2D colours come out exactly as authored at exposure 1." {
+      default true
+    }
+  }
+
+  struct TextDesc {
+    doc "A line or block of MSDF text in the world's xy plane facing +z, drawn this frame only (immediate mode: submit it every tick it should show)."
+    desc true
+    field font Option.Font "The font from og.load.font; null draws nothing."
+    field text String "The text; `\\n` starts a new line."
+    field position Vector3 "The baseline origin of the first line." {
+      unit m
+    }
+    field size f32 "The em size in world units." {
+      default 1
+      min 0
+    }
+    field rotation f32 "Rotation about +z." {
+      unit rad
+    }
+    field color Color "The linear colour." {
+      default 1 1 1
+    }
+    field opacity f32 "The alpha." {
+      default 1
+      min 0
+      max 1
+    }
+    field layer i32 "Draw order among sprites and text; higher draws on top."
+  }
+
+  const MAX_LIGHTS u32 8 "The most point and spot lights one frame draws."
+
   struct RenderCapabilities {
     doc "What the renderer can do on this device. Backend limits are reported here, never by missing members."
     field tier RenderTier "The backend."
     field compute bool "Whether compute passes run (GPU culling, GPU particles)."
-    field maxShadowedLights u32 "How many lights may cast shadows."
+    field antialias Antialias "The antialiasing the device resolved RenderOptions.antialias to."
+    field maxLights u32 "How many point and spot lights one frame draws."
+    field maxShadowedLights u32 "How many point and spot lights may cast shadows."
     field width u32 "The render target width in device pixels."
     field height u32 "The render target height in device pixels."
   }
@@ -977,21 +1212,38 @@ module render {
     param world World "The world whose renderer is asked."
     returns RenderCapabilities
   }
+
+  fn text {
+    doc "Draw text this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the text should show. Multi-page fonts are drawn page by page with one layout."
+    param world World "The world whose renderer draws it."
+    param desc TextDesc "The font, text, placement and colour."
+    returns Result.Void "Refused for a dead font."
+  }
 }
 
 # ── load ──────────────────────────────────────────────────────────────────
 
 module load {
-  doc "Asset loading. Paths are relative to the project and read cooked output; a load returns a handle at once and completes at a tick boundary."
-  doc "Under og run and in replays every load completes before the next tick, so the tick a load lands on is deterministic."
+  doc "Asset loading from cooked output: `og cook` turns assets/ into cooked/ (.ogb blobs and the manifest cooked/.cook.ogt), and the runtime reads only cooked/."
+  doc "Paths are asset ids: the path under assets/ (`models/ship.glb`, `scenes/main.ogt`); an `assets/` prefix is accepted. Every blob is checked against the manifest's type, schema version and cook stamp."
+  doc "The game's bundle (`cooked`) is opened before the first tick and GameDesc.scene is spawned then. Loads from an open bundle complete at once on both hosts (the web host fetches the bundle's files before the engine starts); only og.load.bundle of another bundle can be pending, and it completes at a tick boundary."
 
-  handle Asset "A loaded scene or glTF asset."
+  handle Asset "A loaded bundle, scene or glTF asset."
+  handle Font "A cooked MSDF font: its glyph table and one or more atlas pages."
+  handle Sound "A cooked sound: QOA-encoded PCM the audio module plays."
+
+  column Asset {
+    doc "An Asset handle field."
+    array Uint32Array
+    stride 2
+    value Asset
+  }
 
   enum LoadStatus {
     doc "Where a load is."
     variant pending "Still loading."
     variant ready "Loaded; it can be instantiated."
-    variant failed "Failed; the AssetFailed event carries the reason."
+    variant failed "Failed; og.load.error gives the reason."
   }
 
   struct GltfDesc {
@@ -1006,23 +1258,106 @@ module load {
     doc "What a loaded glTF holds."
     field scenes u32 "How many scenes it has."
     field geometries List.Geometry "Its geometries, in glTF mesh-primitive order."
-    field materials List.Material "Its materials, in glTF order."
-    field animations List.String "Its animation clip names."
+    field materials List.Material "Its materials, in glTF order, then the default material."
+    field animations List.String "Its animation clip names (the cook counts clips and does not cook them yet, so this is empty)."
+  }
+
+  struct BundleInfo {
+    doc "An open cooked bundle."
+    field path String "The cooked directory it was opened from."
+    field assets u32 "Source assets it holds."
+    field outputs u32 "Cooked outputs (blobs) it holds."
+  }
+
+  struct FontInfo {
+    doc "A loaded font's metrics, in em units unless stated."
+    field glyphs u32 "Glyphs cooked into it."
+    field pages u32 "Atlas pages; the renderer draws one page per pass with one shared layout."
+    field emPx u32 "Atlas pixels per em."
+    field pxRange f32 "The distance range in atlas pixels."
+    field ascender f32 "Ascender above the baseline."
+    field descender f32 "Descender below the baseline (negative)."
+    field lineHeight f32 "Ascender minus descender plus the line gap."
+  }
+
+  struct SoundInfo {
+    doc "A loaded sound."
+    field rate u32 "Samples per second." {
+      unit hz
+    }
+    field channels u32 "Interleaved channels."
+    field frames u32 "Samples per channel."
+    field seconds f32 "Its length." {
+      unit s
+    }
+  }
+
+  component Model {
+    doc "Draws a loaded glTF's default scene at the entity's world transform: every mesh node with its glTF material. Scene entities with a `model` line get one; world.instantiate of a glTF asset spawns one."
+    field asset Asset "The glTF asset."
+  }
+
+  fn bundle {
+    doc "Open another cooked bundle (the game's own `cooked` is open before the first tick). Its loads read through it once it is ready."
+    param world World "The world that owns the asset."
+    param path String "The cooked directory, relative to the project (or the page), such as `dlc/cooked`."
+    returns Result.Asset "The bundle's handle: pending until its manifest is read, then ready or failed."
+  }
+
+  fn bundleInfo {
+    doc "What an open bundle holds."
+    param world World "The world that owns the asset."
+    param asset Asset "A bundle handle; the game's own bundle is og.load.bundle's first answer, also given by `defaultBundle`."
+    returns Result.BundleInfo "Refused for a pending, failed or non-bundle asset."
+  }
+
+  fn defaultBundle {
+    doc "The game's own bundle, opened before the first tick from `cooked/`."
+    param world World "The world that owns the asset."
+    returns Result.Asset "Refused when cooked/ was missing or unreadable (run og cook); the reason names the path."
   }
 
   fn gltf {
-    doc "Load a glTF (.gltf or .glb) through the cook, as three.js GLTFLoader.load."
+    doc "Load a cooked glTF (.gltf or .glb), as three.js GLTFLoader.load: its meshes, materials and textures join the renderer once."
     param world World "The world that owns the asset."
-    param path String "The source path under assets/, such as `assets/ship.glb`."
+    param path String "The asset id, such as `models/ship.glb`."
     param desc GltfDesc "Scene and shadow options."
-    returns Result.Asset "The handle, or why it was refused (an uncooked path, a cook stamp mismatch)."
+    returns Result.Asset "The handle, or why it was refused (an uncooked path, a cook stamp mismatch, no open bundle)."
   }
 
   fn scene {
-    doc "Load a scene (.ogt)."
+    doc "Load a cooked scene (.ogt). world.instantiate spawns its entities: depth first, parents before children, each component table matched to a registered component by its reflected name (`Transform` is og.Transform) and migrated field by field; a field the scene lacks keeps its default, one the component lacks is dropped with a warning."
     param world World "The world that owns the asset."
-    param path String "The scene path, such as `scenes/main.ogt`."
+    param path String "The scene's asset id, such as `scenes/main.ogt`."
     returns Result.Asset
+  }
+
+  fn font {
+    doc "Load a cooked MSDF font for og.render.text."
+    param world World "The world that owns the font."
+    param path String "The font's asset id, such as `fonts/NotoSansSC-Regular-subset.ttf`."
+    returns Result.Font
+  }
+
+  fn fontInfo {
+    doc "A loaded font's metrics."
+    param world World "The world that owns the font."
+    param font Font "The font."
+    returns Result.FontInfo "Refused for a dead font."
+  }
+
+  fn sound {
+    doc "Load a cooked sound for the audio module."
+    param world World "The world that owns the sound."
+    param path String "The sound's asset id, such as `audio/blip.wav`."
+    returns Result.Sound
+  }
+
+  fn soundInfo {
+    doc "A loaded sound's format and length."
+    param world World "The world that owns the sound."
+    param sound Sound "The sound."
+    returns Result.SoundInfo "Refused for a dead sound."
   }
 
   fn status {
@@ -1030,6 +1365,13 @@ module load {
     param world World "The world that owns the asset."
     param asset Asset "The handle."
     returns LoadStatus
+  }
+
+  fn error {
+    doc "Why a load failed."
+    param world World "The world that owns the asset."
+    param asset Asset "The handle."
+    returns Option.String "The reason, naming the fix; null unless the load failed."
   }
 
   fn gltfInfo {
@@ -1083,6 +1425,7 @@ module commands {
     variant resume "`resume`: release the clock."
     variant advance "`advance:<ticks>`: take fixed steps."
     variant quit "`quit`: exit."
+    variant help "`help`: list every action the channel knows, core and registered."
   }
 
   callback CommandHandler {
@@ -1107,6 +1450,14 @@ module commands {
     field args List.String "The arguments."
   }
 
+  struct CommandInfo {
+    doc "One action as help lists it."
+    field name String "The action name."
+    field usage String "Its argument form, such as `screenshot[:path][:full|:N]`."
+    field doc String "One sentence on what it does."
+    field core bool "Shipped with the engine (true) or registered by a module or a game."
+  }
+
   struct CommandsReport {
     doc "What scheduling a script did."
     field scheduled u32 "Steps scheduled."
@@ -1126,6 +1477,12 @@ module commands {
     doc "Parse a script without scheduling it."
     param script String "`t:action[:args];...` with t in simulation seconds."
     returns Result.List.CommandStep "The steps, or the first malformed step."
+  }
+
+  fn help {
+    doc "Every action the channel knows: core actions in CoreAction order, then registered ones by name."
+    param world World "The world whose channel is asked."
+    returns List.CommandInfo
   }
 
   fn schedule {
@@ -1258,6 +1615,7 @@ module probe {
     field tier RenderTier "The renderer backend."
     field build BuildProfile "The build configuration."
     field members List.String "The probe members this build serves."
+    field modules List.String "The engine modules this build carries beyond the core (`physics`, `audio`, `ui`, `cook`), so a client knows which members do something."
   }
 
   enum BuildProfile {
@@ -1340,12 +1698,12 @@ module probe {
   }
 
   struct SystemDump {
-    doc "One system."
+    doc "One system. The engine fills reads, writes and matched for every system the game declared; ms is null because the probe reads no clock (state().timings has the tick's time)."
     field name String "Its name."
-    field matched u32 "Entities its query matched on the last tick."
-    field reads List.String "What it declared it reads."
-    field writes List.String "What it declared it writes."
-    field ms f32 "Time it took on the last tick." {
+    field matched Option.u32 "Entities its queries match now; null for a system the host did not declare to the probe."
+    field reads Option.List.String "What it declared it reads; null when undeclared."
+    field writes Option.List.String "What it declared it writes; null when undeclared."
+    field ms Option.f32 "Time it took on the last tick; null when not measured." {
       unit ms
     }
   }
@@ -1483,7 +1841,9 @@ module probe {
       returns Hello
     }
     fn capture {
-      doc "The frame rendered at the current tick, read back offscreen."
+      doc "The frame of the current tick, rendered offscreen and read back as a PNG."
+      doc "Size rule: width and height are both 0 (or absent), which is the render target's size, or both 1 to 4096, which renders that size with the same camera (the aspect follows the requested size); one zero and one not is a malformed call."
+      doc "On the web the readback is asynchronous: through the request ring the answer arrives when the copy completes; a synchronous in-page call answers null on the first tick and the frame from then on (a capture is requested on tick N and answered on N + 1)."
       publish true
       param width u32 "Width in pixels; 0 is the render target's." {
         default 0

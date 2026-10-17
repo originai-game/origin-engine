@@ -39,6 +39,26 @@ pub fn og_engine_frame(engine: u32, elapsed_ms: f64) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_host_begin_bundle() {
+    <Host as Lifecycle>::og_host_begin_bundle(&Host)
+}
+
+#[wasm_bindgen]
+pub fn og_engine_call(engine: u32, frame: String) -> String {
+    <Host as Lifecycle>::og_engine_call(&Host, engine, frame)
+}
+
+#[wasm_bindgen]
+pub fn og_engine_take_outputs(engine: u32) -> String {
+    <Host as Lifecycle>::og_engine_take_outputs(&Host, engine)
+}
+
+#[wasm_bindgen]
+pub fn og_engine_take_log(engine: u32) -> String {
+    <Host as Lifecycle>::og_engine_take_log(&Host, engine)
+}
+
+#[wasm_bindgen]
 pub fn og_engine_write_resource(world: u32, resource: String, value: String) -> String {
     <Host as Lifecycle>::og_engine_write_resource(&Host, world, resource, value)
 }
@@ -304,6 +324,11 @@ pub fn og_input_axis(world: u32, negative: String, positive: String) -> f64 {
 }
 
 #[wasm_bindgen]
+pub fn og_input_axis2(world: u32, left: String, right: String, down: String, up: String) -> String {
+    <Host as InputApi>::og_input_axis2(&Host, world, left, right, down, up)
+}
+
+#[wasm_bindgen]
 pub fn og_input_button_down(world: u32, button: String) -> bool {
     <Host as InputApi>::og_input_button_down(&Host, world, button)
 }
@@ -311,6 +336,11 @@ pub fn og_input_button_down(world: u32, button: String) -> bool {
 #[wasm_bindgen]
 pub fn og_input_button_pressed(world: u32, button: String) -> bool {
     <Host as InputApi>::og_input_button_pressed(&Host, world, button)
+}
+
+#[wasm_bindgen]
+pub fn og_input_button_released(world: u32, button: String) -> bool {
+    <Host as InputApi>::og_input_button_released(&Host, world, button)
 }
 
 #[wasm_bindgen]
@@ -344,6 +374,26 @@ pub fn og_render_capabilities(world: u32) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_render_text(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_text(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_load_bundle(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_bundle(&Host, world, path)
+}
+
+#[wasm_bindgen]
+pub fn og_load_bundle_info(world: u32, asset: f64) -> String {
+    <Host as LoadApi>::og_load_bundle_info(&Host, world, asset)
+}
+
+#[wasm_bindgen]
+pub fn og_load_default_bundle(world: u32) -> String {
+    <Host as LoadApi>::og_load_default_bundle(&Host, world)
+}
+
+#[wasm_bindgen]
 pub fn og_load_gltf(world: u32, path: String, desc: Option<String>) -> String {
     <Host as LoadApi>::og_load_gltf(&Host, world, path, desc)
 }
@@ -354,8 +404,33 @@ pub fn og_load_scene(world: u32, path: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_load_font(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_font(&Host, world, path)
+}
+
+#[wasm_bindgen]
+pub fn og_load_font_info(world: u32, font: f64) -> String {
+    <Host as LoadApi>::og_load_font_info(&Host, world, font)
+}
+
+#[wasm_bindgen]
+pub fn og_load_sound(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_sound(&Host, world, path)
+}
+
+#[wasm_bindgen]
+pub fn og_load_sound_info(world: u32, sound: f64) -> String {
+    <Host as LoadApi>::og_load_sound_info(&Host, world, sound)
+}
+
+#[wasm_bindgen]
 pub fn og_load_status(world: u32, asset: f64) -> String {
     <Host as LoadApi>::og_load_status(&Host, world, asset)
+}
+
+#[wasm_bindgen]
+pub fn og_load_error(world: u32, asset: f64) -> String {
+    <Host as LoadApi>::og_load_error(&Host, world, asset)
 }
 
 #[wasm_bindgen]
@@ -373,6 +448,12 @@ pub fn og_commands_register(name: String, handler: u32, desc: Option<String>) ->
 #[wasm_bindgen]
 pub fn og_commands_parse(script: String) -> String {
     <Host as CommandsApi>::og_commands_parse(&Host, script)
+}
+
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_commands_help(world: u32) -> String {
+    <Host as CommandsApi>::og_commands_help(&Host, world)
 }
 
 #[cfg(not(feature = "publish"))]

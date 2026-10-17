@@ -10,10 +10,15 @@ description = "Origin Engine API: the IDL (api.ogt), its validator and generator
 og-core = { path = "../og-core" }
 og-ecs = { path = "../og-ecs", optional = true }
 og-render = { path = "../og-render", optional = true }
+og-probe = { path = "../og-probe", default-features = false, optional = true }
+og-cook = { path = "../og-cook", default-features = false, features = ["runtime"], optional = true }
+miniz_oxide = { version = "0.8", optional = true }
 glam = { workspace = true, optional = true }
 serde_json = { version = "1", features = ["float_roundtrip"], optional = true }
 
 [features]
 default = []
 # The host-neutral runtime og-host-web and og-host-node wrap (`og_api::runtime`).
-runtime = ["dep:og-ecs", "dep:og-render", "dep:glam", "dep:serde_json"]
+runtime = ["dep:og-ecs", "dep:og-render", "dep:og-probe", "dep:og-cook", "dep:miniz_oxide", "dep:glam", "dep:serde_json"]
+# A published game: the probe keeps only its player-facing members.
+publish = ["runtime", "og-probe/publish"]

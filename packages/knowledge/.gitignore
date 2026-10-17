@@ -1,0 +1,3 @@
+node_modules/
+# Copied from templates/game at prepack (scripts/pack.ts).
+scaffold/template/

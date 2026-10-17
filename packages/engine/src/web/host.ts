@@ -7,6 +7,37 @@
 
 import { ARRAYS, bindHost, boundHost, type ColumnArray, type HostBinding } from "../runtime.ts";
 import type { HostAbi } from "../generated/abi.ts";
+import bindings from "../../types/bindings.json" with { type: "json" };
+
+interface CallDecl {
+  readonly symbol: string;
+  readonly module: string;
+  readonly returns: string;
+  readonly publish: boolean;
+}
+
+/**
+ * A publish build exports only the player-facing members (the commands
+ * module and the probe's other members are compiled out). The runtime binds
+ * every symbol, so each missing non-publish symbol answers its refusal: the
+ * probe's `null` (or `false`), a command's `{ ok: false }`.
+ */
+export function withPublishRefusals(glue: Record<string, unknown>): Record<string, unknown> {
+  const missing = (bindings.calls as CallDecl[]).filter((c) => !c.publish && typeof glue[c.symbol] !== "function");
+  if (missing.length === 0) return glue;
+  const out: Record<string, unknown> = { ...glue };
+  const reason = JSON.stringify({ ok: false, reason: "not in a publish build: the command channel and the probe's development members are compiled out" });
+  for (const c of missing) {
+    const answer: unknown =
+      c.returns === "bool" ? false
+      : c.returns === "u32" || c.returns === "i32" ? 0
+      : c.returns.startsWith("List<") ? "[]"
+      : c.module === "probe" ? "null"
+      : reason;
+    out[c.symbol] = () => answer;
+  }
+  return out;
+}
 
 /** The wasm-bindgen glue module: its default export initialises it. */
 export interface WebGlue extends Record<string, unknown> {
@@ -26,7 +57,7 @@ export async function loadWebHost(glue: WebGlue, wasm?: unknown): Promise<HostBi
   let cache = new Map<string, ColumnArray>();
   let cachedBuffer: ArrayBufferLike = memory.buffer;
   const binding: HostBinding = {
-    abi: glue as unknown as HostAbi<Uint32Array, unknown>,
+    abi: withPublishRefusals(glue) as unknown as HostAbi<Uint32Array, unknown>,
     name: "web",
     columns(raw, kinds, count) {
       const offsets = raw as Uint32Array;

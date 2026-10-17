@@ -1,5 +1,8 @@
-//! `og doctor`: which tools are present, at which versions, against the
-//! repository's pins, with one line naming the fix for each problem.
+//! `og doctor`: what a game author's loop needs (bun, the engine package,
+//! its native addon, the web host's wasm, and a headless renderer on this
+//! machine: the executor path that needs no E2B sandbox), then, inside the
+//! engine repository, the build toolchain against the repository's pins.
+//! Every problem has one line naming its fix.
 
 use std::path::Path;
 use std::process::{Command, ExitCode};
@@ -67,7 +70,11 @@ const TOOLS: &[Tool] = &[
     },
 ];
 
-pub fn run() -> ExitCode {
+pub fn run(args: &[&str]) -> ExitCode {
+    if let Some(a) = args.first() {
+        eprintln!("og doctor: unexpected argument `{a}`; og doctor takes none.");
+        return ExitCode::from(2);
+    }
     let cwd = std::env::current_dir().unwrap_or_else(|_| ".".into());
     let root = crate::find_root(&cwd);
     let toolchain = root.as_deref().and_then(rust_channel);
@@ -112,6 +119,7 @@ pub fn run() -> ExitCode {
             (Some(v), _) => println!("ok       {:<13} {v}", tool.name),
         }
     }
+    problems += engine_checks(&cwd);
     if problems == 0 {
         println!("all tools present.");
         ExitCode::SUCCESS
@@ -162,4 +170,96 @@ fn wasm_bindgen_lock(root: &Path) -> Option<String> {
         }
     }
     None
+}
+
+/// The engine package's checks (`packages/engine/src/node/doctor.ts`): the
+/// addon loads, the wasm is built, a 64x64 frame renders headless.
+fn engine_checks(cwd: &Path) -> usize {
+    let Some(package) = crate::project::engine_package(Some(cwd)) else {
+        println!(
+            "missing  {:<13} the engine package (@origingame/engine)",
+            "engine"
+        );
+        println!("         fix: {}", crate::project::NO_ENGINE);
+        return 1;
+    };
+    let out = crate::project::bun(&package, "src/node/doctor.ts").output();
+    let report: serde_json::Value = match out {
+        Err(_) => {
+            println!(
+                "skipped  {:<13} {} (needs bun)",
+                "engine",
+                package.display()
+            );
+            return 0;
+        }
+        Ok(o) => match serde_json::from_slice(o.stdout.trim_ascii()) {
+            Ok(v) => v,
+            Err(_) => {
+                println!("broken   {:<13} {}", "engine", package.display());
+                println!(
+                    "         fix: reinstall @origingame/engine; its doctor printed: {}",
+                    String::from_utf8_lossy(&o.stderr).trim()
+                );
+                return 1;
+            }
+        },
+    };
+    println!(
+        "ok       {:<13} {} {}",
+        "engine",
+        report["version"].as_str().unwrap_or("?"),
+        package.display()
+    );
+    let mut problems = 0;
+    let mut line = |name: &str, ok: bool, detail: String, fix: &str| {
+        if ok {
+            println!("ok       {name:<13} {detail}");
+        } else {
+            problems += 1;
+            println!("missing  {name:<13} {detail}");
+            println!("         fix: {fix}");
+        }
+    };
+    let addon = &report["addon"];
+    line(
+        "addon",
+        addon["ok"].as_bool().unwrap_or(false),
+        match addon["ok"].as_bool() {
+            Some(true) => format!(
+                "{} (views {})",
+                addon["path"].as_str().unwrap_or(""),
+                addon["views"].as_str().unwrap_or("?")
+            ),
+            _ => addon["reason"].as_str().unwrap_or("does not load").to_string(),
+        },
+        "install the package for this platform (npm installs @origingame/engine-<platform>-<arch> through optionalDependencies), or in a checkout run `bun run build` in packages/engine",
+    );
+    for (key, what) in [("wasm", "wasm"), ("publishWasm", "wasm-publish")] {
+        let w = &report[key];
+        line(
+            what,
+            w["ok"].as_bool().unwrap_or(false),
+            match w["bytes"].as_u64() {
+                Some(b) => format!("{} ({b} bytes)", w["path"].as_str().unwrap_or("")),
+                None => format!("no {}", w["path"].as_str().unwrap_or("wasm")),
+            },
+            "reinstall @origingame/engine, or in a checkout run `bun run build` in packages/engine",
+        );
+    }
+    let r = &report["renderer"];
+    line(
+        "renderer",
+        r["ok"].as_bool().unwrap_or(false),
+        match r["ok"].as_bool() {
+            Some(true) => format!(
+                "{} (a 64x64 frame headless in {} ms: og run needs no sandbox here)",
+                r["tier"].as_str().unwrap_or("?"),
+                r["ms"]
+            ),
+            _ => r["reason"].as_str().unwrap_or("no adapter").to_string(),
+        },
+        "a GPU driver with Metal or Vulkan, or Mesa lavapipe (`apt install mesa-vulkan-drivers`) for CPU rendering",
+    );
+    problems
 }

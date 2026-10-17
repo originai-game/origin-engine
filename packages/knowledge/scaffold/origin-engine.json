@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "distribution": "origin-engine",
+  "substrate": "origin-engine-ts",
+  "engine": {
+    "package": "@origingame/engine",
+    "version": "0.0.1",
+    "repository": "origingame/origin-engine"
+  },
+  "template": {
+    "source": "templates/game",
+    "create": "@origingame/create",
+    "version": "0.1.0"
+  },
+  "probe": {
+    "protocol": 5,
+    "wire": 1
+  }
+}

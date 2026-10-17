@@ -1,131 +1,132 @@
-//! `og run --headless <project>`, as far as M2 goes: load the game bundle on
-//! the native host and advance N fixed ticks, printing the world hash. The
-//! scheduled command channel (`--commands`) and windowed runs arrive with
-//! the probe (M5).
+//! `og run [project|entry] [--headless] [--commands "t:action[:args];..."] [--seed S]
+//! [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--json]`
 //!
-//! `<project>` is a game entry file (`.ts`, `.js`), or a directory whose
-//! `project.ogt` names one (`entry "src/game.ts"`; `game.ts` when absent).
-//! The runner is `packages/engine/src/node/run.ts` of the engine package
-//! (`OG_ENGINE_PACKAGE`, else `packages/engine` of the repository `og` runs
-//! in), under bun.
+//! Cooks the project, bundles its entry for the native host and runs it with
+//! `packages/engine/src/node/run.ts` under bun on the napi addon: the probe is
+//! mounted, `--commands` are scheduled through og-probe, outputs
+//! (`screenshot`, `dump_*`) are written under `--out` (default
+//! `<project>/og-out`) at the probe's `Output::file_name()`, and `--port`
+//! serves the probe at `ws://127.0.0.1:<port>/probe` (`og probe`). Native runs
+//! are always headless: `--headless` is accepted, and without it the run is
+//! paced by the wall clock instead of as fast as it can go.
 
-use std::path::{Path, PathBuf};
-use std::process::{Command, ExitCode};
+use crate::project::{self, Project};
+use std::path::Path;
+use std::process::ExitCode;
 
-const USAGE: &str = "usage: og run --headless <project> [--ticks N] [--seed S] [--setup action[:arg...]]... [--json]";
+const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--json]";
 
-pub fn run(args: &[&str]) -> ExitCode {
-    let mut headless = false;
-    let mut project = None;
-    let mut forward: Vec<String> = Vec::new();
+/// What `og run` was asked.
+pub struct RunArgs {
+    pub project: String,
+    pub headless: bool,
+    pub forward: Vec<String>,
+    pub out: Option<String>,
+    pub port: Option<String>,
+}
+
+pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
+    let mut r = RunArgs {
+        project: ".".into(),
+        headless: false,
+        forward: Vec::new(),
+        out: None,
+        port: None,
+    };
     let mut i = 0;
     while i < args.len() {
         match args[i] {
-            "--headless" => headless = true,
-            "--json" => forward.push("--json".into()),
-            flag @ ("--ticks" | "--seed" | "--setup") => {
+            "--headless" => r.headless = true,
+            "--json" | "--no-render" => r.forward.push(args[i].into()),
+            flag @ ("--ticks" | "--seed" | "--setup" | "--commands" | "--size" | "--out"
+            | "--port") => {
                 let Some(v) = args.get(i + 1) else {
-                    eprintln!("og run: {flag} needs a value. {USAGE}");
-                    return ExitCode::from(2);
+                    return Err(format!("{flag} needs a value. {USAGE}"));
                 };
-                forward.push(flag.into());
-                forward.push(v.to_string());
+                match flag {
+                    "--out" => r.out = Some(v.to_string()),
+                    "--port" => r.port = Some(v.to_string()),
+                    _ => {
+                        r.forward.push(flag.into());
+                        r.forward.push(v.to_string());
+                    }
+                }
                 i += 1;
             }
-            "--commands" => {
-                eprintln!("og run: --commands is the probe's scheduled command channel and lands with M5; use --setup <action> to run a registered action before the first tick. Nothing was run.");
-                return ExitCode::from(2);
-            }
             other if other.starts_with('-') => {
-                eprintln!("og run: unknown option `{other}`. {USAGE}");
-                return ExitCode::from(2);
+                return Err(format!("unknown option `{other}`. {USAGE}"))
             }
-            other => project = Some(other.to_string()),
+            other => r.project = other.to_string(),
         }
         i += 1;
     }
-    if !headless {
-        eprintln!(
-            "og run: only --headless runs in M2 (a windowed run needs the M5 shell). {USAGE}"
-        );
-        return ExitCode::from(2);
+    Ok(r)
+}
+
+/// Cook (when the project has assets) and bundle; the bundle's path.
+pub fn prepare(p: &Project, package: &Path) -> Result<std::path::PathBuf, String> {
+    if p.has_assets() {
+        let report = crate::cook::cook(&p.root, 0)?;
+        let cooked = report
+            .assets
+            .iter()
+            .flat_map(|a| a.outputs.iter())
+            .filter(|o| o.cooked)
+            .count();
+        if cooked > 0 {
+            eprintln!("{}", crate::cook::summary(&report));
+        }
     }
-    let Some(project) = project else {
-        eprintln!("og run: no project. {USAGE}");
-        return ExitCode::from(2);
+    project::bundle_native(p, package)
+}
+
+pub fn run(args: &[&str]) -> ExitCode {
+    let a = match parse(args) {
+        Ok(a) => a,
+        Err(e) => {
+            eprintln!("og run: {e}");
+            return ExitCode::from(2);
+        }
     };
-    let entry = match entry_of(Path::new(&project)) {
-        Ok(e) => e,
+    let p = match Project::open(Path::new(&a.project)) {
+        Ok(p) => p,
         Err(e) => {
             eprintln!("og run: {e}");
             return ExitCode::FAILURE;
         }
     };
-    let Some(package) = engine_package() else {
-        eprintln!("og run: no engine package: set OG_ENGINE_PACKAGE to packages/engine of an origin-engine checkout, or run inside one");
+    let Some(package) = project::engine_package(Some(&p.root)) else {
+        eprintln!("og run: {}", project::NO_ENGINE);
         return ExitCode::FAILURE;
     };
-    let runner = package.join("src/node/run.ts");
-    let status = Command::new("bun")
-        .arg(&runner)
-        .arg("--entry")
-        .arg(&entry)
-        .args(&forward)
-        .status();
-    match status {
-        Ok(s) if s.success() => ExitCode::SUCCESS,
-        Ok(s) => ExitCode::from(s.code().map_or(1, |c| c.clamp(1, 255) as u8)),
+    let bundle = match prepare(&p, &package) {
+        Ok(b) => b,
         Err(e) => {
-            eprintln!("og run: cannot start bun ({e}); install it: curl -fsSL https://bun.sh/install | bash");
+            eprintln!("og run: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let mut cmd = project::bun(&package, "src/node/run.ts");
+    cmd.arg("--entry").arg(&bundle).args(&a.forward);
+    if p.manifest {
+        cmd.arg("--root").arg(&p.root);
+    }
+    cmd.arg("--out").arg(
+        a.out
+            .clone()
+            .unwrap_or_else(|| p.root.join("og-out").display().to_string()),
+    );
+    if let Some(port) = &a.port {
+        cmd.arg("--port").arg(port);
+    }
+    if !a.headless {
+        cmd.arg("--realtime");
+    }
+    match cmd.status() {
+        Ok(s) => project::exit_of(s),
+        Err(e) => {
+            eprintln!("og run: {} ({e})", project::NO_BUN);
             ExitCode::FAILURE
         }
     }
-}
-
-fn entry_of(project: &Path) -> Result<PathBuf, String> {
-    if project.is_file() {
-        return Ok(project.to_path_buf());
-    }
-    if !project.is_dir() {
-        return Err(format!(
-            "{} is neither a game entry nor a project directory",
-            project.display()
-        ));
-    }
-    let manifest = project.join("project.ogt");
-    let mut entry = PathBuf::from("game.ts");
-    if manifest.is_file() {
-        let text = std::fs::read_to_string(&manifest)
-            .map_err(|e| format!("cannot read {}: {e}", manifest.display()))?;
-        let doc = og_core::ogt::parse(&text)
-            .map_err(|e| format!("{}: {}", manifest.display(), e.reason()))?;
-        if let Some(e) = doc.body.get("entry") {
-            entry = PathBuf::from(
-                e.string(0)
-                    .map_err(|_| format!("{}: `entry` takes a quoted path", manifest.display()))?,
-            );
-        }
-    }
-    let path = project.join(&entry);
-    if !path.is_file() {
-        return Err(format!(
-            "{}: the game entry {} does not exist",
-            project.display(),
-            entry.display()
-        ));
-    }
-    Ok(path)
-}
-
-fn engine_package() -> Option<PathBuf> {
-    if let Ok(p) = std::env::var("OG_ENGINE_PACKAGE") {
-        return Some(PathBuf::from(p));
-    }
-    let cwd = std::env::current_dir().ok()?;
-    let root = crate::find_root(&cwd).or_else(|| {
-        let exe = std::env::current_exe().ok()?;
-        crate::find_root(&exe)
-    })?;
-    let pkg = root.join("packages/engine");
-    pkg.join("src/node/run.ts").is_file().then_some(pkg)
 }

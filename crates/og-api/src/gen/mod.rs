@@ -3,6 +3,7 @@
 pub mod host;
 pub mod tables;
 pub mod ts;
+pub mod wiki;
 
 use crate::index::{Index, TypeDecl};
 use crate::json::Json;

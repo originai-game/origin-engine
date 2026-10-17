@@ -567,3 +567,54 @@ fn compact(j: &Json) -> String {
         ),
     }
 }
+
+// ── forms for the wiki ────────────────────────────────────────────────────
+
+/// A function's TypeScript form as `index.d.ts` declares it, after its name:
+/// `<C extends AnyComponent>(entity: Entity, component: C): boolean`.
+pub(crate) fn signature(ix: &Index<'_>, f: &Function) -> String {
+    let g = Gen {
+        ix,
+        out: String::new(),
+    };
+    let generics = if f.generics.is_empty() {
+        String::new()
+    } else {
+        let gs: Vec<String> = f
+            .generics
+            .iter()
+            .map(|g| format!("{} extends {}", g.name, g.bound.name()))
+            .collect();
+        format!("<{}>", gs.join(", "))
+    };
+    let params = g.params(&f.params, &f.generics, true);
+    let ret = g.ty(&f.returns, &f.generics);
+    format!("{generics}({params}): {ret}")
+}
+
+/// A callback type's TypeScript form: `(q: Query, time: Time) => void`.
+pub(crate) fn callback_signature(ix: &Index<'_>, c: &Callback) -> String {
+    let g = Gen {
+        ix,
+        out: String::new(),
+    };
+    format!(
+        "({}) => {}",
+        g.params(&c.params, &[], false),
+        g.ty(&c.returns, &[])
+    )
+}
+
+/// A type's TypeScript form, as `index.d.ts` writes it.
+pub(crate) fn type_text(ix: &Index<'_>, ty: &TypeRef, generics: &[Generic]) -> String {
+    Gen {
+        ix,
+        out: String::new(),
+    }
+    .ty(ty, generics)
+}
+
+/// One-line JSON, as the declarations' doc tags show defaults.
+pub(crate) fn compact_json(j: &Json) -> String {
+    compact(j)
+}

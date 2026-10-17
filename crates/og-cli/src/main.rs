@@ -1,12 +1,19 @@
 //! The `og` tool. See docs/design.md §2.1 and docs/phase-1.md.
 //!
-//! Phase 1 ships `og --version`, `og doctor`, `og api gen`, `og api check`
-//! and `og run --headless` (M2: load, advance, hash). Every other planned
-//! subcommand answers that it is not there yet and exits non-zero, so no
-//! script mistakes it for success.
+//! One binary for the author's loop: `og run` (native host, probe, command
+//! channel), `og probe` (a WebSocket client of the probe), `og dev` (watch,
+//! rebuild, hot reload), `og test` (bun tests and playtests), `og build`
+//! (the play page), `og cook`, `og doctor` and `og api` (the IDL outputs).
 
+mod api;
+mod bundle;
+mod cook;
+mod dev;
 mod doctor;
+mod probe;
+mod project;
 mod run;
+mod test;
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -19,27 +26,33 @@ og: the Origin Engine tool
 usage: og <command> [options]
 
 commands:
-  doctor              check the toolchain against the repository's pins, naming each fix
-  api gen             regenerate packages/engine/{types,schema} from crates/og-api/api.ogt
-  api check           exit 1 when the generated files differ from crates/og-api/api.ogt
-                      (the .d.ts, binding table, schema, host traits, both hosts' glue)
-  run --headless <project> [--ticks N] [--seed S] [--setup action[:arg]]... [--json]
-                      load the game on the native host, advance N ticks, print the world hash
+  run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P]
+      [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--json]
+                      cook, bundle and run the game on the native host with the probe; outputs of
+                      screenshot/dump_* land in --out (default <project>/og-out)
+  probe <method> [params-json] [--port P] [--out file.png] [--raw]
+                      one probe call to a running `og run --port P` / `og dev` (JSON-RPC over WebSocket)
+  dev [project] [--port P] [--exit-after N] [--json]
+                      watch src/ and assets/, rebuild and re-cook, hot-reload through the probe,
+                      report each reload against the 300 ms budget
+  test [project] [--json]
+                      the project's bun tests, then each tests/*.og.ts playtest headless
+  build [project] [--publish] [--out DIR] [--json]
+                      cook and write the play page (game.js, the web host, cooked/) to dist/;
+                      --publish keeps only the player-facing probe members
+  cook [project] [--threads N] [--report out.md] [--json]
+                      assets/ into cooked/, incrementally
+  doctor              check bun, the engine package, the native addon, the wasm, a headless
+                      renderer, and (in the engine repository) the build toolchain, naming each fix
+  api gen [--wiki] [--root <dir>]
+                      regenerate the IDL outputs (packages/engine/{types,schema}, the hosts' glue,
+                      the knowledge wiki); --wiki writes only the wiki
+  api check [--root <dir>]
+                      exit 1 when a generated file differs from crates/og-api/api.ogt
 
 options:
   --version           print the og version
-  --root <dir>        for `api`: the repository root (default: found from the current directory)
-
-planned: build (M2), run --commands (M5), cook (M4), probe (M5), test (M5)
 ";
-
-/// Planned subcommands and the milestone of docs/phase-1.md that brings them.
-const PLANNED: &[(&str, &str)] = &[
-    ("build", "M2"),
-    ("cook", "M4"),
-    ("probe", "M5"),
-    ("test", "M5"),
-];
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -53,27 +66,14 @@ fn main() -> ExitCode {
             print!("{USAGE}");
             ExitCode::SUCCESS
         }
-        ["doctor"] => doctor::run(),
+        ["doctor", rest @ ..] => doctor::run(rest),
         ["run", rest @ ..] => run::run(rest),
-        ["api", "gen", rest @ ..] => match root_option(rest) {
-            Ok(root) => api_gen(&root),
-            Err(code) => code,
-        },
-        ["api", "check", rest @ ..] => match root_option(rest) {
-            Ok(root) => api_check(&root),
-            Err(code) => code,
-        },
-        [cmd, ..] if PLANNED.iter().any(|(c, _)| c == cmd) => {
-            let milestone = PLANNED
-                .iter()
-                .find(|(c, _)| c == cmd)
-                .map(|p| p.1)
-                .unwrap_or("");
-            eprintln!(
-                "og {cmd} is not here yet; it lands with milestone {milestone} of docs/phase-1.md. Nothing was done."
-            );
-            ExitCode::from(2)
-        }
+        ["probe", rest @ ..] => probe::run(rest),
+        ["dev", rest @ ..] => dev::run(rest),
+        ["test", rest @ ..] => test::run(rest),
+        ["build", rest @ ..] => bundle::run(rest),
+        ["cook", rest @ ..] => cook::run(rest),
+        ["api", rest @ ..] => api::run(rest),
         [] => {
             eprint!("{USAGE}");
             ExitCode::from(2)
@@ -88,80 +88,9 @@ fn main() -> ExitCode {
     }
 }
 
-/// `--root <dir>`, or the nearest ancestor of the current directory that holds the IDL.
-fn root_option(rest: &[&str]) -> Result<PathBuf, ExitCode> {
-    match rest {
-        [] => {
-            let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-            find_root(&cwd).ok_or_else(|| {
-                eprintln!(
-                    "og api: no {} above {}; run inside the engine repository or pass --root <dir>.",
-                    og_api::IDL_PATH,
-                    cwd.display()
-                );
-                ExitCode::from(2)
-            })
-        }
-        ["--root", dir] => Ok(PathBuf::from(dir)),
-        _ => {
-            eprintln!(
-                "og api: unexpected arguments `{}`; the only option is --root <dir>.",
-                rest.join(" ")
-            );
-            Err(ExitCode::from(2))
-        }
-    }
-}
-
 pub(crate) fn find_root(start: &Path) -> Option<PathBuf> {
     start
         .ancestors()
         .find(|dir| dir.join(og_api::IDL_PATH).is_file())
         .map(Path::to_path_buf)
-}
-
-fn api_gen(root: &Path) -> ExitCode {
-    let api = match og_api::read(&root.join(og_api::IDL_PATH)) {
-        Ok(api) => api,
-        Err(e) => {
-            eprint!("og api gen: {e}");
-            return ExitCode::FAILURE;
-        }
-    };
-    let files = og_api::generate(&api);
-    if let Err(e) = og_api::write(root, &files) {
-        eprintln!("og api gen: cannot write under {}: {e}", root.display());
-        return ExitCode::FAILURE;
-    }
-    for f in &files {
-        println!("wrote {}", f.path);
-    }
-    ExitCode::SUCCESS
-}
-
-fn api_check(root: &Path) -> ExitCode {
-    match og_api::check(root) {
-        Err(e) => {
-            eprint!("og api check: {e}");
-            ExitCode::FAILURE
-        }
-        Ok(drift) if drift.is_empty() => {
-            println!(
-                "og api check: the generated files match {}.",
-                og_api::IDL_PATH
-            );
-            ExitCode::SUCCESS
-        }
-        Ok(drift) => {
-            eprintln!(
-                "og api check: {} file(s) differ from what {} generates:",
-                drift.len(),
-                og_api::IDL_PATH
-            );
-            for d in &drift {
-                eprintln!("  {d}");
-            }
-            ExitCode::FAILURE
-        }
-    }
 }

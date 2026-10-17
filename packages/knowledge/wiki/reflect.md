@@ -1,0 +1,269 @@
+<!-- Generated from crates/og-api/api.ogt by `og api gen`. Do not edit: `og api check` fails on any difference; change api.ogt and regenerate. -->
+
+# The `reflect` module
+
+Reflection: components and resources are declared once with their field layout and metadata, and registered by name.
+
+The inspector, Tune, the probe, scene text and the wiki read this one schema. Each column factory below makes one field.
+
+- **TypeScript**: functions are named exports of the package: `import { … } from "@origingame/engine"`; components, resources and events are tokens on `og`.
+- **Publish builds**: kept (members may override).
+- **Index**: [every module and name](index.md).
+
+```ogt
+module reflect {
+  doc "Reflection: components and resources are declared once with their field layout and metadata, and registered by name."
+  doc "The inspector, Tune, the probe, scene text and the wiki read this one schema. Each column factory below makes one field."
+  place top
+  # declarations follow, each quoted below
+```
+
+<sub>`api.ogt` line 76</sub>
+
+## Contents
+
+| Name | Kind | Summary |
+|---|---|---|
+| [`FieldOptions`](#type-FieldOptions) | desc struct | Metadata of one field. Ranges and units are what Tune and the probe's bounds show; nothing clamps writes. |
+| [`f32()`](#column-f32) | column kind | A 32-bit float, the default numeric field. |
+| [`f64()`](#column-f64) | column kind | A 64-bit float, for accumulated values that must not drift, such as elapsed time. |
+| [`u32()`](#column-u32) | column kind | A 32-bit unsigned integer: counters, flags, indices. |
+| [`i32()`](#column-i32) | column kind | A 32-bit signed integer. |
+| [`bool()`](#column-bool) | column kind | A boolean, stored as one byte: 0 or 1. |
+| [`Vector2()`](#column-Vector2) | column kind | A Vector2 field: x, y interleaved. |
+| [`Vector3()`](#column-Vector3) | column kind | A Vector3 field: x, y, z interleaved. |
+| [`Quaternion()`](#column-Quaternion) | column kind | A Quaternion field: x, y, z, w interleaved. |
+| [`Matrix4()`](#column-Matrix4) | column kind | A Matrix4 field: sixteen column-major elements per entity. |
+| [`Color()`](#column-Color) | column kind | A Color field: r, g, b interleaved. |
+| [`defineComponent`](#fn-defineComponent) | function | Declare a component: plain data stored per entity in engine memory, one column per field. |
+| [`defineResource`](#fn-defineResource) | function | Declare a resource: a reflected singleton, such as a tuning table. Its fields start at their defaults. |
+
+## Functions
+
+<a id="fn-defineComponent"></a>
+
+### `defineComponent`
+
+Declare a component: plain data stored per entity in engine memory, one column per field.
+
+Registration is by name, so a hot reload re-registers the same component and migrates its fields by name.
+
+```ts
+defineComponent<F extends Fields>(name: string, fields: F): ComponentType<F>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `name` | `string` | no | The component's unique name, PascalCase, as it appears in scenes and dumps. |
+| `fields` | `F` | no | The layout: field names to column factories, as `{ hp: f32(100) }`. |
+
+**Returns** `ComponentType<F>`: The token systems, queries and the world take.
+
+Binding symbol `og_reflect_define_component` · publish builds: kept
+
+```ogt
+fn defineComponent {
+  doc "Declare a component: plain data stored per entity in engine memory, one column per field."
+  doc "Registration is by name, so a hot reload re-registers the same component and migrates its fields by name."
+  generic F Fields
+  param name String "The component's unique name, PascalCase, as it appears in scenes and dumps."
+  param fields F "The layout: field names to column factories, as `{ hp: f32(100) }`."
+  returns ComponentType.F "The token systems, queries and the world take."
+}
+```
+
+<sub>`api.ogt` line 163</sub>
+
+<a id="fn-defineResource"></a>
+
+### `defineResource`
+
+Declare a resource: a reflected singleton, such as a tuning table. Its fields start at their defaults.
+
+```ts
+defineResource<F extends Fields>(name: string, fields: F): ResourceType<F>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `name` | `string` | no | The resource's unique name, PascalCase. |
+| `fields` | `F` | no | The layout, as for defineComponent. |
+
+**Returns** `ResourceType<F>`: The token `world.resource` and system declarations take.
+
+Binding symbol `og_reflect_define_resource` · publish builds: kept
+
+```ogt
+fn defineResource {
+  doc "Declare a resource: a reflected singleton, such as a tuning table. Its fields start at their defaults."
+  generic F Fields
+  param name String "The resource's unique name, PascalCase."
+  param fields F "The layout, as for defineComponent."
+  returns ResourceType.F "The token `world.resource` and system declarations take."
+}
+```
+
+<sub>`api.ogt` line 172</sub>
+
+## Types
+
+<a id="type-FieldOptions"></a>
+
+### `FieldOptions` (desc struct)
+
+Metadata of one field. Ranges and units are what Tune and the probe's bounds show; nothing clamps writes.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `min` | `number \| null` | `null` | — | — | — | The smallest meaningful value. |
+| `max` | `number \| null` | `null` | — | — | — | The largest meaningful value. |
+| `step` | `number \| null` | `null` | — | — | — | The increment Tune uses. |
+| `unit` | `string` | `""` | — | — | — | A unit name from the API's unit table, or empty. |
+| `label` | `string` | `""` | — | — | — | The person-facing name; empty uses the field name. |
+| `doc` | `string` | `""` | — | — | — | One sentence on what the field means. |
+| `tunable` | `boolean` | `false` | — | — | — | Publish the field to Tune and to the probe's bounds and patch. |
+
+```ogt
+struct FieldOptions {
+  doc "Metadata of one field. Ranges and units are what Tune and the probe's bounds show; nothing clamps writes."
+  desc true
+  field min Option.f32 "The smallest meaningful value."
+  field max Option.f32 "The largest meaningful value."
+  field step Option.f32 "The increment Tune uses."
+  field unit String "A unit name from the API's unit table, or empty."
+  field label String "The person-facing name; empty uses the field name."
+  field doc String "One sentence on what the field means."
+  field tunable bool "Publish the field to Tune and to the probe's bounds and patch."
+}
+```
+
+<sub>`api.ogt` line 81</sub>
+
+## Column kinds
+
+Each is a factory, `f32(value?, options?)`, that makes one field of a component or resource layout.
+
+| Column | Value | Typed array | Stride | Doc |
+|---|---|---|---|---|
+| <a id="column-f32"></a>`f32` | `number` | `Float32Array` | 1 | A 32-bit float, the default numeric field. |
+| <a id="column-f64"></a>`f64` | `number` | `Float64Array` | 1 | A 64-bit float, for accumulated values that must not drift, such as elapsed time. |
+| <a id="column-u32"></a>`u32` | `number` | `Uint32Array` | 1 | A 32-bit unsigned integer: counters, flags, indices. |
+| <a id="column-i32"></a>`i32` | `number` | `Int32Array` | 1 | A 32-bit signed integer. |
+| <a id="column-bool"></a>`bool` | `boolean` | `Uint8Array` | 1 | A boolean, stored as one byte: 0 or 1. |
+| <a id="column-Vector2"></a>`Vector2` | `Vector2` | `Float32Array` | 2 | A Vector2 field: x, y interleaved. |
+| <a id="column-Vector3"></a>`Vector3` | `Vector3` | `Float32Array` | 3 | A Vector3 field: x, y, z interleaved. |
+| <a id="column-Quaternion"></a>`Quaternion` | `Quaternion` | `Float32Array` | 4 | A Quaternion field: x, y, z, w interleaved. |
+| <a id="column-Matrix4"></a>`Matrix4` | `Matrix4` | `Float32Array` | 16 | A Matrix4 field: sixteen column-major elements per entity. |
+| <a id="column-Color"></a>`Color` | `Color` | `Float32Array` | 3 | A Color field: r, g, b interleaved. |
+
+```ogt
+column f32 {
+  doc "A 32-bit float, the default numeric field."
+  array Float32Array
+  stride 1
+  value f32
+}
+```
+
+<sub>`api.ogt` line 93</sub>
+
+```ogt
+column f64 {
+  doc "A 64-bit float, for accumulated values that must not drift, such as elapsed time."
+  array Float64Array
+  stride 1
+  value f64
+}
+```
+
+<sub>`api.ogt` line 100</sub>
+
+```ogt
+column u32 {
+  doc "A 32-bit unsigned integer: counters, flags, indices."
+  array Uint32Array
+  stride 1
+  value u32
+}
+```
+
+<sub>`api.ogt` line 107</sub>
+
+```ogt
+column i32 {
+  doc "A 32-bit signed integer."
+  array Int32Array
+  stride 1
+  value i32
+}
+```
+
+<sub>`api.ogt` line 114</sub>
+
+```ogt
+column bool {
+  doc "A boolean, stored as one byte: 0 or 1."
+  array Uint8Array
+  stride 1
+  value bool
+}
+```
+
+<sub>`api.ogt` line 121</sub>
+
+```ogt
+column Vector2 {
+  doc "A Vector2 field: x, y interleaved."
+  array Float32Array
+  stride 2
+  value Vector2
+}
+```
+
+<sub>`api.ogt` line 128</sub>
+
+```ogt
+column Vector3 {
+  doc "A Vector3 field: x, y, z interleaved."
+  array Float32Array
+  stride 3
+  value Vector3
+}
+```
+
+<sub>`api.ogt` line 135</sub>
+
+```ogt
+column Quaternion {
+  doc "A Quaternion field: x, y, z, w interleaved."
+  array Float32Array
+  stride 4
+  value Quaternion
+}
+```
+
+<sub>`api.ogt` line 142</sub>
+
+```ogt
+column Matrix4 {
+  doc "A Matrix4 field: sixteen column-major elements per entity."
+  array Float32Array
+  stride 16
+  value Matrix4
+}
+```
+
+<sub>`api.ogt` line 149</sub>
+
+```ogt
+column Color {
+  doc "A Color field: r, g, b interleaved."
+  array Float32Array
+  stride 3
+  value Color
+}
+```
+
+<sub>`api.ogt` line 156</sub>

@@ -221,6 +221,8 @@ export interface GameDescIn {
   readonly commands?: Readonly<Record<string, Function>>;
   readonly maxCatchUp?: number;
   readonly facts?: Function | null;
+  readonly start?: Function | null;
+  readonly render?: Readonly<Record<string, unknown>>;
 }
 
 export function defineGame(desc: GameDescIn = {}): GameToken {
@@ -228,6 +230,7 @@ export function defineGame(desc: GameDescIn = {}): GameToken {
   const commands: Record<string, number> = {};
   for (const [name, fn] of Object.entries(desc.commands ?? {})) commands[name] = callback(fn);
   const facts = desc.facts ? callback(desc.facts) : null;
+  const start = desc.start ? callback(desc.start) : null;
   const token = Object.freeze({ tick: desc.tick ?? 60, systems: Object.freeze(list) });
   // Built when the host takes it, so the systems' host handles are known.
   declare((a) => {
@@ -241,6 +244,8 @@ export function defineGame(desc: GameDescIn = {}): GameToken {
       commands,
       maxCatchUp: desc.maxCatchUp ?? 4,
       facts,
+      start,
+      render: desc.render ?? {},
     });
     gameHandles.set(token, a.og_game_game(wire));
   });
@@ -607,6 +612,31 @@ const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed, payloa
 export interface CreateOptions {
   /** Overrides GameDesc.seed (a replay seed). */
   readonly seed?: number;
+  /** The project directory (native) or URL base (web) whose `cooked/` bundle the engine opens before the first tick. */
+  readonly root?: string;
+}
+
+/** A file the command channel produced (`og_engine_take_outputs`). */
+export interface CommandOutput {
+  readonly tick: number;
+  readonly action: string;
+  /** Where to write it: the script's path, or `<action>-<tick>.<ext>`. */
+  readonly file: string;
+  readonly kind: "png" | "json" | "text";
+  /** Base64 for a PNG, the text otherwise. */
+  readonly data: string;
+}
+
+/** One log line (`og_engine_take_log`). */
+export interface LogLine {
+  readonly tick: number;
+  readonly warning: boolean;
+  readonly text: string;
+}
+
+/** Start a new bundle's declarations before importing it again (hot reload). */
+export function beginBundle(): void {
+  abi().og_host_begin_bundle();
 }
 
 /** A running engine: one world, its probe, and the host's lifecycle calls. */
@@ -640,11 +670,28 @@ export class Engine {
     return answer;
   }
 
-  /** One display frame: tick by the wall clock, then render. */
-  frame(elapsedMs: number): { ok: boolean; ticks?: number; tick?: number; rendered?: boolean; reason?: string } {
+  /** One display frame: tick by the wall clock (through the probe: due command steps run), then render. */
+  frame(elapsedMs: number): { ok: boolean; ticks?: number; tick?: number; rendered?: boolean; paused?: boolean; quit?: boolean; reason?: string } {
     const answer = parse<{ ok: boolean; ticks?: number }>(abi().og_engine_frame(this.id, elapsedMs));
-    if (answer.ticks) epoch++;
+    epoch++;
     return answer;
+  }
+
+  /** The probe's JSON-RPC 2.0 entry: one request frame in, its answer frame out. */
+  call(frame: string): string {
+    const answer = abi().og_engine_call(this.id, frame);
+    epoch++;
+    return answer;
+  }
+
+  /** Files the command channel produced since the last call. */
+  takeOutputs(): CommandOutput[] {
+    return parse(abi().og_engine_take_outputs(this.id));
+  }
+
+  /** Log lines since the last call. */
+  takeLog(): LogLine[] {
+    return parse(abi().og_engine_take_log(this.id));
   }
 
   /** The world hash, hex: equal hashes mean equal worlds. */
@@ -712,12 +759,21 @@ export const render = Object.freeze({
   updateMaterial: (world: WorldImpl, material: number, desc?: unknown) =>
     parse(abi().og_render_update_material(world.id, material, json(desc))),
   capabilities: (world: WorldImpl) => parse(abi().og_render_capabilities(world.id)),
+  text: (world: WorldImpl, desc?: unknown) => parse(abi().og_render_text(world.id, json(desc))),
 });
 
 export const load = Object.freeze({
+  bundle: (world: WorldImpl, path: string) => parse(abi().og_load_bundle(world.id, path)),
+  bundleInfo: (world: WorldImpl, asset: number) => parse(abi().og_load_bundle_info(world.id, asset)),
+  defaultBundle: (world: WorldImpl) => parse(abi().og_load_default_bundle(world.id)),
   gltf: (world: WorldImpl, path: string, desc?: unknown) => parse(abi().og_load_gltf(world.id, path, json(desc))),
   scene: (world: WorldImpl, path: string) => parse(abi().og_load_scene(world.id, path)),
+  font: (world: WorldImpl, path: string) => parse(abi().og_load_font(world.id, path)),
+  fontInfo: (world: WorldImpl, font: number) => parse(abi().og_load_font_info(world.id, font)),
+  sound: (world: WorldImpl, path: string) => parse(abi().og_load_sound(world.id, path)),
+  soundInfo: (world: WorldImpl, sound: number) => parse(abi().og_load_sound_info(world.id, sound)),
   status: (world: WorldImpl, asset: number) => abi().og_load_status(world.id, asset),
+  error: (world: WorldImpl, asset: number) => parse(abi().og_load_error(world.id, asset)),
   gltfInfo: (world: WorldImpl, asset: number) => parse(abi().og_load_gltf_info(world.id, asset)),
 });
 
@@ -725,4 +781,5 @@ export const commands = Object.freeze({
   register: registerCommand,
   parse: (script: string) => parse(abi().og_commands_parse(script)),
   schedule: (world: WorldImpl, script: string) => parse(abi().og_commands_schedule(world.id, script)),
+  help: (world: WorldImpl) => parse(abi().og_commands_help(world.id)),
 });

@@ -12,6 +12,10 @@ pub struct Api {
     pub doc: Vec<String>,
     pub units: Vec<Unit>,
     pub modules: Vec<Module>,
+    /// The IDL text, one entry per line, so generators can quote a
+    /// declaration exactly as written (the wiki). Empty when the model was
+    /// not read from text.
+    pub source: Vec<String>,
 }
 
 #[derive(Debug, Clone)]

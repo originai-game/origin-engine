@@ -439,7 +439,7 @@
             },
             {
               "name": "instantiate",
-              "doc": "Spawn a loaded scene or glTF asset into the world as a tree of entities.",
+              "doc": "Spawn a loaded scene or glTF asset into the world: a root entity from the desc, then (for a scene) every scene entity under it with its components and names, or (for a glTF) a Model on the root.\nScene entity names must be free: a name already in use refuses the whole instantiation before anything spawns.",
               "params": [
                 {
                   "name": "asset",
@@ -710,6 +710,19 @@
             }
           ],
           "returns": "Json"
+        },
+        {
+          "name": "StartFn",
+          "doc": "The game's setup: called once before the first tick, after GameDesc.scene has spawned. Spawn, insert, load and set resources here; systems then only read and write their views.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "Void"
         }
       ]
     },
@@ -982,11 +995,25 @@
         "Material",
         "Side",
         "RenderTier",
+        "Antialias",
+        "RenderOptions",
         "StandardMaterialDesc",
         "Mesh",
+        "DirectionalLight",
+        "PointLight",
+        "SpotLight",
+        "RenderSettings",
+        "TextDesc",
         "RenderCapabilities"
       ],
-      "consts": [],
+      "consts": [
+        {
+          "name": "MAX_LIGHTS",
+          "type": "u32",
+          "value": 8,
+          "doc": "The most point and spot lights one frame draws."
+        }
+      ],
       "functions": [
         {
           "name": "standardMaterial",
@@ -1048,6 +1075,27 @@
           ],
           "returns": "RenderCapabilities",
           "publish": true
+        },
+        {
+          "name": "text",
+          "doc": "Draw text this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the text should show. Multi-page fonts are drawn page by page with one layout.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer draws it."
+            },
+            {
+              "name": "desc",
+              "type": "TextDesc",
+              "optional": true,
+              "doc": "The font, text, placement and colour."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for a dead font.",
+          "publish": true
         }
       ],
       "interfaces": [],
@@ -1055,22 +1103,29 @@
     },
     {
       "name": "load",
-      "doc": "Asset loading. Paths are relative to the project and read cooked output; a load returns a handle at once and completes at a tick boundary.\nUnder og run and in replays every load completes before the next tick, so the tick a load lands on is deterministic.",
+      "doc": "Asset loading from cooked output: `og cook` turns assets/ into cooked/ (.ogb blobs and the manifest cooked/.cook.ogt), and the runtime reads only cooked/.\nPaths are asset ids: the path under assets/ (`models/ship.glb`, `scenes/main.ogt`); an `assets/` prefix is accepted. Every blob is checked against the manifest's type, schema version and cook stamp.\nThe game's bundle (`cooked`) is opened before the first tick and GameDesc.scene is spawned then. Loads from an open bundle complete at once on both hosts (the web host fetches the bundle's files before the engine starts); only og.load.bundle of another bundle can be pending, and it completes at a tick boundary.",
       "place": "namespace",
       "publish": true,
       "types": [
         "Asset",
+        "Font",
+        "Sound",
+        "Asset",
         "LoadStatus",
         "GltfDesc",
         "GltfInfo",
+        "BundleInfo",
+        "FontInfo",
+        "SoundInfo",
+        "Model",
         "AssetReady",
         "AssetFailed"
       ],
       "consts": [],
       "functions": [
         {
-          "name": "gltf",
-          "doc": "Load a glTF (.gltf or .glb) through the cook, as three.js GLTFLoader.load.",
+          "name": "bundle",
+          "doc": "Open another cooked bundle (the game's own `cooked` is open before the first tick). Its loads read through it once it is ready.",
           "params": [
             {
               "name": "world",
@@ -1082,7 +1137,64 @@
               "name": "path",
               "type": "String",
               "optional": false,
-              "doc": "The source path under assets/, such as `assets/ship.glb`."
+              "doc": "The cooked directory, relative to the project (or the page), such as `dlc/cooked`."
+            }
+          ],
+          "returns": "Result<Asset>",
+          "returnsDoc": "The bundle's handle: pending until its manifest is read, then ready or failed.",
+          "publish": true
+        },
+        {
+          "name": "bundleInfo",
+          "doc": "What an open bundle holds.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world that owns the asset."
+            },
+            {
+              "name": "asset",
+              "type": "Asset",
+              "optional": false,
+              "doc": "A bundle handle; the game's own bundle is og.load.bundle's first answer, also given by `defaultBundle`."
+            }
+          ],
+          "returns": "Result<BundleInfo>",
+          "returnsDoc": "Refused for a pending, failed or non-bundle asset.",
+          "publish": true
+        },
+        {
+          "name": "defaultBundle",
+          "doc": "The game's own bundle, opened before the first tick from `cooked/`.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world that owns the asset."
+            }
+          ],
+          "returns": "Result<Asset>",
+          "returnsDoc": "Refused when cooked/ was missing or unreadable (run og cook); the reason names the path.",
+          "publish": true
+        },
+        {
+          "name": "gltf",
+          "doc": "Load a cooked glTF (.gltf or .glb), as three.js GLTFLoader.load: its meshes, materials and textures join the renderer once.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world that owns the asset."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The asset id, such as `models/ship.glb`."
             },
             {
               "name": "desc",
@@ -1092,12 +1204,12 @@
             }
           ],
           "returns": "Result<Asset>",
-          "returnsDoc": "The handle, or why it was refused (an uncooked path, a cook stamp mismatch).",
+          "returnsDoc": "The handle, or why it was refused (an uncooked path, a cook stamp mismatch, no open bundle).",
           "publish": true
         },
         {
           "name": "scene",
-          "doc": "Load a scene (.ogt).",
+          "doc": "Load a cooked scene (.ogt). world.instantiate spawns its entities: depth first, parents before children, each component table matched to a registered component by its reflected name (`Transform` is og.Transform) and migrated field by field; a field the scene lacks keeps its default, one the component lacks is dropped with a warning.",
           "params": [
             {
               "name": "world",
@@ -1109,10 +1221,92 @@
               "name": "path",
               "type": "String",
               "optional": false,
-              "doc": "The scene path, such as `scenes/main.ogt`."
+              "doc": "The scene's asset id, such as `scenes/main.ogt`."
             }
           ],
           "returns": "Result<Asset>",
+          "publish": true
+        },
+        {
+          "name": "font",
+          "doc": "Load a cooked MSDF font for og.render.text.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world that owns the font."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The font's asset id, such as `fonts/NotoSansSC-Regular-subset.ttf`."
+            }
+          ],
+          "returns": "Result<Font>",
+          "publish": true
+        },
+        {
+          "name": "fontInfo",
+          "doc": "A loaded font's metrics.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world that owns the font."
+            },
+            {
+              "name": "font",
+              "type": "Font",
+              "optional": false,
+              "doc": "The font."
+            }
+          ],
+          "returns": "Result<FontInfo>",
+          "returnsDoc": "Refused for a dead font.",
+          "publish": true
+        },
+        {
+          "name": "sound",
+          "doc": "Load a cooked sound for the audio module.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world that owns the sound."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The sound's asset id, such as `audio/blip.wav`."
+            }
+          ],
+          "returns": "Result<Sound>",
+          "publish": true
+        },
+        {
+          "name": "soundInfo",
+          "doc": "A loaded sound's format and length.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world that owns the sound."
+            },
+            {
+              "name": "sound",
+              "type": "Sound",
+              "optional": false,
+              "doc": "The sound."
+            }
+          ],
+          "returns": "Result<SoundInfo>",
+          "returnsDoc": "Refused for a dead sound.",
           "publish": true
         },
         {
@@ -1133,6 +1327,27 @@
             }
           ],
           "returns": "LoadStatus",
+          "publish": true
+        },
+        {
+          "name": "error",
+          "doc": "Why a load failed.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world that owns the asset."
+            },
+            {
+              "name": "asset",
+              "type": "Asset",
+              "optional": false,
+              "doc": "The handle."
+            }
+          ],
+          "returns": "Option<String>",
+          "returnsDoc": "The reason, naming the fix; null unless the load failed.",
           "publish": true
         },
         {
@@ -1169,6 +1384,7 @@
         "CoreAction",
         "CommandDesc",
         "CommandStep",
+        "CommandInfo",
         "CommandsReport"
       ],
       "consts": [],
@@ -1213,6 +1429,20 @@
           ],
           "returns": "Result<List<CommandStep>>",
           "returnsDoc": "The steps, or the first malformed step.",
+          "publish": false
+        },
+        {
+          "name": "help",
+          "doc": "Every action the channel knows: core actions in CoreAction order, then registered ones by name.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose channel is asked."
+            }
+          ],
+          "returns": "List<CommandInfo>",
           "publish": false
         },
         {
@@ -1518,7 +1748,7 @@
             },
             {
               "name": "capture",
-              "doc": "The frame rendered at the current tick, read back offscreen.",
+              "doc": "The frame of the current tick, rendered offscreen and read back as a PNG.\nSize rule: width and height are both 0 (or absent), which is the render target's size, or both 1 to 4096, which renders that size with the same camera (the aspect follows the requested size); one zero and one not is a malformed call.\nOn the web the readback is asynchronous: through the request ring the answer arrives when the copy completes; a synchronous in-page call answers null on the first tick and the frame from then on (a capture is requested on tick N and answered on N + 1).",
               "params": [
                 {
                   "name": "width",
@@ -2058,6 +2288,23 @@
           ],
           "description": "The game's own facts for the probe's state().",
           "default": null
+        },
+        "start": {
+          "anyOf": [
+            {
+              "x-og-type": "StartFn"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Called once before the first tick, after the first scene spawned.",
+          "default": null
+        },
+        "render": {
+          "$ref": "#/$defs/RenderOptions",
+          "description": "How the renderer is created: antialiasing and shadow map size. Read once, when the host attaches the renderer.",
+          "default": {}
         }
       },
       "additionalProperties": false
@@ -2486,7 +2733,7 @@
     "Input": {
       "x-og-kind": "resource",
       "x-og-module": "input",
-      "description": "The input state at the start of this tick. Edges (pressed, released) last exactly one tick.",
+      "description": "The input state at the start of this tick (og-input's og.Input, version 2). Edges (pressed, released) last exactly one tick; read the state through the methods.\nKey sets are 128 bits over og-input's KEY_CODES (KeyboardEvent.code names): code i is bit i % 32 of word i / 32. Button masks: left 1, middle 2, right 4.",
       "type": "object",
       "properties": {
         "pointer": {
@@ -2501,7 +2748,7 @@
         },
         "pointerInside": {
           "type": "boolean",
-          "description": "Whether the pointer is over the play surface.",
+          "description": "Whether a pointer event has placed the pointer over the play surface.",
           "default": false,
           "readOnly": true
         },
@@ -2514,6 +2761,166 @@
           },
           "x-og-unit": "cssPx",
           "readOnly": true
+        },
+        "buttons": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Held pointer buttons, as a mask.",
+          "default": 0,
+          "readOnly": true
+        },
+        "buttonsPressed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Buttons that went down this tick.",
+          "default": 0,
+          "readOnly": true
+        },
+        "buttonsReleased": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Buttons that went up this tick.",
+          "default": 0,
+          "readOnly": true
+        },
+        "buttonsReleaseNext": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Buttons a click releases at the end of the next tick.",
+          "default": 0,
+          "readOnly": true
+        },
+        "keys0": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Held keys, word 0: codes 0 to 31 of KEY_CODES.",
+          "default": 0,
+          "readOnly": true
+        },
+        "keys1": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Held keys, word 1: codes 32 to 63 of KEY_CODES.",
+          "default": 0,
+          "readOnly": true
+        },
+        "keys2": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Held keys, word 2: codes 64 to 95 of KEY_CODES.",
+          "default": 0,
+          "readOnly": true
+        },
+        "keys3": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Held keys, word 3: codes 96 to 127 of KEY_CODES.",
+          "default": 0,
+          "readOnly": true
+        },
+        "pressed0": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Keys that went down this tick, word 0: codes 0 to 31 of KEY_CODES.",
+          "default": 0,
+          "readOnly": true
+        },
+        "pressed1": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Keys that went down this tick, word 1: codes 32 to 63 of KEY_CODES.",
+          "default": 0,
+          "readOnly": true
+        },
+        "pressed2": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Keys that went down this tick, word 2: codes 64 to 95 of KEY_CODES.",
+          "default": 0,
+          "readOnly": true
+        },
+        "pressed3": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Keys that went down this tick, word 3: codes 96 to 127 of KEY_CODES.",
+          "default": 0,
+          "readOnly": true
+        },
+        "released0": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Keys that went up this tick, word 0: codes 0 to 31 of KEY_CODES.",
+          "default": 0,
+          "readOnly": true
+        },
+        "released1": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Keys that went up this tick, word 1: codes 32 to 63 of KEY_CODES.",
+          "default": 0,
+          "readOnly": true
+        },
+        "released2": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Keys that went up this tick, word 2: codes 64 to 95 of KEY_CODES.",
+          "default": 0,
+          "readOnly": true
+        },
+        "released3": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Keys that went up this tick, word 3: codes 96 to 127 of KEY_CODES.",
+          "default": 0,
+          "readOnly": true
+        },
+        "releaseNext0": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Keys a press releases at the end of the next tick, word 0: codes 0 to 31 of KEY_CODES.",
+          "default": 0,
+          "readOnly": true
+        },
+        "releaseNext1": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Keys a press releases at the end of the next tick, word 1: codes 32 to 63 of KEY_CODES.",
+          "default": 0,
+          "readOnly": true
+        },
+        "releaseNext2": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Keys a press releases at the end of the next tick, word 2: codes 64 to 95 of KEY_CODES.",
+          "default": 0,
+          "readOnly": true
+        },
+        "releaseNext3": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Keys a press releases at the end of the next tick, word 3: codes 96 to 127 of KEY_CODES.",
+          "default": 0,
+          "readOnly": true
         }
       },
       "additionalProperties": false
@@ -2521,7 +2928,7 @@
     "KeyDown": {
       "x-og-kind": "event",
       "x-og-module": "input",
-      "description": "A key went down.",
+      "description": "A key went down (a down for a held key is a repeat and sets no edge). Input events are sent between ticks and read by the next tick's systems.",
       "type": "object",
       "properties": {
         "key": {
@@ -2795,10 +3202,51 @@
         "none": "No renderer: frames are not produced and capture refuses."
       }
     },
+    "Antialias": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "Antialiasing, as og-render's Antialias. RenderCapabilities.antialias reports what the device resolved.",
+      "type": "string",
+      "enum": [
+        "tier",
+        "off",
+        "msaa4",
+        "taa"
+      ],
+      "x-og-variants": {
+        "tier": "The tier's method: TAA on the full tier (WebGPU, Metal, Vulkan), 4x MSAA on WebGL2.",
+        "off": "One sample per pixel.",
+        "msaa4": "4x MSAA on any tier: sharp sprites and text, no temporal blur; off where the HDR format cannot be multisampled.",
+        "taa": "Temporal antialiasing on any tier: a sub-pixel jitter per frame and a reprojected history; converges over about eight frames."
+      }
+    },
+    "RenderOptions": {
+      "x-og-kind": "desc",
+      "x-og-module": "render",
+      "description": "How the renderer is created for a game (GameDesc.render). The host reads it once, when it attaches the renderer.",
+      "type": "object",
+      "properties": {
+        "antialias": {
+          "$ref": "#/$defs/Antialias",
+          "description": "The antialiasing method.",
+          "default": "tier"
+        },
+        "shadowMapSize": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The side of each of the directional light's three cascade maps, in texels; smaller saves memory on phones (three 2048 maps are 64 MB).",
+          "default": 2048,
+          "minimum": 256,
+          "maximum": 4096
+        }
+      },
+      "additionalProperties": false
+    },
     "StandardMaterialDesc": {
       "x-og-kind": "desc",
       "x-og-module": "render",
-      "description": "A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names.",
+      "description": "A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names.\nMapping to the renderer (og-render Material): color and opacity are the base colour and its alpha; map the base colour texture; metalness and roughness the factors; metalnessMap and roughnessMap are one glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; normalMap the normal texture; emissive times emissiveIntensity the emitted colour, emissiveMap its texture; alphaTest above 0 is alpha masking with that cutoff.\nAccepted and kept but not drawn yet: aoMap, transparent (blending), side (meshes draw front faces), flatShading and envMapIntensity; the renderer's own phase-2 list owns them.",
       "type": "object",
       "properties": {
         "color": {
@@ -2952,7 +3400,7 @@
     "Mesh": {
       "x-og-kind": "component",
       "x-og-module": "render",
-      "description": "Draws a geometry with a material at the entity's MatrixWorld, as a three.js Mesh.",
+      "description": "Draws a geometry with a material at the entity's MatrixWorld, as a three.js Mesh.\nThe material is a handle from og.render.standardMaterial or from a loaded glTF (GltfInfo.materials); its StandardMaterialDesc maps to the renderer as that struct's docs say.",
       "type": "object",
       "properties": {
         "geometry": {
@@ -2983,6 +3431,263 @@
       },
       "additionalProperties": false
     },
+    "DirectionalLight": {
+      "x-og-kind": "component",
+      "x-og-module": "render",
+      "description": "The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). The first one found is drawn, with three shadow cascades.\nWithout one, the renderer's default sun (from above and to the side, intensity 3) lights the scene.",
+      "type": "object",
+      "properties": {
+        "color": {
+          "$ref": "#/$defs/Color",
+          "description": "The light's linear colour.",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "intensity": {
+          "type": "number",
+          "description": "The radiance multiplier, as three.js DirectionalLight.intensity.",
+          "default": 3,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "castShadow": {
+          "type": "boolean",
+          "description": "Cast shadows through three cascades, as three.js Light.castShadow.",
+          "default": true
+        },
+        "shadowDistance": {
+          "type": "number",
+          "description": "How far from the camera shadows reach; they fade over the last tenth. Smaller is sharper.",
+          "default": 200,
+          "minimum": 1,
+          "x-og-unit": "m"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PointLight": {
+      "x-og-kind": "component",
+      "x-og-module": "render",
+      "description": "A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance.\nUp to MAX_LIGHTS point and spot lights are drawn per frame (the rest are counted, not drawn); the first two with castShadow get cube shadows.",
+      "type": "object",
+      "properties": {
+        "color": {
+          "$ref": "#/$defs/Color",
+          "description": "The light's linear colour.",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "intensity": {
+          "type": "number",
+          "description": "The radiance at one metre.",
+          "default": 10,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "distance": {
+          "type": "number",
+          "description": "Where the light reaches zero, as three.js PointLight.distance (never infinite here).",
+          "default": 10,
+          "minimum": 0.01,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "castShadow": {
+          "type": "boolean",
+          "description": "Cast cube shadows.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "SpotLight": {
+      "x-og-kind": "component",
+      "x-og-module": "render",
+      "description": "A cone of light along the entity's local -Z, as three.js SpotLight.",
+      "type": "object",
+      "properties": {
+        "color": {
+          "$ref": "#/$defs/Color",
+          "description": "The light's linear colour.",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "intensity": {
+          "type": "number",
+          "description": "The radiance at one metre on the axis.",
+          "default": 10,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "distance": {
+          "type": "number",
+          "description": "Where the light reaches zero.",
+          "default": 10,
+          "minimum": 0.01,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "angle": {
+          "type": "number",
+          "description": "The half-angle of the outer cone, as three.js SpotLight.angle.",
+          "default": 0.5236,
+          "minimum": 0,
+          "maximum": 1.5708,
+          "x-og-unit": "rad",
+          "x-og-tunable": true
+        },
+        "penumbra": {
+          "type": "number",
+          "description": "The fraction of the cone over which the light fades out, as three.js SpotLight.penumbra.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "castShadow": {
+          "type": "boolean",
+          "description": "Cast a shadow map.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "RenderSettings": {
+      "x-og-kind": "resource",
+      "x-og-module": "render",
+      "description": "The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.",
+      "type": "object",
+      "properties": {
+        "environmentIntensity": {
+          "type": "number",
+          "description": "The strength of the image-based ambient light from the procedural sky.",
+          "default": 0.55,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "sky": {
+          "type": "boolean",
+          "description": "Draw the procedural sky behind the scene instead of Camera.background.",
+          "default": false
+        },
+        "bloom": {
+          "type": "boolean",
+          "description": "Light above the threshold bleeds into its surroundings.",
+          "default": false
+        },
+        "bloomThreshold": {
+          "type": "number",
+          "description": "Brightness after exposure where bloom starts; 1 is display white.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "bloomKnee": {
+          "type": "number",
+          "description": "Softens the threshold over threshold plus or minus knee; 0 is a hard cut.",
+          "default": 0.5,
+          "minimum": 0
+        },
+        "bloomIntensity": {
+          "type": "number",
+          "description": "How much of the blurred light is added back.",
+          "default": 0.6,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "autoExposure": {
+          "type": "boolean",
+          "description": "Meter every frame to middle grey (deterministic: the current frame only), then apply Camera.exposure as compensation.",
+          "default": false
+        },
+        "toneMapped": {
+          "type": "boolean",
+          "description": "ACES tone mapping; false clamps, so 2D colours come out exactly as authored at exposure 1.",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "TextDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "render",
+      "description": "A line or block of MSDF text in the world's xy plane facing +z, drawn this frame only (immediate mode: submit it every tick it should show).",
+      "type": "object",
+      "properties": {
+        "font": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Font"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The font from og.load.font; null draws nothing.",
+          "default": null
+        },
+        "text": {
+          "type": "string",
+          "description": "The text; `\\n` starts a new line.",
+          "default": ""
+        },
+        "position": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The baseline origin of the first line.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "size": {
+          "type": "number",
+          "description": "The em size in world units.",
+          "default": 1,
+          "minimum": 0
+        },
+        "rotation": {
+          "type": "number",
+          "description": "Rotation about +z.",
+          "default": 0,
+          "x-og-unit": "rad"
+        },
+        "color": {
+          "$ref": "#/$defs/Color",
+          "description": "The linear colour.",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "opacity": {
+          "type": "number",
+          "description": "The alpha.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "layer": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Draw order among sprites and text; higher draws on top.",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
     "RenderCapabilities": {
       "x-og-kind": "struct",
       "x-og-module": "render",
@@ -2997,11 +3702,21 @@
           "type": "boolean",
           "description": "Whether compute passes run (GPU culling, GPU particles)."
         },
+        "antialias": {
+          "$ref": "#/$defs/Antialias",
+          "description": "The antialiasing the device resolved RenderOptions.antialias to."
+        },
+        "maxLights": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many point and spot lights one frame draws."
+        },
         "maxShadowedLights": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "How many lights may cast shadows."
+          "description": "How many point and spot lights may cast shadows."
         },
         "width": {
           "type": "integer",
@@ -3019,6 +3734,8 @@
       "required": [
         "tier",
         "compute",
+        "antialias",
+        "maxLights",
         "maxShadowedLights",
         "width",
         "height"
@@ -3028,7 +3745,21 @@
     "Asset": {
       "x-og-kind": "handle",
       "x-og-module": "load",
-      "description": "A loaded scene or glTF asset.",
+      "description": "A loaded bundle, scene or glTF asset.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "Font": {
+      "x-og-kind": "handle",
+      "x-og-module": "load",
+      "description": "A cooked MSDF font: its glyph table and one or more atlas pages.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "Sound": {
+      "x-og-kind": "handle",
+      "x-og-module": "load",
+      "description": "A cooked sound: QOA-encoded PCM the audio module plays.",
       "type": "integer",
       "minimum": 0
     },
@@ -3045,7 +3776,7 @@
       "x-og-variants": {
         "pending": "Still loading.",
         "ready": "Loaded; it can be instantiated.",
-        "failed": "Failed; the AssetFailed event carries the reason."
+        "failed": "Failed; og.load.error gives the reason."
       }
     },
     "GltfDesc": {
@@ -3098,14 +3829,14 @@
           "items": {
             "$ref": "#/$defs/Material"
           },
-          "description": "Its materials, in glTF order."
+          "description": "Its materials, in glTF order, then the default material."
         },
         "animations": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "Its animation clip names."
+          "description": "Its animation clip names (the cook counts clips and does not cook them yet, so this is empty)."
         }
       },
       "required": [
@@ -3114,6 +3845,141 @@
         "materials",
         "animations"
       ],
+      "additionalProperties": false
+    },
+    "BundleInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "load",
+      "description": "An open cooked bundle.",
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "The cooked directory it was opened from."
+        },
+        "assets": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Source assets it holds."
+        },
+        "outputs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Cooked outputs (blobs) it holds."
+        }
+      },
+      "required": [
+        "path",
+        "assets",
+        "outputs"
+      ],
+      "additionalProperties": false
+    },
+    "FontInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "load",
+      "description": "A loaded font's metrics, in em units unless stated.",
+      "type": "object",
+      "properties": {
+        "glyphs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Glyphs cooked into it."
+        },
+        "pages": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Atlas pages; the renderer draws one page per pass with one shared layout."
+        },
+        "emPx": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Atlas pixels per em."
+        },
+        "pxRange": {
+          "type": "number",
+          "description": "The distance range in atlas pixels."
+        },
+        "ascender": {
+          "type": "number",
+          "description": "Ascender above the baseline."
+        },
+        "descender": {
+          "type": "number",
+          "description": "Descender below the baseline (negative)."
+        },
+        "lineHeight": {
+          "type": "number",
+          "description": "Ascender minus descender plus the line gap."
+        }
+      },
+      "required": [
+        "glyphs",
+        "pages",
+        "emPx",
+        "pxRange",
+        "ascender",
+        "descender",
+        "lineHeight"
+      ],
+      "additionalProperties": false
+    },
+    "SoundInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "load",
+      "description": "A loaded sound.",
+      "type": "object",
+      "properties": {
+        "rate": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Samples per second.",
+          "x-og-unit": "hz"
+        },
+        "channels": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Interleaved channels."
+        },
+        "frames": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Samples per channel."
+        },
+        "seconds": {
+          "type": "number",
+          "description": "Its length.",
+          "x-og-unit": "s"
+        }
+      },
+      "required": [
+        "rate",
+        "channels",
+        "frames",
+        "seconds"
+      ],
+      "additionalProperties": false
+    },
+    "Model": {
+      "x-og-kind": "component",
+      "x-og-module": "load",
+      "description": "Draws a loaded glTF's default scene at the entity's world transform: every mesh node with its glTF material. Scene entities with a `model` line get one; world.instantiate of a glTF asset spawns one.",
+      "type": "object",
+      "properties": {
+        "asset": {
+          "$ref": "#/$defs/Asset",
+          "description": "The glTF asset.",
+          "default": 0
+        }
+      },
       "additionalProperties": false
     },
     "AssetReady": {
@@ -3189,7 +4055,8 @@
         "pause",
         "resume",
         "advance",
-        "quit"
+        "quit",
+        "help"
       ],
       "x-og-variants": {
         "screenshot": "`screenshot[:path][:full|:N]`: capture the next frame.",
@@ -3212,7 +4079,8 @@
         "pause": "`pause`: hold the clock; advance still steps.",
         "resume": "`resume`: release the clock.",
         "advance": "`advance:<ticks>`: take fixed steps.",
-        "quit": "`quit`: exit."
+        "quit": "`quit`: exit.",
+        "help": "`help`: list every action the channel knows, core and registered."
       }
     },
     "CommandDesc": {
@@ -3261,6 +4129,37 @@
         "at",
         "action",
         "args"
+      ],
+      "additionalProperties": false
+    },
+    "CommandInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "commands",
+      "description": "One action as help lists it.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The action name."
+        },
+        "usage": {
+          "type": "string",
+          "description": "Its argument form, such as `screenshot[:path][:full|:N]`."
+        },
+        "doc": {
+          "type": "string",
+          "description": "One sentence on what it does."
+        },
+        "core": {
+          "type": "boolean",
+          "description": "Shipped with the engine (true) or registered by a module or a game."
+        }
+      },
+      "required": [
+        "name",
+        "usage",
+        "doc",
+        "core"
       ],
       "additionalProperties": false
     },
@@ -3761,6 +4660,13 @@
             "type": "string"
           },
           "description": "The probe members this build serves."
+        },
+        "modules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The engine modules this build carries beyond the core (`physics`, `audio`, `ui`, `cook`), so a client knows which members do something."
         }
       },
       "required": [
@@ -3771,7 +4677,8 @@
         "ticksPerSecond",
         "tier",
         "build",
-        "members"
+        "members",
+        "modules"
       ],
       "additionalProperties": false
     },
@@ -4068,7 +4975,7 @@
     "SystemDump": {
       "x-og-kind": "struct",
       "x-og-module": "probe",
-      "description": "One system.",
+      "description": "One system. The engine fills reads, writes and matched for every system the game declared; ms is null because the probe reads no clock (state().timings has the tick's time).",
       "type": "object",
       "properties": {
         "name": {
@@ -4076,28 +4983,56 @@
           "description": "Its name."
         },
         "matched": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 4294967295,
-          "description": "Entities its query matched on the last tick."
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Entities its queries match now; null for a system the host did not declare to the probe."
         },
         "reads": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "What it declared it reads."
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What it declared it reads; null when undeclared."
         },
         "writes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "What it declared it writes."
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What it declared it writes; null when undeclared."
         },
         "ms": {
-          "type": "number",
-          "description": "Time it took on the last tick.",
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Time it took on the last tick; null when not measured.",
           "x-og-unit": "ms"
         }
       },

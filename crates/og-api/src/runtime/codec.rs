@@ -21,6 +21,11 @@ pub enum Kind {
     Entity,
     Geometry,
     Material,
+    Asset,
+    /// Bounded UTF-8 text (events only): str64 or str256.
+    Str,
+    /// An enum: a u32 index into the field's variants.
+    Enum,
 }
 
 impl Kind {
@@ -39,6 +44,8 @@ impl Kind {
             "Entity" => Kind::Entity,
             "Geometry" => Kind::Geometry,
             "Material" => Kind::Material,
+            "Asset" => Kind::Asset,
+            "String" => Kind::Str,
             _ => return None,
         })
     }
@@ -54,10 +61,9 @@ impl Kind {
         }
     }
 
-    /// The og-core field type this kind is stored as. A component's columns
-    /// are viewed as typed arrays, so a kind og-core cannot store as the IDL
-    /// declares it is refused there; a resource is only read and written as
-    /// a value, so a `bool` is stored as a `u32` 0 or 1.
+    /// The og-core field type this kind is stored as: a `bool` is one byte
+    /// (a `Uint8Array` column), a `Matrix4` sixteen f32, handles a `u64`, an
+    /// event's text a `str256`, an enum a `u32` index.
     pub fn field_type(self, viewed: bool) -> Result<FieldType, String> {
         Ok(match self {
             Kind::F32 => FieldType::F32,
@@ -67,15 +73,31 @@ impl Kind {
             Kind::Vector2 => FieldType::Vec2,
             Kind::Vector3 | Kind::Color => FieldType::Vec3,
             Kind::Quaternion => FieldType::Quat,
-            Kind::Entity | Kind::Geometry | Kind::Material => FieldType::U64,
-            Kind::Bool if !viewed => FieldType::U32,
-            Kind::Bool => {
-                return Err("a bool column is a Uint8Array of one byte per entity, and og-core has no one-byte field type yet (FieldType::Bool is requested from Core); use a u32 field of 0 and 1 meanwhile".into())
-            }
-            Kind::Matrix4 => {
-                return Err("a Matrix4 column is sixteen f32 per entity, and og-core has no 4x4 field type yet (FieldType::Mat4 is requested from Core)".into())
-            }
+            Kind::Entity | Kind::Geometry | Kind::Material | Kind::Asset => FieldType::U64,
+            Kind::Bool => FieldType::Bool,
+            Kind::Matrix4 => FieldType::Mat4,
+            Kind::Enum => FieldType::Enum,
+            Kind::Str if !viewed => FieldType::Str256,
+            Kind::Str => return Err("text is carried by events only; a component or resource field cannot hold a string".into()),
         })
+    }
+
+    /// The kind a field of a registered og-core schema is read as.
+    pub fn of(ty: FieldType) -> Kind {
+        match ty {
+            FieldType::F32 => Kind::F32,
+            FieldType::F64 => Kind::F64,
+            FieldType::I32 => Kind::I32,
+            FieldType::U32 => Kind::U32,
+            FieldType::I64 | FieldType::U64 => Kind::Entity,
+            FieldType::Vec2 => Kind::Vector2,
+            FieldType::Vec3 => Kind::Vector3,
+            FieldType::Vec4 | FieldType::Quat => Kind::Quaternion,
+            FieldType::Bool => Kind::Bool,
+            FieldType::Mat4 => Kind::Matrix4,
+            FieldType::Enum => Kind::Enum,
+            FieldType::Str64 | FieldType::Str256 => Kind::Str,
+        }
     }
 }
 
@@ -94,6 +116,8 @@ pub struct FieldLayout {
     pub unit: Option<String>,
     pub label: Option<String>,
     pub doc: String,
+    /// An enum field's variant names, in index order.
+    pub variants: Vec<String>,
 }
 
 /// What a record is registered as.
@@ -168,6 +192,7 @@ impl Layout {
                 unit: opt_str("unit"),
                 label: opt_str("label"),
                 doc: opt_str("doc").unwrap_or_default(),
+                variants: Vec::new(),
             });
         }
         let layout = Layout {
@@ -211,6 +236,7 @@ impl Layout {
                 unit: None,
                 label: None,
                 doc: String::new(),
+                variants: Vec::new(),
             });
         }
         Ok(Layout {
@@ -218,6 +244,34 @@ impl Layout {
             kind,
             fields,
         })
+    }
+
+    /// The layout of a type another module registered (og-input's
+    /// `og.Input` and input events), read from the world's schema.
+    pub fn from_schema(schema: &Schema, kind: RecordKind) -> Layout {
+        Layout {
+            schema: schema.name.clone(),
+            kind,
+            fields: schema
+                .fields
+                .iter()
+                .map(|f| FieldLayout {
+                    name: f.name.clone(),
+                    kind: Kind::of(f.ty),
+                    ty: f.ty,
+                    default: Value::Null,
+                    readonly: true,
+                    tunable: f.tunable,
+                    min: f.min,
+                    max: f.max,
+                    step: None,
+                    unit: f.unit.clone(),
+                    label: f.label.clone(),
+                    doc: f.doc.clone(),
+                    variants: f.variants.clone(),
+                })
+                .collect(),
+        }
     }
 
     /// The og-core schema this layout registers as.
@@ -237,6 +291,7 @@ impl Layout {
                     s.min = f.min;
                     s.max = f.max;
                     s.tunable = f.tunable;
+                    s.variants = f.variants.clone();
                     s
                 })
                 .collect(),
@@ -343,12 +398,45 @@ fn encode_field(f: &FieldLayout, v: &Value, out: &mut Vec<u8>) -> Result<(), Str
             out.extend_from_slice(&(n as i32).to_le_bytes())
         }
         Kind::Bool => {
-            let b = v
-                .as_bool()
-                .ok_or_else(|| format!("expected true or false, got {v}"))?;
-            out.extend_from_slice(&u32::from(b).to_le_bytes())
+            let b = match v {
+                Value::Null => false,
+                v => v
+                    .as_bool()
+                    .ok_or_else(|| format!("expected true or false, got {v}"))?,
+            };
+            out.push(u8::from(b))
         }
-        Kind::Entity | Kind::Geometry | Kind::Material => {
+        Kind::Str => {
+            let text = match v {
+                Value::Null => "",
+                v => v
+                    .as_str()
+                    .ok_or_else(|| format!("expected a string, got {v}"))?,
+            };
+            let size = f.ty.size();
+            if text.len() > size || text.contains('\0') {
+                return Err(format!(
+                    "text of at most {size} UTF-8 bytes without NUL, got {} bytes",
+                    text.len()
+                ));
+            }
+            let mut b = text.as_bytes().to_vec();
+            b.resize(size, 0);
+            out.extend_from_slice(&b)
+        }
+        Kind::Enum => {
+            let index = match v {
+                Value::Null => 0,
+                Value::String(name) => f
+                    .variants
+                    .iter()
+                    .position(|x| x == name)
+                    .ok_or_else(|| format!("'{name}' is not one of {:?}", f.variants))?,
+                v => number(v, "an enum index")? as usize,
+            };
+            out.extend_from_slice(&(index as u32).to_le_bytes())
+        }
+        Kind::Entity | Kind::Geometry | Kind::Material | Kind::Asset => {
             let n = number(v, "a handle")?;
             if n.fract() != 0.0 || !(0.0..9_007_199_254_740_992.0).contains(&n) {
                 return Err(format!("{n} is not a handle"));
@@ -358,7 +446,16 @@ fn encode_field(f: &FieldLayout, v: &Value, out: &mut Vec<u8>) -> Result<(), Str
         Kind::Vector2 | Kind::Vector3 | Kind::Quaternion | Kind::Color => {
             f32_lanes(v, f.kind.keys(), out)?
         }
-        Kind::Matrix4 => return Err("Matrix4 fields cannot be stored yet".into()),
+        Kind::Matrix4 => {
+            let elements = v
+                .get("elements")
+                .and_then(Value::as_array)
+                .filter(|a| a.len() == 16)
+                .ok_or_else(|| format!("expected {{ elements: [16 numbers] }}, got {v}"))?;
+            for e in elements {
+                out.extend_from_slice(&(number(e, "an element")? as f32).to_le_bytes());
+            }
+        }
     }
     Ok(())
 }
@@ -373,8 +470,16 @@ fn decode_field(f: &FieldLayout, b: &[u8]) -> Value {
         Kind::F64 => json!(f64::from_le_bytes(b[..8].try_into().expect("8 bytes"))),
         Kind::U32 => json!(u32::from_le_bytes(b[..4].try_into().expect("4 bytes"))),
         Kind::I32 => json!(i32::from_le_bytes(b[..4].try_into().expect("4 bytes"))),
-        Kind::Bool => json!(u32::from_le_bytes(b[..4].try_into().expect("4 bytes")) != 0),
-        Kind::Entity | Kind::Geometry | Kind::Material => {
+        Kind::Bool => json!(b.iter().any(|x| *x != 0)),
+        Kind::Str => {
+            let end = b.iter().position(|x| *x == 0).unwrap_or(b.len());
+            json!(String::from_utf8_lossy(&b[..end]))
+        }
+        Kind::Enum => {
+            let i = u32::from_le_bytes(b[..4].try_into().expect("4 bytes")) as usize;
+            f.variants.get(i).map_or_else(|| json!(i), |n| json!(n))
+        }
+        Kind::Entity | Kind::Geometry | Kind::Material | Kind::Asset => {
             json!(u64::from_le_bytes(b[..8].try_into().expect("8 bytes")))
         }
         Kind::Vector2 | Kind::Vector3 | Kind::Quaternion | Kind::Color => {
@@ -384,6 +489,8 @@ fn decode_field(f: &FieldLayout, b: &[u8]) -> Value {
             }
             Value::Object(m)
         }
-        Kind::Matrix4 => Value::Null,
+        Kind::Matrix4 => {
+            json!({ "elements": (0..16).map(|i| f32_at(b, i) as f64).collect::<Vec<_>>() })
+        }
     }
 }

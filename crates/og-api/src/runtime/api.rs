@@ -1,12 +1,13 @@
 //! The binding symbols, host-neutral: each function is the body of the
 //! trait method of the same name (wire arguments in, wire answer out).
 
+use super::assets::{self, index_of, Payload, Status};
 use super::codec::{Layout, RecordKind};
 use super::engine::{
-    before_structural, call, declare_game, declare_system, engine, extract_scene, invalidate,
-    queued_structural, running, step, world_query_views, CommandDecl, Engine, QueryRec, DECL,
-    HANDLES,
+    before_structural, declare_game, declare_system, engine, queued_structural, running,
+    world_query_views, CommandDecl, Engine, QueryRec, DECL, HANDLES,
 };
+use super::probe::{self as rprobe, with_probe, NameOp};
 use super::{ok, ok_void, parse, refuse};
 use og_core::reflect::Reflect;
 use og_core::{Rng, Time};
@@ -124,18 +125,18 @@ pub fn og_world_get_tick(world: u32) -> u32 {
         .unwrap_or(0)
 }
 
-fn set_name(eng: &Engine, e: Entity, name: &str) {
+pub(crate) fn set_name(eng: &Engine, e: Entity, name: &str) {
     let mut st = eng.state.borrow_mut();
     st.names.insert(name.to_string(), e.to_bits());
     st.name_of.insert(e.to_bits(), name.to_string());
-    st.name_order.push(name.to_string());
+    st.name_ops.push(NameOp::Set(e, name.to_string()));
 }
 
 fn forget_name(eng: &Engine, e: Entity) {
     let mut st = eng.state.borrow_mut();
     if let Some(name) = st.name_of.remove(&e.to_bits()) {
         st.names.remove(&name);
-        st.name_order.retain(|n| *n != name);
+        st.name_ops.push(NameOp::Remove(name));
     }
 }
 
@@ -377,6 +378,12 @@ pub(crate) fn resource_value(eng: &Engine, name: &str) -> Result<Value, String> 
         if name == Rng::NAME {
             return ctx.resource::<Rng>().map(|r| rng_json(&r)).map_err(err);
         }
+        if name == "og.Input" {
+            return ctx
+                .resource::<og_probe::Input>()
+                .map(|i| input_json(&i))
+                .map_err(err);
+        }
         return Err(in_system(&format!("reading resource '{name}'")));
     }
     let w = eng.world()?;
@@ -385,6 +392,12 @@ pub(crate) fn resource_value(eng: &Engine, name: &str) -> Result<Value, String> 
     }
     if name == Rng::NAME {
         return w.resource::<Rng>().map(|r| rng_json(&r)).map_err(err);
+    }
+    if name == "og.Input" {
+        return w
+            .resource::<og_probe::Input>()
+            .map(|i| input_json(&i))
+            .map_err(err);
     }
     let layout = eng
         .state
@@ -494,8 +507,50 @@ pub fn og_world_emit(world: u32, event: String, payload: String) -> String {
     })())
 }
 
-pub fn og_world_instantiate(_world: u32, _asset: f64, _desc: Option<String>) -> String {
-    refuse("no asset is ever ready yet: loading lands with the cook (M4)")
+pub fn og_world_instantiate(world: u32, asset: f64, desc: Option<String>) -> String {
+    if running(world).is_some() {
+        return refuse(in_system("world.instantiate"));
+    }
+    result((|| {
+        let eng = engine(world)?;
+        let desc = parse(desc.as_deref())?;
+        let i = index_of(asset).ok_or_else(|| format!("{asset} is not an asset handle"))?;
+        let scene = {
+            let a = eng.assets.borrow();
+            let entry = a
+                .entries
+                .get(i)
+                .ok_or_else(|| format!("asset {asset} is not alive"))?;
+            match (&entry.status, &entry.payload) {
+                (Status::Pending, _) => {
+                    return Err(format!(
+                        "{} is still loading; instantiate it once og.load.status says ready",
+                        entry.path
+                    ))
+                }
+                (Status::Failed(e), _) => return Err(e.clone()),
+                (_, Payload::Scene(s)) => Some(s.clone()),
+                (_, Payload::Gltf { .. }) => None,
+                _ => return Err(format!("{} is a bundle, not a scene or a glTF", entry.path)),
+            }
+        };
+        let root = spawn(&eng, &desc)?;
+        match scene {
+            Some(s) => {
+                if let Err(e) = assets::spawn_scene(&eng, &s, Some(root)) {
+                    let _ = og_world_despawn(world, root.to_bits() as f64);
+                    return Err(e);
+                }
+            }
+            None => {
+                let (layout, id) = component(&eng, "og.Model")?;
+                let bytes = layout.encode(None, Some(&json!({ "asset": asset })))?;
+                before_structural(&eng);
+                eng.world()?.insert_bytes(root, id, &bytes).map_err(err)?;
+            }
+        }
+        Ok(entity_number(root))
+    })())
 }
 
 // ── query and views ─────────────────────────────────────────────────────────
@@ -809,44 +864,80 @@ pub fn og_rng_fork(world: u32, label: String) -> u32 {
 
 // ── input ───────────────────────────────────────────────────────────────────
 
-fn input<T>(world: u32, f: impl FnOnce(&super::engine::InputState) -> T, refused: T) -> T {
-    match engine(world) {
-        Ok(eng) => f(&eng.state.borrow().input),
+/// The `og.Input` resource as of this tick (inside a system, through its
+/// context; the resource is og-probe's input layer until og-input owns it).
+fn input<T>(world: u32, f: impl FnOnce(&og_probe::Input) -> T, refused: T) -> T {
+    if let Some(fr) = running(world) {
+        // SAFETY: the frame is published while its system runs.
+        return match unsafe { fr.ctx() }.resource::<og_probe::Input>() {
+            Ok(i) => f(&i),
+            Err(_) => refused,
+        };
+    }
+    match engine(world).and_then(|eng| {
+        eng.world()?
+            .resource::<og_probe::Input>()
+            .map(|i| *i)
+            .map_err(err)
+    }) {
+        Ok(i) => f(&i),
         Err(_) => refused,
     }
 }
 
+fn button(name: &str) -> og_probe::input::PointerButton {
+    use og_probe::input::PointerButton as B;
+    match name {
+        "left" => B::Left,
+        "middle" => B::Middle,
+        "right" => B::Right,
+        _ => B::None,
+    }
+}
+
+fn input_json(i: &og_probe::Input) -> Value {
+    json!({
+        "pointer": { "x": i.pointer.x, "y": i.pointer.y },
+        "pointerInside": i.pointer_inside,
+        "wheel": { "x": i.wheel.x, "y": i.wheel.y },
+    })
+}
+
 pub fn og_input_down(world: u32, key: String) -> bool {
-    input(world, |i| i.keys.contains(&key), false)
+    input(world, |i| i.down(&key), false)
 }
 pub fn og_input_pressed(world: u32, key: String) -> bool {
-    input(world, |i| i.pressed.contains(&key), false)
+    input(world, |i| i.pressed(&key), false)
 }
 pub fn og_input_released(world: u32, key: String) -> bool {
-    input(world, |i| i.released.contains(&key), false)
+    input(world, |i| i.released(&key), false)
 }
 pub fn og_input_axis(world: u32, negative: String, positive: String) -> f64 {
-    input(
+    input(world, |i| f64::from(i.axis(&negative, &positive)), 0.0)
+}
+pub fn og_input_axis2(world: u32, left: String, right: String, down: String, up: String) -> String {
+    let v = input(
         world,
-        |i| {
-            f64::from(u8::from(i.keys.contains(&positive)))
-                - f64::from(u8::from(i.keys.contains(&negative)))
-        },
-        0.0,
-    )
+        |i| i.axis2(&left, &right, &down, &up),
+        og_core::glam::Vec2::ZERO,
+    );
+    json!({ "x": f64::from(v.x), "y": f64::from(v.y) }).to_string()
 }
-pub fn og_input_button_down(world: u32, button: String) -> bool {
-    input(world, |i| i.buttons.contains(&button), false)
+pub fn og_input_button_down(world: u32, b: String) -> bool {
+    input(world, |i| i.button_down(button(&b)), false)
 }
-pub fn og_input_button_pressed(world: u32, button: String) -> bool {
-    input(world, |i| i.buttons_pressed.contains(&button), false)
+pub fn og_input_button_pressed(world: u32, b: String) -> bool {
+    input(world, |i| i.button_pressed(button(&b)), false)
+}
+pub fn og_input_button_released(world: u32, b: String) -> bool {
+    input(world, |i| i.button_released(button(&b)), false)
 }
 
 // ── camera ──────────────────────────────────────────────────────────────────
 
 fn surface_size(eng: &Engine) -> (f32, f32) {
-    let st = eng.state.borrow();
-    let (w, h) = st.backend.as_ref().map_or((1280, 720), |b| b.size());
+    let rs = eng.render.borrow();
+    let (w, h) = rs.backend.as_ref().map_or((1280, 720), |b| b.size());
     (w.max(1) as f32, h.max(1) as f32)
 }
 
@@ -972,9 +1063,9 @@ fn material(base: og_render::Material, desc: &Value) -> og_render::Material {
     m
 }
 
-/// Material handles are the scene's material index with generation 1.
+/// Material handles are the render state's material index with generation 1.
 fn material_handle(index: usize) -> f64 {
-    (index as u64 + (1u64 << 32)) as f64
+    assets::handle(index) as f64
 }
 
 pub fn og_render_standard_material(world: u32, desc: Option<String>) -> String {
@@ -986,10 +1077,10 @@ pub fn og_render_standard_material(world: u32, desc: Option<String>) -> String {
             roughness: 1.0,
             ..og_render::Material::default()
         };
-        let mut st = eng.state.borrow_mut();
-        let handle = st.scene.add_material(material(base, &desc));
-        st.materials.push(handle);
-        Ok(json!(material_handle(st.materials.len() - 1)))
+        let mut rs = eng.render.borrow_mut();
+        let handle = rs.scene.add_material(material(base, &desc));
+        rs.materials.push(handle);
+        Ok(json!(material_handle(rs.materials.len() - 1)))
     })())
 }
 
@@ -997,150 +1088,323 @@ pub fn og_render_update_material(world: u32, handle: f64, desc: Option<String>) 
     result_void((|| {
         let eng = engine(world)?;
         let desc = parse(desc.as_deref())?;
-        let bits = handle as u64;
-        let mut st = eng.state.borrow_mut();
-        let index = (bits & 0xffff_ffff) as usize;
-        let h = st
-            .materials
-            .get(index)
-            .copied()
-            .filter(|_| bits >> 32 == 1)
+        let mut rs = eng.render.borrow_mut();
+        let h = index_of(handle)
+            .and_then(|i| rs.materials.get(i).copied())
             .ok_or_else(|| format!("material {handle} is not alive"))?;
-        let current = st
+        let current = rs
             .scene
             .material(h)
             .cloned()
             .ok_or("material is not alive")?;
-        st.scene.set_material(h, material(current, &desc));
+        rs.scene.set_material(h, material(current, &desc));
         Ok(())
     })())
 }
 
 pub fn og_render_capabilities(world: u32) -> String {
     let caps = engine(world).ok().and_then(|eng| {
-        let st = eng.state.borrow();
-        st.backend.as_ref().map(|b| {
+        let rs = eng.render.borrow();
+        rs.backend.as_ref().map(|b| {
             let tier = b.tier();
             let (w, h) = b.size();
-            json!({ "tier": tier, "compute": tier != "webgl2", "maxShadowedLights": 1, "width": w, "height": h })
+            json!({
+                "tier": if tier == "vulkan-cpu" { "vulkan".to_string() } else { tier.clone() },
+                "compute": tier != "webgl2",
+                "antialias": b.antialias(),
+                "maxLights": og_render::MAX_LIGHTS,
+                "maxShadowedLights": og_render::MAX_SHADOWED_LIGHTS,
+                "width": w, "height": h,
+            })
         })
     });
-    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "maxShadowedLights": 0, "width": 0, "height": 0 }))
+    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "maxLights": 0, "maxShadowedLights": 0, "width": 0, "height": 0 }))
         .to_string()
+}
+
+pub fn og_render_text(world: u32, desc: Option<String>) -> String {
+    result_void((|| {
+        let eng = engine(world)?;
+        let d = parse(desc.as_deref())?;
+        let Some(font) = d["font"].as_f64() else {
+            return Ok(());
+        };
+        let fi = index_of(font).ok_or_else(|| format!("{font} is not a font handle"))?;
+        let render = eng
+            .assets
+            .borrow()
+            .fonts
+            .get(fi)
+            .map(|f| f.render)
+            .ok_or_else(|| format!("font {font} is not alive"))?;
+        let tick = og_world_get_tick(world) as u64;
+        let num = |v: &Value, k: &str, def: f64| v[k].as_f64().unwrap_or(def) as f32;
+        let c = &d["color"];
+        let mut rs = eng.render.borrow_mut();
+        if rs.texts_tick != tick {
+            rs.texts.clear();
+            rs.texts_tick = tick;
+        }
+        rs.texts.push(super::extract::QueuedText {
+            font: render,
+            text: d["text"].as_str().unwrap_or_default().to_string(),
+            position: vec3(&d["position"]),
+            size: num(&d, "size", 1.0),
+            rotation: num(&d, "rotation", 0.0),
+            color: [
+                num(c, "r", 1.0),
+                num(c, "g", 1.0),
+                num(c, "b", 1.0),
+                num(&d, "opacity", 1.0),
+            ],
+            layer: d["layer"].as_i64().unwrap_or(0) as i32,
+        });
+        Ok(())
+    })())
 }
 
 // ── load ────────────────────────────────────────────────────────────────────
 
-const LOADING: &str = "asset loading reads cooked output, which lands with the cook (M4)";
+fn asset_value(i: usize) -> Value {
+    json!(assets::handle(i) as f64)
+}
 
-pub fn og_load_gltf(_world: u32, path: String, _desc: Option<String>) -> String {
-    refuse(format!("{path}: {LOADING}"))
+pub fn og_load_bundle(world: u32, path: String) -> String {
+    result((|| {
+        let eng = engine(world)?;
+        let i = eng.assets.borrow_mut().open_bundle(&path);
+        Ok(asset_value(i))
+    })())
 }
-pub fn og_load_scene(_world: u32, path: String) -> String {
-    refuse(format!("{path}: {LOADING}"))
+
+pub fn og_load_bundle_info(world: u32, asset: f64) -> String {
+    result((|| {
+        let eng = engine(world)?;
+        let a = eng.assets.borrow();
+        let e = index_of(asset)
+            .and_then(|i| a.entries.get(i))
+            .ok_or_else(|| format!("asset {asset} is not alive"))?;
+        match (&e.status, &e.payload) {
+            (Status::Failed(r), _) => Err(r.clone()),
+            (Status::Pending, _) => Err(format!("{} is still loading", e.path)),
+            (_, Payload::Bundle { bundle, dir }) => {
+                let m = bundle.manifest();
+                Ok(json!({ "path": dir, "assets": m.assets.len(), "outputs": m.outputs().count() }))
+            }
+            _ => Err(format!("{} is not a bundle", e.path)),
+        }
+    })())
 }
-pub fn og_load_status(_world: u32, _asset: f64) -> String {
-    "failed".into()
+
+pub fn og_load_default_bundle(world: u32) -> String {
+    result((|| {
+        let eng = engine(world)?;
+        let a = eng.assets.borrow();
+        let i = a
+            .default_bundle
+            .ok_or("no cooked bundle: the host gave the engine no project root")?;
+        match &a.entries[i].status {
+            Status::Failed(r) => Err(r.clone()),
+            _ => Ok(asset_value(i)),
+        }
+    })())
 }
-pub fn og_load_gltf_info(_world: u32, _asset: f64) -> String {
-    refuse(LOADING)
+
+pub fn og_load_gltf(world: u32, path: String, _desc: Option<String>) -> String {
+    result(engine(world).and_then(|eng| assets::load_gltf(&eng, &path).map(asset_value)))
+}
+
+pub fn og_load_scene(world: u32, path: String) -> String {
+    result(engine(world).and_then(|eng| assets::load_scene(&eng, &path).map(asset_value)))
+}
+
+pub fn og_load_font(world: u32, path: String) -> String {
+    result(engine(world).and_then(|eng| assets::load_font(&eng, &path).map(asset_value)))
+}
+
+pub fn og_load_font_info(world: u32, font: f64) -> String {
+    result((|| {
+        let eng = engine(world)?;
+        let a = eng.assets.borrow();
+        index_of(font)
+            .and_then(|i| a.fonts.get(i))
+            .map(|f| f.info.clone())
+            .ok_or_else(|| format!("font {font} is not alive"))
+    })())
+}
+
+pub fn og_load_sound(world: u32, path: String) -> String {
+    result(engine(world).and_then(|eng| assets::load_sound(&eng, &path).map(asset_value)))
+}
+
+pub fn og_load_sound_info(world: u32, sound: f64) -> String {
+    result((|| {
+        let eng = engine(world)?;
+        let a = eng.assets.borrow();
+        let s = index_of(sound)
+            .and_then(|i| a.sounds.get(i))
+            .ok_or_else(|| format!("sound {sound} is not alive"))?;
+        let m = &s.meta;
+        Ok(json!({
+            "rate": m.sample_rate, "channels": m.channels, "frames": m.frames,
+            "seconds": f64::from(m.frames) / f64::from(m.sample_rate.max(1)),
+        }))
+    })())
+}
+
+pub fn og_load_status(world: u32, asset: f64) -> String {
+    let status = engine(world).ok().and_then(|eng| {
+        let a = eng.assets.borrow();
+        index_of(asset)
+            .and_then(|i| a.entries.get(i))
+            .map(|e| e.status.clone())
+    });
+    match status {
+        Some(Status::Ready) => "ready",
+        Some(Status::Pending) => "pending",
+        _ => "failed",
+    }
+    .into()
+}
+
+pub fn og_load_error(world: u32, asset: f64) -> String {
+    let reason = engine(world).ok().and_then(|eng| {
+        let a = eng.assets.borrow();
+        match index_of(asset).and_then(|i| a.entries.get(i)) {
+            Some(e) => match &e.status {
+                Status::Failed(r) => Some(r.clone()),
+                _ => None,
+            },
+            None => Some(format!("{asset} is not an asset handle")),
+        }
+    });
+    json!(reason).to_string()
+}
+
+pub fn og_load_gltf_info(world: u32, asset: f64) -> String {
+    result((|| {
+        let eng = engine(world)?;
+        let a = eng.assets.borrow();
+        let e = index_of(asset)
+            .and_then(|i| a.entries.get(i))
+            .ok_or_else(|| format!("asset {asset} is not alive"))?;
+        match &e.payload {
+            Payload::Gltf {
+                scenes,
+                geometries,
+                materials,
+            } => Ok(json!({
+                "scenes": scenes,
+                "geometries": geometries.iter().map(|g| *g as f64).collect::<Vec<_>>(),
+                "materials": materials.iter().map(|m| *m as f64).collect::<Vec<_>>(),
+                "animations": Vec::<String>::new(),
+            })),
+            _ => Err(format!("{} is not a glTF", e.path)),
+        }
+    })())
 }
 
 // ── commands ────────────────────────────────────────────────────────────────
 
-const CORE_ACTIONS: &[&str] = &[
-    "screenshot",
-    "touch_move_to",
-    "touch_move",
-    "touch_start",
-    "touch_end",
-    "scroll",
-    "key_down",
-    "key_up",
-    "type",
-    "move_to_text",
-    "teleport",
-    "frame_entity",
-    "dump_world",
-    "dump_entity",
-    "dump_ui",
-    "set",
-    "seed",
-    "pause",
-    "resume",
-    "advance",
-    "quit",
-];
-
 pub fn og_commands_register(name: String, handler: u32, desc: Option<String>) -> String {
-    let valid = !name.is_empty()
-        && name
-            .chars()
-            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_');
-    if !valid {
-        return refuse(format!("'{name}' is not a snake_case action name"));
+    if og_probe::command::CORE_ACTIONS
+        .iter()
+        .any(|(core, _, _)| *core == name)
+    {
+        return refuse(format!(
+            "'{name}' is a core action; register under another name"
+        ));
     }
-    if CORE_ACTIONS.contains(&name.as_str()) {
-        return refuse(format!("'{name}' is a core action"));
+    let valid = og_probe::command::parse(&format!("0:{name}"))
+        .is_ok_and(|s| s.len() == 1 && s[0].action == name && s[0].args.is_empty());
+    if !valid {
+        return refuse(format!(
+            "'{name}' is not an action name (snake_case, such as `spawn_wave`)"
+        ));
     }
     let desc = parse(desc.as_deref()).unwrap_or_default();
-    DECL.with(|d| {
+    let decl = CommandDecl {
+        handler,
+        usage: desc["usage"].as_str().unwrap_or_default().to_string(),
+        doc: desc["doc"].as_str().unwrap_or_default().to_string(),
+    };
+    let taken = DECL.with(|d| {
         let mut d = d.borrow_mut();
         if d.commands.contains_key(&name) {
-            return refuse(format!("'{name}' is already registered"));
+            return true;
         }
-        d.commands.insert(
-            name,
-            CommandDecl {
-                handler,
-                usage: desc["usage"].as_str().unwrap_or_default().to_string(),
-                doc: desc["doc"].as_str().unwrap_or_default().to_string(),
-            },
-        );
-        ok_void()
-    })
-}
-
-/// `t:action[:args];...` into steps.
-fn parse_script(script: &str) -> Result<Vec<Value>, String> {
-    let mut out = Vec::new();
-    for (i, step) in script.split(';').enumerate() {
-        let step = step.trim();
-        if step.is_empty() {
-            continue;
-        }
-        let mut parts = step.split(':');
-        let at = parts.next().unwrap_or_default();
-        let at: f64 = at
-            .parse()
-            .ok()
-            .filter(|t: &f64| t.is_finite() && *t >= 0.0)
-            .ok_or_else(|| format!("step {} `{step}`: `{at}` is not a time in seconds", i + 1))?;
-        let action = parts
-            .next()
-            .filter(|a| !a.is_empty())
-            .ok_or_else(|| format!("step {} `{step}`: no action after the time", i + 1))?;
-        let args: Vec<&str> = parts.collect();
-        out.push(json!({ "at": at, "action": action, "args": args }));
+        d.commands.insert(name.clone(), decl.clone());
+        false
+    });
+    if taken {
+        return refuse(format!("'{name}' is already registered"));
     }
-    Ok(out)
+    // Engines already running take it too.
+    for id in super::engine::engine_ids() {
+        if let Ok(eng) = engine(id) {
+            if eng.state.borrow().commands.contains_key(&name) {
+                continue;
+            }
+            eng.state
+                .borrow_mut()
+                .commands
+                .insert(name.clone(), decl.clone());
+            if let Ok(mut probe) = eng.probe.try_borrow_mut() {
+                let _ = rprobe::register_one(&mut probe, id, &name, &decl.usage, &decl.doc);
+            }
+        }
+    }
+    ok_void()
 }
 
 pub fn og_commands_parse(script: String) -> String {
-    result(parse_script(&script).map(Value::Array))
+    match og_probe::command::parse(&script) {
+        Ok(steps) => ok(Value::Array(steps.iter().map(|s| s.to_json()).collect())),
+        Err(e) => refuse(e.to_string()),
+    }
 }
 
-pub fn og_commands_schedule(_world: u32, script: String) -> String {
-    match parse_script(&script) {
-        Err(e) => refuse(e),
-        Ok(_) => refuse("scheduling on simulation time lands with the probe's command channel (M5); run a registered action now with the engine's command()"),
-    }
+pub fn og_commands_schedule(world: u32, script: String) -> String {
+    result((|| {
+        let eng = engine(world)?;
+        with_probe(&eng, false, |p, w| p.schedule(w, &script))?
+            .map(|r| r.to_json())
+            .map_err(|e| e.to_string())
+    })())
+}
+
+pub fn og_commands_help(world: u32) -> String {
+    let list = engine(world)
+        .ok()
+        .and_then(|eng| {
+            eng.probe
+                .try_borrow()
+                .ok()
+                .map(|p| p.help().iter().map(|c| c.to_json()).collect::<Vec<_>>())
+        })
+        .unwrap_or_else(|| {
+            og_probe::command::CORE_ACTIONS
+                .iter()
+                .map(|(n, u, d)| json!({ "name": n, "usage": u, "doc": d, "core": true }))
+                .collect()
+        });
+    Value::Array(list).to_string()
 }
 
 // ── probe ───────────────────────────────────────────────────────────────────
 
+/// One probe member by name through og-probe's JSON entry, so the typed
+/// binding symbols answer exactly what the WebSocket and the request ring do.
+fn member(probe: u32, method: &str, params: Value) -> Value {
+    let frame =
+        json!({ "jsonrpc": "2.0", "id": 1, "method": method, "params": params }).to_string();
+    let answer = super::engine::call_rpc(probe, &frame);
+    let v: Value = serde_json::from_str(&answer).unwrap_or(Value::Null);
+    v.get("result").cloned().unwrap_or(Value::Null)
+}
+
 pub fn og_runtime_probe_get_version(_probe: u32) -> u32 {
-    5
+    og_probe::PROBE_VERSION
 }
 
 pub fn og_runtime_probe_tick(probe: u32) -> u32 {
@@ -1148,464 +1412,111 @@ pub fn og_runtime_probe_tick(probe: u32) -> u32 {
 }
 
 pub fn og_runtime_probe_state(probe: u32) -> String {
-    let Ok(eng) = engine(probe) else {
-        return "null".into();
-    };
-    let facts = eng.state.borrow().facts;
-    let facts = match facts {
-        Some(id) => call(&eng, 2, id, String::new())
-            .ok()
-            .and_then(|s| serde_json::from_str(&s).ok())
-            .unwrap_or(Value::Null),
-        None => Value::Null,
-    };
-    let st = eng.state.borrow();
-    let entities: Vec<Value> = st.name_order.iter().map(|n| json!({ "id": n })).collect();
-    json!({
-        "tick": og_world_get_tick(probe),
-        "paused": st.paused,
-        "seed": st.seed,
-        "timings": { "step": st.step_ms, "render": st.render_ms, "frameMs": st.step_ms + st.render_ms },
-        "entities": entities,
-        "facts": facts,
-    })
-    .to_string()
+    member(probe, "state", json!({})).to_string()
 }
 
 pub fn og_runtime_probe_advance(probe: u32, steps: u32) -> u32 {
-    if let Ok(eng) = engine(probe) {
-        for _ in 0..steps.min(3600) {
-            if let Err(e) = step(&eng) {
-                eng.state.borrow_mut().warnings.push(e);
-                break;
-            }
-        }
-    }
-    og_world_get_tick(probe)
+    let v = member(
+        probe,
+        "advance",
+        json!({ "steps": steps.min(og_probe::PLAYTEST_MAX_TICKS as u32) }),
+    );
+    v.as_u64()
+        .map_or_else(|| og_world_get_tick(probe), |t| t as u32)
 }
 
 pub fn og_runtime_probe_pause(probe: u32) -> bool {
-    engine(probe)
-        .map(|e| e.state.borrow_mut().paused = true)
-        .is_ok()
+    member(probe, "pause", json!({})).as_bool().unwrap_or(false)
 }
 
 pub fn og_runtime_probe_resume(probe: u32) -> bool {
-    engine(probe)
-        .map(|e| e.state.borrow_mut().paused = false)
-        .is_ok()
+    member(probe, "resume", json!({}))
+        .as_bool()
+        .unwrap_or(false)
 }
 
 pub fn og_runtime_probe_input(probe: u32, event: String) -> bool {
     let Ok(ev) = parse(Some(&event)) else {
         return false;
     };
-    if !matches!(ev["kind"].as_str(), Some("key" | "pointer" | "wheel")) {
-        return false;
-    }
-    match engine(probe) {
-        Ok(eng) => {
-            let mut st = eng.state.borrow_mut();
-            st.input.queue.push(ev);
-            st.accepted += 1;
-            true
-        }
-        Err(_) => false,
-    }
+    member(probe, "input", json!({ "event": ev }))
+        .as_bool()
+        .unwrap_or(false)
 }
 
 pub fn og_runtime_probe_accepted(probe: u32) -> u32 {
-    engine(probe).map_or(0, |e| e.state.borrow().accepted)
+    member(probe, "accepted", json!({})).as_u64().unwrap_or(0) as u32
 }
 
-pub fn og_runtime_probe_pick(_probe: u32, _x: f64, _y: f64) -> String {
-    "null".into()
-}
-
-fn probe_entity(eng: &Engine, id: &str) -> Option<Entity> {
-    if let Some(rest) = id.strip_prefix('#') {
-        let (i, g) = rest.split_once('.')?;
-        let e = Entity::from_bits((g.parse::<u64>().ok()? << 32) | i.parse::<u64>().ok()?);
-        return eng.world().ok()?.is_alive(e).then_some(e);
-    }
-    let bits = *eng.state.borrow().names.get(id)?;
-    let e = Entity::from_bits(bits);
-    eng.world().ok()?.is_alive(e).then_some(e)
-}
-
-/// `(component, field index, layout)` of every tunable field `e` carries.
-fn tunables(eng: &Engine, e: Entity) -> Vec<(String, usize, Layout)> {
-    let Ok(w) = eng.world() else {
-        return Vec::new();
-    };
-    let Ok(ids) = w.components_of(e) else {
-        return Vec::new();
-    };
-    let st = eng.state.borrow();
-    let mut out = Vec::new();
-    for id in ids {
-        let Some(name) = st.names_by_id.get(id.index() as usize) else {
-            continue;
-        };
-        if let Some(layout) = st.layouts.get(name) {
-            for (i, f) in layout.fields.iter().enumerate() {
-                if f.tunable {
-                    out.push((name.clone(), i, layout.clone()));
-                }
-            }
-        }
-    }
-    out
+pub fn og_runtime_probe_pick(probe: u32, x: f64, y: f64) -> String {
+    member(probe, "pick", json!({ "x": x, "y": y })).to_string()
 }
 
 pub fn og_runtime_probe_entity(probe: u32, id: String) -> String {
-    let Ok(eng) = engine(probe) else {
-        return "null".into();
-    };
-    let Some(e) = probe_entity(&eng, &id) else {
-        return "null".into();
-    };
-    let mut map = serde_json::Map::new();
-    for (comp, i, layout) in tunables(&eng, e) {
-        let Ok(w) = eng.world() else { break };
-        let Ok(cid) = w.id_by_name(&comp) else {
-            continue;
-        };
-        if let Ok(bytes) = w.get_bytes(e, cid) {
-            map.insert(
-                format!("{}.{}", short(&comp), layout.fields[i].name),
-                layout.decode_one(&bytes, i),
-            );
-        }
-    }
-    Value::Object(map).to_string()
-}
-
-/// `og.Transform` is `Transform` in probe paths, as in scenes.
-fn short(name: &str) -> &str {
-    name.strip_prefix("og.").unwrap_or(name)
+    member(probe, "entity", json!({ "id": id })).to_string()
 }
 
 pub fn og_runtime_probe_bounds(probe: u32, id: String) -> String {
-    let Ok(eng) = engine(probe) else {
-        return "null".into();
-    };
-    let Some(e) = probe_entity(&eng, &id) else {
-        return "null".into();
-    };
-    let mut map = serde_json::Map::new();
-    for (comp, i, layout) in tunables(&eng, e) {
-        let f = &layout.fields[i];
-        let path = format!("{}.{}", short(&comp), f.name);
-        let mut t = json!({ "path": path });
-        if let Some(l) = &f.label {
-            t["label"] = json!(l);
-        }
-        if let Some(v) = f.min {
-            t["min"] = json!(v);
-        }
-        if let Some(v) = f.max {
-            t["max"] = json!(v);
-        }
-        if let Some(v) = f.step {
-            t["step"] = json!(v);
-        }
-        map.insert(path, t);
-    }
-    Value::Object(map).to_string()
+    member(probe, "bounds", json!({ "id": id })).to_string()
 }
 
 pub fn og_runtime_probe_patch(probe: u32, id: String, parameter: String, value: String) -> bool {
-    let Ok(eng) = engine(probe) else { return false };
-    let Some(e) = probe_entity(&eng, &id) else {
-        return false;
-    };
     let Ok(value) = parse(Some(&value)) else {
         return false;
     };
-    for (comp, i, layout) in tunables(&eng, e) {
-        let f = &layout.fields[i];
-        if format!("{}.{}", short(&comp), f.name) != parameter {
-            continue;
-        }
-        let patch = json!({ f.name.clone(): value });
-        let answer = og_world_set(probe, e.to_bits() as f64, comp, patch.to_string());
-        return answer.starts_with(r#"{"ok":true"#);
-    }
-    false
+    member(
+        probe,
+        "patch",
+        json!({ "id": id, "parameter": parameter, "value": value }),
+    )
+    .as_bool()
+    .unwrap_or(false)
 }
 
 pub fn og_runtime_probe_run(probe: u32, program: String) -> String {
-    let ops = parse(Some(&program)).unwrap_or_default();
-    let mut results = Vec::new();
-    let mut refused = Value::Null;
-    for (i, op) in ops
-        .as_array()
-        .cloned()
-        .unwrap_or_default()
-        .iter()
-        .take(256)
-        .enumerate()
-    {
-        let answer = match op["op"].as_str() {
-            Some("advance") => json!(og_runtime_probe_advance(
-                probe,
-                op["steps"].as_u64().unwrap_or(0) as u32
-            )),
-            Some("input") => json!(og_runtime_probe_input(probe, op["event"].to_string())),
-            Some("pause") => json!(og_runtime_probe_pause(probe)),
-            Some("resume") => json!(og_runtime_probe_resume(probe)),
-            Some("read") => json!({
-                "tick": og_runtime_probe_tick(probe),
-                "state": serde_json::from_str::<Value>(&og_runtime_probe_state(probe)).unwrap_or_default(),
-            }),
-            Some("pick") => Value::Null,
-            Some("entity") => serde_json::from_str(&og_runtime_probe_entity(
-                probe,
-                op["id"].as_str().unwrap_or_default().to_string(),
-            ))
-            .unwrap_or_default(),
-            _ => json!(false),
-        };
-        let stop = answer == json!(false) || (op["op"] == "entity" && answer.is_null());
-        results.push(answer);
-        if stop {
-            refused = json!(i);
-            break;
-        }
-    }
-    json!({ "results": results, "refused": refused, "tick": og_runtime_probe_tick(probe) })
-        .to_string()
+    let program = parse(Some(&program)).unwrap_or(json!([]));
+    member(probe, "run", json!({ "program": program })).to_string()
 }
 
 pub fn og_engine_probe_hello(probe: u32) -> String {
-    let (rate, tier) = engine(probe)
-        .map(|e| {
-            let st = e.state.borrow();
-            (
-                st.rate,
-                st.backend.as_ref().map_or("none".to_string(), |b| b.tier()),
-            )
-        })
-        .unwrap_or((0, "none".to_string()));
-    json!({
-        "protocol": 5,
-        "wire": 1,
-        "substrate": "origin-engine",
-        "engine": format!("origin-engine {}", env!("CARGO_PKG_VERSION")),
-        "ticksPerSecond": rate,
-        "tier": tier,
-        "build": "dev",
-        "members": ["hello", "tick", "state", "advance", "pause", "resume", "input", "accepted", "entity", "bounds", "patch", "run", "capture", "snapshot", "restore", "dump"],
-    })
+    member(probe, "hello", json!({})).to_string()
+}
+
+pub fn og_engine_probe_capture(probe: u32, width: Option<u32>, height: Option<u32>) -> String {
+    member(
+        probe,
+        "capture",
+        json!({ "width": width.unwrap_or(0), "height": height.unwrap_or(0) }),
+    )
     .to_string()
 }
 
-pub fn og_engine_probe_capture(probe: u32, _width: Option<u32>, _height: Option<u32>) -> String {
-    let Ok(eng) = engine(probe) else {
-        return "null".into();
-    };
-    if eng.state.borrow().backend.is_none() || extract_scene(&eng).is_err() {
-        return "null".into();
-    }
-    let tick = og_world_get_tick(probe);
-    let mut st = eng.state.borrow_mut();
-    let st = &mut *st;
-    let Some(image) = st.backend.as_mut().and_then(|b| b.capture(&st.scene)) else {
-        return "null".into();
-    };
-    json!({
-        "tick": tick,
-        "width": image.width,
-        "height": image.height,
-        "png": base64(&png(&image)),
-    })
-    .to_string()
+pub fn og_engine_probe_sweep(probe: u32, desc: Option<String>) -> String {
+    member(probe, "sweep", parse(desc.as_deref()).unwrap_or(json!({}))).to_string()
 }
 
-pub fn og_engine_probe_sweep(_probe: u32, _desc: Option<String>) -> String {
-    "null".into()
-}
-
-pub fn og_engine_probe_reload(_probe: u32) -> String {
-    "null".into()
+pub fn og_engine_probe_reload(probe: u32) -> String {
+    member(probe, "reload", json!({})).to_string()
 }
 
 pub fn og_engine_probe_snapshot(probe: u32) -> String {
-    let Ok(eng) = engine(probe) else {
-        return "null".into();
-    };
-    let Ok(w) = eng.world() else {
-        return "null".into();
-    };
-    let bytes = w.snapshot();
-    let tick = w.time().tick as u32;
-    let hash = format!("{:016x}", w.world_hash());
-    let mut st = eng.state.borrow_mut();
-    let id = format!("s{}", st.snapshots.len() + 1);
-    let size = bytes.len() as u32;
-    st.snapshots.push((id.clone(), tick, bytes));
-    json!({ "id": id, "tick": tick, "hash": hash, "bytes": size }).to_string()
+    member(probe, "snapshot", json!({})).to_string()
 }
 
 pub fn og_engine_probe_restore(probe: u32, id: String) -> bool {
-    let Ok(eng) = engine(probe) else { return false };
-    let bytes = eng
-        .state
-        .borrow()
-        .snapshots
-        .iter()
-        .find(|(s, _, _)| *s == id)
-        .map(|(_, _, b)| b.clone());
-    let Some(bytes) = bytes else { return false };
-    invalidate(true);
-    eng.world().is_ok_and(|w| w.restore(&bytes).is_ok())
+    member(probe, "restore", json!({ "id": id }))
+        .as_bool()
+        .unwrap_or(false)
 }
 
 pub fn og_engine_probe_dump(probe: u32, desc: Option<String>) -> String {
-    let Ok(eng) = engine(probe) else {
-        return "null".into();
-    };
-    let desc = parse(desc.as_deref()).unwrap_or_default();
-    let Ok(w) = eng.world() else {
-        return "null".into();
-    };
-    match desc["what"].as_str().unwrap_or("world") {
-        "entity" => {
-            let Some(e) = probe_entity(&eng, desc["id"].as_str().unwrap_or_default()) else {
-                return "null".into();
-            };
-            let st = eng.state.borrow();
-            let mut comps = serde_json::Map::new();
-            for id in w.components_of(e).unwrap_or_default() {
-                let Some(name) = st.names_by_id.get(id.index() as usize) else {
-                    continue;
-                };
-                if let (Some(layout), Ok(bytes)) = (st.layouts.get(name), w.get_bytes(e, id)) {
-                    comps.insert(short(name).to_string(), layout.decode(&bytes));
-                }
-            }
-            json!({
-                "kind": "entity",
-                "id": desc["id"],
-                "name": st.name_of.get(&e.to_bits()),
-                "components": comps,
-            })
-            .to_string()
-        }
-        "ui" => json!({ "kind": "ui", "tick": w.time().tick, "elements": [] }).to_string(),
-        _ => {
-            let st = eng.state.borrow();
-            let mut archetypes = Vec::new();
-            if let Ok(all) = w.query(&QueryDesc::default()) {
-                for a in all {
-                    let comps: Vec<&str> = a
-                        .types()
-                        .iter()
-                        .filter_map(|id| st.names_by_id.get(id.index() as usize))
-                        .map(|n| short(n))
-                        .collect();
-                    archetypes.push(json!({ "components": comps, "count": a.len() }));
-                }
-            }
-            let systems: Vec<Value> = st
-                .systems
-                .iter()
-                .map(|s| {
-                    json!({ "name": s.name, "matched": s.matched, "reads": s.reads, "writes": s.writes, "ms": s.ms })
-                })
-                .collect();
-            json!({
-                "kind": "world",
-                "tick": w.time().tick,
-                "hash": format!("{:016x}", w.world_hash()),
-                "entities": w.entity_count(),
-                "archetypes": archetypes,
-                "systems": systems,
-                "resources": st.resources,
-            })
-            .to_string()
-        }
+    let mut d = parse(desc.as_deref()).unwrap_or(json!({}));
+    if d["what"].is_null() {
+        d["what"] = json!("world");
     }
+    member(probe, "dump", d).to_string()
 }
 
-pub fn og_engine_probe_commands(_probe: u32, _script: String) -> String {
-    "null".into()
-}
-
-// ── small encoders for capture ──────────────────────────────────────────────
-
-fn base64(bytes: &[u8]) -> String {
-    const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
-    for chunk in bytes.chunks(3) {
-        let b = [
-            chunk[0],
-            *chunk.get(1).unwrap_or(&0),
-            *chunk.get(2).unwrap_or(&0),
-        ];
-        let n = (u32::from(b[0]) << 16) | (u32::from(b[1]) << 8) | u32::from(b[2]);
-        for (i, shift) in [18, 12, 6, 0].iter().enumerate() {
-            if i <= chunk.len() {
-                out.push(T[((n >> shift) & 63) as usize] as char);
-            } else {
-                out.push('=');
-            }
-        }
-    }
-    out
-}
-
-/// An uncompressed (stored-deflate) PNG: exact pixels, no codec dependency.
-fn png(image: &og_render::RgbaImage) -> Vec<u8> {
-    fn crc(data: &[u8]) -> u32 {
-        let mut c = 0xffff_ffffu32;
-        for &b in data {
-            c ^= u32::from(b);
-            for _ in 0..8 {
-                c = if c & 1 != 0 {
-                    0xedb8_8320 ^ (c >> 1)
-                } else {
-                    c >> 1
-                };
-            }
-        }
-        !c
-    }
-    fn chunk(out: &mut Vec<u8>, kind: &[u8; 4], data: &[u8]) {
-        out.extend_from_slice(&(data.len() as u32).to_be_bytes());
-        let mut body = kind.to_vec();
-        body.extend_from_slice(data);
-        out.extend_from_slice(&body);
-        out.extend_from_slice(&crc(&body).to_be_bytes());
-    }
-    let (w, h) = (image.width as usize, image.height as usize);
-    let mut raw = Vec::with_capacity((w * 4 + 1) * h);
-    for row in 0..h {
-        raw.push(0);
-        raw.extend_from_slice(&image.pixels[row * w * 4..(row + 1) * w * 4]);
-    }
-    let mut z = vec![0x78, 0x01];
-    let blocks: Vec<&[u8]> = raw.chunks(65535).collect();
-    for (i, b) in blocks.iter().enumerate() {
-        z.push(u8::from(i + 1 == blocks.len()));
-        z.extend_from_slice(&(b.len() as u16).to_le_bytes());
-        z.extend_from_slice(&(!(b.len() as u16)).to_le_bytes());
-        z.extend_from_slice(b);
-    }
-    let (mut a, mut b) = (1u32, 0u32);
-    for &x in &raw {
-        a = (a + u32::from(x)) % 65521;
-        b = (b + a) % 65521;
-    }
-    z.extend_from_slice(&((b << 16) | a).to_be_bytes());
-    let mut out = vec![0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a];
-    let mut ihdr = Vec::new();
-    ihdr.extend_from_slice(&(w as u32).to_be_bytes());
-    ihdr.extend_from_slice(&(h as u32).to_be_bytes());
-    ihdr.extend_from_slice(&[8, 6, 0, 0, 0]);
-    chunk(&mut out, b"IHDR", &ihdr);
-    chunk(&mut out, b"IDAT", &z);
-    chunk(&mut out, b"IEND", &[]);
-    out
+pub fn og_engine_probe_commands(probe: u32, script: String) -> String {
+    member(probe, "commands", json!({ "script": script })).to_string()
 }

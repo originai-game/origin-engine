@@ -1,0 +1,15 @@
+{
+  "name": "@origingame/create",
+  "version": "0.0.1",
+  "description": "Scaffolds an Origin Engine game from the project template: npm create @origingame/game.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "create-game": "bin/create.ts"
+  },
+  "files": ["bin", "template", "README.md"],
+  "scripts": {
+    "prepack": "bun scripts/pack-template.ts",
+    "test": "bun test tests/"
+  }
+}

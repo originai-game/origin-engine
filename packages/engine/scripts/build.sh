@@ -15,7 +15,7 @@ case "$target" in /*) ;; *) target="$root/$target" ;; esac
 cd "$root"
 cargo build --release -q -p og-host-node
 platform="$(node -p 'process.platform + "-" + process.arch' 2>/dev/null || bun -e 'console.log(process.platform + "-" + process.arch)')"
-mkdir -p "$here/native" "$here/dist/web"
+mkdir -p "$here/native" "$here/dist/web" "$here/dist/web-publish"
 addon="$here/native/origin-engine.$platform.node"
 if [ -f "$target/release/libog_host_node.dylib" ]; then
   cp "$target/release/libog_host_node.dylib" "$addon"
@@ -26,6 +26,11 @@ if [ -f "$target/release/libog_host_node.dylib" ]; then
 elif [ -f "$target/release/libog_host_node.so" ]; then
   cp "$target/release/libog_host_node.so" "$addon"
 fi
+# The web host twice: every member (dist/web), then a publish build that keeps
+# only the player-facing probe members (dist/web-publish, `og build --publish`).
+# Both builds write the same og_host_web.wasm, so each is bound before the next.
+wasm="$target/wasm32-unknown-unknown/release/og_host_web.wasm"
+cargo build --release -q --target wasm32-unknown-unknown -p og-host-web --lib --features publish
+wasm-bindgen --target web --out-dir "$here/dist/web-publish" --out-name origin-engine "$wasm"
 cargo build --release -q --target wasm32-unknown-unknown -p og-host-web --lib
-wasm-bindgen --target web --out-dir "$here/dist/web" --out-name origin-engine \
-  "$target/wasm32-unknown-unknown/release/og_host_web.wasm"
+wasm-bindgen --target web --out-dir "$here/dist/web" --out-name origin-engine "$wasm"

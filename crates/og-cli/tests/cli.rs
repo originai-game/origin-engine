@@ -152,44 +152,26 @@ fn api_gen_refuses_an_invalid_idl_and_names_the_line() {
     let _ = std::fs::remove_dir_all(&root);
 }
 
+/// Project commands outside a project name the fix and do nothing; usage
+/// and unknown commands exit 2. (A real cook and playtest of the template,
+/// which needs the native addon, is `packages/engine/tests/template.test.ts`.)
 #[test]
-fn planned_subcommands_refuse_rather_than_pretend() {
-    for cmd in ["build", "cook", "probe", "test"] {
-        let out = og().arg(cmd).output().unwrap();
-        assert_eq!(out.status.code(), Some(2), "og {cmd}");
+fn project_commands_without_a_project_name_the_fix() {
+    let empty = scratch_root();
+    for cmd in ["build", "cook", "test"] {
+        let out = og().arg(cmd).current_dir(&empty).output().unwrap();
+        assert_eq!(out.status.code(), Some(1), "og {cmd}");
         let t = text(&out);
-        assert!(
-            t.contains(&format!("og {cmd} is not here yet")),
-            "og {cmd}: {t}"
-        );
-        assert!(t.contains("Nothing was done."), "og {cmd}: {t}");
+        assert!(t.contains("no project.ogt"), "og {cmd}: {t}");
+        assert!(t.contains("npm create @origingame/game"), "og {cmd}: {t}");
+        assert!(!empty.join("cooked").exists() && !empty.join("dist").exists());
     }
-    let unknown = og().arg("frobnicate").output().unwrap();
-    assert_eq!(unknown.status.code(), Some(2));
-}
-
-/// `og run` runs headless only, refuses the M5 command channel instead of
-/// ignoring it, and names a missing project. (A real run, which needs the
-/// native addon, is `packages/engine/tests/og-run.test.ts`.)
-#[test]
-fn run_refuses_what_m2_does_not_do() {
-    let windowed = og().args(["run", "game.ts"]).output().unwrap();
-    assert_eq!(windowed.status.code(), Some(2));
+    let probe = og().arg("probe").output().unwrap();
+    assert_eq!(probe.status.code(), Some(2));
     assert!(
-        text(&windowed).contains("only --headless"),
+        text(&probe).contains("usage: og probe <method>"),
         "{}",
-        text(&windowed)
-    );
-
-    let scheduled = og()
-        .args(["run", "--headless", "game.ts", "--commands", "0:quit"])
-        .output()
-        .unwrap();
-    assert_eq!(scheduled.status.code(), Some(2));
-    assert!(
-        text(&scheduled).contains("lands with M5"),
-        "{}",
-        text(&scheduled)
+        text(&probe)
     );
 
     let missing = og()
@@ -202,6 +184,11 @@ fn run_refuses_what_m2_does_not_do() {
         "{}",
         text(&missing)
     );
+
+    let unknown = og().arg("frobnicate").output().unwrap();
+    assert_eq!(unknown.status.code(), Some(2));
+    assert!(text(&unknown).contains("unknown command `frobnicate`"));
+    let _ = std::fs::remove_dir_all(&empty);
 }
 
 /// The pins as the repository's own files state them.
@@ -276,4 +263,39 @@ fn doctor_names_a_fix_for_every_missing_tool() {
         );
     }
     assert!(t.contains("5 problem(s)"), "{t}");
+}
+
+/// `og api gen --wiki` writes the wiki pages alone, one per module plus the
+/// index, and removes a page whose module the IDL no longer declares.
+#[test]
+fn api_gen_wiki_writes_only_the_wiki_and_removes_stale_pages() {
+    let root = scratch_root();
+    let wiki = root.join("packages/knowledge/wiki");
+    std::fs::create_dir_all(&wiki).unwrap();
+    std::fs::write(wiki.join("retired.md"), "an old module's page\n").unwrap();
+    let out = og()
+        .args(["api", "gen", "--wiki", "--root"])
+        .arg(&root)
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "{}", text(&out));
+    assert!(!wiki.join("retired.md").exists(), "{}", text(&out));
+    let idl = std::fs::read_to_string(root.join(og_api_path())).unwrap();
+    let modules: Vec<&str> = idl
+        .lines()
+        .filter_map(|l| l.strip_prefix("module ")?.strip_suffix(" {"))
+        .collect();
+    let mut pages: Vec<String> = std::fs::read_dir(&wiki)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    pages.sort();
+    let mut want: Vec<String> = modules.iter().map(|m| format!("{m}.md")).collect();
+    want.push("index.md".into());
+    want.sort();
+    assert_eq!(pages, want);
+    // Nothing outside the wiki was written.
+    assert!(!root.join("packages/engine").exists());
+    assert!(!root.join("crates/og-host-web").exists());
+    let _ = std::fs::remove_dir_all(&root);
 }

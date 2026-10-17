@@ -12,7 +12,7 @@ only: frames, the UI tree and bundle swaps come in through traits.
 
 | Item | Entry points |
 |---|---|
-| `Probe` | `Probe::new(&mut world)` (registers `og.Input`), `with_input(world, sink)`; hooks `set_capture`, `set_ui`, `set_reloader`, `set_facts`, `declare_system`, `set_timings`, `set_engine_version`, `names_mut()` |
+| `Probe` | `Probe::new(&mut world)` (registers `og.Input`), `with_input(world, sink)`; hooks `set_capture`, `set_ui`, `set_reloader`, `set_facts`, `set_timings`, `set_engine_version`; `names()` resolves ids over the world's names |
 | driving | `frame(world, due)`, `step(world)`, `pump(world)`, `paused()`, `quit_requested()`, `take_outputs()`, `take_log()` |
 | command channel | `schedule(world, script) -> CommandsReport`, `register_command(name, CommandDesc, handler)`, `help()`, `command::parse`, `command::CORE_ACTIONS` |
 | probe members | `hello`, `tick`, `state`, `advance`, `pause`, `resume`, `input`, `accepted`, `pick`, `entity`, `bounds`, `patch`, `run`, `capture`, `sweep`, `reload`, `snapshot`, `restore`, `dump`, `commands` as typed methods; `invoke(world, method, params)` by name |
@@ -41,10 +41,10 @@ only: frames, the UI tree and bundle swaps come in through traits.
 4. **Hooks, when it has them.** `Capture` over og-render (render the world
    as of the current tick offscreen, PNG bytes; `pick` defaults to `None`
    until the renderer picks), `UiTree` from the UI module, `Reloader` for the
-   bundle swap, `set_facts` for `GameDesc.facts`, `declare_system` with the
-   same `SystemDesc` given to `World::add_system`, `set_timings` with the
-   measured step and render milliseconds, and `names_mut().set(entity, name)`
-   for every named spawn.
+   bundle swap, `set_facts` for `GameDesc.facts`, and `set_timings` with the
+   measured step and render milliseconds. Systems and names come from the
+   world: `dump_world` reads `World::system_info`, and the host names each
+   named spawn with `World::set_name`.
 
 The probe is not `Send` (hooks and handlers may hold JavaScript values):
 create it on the engine thread. It reads no clock.

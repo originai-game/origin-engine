@@ -14,11 +14,21 @@
     "./node": "./src/node/index.ts",
     "./web/worker": "./src/web/worker.ts",
     "./web/shell": "./src/web/shell.ts",
+    "./web/play": "./src/web/play.ts",
+    "./web/rpc-ring": "./src/web/rpc-ring.ts",
     "./runtime": "./src/runtime.ts",
     "./bindings.json": "./types/bindings.json",
-    "./schema.json": "./schema/api.schema.json"
+    "./schema.json": "./schema/api.schema.json",
+    "./playtest": "./src/playtest.ts"
   },
-  "files": ["types", "schema", "src", "native", "dist"],
+  "files": [
+    "types",
+    "schema",
+    "src",
+    "native",
+    "dist",
+    "vendor"
+  ],
   "scripts": {
     "build": "sh scripts/build.sh",
     "typecheck": "bun x --package typescript@5.9.3 tsc --noEmit -p tsconfig.json && bun x --package typescript@5.9.3 tsc --noEmit -p tsconfig.runtime.json",

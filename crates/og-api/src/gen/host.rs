@@ -192,7 +192,7 @@ const LIFECYCLE: &[LifecycleMember] = &[
         "og_engine_create",
         &[("game", "u32", "number"), ("options", "String", "string")],
         "String",
-        "Assemble a world from a declared game (`og.game`) and the declarations made so far. `options` is JSON `{ seed? }`; the answer is a Result of the engine id, which is also the world handle.",
+        "Assemble a world from a declared game (`og.game`) and the declarations made so far. `options` is JSON `{ seed?, root? }`: a replay seed, and the project directory (native) or URL base (web) whose `cooked/` bundle is opened and whose GameDesc.scene is spawned before the first tick. The answer is a Result of the engine id, which is also the world handle.",
     ),
     (
         "og_engine_destroy",
@@ -220,7 +220,31 @@ const LIFECYCLE: &[LifecycleMember] = &[
         "og_engine_frame",
         &[("engine", "u32", "number"), ("elapsed_ms", "f64", "number")],
         "String",
-        "One display frame: feed `elapsed_ms` of wall clock to the fixed-tick accumulator (unless paused), take the ticks it allows up to `GameDesc.maxCatchUp`, then render when a renderer is attached. JSON `{ ok, ticks, tick, rendered }` or a refusal.",
+        "One display frame: feed `elapsed_ms` of wall clock to the fixed-tick accumulator (unless paused), run the command steps due, take the ticks it allows up to `GameDesc.maxCatchUp` through the probe, then render when a renderer is attached. JSON `{ ok, ticks, tick, rendered, paused, quit }` or a refusal; `quit` is true once a `quit` command ran.",
+    ),
+    (
+        "og_host_begin_bundle",
+        &[],
+        "()",
+        "A new game bundle is about to be imported (hot reload): its component, resource and command declarations replace the previous bundle's; systems and games keep their handles. The probe's `reload` then assembles the latest `og.game` and restores the world into it.",
+    ),
+    (
+        "og_engine_call",
+        &[("engine", "u32", "number"), ("frame", "String", "string")],
+        "String",
+        "The probe's JSON-RPC 2.0 entry: one request frame in, its answer frame out (og-probe `Probe::call`). The native loopback WebSocket and the web request ring carry exactly these frames. Call it between ticks, never from a system.",
+    ),
+    (
+        "og_engine_take_outputs",
+        &[("engine", "u32", "number")],
+        "String",
+        "The files the command channel produced since the last call (`screenshot`, `dump_*`, `help`), as JSON `[{ tick, action, file, kind, data }]`: `file` is og-probe's `Output::file_name()`, `kind` is `png`, `json` or `text`, `data` is base64 for a PNG and the text otherwise. The host writes them (og run) or posts them.",
+    ),
+    (
+        "og_engine_take_log",
+        &[("engine", "u32", "number")],
+        "String",
+        "Log lines since the last call, as JSON `[{ tick, warning, text }]`: the command channel's and the probe's warnings and the loader's, each naming the fix.",
     ),
     (
         "og_engine_write_resource",
@@ -261,13 +285,15 @@ pub fn host_rs(ix: &Index<'_>) -> String {
     );
     for (name, params, ret, doc) in LIFECYCLE {
         out.push_str(&format!("    /// {doc}\n"));
-        let ps: Vec<String> = params.iter().map(|(n, t, _)| format!("{n}: {t}")).collect();
+        let ps: Vec<String> = std::iter::once("&self".to_string())
+            .chain(params.iter().map(|(n, t, _)| format!("{n}: {t}")))
+            .collect();
         let r = if *ret == "()" {
             String::new()
         } else {
             format!(" -> {ret}")
         };
-        out.push_str(&format!("    fn {name}(&self, {}){r};\n", ps.join(", ")));
+        out.push_str(&format!("    fn {name}({}){r};\n", ps.join(", ")));
     }
     out.push_str("}\n");
 
@@ -415,9 +441,10 @@ fn glue_fn(
     if target == Target::Node {
         out.push_str("    let _env = crate::EnvScope::enter(&env);\n");
     }
+    let call: Vec<&str> = std::iter::once("&Host").chain(args).collect();
     out.push_str(&format!(
-        "    <Host as {trait_name}>::{symbol}(&Host, {})\n}}\n\n",
-        args.join(", ")
+        "    <Host as {trait_name}>::{symbol}({})\n}}\n\n",
+        call.join(", ")
     ));
 }
 

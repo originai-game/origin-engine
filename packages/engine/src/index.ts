@@ -36,6 +36,7 @@ export const Color = ((value = { r: 0, g: 0, b: 0 }, options) => spec("Color", v
 export const Entity = ((value = 0 as Api.Entity, options) => spec("Entity", value, options)) as typeof Api.Entity;
 export const Geometry = ((value = 0 as Api.Geometry, options) => spec("Geometry", value, options)) as typeof Api.Geometry;
 export const Material = ((value = 0 as Api.Material, options) => spec("Material", value, options)) as typeof Api.Material;
+export const Asset = ((value = 0 as Api.Asset, options) => spec("Asset", value, options)) as typeof Api.Asset;
 
 export const defineComponent: typeof Api.defineComponent = (name, fields) =>
   defineRecord("component", name, fields as unknown as Record<string, FieldSpec>) as never;
@@ -52,6 +53,7 @@ export const PROBE_WIRE_VERSION: typeof Api.PROBE_WIRE_VERSION = 1;
 export const REPLAY_SEED_PARAM: typeof Api.REPLAY_SEED_PARAM = "replay-seed";
 export const PLAYTEST_MAX_TICKS: typeof Api.PLAYTEST_MAX_TICKS = 3600;
 export const PROBE_PROGRAM_MAX_OPERATIONS: typeof Api.PROBE_PROGRAM_MAX_OPERATIONS = 256;
+export const MAX_LIGHTS: typeof Api.MAX_LIGHTS = 8;
 
 export const og: typeof Api.og = Object.freeze({
   ...BUILTINS,

@@ -427,7 +427,7 @@ fn every_member_answers_as_protocol_5_says() {
     assert_eq!(world["systems"][1]["matched"], json!(1));
     assert_eq!(
         world["systems"][2],
-        json!({"name": "draw", "matched": null, "reads": null, "writes": null, "ms": null})
+        json!({"name": "draw", "matched": 0, "reads": [], "writes": ["og.Rng", "Stats"], "ms": null})
     );
     for r in ["og.Input", "og.Camera", "Stats"] {
         assert!(
@@ -762,19 +762,6 @@ fn reload_swaps_the_bundle_and_keeps_the_world() {
         .iter()
         .any(|l| l.warning && l.text.contains("Unexpected token")));
 
-    h.probe.set_reloader(Box::new(MoverChanged));
-    assert_eq!(h.result("reload", json!({})), Value::Null);
-    assert_eq!(
-        h.world.world_hash(),
-        hash,
-        "a layout change is refused, the world untouched"
-    );
-    assert!(h
-        .probe
-        .take_log()
-        .iter()
-        .any(|l| l.warning && l.text.contains("Mover changed layout")));
-
     h.probe.set_reloader(Box::new(WithoutHealth));
     let report = h.result("reload", json!({}));
     assert_eq!(report["dropped"], json!(["Health"]));
@@ -785,6 +772,46 @@ fn reload_swaps_the_bundle_and_keeps_the_world() {
     );
     assert_eq!(h.result("entity", json!({"id": "crate"})), json!({}));
     assert_eq!(h.result("advance", json!({"steps": 5})), json!(35));
+
+    // A layout change migrates field by field: Mover gained `accel` (its
+    // default), kept `speed`; the types this bundle no longer declares go.
+    h.probe.set_reloader(Box::new(MoverChanged));
+    let report = h.result("reload", json!({}));
+    assert_eq!(report["tick"], json!(35));
+    assert!(
+        report["migrated"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("Mover")),
+        "{report}"
+    );
+    assert!(
+        report["migrated"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("Mover.accel")),
+        "{report}"
+    );
+    assert!(
+        report["dropped"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("Velocity")),
+        "{report}"
+    );
+    let mover = h.world.id_by_name("Mover").unwrap();
+    let player = h.probe.names().resolve(&h.world, "player").unwrap();
+    let bytes = h.world.get_bytes(player, mover).unwrap();
+    assert_eq!(
+        f32::from_le_bytes(bytes[0..4].try_into().unwrap()),
+        2.0,
+        "speed kept"
+    );
+    assert_eq!(
+        f32::from_le_bytes(bytes[8..12].try_into().unwrap()),
+        0.0,
+        "accel added at its default"
+    );
 }
 
 fn write_evidence(name: &str, value: &Value) {

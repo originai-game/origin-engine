@@ -1,16 +1,42 @@
-// `og run --headless <project>` as far as M2 goes: load a game bundle on the
-// native host, optionally run registered actions once before the first tick,
-// advance N fixed ticks and print the world hash. The scheduled command
-// channel (`--commands "t:action;..."`) is the probe's, in M5.
+// `og run` on the native host: load a game bundle under bun (or node) with
+// the napi addon, open the project's cooked bundle, mount the probe, and
+// drive the tick.
 //
-//   bun src/node/run.ts --entry <game.ts> [--ticks N] [--seed S] [--setup action[:arg...]]... [--json]
+//   bun src/node/run.ts --entry <game.js|.ts> [--root <project>] [--ticks N] [--seed S]
+//       [--setup action[:arg...]]... [--commands "t:action[:args];..."] [--out <dir>]
+//       [--port P] [--size WxH] [--realtime] [--watch <bundle.js>] [--no-render] [--json]
+//
+// - Without --commands, --port or --watch: advance --ticks N at once and print
+//   the world hash (M2's hello world).
+// - With --commands: the script is scheduled through og-probe at tick 0 and
+//   the run takes one tick per frame until `quit`, --ticks, or the script's
+//   last step has run. Outputs (`screenshot`, `dump_*`, `help`) are written
+//   under --out at the probe's `Output::file_name()`.
+// - With --port: the probe answers JSON-RPC 2.0 at ws://127.0.0.1:<port>/probe
+//   between frames (`og probe`); the run keeps going until `quit` or a signal.
+// - With --watch: a change to the bundle re-imports it and hot-reloads it
+//   through the probe's `reload` (snapshot, swap, restore), printing one JSON
+//   line per reload with the latency from the file write to the first frame
+//   of the new bundle.
 
-import { loadGame } from "./index.ts";
+import { mkdirSync, statSync, watch, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import { loadNativeHost, native } from "./index.ts";
+import { beginBundle, createEngine, type Engine, type GameToken } from "../runtime.ts";
 
 const argv = process.argv.slice(2);
 let entry = "";
-let ticks = 0;
+let root: string | undefined;
+let ticks: number | undefined;
 let seed: number | undefined;
+let commands: string | undefined;
+let out = "og-out";
+let port: number | undefined;
+let size = { width: 1280, height: 720 };
+let realtime = false;
+let watchFile: string | undefined;
+let render = true;
 let asJson = false;
 const setup: string[] = [];
 for (let i = 0; i < argv.length; i++) {
@@ -21,11 +47,24 @@ for (let i = 0; i < argv.length; i++) {
     return v!;
   };
   if (a === "--entry") entry = next();
+  else if (a === "--root") root = resolve(next());
   else if (a === "--ticks") ticks = Number(next());
   else if (a === "--seed") seed = Number(next());
   else if (a === "--setup") setup.push(next());
+  else if (a === "--commands") commands = next();
+  else if (a === "--out") out = next();
+  else if (a === "--port") port = Number(next());
+  else if (a === "--size") {
+    const m = /^(\d+)x(\d+)$/.exec(next());
+    if (!m) fail("--size takes WIDTHxHEIGHT, such as 1280x720");
+    size = { width: Number(m![1]), height: Number(m![2]) };
+  } else if (a === "--realtime") realtime = true;
+  else if (a === "--watch") watchFile = resolve(next());
+  else if (a === "--no-render") render = false;
   else if (a === "--json") asJson = true;
-  else fail(`unknown argument '${a}'`);
+  else if (a === "--headless") {
+    // Native runs are always headless; accepted for `og run --headless`.
+  } else fail(`unknown argument '${a}'`);
 }
 
 function fail(reason: string): never {
@@ -34,23 +73,161 @@ function fail(reason: string): never {
 }
 
 if (!entry) fail("no game entry: pass --entry <file>");
-if (!Number.isInteger(ticks) || ticks < 0) fail("--ticks takes a whole number of fixed steps");
+if (ticks !== undefined && (!Number.isInteger(ticks) || ticks < 0)) fail("--ticks takes a whole number of fixed steps");
+if (seed !== undefined && (!Number.isInteger(seed) || seed < 0)) fail("--seed takes a whole number");
+if (port !== undefined && (!Number.isInteger(port) || port < 0 || port > 65535)) fail("--port takes 0 (a free port) to 65535");
 
-const loaded = await loadGame(entry, seed === undefined ? {} : { seed });
-if (!loaded.ok) fail(`${entry}: ${loaded.reason}`);
-const engine = loaded.value;
+loadNativeHost();
+const extras = native();
+let version = 0;
+async function importGame(file: string): Promise<GameToken> {
+  const url = pathToFileURL(resolve(file)).href + (version ? `?v=${version}` : "");
+  version++;
+  const mod = (await import(url)) as { default?: GameToken };
+  if (!mod.default) fail(`${file} has no default export: export default og.game({ ... })`);
+  return mod.default!;
+}
+
+const game = await importGame(entry);
+const created = createEngine(game, { ...(seed === undefined ? {} : { seed }), ...(root ? { root } : {}) });
+if (!created.ok) fail(`${entry}: ${created.reason}`);
+const engine: Engine = created.value;
+const outputs: string[] = [];
+const warnings: string[] = [];
+
+function decode(base64: string): Uint8Array {
+  const bin = atob(base64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+function drain(): void {
+  for (const o of engine.takeOutputs()) {
+    const path = resolve(out, o.file);
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, o.kind === "png" ? decode(o.data) : o.data);
+    outputs.push(path);
+    if (!asJson) process.stdout.write(`tick ${o.tick} ${o.action}: wrote ${path}\n`);
+  }
+  for (const l of engine.takeLog()) {
+    const line = `${l.warning ? "WARN" : "INFO"} tick ${l.tick}: ${l.text}`;
+    if (l.warning) warnings.push(line);
+    process.stderr.write(line + "\n");
+  }
+}
+
+const probing = commands !== undefined || port !== undefined || watchFile !== undefined;
+let tier = "none";
+if (probing && render) {
+  const attached = JSON.parse(extras.og_node_attach_offscreen(engine.id, size.width, size.height)) as { ok: boolean; value?: string; reason?: string };
+  if (attached.ok) tier = attached.value!;
+  else process.stderr.write(`WARN no renderer (${attached.reason}); screenshot and capture refuse\n`);
+}
+drain();
+
 for (const step of setup) {
   const [action, ...args] = step.split(":");
   const r = engine.command(action!, args);
   if (!r.ok) fail(`--setup ${step}: ${r.reason}`);
 }
-const t0 = performance.now();
-const advanced = engine.advance(ticks);
-const ms = performance.now() - t0;
-if (!advanced.ok) fail(advanced.reason);
-const dump = engine.probe.dump({ what: "world" }) as { hash: string; entities: number };
-if (asJson) {
-  process.stdout.write(JSON.stringify({ entry, ticks, tick: advanced.value, hash: dump.hash, entities: dump.entities, advanceMs: +ms.toFixed(2), runtime: typeof Bun !== "undefined" ? `bun ${Bun.version}` : `node ${process.version}` }) + "\n");
-} else {
-  process.stdout.write(`tick ${advanced.value} hash ${dump.hash} entities ${dump.entities}\n`);
+
+let listening: number | undefined;
+if (port !== undefined) {
+  const r = JSON.parse(extras.og_node_probe_listen(engine.id, port)) as { ok: boolean; value?: number; reason?: string };
+  if (!r.ok) fail(r.reason!);
+  listening = r.value!;
+  process.stdout.write(`probe: ws://127.0.0.1:${listening}/probe\n`);
 }
+
+let untilTick = -1;
+if (commands !== undefined) {
+  const report = engine.probe.commands(commands) as { scheduled: number; untilTick: number; warnings: string[] } | null;
+  drain();
+  if (!report) fail(`--commands: the script is malformed (the reason is above)`);
+  for (const w of report!.warnings) process.stderr.write(`WARN ${w}\n`);
+  untilTick = report!.untilTick;
+}
+
+const rate = engine.game.tick;
+const tickMs = 1000 / rate;
+const t0 = performance.now();
+let frameFailed: string | null = null;
+let quit = false;
+
+if (!probing) {
+  const advanced = engine.advance(ticks ?? 0);
+  if (!advanced.ok) fail(advanced.reason);
+} else {
+  let pendingReload: { mtimeMs: number } | null = null;
+  if (watchFile) {
+    let busy = false;
+    watch(watchFile, () => {
+      if (busy) return;
+      busy = true;
+      setTimeout(async () => {
+        busy = false;
+        const mtimeMs = statSync(watchFile!).mtimeMs;
+        try {
+          beginBundle();
+          await importGame(watchFile!);
+          pendingReload = { mtimeMs };
+        } catch (e) {
+          process.stderr.write(`WARN reload: the bundle failed to import (${e instanceof Error ? e.message : String(e)}); the old one keeps running\n`);
+        }
+      }, 5);
+    });
+  }
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  let last = performance.now();
+  for (;;) {
+    if (pendingReload) {
+      const { mtimeMs } = pendingReload as { mtimeMs: number };
+      pendingReload = null;
+      const report = engine.probe.reload() as { ms: number; tick: number } | null;
+      const first = engine.frame(0);
+      const captured = render && engine.probe.capture(0, 0) !== null;
+      const latencyMs = Date.now() - mtimeMs;
+      process.stdout.write(JSON.stringify({ event: "reload", ok: report !== null, report, tick: first.tick, captured, latencyMs: +latencyMs.toFixed(1) }) + "\n");
+      drain();
+    }
+    const elapsed = realtime ? performance.now() - last : tickMs;
+    last = performance.now();
+    const answer = engine.frame(elapsed);
+    if (!answer.ok) {
+      frameFailed = answer.reason ?? "the frame failed";
+      break;
+    }
+    if (listening !== undefined) extras.og_node_probe_serve(engine.id);
+    drain();
+    const tick = answer.tick ?? 0;
+    if (answer.quit) {
+      quit = true;
+      break;
+    }
+    if (ticks !== undefined && tick >= ticks) break;
+    if (ticks === undefined && commands !== undefined && listening === undefined && !watchFile && tick > untilTick) break;
+    if (realtime || listening !== undefined || watchFile) await sleep(Math.max(0, tickMs - (performance.now() - last)));
+  }
+}
+const ms = performance.now() - t0;
+drain();
+if (frameFailed) process.stderr.write(`og run: ${frameFailed}\n`);
+const dump = engine.probe.dump({ what: "world" }) as { hash: string; entities: number; tick: number };
+const summary = {
+  entry,
+  ticks: ticks ?? dump.tick,
+  tick: dump.tick,
+  hash: dump.hash,
+  entities: dump.entities,
+  advanceMs: +ms.toFixed(2),
+  runtime: typeof Bun !== "undefined" ? `bun ${Bun.version}` : `node ${process.version}`,
+  tier,
+  quit,
+  outputs,
+  warnings,
+};
+if (asJson) process.stdout.write(JSON.stringify(summary) + "\n");
+else process.stdout.write(`tick ${dump.tick} hash ${dump.hash} entities ${dump.entities}\n`);
+if (listening !== undefined) extras.og_node_probe_close(engine.id);
+process.exit(frameFailed ? 1 : 0);

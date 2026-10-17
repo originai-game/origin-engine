@@ -28,15 +28,21 @@
 //! engine never leaves the thread that created it.
 
 mod api;
+mod assets;
 mod codec;
 mod engine;
+mod extract;
+mod probe;
 
 pub use api::*;
+pub use assets::Fetch;
 pub use codec::{Kind, Layout, RecordKind};
 pub use engine::{
-    advance, command, create, destroy, frame, set_render_backend, view_columns, view_entities,
-    write_resource, ColumnPtr, Dispatch, Hooks, RenderBackend,
+    advance, answer_call, begin_bundle, call_rpc, command, create, destroy, frame, render_options,
+    set_render_backend, take_log, take_outputs, view_columns, view_entities, write_resource,
+    ColumnPtr, Dispatch, Hooks, RenderBackend,
 };
+pub use probe::png;
 
 use serde_json::{json, Value};
 
@@ -94,4 +100,20 @@ pub fn og_engine_frame(engine: u32, elapsed_ms: f64) -> String {
 
 pub fn og_engine_write_resource(world: u32, resource: String, value: String) -> String {
     write_resource(world, &resource, &value)
+}
+
+pub fn og_engine_call(engine: u32, frame: String) -> String {
+    call_rpc(engine, &frame)
+}
+
+pub fn og_engine_take_outputs(engine: u32) -> String {
+    take_outputs(engine)
+}
+
+pub fn og_engine_take_log(engine: u32) -> String {
+    take_log(engine)
+}
+
+pub fn og_host_begin_bundle() {
+    begin_bundle()
 }

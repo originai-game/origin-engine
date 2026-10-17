@@ -9,7 +9,7 @@ export type Dispatcher = (kind: number, engine: number, id: number, query: numbe
 export interface HostAbi<A, V> {
   /** Install the function the engine calls for systems, commands and facts: `dispatcher(kind, engine, id, query, tick, dt, elapsed, payload)` (payload: a command's arguments as a JSON list) returns `""` on success, the error otherwise (`kind`: 0 system, 1 command, 2 facts, whose answer is `"="` then JSON). */
   og_host_set_dispatcher(dispatcher: Dispatcher): void;
-  /** Assemble a world from a declared game (`og.game`) and the declarations made so far. `options` is JSON `{ seed? }`; the answer is a Result of the engine id, which is also the world handle. */
+  /** Assemble a world from a declared game (`og.game`) and the declarations made so far. `options` is JSON `{ seed?, root? }`: a replay seed, and the project directory (native) or URL base (web) whose `cooked/` bundle is opened and whose GameDesc.scene is spawned before the first tick. The answer is a Result of the engine id, which is also the world handle. */
   og_engine_create(game: number, options: string): string;
   /** Drop an engine and everything it owns. False for an unknown engine. */
   og_engine_destroy(engine: number): boolean;
@@ -17,8 +17,16 @@ export interface HostAbi<A, V> {
   og_engine_advance(engine: number, steps: number): string;
   /** Run a registered command action now, between ticks (`args` is a JSON list of strings). The scheduled channel is `og.commands.schedule`. */
   og_engine_command(engine: number, action: string, args: string): string;
-  /** One display frame: feed `elapsed_ms` of wall clock to the fixed-tick accumulator (unless paused), take the ticks it allows up to `GameDesc.maxCatchUp`, then render when a renderer is attached. JSON `{ ok, ticks, tick, rendered }` or a refusal. */
+  /** One display frame: feed `elapsed_ms` of wall clock to the fixed-tick accumulator (unless paused), run the command steps due, take the ticks it allows up to `GameDesc.maxCatchUp` through the probe, then render when a renderer is attached. JSON `{ ok, ticks, tick, rendered, paused, quit }` or a refusal; `quit` is true once a `quit` command ran. */
   og_engine_frame(engine: number, elapsed_ms: number): string;
+  /** A new game bundle is about to be imported (hot reload): its component, resource and command declarations replace the previous bundle's; systems and games keep their handles. The probe's `reload` then assembles the latest `og.game` and restores the world into it. */
+  og_host_begin_bundle(): void;
+  /** The probe's JSON-RPC 2.0 entry: one request frame in, its answer frame out (og-probe `Probe::call`). The native loopback WebSocket and the web request ring carry exactly these frames. Call it between ticks, never from a system. */
+  og_engine_call(engine: number, frame: string): string;
+  /** The files the command channel produced since the last call (`screenshot`, `dump_*`, `help`), as JSON `[{ tick, action, file, kind, data }]`: `file` is og-probe's `Output::file_name()`, `kind` is `png`, `json` or `text`, `data` is base64 for a PNG and the text otherwise. The host writes them (og run) or posts them. */
+  og_engine_take_outputs(engine: number): string;
+  /** Log lines since the last call, as JSON `[{ tick, warning, text }]`: the command channel's and the probe's warnings and the loader's, each naming the fix. */
+  og_engine_take_log(engine: number): string;
   /** Write some fields of a resource: how the runtime makes `world.resource(R).value` a live value. A Result. */
   og_engine_write_resource(world: number, resource: string, value: string): string;
   /** `defineComponent` */
@@ -125,10 +133,14 @@ export interface HostAbi<A, V> {
   og_input_released(world: number, key: string): boolean;
   /** `Input.axis` */
   og_input_axis(world: number, negative: string, positive: string): number;
+  /** `Input.axis2` */
+  og_input_axis2(world: number, left: string, right: string, down: string, up: string): string;
   /** `Input.buttonDown` */
   og_input_button_down(world: number, button: string): boolean;
   /** `Input.buttonPressed` */
   og_input_button_pressed(world: number, button: string): boolean;
+  /** `Input.buttonReleased` */
+  og_input_button_released(world: number, button: string): boolean;
   /** `Camera.lookAt` */
   og_camera_look_at(world: number, target: string): void;
   /** `Camera.worldToScreen` */
@@ -141,18 +153,38 @@ export interface HostAbi<A, V> {
   og_render_update_material(world: number, material: number, desc: string | undefined): string;
   /** `og.render.capabilities` */
   og_render_capabilities(world: number): string;
+  /** `og.render.text` */
+  og_render_text(world: number, desc: string | undefined): string;
+  /** `og.load.bundle` */
+  og_load_bundle(world: number, path: string): string;
+  /** `og.load.bundleInfo` */
+  og_load_bundle_info(world: number, asset: number): string;
+  /** `og.load.defaultBundle` */
+  og_load_default_bundle(world: number): string;
   /** `og.load.gltf` */
   og_load_gltf(world: number, path: string, desc: string | undefined): string;
   /** `og.load.scene` */
   og_load_scene(world: number, path: string): string;
+  /** `og.load.font` */
+  og_load_font(world: number, path: string): string;
+  /** `og.load.fontInfo` */
+  og_load_font_info(world: number, font: number): string;
+  /** `og.load.sound` */
+  og_load_sound(world: number, path: string): string;
+  /** `og.load.soundInfo` */
+  og_load_sound_info(world: number, sound: number): string;
   /** `og.load.status` */
   og_load_status(world: number, asset: number): string;
+  /** `og.load.error` */
+  og_load_error(world: number, asset: number): string;
   /** `og.load.gltfInfo` */
   og_load_gltf_info(world: number, asset: number): string;
   /** `og.commands.register` */
   og_commands_register(name: string, handler: number, desc: string | undefined): string;
   /** `og.commands.parse` */
   og_commands_parse(script: string): string;
+  /** `og.commands.help` */
+  og_commands_help(world: number): string;
   /** `og.commands.schedule` */
   og_commands_schedule(world: number, script: string): string;
   /** `RuntimeProbe.version` */
@@ -253,20 +285,32 @@ export const SYMBOLS: readonly string[] = [
   "og_input_pressed",
   "og_input_released",
   "og_input_axis",
+  "og_input_axis2",
   "og_input_button_down",
   "og_input_button_pressed",
+  "og_input_button_released",
   "og_camera_look_at",
   "og_camera_world_to_screen",
   "og_camera_screen_to_ray",
   "og_render_standard_material",
   "og_render_update_material",
   "og_render_capabilities",
+  "og_render_text",
+  "og_load_bundle",
+  "og_load_bundle_info",
+  "og_load_default_bundle",
   "og_load_gltf",
   "og_load_scene",
+  "og_load_font",
+  "og_load_font_info",
+  "og_load_sound",
+  "og_load_sound_info",
   "og_load_status",
+  "og_load_error",
   "og_load_gltf_info",
   "og_commands_register",
   "og_commands_parse",
+  "og_commands_help",
   "og_commands_schedule",
   "og_runtime_probe_get_version",
   "og_runtime_probe_tick",
@@ -295,5 +339,9 @@ export const SYMBOLS: readonly string[] = [
   "og_engine_advance",
   "og_engine_command",
   "og_engine_frame",
+  "og_host_begin_bundle",
+  "og_engine_call",
+  "og_engine_take_outputs",
+  "og_engine_take_log",
   "og_engine_write_resource",
 ];

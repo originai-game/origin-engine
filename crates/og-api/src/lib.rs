@@ -39,6 +39,7 @@ pub const OUTPUT_DIRS: &[&str] = &[
     "crates/og-api/src/generated",
     "crates/og-host-web/src/generated",
     "crates/og-host-node/src/generated",
+    "packages/knowledge/wiki",
 ];
 
 /// One problem in an IDL, with the 1-based line it was found on.
@@ -65,7 +66,8 @@ pub fn parse(text: &str) -> Result<Api, Vec<Diagnostic>> {
         }]);
     }
     let mut loader = load::Loader { diags: Vec::new() };
-    let api = loader.api(doc.version, &doc.body.entries);
+    let mut api = loader.api(doc.version, &doc.body.entries);
+    api.source = text.lines().map(str::to_string).collect();
     let mut diags = loader.diags;
     diags.extend(validate::validate(&api));
     diags.sort_by_key(|d| d.line);
@@ -132,7 +134,7 @@ pub fn read(path: &Path) -> Result<Api, ReadError> {
 /// One generated file: its path relative to the repository root and its bytes.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Generated {
-    pub path: &'static str,
+    pub path: String,
     pub contents: String,
 }
 
@@ -141,40 +143,63 @@ pub fn generate(api: &Api) -> Vec<Generated> {
     let ix = Index::new(api);
     vec![
         Generated {
-            path: "packages/engine/types/index.d.ts",
+            path: "packages/engine/types/index.d.ts".to_string(),
             contents: gen::ts::dts(&ix),
         },
         Generated {
-            path: "packages/engine/types/bindings.json",
+            path: "packages/engine/types/bindings.json".to_string(),
             contents: gen::tables::bindings(&ix),
         },
         Generated {
-            path: "packages/engine/schema/api.schema.json",
+            path: "packages/engine/schema/api.schema.json".to_string(),
             contents: gen::tables::schema(&ix),
         },
         Generated {
-            path: "packages/engine/src/generated/abi.ts",
+            path: "packages/engine/src/generated/abi.ts".to_string(),
             contents: gen::host::abi_ts(&ix),
         },
         Generated {
-            path: "crates/og-api/src/generated/host.rs",
+            path: "crates/og-api/src/generated/host.rs".to_string(),
             contents: gen::host::host_rs(&ix),
         },
         Generated {
-            path: "crates/og-host-web/src/generated/glue.rs",
+            path: "crates/og-host-web/src/generated/glue.rs".to_string(),
             contents: gen::host::glue(&ix, gen::host::Target::Web),
         },
         Generated {
-            path: "crates/og-host-node/src/generated/glue.rs",
+            path: "crates/og-host-node/src/generated/glue.rs".to_string(),
             contents: gen::host::glue(&ix, gen::host::Target::Node),
         },
     ]
+    .into_iter()
+    .chain(wiki_pages(&ix))
+    .collect()
+}
+
+/// The wiki pages alone (`og api gen --wiki`): one page per module and an
+/// index, under [`WIKI_DIR`].
+pub fn generate_wiki(api: &Api) -> Vec<Generated> {
+    wiki_pages(&Index::new(api))
+}
+
+/// Where the wiki is generated, relative to the repository root: the
+/// knowledge package (`@origingame/engine-knowledge`) ships it.
+pub const WIKI_DIR: &str = "packages/knowledge/wiki";
+
+fn wiki_pages(ix: &Index<'_>) -> Vec<Generated> {
+    gen::wiki::pages(ix)
+        .into_iter()
+        .map(|(name, contents)| Generated {
+            path: format!("{WIKI_DIR}/{name}"),
+            contents,
+        })
+        .collect()
 }
 
 /// Write generated files under `root`, creating directories as needed.
 pub fn write(root: &Path, files: &[Generated]) -> std::io::Result<()> {
     for file in files {
-        let path = root.join(file.path);
+        let path = root.join(&file.path);
         if let Some(dir) = path.parent() {
             std::fs::create_dir_all(dir)?;
         }
@@ -234,8 +259,8 @@ pub fn check(root: &Path) -> Result<Vec<Drift>, ReadError> {
 fn compare(fresh: &Path, root: &Path, files: &[Generated]) -> Vec<Drift> {
     let mut drift = Vec::new();
     for file in files {
-        let want = std::fs::read(fresh.join(file.path)).unwrap_or_default();
-        match std::fs::read(root.join(file.path)) {
+        let want = std::fs::read(fresh.join(&file.path)).unwrap_or_default();
+        match std::fs::read(root.join(&file.path)) {
             Err(_) => drift.push(Drift::Missing(file.path.to_string())),
             Ok(have) if have != want => drift.push(Drift::Differs {
                 path: file.path.to_string(),

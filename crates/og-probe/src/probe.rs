@@ -15,7 +15,7 @@ use crate::names::Names;
 use crate::value;
 use og_core::glam::{Mat3, Quat, Vec3};
 use og_core::{Error, ErrorKind, FieldType, Layout, Rng, Schema};
-use og_ecs::{Entity, QueryDesc, SchemaId, SystemDesc, World};
+use og_ecs::{Entity, QueryDesc, SchemaId, World};
 use serde_json::{json, Map, Value};
 use std::collections::{BTreeMap, VecDeque};
 use std::rc::Rc;
@@ -89,11 +89,10 @@ pub struct SweepDesc {
     pub height: u32,
 }
 
-/// One probe snapshot: the world and the names that address it.
+/// One probe snapshot: the world (its names included).
 #[derive(Clone)]
 struct Saved {
     world: Vec<u8>,
-    names: Names,
     tick: u64,
     hash: u64,
 }
@@ -130,7 +129,6 @@ pub struct Probe {
     ui: Option<Box<dyn UiTree>>,
     reloader: Option<Box<dyn Reloader>>,
     facts: Option<FactsFn>,
-    systems: BTreeMap<String, SystemDesc>,
     commands: BTreeMap<String, Registered>,
     queue: BTreeMap<(u64, u64), Queued>,
     seq: u64,
@@ -208,13 +206,12 @@ impl Probe {
         input.attach(world)?;
         Ok(Probe {
             engine: ENGINE_VERSION.to_owned(),
-            names: Names::default(),
+            names: Names,
             input,
             capture: None,
             ui: None,
             reloader: None,
             facts: None,
-            systems: BTreeMap::new(),
             commands: BTreeMap::new(),
             queue: BTreeMap::new(),
             seq: 0,
@@ -258,26 +255,15 @@ impl Probe {
         self.facts = Some(Box::new(facts));
     }
 
-    /// Record a system's declaration, so `dump_world` reports what it reads
-    /// and writes and how many entities its queries match. The host calls it
-    /// with the same desc it gives `World::add_system`.
-    pub fn declare_system(&mut self, desc: &SystemDesc) {
-        self.systems.insert(desc.name.clone(), desc.clone());
-    }
-
     /// The last tick's timings for `state().timings`, measured by the host.
     pub fn set_timings(&mut self, step_ms: f64, render_ms: f64) {
         self.step_ms = step_ms;
         self.render_ms = render_ms;
     }
 
-    /// The names entities are addressed by.
+    /// Probe ids over the world's names (`World::set_name` names entities).
     pub fn names(&self) -> &Names {
         &self.names
-    }
-
-    pub fn names_mut(&mut self) -> &mut Names {
-        &mut self.names
     }
 
     /// Whether the clock is held (the host's loop then takes no ticks).
@@ -1004,7 +990,7 @@ impl Probe {
     pub fn pick(&mut self, world: &World, x: f32, y: f32) -> Option<Value> {
         let hit = self.capture.as_mut()?.pick(world, x, y)?;
         Some(json!({
-            "entity": self.names.id_of(hit.entity),
+            "entity": self.names.id_of(world, hit.entity),
             "world": hit.world,
             "source": hit.source,
         }))
@@ -1136,14 +1122,12 @@ impl Probe {
         Saved {
             hash: world.world_hash(),
             world: bytes,
-            names: self.names.clone(),
             tick: world.time().tick,
         }
     }
 
     fn load(&mut self, world: &mut World, saved: &Saved) -> og_core::Result<()> {
         world.restore(&saved.world)?;
-        self.names = saved.names.clone();
         Ok(())
     }
 
@@ -1233,72 +1217,40 @@ impl Probe {
             self.note(tick, true, format!("reload: input: {}", err.reason()));
             return None;
         }
-        let mut dropped = Vec::new();
-        let mut changed = Vec::new();
-        let mut warnings = Vec::new();
-        for schema in world.schemas() {
-            match next.id_by_name(&schema.name) {
-                Ok(id) => {
-                    let now = next.schema(id).map(Schema::layout_hash).unwrap_or(0);
-                    if now != schema.layout_hash() {
-                        changed.push(schema.name.clone());
-                    }
-                }
-                Err(_) => {
-                    // Kept registered so the snapshot restores; its data is dropped below.
-                    if let Err(err) = next.register_schema(schema.clone()) {
-                        self.note(
-                            tick,
-                            true,
-                            format!("reload: '{}': {}", schema.name, err.reason()),
-                        );
-                        return None;
-                    }
-                    dropped.push(schema.name.clone());
-                }
+        // Types by name, fields by name (og-ecs `restore_migrating`): added
+        // fields start at their defaults, removed fields and types are dropped.
+        let report = match next.restore_migrating(&saved) {
+            Ok(r) => r,
+            Err(err) => {
+                self.note(
+                    tick,
+                    true,
+                    format!(
+                        "reload: restore into the new bundle failed: {}; the old one keeps running",
+                        err.reason()
+                    ),
+                );
+                return None;
             }
-        }
-        if !changed.is_empty() {
-            self.note(tick, true, format!(
-                "reload: {} changed layout; carrying fields across a layout change needs og-ecs migration on restore, so the old bundle keeps running (restart the run to pick it up)",
-                changed.join(", ")
-            ));
-            return None;
-        }
-        if let Err(err) = next.restore(&saved) {
-            self.note(
-                tick,
-                true,
-                format!(
-                    "reload: restore into the new bundle failed: {}",
-                    err.reason()
-                ),
-            );
-            return None;
-        }
-        for name in &dropped {
-            let Ok(id) = next.id_by_name(name) else {
-                continue;
-            };
-            let holders: Vec<Entity> = next
-                .query(&QueryDesc {
-                    read: vec![name.clone()],
-                    ..QueryDesc::default()
-                })
-                .map(|q| q.flat_map(|v| v.entities().to_vec()).collect())
-                .unwrap_or_default();
-            for e in holders {
-                let _ = next.remove_id(e, id);
-            }
-            if next.resource_bytes(id).is_ok() {
-                warnings.push(format!("resource '{name}' is no longer declared; its value stays in the world until the run restarts"));
-            }
-        }
+        };
+        let warnings = report.warnings.clone();
+        let migrated: Vec<String> = report
+            .migrated
+            .iter()
+            .chain(report.added.iter())
+            .cloned()
+            .collect();
+        let dropped: Vec<String> = report
+            .dropped
+            .iter()
+            .chain(report.removed.iter())
+            .cloned()
+            .collect();
         *world = next;
         Some(json!({
             "tick": world.time().tick,
             "ms": rebuilt.ms,
-            "migrated": Vec::<String>::new(),
+            "migrated": migrated,
             "dropped": dropped,
             "warnings": warnings,
         }))
@@ -1379,20 +1331,12 @@ impl Probe {
                 .collect()
             })
             .unwrap_or_default();
+        // og-ecs reports every system: its declared access and what its
+        // queries matched when it last ran. The probe reads no clock: ms is null.
         let systems: Vec<Value> = world
-            .systems()
+            .system_info()
             .into_iter()
-            .map(|name| match self.systems.get(name) {
-                Some(desc) => {
-                    let matched: Option<usize> = desc
-                        .queries
-                        .iter()
-                        .map(|q| world.query(q).ok().map(|i| i.entity_count()))
-                        .sum();
-                    json!({"name": name, "matched": matched, "reads": desc.reads, "writes": desc.writes, "ms": Value::Null})
-                }
-                None => json!({"name": name, "matched": Value::Null, "reads": Value::Null, "writes": Value::Null, "ms": Value::Null}),
-            })
+            .map(|s| json!({"name": s.name, "matched": s.matched, "reads": s.reads, "writes": s.writes, "ms": Value::Null}))
             .collect();
         let resources: Vec<String> = world
             .schemas()
@@ -1427,8 +1371,8 @@ impl Probe {
             .collect();
         json!({
             "kind": "entity",
-            "id": self.names.id_of(e),
-            "name": self.names.name_of(e),
+            "id": self.names.id_of(world, e),
+            "name": self.names.name_of(world, e),
             "components": components,
         })
     }

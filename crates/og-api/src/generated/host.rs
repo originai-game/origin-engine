@@ -19,7 +19,7 @@ pub trait Wire {
 pub trait Lifecycle: Wire {
     /// Install the function the engine calls for systems, commands and facts: `dispatcher(kind, engine, id, query, tick, dt, elapsed, payload)` (payload: a command's arguments as a JSON list) returns `""` on success, the error otherwise (`kind`: 0 system, 1 command, 2 facts, whose answer is `"="` then JSON).
     fn og_host_set_dispatcher(&self, dispatcher: Self::Function);
-    /// Assemble a world from a declared game (`og.game`) and the declarations made so far. `options` is JSON `{ seed? }`; the answer is a Result of the engine id, which is also the world handle.
+    /// Assemble a world from a declared game (`og.game`) and the declarations made so far. `options` is JSON `{ seed?, root? }`: a replay seed, and the project directory (native) or URL base (web) whose `cooked/` bundle is opened and whose GameDesc.scene is spawned before the first tick. The answer is a Result of the engine id, which is also the world handle.
     fn og_engine_create(&self, game: u32, options: String) -> String;
     /// Drop an engine and everything it owns. False for an unknown engine.
     fn og_engine_destroy(&self, engine: u32) -> bool;
@@ -27,8 +27,16 @@ pub trait Lifecycle: Wire {
     fn og_engine_advance(&self, engine: u32, steps: u32) -> String;
     /// Run a registered command action now, between ticks (`args` is a JSON list of strings). The scheduled channel is `og.commands.schedule`.
     fn og_engine_command(&self, engine: u32, action: String, args: String) -> String;
-    /// One display frame: feed `elapsed_ms` of wall clock to the fixed-tick accumulator (unless paused), take the ticks it allows up to `GameDesc.maxCatchUp`, then render when a renderer is attached. JSON `{ ok, ticks, tick, rendered }` or a refusal.
+    /// One display frame: feed `elapsed_ms` of wall clock to the fixed-tick accumulator (unless paused), run the command steps due, take the ticks it allows up to `GameDesc.maxCatchUp` through the probe, then render when a renderer is attached. JSON `{ ok, ticks, tick, rendered, paused, quit }` or a refusal; `quit` is true once a `quit` command ran.
     fn og_engine_frame(&self, engine: u32, elapsed_ms: f64) -> String;
+    /// A new game bundle is about to be imported (hot reload): its component, resource and command declarations replace the previous bundle's; systems and games keep their handles. The probe's `reload` then assembles the latest `og.game` and restores the world into it.
+    fn og_host_begin_bundle(&self);
+    /// The probe's JSON-RPC 2.0 entry: one request frame in, its answer frame out (og-probe `Probe::call`). The native loopback WebSocket and the web request ring carry exactly these frames. Call it between ticks, never from a system.
+    fn og_engine_call(&self, engine: u32, frame: String) -> String;
+    /// The files the command channel produced since the last call (`screenshot`, `dump_*`, `help`), as JSON `[{ tick, action, file, kind, data }]`: `file` is og-probe's `Output::file_name()`, `kind` is `png`, `json` or `text`, `data` is base64 for a PNG and the text otherwise. The host writes them (og run) or posts them.
+    fn og_engine_take_outputs(&self, engine: u32) -> String;
+    /// Log lines since the last call, as JSON `[{ tick, warning, text }]`: the command channel's and the probe's warnings and the loader's, each naming the fix.
+    fn og_engine_take_log(&self, engine: u32) -> String;
     /// Write some fields of a resource: how the runtime makes `world.resource(R).value` a live value. A Result.
     fn og_engine_write_resource(&self, world: u32, resource: String, value: String) -> String;
 }
@@ -73,7 +81,7 @@ pub trait WorldApi: Wire {
     fn og_world_events(&self, world: u32, event: String) -> String;
     /// `World.emit`: Emit an event; readers see it this tick and the next.
     fn og_world_emit(&self, world: u32, event: String, payload: String) -> String;
-    /// `World.instantiate`: Spawn a loaded scene or glTF asset into the world as a tree of entities.
+    /// `World.instantiate`: Spawn a loaded scene or glTF asset into the world: a root entity from the desc, then (for a scene) every scene entity under it with its components and names, or (for a glTF) a Model on the root.
     fn og_world_instantiate(&self, world: u32, asset: f64, desc: Option<String>) -> String;
     /// `Query.archetypes`: The matched archetypes this tick.
     fn og_query_archetypes(&self, query: u32) -> String;
@@ -163,10 +171,14 @@ pub trait InputApi: Wire {
     fn og_input_released(&self, world: u32, key: String) -> bool;
     /// `Input.axis`: -1, 0 or 1 from two keys, such as `axis("KeyA", "KeyD")`.
     fn og_input_axis(&self, world: u32, negative: String, positive: String) -> f64;
+    /// `Input.axis2`: A 2D axis from four keys, such as `axis2("KeyA", "KeyD", "KeyS", "KeyW")`: each component -1, 0 or 1.
+    fn og_input_axis2(&self, world: u32, left: String, right: String, down: String, up: String) -> String;
     /// `Input.buttonDown`: Whether a pointer button is held.
     fn og_input_button_down(&self, world: u32, button: String) -> bool;
     /// `Input.buttonPressed`: Whether a pointer button went down this tick.
     fn og_input_button_pressed(&self, world: u32, button: String) -> bool;
+    /// `Input.buttonReleased`: Whether a pointer button went up this tick.
+    fn og_input_button_released(&self, world: u32, button: String) -> bool;
 }
 
 /// `camera`: The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names.
@@ -187,16 +199,34 @@ pub trait RenderApi: Wire {
     fn og_render_update_material(&self, world: u32, material: f64, desc: Option<String>) -> String;
     /// `og.render.capabilities`: The renderer's tier and limits on this device.
     fn og_render_capabilities(&self, world: u32) -> String;
+    /// `og.render.text`: Draw text this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the text should show. Multi-page fonts are drawn page by page with one layout.
+    fn og_render_text(&self, world: u32, desc: Option<String>) -> String;
 }
 
-/// `load`: Asset loading. Paths are relative to the project and read cooked output; a load returns a handle at once and completes at a tick boundary.
+/// `load`: Asset loading from cooked output: `og cook` turns assets/ into cooked/ (.ogb blobs and the manifest cooked/.cook.ogt), and the runtime reads only cooked/.
 pub trait LoadApi: Wire {
-    /// `og.load.gltf`: Load a glTF (.gltf or .glb) through the cook, as three.js GLTFLoader.load.
+    /// `og.load.bundle`: Open another cooked bundle (the game's own `cooked` is open before the first tick). Its loads read through it once it is ready.
+    fn og_load_bundle(&self, world: u32, path: String) -> String;
+    /// `og.load.bundleInfo`: What an open bundle holds.
+    fn og_load_bundle_info(&self, world: u32, asset: f64) -> String;
+    /// `og.load.defaultBundle`: The game's own bundle, opened before the first tick from `cooked/`.
+    fn og_load_default_bundle(&self, world: u32) -> String;
+    /// `og.load.gltf`: Load a cooked glTF (.gltf or .glb), as three.js GLTFLoader.load: its meshes, materials and textures join the renderer once.
     fn og_load_gltf(&self, world: u32, path: String, desc: Option<String>) -> String;
-    /// `og.load.scene`: Load a scene (.ogt).
+    /// `og.load.scene`: Load a cooked scene (.ogt). world.instantiate spawns its entities: depth first, parents before children, each component table matched to a registered component by its reflected name (`Transform` is og.Transform) and migrated field by field; a field the scene lacks keeps its default, one the component lacks is dropped with a warning.
     fn og_load_scene(&self, world: u32, path: String) -> String;
+    /// `og.load.font`: Load a cooked MSDF font for og.render.text.
+    fn og_load_font(&self, world: u32, path: String) -> String;
+    /// `og.load.fontInfo`: A loaded font's metrics.
+    fn og_load_font_info(&self, world: u32, font: f64) -> String;
+    /// `og.load.sound`: Load a cooked sound for the audio module.
+    fn og_load_sound(&self, world: u32, path: String) -> String;
+    /// `og.load.soundInfo`: A loaded sound's format and length.
+    fn og_load_sound_info(&self, world: u32, sound: f64) -> String;
     /// `og.load.status`: Where a load is.
     fn og_load_status(&self, world: u32, asset: f64) -> String;
+    /// `og.load.error`: Why a load failed.
+    fn og_load_error(&self, world: u32, asset: f64) -> String;
     /// `og.load.gltfInfo`: What a ready glTF holds.
     fn og_load_gltf_info(&self, world: u32, asset: f64) -> String;
 }
@@ -207,6 +237,8 @@ pub trait CommandsApi: Wire {
     fn og_commands_register(&self, name: String, handler: u32, desc: Option<String>) -> String;
     /// `og.commands.parse`: Parse a script without scheduling it.
     fn og_commands_parse(&self, script: String) -> String;
+    /// `og.commands.help`: Every action the channel knows: core actions in CoreAction order, then registered ones by name.
+    fn og_commands_help(&self, world: u32) -> String;
     /// `og.commands.schedule`: Schedule a script on simulation time, from the current tick.
     fn og_commands_schedule(&self, world: u32, script: String) -> String;
 }
@@ -241,7 +273,7 @@ pub trait ProbeApi: Wire {
     fn og_runtime_probe_run(&self, runtime_probe: u32, program: String) -> String;
     /// `EngineProbe.hello`: Who is speaking: protocol, wire, engine version, tick rate, renderer tier, build.
     fn og_engine_probe_hello(&self, engine_probe: u32) -> String;
-    /// `EngineProbe.capture`: The frame rendered at the current tick, read back offscreen.
+    /// `EngineProbe.capture`: The frame of the current tick, rendered offscreen and read back as a PNG.
     fn og_engine_probe_capture(&self, engine_probe: u32, width: Option<u32>, height: Option<u32>) -> String;
     /// `EngineProbe.sweep`: A filmstrip over one tunable: per value, restore, patch, advance, capture.
     fn og_engine_probe_sweep(&self, engine_probe: u32, desc: Option<String>) -> String;
@@ -316,20 +348,32 @@ pub const SYMBOLS: &[&str] = &[
     "og_input_pressed",
     "og_input_released",
     "og_input_axis",
+    "og_input_axis2",
     "og_input_button_down",
     "og_input_button_pressed",
+    "og_input_button_released",
     "og_camera_look_at",
     "og_camera_world_to_screen",
     "og_camera_screen_to_ray",
     "og_render_standard_material",
     "og_render_update_material",
     "og_render_capabilities",
+    "og_render_text",
+    "og_load_bundle",
+    "og_load_bundle_info",
+    "og_load_default_bundle",
     "og_load_gltf",
     "og_load_scene",
+    "og_load_font",
+    "og_load_font_info",
+    "og_load_sound",
+    "og_load_sound_info",
     "og_load_status",
+    "og_load_error",
     "og_load_gltf_info",
     "og_commands_register",
     "og_commands_parse",
+    "og_commands_help",
     "og_commands_schedule",
     "og_runtime_probe_get_version",
     "og_runtime_probe_tick",
@@ -515,6 +559,146 @@ pub const RECORDS: &[RecordDecl] = &[
                 name: "wheel",
                 column: "Vector2",
                 default: "{\"x\":0,\"y\":0}",
+                readonly: true,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "buttons",
+                column: "u32",
+                default: "0",
+                readonly: true,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "buttonsPressed",
+                column: "u32",
+                default: "0",
+                readonly: true,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "buttonsReleased",
+                column: "u32",
+                default: "0",
+                readonly: true,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "buttonsReleaseNext",
+                column: "u32",
+                default: "0",
+                readonly: true,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "keys0",
+                column: "u32",
+                default: "0",
+                readonly: true,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "keys1",
+                column: "u32",
+                default: "0",
+                readonly: true,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "keys2",
+                column: "u32",
+                default: "0",
+                readonly: true,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "keys3",
+                column: "u32",
+                default: "0",
+                readonly: true,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "pressed0",
+                column: "u32",
+                default: "0",
+                readonly: true,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "pressed1",
+                column: "u32",
+                default: "0",
+                readonly: true,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "pressed2",
+                column: "u32",
+                default: "0",
+                readonly: true,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "pressed3",
+                column: "u32",
+                default: "0",
+                readonly: true,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "released0",
+                column: "u32",
+                default: "0",
+                readonly: true,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "released1",
+                column: "u32",
+                default: "0",
+                readonly: true,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "released2",
+                column: "u32",
+                default: "0",
+                readonly: true,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "released3",
+                column: "u32",
+                default: "0",
+                readonly: true,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "releaseNext0",
+                column: "u32",
+                default: "0",
+                readonly: true,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "releaseNext1",
+                column: "u32",
+                default: "0",
+                readonly: true,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "releaseNext2",
+                column: "u32",
+                default: "0",
+                readonly: true,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "releaseNext3",
+                column: "u32",
+                default: "0",
                 readonly: true,
                 tunable: false,
             },
@@ -767,6 +951,202 @@ pub const RECORDS: &[RecordDecl] = &[
                 name: "visible",
                 column: "bool",
                 default: "true",
+                readonly: false,
+                tunable: false,
+            },
+        ],
+    },
+    RecordDecl {
+        kind: "component",
+        name: "DirectionalLight",
+        schema: "og.DirectionalLight",
+        fields: &[
+            FieldDecl {
+                name: "color",
+                column: "Color",
+                default: "{\"r\":1,\"g\":1,\"b\":1}",
+                readonly: false,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "intensity",
+                column: "f32",
+                default: "3",
+                readonly: false,
+                tunable: true,
+            },
+            FieldDecl {
+                name: "castShadow",
+                column: "bool",
+                default: "true",
+                readonly: false,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "shadowDistance",
+                column: "f32",
+                default: "200",
+                readonly: false,
+                tunable: false,
+            },
+        ],
+    },
+    RecordDecl {
+        kind: "component",
+        name: "PointLight",
+        schema: "og.PointLight",
+        fields: &[
+            FieldDecl {
+                name: "color",
+                column: "Color",
+                default: "{\"r\":1,\"g\":1,\"b\":1}",
+                readonly: false,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "intensity",
+                column: "f32",
+                default: "10",
+                readonly: false,
+                tunable: true,
+            },
+            FieldDecl {
+                name: "distance",
+                column: "f32",
+                default: "10",
+                readonly: false,
+                tunable: true,
+            },
+            FieldDecl {
+                name: "castShadow",
+                column: "bool",
+                default: "false",
+                readonly: false,
+                tunable: false,
+            },
+        ],
+    },
+    RecordDecl {
+        kind: "component",
+        name: "SpotLight",
+        schema: "og.SpotLight",
+        fields: &[
+            FieldDecl {
+                name: "color",
+                column: "Color",
+                default: "{\"r\":1,\"g\":1,\"b\":1}",
+                readonly: false,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "intensity",
+                column: "f32",
+                default: "10",
+                readonly: false,
+                tunable: true,
+            },
+            FieldDecl {
+                name: "distance",
+                column: "f32",
+                default: "10",
+                readonly: false,
+                tunable: true,
+            },
+            FieldDecl {
+                name: "angle",
+                column: "f32",
+                default: "0.5236",
+                readonly: false,
+                tunable: true,
+            },
+            FieldDecl {
+                name: "penumbra",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "castShadow",
+                column: "bool",
+                default: "false",
+                readonly: false,
+                tunable: false,
+            },
+        ],
+    },
+    RecordDecl {
+        kind: "resource",
+        name: "RenderSettings",
+        schema: "og.RenderSettings",
+        fields: &[
+            FieldDecl {
+                name: "environmentIntensity",
+                column: "f32",
+                default: "0.55",
+                readonly: false,
+                tunable: true,
+            },
+            FieldDecl {
+                name: "sky",
+                column: "bool",
+                default: "false",
+                readonly: false,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "bloom",
+                column: "bool",
+                default: "false",
+                readonly: false,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "bloomThreshold",
+                column: "f32",
+                default: "1",
+                readonly: false,
+                tunable: true,
+            },
+            FieldDecl {
+                name: "bloomKnee",
+                column: "f32",
+                default: "0.5",
+                readonly: false,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "bloomIntensity",
+                column: "f32",
+                default: "0.6",
+                readonly: false,
+                tunable: true,
+            },
+            FieldDecl {
+                name: "autoExposure",
+                column: "bool",
+                default: "false",
+                readonly: false,
+                tunable: false,
+            },
+            FieldDecl {
+                name: "toneMapped",
+                column: "bool",
+                default: "true",
+                readonly: false,
+                tunable: false,
+            },
+        ],
+    },
+    RecordDecl {
+        kind: "component",
+        name: "Model",
+        schema: "og.Model",
+        fields: &[
+            FieldDecl {
+                name: "asset",
+                column: "Asset",
+                default: "0",
                 readonly: false,
                 tunable: false,
             },

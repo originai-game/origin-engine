@@ -36,6 +36,18 @@ impl Lifecycle for NodeHost {
     fn og_engine_write_resource(&self, world: u32, resource: String, value: String) -> String {
         rt::og_engine_write_resource(world, resource, value)
     }
+    fn og_host_begin_bundle(&self) {
+        rt::og_host_begin_bundle()
+    }
+    fn og_engine_call(&self, engine: u32, frame: String) -> String {
+        rt::og_engine_call(engine, frame)
+    }
+    fn og_engine_take_outputs(&self, engine: u32) -> String {
+        rt::og_engine_take_outputs(engine)
+    }
+    fn og_engine_take_log(&self, engine: u32) -> String {
+        rt::og_engine_take_log(engine)
+    }
 }
 
 impl ReflectApi for NodeHost {
@@ -221,11 +233,24 @@ impl InputApi for NodeHost {
     fn og_input_axis(&self, world: u32, negative: String, positive: String) -> f64 {
         rt::og_input_axis(world, negative, positive)
     }
+    fn og_input_axis2(
+        &self,
+        world: u32,
+        left: String,
+        right: String,
+        down: String,
+        up: String,
+    ) -> String {
+        rt::og_input_axis2(world, left, right, down, up)
+    }
     fn og_input_button_down(&self, world: u32, button: String) -> bool {
         rt::og_input_button_down(world, button)
     }
     fn og_input_button_pressed(&self, world: u32, button: String) -> bool {
         rt::og_input_button_pressed(world, button)
+    }
+    fn og_input_button_released(&self, world: u32, button: String) -> bool {
+        rt::og_input_button_released(world, button)
     }
 }
 
@@ -251,6 +276,9 @@ impl RenderApi for NodeHost {
     fn og_render_capabilities(&self, world: u32) -> String {
         rt::og_render_capabilities(world)
     }
+    fn og_render_text(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_text(world, desc)
+    }
 }
 
 impl LoadApi for NodeHost {
@@ -266,6 +294,30 @@ impl LoadApi for NodeHost {
     fn og_load_gltf_info(&self, world: u32, asset: f64) -> String {
         rt::og_load_gltf_info(world, asset)
     }
+    fn og_load_bundle(&self, world: u32, path: String) -> String {
+        rt::og_load_bundle(world, path)
+    }
+    fn og_load_bundle_info(&self, world: u32, asset: f64) -> String {
+        rt::og_load_bundle_info(world, asset)
+    }
+    fn og_load_default_bundle(&self, world: u32) -> String {
+        rt::og_load_default_bundle(world)
+    }
+    fn og_load_font(&self, world: u32, path: String) -> String {
+        rt::og_load_font(world, path)
+    }
+    fn og_load_font_info(&self, world: u32, font: f64) -> String {
+        rt::og_load_font_info(world, font)
+    }
+    fn og_load_sound(&self, world: u32, path: String) -> String {
+        rt::og_load_sound(world, path)
+    }
+    fn og_load_sound_info(&self, world: u32, sound: f64) -> String {
+        rt::og_load_sound_info(world, sound)
+    }
+    fn og_load_error(&self, world: u32, asset: f64) -> String {
+        rt::og_load_error(world, asset)
+    }
 }
 
 impl CommandsApi for NodeHost {
@@ -277,6 +329,9 @@ impl CommandsApi for NodeHost {
     }
     fn og_commands_schedule(&self, world: u32, script: String) -> String {
         rt::og_commands_schedule(world, script)
+    }
+    fn og_commands_help(&self, world: u32) -> String {
+        rt::og_commands_help(world)
     }
 }
 

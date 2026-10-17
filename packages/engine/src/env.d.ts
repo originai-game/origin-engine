@@ -2,7 +2,7 @@
 // type-checks without @types/node or bun-types (game code never sees them).
 
 declare module "node:module" {
-  export function createRequire(url: string): (id: string) => unknown;
+  export function createRequire(url: string): ((id: string) => unknown) & { resolve(id: string): string };
 }
 
 declare module "node:url" {
@@ -13,6 +13,7 @@ declare module "node:url" {
 declare module "node:path" {
   export function resolve(...parts: string[]): string;
   export function dirname(path: string): string;
+  export function basename(path: string, suffix?: string): string;
   export function join(...parts: string[]): string;
 }
 
@@ -22,6 +23,9 @@ declare module "node:fs" {
   export function readFileSync(path: string, encoding: string): string;
   export function writeFileSync(path: string, data: string | Uint8Array): void;
   export function rmSync(path: string, options?: { recursive?: boolean; force?: boolean }): void;
+  export function mkdirSync(path: string, options?: { recursive?: boolean }): void;
+  export function statSync(path: string): { mtimeMs: number; size: number; isDirectory(): boolean };
+  export function watch(path: string, listener: (event: string, file: string | null) => void): { close(): void };
 }
 
 declare module "bun:test" {
@@ -59,4 +63,9 @@ declare const Bun: { readonly version: string } | undefined;
 
 interface ImportMeta {
   readonly dir?: string;
+  /** bun: whether this module is the process's entry. */
+  readonly main?: boolean;
 }
+
+declare function atob(data: string): string;
+declare function btoa(data: string): string;

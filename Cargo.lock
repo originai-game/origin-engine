@@ -1723,6 +1723,7 @@ version = "0.0.1"
 dependencies = [
  "og-core",
  "og-ecs",
+ "og-input",
  "serde_json",
  "tungstenite",
 ]
@@ -1757,6 +1758,7 @@ dependencies = [
  "image",
  "og-core",
  "og-ecs",
+ "og-input",
  "og-probe",
  "og-render",
  "serde_json",

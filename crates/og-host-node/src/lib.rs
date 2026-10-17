@@ -15,20 +15,28 @@
 //!   sandbox), or with `OG_NODE_VIEWS=copy`, each field is copied into an
 //!   ArrayBuffer (kept the same way) as the view is made and writable ones
 //!   are copied back when the system call ends.
-//! - `og_node_attach_offscreen` gives an engine an offscreen renderer; the
-//!   probe's `capture` reads it back (`og_render::Renderer::read_offscreen`).
+//! - `og_node_attach_offscreen` gives an engine an offscreen renderer
+//!   (`GameDesc.render` picks the antialiasing); the probe's `capture` and
+//!   the `screenshot` command render offscreen at the asked size and read it
+//!   back blocking (`og_render::Renderer::read_offscreen`).
+//! - og-probe is mounted by the runtime (`og_api::runtime`); this host adds
+//!   its loopback WebSocket (`og_node_probe_listen`, `og_node_probe_serve`,
+//!   og-probe's `ProbeServer` at `127.0.0.1:<port>/probe`), cooked files read
+//!   from disk (`Hooks::read_asset`) and og-cook's Basis transcoder for
+//!   textures (the `Hooks::texture` default with og-cook's `transcode`).
 
 /// The exports, one per binding symbol (`og api gen`).
 #[doc(hidden)]
 #[rustfmt::skip]
 #[path = "generated/glue.rs"]
 pub mod glue;
+mod audio;
 mod host;
 
 use napi::bindgen_prelude::{FromNapiValue, ToNapiValue, TypeName, ValidateNapiValue, ValueType};
 use napi::{sys, Env};
 use napi_derive::napi;
-use og_api::runtime::{ColumnPtr, Dispatch, Hooks, RenderBackend};
+use og_api::runtime::{ColumnPtr, Dispatch, Fetch, Hooks, RenderBackend};
 use std::cell::{Cell, RefCell};
 use std::ptr;
 
@@ -322,6 +330,13 @@ impl Hooks for NodeHooks {
         }
         START.with(|s| s.elapsed().as_secs_f64() * 1000.0)
     }
+
+    fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+        match std::fs::read(path) {
+            Ok(bytes) => Fetch::Ready(bytes),
+            Err(e) => Fetch::Failed(e.to_string()),
+        }
+    }
 }
 
 /// Whether column views alias engine memory (`"alias"`) or are copied in
@@ -343,26 +358,67 @@ impl RenderBackend for OffscreenBackend {
     fn size(&self) -> (u32, u32) {
         self.renderer.size()
     }
+    fn antialias(&self) -> String {
+        match self.renderer.info().antialias {
+            og_render::Antialias::Msaa4 => "msaa4",
+            og_render::Antialias::Taa => "taa",
+            _ => "off",
+        }
+        .into()
+    }
     fn render(&mut self, scene: &og_render::RenderScene) -> Result<(), String> {
         self.renderer
             .render(scene, &og_render::RenderTarget::Offscreen)
             .map(|_| ())
             .map_err(|e| e.to_string())
     }
-    fn capture(&mut self, scene: &og_render::RenderScene) -> Option<og_render::RgbaImage> {
-        self.render(scene).ok()?;
-        self.renderer.read_offscreen().ok()
+    fn capture(
+        &mut self,
+        scene: &og_render::RenderScene,
+        width: u32,
+        height: u32,
+    ) -> Option<og_render::RgbaImage> {
+        let target = self.renderer.size();
+        let size = if width == 0 || height == 0 {
+            target
+        } else {
+            (width, height)
+        };
+        if size != target {
+            self.renderer.resize(size.0, size.1);
+        }
+        let image = self
+            .render(scene)
+            .ok()
+            .and_then(|_| self.renderer.read_offscreen().ok());
+        if size != target {
+            self.renderer.resize(target.0, target.1);
+        }
+        image
+    }
+}
+
+/// `RenderOptions.antialias` as og-render's.
+fn antialias(options: &str) -> og_render::Antialias {
+    match options {
+        "off" => og_render::Antialias::Off,
+        "msaa4" => og_render::Antialias::Msaa4,
+        "taa" => og_render::Antialias::Taa,
+        _ => og_render::Antialias::Tier,
     }
 }
 
 /// Give an engine a headless renderer of `width`×`height` (Metal or Vulkan,
-/// lavapipe in executors). A Result of the tier.
+/// lavapipe in executors), created with the game's RenderOptions. A Result
+/// of the tier.
 #[napi(js_name = "og_node_attach_offscreen")]
 pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) -> String {
     let _env = EnvScope::enter(&env);
+    let options = og_api::runtime::render_options(engine);
     let desc = og_render::RenderDesc {
         width: width.max(1),
         height: height.max(1),
+        antialias: antialias(options["antialias"].as_str().unwrap_or("tier")),
         ..og_render::RenderDesc::default()
     };
     let answer = og_render::Renderer::new_blocking(&desc)
@@ -382,6 +438,53 @@ pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) 
         Ok(tier) => format!(r#"{{"ok":true,"value":"{tier}"}}"#),
         Err(e) => format!(r#"{{"ok":false,"reason":{}}}"#, napi_json_string(&e)),
     }
+}
+
+thread_local! {
+    static SERVERS: RefCell<std::collections::BTreeMap<u32, og_probe::server::ProbeServer>> =
+        const { RefCell::new(std::collections::BTreeMap::new()) };
+}
+
+/// Serve an engine's probe on `127.0.0.1:<port>/probe` (JSON-RPC 2.0 over
+/// WebSocket; port 0 picks a free one). A Result of the port.
+#[napi(js_name = "og_node_probe_listen")]
+pub fn og_node_probe_listen(engine: u32, port: u32) -> String {
+    let addr = std::net::SocketAddr::from((std::net::Ipv4Addr::LOCALHOST, port as u16));
+    match og_probe::server::ProbeServer::bind(addr) {
+        Ok(server) => {
+            let port = server.port();
+            SERVERS.with(|s| s.borrow_mut().insert(engine, server));
+            format!(r#"{{"ok":true,"value":{port}}}"#)
+        }
+        Err(e) => format!(
+            r#"{{"ok":false,"reason":{}}}"#,
+            napi_json_string(&format!(
+                "cannot listen on 127.0.0.1:{port}: {e}; pick another --port or stop the other og run"
+            ))
+        ),
+    }
+}
+
+/// Answer every call queued on the engine's socket, between ticks. Returns
+/// how many were answered (0 without a server).
+#[napi(js_name = "og_node_probe_serve")]
+pub fn og_node_probe_serve(env: Env, engine: u32) -> u32 {
+    let _env = EnvScope::enter(&env);
+    let mut answered = 0;
+    loop {
+        let pending = SERVERS.with(|s| s.borrow().get(&engine).and_then(|srv| srv.poll()));
+        let Some(pending) = pending else { break };
+        let frame = og_api::runtime::answer_call(engine, &pending.call);
+        pending.answer(frame);
+        answered += 1;
+    }
+    answered
+}
+
+/// Stop serving an engine's probe.
+#[napi(js_name = "og_node_probe_close")]
+pub fn og_node_probe_close(engine: u32) -> bool {
+    SERVERS.with(|s| s.borrow_mut().remove(&engine).is_some())
 }
 
 fn napi_json_string(s: &str) -> String {

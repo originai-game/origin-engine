@@ -71,7 +71,23 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
             })
             .collect()
     };
-    assert_eq!(fns("load"), ["gltf", "scene", "status", "gltfInfo"]);
+    assert_eq!(
+        fns("load"),
+        [
+            "bundle",
+            "bundleInfo",
+            "defaultBundle",
+            "gltf",
+            "scene",
+            "font",
+            "fontInfo",
+            "sound",
+            "soundInfo",
+            "status",
+            "error",
+            "gltfInfo"
+        ]
+    );
     assert_eq!(fns("reflect"), ["defineComponent", "defineResource"]);
     assert_eq!(fns("system"), ["defineSystem"]);
     assert_eq!(fns("game"), ["game"]);

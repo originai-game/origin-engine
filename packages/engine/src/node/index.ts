@@ -20,18 +20,34 @@ import {
 } from "../runtime.ts";
 import type { HostAbi } from "../generated/abi.ts";
 
-/** The addon the native loader uses: `OG_NATIVE_ADDON`, else `native/origin-engine.<platform>-<arch>.node`. */
+/**
+ * The addon the native loader uses: `OG_NATIVE_ADDON`, else this package's
+ * `native/origin-engine.<platform>-<arch>.node` (a checkout's build), else the
+ * per-platform package npm installed through optionalDependencies
+ * (`@origingame/engine-<platform>-<arch>/origin-engine.node`).
+ */
 export function addonPath(): string {
   const fromEnv = process.env.OG_NATIVE_ADDON;
   if (fromEnv) return resolve(fromEnv);
   const here = dirname(fileURLToPath(import.meta.url));
-  return join(here, "..", "..", "native", `origin-engine.${process.platform}-${process.arch}.node`);
+  const platform = `${process.platform}-${process.arch}`;
+  const local = join(here, "..", "..", "native", `origin-engine.${platform}.node`);
+  if (existsSync(local)) return local;
+  try {
+    const require = createRequire(import.meta.url) as unknown as { resolve(id: string): string };
+    return require.resolve(`@origingame/engine-${platform}/origin-engine.node`);
+  } catch {
+    return local;
+  }
 }
 
 /** The addon's own symbols beyond the shared ABI. */
 export interface NativeExtras {
   og_node_views_mode(): string;
   og_node_attach_offscreen(engine: number, width: number, height: number): string;
+  og_node_probe_listen(engine: number, port: number): string;
+  og_node_probe_serve(engine: number): number;
+  og_node_probe_close(engine: number): boolean;
 }
 
 let extras: NativeExtras | null = null;
@@ -72,7 +88,7 @@ export function native(): NativeExtras {
   return extras!;
 }
 
-/** Import a game bundle (its default export is `og.game(...)`) and assemble its engine. */
+/** Import a game bundle (its default export is `og.game(...)`) and assemble its engine (`options.root`: the project whose cooked/ it opens). */
 export async function loadGame(entry: string, options: CreateOptions = {}): Promise<Result<Engine>> {
   loadNativeHost();
   const mod = (await import(pathToFileURL(resolve(entry)).href)) as { default?: GameToken };

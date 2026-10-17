@@ -108,6 +108,8 @@ export interface ColumnKinds {
   Geometry: { readonly array: Uint32Array; readonly stride: 2; readonly value: Geometry };
   /** A Material handle field. */
   Material: { readonly array: Uint32Array; readonly stride: 2; readonly value: Material };
+  /** An Asset handle field. */
+  Asset: { readonly array: Uint32Array; readonly stride: 2; readonly value: Asset };
 }
 
 // ── math ────────────────────────────────────────────────────────
@@ -535,7 +537,8 @@ export interface World {
    */
   emit<E extends AnyEvent>(event: E, payload: Value<E>): Result<void>;
   /**
-   * Spawn a loaded scene or glTF asset into the world as a tree of entities.
+   * Spawn a loaded scene or glTF asset into the world: a root entity from the desc, then (for a scene) every scene entity under it with its components and names, or (for a glTF) a Model on the root.
+   * Scene entity names must be free: a name already in use refuses the whole instantiation before anything spawns.
    *
    * @param asset A ready asset from og.load.
    * @param desc Name, parent and transform of the root entity.
@@ -664,6 +667,13 @@ export declare function defineSystem(name: string, desc: SystemDesc, run: System
 export type FactsFn = (world: World) => unknown;
 
 /**
+ * The game's setup: called once before the first tick, after GameDesc.scene has spawned. Spawn, insert, load and set resources here; systems then only read and write their views.
+ *
+ * @param world The world.
+ */
+export type StartFn = (world: World) => void;
+
+/**
  * A game: its tick, scenes, systems and commands.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -727,6 +737,18 @@ export interface GameDesc {
    * @default null
    */
   readonly facts?: FactsFn | null;
+  /**
+   * Called once before the first tick, after the first scene spawned.
+   *
+   * @default null
+   */
+  readonly start?: StartFn | null;
+  /**
+   * How the renderer is created: antialiasing and shadow map size. Read once, when the host attaches the renderer.
+   *
+   * @default {}
+   */
+  readonly render?: RenderOptions;
 }
 
 /** A declared game, the bundle's default export. */
@@ -1031,7 +1053,8 @@ export type InjectedInput =
   | ({ readonly kind: "wheel" } & WheelInput);
 
 /**
- * The input state at the start of this tick. Edges (pressed, released) last exactly one tick.
+ * The input state at the start of this tick (og-input's og.Input, version 2). Edges (pressed, released) last exactly one tick; read the state through the methods.
+ * Key sets are 128 bits over og-input's KEY_CODES (KeyboardEvent.code names): code i is bit i % 32 of word i / 32. Button masks: left 1, middle 2, right 4.
  *
  * The `Input` resource (token `og.Input`).
  */
@@ -1044,7 +1067,7 @@ export interface Input {
    */
   readonly pointer: Vector2;
   /**
-   * Whether the pointer is over the play surface.
+   * Whether a pointer event has placed the pointer over the play surface.
    *
    * @readonly written by the engine
    */
@@ -1056,6 +1079,126 @@ export interface Input {
    * @readonly written by the engine
    */
   readonly wheel: Vector2;
+  /**
+   * Held pointer buttons, as a mask.
+   *
+   * @readonly written by the engine
+   */
+  readonly buttons: number;
+  /**
+   * Buttons that went down this tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly buttonsPressed: number;
+  /**
+   * Buttons that went up this tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly buttonsReleased: number;
+  /**
+   * Buttons a click releases at the end of the next tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly buttonsReleaseNext: number;
+  /**
+   * Held keys, word 0: codes 0 to 31 of KEY_CODES.
+   *
+   * @readonly written by the engine
+   */
+  readonly keys0: number;
+  /**
+   * Held keys, word 1: codes 32 to 63 of KEY_CODES.
+   *
+   * @readonly written by the engine
+   */
+  readonly keys1: number;
+  /**
+   * Held keys, word 2: codes 64 to 95 of KEY_CODES.
+   *
+   * @readonly written by the engine
+   */
+  readonly keys2: number;
+  /**
+   * Held keys, word 3: codes 96 to 127 of KEY_CODES.
+   *
+   * @readonly written by the engine
+   */
+  readonly keys3: number;
+  /**
+   * Keys that went down this tick, word 0: codes 0 to 31 of KEY_CODES.
+   *
+   * @readonly written by the engine
+   */
+  readonly pressed0: number;
+  /**
+   * Keys that went down this tick, word 1: codes 32 to 63 of KEY_CODES.
+   *
+   * @readonly written by the engine
+   */
+  readonly pressed1: number;
+  /**
+   * Keys that went down this tick, word 2: codes 64 to 95 of KEY_CODES.
+   *
+   * @readonly written by the engine
+   */
+  readonly pressed2: number;
+  /**
+   * Keys that went down this tick, word 3: codes 96 to 127 of KEY_CODES.
+   *
+   * @readonly written by the engine
+   */
+  readonly pressed3: number;
+  /**
+   * Keys that went up this tick, word 0: codes 0 to 31 of KEY_CODES.
+   *
+   * @readonly written by the engine
+   */
+  readonly released0: number;
+  /**
+   * Keys that went up this tick, word 1: codes 32 to 63 of KEY_CODES.
+   *
+   * @readonly written by the engine
+   */
+  readonly released1: number;
+  /**
+   * Keys that went up this tick, word 2: codes 64 to 95 of KEY_CODES.
+   *
+   * @readonly written by the engine
+   */
+  readonly released2: number;
+  /**
+   * Keys that went up this tick, word 3: codes 96 to 127 of KEY_CODES.
+   *
+   * @readonly written by the engine
+   */
+  readonly released3: number;
+  /**
+   * Keys a press releases at the end of the next tick, word 0: codes 0 to 31 of KEY_CODES.
+   *
+   * @readonly written by the engine
+   */
+  readonly releaseNext0: number;
+  /**
+   * Keys a press releases at the end of the next tick, word 1: codes 32 to 63 of KEY_CODES.
+   *
+   * @readonly written by the engine
+   */
+  readonly releaseNext1: number;
+  /**
+   * Keys a press releases at the end of the next tick, word 2: codes 64 to 95 of KEY_CODES.
+   *
+   * @readonly written by the engine
+   */
+  readonly releaseNext2: number;
+  /**
+   * Keys a press releases at the end of the next tick, word 3: codes 96 to 127 of KEY_CODES.
+   *
+   * @readonly written by the engine
+   */
+  readonly releaseNext3: number;
   /**
    * Whether a key is held.
    *
@@ -1082,6 +1225,15 @@ export interface Input {
    */
   axis(negative: string, positive: string): number;
   /**
+   * A 2D axis from four keys, such as `axis2("KeyA", "KeyD", "KeyS", "KeyW")`: each component -1, 0 or 1.
+   *
+   * @param left The key for x = -1.
+   * @param right The key for x = +1.
+   * @param down The key for y = -1.
+   * @param up The key for y = +1.
+   */
+  axis2(left: string, right: string, down: string, up: string): Vector2;
+  /**
    * Whether a pointer button is held.
    *
    * @param button The button.
@@ -1093,10 +1245,16 @@ export interface Input {
    * @param button The button.
    */
   buttonPressed(button: PointerButton): boolean;
+  /**
+   * Whether a pointer button went up this tick.
+   *
+   * @param button The button.
+   */
+  buttonReleased(button: PointerButton): boolean;
 }
 
 /**
- * A key went down.
+ * A key went down (a down for a held key is a repeat and sets no edge). Input events are sent between ticks and read by the next tick's systems.
  *
  * The payload of the `KeyDown` event (token `og.KeyDown`).
  */
@@ -1326,7 +1484,39 @@ export type Side = "front" | "back" | "double";
 export type RenderTier = "webgpu" | "webgl2" | "vulkan" | "metal" | "none";
 
 /**
+ * Antialiasing, as og-render's Antialias. RenderCapabilities.antialias reports what the device resolved.
+ * - `"tier"`: The tier's method: TAA on the full tier (WebGPU, Metal, Vulkan), 4x MSAA on WebGL2.
+ * - `"off"`: One sample per pixel.
+ * - `"msaa4"`: 4x MSAA on any tier: sharp sprites and text, no temporal blur; off where the HDR format cannot be multisampled.
+ * - `"taa"`: Temporal antialiasing on any tier: a sub-pixel jitter per frame and a reprojected history; converges over about eight frames.
+ */
+export type Antialias = "tier" | "off" | "msaa4" | "taa";
+
+/**
+ * How the renderer is created for a game (GameDesc.render). The host reads it once, when it attaches the renderer.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RenderOptions {
+  /**
+   * The antialiasing method.
+   *
+   * @default "tier"
+   */
+  readonly antialias?: Antialias;
+  /**
+   * The side of each of the directional light's three cascade maps, in texels; smaller saves memory on phones (three 2048 maps are 64 MB).
+   *
+   * @default 2048
+   * @range 256..4096
+   */
+  readonly shadowMapSize?: number;
+}
+
+/**
  * A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names.
+ * Mapping to the renderer (og-render Material): color and opacity are the base colour and its alpha; map the base colour texture; metalness and roughness the factors; metalnessMap and roughnessMap are one glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; normalMap the normal texture; emissive times emissiveIntensity the emitted colour, emissiveMap its texture; alphaTest above 0 is alpha masking with that cutoff.
+ * Accepted and kept but not drawn yet: aoMap, transparent (blending), side (meshes draw front faces), flatShading and envMapIntensity; the renderer's own phase-2 list owns them.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -1443,6 +1633,7 @@ export interface StandardMaterialDesc {
 
 /**
  * Draws a geometry with a material at the entity's MatrixWorld, as a three.js Mesh.
+ * The material is a handle from og.render.standardMaterial or from a loaded glTF (GltfInfo.materials); its StandardMaterialDesc maps to the renderer as that struct's docs say.
  *
  * The value of the `Mesh` component (token `og.Mesh`).
  */
@@ -1464,6 +1655,242 @@ export interface Mesh {
 }
 
 /**
+ * The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). The first one found is drawn, with three shadow cascades.
+ * Without one, the renderer's default sun (from above and to the side, intensity 3) lights the scene.
+ *
+ * The value of the `DirectionalLight` component (token `og.DirectionalLight`).
+ */
+export interface DirectionalLight {
+  /**
+   * The light's linear colour.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  color: Color;
+  /**
+   * The radiance multiplier, as three.js DirectionalLight.intensity.
+   *
+   * @default 3
+   * @range 0..
+   * @tunable
+   */
+  intensity: number;
+  /**
+   * Cast shadows through three cascades, as three.js Light.castShadow.
+   *
+   * @default true
+   */
+  castShadow: boolean;
+  /**
+   * How far from the camera shadows reach; they fade over the last tenth. Smaller is sharper.
+   *
+   * @default 200
+   * @range 1..
+   * @unit m (metres)
+   */
+  shadowDistance: number;
+}
+
+/**
+ * A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance.
+ * Up to MAX_LIGHTS point and spot lights are drawn per frame (the rest are counted, not drawn); the first two with castShadow get cube shadows.
+ *
+ * The value of the `PointLight` component (token `og.PointLight`).
+ */
+export interface PointLight {
+  /**
+   * The light's linear colour.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  color: Color;
+  /**
+   * The radiance at one metre.
+   *
+   * @default 10
+   * @range 0..
+   * @tunable
+   */
+  intensity: number;
+  /**
+   * Where the light reaches zero, as three.js PointLight.distance (never infinite here).
+   *
+   * @default 10
+   * @range 0.01..
+   * @unit m (metres)
+   * @tunable
+   */
+  distance: number;
+  /** Cast cube shadows. */
+  castShadow: boolean;
+}
+
+/**
+ * A cone of light along the entity's local -Z, as three.js SpotLight.
+ *
+ * The value of the `SpotLight` component (token `og.SpotLight`).
+ */
+export interface SpotLight {
+  /**
+   * The light's linear colour.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  color: Color;
+  /**
+   * The radiance at one metre on the axis.
+   *
+   * @default 10
+   * @range 0..
+   * @tunable
+   */
+  intensity: number;
+  /**
+   * Where the light reaches zero.
+   *
+   * @default 10
+   * @range 0.01..
+   * @unit m (metres)
+   * @tunable
+   */
+  distance: number;
+  /**
+   * The half-angle of the outer cone, as three.js SpotLight.angle.
+   *
+   * @default 0.5236
+   * @range 0..1.5708
+   * @unit rad (radians)
+   * @tunable
+   */
+  angle: number;
+  /**
+   * The fraction of the cone over which the light fades out, as three.js SpotLight.penumbra.
+   *
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  penumbra: number;
+  /** Cast a shadow map. */
+  castShadow: boolean;
+}
+
+/**
+ * The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
+ *
+ * The `RenderSettings` resource (token `og.RenderSettings`).
+ */
+export interface RenderSettings {
+  /**
+   * The strength of the image-based ambient light from the procedural sky.
+   *
+   * @default 0.55
+   * @range 0..
+   * @tunable
+   */
+  environmentIntensity: number;
+  /** Draw the procedural sky behind the scene instead of Camera.background. */
+  sky: boolean;
+  /** Light above the threshold bleeds into its surroundings. */
+  bloom: boolean;
+  /**
+   * Brightness after exposure where bloom starts; 1 is display white.
+   *
+   * @default 1
+   * @range 0..
+   * @tunable
+   */
+  bloomThreshold: number;
+  /**
+   * Softens the threshold over threshold plus or minus knee; 0 is a hard cut.
+   *
+   * @default 0.5
+   * @range 0..
+   */
+  bloomKnee: number;
+  /**
+   * How much of the blurred light is added back.
+   *
+   * @default 0.6
+   * @range 0..
+   * @tunable
+   */
+  bloomIntensity: number;
+  /**
+   * Meter every frame to middle grey (deterministic: the current frame only), then apply Camera.exposure as compensation.
+   */
+  autoExposure: boolean;
+  /**
+   * ACES tone mapping; false clamps, so 2D colours come out exactly as authored at exposure 1.
+   *
+   * @default true
+   */
+  toneMapped: boolean;
+}
+
+/**
+ * A line or block of MSDF text in the world's xy plane facing +z, drawn this frame only (immediate mode: submit it every tick it should show).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TextDesc {
+  /**
+   * The font from og.load.font; null draws nothing.
+   *
+   * @default null
+   */
+  readonly font?: Font | null;
+  /**
+   * The text; `\n` starts a new line.
+   *
+   * @default ""
+   */
+  readonly text?: string;
+  /**
+   * The baseline origin of the first line.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly position?: Vector3;
+  /**
+   * The em size in world units.
+   *
+   * @default 1
+   * @range 0..
+   */
+  readonly size?: number;
+  /**
+   * Rotation about +z.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly rotation?: number;
+  /**
+   * The linear colour.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  readonly color?: Color;
+  /**
+   * The alpha.
+   *
+   * @default 1
+   * @range 0..1
+   */
+  readonly opacity?: number;
+  /**
+   * Draw order among sprites and text; higher draws on top.
+   *
+   * @default 0
+   */
+  readonly layer?: number;
+}
+
+/** The most point and spot lights one frame draws. */
+export declare const MAX_LIGHTS: 8;
+
+/**
  * What the renderer can do on this device. Backend limits are reported here, never by missing members.
  */
 export interface RenderCapabilities {
@@ -1471,7 +1898,11 @@ export interface RenderCapabilities {
   readonly tier: RenderTier;
   /** Whether compute passes run (GPU culling, GPU particles). */
   readonly compute: boolean;
-  /** How many lights may cast shadows. */
+  /** The antialiasing the device resolved RenderOptions.antialias to. */
+  readonly antialias: Antialias;
+  /** How many point and spot lights one frame draws. */
+  readonly maxLights: number;
+  /** How many point and spot lights may cast shadows. */
   readonly maxShadowedLights: number;
   /** The render target width in device pixels. */
   readonly width: number;
@@ -1482,22 +1913,47 @@ export interface RenderCapabilities {
 
 
 
+
 // ── load ────────────────────────────────────────────────────────
-// Asset loading. Paths are relative to the project and read cooked output; a load returns a handle at once and completes at a tick boundary.
-// Under og run and in replays every load completes before the next tick, so the tick a load lands on is deterministic.
+// Asset loading from cooked output: `og cook` turns assets/ into cooked/ (.ogb blobs and the manifest cooked/.cook.ogt), and the runtime reads only cooked/.
+// Paths are asset ids: the path under assets/ (`models/ship.glb`, `scenes/main.ogt`); an `assets/` prefix is accepted. Every blob is checked against the manifest's type, schema version and cook stamp.
+// The game's bundle (`cooked`) is opened before the first tick and GameDesc.scene is spawned then. Loads from an open bundle complete at once on both hosts (the web host fetches the bundle's files before the engine starts); only og.load.bundle of another bundle can be pending, and it completes at a tick boundary.
 
 /**
- * A loaded scene or glTF asset.
+ * A loaded bundle, scene or glTF asset.
  *
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
  */
 export type Asset = number & { readonly [handleType]: "Asset" };
 
 /**
+ * A cooked MSDF font: its glyph table and one or more atlas pages.
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type Font = number & { readonly [handleType]: "Font" };
+
+/**
+ * A cooked sound: QOA-encoded PCM the audio module plays.
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type Sound = number & { readonly [handleType]: "Sound" };
+
+/**
+ * An Asset handle field.
+ *
+ * A `Asset` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function Asset(value?: Asset, options?: FieldOptions): FieldSpec<"Asset">;
+
+/**
  * Where a load is.
  * - `"pending"`: Still loading.
  * - `"ready"`: Loaded; it can be instantiated.
- * - `"failed"`: Failed; the AssetFailed event carries the reason.
+ * - `"failed"`: Failed; og.load.error gives the reason.
  */
 export type LoadStatus = "pending" | "ready" | "failed";
 
@@ -1533,11 +1989,79 @@ export interface GltfInfo {
   readonly scenes: number;
   /** Its geometries, in glTF mesh-primitive order. */
   readonly geometries: readonly Geometry[];
-  /** Its materials, in glTF order. */
+  /** Its materials, in glTF order, then the default material. */
   readonly materials: readonly Material[];
-  /** Its animation clip names. */
+  /**
+   * Its animation clip names (the cook counts clips and does not cook them yet, so this is empty).
+   */
   readonly animations: readonly string[];
 }
+
+/** An open cooked bundle. */
+export interface BundleInfo {
+  /** The cooked directory it was opened from. */
+  readonly path: string;
+  /** Source assets it holds. */
+  readonly assets: number;
+  /** Cooked outputs (blobs) it holds. */
+  readonly outputs: number;
+}
+
+/** A loaded font's metrics, in em units unless stated. */
+export interface FontInfo {
+  /** Glyphs cooked into it. */
+  readonly glyphs: number;
+  /** Atlas pages; the renderer draws one page per pass with one shared layout. */
+  readonly pages: number;
+  /** Atlas pixels per em. */
+  readonly emPx: number;
+  /** The distance range in atlas pixels. */
+  readonly pxRange: number;
+  /** Ascender above the baseline. */
+  readonly ascender: number;
+  /** Descender below the baseline (negative). */
+  readonly descender: number;
+  /** Ascender minus descender plus the line gap. */
+  readonly lineHeight: number;
+}
+
+/** A loaded sound. */
+export interface SoundInfo {
+  /**
+   * Samples per second.
+   *
+   * @unit hz (ticks or cycles per second)
+   */
+  readonly rate: number;
+  /** Interleaved channels. */
+  readonly channels: number;
+  /** Samples per channel. */
+  readonly frames: number;
+  /**
+   * Its length.
+   *
+   * @unit s (seconds of simulation time)
+   */
+  readonly seconds: number;
+}
+
+/**
+ * Draws a loaded glTF's default scene at the entity's world transform: every mesh node with its glTF material. Scene entities with a `model` line get one; world.instantiate of a glTF asset spawns one.
+ *
+ * The value of the `Model` component (token `og.Model`).
+ */
+export interface Model {
+  /** The glTF asset. */
+  asset: Asset;
+}
+
+
+
+
+
+
+
+
 
 
 
@@ -1596,8 +2120,9 @@ export interface AssetFailed {
  * - `"resume"`: `resume`: release the clock.
  * - `"advance"`: `advance:<ticks>`: take fixed steps.
  * - `"quit"`: `quit`: exit.
+ * - `"help"`: `help`: list every action the channel knows, core and registered.
  */
-export type CoreAction = "screenshot" | "touch_move_to" | "touch_move" | "touch_start" | "touch_end" | "scroll" | "key_down" | "key_up" | "type" | "move_to_text" | "teleport" | "frame_entity" | "dump_world" | "dump_entity" | "dump_ui" | "set" | "seed" | "pause" | "resume" | "advance" | "quit";
+export type CoreAction = "screenshot" | "touch_move_to" | "touch_move" | "touch_start" | "touch_end" | "scroll" | "key_down" | "key_up" | "type" | "move_to_text" | "teleport" | "frame_entity" | "dump_world" | "dump_entity" | "dump_ui" | "set" | "seed" | "pause" | "resume" | "advance" | "quit" | "help";
 
 /**
  * A registered action. It runs at the start of the tick it was scheduled for.
@@ -1641,6 +2166,18 @@ export interface CommandStep {
   readonly args: readonly string[];
 }
 
+/** One action as help lists it. */
+export interface CommandInfo {
+  /** The action name. */
+  readonly name: string;
+  /** Its argument form, such as `screenshot[:path][:full|:N]`. */
+  readonly usage: string;
+  /** One sentence on what it does. */
+  readonly doc: string;
+  /** Shipped with the engine (true) or registered by a module or a game. */
+  readonly core: boolean;
+}
+
 /** What scheduling a script did. */
 export interface CommandsReport {
   /** Steps scheduled. */
@@ -1650,6 +2187,7 @@ export interface CommandsReport {
   /** Unknown actions and other skipped steps, each naming the fix. */
   readonly warnings: readonly string[];
 }
+
 
 
 
@@ -1829,6 +2367,10 @@ export interface Hello {
   readonly build: BuildProfile;
   /** The probe members this build serves. */
   readonly members: readonly string[];
+  /**
+   * The engine modules this build carries beyond the core (`physics`, `audio`, `ui`, `cook`), so a client knows which members do something.
+   */
+  readonly modules: readonly string[];
 }
 
 /**
@@ -1985,22 +2527,26 @@ export interface ArchetypeDump {
   readonly count: number;
 }
 
-/** One system. */
+/**
+ * One system. The engine fills reads, writes and matched for every system the game declared; ms is null because the probe reads no clock (state().timings has the tick's time).
+ */
 export interface SystemDump {
   /** Its name. */
   readonly name: string;
-  /** Entities its query matched on the last tick. */
-  readonly matched: number;
-  /** What it declared it reads. */
-  readonly reads: readonly string[];
-  /** What it declared it writes. */
-  readonly writes: readonly string[];
   /**
-   * Time it took on the last tick.
+   * Entities its queries match now; null for a system the host did not declare to the probe.
+   */
+  readonly matched: number | null;
+  /** What it declared it reads; null when undeclared. */
+  readonly reads: readonly string[] | null;
+  /** What it declared it writes; null when undeclared. */
+  readonly writes: readonly string[] | null;
+  /**
+   * Time it took on the last tick; null when not measured.
    *
    * @unit ms (milliseconds)
    */
-  readonly ms: number;
+  readonly ms: number | null;
 }
 
 /** The world: tables, systems, resources. */
@@ -2156,7 +2702,9 @@ export interface EngineProbe extends RuntimeProbe {
   /** Who is speaking: protocol, wire, engine version, tick rate, renderer tier, build. */
   hello(): Hello;
   /**
-   * The frame rendered at the current tick, read back offscreen.
+   * The frame of the current tick, rendered offscreen and read back as a PNG.
+   * Size rule: width and height are both 0 (or absent), which is the render target's size, or both 1 to 4096, which renders that size with the same camera (the aspect follows the requested size); one zero and one not is a malformed call.
+   * On the web the readback is asynchronous: through the request ring the answer arrives when the copy completes; a synchronous in-page call answers null on the first tick and the frame from then on (a capture is requested on tick N and answered on N + 1).
    *
    * @param width Width in pixels; 0 is the render target's. Default `0`.
    * @param height Height in pixels; 0 is the render target's. Default `0`.
@@ -2266,10 +2814,13 @@ export declare namespace og {
    */
   const Rng: ResourceType<{ readonly seed: FieldSpec<"u32">; readonly state: FieldSpec<"u32"> }, Rng>;
   /**
-   * The input state at the start of this tick. Edges (pressed, released) last exactly one tick.
+   * The input state at the start of this tick (og-input's og.Input, version 2). Edges (pressed, released) last exactly one tick; read the state through the methods.
+   * Key sets are 128 bits over og-input's KEY_CODES (KeyboardEvent.code names): code i is bit i % 32 of word i / 32. Button masks: left 1, middle 2, right 4.
    */
-  const Input: ResourceType<{ readonly pointer: FieldSpec<"Vector2">; readonly pointerInside: FieldSpec<"bool">; readonly wheel: FieldSpec<"Vector2"> }, Input>;
-  /** A key went down. */
+  const Input: ResourceType<{ readonly pointer: FieldSpec<"Vector2">; readonly pointerInside: FieldSpec<"bool">; readonly wheel: FieldSpec<"Vector2">; readonly buttons: FieldSpec<"u32">; readonly buttonsPressed: FieldSpec<"u32">; readonly buttonsReleased: FieldSpec<"u32">; readonly buttonsReleaseNext: FieldSpec<"u32">; readonly keys0: FieldSpec<"u32">; readonly keys1: FieldSpec<"u32">; readonly keys2: FieldSpec<"u32">; readonly keys3: FieldSpec<"u32">; readonly pressed0: FieldSpec<"u32">; readonly pressed1: FieldSpec<"u32">; readonly pressed2: FieldSpec<"u32">; readonly pressed3: FieldSpec<"u32">; readonly released0: FieldSpec<"u32">; readonly released1: FieldSpec<"u32">; readonly released2: FieldSpec<"u32">; readonly released3: FieldSpec<"u32">; readonly releaseNext0: FieldSpec<"u32">; readonly releaseNext1: FieldSpec<"u32">; readonly releaseNext2: FieldSpec<"u32">; readonly releaseNext3: FieldSpec<"u32"> }, Input>;
+  /**
+   * A key went down (a down for a held key is a repeat and sets no edge). Input events are sent between ticks and read by the next tick's systems.
+   */
   const KeyDown: EventType<KeyDown>;
   /** A key went up. */
   const KeyUp: EventType<KeyUp>;
@@ -2285,8 +2836,27 @@ export declare namespace og {
    * The camera the frame is rendered from. Rendering reads it after the tick; it never feeds back into the simulation.
    */
   const Camera: ResourceType<{ readonly position: FieldSpec<"Vector3">; readonly quaternion: FieldSpec<"Quaternion">; readonly fov: FieldSpec<"f32">; readonly near: FieldSpec<"f32">; readonly far: FieldSpec<"f32">; readonly zoom: FieldSpec<"f32">; readonly orthographic: FieldSpec<"bool">; readonly height: FieldSpec<"f32">; readonly background: FieldSpec<"Color">; readonly exposure: FieldSpec<"f32"> }, Camera>;
-  /** Draws a geometry with a material at the entity's MatrixWorld, as a three.js Mesh. */
+  /**
+   * Draws a geometry with a material at the entity's MatrixWorld, as a three.js Mesh.
+   * The material is a handle from og.render.standardMaterial or from a loaded glTF (GltfInfo.materials); its StandardMaterialDesc maps to the renderer as that struct's docs say.
+   */
   const Mesh: ComponentType<{ readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly castShadow: FieldSpec<"bool">; readonly receiveShadow: FieldSpec<"bool">; readonly visible: FieldSpec<"bool"> }, Mesh>;
+  /**
+   * The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). The first one found is drawn, with three shadow cascades.
+   * Without one, the renderer's default sun (from above and to the side, intensity 3) lights the scene.
+   */
+  const DirectionalLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool">; readonly shadowDistance: FieldSpec<"f32"> }, DirectionalLight>;
+  /**
+   * A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance.
+   * Up to MAX_LIGHTS point and spot lights are drawn per frame (the rest are counted, not drawn); the first two with castShadow get cube shadows.
+   */
+  const PointLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool"> }, PointLight>;
+  /** A cone of light along the entity's local -Z, as three.js SpotLight. */
+  const SpotLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly angle: FieldSpec<"f32">; readonly penumbra: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool"> }, SpotLight>;
+  /**
+   * The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
+   */
+  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly toneMapped: FieldSpec<"bool"> }, RenderSettings>;
   /**
    * What is drawn: meshes with materials. Draws are instanced by (geometry, material) automatically; there is no per-object draw call.
    */
@@ -2313,32 +2883,98 @@ export declare namespace og {
      * @param world The world whose renderer is asked.
      */
     function capabilities(world: World): RenderCapabilities;
+    /**
+     * Draw text this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the text should show. Multi-page fonts are drawn page by page with one layout.
+     *
+     * @param world The world whose renderer draws it.
+     * @param desc The font, text, placement and colour.
+     * @returns Refused for a dead font.
+     */
+    function text(world: World, desc?: TextDesc): Result<void>;
   }
+  /**
+   * Draws a loaded glTF's default scene at the entity's world transform: every mesh node with its glTF material. Scene entities with a `model` line get one; world.instantiate of a glTF asset spawns one.
+   */
+  const Model: ComponentType<{ readonly asset: FieldSpec<"Asset"> }, Model>;
   /** A load completed. */
   const AssetReady: EventType<AssetReady>;
   /** A load failed. */
   const AssetFailed: EventType<AssetFailed>;
   /**
-   * Asset loading. Paths are relative to the project and read cooked output; a load returns a handle at once and completes at a tick boundary.
-   * Under og run and in replays every load completes before the next tick, so the tick a load lands on is deterministic.
+   * Asset loading from cooked output: `og cook` turns assets/ into cooked/ (.ogb blobs and the manifest cooked/.cook.ogt), and the runtime reads only cooked/.
+   * Paths are asset ids: the path under assets/ (`models/ship.glb`, `scenes/main.ogt`); an `assets/` prefix is accepted. Every blob is checked against the manifest's type, schema version and cook stamp.
+   * The game's bundle (`cooked`) is opened before the first tick and GameDesc.scene is spawned then. Loads from an open bundle complete at once on both hosts (the web host fetches the bundle's files before the engine starts); only og.load.bundle of another bundle can be pending, and it completes at a tick boundary.
    */
   namespace load {
     /**
-     * Load a glTF (.gltf or .glb) through the cook, as three.js GLTFLoader.load.
+     * Open another cooked bundle (the game's own `cooked` is open before the first tick). Its loads read through it once it is ready.
      *
      * @param world The world that owns the asset.
-     * @param path The source path under assets/, such as `assets/ship.glb`.
+     * @param path The cooked directory, relative to the project (or the page), such as `dlc/cooked`.
+     * @returns The bundle's handle: pending until its manifest is read, then ready or failed.
+     */
+    function bundle(world: World, path: string): Result<Asset>;
+    /**
+     * What an open bundle holds.
+     *
+     * @param world The world that owns the asset.
+     * @param asset A bundle handle; the game's own bundle is og.load.bundle's first answer, also given by `defaultBundle`.
+     * @returns Refused for a pending, failed or non-bundle asset.
+     */
+    function bundleInfo(world: World, asset: Asset): Result<BundleInfo>;
+    /**
+     * The game's own bundle, opened before the first tick from `cooked/`.
+     *
+     * @param world The world that owns the asset.
+     * @returns Refused when cooked/ was missing or unreadable (run og cook); the reason names the path.
+     */
+    function defaultBundle(world: World): Result<Asset>;
+    /**
+     * Load a cooked glTF (.gltf or .glb), as three.js GLTFLoader.load: its meshes, materials and textures join the renderer once.
+     *
+     * @param world The world that owns the asset.
+     * @param path The asset id, such as `models/ship.glb`.
      * @param desc Scene and shadow options.
-     * @returns The handle, or why it was refused (an uncooked path, a cook stamp mismatch).
+     * @returns The handle, or why it was refused (an uncooked path, a cook stamp mismatch, no open bundle).
      */
     function gltf(world: World, path: string, desc?: GltfDesc): Result<Asset>;
     /**
-     * Load a scene (.ogt).
+     * Load a cooked scene (.ogt). world.instantiate spawns its entities: depth first, parents before children, each component table matched to a registered component by its reflected name (`Transform` is og.Transform) and migrated field by field; a field the scene lacks keeps its default, one the component lacks is dropped with a warning.
      *
      * @param world The world that owns the asset.
-     * @param path The scene path, such as `scenes/main.ogt`.
+     * @param path The scene's asset id, such as `scenes/main.ogt`.
      */
     function scene(world: World, path: string): Result<Asset>;
+    /**
+     * Load a cooked MSDF font for og.render.text.
+     *
+     * @param world The world that owns the font.
+     * @param path The font's asset id, such as `fonts/NotoSansSC-Regular-subset.ttf`.
+     */
+    function font(world: World, path: string): Result<Font>;
+    /**
+     * A loaded font's metrics.
+     *
+     * @param world The world that owns the font.
+     * @param font The font.
+     * @returns Refused for a dead font.
+     */
+    function fontInfo(world: World, font: Font): Result<FontInfo>;
+    /**
+     * Load a cooked sound for the audio module.
+     *
+     * @param world The world that owns the sound.
+     * @param path The sound's asset id, such as `audio/blip.wav`.
+     */
+    function sound(world: World, path: string): Result<Sound>;
+    /**
+     * A loaded sound's format and length.
+     *
+     * @param world The world that owns the sound.
+     * @param sound The sound.
+     * @returns Refused for a dead sound.
+     */
+    function soundInfo(world: World, sound: Sound): Result<SoundInfo>;
     /**
      * Where a load is.
      *
@@ -2346,6 +2982,14 @@ export declare namespace og {
      * @param asset The handle.
      */
     function status(world: World, asset: Asset): LoadStatus;
+    /**
+     * Why a load failed.
+     *
+     * @param world The world that owns the asset.
+     * @param asset The handle.
+     * @returns The reason, naming the fix; null unless the load failed.
+     */
+    function error(world: World, asset: Asset): string | null;
     /**
      * What a ready glTF holds.
      *
@@ -2376,6 +3020,12 @@ export declare namespace og {
      * @returns The steps, or the first malformed step.
      */
     function parse(script: string): Result<readonly CommandStep[]>;
+    /**
+     * Every action the channel knows: core actions in CoreAction order, then registered ones by name.
+     *
+     * @param world The world whose channel is asked.
+     */
+    function help(world: World): readonly CommandInfo[];
     /**
      * Schedule a script on simulation time, from the current tick.
      *

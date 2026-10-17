@@ -213,12 +213,8 @@ pub fn bundle(seed: u32, with_health: bool, declare: &mut dyn FnMut(&SystemDesc)
 }
 
 pub fn build(seed: u32, with_renderer: bool) -> Harness {
-    let mut declared = Vec::new();
-    let mut world = bundle(seed, true, &mut |d| declared.push(d.clone()));
+    let mut world = bundle(seed, true, &mut |_| {});
     let mut probe = Probe::new(&mut world).unwrap();
-    for d in &declared {
-        probe.declare_system(d);
-    }
     world
         .insert_resource(Camera {
             position: Vec3::new(0.0, 0.0, 10.0),
@@ -255,8 +251,8 @@ pub fn build(seed: u32, with_renderer: bool) -> Harness {
             .spawn((Transform::at(-1.0 - i as f32, 0.0, 0.0),))
             .unwrap();
     }
-    assert!(probe.names_mut().set(player, "player"));
-    assert!(probe.names_mut().set(crate_, "crate"));
+    world.set_name(player, "player").unwrap();
+    world.set_name(crate_, "crate").unwrap();
     probe.set_ui(Box::new(ui()));
     probe.set_facts(|w| json!({"draws": w.resource::<Stats>().map(|s| s.draws).unwrap_or(0)}));
     if with_renderer {
