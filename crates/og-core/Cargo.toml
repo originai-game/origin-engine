@@ -4,6 +4,12 @@ version = "0.0.1"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "Origin Engine: og-core (phase 1 scaffold)"
+description = "Origin Engine core: handles, reflection, .ogt text, deterministic rng and math, time"
 
 [dependencies]
+og-core-derive = { path = "../og-core-derive" }
+glam = { workspace = true }
+bytemuck = { workspace = true }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"

@@ -1,0 +1,331 @@
+//! Systems and the schedule.
+//!
+//! A system is a [`SystemDesc`] (its name, the types it reads and writes, and
+//! its queries) plus a function of a [`SystemContext`]. Registration resolves
+//! every name and refuses a system whose queries read or write a component it
+//! did not declare; at run time every access goes through the context, which
+//! refuses anything outside the declaration. Systems run in registration
+//! order, one after another; structural changes (spawn, insert, remove,
+//! despawn) are commands applied when the system returns, so a system never
+//! sees its own structural changes and the next system sees all of them.
+
+use crate::entity::Entity;
+use crate::query::{QueryAccess, QueryDesc, QueryIter};
+use crate::registry::SchemaId;
+use crate::world::{dead, encode_bundle, typed_ref, Bundle, ResourceValue, World};
+use og_core::reflect::Reflect;
+use og_core::{Error, ErrorKind, Result, Time};
+use std::cell::{Ref, RefMut};
+use std::sync::Arc;
+
+/// A system's declaration. `reads`/`writes` name types (components,
+/// resources, events); a write implies a read. `Time` is readable by every
+/// system without a declaration and is never writable.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct SystemDesc {
+    pub name: String,
+    pub reads: Vec<String>,
+    pub writes: Vec<String>,
+    /// Queries the system iterates, by index, through [`SystemContext::query`].
+    pub queries: Vec<QueryDesc>,
+}
+
+impl SystemDesc {
+    pub fn new(name: impl Into<String>) -> SystemDesc {
+        SystemDesc {
+            name: name.into(),
+            ..SystemDesc::default()
+        }
+    }
+
+    pub fn read<T: Reflect>(mut self) -> SystemDesc {
+        self.reads.push(T::NAME.to_string());
+        self
+    }
+
+    pub fn write<T: Reflect>(mut self) -> SystemDesc {
+        self.writes.push(T::NAME.to_string());
+        self
+    }
+
+    pub fn query(mut self, query: QueryDesc) -> SystemDesc {
+        self.queries.push(query);
+        self
+    }
+}
+
+pub(crate) type SystemFn = Box<dyn Fn(&mut SystemContext<'_>) -> Result<()> + Send>;
+
+pub(crate) struct System {
+    pub name: String,
+    /// Reads ∪ writes, sorted.
+    pub reads: Vec<SchemaId>,
+    pub writes: Vec<SchemaId>,
+    pub queries: Vec<Arc<QueryAccess>>,
+    pub run: SystemFn,
+}
+
+fn ids(world: &World, names: &[String], system: &str) -> Result<Vec<SchemaId>> {
+    let mut out = Vec::with_capacity(names.len());
+    for n in names {
+        out.push(world.registry.id_by_name(n).map_err(|_| {
+            Error::new(
+                ErrorKind::NotFound,
+                format!("system '{system}' declares unknown type '{n}'"),
+            )
+        })?);
+    }
+    out.sort();
+    out.dedup();
+    Ok(out)
+}
+
+impl System {
+    pub fn resolve(world: &World, desc: SystemDesc, run: SystemFn) -> Result<System> {
+        let name = desc.name.clone();
+        if name.is_empty() {
+            return Err(Error::new(ErrorKind::Invalid, "a system needs a name"));
+        }
+        if world.systems.iter().any(|s| s.name == name) {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!("a system named '{name}' is already scheduled"),
+            ));
+        }
+        let writes = ids(world, &desc.writes, &name)?;
+        if writes.contains(&world.time_id) {
+            return Err(Error::new(
+                ErrorKind::Access,
+                format!("system '{name}' declares a write to Time; the world advances Time, systems read it"),
+            ));
+        }
+        let mut reads = ids(world, &desc.reads, &name)?;
+        reads.extend(&writes);
+        reads.sort();
+        reads.dedup();
+        let mut queries = Vec::with_capacity(desc.queries.len());
+        for (i, q) in desc.queries.iter().enumerate() {
+            let owner = format!("system '{name}' query {i}");
+            let access = QueryAccess::resolve(&world.registry, q, &owner)?;
+            for id in &access.writes {
+                if writes.binary_search(id).is_err() {
+                    return Err(Error::new(
+                        ErrorKind::Access,
+                        format!(
+                            "{owner} writes '{}' but the system does not declare it in writes",
+                            world.registry.name(*id)
+                        ),
+                    ));
+                }
+            }
+            for id in &access.required {
+                if reads.binary_search(id).is_err() {
+                    return Err(Error::new(
+                        ErrorKind::Access,
+                        format!(
+                            "{owner} reads '{}' but the system does not declare it in reads or writes",
+                            world.registry.name(*id)
+                        ),
+                    ));
+                }
+            }
+            queries.push(Arc::new(access));
+        }
+        Ok(System {
+            name,
+            reads,
+            writes,
+            queries,
+            run,
+        })
+    }
+}
+
+pub(crate) enum Command {
+    Spawn(Entity, Vec<(SchemaId, Vec<u8>)>),
+    Insert(Entity, SchemaId, Vec<u8>),
+    Remove(Entity, SchemaId),
+    Despawn(Entity),
+}
+
+/// What a running system can see and do: exactly what it declared.
+pub struct SystemContext<'w> {
+    world: &'w World,
+    system: &'w System,
+    commands: &'w mut Vec<Command>,
+}
+
+impl<'w> SystemContext<'w> {
+    pub(crate) fn new(
+        world: &'w World,
+        system: &'w System,
+        commands: &'w mut Vec<Command>,
+    ) -> Self {
+        SystemContext {
+            world,
+            system,
+            commands,
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.system.name
+    }
+
+    /// The clock of the tick being run.
+    pub fn time(&self) -> Time {
+        self.world.time()
+    }
+
+    /// The id of a registered Rust type.
+    pub fn id<T: Reflect>(&self) -> Result<SchemaId> {
+        self.world.id::<T>()
+    }
+
+    fn require(&self, id: SchemaId, write: bool) -> Result<()> {
+        let list = if write {
+            &self.system.writes
+        } else {
+            &self.system.reads
+        };
+        if list.binary_search(&id).is_ok() || (!write && id == self.world.time_id) {
+            return Ok(());
+        }
+        Err(Error::new(
+            ErrorKind::Access,
+            format!(
+                "system '{}' did not declare {} access to '{}'",
+                self.system.name,
+                if write { "write" } else { "read" },
+                self.world.registry.name(id)
+            ),
+        ))
+    }
+
+    /// The archetypes of declared query `index`.
+    pub fn query(&self, index: usize) -> Result<QueryIter<'w>> {
+        let access = self.system.queries.get(index).ok_or_else(|| {
+            Error::new(
+                ErrorKind::NotFound,
+                format!(
+                    "system '{}' declares {} queries, not {}",
+                    self.system.name,
+                    self.system.queries.len(),
+                    index + 1
+                ),
+            )
+        })?;
+        Ok(QueryIter::new(self.world, access.clone()))
+    }
+
+    pub fn resource<T: Reflect>(&self) -> Result<Ref<'w, T>> {
+        let id = self.world.id::<T>()?;
+        self.require(id, false)?;
+        typed_ref(self.world.resource_cell(id)?, T::NAME)
+    }
+
+    pub fn resource_mut<T: Reflect>(&self) -> Result<RefMut<'w, T>> {
+        let id = self.world.id::<T>()?;
+        self.require(id, true)?;
+        let cell = self.world.resource_cell(id)?;
+        let value = cell
+            .try_borrow_mut()
+            .map_err(|_| crate::world::busy(T::NAME))?;
+        RefMut::filter_map(value, |v| match v {
+            ResourceValue::Typed(b) => b.downcast_mut::<T>(),
+            ResourceValue::Raw(_) => None,
+        })
+        .map_err(|_| crate::world::no_resource(T::NAME))
+    }
+
+    /// Events of type `T` delivered this tick (sent during the previous tick
+    /// or by the host before this one).
+    pub fn events<T: Reflect>(&self) -> Result<Vec<T>> {
+        let id = self.world.id::<T>()?;
+        self.require(id, false)?;
+        let queue = self.world.events[id.0 as usize].borrow();
+        queue
+            .current
+            .iter()
+            .map(|b| self.world.registry.decode(id, b))
+            .collect()
+    }
+
+    /// Sends event `T`; it is delivered at the next tick.
+    pub fn send<T: Reflect>(&self, event: T) -> Result<()> {
+        let id = self.world.id::<T>()?;
+        self.require(id, true)?;
+        let bytes = self.world.registry.encode(id, &event)?;
+        self.world.events[id.0 as usize]
+            .borrow_mut()
+            .pending
+            .push(bytes);
+        Ok(())
+    }
+
+    pub fn is_alive(&self, e: Entity) -> bool {
+        self.world.is_alive(e)
+    }
+
+    /// A copy of component `T` of any entity (declared read).
+    pub fn get<T: Reflect>(&self, e: Entity) -> Result<T> {
+        let id = self.world.id::<T>()?;
+        self.require(id, false)?;
+        self.world.get(e)
+    }
+
+    /// Overwrites component `T` of an entity that has it, immediately
+    /// (declared write; not a structural change).
+    pub fn set<T: Reflect>(&self, e: Entity, value: T) -> Result<()> {
+        let id = self.world.id::<T>()?;
+        self.require(id, true)?;
+        let bytes = self.world.registry.encode(id, &value)?;
+        self.world.set_in_place(e, id, &bytes)
+    }
+
+    /// Spawns an entity when the system returns. The id is usable at once
+    /// in this system's other commands.
+    pub fn spawn<B: Bundle>(&mut self, bundle: B) -> Result<Entity> {
+        let components = self
+            .world
+            .prepare(encode_bundle(&self.world.registry, bundle)?)?;
+        for (id, _) in &components {
+            self.require(*id, true)?;
+        }
+        let e = self.world.entities.borrow_mut().reserve();
+        self.commands.push(Command::Spawn(e, components));
+        Ok(e)
+    }
+
+    /// Adds or overwrites component `T` of `e` when the system returns.
+    pub fn insert<T: Reflect>(&mut self, e: Entity, value: T) -> Result<()> {
+        let id = self.world.id::<T>()?;
+        self.require(id, true)?;
+        if !self.world.is_alive(e) {
+            return Err(dead(e));
+        }
+        let bytes = self.world.registry.encode(id, &value)?;
+        self.commands.push(Command::Insert(e, id, bytes));
+        Ok(())
+    }
+
+    /// Removes component `T` from `e` when the system returns.
+    pub fn remove<T: Reflect>(&mut self, e: Entity) -> Result<()> {
+        let id = self.world.id::<T>()?;
+        self.require(id, true)?;
+        if !self.world.is_alive(e) {
+            return Err(dead(e));
+        }
+        self.commands.push(Command::Remove(e, id));
+        Ok(())
+    }
+
+    /// Despawns `e` when the system returns (any system may despawn).
+    pub fn despawn(&mut self, e: Entity) -> Result<()> {
+        if !self.world.is_alive(e) {
+            return Err(dead(e));
+        }
+        self.commands.push(Command::Despawn(e));
+        Ok(())
+    }
+}
