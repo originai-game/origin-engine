@@ -29,10 +29,6 @@ impl Column {
         }
     }
 
-    pub fn size(&self) -> usize {
-        self.size
-    }
-
     pub fn bytes(&self) -> &[u8] {
         &bytemuck::cast_slice(&self.blocks)[..self.rows * self.size]
     }
@@ -78,6 +74,13 @@ impl Column {
     pub fn fill_from(&mut self, rows: usize, bytes: &[u8]) {
         self.resize_rows(rows);
         self.bytes_mut().copy_from_slice(bytes);
+    }
+
+    /// Appends `rows` rows from `bytes` (`rows × size` long).
+    pub fn extend_from(&mut self, rows: usize, bytes: &[u8]) {
+        let start = self.rows * self.size;
+        self.resize_rows(self.rows + rows);
+        self.bytes_mut()[start..].copy_from_slice(bytes);
     }
 }
 

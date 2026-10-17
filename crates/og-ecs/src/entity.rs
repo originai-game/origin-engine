@@ -9,7 +9,12 @@ use std::fmt;
 /// A slot is retired when its generation reaches 2^21
 /// ([`og_core::handle::RETIRED_GENERATION`]), so `to_bits()` of every entity
 /// is at most 2^53 - 1: an exact JavaScript `number`.
+///
+/// `#[repr(transparent)]` over [`RawHandle`] (`#[repr(C)]`: index, then
+/// generation), so a `&[Entity]` is in memory an array of little-endian
+/// `u64` ids and a host may view it in place.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[repr(transparent)]
 pub struct Entity(pub(crate) RawHandle);
 
 impl Entity {

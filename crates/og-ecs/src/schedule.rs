@@ -12,7 +12,7 @@
 use crate::entity::Entity;
 use crate::query::{QueryAccess, QueryDesc, QueryIter};
 use crate::registry::SchemaId;
-use crate::world::{dead, encode_bundle, typed_ref, Bundle, ResourceValue, World};
+use crate::world::{busy, dead, encode_bundle, typed_ref, Bundle, ResourceValue, World};
 use og_core::reflect::Reflect;
 use og_core::{Error, ErrorKind, Result, Time};
 use std::cell::{Ref, RefMut};
@@ -62,7 +62,33 @@ pub(crate) struct System {
     pub reads: Vec<SchemaId>,
     pub writes: Vec<SchemaId>,
     pub queries: Vec<Arc<QueryAccess>>,
+    /// The queries as declared, for [`SystemInfo`].
+    pub desc_queries: Vec<QueryDesc>,
+    /// Entities each query matched when the system last ran.
+    pub matched: Vec<usize>,
+    /// The tick the system last ran in.
+    pub last_tick: Option<u64>,
     pub run: SystemFn,
+}
+
+/// What [`crate::World::system_info`] reports about one system.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SystemInfo {
+    pub name: String,
+    /// Declared reads that are not also writes, by type name in id order.
+    pub reads: Vec<String>,
+    /// Declared writes, by type name in id order.
+    pub writes: Vec<String>,
+    /// The declared queries.
+    pub queries: Vec<QueryDesc>,
+    /// Entities its queries matched when it last ran (summed over queries;
+    /// an entity two queries match counts twice); 0 before it has run.
+    pub matched: usize,
+    /// The same, per query.
+    pub query_matched: Vec<usize>,
+    /// The tick it last ran in (`None` before the first tick). A tick that
+    /// failed in an earlier system did not run it.
+    pub last_tick: Option<u64>,
 }
 
 fn ids(world: &World, names: &[String], system: &str) -> Result<Vec<SchemaId>> {
@@ -135,7 +161,10 @@ impl System {
             name,
             reads,
             writes,
+            matched: vec![0; queries.len()],
             queries,
+            desc_queries: desc.queries,
+            last_tick: None,
             run,
         })
     }
@@ -256,6 +285,7 @@ impl<'w> SystemContext<'w> {
         let id = self.world.id::<T>()?;
         self.require(id, true)?;
         let bytes = self.world.registry.encode(id, &event)?;
+        self.world.registry.check_value(id, &bytes)?;
         self.world.events[id.0 as usize]
             .borrow_mut()
             .pending
@@ -304,7 +334,9 @@ impl<'w> SystemContext<'w> {
         if !self.world.is_alive(e) {
             return Err(dead(e));
         }
+        self.world.registry.check_not_event_only(id, "component")?;
         let bytes = self.world.registry.encode(id, &value)?;
+        self.world.registry.check_value(id, &bytes)?;
         self.commands.push(Command::Insert(e, id, bytes));
         Ok(())
     }
@@ -318,6 +350,129 @@ impl<'w> SystemContext<'w> {
         }
         self.commands.push(Command::Remove(e, id));
         Ok(())
+    }
+
+    // ---- packed bytes: the host form of the calls above, by SchemaId -----
+
+    /// Spawns an entity from packed component bytes when the system returns
+    /// (the byte form of [`Self::spawn`]; every component declared written).
+    pub fn spawn_bytes(&mut self, components: Vec<(SchemaId, Vec<u8>)>) -> Result<Entity> {
+        let components = self.world.prepare(components)?;
+        for (id, _) in &components {
+            self.require(*id, true)?;
+        }
+        let e = self.world.entities.borrow_mut().reserve();
+        self.commands.push(Command::Spawn(e, components));
+        Ok(e)
+    }
+
+    /// Adds or overwrites component `id` of `e` from packed bytes when the
+    /// system returns (declared write).
+    pub fn insert_bytes(&mut self, e: Entity, id: SchemaId, bytes: &[u8]) -> Result<()> {
+        self.world.registry.check(id)?;
+        self.require(id, true)?;
+        if !self.world.is_alive(e) {
+            return Err(dead(e));
+        }
+        self.world.registry.check_not_event_only(id, "component")?;
+        self.world.registry.check_value(id, bytes)?;
+        self.commands.push(Command::Insert(e, id, bytes.to_vec()));
+        Ok(())
+    }
+
+    /// Removes component `id` from `e` when the system returns (declared
+    /// write).
+    pub fn remove_id(&mut self, e: Entity, id: SchemaId) -> Result<()> {
+        self.world.registry.check(id)?;
+        self.require(id, true)?;
+        if !self.world.is_alive(e) {
+            return Err(dead(e));
+        }
+        self.commands.push(Command::Remove(e, id));
+        Ok(())
+    }
+
+    /// Packed bytes of component `id` of any entity (declared read).
+    pub fn get_bytes(&self, e: Entity, id: SchemaId) -> Result<Vec<u8>> {
+        self.world.registry.check(id)?;
+        self.require(id, false)?;
+        self.world.get_bytes(e, id)
+    }
+
+    /// Overwrites component `id` of an entity that has it from packed bytes,
+    /// immediately (declared write; not a structural change).
+    pub fn set_bytes(&self, e: Entity, id: SchemaId, bytes: &[u8]) -> Result<()> {
+        self.world.registry.check(id)?;
+        self.require(id, true)?;
+        self.world.set_in_place(e, id, bytes)
+    }
+
+    /// Packed bytes of resource `id` (declared read; `Time` always).
+    pub fn resource_bytes(&self, id: SchemaId) -> Result<Vec<u8>> {
+        self.world.registry.check(id)?;
+        self.require(id, false)?;
+        self.world.resource_bytes(id)
+    }
+
+    /// Overwrites resource `id`, which must be present, from packed bytes,
+    /// immediately (declared write; never `Time`).
+    pub fn set_resource_bytes(&self, id: SchemaId, bytes: &[u8]) -> Result<()> {
+        let registry = &self.world.registry;
+        registry.check(id)?;
+        self.require(id, true)?;
+        registry.check_value(id, bytes)?;
+        let name = registry.name(id);
+        let cell = self.world.resource_cell(id)?;
+        let mut value = cell.try_borrow_mut().map_err(|_| busy(name))?;
+        let info = registry.info(id);
+        *value = match &info.rust {
+            Some(rust) => ResourceValue::Typed((rust.decode)(&info.layout, bytes)?),
+            None => ResourceValue::Raw(bytes.to_vec()),
+        };
+        Ok(())
+    }
+
+    /// Packed bytes of the events of `id` delivered this tick, in the order
+    /// they were sent (declared read).
+    pub fn events_bytes(&self, id: SchemaId) -> Result<Vec<Vec<u8>>> {
+        self.world.registry.check(id)?;
+        self.require(id, false)?;
+        let queue = self.world.events[id.0 as usize]
+            .try_borrow()
+            .map_err(|_| busy(self.world.registry.name(id)))?;
+        Ok(queue.current.clone())
+    }
+
+    /// Sends event `id` from packed bytes; it is delivered at the next tick
+    /// (declared write).
+    pub fn send_bytes(&self, id: SchemaId, bytes: &[u8]) -> Result<()> {
+        self.world.registry.check(id)?;
+        self.require(id, true)?;
+        self.world.registry.check_value(id, bytes)?;
+        self.world.events[id.0 as usize]
+            .try_borrow_mut()
+            .map_err(|_| busy(self.world.registry.name(id)))?
+            .pending
+            .push(bytes.to_vec());
+        Ok(())
+    }
+
+    /// Whether resource `id` is present (declared read).
+    pub fn has_resource_id(&self, id: SchemaId) -> Result<bool> {
+        self.world.registry.check(id)?;
+        self.require(id, false)?;
+        Ok(self.world.has_resource_id(id))
+    }
+
+    /// The name of an entity, if it has one (names are readable by every
+    /// system; they change only between ticks).
+    pub fn name_of(&self, e: Entity) -> Option<&'w str> {
+        self.world.name(e)
+    }
+
+    /// The live entity holding a name.
+    pub fn find(&self, name: &str) -> Option<Entity> {
+        self.world.find(name)
     }
 
     /// Despawns `e` when the system returns (any system may despawn). A

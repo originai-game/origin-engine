@@ -4,7 +4,7 @@
 use crate::entity::Entity;
 use crate::query::{QueryAccess, QueryDesc, QueryIter};
 use crate::registry::{FieldRef, Registry, SchemaId};
-use crate::schedule::{Command, System, SystemContext, SystemDesc};
+use crate::schedule::{Command, System, SystemContext, SystemDesc, SystemInfo};
 use crate::storage::Archetype;
 use og_core::handle::HandleAllocator;
 use og_core::reflect::{schemas_to_json, Reflect, Schema};
@@ -36,6 +36,9 @@ pub(crate) struct Location {
     pub archetype: u32,
     pub row: u32,
 }
+
+/// The longest entity name, in bytes.
+pub const MAX_NAME: usize = 256;
 
 /// Archetype index of an entity reserved by a running system and placed when
 /// the system's commands are applied.
@@ -93,6 +96,11 @@ pub struct World {
     pub(crate) events: Vec<RefCell<EventQueue>>,
     pub(crate) systems: Vec<System>,
     pub(crate) time_id: SchemaId,
+    /// Bumped by every operation that may move a column or an entity list.
+    pub(crate) structural: u64,
+    /// Entity names: one name per live entity, one entity per name.
+    pub(crate) names: BTreeMap<Entity, String>,
+    pub(crate) by_name: BTreeMap<String, Entity>,
 }
 
 fn two_mut<T>(v: &mut [T], a: usize, b: usize) -> (&mut T, &mut T) {
@@ -125,6 +133,9 @@ impl World {
             events: Vec::new(),
             systems: Vec::new(),
             time_id: SchemaId(0),
+            structural: 0,
+            names: BTreeMap::new(),
+            by_name: BTreeMap::new(),
         };
         world.archetype_for(Vec::new());
         world.time_id = world.register::<Time>()?;
@@ -246,7 +257,8 @@ impl World {
     ) -> Result<Vec<(SchemaId, Vec<u8>)>> {
         for (id, bytes) in &components {
             self.registry.check(*id)?;
-            self.registry.check_size(*id, bytes)?;
+            self.registry.check_not_event_only(*id, "component")?;
+            self.registry.check_value(*id, bytes)?;
         }
         components.sort_by_key(|(id, _)| *id);
         if let Some(w) = components.windows(2).find(|w| w[0].0 == w[1].0) {
@@ -273,6 +285,7 @@ impl World {
         arch.entities.push(e);
         let row = arch.len() - 1;
         self.set_location(e, a, row);
+        self.structural += 1;
     }
 
     /// Spawns an entity with a bundle: `()` or a tuple of reflected values.
@@ -301,6 +314,10 @@ impl World {
             archetype: PENDING,
             row: 0,
         };
+        if let Some(name) = self.names.remove(&e) {
+            self.by_name.remove(&name);
+        }
+        self.structural += 1;
         Ok(())
     }
 
@@ -340,7 +357,8 @@ impl World {
     /// Adds (or overwrites) component `id` from packed bytes.
     pub fn insert_bytes(&mut self, e: Entity, id: SchemaId, bytes: &[u8]) -> Result<()> {
         self.registry.check(id)?;
-        self.registry.check_size(id, bytes)?;
+        self.registry.check_not_event_only(id, "component")?;
+        self.registry.check_value(id, bytes)?;
         let loc = self.location(e)?;
         let src = loc.archetype as usize;
         let row = loc.row as usize;
@@ -384,6 +402,7 @@ impl World {
             self.set_location(moved, src as u32, row);
         }
         self.set_location(e, dst as u32, new_row);
+        self.structural += 1;
         Ok(())
     }
 
@@ -423,6 +442,7 @@ impl World {
             self.set_location(moved, src as u32, row);
         }
         self.set_location(e, dst as u32, new_row);
+        self.structural += 1;
         Ok(())
     }
 
@@ -461,7 +481,8 @@ impl World {
     /// Overwrites a component the entity already has, without a structural
     /// change (usable while columns of other components are borrowed).
     pub(crate) fn set_in_place(&self, e: Entity, id: SchemaId, bytes: &[u8]) -> Result<()> {
-        self.registry.check_size(id, bytes)?;
+        self.registry.check(id)?;
+        self.registry.check_value(id, bytes)?;
         let loc = self.location(e)?;
         let arch = &self.archetypes[loc.archetype as usize];
         let position = arch.position(id).ok_or_else(|| {
@@ -494,7 +515,9 @@ impl World {
     /// Inserts or replaces resource `T`. `T` must be registered.
     pub fn insert_resource<T: Reflect>(&mut self, value: T) -> Result<()> {
         let id = self.id::<T>()?;
-        self.registry.encode(id, &value)?; // a layout mismatch is refused here, once
+        self.registry.check_not_event_only(id, "resource")?;
+        let bytes = self.registry.encode(id, &value)?; // a layout mismatch is refused here, once
+        self.registry.check_value(id, &bytes)?;
         self.resources[id.0 as usize] = Some(RefCell::new(ResourceValue::Typed(Box::new(value))));
         Ok(())
     }
@@ -502,7 +525,8 @@ impl World {
     /// Inserts or replaces resource `id` from packed bytes.
     pub fn insert_resource_bytes(&mut self, id: SchemaId, bytes: &[u8]) -> Result<()> {
         self.registry.check(id)?;
-        self.registry.check_size(id, bytes)?;
+        self.registry.check_not_event_only(id, "resource")?;
+        self.registry.check_value(id, bytes)?;
         let info = self.registry.info(id);
         let value = match &info.rust {
             Some(rust) => ResourceValue::Typed((rust.decode)(&info.layout, bytes)?),
@@ -524,6 +548,29 @@ impl World {
             Some(_) => Ok(()),
             None => Err(no_resource(T::NAME)),
         }
+    }
+
+    /// Removes resource `id` (the byte form of [`Self::remove_resource`]).
+    /// Refused for `Time` and for a resource that is not present.
+    pub fn remove_resource_id(&mut self, id: SchemaId) -> Result<()> {
+        self.registry.check(id)?;
+        if id == self.time_id {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                "Time belongs to the world and cannot be removed",
+            ));
+        }
+        match self.resources[id.0 as usize].take() {
+            Some(_) => Ok(()),
+            None => Err(no_resource(self.registry.name(id))),
+        }
+    }
+
+    /// Whether resource `id` is present.
+    pub fn has_resource_id(&self, id: SchemaId) -> bool {
+        self.resources
+            .get(id.0 as usize)
+            .is_some_and(|r| r.is_some())
     }
 
     pub fn has_resource<T: Reflect>(&self) -> bool {
@@ -577,6 +624,7 @@ impl World {
     pub fn send<T: Reflect>(&mut self, event: T) -> Result<()> {
         let id = self.id::<T>()?;
         let bytes = self.registry.encode(id, &event)?;
+        self.registry.check_value(id, &bytes)?;
         self.events[id.0 as usize].get_mut().pending.push(bytes);
         Ok(())
     }
@@ -584,7 +632,7 @@ impl World {
     /// Sends event `id` from packed bytes.
     pub fn send_bytes(&mut self, id: SchemaId, bytes: &[u8]) -> Result<()> {
         self.registry.check(id)?;
-        self.registry.check_size(id, bytes)?;
+        self.registry.check_value(id, bytes)?;
         self.events[id.0 as usize]
             .get_mut()
             .pending
@@ -602,6 +650,95 @@ impl World {
             .iter()
             .map(|b| self.registry.decode(id, b))
             .collect()
+    }
+
+    /// Packed bytes of the events of `id` sent since the start of the last
+    /// step (the byte form of [`Self::pending_events`]).
+    pub fn pending_events_bytes(&self, id: SchemaId) -> Result<Vec<Vec<u8>>> {
+        self.registry.check(id)?;
+        Ok(self.events[id.0 as usize].borrow().pending.clone())
+    }
+
+    // ---- names --------------------------------------------------------------
+
+    /// Names a live entity: the probe, the command channel, scenes and
+    /// `world.find` address it by this name. One name per entity (naming it
+    /// again renames it) and one entity per name: a name another live entity
+    /// holds is refused. A name is non-empty, at most 256 bytes, does not
+    /// start with `#` and holds no whitespace, `:`, `;` or `=` (the command
+    /// grammar could not address it). Names are in snapshots and the world
+    /// hash, and leave with the entity when it is despawned.
+    pub fn set_name(&mut self, e: Entity, name: &str) -> Result<()> {
+        if !self.is_alive(e) {
+            return Err(dead(e));
+        }
+        let addressable = !name.is_empty()
+            && name.len() <= MAX_NAME
+            && !name.starts_with('#')
+            && !name
+                .chars()
+                .any(|c| c == ':' || c == ';' || c == '=' || c.is_whitespace());
+        if !addressable {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!("'{name}' is not an entity name: non-empty, at most {MAX_NAME} bytes, no whitespace, ':', ';' or '=', and not starting with '#'"),
+            ));
+        }
+        match self.by_name.get(name) {
+            Some(&holder) if holder == e => return Ok(()),
+            Some(&holder) => {
+                return Err(Error::new(
+                    ErrorKind::Invalid,
+                    format!("the name '{name}' already belongs to entity {holder}"),
+                ))
+            }
+            None => {}
+        }
+        if let Some(old) = self.names.insert(e, name.to_owned()) {
+            self.by_name.remove(&old);
+        }
+        self.by_name.insert(name.to_owned(), e);
+        Ok(())
+    }
+
+    /// Removes an entity's name, if it has one.
+    pub fn clear_name(&mut self, e: Entity) -> Result<()> {
+        if !self.is_alive(e) {
+            return Err(dead(e));
+        }
+        if let Some(old) = self.names.remove(&e) {
+            self.by_name.remove(&old);
+        }
+        Ok(())
+    }
+
+    /// The name of an entity, if it has one.
+    pub fn name(&self, e: Entity) -> Option<&str> {
+        self.names.get(&e).map(String::as_str)
+    }
+
+    /// The live entity holding a name.
+    pub fn find(&self, name: &str) -> Option<Entity> {
+        self.by_name.get(name).copied()
+    }
+
+    /// Every named entity with its name, in entity order (index, then
+    /// generation).
+    pub fn names(&self) -> Vec<(Entity, &str)> {
+        self.names.iter().map(|(e, n)| (*e, n.as_str())).collect()
+    }
+
+    // ---- structure ----------------------------------------------------------
+
+    /// A counter bumped by every operation that may move a column or an
+    /// entity list: a spawn, a despawn, an insert that adds a component, a
+    /// remove, a restore (each applied command counts as its operation).
+    /// Overwriting a component, writing through a view, resources, events,
+    /// names and `Time` do not change it. Views taken while it holds a value
+    /// are valid until it changes. It counts operations on this `World`
+    /// value; it is not world state (not in snapshots or the hash).
+    pub fn structural_changes(&self) -> u64 {
+        self.structural
     }
 
     // ---- schedule ---------------------------------------------------------
@@ -623,6 +760,47 @@ impl World {
         self.systems.iter().map(|s| s.name.as_str()).collect()
     }
 
+    /// Every system in run order: its name, its declared reads and writes
+    /// (type names in id order; `reads` excludes what `writes` lists), its
+    /// queries, and how many entities its queries matched when it last ran.
+    pub fn system_info(&self) -> Vec<SystemInfo> {
+        self.systems
+            .iter()
+            .map(|s| {
+                let name = |id: &SchemaId| self.registry.name(*id).to_owned();
+                SystemInfo {
+                    name: s.name.clone(),
+                    reads: s
+                        .reads
+                        .iter()
+                        .filter(|id| s.writes.binary_search(id).is_err())
+                        .map(name)
+                        .collect(),
+                    writes: s.writes.iter().map(name).collect(),
+                    queries: s.desc_queries.clone(),
+                    matched: s.matched.iter().sum(),
+                    query_matched: s.matched.clone(),
+                    last_tick: s.last_tick,
+                }
+            })
+            .collect()
+    }
+
+    /// Entities each query of `system` matches now, in query order.
+    fn match_counts(&self, system: &System) -> Vec<usize> {
+        system
+            .queries
+            .iter()
+            .map(|q| {
+                self.archetypes
+                    .iter()
+                    .filter(|a| q.matches(a))
+                    .map(Archetype::len)
+                    .sum()
+            })
+            .collect()
+    }
+
     /// Runs one fixed tick: delivers pending events, runs every system in
     /// order (applying each system's commands when it returns), then advances
     /// `Time`. A system error stops the tick and is returned with the tick and
@@ -636,6 +814,9 @@ impl World {
         let tick = self.time().tick;
         let mut commands = Vec::new();
         for i in 0..self.systems.len() {
+            let matched = self.match_counts(&self.systems[i]);
+            self.systems[i].matched = matched;
+            self.systems[i].last_tick = Some(tick);
             let result = {
                 let system = &self.systems[i];
                 let mut ctx = SystemContext::new(self, system, &mut commands);

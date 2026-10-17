@@ -44,7 +44,8 @@ mod world;
 pub use entity::Entity;
 pub use query::{ArchetypeView, QueryDesc, QueryIter};
 pub use registry::{FieldRef, SchemaId};
-pub use schedule::{SystemContext, SystemDesc};
-pub use world::{Bundle, BundleEncoder, World, WorldDesc};
+pub use schedule::{SystemContext, SystemDesc, SystemInfo};
+pub use snapshot::MigrationReport;
+pub use world::{Bundle, BundleEncoder, World, WorldDesc, MAX_NAME};
 
 pub use og_core::{Error, ErrorKind, Reflect, Result};

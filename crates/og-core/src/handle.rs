@@ -29,8 +29,11 @@ pub const RETIRED_GENERATION: u32 = 1 << 21;
 /// The largest generation a live handle can have (`RETIRED_GENERATION - 1`).
 pub const MAX_GENERATION: u32 = RETIRED_GENERATION - 1;
 
-/// An untyped generational handle.
+/// An untyped generational handle. `#[repr(C)]`: `index` then `generation`,
+/// two little-endian `u32`, so a handle in memory is the `u64` of
+/// [`RawHandle::to_bits`] and a host can read an array of them in place.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[repr(C)]
 pub struct RawHandle {
     index: u32,
     generation: u32,

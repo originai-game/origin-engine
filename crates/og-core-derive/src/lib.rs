@@ -20,6 +20,12 @@
 //! Supported shapes: structs with named fields, `struct Tag {}` and unit
 //! structs (tags with no fields). Generic structs, tuple structs, enums and
 //! unions are refused at compile time with a reason.
+//!
+//! Field types are the `og_core::reflect::ReflectField` set (`f32` ... `Mat4`,
+//! `bool`, `Bool8`, `Str64`, `Str256`). Two field attributes shape the
+//! schema beyond metadata: `name = "camelCase"` sets the schema field name
+//! (the Rust ident otherwise), and `variants = ["a", "b"]` on a `u32` field
+//! makes it an `enum` field whose value is the variant index.
 
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
@@ -47,6 +53,8 @@ struct FieldMeta {
     max: Option<f64>,
     tunable: bool,
     default: Option<Vec<f64>>,
+    rename: Option<String>,
+    variants: Option<Vec<String>>,
 }
 
 fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
@@ -102,7 +110,7 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
     };
 
     let schema_fields = fields.iter().map(|f| {
-        let fname = f.ident.to_string();
+        let fname = f.rename.clone().unwrap_or_else(|| f.ident.to_string());
         let ty = &f.ty;
         let doc = &f.doc;
         let label = opt_string(&f.label);
@@ -117,10 +125,24 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
             }
             None => quote! { ::std::option::Option::None },
         };
+        let (field_type, variants) = match &f.variants {
+            Some(names) => (
+                quote! {{
+                    // An enum field is stored as its variant index.
+                    let _: ::core::marker::PhantomData<u32> = ::core::marker::PhantomData::<#ty>;
+                    ::og_core::reflect::FieldType::Enum
+                }},
+                quote! { ::std::vec![#(::std::string::String::from(#names)),*] },
+            ),
+            None => (
+                quote! { <#ty as ::og_core::reflect::ReflectField>::TYPE },
+                quote! { ::std::vec::Vec::new() },
+            ),
+        };
         quote! {
             ::og_core::reflect::FieldSchema {
                 name: ::std::string::String::from(#fname),
-                ty: <#ty as ::og_core::reflect::FieldValue>::TYPE,
+                ty: #field_type,
                 doc: ::std::string::String::from(#doc),
                 label: #label,
                 unit: #unit,
@@ -128,13 +150,16 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
                 max: #max,
                 tunable: #tunable,
                 default: #default,
+                variants: #variants,
             }
         }
     });
 
     let writes = fields.iter().enumerate().map(|(i, f)| {
         let fident = &f.ident;
-        quote! { out(#i, ::og_core::reflect::FieldValue::as_bytes(&self.#fident)); }
+        quote! {
+            ::og_core::reflect::ReflectField::write_packed(&self.#fident, &mut |bytes: &[u8]| out(#i, bytes));
+        }
     });
     let temps: Vec<_> = (0..fields.len())
         .map(|i| format_ident!("__og_field_{}", i))
@@ -143,8 +168,9 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
         let ty = &f.ty;
         let tmp = &temps[i];
         quote! {
-            let mut #tmp: #ty = <#ty as ::og_core::reflect::FieldValue>::zero();
-            input(#i, ::og_core::reflect::FieldValue::as_bytes_mut(&mut #tmp));
+            let #tmp: #ty = <#ty as ::og_core::reflect::ReflectField>::read_packed(
+                &mut |buf: &mut [u8]| input(#i, buf),
+            );
         }
     });
     let idents = fields.iter().map(|f| &f.ident);
@@ -221,6 +247,8 @@ fn field_meta(field: &syn::Field) -> syn::Result<FieldMeta> {
         max: None,
         tunable: false,
         default: None,
+        rename: None,
+        variants: None,
     };
     for attr in reflect_attrs(&field.attrs) {
         attr.parse_nested_meta(|m| {
@@ -234,6 +262,37 @@ fn field_meta(field: &syn::Field) -> syn::Result<FieldMeta> {
                 meta.min = Some(number(&m.value()?.parse::<Expr>()?)?);
             } else if m.path.is_ident("max") {
                 meta.max = Some(number(&m.value()?.parse::<Expr>()?)?);
+            } else if m.path.is_ident("name") {
+                meta.rename = Some(m.value()?.parse::<LitStr>()?.value());
+            } else if m.path.is_ident("variants") {
+                let expr = m.value()?.parse::<Expr>()?;
+                let Expr::Array(array) = &expr else {
+                    return Err(syn::Error::new_spanned(
+                        &expr,
+                        "Reflect: variants takes an array of string literals, as [\"none\", \"left\"]",
+                    ));
+                };
+                let mut names = Vec::new();
+                for e in &array.elems {
+                    match e {
+                        Expr::Lit(ExprLit {
+                            lit: Lit::Str(s), ..
+                        }) => names.push(s.value()),
+                        other => {
+                            return Err(syn::Error::new_spanned(
+                                other,
+                                "Reflect: a variant name is a string literal",
+                            ))
+                        }
+                    }
+                }
+                if names.is_empty() {
+                    return Err(syn::Error::new_spanned(
+                        &expr,
+                        "Reflect: an enum field needs at least one variant",
+                    ));
+                }
+                meta.variants = Some(names);
             } else if m.path.is_ident("default") {
                 let expr = m.value()?.parse::<Expr>()?;
                 meta.default = Some(match &expr {
@@ -244,7 +303,7 @@ fn field_meta(field: &syn::Field) -> syn::Result<FieldMeta> {
                 });
             } else {
                 return Err(m.error(
-                    "unknown reflect attribute on a field; expected min, max, label, unit, tunable or default",
+                    "unknown reflect attribute on a field; expected min, max, label, unit, tunable, default, name or variants",
                 ));
             }
             Ok(())

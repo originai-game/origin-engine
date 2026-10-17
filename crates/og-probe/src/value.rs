@@ -34,11 +34,19 @@ pub(crate) fn field_json(ty: FieldType, bytes: &[u8]) -> Value {
         FieldType::U32 => Value::from(u32::from_le_bytes(word(bytes, 0))),
         FieldType::I64 => Value::from(i64::from_le_bytes(word(bytes, 0))),
         FieldType::U64 => Value::from(u64::from_le_bytes(word(bytes, 0))),
-        FieldType::Vec2 | FieldType::Vec3 | FieldType::Vec4 | FieldType::Quat => Value::Array(
-            (0..ty.lanes())
-                .map(|i| f32_json(f32::from_le_bytes(word(bytes, i * 4))))
-                .collect(),
-        ),
+        FieldType::Vec2 | FieldType::Vec3 | FieldType::Vec4 | FieldType::Quat | FieldType::Mat4 => {
+            Value::Array(
+                (0..ty.lanes())
+                    .map(|i| f32_json(f32::from_le_bytes(word(bytes, i * 4))))
+                    .collect(),
+            )
+        }
+        FieldType::Bool => Value::Bool(bytes[0] != 0),
+        FieldType::Enum => Value::from(u32::from_le_bytes(word(bytes, 0))),
+        FieldType::Str64 | FieldType::Str256 => {
+            let end = bytes.iter().position(|b| *b == 0).unwrap_or(bytes.len());
+            Value::from(String::from_utf8_lossy(&bytes[..end]).into_owned())
+        }
     }
 }
 
@@ -113,8 +121,31 @@ fn lane(
 /// outside the schema's range. Nothing is clamped or guessed.
 pub(crate) fn json_field(field: &FieldSchema, value: &Value) -> Result<Vec<u8>, String> {
     let lanes = field.ty.lanes();
+    match field.ty {
+        FieldType::Bool => {
+            return match value.as_bool().or_else(|| {
+                value
+                    .as_f64()
+                    .filter(|v| *v == 0.0 || *v == 1.0)
+                    .map(|v| v == 1.0)
+            }) {
+                Some(on) => Ok(vec![u8::from(on)]),
+                None => Err("a bool takes true, false, 0 or 1".into()),
+            }
+        }
+        FieldType::Str64 | FieldType::Str256 => {
+            return Err(format!(
+                "a {} field is not patched (strings are event fields)",
+                field.ty.name()
+            ))
+        }
+        _ => {}
+    }
     let scalar = match field.ty {
-        FieldType::Vec2 | FieldType::Vec3 | FieldType::Vec4 | FieldType::Quat => FieldType::F32,
+        FieldType::Vec2 | FieldType::Vec3 | FieldType::Vec4 | FieldType::Quat | FieldType::Mat4 => {
+            FieldType::F32
+        }
+        FieldType::Enum => FieldType::U32,
         other => other,
     };
     let mut out = Vec::with_capacity(field.ty.size());

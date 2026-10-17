@@ -1,33 +1,84 @@
-//! Whole-world snapshot and restore, and the world hash.
+//! Whole-world snapshot and restore, migrating restore, and the world hash.
 //!
 //! A snapshot is everything that determines what the world does next: the
-//! type table (names and layout hashes), the entity allocator (every slot's
-//! generation and the free list in reuse order), every archetype in creation
-//! order with its rows in storage order (so iteration order survives), every
-//! resource (including `Time` and the `Rng` states) and both event queues.
+//! type table, the entity allocator (every slot's generation and the free
+//! list in reuse order), every archetype in creation order with its rows in
+//! storage order (so iteration order survives), every resource (including
+//! `Time` and the `Rng` states), both event queues and the entity names.
 //! Systems are code and are not in it; restore into a world whose schedule
 //! and registrations match.
 //!
-//! Format (little-endian): `"OGWS"`, format version `u32`, then the sections
-//! above. Restore maps types by name, requires equal layout hashes, validates
-//! every count and length, and changes nothing unless the whole snapshot is
-//! valid. [`World::world_hash`] is the FNV-1a hash of the snapshot bytes, so
-//! two worlds have the same hash exactly when their snapshots are identical.
+//! Format 2 (little-endian), what [`World::snapshot`] writes:
+//!
+//! ```text
+//! "OGWS" u32:2
+//! types      u32 n, n × { str name, u64 layout_hash, u32 version,
+//!                         u32 fields, fields × { str name, str type,
+//!                                                u32 k, k × str variant } }
+//! allocator  u32 slots, slots × { u32 generation, u8 alive }, u32 n, n × u32 free
+//! archetypes u32 n, n × { u32 k, k × u32 type, u32 rows, rows × u64 entity,
+//!                         per type, per field: rows × field bytes }
+//! resources  u32 n, n × { u32 type, str bytes }
+//! events     u32 n, n × { u32 type, u32 current, current × bytes,
+//!                                   u32 pending, pending × bytes }
+//! names      u32 n, n × { u64 entity, str name }      (entity order)
+//! ```
+//!
+//! `str` is a `u32` length then the bytes. Format 1 (the M1 snapshots) has
+//! only `str name, u64 layout_hash` per type and no names section; it is
+//! still read. [`World::restore`] maps types by name, requires equal layout
+//! hashes, validates every count and length, and changes nothing unless the
+//! whole snapshot is valid. [`World::restore_migrating`] maps fields by name
+//! instead (see [`MigrationReport`]).
+//!
+//! [`World::world_hash`] is FNV-1a of the *state stream*: the snapshot as
+//! format 1 lays it out (type names and layout hashes, no field table), then,
+//! only when some entity is named, `"NAME"` and the names section. The field
+//! table is a function of the registrations the layout hashes already cover,
+//! so two worlds have the same hash exactly when their state is identical,
+//! and a world without names hashes exactly as it did before names existed.
 
 use crate::entity::Entity;
-use crate::registry::SchemaId;
+use crate::registry::{Registry, SchemaId};
 use crate::storage::Archetype;
 use crate::world::{
-    resource_to_bytes, Entities, EventQueue, Location, ResourceValue, World, PENDING,
+    resource_to_bytes, Entities, EventQueue, Location, ResourceValue, World, MAX_NAME, PENDING,
 };
 use og_core::handle::{HandleAllocator, RawHandle, SlotState};
 use og_core::hash::hash_bytes;
+use og_core::reflect::{FieldSchema, FieldType, Schema};
 use og_core::{Error, ErrorKind, Result};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 
 const MAGIC: &[u8; 4] = b"OGWS";
-const FORMAT: u32 = 1;
+/// The format [`World::snapshot`] writes.
+const FORMAT: u32 = 2;
+/// The M1 format: no field table, no names. Read, and the hash stream's.
+const FORMAT_STATE: u32 = 1;
+const NAMES_TAG: &[u8; 4] = b"NAME";
+
+const FIELD_TYPES: [FieldType; 15] = [
+    FieldType::F32,
+    FieldType::F64,
+    FieldType::I32,
+    FieldType::U32,
+    FieldType::I64,
+    FieldType::U64,
+    FieldType::Vec2,
+    FieldType::Vec3,
+    FieldType::Vec4,
+    FieldType::Quat,
+    FieldType::Bool,
+    FieldType::Mat4,
+    FieldType::Enum,
+    FieldType::Str64,
+    FieldType::Str256,
+];
+
+fn field_type(name: &str) -> Option<FieldType> {
+    FIELD_TYPES.iter().copied().find(|t| t.name() == name)
+}
 
 struct Writer(Vec<u8>);
 
@@ -97,19 +148,552 @@ impl<'a> Reader<'a> {
         let n = self.u32()?;
         self.take(n)
     }
+    fn str(&mut self, what: &str) -> Result<&'a str> {
+        std::str::from_utf8(self.sized()?).map_err(|_| bad(format!("{what} is not UTF-8")))
+    }
+}
+
+/// What [`World::restore_migrating`] did beyond a plain restore. Entries
+/// name types (`Type`) or fields (`Type.field`), in snapshot type order, then
+/// field order. All empty means the snapshot fitted this world exactly.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct MigrationReport {
+    /// Types whose layout differs between the snapshot and this world; their
+    /// components, resources and events were mapped field by field, by name.
+    pub migrated: Vec<String>,
+    /// Fields this world has and the snapshot's type lacked (or had with
+    /// another field type): set to the field's default.
+    pub added: Vec<String>,
+    /// Fields the snapshot had and this world's type lacks (or has with
+    /// another field type): dropped.
+    pub removed: Vec<String>,
+    /// Types in the snapshot this world does not register: their components,
+    /// resources and events were dropped.
+    pub dropped: Vec<String>,
+    /// Anything else worth reading: a field whose type changed, enum values
+    /// whose variant no longer exists (reset to the field's default), a type
+    /// that gained a string field and so lost its components.
+    pub warnings: Vec<String>,
+}
+
+impl MigrationReport {
+    /// Whether the snapshot fitted this world exactly.
+    pub fn is_exact(&self) -> bool {
+        self.migrated.is_empty()
+            && self.added.is_empty()
+            && self.removed.is_empty()
+            && self.dropped.is_empty()
+            && self.warnings.is_empty()
+    }
+}
+
+/// One type of the snapshot's type table.
+struct SnapType {
+    name: String,
+    hash: u64,
+    /// The snapshot's own field table (format 2).
+    schema: Option<Schema>,
+    /// Packed size of each field, from the field table or, in format 1, from
+    /// this world's type of the same name and layout hash.
+    sizes: Vec<usize>,
+}
+
+impl SnapType {
+    fn size(&self) -> usize {
+        self.sizes.iter().sum()
+    }
+}
+
+struct SnapArchetype<'a> {
+    /// Snapshot type indices in stored order.
+    stored: Vec<usize>,
+    entities: Vec<Entity>,
+    /// Per stored type, per field: `rows × size` bytes.
+    columns: Vec<Vec<&'a [u8]>>,
+}
+
+/// One event queue: snapshot type, current events, pending events.
+type Queue<'a> = (usize, Vec<&'a [u8]>, Vec<&'a [u8]>);
+
+/// A snapshot read and validated, its types not yet mapped onto this world.
+struct Parsed<'a> {
+    types: Vec<SnapType>,
+    alloc: HandleAllocator,
+    slot_count: usize,
+    archetypes: Vec<SnapArchetype<'a>>,
+    resources: Vec<(usize, &'a [u8])>,
+    events: Vec<Queue<'a>>,
+    names: Vec<(Entity, String)>,
+}
+
+fn not_registered(name: &str) -> Error {
+    Error::new(
+        ErrorKind::NotFound,
+        format!("snapshot: type '{name}' is not registered in this world"),
+    )
+}
+
+fn other_layout(name: &str) -> Error {
+    Error::new(
+        ErrorKind::Schema,
+        format!("snapshot: type '{name}' has a different layout in this world"),
+    )
+}
+
+fn parse<'a>(registry: &Registry, bytes: &'a [u8]) -> Result<Parsed<'a>> {
+    let mut r = Reader { buf: bytes, pos: 0 };
+    if r.take(4)? != MAGIC {
+        return Err(bad("not a world snapshot (magic)"));
+    }
+    let format = r.u32()? as u32;
+    if format != FORMAT && format != FORMAT_STATE {
+        return Err(bad(format!(
+            "format {format}, this engine reads {FORMAT_STATE} and {FORMAT}"
+        )));
+    }
+
+    let type_count = r.count(12)?;
+    let mut types: Vec<SnapType> = Vec::with_capacity(type_count);
+    for _ in 0..type_count {
+        let name = r.str("type name")?.to_owned();
+        let hash = r.u64()?;
+        let (schema, sizes) = if format == FORMAT {
+            let version = r.u32()? as u32;
+            let n = r.count(12)?;
+            let mut fields = Vec::with_capacity(n);
+            for _ in 0..n {
+                let fname = r.str("field name")?;
+                let tname = r.str("field type")?;
+                let ty = field_type(tname).ok_or_else(|| {
+                    bad(format!("field '{name}.{fname}' has unknown type '{tname}'"))
+                })?;
+                let k = r.count(4)?;
+                let mut variants = Vec::with_capacity(k);
+                for _ in 0..k {
+                    variants.push(r.str("variant name")?.to_owned());
+                }
+                let mut f = FieldSchema::new(fname, ty);
+                f.variants = variants;
+                fields.push(f);
+            }
+            let schema = Schema {
+                name: name.clone(),
+                version,
+                doc: String::new(),
+                fields,
+            };
+            if schema.layout_hash() != hash {
+                return Err(bad(format!(
+                    "the field table of '{name}' does not match its layout hash"
+                )));
+            }
+            let sizes = schema.fields.iter().map(|f| f.ty.size()).collect();
+            (Some(schema), sizes)
+        } else {
+            let id = registry
+                .id_by_name(&name)
+                .map_err(|_| not_registered(&name))?;
+            if registry.info(id).layout_hash != hash {
+                return Err(other_layout(&name));
+            }
+            let layout = &registry.info(id).layout;
+            let sizes = (0..layout.field_count())
+                .map(|f| layout.range(f).len())
+                .collect();
+            (None, sizes)
+        };
+        if types.iter().any(|t| t.name == name) {
+            return Err(bad(format!("type '{name}' appears twice")));
+        }
+        types.push(SnapType {
+            name,
+            hash,
+            schema,
+            sizes,
+        });
+    }
+    let type_count = types.len();
+    let type_at = |i: usize| -> Result<usize> {
+        if i < type_count {
+            Ok(i)
+        } else {
+            Err(bad(format!("type index {i} out of range")))
+        }
+    };
+
+    // Entity allocator.
+    let slot_count = r.count(5)?;
+    let mut slots = Vec::with_capacity(slot_count);
+    for _ in 0..slot_count {
+        let generation = r.u32()? as u32;
+        let alive = match r.u8()? {
+            0 => false,
+            1 => true,
+            v => return Err(bad(format!("slot liveness byte {v}"))),
+        };
+        slots.push(SlotState { generation, alive });
+    }
+    let free_count = r.count(4)?;
+    let mut free = Vec::with_capacity(free_count);
+    for _ in 0..free_count {
+        free.push(r.u32()? as u32);
+    }
+    let alloc = HandleAllocator::from_parts(&slots, &free).map_err(|e| bad(e.reason()))?;
+
+    // Archetypes, in creation order.
+    let arch_count = r.count(8)?;
+    if arch_count == 0 {
+        return Err(bad("no archetypes (the empty archetype is always present)"));
+    }
+    let mut seen = vec![false; slot_count];
+    let mut archetypes = Vec::with_capacity(arch_count);
+    let mut placed = 0usize;
+    for a in 0..arch_count {
+        let k = r.count(4)?;
+        let mut stored = Vec::with_capacity(k);
+        for _ in 0..k {
+            stored.push(type_at(r.u32()?)?);
+        }
+        let mut sorted = stored.clone();
+        sorted.sort();
+        if sorted.windows(2).any(|w| w[0] == w[1]) {
+            return Err(bad(format!("archetype {a} repeats a type")));
+        }
+        if (a == 0) != stored.is_empty() {
+            return Err(bad("archetype 0 must be the empty archetype, and only it"));
+        }
+        let rows = r.count(8)?;
+        let mut entities = Vec::with_capacity(rows);
+        for _ in 0..rows {
+            let e = Entity(RawHandle::from_bits(r.u64()?));
+            if !alloc.is_alive(e.0) {
+                return Err(bad(format!(
+                    "archetype {a} holds entity {e}, which is not alive"
+                )));
+            }
+            let s = &mut seen[e.index() as usize];
+            if *s {
+                return Err(bad(format!("entity {e} appears twice")));
+            }
+            *s = true;
+            entities.push(e);
+        }
+        placed += rows;
+        let mut columns = Vec::with_capacity(k);
+        for &t in &stored {
+            let mut fields = Vec::with_capacity(types[t].sizes.len());
+            for &size in &types[t].sizes {
+                let len = rows
+                    .checked_mul(size)
+                    .ok_or_else(|| bad("column size overflows"))?;
+                fields.push(r.take(len)?);
+            }
+            columns.push(fields);
+        }
+        archetypes.push(SnapArchetype {
+            stored,
+            entities,
+            columns,
+        });
+    }
+    if placed != alloc.len() {
+        return Err(bad(format!(
+            "{} entities are alive but {placed} are stored",
+            alloc.len()
+        )));
+    }
+
+    // Resources.
+    let resource_count = r.count(8)?;
+    let mut resources: Vec<(usize, &[u8])> = Vec::with_capacity(resource_count);
+    for _ in 0..resource_count {
+        let t = type_at(r.u32()?)?;
+        let data = r.sized()?;
+        if data.len() != types[t].size() {
+            return Err(bad(format!(
+                "resource '{}' is {} bytes, its layout {}",
+                types[t].name,
+                data.len(),
+                types[t].size()
+            )));
+        }
+        if resources.iter().any(|(u, _)| *u == t) {
+            return Err(bad(format!("resource '{}' appears twice", types[t].name)));
+        }
+        resources.push((t, data));
+    }
+
+    // Events.
+    let queue_count = r.count(12)?;
+    let mut events: Vec<Queue<'_>> = Vec::with_capacity(queue_count);
+    for _ in 0..queue_count {
+        let t = type_at(r.u32()?)?;
+        if events.iter().any(|(u, _, _)| *u == t) {
+            return Err(bad(format!(
+                "event queue '{}' appears twice",
+                types[t].name
+            )));
+        }
+        let size = types[t].size();
+        let mut lists: [Vec<&[u8]>; 2] = [Vec::new(), Vec::new()];
+        for list in &mut lists {
+            let n = r.count(size)?;
+            if size == 0 && n > 1 << 24 {
+                return Err(bad(format!("{n} field-less events")));
+            }
+            for _ in 0..n {
+                list.push(r.take(size)?);
+            }
+        }
+        let [current, pending] = lists;
+        events.push((t, current, pending));
+    }
+
+    // Names (format 2).
+    let mut names: Vec<(Entity, String)> = Vec::new();
+    if format == FORMAT {
+        let n = r.count(12)?;
+        for _ in 0..n {
+            let e = Entity(RawHandle::from_bits(r.u64()?));
+            let name = r.str("entity name")?;
+            if !alloc.is_alive(e.0) {
+                return Err(bad(format!(
+                    "name '{name}' belongs to {e}, which is not alive"
+                )));
+            }
+            if name.is_empty() || name.len() > MAX_NAME {
+                return Err(bad(format!("an entity name of {} bytes", name.len())));
+            }
+            if names.last().is_some_and(|(last, _)| *last >= e) {
+                return Err(bad("names are not in entity order, or an entity has two"));
+            }
+            if names.iter().any(|(_, n)| n == name) {
+                return Err(bad(format!("name '{name}' appears twice")));
+            }
+            names.push((e, name.to_owned()));
+        }
+    }
+    if r.pos != bytes.len() {
+        return Err(bad(format!("{} trailing bytes", bytes.len() - r.pos)));
+    }
+    Ok(Parsed {
+        types,
+        alloc,
+        slot_count,
+        archetypes,
+        resources,
+        events,
+        names,
+    })
+}
+
+/// Where one field of this world's type comes from.
+#[derive(Clone, Debug)]
+enum Source {
+    /// The snapshot field with this index, byte for byte.
+    Copy(usize),
+    /// The snapshot enum field with this index, its indices mapped by
+    /// variant name (`None`: the variant is gone, use the default).
+    Enum(usize, Vec<Option<u32>>),
+    /// The field's default.
+    Default,
+}
+
+/// How one snapshot type becomes one of this world's types.
+struct Plan {
+    target: SchemaId,
+    /// `None`: the layouts are identical, copy everything.
+    fields: Option<Vec<Source>>,
+    /// Byte ranges of the snapshot type's fields.
+    source_ranges: Vec<std::ops::Range<usize>>,
+    /// Default bytes of each of this world's fields.
+    defaults: Vec<Vec<u8>>,
+}
+
+impl Plan {
+    fn mapped_enum(&self, k: usize, map: &[Option<u32>], raw: &[u8], out: &mut Vec<u8>) {
+        let i = u32::from_le_bytes(raw.try_into().expect("an enum is 4 bytes"));
+        match map.get(i as usize).copied().flatten() {
+            Some(j) => out.extend_from_slice(&j.to_le_bytes()),
+            None => out.extend_from_slice(&self.defaults[k]),
+        }
+    }
+
+    /// One packed value of the snapshot type as this world's type.
+    fn convert(&self, value: &[u8], out: &mut Vec<u8>) {
+        let Some(fields) = &self.fields else {
+            out.extend_from_slice(value);
+            return;
+        };
+        for (k, source) in fields.iter().enumerate() {
+            match source {
+                Source::Copy(f) => out.extend_from_slice(&value[self.source_ranges[*f].clone()]),
+                Source::Enum(f, map) => {
+                    self.mapped_enum(k, map, &value[self.source_ranges[*f].clone()], out)
+                }
+                Source::Default => out.extend_from_slice(&self.defaults[k]),
+            }
+        }
+    }
+
+    /// Field `k` of this world's type for `rows` rows, from the snapshot
+    /// type's columns.
+    fn column(&self, k: usize, rows: usize, columns: &[&[u8]], out: &mut Vec<u8>) {
+        match self.fields.as_ref().map(|f| &f[k]) {
+            None => out.extend_from_slice(columns[k]),
+            Some(Source::Copy(f)) => out.extend_from_slice(columns[*f]),
+            Some(Source::Enum(f, map)) => {
+                for raw in columns[*f].chunks_exact(4) {
+                    self.mapped_enum(k, map, raw, out);
+                }
+            }
+            Some(Source::Default) => {
+                for _ in 0..rows {
+                    out.extend_from_slice(&self.defaults[k]);
+                }
+            }
+        }
+    }
+}
+
+fn plan(
+    registry: &Registry,
+    t: &SnapType,
+    target: SchemaId,
+    report: &mut MigrationReport,
+) -> Result<Plan> {
+    let info = registry.info(target);
+    let mut offset = 0;
+    let source_ranges = t
+        .sizes
+        .iter()
+        .map(|&n| {
+            offset += n;
+            offset - n..offset
+        })
+        .collect();
+    let defaults = info
+        .schema
+        .fields
+        .iter()
+        .map(FieldSchema::default_bytes)
+        .collect();
+    if info.layout_hash == t.hash {
+        return Ok(Plan {
+            target,
+            fields: None,
+            source_ranges,
+            defaults,
+        });
+    }
+    let Some(snap) = &t.schema else {
+        return Err(Error::new(
+            ErrorKind::Schema,
+            format!(
+                "snapshot: type '{}' has a different layout in this world, and a format 1 snapshot carries no field names to migrate it by",
+                t.name
+            ),
+        ));
+    };
+    report.migrated.push(t.name.clone());
+    let mut fields = Vec::with_capacity(info.schema.fields.len());
+    for f in &info.schema.fields {
+        let at = format!("{}.{}", t.name, f.name);
+        let source = match snap.field_index(&f.name) {
+            None => {
+                report.added.push(at);
+                Source::Default
+            }
+            Some(i) if snap.fields[i].ty != f.ty => {
+                report.warnings.push(format!(
+                    "{at} changed type from {} to {}; it starts at its default",
+                    snap.fields[i].ty.name(),
+                    f.ty.name()
+                ));
+                report.removed.push(at.clone());
+                report.added.push(at);
+                Source::Default
+            }
+            Some(i) if f.ty == FieldType::Enum && snap.fields[i].variants != f.variants => {
+                let map: Vec<Option<u32>> = snap.fields[i]
+                    .variants
+                    .iter()
+                    .map(|v| f.variants.iter().position(|w| w == v).map(|j| j as u32))
+                    .collect();
+                let gone: Vec<&str> = snap.fields[i]
+                    .variants
+                    .iter()
+                    .zip(&map)
+                    .filter(|(_, m)| m.is_none())
+                    .map(|(v, _)| v.as_str())
+                    .collect();
+                if !gone.is_empty() {
+                    report.warnings.push(format!(
+                        "{at}: variant(s) {} no longer exist; values holding them start at the default",
+                        gone.join(", ")
+                    ));
+                }
+                Source::Enum(i, map)
+            }
+            Some(i) => Source::Copy(i),
+        };
+        fields.push(source);
+    }
+    for f in &snap.fields {
+        if info.schema.field_index(&f.name).is_none() {
+            report.removed.push(format!("{}.{}", t.name, f.name));
+        }
+    }
+    Ok(Plan {
+        target,
+        fields: Some(fields),
+        source_ranges,
+        defaults,
+    })
+}
+
+fn resource_value(registry: &Registry, id: SchemaId, data: &[u8]) -> Result<ResourceValue> {
+    let info = registry.info(id);
+    Ok(match &info.rust {
+        Some(rust) => ResourceValue::Typed((rust.decode)(&info.layout, data)?),
+        None => ResourceValue::Raw(data.to_vec()),
+    })
+}
+
+/// The restored state, committed only once all of it is built.
+struct State {
+    alloc: HandleAllocator,
+    locations: Vec<Location>,
+    archetypes: Vec<Archetype>,
+    by_types: BTreeMap<Vec<SchemaId>, u32>,
+    resources: Vec<Option<RefCell<ResourceValue>>>,
+    events: Vec<RefCell<EventQueue>>,
+    names: Vec<(Entity, String)>,
 }
 
 impl World {
-    /// The whole world as bytes. See the module docs for what is included.
-    pub fn snapshot(&self) -> Vec<u8> {
+    /// The snapshot (`state == false`) or the state stream the hash covers.
+    fn write(&self, state: bool) -> Vec<u8> {
         let mut w = Writer(Vec::new());
         w.bytes(MAGIC);
-        w.u32(FORMAT as usize);
+        w.u32(if state { FORMAT_STATE } else { FORMAT } as usize);
 
         w.u32(self.registry.len());
         for t in &self.registry.types {
             w.sized(t.schema.name.as_bytes());
             w.u64(t.layout_hash);
+            if !state {
+                w.u32(t.schema.version as usize);
+                w.u32(t.schema.fields.len());
+                for f in &t.schema.fields {
+                    w.sized(f.name.as_bytes());
+                    w.sized(f.ty.name().as_bytes());
+                    w.u32(f.variants.len());
+                    for v in &f.variants {
+                        w.sized(v.as_bytes());
+                    }
+                }
+            }
         }
 
         let entities = self.entities.borrow();
@@ -168,206 +752,277 @@ impl World {
                 }
             }
         }
+
+        if !state || !self.names.is_empty() {
+            if state {
+                w.bytes(NAMES_TAG);
+            }
+            w.u32(self.names.len());
+            for (e, name) in &self.names {
+                w.u64(e.to_bits());
+                w.sized(name.as_bytes());
+            }
+        }
         w.0
     }
 
-    /// The stable hash of the world: FNV-1a of [`Self::snapshot`].
-    pub fn world_hash(&self) -> u64 {
-        hash_bytes(&self.snapshot())
+    /// The whole world as bytes (format 2). See the module docs for what is
+    /// included.
+    pub fn snapshot(&self) -> Vec<u8> {
+        self.write(false)
     }
 
-    /// Replaces the world's state (entities, components, resources, events)
-    /// with a snapshot's. Systems and registrations stay. Refused, with
-    /// nothing changed, when the snapshot is malformed or names a type this
-    /// world lacks or has with another layout.
-    pub fn restore(&mut self, bytes: &[u8]) -> Result<()> {
-        let mut r = Reader { buf: bytes, pos: 0 };
-        if r.take(4)? != MAGIC {
-            return Err(bad("not a world snapshot (magic)"));
-        }
-        let format = r.u32()?;
-        if format != FORMAT as usize {
-            return Err(bad(format!("format {format}, this engine reads {FORMAT}")));
-        }
+    /// The stable hash of the world: FNV-1a of its state stream (the module
+    /// docs say exactly what that is). Equal exactly when two worlds' state
+    /// is identical; a snapshot restored hashes as the world it came from.
+    pub fn world_hash(&self) -> u64 {
+        hash_bytes(&self.write(true))
+    }
 
-        // Types: snapshot index -> this world's id.
-        let type_count = r.count(12)?;
-        let mut map = Vec::with_capacity(type_count);
-        for _ in 0..type_count {
-            let name =
-                std::str::from_utf8(r.sized()?).map_err(|_| bad("type name is not UTF-8"))?;
-            let hash = r.u64()?;
-            let id = self.registry.id_by_name(name).map_err(|_| {
-                Error::new(
-                    ErrorKind::NotFound,
-                    format!("snapshot: type '{name}' is not registered in this world"),
-                )
-            })?;
-            if self.registry.info(id).layout_hash != hash {
-                return Err(Error::new(
-                    ErrorKind::Schema,
-                    format!("snapshot: type '{name}' has a different layout in this world"),
-                ));
+    /// Replaces the world's state (entities, components, resources, events,
+    /// names) with a snapshot's. Systems and registrations stay. Refused,
+    /// with nothing changed, when the snapshot is malformed or names a type
+    /// this world lacks or has with another layout.
+    pub fn restore(&mut self, bytes: &[u8]) -> Result<()> {
+        let parsed = parse(&self.registry, bytes)?;
+        let mut map = Vec::with_capacity(parsed.types.len());
+        for t in &parsed.types {
+            let id = self
+                .registry
+                .id_by_name(&t.name)
+                .map_err(|_| not_registered(&t.name))?;
+            if self.registry.info(id).layout_hash != t.hash {
+                return Err(other_layout(&t.name));
             }
             map.push(id);
         }
-        let mapped = |i: usize| {
-            map.get(i)
-                .copied()
-                .ok_or_else(|| bad(format!("type index {i} out of range")))
-        };
 
-        // Entity allocator.
-        let slot_count = r.count(5)?;
-        let mut slots = Vec::with_capacity(slot_count);
-        for _ in 0..slot_count {
-            let generation = r.u32()? as u32;
-            let alive = match r.u8()? {
-                0 => false,
-                1 => true,
-                v => return Err(bad(format!("slot liveness byte {v}"))),
-            };
-            slots.push(SlotState { generation, alive });
-        }
-        let free_count = r.count(4)?;
-        let mut free = Vec::with_capacity(free_count);
-        for _ in 0..free_count {
-            free.push(r.u32()? as u32);
-        }
-        let alloc = HandleAllocator::from_parts(&slots, &free).map_err(|e| bad(e.reason()))?;
         let mut locations = vec![
             Location {
                 archetype: PENDING,
                 row: 0
             };
-            slot_count
+            parsed.slot_count
         ];
-
-        // Archetypes, in creation order.
-        let arch_count = r.count(8)?;
-        if arch_count == 0 {
-            return Err(bad("no archetypes (the empty archetype is always present)"));
-        }
-        let mut archetypes = Vec::with_capacity(arch_count);
+        let mut archetypes = Vec::with_capacity(parsed.archetypes.len());
         let mut by_types = BTreeMap::new();
-        let mut placed = 0usize;
-        for a in 0..arch_count {
-            let k = r.count(4)?;
-            let mut stored = Vec::with_capacity(k);
-            for _ in 0..k {
-                stored.push(mapped(r.u32()?)?);
-            }
+        for (a, snap) in parsed.archetypes.iter().enumerate() {
+            let stored: Vec<SchemaId> = snap.stored.iter().map(|&t| map[t]).collect();
             let mut types = stored.clone();
             types.sort();
-            if types.windows(2).any(|w| w[0] == w[1]) {
-                return Err(bad(format!("archetype {a} repeats a type")));
-            }
-            if (a == 0) != types.is_empty() {
-                return Err(bad("archetype 0 must be the empty archetype, and only it"));
-            }
             if by_types.insert(types.clone(), a as u32).is_some() {
                 return Err(bad(format!("archetype {a} duplicates another")));
             }
             let mut arch = Archetype::new(types, &self.registry);
-            let rows = r.count(8)?;
-            for row in 0..rows {
-                let e = Entity(RawHandle::from_bits(r.u64()?));
-                if !alloc.is_alive(e.0) {
-                    return Err(bad(format!(
-                        "archetype {a} holds entity {e}, which is not alive"
-                    )));
-                }
-                let loc = &mut locations[e.index() as usize];
-                if loc.archetype != PENDING {
-                    return Err(bad(format!("entity {e} appears twice")));
-                }
-                *loc = Location {
+            let rows = snap.entities.len();
+            for (row, e) in snap.entities.iter().enumerate() {
+                locations[e.index() as usize] = Location {
                     archetype: a as u32,
                     row: row as u32,
                 };
-                arch.entities.push(e);
             }
-            placed += rows;
-            for id in &stored {
+            arch.entities = snap.entities.clone();
+            for (s, id) in stored.iter().enumerate() {
                 let position = arch.position(*id).expect("own type");
-                for c in arch.columns_of(position) {
-                    let col = arch.columns[c].get_mut();
-                    let len = rows * col.size();
-                    col.fill_from(rows, r.take(len)?);
+                for (c, data) in arch.columns_of(position).zip(&snap.columns[s]) {
+                    arch.columns[c].get_mut().fill_from(rows, data);
                 }
             }
             archetypes.push(arch);
         }
-        if placed != alloc.len() {
-            return Err(bad(format!(
-                "{} entities are alive but {placed} are stored",
-                alloc.len()
-            )));
-        }
 
-        // Resources.
         let mut resources: Vec<Option<RefCell<ResourceValue>>> =
             (0..self.registry.len()).map(|_| None).collect();
-        let resource_count = r.count(8)?;
-        for _ in 0..resource_count {
-            let id = mapped(r.u32()?)?;
-            let data = r.sized()?;
-            self.registry
-                .check_size(id, data)
-                .map_err(|e| bad(e.reason()))?;
-            let info = self.registry.info(id);
-            let value = match &info.rust {
-                Some(rust) => ResourceValue::Typed((rust.decode)(&info.layout, data)?),
-                None => ResourceValue::Raw(data.to_vec()),
-            };
-            if resources[id.0 as usize]
-                .replace(RefCell::new(value))
-                .is_some()
-            {
-                return Err(bad(format!(
-                    "resource '{}' appears twice",
-                    self.registry.name(id)
-                )));
-            }
+        for &(t, data) in &parsed.resources {
+            let id = map[t];
+            resources[id.0 as usize] =
+                Some(RefCell::new(resource_value(&self.registry, id, data)?));
         }
         if resources[self.time_id.0 as usize].is_none() {
             return Err(bad("no Time resource"));
         }
 
-        // Events.
         let mut events: Vec<RefCell<EventQueue>> = (0..self.registry.len())
             .map(|_| Default::default())
             .collect();
-        let queue_count = r.count(12)?;
-        for _ in 0..queue_count {
-            let id = mapped(r.u32()?)?;
-            let size = self.registry.info(id).layout.size();
-            let queue = events[id.0 as usize].get_mut();
-            if !queue.current.is_empty() || !queue.pending.is_empty() {
-                return Err(bad(format!(
-                    "event queue '{}' appears twice",
-                    self.registry.name(id)
-                )));
-            }
-            for list in [&mut queue.current, &mut queue.pending] {
-                let n = r.count(size)?;
-                if size == 0 && n > 1 << 24 {
-                    return Err(bad(format!("{n} field-less events")));
-                }
-                for _ in 0..n {
-                    list.push(r.take(size)?.to_vec());
-                }
-            }
-        }
-        if r.pos != bytes.len() {
-            return Err(bad(format!("{} trailing bytes", bytes.len() - r.pos)));
+        for (t, current, pending) in &parsed.events {
+            let queue = events[map[*t].0 as usize].get_mut();
+            queue.current = current.iter().map(|b| b.to_vec()).collect();
+            queue.pending = pending.iter().map(|b| b.to_vec()).collect();
         }
 
-        *self.entities.get_mut() = Entities { alloc, locations };
-        self.archetypes = archetypes;
-        self.archetype_by_types = by_types;
-        self.resources = resources;
-        self.events = events;
+        self.commit(State {
+            alloc: parsed.alloc,
+            locations,
+            archetypes,
+            by_types,
+            resources,
+            events,
+            names: parsed.names,
+        });
         Ok(())
+    }
+
+    /// Restores a snapshot taken by a world whose types have since changed
+    /// (a hot reload): types are mapped by name and, where a layout differs,
+    /// fields by name. A field this world added starts at its default, a
+    /// field the snapshot had and this world dropped is dropped, a field
+    /// whose type changed starts at its default, enum values are mapped by
+    /// variant name, and a type this world no longer registers is dropped
+    /// with its components, resources and events. A resource of a type the
+    /// snapshot does not know keeps its current value. Entity ids, iteration
+    /// order (archetypes that only a dropped type kept apart are merged, in
+    /// snapshot order), names, `Time` and the rng states are kept.
+    ///
+    /// Refused, with nothing changed, for a malformed snapshot, or a format
+    /// 1 snapshot whose types do not all fit this world exactly (format 1
+    /// has no field names). The report says what was mapped; for a snapshot
+    /// that fits exactly it is empty and the result equals [`Self::restore`].
+    pub fn restore_migrating(&mut self, bytes: &[u8]) -> Result<MigrationReport> {
+        let parsed = parse(&self.registry, bytes).map_err(|e| match e.kind() {
+            ErrorKind::NotFound | ErrorKind::Schema => e.context(
+                "a format 1 snapshot carries no field names, so it restores only into a world whose types fit it exactly",
+            ),
+            _ => e,
+        })?;
+        let mut report = MigrationReport::default();
+        let mut plans: Vec<Option<Plan>> = Vec::with_capacity(parsed.types.len());
+        for (i, t) in parsed.types.iter().enumerate() {
+            let Ok(id) = self.registry.id_by_name(&t.name) else {
+                report.dropped.push(t.name.clone());
+                plans.push(None);
+                continue;
+            };
+            let p = plan(&self.registry, t, id, &mut report)?;
+            let stored = parsed.archetypes.iter().any(|a| a.stored.contains(&i))
+                || parsed.resources.iter().any(|(u, _)| *u == i);
+            if self.registry.info(id).strings && stored {
+                report.warnings.push(format!(
+                    "{} now has string fields, which only events carry; its components and resource were dropped",
+                    t.name
+                ));
+            }
+            plans.push(Some(p));
+        }
+        // A plan whose target may be stored in archetypes and resources.
+        let storable = |t: usize| {
+            plans[t]
+                .as_ref()
+                .filter(|p| !self.registry.info(p.target).strings)
+        };
+
+        let mut locations = vec![
+            Location {
+                archetype: PENDING,
+                row: 0
+            };
+            parsed.slot_count
+        ];
+        let mut archetypes: Vec<Archetype> = Vec::new();
+        let mut by_types: BTreeMap<Vec<SchemaId>, u32> = BTreeMap::new();
+        let mut buf = Vec::new();
+        for snap in &parsed.archetypes {
+            // (index in snap.stored, plan) of the types that survive.
+            let mut kept: Vec<(usize, &Plan)> = snap
+                .stored
+                .iter()
+                .enumerate()
+                .filter_map(|(s, &t)| storable(t).map(|p| (s, p)))
+                .collect();
+            kept.sort_by_key(|(_, p)| p.target);
+            let types: Vec<SchemaId> = kept.iter().map(|(_, p)| p.target).collect();
+            let a = match by_types.get(&types) {
+                Some(&a) => a,
+                None => {
+                    let a = archetypes.len() as u32;
+                    archetypes.push(Archetype::new(types.clone(), &self.registry));
+                    by_types.insert(types, a);
+                    a
+                }
+            };
+            let arch = &mut archetypes[a as usize];
+            let rows = snap.entities.len();
+            for e in &snap.entities {
+                locations[e.index() as usize] = Location {
+                    archetype: a,
+                    row: arch.entities.len() as u32,
+                };
+                arch.entities.push(*e);
+            }
+            for (position, (s, p)) in kept.iter().enumerate() {
+                for (k, c) in arch.columns_of(position).enumerate() {
+                    buf.clear();
+                    p.column(k, rows, &snap.columns[*s], &mut buf);
+                    arch.columns[c].get_mut().extend_from(rows, &buf);
+                }
+            }
+        }
+
+        let mut resources: Vec<Option<RefCell<ResourceValue>>> =
+            (0..self.registry.len()).map(|_| None).collect();
+        for &(t, data) in &parsed.resources {
+            let Some(p) = storable(t) else { continue };
+            buf.clear();
+            p.convert(data, &mut buf);
+            let value = resource_value(&self.registry, p.target, &buf)?;
+            resources[p.target.0 as usize] = Some(RefCell::new(value));
+        }
+        // Types the snapshot does not know keep their current resource.
+        let unknown: Vec<usize> = (0..self.registry.len())
+            .filter(|&i| {
+                let name = &self.registry.types[i].schema.name;
+                !parsed.types.iter().any(|t| &t.name == name)
+            })
+            .collect();
+        let time = self.time_id.0 as usize;
+        if resources[time].is_none() && !(unknown.contains(&time) && self.resources[time].is_some())
+        {
+            return Err(bad("no Time resource"));
+        }
+
+        let mut events: Vec<RefCell<EventQueue>> = (0..self.registry.len())
+            .map(|_| Default::default())
+            .collect();
+        for (t, current, pending) in &parsed.events {
+            let Some(p) = &plans[*t] else { continue };
+            let size = self.registry.info(p.target).layout.size();
+            let queue = events[p.target.0 as usize].get_mut();
+            for (from, to) in [(current, &mut queue.current), (pending, &mut queue.pending)] {
+                for value in from {
+                    let mut out = Vec::with_capacity(size);
+                    p.convert(value, &mut out);
+                    to.push(out);
+                }
+            }
+        }
+
+        // Nothing below fails.
+        for i in unknown {
+            resources[i] = self.resources[i].take();
+        }
+        self.commit(State {
+            alloc: parsed.alloc,
+            locations,
+            archetypes,
+            by_types,
+            resources,
+            events,
+            names: parsed.names,
+        });
+        Ok(report)
+    }
+
+    fn commit(&mut self, state: State) {
+        *self.entities.get_mut() = Entities {
+            alloc: state.alloc,
+            locations: state.locations,
+        };
+        self.archetypes = state.archetypes;
+        self.archetype_by_types = state.by_types;
+        self.resources = state.resources;
+        self.events = state.events;
+        self.by_name = state.names.iter().map(|(e, n)| (n.clone(), *e)).collect();
+        self.names = state.names.into_iter().collect();
+        self.structural += 1;
     }
 }

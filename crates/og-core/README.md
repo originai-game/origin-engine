@@ -8,8 +8,8 @@ host floating-point library; every fallible call returns `Result<_, Error>`.
 | Module | Entry points | Notes |
 |---|---|---|
 | `error` | `Error { kind, reason }`, `ErrorKind`, `Result<T>` | `kind` to branch on, `reason` to read; the probe shows `{ok:false, reason}` |
-| `handle` | `RawHandle`, `HandleAllocator`, `Handle<T>`, `Pool<T>`, `RETIRED_GENERATION`, `MAX_GENERATION` | generational; a dead handle is `ErrorKind::DeadHandle` |
-| `reflect` | `Reflect` + `#[derive(Reflect)]`, `Schema`, `FieldSchema`, `FieldType`, `FieldValue`, `Layout`, `schemas_to_json` | the one schema (fields, types, docs, labels, units, min/max, default, `tunable`) |
+| `handle` | `RawHandle` (`#[repr(C)]`: index, generation), `HandleAllocator`, `Handle<T>`, `Pool<T>`, `RETIRED_GENERATION`, `MAX_GENERATION` | generational; a dead handle is `ErrorKind::DeadHandle` |
+| `reflect` | `Reflect` + `#[derive(Reflect)]`, `Schema` (`check_packed`, `default_bytes`, `has_strings`), `FieldSchema` (`variants`, `enumeration`, `default_bytes`, `check_value`), `FieldType`, `FieldValue` (column views), `ReflectField` (derive fields), `Bool8`, `Str64`, `Str256`, `Layout`, `schemas_to_json` | the one schema (fields, types, docs, labels, units, min/max, default, `tunable`, enum variants) |
 | `ogt` | `parse`, `Document { ty, version, body }`, `Block`, `Entry`, `Value`, `Number`, `Document::to_text` | the `.ogt` text format, grammar in the module docs |
 | `rng` | `Rng::new(seed)`, `next_u32`, `next_f64`, `range`, `range_f32`, `integer`, `fork(label)`, `save`/`restore` | bit-identical to the platform's `rng.ts`/`rng.rs`; schema `og.Rng` |
 | `math` | `glam::*` (built with `scalar-math`), `sin`, `cos`, `sin_cos`, `atan`, `atan2`, `exp`, `ln`, `pow`, `quat_from_axis_angle` | deterministic f32 on every host |
@@ -29,13 +29,33 @@ struct Health {
 }
 ```
 
-Field types are exactly `f32 f64 i32 u32 i64 u64 Vec2 Vec3 Vec4 Quat`
-(`FieldValue` is sealed). Structs with named fields, `struct T {}` and unit
-structs (tags) derive; generics, tuple structs and enums are refused at compile
-time. `///` docs become `doc`. Values move as **packed bytes**: the fields in
-schema order, little-endian, no padding (`Layout::encode`/`decode`).
-`Schema::layout_hash` covers name, version, field names and types, not
-metadata. `Schema::from_json` is how a host declares a layout by name.
+Structs with named fields, `struct T {}` and unit structs (tags) derive;
+generics, tuple structs and enums are refused at compile time. `///` docs
+become `doc`. Two more field attributes: `name = "camelCase"` sets the schema
+field name (the Rust ident otherwise), `variants = ["a", "b"]` on a `u32`
+makes an enum field. Values move as **packed bytes**: the fields in schema
+order, little-endian, no padding (`Layout::encode`/`decode`).
+`Schema::layout_hash` covers name, version, field names and types, and an
+enum's variant names in order, not metadata. `Schema::from_json` is how a
+host declares a layout by name.
+
+| type (JSON) | bytes | Rust field | column view | notes |
+|---|---|---|---|---|
+| `f32 f64 i32 u32 i64 u64` | 4 / 8 | same | same | |
+| `vec2 vec3 vec4 quat` | 8 / 12 / 16 / 16 | `Vec2 Vec3 Vec4 Quat` | same | `Float32Array` stride 2/3/4/4 |
+| `mat4` | 64 | `Mat4` | `Mat4` | column-major, `Float32Array` stride 16 |
+| `bool` | 1 | `bool` or `Bool8` | `Bool8` | `Uint8Array`; byte entry points take 0 or 1 only |
+| `enum` | 4 | `u32` + `variants = [..]` | `u32` | the variant index; names in `FieldSchema::variants` |
+| `str64 str256` | 64 / 256 | `Str64 Str256` | none | **events only**; UTF-8, zero-padded, no NUL |
+
+Strings are bounded and inline because events are *copied* (a queue of
+packed values) while components are *viewed* in place as typed arrays and
+resources are polled whole: the world refuses a type with a string field as
+a component or a resource. `Schema::check_packed` is the value check the
+world's byte entry points run (bool 0/1, enum index in range, strings
+zero-padded UTF-8), naming the field; every other type accepts every bit
+pattern. `FieldSchema::default_bytes` is a field's declared default (or
+zeros), which a migrating restore fills new fields with.
 
 Schema names are identifiers, optionally dot-separated. Engine-owned schemas
 are named `og.<Type>` (`og.Time`, `og.Rng`), the same string as their
@@ -44,6 +64,8 @@ game types use plain names.
 
 ## Invariants
 
+- `RawHandle` is `#[repr(C)]` (index, then generation): in memory it is the
+  little-endian `u64` of `to_bits()`, so hosts can view handle arrays in place.
 - Generations start at 1 (the packed handle `0` is never live); freeing bumps
   the generation; a slot whose generation reaches `RETIRED_GENERATION` (2^21)
   is retired and never handed out again, so a live generation is at most

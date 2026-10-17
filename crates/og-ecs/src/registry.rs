@@ -16,6 +16,12 @@ impl SchemaId {
     pub fn index(self) -> u32 {
         self.0
     }
+
+    /// The id with this index, as a host sends it back. Every call that
+    /// takes an id checks it against the world's registry.
+    pub fn from_index(index: u32) -> SchemaId {
+        SchemaId(index)
+    }
 }
 
 /// One field of one registered type, resolved once and used for column access.
@@ -49,6 +55,11 @@ pub(crate) struct TypeInfo {
     pub layout: Layout,
     pub layout_hash: u64,
     pub rust: Option<RustType>,
+    /// Whether the schema has bool, enum or string fields, whose packed
+    /// bytes are checked on the way in.
+    pub checked: bool,
+    /// Whether the schema has string fields (events only).
+    pub strings: bool,
 }
 
 #[derive(Default)]
@@ -104,6 +115,8 @@ impl Registry {
         self.types.push(TypeInfo {
             layout: Layout::of(&schema),
             layout_hash: hash,
+            checked: schema.fields.iter().any(|f| f.ty.is_checked()),
+            strings: schema.has_strings(),
             schema,
             rust: None,
         });
@@ -206,6 +219,32 @@ impl Registry {
 
     pub fn decode<T: Reflect>(&self, id: SchemaId, bytes: &[u8]) -> Result<T> {
         self.info(id).layout.decode(bytes)
+    }
+
+    /// `Ok` if `bytes` is a packed value of `id`: its size, and for bool,
+    /// enum and string fields a value of the type.
+    pub fn check_value(&self, id: SchemaId, bytes: &[u8]) -> Result<()> {
+        self.check_size(id, bytes)?;
+        let info = self.info(id);
+        if info.checked {
+            info.schema.check_packed(bytes)?;
+        }
+        Ok(())
+    }
+
+    /// `Ok` unless `id` has string fields, which only events carry; `what`
+    /// is "component" or "resource".
+    pub fn check_not_event_only(&self, id: SchemaId, what: &str) -> Result<()> {
+        if self.info(id).strings {
+            return Err(Error::new(
+                ErrorKind::Schema,
+                format!(
+                    "'{}' has string fields (str64/str256), which only events carry; it cannot be a {what}",
+                    self.name(id)
+                ),
+            ));
+        }
+        Ok(())
     }
 
     /// `Ok` if `bytes` has the packed size of `id`.

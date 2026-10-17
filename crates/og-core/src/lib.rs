@@ -33,7 +33,9 @@ pub mod time;
 pub use error::{Error, ErrorKind, Result};
 pub use handle::{Handle, HandleAllocator, Pool, RawHandle};
 pub use og_core_derive::Reflect;
-pub use reflect::{FieldSchema, FieldType, FieldValue, Layout, Reflect, Schema};
+pub use reflect::{
+    Bool8, FieldSchema, FieldType, FieldValue, Layout, Reflect, ReflectField, Schema, Str256, Str64,
+};
 pub use rng::Rng;
 pub use time::Time;
 

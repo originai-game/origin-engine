@@ -1,0 +1,352 @@
+{
+  "script": [
+    [
+      {
+        "action": "down",
+        "key": "KeyW",
+        "kind": "key",
+        "modifiers": {
+          "alt": false,
+          "control": false,
+          "platform": false,
+          "shift": false
+        }
+      },
+      {
+        "action": "move",
+        "button": "none",
+        "kind": "pointer",
+        "x": 10.0,
+        "y": 20.0
+      }
+    ],
+    [],
+    [
+      {
+        "action": "up",
+        "key": "KeyW",
+        "kind": "key",
+        "modifiers": {
+          "alt": false,
+          "control": false,
+          "platform": false,
+          "shift": false
+        }
+      },
+      {
+        "action": "press",
+        "key": "Space",
+        "kind": "key",
+        "modifiers": {
+          "alt": false,
+          "control": false,
+          "platform": false,
+          "shift": false
+        }
+      },
+      {
+        "action": "click",
+        "button": "left",
+        "kind": "pointer",
+        "x": 30.0,
+        "y": 40.0
+      },
+      {
+        "deltaX": 0.0,
+        "deltaY": 5.0,
+        "kind": "wheel",
+        "x": 30.0,
+        "y": 40.0
+      },
+      {
+        "deltaX": 0.0,
+        "deltaY": 7.0,
+        "kind": "wheel",
+        "x": 30.0,
+        "y": 40.0
+      }
+    ],
+    [],
+    [
+      {
+        "action": "down",
+        "key": "KeyA",
+        "kind": "key",
+        "modifiers": {
+          "alt": false,
+          "control": false,
+          "platform": false,
+          "shift": false
+        }
+      },
+      {
+        "action": "up",
+        "key": "KeyA",
+        "kind": "key",
+        "modifiers": {
+          "alt": false,
+          "control": false,
+          "platform": false,
+          "shift": false
+        }
+      },
+      {
+        "action": "down",
+        "key": "Hyper",
+        "kind": "key",
+        "modifiers": {
+          "alt": false,
+          "control": false,
+          "platform": false,
+          "shift": false
+        }
+      }
+    ],
+    [
+      {
+        "action": "down",
+        "key": "KeyD",
+        "kind": "key",
+        "modifiers": {
+          "alt": false,
+          "control": false,
+          "platform": false,
+          "shift": false
+        }
+      },
+      {
+        "action": "down",
+        "key": "KeyD",
+        "kind": "key",
+        "modifiers": {
+          "alt": false,
+          "control": false,
+          "platform": false,
+          "shift": false
+        }
+      },
+      {
+        "action": "down",
+        "key": "KeyA",
+        "kind": "key",
+        "modifiers": {
+          "alt": false,
+          "control": false,
+          "platform": false,
+          "shift": false
+        }
+      }
+    ],
+    [
+      {
+        "action": "up",
+        "key": "KeyA",
+        "kind": "key",
+        "modifiers": {
+          "alt": false,
+          "control": false,
+          "platform": false,
+          "shift": false
+        }
+      }
+    ]
+  ],
+  "ticks": [
+    {
+      "axisAD": 0.0,
+      "buttonsDown": [],
+      "buttonsPressed": [],
+      "buttonsReleased": [],
+      "down": [
+        "KeyW"
+      ],
+      "events": [
+        "KeyDown KeyW",
+        "PointerMove 10,20"
+      ],
+      "pointer": [
+        10.0,
+        20.0
+      ],
+      "pointerInside": true,
+      "pressed": [
+        "KeyW"
+      ],
+      "released": [],
+      "tick": 0,
+      "wheel": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "axisAD": 0.0,
+      "buttonsDown": [],
+      "buttonsPressed": [],
+      "buttonsReleased": [],
+      "down": [
+        "KeyW"
+      ],
+      "events": [],
+      "pointer": [
+        10.0,
+        20.0
+      ],
+      "pointerInside": true,
+      "pressed": [],
+      "released": [],
+      "tick": 1,
+      "wheel": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "axisAD": 0.0,
+      "buttonsDown": [
+        "left"
+      ],
+      "buttonsPressed": [
+        "left"
+      ],
+      "buttonsReleased": [],
+      "down": [
+        "Space"
+      ],
+      "events": [
+        "KeyDown Space",
+        "KeyUp KeyW",
+        "PointerMove 30,40",
+        "PointerDown left 30,40",
+        "Wheel 0,5",
+        "Wheel 0,7"
+      ],
+      "pointer": [
+        30.0,
+        40.0
+      ],
+      "pointerInside": true,
+      "pressed": [
+        "Space"
+      ],
+      "released": [
+        "KeyW"
+      ],
+      "tick": 2,
+      "wheel": [
+        0.0,
+        12.0
+      ]
+    },
+    {
+      "axisAD": 0.0,
+      "buttonsDown": [],
+      "buttonsPressed": [],
+      "buttonsReleased": [
+        "left"
+      ],
+      "down": [],
+      "events": [
+        "KeyUp Space",
+        "PointerUp left 30,40"
+      ],
+      "pointer": [
+        30.0,
+        40.0
+      ],
+      "pointerInside": true,
+      "pressed": [],
+      "released": [
+        "Space"
+      ],
+      "tick": 3,
+      "wheel": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "axisAD": 0.0,
+      "buttonsDown": [],
+      "buttonsPressed": [],
+      "buttonsReleased": [],
+      "down": [],
+      "events": [
+        "KeyDown KeyA",
+        "KeyUp KeyA"
+      ],
+      "pointer": [
+        30.0,
+        40.0
+      ],
+      "pointerInside": true,
+      "pressed": [
+        "KeyA"
+      ],
+      "released": [
+        "KeyA"
+      ],
+      "tick": 4,
+      "wheel": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "axisAD": 0.0,
+      "buttonsDown": [],
+      "buttonsPressed": [],
+      "buttonsReleased": [],
+      "down": [
+        "KeyA",
+        "KeyD"
+      ],
+      "events": [
+        "KeyDown KeyD",
+        "KeyDown KeyD repeat",
+        "KeyDown KeyA"
+      ],
+      "pointer": [
+        30.0,
+        40.0
+      ],
+      "pointerInside": true,
+      "pressed": [
+        "KeyA",
+        "KeyD"
+      ],
+      "released": [],
+      "tick": 5,
+      "wheel": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "axisAD": 1.0,
+      "buttonsDown": [],
+      "buttonsPressed": [],
+      "buttonsReleased": [],
+      "down": [
+        "KeyD"
+      ],
+      "events": [
+        "KeyUp KeyA"
+      ],
+      "pointer": [
+        30.0,
+        40.0
+      ],
+      "pointerInside": true,
+      "pressed": [],
+      "released": [
+        "KeyA"
+      ],
+      "tick": 6,
+      "wheel": [
+        0.0,
+        0.0
+      ]
+    }
+  ]
+}
