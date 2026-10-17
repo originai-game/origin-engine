@@ -8,6 +8,7 @@
 //! | [`QueryDesc`], [`QueryIter`], [`ArchetypeView`] | queries yielding per-field column slices |
 //! | [`SystemDesc`], [`SystemContext`] | declared systems and what they may touch |
 //! | [`Bundle`] | `()` or a tuple of components for spawning |
+//! | [`StateBlock`] | a module's state outside archetypes and resources, saved and restored with the world |
 //!
 //! The model:
 //!
@@ -38,6 +39,7 @@ mod query;
 mod registry;
 mod schedule;
 mod snapshot;
+mod state;
 mod storage;
 mod world;
 
@@ -46,6 +48,7 @@ pub use query::{ArchetypeView, QueryDesc, QueryIter};
 pub use registry::{FieldRef, SchemaId};
 pub use schedule::{SystemContext, SystemDesc, SystemInfo};
 pub use snapshot::MigrationReport;
+pub use state::StateBlock;
 pub use world::{Bundle, BundleEncoder, World, WorldDesc, MAX_NAME};
 
 pub use og_core::{Error, ErrorKind, Reflect, Result};

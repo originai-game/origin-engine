@@ -8,10 +8,11 @@
 //! Systems are code and are not in it; restore into a world whose schedule
 //! and registrations match.
 //!
-//! Format 2 (little-endian), what [`World::snapshot`] writes:
+//! Format 2 (little-endian), what [`World::snapshot`] writes for a world
+//! without state blocks; format 3 is the same with the blocks section:
 //!
 //! ```text
-//! "OGWS" u32:2
+//! "OGWS" u32:2 (or 3)
 //! types      u32 n, n × { str name, u64 layout_hash, u32 version,
 //!                         u32 fields, fields × { str name, str type,
 //!                                                u32 k, k × str variant } }
@@ -22,6 +23,7 @@
 //! events     u32 n, n × { u32 type, u32 current, current × bytes,
 //!                                   u32 pending, pending × bytes }
 //! names      u32 n, n × { u64 entity, str name }      (entity order)
+//! blocks     u32 n, n × { str name, str bytes }       (format 3, added order)
 //! ```
 //!
 //! `str` is a `u32` length then the bytes. Format 1 (the M1 snapshots) has
@@ -33,13 +35,16 @@
 //!
 //! [`World::world_hash`] is FNV-1a of the *state stream*: the snapshot as
 //! format 1 lays it out (type names and layout hashes, no field table), then,
-//! only when some entity is named, `"NAME"` and the names section. The field
+//! only when some entity is named, `"NAME"` and the names section, then,
+//! only when the world has state blocks, `"BLOK"` and the blocks section. The field
 //! table is a function of the registrations the layout hashes already cover,
 //! so two worlds have the same hash exactly when their state is identical,
-//! and a world without names hashes exactly as it did before names existed.
+//! and a world without names or blocks hashes exactly as it did before they
+//! existed.
 
 use crate::entity::Entity;
 use crate::registry::{Registry, SchemaId};
+use crate::state::Block;
 use crate::storage::Archetype;
 use crate::world::{
     resource_to_bytes, Entities, EventQueue, Location, ResourceValue, World, MAX_NAME, PENDING,
@@ -48,15 +53,19 @@ use og_core::handle::{HandleAllocator, RawHandle, SlotState};
 use og_core::hash::hash_bytes;
 use og_core::reflect::{FieldSchema, FieldType, Schema};
 use og_core::{Error, ErrorKind, Result};
+use std::any::Any;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 
 const MAGIC: &[u8; 4] = b"OGWS";
-/// The format [`World::snapshot`] writes.
+/// The format [`World::snapshot`] writes for a world without state blocks.
 const FORMAT: u32 = 2;
+/// Format 2 with the state blocks section.
+const FORMAT_BLOCKS: u32 = 3;
 /// The M1 format: no field table, no names. Read, and the hash stream's.
 const FORMAT_STATE: u32 = 1;
 const NAMES_TAG: &[u8; 4] = b"NAME";
+const BLOCKS_TAG: &[u8; 4] = b"BLOK";
 
 const FIELD_TYPES: [FieldType; 15] = [
     FieldType::F32,
@@ -224,6 +233,8 @@ struct Parsed<'a> {
     resources: Vec<(usize, &'a [u8])>,
     events: Vec<Queue<'a>>,
     names: Vec<(Entity, String)>,
+    /// State blocks (format 3): name, saved bytes.
+    blocks: Vec<(&'a str, &'a [u8])>,
 }
 
 fn not_registered(name: &str) -> Error {
@@ -246,11 +257,14 @@ fn parse<'a>(registry: &Registry, bytes: &'a [u8]) -> Result<Parsed<'a>> {
         return Err(bad("not a world snapshot (magic)"));
     }
     let format = r.u32()? as u32;
-    if format != FORMAT && format != FORMAT_STATE {
+    if ![FORMAT_STATE, FORMAT, FORMAT_BLOCKS].contains(&format) {
         return Err(bad(format!(
-            "format {format}, this engine reads {FORMAT_STATE} and {FORMAT}"
+            "format {format}, this engine reads {FORMAT_STATE} to {FORMAT_BLOCKS}"
         )));
     }
+    // Formats 2 and 3 share everything but the blocks section.
+    let blocks_section = format == FORMAT_BLOCKS;
+    let format = if blocks_section { FORMAT } else { format };
 
     let type_count = r.count(12)?;
     let mut types: Vec<SnapType> = Vec::with_capacity(type_count);
@@ -473,6 +487,17 @@ fn parse<'a>(registry: &Registry, bytes: &'a [u8]) -> Result<Parsed<'a>> {
             names.push((e, name.to_owned()));
         }
     }
+    let mut blocks: Vec<(&str, &[u8])> = Vec::new();
+    if blocks_section {
+        let n = r.count(8)?;
+        for _ in 0..n {
+            let name = r.str("state block name")?;
+            if blocks.iter().any(|(b, _)| *b == name) {
+                return Err(bad(format!("state block '{name}' appears twice")));
+            }
+            blocks.push((name, r.sized()?));
+        }
+    }
     if r.pos != bytes.len() {
         return Err(bad(format!("{} trailing bytes", bytes.len() - r.pos)));
     }
@@ -484,7 +509,50 @@ fn parse<'a>(registry: &Registry, bytes: &'a [u8]) -> Result<Parsed<'a>> {
         resources,
         events,
         names,
+        blocks,
     })
+}
+
+/// Each block's decoded state from a snapshot (`None`: the snapshot has no
+/// bytes for it). A snapshot block this world lacks is refused, or, when
+/// `report` is given (a migrating restore), dropped and reported.
+fn decode_blocks(
+    blocks: &[Block],
+    saved: &[(&str, &[u8])],
+    mut report: Option<&mut MigrationReport>,
+) -> Result<Vec<Option<Box<dyn Any + Send>>>> {
+    for (name, _) in saved {
+        if !blocks.iter().any(|b| b.name == *name) {
+            match report.as_deref_mut() {
+                Some(r) => r.dropped.push(format!("state block {name}")),
+                None => {
+                    return Err(Error::new(
+                        ErrorKind::NotFound,
+                        format!("snapshot: state block '{name}' is not added to this world"),
+                    ))
+                }
+            }
+        }
+    }
+    blocks
+        .iter()
+        .map(|b| match saved.iter().find(|(n, _)| *n == b.name) {
+            Some((_, bytes)) => b
+                .block
+                .decode(bytes)
+                .map(Some)
+                .map_err(|e| e.context(format!("snapshot: state block '{}'", b.name))),
+            None => {
+                if let Some(r) = report.as_deref_mut() {
+                    r.warnings.push(format!(
+                        "state block {} is not in the snapshot; it starts empty",
+                        b.name
+                    ));
+                }
+                Ok(None)
+            }
+        })
+        .collect()
 }
 
 /// Where one field of this world's type comes from.
@@ -669,6 +737,8 @@ struct State {
     resources: Vec<Option<RefCell<ResourceValue>>>,
     events: Vec<RefCell<EventQueue>>,
     names: Vec<(Entity, String)>,
+    /// Per state block, in added order.
+    blocks: Vec<Option<Box<dyn Any + Send>>>,
 }
 
 impl World {
@@ -676,7 +746,12 @@ impl World {
     fn write(&self, state: bool) -> Vec<u8> {
         let mut w = Writer(Vec::new());
         w.bytes(MAGIC);
-        w.u32(if state { FORMAT_STATE } else { FORMAT } as usize);
+        let format = match (state, self.blocks.is_empty()) {
+            (true, _) => FORMAT_STATE,
+            (false, true) => FORMAT,
+            (false, false) => FORMAT_BLOCKS,
+        };
+        w.u32(format as usize);
 
         w.u32(self.registry.len());
         for t in &self.registry.types {
@@ -763,11 +838,25 @@ impl World {
                 w.sized(name.as_bytes());
             }
         }
+
+        if !self.blocks.is_empty() {
+            if state {
+                w.bytes(BLOCKS_TAG);
+            }
+            w.u32(self.blocks.len());
+            let mut saved = Vec::new();
+            for b in &self.blocks {
+                saved.clear();
+                b.block.save(&mut saved);
+                w.sized(b.name.as_bytes());
+                w.sized(&saved);
+            }
+        }
         w.0
     }
 
-    /// The whole world as bytes (format 2). See the module docs for what is
-    /// included.
+    /// The whole world as bytes (format 2, or 3 with state blocks). See the
+    /// module docs for what is included.
     pub fn snapshot(&self) -> Vec<u8> {
         self.write(false)
     }
@@ -780,7 +869,7 @@ impl World {
     }
 
     /// Replaces the world's state (entities, components, resources, events,
-    /// names) with a snapshot's. Systems and registrations stay. Refused,
+    /// names, state blocks) with a snapshot's. Systems and registrations stay. Refused,
     /// with nothing changed, when the snapshot is malformed or names a type
     /// this world lacks or has with another layout.
     pub fn restore(&mut self, bytes: &[u8]) -> Result<()> {
@@ -850,6 +939,7 @@ impl World {
             queue.current = current.iter().map(|b| b.to_vec()).collect();
             queue.pending = pending.iter().map(|b| b.to_vec()).collect();
         }
+        let blocks = decode_blocks(&self.blocks, &parsed.blocks, None)?;
 
         self.commit(State {
             alloc: parsed.alloc,
@@ -859,6 +949,7 @@ impl World {
             resources,
             events,
             names: parsed.names,
+            blocks,
         });
         Ok(())
     }
@@ -996,6 +1087,8 @@ impl World {
             }
         }
 
+        let blocks = decode_blocks(&self.blocks, &parsed.blocks, Some(&mut report))?;
+
         // Nothing below fails.
         for i in unknown {
             resources[i] = self.resources[i].take();
@@ -1008,6 +1101,7 @@ impl World {
             resources,
             events,
             names: parsed.names,
+            blocks,
         });
         Ok(report)
     }
@@ -1023,6 +1117,9 @@ impl World {
         self.events = state.events;
         self.by_name = state.names.iter().map(|(e, n)| (n.clone(), *e)).collect();
         self.names = state.names.into_iter().collect();
+        for (b, decoded) in self.blocks.iter_mut().zip(state.blocks) {
+            b.block.apply(decoded);
+        }
         self.structural += 1;
     }
 }

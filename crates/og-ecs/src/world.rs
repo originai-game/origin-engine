@@ -5,6 +5,7 @@ use crate::entity::Entity;
 use crate::query::{QueryAccess, QueryDesc, QueryIter};
 use crate::registry::{FieldRef, Registry, SchemaId};
 use crate::schedule::{Command, System, SystemContext, SystemDesc, SystemInfo};
+use crate::state::{Block, StateBlock};
 use crate::storage::Archetype;
 use og_core::handle::HandleAllocator;
 use og_core::reflect::{schemas_to_json, Reflect, Schema};
@@ -101,6 +102,8 @@ pub struct World {
     /// Entity names: one name per live entity, one entity per name.
     pub(crate) names: BTreeMap<Entity, String>,
     pub(crate) by_name: BTreeMap<String, Entity>,
+    /// State blocks in registration order.
+    pub(crate) blocks: Vec<Block>,
 }
 
 fn two_mut<T>(v: &mut [T], a: usize, b: usize) -> (&mut T, &mut T) {
@@ -136,6 +139,7 @@ impl World {
             structural: 0,
             names: BTreeMap::new(),
             by_name: BTreeMap::new(),
+            blocks: Vec::new(),
         };
         world.archetype_for(Vec::new());
         world.time_id = world.register::<Time>()?;
@@ -726,6 +730,32 @@ impl World {
     /// generation).
     pub fn names(&self) -> Vec<(Entity, &str)> {
         self.names.iter().map(|(e, n)| (*e, n.as_str())).collect()
+    }
+
+    // ---- state blocks -------------------------------------------------------
+
+    /// Adds a state block ([`StateBlock`]) under `name`: snapshots save it,
+    /// the world hash covers it and restores bring it back. A world with a
+    /// block writes snapshot format 3. Refused for an empty name, one longer
+    /// than 256 bytes, or one already taken.
+    pub fn add_state_block(&mut self, name: &str, block: Box<dyn StateBlock>) -> Result<()> {
+        if name.is_empty() || name.len() > MAX_NAME {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!("a state block name is 1 to {MAX_NAME} bytes, got '{name}'"),
+            ));
+        }
+        if self.blocks.iter().any(|b| b.name == name) {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!("the state block '{name}' is already added"),
+            ));
+        }
+        self.blocks.push(Block {
+            name: name.to_owned(),
+            block,
+        });
+        Ok(())
     }
 
     // ---- structure ----------------------------------------------------------

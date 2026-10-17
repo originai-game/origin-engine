@@ -16,7 +16,7 @@ fixed tick at a time, snapshotted and restored whole.
 | resources | `insert_resource`, `insert_resource_bytes`, `resource::<T>()`, `resource_mut::<T>()`, `resource_bytes`, `remove_resource`, `remove_resource_id`, `has_resource`, `has_resource_id`, `time()` |
 | events | `send`, `send_bytes`, `pending_events::<T>()`, `pending_events_bytes` |
 | schedule | `add_system(SystemDesc { name, reads, writes, queries }, fn(&mut SystemContext) -> Result<()>)`, `step()`, `systems()`, `system_info()` → `SystemInfo { name, reads, writes, queries, matched, query_matched, last_tick }` |
-| state | `snapshot() -> Vec<u8>`, `restore(&[u8])`, `restore_migrating(&[u8]) -> MigrationReport`, `world_hash() -> u64` |
+| state | `add_state_block(name, Box<dyn StateBlock>)`, `snapshot() -> Vec<u8>`, `restore(&[u8])`, `restore_migrating(&[u8]) -> MigrationReport`, `world_hash() -> u64` |
 
 `SystemContext`: `time()`, `query(i)`, `resource`, `resource_mut`, `events`,
 `send`, `get`, `set`, `spawn`, `insert`, `remove`, `despawn`, `is_alive`,
@@ -101,9 +101,16 @@ world.add_system(
   `restore` maps types by name, requires equal layout hashes, validates
   everything and changes nothing on refusal. Systems are code: restore into
   a world with the same schedule.
+- **State blocks** (`StateBlock`: `save`, `decode`, `apply`) are module
+  state outside archetypes and resources (a physics engine's contacts and
+  solver caches). A world with blocks writes format 3: format 2 plus each
+  block's name and bytes in added order. A restore decodes every block
+  before changing anything, refuses a block this world did not add, and
+  resets (`apply(None)`) a block the snapshot lacks; a migrating restore
+  drops the unknown block and warns about the missing one, both by name.
 - **World hash**: FNV-1a of the state stream, which is format 1's bytes plus,
-  only when an entity is named, the names: a world without names hashes
-  exactly as in M1 (the bouncing-boxes hash is unchanged), and equal state
+  only when an entity is named, the names, then, only when the world has
+  state blocks, the blocks: a world without either hashes exactly as in M1 (the bouncing-boxes hash is unchanged), and equal state
   gives an equal hash.
 - **Migrating restore** (`restore_migrating`, for hot reload): types by
   name, fields by name; an added field takes its schema default, a removed
