@@ -1,0 +1,9 @@
+[package]
+name = "og-audio"
+version = "0.0.1"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Origin Engine: og-audio (phase 1 M6 scaffold)"
+
+[dependencies]
