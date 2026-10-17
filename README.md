@@ -6,7 +6,7 @@ executors, driven by game code written in TypeScript. It is built for one
 author above all others: an AI agent that has to write, run, observe and
 correct a game in minutes without a human at the editor.
 
-Status: **spike done, phase 1 starting** (`docs/design.md`, results in `crates/og-spike/RESULTS.md`, execution in `docs/phase-1.md`). The
+Status: **spike done, phase 1 starting** (`docs/design.md`, results in `docs/spike-results.md`, execution in `docs/phase-1.md`). The
 platform-side execution package is `origingame/goals/origin-engine/plan.md`.
 
 ## What it is, in one paragraph

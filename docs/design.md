@@ -411,7 +411,7 @@ engine as data-driven behaviours and re-measure; the Three.js comparison
 below 1.2× → the performance claim is dropped from positioning and the
 project continues on the AI-native and isolation grounds only.
 
-### 10.1 Results so far (2026-10-17, `crates/og-spike/RESULTS.md`)
+### 10.1 Results so far (2026-10-17, `docs/spike-results.md`)
 
 Taken on an M4 Pro with headless Chrome and in the platform's E2B `probe`
 sandbox; the iPhone and Android numbers are still pending.

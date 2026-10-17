@@ -1,4 +1,0 @@
-# Workspace crates excluded from the fmt and clippy steps (they are still
-# built and tested by `cargo test --workspace`). One crate per line; '#'
-# starts a comment. Every entry says when it leaves this list.
-og-spike   # the spike, committed unformatted; deleted once its renderer has moved into og-render (docs/phase-1.md §3 week 1 item 4)

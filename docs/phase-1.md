@@ -4,7 +4,7 @@ Scope: `docs/design.md` §11 phase 1 ("Core"), 13 weeks from 2026-10-20.
 Output: a game author can `npm create @origingame/game`, write TypeScript
 against `@origingame/engine`, run it in a browser and headless with `og`, and
 the platform can run it in an `engine`-class sandbox. Spike findings
-(`crates/og-spike/RESULTS.md`) are the baseline; the spike crate is the seed
+(`docs/spike-results.md`) are the baseline; the spike crate is the seed
 of `og-render` and is deleted once its code has moved.
 
 ## 0. Rules that shape the plan
