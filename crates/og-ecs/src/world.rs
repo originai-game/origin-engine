@@ -107,7 +107,8 @@ fn two_mut<T>(v: &mut [T], a: usize, b: usize) -> (&mut T, &mut T) {
 }
 
 impl World {
-    /// A world with `Time` and `Rng` registered and present as resources.
+    /// A world with `Time` and `Rng` registered (schema names `og.Time` and
+    /// `og.Rng`) and present as resources.
     pub fn new(desc: &WorldDesc) -> Result<World> {
         if desc.tick_rate == 0 {
             return Err(Error::new(

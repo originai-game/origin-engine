@@ -10,13 +10,24 @@
 //!
 //! Invariants: generations start at 1, so the packed value `0` is never a live
 //! handle; freeing bumps the slot's generation; a slot whose generation
-//! reaches `u32::MAX` is retired and never handed out again; freed slots are
-//! reused last-freed-first. A dead handle is an [`ErrorKind::DeadHandle`]
-//! error value, never a panic.
+//! reaches [`RETIRED_GENERATION`] (2^21) is retired and never handed out
+//! again, so a live handle's generation is at most [`MAX_GENERATION`] and
+//! `to_bits()` is at most 2^53 - 1: every handle and entity id is an exact
+//! JavaScript number (`Number.MAX_SAFE_INTEGER`). Freed slots are reused
+//! last-freed-first. A dead handle is an [`ErrorKind::DeadHandle`] error
+//! value, never a panic.
 
 use crate::error::{Error, ErrorKind, Result};
 use std::fmt;
 use std::marker::PhantomData;
+
+/// The generation a slot reaches when it is freed for the last time: it is
+/// retired and never handed out again. 2^21, so that `generation << 32 |
+/// index` of every live handle stays below 2^53.
+pub const RETIRED_GENERATION: u32 = 1 << 21;
+
+/// The largest generation a live handle can have (`RETIRED_GENERATION - 1`).
+pub const MAX_GENERATION: u32 = RETIRED_GENERATION - 1;
 
 /// An untyped generational handle.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -38,7 +49,8 @@ impl RawHandle {
         self.generation
     }
 
-    /// `generation << 32 | index`.
+    /// `generation << 32 | index`. For every handle an allocator hands out
+    /// this is at most 2^53 - 1, an exact JavaScript number.
     pub const fn to_bits(self) -> u64 {
         ((self.generation as u64) << 32) | self.index as u64
     }
@@ -105,17 +117,17 @@ impl HandleAllocator {
         RawHandle::new(index, 1)
     }
 
-    /// Frees a live handle; its slot's generation moves on.
+    /// Frees a live handle; its slot's generation moves on. A slot whose
+    /// generation reaches [`RETIRED_GENERATION`] is retired, not reused.
     pub fn free(&mut self, handle: RawHandle) -> Result<()> {
         self.check(handle)?;
         let slot = &mut self.slots[handle.index as usize];
         slot.alive = false;
         self.live -= 1;
-        if slot.generation == u32::MAX {
-            return Ok(()); // retired: never reused
-        }
         slot.generation += 1;
-        self.free.push(handle.index);
+        if slot.generation < RETIRED_GENERATION {
+            self.free.push(handle.index);
+        }
         Ok(())
     }
 
@@ -181,8 +193,10 @@ impl HandleAllocator {
     }
 
     /// Rebuilds an allocator from [`Self::slots`] and [`Self::free_list`].
-    /// Refused unless every free entry is a distinct dead slot and every dead
-    /// slot outside the free list is retired (generation `u32::MAX`).
+    /// Refused unless every generation is in `1..=RETIRED_GENERATION`, every
+    /// free entry is a distinct dead slot below [`RETIRED_GENERATION`], and
+    /// every dead slot outside the free list is retired (generation
+    /// [`RETIRED_GENERATION`]).
     pub fn from_parts(slots: &[SlotState], free: &[u32]) -> Result<Self> {
         let invalid = |reason: String| Err(Error::new(ErrorKind::Parse, reason));
         let mut in_free = vec![false; slots.len()];
@@ -201,9 +215,21 @@ impl HandleAllocator {
             if s.generation == 0 {
                 return invalid(format!("slot {index} has generation 0"));
             }
+            if s.generation > RETIRED_GENERATION {
+                return invalid(format!(
+                    "slot {index} has generation {}, past the retirement generation {RETIRED_GENERATION}",
+                    s.generation
+                ));
+            }
+            let retired = s.generation == RETIRED_GENERATION;
             if s.alive {
+                if retired {
+                    return invalid(format!("live slot {index} is at the retirement generation"));
+                }
                 live += 1;
-            } else if !in_free[index] && s.generation != u32::MAX {
+            } else if in_free[index] && retired {
+                return invalid(format!("free list names retired slot {index}"));
+            } else if !in_free[index] && !retired {
                 return invalid(format!("dead slot {index} is neither free nor retired"));
             }
         }

@@ -94,8 +94,9 @@ platforms. Ray tracing. Networking engines beyond the platform SDK's rooms.
 ### 2.3 Data model **(D)**
 
 - **World**: an archetype ECS. Entities are `u64` ids with a generation;
-  components are plain data declared with `#[derive(Component, Reflect)]` in
-  Rust or `defineComponent({...})` in TypeScript (which registers the same
+  components are plain data declared with `#[derive(Reflect)]` in Rust (no
+  `Component` marker: any reflected type can be a component, resource or
+  event) or `defineComponent({...})` in TypeScript (which registers the same
   reflected layout at load time). Component storage is SoA in wasm memory.
 - **Typed views**: a TypeScript system receives `Float32Array`/`Uint32Array`
   views over the component columns of each matched archetype plus the entity

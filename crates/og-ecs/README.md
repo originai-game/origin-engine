@@ -7,7 +7,7 @@ fixed tick at a time, snapshotted and restored whole.
 
 | Item | Entry points |
 |---|---|
-| `World`, `WorldDesc { tick_rate: 60, seed: 0 }` | `World::new(&desc)` — `Time` and `Rng` are registered and present as resources |
+| `World`, `WorldDesc { tick_rate: 60, seed: 0 }` | `World::new(&desc)` — `Time` and `Rng` are registered (as `og.Time`, `og.Rng`) and present as resources |
 | types | `register::<T>()`, `register_schema(Schema)` (host layouts by name), `id::<T>()`, `id_by_name`, `field::<T>("name")` → `FieldRef`, `schemas_json()` |
 | entities | `spawn(bundle)`, `spawn_bytes`, `despawn`, `insert`, `insert_bytes`, `remove`, `remove_id`, `get`, `get_bytes`, `has`, `is_alive`, `components_of`, `entities()` |
 | queries | `query(&QueryDesc { read, write, without })` → `QueryIter` of `ArchetypeView`: `entities()`, `read::<T>(field)`, `write::<T>(field)`, `read_bytes`, `write_bytes` |
@@ -42,9 +42,13 @@ world.add_system(
   per (component, field), so a field is a dense `&[f32]`/`&[Vec3]`/... (a
   `Float32Array` on the web). Rows follow `ArchetypeView::entities()`.
 - **Entities**: `u64` = `generation << 32 | index`; a despawned id stays dead
-  (`ErrorKind::DeadHandle`); a refused spawn reserves no id.
+  (`ErrorKind::DeadHandle`); a refused spawn reserves no id. A slot is retired
+  when its generation reaches 2^21 (`og_core::handle::RETIRED_GENERATION`), so
+  every id is at most 2^53 - 1 and crosses to JavaScript as an exact
+  `number`.
 - **Types**: one namespace for components, resources and events; ids follow
-  registration order. A Rust type adopts a host schema of the same name and
+  registration order. Engine-owned names are dotted (`og.Time`, `og.Rng`),
+  matching the TypeScript tokens. A Rust type adopts a host schema of the same name and
   layout; the same name with another layout is refused.
 - **Access**: registration refuses a query that writes (or reads) a type the
   system did not declare, unknown names, duplicate system names and writes to
@@ -56,6 +60,11 @@ world.add_system(
   `Time`. Events sent in tick N are read in tick N+1. A failing system stops
   the tick with `"tick N, system 'name': reason"`; its commands are dropped,
   earlier systems' effects stay, `Time` does not advance.
+- **Commands** apply in the order they were queued. Despawning an entity twice
+  in one batch is a no-op the second time. An `insert` or `remove` queued
+  after a despawn of the same entity fails when applied (`DeadHandle`) and
+  stops the tick like a failing system: the commands before it in the batch
+  stay applied, it and the rest are dropped (reserved spawns are freed).
 - **Determinism**: iteration is archetype creation order, then row order;
   no hash map is iterated; system closures are `Fn` (state lives in
   resources, so snapshots capture it).
@@ -72,5 +81,7 @@ world.add_system(
 `cargo test -p og-ecs`: `tests/churn.rs` (10,000 entities, 40,000 random
 structural operations against a shadow model), `tests/snapshot.rs`,
 `tests/bouncing_boxes.rs` (3600 ticks twice from one seed, and a halfway
-snapshot restored into a fresh world, give the same hash),
-`tests/schedule.rs`, `tests/host_schema.rs`.
+snapshot restored into a fresh world, give the same hash; the world itself is
+`tests/support/bouncing_boxes.rs`, shared with `tools/wasm-determinism/`),
+`tests/schedule.rs`, `tests/host_schema.rs`. Cross-target agreement of the
+bouncing-boxes hash: `tools/wasm-determinism/run.sh`.

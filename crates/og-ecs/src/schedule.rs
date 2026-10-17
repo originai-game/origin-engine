@@ -320,7 +320,9 @@ impl<'w> SystemContext<'w> {
         Ok(())
     }
 
-    /// Despawns `e` when the system returns (any system may despawn).
+    /// Despawns `e` when the system returns (any system may despawn). A
+    /// second despawn of `e` in the same batch is a no-op; an `insert` or
+    /// `remove` of `e` queued after it fails when applied and stops the tick.
     pub fn despawn(&mut self, e: Entity) -> Result<()> {
         if !self.world.is_alive(e) {
             return Err(dead(e));

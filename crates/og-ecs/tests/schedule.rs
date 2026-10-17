@@ -333,3 +333,58 @@ fn time_advances_by_ticks_without_drift() {
         ErrorKind::Invalid
     );
 }
+
+#[test]
+fn commands_after_a_despawn_in_the_same_batch() {
+    // Despawning twice in one batch is a no-op the second time.
+    let mut w = world();
+    let e = w.spawn((Position { p: Vec3::ZERO },)).unwrap();
+    w.add_system(SystemDesc::new("twice").write::<Position>(), move |ctx| {
+        if ctx.is_alive(e) {
+            ctx.despawn(e)?;
+            ctx.despawn(e)?;
+        }
+        Ok(())
+    })
+    .unwrap();
+    w.step().unwrap();
+    assert!(!w.is_alive(e));
+    assert_eq!(w.time().tick, 1);
+
+    // An insert (or remove) queued after a despawn of the same entity stops
+    // the tick: the commands before it are applied, it and the rest dropped.
+    for remove in [false, true] {
+        let mut w = world();
+        let e = w.spawn((Position { p: Vec3::ZERO },)).unwrap();
+        w.add_system(
+            SystemDesc::new("late")
+                .write::<Position>()
+                .write::<Velocity>(),
+            move |ctx| {
+                ctx.despawn(e)?;
+                if remove {
+                    ctx.remove::<Position>(e)?;
+                } else {
+                    ctx.insert(e, Velocity { v: Vec3::X })?;
+                }
+                ctx.spawn((Position { p: Vec3::Y },))?;
+                Ok(())
+            },
+        )
+        .unwrap();
+        let err = w.step().unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::DeadHandle, "{}", err.reason());
+        assert!(
+            err.reason().starts_with("tick 0, system 'late': "),
+            "{}",
+            err.reason()
+        );
+        assert!(!w.is_alive(e));
+        assert_eq!(
+            w.entity_count(),
+            0,
+            "the spawn after the failure is dropped"
+        );
+        assert_eq!(w.time().tick, 0);
+    }
+}

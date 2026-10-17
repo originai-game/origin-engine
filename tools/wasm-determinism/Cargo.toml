@@ -1,0 +1,27 @@
+# Cross-target determinism check: the same og-core math and the same
+# og-ecs world on the host and on wasm32, compared bit for bit. Not a
+# workspace member (its own [workspace] below); run it with ./run.sh.
+[package]
+name = "wasm-determinism"
+version = "0.0.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "wasm-determinism"
+path = "src/main.rs"
+
+[dependencies]
+og-core = { path = "../../crates/og-core" }
+og-ecs = { path = "../../crates/og-ecs" }
+
+[workspace]
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1

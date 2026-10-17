@@ -19,6 +19,7 @@ fn scramble(seed: u32) -> u32 {
 
 /// A deterministic random generator: 32-bit seed, 32-bit state.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Reflect)]
+#[reflect(name = "og.Rng")]
 pub struct Rng {
     /// The seed this generator (or the parent it was forked from) was made with.
     seed: u32,

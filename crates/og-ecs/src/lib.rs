@@ -20,8 +20,10 @@
 //!   as packed bytes (fields in schema order, little-endian).
 //! - **Systems** declare what they read and write. Registration refuses a
 //!   query over undeclared components; at run time every access is checked
-//!   against the declaration. Structural changes are commands applied when
-//!   the system returns.
+//!   against the declaration. Structural changes are commands applied, in
+//!   order, when the system returns: a second despawn of the same entity is a
+//!   no-op; an insert or remove after a despawn of the same entity stops the
+//!   tick (the commands before it stay applied, the rest are dropped).
 //! - **Ticks**: [`World::step`] delivers pending events, runs systems in
 //!   order, then advances [`og_core::Time`]. Events sent during tick N are
 //!   read during tick N+1.

@@ -12,13 +12,25 @@
 //!
 //! Simulation code uses these, never `f32::sin`/`exp`/`powf`/`powi`.
 //!
-//! Hazard: glam's SIMD types (`Vec3A`, `Vec4`, `Quat`, `Mat3A`, `Mat4`,
-//! `Affine3A`) sum lanes in a different order on SSE2, NEON and scalar/wasm
-//! builds (for example `Vec4::dot`), and glam's own trigonometry
-//! (`Quat::from_axis_angle`, `slerp`, `Mat4::from_rotation_*`) calls the host
-//! `libm`. Deterministic simulation state uses `Vec2`/`Vec3`/`Mat3` arithmetic
-//! and builds rotations with [`quat_from_axis_angle`]; the SIMD types are
-//! fine for rendering, which never feeds back into the simulation.
+//! glam is built with its `scalar-math` feature, set once in the workspace
+//! `Cargo.toml`: every glam type (`Vec3A`, `Vec4`, `Quat`, `Mat3A`, `Mat4`,
+//! `Affine3A`, ...) uses the same scalar code, in the same operation order, on
+//! SSE2, NEON and wasm (with or without `simd128`), so their arithmetic
+//! (`dot`, `length`, `normalize`, quaternion and matrix products, transforms)
+//! is bit-identical across hosts. Without it, glam's SIMD backends sum lanes
+//! in a different order per target. `tests/glam_scalar.rs` checks those
+//! results against an explicit scalar reference. A consequence: `Vec4`,
+//! `Quat` and `Mat4` have the alignment of `f32` (`Vec3A` and `Mat3A` keep
+//! 16); GPU structs that need 16-byte alignment say so themselves.
+//!
+//! Rule: simulation transcendentals go only through this module. glam's own
+//! trigonometry and exponentials (`Quat::from_axis_angle`, `from_euler`,
+//! `slerp`, `Mat4::from_rotation_*`, `Vec2::from_angle`, `powf`, ...) call the
+//! host `libm` even with `scalar-math`, so they are for rendering, which never
+//! feeds back into the simulation; deterministic state builds rotations with
+//! [`quat_from_axis_angle`] and uses [`sin`], [`cos`], [`atan2`], [`exp`],
+//! [`ln`] and [`pow`]. `sqrt` (inside `length` and `normalize`) is exactly
+//! rounded by IEEE 754 and is safe.
 
 pub use glam::*;
 

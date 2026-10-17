@@ -16,6 +16,7 @@ local run predicts a green CI run on the same revision. The workflow
 | `size-gate` | `scripts/size-gate.sh`: brotli `-q 11` sum ≤ `wasm_core_brotli_bytes` | yes | yes | |
 | `drift` | `og api check` (generated `.d.ts`, wiki, JSON schema, Rust glue vs `crates/og-api/api.ogt`) | yes | yes | |
 | `bun-test` | `bun run test` in each `packages/*` with a `test` script | yes | yes | |
+| `determinism` | `tools/wasm-determinism/run.sh`: the same math digest and world hash on the host and on wasm32 scalar and simd128 under node | yes | yes | needs node |
 | perf | `cargo test -p og-tests --release -- --ignored perf` | `make perf` | | yes |
 
 CI runs on `ubuntu-latest`. The Rust toolchain comes from

@@ -9,6 +9,7 @@ use crate::Reflect;
 /// The fixed-tick clock: which tick is running, its length, and the time at
 /// its start.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "og.Time")]
 pub struct Time {
     /// Ticks completed before the current one (0 during the first tick).
     pub tick: u64,

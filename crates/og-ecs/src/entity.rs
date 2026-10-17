@@ -6,6 +6,9 @@ use std::fmt;
 /// An entity: slot index plus generation. A despawned entity's id stays dead
 /// forever (the slot's generation moves on), so a stale id is detected, never
 /// aliased. `to_bits()` is `generation << 32 | index`; `0` is never live.
+/// A slot is retired when its generation reaches 2^21
+/// ([`og_core::handle::RETIRED_GENERATION`]), so `to_bits()` of every entity
+/// is at most 2^53 - 1: an exact JavaScript `number`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Entity(pub(crate) RawHandle);
 

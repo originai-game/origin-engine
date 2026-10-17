@@ -14,7 +14,7 @@ set -u -o pipefail
 . "$(dirname "$0")/lib.sh"
 cd "$OG_ROOT" || exit 1
 
-STEPS="fmt clippy test wasm-build wasm-opt size-gate drift bun-test"
+STEPS="fmt clippy test wasm-build wasm-opt size-gate drift bun-test determinism"
 WASM_TRIPLE=wasm32-unknown-unknown
 SKIP=3   # a step returns this to report SKIPPED instead of PASS
 
@@ -151,6 +151,13 @@ step_drift() {
   fi
   og_say "SKIPPED: og api check not available yet (\`og --help\` lists no 'api' command); becomes a failure once scripts/budgets.txt says 'drift_check required'"
   return $SKIP
+}
+
+step_determinism() {
+  # Cross-target determinism: the same math digest and world hash on the host
+  # and on wasm32 (scalar and simd128), tools/wasm-determinism/run.sh.
+  og_need node || return 1
+  "$OG_ROOT/tools/wasm-determinism/run.sh"
 }
 
 step_bun_test() {

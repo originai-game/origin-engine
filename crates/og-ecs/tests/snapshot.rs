@@ -314,3 +314,29 @@ fn restore_maps_types_by_name_across_registration_order() {
     };
     assert_eq!(order(&b), order(&a));
 }
+
+#[test]
+fn a_retired_entity_slot_stays_retired_across_restore() {
+    use og_core::handle::MAX_GENERATION;
+    let mut w = build(5);
+    let mut e = w.spawn((Frozen,)).unwrap();
+    while e.generation() < MAX_GENERATION {
+        w.despawn(e).unwrap();
+        e = w.spawn((Frozen,)).unwrap();
+        assert_eq!(e.index(), 0);
+    }
+    // The last id slot 0 gives out is an exact JavaScript number.
+    assert!(e.to_bits() < 1 << 53);
+    assert_eq!(Entity::from_bits(e.to_bits() as f64 as u64), e);
+    w.despawn(e).unwrap();
+
+    let mut back = build(5);
+    back.restore(&w.snapshot()).unwrap();
+    assert_eq!(back.world_hash(), w.world_hash());
+    for world in [&mut w, &mut back] {
+        let next = world.spawn((Frozen,)).unwrap();
+        assert_eq!((next.index(), next.generation()), (1, 1), "slot 0 retired");
+        assert_eq!(world.despawn(e).unwrap_err().kind(), ErrorKind::DeadHandle);
+    }
+    assert_eq!(back.world_hash(), w.world_hash());
+}
