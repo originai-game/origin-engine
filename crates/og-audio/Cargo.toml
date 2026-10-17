@@ -4,6 +4,15 @@ version = "0.0.1"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "Origin Engine: og-audio (phase 1 M6 scaffold)"
+description = "Origin Engine audio: the tick-side command stream (sources, listener, buses, events) and the mixer that renders it outside the tick (QOA streaming, loops, pitch, spatialisation, soft limiter)."
 
+# Pure Rust, no renderer: builds for wasm32-unknown-unknown
+# (`cargo check --target wasm32-unknown-unknown -p og-audio`). The QOA codec
+# is og-cook's own source file (src/lib.rs `mod qoa`), compiled here so audio
+# does not depend on og-cook's og-render dependency.
 [dependencies]
+og-core = { path = "../og-core" }
+og-ecs = { path = "../og-ecs" }
+
+[dev-dependencies]
+image = { workspace = true }
