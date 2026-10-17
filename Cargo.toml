@@ -31,3 +31,27 @@ opt-level = 3
 opt-level = 3
 [profile.dev.package.fdsm]
 opt-level = 3
+# Physics at -O0 runs the 500-body determinism pile for a quarter of an hour.
+# og-physics is listed too: rapier's generic code is instantiated in it.
+[profile.dev.package.og-physics]
+opt-level = 3
+[profile.dev.package.rapier2d]
+opt-level = 3
+[profile.dev.package.rapier3d]
+opt-level = 3
+[profile.dev.package.parry2d]
+opt-level = 3
+[profile.dev.package.parry3d]
+opt-level = 3
+[profile.dev.package.glamx]
+opt-level = 3
+[profile.dev.package.glam]
+opt-level = 3
+[profile.dev.package.nalgebra]
+opt-level = 3
+[profile.dev.package.simba]
+opt-level = 3
+[profile.dev.package.libm]
+opt-level = 3
+[profile.dev.package.wide]
+opt-level = 3

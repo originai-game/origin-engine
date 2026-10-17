@@ -1,0 +1,120 @@
+//! The 2D profile (rapier2d): bodies move in the xy plane and rotate about
+//! z; a transform keeps its z and its quaternion becomes a rotation about z.
+//! The step and the queries are `sim.rs`, shared with the 3D profile.
+
+use crate::schema::*;
+use crate::{ShapeKey, Shared};
+use og_core::glam::{Quat, Vec3};
+use og_core::{Error, ErrorKind, Result};
+use rapier2d::parry::query::ShapeCastOptions;
+use rapier2d::prelude as rp;
+use std::collections::BTreeMap;
+
+pub(crate) const PROFILE_NAME: &str = "2D";
+
+/// Drops what the profile does not simulate (z).
+pub(crate) fn flat(x: Vec3) -> Vec3 {
+    Vec3::new(x.x, x.y, 0.0)
+}
+
+pub(crate) fn v(x: Vec3) -> rp::Vector {
+    rp::Vector::new(x.x, x.y)
+}
+
+pub(crate) fn unv(x: rp::Vector) -> Vec3 {
+    Vec3::new(x.x, x.y, 0.0)
+}
+
+/// The rotation about z of a quaternion: the direction its x axis takes in
+/// the xy plane (exact for a pure z rotation; a tilted one is projected).
+pub(crate) fn rot(q: Quat) -> rp::Rotation {
+    let q = crate::unit(q);
+    let c = 1.0 - 2.0 * (q.y * q.y + q.z * q.z);
+    let s = 2.0 * (q.x * q.y + q.w * q.z);
+    let len = (c * c + s * s).sqrt();
+    if len > 1e-12 && len.is_finite() {
+        rp::Rotation::from_cos_sin_unchecked(c / len, s / len)
+    } else {
+        rp::Rotation::IDENTITY
+    }
+}
+
+/// The quaternion of a rotation about z by the angle whose cosine and sine
+/// are `c`, `s` (half-angle identities: square roots only, no trigonometry).
+pub(crate) fn unrot(r: rp::Rotation) -> Quat {
+    let (c, s) = (r.re, r.im);
+    let (z, w) = if c >= 0.0 {
+        let w = ((1.0 + c) * 0.5).sqrt();
+        (s / (2.0 * w), w)
+    } else {
+        let z = ((1.0 - c) * 0.5).sqrt().copysign(s);
+        (z, s / (2.0 * z))
+    };
+    Quat::from_xyzw(0.0, 0.0, z, w).normalize()
+}
+
+pub(crate) fn pose(position: Vec3, q: Quat) -> rp::Pose {
+    rp::Pose::from_parts(v(position), rot(q))
+}
+
+/// The transform a pose writes back: x and y move, z stays.
+pub(crate) fn unpose(pose: &rp::Pose, before: Vec3) -> (Vec3, Quat) {
+    let t = pose.translation;
+    (Vec3::new(t.x, t.y, before.z), unrot(pose.rotation))
+}
+
+pub(crate) fn angvel(a: Vec3) -> rp::AngVector {
+    a.z
+}
+
+pub(crate) fn unangvel(a: rp::AngVector) -> Vec3 {
+    Vec3::new(0.0, 0.0, a)
+}
+
+pub(crate) fn cache(shared: &mut Shared) -> &mut BTreeMap<ShapeKey, rp::SharedShape> {
+    &mut shared.shapes2
+}
+
+/// A primitive shape, or `None` for the mesh shapes.
+pub(crate) fn primitive(c: &Collider, s: Vec3) -> Result<Option<rp::SharedShape>> {
+    Ok(Some(match c.shape {
+        SHAPE_BOX => {
+            let h = c.size * s * 0.5;
+            rp::SharedShape::cuboid(h.x, h.y)
+        }
+        SHAPE_SPHERE => rp::SharedShape::ball(c.radius * s.x.max(s.y)),
+        SHAPE_CAPSULE => rp::SharedShape::capsule_y(c.height * 0.5 * s.y, c.radius * s.x),
+        SHAPE_CONVEX => return Ok(None),
+        SHAPE_CYLINDER | SHAPE_TRIMESH => {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!(
+                    "og.Collider.shape {} is 3D only; the 2D profile has 0 box, 1 circle, 2 capsule, 4 polygon",
+                    c.shape
+                ),
+            ))
+        }
+        other => {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!("og.Collider.shape {other} is not a shape (2D: 0 box, 1 circle, 2 capsule, 4 polygon)"),
+            ))
+        }
+    }))
+}
+
+/// The convex polygon of a registered mesh's xy, scaled.
+pub(crate) fn from_mesh(_shape: u32, mesh: &crate::MeshDesc, s: Vec3) -> Result<rp::SharedShape> {
+    let points: Vec<rp::Vector> = mesh.positions.iter().map(|p| v(*p * s)).collect();
+    rp::SharedShape::convex_hull(&points).ok_or_else(|| {
+        Error::new(
+            ErrorKind::Invalid,
+            "the mesh's convex polygon is degenerate (its xy are collinear or a single point)",
+        )
+    })
+}
+
+#[allow(clippy::duplicate_mod)]
+#[path = "sim.rs"]
+mod sim;
+pub(crate) use sim::{step, QueryWorld, Sim};
