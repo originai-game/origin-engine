@@ -18,7 +18,7 @@ usage() { og_err "usage: scripts/evidence.sh <M0..M7 or E1..E9> <slug> <file.png
 [ "$#" -eq 4 ] || usage
 milestone="$1"; slug="$2"; src="$3"; note="$4"
 
-printf '%s' "$milestone" | grep -Eq '^M[0-9]+$' || { og_err "milestone must look like M0, got '$milestone'"; usage; }
+printf '%s' "$milestone" | grep -Eq '^(M|E)[0-9]+$' || { og_err "milestone must look like M0 or E1, got '$milestone'"; usage; }
 printf '%s' "$slug" | grep -Eq '^[a-z0-9]+(-[a-z0-9]+)*$' || { og_err "slug must be lowercase words joined by '-', got '$slug'"; usage; }
 [ -f "$src" ] || { og_err "no such file: $src"; exit 1; }
 [ -n "$(printf '%s' "$note" | tr -d '[:space:]')" ] || { og_err "the note must say how the file was produced"; usage; }
