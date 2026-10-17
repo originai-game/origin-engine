@@ -1,0 +1,9 @@
+{
+  "name": "og-spike-web",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "e2b": "2.52.1",
+    "three": "0.180.0"
+  }
+}

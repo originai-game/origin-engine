@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Origin Engine spike</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #14161b; color: #e8e9ec; font: 14px/1.4 system-ui, sans-serif; }
+  canvas { display: block; width: 100vw; height: 100dvh; }
+  #hud { position: fixed; left: 12px; top: 12px; padding: 8px 10px; background: rgba(20,22,27,.72); border-radius: 8px; white-space: pre; font-family: ui-monospace, monospace; font-size: 12px; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud">starting…</div>
+<script type="module">
+  const params = new URLSearchParams(location.search);
+  const count = Number(params.get("count") ?? 25);
+  const webgl = params.get("webgl") === "1";
+  const seconds = Number(params.get("seconds") ?? 5);
+  const sphere = params.get("sphere") === "1";
+  const moving = params.get("moving") === "1";
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const canvas = document.getElementById("c");
+  const hud = document.getElementById("hud");
+  canvas.width = Math.floor(innerWidth * dpr);
+  canvas.height = Math.floor(innerHeight * dpr);
+  const offscreen = canvas.transferControlToOffscreen();
+  const worker = new Worker("./worker.js", { type: "module" });
+  const models = (params.get("models") ?? "trickster.glb,dropship.glb").split(",").filter(Boolean);
+  worker.postMessage({ type: "start", canvas: offscreen, count, webgl, models: sphere ? [] : models, seconds, sphere, moving, isolated: crossOriginIsolated }, [offscreen]);
+  worker.onmessage = (e) => {
+    if (e.data.type === "hud") hud.textContent = e.data.text;
+    if (e.data.type === "result") { window.__spikeResult = e.data; hud.textContent = JSON.stringify(e.data, null, 1); fetch("/result", { method: "POST", body: JSON.stringify(e.data) }); }
+    if (e.data.type === "error") { window.__spikeResult = { error: e.data.message }; fetch("/result", { method: "POST", body: JSON.stringify({ error: e.data.message, backend: webgl ? "webgl2" : "webgpu" }) }); hud.textContent = "error: " + e.data.message; }
+  };
+</script>
+</body>
+</html>

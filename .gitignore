@@ -1,0 +1,4 @@
+target/
+crates/og-spike/web/pkg/
+crates/og-spike/web/node_modules/
+.spike-out/

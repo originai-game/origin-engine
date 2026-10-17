@@ -1,0 +1,484 @@
+# Origin Engine — design
+
+Normative. Decided items are marked **(D)**; open items are listed in §12 and
+owned by the platform owner. The structure follows the discipline we observed
+working elsewhere: API surface first, then data and lifetime, threading,
+failure modes, budget, platform matrix, migration, alternatives, sources.
+
+## 1. Problem and non-goals
+
+**Problem.** OriginGame produces games through an agent that must write, run,
+observe and correct a game in minutes. Today the platform has two substrates:
+a distribution of Godot and Web + Three.js. Neither was designed for that
+author. Godot is editor-centric: scene files, import caches to prewarm, a 40 MB
+Web export, GDScript, and a 2.5 GB executor image to run it headless. Three.js
+is a scene-graph library, not an engine: every game reinvents structure, and a
+JavaScript game can only be isolated inside an iframe, which costs the play
+surface its viewport, gestures, audio and a renderer process. The engine the
+agent needs does not exist, so we build it.
+
+**Goals.**
+
+1. A full mid-size 3D engine (and 2D as a subset): PBR rendering with shadows,
+   IBL and post, skeletal animation and IK, rigid-body physics and character
+   control, navigation, spatial audio, particles, terrain, decals, text and a
+   UI toolkit. Delivered to the Web only; native builds exist for executors.
+2. AI-native from the first frame: a command channel, a probe, world dumps,
+   deterministic replay, frame capture and parameter sweeps are runtime
+   features in every build.
+3. Game code in TypeScript against a stable, documented API; no compiler wait
+   and no Rust toolchain in the author's loop.
+4. Performance that justifies replacing Three.js: the heavy per-frame work
+   (culling, draw submission, animation, physics, particles, navigation) runs
+   in WebAssembly on WebGPU, not in JavaScript on WebGL2.
+5. One play surface without iframes.
+
+**Non-goals.** Native store exports (APK, iOS apps). A visual editor as the
+primary authoring surface (an inspector and gizmos exist for humans; authoring
+is code and text). Scripting languages other than TypeScript. Console
+platforms. Ray tracing. Networking engines beyond the platform SDK's rooms.
+
+## 2. Architecture
+
+```
+            ┌──────────────── play page (top-level, play origin) ────────────────┐
+            │  shell (TS, main thread): input, audio unlock, PWA, platform UI,    │
+            │  creator overlay (Stage/Tune/annotations), probe host               │
+            │        │ SharedArrayBuffer rings (input, clock)   │ postMessage      │
+            │  ┌─────▼──────────────── engine Worker ───────────▼───────────────┐ │
+            │  │  origin-engine.wasm (Rust): ECS, tick, renderer (wgpu→WebGPU   │ │
+            │  │  or WebGL2 on OffscreenCanvas), anim, physics, nav, audio mix, │ │
+            │  │  UI, probe, commands                                           │ │
+            │  │        ▲ typed views over wasm memory                          │ │
+            │  │  game.js (TS bundle): components, systems, scenes, tunables    │ │
+            │  └────────────────────────────────────────────────────────────────┘ │
+            └────────────────────────────────────────────────────────────────────┘
+
+            executor (sandbox or the person's machine)
+            ┌────────────────────────────────────────────────────────────────────┐
+            │  og run --commands "...": bun + @origingame/engine native addon     │
+            │  (same Rust core, wgpu→Vulkan on lavapipe or a GPU); same game.js; │
+            │  frames, dumps, sweeps, replays as files                            │
+            └────────────────────────────────────────────────────────────────────┘
+```
+
+### 2.1 Layers
+
+| Layer | Language | Owner | Notes |
+|---|---|---|---|
+| Engine core | Rust (`crates/og-*`) | engine team | one codebase; targets `wasm32-unknown-unknown` and native (Linux x86_64 for executors, macOS arm64 for developers) |
+| Hosts | Rust + generated glue | engine team | `og-host-web` (wasm-bindgen, Worker + OffscreenCanvas), `og-host-node` (napi) |
+| TypeScript API | generated `.d.ts` + a thin hand-written ergonomic layer | engine team | generated from one IDL (§3); the ergonomic layer is the three.js-flavoured vocabulary |
+| Game | TypeScript | the Maker's agent | components, systems, scenes, tunables, assets |
+| Tooling | Rust (`og`) | engine team | one binary: build, run, cook, probe, test, doctor |
+| Shell | TypeScript (platform `site/`) | platform | the play page and the creator overlay; consumes `@origingame/engine` |
+
+### 2.2 Threads **(D)**
+
+- **Main thread**: the shell only. Collects input into a SharedArrayBuffer
+  ring, owns the AudioContext (unlocked once on the first gesture), the PWA,
+  platform UI and the creator overlay. Never runs game code.
+- **Engine Worker**: the wasm instance, the renderer on an OffscreenCanvas,
+  the game bundle. The tick and the frame run here; a slow frame never stalls
+  the shell.
+- **Lanes** (phase 3): parallel systems through `wasm-bindgen-rayon` on a
+  thread pool of Workers sharing the wasm memory. Requires cross-origin
+  isolation (COOP/COEP) on the play page, which the platform already
+  declares per publication (`goals/play-surface`). Render recording stays on
+  the engine Worker: wgpu's web backend objects are not shareable across
+  threads. Without isolation the engine runs single-threaded; the API is the
+  same.
+- **Native host**: the same split (shell = `og`, engine on its own thread,
+  lanes via rayon).
+
+### 2.3 Data model **(D)**
+
+- **World**: an archetype ECS. Entities are `u64` ids with a generation;
+  components are plain data declared with `#[derive(Component, Reflect)]` in
+  Rust or `defineComponent({...})` in TypeScript (which registers the same
+  reflected layout at load time). Component storage is SoA in wasm memory.
+- **Typed views**: a TypeScript system receives `Float32Array`/`Uint32Array`
+  views over the component columns of each matched archetype plus the entity
+  list. One call per archetype per system per tick, never one call per
+  entity. Views are invalidated by structural changes; the API hands them out
+  per tick and refuses stale ones (a stale view throws with the tick it
+  belonged to).
+- **Resources**: singletons (time, input, camera, tuning), also reflected.
+- **Reflection**: every component and resource has a schema (fields, types,
+  ranges, labels, units, `tunable` flags, docs). The schema is exported as
+  JSON (`og schema`) and is what the inspector, Tune, the probe's `bounds`,
+  scene text and the generated wiki read.
+- **Handles**: assets, meshes, materials, sounds and scenes are generational
+  handles; a dead handle is an error value, never a crash.
+
+### 2.4 Time and determinism **(D)**
+
+- Fixed tick (default 60 Hz, per project), accumulator with a cap; render
+  interpolates between the last two ticks. Game code never reads wall-clock
+  time: `Time` is a resource with `tick`, `dt`, `elapsed`.
+- Randomness is `Rng` resources seeded from the project seed and the entity
+  or system that owns them; the sequence is identical on wasm and native (the
+  Web scaffold's `rng.ts` and `rng.rs` test vectors are inherited).
+- Snapshot and restore of the whole world (components, resources, rng
+  states, pending events) to a blob; `sweep`, hot reload and `feel_compare`
+  are built on it.
+- Floating point: simulation uses `f32` with the same operations on both
+  hosts; the engine ships its own `sin`/`cos`/`atan2`/`exp` so results do not
+  depend on the host's `Math`. Physics (rapier) is built with its
+  `enhanced-determinism` feature.
+
+### 2.5 Scenes and assets **(D)**
+
+- **`.ogt`** is the one text format: a line-based `type`/`version` header, a
+  separator, then `key value` lines with nested blocks. Scenes, materials,
+  tuning, import settings, project manifest (`project.ogt`) all use it. It
+  diffs line by line in git, which matters because the agent's checkpoints
+  are git commits.
+- **`.ogb`** is the one cooked blob: type hash, schema version, cook stamp,
+  then the reflected struct serialised with its asset payloads (meshes as
+  meshopt-encoded vertex streams, textures as KTX2 Basis Universal, audio as
+  QOA, fonts as MSDF atlases, scenes as component tables). Blobs load by
+  copy-free view where alignment allows.
+- **Cook** (`og cook`): incremental, hash-stamped, runs glTF import
+  (meshoptimizer simplification and vertex cache ordering, LOD generation,
+  tangents), texture compression, audio transcode, MSDF generation, scene
+  compilation. Source assets live in `assets/`, cooked output in `cooked/`;
+  the runtime reads only `cooked/`.
+- Reusable production assets come through the platform's asset MCP as today;
+  the cook consumes what the agent put in `assets/`.
+
+### 2.6 Renderer **(D)**
+
+wgpu with WGSL shaders cooked per backend (naga). WebGPU is primary; WebGL2
+is the fallback through wgpu's GL backend with a reduced feature tier
+(no compute: GPU culling and particles fall back to CPU paths, clustered
+lighting falls back to a forward tile table built on the CPU).
+
+- Forward+ (clustered) with a depth prepass; PBR metallic-roughness
+  (glTF-compatible), normal, emissive, occlusion, clearcoat later.
+- Cascaded shadow maps for one directional light, cube or dual-paraboloid
+  for up to N point/spot lights by tier.
+- IBL from an environment map prefiltered at cook time; sky model with
+  exposure; height fog.
+- Post: bloom, tonemap (ACES or AgX), colour grading LUT, SSAO (GTAO on
+  WebGPU), FXAA/TAA by tier.
+- Skinning on the GPU (storage buffers; vertex-texture fallback on GL).
+- Instancing by default: draws are batched per material and mesh; the
+  TypeScript API has no per-object draw calls to misuse.
+- Particles: GPU simulation on WebGPU, CPU on GL; one emitter asset format.
+- Terrain: clipmap heightfield with splat materials. Decals: deferred-style
+  projection in the forward pass.
+- Text: MSDF for UI and world text; CJK coverage through the platform's
+  subset fonts; RTL shaping through rustybuzz.
+- Capture: a readback path from the render graph, used by the probe's
+  `capture` on both hosts; on the web it reads the OffscreenCanvas target, so
+  no `preserveDrawingBuffer`.
+
+### 2.7 Animation, physics, navigation, audio, UI **(D)**
+
+- **Animation**: glTF skins and clips, a blend tree asset (`.ogt`), state
+  machines as data, root motion, additive layers, two-bone and FABRIK IK,
+  blendshapes.
+- **Physics**: rapier3d (and rapier2d for 2D projects), fixed-tick stepping
+  inside the engine tick, a kinematic character controller, vehicle later.
+- **Navigation**: navmesh baked at cook time or at runtime for procedural
+  levels; path queries and crowd steering as engine systems.
+- **Audio**: the mixer runs in wasm; on the web the engine Worker feeds an
+  AudioWorklet through a SharedArrayBuffer ring, on native through cpal.
+  Buses, spatialisation, QOA streaming, one-shot and looped sources.
+- **UI**: immediate-mode (Clay-like layout) rendered by the engine, themed by
+  the platform's design tokens so a game's menus and the platform read as one
+  system; element ids are stable strings so the command channel can target
+  them (`touch_move_to`, `move_to_text`, `dump_ui`).
+
+### 2.8 Platform SDK as host ABI **(D)**
+
+The engine imports a small set of host functions, each a capability the shell
+grants: `og_net_fetch` (allowlisted, game-scoped token), `og_store_*` (cloud
+save), `og_leaderboard_*`, `og_room_*` (rooms/RTC via the shell), `og_telemetry`,
+`og_point` (Origin Point), `og_ai_mark`. In TypeScript they appear under
+`og.platform.*`. Nothing in game code can reach cookies, the DOM or arbitrary
+origins; the shell owns every credential.
+
+## 3. API surface
+
+### 3.1 One IDL, two hosts **(D)**
+
+The engine's public API is declared once (`crates/og-api/api.ogt`, the same
+text format): modules, functions, desc structs, enums, events, with docs and
+ranges. From it the build generates:
+
+- Rust trait impls checked at compile time (`og-host-web`, `og-host-node`),
+- the TypeScript `.d.ts` and the runtime binding tables,
+- the wiki pages (`docs/wiki/`), one page per module, with the signatures
+  quoted from the IDL so they cannot drift,
+- the JSON schema the platform's knowledge package consumes.
+
+### 3.2 Shape of the TypeScript API
+
+```ts
+import { og, Vector3, Quaternion, defineComponent, defineSystem, f32, u32 } from "@origingame/engine";
+
+export const Health = defineComponent("Health", { hp: f32(100, { min: 0, max: 1000, tunable: true }), max: f32(100) });
+export const Velocity = defineComponent("Velocity", { v: Vector3() });
+
+export const Move = defineSystem("Move", { reads: [Velocity], writes: [og.Transform] }, (q, time) => {
+  for (const a of q.archetypes()) {            // one call per archetype
+    const p = a.column(og.Transform).position; // Float32Array, stride 3
+    const v = a.column(Velocity).v;
+    for (let i = 0; i < a.count; i++) {
+      p[i*3] += v[i*3] * time.dt; p[i*3+1] += v[i*3+1] * time.dt; p[i*3+2] += v[i*3+2] * time.dt;
+    }
+  }
+});
+
+export default og.game({
+  tick: 60,
+  scenes: { main: "scenes/main.ogt" },
+  systems: [Move],
+  commands: { spawn_wave: (world, args) => spawnWave(world, Number(args[0])) },  // registered into the command channel
+});
+```
+
+Rules the API enforces: desc objects whose omitted fields are the defaults;
+every failure is a returned `Result`-like value with a reason string; no
+global mutable state in game code (the world and resources are passed in);
+`Vector3`, `Quaternion`, `Matrix4`, `Color`, transform fields, material
+parameter names and `og.load.gltf()` follow three.js naming so an author's
+prior transfers, while the ECS, the tick and determinism are the engine's.
+
+### 3.3 Command channel **(D)**
+
+`og run --commands "t:action[:args];..."` and the probe's `commands(script)`
+schedule actions on sim time. Core actions ship with the engine; a module or
+a game registers more (`commands:` above). Unknown actions warn and continue.
+
+| Action | Does |
+|---|---|
+| `screenshot[:path][:full\|:N]` | capture a frame (readback, next frame) |
+| `touch_move_to:<ui id>` / `touch_move:x,y` / `touch_start` / `touch_end` / `scroll:dx,dy` | pointer by UI id or logical coordinates |
+| `key_down:<Key>` / `key_up:<Key>` / `type:<text>` | keyboard, display names |
+| `move_to_text:[=]text[@N]` | pointer to a UI element by its text |
+| `teleport:<entity>:x,y,z` / `frame_entity:<entity>` | place and look |
+| `dump_world[:path]` / `dump_entity:<name>[:path]` / `dump_ui[:path]` | tables, systems and their matched counts; one entity's components and transform; the UI tree with bounds |
+| `set:<entity>.<component>.<field>=<value>` | a Tune write through the schema |
+| `seed:<n>` / `pause` / `resume` / `advance:<ticks>` | determinism controls |
+| `quit` | exit |
+
+### 3.4 Probe **(D)**
+
+The engine implements `RuntimeProbe` protocol 5 natively (`hello`, `tick`,
+`state`, `advance`, `pause`, `resume`, `input`, `accepted`, `pick`, `entity`,
+`bounds`, `patch`, `run`) plus the wire-only members `capture`, `sweep`,
+`reload`, `snapshot`, `restore`, `dump`, `commands`. Transport: in-page calls
+from the shell (no postMessage hop: the shell calls the Worker through a
+request ring), a loopback WebSocket from `og` on native. `publish` builds keep
+the player-facing members (`hello`, `tick`, `state`, `pick`, `entity`,
+`input`, `capture`) and drop the rest.
+
+### 3.5 Hot reload **(D)**
+
+`reload` snapshots the world, swaps the game bundle (bun rebuilds in tens of
+milliseconds), re-registers components by name and restores. A component
+whose layout changed is migrated field by field through the schema; a
+removed one is dropped with a warning in the reload report.
+
+## 4. The play surface without iframes **(D)**
+
+The platform already serves a top-level Player on the play origin for phones
+(`play.<domain>/g/:slug`, `goals/play-surface` D1, D2). This design makes it
+the only mode:
+
+- Desktop and the creator Stage move to the same top-level page. The Portal
+  opens play in the same tab with the one-time identity handoff already built;
+  the creator overlay (chat, Stage controls, Tune, annotations) renders in the
+  play page itself, talking to Agent Server over its thread socket with the
+  scoped delegation the handoff mints.
+- The play origin carries no Portal cookie; the shell holds a game-scoped
+  player token. Game JavaScript runs in the page, and that is acceptable
+  because the page has nothing beyond the game's own scope to steal; the
+  engine's host ABI is the only route to platform APIs. This matches the
+  existing rule that games never receive Portal cookies, without the frame.
+- COOP/COEP on the play page enables lanes; the per-publication declaration
+  mechanism stays.
+- The shell is the brand surface: boot splash (`genesis` motion), real
+  progress (`progress`), ready-to-interact gate, safe areas, `100dvh`, one
+  audio unlock, PWA install.
+
+## 5. Executors and the sandbox **(D)**
+
+| Class | Contents | Image estimate |
+|---|---|---|
+| `engine` | bun, `@origingame/engine` (wasm + native addon), Mesa lavapipe, git | ≈ 500 MB |
+| `probe` | the same plus ffmpeg (minimal static build) | ≈ 600 MB |
+| `asset` | plus Blender headless (trimmed) and the cook tools | ≈ 1.8 GB |
+| `browser-check` (evaluation only) | plus Chrome headless-shell for the final "runs in a real browser" check | ≈ 800 MB |
+
+No Godot, no Chromium in the inner loop, no Rust toolchain anywhere in the
+sandbox. Frames, sweeps, replays and `feel_compare` run through `og` on the
+native addon and are deterministic. Performance truth comes from the person's
+device through Player telemetry and from `og run --device` (safaridriver /
+Chrome DevTools on a paired phone) when the person is present.
+
+## 6. Failure modes
+
+| Violation | Behaviour |
+|---|---|
+| stale typed view used after a structural change | throws with the owning tick and the system name |
+| dead handle | error value `{ok:false, reason}`; never a trap |
+| system writes a component it did not declare | refused at registration with the field name |
+| wall-clock read inside a tick | not reachable: `Date`/`performance` are not exposed to systems; the lint flags imports |
+| wasm trap (engine bug) | the shell shows the crash card with the last 200 log lines and the world dump; telemetry uploads the report |
+| WebGPU unavailable | GL fallback with the tier reported in `hello`; the agent reads the tier in Progress |
+| cook stamp mismatch at load | refuse with the asset path and the two stamps |
+| probe refusal | `false`/`null` exactly as protocol 5; `error` only for malformed calls |
+
+## 7. Budgets
+
+Measured in the spike (§10) and gated in CI afterwards.
+
+| Budget | Target |
+|---|---|
+| engine wasm, brotli | ≤ 4 MB core; ≤ 6 MB with physics and animation |
+| first frame, mid-range Android, 4G, small game | ≤ 2.0 s click to first frame (the play-surface budget) |
+| first frame, iPhone 13, Wi-Fi, mid-size 3D scene | ≤ 1.5 s |
+| TS system over 10,000 entities (one archetype, 2 components) | ≤ 1.0 ms per tick on a 2022 mid-range Android |
+| reference scene (500 instanced objects, 2 shadowed lights, 20 skinned characters, PBR, post) | ≥ 1.5× the frame rate of the same scene in Three.js on the same device |
+| probe `capture` 1280×720 | ≤ 30 ms native, ≤ 60 ms web |
+| hot reload | ≤ 300 ms from bundle write to first new frame |
+| headless executor image (`engine`) | ≤ 600 MB |
+
+## 8. Platform matrix
+
+| | WebGPU (Chrome, Edge, Safari 26+, recent Firefox) | WebGL2 fallback | native Linux (executor) | native macOS (developer) |
+|---|---|---|---|---|
+| renderer | full | no compute: CPU culling/particles, tiled lights, no GTAO | full (Vulkan, lavapipe or GPU) | full (Metal) |
+| lanes | with COOP/COEP | with COOP/COEP | rayon | rayon |
+| audio | AudioWorklet | AudioWorklet | cpal or null | cpal |
+| capture | readback | readback | readback | readback |
+| determinism | yes | yes | yes | yes |
+
+## 9. Branding **(D unless noted)**
+
+- **Name**: Origin Engine. The platform's current `engine/` workspace (the
+  Godot distribution) is renamed in documentation to "the Godot distribution"
+  during migration and retired after it; the name belongs to this engine.
+- **Prefix**: `og` everywhere a short identifier is needed: the CLI (`og`),
+  crates (`og-*`), formats (`.ogt`, `.ogb`), the host ABI (`og_*`), the
+  TypeScript root object (`og`). The platform already uses `og-` for
+  credentials, `og-probe` for the wire and `OG_*` for environment, so the
+  family stays consistent.
+- **Packages**: `@origingame/engine`, `@origingame/create`,
+  `@origingame/engine-knowledge`. Repository `origingame/origin-engine`.
+- **Artifacts**: `origin-engine.wasm`, `origin-engine.node`; telemetry and
+  user-agent token `OriginEngine/<version>`; `hello.engine` reports
+  `origin-engine <version>`.
+- **Marks**: the boot splash is the master symbol in white on ink `#14161b`
+  playing `genesis` once; loading uses `progress` with a real value; the
+  "Made with Origin Engine" badge in the player shell and the exported page's
+  footer. A product mark `engine` is added to `packages/brand` following the
+  product-mark rule (compositions of the master's parts): the core ring with
+  the symbol's two **inner** arms — the engine is what turns inside the
+  shell, the counterpart of `kit`, which is the two outer arms around the
+  core. Geometry lives in
+  `packages/ui-svelte/src/lib/brand/product-marks.ts`, never redrawn
+  elsewhere.
+- **Voice**: documentation, the wiki and `og` output use the platform's
+  editorial voice (`origingame/goals/editorial-design`): plain sentences, no
+  exclamation marks, every error names the fix.
+- **Versioning**: semver; a Game pins its engine version in `project.ogt`;
+  upgrades are explicit threads, as D19 already says.
+
+## 10. Spike (go/no-go)
+
+Two to three weeks, one branch, no platform changes:
+
+1. Rust + wgpu renders a glTF PBR scene with one shadowed directional light
+   and IBL in a Worker on an OffscreenCanvas, on a page served from
+   `play.origingame.ai` with COOP/COEP, on Chrome, Safari 26 (iPhone) and the
+   WebGL2 fallback.
+2. The same crate builds as a napi addon and renders the same frame headless
+   on Linux lavapipe inside today's `probe` sandbox; the two PNGs are compared.
+3. A TypeScript system over 10,000 entities through typed views, measured on
+   a mid-range Android.
+4. The reference scene in Three.js and in the spike, same device, frame times
+   recorded by the same harness.
+
+Numbers against §7 decide: all four within budget → phase 1; wasm size or
+iPhone first frame off by more than 50 % → redesign the renderer tiering
+before phase 1; the TS view budget missed → move more systems into the
+engine as data-driven behaviours and re-measure; the Three.js comparison
+below 1.2× → the performance claim is dropped from positioning and the
+project continues on the AI-native and isolation grounds only.
+
+### 10.1 Results so far (2026-10-17, `crates/og-spike/RESULTS.md`)
+
+Taken on an M4 Pro with headless Chrome and in the platform's E2B `probe`
+sandbox; the iPhone and Android numbers are still pending.
+
+- Size: the renderer-only wasm is 0.91 MB brotli (3.19 MB raw), against the
+  4 MB core budget.
+- Sandbox: the same binary renders the same frame on lavapipe (RMSE 0.003
+  against Metal) at 236 ms per 880k-triangle frame, with no browser or Godot.
+- Browser: GPU-bound instanced scenes are parity with three.js (within
+  ±20 %, three's WebGPU renderer slightly ahead); per-object scenes of
+  20,000 moving objects run 7.5× faster than three.js written the way
+  authors write it (5 draws versus 20,001). The WebGL2 fallback costs 30–45 %.
+- TypeScript systems over typed views: 0.014 ms per tick for 10,000
+  entities on desktop, 60× under budget.
+
+Consequence for the positioning (§1 goal 4): the engine's performance claim
+is "batched, instanced and culled by default, so the slow version cannot be
+written", not "faster than three.js" in raw raster throughput. The
+isolation, play-surface and AI-native goals are unaffected, and the project
+continues on that basis; the phase-3 lanes and GPU-driven culling are where
+the engine pulls ahead on CPU-bound content further.
+
+## 11. Phases
+
+| Phase | Months | Delivers | Evidence |
+|---|---|---|---|
+| 0 Spike | 0.75 | §10 | the four numbers, published in the platform goal |
+| 1 Core | 3 | ECS + reflection, tick + determinism, snapshot, `.ogt`/`.ogb`, cook (glTF, textures, scenes), forward+ PBR with shadows and IBL, input, camera, audio, command channel, probe, hot reload, `og`, the IDL pipeline (d.ts + wiki), project template, two archetype games | gfx references, the probe conformance suite from `origin/packages/contracts`, a Discover prototype rebuilt and played through `og run --commands` |
+| 2 Mid-size 3D | 4 | skeletal animation + blend trees + IK, rapier + character controller, navmesh, particles, post stack, terrain, decals, UI toolkit on tokens, MSDF text, Tune | all six Discover archetypes rebuilt; one mid-size 3D showcase; perf baselines in CI |
+| 3 Scale | 3 | lanes, GPU-driven culling, streaming, `og run --device`, splats (optional) | the §7 budgets held on the reference scene with lanes on |
+| Platform migration | overlaps 1–2 | §5 executor classes; Player top-level for desktop and creator; `@origingame/engine` in the knowledge pack; Wizard deploys the new artifact; Godot distribution and Three.js substrate retired after the last Game migrates or is archived | `bun deploy/ovh/state.ts` drift closed; `verify-production.sh`; image sizes |
+
+## 12. Open decisions (owner)
+
+1. ~~Licence~~ **Decided 2026-10-17: MIT** (`LICENSE`). The platform services
+   are the product; the engine is open.
+2. ~~Product mark~~ **Decided 2026-10-17**: composed from the existing master
+   symbol (§9); geometry in the platform's `product-marks.ts`.
+3. **2D as a first-class profile** (orthographic camera, sprite batching,
+   2D physics via rapier2d) in phase 1 or phase 2.
+4. **WebGL2 fallback lifetime**: keep until WebGPU share on the platform's
+   real devices passes a threshold the Player telemetry reports.
+5. **Native macOS/Windows developer runs** of `og run` beyond executors (nice
+   for engine developers; not a product).
+
+## 13. Alternatives considered
+
+- **Bevy as the base.** Mature wgpu renderer and ECS in Rust, MIT/Apache. Rejected
+  because the API changes every release, which defeats the stable API the
+  agent's knowledge depends on, its wasm builds are large, and web
+  multithreading is not supported. Its crates (wgpu, naga, glam) are used
+  directly.
+- **Keep Godot, improve the tooling.** The headless footprint, the editor-centric
+  data model and GDScript remain; the agent's inner loop stays slow.
+- **Three.js with an imposed structure.** Keeps the knowledge advantage but
+  leaves JavaScript as the per-frame engine and the iframe as the isolation;
+  the performance and play-surface goals are unreachable.
+- **A C engine like HZ.** Proven shape, but Rust gives the same wasm output
+  with memory safety and a team that already writes it; game code in C would
+  put a compiler back into the author's loop.
+- **Game code in Rust.** Strongest isolation and performance, rejected for
+  compile latency, toolchain size in every sandbox and the author's loop.
+
+## 14. Sources
+
+Observed shapes, not code: the HZ engine's AI-native workflow (command
+channel, evidence loop, wiki-as-map, reflection to blobs, one build tool);
+wgpu, naga, rapier, meshoptimizer, KTX2/Basis, QOA, MSDF, Clay layout;
+the platform's probe protocol 5, play-surface decisions D1–D12, agent-system
+decisions D12–D19 and D23, and `docs/design-language.md`.

@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>three.js comparison</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #14161b; color: #e8e9ec; font: 14px/1.4 system-ui, sans-serif; }
+  canvas { display: block; width: 100vw; height: 100dvh; }
+  #hud { position: fixed; left: 12px; top: 12px; padding: 8px 10px; background: rgba(20,22,27,.72); border-radius: 8px; white-space: pre; font-family: ui-monospace, monospace; font-size: 12px; }
+</style>
+<script type="importmap">{ "imports": { "three": "./node_modules/three/build/three.module.js", "three/webgpu": "./node_modules/three/build/three.webgpu.js", "three/tsl": "./node_modules/three/build/three.tsl.js", "three/addons/": "./node_modules/three/examples/jsm/" } }</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud">starting…</div>
+<script>window.addEventListener("error", (e) => fetch("/result", { method: "POST", body: JSON.stringify({ error: String(e.message), backend: "three" }) })); window.addEventListener("unhandledrejection", (e) => fetch("/result", { method: "POST", body: JSON.stringify({ error: String(e.reason && e.reason.message || e.reason), backend: "three" }) }));</script>
+<script type="module">
+// The same reference scene as the Rust spike: `count` instances of each model on a grid
+// (spacing 3, scaled to 2 units, rotated by sin(i*0.7)*1.2), a checker ground, one shadowed
+// directional light (2048 PCF), a procedural sky environment through PMREM, ACES tonemapping,
+// and the same orbiting camera (fov 50, angle 0.6 + t*0.25, distance r*1.6, height r*0.75).
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+const params = new URLSearchParams(location.search);
+const count = Number(params.get("count") ?? 25);
+const seconds = Number(params.get("seconds") ?? 5);
+const useWebGPU = params.get("webgpu") === "1";
+const models = (params.get("models") ?? "trickster.glb,dropship.glb").split(",").filter(Boolean);
+const sphere = params.get("sphere") === "1";   // the low-poly sphere field instead of the glTF models
+const naive = params.get("naive") === "1";     // one Mesh per object (what hand-written three.js games do)
+const moving = params.get("moving") === "1";   // rotate every object each frame
+const hud = document.getElementById("hud");
+const canvas = document.getElementById("c");
+const dpr = Math.min(devicePixelRatio || 1, 2);
+const t0 = performance.now();
+
+let renderer;
+if (useWebGPU) {
+  const { WebGPURenderer } = await import("three/webgpu");
+  renderer = new WebGPURenderer({ canvas, antialias: false, forceWebGL: false });
+  await renderer.init();
+} else {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: "high-performance" });
+}
+renderer.setPixelRatio(dpr);
+renderer.setSize(innerWidth, innerHeight, false);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.8;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0.5, 0.65, 0.9);
+
+// Procedural sky as an equirect texture, prefiltered by PMREM (the IBL the Rust side generates).
+{
+  const w = 512, h = 256, data = new Float32Array(w * h * 4);
+  const sun = new THREE.Vector3(0.45, 0.8, 0.35).normalize();
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const phi = (x / w) * Math.PI * 2 - Math.PI, theta = (y / h) * Math.PI;
+    const d = new THREE.Vector3(Math.sin(theta) * Math.sin(phi), Math.cos(theta), Math.sin(theta) * Math.cos(phi));
+    const up = d.y;
+    const mixv = (a, b, t) => a + (b - a) * t;
+    const tz = Math.pow(Math.max(up, 0), 0.55);
+    let r = mixv(0.78, 0.18, tz), g = mixv(0.84, 0.36, tz), b = mixv(0.92, 0.78, tz);
+    const gm = Math.min(Math.max((up + 0.08) / 0.1, 0), 1);
+    r = mixv(0.16, r, gm); g = mixv(0.14, g, gm); b = mixv(0.12, b, gm);
+    const cs = d.dot(sun);
+    const glow = Math.pow(Math.max(cs, 0), 24) * 0.6;
+    const disc = (cs > 0.9995 ? 1 : 0) * 40;
+    const i = (y * w + x) * 4;
+    data[i] = r * 1.1 + (glow + disc); data[i + 1] = g * 1.1 + 0.95 * (glow + disc); data[i + 2] = b * 1.1 + 0.85 * (glow + disc); data[i + 3] = 1;
+  }
+  const tex = new THREE.DataTexture(data, w, h, THREE.RGBAFormat, THREE.FloatType);
+  tex.mapping = THREE.EquirectangularReflectionMapping; tex.needsUpdate = true;
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromEquirectangular(tex).texture;
+}
+
+const sunDir = new THREE.Vector3(0.45, 0.8, 0.35).normalize();
+const light = new THREE.DirectionalLight(new THREE.Color(1, 0.967, 0.867), 3);
+light.castShadow = true;
+light.shadow.mapSize.set(2048, 2048);
+scene.add(light, light.target);
+
+const loader = new GLTFLoader();
+const loaded = sphere
+  ? [{ scene: new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 12), new THREE.MeshStandardMaterial({ color: new THREE.Color(0.85, 0.35, 0.2), roughness: 0.45, metalness: 0.1 })) }]
+  : await Promise.all(models.map((m) => loader.loadAsync(`./models/${m}`)));
+const spacing = sphere ? 1.2 : 3;
+const movers = [];
+let triangles = 0;
+const n = loaded.length;
+const bounds = new THREE.Box3();
+const side = Math.ceil(Math.sqrt(count));
+loaded.forEach((gltf, k) => {
+  const root = gltf.scene;
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root);
+  const ext = new THREE.Vector3(); box.getSize(ext);
+  const scale = 2 / Math.max(ext.x, ext.y, ext.z, 1e-3);
+  // Instance every mesh of the model with InstancedMesh (the fair comparison: three's batching path).
+  const meshes = [];
+  root.traverse((o) => { if (o.isMesh) meshes.push(o); });
+  const offsetZ = (k - (n - 1) / 2) * spacing * 0.5;
+  for (const mesh of meshes) {
+    const idx = mesh.geometry.index; triangles += (idx ? idx.count : mesh.geometry.attributes.position.count) / 3 * count;
+    const place = (i) => {
+      const x = (i % side) - (side - 1) / 2, z = Math.floor(i / side) - (side - 1) / 2;
+      const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.sin(i * 0.7) * 1.2);
+      const p = new THREE.Vector3(x * spacing, -box.min.y * scale, z * spacing + offsetZ);
+      return new THREE.Matrix4().compose(p, q, new THREE.Vector3(scale, scale, scale)).multiply(mesh.matrixWorld);
+    };
+    if (naive) {
+      for (let i = 0; i < count; i++) {
+        const o = new THREE.Mesh(mesh.geometry, mesh.material);
+        o.castShadow = true; o.receiveShadow = true;
+        const base = place(i);
+        o.matrixAutoUpdate = false; o.matrix.copy(base);
+        scene.add(o); bounds.expandByObject(o);
+        movers.push({ apply: (t) => { o.matrix.copy(base).multiply(new THREE.Matrix4().makeRotationY(t * (0.5 + (i % 7) * 0.2))); } });
+      }
+    } else {
+      const inst = new THREE.InstancedMesh(mesh.geometry, mesh.material, count);
+      inst.castShadow = true; inst.receiveShadow = true;
+      const bases = [];
+      for (let i = 0; i < count; i++) { bases.push(place(i)); inst.setMatrixAt(i, bases[i]); }
+      inst.instanceMatrix.needsUpdate = true;
+      scene.add(inst); bounds.expandByObject(inst);
+      movers.push({ apply: (t) => { const m = new THREE.Matrix4(); for (let i = 0; i < count; i++) { m.copy(bases[i]).multiply(new THREE.Matrix4().makeRotationY(t * (0.5 + (i % 7) * 0.2))); inst.setMatrixAt(i, m); } inst.instanceMatrix.needsUpdate = true; } });
+    }
+  }
+});
+const groundSize = Math.max(12, side * spacing + 6);
+{
+  const c = document.createElement("canvas"); c.width = c.height = 512; const ctx = c.getContext("2d");
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { ctx.fillStyle = (x + y) % 2 ? "#787878" : "#aaaaaa"; ctx.fillRect(x * 32, y * 32, 32, 32); }
+  const tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(groundSize / 2, groundSize / 2); tex.colorSpace = THREE.SRGBColorSpace;
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(groundSize, groundSize), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85, metalness: 0 }));
+  ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+  bounds.expandByPoint(new THREE.Vector3(-groundSize / 2, 0, -groundSize / 2)); bounds.expandByPoint(new THREE.Vector3(groundSize / 2, 0, groundSize / 2));
+  triangles += 2;
+}
+const center = new THREE.Vector3(); bounds.getCenter(center);
+const radius = bounds.getSize(new THREE.Vector3()).length() / 2;
+light.position.copy(center).addScaledVector(sunDir, radius * 2); light.target.position.copy(center);
+light.shadow.camera.left = -radius; light.shadow.camera.right = radius; light.shadow.camera.top = radius; light.shadow.camera.bottom = -radius; light.shadow.camera.near = 0.1; light.shadow.camera.far = radius * 4;
+const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, radius * 8);
+
+const samples = []; let first = 0; let last = 0; const start = performance.now();
+function frame() {
+  const now = performance.now();
+  const t = (now - start) / 1000, angle = 0.6 + t * 0.25, dist = radius * 1.6;
+  camera.position.set(center.x + Math.cos(angle) * dist, center.y + radius * 0.75, center.z + Math.sin(angle) * dist);
+  camera.lookAt(center);
+  if (moving) for (const mv of movers) mv.apply(t);
+  renderer.render(scene, camera);
+  if (!first) first = now;
+  if (last) samples.push(now - last);
+  last = now;
+  if (now - start < seconds * 1000) requestAnimationFrame(frame); else finish();
+}
+function finish() {
+  const s = samples.slice(5).sort((a, b) => a - b);
+  const q = (p) => s[Math.min(s.length - 1, Math.floor(p * s.length))];
+  const result = { backend: useWebGPU ? "three-webgpu" : "three-webgl2", scene: sphere ? "sphere" : "gltf", naive, moving, count, triangles, draws: renderer.info.render.calls, width: canvas.width, height: canvas.height, firstFrameMs: +(first - t0).toFixed(1), frames: samples.length, frameMs: { p50: +q(0.5).toFixed(2), p95: +q(0.95).toFixed(2), mean: +(s.reduce((a, b) => a + b, 0) / s.length).toFixed(2) } };
+  window.__spikeResult = result; hud.textContent = JSON.stringify(result, null, 1); fetch("/result", { method: "POST", body: JSON.stringify(result) });
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
