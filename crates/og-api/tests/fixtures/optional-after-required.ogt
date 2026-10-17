@@ -1,0 +1,33 @@
+type api
+version 1
+---
+# expect: 31: required param `count` follows an optional one in fn `world.spawn`
+package "@origingame/fixture"
+doc "A fixture: the smallest valid API plus one mistake below."
+
+module reflect {
+  doc "Reflection."
+  place top
+  struct FieldOptions {
+    doc "Field metadata."
+    desc true
+    field min Option.f32 "The smallest meaningful value."
+  }
+  column f32 {
+    doc "A float."
+    array Float32Array
+    stride 1
+    value f32
+  }
+}
+
+module world {
+  doc "The world."
+  fn spawn {
+    doc "Spawn entities."
+    param name String "A name." {
+      optional true
+    }
+    param count u32 "How many."
+  }
+}

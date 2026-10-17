@@ -1,0 +1,10 @@
+# Crates the wasm step builds with
+#   cargo build --release --target wasm32-unknown-unknown -p <crate> --lib
+# One "crate status" pair per line; '#' starts a comment.
+#   required  built together in one cargo invocation; a build failure fails the gate
+#   pending   built one at a time; a build failure prints WARN and is tolerated
+#             (use while a crate is being ported; flip to required once it builds)
+# A crate without a cdylib crate-type builds but yields no .wasm; that is
+# reported, not failed, until budgets.txt says `wasm_artifacts required`.
+og-render   required
+og-host-web required

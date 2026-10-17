@@ -1,0 +1,2228 @@
+{
+  "$comment": "Generated from crates/og-api/api.ogt by `og api gen`. Do not edit: `og api check` fails on any difference; change api.ogt and regenerate.",
+  "package": "@origingame/engine",
+  "api": 1,
+  "columns": [
+    {
+      "name": "f32",
+      "array": "Float32Array",
+      "stride": 1,
+      "value": "f32"
+    },
+    {
+      "name": "f64",
+      "array": "Float64Array",
+      "stride": 1,
+      "value": "f64"
+    },
+    {
+      "name": "u32",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "u32"
+    },
+    {
+      "name": "i32",
+      "array": "Int32Array",
+      "stride": 1,
+      "value": "i32"
+    },
+    {
+      "name": "bool",
+      "array": "Uint8Array",
+      "stride": 1,
+      "value": "bool"
+    },
+    {
+      "name": "Vector2",
+      "array": "Float32Array",
+      "stride": 2,
+      "value": "Vector2"
+    },
+    {
+      "name": "Vector3",
+      "array": "Float32Array",
+      "stride": 3,
+      "value": "Vector3"
+    },
+    {
+      "name": "Quaternion",
+      "array": "Float32Array",
+      "stride": 4,
+      "value": "Quaternion"
+    },
+    {
+      "name": "Matrix4",
+      "array": "Float32Array",
+      "stride": 16,
+      "value": "Matrix4"
+    },
+    {
+      "name": "Color",
+      "array": "Float32Array",
+      "stride": 3,
+      "value": "Color"
+    },
+    {
+      "name": "Entity",
+      "array": "Uint32Array",
+      "stride": 2,
+      "value": "Entity"
+    },
+    {
+      "name": "Geometry",
+      "array": "Uint32Array",
+      "stride": 2,
+      "value": "Geometry"
+    },
+    {
+      "name": "Material",
+      "array": "Uint32Array",
+      "stride": 2,
+      "value": "Material"
+    }
+  ],
+  "components": [
+    {
+      "id": 0,
+      "name": "Transform",
+      "module": "transform",
+      "fields": [
+        {
+          "name": "position",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "quaternion",
+          "column": "Quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        {
+          "name": "scale",
+          "column": "Vector3",
+          "default": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "Parent",
+      "module": "transform",
+      "fields": [
+        {
+          "name": "entity",
+          "column": "Entity",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "MatrixWorld",
+      "module": "transform",
+      "fields": [
+        {
+          "name": "matrix",
+          "column": "Matrix4",
+          "default": {
+            "elements": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+          },
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Mesh",
+      "module": "render",
+      "fields": [
+        {
+          "name": "geometry",
+          "column": "Geometry",
+          "default": 0
+        },
+        {
+          "name": "material",
+          "column": "Material",
+          "default": 0
+        },
+        {
+          "name": "castShadow",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "receiveShadow",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "visible",
+          "column": "bool",
+          "default": true
+        }
+      ]
+    }
+  ],
+  "resources": [
+    {
+      "id": 0,
+      "name": "Time",
+      "module": "time",
+      "fields": [
+        {
+          "name": "tick",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "dt",
+          "column": "f32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "elapsed",
+          "column": "f64",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "rate",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "Rng",
+      "module": "rng",
+      "fields": [
+        {
+          "name": "seed",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "state",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Input",
+      "module": "input",
+      "fields": [
+        {
+          "name": "pointer",
+          "column": "Vector2",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readonly": true
+        },
+        {
+          "name": "pointerInside",
+          "column": "bool",
+          "default": false,
+          "readonly": true
+        },
+        {
+          "name": "wheel",
+          "column": "Vector2",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Camera",
+      "module": "camera",
+      "fields": [
+        {
+          "name": "position",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "quaternion",
+          "column": "Quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        {
+          "name": "fov",
+          "column": "f32",
+          "default": 50,
+          "tunable": true
+        },
+        {
+          "name": "near",
+          "column": "f32",
+          "default": 0.1
+        },
+        {
+          "name": "far",
+          "column": "f32",
+          "default": 2000
+        },
+        {
+          "name": "zoom",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "orthographic",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "height",
+          "column": "f32",
+          "default": 10
+        },
+        {
+          "name": "background",
+          "column": "Color",
+          "default": {
+            "r": 0.00699,
+            "g": 0.00803,
+            "b": 0.01096
+          }
+        },
+        {
+          "name": "exposure",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": 0,
+      "name": "KeyDown",
+      "module": "input",
+      "fields": [
+        {
+          "name": "key",
+          "type": "String",
+          "default": ""
+        },
+        {
+          "name": "repeat",
+          "type": "bool",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "KeyUp",
+      "module": "input",
+      "fields": [
+        {
+          "name": "key",
+          "type": "String",
+          "default": ""
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "PointerDown",
+      "module": "input",
+      "fields": [
+        {
+          "name": "x",
+          "type": "f32",
+          "default": 0
+        },
+        {
+          "name": "y",
+          "type": "f32",
+          "default": 0
+        },
+        {
+          "name": "button",
+          "type": "PointerButton",
+          "default": "none"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "PointerUp",
+      "module": "input",
+      "fields": [
+        {
+          "name": "x",
+          "type": "f32",
+          "default": 0
+        },
+        {
+          "name": "y",
+          "type": "f32",
+          "default": 0
+        },
+        {
+          "name": "button",
+          "type": "PointerButton",
+          "default": "none"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "PointerMove",
+      "module": "input",
+      "fields": [
+        {
+          "name": "x",
+          "type": "f32",
+          "default": 0
+        },
+        {
+          "name": "y",
+          "type": "f32",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Wheel",
+      "module": "input",
+      "fields": [
+        {
+          "name": "deltaX",
+          "type": "f32",
+          "default": 0
+        },
+        {
+          "name": "deltaY",
+          "type": "f32",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "AssetReady",
+      "module": "load",
+      "fields": [
+        {
+          "name": "asset",
+          "type": "Asset",
+          "default": 0
+        },
+        {
+          "name": "path",
+          "type": "String",
+          "default": ""
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "AssetFailed",
+      "module": "load",
+      "fields": [
+        {
+          "name": "asset",
+          "type": "Asset",
+          "default": 0
+        },
+        {
+          "name": "path",
+          "type": "String",
+          "default": ""
+        },
+        {
+          "name": "reason",
+          "type": "String",
+          "default": ""
+        }
+      ]
+    }
+  ],
+  "calls": [
+    {
+      "id": 0,
+      "kind": "fn",
+      "path": "defineComponent",
+      "symbol": "og_reflect_define_component",
+      "module": "reflect",
+      "name": "defineComponent",
+      "generics": [
+        {
+          "name": "F",
+          "bound": "Fields"
+        }
+      ],
+      "params": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "fields",
+          "type": "F",
+          "optional": false
+        }
+      ],
+      "returns": "ComponentType<F>",
+      "publish": true
+    },
+    {
+      "id": 1,
+      "kind": "fn",
+      "path": "defineResource",
+      "symbol": "og_reflect_define_resource",
+      "module": "reflect",
+      "name": "defineResource",
+      "generics": [
+        {
+          "name": "F",
+          "bound": "Fields"
+        }
+      ],
+      "params": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "fields",
+          "type": "F",
+          "optional": false
+        }
+      ],
+      "returns": "ResourceType<F>",
+      "publish": true
+    },
+    {
+      "id": 2,
+      "kind": "prop",
+      "path": "World.tick",
+      "symbol": "og_world_get_tick",
+      "module": "world",
+      "owner": "World",
+      "name": "tick",
+      "type": "u32",
+      "publish": true
+    },
+    {
+      "id": 3,
+      "kind": "method",
+      "path": "World.spawn",
+      "symbol": "og_world_spawn",
+      "module": "world",
+      "owner": "World",
+      "name": "spawn",
+      "params": [
+        {
+          "name": "desc",
+          "type": "SpawnDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Entity>",
+      "publish": true
+    },
+    {
+      "id": 4,
+      "kind": "method",
+      "path": "World.despawn",
+      "symbol": "og_world_despawn",
+      "module": "world",
+      "owner": "World",
+      "name": "despawn",
+      "params": [
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 5,
+      "kind": "method",
+      "path": "World.alive",
+      "symbol": "og_world_alive",
+      "module": "world",
+      "owner": "World",
+      "name": "alive",
+      "params": [
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        }
+      ],
+      "returns": "bool",
+      "publish": true
+    },
+    {
+      "id": 6,
+      "kind": "method",
+      "path": "World.has",
+      "symbol": "og_world_has",
+      "module": "world",
+      "owner": "World",
+      "name": "has",
+      "generics": [
+        {
+          "name": "C",
+          "bound": "AnyComponent"
+        }
+      ],
+      "params": [
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        },
+        {
+          "name": "component",
+          "type": "C",
+          "optional": false
+        }
+      ],
+      "returns": "bool",
+      "publish": true
+    },
+    {
+      "id": 7,
+      "kind": "method",
+      "path": "World.insert",
+      "symbol": "og_world_insert",
+      "module": "world",
+      "owner": "World",
+      "name": "insert",
+      "generics": [
+        {
+          "name": "C",
+          "bound": "AnyComponent"
+        }
+      ],
+      "params": [
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        },
+        {
+          "name": "component",
+          "type": "C",
+          "optional": false
+        },
+        {
+          "name": "value",
+          "type": "Partial<Value<C>>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 8,
+      "kind": "method",
+      "path": "World.remove",
+      "symbol": "og_world_remove",
+      "module": "world",
+      "owner": "World",
+      "name": "remove",
+      "generics": [
+        {
+          "name": "C",
+          "bound": "AnyComponent"
+        }
+      ],
+      "params": [
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        },
+        {
+          "name": "component",
+          "type": "C",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 9,
+      "kind": "method",
+      "path": "World.get",
+      "symbol": "og_world_get",
+      "module": "world",
+      "owner": "World",
+      "name": "get",
+      "generics": [
+        {
+          "name": "C",
+          "bound": "AnyComponent"
+        }
+      ],
+      "params": [
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        },
+        {
+          "name": "component",
+          "type": "C",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Value<C>>",
+      "publish": true
+    },
+    {
+      "id": 10,
+      "kind": "method",
+      "path": "World.set",
+      "symbol": "og_world_set",
+      "module": "world",
+      "owner": "World",
+      "name": "set",
+      "generics": [
+        {
+          "name": "C",
+          "bound": "AnyComponent"
+        }
+      ],
+      "params": [
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        },
+        {
+          "name": "component",
+          "type": "C",
+          "optional": false
+        },
+        {
+          "name": "value",
+          "type": "Partial<Value<C>>",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 11,
+      "kind": "method",
+      "path": "World.resource",
+      "symbol": "og_world_resource",
+      "module": "world",
+      "owner": "World",
+      "name": "resource",
+      "generics": [
+        {
+          "name": "R",
+          "bound": "AnyResource"
+        }
+      ],
+      "params": [
+        {
+          "name": "resource",
+          "type": "R",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Value<R>>",
+      "publish": true
+    },
+    {
+      "id": 12,
+      "kind": "method",
+      "path": "World.find",
+      "symbol": "og_world_find",
+      "module": "world",
+      "owner": "World",
+      "name": "find",
+      "params": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Option<Entity>",
+      "publish": true
+    },
+    {
+      "id": 13,
+      "kind": "method",
+      "path": "World.nameOf",
+      "symbol": "og_world_name_of",
+      "module": "world",
+      "owner": "World",
+      "name": "nameOf",
+      "params": [
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        }
+      ],
+      "returns": "Option<String>",
+      "publish": true
+    },
+    {
+      "id": 14,
+      "kind": "method",
+      "path": "World.query",
+      "symbol": "og_world_query",
+      "module": "world",
+      "owner": "World",
+      "name": "query",
+      "params": [
+        {
+          "name": "desc",
+          "type": "QueryDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Query>",
+      "publish": true
+    },
+    {
+      "id": 15,
+      "kind": "method",
+      "path": "World.events",
+      "symbol": "og_world_events",
+      "module": "world",
+      "owner": "World",
+      "name": "events",
+      "generics": [
+        {
+          "name": "E",
+          "bound": "AnyEvent"
+        }
+      ],
+      "params": [
+        {
+          "name": "event",
+          "type": "E",
+          "optional": false
+        }
+      ],
+      "returns": "List<Value<E>>",
+      "publish": true
+    },
+    {
+      "id": 16,
+      "kind": "method",
+      "path": "World.emit",
+      "symbol": "og_world_emit",
+      "module": "world",
+      "owner": "World",
+      "name": "emit",
+      "generics": [
+        {
+          "name": "E",
+          "bound": "AnyEvent"
+        }
+      ],
+      "params": [
+        {
+          "name": "event",
+          "type": "E",
+          "optional": false
+        },
+        {
+          "name": "payload",
+          "type": "Value<E>",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 17,
+      "kind": "method",
+      "path": "World.instantiate",
+      "symbol": "og_world_instantiate",
+      "module": "world",
+      "owner": "World",
+      "name": "instantiate",
+      "params": [
+        {
+          "name": "asset",
+          "type": "Asset",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "SpawnDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Entity>",
+      "publish": true
+    },
+    {
+      "id": 18,
+      "kind": "method",
+      "path": "Query.archetypes",
+      "symbol": "og_query_archetypes",
+      "module": "world",
+      "owner": "Query",
+      "name": "archetypes",
+      "params": [],
+      "returns": "List<ArchetypeView>",
+      "publish": true
+    },
+    {
+      "id": 19,
+      "kind": "method",
+      "path": "Query.count",
+      "symbol": "og_query_count",
+      "module": "world",
+      "owner": "Query",
+      "name": "count",
+      "params": [],
+      "returns": "u32",
+      "publish": true
+    },
+    {
+      "id": 20,
+      "kind": "prop",
+      "path": "ArchetypeView.count",
+      "symbol": "og_archetype_view_get_count",
+      "module": "world",
+      "owner": "ArchetypeView",
+      "name": "count",
+      "type": "u32",
+      "publish": true
+    },
+    {
+      "id": 21,
+      "kind": "prop",
+      "path": "ArchetypeView.tick",
+      "symbol": "og_archetype_view_get_tick",
+      "module": "world",
+      "owner": "ArchetypeView",
+      "name": "tick",
+      "type": "u32",
+      "publish": true
+    },
+    {
+      "id": 22,
+      "kind": "prop",
+      "path": "ArchetypeView.entities",
+      "symbol": "og_archetype_view_get_entities",
+      "module": "world",
+      "owner": "ArchetypeView",
+      "name": "entities",
+      "type": "Uint32Array",
+      "publish": true
+    },
+    {
+      "id": 23,
+      "kind": "method",
+      "path": "ArchetypeView.entity",
+      "symbol": "og_archetype_view_entity",
+      "module": "world",
+      "owner": "ArchetypeView",
+      "name": "entity",
+      "params": [
+        {
+          "name": "index",
+          "type": "u32",
+          "optional": false
+        }
+      ],
+      "returns": "Entity",
+      "publish": true
+    },
+    {
+      "id": 24,
+      "kind": "method",
+      "path": "ArchetypeView.has",
+      "symbol": "og_archetype_view_has",
+      "module": "world",
+      "owner": "ArchetypeView",
+      "name": "has",
+      "generics": [
+        {
+          "name": "C",
+          "bound": "AnyComponent"
+        }
+      ],
+      "params": [
+        {
+          "name": "component",
+          "type": "C",
+          "optional": false
+        }
+      ],
+      "returns": "bool",
+      "publish": true
+    },
+    {
+      "id": 25,
+      "kind": "method",
+      "path": "ArchetypeView.column",
+      "symbol": "og_archetype_view_column",
+      "module": "world",
+      "owner": "ArchetypeView",
+      "name": "column",
+      "generics": [
+        {
+          "name": "C",
+          "bound": "AnyComponent"
+        }
+      ],
+      "params": [
+        {
+          "name": "component",
+          "type": "C",
+          "optional": false
+        }
+      ],
+      "returns": "View<C>",
+      "publish": true
+    },
+    {
+      "id": 26,
+      "kind": "prop",
+      "path": "System.name",
+      "symbol": "og_system_get_name",
+      "module": "system",
+      "owner": "System",
+      "name": "name",
+      "type": "String",
+      "publish": true
+    },
+    {
+      "id": 27,
+      "kind": "prop",
+      "path": "System.reads",
+      "symbol": "og_system_get_reads",
+      "module": "system",
+      "owner": "System",
+      "name": "reads",
+      "type": "List<AnyReflected>",
+      "publish": true
+    },
+    {
+      "id": 28,
+      "kind": "prop",
+      "path": "System.writes",
+      "symbol": "og_system_get_writes",
+      "module": "system",
+      "owner": "System",
+      "name": "writes",
+      "type": "List<AnyReflected>",
+      "publish": true
+    },
+    {
+      "id": 29,
+      "kind": "fn",
+      "path": "defineSystem",
+      "symbol": "og_system_define_system",
+      "module": "system",
+      "name": "defineSystem",
+      "params": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "SystemDesc",
+          "optional": false
+        },
+        {
+          "name": "run",
+          "type": "SystemRun",
+          "optional": false
+        }
+      ],
+      "returns": "System",
+      "publish": true
+    },
+    {
+      "id": 30,
+      "kind": "prop",
+      "path": "Game.tick",
+      "symbol": "og_game_get_tick",
+      "module": "game",
+      "owner": "Game",
+      "name": "tick",
+      "type": "u32",
+      "publish": true
+    },
+    {
+      "id": 31,
+      "kind": "prop",
+      "path": "Game.systems",
+      "symbol": "og_game_get_systems",
+      "module": "game",
+      "owner": "Game",
+      "name": "systems",
+      "type": "List<System>",
+      "publish": true
+    },
+    {
+      "id": 32,
+      "kind": "fn",
+      "path": "og.game",
+      "symbol": "og_game_game",
+      "module": "game",
+      "name": "game",
+      "params": [
+        {
+          "name": "desc",
+          "type": "GameDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Game",
+      "publish": true
+    },
+    {
+      "id": 33,
+      "kind": "fn",
+      "path": "og.transform.compose",
+      "symbol": "og_transform_compose",
+      "module": "transform",
+      "name": "compose",
+      "params": [
+        {
+          "name": "position",
+          "type": "Vector3",
+          "optional": false
+        },
+        {
+          "name": "quaternion",
+          "type": "Quaternion",
+          "optional": false
+        },
+        {
+          "name": "scale",
+          "type": "Vector3",
+          "optional": false
+        }
+      ],
+      "returns": "Matrix4",
+      "publish": true
+    },
+    {
+      "id": 34,
+      "kind": "fn",
+      "path": "og.transform.decompose",
+      "symbol": "og_transform_decompose",
+      "module": "transform",
+      "name": "decompose",
+      "params": [
+        {
+          "name": "matrix",
+          "type": "Matrix4",
+          "optional": false
+        }
+      ],
+      "returns": "Transform",
+      "publish": true
+    },
+    {
+      "id": 35,
+      "kind": "fn",
+      "path": "og.transform.lookAt",
+      "symbol": "og_transform_look_at",
+      "module": "transform",
+      "name": "lookAt",
+      "params": [
+        {
+          "name": "eye",
+          "type": "Vector3",
+          "optional": false
+        },
+        {
+          "name": "target",
+          "type": "Vector3",
+          "optional": false
+        },
+        {
+          "name": "up",
+          "type": "Vector3",
+          "optional": true
+        }
+      ],
+      "returns": "Quaternion",
+      "publish": true
+    },
+    {
+      "id": 36,
+      "kind": "fn",
+      "path": "og.transform.fromAxisAngle",
+      "symbol": "og_transform_from_axis_angle",
+      "module": "transform",
+      "name": "fromAxisAngle",
+      "params": [
+        {
+          "name": "axis",
+          "type": "Vector3",
+          "optional": false
+        },
+        {
+          "name": "angle",
+          "type": "f32",
+          "optional": false
+        }
+      ],
+      "returns": "Quaternion",
+      "publish": true
+    },
+    {
+      "id": 37,
+      "kind": "prop",
+      "path": "RngStream.seed",
+      "symbol": "og_rng_stream_get_seed",
+      "module": "rng",
+      "owner": "RngStream",
+      "name": "seed",
+      "type": "u32",
+      "publish": true
+    },
+    {
+      "id": 38,
+      "kind": "method",
+      "path": "RngStream.next",
+      "symbol": "og_rng_stream_next",
+      "module": "rng",
+      "owner": "RngStream",
+      "name": "next",
+      "params": [],
+      "returns": "f64",
+      "publish": true
+    },
+    {
+      "id": 39,
+      "kind": "method",
+      "path": "RngStream.range",
+      "symbol": "og_rng_stream_range",
+      "module": "rng",
+      "owner": "RngStream",
+      "name": "range",
+      "params": [
+        {
+          "name": "low",
+          "type": "f64",
+          "optional": false
+        },
+        {
+          "name": "high",
+          "type": "f64",
+          "optional": false
+        }
+      ],
+      "returns": "f64",
+      "publish": true
+    },
+    {
+      "id": 40,
+      "kind": "method",
+      "path": "RngStream.integer",
+      "symbol": "og_rng_stream_integer",
+      "module": "rng",
+      "owner": "RngStream",
+      "name": "integer",
+      "params": [
+        {
+          "name": "low",
+          "type": "i32",
+          "optional": false
+        },
+        {
+          "name": "high",
+          "type": "i32",
+          "optional": false
+        }
+      ],
+      "returns": "i32",
+      "publish": true
+    },
+    {
+      "id": 41,
+      "kind": "method",
+      "path": "RngStream.chance",
+      "symbol": "og_rng_stream_chance",
+      "module": "rng",
+      "owner": "RngStream",
+      "name": "chance",
+      "params": [
+        {
+          "name": "p",
+          "type": "f64",
+          "optional": false
+        }
+      ],
+      "returns": "bool",
+      "publish": true
+    },
+    {
+      "id": 42,
+      "kind": "method",
+      "path": "RngStream.fork",
+      "symbol": "og_rng_stream_fork",
+      "module": "rng",
+      "owner": "RngStream",
+      "name": "fork",
+      "params": [
+        {
+          "name": "label",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "RngStream",
+      "publish": true
+    },
+    {
+      "id": 43,
+      "kind": "method",
+      "path": "Rng.next",
+      "symbol": "og_rng_next",
+      "module": "rng",
+      "owner": "Rng",
+      "name": "next",
+      "params": [],
+      "returns": "f64",
+      "publish": true
+    },
+    {
+      "id": 44,
+      "kind": "method",
+      "path": "Rng.range",
+      "symbol": "og_rng_range",
+      "module": "rng",
+      "owner": "Rng",
+      "name": "range",
+      "params": [
+        {
+          "name": "low",
+          "type": "f64",
+          "optional": false
+        },
+        {
+          "name": "high",
+          "type": "f64",
+          "optional": false
+        }
+      ],
+      "returns": "f64",
+      "publish": true
+    },
+    {
+      "id": 45,
+      "kind": "method",
+      "path": "Rng.integer",
+      "symbol": "og_rng_integer",
+      "module": "rng",
+      "owner": "Rng",
+      "name": "integer",
+      "params": [
+        {
+          "name": "low",
+          "type": "i32",
+          "optional": false
+        },
+        {
+          "name": "high",
+          "type": "i32",
+          "optional": false
+        }
+      ],
+      "returns": "i32",
+      "publish": true
+    },
+    {
+      "id": 46,
+      "kind": "method",
+      "path": "Rng.chance",
+      "symbol": "og_rng_chance",
+      "module": "rng",
+      "owner": "Rng",
+      "name": "chance",
+      "params": [
+        {
+          "name": "p",
+          "type": "f64",
+          "optional": false
+        }
+      ],
+      "returns": "bool",
+      "publish": true
+    },
+    {
+      "id": 47,
+      "kind": "method",
+      "path": "Rng.fork",
+      "symbol": "og_rng_fork",
+      "module": "rng",
+      "owner": "Rng",
+      "name": "fork",
+      "params": [
+        {
+          "name": "label",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "RngStream",
+      "publish": true
+    },
+    {
+      "id": 48,
+      "kind": "method",
+      "path": "Input.down",
+      "symbol": "og_input_down",
+      "module": "input",
+      "owner": "Input",
+      "name": "down",
+      "params": [
+        {
+          "name": "key",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "bool",
+      "publish": true
+    },
+    {
+      "id": 49,
+      "kind": "method",
+      "path": "Input.pressed",
+      "symbol": "og_input_pressed",
+      "module": "input",
+      "owner": "Input",
+      "name": "pressed",
+      "params": [
+        {
+          "name": "key",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "bool",
+      "publish": true
+    },
+    {
+      "id": 50,
+      "kind": "method",
+      "path": "Input.released",
+      "symbol": "og_input_released",
+      "module": "input",
+      "owner": "Input",
+      "name": "released",
+      "params": [
+        {
+          "name": "key",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "bool",
+      "publish": true
+    },
+    {
+      "id": 51,
+      "kind": "method",
+      "path": "Input.axis",
+      "symbol": "og_input_axis",
+      "module": "input",
+      "owner": "Input",
+      "name": "axis",
+      "params": [
+        {
+          "name": "negative",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "positive",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "f32",
+      "publish": true
+    },
+    {
+      "id": 52,
+      "kind": "method",
+      "path": "Input.buttonDown",
+      "symbol": "og_input_button_down",
+      "module": "input",
+      "owner": "Input",
+      "name": "buttonDown",
+      "params": [
+        {
+          "name": "button",
+          "type": "PointerButton",
+          "optional": false
+        }
+      ],
+      "returns": "bool",
+      "publish": true
+    },
+    {
+      "id": 53,
+      "kind": "method",
+      "path": "Input.buttonPressed",
+      "symbol": "og_input_button_pressed",
+      "module": "input",
+      "owner": "Input",
+      "name": "buttonPressed",
+      "params": [
+        {
+          "name": "button",
+          "type": "PointerButton",
+          "optional": false
+        }
+      ],
+      "returns": "bool",
+      "publish": true
+    },
+    {
+      "id": 54,
+      "kind": "method",
+      "path": "Camera.lookAt",
+      "symbol": "og_camera_look_at",
+      "module": "camera",
+      "owner": "Camera",
+      "name": "lookAt",
+      "params": [
+        {
+          "name": "target",
+          "type": "Vector3",
+          "optional": false
+        }
+      ],
+      "returns": "Void",
+      "publish": true
+    },
+    {
+      "id": 55,
+      "kind": "method",
+      "path": "Camera.worldToScreen",
+      "symbol": "og_camera_world_to_screen",
+      "module": "camera",
+      "owner": "Camera",
+      "name": "worldToScreen",
+      "params": [
+        {
+          "name": "point",
+          "type": "Vector3",
+          "optional": false
+        }
+      ],
+      "returns": "Option<Vector2>",
+      "publish": true
+    },
+    {
+      "id": 56,
+      "kind": "method",
+      "path": "Camera.screenToRay",
+      "symbol": "og_camera_screen_to_ray",
+      "module": "camera",
+      "owner": "Camera",
+      "name": "screenToRay",
+      "params": [
+        {
+          "name": "x",
+          "type": "f32",
+          "optional": false
+        },
+        {
+          "name": "y",
+          "type": "f32",
+          "optional": false
+        }
+      ],
+      "returns": "Ray",
+      "publish": true
+    },
+    {
+      "id": 57,
+      "kind": "fn",
+      "path": "og.render.standardMaterial",
+      "symbol": "og_render_standard_material",
+      "module": "render",
+      "name": "standardMaterial",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "StandardMaterialDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Material>",
+      "publish": true
+    },
+    {
+      "id": 58,
+      "kind": "fn",
+      "path": "og.render.updateMaterial",
+      "symbol": "og_render_update_material",
+      "module": "render",
+      "name": "updateMaterial",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "material",
+          "type": "Material",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "StandardMaterialDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 59,
+      "kind": "fn",
+      "path": "og.render.capabilities",
+      "symbol": "og_render_capabilities",
+      "module": "render",
+      "name": "capabilities",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        }
+      ],
+      "returns": "RenderCapabilities",
+      "publish": true
+    },
+    {
+      "id": 60,
+      "kind": "fn",
+      "path": "og.load.gltf",
+      "symbol": "og_load_gltf",
+      "module": "load",
+      "name": "gltf",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "GltfDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Asset>",
+      "publish": true
+    },
+    {
+      "id": 61,
+      "kind": "fn",
+      "path": "og.load.scene",
+      "symbol": "og_load_scene",
+      "module": "load",
+      "name": "scene",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Asset>",
+      "publish": true
+    },
+    {
+      "id": 62,
+      "kind": "fn",
+      "path": "og.load.status",
+      "symbol": "og_load_status",
+      "module": "load",
+      "name": "status",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "asset",
+          "type": "Asset",
+          "optional": false
+        }
+      ],
+      "returns": "LoadStatus",
+      "publish": true
+    },
+    {
+      "id": 63,
+      "kind": "fn",
+      "path": "og.load.gltfInfo",
+      "symbol": "og_load_gltf_info",
+      "module": "load",
+      "name": "gltfInfo",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "asset",
+          "type": "Asset",
+          "optional": false
+        }
+      ],
+      "returns": "Result<GltfInfo>",
+      "publish": true
+    },
+    {
+      "id": 64,
+      "kind": "fn",
+      "path": "og.commands.register",
+      "symbol": "og_commands_register",
+      "module": "commands",
+      "name": "register",
+      "params": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "handler",
+          "type": "CommandHandler",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "CommandDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": false
+    },
+    {
+      "id": 65,
+      "kind": "fn",
+      "path": "og.commands.parse",
+      "symbol": "og_commands_parse",
+      "module": "commands",
+      "name": "parse",
+      "params": [
+        {
+          "name": "script",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<List<CommandStep>>",
+      "publish": false
+    },
+    {
+      "id": 66,
+      "kind": "fn",
+      "path": "og.commands.schedule",
+      "symbol": "og_commands_schedule",
+      "module": "commands",
+      "name": "schedule",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "script",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<CommandsReport>",
+      "publish": false
+    },
+    {
+      "id": 67,
+      "kind": "prop",
+      "path": "RuntimeProbe.version",
+      "symbol": "og_runtime_probe_get_version",
+      "module": "probe",
+      "owner": "RuntimeProbe",
+      "name": "version",
+      "type": "u32",
+      "publish": true
+    },
+    {
+      "id": 68,
+      "kind": "method",
+      "path": "RuntimeProbe.tick",
+      "symbol": "og_runtime_probe_tick",
+      "module": "probe",
+      "owner": "RuntimeProbe",
+      "name": "tick",
+      "params": [],
+      "returns": "u32",
+      "publish": true
+    },
+    {
+      "id": 69,
+      "kind": "method",
+      "path": "RuntimeProbe.state",
+      "symbol": "og_runtime_probe_state",
+      "module": "probe",
+      "owner": "RuntimeProbe",
+      "name": "state",
+      "params": [],
+      "returns": "ProbeState",
+      "publish": true
+    },
+    {
+      "id": 70,
+      "kind": "method",
+      "path": "RuntimeProbe.advance",
+      "symbol": "og_runtime_probe_advance",
+      "module": "probe",
+      "owner": "RuntimeProbe",
+      "name": "advance",
+      "params": [
+        {
+          "name": "steps",
+          "type": "u32",
+          "optional": false
+        }
+      ],
+      "returns": "u32",
+      "publish": false
+    },
+    {
+      "id": 71,
+      "kind": "method",
+      "path": "RuntimeProbe.pause",
+      "symbol": "og_runtime_probe_pause",
+      "module": "probe",
+      "owner": "RuntimeProbe",
+      "name": "pause",
+      "params": [],
+      "returns": "bool",
+      "publish": false
+    },
+    {
+      "id": 72,
+      "kind": "method",
+      "path": "RuntimeProbe.resume",
+      "symbol": "og_runtime_probe_resume",
+      "module": "probe",
+      "owner": "RuntimeProbe",
+      "name": "resume",
+      "params": [],
+      "returns": "bool",
+      "publish": false
+    },
+    {
+      "id": 73,
+      "kind": "method",
+      "path": "RuntimeProbe.input",
+      "symbol": "og_runtime_probe_input",
+      "module": "probe",
+      "owner": "RuntimeProbe",
+      "name": "input",
+      "params": [
+        {
+          "name": "event",
+          "type": "InjectedInput",
+          "optional": false
+        }
+      ],
+      "returns": "bool",
+      "publish": true
+    },
+    {
+      "id": 74,
+      "kind": "method",
+      "path": "RuntimeProbe.accepted",
+      "symbol": "og_runtime_probe_accepted",
+      "module": "probe",
+      "owner": "RuntimeProbe",
+      "name": "accepted",
+      "params": [],
+      "returns": "u32",
+      "publish": false
+    },
+    {
+      "id": 75,
+      "kind": "method",
+      "path": "RuntimeProbe.pick",
+      "symbol": "og_runtime_probe_pick",
+      "module": "probe",
+      "owner": "RuntimeProbe",
+      "name": "pick",
+      "params": [
+        {
+          "name": "x",
+          "type": "f32",
+          "optional": false
+        },
+        {
+          "name": "y",
+          "type": "f32",
+          "optional": false
+        }
+      ],
+      "returns": "Option<PickResult>",
+      "publish": true
+    },
+    {
+      "id": 76,
+      "kind": "method",
+      "path": "RuntimeProbe.entity",
+      "symbol": "og_runtime_probe_entity",
+      "module": "probe",
+      "owner": "RuntimeProbe",
+      "name": "entity",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Option<Map<Json>>",
+      "publish": true
+    },
+    {
+      "id": 77,
+      "kind": "method",
+      "path": "RuntimeProbe.bounds",
+      "symbol": "og_runtime_probe_bounds",
+      "module": "probe",
+      "owner": "RuntimeProbe",
+      "name": "bounds",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Option<Map<ProbeTunable>>",
+      "publish": false
+    },
+    {
+      "id": 78,
+      "kind": "method",
+      "path": "RuntimeProbe.patch",
+      "symbol": "og_runtime_probe_patch",
+      "module": "probe",
+      "owner": "RuntimeProbe",
+      "name": "patch",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "parameter",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "value",
+          "type": "Json",
+          "optional": false
+        }
+      ],
+      "returns": "bool",
+      "publish": false
+    },
+    {
+      "id": 79,
+      "kind": "method",
+      "path": "RuntimeProbe.run",
+      "symbol": "og_runtime_probe_run",
+      "module": "probe",
+      "owner": "RuntimeProbe",
+      "name": "run",
+      "params": [
+        {
+          "name": "program",
+          "type": "List<ProbeOperation>",
+          "optional": false
+        }
+      ],
+      "returns": "ProbeProgramResult",
+      "publish": false
+    },
+    {
+      "id": 80,
+      "kind": "method",
+      "path": "EngineProbe.hello",
+      "symbol": "og_engine_probe_hello",
+      "module": "probe",
+      "owner": "EngineProbe",
+      "name": "hello",
+      "params": [],
+      "returns": "Hello",
+      "publish": true
+    },
+    {
+      "id": 81,
+      "kind": "method",
+      "path": "EngineProbe.capture",
+      "symbol": "og_engine_probe_capture",
+      "module": "probe",
+      "owner": "EngineProbe",
+      "name": "capture",
+      "params": [
+        {
+          "name": "width",
+          "type": "u32",
+          "optional": true,
+          "default": 0
+        },
+        {
+          "name": "height",
+          "type": "u32",
+          "optional": true,
+          "default": 0
+        }
+      ],
+      "returns": "Option<Capture>",
+      "publish": true
+    },
+    {
+      "id": 82,
+      "kind": "method",
+      "path": "EngineProbe.sweep",
+      "symbol": "og_engine_probe_sweep",
+      "module": "probe",
+      "owner": "EngineProbe",
+      "name": "sweep",
+      "params": [
+        {
+          "name": "desc",
+          "type": "SweepDesc",
+          "optional": true,
+          "flatten": true
+        }
+      ],
+      "returns": "Option<SweepResult>",
+      "publish": false
+    },
+    {
+      "id": 83,
+      "kind": "method",
+      "path": "EngineProbe.reload",
+      "symbol": "og_engine_probe_reload",
+      "module": "probe",
+      "owner": "EngineProbe",
+      "name": "reload",
+      "params": [],
+      "returns": "Option<ReloadReport>",
+      "publish": false
+    },
+    {
+      "id": 84,
+      "kind": "method",
+      "path": "EngineProbe.snapshot",
+      "symbol": "og_engine_probe_snapshot",
+      "module": "probe",
+      "owner": "EngineProbe",
+      "name": "snapshot",
+      "params": [],
+      "returns": "Option<SnapshotInfo>",
+      "publish": false
+    },
+    {
+      "id": 85,
+      "kind": "method",
+      "path": "EngineProbe.restore",
+      "symbol": "og_engine_probe_restore",
+      "module": "probe",
+      "owner": "EngineProbe",
+      "name": "restore",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "bool",
+      "publish": false
+    },
+    {
+      "id": 86,
+      "kind": "method",
+      "path": "EngineProbe.dump",
+      "symbol": "og_engine_probe_dump",
+      "module": "probe",
+      "owner": "EngineProbe",
+      "name": "dump",
+      "params": [
+        {
+          "name": "desc",
+          "type": "DumpDesc",
+          "optional": true,
+          "flatten": true
+        }
+      ],
+      "returns": "Option<DumpResult>",
+      "publish": false
+    },
+    {
+      "id": 87,
+      "kind": "method",
+      "path": "EngineProbe.commands",
+      "symbol": "og_engine_probe_commands",
+      "module": "probe",
+      "owner": "EngineProbe",
+      "name": "commands",
+      "params": [
+        {
+          "name": "script",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Option<CommandsReport>",
+      "publish": false
+    }
+  ],
+  "callbacks": [
+    {
+      "name": "SystemRun",
+      "module": "system",
+      "params": [
+        {
+          "name": "q",
+          "type": "Query",
+          "optional": false
+        },
+        {
+          "name": "time",
+          "type": "Time",
+          "optional": false
+        },
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        }
+      ],
+      "returns": "Void"
+    },
+    {
+      "name": "FactsFn",
+      "module": "game",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        }
+      ],
+      "returns": "Json"
+    },
+    {
+      "name": "CommandHandler",
+      "module": "commands",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "args",
+          "type": "List<String>",
+          "optional": false
+        }
+      ],
+      "returns": "Void"
+    }
+  ]
+}

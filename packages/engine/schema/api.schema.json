@@ -1,0 +1,4409 @@
+{
+  "$comment": "Generated from crates/og-api/api.ogt by `og api gen`. Do not edit: `og api check` fails on any difference; change api.ogt and regenerate.",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:origingame:engine:api:1",
+  "title": "@origingame/engine API v1",
+  "description": "The Origin Engine API. Game code declares components and systems, and reads the world through typed views over engine memory.\nEvery failure is a returned Result; desc objects may omit any field; nothing reads the wall clock inside a tick.",
+  "x-og-units": {
+    "m": "metres",
+    "s": "seconds of simulation time",
+    "ms": "milliseconds",
+    "rad": "radians",
+    "deg": "degrees",
+    "hz": "ticks or cycles per second",
+    "ticks": "fixed simulation steps",
+    "cssPx": "CSS pixels of the play surface, origin at the top left",
+    "ratio": "a fraction between 0 and 1",
+    "bytes": "bytes"
+  },
+  "x-og-modules": [
+    {
+      "name": "math",
+      "doc": "Plain math values in the three.js vocabulary. They are data: the engine owns the operations, so results are identical on every host.",
+      "place": "top",
+      "publish": true,
+      "types": [
+        "Vector2",
+        "Vector3",
+        "Quaternion",
+        "Matrix4",
+        "Color",
+        "Ray"
+      ],
+      "consts": [],
+      "functions": [],
+      "interfaces": [],
+      "callbacks": []
+    },
+    {
+      "name": "reflect",
+      "doc": "Reflection: components and resources are declared once with their field layout and metadata, and registered by name.\nThe inspector, Tune, the probe, scene text and the wiki read this one schema. Each column factory below makes one field.",
+      "place": "top",
+      "publish": true,
+      "types": [
+        "FieldOptions",
+        "f32",
+        "f64",
+        "u32",
+        "i32",
+        "bool",
+        "Vector2",
+        "Vector3",
+        "Quaternion",
+        "Matrix4",
+        "Color"
+      ],
+      "consts": [],
+      "functions": [
+        {
+          "name": "defineComponent",
+          "doc": "Declare a component: plain data stored per entity in engine memory, one column per field.\nRegistration is by name, so a hot reload re-registers the same component and migrates its fields by name.",
+          "generics": [
+            {
+              "name": "F",
+              "bound": "Fields"
+            }
+          ],
+          "params": [
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "The component's unique name, PascalCase, as it appears in scenes and dumps."
+            },
+            {
+              "name": "fields",
+              "type": "F",
+              "optional": false,
+              "doc": "The layout: field names to column factories, as `{ hp: f32(100) }`."
+            }
+          ],
+          "returns": "ComponentType<F>",
+          "returnsDoc": "The token systems, queries and the world take.",
+          "publish": true
+        },
+        {
+          "name": "defineResource",
+          "doc": "Declare a resource: a reflected singleton, such as a tuning table. Its fields start at their defaults.",
+          "generics": [
+            {
+              "name": "F",
+              "bound": "Fields"
+            }
+          ],
+          "params": [
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "The resource's unique name, PascalCase."
+            },
+            {
+              "name": "fields",
+              "type": "F",
+              "optional": false,
+              "doc": "The layout, as for defineComponent."
+            }
+          ],
+          "returns": "ResourceType<F>",
+          "returnsDoc": "The token `world.resource` and system declarations take.",
+          "publish": true
+        }
+      ],
+      "interfaces": [],
+      "callbacks": []
+    },
+    {
+      "name": "world",
+      "doc": "The world: an archetype ECS. Entities are generational handles; components are columns in engine memory.\nStructural changes (spawn, despawn, insert, remove) invalidate typed views; the API refuses a stale view.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "Entity",
+        "Entity",
+        "SpawnDesc",
+        "QueryDesc"
+      ],
+      "consts": [],
+      "functions": [],
+      "interfaces": [
+        {
+          "name": "World",
+          "doc": "The world a system, a command or a game callback is handed. Game code never holds a world beyond the call it was passed to.",
+          "members": [
+            {
+              "name": "tick",
+              "prop": "u32",
+              "doc": "Fixed steps taken since the world was created.",
+              "publish": true
+            },
+            {
+              "name": "spawn",
+              "doc": "Spawn an entity.",
+              "params": [
+                {
+                  "name": "desc",
+                  "type": "SpawnDesc",
+                  "optional": true,
+                  "doc": "Name, parent and initial transform."
+                }
+              ],
+              "returns": "Result<Entity>",
+              "returnsDoc": "The new entity, or why it was refused (a duplicate name, a dead parent).",
+              "publish": true
+            },
+            {
+              "name": "despawn",
+              "doc": "Despawn an entity and its descendants.",
+              "params": [
+                {
+                  "name": "entity",
+                  "type": "Entity",
+                  "optional": false,
+                  "doc": "The entity."
+                }
+              ],
+              "returns": "Result<Void>",
+              "returnsDoc": "Refused for a dead entity.",
+              "publish": true
+            },
+            {
+              "name": "alive",
+              "doc": "Whether an entity handle is live.",
+              "params": [
+                {
+                  "name": "entity",
+                  "type": "Entity",
+                  "optional": false,
+                  "doc": "The entity."
+                }
+              ],
+              "returns": "bool",
+              "publish": true
+            },
+            {
+              "name": "has",
+              "doc": "Whether an entity has a component.",
+              "generics": [
+                {
+                  "name": "C",
+                  "bound": "AnyComponent"
+                }
+              ],
+              "params": [
+                {
+                  "name": "entity",
+                  "type": "Entity",
+                  "optional": false,
+                  "doc": "The entity."
+                },
+                {
+                  "name": "component",
+                  "type": "C",
+                  "optional": false,
+                  "doc": "The component token."
+                }
+              ],
+              "returns": "bool",
+              "publish": true
+            },
+            {
+              "name": "insert",
+              "doc": "Add a component to an entity, or overwrite it when present. A structural change.",
+              "generics": [
+                {
+                  "name": "C",
+                  "bound": "AnyComponent"
+                }
+              ],
+              "params": [
+                {
+                  "name": "entity",
+                  "type": "Entity",
+                  "optional": false,
+                  "doc": "The entity."
+                },
+                {
+                  "name": "component",
+                  "type": "C",
+                  "optional": false,
+                  "doc": "The component token."
+                },
+                {
+                  "name": "value",
+                  "type": "Partial<Value<C>>",
+                  "optional": true,
+                  "doc": "Field values; omitted fields take their defaults."
+                }
+              ],
+              "returns": "Result<Void>",
+              "returnsDoc": "Refused for a dead entity or an unregistered component.",
+              "publish": true
+            },
+            {
+              "name": "remove",
+              "doc": "Remove a component from an entity. A structural change.",
+              "generics": [
+                {
+                  "name": "C",
+                  "bound": "AnyComponent"
+                }
+              ],
+              "params": [
+                {
+                  "name": "entity",
+                  "type": "Entity",
+                  "optional": false,
+                  "doc": "The entity."
+                },
+                {
+                  "name": "component",
+                  "type": "C",
+                  "optional": false,
+                  "doc": "The component token."
+                }
+              ],
+              "returns": "Result<Void>",
+              "returnsDoc": "Refused for a dead entity or a component it does not have.",
+              "publish": true
+            },
+            {
+              "name": "get",
+              "doc": "Copy one entity's component value. For bulk work use a system's typed views.",
+              "generics": [
+                {
+                  "name": "C",
+                  "bound": "AnyComponent"
+                }
+              ],
+              "params": [
+                {
+                  "name": "entity",
+                  "type": "Entity",
+                  "optional": false,
+                  "doc": "The entity."
+                },
+                {
+                  "name": "component",
+                  "type": "C",
+                  "optional": false,
+                  "doc": "The component token."
+                }
+              ],
+              "returns": "Result<Value<C>>",
+              "publish": true
+            },
+            {
+              "name": "set",
+              "doc": "Write some fields of one entity's component.",
+              "generics": [
+                {
+                  "name": "C",
+                  "bound": "AnyComponent"
+                }
+              ],
+              "params": [
+                {
+                  "name": "entity",
+                  "type": "Entity",
+                  "optional": false,
+                  "doc": "The entity."
+                },
+                {
+                  "name": "component",
+                  "type": "C",
+                  "optional": false,
+                  "doc": "The component token."
+                },
+                {
+                  "name": "value",
+                  "type": "Partial<Value<C>>",
+                  "optional": false,
+                  "doc": "The fields to write."
+                }
+              ],
+              "returns": "Result<Void>",
+              "returnsDoc": "Refused for a dead entity or a component it does not have.",
+              "publish": true
+            },
+            {
+              "name": "resource",
+              "doc": "A resource's live value. Inside a system, the resource must be among the system's reads or writes.",
+              "generics": [
+                {
+                  "name": "R",
+                  "bound": "AnyResource"
+                }
+              ],
+              "params": [
+                {
+                  "name": "resource",
+                  "type": "R",
+                  "optional": false,
+                  "doc": "The resource token."
+                }
+              ],
+              "returns": "Result<Value<R>>",
+              "returnsDoc": "Refused for an unregistered resource or one the running system did not declare.",
+              "publish": true
+            },
+            {
+              "name": "find",
+              "doc": "The entity with a name.",
+              "params": [
+                {
+                  "name": "name",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The name given at spawn."
+                }
+              ],
+              "returns": "Option<Entity>",
+              "returnsDoc": "Null when no live entity has the name.",
+              "publish": true
+            },
+            {
+              "name": "nameOf",
+              "doc": "An entity's name.",
+              "params": [
+                {
+                  "name": "entity",
+                  "type": "Entity",
+                  "optional": false,
+                  "doc": "The entity."
+                }
+              ],
+              "returns": "Option<String>",
+              "returnsDoc": "Null for an unnamed or dead entity.",
+              "publish": true
+            },
+            {
+              "name": "query",
+              "doc": "A query over the current archetypes, for commands and callbacks; systems receive theirs.",
+              "params": [
+                {
+                  "name": "desc",
+                  "type": "QueryDesc",
+                  "optional": true,
+                  "doc": "The components to match."
+                }
+              ],
+              "returns": "Result<Query>",
+              "publish": true
+            },
+            {
+              "name": "events",
+              "doc": "The events of one type emitted during the previous tick and this one, oldest first.",
+              "generics": [
+                {
+                  "name": "E",
+                  "bound": "AnyEvent"
+                }
+              ],
+              "params": [
+                {
+                  "name": "event",
+                  "type": "E",
+                  "optional": false,
+                  "doc": "The event token."
+                }
+              ],
+              "returns": "List<Value<E>>",
+              "publish": true
+            },
+            {
+              "name": "emit",
+              "doc": "Emit an event; readers see it this tick and the next.",
+              "generics": [
+                {
+                  "name": "E",
+                  "bound": "AnyEvent"
+                }
+              ],
+              "params": [
+                {
+                  "name": "event",
+                  "type": "E",
+                  "optional": false,
+                  "doc": "The event token."
+                },
+                {
+                  "name": "payload",
+                  "type": "Value<E>",
+                  "optional": false,
+                  "doc": "The event's fields."
+                }
+              ],
+              "returns": "Result<Void>",
+              "publish": true
+            },
+            {
+              "name": "instantiate",
+              "doc": "Spawn a loaded scene or glTF asset into the world as a tree of entities.",
+              "params": [
+                {
+                  "name": "asset",
+                  "type": "Asset",
+                  "optional": false,
+                  "doc": "A ready asset from og.load."
+                },
+                {
+                  "name": "desc",
+                  "type": "SpawnDesc",
+                  "optional": true,
+                  "doc": "Name, parent and transform of the root entity."
+                }
+              ],
+              "returns": "Result<Entity>",
+              "returnsDoc": "The root entity, or why it was refused (an asset still loading, a failed asset).",
+              "publish": true
+            }
+          ]
+        },
+        {
+          "name": "Query",
+          "doc": "A set of matched archetypes. Iterate archetypes, never entities one by one.",
+          "members": [
+            {
+              "name": "archetypes",
+              "doc": "The matched archetypes this tick.",
+              "params": [],
+              "returns": "List<ArchetypeView>",
+              "publish": true
+            },
+            {
+              "name": "count",
+              "doc": "The number of matched entities.",
+              "params": [],
+              "returns": "u32",
+              "publish": true
+            }
+          ]
+        },
+        {
+          "name": "ArchetypeView",
+          "doc": "One archetype's columns for this tick. Views are invalidated by structural changes; using a stale view throws with the tick and the system it belonged to.",
+          "members": [
+            {
+              "name": "count",
+              "prop": "u32",
+              "doc": "The number of entities in the archetype.",
+              "publish": true
+            },
+            {
+              "name": "tick",
+              "prop": "u32",
+              "doc": "The tick this view belongs to.",
+              "publish": true
+            },
+            {
+              "name": "entities",
+              "prop": "Uint32Array",
+              "doc": "The entities as (index, generation) pairs: entity i is at 2i and 2i + 1.",
+              "publish": true
+            },
+            {
+              "name": "entity",
+              "doc": "The handle of entity i.",
+              "params": [
+                {
+                  "name": "index",
+                  "type": "u32",
+                  "optional": false,
+                  "doc": "The row, from 0 to count - 1."
+                }
+              ],
+              "returns": "Entity",
+              "publish": true
+            },
+            {
+              "name": "has",
+              "doc": "Whether the archetype carries a component.",
+              "generics": [
+                {
+                  "name": "C",
+                  "bound": "AnyComponent"
+                }
+              ],
+              "params": [
+                {
+                  "name": "component",
+                  "type": "C",
+                  "optional": false,
+                  "doc": "The component token."
+                }
+              ],
+              "returns": "bool",
+              "publish": true
+            },
+            {
+              "name": "column",
+              "doc": "The typed views of a component's fields: one typed array per field, `count * stride` long.\nWriting requires the component among the system's writes; reading among its reads or writes.",
+              "generics": [
+                {
+                  "name": "C",
+                  "bound": "AnyComponent"
+                }
+              ],
+              "params": [
+                {
+                  "name": "component",
+                  "type": "C",
+                  "optional": false,
+                  "doc": "The component token."
+                }
+              ],
+              "returns": "View<C>",
+              "publish": true
+            }
+          ]
+        }
+      ],
+      "callbacks": []
+    },
+    {
+      "name": "system",
+      "doc": "Systems: functions the engine calls once per tick with their matched archetypes.\nA system declares what it reads and writes; a write to an undeclared component is refused at registration with the field name.",
+      "place": "top",
+      "publish": true,
+      "types": [
+        "SystemDesc"
+      ],
+      "consts": [],
+      "functions": [
+        {
+          "name": "defineSystem",
+          "doc": "Declare a system.",
+          "params": [
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "The system's unique name, PascalCase."
+            },
+            {
+              "name": "desc",
+              "type": "SystemDesc",
+              "optional": false,
+              "doc": "Reads, writes and order."
+            },
+            {
+              "name": "run",
+              "type": "SystemRun",
+              "optional": false,
+              "doc": "The body."
+            }
+          ],
+          "returns": "System",
+          "publish": true
+        }
+      ],
+      "interfaces": [
+        {
+          "name": "System",
+          "doc": "A registered system.",
+          "members": [
+            {
+              "name": "name",
+              "prop": "String",
+              "doc": "The system's unique name.",
+              "publish": true
+            },
+            {
+              "name": "reads",
+              "prop": "List<AnyReflected>",
+              "doc": "What it reads.",
+              "publish": true
+            },
+            {
+              "name": "writes",
+              "prop": "List<AnyReflected>",
+              "doc": "What it writes.",
+              "publish": true
+            }
+          ]
+        }
+      ],
+      "callbacks": [
+        {
+          "name": "SystemRun",
+          "doc": "A system's body. It is called once per tick; loop over `q.archetypes()`, then over rows.",
+          "params": [
+            {
+              "name": "q",
+              "type": "Query",
+              "optional": false,
+              "doc": "The archetypes matching the declared components."
+            },
+            {
+              "name": "time",
+              "type": "Time",
+              "optional": false,
+              "doc": "The Time resource for this tick."
+            },
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world, for resources, events and structural changes."
+            }
+          ],
+          "returns": "Void"
+        }
+      ]
+    },
+    {
+      "name": "game",
+      "doc": "The game entry: what the bundle's default export declares.",
+      "place": "root",
+      "publish": true,
+      "types": [
+        "GameDesc"
+      ],
+      "consts": [],
+      "functions": [
+        {
+          "name": "game",
+          "doc": "Declare the game. The bundle's default export is its result.",
+          "params": [
+            {
+              "name": "desc",
+              "type": "GameDesc",
+              "optional": true,
+              "doc": "Tick, scenes, systems and commands."
+            }
+          ],
+          "returns": "Game",
+          "publish": true
+        }
+      ],
+      "interfaces": [
+        {
+          "name": "Game",
+          "doc": "A declared game, the bundle's default export.",
+          "members": [
+            {
+              "name": "tick",
+              "prop": "u32",
+              "doc": "The fixed tick rate in hertz.",
+              "publish": true
+            },
+            {
+              "name": "systems",
+              "prop": "List<System>",
+              "doc": "The systems in declaration order.",
+              "publish": true
+            }
+          ]
+        }
+      ],
+      "callbacks": [
+        {
+          "name": "FactsFn",
+          "doc": "The game's own facts for the probe's state(): a small JSON object, computed from the world without changing it.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world, read only."
+            }
+          ],
+          "returns": "Json"
+        }
+      ]
+    },
+    {
+      "name": "transform",
+      "doc": "Transforms in the three.js vocabulary: position, quaternion and scale, composed into matrixWorld down the parent chain.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "Transform",
+        "Parent",
+        "MatrixWorld"
+      ],
+      "consts": [],
+      "functions": [
+        {
+          "name": "compose",
+          "doc": "A matrix from position, rotation and scale, as three.js Matrix4.compose.",
+          "params": [
+            {
+              "name": "position",
+              "type": "Vector3",
+              "optional": false,
+              "doc": "The translation."
+            },
+            {
+              "name": "quaternion",
+              "type": "Quaternion",
+              "optional": false,
+              "doc": "The rotation."
+            },
+            {
+              "name": "scale",
+              "type": "Vector3",
+              "optional": false,
+              "doc": "The scale."
+            }
+          ],
+          "returns": "Matrix4",
+          "publish": true
+        },
+        {
+          "name": "decompose",
+          "doc": "Position, rotation and scale from a matrix, as three.js Matrix4.decompose.",
+          "params": [
+            {
+              "name": "matrix",
+              "type": "Matrix4",
+              "optional": false,
+              "doc": "An affine matrix."
+            }
+          ],
+          "returns": "Transform",
+          "publish": true
+        },
+        {
+          "name": "lookAt",
+          "doc": "The rotation that points -Z from an eye towards a target, as three.js Object3D.lookAt for cameras.",
+          "params": [
+            {
+              "name": "eye",
+              "type": "Vector3",
+              "optional": false,
+              "doc": "Where the viewer is."
+            },
+            {
+              "name": "target",
+              "type": "Vector3",
+              "optional": false,
+              "doc": "What it looks at."
+            },
+            {
+              "name": "up",
+              "type": "Vector3",
+              "optional": true,
+              "doc": "The up direction; the zero vector means +Y."
+            }
+          ],
+          "returns": "Quaternion",
+          "publish": true
+        },
+        {
+          "name": "fromAxisAngle",
+          "doc": "A rotation about an axis, as three.js Quaternion.setFromAxisAngle.",
+          "params": [
+            {
+              "name": "axis",
+              "type": "Vector3",
+              "optional": false,
+              "doc": "A unit axis."
+            },
+            {
+              "name": "angle",
+              "type": "f32",
+              "optional": false,
+              "doc": "The angle in radians."
+            }
+          ],
+          "returns": "Quaternion",
+          "publish": true
+        }
+      ],
+      "interfaces": [],
+      "callbacks": []
+    },
+    {
+      "name": "time",
+      "doc": "Simulation time. Game code never reads the wall clock; it reads Time.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "Time"
+      ],
+      "consts": [],
+      "functions": [],
+      "interfaces": [],
+      "callbacks": []
+    },
+    {
+      "name": "rng",
+      "doc": "Deterministic randomness. Every random draw comes from an Rng stream; the sequence for a seed is identical on every host and in the Web scaffold's rng.ts.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "Rng"
+      ],
+      "consts": [],
+      "functions": [],
+      "interfaces": [
+        {
+          "name": "RngStream",
+          "doc": "One generator stream, forked from the Rng resource for a subsystem that must not perturb the main sequence.",
+          "members": [
+            {
+              "name": "seed",
+              "prop": "u32",
+              "doc": "The stream's derived seed.",
+              "publish": true
+            },
+            {
+              "name": "next",
+              "doc": "Uniform in [0, 1).",
+              "params": [],
+              "returns": "f64",
+              "publish": true
+            },
+            {
+              "name": "range",
+              "doc": "Uniform in [low, high).",
+              "params": [
+                {
+                  "name": "low",
+                  "type": "f64",
+                  "optional": false,
+                  "doc": "The inclusive lower bound."
+                },
+                {
+                  "name": "high",
+                  "type": "f64",
+                  "optional": false,
+                  "doc": "The exclusive upper bound."
+                }
+              ],
+              "returns": "f64",
+              "publish": true
+            },
+            {
+              "name": "integer",
+              "doc": "A uniform integer in [low, high].",
+              "params": [
+                {
+                  "name": "low",
+                  "type": "i32",
+                  "optional": false,
+                  "doc": "The inclusive lower bound."
+                },
+                {
+                  "name": "high",
+                  "type": "i32",
+                  "optional": false,
+                  "doc": "The inclusive upper bound."
+                }
+              ],
+              "returns": "i32",
+              "publish": true
+            },
+            {
+              "name": "chance",
+              "doc": "True with probability p.",
+              "params": [
+                {
+                  "name": "p",
+                  "type": "f64",
+                  "optional": false,
+                  "doc": "The probability, between 0 and 1."
+                }
+              ],
+              "returns": "bool",
+              "publish": true
+            },
+            {
+              "name": "fork",
+              "doc": "A fresh stream on a seed derived from this stream's seed and a label.",
+              "params": [
+                {
+                  "name": "label",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The subsystem's name; the same label always gives the same stream."
+                }
+              ],
+              "returns": "RngStream",
+              "publish": true
+            }
+          ]
+        }
+      ],
+      "callbacks": []
+    },
+    {
+      "name": "input",
+      "doc": "Input as the game sees it: the Input resource for polling, events for edges.\nThe shell collects pointer, keyboard and wheel input on the main thread; the probe and the command channel inject through the same path.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "KeyAction",
+        "PointerAction",
+        "PointerButton",
+        "Modifiers",
+        "KeyInput",
+        "PointerInput",
+        "WheelInput",
+        "InjectedInput",
+        "Input",
+        "KeyDown",
+        "KeyUp",
+        "PointerDown",
+        "PointerUp",
+        "PointerMove",
+        "Wheel"
+      ],
+      "consts": [],
+      "functions": [],
+      "interfaces": [],
+      "callbacks": []
+    },
+    {
+      "name": "camera",
+      "doc": "The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "Camera"
+      ],
+      "consts": [],
+      "functions": [],
+      "interfaces": [],
+      "callbacks": []
+    },
+    {
+      "name": "render",
+      "doc": "What is drawn: meshes with materials. Draws are instanced by (geometry, material) automatically; there is no per-object draw call.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "Geometry",
+        "Material",
+        "Texture",
+        "Geometry",
+        "Material",
+        "Side",
+        "RenderTier",
+        "StandardMaterialDesc",
+        "Mesh",
+        "RenderCapabilities"
+      ],
+      "consts": [],
+      "functions": [
+        {
+          "name": "standardMaterial",
+          "doc": "Create a standard material.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the material."
+            },
+            {
+              "name": "desc",
+              "type": "StandardMaterialDesc",
+              "optional": true,
+              "doc": "The parameters; omitted ones take three.js defaults."
+            }
+          ],
+          "returns": "Result<Material>",
+          "publish": true
+        },
+        {
+          "name": "updateMaterial",
+          "doc": "Change some parameters of a standard material.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the material."
+            },
+            {
+              "name": "material",
+              "type": "Material",
+              "optional": false,
+              "doc": "The material."
+            },
+            {
+              "name": "desc",
+              "type": "StandardMaterialDesc",
+              "optional": true,
+              "doc": "The parameters to change; omitted ones keep their values."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for a dead material.",
+          "publish": true
+        },
+        {
+          "name": "capabilities",
+          "doc": "The renderer's tier and limits on this device.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer is asked."
+            }
+          ],
+          "returns": "RenderCapabilities",
+          "publish": true
+        }
+      ],
+      "interfaces": [],
+      "callbacks": []
+    },
+    {
+      "name": "load",
+      "doc": "Asset loading. Paths are relative to the project and read cooked output; a load returns a handle at once and completes at a tick boundary.\nUnder og run and in replays every load completes before the next tick, so the tick a load lands on is deterministic.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "Asset",
+        "LoadStatus",
+        "GltfDesc",
+        "GltfInfo",
+        "AssetReady",
+        "AssetFailed"
+      ],
+      "consts": [],
+      "functions": [
+        {
+          "name": "gltf",
+          "doc": "Load a glTF (.gltf or .glb) through the cook, as three.js GLTFLoader.load.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world that owns the asset."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The source path under assets/, such as `assets/ship.glb`."
+            },
+            {
+              "name": "desc",
+              "type": "GltfDesc",
+              "optional": true,
+              "doc": "Scene and shadow options."
+            }
+          ],
+          "returns": "Result<Asset>",
+          "returnsDoc": "The handle, or why it was refused (an uncooked path, a cook stamp mismatch).",
+          "publish": true
+        },
+        {
+          "name": "scene",
+          "doc": "Load a scene (.ogt).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world that owns the asset."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The scene path, such as `scenes/main.ogt`."
+            }
+          ],
+          "returns": "Result<Asset>",
+          "publish": true
+        },
+        {
+          "name": "status",
+          "doc": "Where a load is.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world that owns the asset."
+            },
+            {
+              "name": "asset",
+              "type": "Asset",
+              "optional": false,
+              "doc": "The handle."
+            }
+          ],
+          "returns": "LoadStatus",
+          "publish": true
+        },
+        {
+          "name": "gltfInfo",
+          "doc": "What a ready glTF holds.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world that owns the asset."
+            },
+            {
+              "name": "asset",
+              "type": "Asset",
+              "optional": false,
+              "doc": "A ready glTF handle."
+            }
+          ],
+          "returns": "Result<GltfInfo>",
+          "returnsDoc": "Refused for a pending, failed or non-glTF asset.",
+          "publish": true
+        }
+      ],
+      "interfaces": [],
+      "callbacks": []
+    },
+    {
+      "name": "commands",
+      "doc": "The command channel: actions scheduled on simulation time, from `og run --commands \"t:action[:args];...\"` or the probe's commands().\nCore actions ship with the engine; a module or a game registers more. Unknown actions warn and continue. Not in publish builds.",
+      "place": "namespace",
+      "publish": false,
+      "types": [
+        "CoreAction",
+        "CommandDesc",
+        "CommandStep",
+        "CommandsReport"
+      ],
+      "consts": [],
+      "functions": [
+        {
+          "name": "register",
+          "doc": "Register an action into the command channel. GameDesc.commands does this for a game's own actions.",
+          "params": [
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "The action name, snake_case, such as `spawn_wave`."
+            },
+            {
+              "name": "handler",
+              "type": "CommandHandler",
+              "optional": false,
+              "doc": "What it does."
+            },
+            {
+              "name": "desc",
+              "type": "CommandDesc",
+              "optional": true,
+              "doc": "Its usage line and doc."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for a name a core action or another registration already uses.",
+          "publish": false
+        },
+        {
+          "name": "parse",
+          "doc": "Parse a script without scheduling it.",
+          "params": [
+            {
+              "name": "script",
+              "type": "String",
+              "optional": false,
+              "doc": "`t:action[:args];...` with t in simulation seconds."
+            }
+          ],
+          "returns": "Result<List<CommandStep>>",
+          "returnsDoc": "The steps, or the first malformed step.",
+          "publish": false
+        },
+        {
+          "name": "schedule",
+          "doc": "Schedule a script on simulation time, from the current tick.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "script",
+              "type": "String",
+              "optional": false,
+              "doc": "`t:action[:args];...` with t in simulation seconds."
+            }
+          ],
+          "returns": "Result<CommandsReport>",
+          "returnsDoc": "The report, or the first malformed step.",
+          "publish": false
+        }
+      ],
+      "interfaces": [],
+      "callbacks": [
+        {
+          "name": "CommandHandler",
+          "doc": "A registered action. It runs at the start of the tick it was scheduled for.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "args",
+              "type": "List<String>",
+              "optional": false,
+              "doc": "The `:`-separated arguments after the action name."
+            }
+          ],
+          "returns": "Void"
+        }
+      ]
+    },
+    {
+      "name": "probe",
+      "doc": "The probe: RuntimeProbe protocol 5 (origin/packages/contracts/src/probe.ts) served natively, plus the engine's wire members.\nIn a page it is published on globalThis.__runtime_probe__; on native, `og` serves it as JSON-RPC 2.0 over a loopback WebSocket at /probe.\nA refusal is false or null exactly as protocol 5; a JSON-RPC error is only for a malformed call or an unknown method.\nProbe entity ids are entity names; an unnamed entity is `#<index>.<generation>`.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "PickResult",
+        "ProbeTunable",
+        "ProbeEntityRef",
+        "ProbeTimings",
+        "ProbeState",
+        "AdvanceOperation",
+        "InputOperation",
+        "PickOperation",
+        "EntityOperation",
+        "ProbeOperation",
+        "ProbeProgramResult",
+        "Hello",
+        "BuildProfile",
+        "Capture",
+        "SweepDesc",
+        "SweepFrame",
+        "SweepResult",
+        "ReloadReport",
+        "SnapshotInfo",
+        "DumpKind",
+        "DumpDesc",
+        "ArchetypeDump",
+        "SystemDump",
+        "WorldDump",
+        "EntityDump",
+        "UiElement",
+        "UiDump",
+        "DumpResult"
+      ],
+      "consts": [
+        {
+          "name": "PROBE_GLOBAL",
+          "type": "String",
+          "value": "__runtime_probe__",
+          "doc": "The global the page publishes the probe on."
+        },
+        {
+          "name": "PROBE_VERSION",
+          "type": "u32",
+          "value": 5,
+          "doc": "The RuntimeProbe contract revision both sides speak."
+        },
+        {
+          "name": "PROBE_WIRE_VERSION",
+          "type": "u32",
+          "value": 1,
+          "doc": "The wire revision hello reports."
+        },
+        {
+          "name": "REPLAY_SEED_PARAM",
+          "type": "String",
+          "value": "replay-seed",
+          "doc": "The page query parameter that starts a deterministic replay from a uint32 seed."
+        },
+        {
+          "name": "PLAYTEST_MAX_TICKS",
+          "type": "u32",
+          "value": 3600,
+          "doc": "The longest playtest one request may advance, in fixed steps."
+        },
+        {
+          "name": "PROBE_PROGRAM_MAX_OPERATIONS",
+          "type": "u32",
+          "value": 256,
+          "doc": "The most operations one probe program may carry."
+        }
+      ],
+      "functions": [],
+      "interfaces": [
+        {
+          "name": "RuntimeProbe",
+          "doc": "RuntimeProbe protocol 5, member for member. Every member answers synchronously with JSON-serialisable values.",
+          "members": [
+            {
+              "name": "version",
+              "prop": "u32",
+              "doc": "PROBE_VERSION.",
+              "publish": true
+            },
+            {
+              "name": "tick",
+              "doc": "Fixed steps the world has taken since load.",
+              "params": [],
+              "returns": "u32",
+              "publish": true
+            },
+            {
+              "name": "state",
+              "doc": "A JSON snapshot: the fixed timings head, then the game's own facts.",
+              "params": [],
+              "returns": "ProbeState",
+              "publish": true
+            },
+            {
+              "name": "advance",
+              "doc": "Take whole fixed steps regardless of the wall clock.",
+              "params": [
+                {
+                  "name": "steps",
+                  "type": "u32",
+                  "optional": false,
+                  "doc": "Fixed steps, at most PLAYTEST_MAX_TICKS."
+                }
+              ],
+              "returns": "u32",
+              "returnsDoc": "The tick after the steps.",
+              "publish": false
+            },
+            {
+              "name": "pause",
+              "doc": "Hold the wall-clock loop; advance still steps.",
+              "params": [],
+              "returns": "bool",
+              "publish": false
+            },
+            {
+              "name": "resume",
+              "doc": "Release the wall-clock loop.",
+              "params": [],
+              "returns": "bool",
+              "publish": false
+            },
+            {
+              "name": "input",
+              "doc": "One event through the input layer's own path.",
+              "params": [
+                {
+                  "name": "event",
+                  "type": "InjectedInput",
+                  "optional": false,
+                  "doc": "The event."
+                }
+              ],
+              "returns": "bool",
+              "returnsDoc": "False is a refusal.",
+              "publish": true
+            },
+            {
+              "name": "accepted",
+              "doc": "Page events (keyboard, pointer, wheel) the input layer accepted since load.",
+              "params": [],
+              "returns": "u32",
+              "publish": false
+            },
+            {
+              "name": "pick",
+              "doc": "What is under a point of the play surface.",
+              "params": [
+                {
+                  "name": "x",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "Horizontal position in CSS pixels."
+                },
+                {
+                  "name": "y",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "Vertical position in CSS pixels."
+                }
+              ],
+              "returns": "Option<PickResult>",
+              "returnsDoc": "Null when nothing is under the point.",
+              "publish": true
+            },
+            {
+              "name": "entity",
+              "doc": "One entity's published parameters: its tunable fields as `Component.field` keys.",
+              "params": [
+                {
+                  "name": "id",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The probe id."
+                }
+              ],
+              "returns": "Option<Map<Json>>",
+              "returnsDoc": "Null for an unknown entity.",
+              "publish": true
+            },
+            {
+              "name": "bounds",
+              "doc": "The ranges of one entity's tunable fields, from the schema.",
+              "params": [
+                {
+                  "name": "id",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The probe id."
+                }
+              ],
+              "returns": "Option<Map<ProbeTunable>>",
+              "returnsDoc": "Null for an unknown entity.",
+              "publish": false
+            },
+            {
+              "name": "patch",
+              "doc": "Move one tunable field for this run only; it applies within one frame. The probe never writes project files.",
+              "params": [
+                {
+                  "name": "id",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The probe id."
+                },
+                {
+                  "name": "parameter",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The field, as `Health.hp`."
+                },
+                {
+                  "name": "value",
+                  "type": "Json",
+                  "optional": false,
+                  "doc": "The new value."
+                }
+              ],
+              "returns": "bool",
+              "returnsDoc": "False is a refusal.",
+              "publish": false
+            },
+            {
+              "name": "run",
+              "doc": "Run a program of the members above in order, stopping at the first refusal.",
+              "params": [
+                {
+                  "name": "program",
+                  "type": "List<ProbeOperation>",
+                  "optional": false,
+                  "doc": "At most PROBE_PROGRAM_MAX_OPERATIONS operations."
+                }
+              ],
+              "returns": "ProbeProgramResult",
+              "publish": false
+            }
+          ]
+        },
+        {
+          "name": "EngineProbe",
+          "doc": "The engine's probe: protocol 5 plus the wire members of the loopback WebSocket and the in-page request ring.",
+          "extends": "RuntimeProbe",
+          "members": [
+            {
+              "name": "hello",
+              "doc": "Who is speaking: protocol, wire, engine version, tick rate, renderer tier, build.",
+              "params": [],
+              "returns": "Hello",
+              "publish": true
+            },
+            {
+              "name": "capture",
+              "doc": "The frame rendered at the current tick, read back offscreen.",
+              "params": [
+                {
+                  "name": "width",
+                  "type": "u32",
+                  "optional": true,
+                  "default": 0,
+                  "doc": "Width in pixels; 0 is the render target's."
+                },
+                {
+                  "name": "height",
+                  "type": "u32",
+                  "optional": true,
+                  "default": 0,
+                  "doc": "Height in pixels; 0 is the render target's."
+                }
+              ],
+              "returns": "Option<Capture>",
+              "returnsDoc": "Null without a renderer.",
+              "publish": true
+            },
+            {
+              "name": "sweep",
+              "doc": "A filmstrip over one tunable: per value, restore, patch, advance, capture.",
+              "params": [
+                {
+                  "name": "desc",
+                  "type": "SweepDesc",
+                  "optional": true,
+                  "flatten": true,
+                  "doc": "The parameter, values, steps and size."
+                }
+              ],
+              "returns": "Option<SweepResult>",
+              "returnsDoc": "Null for an unknown entity or parameter, or without a renderer.",
+              "publish": false
+            },
+            {
+              "name": "reload",
+              "doc": "Hot reload: snapshot, swap the game bundle, re-register components by name, restore.",
+              "params": [],
+              "returns": "Option<ReloadReport>",
+              "returnsDoc": "Null when the new bundle fails to load; the old one keeps running.",
+              "publish": false
+            },
+            {
+              "name": "snapshot",
+              "doc": "Snapshot the whole world in the running process.",
+              "params": [],
+              "returns": "Option<SnapshotInfo>",
+              "publish": false
+            },
+            {
+              "name": "restore",
+              "doc": "Restore a snapshot taken by this process.",
+              "params": [
+                {
+                  "name": "id",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The snapshot id."
+                }
+              ],
+              "returns": "bool",
+              "returnsDoc": "False for an unknown id.",
+              "publish": false
+            },
+            {
+              "name": "dump",
+              "doc": "A world, entity or UI dump, as the command channel's dump actions write.",
+              "params": [
+                {
+                  "name": "desc",
+                  "type": "DumpDesc",
+                  "optional": true,
+                  "flatten": true,
+                  "doc": "What to dump."
+                }
+              ],
+              "returns": "Option<DumpResult>",
+              "returnsDoc": "Null for an unknown entity.",
+              "publish": false
+            },
+            {
+              "name": "commands",
+              "doc": "Schedule a command script on simulation time, as `og run --commands`.",
+              "params": [
+                {
+                  "name": "script",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "`t:action[:args];...`."
+                }
+              ],
+              "returns": "Option<CommandsReport>",
+              "returnsDoc": "Null for a malformed script.",
+              "publish": false
+            }
+          ]
+        }
+      ],
+      "callbacks": []
+    }
+  ],
+  "$defs": {
+    "Vector2": {
+      "x-og-kind": "struct",
+      "x-og-module": "math",
+      "description": "A 2D vector, as three.js Vector2.",
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number",
+          "description": "The x component."
+        },
+        "y": {
+          "type": "number",
+          "description": "The y component."
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "Vector3": {
+      "x-og-kind": "struct",
+      "x-og-module": "math",
+      "description": "A 3D vector, as three.js Vector3. The engine is right-handed with +Y up, as three.js.",
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number",
+          "description": "The x component."
+        },
+        "y": {
+          "type": "number",
+          "description": "The y component."
+        },
+        "z": {
+          "type": "number",
+          "description": "The z component."
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "z"
+      ],
+      "additionalProperties": false
+    },
+    "Quaternion": {
+      "x-og-kind": "struct",
+      "x-og-module": "math",
+      "description": "A unit quaternion rotation, as three.js Quaternion. The zero value is the identity.",
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number",
+          "description": "The x component."
+        },
+        "y": {
+          "type": "number",
+          "description": "The y component."
+        },
+        "z": {
+          "type": "number",
+          "description": "The z component."
+        },
+        "w": {
+          "type": "number",
+          "description": "The w (scalar) component.",
+          "default": 1
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "z",
+        "w"
+      ],
+      "additionalProperties": false
+    },
+    "Matrix4": {
+      "x-og-kind": "struct",
+      "x-og-module": "math",
+      "description": "A 4x4 matrix, as three.js Matrix4: sixteen elements in column-major order. The zero value is the identity.",
+      "type": "object",
+      "properties": {
+        "elements": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 16,
+          "maxItems": 16,
+          "description": "The elements, column-major, as three.js Matrix4.elements.",
+          "default": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+        }
+      },
+      "required": [
+        "elements"
+      ],
+      "additionalProperties": false
+    },
+    "Color": {
+      "x-og-kind": "struct",
+      "x-og-module": "math",
+      "description": "A linear RGB colour, as three.js Color with colour management on. Components are usually between 0 and 1; above 1 is HDR.",
+      "type": "object",
+      "properties": {
+        "r": {
+          "type": "number",
+          "description": "The red component."
+        },
+        "g": {
+          "type": "number",
+          "description": "The green component."
+        },
+        "b": {
+          "type": "number",
+          "description": "The blue component."
+        }
+      },
+      "required": [
+        "r",
+        "g",
+        "b"
+      ],
+      "additionalProperties": false
+    },
+    "Ray": {
+      "x-og-kind": "struct",
+      "x-og-module": "math",
+      "description": "A ray, as three.js Ray.",
+      "type": "object",
+      "properties": {
+        "origin": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where the ray starts."
+        },
+        "direction": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The unit direction the ray points in."
+        }
+      },
+      "required": [
+        "origin",
+        "direction"
+      ],
+      "additionalProperties": false
+    },
+    "FieldOptions": {
+      "x-og-kind": "desc",
+      "x-og-module": "reflect",
+      "description": "Metadata of one field. Ranges and units are what Tune and the probe's bounds show; nothing clamps writes.",
+      "type": "object",
+      "properties": {
+        "min": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The smallest meaningful value.",
+          "default": null
+        },
+        "max": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The largest meaningful value.",
+          "default": null
+        },
+        "step": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The increment Tune uses.",
+          "default": null
+        },
+        "unit": {
+          "type": "string",
+          "description": "A unit name from the API's unit table, or empty.",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "The person-facing name; empty uses the field name.",
+          "default": ""
+        },
+        "doc": {
+          "type": "string",
+          "description": "One sentence on what the field means.",
+          "default": ""
+        },
+        "tunable": {
+          "type": "boolean",
+          "description": "Publish the field to Tune and to the probe's bounds and patch.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "Entity": {
+      "x-og-kind": "handle",
+      "x-og-module": "world",
+      "description": "An entity: an index and a generation. The value is index + generation * 2^32, with the generation below 2^21, so it stays an exact JavaScript number.\nGenerations start at 1, so 0 is never a live entity.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "SpawnDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "world",
+      "description": "How to spawn an entity. `{}` spawns an unnamed entity at the origin with a Transform.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "A unique name; the probe and the command channel address the entity by it. Empty leaves it unnamed.",
+          "default": ""
+        },
+        "parent": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Entity"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The parent entity; the new entity's Transform is then relative to it.",
+          "default": null
+        },
+        "position": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The initial Transform.position.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "quaternion": {
+          "$ref": "#/$defs/Quaternion",
+          "description": "The initial Transform.quaternion.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scale": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The initial Transform.scale.",
+          "default": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "bare": {
+          "type": "boolean",
+          "description": "Spawn without a Transform: a pure data entity.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "QueryDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "world",
+      "description": "Which entities a query matches.",
+      "type": "object",
+      "properties": {
+        "with": {
+          "type": "array",
+          "items": {
+            "x-og-type": "AnyComponent"
+          },
+          "description": "Components an entity must have.",
+          "default": []
+        },
+        "without": {
+          "type": "array",
+          "items": {
+            "x-og-type": "AnyComponent"
+          },
+          "description": "Components an entity must not have.",
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "SystemDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "system",
+      "description": "A system's declared access and order.",
+      "type": "object",
+      "properties": {
+        "reads": {
+          "type": "array",
+          "items": {
+            "x-og-type": "AnyReflected"
+          },
+          "description": "Components and resources the system reads. Components here also shape its query.",
+          "default": []
+        },
+        "writes": {
+          "type": "array",
+          "items": {
+            "x-og-type": "AnyReflected"
+          },
+          "description": "Components and resources the system writes. Components here also shape its query.",
+          "default": []
+        },
+        "without": {
+          "type": "array",
+          "items": {
+            "x-og-type": "AnyComponent"
+          },
+          "description": "Components a matched entity must not have.",
+          "default": []
+        },
+        "after": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Names of systems that must run before this one.",
+          "default": []
+        },
+        "before": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Names of systems that must run after this one.",
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "GameDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "game",
+      "description": "A game: its tick, scenes, systems and commands.",
+      "type": "object",
+      "properties": {
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The fixed tick rate.",
+          "default": 60,
+          "minimum": 1,
+          "maximum": 240,
+          "x-og-unit": "hz"
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The project seed every Rng stream derives from. A replay overrides it.",
+          "default": 0
+        },
+        "scenes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Scene names to `.ogt` paths, as `{ main: \"scenes/main.ogt\" }`.",
+          "default": {}
+        },
+        "scene": {
+          "type": "string",
+          "description": "The scene loaded first.",
+          "default": "main"
+        },
+        "systems": {
+          "type": "array",
+          "items": {
+            "x-og-type": "System"
+          },
+          "description": "The systems, in declaration order before `after`/`before` constraints apply.",
+          "default": []
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "x-og-type": "AnyResource"
+          },
+          "description": "The game's own resources, created at their defaults.",
+          "default": []
+        },
+        "commands": {
+          "type": "object",
+          "additionalProperties": {
+            "x-og-type": "CommandHandler"
+          },
+          "description": "Game actions registered into the command channel, by action name.",
+          "default": {}
+        },
+        "maxCatchUp": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most ticks one frame may run to catch up with the clock; the accumulator drops the rest.",
+          "default": 4,
+          "minimum": 1,
+          "maximum": 60,
+          "x-og-unit": "ticks"
+        },
+        "facts": {
+          "anyOf": [
+            {
+              "x-og-type": "FactsFn"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The game's own facts for the probe's state().",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "Transform": {
+      "x-og-kind": "component",
+      "x-og-module": "transform",
+      "description": "Where an entity is, relative to its parent (or the world).",
+      "type": "object",
+      "properties": {
+        "position": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The position, as three.js Object3D.position.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "quaternion": {
+          "$ref": "#/$defs/Quaternion",
+          "description": "The rotation, as three.js Object3D.quaternion.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scale": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The scale, as three.js Object3D.scale.",
+          "default": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Parent": {
+      "x-og-kind": "component",
+      "x-og-module": "transform",
+      "description": "The entity this one's Transform is relative to. Set by SpawnDesc.parent.",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "The parent.",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "MatrixWorld": {
+      "x-og-kind": "component",
+      "x-og-module": "transform",
+      "description": "The world matrix the engine composes after the systems run, as three.js Object3D.matrixWorld.",
+      "type": "object",
+      "properties": {
+        "matrix": {
+          "$ref": "#/$defs/Matrix4",
+          "description": "The composed world matrix.",
+          "default": {
+            "elements": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+          },
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Time": {
+      "x-og-kind": "resource",
+      "x-og-module": "time",
+      "description": "The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers.",
+      "type": "object",
+      "properties": {
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Fixed steps taken since load.",
+          "default": 0,
+          "x-og-unit": "ticks",
+          "readOnly": true
+        },
+        "dt": {
+          "type": "number",
+          "description": "The length of one tick: 1 / rate.",
+          "default": 0,
+          "x-og-unit": "s",
+          "readOnly": true
+        },
+        "elapsed": {
+          "type": "number",
+          "description": "Simulation time since load: tick * dt.",
+          "default": 0,
+          "x-og-unit": "s",
+          "readOnly": true
+        },
+        "rate": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick rate, from GameDesc.tick.",
+          "default": 0,
+          "x-og-unit": "hz",
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Rng": {
+      "x-og-kind": "resource",
+      "x-og-module": "rng",
+      "description": "The world's main random stream, seeded from GameDesc.seed (or the replay seed). Its state is part of every snapshot.",
+      "type": "object",
+      "properties": {
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The seed the stream started from.",
+          "default": 0,
+          "readOnly": true
+        },
+        "state": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The generator state; snapshot and restore carry it.",
+          "default": 0,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "KeyAction": {
+      "x-og-kind": "enum",
+      "x-og-module": "input",
+      "description": "What an injected key event does.",
+      "type": "string",
+      "enum": [
+        "press",
+        "down",
+        "up"
+      ],
+      "x-og-variants": {
+        "press": "Down, then up on the next tick.",
+        "down": "Held down until an up.",
+        "up": "Released."
+      }
+    },
+    "PointerAction": {
+      "x-og-kind": "enum",
+      "x-og-module": "input",
+      "description": "What an injected pointer event does.",
+      "type": "string",
+      "enum": [
+        "click",
+        "move",
+        "down",
+        "up"
+      ],
+      "x-og-variants": {
+        "click": "Down, then up on the next tick, at the point.",
+        "move": "A move to the point.",
+        "down": "A press at the point.",
+        "up": "A release at the point."
+      }
+    },
+    "PointerButton": {
+      "x-og-kind": "enum",
+      "x-og-module": "input",
+      "description": "A physical pointer button; `none` is a hover move.",
+      "type": "string",
+      "enum": [
+        "none",
+        "left",
+        "middle",
+        "right"
+      ],
+      "x-og-variants": {
+        "none": "No button.",
+        "left": "The primary button, or a touch.",
+        "middle": "The middle button.",
+        "right": "The secondary button."
+      }
+    },
+    "Modifiers": {
+      "x-og-kind": "struct",
+      "x-og-module": "input",
+      "description": "Modifier keys held during a key event.",
+      "type": "object",
+      "properties": {
+        "alt": {
+          "type": "boolean",
+          "description": "Alt or Option."
+        },
+        "control": {
+          "type": "boolean",
+          "description": "Control."
+        },
+        "platform": {
+          "type": "boolean",
+          "description": "Command on macOS, the Windows key on Windows."
+        },
+        "shift": {
+          "type": "boolean",
+          "description": "Shift."
+        }
+      },
+      "required": [
+        "alt",
+        "control",
+        "platform",
+        "shift"
+      ],
+      "additionalProperties": false
+    },
+    "KeyInput": {
+      "x-og-kind": "struct",
+      "x-og-module": "input",
+      "description": "A key event. `key` names the physical key as KeyboardEvent.code does: ArrowRight, Space, KeyA.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "The physical key code."
+        },
+        "action": {
+          "$ref": "#/$defs/KeyAction",
+          "description": "Press, down or up."
+        },
+        "modifiers": {
+          "$ref": "#/$defs/Modifiers",
+          "description": "Held modifiers; omitted means none."
+        }
+      },
+      "required": [
+        "key",
+        "action"
+      ],
+      "additionalProperties": false
+    },
+    "PointerInput": {
+      "x-og-kind": "struct",
+      "x-og-module": "input",
+      "description": "A pointer event at a point in CSS pixels of the play surface.",
+      "type": "object",
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/PointerAction",
+          "description": "Click, move, down or up."
+        },
+        "x": {
+          "type": "number",
+          "description": "Horizontal position.",
+          "x-og-unit": "cssPx"
+        },
+        "y": {
+          "type": "number",
+          "description": "Vertical position.",
+          "x-og-unit": "cssPx"
+        },
+        "button": {
+          "$ref": "#/$defs/PointerButton",
+          "description": "The button; `none` for a hover move."
+        }
+      },
+      "required": [
+        "action",
+        "x",
+        "y",
+        "button"
+      ],
+      "additionalProperties": false
+    },
+    "WheelInput": {
+      "x-og-kind": "struct",
+      "x-og-module": "input",
+      "description": "A wheel or trackpad scroll at a point.",
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number",
+          "description": "Horizontal position.",
+          "x-og-unit": "cssPx"
+        },
+        "y": {
+          "type": "number",
+          "description": "Vertical position.",
+          "x-og-unit": "cssPx"
+        },
+        "deltaX": {
+          "type": "number",
+          "description": "Horizontal scroll amount.",
+          "x-og-unit": "cssPx"
+        },
+        "deltaY": {
+          "type": "number",
+          "description": "Vertical scroll amount.",
+          "x-og-unit": "cssPx"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "deltaX",
+        "deltaY"
+      ],
+      "additionalProperties": false
+    },
+    "InjectedInput": {
+      "x-og-kind": "union",
+      "x-og-module": "input",
+      "description": "One input event in the game's own vocabulary, as the probe's input() and playtest scripts carry it.",
+      "x-og-tag": "kind",
+      "oneOf": [
+        {
+          "description": "A key event.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "key"
+            },
+            "key": {
+              "type": "string",
+              "description": "The physical key code."
+            },
+            "action": {
+              "$ref": "#/$defs/KeyAction",
+              "description": "Press, down or up."
+            },
+            "modifiers": {
+              "$ref": "#/$defs/Modifiers",
+              "description": "Held modifiers; omitted means none."
+            }
+          },
+          "required": [
+            "kind",
+            "key",
+            "action"
+          ],
+          "additionalProperties": false,
+          "x-og-payload": "KeyInput"
+        },
+        {
+          "description": "A pointer event.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "pointer"
+            },
+            "action": {
+              "$ref": "#/$defs/PointerAction",
+              "description": "Click, move, down or up."
+            },
+            "x": {
+              "type": "number",
+              "description": "Horizontal position.",
+              "x-og-unit": "cssPx"
+            },
+            "y": {
+              "type": "number",
+              "description": "Vertical position.",
+              "x-og-unit": "cssPx"
+            },
+            "button": {
+              "$ref": "#/$defs/PointerButton",
+              "description": "The button; `none` for a hover move."
+            }
+          },
+          "required": [
+            "kind",
+            "action",
+            "x",
+            "y",
+            "button"
+          ],
+          "additionalProperties": false,
+          "x-og-payload": "PointerInput"
+        },
+        {
+          "description": "A wheel event.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "wheel"
+            },
+            "x": {
+              "type": "number",
+              "description": "Horizontal position.",
+              "x-og-unit": "cssPx"
+            },
+            "y": {
+              "type": "number",
+              "description": "Vertical position.",
+              "x-og-unit": "cssPx"
+            },
+            "deltaX": {
+              "type": "number",
+              "description": "Horizontal scroll amount.",
+              "x-og-unit": "cssPx"
+            },
+            "deltaY": {
+              "type": "number",
+              "description": "Vertical scroll amount.",
+              "x-og-unit": "cssPx"
+            }
+          },
+          "required": [
+            "kind",
+            "x",
+            "y",
+            "deltaX",
+            "deltaY"
+          ],
+          "additionalProperties": false,
+          "x-og-payload": "WheelInput"
+        }
+      ]
+    },
+    "Input": {
+      "x-og-kind": "resource",
+      "x-og-module": "input",
+      "description": "The input state at the start of this tick. Edges (pressed, released) last exactly one tick.",
+      "type": "object",
+      "properties": {
+        "pointer": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The pointer position.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "x-og-unit": "cssPx",
+          "readOnly": true
+        },
+        "pointerInside": {
+          "type": "boolean",
+          "description": "Whether the pointer is over the play surface.",
+          "default": false,
+          "readOnly": true
+        },
+        "wheel": {
+          "$ref": "#/$defs/Vector2",
+          "description": "Scroll accumulated during this tick.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "x-og-unit": "cssPx",
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "KeyDown": {
+      "x-og-kind": "event",
+      "x-og-module": "input",
+      "description": "A key went down.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "The physical key code."
+        },
+        "repeat": {
+          "type": "boolean",
+          "description": "Whether this is an auto-repeat."
+        }
+      },
+      "required": [
+        "key",
+        "repeat"
+      ],
+      "additionalProperties": false
+    },
+    "KeyUp": {
+      "x-og-kind": "event",
+      "x-og-module": "input",
+      "description": "A key went up.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "The physical key code."
+        }
+      },
+      "required": [
+        "key"
+      ],
+      "additionalProperties": false
+    },
+    "PointerDown": {
+      "x-og-kind": "event",
+      "x-og-module": "input",
+      "description": "A pointer button went down.",
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number",
+          "description": "Horizontal position in CSS pixels."
+        },
+        "y": {
+          "type": "number",
+          "description": "Vertical position in CSS pixels."
+        },
+        "button": {
+          "$ref": "#/$defs/PointerButton",
+          "description": "The button."
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "button"
+      ],
+      "additionalProperties": false
+    },
+    "PointerUp": {
+      "x-og-kind": "event",
+      "x-og-module": "input",
+      "description": "A pointer button went up.",
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number",
+          "description": "Horizontal position in CSS pixels."
+        },
+        "y": {
+          "type": "number",
+          "description": "Vertical position in CSS pixels."
+        },
+        "button": {
+          "$ref": "#/$defs/PointerButton",
+          "description": "The button."
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "button"
+      ],
+      "additionalProperties": false
+    },
+    "PointerMove": {
+      "x-og-kind": "event",
+      "x-og-module": "input",
+      "description": "The pointer moved.",
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number",
+          "description": "Horizontal position in CSS pixels."
+        },
+        "y": {
+          "type": "number",
+          "description": "Vertical position in CSS pixels."
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "Wheel": {
+      "x-og-kind": "event",
+      "x-og-module": "input",
+      "description": "A wheel or trackpad scroll.",
+      "type": "object",
+      "properties": {
+        "deltaX": {
+          "type": "number",
+          "description": "Horizontal scroll in CSS pixels."
+        },
+        "deltaY": {
+          "type": "number",
+          "description": "Vertical scroll in CSS pixels."
+        }
+      },
+      "required": [
+        "deltaX",
+        "deltaY"
+      ],
+      "additionalProperties": false
+    },
+    "Camera": {
+      "x-og-kind": "resource",
+      "x-og-module": "camera",
+      "description": "The camera the frame is rendered from. Rendering reads it after the tick; it never feeds back into the simulation.",
+      "type": "object",
+      "properties": {
+        "position": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where the camera is.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "quaternion": {
+          "$ref": "#/$defs/Quaternion",
+          "description": "Its rotation; the camera looks down its local -Z.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "fov": {
+          "type": "number",
+          "description": "The vertical field of view of the perspective projection.",
+          "default": 50,
+          "minimum": 1,
+          "maximum": 179,
+          "x-og-unit": "deg",
+          "x-og-tunable": true
+        },
+        "near": {
+          "type": "number",
+          "description": "The near clipping plane.",
+          "default": 0.1,
+          "minimum": 0.001,
+          "x-og-unit": "m"
+        },
+        "far": {
+          "type": "number",
+          "description": "The far clipping plane.",
+          "default": 2000,
+          "minimum": 0.01,
+          "x-og-unit": "m"
+        },
+        "zoom": {
+          "type": "number",
+          "description": "The zoom factor, as three.js Camera.zoom.",
+          "default": 1,
+          "minimum": 0.01,
+          "maximum": 100,
+          "x-og-tunable": true
+        },
+        "orthographic": {
+          "type": "boolean",
+          "description": "Use an orthographic projection (the 2D profile) instead of a perspective one.",
+          "default": false
+        },
+        "height": {
+          "type": "number",
+          "description": "The visible world height of the orthographic projection.",
+          "default": 10,
+          "minimum": 0.01,
+          "x-og-unit": "m"
+        },
+        "background": {
+          "$ref": "#/$defs/Color",
+          "description": "The clear colour, as three.js Scene.background. The default is the brand ink #14161b in linear RGB.",
+          "default": {
+            "r": 0.00699,
+            "g": 0.00803,
+            "b": 0.01096
+          }
+        },
+        "exposure": {
+          "type": "number",
+          "description": "Exposure before tone mapping, as three.js toneMappingExposure.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 16,
+          "x-og-tunable": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Geometry": {
+      "x-og-kind": "handle",
+      "x-og-module": "render",
+      "description": "Vertex and index data, as three.js BufferGeometry. Comes from a loaded glTF.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "Material": {
+      "x-og-kind": "handle",
+      "x-og-module": "render",
+      "description": "A material instance.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "Texture": {
+      "x-og-kind": "handle",
+      "x-og-module": "render",
+      "description": "A cooked texture.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "Side": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "Which faces are drawn, as three.js FrontSide, BackSide and DoubleSide.",
+      "type": "string",
+      "enum": [
+        "front",
+        "back",
+        "double"
+      ],
+      "x-og-variants": {
+        "front": "Front faces only.",
+        "back": "Back faces only.",
+        "double": "Both."
+      }
+    },
+    "RenderTier": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "The backend the renderer runs on; the probe's hello reports it.",
+      "type": "string",
+      "enum": [
+        "webgpu",
+        "webgl2",
+        "vulkan",
+        "metal",
+        "none"
+      ],
+      "x-og-variants": {
+        "webgpu": "WebGPU in a browser: the full feature set.",
+        "webgl2": "The WebGL2 fallback: no compute, CPU culling and particles, tiled lights.",
+        "vulkan": "Native Vulkan, on lavapipe or a GPU.",
+        "metal": "Native Metal.",
+        "none": "No renderer: frames are not produced and capture refuses."
+      }
+    },
+    "StandardMaterialDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "render",
+      "description": "A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names.",
+      "type": "object",
+      "properties": {
+        "color": {
+          "$ref": "#/$defs/Color",
+          "description": "The base colour.",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "map": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The base colour texture.",
+          "default": null
+        },
+        "metalness": {
+          "type": "number",
+          "description": "How metallic the surface is.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "metalnessMap": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Metalness from the texture's blue channel.",
+          "default": null
+        },
+        "roughness": {
+          "type": "number",
+          "description": "How rough the surface is.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "roughnessMap": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Roughness from the texture's green channel.",
+          "default": null
+        },
+        "normalMap": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A tangent-space normal map.",
+          "default": null
+        },
+        "aoMap": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Ambient occlusion from the texture's red channel.",
+          "default": null
+        },
+        "emissive": {
+          "$ref": "#/$defs/Color",
+          "description": "The emitted colour.",
+          "default": {
+            "r": 0,
+            "g": 0,
+            "b": 0
+          }
+        },
+        "emissiveIntensity": {
+          "type": "number",
+          "description": "A multiplier on the emitted colour.",
+          "default": 1,
+          "minimum": 0
+        },
+        "emissiveMap": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The emitted colour texture.",
+          "default": null
+        },
+        "opacity": {
+          "type": "number",
+          "description": "The opacity; below 1 only with transparent.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "transparent": {
+          "type": "boolean",
+          "description": "Blend instead of writing opaque pixels.",
+          "default": false
+        },
+        "alphaTest": {
+          "type": "number",
+          "description": "Discard pixels whose alpha is below this.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "side": {
+          "$ref": "#/$defs/Side",
+          "description": "Which faces are drawn.",
+          "default": "front"
+        },
+        "flatShading": {
+          "type": "boolean",
+          "description": "Shade with face normals.",
+          "default": false
+        },
+        "envMapIntensity": {
+          "type": "number",
+          "description": "A multiplier on image-based lighting.",
+          "default": 1,
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "Mesh": {
+      "x-og-kind": "component",
+      "x-og-module": "render",
+      "description": "Draws a geometry with a material at the entity's MatrixWorld, as a three.js Mesh.",
+      "type": "object",
+      "properties": {
+        "geometry": {
+          "$ref": "#/$defs/Geometry",
+          "description": "The geometry.",
+          "default": 0
+        },
+        "material": {
+          "$ref": "#/$defs/Material",
+          "description": "The material.",
+          "default": 0
+        },
+        "castShadow": {
+          "type": "boolean",
+          "description": "Cast shadows, as three.js Object3D.castShadow.",
+          "default": false
+        },
+        "receiveShadow": {
+          "type": "boolean",
+          "description": "Receive shadows, as three.js Object3D.receiveShadow.",
+          "default": false
+        },
+        "visible": {
+          "type": "boolean",
+          "description": "Whether it is drawn.",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "RenderCapabilities": {
+      "x-og-kind": "struct",
+      "x-og-module": "render",
+      "description": "What the renderer can do on this device. Backend limits are reported here, never by missing members.",
+      "type": "object",
+      "properties": {
+        "tier": {
+          "$ref": "#/$defs/RenderTier",
+          "description": "The backend."
+        },
+        "compute": {
+          "type": "boolean",
+          "description": "Whether compute passes run (GPU culling, GPU particles)."
+        },
+        "maxShadowedLights": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many lights may cast shadows."
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The render target width in device pixels."
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The render target height in device pixels."
+        }
+      },
+      "required": [
+        "tier",
+        "compute",
+        "maxShadowedLights",
+        "width",
+        "height"
+      ],
+      "additionalProperties": false
+    },
+    "Asset": {
+      "x-og-kind": "handle",
+      "x-og-module": "load",
+      "description": "A loaded scene or glTF asset.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "LoadStatus": {
+      "x-og-kind": "enum",
+      "x-og-module": "load",
+      "description": "Where a load is.",
+      "type": "string",
+      "enum": [
+        "pending",
+        "ready",
+        "failed"
+      ],
+      "x-og-variants": {
+        "pending": "Still loading.",
+        "ready": "Loaded; it can be instantiated.",
+        "failed": "Failed; the AssetFailed event carries the reason."
+      }
+    },
+    "GltfDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "load",
+      "description": "How to load a glTF, as three.js GLTFLoader options where they apply.",
+      "type": "object",
+      "properties": {
+        "scene": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Which glTF scene to instantiate.",
+          "default": 0
+        },
+        "castShadow": {
+          "type": "boolean",
+          "description": "Set Mesh.castShadow on every mesh instantiated from it.",
+          "default": false
+        },
+        "receiveShadow": {
+          "type": "boolean",
+          "description": "Set Mesh.receiveShadow on every mesh instantiated from it.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "GltfInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "load",
+      "description": "What a loaded glTF holds.",
+      "type": "object",
+      "properties": {
+        "scenes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many scenes it has."
+        },
+        "geometries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Geometry"
+          },
+          "description": "Its geometries, in glTF mesh-primitive order."
+        },
+        "materials": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Material"
+          },
+          "description": "Its materials, in glTF order."
+        },
+        "animations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Its animation clip names."
+        }
+      },
+      "required": [
+        "scenes",
+        "geometries",
+        "materials",
+        "animations"
+      ],
+      "additionalProperties": false
+    },
+    "AssetReady": {
+      "x-og-kind": "event",
+      "x-og-module": "load",
+      "description": "A load completed.",
+      "type": "object",
+      "properties": {
+        "asset": {
+          "$ref": "#/$defs/Asset",
+          "description": "The handle."
+        },
+        "path": {
+          "type": "string",
+          "description": "The path it was loaded from."
+        }
+      },
+      "required": [
+        "asset",
+        "path"
+      ],
+      "additionalProperties": false
+    },
+    "AssetFailed": {
+      "x-og-kind": "event",
+      "x-og-module": "load",
+      "description": "A load failed.",
+      "type": "object",
+      "properties": {
+        "asset": {
+          "$ref": "#/$defs/Asset",
+          "description": "The handle."
+        },
+        "path": {
+          "type": "string",
+          "description": "The path it was loaded from."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why, naming the fix."
+        }
+      },
+      "required": [
+        "asset",
+        "path",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "CoreAction": {
+      "x-og-kind": "enum",
+      "x-og-module": "commands",
+      "description": "The actions the engine ships. Arguments follow the action, separated by `:`.",
+      "type": "string",
+      "enum": [
+        "screenshot",
+        "touch_move_to",
+        "touch_move",
+        "touch_start",
+        "touch_end",
+        "scroll",
+        "key_down",
+        "key_up",
+        "type",
+        "move_to_text",
+        "teleport",
+        "frame_entity",
+        "dump_world",
+        "dump_entity",
+        "dump_ui",
+        "set",
+        "seed",
+        "pause",
+        "resume",
+        "advance",
+        "quit"
+      ],
+      "x-og-variants": {
+        "screenshot": "`screenshot[:path][:full|:N]`: capture the next frame.",
+        "touch_move_to": "`touch_move_to:<ui id>`: move the pointer to a UI element.",
+        "touch_move": "`touch_move:x,y`: move the pointer to CSS pixel coordinates.",
+        "touch_start": "`touch_start`: press the pointer where it is.",
+        "touch_end": "`touch_end`: release the pointer.",
+        "scroll": "`scroll:dx,dy`: scroll at the pointer.",
+        "key_down": "`key_down:<Key>`: hold a key by its code.",
+        "key_up": "`key_up:<Key>`: release a key.",
+        "type": "`type:<text>`: type text, one key press per character.",
+        "move_to_text": "`move_to_text:[=]text[@N]`: move the pointer to the UI element showing the text (exactly with `=`, the Nth with `@N`).",
+        "teleport": "`teleport:<entity>:x,y,z`: set an entity's position.",
+        "frame_entity": "`frame_entity:<entity>`: point the camera at an entity.",
+        "dump_world": "`dump_world[:path]`: tables, systems and their matched counts.",
+        "dump_entity": "`dump_entity:<name>[:path]`: one entity's components and transform.",
+        "dump_ui": "`dump_ui[:path]`: the UI tree with bounds.",
+        "set": "`set:<entity>.<component>.<field>=<value>`: a Tune write through the schema.",
+        "seed": "`seed:<n>`: reseed the Rng resource.",
+        "pause": "`pause`: hold the clock; advance still steps.",
+        "resume": "`resume`: release the clock.",
+        "advance": "`advance:<ticks>`: take fixed steps.",
+        "quit": "`quit`: exit."
+      }
+    },
+    "CommandDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "commands",
+      "description": "How a registered action describes itself in `og run --help` and the wiki.",
+      "type": "object",
+      "properties": {
+        "usage": {
+          "type": "string",
+          "description": "The argument form, such as `<count>`.",
+          "default": ""
+        },
+        "doc": {
+          "type": "string",
+          "description": "One sentence on what it does.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "CommandStep": {
+      "x-og-kind": "struct",
+      "x-og-module": "commands",
+      "description": "One parsed step of a command script.",
+      "type": "object",
+      "properties": {
+        "at": {
+          "type": "number",
+          "description": "When it runs, in simulation seconds from the start of the script.",
+          "x-og-unit": "s"
+        },
+        "action": {
+          "type": "string",
+          "description": "The action name."
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The arguments."
+        }
+      },
+      "required": [
+        "at",
+        "action",
+        "args"
+      ],
+      "additionalProperties": false
+    },
+    "CommandsReport": {
+      "x-og-kind": "struct",
+      "x-og-module": "commands",
+      "description": "What scheduling a script did.",
+      "type": "object",
+      "properties": {
+        "scheduled": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Steps scheduled."
+        },
+        "untilTick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick of the last step."
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Unknown actions and other skipped steps, each naming the fix."
+        }
+      },
+      "required": [
+        "scheduled",
+        "untilTick",
+        "warnings"
+      ],
+      "additionalProperties": false
+    },
+    "PickResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "What a screen point resolved to.",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "type": "string",
+          "description": "The probe id of the entity under the point."
+        },
+        "world": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            }
+          ],
+          "description": "Where the pick landed in world space: two components in the 2D profile, three in 3D; nothing pads a plane with an unmeasured zero."
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Where a person would change it, as `player.ts::jump`."
+        }
+      },
+      "required": [
+        "entity",
+        "world",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "ProbeTunable": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "One published tunable parameter and the range it means something over.",
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Where the value lives, as `Health.hp`."
+        },
+        "label": {
+          "type": "string",
+          "description": "The person-facing name."
+        },
+        "min": {
+          "type": "number",
+          "description": "The smallest meaningful value."
+        },
+        "max": {
+          "type": "number",
+          "description": "The largest meaningful value."
+        },
+        "step": {
+          "type": "number",
+          "description": "Tune's increment."
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": false
+    },
+    "ProbeEntityRef": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "One entity the probe publishes in state().",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Its probe id."
+        },
+        "label": {
+          "type": "string",
+          "description": "A person-facing name."
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "ProbeTimings": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "The fixed timings head of state().",
+      "type": "object",
+      "properties": {
+        "step": {
+          "type": "number",
+          "description": "Time the last tick took.",
+          "x-og-unit": "ms"
+        },
+        "render": {
+          "type": "number",
+          "description": "Time the last frame's render took; 0 without a renderer.",
+          "x-og-unit": "ms"
+        },
+        "frameMs": {
+          "type": "number",
+          "description": "step + render.",
+          "x-og-unit": "ms"
+        }
+      },
+      "required": [
+        "step",
+        "render",
+        "frameMs"
+      ],
+      "additionalProperties": false
+    },
+    "ProbeState": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "The probe's state(): a fixed head, then the game's own facts.",
+      "type": "object",
+      "properties": {
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Fixed steps since load."
+        },
+        "paused": {
+          "type": "boolean",
+          "description": "Whether the clock is held."
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The seed the world was assembled from."
+        },
+        "timings": {
+          "$ref": "#/$defs/ProbeTimings",
+          "description": "The last tick's timings."
+        },
+        "entities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ProbeEntityRef"
+          },
+          "description": "The named entities."
+        },
+        "facts": {
+          "description": "What GameDesc.facts returned, or null."
+        }
+      },
+      "required": [
+        "tick",
+        "paused",
+        "seed",
+        "timings",
+        "entities",
+        "facts"
+      ],
+      "additionalProperties": false
+    },
+    "AdvanceOperation": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "The advance operation's payload.",
+      "type": "object",
+      "properties": {
+        "steps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Fixed steps to take."
+        }
+      },
+      "required": [
+        "steps"
+      ],
+      "additionalProperties": false
+    },
+    "InputOperation": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "The input operation's payload.",
+      "type": "object",
+      "properties": {
+        "event": {
+          "$ref": "#/$defs/InjectedInput",
+          "description": "The event."
+        }
+      },
+      "required": [
+        "event"
+      ],
+      "additionalProperties": false
+    },
+    "PickOperation": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "The pick operation's payload.",
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number",
+          "description": "Horizontal position in CSS pixels."
+        },
+        "y": {
+          "type": "number",
+          "description": "Vertical position in CSS pixels."
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "EntityOperation": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "The entity operation's payload.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The probe id."
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "ProbeOperation": {
+      "x-og-kind": "union",
+      "x-og-module": "probe",
+      "description": "One operation of a probe program, which runs in one evaluation so a scripted segment costs one round trip.",
+      "x-og-tag": "op",
+      "oneOf": [
+        {
+          "description": "Take fixed steps; answers the tick.",
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "advance"
+            },
+            "steps": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295,
+              "description": "Fixed steps to take."
+            }
+          },
+          "required": [
+            "op",
+            "steps"
+          ],
+          "additionalProperties": false,
+          "x-og-payload": "AdvanceOperation"
+        },
+        {
+          "description": "Inject an event; answers true.",
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "input"
+            },
+            "event": {
+              "$ref": "#/$defs/InjectedInput",
+              "description": "The event."
+            }
+          },
+          "required": [
+            "op",
+            "event"
+          ],
+          "additionalProperties": false,
+          "x-og-payload": "InputOperation"
+        },
+        {
+          "description": "Hold the clock; answers true.",
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "pause"
+            }
+          },
+          "required": [
+            "op"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "description": "Release the clock; answers true.",
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "resume"
+            }
+          },
+          "required": [
+            "op"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "description": "Read the state; answers `{ tick, state }`.",
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "read"
+            }
+          },
+          "required": [
+            "op"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "description": "Pick a point; answers its result or null.",
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "pick"
+            },
+            "x": {
+              "type": "number",
+              "description": "Horizontal position in CSS pixels."
+            },
+            "y": {
+              "type": "number",
+              "description": "Vertical position in CSS pixels."
+            }
+          },
+          "required": [
+            "op",
+            "x",
+            "y"
+          ],
+          "additionalProperties": false,
+          "x-og-payload": "PickOperation"
+        },
+        {
+          "description": "Read an entity's parameters; null is a refusal.",
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "entity"
+            },
+            "id": {
+              "type": "string",
+              "description": "The probe id."
+            }
+          },
+          "required": [
+            "op",
+            "id"
+          ],
+          "additionalProperties": false,
+          "x-og-payload": "EntityOperation"
+        }
+      ]
+    },
+    "ProbeProgramResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "What a program observed: one answer per operation that ran. A false, or entity's null, stops the program and `refused` names its index.",
+      "type": "object",
+      "properties": {
+        "results": {
+          "type": "array",
+          "items": {},
+          "description": "The answers, in order."
+        },
+        "refused": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The index of the refusing operation, or null."
+        },
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick after the last operation that ran."
+        }
+      },
+      "required": [
+        "results",
+        "refused",
+        "tick"
+      ],
+      "additionalProperties": false
+    },
+    "Hello": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "The wire's hello: who is speaking.",
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "PROBE_VERSION."
+        },
+        "wire": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "PROBE_WIRE_VERSION."
+        },
+        "substrate": {
+          "type": "string",
+          "description": "Always `origin-engine`."
+        },
+        "engine": {
+          "type": "string",
+          "description": "`origin-engine <version>`."
+        },
+        "ticksPerSecond": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The fixed tick rate.",
+          "x-og-unit": "hz"
+        },
+        "tier": {
+          "$ref": "#/$defs/RenderTier",
+          "description": "The renderer backend."
+        },
+        "build": {
+          "$ref": "#/$defs/BuildProfile",
+          "description": "The build configuration."
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The probe members this build serves."
+        }
+      },
+      "required": [
+        "protocol",
+        "wire",
+        "substrate",
+        "engine",
+        "ticksPerSecond",
+        "tier",
+        "build",
+        "members"
+      ],
+      "additionalProperties": false
+    },
+    "BuildProfile": {
+      "x-og-kind": "enum",
+      "x-og-module": "probe",
+      "description": "The build configuration; publish builds keep only the player-facing probe members.",
+      "type": "string",
+      "enum": [
+        "dev",
+        "release",
+        "publish"
+      ],
+      "x-og-variants": {
+        "dev": "A development build: every member, the command channel, dumps.",
+        "release": "An optimised build with every member.",
+        "publish": "A published game: hello, tick, state, pick, entity, input and capture only."
+      }
+    },
+    "Capture": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "A captured frame.",
+      "type": "object",
+      "properties": {
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick the frame shows."
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Width in pixels."
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Height in pixels."
+        },
+        "png": {
+          "type": "string",
+          "description": "The PNG, base64."
+        }
+      },
+      "required": [
+        "tick",
+        "width",
+        "height",
+        "png"
+      ],
+      "additionalProperties": false
+    },
+    "SweepDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "probe",
+      "description": "A parameter sweep: for each value, restore the snapshot taken at the call, patch, advance and capture.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The probe id of the entity.",
+          "default": ""
+        },
+        "parameter": {
+          "type": "string",
+          "description": "The parameter, as `Health.hp`.",
+          "default": ""
+        },
+        "values": {
+          "type": "array",
+          "items": {},
+          "description": "The values to try, in order.",
+          "default": []
+        },
+        "steps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Fixed steps to advance after each patch.",
+          "default": 0
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Capture width; 0 is the render target's.",
+          "default": 0
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Capture height; 0 is the render target's.",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "SweepFrame": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "One frame of a sweep.",
+      "type": "object",
+      "properties": {
+        "value": {
+          "description": "The value patched in."
+        },
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick captured."
+        },
+        "png": {
+          "type": "string",
+          "description": "The PNG, base64."
+        }
+      },
+      "required": [
+        "value",
+        "tick",
+        "png"
+      ],
+      "additionalProperties": false
+    },
+    "SweepResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "A sweep's frames, one per value.",
+      "type": "object",
+      "properties": {
+        "frames": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SweepFrame"
+          },
+          "description": "The frames."
+        }
+      },
+      "required": [
+        "frames"
+      ],
+      "additionalProperties": false
+    },
+    "ReloadReport": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "What a hot reload did. Components are re-registered by name and migrated field by field through the schema.",
+      "type": "object",
+      "properties": {
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick the world was restored at."
+        },
+        "ms": {
+          "type": "number",
+          "description": "From bundle swap to restored world.",
+          "x-og-unit": "ms"
+        },
+        "migrated": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Fields carried across a layout change, as `Health.hp`."
+        },
+        "dropped": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Components or fields that no longer exist, dropped with their data."
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Anything else worth reading, each naming the fix."
+        }
+      },
+      "required": [
+        "tick",
+        "ms",
+        "migrated",
+        "dropped",
+        "warnings"
+      ],
+      "additionalProperties": false
+    },
+    "SnapshotInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "A snapshot of the whole world (components, resources, Rng states, pending events) kept in the running process.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The snapshot's id, for restore."
+        },
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick it was taken at."
+        },
+        "hash": {
+          "type": "string",
+          "description": "The world hash at that tick, hex: equal hashes mean equal worlds."
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its size.",
+          "x-og-unit": "bytes"
+        }
+      },
+      "required": [
+        "id",
+        "tick",
+        "hash",
+        "bytes"
+      ],
+      "additionalProperties": false
+    },
+    "DumpKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "probe",
+      "description": "What dump() reports.",
+      "type": "string",
+      "enum": [
+        "world",
+        "entity",
+        "ui"
+      ],
+      "x-og-variants": {
+        "world": "Archetype tables, systems and their matched counts.",
+        "entity": "One entity's components and transform.",
+        "ui": "The UI tree with bounds."
+      }
+    },
+    "DumpDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "probe",
+      "description": "What to dump.",
+      "type": "object",
+      "properties": {
+        "what": {
+          "$ref": "#/$defs/DumpKind",
+          "description": "The kind of dump.",
+          "default": "world"
+        },
+        "id": {
+          "type": "string",
+          "description": "The probe id, for an entity dump.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "ArchetypeDump": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "One archetype table.",
+      "type": "object",
+      "properties": {
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Its components, by name."
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Entities in it."
+        }
+      },
+      "required": [
+        "components",
+        "count"
+      ],
+      "additionalProperties": false
+    },
+    "SystemDump": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "One system.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Its name."
+        },
+        "matched": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Entities its query matched on the last tick."
+        },
+        "reads": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "What it declared it reads."
+        },
+        "writes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "What it declared it writes."
+        },
+        "ms": {
+          "type": "number",
+          "description": "Time it took on the last tick.",
+          "x-og-unit": "ms"
+        }
+      },
+      "required": [
+        "name",
+        "matched",
+        "reads",
+        "writes",
+        "ms"
+      ],
+      "additionalProperties": false
+    },
+    "WorldDump": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "The world: tables, systems, resources.",
+      "type": "object",
+      "properties": {
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick."
+        },
+        "hash": {
+          "type": "string",
+          "description": "The world hash, hex."
+        },
+        "entities": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Live entities."
+        },
+        "archetypes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ArchetypeDump"
+          },
+          "description": "The archetype tables."
+        },
+        "systems": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SystemDump"
+          },
+          "description": "The systems in run order."
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The registered resources."
+        }
+      },
+      "required": [
+        "tick",
+        "hash",
+        "entities",
+        "archetypes",
+        "systems",
+        "resources"
+      ],
+      "additionalProperties": false
+    },
+    "EntityDump": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "One entity.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Its probe id."
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its name."
+        },
+        "components": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "Each component's field values, by component name."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "components"
+      ],
+      "additionalProperties": false
+    },
+    "UiElement": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "One UI element with its bounds.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Its stable id, as the command channel targets it."
+        },
+        "parent": {
+          "type": "string",
+          "description": "Its parent's id; empty at the root."
+        },
+        "text": {
+          "type": "string",
+          "description": "The text it shows, if any."
+        },
+        "x": {
+          "type": "number",
+          "description": "Left edge.",
+          "x-og-unit": "cssPx"
+        },
+        "y": {
+          "type": "number",
+          "description": "Top edge.",
+          "x-og-unit": "cssPx"
+        },
+        "width": {
+          "type": "number",
+          "description": "Width.",
+          "x-og-unit": "cssPx"
+        },
+        "height": {
+          "type": "number",
+          "description": "Height.",
+          "x-og-unit": "cssPx"
+        }
+      },
+      "required": [
+        "id",
+        "parent",
+        "text",
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "additionalProperties": false
+    },
+    "UiDump": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "The UI tree, flattened in draw order.",
+      "type": "object",
+      "properties": {
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick."
+        },
+        "elements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/UiElement"
+          },
+          "description": "The elements."
+        }
+      },
+      "required": [
+        "tick",
+        "elements"
+      ],
+      "additionalProperties": false
+    },
+    "DumpResult": {
+      "x-og-kind": "union",
+      "x-og-module": "probe",
+      "description": "A dump, tagged by its kind.",
+      "x-og-tag": "kind",
+      "oneOf": [
+        {
+          "description": "The world dump.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "world"
+            },
+            "tick": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295,
+              "description": "The tick."
+            },
+            "hash": {
+              "type": "string",
+              "description": "The world hash, hex."
+            },
+            "entities": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295,
+              "description": "Live entities."
+            },
+            "archetypes": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/ArchetypeDump"
+              },
+              "description": "The archetype tables."
+            },
+            "systems": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/SystemDump"
+              },
+              "description": "The systems in run order."
+            },
+            "resources": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "The registered resources."
+            }
+          },
+          "required": [
+            "kind",
+            "tick",
+            "hash",
+            "entities",
+            "archetypes",
+            "systems",
+            "resources"
+          ],
+          "additionalProperties": false,
+          "x-og-payload": "WorldDump"
+        },
+        {
+          "description": "An entity dump.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "entity"
+            },
+            "id": {
+              "type": "string",
+              "description": "Its probe id."
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Its name."
+            },
+            "components": {
+              "type": "object",
+              "additionalProperties": {},
+              "description": "Each component's field values, by component name."
+            }
+          },
+          "required": [
+            "kind",
+            "id",
+            "name",
+            "components"
+          ],
+          "additionalProperties": false,
+          "x-og-payload": "EntityDump"
+        },
+        {
+          "description": "The UI dump.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "ui"
+            },
+            "tick": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295,
+              "description": "The tick."
+            },
+            "elements": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/UiElement"
+              },
+              "description": "The elements."
+            }
+          },
+          "required": [
+            "kind",
+            "tick",
+            "elements"
+          ],
+          "additionalProperties": false,
+          "x-og-payload": "UiDump"
+        }
+      ]
+    }
+  }
+}

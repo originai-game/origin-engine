@@ -1,0 +1,30 @@
+type api
+version 1
+---
+# expect: 28: field `Label.text` has type `String`, which is not a column kind
+package "@origingame/fixture"
+doc "A fixture: the smallest valid API plus one mistake below."
+
+module reflect {
+  doc "Reflection."
+  place top
+  struct FieldOptions {
+    doc "Field metadata."
+    desc true
+    field min Option.f32 "The smallest meaningful value."
+  }
+  column f32 {
+    doc "A float."
+    array Float32Array
+    stride 1
+    value f32
+  }
+}
+
+module game {
+  doc "The game."
+  component Label {
+    doc "A label."
+    field text String "The text."
+  }
+}

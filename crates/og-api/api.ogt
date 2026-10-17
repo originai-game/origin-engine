@@ -1,0 +1,1529 @@
+type api
+version 1
+---
+# The Origin Engine API, declared once. Every TypeScript declaration, the
+# runtime binding table and the JSON schema are generated from this file
+# (`og api gen`); CI refuses generated files that differ (`og api check`).
+# Grammar and rules: crates/og-api/README.md. Design: docs/design.md §3.
+
+package "@origingame/engine"
+doc "The Origin Engine API. Game code declares components and systems, and reads the world through typed views over engine memory."
+doc "Every failure is a returned Result; desc objects may omit any field; nothing reads the wall clock inside a tick."
+
+unit m "metres"
+unit s "seconds of simulation time"
+unit ms "milliseconds"
+unit rad "radians"
+unit deg "degrees"
+unit hz "ticks or cycles per second"
+unit ticks "fixed simulation steps"
+unit cssPx "CSS pixels of the play surface, origin at the top left"
+unit ratio "a fraction between 0 and 1"
+unit bytes "bytes"
+
+# ── math ──────────────────────────────────────────────────────────────────
+
+module math {
+  doc "Plain math values in the three.js vocabulary. They are data: the engine owns the operations, so results are identical on every host."
+  place top
+
+  struct Vector2 {
+    doc "A 2D vector, as three.js Vector2."
+    field x f32 "The x component."
+    field y f32 "The y component."
+  }
+
+  struct Vector3 {
+    doc "A 3D vector, as three.js Vector3. The engine is right-handed with +Y up, as three.js."
+    field x f32 "The x component."
+    field y f32 "The y component."
+    field z f32 "The z component."
+  }
+
+  struct Quaternion {
+    doc "A unit quaternion rotation, as three.js Quaternion. The zero value is the identity."
+    field x f32 "The x component."
+    field y f32 "The y component."
+    field z f32 "The z component."
+    field w f32 "The w (scalar) component." {
+      default 1
+    }
+  }
+
+  struct Matrix4 {
+    doc "A 4x4 matrix, as three.js Matrix4: sixteen elements in column-major order. The zero value is the identity."
+    field elements Array.f32.16 "The elements, column-major, as three.js Matrix4.elements." {
+      default 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1
+    }
+  }
+
+  struct Color {
+    doc "A linear RGB colour, as three.js Color with colour management on. Components are usually between 0 and 1; above 1 is HDR."
+    field r f32 "The red component."
+    field g f32 "The green component."
+    field b f32 "The blue component."
+  }
+
+  struct Ray {
+    doc "A ray, as three.js Ray."
+    field origin Vector3 "Where the ray starts."
+    field direction Vector3 "The unit direction the ray points in."
+  }
+}
+
+# ── reflect ───────────────────────────────────────────────────────────────
+
+module reflect {
+  doc "Reflection: components and resources are declared once with their field layout and metadata, and registered by name."
+  doc "The inspector, Tune, the probe, scene text and the wiki read this one schema. Each column factory below makes one field."
+  place top
+
+  struct FieldOptions {
+    doc "Metadata of one field. Ranges and units are what Tune and the probe's bounds show; nothing clamps writes."
+    desc true
+    field min Option.f32 "The smallest meaningful value."
+    field max Option.f32 "The largest meaningful value."
+    field step Option.f32 "The increment Tune uses."
+    field unit String "A unit name from the API's unit table, or empty."
+    field label String "The person-facing name; empty uses the field name."
+    field doc String "One sentence on what the field means."
+    field tunable bool "Publish the field to Tune and to the probe's bounds and patch."
+  }
+
+  column f32 {
+    doc "A 32-bit float, the default numeric field."
+    array Float32Array
+    stride 1
+    value f32
+  }
+
+  column f64 {
+    doc "A 64-bit float, for accumulated values that must not drift, such as elapsed time."
+    array Float64Array
+    stride 1
+    value f64
+  }
+
+  column u32 {
+    doc "A 32-bit unsigned integer: counters, flags, indices."
+    array Uint32Array
+    stride 1
+    value u32
+  }
+
+  column i32 {
+    doc "A 32-bit signed integer."
+    array Int32Array
+    stride 1
+    value i32
+  }
+
+  column bool {
+    doc "A boolean, stored as one byte: 0 or 1."
+    array Uint8Array
+    stride 1
+    value bool
+  }
+
+  column Vector2 {
+    doc "A Vector2 field: x, y interleaved."
+    array Float32Array
+    stride 2
+    value Vector2
+  }
+
+  column Vector3 {
+    doc "A Vector3 field: x, y, z interleaved."
+    array Float32Array
+    stride 3
+    value Vector3
+  }
+
+  column Quaternion {
+    doc "A Quaternion field: x, y, z, w interleaved."
+    array Float32Array
+    stride 4
+    value Quaternion
+  }
+
+  column Matrix4 {
+    doc "A Matrix4 field: sixteen column-major elements per entity."
+    array Float32Array
+    stride 16
+    value Matrix4
+  }
+
+  column Color {
+    doc "A Color field: r, g, b interleaved."
+    array Float32Array
+    stride 3
+    value Color
+  }
+
+  fn defineComponent {
+    doc "Declare a component: plain data stored per entity in engine memory, one column per field."
+    doc "Registration is by name, so a hot reload re-registers the same component and migrates its fields by name."
+    generic F Fields
+    param name String "The component's unique name, PascalCase, as it appears in scenes and dumps."
+    param fields F "The layout: field names to column factories, as `{ hp: f32(100) }`."
+    returns ComponentType.F "The token systems, queries and the world take."
+  }
+
+  fn defineResource {
+    doc "Declare a resource: a reflected singleton, such as a tuning table. Its fields start at their defaults."
+    generic F Fields
+    param name String "The resource's unique name, PascalCase."
+    param fields F "The layout, as for defineComponent."
+    returns ResourceType.F "The token `world.resource` and system declarations take."
+  }
+}
+
+# ── world ─────────────────────────────────────────────────────────────────
+
+module world {
+  doc "The world: an archetype ECS. Entities are generational handles; components are columns in engine memory."
+  doc "Structural changes (spawn, despawn, insert, remove) invalidate typed views; the API refuses a stale view."
+
+  handle Entity {
+    doc "An entity: an index and a generation. The value is index + generation * 2^32, with the generation below 2^21, so it stays an exact JavaScript number."
+    doc "Generations start at 1, so 0 is never a live entity."
+  }
+
+  column Entity {
+    doc "An Entity field: (index, generation) pairs."
+    array Uint32Array
+    stride 2
+    value Entity
+  }
+
+  struct SpawnDesc {
+    doc "How to spawn an entity. `{}` spawns an unnamed entity at the origin with a Transform."
+    desc true
+    field name String "A unique name; the probe and the command channel address the entity by it. Empty leaves it unnamed."
+    field parent Option.Entity "The parent entity; the new entity's Transform is then relative to it."
+    field position Vector3 "The initial Transform.position." {
+      unit m
+    }
+    field quaternion Quaternion "The initial Transform.quaternion."
+    field scale Vector3 "The initial Transform.scale." {
+      default 1 1 1
+    }
+    field bare bool "Spawn without a Transform: a pure data entity."
+  }
+
+  struct QueryDesc {
+    doc "Which entities a query matches."
+    desc true
+    field with List.AnyComponent "Components an entity must have."
+    field without List.AnyComponent "Components an entity must not have."
+  }
+
+  interface World {
+    doc "The world a system, a command or a game callback is handed. Game code never holds a world beyond the call it was passed to."
+
+    prop tick u32 "Fixed steps taken since the world was created."
+
+    fn spawn {
+      doc "Spawn an entity."
+      param desc SpawnDesc "Name, parent and initial transform."
+      returns Result.Entity "The new entity, or why it was refused (a duplicate name, a dead parent)."
+    }
+
+    fn despawn {
+      doc "Despawn an entity and its descendants."
+      param entity Entity "The entity."
+      returns Result.Void "Refused for a dead entity."
+    }
+
+    fn alive {
+      doc "Whether an entity handle is live."
+      param entity Entity "The entity."
+      returns bool
+    }
+
+    fn has {
+      doc "Whether an entity has a component."
+      generic C AnyComponent
+      param entity Entity "The entity."
+      param component C "The component token."
+      returns bool
+    }
+
+    fn insert {
+      doc "Add a component to an entity, or overwrite it when present. A structural change."
+      generic C AnyComponent
+      param entity Entity "The entity."
+      param component C "The component token."
+      param value Partial.Value.C "Field values; omitted fields take their defaults." {
+        optional true
+      }
+      returns Result.Void "Refused for a dead entity or an unregistered component."
+    }
+
+    fn remove {
+      doc "Remove a component from an entity. A structural change."
+      generic C AnyComponent
+      param entity Entity "The entity."
+      param component C "The component token."
+      returns Result.Void "Refused for a dead entity or a component it does not have."
+    }
+
+    fn get {
+      doc "Copy one entity's component value. For bulk work use a system's typed views."
+      generic C AnyComponent
+      param entity Entity "The entity."
+      param component C "The component token."
+      returns Result.Value.C
+    }
+
+    fn set {
+      doc "Write some fields of one entity's component."
+      generic C AnyComponent
+      param entity Entity "The entity."
+      param component C "The component token."
+      param value Partial.Value.C "The fields to write."
+      returns Result.Void "Refused for a dead entity or a component it does not have."
+    }
+
+    fn resource {
+      doc "A resource's live value. Inside a system, the resource must be among the system's reads or writes."
+      generic R AnyResource
+      param resource R "The resource token."
+      returns Result.Value.R "Refused for an unregistered resource or one the running system did not declare."
+    }
+
+    fn find {
+      doc "The entity with a name."
+      param name String "The name given at spawn."
+      returns Option.Entity "Null when no live entity has the name."
+    }
+
+    fn nameOf {
+      doc "An entity's name."
+      param entity Entity "The entity."
+      returns Option.String "Null for an unnamed or dead entity."
+    }
+
+    fn query {
+      doc "A query over the current archetypes, for commands and callbacks; systems receive theirs."
+      param desc QueryDesc "The components to match."
+      returns Result.Query
+    }
+
+    fn events {
+      doc "The events of one type emitted during the previous tick and this one, oldest first."
+      generic E AnyEvent
+      param event E "The event token."
+      returns List.Value.E
+    }
+
+    fn emit {
+      doc "Emit an event; readers see it this tick and the next."
+      generic E AnyEvent
+      param event E "The event token."
+      param payload Value.E "The event's fields."
+      returns Result.Void
+    }
+
+    fn instantiate {
+      doc "Spawn a loaded scene or glTF asset into the world as a tree of entities."
+      param asset Asset "A ready asset from og.load."
+      param desc SpawnDesc "Name, parent and transform of the root entity."
+      returns Result.Entity "The root entity, or why it was refused (an asset still loading, a failed asset)."
+    }
+  }
+
+  interface Query {
+    doc "A set of matched archetypes. Iterate archetypes, never entities one by one."
+    fn archetypes {
+      doc "The matched archetypes this tick."
+      returns List.ArchetypeView
+    }
+    fn count {
+      doc "The number of matched entities."
+      returns u32
+    }
+  }
+
+  interface ArchetypeView {
+    doc "One archetype's columns for this tick. Views are invalidated by structural changes; using a stale view throws with the tick and the system it belonged to."
+    prop count u32 "The number of entities in the archetype."
+    prop tick u32 "The tick this view belongs to."
+    prop entities Uint32Array "The entities as (index, generation) pairs: entity i is at 2i and 2i + 1."
+    fn entity {
+      doc "The handle of entity i."
+      param index u32 "The row, from 0 to count - 1."
+      returns Entity
+    }
+    fn has {
+      doc "Whether the archetype carries a component."
+      generic C AnyComponent
+      param component C "The component token."
+      returns bool
+    }
+    fn column {
+      doc "The typed views of a component's fields: one typed array per field, `count * stride` long."
+      doc "Writing requires the component among the system's writes; reading among its reads or writes."
+      generic C AnyComponent
+      param component C "The component token."
+      returns View.C
+    }
+  }
+}
+
+# ── system ────────────────────────────────────────────────────────────────
+
+module system {
+  doc "Systems: functions the engine calls once per tick with their matched archetypes."
+  doc "A system declares what it reads and writes; a write to an undeclared component is refused at registration with the field name."
+  place top
+
+  struct SystemDesc {
+    doc "A system's declared access and order."
+    desc true
+    field reads List.AnyReflected "Components and resources the system reads. Components here also shape its query."
+    field writes List.AnyReflected "Components and resources the system writes. Components here also shape its query."
+    field without List.AnyComponent "Components a matched entity must not have."
+    field after List.String "Names of systems that must run before this one."
+    field before List.String "Names of systems that must run after this one."
+  }
+
+  callback SystemRun {
+    doc "A system's body. It is called once per tick; loop over `q.archetypes()`, then over rows."
+    param q Query "The archetypes matching the declared components."
+    param time Time "The Time resource for this tick."
+    param world World "The world, for resources, events and structural changes."
+  }
+
+  interface System {
+    doc "A registered system."
+    prop name String "The system's unique name."
+    prop reads List.AnyReflected "What it reads."
+    prop writes List.AnyReflected "What it writes."
+  }
+
+  fn defineSystem {
+    doc "Declare a system."
+    param name String "The system's unique name, PascalCase."
+    param desc SystemDesc "Reads, writes and order."
+    param run SystemRun "The body."
+    returns System
+  }
+}
+
+# ── game ──────────────────────────────────────────────────────────────────
+
+module game {
+  doc "The game entry: what the bundle's default export declares."
+  place root
+
+  callback FactsFn {
+    doc "The game's own facts for the probe's state(): a small JSON object, computed from the world without changing it."
+    param world World "The world, read only."
+    returns Json
+  }
+
+  struct GameDesc {
+    doc "A game: its tick, scenes, systems and commands."
+    desc true
+    field tick u32 "The fixed tick rate." {
+      default 60
+      min 1
+      max 240
+      unit hz
+    }
+    field seed u32 "The project seed every Rng stream derives from. A replay overrides it."
+    field scenes Map.String "Scene names to `.ogt` paths, as `{ main: \"scenes/main.ogt\" }`."
+    field scene String "The scene loaded first." {
+      default "main"
+    }
+    field systems List.System "The systems, in declaration order before `after`/`before` constraints apply."
+    field resources List.AnyResource "The game's own resources, created at their defaults."
+    field commands Map.CommandHandler "Game actions registered into the command channel, by action name."
+    field maxCatchUp u32 "The most ticks one frame may run to catch up with the clock; the accumulator drops the rest." {
+      default 4
+      min 1
+      max 60
+      unit ticks
+    }
+    field facts Option.FactsFn "The game's own facts for the probe's state()."
+  }
+
+  interface Game {
+    doc "A declared game, the bundle's default export."
+    prop tick u32 "The fixed tick rate in hertz."
+    prop systems List.System "The systems in declaration order."
+  }
+
+  fn game {
+    doc "Declare the game. The bundle's default export is its result."
+    param desc GameDesc "Tick, scenes, systems and commands."
+    returns Game
+  }
+}
+
+# ── transform ─────────────────────────────────────────────────────────────
+
+module transform {
+  doc "Transforms in the three.js vocabulary: position, quaternion and scale, composed into matrixWorld down the parent chain."
+
+  component Transform {
+    doc "Where an entity is, relative to its parent (or the world)."
+    field position Vector3 "The position, as three.js Object3D.position." {
+      unit m
+    }
+    field quaternion Quaternion "The rotation, as three.js Object3D.quaternion."
+    field scale Vector3 "The scale, as three.js Object3D.scale." {
+      default 1 1 1
+    }
+  }
+
+  component Parent {
+    doc "The entity this one's Transform is relative to. Set by SpawnDesc.parent."
+    field entity Entity "The parent."
+  }
+
+  component MatrixWorld {
+    doc "The world matrix the engine composes after the systems run, as three.js Object3D.matrixWorld."
+    field matrix Matrix4 "The composed world matrix." {
+      readonly true
+    }
+  }
+
+  fn compose {
+    doc "A matrix from position, rotation and scale, as three.js Matrix4.compose."
+    param position Vector3 "The translation."
+    param quaternion Quaternion "The rotation."
+    param scale Vector3 "The scale."
+    returns Matrix4
+  }
+
+  fn decompose {
+    doc "Position, rotation and scale from a matrix, as three.js Matrix4.decompose."
+    param matrix Matrix4 "An affine matrix."
+    returns Transform
+  }
+
+  fn lookAt {
+    doc "The rotation that points -Z from an eye towards a target, as three.js Object3D.lookAt for cameras."
+    param eye Vector3 "Where the viewer is."
+    param target Vector3 "What it looks at."
+    param up Vector3 "The up direction; the zero vector means +Y." {
+      optional true
+    }
+    returns Quaternion
+  }
+
+  fn fromAxisAngle {
+    doc "A rotation about an axis, as three.js Quaternion.setFromAxisAngle."
+    param axis Vector3 "A unit axis."
+    param angle f32 "The angle in radians."
+    returns Quaternion
+  }
+}
+
+# ── time ──────────────────────────────────────────────────────────────────
+
+module time {
+  doc "Simulation time. Game code never reads the wall clock; it reads Time."
+
+  resource Time {
+    doc "The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers."
+    field tick u32 "Fixed steps taken since load." {
+      readonly true
+      unit ticks
+    }
+    field dt f32 "The length of one tick: 1 / rate." {
+      readonly true
+      unit s
+    }
+    field elapsed f64 "Simulation time since load: tick * dt." {
+      readonly true
+      unit s
+    }
+    field rate u32 "The tick rate, from GameDesc.tick." {
+      readonly true
+      unit hz
+    }
+  }
+}
+
+# ── rng ───────────────────────────────────────────────────────────────────
+
+module rng {
+  doc "Deterministic randomness. Every random draw comes from an Rng stream; the sequence for a seed is identical on every host and in the Web scaffold's rng.ts."
+
+  interface RngStream {
+    doc "One generator stream, forked from the Rng resource for a subsystem that must not perturb the main sequence."
+    prop seed u32 "The stream's derived seed."
+    fn next {
+      doc "Uniform in [0, 1)."
+      returns f64
+    }
+    fn range {
+      doc "Uniform in [low, high)."
+      param low f64 "The inclusive lower bound."
+      param high f64 "The exclusive upper bound."
+      returns f64
+    }
+    fn integer {
+      doc "A uniform integer in [low, high]."
+      param low i32 "The inclusive lower bound."
+      param high i32 "The inclusive upper bound."
+      returns i32
+    }
+    fn chance {
+      doc "True with probability p."
+      param p f64 "The probability, between 0 and 1."
+      returns bool
+    }
+    fn fork {
+      doc "A fresh stream on a seed derived from this stream's seed and a label."
+      param label String "The subsystem's name; the same label always gives the same stream."
+      returns RngStream
+    }
+  }
+
+  resource Rng {
+    doc "The world's main random stream, seeded from GameDesc.seed (or the replay seed). Its state is part of every snapshot."
+    field seed u32 "The seed the stream started from." {
+      readonly true
+    }
+    field state u32 "The generator state; snapshot and restore carry it." {
+      readonly true
+    }
+    fn next {
+      doc "Uniform in [0, 1)."
+      returns f64
+    }
+    fn range {
+      doc "Uniform in [low, high)."
+      param low f64 "The inclusive lower bound."
+      param high f64 "The exclusive upper bound."
+      returns f64
+    }
+    fn integer {
+      doc "A uniform integer in [low, high]."
+      param low i32 "The inclusive lower bound."
+      param high i32 "The inclusive upper bound."
+      returns i32
+    }
+    fn chance {
+      doc "True with probability p."
+      param p f64 "The probability, between 0 and 1."
+      returns bool
+    }
+    fn fork {
+      doc "A stream for a subsystem, derived from the seed and a label, so drawing from it leaves the main sequence alone."
+      param label String "The subsystem's name, such as `spawner`."
+      returns RngStream
+    }
+  }
+}
+
+# ── input ─────────────────────────────────────────────────────────────────
+
+module input {
+  doc "Input as the game sees it: the Input resource for polling, events for edges."
+  doc "The shell collects pointer, keyboard and wheel input on the main thread; the probe and the command channel inject through the same path."
+
+  enum KeyAction {
+    doc "What an injected key event does."
+    variant press "Down, then up on the next tick."
+    variant down "Held down until an up."
+    variant up "Released."
+  }
+
+  enum PointerAction {
+    doc "What an injected pointer event does."
+    variant click "Down, then up on the next tick, at the point."
+    variant move "A move to the point."
+    variant down "A press at the point."
+    variant up "A release at the point."
+  }
+
+  enum PointerButton {
+    doc "A physical pointer button; `none` is a hover move."
+    variant none "No button."
+    variant left "The primary button, or a touch."
+    variant middle "The middle button."
+    variant right "The secondary button."
+  }
+
+  struct Modifiers {
+    doc "Modifier keys held during a key event."
+    field alt bool "Alt or Option."
+    field control bool "Control."
+    field platform bool "Command on macOS, the Windows key on Windows."
+    field shift bool "Shift."
+  }
+
+  struct KeyInput {
+    doc "A key event. `key` names the physical key as KeyboardEvent.code does: ArrowRight, Space, KeyA."
+    field key String "The physical key code."
+    field action KeyAction "Press, down or up."
+    field modifiers Modifiers "Held modifiers; omitted means none." {
+      optional true
+    }
+  }
+
+  struct PointerInput {
+    doc "A pointer event at a point in CSS pixels of the play surface."
+    field action PointerAction "Click, move, down or up."
+    field x f32 "Horizontal position." {
+      unit cssPx
+    }
+    field y f32 "Vertical position." {
+      unit cssPx
+    }
+    field button PointerButton "The button; `none` for a hover move."
+  }
+
+  struct WheelInput {
+    doc "A wheel or trackpad scroll at a point."
+    field x f32 "Horizontal position." {
+      unit cssPx
+    }
+    field y f32 "Vertical position." {
+      unit cssPx
+    }
+    field deltaX f32 "Horizontal scroll amount." {
+      unit cssPx
+    }
+    field deltaY f32 "Vertical scroll amount." {
+      unit cssPx
+    }
+  }
+
+  union InjectedInput {
+    doc "One input event in the game's own vocabulary, as the probe's input() and playtest scripts carry it."
+    tag kind
+    case key KeyInput "A key event."
+    case pointer PointerInput "A pointer event."
+    case wheel WheelInput "A wheel event."
+  }
+
+  resource Input {
+    doc "The input state at the start of this tick. Edges (pressed, released) last exactly one tick."
+    field pointer Vector2 "The pointer position." {
+      readonly true
+      unit cssPx
+    }
+    field pointerInside bool "Whether the pointer is over the play surface." {
+      readonly true
+    }
+    field wheel Vector2 "Scroll accumulated during this tick." {
+      readonly true
+      unit cssPx
+    }
+    fn down {
+      doc "Whether a key is held."
+      param key String "A KeyboardEvent.code name, such as KeyW or Space."
+      returns bool
+    }
+    fn pressed {
+      doc "Whether a key went down this tick."
+      param key String "A KeyboardEvent.code name."
+      returns bool
+    }
+    fn released {
+      doc "Whether a key went up this tick."
+      param key String "A KeyboardEvent.code name."
+      returns bool
+    }
+    fn axis {
+      doc "-1, 0 or 1 from two keys, such as `axis(\"KeyA\", \"KeyD\")`."
+      param negative String "The key for -1."
+      param positive String "The key for +1."
+      returns f32
+    }
+    fn buttonDown {
+      doc "Whether a pointer button is held."
+      param button PointerButton "The button."
+      returns bool
+    }
+    fn buttonPressed {
+      doc "Whether a pointer button went down this tick."
+      param button PointerButton "The button."
+      returns bool
+    }
+  }
+
+  event KeyDown {
+    doc "A key went down."
+    field key String "The physical key code."
+    field repeat bool "Whether this is an auto-repeat."
+  }
+
+  event KeyUp {
+    doc "A key went up."
+    field key String "The physical key code."
+  }
+
+  event PointerDown {
+    doc "A pointer button went down."
+    field x f32 "Horizontal position in CSS pixels."
+    field y f32 "Vertical position in CSS pixels."
+    field button PointerButton "The button."
+  }
+
+  event PointerUp {
+    doc "A pointer button went up."
+    field x f32 "Horizontal position in CSS pixels."
+    field y f32 "Vertical position in CSS pixels."
+    field button PointerButton "The button."
+  }
+
+  event PointerMove {
+    doc "The pointer moved."
+    field x f32 "Horizontal position in CSS pixels."
+    field y f32 "Vertical position in CSS pixels."
+  }
+
+  event Wheel {
+    doc "A wheel or trackpad scroll."
+    field deltaX f32 "Horizontal scroll in CSS pixels."
+    field deltaY f32 "Vertical scroll in CSS pixels."
+  }
+}
+
+# ── camera ────────────────────────────────────────────────────────────────
+
+module camera {
+  doc "The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names."
+
+  resource Camera {
+    doc "The camera the frame is rendered from. Rendering reads it after the tick; it never feeds back into the simulation."
+    field position Vector3 "Where the camera is." {
+      unit m
+    }
+    field quaternion Quaternion "Its rotation; the camera looks down its local -Z."
+    field fov f32 "The vertical field of view of the perspective projection." {
+      default 50
+      min 1
+      max 179
+      unit deg
+      tunable true
+    }
+    field near f32 "The near clipping plane." {
+      default 0.1
+      min 0.001
+      unit m
+    }
+    field far f32 "The far clipping plane." {
+      default 2000
+      min 0.01
+      unit m
+    }
+    field zoom f32 "The zoom factor, as three.js Camera.zoom." {
+      default 1
+      min 0.01
+      max 100
+      tunable true
+    }
+    field orthographic bool "Use an orthographic projection (the 2D profile) instead of a perspective one."
+    field height f32 "The visible world height of the orthographic projection." {
+      default 10
+      min 0.01
+      unit m
+    }
+    field background Color "The clear colour, as three.js Scene.background. The default is the brand ink #14161b in linear RGB." {
+      default 0.00699 0.00803 0.01096
+    }
+    field exposure f32 "Exposure before tone mapping, as three.js toneMappingExposure." {
+      default 1
+      min 0
+      max 16
+      tunable true
+    }
+    fn lookAt {
+      doc "Rotate the camera to look at a point, as three.js Camera.lookAt."
+      param target Vector3 "The point to look at."
+    }
+    fn worldToScreen {
+      doc "Where a world point lands on the play surface."
+      param point Vector3 "A world point."
+      returns Option.Vector2 "CSS pixels, or null behind the camera."
+    }
+    fn screenToRay {
+      doc "The ray through a point of the play surface, for picking."
+      param x f32 "Horizontal position in CSS pixels."
+      param y f32 "Vertical position in CSS pixels."
+      returns Ray
+    }
+  }
+}
+
+# ── render ────────────────────────────────────────────────────────────────
+
+module render {
+  doc "What is drawn: meshes with materials. Draws are instanced by (geometry, material) automatically; there is no per-object draw call."
+
+  handle Geometry "Vertex and index data, as three.js BufferGeometry. Comes from a loaded glTF."
+  handle Material "A material instance."
+  handle Texture "A cooked texture."
+
+  column Geometry {
+    doc "A Geometry handle field."
+    array Uint32Array
+    stride 2
+    value Geometry
+  }
+
+  column Material {
+    doc "A Material handle field."
+    array Uint32Array
+    stride 2
+    value Material
+  }
+
+  enum Side {
+    doc "Which faces are drawn, as three.js FrontSide, BackSide and DoubleSide."
+    variant front "Front faces only."
+    variant back "Back faces only."
+    variant double "Both."
+  }
+
+  enum RenderTier {
+    doc "The backend the renderer runs on; the probe's hello reports it."
+    variant webgpu "WebGPU in a browser: the full feature set."
+    variant webgl2 "The WebGL2 fallback: no compute, CPU culling and particles, tiled lights."
+    variant vulkan "Native Vulkan, on lavapipe or a GPU."
+    variant metal "Native Metal."
+    variant none "No renderer: frames are not produced and capture refuses."
+  }
+
+  struct StandardMaterialDesc {
+    doc "A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names."
+    desc true
+    field color Color "The base colour." {
+      default 1 1 1
+    }
+    field map Option.Texture "The base colour texture."
+    field metalness f32 "How metallic the surface is." {
+      min 0
+      max 1
+    }
+    field metalnessMap Option.Texture "Metalness from the texture's blue channel."
+    field roughness f32 "How rough the surface is." {
+      default 1
+      min 0
+      max 1
+    }
+    field roughnessMap Option.Texture "Roughness from the texture's green channel."
+    field normalMap Option.Texture "A tangent-space normal map."
+    field aoMap Option.Texture "Ambient occlusion from the texture's red channel."
+    field emissive Color "The emitted colour."
+    field emissiveIntensity f32 "A multiplier on the emitted colour." {
+      default 1
+      min 0
+    }
+    field emissiveMap Option.Texture "The emitted colour texture."
+    field opacity f32 "The opacity; below 1 only with transparent." {
+      default 1
+      min 0
+      max 1
+    }
+    field transparent bool "Blend instead of writing opaque pixels."
+    field alphaTest f32 "Discard pixels whose alpha is below this." {
+      min 0
+      max 1
+    }
+    field side Side "Which faces are drawn."
+    field flatShading bool "Shade with face normals."
+    field envMapIntensity f32 "A multiplier on image-based lighting." {
+      default 1
+      min 0
+    }
+  }
+
+  component Mesh {
+    doc "Draws a geometry with a material at the entity's MatrixWorld, as a three.js Mesh."
+    field geometry Geometry "The geometry."
+    field material Material "The material."
+    field castShadow bool "Cast shadows, as three.js Object3D.castShadow."
+    field receiveShadow bool "Receive shadows, as three.js Object3D.receiveShadow."
+    field visible bool "Whether it is drawn." {
+      default true
+    }
+  }
+
+  struct RenderCapabilities {
+    doc "What the renderer can do on this device. Backend limits are reported here, never by missing members."
+    field tier RenderTier "The backend."
+    field compute bool "Whether compute passes run (GPU culling, GPU particles)."
+    field maxShadowedLights u32 "How many lights may cast shadows."
+    field width u32 "The render target width in device pixels."
+    field height u32 "The render target height in device pixels."
+  }
+
+  fn standardMaterial {
+    doc "Create a standard material."
+    param world World "The world whose renderer owns the material."
+    param desc StandardMaterialDesc "The parameters; omitted ones take three.js defaults."
+    returns Result.Material
+  }
+
+  fn updateMaterial {
+    doc "Change some parameters of a standard material."
+    param world World "The world whose renderer owns the material."
+    param material Material "The material."
+    param desc StandardMaterialDesc "The parameters to change; omitted ones keep their values."
+    returns Result.Void "Refused for a dead material."
+  }
+
+  fn capabilities {
+    doc "The renderer's tier and limits on this device."
+    param world World "The world whose renderer is asked."
+    returns RenderCapabilities
+  }
+}
+
+# ── load ──────────────────────────────────────────────────────────────────
+
+module load {
+  doc "Asset loading. Paths are relative to the project and read cooked output; a load returns a handle at once and completes at a tick boundary."
+  doc "Under og run and in replays every load completes before the next tick, so the tick a load lands on is deterministic."
+
+  handle Asset "A loaded scene or glTF asset."
+
+  enum LoadStatus {
+    doc "Where a load is."
+    variant pending "Still loading."
+    variant ready "Loaded; it can be instantiated."
+    variant failed "Failed; the AssetFailed event carries the reason."
+  }
+
+  struct GltfDesc {
+    doc "How to load a glTF, as three.js GLTFLoader options where they apply."
+    desc true
+    field scene u32 "Which glTF scene to instantiate."
+    field castShadow bool "Set Mesh.castShadow on every mesh instantiated from it."
+    field receiveShadow bool "Set Mesh.receiveShadow on every mesh instantiated from it."
+  }
+
+  struct GltfInfo {
+    doc "What a loaded glTF holds."
+    field scenes u32 "How many scenes it has."
+    field geometries List.Geometry "Its geometries, in glTF mesh-primitive order."
+    field materials List.Material "Its materials, in glTF order."
+    field animations List.String "Its animation clip names."
+  }
+
+  fn gltf {
+    doc "Load a glTF (.gltf or .glb) through the cook, as three.js GLTFLoader.load."
+    param world World "The world that owns the asset."
+    param path String "The source path under assets/, such as `assets/ship.glb`."
+    param desc GltfDesc "Scene and shadow options."
+    returns Result.Asset "The handle, or why it was refused (an uncooked path, a cook stamp mismatch)."
+  }
+
+  fn scene {
+    doc "Load a scene (.ogt)."
+    param world World "The world that owns the asset."
+    param path String "The scene path, such as `scenes/main.ogt`."
+    returns Result.Asset
+  }
+
+  fn status {
+    doc "Where a load is."
+    param world World "The world that owns the asset."
+    param asset Asset "The handle."
+    returns LoadStatus
+  }
+
+  fn gltfInfo {
+    doc "What a ready glTF holds."
+    param world World "The world that owns the asset."
+    param asset Asset "A ready glTF handle."
+    returns Result.GltfInfo "Refused for a pending, failed or non-glTF asset."
+  }
+
+  event AssetReady {
+    doc "A load completed."
+    field asset Asset "The handle."
+    field path String "The path it was loaded from."
+  }
+
+  event AssetFailed {
+    doc "A load failed."
+    field asset Asset "The handle."
+    field path String "The path it was loaded from."
+    field reason String "Why, naming the fix."
+  }
+}
+
+# ── commands ──────────────────────────────────────────────────────────────
+
+module commands {
+  doc "The command channel: actions scheduled on simulation time, from `og run --commands \"t:action[:args];...\"` or the probe's commands()."
+  doc "Core actions ship with the engine; a module or a game registers more. Unknown actions warn and continue. Not in publish builds."
+  publish false
+
+  enum CoreAction {
+    doc "The actions the engine ships. Arguments follow the action, separated by `:`."
+    variant screenshot "`screenshot[:path][:full|:N]`: capture the next frame."
+    variant touch_move_to "`touch_move_to:<ui id>`: move the pointer to a UI element."
+    variant touch_move "`touch_move:x,y`: move the pointer to CSS pixel coordinates."
+    variant touch_start "`touch_start`: press the pointer where it is."
+    variant touch_end "`touch_end`: release the pointer."
+    variant scroll "`scroll:dx,dy`: scroll at the pointer."
+    variant key_down "`key_down:<Key>`: hold a key by its code."
+    variant key_up "`key_up:<Key>`: release a key."
+    variant type "`type:<text>`: type text, one key press per character."
+    variant move_to_text "`move_to_text:[=]text[@N]`: move the pointer to the UI element showing the text (exactly with `=`, the Nth with `@N`)."
+    variant teleport "`teleport:<entity>:x,y,z`: set an entity's position."
+    variant frame_entity "`frame_entity:<entity>`: point the camera at an entity."
+    variant dump_world "`dump_world[:path]`: tables, systems and their matched counts."
+    variant dump_entity "`dump_entity:<name>[:path]`: one entity's components and transform."
+    variant dump_ui "`dump_ui[:path]`: the UI tree with bounds."
+    variant set "`set:<entity>.<component>.<field>=<value>`: a Tune write through the schema."
+    variant seed "`seed:<n>`: reseed the Rng resource."
+    variant pause "`pause`: hold the clock; advance still steps."
+    variant resume "`resume`: release the clock."
+    variant advance "`advance:<ticks>`: take fixed steps."
+    variant quit "`quit`: exit."
+  }
+
+  callback CommandHandler {
+    doc "A registered action. It runs at the start of the tick it was scheduled for."
+    param world World "The world."
+    param args List.String "The `:`-separated arguments after the action name."
+  }
+
+  struct CommandDesc {
+    doc "How a registered action describes itself in `og run --help` and the wiki."
+    desc true
+    field usage String "The argument form, such as `<count>`."
+    field doc String "One sentence on what it does."
+  }
+
+  struct CommandStep {
+    doc "One parsed step of a command script."
+    field at f32 "When it runs, in simulation seconds from the start of the script." {
+      unit s
+    }
+    field action String "The action name."
+    field args List.String "The arguments."
+  }
+
+  struct CommandsReport {
+    doc "What scheduling a script did."
+    field scheduled u32 "Steps scheduled."
+    field untilTick u32 "The tick of the last step."
+    field warnings List.String "Unknown actions and other skipped steps, each naming the fix."
+  }
+
+  fn register {
+    doc "Register an action into the command channel. GameDesc.commands does this for a game's own actions."
+    param name String "The action name, snake_case, such as `spawn_wave`."
+    param handler CommandHandler "What it does."
+    param desc CommandDesc "Its usage line and doc."
+    returns Result.Void "Refused for a name a core action or another registration already uses."
+  }
+
+  fn parse {
+    doc "Parse a script without scheduling it."
+    param script String "`t:action[:args];...` with t in simulation seconds."
+    returns Result.List.CommandStep "The steps, or the first malformed step."
+  }
+
+  fn schedule {
+    doc "Schedule a script on simulation time, from the current tick."
+    param world World "The world."
+    param script String "`t:action[:args];...` with t in simulation seconds."
+    returns Result.CommandsReport "The report, or the first malformed step."
+  }
+}
+
+# ── probe ─────────────────────────────────────────────────────────────────
+
+module probe {
+  doc "The probe: RuntimeProbe protocol 5 (origin/packages/contracts/src/probe.ts) served natively, plus the engine's wire members."
+  doc "In a page it is published on globalThis.__runtime_probe__; on native, `og` serves it as JSON-RPC 2.0 over a loopback WebSocket at /probe."
+  doc "A refusal is false or null exactly as protocol 5; a JSON-RPC error is only for a malformed call or an unknown method."
+  doc "Probe entity ids are entity names; an unnamed entity is `#<index>.<generation>`."
+
+  const PROBE_GLOBAL String "__runtime_probe__" "The global the page publishes the probe on."
+  const PROBE_VERSION u32 5 "The RuntimeProbe contract revision both sides speak."
+  const PROBE_WIRE_VERSION u32 1 "The wire revision hello reports."
+  const REPLAY_SEED_PARAM String "replay-seed" "The page query parameter that starts a deterministic replay from a uint32 seed."
+  const PLAYTEST_MAX_TICKS u32 3600 "The longest playtest one request may advance, in fixed steps."
+  const PROBE_PROGRAM_MAX_OPERATIONS u32 256 "The most operations one probe program may carry."
+
+  struct PickResult {
+    doc "What a screen point resolved to."
+    field entity String "The probe id of the entity under the point."
+    field world OneOf.Array.f32.2.Array.f32.3 "Where the pick landed in world space: two components in the 2D profile, three in 3D; nothing pads a plane with an unmeasured zero."
+    field source Option.String "Where a person would change it, as `player.ts::jump`."
+  }
+
+  struct ProbeTunable {
+    doc "One published tunable parameter and the range it means something over."
+    field path String "Where the value lives, as `Health.hp`."
+    field label String "The person-facing name." {
+      optional true
+    }
+    field min f32 "The smallest meaningful value." {
+      optional true
+    }
+    field max f32 "The largest meaningful value." {
+      optional true
+    }
+    field step f32 "Tune's increment." {
+      optional true
+    }
+  }
+
+  struct ProbeEntityRef {
+    doc "One entity the probe publishes in state()."
+    field id String "Its probe id."
+    field label String "A person-facing name." {
+      optional true
+    }
+  }
+
+  struct ProbeTimings {
+    doc "The fixed timings head of state()."
+    field step f32 "Time the last tick took." {
+      unit ms
+    }
+    field render f32 "Time the last frame's render took; 0 without a renderer." {
+      unit ms
+    }
+    field frameMs f32 "step + render." {
+      unit ms
+    }
+  }
+
+  struct ProbeState {
+    doc "The probe's state(): a fixed head, then the game's own facts."
+    field tick u32 "Fixed steps since load."
+    field paused bool "Whether the clock is held."
+    field seed u32 "The seed the world was assembled from."
+    field timings ProbeTimings "The last tick's timings."
+    field entities List.ProbeEntityRef "The named entities."
+    field facts Json "What GameDesc.facts returned, or null."
+  }
+
+  struct AdvanceOperation {
+    doc "The advance operation's payload."
+    field steps u32 "Fixed steps to take."
+  }
+
+  struct InputOperation {
+    doc "The input operation's payload."
+    field event InjectedInput "The event."
+  }
+
+  struct PickOperation {
+    doc "The pick operation's payload."
+    field x f32 "Horizontal position in CSS pixels."
+    field y f32 "Vertical position in CSS pixels."
+  }
+
+  struct EntityOperation {
+    doc "The entity operation's payload."
+    field id String "The probe id."
+  }
+
+  union ProbeOperation {
+    doc "One operation of a probe program, which runs in one evaluation so a scripted segment costs one round trip."
+    tag op
+    case advance AdvanceOperation "Take fixed steps; answers the tick."
+    case input InputOperation "Inject an event; answers true."
+    case pause "Hold the clock; answers true."
+    case resume "Release the clock; answers true."
+    case read "Read the state; answers `{ tick, state }`."
+    case pick PickOperation "Pick a point; answers its result or null."
+    case entity EntityOperation "Read an entity's parameters; null is a refusal."
+  }
+
+  struct ProbeProgramResult {
+    doc "What a program observed: one answer per operation that ran. A false, or entity's null, stops the program and `refused` names its index."
+    field results List.Json "The answers, in order."
+    field refused Option.u32 "The index of the refusing operation, or null."
+    field tick u32 "The tick after the last operation that ran."
+  }
+
+  struct Hello {
+    doc "The wire's hello: who is speaking."
+    field protocol u32 "PROBE_VERSION."
+    field wire u32 "PROBE_WIRE_VERSION."
+    field substrate String "Always `origin-engine`."
+    field engine String "`origin-engine <version>`."
+    field ticksPerSecond u32 "The fixed tick rate." {
+      unit hz
+    }
+    field tier RenderTier "The renderer backend."
+    field build BuildProfile "The build configuration."
+    field members List.String "The probe members this build serves."
+  }
+
+  enum BuildProfile {
+    doc "The build configuration; publish builds keep only the player-facing probe members."
+    variant dev "A development build: every member, the command channel, dumps."
+    variant release "An optimised build with every member."
+    variant publish "A published game: hello, tick, state, pick, entity, input and capture only."
+  }
+
+  struct Capture {
+    doc "A captured frame."
+    field tick u32 "The tick the frame shows."
+    field width u32 "Width in pixels."
+    field height u32 "Height in pixels."
+    field png String "The PNG, base64."
+  }
+
+  struct SweepDesc {
+    doc "A parameter sweep: for each value, restore the snapshot taken at the call, patch, advance and capture."
+    desc true
+    field id String "The probe id of the entity."
+    field parameter String "The parameter, as `Health.hp`."
+    field values List.Json "The values to try, in order."
+    field steps u32 "Fixed steps to advance after each patch."
+    field width u32 "Capture width; 0 is the render target's."
+    field height u32 "Capture height; 0 is the render target's."
+  }
+
+  struct SweepFrame {
+    doc "One frame of a sweep."
+    field value Json "The value patched in."
+    field tick u32 "The tick captured."
+    field png String "The PNG, base64."
+  }
+
+  struct SweepResult {
+    doc "A sweep's frames, one per value."
+    field frames List.SweepFrame "The frames."
+  }
+
+  struct ReloadReport {
+    doc "What a hot reload did. Components are re-registered by name and migrated field by field through the schema."
+    field tick u32 "The tick the world was restored at."
+    field ms f32 "From bundle swap to restored world." {
+      unit ms
+    }
+    field migrated List.String "Fields carried across a layout change, as `Health.hp`."
+    field dropped List.String "Components or fields that no longer exist, dropped with their data."
+    field warnings List.String "Anything else worth reading, each naming the fix."
+  }
+
+  struct SnapshotInfo {
+    doc "A snapshot of the whole world (components, resources, Rng states, pending events) kept in the running process."
+    field id String "The snapshot's id, for restore."
+    field tick u32 "The tick it was taken at."
+    field hash String "The world hash at that tick, hex: equal hashes mean equal worlds."
+    field bytes u32 "Its size." {
+      unit bytes
+    }
+  }
+
+  enum DumpKind {
+    doc "What dump() reports."
+    variant world "Archetype tables, systems and their matched counts."
+    variant entity "One entity's components and transform."
+    variant ui "The UI tree with bounds."
+  }
+
+  struct DumpDesc {
+    doc "What to dump."
+    desc true
+    field what DumpKind "The kind of dump."
+    field id String "The probe id, for an entity dump."
+  }
+
+  struct ArchetypeDump {
+    doc "One archetype table."
+    field components List.String "Its components, by name."
+    field count u32 "Entities in it."
+  }
+
+  struct SystemDump {
+    doc "One system."
+    field name String "Its name."
+    field matched u32 "Entities its query matched on the last tick."
+    field reads List.String "What it declared it reads."
+    field writes List.String "What it declared it writes."
+    field ms f32 "Time it took on the last tick." {
+      unit ms
+    }
+  }
+
+  struct WorldDump {
+    doc "The world: tables, systems, resources."
+    field tick u32 "The tick."
+    field hash String "The world hash, hex."
+    field entities u32 "Live entities."
+    field archetypes List.ArchetypeDump "The archetype tables."
+    field systems List.SystemDump "The systems in run order."
+    field resources List.String "The registered resources."
+  }
+
+  struct EntityDump {
+    doc "One entity."
+    field id String "Its probe id."
+    field name Option.String "Its name."
+    field components Map.Json "Each component's field values, by component name."
+  }
+
+  struct UiElement {
+    doc "One UI element with its bounds."
+    field id String "Its stable id, as the command channel targets it."
+    field parent String "Its parent's id; empty at the root."
+    field text String "The text it shows, if any."
+    field x f32 "Left edge." {
+      unit cssPx
+    }
+    field y f32 "Top edge." {
+      unit cssPx
+    }
+    field width f32 "Width." {
+      unit cssPx
+    }
+    field height f32 "Height." {
+      unit cssPx
+    }
+  }
+
+  struct UiDump {
+    doc "The UI tree, flattened in draw order."
+    field tick u32 "The tick."
+    field elements List.UiElement "The elements."
+  }
+
+  union DumpResult {
+    doc "A dump, tagged by its kind."
+    tag kind
+    case world WorldDump "The world dump."
+    case entity EntityDump "An entity dump."
+    case ui UiDump "The UI dump."
+  }
+
+  interface RuntimeProbe {
+    doc "RuntimeProbe protocol 5, member for member. Every member answers synchronously with JSON-serialisable values."
+    publish false
+
+    prop version u32 "PROBE_VERSION." {
+      publish true
+    }
+    fn tick {
+      doc "Fixed steps the world has taken since load."
+      publish true
+      returns u32
+    }
+    fn state {
+      doc "A JSON snapshot: the fixed timings head, then the game's own facts."
+      publish true
+      returns ProbeState
+    }
+    fn advance {
+      doc "Take whole fixed steps regardless of the wall clock."
+      param steps u32 "Fixed steps, at most PLAYTEST_MAX_TICKS."
+      returns u32 "The tick after the steps."
+    }
+    fn pause {
+      doc "Hold the wall-clock loop; advance still steps."
+      returns bool
+    }
+    fn resume {
+      doc "Release the wall-clock loop."
+      returns bool
+    }
+    fn input {
+      doc "One event through the input layer's own path."
+      publish true
+      param event InjectedInput "The event."
+      returns bool "False is a refusal."
+    }
+    fn accepted {
+      doc "Page events (keyboard, pointer, wheel) the input layer accepted since load."
+      returns u32
+    }
+    fn pick {
+      doc "What is under a point of the play surface."
+      publish true
+      param x f32 "Horizontal position in CSS pixels."
+      param y f32 "Vertical position in CSS pixels."
+      returns Option.PickResult "Null when nothing is under the point."
+    }
+    fn entity {
+      doc "One entity's published parameters: its tunable fields as `Component.field` keys."
+      publish true
+      param id String "The probe id."
+      returns Option.Map.Json "Null for an unknown entity."
+    }
+    fn bounds {
+      doc "The ranges of one entity's tunable fields, from the schema."
+      param id String "The probe id."
+      returns Option.Map.ProbeTunable "Null for an unknown entity."
+    }
+    fn patch {
+      doc "Move one tunable field for this run only; it applies within one frame. The probe never writes project files."
+      param id String "The probe id."
+      param parameter String "The field, as `Health.hp`."
+      param value Json "The new value."
+      returns bool "False is a refusal."
+    }
+    fn run {
+      doc "Run a program of the members above in order, stopping at the first refusal."
+      param program List.ProbeOperation "At most PROBE_PROGRAM_MAX_OPERATIONS operations."
+      returns ProbeProgramResult
+    }
+  }
+
+  interface EngineProbe {
+    doc "The engine's probe: protocol 5 plus the wire members of the loopback WebSocket and the in-page request ring."
+    extends RuntimeProbe
+    publish false
+
+    fn hello {
+      doc "Who is speaking: protocol, wire, engine version, tick rate, renderer tier, build."
+      publish true
+      returns Hello
+    }
+    fn capture {
+      doc "The frame rendered at the current tick, read back offscreen."
+      publish true
+      param width u32 "Width in pixels; 0 is the render target's." {
+        default 0
+      }
+      param height u32 "Height in pixels; 0 is the render target's." {
+        default 0
+      }
+      returns Option.Capture "Null without a renderer."
+    }
+    fn sweep {
+      doc "A filmstrip over one tunable: per value, restore, patch, advance, capture."
+      param desc SweepDesc "The parameter, values, steps and size." {
+        flatten true
+      }
+      returns Option.SweepResult "Null for an unknown entity or parameter, or without a renderer."
+    }
+    fn reload {
+      doc "Hot reload: snapshot, swap the game bundle, re-register components by name, restore."
+      returns Option.ReloadReport "Null when the new bundle fails to load; the old one keeps running."
+    }
+    fn snapshot {
+      doc "Snapshot the whole world in the running process."
+      returns Option.SnapshotInfo
+    }
+    fn restore {
+      doc "Restore a snapshot taken by this process."
+      param id String "The snapshot id."
+      returns bool "False for an unknown id."
+    }
+    fn dump {
+      doc "A world, entity or UI dump, as the command channel's dump actions write."
+      param desc DumpDesc "What to dump." {
+        flatten true
+      }
+      returns Option.DumpResult "Null for an unknown entity."
+    }
+    fn commands {
+      doc "Schedule a command script on simulation time, as `og run --commands`."
+      param script String "`t:action[:args];...`."
+      returns Option.CommandsReport "Null for a malformed script."
+    }
+  }
+}

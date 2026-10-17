@@ -1,0 +1,34 @@
+type api
+version 1
+---
+# expect: 28: default of field `Health.hp` (2000) is outside its range
+package "@origingame/fixture"
+doc "A fixture: the smallest valid API plus one mistake below."
+
+module reflect {
+  doc "Reflection."
+  place top
+  struct FieldOptions {
+    doc "Field metadata."
+    desc true
+    field min Option.f32 "The smallest meaningful value."
+  }
+  column f32 {
+    doc "A float."
+    array Float32Array
+    stride 1
+    value f32
+  }
+}
+
+module game {
+  doc "The game."
+  component Health {
+    doc "Hit points."
+    field hp f32 "Current hit points." {
+      default 2000
+      min 0
+      max 1000
+    }
+  }
+}

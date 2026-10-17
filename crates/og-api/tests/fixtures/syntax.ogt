@@ -1,0 +1,29 @@
+type api
+version 1
+---
+# expect: 27: unterminated string
+package "@origingame/fixture"
+doc "A fixture: the smallest valid API plus one mistake below."
+
+module reflect {
+  doc "Reflection."
+  place top
+  struct FieldOptions {
+    doc "Field metadata."
+    desc true
+    field min Option.f32 "The smallest meaningful value."
+  }
+  column f32 {
+    doc "A float."
+    array Float32Array
+    stride 1
+    value f32
+  }
+}
+
+module world {
+  doc "The world."
+  fn spawn {
+    doc "Spawn entities.
+  }
+}

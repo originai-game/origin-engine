@@ -11,3 +11,4 @@ name = "og"
 path = "src/main.rs"
 
 [dependencies]
+og-api = { path = "../og-api" }

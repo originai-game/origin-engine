@@ -1,0 +1,17 @@
+# Origin Engine CI budgets and gate switches, read by scripts/check.sh and
+# scripts/size-gate.sh. One "key value" pair per line; '#' starts a comment.
+# Changing a number here is a reviewed change: say in the commit what moved
+# and why (docs/ci.md §Updating a budget). Budgets come from docs/design.md §7.
+
+# Sum of brotli -q 11 sizes of every wasm the gate builds, after wasm-bindgen
+# and wasm-opt -Oz (design §7: engine wasm, brotli, <= 4 MB core).
+wasm_core_brotli_bytes 4194304
+
+# optional: a scaffold with no cdylib crate yet passes the size gate with
+#           nothing to measure.
+# required: the gate fails when the wasm build produced no artifact.
+wasm_artifacts optional
+
+# optional: missing `og api check` prints SKIPPED and the step passes.
+# required: missing `og api check` fails the gate (flip once og-cli ships it).
+drift_check required
