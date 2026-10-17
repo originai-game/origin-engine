@@ -1,0 +1,264 @@
+{
+  "elements": [
+    {
+      "height": 40.0,
+      "id": "Bar",
+      "parent": "",
+      "text": "",
+      "width": 390.0,
+      "x": 10.0,
+      "y": 20.0
+    },
+    {
+      "height": 32.0,
+      "id": "Icon",
+      "parent": "Bar",
+      "text": "",
+      "width": 32.0,
+      "x": 14.0,
+      "y": 24.0
+    },
+    {
+      "height": 20.0,
+      "id": "Title",
+      "parent": "Bar",
+      "text": "Hello",
+      "width": 35.0,
+      "x": 54.0,
+      "y": 30.0
+    },
+    {
+      "height": 0.0,
+      "id": "Spacer",
+      "parent": "Bar",
+      "text": "",
+      "width": 241.0,
+      "x": 97.0,
+      "y": 40.0
+    },
+    {
+      "height": 10.0,
+      "id": "Badge",
+      "parent": "Bar",
+      "text": "",
+      "width": 50.0,
+      "x": 346.0,
+      "y": 35.0
+    },
+    {
+      "height": 60.0,
+      "id": "Wrap",
+      "parent": "",
+      "text": "",
+      "width": 200.0,
+      "x": 10.0,
+      "y": 60.0
+    },
+    {
+      "height": 20.0,
+      "id": "Tile#0",
+      "parent": "Wrap",
+      "text": "",
+      "width": 50.0,
+      "x": 15.0,
+      "y": 65.0
+    },
+    {
+      "height": 20.0,
+      "id": "Tile#1",
+      "parent": "Wrap",
+      "text": "",
+      "width": 50.0,
+      "x": 75.0,
+      "y": 65.0
+    },
+    {
+      "height": 20.0,
+      "id": "Tile#2",
+      "parent": "Wrap",
+      "text": "",
+      "width": 50.0,
+      "x": 135.0,
+      "y": 65.0
+    },
+    {
+      "height": 20.0,
+      "id": "Tile#3",
+      "parent": "Wrap",
+      "text": "",
+      "width": 50.0,
+      "x": 15.0,
+      "y": 95.0
+    },
+    {
+      "height": 20.0,
+      "id": "Tile#4",
+      "parent": "Wrap",
+      "text": "",
+      "width": 50.0,
+      "x": 75.0,
+      "y": 95.0
+    },
+    {
+      "height": 20.0,
+      "id": "Tile#5",
+      "parent": "Wrap",
+      "text": "",
+      "width": 50.0,
+      "x": 135.0,
+      "y": 95.0
+    },
+    {
+      "height": 20.0,
+      "id": "Fill",
+      "parent": "Wrap",
+      "text": "",
+      "width": 10.0,
+      "x": 195.0,
+      "y": 95.0
+    },
+    {
+      "height": 40.0,
+      "id": "Shrink",
+      "parent": "",
+      "text": "",
+      "width": 150.0,
+      "x": 10.0,
+      "y": 120.0
+    },
+    {
+      "height": 40.0,
+      "id": "Long",
+      "parent": "Shrink",
+      "text": "aaaa bbbb cccc",
+      "width": 75.0,
+      "x": 10.0,
+      "y": 120.0
+    },
+    {
+      "height": 20.0,
+      "id": "Short",
+      "parent": "Shrink",
+      "text": "dd ee",
+      "width": 35.0,
+      "x": 85.0,
+      "y": 120.0
+    },
+    {
+      "height": 10.0,
+      "id": "Box",
+      "parent": "Shrink",
+      "text": "",
+      "width": 40.0,
+      "x": 120.0,
+      "y": 120.0
+    },
+    {
+      "height": 60.0,
+      "id": "Split",
+      "parent": "",
+      "text": "",
+      "width": 200.0,
+      "x": 10.0,
+      "y": 160.0
+    },
+    {
+      "height": 60.0,
+      "id": "Center",
+      "parent": "Split",
+      "text": "",
+      "width": 100.0,
+      "x": 10.0,
+      "y": 160.0
+    },
+    {
+      "height": 20.0,
+      "id": "Mid",
+      "parent": "Center",
+      "text": "Hi",
+      "width": 14.0,
+      "x": 53.0,
+      "y": 180.0
+    },
+    {
+      "height": 10.0,
+      "id": "Quarter",
+      "parent": "Split",
+      "text": "",
+      "width": 50.0,
+      "x": 110.0,
+      "y": 160.0
+    },
+    {
+      "height": 60.0,
+      "id": "Rest",
+      "parent": "Split",
+      "text": "",
+      "width": 50.0,
+      "x": 160.0,
+      "y": 160.0
+    },
+    {
+      "height": 10.0,
+      "id": "Between",
+      "parent": "",
+      "text": "",
+      "width": 200.0,
+      "x": 10.0,
+      "y": 220.0
+    },
+    {
+      "height": 10.0,
+      "id": "Dot#0",
+      "parent": "Between",
+      "text": "",
+      "width": 20.0,
+      "x": 10.0,
+      "y": 220.0
+    },
+    {
+      "height": 10.0,
+      "id": "Dot#1",
+      "parent": "Between",
+      "text": "",
+      "width": 20.0,
+      "x": 100.0,
+      "y": 220.0
+    },
+    {
+      "height": 10.0,
+      "id": "Dot#2",
+      "parent": "Between",
+      "text": "",
+      "width": 20.0,
+      "x": 190.0,
+      "y": 220.0
+    },
+    {
+      "height": 5.0,
+      "id": "Stack",
+      "parent": "",
+      "text": "",
+      "width": 120.0,
+      "x": 10.0,
+      "y": 230.0
+    },
+    {
+      "height": 5.0,
+      "id": "Wide",
+      "parent": "Stack",
+      "text": "",
+      "width": 100.0,
+      "x": 20.0,
+      "y": 230.0
+    }
+  ],
+  "viewport": {
+    "height": 300,
+    "safeArea": {
+      "left": 10,
+      "top": 20
+    },
+    "width": 400
+  }
+}

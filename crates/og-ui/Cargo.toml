@@ -4,6 +4,20 @@ version = "0.0.1"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "Origin Engine: og-ui (phase 1 M6 scaffold)"
+description = "Origin Engine UI: an immediate-mode toolkit with Clay-style layout, themed by the platform design tokens, drawn through og-render's sprite and text batches, addressable by the probe."
 
 [dependencies]
+og-core = { path = "../og-core" }
+og-ecs = { path = "../og-ecs" }
+og-input = { path = "../og-input" }
+og-render = { path = "../og-render" }
+og-probe = { path = "../og-probe", default-features = false }
+
+[dev-dependencies]
+serde_json = "1"
+image = { workspace = true }
+
+# The theme generator (scripts/gen-theme.sh runs it).
+[[example]]
+name = "gen-theme"
+path = "scripts/gen_theme.rs"
