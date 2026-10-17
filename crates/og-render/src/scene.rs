@@ -6,6 +6,8 @@
 //! append-only: a handle stays valid for the scene's lifetime, and only
 //! materials can be replaced in place ([`RenderScene::set_material`]).
 
+use crate::material::StandardMaterial;
+use crate::texture::TextureUpload;
 use glam::{Mat4, Vec3};
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -77,6 +79,22 @@ pub struct TextureData {
     pub mips: Mips,
 }
 
+/// A texture as added: RGBA8 or pre-encoded.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum TextureSource {
+    Rgba(TextureData),
+    Encoded(TextureUpload),
+}
+
+impl TextureSource {
+    pub(crate) fn size(&self) -> (u32, u32) {
+        match self {
+            TextureSource::Rgba(t) => (t.width, t.height),
+            TextureSource::Encoded(t) => (t.desc.width, t.desc.height),
+        }
+    }
+}
+
 /// How a material treats base-colour alpha.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum AlphaMode {
@@ -85,6 +103,9 @@ pub enum AlphaMode {
     Opaque,
     /// Fragments whose alpha is below `cutoff` are discarded (glTF `MASK`).
     Mask { cutoff: f32 },
+    /// Alpha blended over the opaque scene, sorted back to front (glTF
+    /// `BLEND`; [`crate::StandardMaterial::transparent`]).
+    Blend,
 }
 
 /// A metallic-roughness PBR material (the glTF 2.0 model). Every factor
@@ -154,6 +175,19 @@ handle!(
     /// A texture added to a [`RenderScene`].
     TextureHandle
 );
+
+impl TextureHandle {
+    /// The handle as a [`crate::StandardMaterial`] texture slot: its index
+    /// plus one (0 is "no texture").
+    pub fn slot(self) -> u32 {
+        self.0 + 1
+    }
+
+    /// The handle a texture slot names (`None` for slot 0).
+    pub fn from_slot(slot: u32) -> Option<TextureHandle> {
+        slot.checked_sub(1).map(TextureHandle)
+    }
+}
 handle!(
     /// An MSDF font added to a [`RenderScene`].
     FontHandle
@@ -575,8 +609,11 @@ static NEXT_SCENE_ID: AtomicU64 = AtomicU64::new(1);
 pub struct RenderScene {
     id: u64,
     meshes: Vec<MeshData>,
-    textures: Vec<TextureData>,
-    materials: Vec<Material>,
+    textures: Vec<TextureSource>,
+    /// What every material draws as.
+    materials: Vec<StandardMaterial>,
+    /// The glTF-shaped form of the materials added as [`Material`].
+    gltf_materials: Vec<Option<Material>>,
     material_revisions: Vec<u64>,
     fonts: Vec<MsdfFont>,
     /// Objects to draw this frame, in any order.
@@ -607,6 +644,7 @@ impl RenderScene {
             meshes: Vec::new(),
             textures: Vec::new(),
             materials: Vec::new(),
+            gltf_materials: Vec::new(),
             material_revisions: Vec::new(),
             fonts: Vec::new(),
             instances: Vec::new(),
@@ -626,28 +664,65 @@ impl RenderScene {
         MeshHandle(self.meshes.len() as u32 - 1)
     }
 
+    /// Adds an RGBA8 texture (mips generated on the GPU when asked).
     pub fn add_texture(&mut self, texture: TextureData) -> TextureHandle {
-        self.textures.push(texture);
+        self.textures.push(TextureSource::Rgba(texture));
         TextureHandle(self.textures.len() as u32 - 1)
     }
 
+    /// Adds a texture whose mip levels are already encoded, in one of
+    /// [`crate::RenderInfo::texture_formats`]. Checked (and refused with
+    /// [`crate::RenderError::InvalidData`] or `Unsupported`) when uploaded.
+    pub fn add_texture_upload(&mut self, upload: TextureUpload) -> TextureHandle {
+        self.textures.push(TextureSource::Encoded(upload));
+        TextureHandle(self.textures.len() as u32 - 1)
+    }
+
+    /// Adds a glTF-shaped material (drawn as its [`StandardMaterial`] form).
     pub fn add_material(&mut self, material: Material) -> MaterialHandle {
-        self.materials.push(material);
+        self.materials.push(StandardMaterial::from(&material));
+        self.gltf_materials.push(Some(material));
         self.material_revisions.push(0);
         MaterialHandle(self.materials.len() as u32 - 1)
     }
 
-    /// Replaces a material; the renderer re-uploads it on the next frame.
-    /// Returns `false` (and changes nothing) for a handle of another scene.
+    /// Adds a three.js-style standard material.
+    pub fn add_standard_material(&mut self, material: StandardMaterial) -> MaterialHandle {
+        self.materials.push(material);
+        self.gltf_materials.push(None);
+        self.material_revisions.push(0);
+        MaterialHandle(self.materials.len() as u32 - 1)
+    }
+
+    /// Replaces a material with a glTF-shaped one; the renderer re-uploads it
+    /// on the next frame. Returns `false` (and changes nothing) for a handle
+    /// of another scene.
     pub fn set_material(&mut self, handle: MaterialHandle, material: Material) -> bool {
-        match self.materials.get_mut(handle.index()) {
-            Some(slot) => {
-                *slot = material;
-                self.material_revisions[handle.index()] += 1;
-                true
-            }
-            None => false,
+        let i = handle.index();
+        if i >= self.materials.len() {
+            return false;
         }
+        self.materials[i] = StandardMaterial::from(&material);
+        self.gltf_materials[i] = Some(material);
+        self.material_revisions[i] += 1;
+        true
+    }
+
+    /// Replaces a material with a standard one (a material edit: the next
+    /// frame draws it). Returns `false` for a handle of another scene.
+    pub fn set_standard_material(
+        &mut self,
+        handle: MaterialHandle,
+        material: StandardMaterial,
+    ) -> bool {
+        let i = handle.index();
+        if i >= self.materials.len() {
+            return false;
+        }
+        self.materials[i] = material;
+        self.gltf_materials[i] = None;
+        self.material_revisions[i] += 1;
+        true
     }
 
     /// Adds one instance (the same as pushing onto [`RenderScene::instances`]).
@@ -678,11 +753,36 @@ impl RenderScene {
         self.meshes.get(handle.index())
     }
 
+    /// An RGBA8 texture (`None` for a [`TextureUpload`] or a foreign handle).
     pub fn texture(&self, handle: TextureHandle) -> Option<&TextureData> {
-        self.textures.get(handle.index())
+        match self.textures.get(handle.index())? {
+            TextureSource::Rgba(t) => Some(t),
+            TextureSource::Encoded(_) => None,
+        }
     }
 
+    /// A pre-encoded texture (`None` for an RGBA8 one or a foreign handle).
+    pub fn texture_upload(&self, handle: TextureHandle) -> Option<&TextureUpload> {
+        match self.textures.get(handle.index())? {
+            TextureSource::Encoded(t) => Some(t),
+            TextureSource::Rgba(_) => None,
+        }
+    }
+
+    /// Width and height of any texture.
+    pub fn texture_size(&self, handle: TextureHandle) -> Option<(u32, u32)> {
+        self.textures.get(handle.index()).map(TextureSource::size)
+    }
+
+    /// The material as added with [`RenderScene::add_material`] or
+    /// [`RenderScene::set_material`]; `None` for one that is a
+    /// [`StandardMaterial`] (read it with [`RenderScene::standard_material`]).
     pub fn material(&self, handle: MaterialHandle) -> Option<&Material> {
+        self.gltf_materials.get(handle.index())?.as_ref()
+    }
+
+    /// Any material, in the form it is drawn.
+    pub fn standard_material(&self, handle: MaterialHandle) -> Option<&StandardMaterial> {
         self.materials.get(handle.index())
     }
 
@@ -710,11 +810,11 @@ impl RenderScene {
         &self.fonts
     }
 
-    pub(crate) fn textures(&self) -> &[TextureData] {
+    pub(crate) fn textures(&self) -> &[TextureSource] {
         &self.textures
     }
 
-    pub(crate) fn materials(&self) -> impl Iterator<Item = (&Material, u64)> {
+    pub(crate) fn materials(&self) -> impl Iterator<Item = (&StandardMaterial, u64)> {
         self.materials
             .iter()
             .zip(self.material_revisions.iter().copied())

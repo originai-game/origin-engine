@@ -9,6 +9,7 @@ publish = false
 
 [dependencies]
 og-render = { path = "../og-render", features = ["gltf"] }
+og-core = { path = "../og-core" }
 glam = { workspace = true }
 image = { workspace = true }
 

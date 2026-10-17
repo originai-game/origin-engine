@@ -1,15 +1,24 @@
 //! Frame capture on both hosts: the offscreen target copied into a mapped
-//! buffer. One async path: natively the call polls the device until the copy
-//! is done; in the browser the mapping completes from the event loop (WebGPU's
-//! `mapAsync`) or on the next submit or [`Renderer::poll`] (WebGL2), and the
-//! future resolves then. Nothing reads the canvas, so the page needs no
+//! buffer. Nothing reads the canvas, so the page needs no
 //! `preserveDrawingBuffer`.
+//!
+//! A capture is a request: [`Renderer::begin_capture`] records the copy and
+//! starts the mapping; the [`CaptureRequest`] then completes without
+//! blocking ([`CaptureRequest::try_finish`], for a host's request/complete
+//! loop), natively with a bound ([`CaptureRequest::wait`]) or as a future
+//! ([`CaptureRequest::finish`]). Dropping the request (or the
+//! [`Renderer::capture`] future) cancels it and frees the buffer. In the
+//! browser the mapping completes from the event loop (WebGPU's `mapAsync`)
+//! or on the next submit or [`Renderer::poll`] (WebGL2).
 
 use crate::{RenderError, Renderer, RgbaImage};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll, Waker};
+
+/// How long [`Renderer::capture`] waits natively before it gives up.
+pub const CAPTURE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
 
 #[derive(Default)]
 struct MapState {
@@ -34,6 +43,123 @@ impl Future for Mapped {
     }
 }
 
+/// A capture in flight: the copy of the last offscreen frame into a
+/// buffer being mapped. Dropping it cancels the capture.
+pub struct CaptureRequest {
+    buffer: wgpu::Buffer,
+    state: Arc<Mutex<MapState>>,
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+    submission: wgpu::SubmissionIndex,
+    width: u32,
+    height: u32,
+    padded_row: u32,
+    swizzle: bool,
+}
+
+impl CaptureRequest {
+    /// Whether the mapping has completed (successfully or not), without
+    /// polling the device.
+    pub fn is_ready(&self) -> bool {
+        self.state
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .result
+            .is_some()
+    }
+
+    /// Polls the device once without blocking: `Ok(Some(frame))` once the
+    /// copy has landed, `Ok(None)` while it is pending. After `Some` (or an
+    /// error) the request is spent.
+    pub fn try_finish(&mut self, renderer: &Renderer) -> Result<Option<RgbaImage>, RenderError> {
+        renderer.poll();
+        let result = self
+            .state
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .result
+            .take();
+        match result {
+            None => Ok(None),
+            Some(r) => {
+                r.map_err(|e| RenderError::Readback(e.to_string()))?;
+                self.read().map(Some)
+            }
+        }
+    }
+
+    /// Blocks until the copy has landed or `timeout` passed (native only).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn wait(
+        mut self,
+        renderer: &Renderer,
+        timeout: std::time::Duration,
+    ) -> Result<RgbaImage, RenderError> {
+        renderer
+            .device
+            .poll(wgpu::PollType::Wait {
+                submission_index: Some(self.submission.clone()),
+                timeout: Some(timeout),
+            })
+            .map_err(|e| match e {
+                wgpu::PollError::Timeout => {
+                    RenderError::Readback(format!("capture timed out after {timeout:?}"))
+                }
+                other => RenderError::Readback(other.to_string()),
+            })?;
+        match self.try_finish(renderer)? {
+            Some(image) => Ok(image),
+            None => Err(RenderError::Readback(format!(
+                "capture not mapped after {timeout:?}"
+            ))),
+        }
+    }
+
+    /// Resolves when the mapping completes (the host bounds the wait: drop
+    /// the future to cancel). On WebGL2 something must poll the device:
+    /// the next frame's submit or [`Renderer::poll`].
+    pub async fn finish(self) -> Result<RgbaImage, RenderError> {
+        Mapped(self.state.clone())
+            .await
+            .map_err(|e| RenderError::Readback(e.to_string()))?;
+        self.read()
+    }
+
+    /// Cancels the capture (the same as dropping it).
+    pub fn cancel(self) {}
+
+    fn read(&self) -> Result<RgbaImage, RenderError> {
+        let row = self.width * 4;
+        let mut pixels = Vec::with_capacity((row * self.height) as usize);
+        {
+            let data = self
+                .buffer
+                .slice(..)
+                .get_mapped_range()
+                .map_err(|e| RenderError::Readback(format!("{e:?}")))?;
+            for chunk in data.chunks_exact(self.padded_row as usize) {
+                pixels.extend_from_slice(&chunk[..row as usize]);
+            }
+        }
+        self.buffer.unmap();
+        if self.swizzle {
+            for p in pixels.chunks_exact_mut(4) {
+                p.swap(0, 2);
+            }
+        }
+        Ok(RgbaImage {
+            width: self.width,
+            height: self.height,
+            pixels,
+        })
+    }
+}
+
+impl Drop for CaptureRequest {
+    fn drop(&mut self) {
+        self.buffer.destroy();
+    }
+}
+
 impl Renderer {
     /// Processes finished GPU work without blocking: completes pending
     /// captures on WebGL2 when no frame is being submitted.
@@ -41,10 +167,9 @@ impl Renderer {
         let _ = self.device.poll(wgpu::PollType::Poll);
     }
 
-    /// The last frame drawn to [`crate::RenderTarget::Offscreen`] as RGBA8,
-    /// rows top to bottom (BGRA outputs are swizzled). Works on every host;
-    /// natively it returns as soon as the GPU has finished the copy.
-    pub async fn capture(&self) -> Result<RgbaImage, RenderError> {
+    /// Starts a capture of the last frame drawn to
+    /// [`crate::RenderTarget::Offscreen`] (see the module docs).
+    pub fn begin_capture(&self) -> Result<CaptureRequest, RenderError> {
         let (width, height) = (self.width, self.height);
         let swizzle = match self.output_format {
             wgpu::TextureFormat::Rgba8Unorm | wgpu::TextureFormat::Rgba8UnormSrgb => false,
@@ -67,7 +192,7 @@ impl Renderer {
             });
         encoder.copy_texture_to_buffer(
             wgpu::TexelCopyTextureInfo {
-                texture: &self.targets.offscreen,
+                texture: &self.persistent.offscreen,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
@@ -86,7 +211,7 @@ impl Renderer {
                 depth_or_array_layers: 1,
             },
         );
-        self.queue.submit(Some(encoder.finish()));
+        let submission = self.queue.submit(Some(encoder.finish()));
         let state = Arc::new(Mutex::new(MapState::default()));
         let callback_state = state.clone();
         buffer
@@ -98,35 +223,31 @@ impl Renderer {
                     waker.wake();
                 }
             });
-        #[cfg(not(target_arch = "wasm32"))]
-        self.device
-            .poll(wgpu::PollType::wait_indefinitely())
-            .map_err(|e| RenderError::Readback(e.to_string()))?;
-        #[cfg(target_arch = "wasm32")]
-        self.poll();
-        Mapped(state)
-            .await
-            .map_err(|e| RenderError::Readback(e.to_string()))?;
-        let mut pixels = Vec::with_capacity((row * height) as usize);
-        {
-            let data = buffer
-                .slice(..)
-                .get_mapped_range()
-                .map_err(|e| RenderError::Readback(format!("{e:?}")))?;
-            for chunk in data.chunks_exact(padded_row as usize) {
-                pixels.extend_from_slice(&chunk[..row as usize]);
-            }
-        }
-        buffer.unmap();
-        if swizzle {
-            for p in pixels.chunks_exact_mut(4) {
-                p.swap(0, 2);
-            }
-        }
-        Ok(RgbaImage {
+        Ok(CaptureRequest {
+            buffer,
+            state,
+            submission,
             width,
             height,
-            pixels,
+            padded_row,
+            swizzle,
         })
+    }
+
+    /// The last frame drawn to [`crate::RenderTarget::Offscreen`] as RGBA8,
+    /// rows top to bottom (BGRA outputs are swizzled). Works on every host;
+    /// natively it waits at most [`CAPTURE_TIMEOUT`]; in the browser it
+    /// resolves when the mapping does (drop the future to cancel).
+    pub async fn capture(&self) -> Result<RgbaImage, RenderError> {
+        let request = self.begin_capture()?;
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            request.wait(self, CAPTURE_TIMEOUT)
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            self.poll();
+            request.finish().await
+        }
     }
 }

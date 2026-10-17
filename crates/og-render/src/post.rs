@@ -1,8 +1,10 @@
 //! After the main pass: TAA, auto-exposure metering, bloom and the tonemap,
 //! and the size-dependent targets they and the main pass draw into.
 
+use crate::graph::{GraphError, GraphPlan, RenderGraph, TargetDesc};
 use crate::scene::{Exposure, PostEffects, Tonemap};
 use crate::{target_texture, Antialias, DEPTH_FORMAT, HDR_FORMAT};
+use std::collections::HashMap;
 
 const FULLSCREEN_WGSL: &str = include_str!("../shaders/fullscreen.wgsl");
 const POST_WGSL: &str = include_str!("../shaders/post.wgsl");
@@ -363,96 +365,25 @@ impl PostPasses {
     }
 }
 
-/// Every size-dependent target and the bind groups that read them.
-pub(crate) struct Targets {
-    /// The single-sample HDR image of the main pass (the MSAA resolve target).
-    pub hdr: wgpu::TextureView,
-    /// The multisampled HDR target when MSAA is on.
-    pub hdr_msaa: Option<wgpu::TextureView>,
-    /// Main-pass depth (multisampled with MSAA; sampled by TAA).
-    pub depth: wgpu::TextureView,
+/// The size-dependent targets that outlive a frame (imported into the
+/// graph): the offscreen output and the TAA history.
+pub(crate) struct Persistent {
     pub offscreen: wgpu::Texture,
     pub offscreen_view: wgpu::TextureView,
     /// TAA history ping-pong: frame `n` writes `history[n % 2]`.
-    history: Option<[wgpu::TextureView; 2]>,
-    taa_groups: Option<[wgpu::BindGroup; 2]>,
-    lum_levels: Vec<wgpu::TextureView>,
-    meter_groups: [wgpu::BindGroup; 2],
-    reduce_groups: Vec<wgpu::BindGroup>,
-    bloom_levels: Vec<wgpu::TextureView>,
-    prefilter_groups: [wgpu::BindGroup; 2],
-    down_groups: Vec<wgpu::BindGroup>,
-    up_groups: Vec<wgpu::BindGroup>,
-    post_groups: [wgpu::BindGroup; 2],
+    pub history: Option<[wgpu::TextureView; 2]>,
 }
 
-/// What the post chain does this frame.
-pub(crate) struct PostFrame {
-    /// The history slot TAA writes (and post reads) this frame.
-    pub slot: usize,
-    pub taa: bool,
-    pub auto_exposure: bool,
-    pub bloom: bool,
-}
-
-impl Targets {
+impl Persistent {
     pub fn new(
         device: &wgpu::Device,
-        passes: &PostPasses,
         width: u32,
         height: u32,
         output_format: wgpu::TextureFormat,
-        samples: u32,
         antialias: Antialias,
-    ) -> Targets {
+    ) -> Persistent {
         let attach_bind =
             wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING;
-        let view = |t: wgpu::Texture| t.create_view(&Default::default());
-        let hdr = view(target_texture(
-            device,
-            "hdr",
-            width,
-            height,
-            HDR_FORMAT,
-            attach_bind,
-        ));
-        let multisampled = |label: &str, format: wgpu::TextureFormat| {
-            device
-                .create_texture(&wgpu::TextureDescriptor {
-                    label: Some(label),
-                    size: wgpu::Extent3d {
-                        width,
-                        height,
-                        depth_or_array_layers: 1,
-                    },
-                    mip_level_count: 1,
-                    sample_count: samples,
-                    dimension: wgpu::TextureDimension::D2,
-                    format,
-                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-                    view_formats: &[],
-                })
-                .create_view(&Default::default())
-        };
-        let hdr_msaa = (samples > 1).then(|| multisampled("hdr msaa", HDR_FORMAT));
-        let taa = antialias == Antialias::Taa;
-        let depth = if samples > 1 {
-            multisampled("depth msaa", DEPTH_FORMAT)
-        } else {
-            let usage = if taa {
-                attach_bind
-            } else {
-                wgpu::TextureUsages::RENDER_ATTACHMENT
-            };
-            view(target_texture(
-                device,
-                "depth",
-                width,
-                height,
-                DEPTH_FORMAT,
-                usage,
-            ))
-        };
         let offscreen = target_texture(
             device,
             "offscreen",
@@ -462,18 +393,316 @@ impl Targets {
             attach_bind | wgpu::TextureUsages::COPY_SRC,
         );
         let offscreen_view = offscreen.create_view(&Default::default());
-        let history = taa.then(|| {
+        let history = (antialias == Antialias::Taa).then(|| {
             [0, 1].map(|_| {
-                view(target_texture(
+                target_texture(
                     device,
                     "taa history",
                     width,
                     height,
                     HDR_FORMAT,
                     attach_bind,
-                ))
+                )
+                .create_view(&Default::default())
             })
         });
+        Persistent {
+            offscreen,
+            offscreen_view,
+            history,
+        }
+    }
+}
+
+/// The bloom chain's length for a target size (the first level at half
+/// resolution, each next one half the previous).
+pub(crate) fn bloom_levels(width: u32, height: u32) -> u32 {
+    let (bw, bh) = ((width / 2).max(1), (height / 2).max(1));
+    (32 - bw.min(bh).max(1).leading_zeros())
+        .saturating_sub(3)
+        .clamp(1, MAX_BLOOM_LEVELS)
+}
+
+/// Levels of the auto-exposure metering chain (64, 8, 1).
+pub(crate) fn meter_levels() -> u32 {
+    let mut n = 1;
+    let mut size = METER_SIZE;
+    while size > 1 {
+        size /= 8;
+        n += 1;
+    }
+    n
+}
+
+/// One pass of a frame, as the render graph knows it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub(crate) enum FramePass {
+    /// Directional light cascade `i`.
+    Cascade(u32),
+    /// Local light shadow layer (6 per point light, 1 per spot).
+    LocalFace(u32),
+    /// Opaque meshes, sky, transparent meshes, sprites and text into the HDR target.
+    Main,
+    Taa,
+    Meter,
+    /// Metering level `i` into `i + 1`.
+    Reduce(u32),
+    BloomPrefilter,
+    /// Bloom level `i` into `i + 1`.
+    BloomDown(u32),
+    /// Bloom level `i + 1` added onto `i`.
+    BloomUp(u32),
+    Tonemap,
+}
+
+impl FramePass {
+    pub fn name(self) -> String {
+        match self {
+            FramePass::Cascade(i) => format!("cascade.{i}"),
+            FramePass::LocalFace(i) => format!("local-shadow.{i}"),
+            FramePass::Main => "main".into(),
+            FramePass::Taa => "taa".into(),
+            FramePass::Meter => "meter".into(),
+            FramePass::Reduce(i) => format!("meter-reduce.{i}"),
+            FramePass::BloomPrefilter => "bloom-prefilter".into(),
+            FramePass::BloomDown(i) => format!("bloom-down.{i}"),
+            FramePass::BloomUp(i) => format!("bloom-up.{i}"),
+            FramePass::Tonemap => "tonemap".into(),
+        }
+    }
+}
+
+/// What the transient targets depend on besides the passes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct GraphConfig {
+    pub width: u32,
+    pub height: u32,
+    pub samples: u32,
+    pub taa: bool,
+}
+
+fn luminance_name(i: u32) -> String {
+    format!("luminance.{i}")
+}
+
+fn bloom_name(i: u32) -> String {
+    format!("bloom.{i}")
+}
+
+/// The render graph of a frame made of `passes` (in recording order).
+pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGraph {
+    let attach_bind = wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING;
+    let desc = |width: u32, height: u32, format, samples, usage| TargetDesc {
+        width,
+        height,
+        format,
+        samples,
+        usage,
+    };
+    let (w, h) = (cfg.width, cfg.height);
+    let mut g = RenderGraph::new();
+    g.import("cascades")
+        .import("local-shadows")
+        .import("output")
+        .transient("hdr", desc(w, h, HDR_FORMAT, 1, attach_bind));
+    let msaa = cfg.samples > 1;
+    if msaa {
+        g.transient(
+            "hdr-msaa",
+            desc(
+                w,
+                h,
+                HDR_FORMAT,
+                cfg.samples,
+                wgpu::TextureUsages::RENDER_ATTACHMENT,
+            ),
+        );
+    }
+    let depth_usage = if cfg.taa && !msaa {
+        attach_bind
+    } else {
+        wgpu::TextureUsages::RENDER_ATTACHMENT
+    };
+    g.transient("depth", desc(w, h, DEPTH_FORMAT, cfg.samples, depth_usage));
+    if cfg.taa {
+        g.import("history-read").import("history-write");
+    }
+    let mut size = METER_SIZE;
+    for i in 0..meter_levels() {
+        g.transient(
+            luminance_name(i),
+            desc(size, size, LUMINANCE_FORMAT, 1, attach_bind),
+        );
+        size /= 8;
+    }
+    let (bw, bh) = ((w / 2).max(1), (h / 2).max(1));
+    for i in 0..bloom_levels(w, h) {
+        g.transient(
+            bloom_name(i),
+            desc(
+                (bw >> i).max(1),
+                (bh >> i).max(1),
+                HDR_FORMAT,
+                1,
+                attach_bind,
+            ),
+        );
+    }
+    let taa = passes.contains(&FramePass::Taa);
+    let auto = passes.contains(&FramePass::Meter);
+    let bloom = passes.contains(&FramePass::BloomPrefilter);
+    let lit = if taa { "history-write" } else { "hdr" };
+    let lum = luminance_name(meter_levels() - 1);
+    for &p in passes {
+        let name = p.name();
+        match p {
+            FramePass::Cascade(_) => g.pass(name, &[], &["cascades"]),
+            FramePass::LocalFace(_) => g.pass(name, &[], &["local-shadows"]),
+            FramePass::Main if msaa => g.pass(
+                name,
+                &["cascades", "local-shadows"],
+                &["hdr-msaa", "hdr", "depth"],
+            ),
+            FramePass::Main => g.pass(name, &["cascades", "local-shadows"], &["hdr", "depth"]),
+            FramePass::Taa => g.pass(name, &["hdr", "depth", "history-read"], &["history-write"]),
+            FramePass::Meter => g.pass(name, &[lit], &["luminance.0"]),
+            FramePass::Reduce(i) => g.pass(name, &[&luminance_name(i)], &[&luminance_name(i + 1)]),
+            FramePass::BloomPrefilter if auto => g.pass(name, &[lit, &lum], &["bloom.0"]),
+            FramePass::BloomPrefilter => g.pass(name, &[lit], &["bloom.0"]),
+            FramePass::BloomDown(i) => g.pass(name, &[&bloom_name(i)], &[&bloom_name(i + 1)]),
+            FramePass::BloomUp(i) => g.pass(name, &[&bloom_name(i + 1)], &[&bloom_name(i)]),
+            FramePass::Tonemap => {
+                let mut reads = vec![lit];
+                if auto {
+                    reads.push(&lum);
+                }
+                if bloom {
+                    reads.push("bloom.0");
+                }
+                g.pass(name, &reads, &["output"])
+            }
+        };
+    }
+    g
+}
+
+/// The post passes' bind groups for one realization of the graph.
+struct Bindings {
+    taa: Option<[wgpu::BindGroup; 2]>,
+    meter: Option<[wgpu::BindGroup; 2]>,
+    reduce: Vec<wgpu::BindGroup>,
+    prefilter: Option<[wgpu::BindGroup; 2]>,
+    down: Vec<wgpu::BindGroup>,
+    up: Vec<wgpu::BindGroup>,
+    post: [wgpu::BindGroup; 2],
+}
+
+/// The frame's render graph: the compiled plan for the current pass list,
+/// the transient textures realized from it (kept in a pool across frames
+/// and reused by description) and the bind groups that read them.
+#[derive(Default)]
+pub(crate) struct FrameGraph {
+    passes: Vec<FramePass>,
+    order: Vec<FramePass>,
+    plan: Option<GraphPlan>,
+    pool: Vec<(TargetDesc, wgpu::TextureView)>,
+    views: HashMap<String, wgpu::TextureView>,
+    bindings: Option<Bindings>,
+}
+
+impl FrameGraph {
+    /// Forgets everything size-dependent (on resize).
+    pub fn invalidate(&mut self) {
+        *self = FrameGraph::default();
+    }
+
+    /// The plan the last [`FrameGraph::prepare`] compiled.
+    pub fn plan(&self) -> Option<&GraphPlan> {
+        self.plan.as_ref()
+    }
+
+    /// The passes in execution order.
+    pub fn order(&self) -> &[FramePass] {
+        &self.order
+    }
+
+    /// Physical transient textures of the current plan.
+    pub fn transient_textures(&self) -> usize {
+        self.plan.as_ref().map_or(0, |p| p.physical().len())
+    }
+
+    pub fn view(&self, name: &str) -> &wgpu::TextureView {
+        self.views
+            .get(name)
+            .unwrap_or_else(|| panic!("render graph target '{name}' is not realized"))
+    }
+
+    /// Compiles the graph for `passes` and realizes its transient targets,
+    /// unless the previous frame had the same passes.
+    pub fn prepare(
+        &mut self,
+        device: &wgpu::Device,
+        passes: Vec<FramePass>,
+        cfg: &GraphConfig,
+        post: &PostPasses,
+        persistent: &Persistent,
+    ) -> Result<(), GraphError> {
+        if self.plan.is_some() && passes == self.passes {
+            return Ok(());
+        }
+        let plan = build_graph(&passes, cfg).compile()?;
+        self.order = plan.order().iter().map(|&i| passes[i]).collect();
+        // Physical slots to pool textures: the first unused entry with the
+        // same description, else a new texture.
+        let mut taken = vec![false; self.pool.len()];
+        let mut slot_views = Vec::with_capacity(plan.physical().len());
+        for desc in plan.physical() {
+            let found = (0..self.pool.len()).find(|&i| !taken[i] && self.pool[i].0 == *desc);
+            let index = match found {
+                Some(i) => i,
+                None => {
+                    let texture = device.create_texture(&wgpu::TextureDescriptor {
+                        label: Some("graph transient"),
+                        size: wgpu::Extent3d {
+                            width: desc.width,
+                            height: desc.height,
+                            depth_or_array_layers: 1,
+                        },
+                        mip_level_count: 1,
+                        sample_count: desc.samples,
+                        dimension: wgpu::TextureDimension::D2,
+                        format: desc.format,
+                        usage: desc.usage,
+                        view_formats: &[],
+                    });
+                    self.pool
+                        .push((*desc, texture.create_view(&Default::default())));
+                    taken.push(false);
+                    self.pool.len() - 1
+                }
+            };
+            taken[index] = true;
+            slot_views.push(self.pool[index].1.clone());
+        }
+        self.views.clear();
+        for name in transient_names(cfg) {
+            if let Some(slot) = plan.slot(&name) {
+                self.views.insert(name, slot_views[slot].clone());
+            }
+        }
+        self.bindings = Some(self.bind(device, post, persistent, &passes));
+        self.passes = passes;
+        self.plan = Some(plan);
+        Ok(())
+    }
+
+    fn bind(
+        &self,
+        device: &wgpu::Device,
+        passes: &PostPasses,
+        persistent: &Persistent,
+        frame: &[FramePass],
+    ) -> Bindings {
         fn tex(v: &wgpu::TextureView) -> wgpu::BindingResource<'_> {
             wgpu::BindingResource::TextureView(v)
         }
@@ -493,90 +722,59 @@ impl Targets {
                 entries: &entries,
             })
         };
-        let taa_groups = history.as_ref().map(|h| {
+        let has = |p: FramePass| frame.contains(&p);
+        let hdr = self.view("hdr");
+        let taa = has(FramePass::Taa);
+        let history = persistent.history.as_ref().filter(|_| taa);
+        // The lit image post reads in frame slot `i`.
+        let source = |slot: usize| match history {
+            Some(h) => &h[slot],
+            None => hdr,
+        };
+        let taa_groups = history.map(|h| {
             [0usize, 1].map(|slot| {
                 group(
                     "taa",
                     &passes.taa_layout,
                     &[
-                        tex(&hdr),
+                        tex(hdr),
                         tex(&h[1 - slot]),
-                        tex(&depth),
+                        tex(self.view("depth")),
                         sampler.clone(),
                         passes.taa_buffer.as_entire_binding(),
                     ],
                 )
             })
         });
-        // The lit image post reads in frame slot `i`.
-        let source = |slot: usize| match &history {
-            Some(h) => &h[slot],
-            None => &hdr,
+        let levels = meter_levels();
+        let auto = has(FramePass::Meter);
+        let lum = if auto {
+            self.view(&luminance_name(levels - 1))
+        } else {
+            &passes.black
         };
-
-        let mut lum_levels = Vec::new();
-        let mut size = METER_SIZE;
-        loop {
-            lum_levels.push(view(target_texture(
-                device,
-                "luminance",
-                size,
-                size,
-                LUMINANCE_FORMAT,
-                attach_bind,
-            )));
-            if size == 1 {
-                break;
-            }
-            size /= 8;
-        }
-        let meter_groups = [0, 1].map(|slot| {
-            group(
-                "meter",
-                &passes.source_layout,
-                &[tex(source(slot)), sampler.clone()],
-            )
-        });
-        let reduce_groups = lum_levels[..lum_levels.len() - 1]
-            .iter()
-            .map(|level| {
+        let meter = auto.then(|| {
+            [0, 1].map(|slot| {
                 group(
-                    "reduce",
+                    "meter",
                     &passes.source_layout,
-                    &[tex(level), sampler.clone()],
+                    &[tex(source(slot)), sampler.clone()],
                 )
             })
-            .collect();
-        let lum = lum_levels.last().expect("at least one level");
-
-        let (bw, bh) = ((width / 2).max(1), (height / 2).max(1));
-        let levels = (32 - bw.min(bh).max(1).leading_zeros())
-            .saturating_sub(3)
-            .clamp(1, MAX_BLOOM_LEVELS);
-        let bloom_texture = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("bloom"),
-            size: wgpu::Extent3d {
-                width: bw,
-                height: bh,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: levels,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: HDR_FORMAT,
-            usage: attach_bind,
-            view_formats: &[],
         });
-        let bloom_levels: Vec<_> = (0..levels)
-            .map(|mip| {
-                bloom_texture.create_view(&wgpu::TextureViewDescriptor {
-                    label: Some("bloom level"),
-                    base_mip_level: mip,
-                    mip_level_count: Some(1),
-                    ..Default::default()
+        let reduce = if auto {
+            (0..levels - 1)
+                .map(|i| {
+                    group(
+                        "reduce",
+                        &passes.source_layout,
+                        &[tex(self.view(&luminance_name(i))), sampler.clone()],
+                    )
                 })
-            })
-            .collect();
+                .collect()
+        } else {
+            Vec::new()
+        };
         let post_group = |label: &str, src: &wgpu::TextureView, bloom: &wgpu::TextureView| {
             group(
                 label,
@@ -590,125 +788,151 @@ impl Targets {
                 ],
             )
         };
-        let prefilter_groups =
-            [0, 1].map(|slot| post_group("bloom prefilter", source(slot), &passes.black));
-        let down_groups = bloom_levels[..bloom_levels.len() - 1]
+        let bloom = has(FramePass::BloomPrefilter);
+        let bloom_count = frame
             .iter()
-            .map(|level| post_group("bloom down", level, &passes.black))
-            .collect();
-        let up_groups = bloom_levels[1..]
-            .iter()
-            .map(|level| post_group("bloom up", level, &passes.black))
-            .collect();
-        let post_groups = [0, 1].map(|slot| post_group("post", source(slot), &bloom_levels[0]));
-        Targets {
-            hdr,
-            hdr_msaa,
-            depth,
-            offscreen,
-            offscreen_view,
-            history,
-            taa_groups,
-            lum_levels,
-            meter_groups,
-            reduce_groups,
-            bloom_levels,
-            prefilter_groups,
-            down_groups,
-            up_groups,
-            post_groups,
+            .filter(|p| matches!(p, FramePass::BloomDown(_)))
+            .count() as u32
+            + 1;
+        let prefilter = bloom
+            .then(|| [0, 1].map(|slot| post_group("bloom prefilter", source(slot), &passes.black)));
+        let (down, up) = if bloom {
+            (
+                (0..bloom_count - 1)
+                    .map(|i| post_group("bloom down", self.view(&bloom_name(i)), &passes.black))
+                    .collect(),
+                (1..bloom_count)
+                    .map(|i| post_group("bloom up", self.view(&bloom_name(i)), &passes.black))
+                    .collect(),
+            )
+        } else {
+            (Vec::new(), Vec::new())
+        };
+        let bloom_top = if bloom {
+            self.view("bloom.0")
+        } else {
+            &passes.black
+        };
+        let post = [0, 1].map(|slot| post_group("post", source(slot), bloom_top));
+        Bindings {
+            taa: taa_groups,
+            meter,
+            reduce,
+            prefilter,
+            down,
+            up,
+            post,
         }
     }
 
-    /// Records TAA, metering, bloom and the tonemap into `output`; returns the
-    /// draw calls recorded.
-    pub fn encode(
+    /// Records one post pass (TAA, metering, bloom, tonemap); returns its draws.
+    pub fn encode_post(
         &self,
         encoder: &mut wgpu::CommandEncoder,
         passes: &PostPasses,
-        frame: &PostFrame,
+        persistent: &Persistent,
+        pass: FramePass,
+        slot: usize,
         output: &wgpu::TextureView,
     ) -> u32 {
+        let b = self.bindings.as_ref().expect("prepared");
         let clear = wgpu::LoadOp::Clear(wgpu::Color::BLACK);
-        let mut draws = 0;
-        let slot = frame.slot;
-        if frame.taa {
-            if let (Some(pipeline), Some(history), Some(groups)) =
-                (&passes.taa, &self.history, &self.taa_groups)
-            {
+        match pass {
+            FramePass::Taa => {
+                if let (Some(pipeline), Some(history), Some(groups)) =
+                    (&passes.taa, &persistent.history, &b.taa)
+                {
+                    fullscreen_pass(
+                        encoder,
+                        "taa",
+                        &history[slot],
+                        clear,
+                        pipeline,
+                        &groups[slot],
+                    );
+                    return 1;
+                }
+                0
+            }
+            FramePass::Meter => {
+                let groups = b.meter.as_ref().expect("metering bound");
                 fullscreen_pass(
                     encoder,
-                    "taa",
-                    &history[slot],
+                    "meter",
+                    self.view("luminance.0"),
                     clear,
-                    pipeline,
+                    &passes.meter,
                     &groups[slot],
                 );
-                draws += 1;
+                1
             }
-        }
-        if frame.auto_exposure {
-            fullscreen_pass(
-                encoder,
-                "meter",
-                &self.lum_levels[0],
-                clear,
-                &passes.meter,
-                &self.meter_groups[slot],
-            );
-            for (i, group) in self.reduce_groups.iter().enumerate() {
+            FramePass::Reduce(i) => {
                 fullscreen_pass(
                     encoder,
                     "meter reduce",
-                    &self.lum_levels[i + 1],
+                    self.view(&luminance_name(i + 1)),
                     clear,
                     &passes.reduce,
-                    group,
+                    &b.reduce[i as usize],
                 );
+                1
             }
-            draws += self.lum_levels.len() as u32;
-        }
-        if frame.bloom {
-            fullscreen_pass(
-                encoder,
-                "bloom prefilter",
-                &self.bloom_levels[0],
-                clear,
-                &passes.prefilter,
-                &self.prefilter_groups[slot],
-            );
-            for (i, group) in self.down_groups.iter().enumerate() {
+            FramePass::BloomPrefilter => {
+                let groups = b.prefilter.as_ref().expect("bloom bound");
+                fullscreen_pass(
+                    encoder,
+                    "bloom prefilter",
+                    self.view("bloom.0"),
+                    clear,
+                    &passes.prefilter,
+                    &groups[slot],
+                );
+                1
+            }
+            FramePass::BloomDown(i) => {
                 fullscreen_pass(
                     encoder,
                     "bloom down",
-                    &self.bloom_levels[i + 1],
+                    self.view(&bloom_name(i + 1)),
                     clear,
                     &passes.down,
-                    group,
+                    &b.down[i as usize],
                 );
+                1
             }
-            for (i, group) in self.up_groups.iter().enumerate().rev() {
+            FramePass::BloomUp(i) => {
                 fullscreen_pass(
                     encoder,
                     "bloom up",
-                    &self.bloom_levels[i],
+                    self.view(&bloom_name(i)),
                     wgpu::LoadOp::Load,
                     &passes.up,
-                    group,
+                    &b.up[i as usize],
                 );
+                1
             }
-            draws += 1 + 2 * self.down_groups.len() as u32;
+            FramePass::Tonemap => {
+                fullscreen_pass(
+                    encoder,
+                    "tonemap",
+                    output,
+                    clear,
+                    &passes.tonemap,
+                    &b.post[slot],
+                );
+                1
+            }
+            FramePass::Cascade(_) | FramePass::LocalFace(_) | FramePass::Main => 0,
         }
-        fullscreen_pass(
-            encoder,
-            "tonemap",
-            output,
-            clear,
-            &passes.tonemap,
-            &self.post_groups[slot],
-        );
-        draws + 1
     }
+}
+
+/// Every transient target name a graph for `cfg` can declare.
+fn transient_names(cfg: &GraphConfig) -> Vec<String> {
+    let mut names = vec!["hdr".to_string(), "hdr-msaa".into(), "depth".into()];
+    names.extend((0..meter_levels()).map(luminance_name));
+    names.extend((0..bloom_levels(cfg.width, cfg.height)).map(bloom_name));
+    names
 }
 
 /// The current frame's weight in the TAA blend: 1 when there is no history.

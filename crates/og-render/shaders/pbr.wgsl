@@ -3,18 +3,22 @@
 // per-fragment loop, split-sum IBL. Linear HDR output; the post passes
 // tonemap. Prepended by frame.wgsl.
 
+// `MaterialUniform` in material.rs (a StandardMaterial).
 struct MaterialFactors {
-  base_color: vec4<f32>,
-  mr: vec4<f32>,          // x: metallic, y: roughness, z: normal scale, w: has_normal_map
-  emissive: vec4<f32>,    // rgb: emissive, w: alpha cutoff (<0 = opaque)
+  base_color: vec4<f32>,  // rgb: colour, a: opacity
+  mr: vec4<f32>,          // x: metalness, y: roughness, zw: normal scale
+  emissive: vec4<f32>,    // rgb: emissive x intensity, w: alpha cutoff (<0 = none)
+  flags: vec4<f32>,       // x: normal map (0 none, 1 rgb, 2 two-channel), y: ao intensity (<0 no map), z: env intensity, w: mode bits (1 flat, 2 unlit, 4 blended)
 };
 
 @group(1) @binding(0) var<uniform> material: MaterialFactors;
 @group(1) @binding(1) var base_color_tex: texture_2d<f32>;
-@group(1) @binding(2) var mr_tex: texture_2d<f32>;
-@group(1) @binding(3) var normal_tex: texture_2d<f32>;
-@group(1) @binding(4) var emissive_tex: texture_2d<f32>;
-@group(1) @binding(5) var material_sampler: sampler;
+@group(1) @binding(2) var metalness_tex: texture_2d<f32>;
+@group(1) @binding(3) var roughness_tex: texture_2d<f32>;
+@group(1) @binding(4) var normal_tex: texture_2d<f32>;
+@group(1) @binding(5) var emissive_tex: texture_2d<f32>;
+@group(1) @binding(6) var ao_tex: texture_2d<f32>;
+@group(1) @binding(7) var material_sampler: sampler;
 
 struct VertexIn {
   @location(0) position: vec3<f32>,
@@ -218,20 +222,38 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   if (material.emissive.w >= 0.0 && base.a < material.emissive.w) {
     discard;
   }
-  let mr_sample = textureSample(mr_tex, material_sampler, in.uv);
+  let mode = u32(material.flags.w);
+  // Blended materials keep their alpha; opaque ones write 1.
+  let alpha = select(1.0, base.a, (mode & 4u) != 0u);
+  if ((mode & 2u) != 0u) {
+    // Unlit (MeshBasicMaterial): the colour plus the emissive term.
+    let e = material.emissive.rgb * textureSample(emissive_tex, material_sampler, in.uv).rgb;
+    return vec4<f32>(base.rgb + e, alpha);
+  }
+  let metalness_sample = textureSample(metalness_tex, material_sampler, in.uv);
+  let roughness_sample = textureSample(roughness_tex, material_sampler, in.uv);
   var s: Surface;
-  s.metallic = clamp(material.mr.x * mr_sample.b, 0.0, 1.0);
-  s.roughness = clamp(material.mr.y * mr_sample.g, 0.04, 1.0);
+  s.metallic = clamp(material.mr.x * metalness_sample.b, 0.0, 1.0);
+  s.roughness = clamp(material.mr.y * roughness_sample.g, 0.04, 1.0);
   s.albedo = base.rgb;
   s.f0 = mix(vec3<f32>(0.04), s.albedo, s.metallic);
 
   var n = normalize(in.normal);
+  if ((mode & 1u) != 0u) {
+    // Flat shading: the face normal from the position derivatives.
+    n = normalize(cross(dpdx(in.world_pos), dpdy(in.world_pos)));
+  }
   // Perspective: towards the eye; orthographic: against the view direction.
   let v = select(normalize(frame.view_pos.xyz - in.world_pos), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
   if (dot(n, v) < 0.0) { n = -n; }
-  if (material.mr.w > 0.5) {
-    var map = textureSample(normal_tex, material_sampler, in.uv).xyz * 2.0 - 1.0;
-    map = vec3<f32>(map.xy * material.mr.z, map.z);
+  let normal_sample = textureSample(normal_tex, material_sampler, in.uv);
+  if (material.flags.x > 0.5) {
+    var map = normal_sample.xyz * 2.0 - 1.0;
+    if (material.flags.x > 1.5) {
+      // Two-channel (BC5, EAC RG11): z from x and y.
+      map.z = sqrt(max(1.0 - dot(map.xy, map.xy), 0.0));
+    }
+    map = vec3<f32>(map.xy * material.mr.zw, map.z);
     n = perturb_normal(n, in.world_pos, in.uv, map);
   }
 
@@ -259,7 +281,13 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   let prefiltered = textureSampleLevel(prefiltered_map, ibl_sampler, r, mip).rgb;
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
   let specular_ibl = prefiltered * (f_ibl * lut.x + lut.y);
-  color += (kd_ibl * diffuse_ibl + specular_ibl) * frame.params.x;
+  let ao_sample = textureSample(ao_tex, material_sampler, in.uv).r;
+  var ibl_scale = frame.params.x * material.flags.z;
+  if (material.flags.y >= 0.0) {
+    // Ambient occlusion darkens only the image-based light.
+    ibl_scale *= mix(1.0, ao_sample, material.flags.y);
+  }
+  color += (kd_ibl * diffuse_ibl + specular_ibl) * ibl_scale;
 
   color += material.emissive.rgb * textureSample(emissive_tex, material_sampler, in.uv).rgb;
 
@@ -272,5 +300,5 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
     if (c == 2u) { tint = vec3<f32>(0.0, 0.0, 1.0); }
     return vec4<f32>(tint * 4.0, 1.0);
   }
-  return vec4<f32>(color, 1.0);
+  return vec4<f32>(color, alpha);
 }

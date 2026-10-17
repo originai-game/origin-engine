@@ -5,7 +5,7 @@
 use crate::scene::{Camera, Light, LightKind, Projection, MAX_LIGHTS};
 use glam::{Mat4, Vec2, Vec3, Vec4};
 
-/// Cascades of the directional light's shadow map.
+/// The most cascades of the directional light's shadow map (the uniform's array size).
 pub(crate) const CASCADES: usize = 3;
 /// Layers of the local shadow array: six cube faces per shadowed light.
 pub(crate) const LOCAL_SHADOW_LAYERS: usize = 12;
@@ -185,12 +185,13 @@ fn slice_sphere(cam: &Camera, aspect: f32, forward: Vec3, n: f32, f: f32) -> (Ve
     }
 }
 
-/// Fits three cascades over the camera's view up to the far side of `bounds`
+/// Fits `count` (1 to 3) cascades over the camera's view up to the far side of `bounds`
 /// (center, radius): stable splits (they depend only on the camera's
 /// intrinsics and `bounds`), each covered by a bounding sphere so its size
 /// does not change as the camera turns, with its centre snapped to the shadow
 /// map's texel grid in light space so the texels do not swim. The depth range
 /// reaches towards the light far enough to keep every caster inside `bounds`.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn fit_cascades(
     cam: &Camera,
     frame: &CameraFrame,
@@ -199,7 +200,9 @@ pub(crate) fn fit_cascades(
     bounds: (Vec3, f32),
     max_distance: f32,
     map_size: u32,
+    count: usize,
 ) -> Vec<Cascade> {
+    let count = count.clamp(1, CASCADES);
     let forward = frame.forward;
     let far_side = (bounds.0 - cam.position).dot(forward) + bounds.1;
     let near = cam.near.max(0.0);
@@ -214,13 +217,13 @@ pub(crate) fn fit_cascades(
     };
     let log_near = near.max(far * 1e-4);
     let mut splits = [near; CASCADES + 1];
-    for (i, split) in splits.iter_mut().enumerate().skip(1) {
-        let t = i as f32 / CASCADES as f32;
+    for (i, split) in splits.iter_mut().enumerate().take(count + 1).skip(1) {
+        let t = i as f32 / count as f32;
         let log = log_near * (far / log_near).powf(t);
         let uniform = near + (far - near) * t;
         *split = lambda * log + (1.0 - lambda) * uniform;
     }
-    splits[CASCADES] = far;
+    splits[count] = far;
 
     let up = if to_light.y.abs() > 0.99 {
         Vec3::Z
@@ -230,8 +233,8 @@ pub(crate) fn fit_cascades(
     // World to light space: the light looks along -to_light.
     let rotation = glam::camera::rh::view::look_at_mat4(Vec3::ZERO, -to_light, up);
     let bounds_ls = rotation.transform_point3(bounds.0);
-    let mut cascades = Vec::with_capacity(CASCADES);
-    for i in 0..CASCADES {
+    let mut cascades = Vec::with_capacity(count);
+    for i in 0..count {
         let (center, radius) = slice_sphere(cam, aspect, forward, splits[i], splits[i + 1]);
         // Quantize the radius so float noise in the camera never resizes the cascade.
         let step = 2f32.powi(radius.log2().floor() as i32 - 6);
