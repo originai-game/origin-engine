@@ -1,0 +1,12 @@
+{
+  "ticks": 600,
+  "commands": 219,
+  "stream_hash": "c46c267313eac16f",
+  "world_hash": "aa9e90881eab846d",
+  "received_hash": "445560da546aca25",
+  "second_run_world_hash": "aa9e90881eab846d",
+  "no_sink_world_hash": "aa9e90881eab846d",
+  "restored_at_300_world_hash": "aa9e90881eab846d",
+  "music_volume_changed_at_300_world_hash": "a179877149a70194",
+  "stream_hash_every_60_ticks": [[60, "295c64d63d5560d0"], [120, "dce7e292e5368448"], [180, "01252ea2a945e4c2"], [240, "22c5c6f3952101a3"], [300, "fa2b0af352137711"], [360, "f1c4f020dd27a277"], [420, "50dc727f24861984"], [480, "c45e5e8f0c23477e"], [540, "0788e981d0c38694"], [600, "c46c267313eac16f"]]
+}

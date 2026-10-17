@@ -273,6 +273,19 @@ cargo check --target wasm32-unknown-unknown -p og-audio
 cargo clippy -p og-audio --all-targets --all-features -- -D warnings
 ```
 
+## Status 2026-10-18 (what phase 1 still owes)
+
+At 49ed935 the mixer, the command stream and both hosts' sink modules
+(`og-host-web/src/audio.rs`, `og-host-node/src/audio.rs`,
+`packages/engine/src/{web,node}/audio*.ts`) are committed, but the wiring
+listed under §Host contract is not done: the `og-api` runtime does not
+`install` og-audio or publish the link, `og run` and the web shell/Worker
+open no sink, and `api.ogt` has `load.sound`/`Sound` but no
+`AudioSource`/`AudioListener`/`Audio` records or `SoundStarted`/`SoundEnded`
+events, so games cannot play sound yet. §Records' note about `u32` flags is
+partly stale (`spatial` and `playing` are `bool` now; `bus` is still `u32`).
+Evidence of the crate itself: `tests/evidence/M6/audio-*`.
+
 ## What phase 2 owes
 
 - **Effects**: per-bus insert chains (filters, reverb send, compressor),

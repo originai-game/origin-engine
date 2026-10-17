@@ -1,0 +1,40 @@
+{
+  "components": {
+    "Health": {
+      "hp": 100.0,
+      "max": 100.0
+    },
+    "Label": {
+      "font": 4294967296.0,
+      "height": 2.6
+    },
+    "Spin": {
+      "speed": 1.5,
+      "target": 1.5
+    },
+    "og.Model": {
+      "asset": 4294967299
+    },
+    "og.Transform": {
+      "position": [
+        2.0,
+        0.0,
+        0.0
+      ],
+      "quaternion": [
+        0.0,
+        0.9820793,
+        0.0,
+        -0.18846793
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    }
+  },
+  "id": "trickster",
+  "kind": "entity",
+  "name": "trickster"
+}

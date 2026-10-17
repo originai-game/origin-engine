@@ -1,0 +1,12 @@
+{
+  "profile": "release",
+  "frames": 48000,
+  "sample_rate": 48000,
+  "channels": 2,
+  "voices": 32,
+  "streamed_qoa_voices": 16,
+  "block_frames": 128,
+  "ms": 15.377,
+  "realtime_fraction": 0.01538,
+  "bound_ms": 50
+}

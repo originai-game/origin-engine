@@ -1,0 +1,429 @@
+{
+  "elements": [
+    {
+      "height": 500.0,
+      "id": "Screen",
+      "parent": "",
+      "text": "",
+      "width": 800.0,
+      "x": 0.0,
+      "y": 0.0
+    },
+    {
+      "height": 452.0,
+      "id": "Menu",
+      "parent": "Screen",
+      "text": "",
+      "width": 220.0,
+      "x": 24.0,
+      "y": 24.0
+    },
+    {
+      "height": 32.0,
+      "id": "Title",
+      "parent": "Menu",
+      "text": "Origin",
+      "width": 80.0,
+      "x": 40.0,
+      "y": 40.0
+    },
+    {
+      "height": 36.0,
+      "id": "Subtitle",
+      "parent": "Menu",
+      "text": "A small game made with Origin Engine.",
+      "width": 188.0,
+      "x": 40.0,
+      "y": 84.0
+    },
+    {
+      "height": 32.0,
+      "id": "Start",
+      "parent": "Menu",
+      "text": "Start",
+      "width": 188.0,
+      "x": 40.0,
+      "y": 132.0
+    },
+    {
+      "height": 32.0,
+      "id": "Options",
+      "parent": "Menu",
+      "text": "Options",
+      "width": 188.0,
+      "x": 40.0,
+      "y": 176.0
+    },
+    {
+      "height": 32.0,
+      "id": "Quit",
+      "parent": "Menu",
+      "text": "Quit",
+      "width": 188.0,
+      "x": 40.0,
+      "y": 220.0
+    },
+    {
+      "height": 28.0,
+      "id": "Music",
+      "parent": "Menu",
+      "text": "Music",
+      "width": 84.66666412353516,
+      "x": 40.0,
+      "y": 264.0
+    },
+    {
+      "height": 28.0,
+      "id": "Volume",
+      "parent": "Menu",
+      "text": "",
+      "width": 188.0,
+      "x": 40.0,
+      "y": 304.0
+    },
+    {
+      "height": 8.0,
+      "id": "Loading",
+      "parent": "Menu",
+      "text": "",
+      "width": 188.0,
+      "x": 40.0,
+      "y": 344.0
+    },
+    {
+      "height": 452.0,
+      "id": "Store",
+      "parent": "Screen",
+      "text": "",
+      "width": 516.0,
+      "x": 260.0,
+      "y": 24.0
+    },
+    {
+      "height": 28.0,
+      "id": "Header",
+      "parent": "Store",
+      "text": "",
+      "width": 484.0,
+      "x": 276.0,
+      "y": 40.0
+    },
+    {
+      "height": 28.0,
+      "id": "Heading",
+      "parent": "Header",
+      "text": "Store",
+      "width": 50.666656494140625,
+      "x": 276.0,
+      "y": 40.0
+    },
+    {
+      "height": 20.0,
+      "id": "Engine",
+      "parent": "Header",
+      "text": "原点引擎",
+      "width": 353.3333435058594,
+      "x": 334.6666564941406,
+      "y": 44.0
+    },
+    {
+      "height": 18.0,
+      "id": "Coins",
+      "parent": "Header",
+      "text": "1250 coins",
+      "width": 64.0,
+      "x": 696.0,
+      "y": 45.33333206176758
+    },
+    {
+      "height": 32.0,
+      "id": "Search",
+      "parent": "Store",
+      "text": "Search items",
+      "width": 484.0,
+      "x": 276.0,
+      "y": 80.0
+    },
+    {
+      "height": 264.0,
+      "id": "List",
+      "parent": "Store",
+      "text": "",
+      "width": 484.0,
+      "x": 276.0,
+      "y": 124.0
+    },
+    {
+      "height": 36.0,
+      "id": "Row#0",
+      "parent": "List",
+      "text": "",
+      "width": 484.0,
+      "x": 276.0,
+      "y": 124.0
+    },
+    {
+      "height": 20.0,
+      "id": "Name",
+      "parent": "Row#0",
+      "text": "Item 0",
+      "width": 411.33331298828125,
+      "x": 288.0,
+      "y": 132.0
+    },
+    {
+      "height": 28.0,
+      "id": "Buy",
+      "parent": "Row#0",
+      "text": "Buy",
+      "width": 48.66668701171875,
+      "x": 699.3333129882812,
+      "y": 128.0
+    },
+    {
+      "height": 36.0,
+      "id": "Row#1",
+      "parent": "List",
+      "text": "",
+      "width": 484.0,
+      "x": 276.0,
+      "y": 164.0
+    },
+    {
+      "height": 20.0,
+      "id": "Name",
+      "parent": "Row#1",
+      "text": "Item 1",
+      "width": 411.33331298828125,
+      "x": 288.0,
+      "y": 172.0
+    },
+    {
+      "height": 28.0,
+      "id": "Buy",
+      "parent": "Row#1",
+      "text": "Buy",
+      "width": 48.66668701171875,
+      "x": 699.3333129882812,
+      "y": 168.0
+    },
+    {
+      "height": 36.0,
+      "id": "Row#2",
+      "parent": "List",
+      "text": "",
+      "width": 484.0,
+      "x": 276.0,
+      "y": 204.0
+    },
+    {
+      "height": 20.0,
+      "id": "Name",
+      "parent": "Row#2",
+      "text": "Item 2",
+      "width": 411.33331298828125,
+      "x": 288.0,
+      "y": 212.0
+    },
+    {
+      "height": 28.0,
+      "id": "Buy",
+      "parent": "Row#2",
+      "text": "Buy",
+      "width": 48.66668701171875,
+      "x": 699.3333129882812,
+      "y": 208.0
+    },
+    {
+      "height": 36.0,
+      "id": "Row#3",
+      "parent": "List",
+      "text": "",
+      "width": 484.0,
+      "x": 276.0,
+      "y": 244.0
+    },
+    {
+      "height": 20.0,
+      "id": "Name",
+      "parent": "Row#3",
+      "text": "Item 3",
+      "width": 411.33331298828125,
+      "x": 288.0,
+      "y": 252.0
+    },
+    {
+      "height": 28.0,
+      "id": "Buy",
+      "parent": "Row#3",
+      "text": "Buy",
+      "width": 48.66668701171875,
+      "x": 699.3333129882812,
+      "y": 248.0
+    },
+    {
+      "height": 36.0,
+      "id": "Row#4",
+      "parent": "List",
+      "text": "",
+      "width": 484.0,
+      "x": 276.0,
+      "y": 284.0
+    },
+    {
+      "height": 20.0,
+      "id": "Name",
+      "parent": "Row#4",
+      "text": "Item 4",
+      "width": 411.33331298828125,
+      "x": 288.0,
+      "y": 292.0
+    },
+    {
+      "height": 28.0,
+      "id": "Buy",
+      "parent": "Row#4",
+      "text": "Buy",
+      "width": 48.66668701171875,
+      "x": 699.3333129882812,
+      "y": 288.0
+    },
+    {
+      "height": 36.0,
+      "id": "Row#5",
+      "parent": "List",
+      "text": "",
+      "width": 484.0,
+      "x": 276.0,
+      "y": 324.0
+    },
+    {
+      "height": 20.0,
+      "id": "Name",
+      "parent": "Row#5",
+      "text": "Item 5",
+      "width": 411.33331298828125,
+      "x": 288.0,
+      "y": 332.0
+    },
+    {
+      "height": 28.0,
+      "id": "Buy",
+      "parent": "Row#5",
+      "text": "Buy",
+      "width": 48.66668701171875,
+      "x": 699.3333129882812,
+      "y": 328.0
+    },
+    {
+      "height": 24.0,
+      "id": "Row#6",
+      "parent": "List",
+      "text": "",
+      "width": 484.0,
+      "x": 276.0,
+      "y": 364.0
+    },
+    {
+      "height": 16.0,
+      "id": "Name",
+      "parent": "Row#6",
+      "text": "Item 6",
+      "width": 411.33331298828125,
+      "x": 288.0,
+      "y": 372.0
+    },
+    {
+      "height": 20.0,
+      "id": "Buy",
+      "parent": "Row#6",
+      "text": "Buy",
+      "width": 48.66668701171875,
+      "x": 699.3333129882812,
+      "y": 368.0
+    },
+    {
+      "height": 60.0,
+      "id": "Tags",
+      "parent": "Store",
+      "text": "",
+      "width": 484.0,
+      "x": 276.0,
+      "y": 400.0
+    },
+    {
+      "height": 28.0,
+      "id": "Tag#0",
+      "parent": "Tags",
+      "text": "Sword",
+      "width": 66.0,
+      "x": 276.0,
+      "y": 400.0
+    },
+    {
+      "height": 28.0,
+      "id": "Tag#1",
+      "parent": "Tags",
+      "text": "Shield",
+      "width": 65.33334350585938,
+      "x": 346.0,
+      "y": 400.0
+    },
+    {
+      "height": 28.0,
+      "id": "Tag#2",
+      "parent": "Tags",
+      "text": "Potion",
+      "width": 67.33331298828125,
+      "x": 415.3333435058594,
+      "y": 400.0
+    },
+    {
+      "height": 28.0,
+      "id": "Tag#3",
+      "parent": "Tags",
+      "text": "Bow",
+      "width": 53.333343505859375,
+      "x": 486.6666564941406,
+      "y": 400.0
+    },
+    {
+      "height": 28.0,
+      "id": "Tag#4",
+      "parent": "Tags",
+      "text": "Helmet",
+      "width": 71.33331298828125,
+      "x": 544.0,
+      "y": 400.0
+    },
+    {
+      "height": 28.0,
+      "id": "Tag#5",
+      "parent": "Tags",
+      "text": "Ring",
+      "width": 53.3333740234375,
+      "x": 619.3333129882812,
+      "y": 400.0
+    },
+    {
+      "height": 28.0,
+      "id": "Tag#6",
+      "parent": "Tags",
+      "text": "Boots",
+      "width": 62.0,
+      "x": 676.6666870117188,
+      "y": 400.0
+    },
+    {
+      "height": 28.0,
+      "id": "Tag#7",
+      "parent": "Tags",
+      "text": "Map",
+      "width": 52.0,
+      "x": 276.0,
+      "y": 432.0
+    }
+  ],
+  "kind": "ui",
+  "tick": 1
+}

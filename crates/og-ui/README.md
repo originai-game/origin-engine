@@ -353,3 +353,14 @@ font is og-tests' committed MSDF atlas (Noto Sans SC subset, OFL).
   aspect-ratio images, absolute/floating elements beyond tooltips (menus,
   dialogs, toasts), z-order control.
 - The og-render overlay and per-instance clip above; then drop CPU clipping.
+- **Reaching TypeScript**: the `ui` module proposed above is not in
+  `crates/og-api/api.ogt` at 49ed935 and no host links og-ui yet, so games
+  cannot call it; the IDL transcription and the host wiring (begin/end
+  around the game's systems, emit into the render scene, `SharedUi::probe()`
+  as the probe's `UiTree`) are owed.
+- og-probe re-exports og-input since 5c79c75, so the `ProbeInput` bridge in
+  `tests/support/mod.rs` and the "og-probe still ships its interim
+  `og.Input`" note in §Input are out of date; the bridge can go.
+- §Drawing says the sample screen is 4 sprite draws over 2 painter levels;
+  `tests/gfx.rs` reports 4 draws over **4** levels (2026-10-18 run,
+  `tests/evidence/M6/ui-test-run.md`).

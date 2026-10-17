@@ -1,0 +1,12 @@
+{
+  "profile": "debug",
+  "frames": 48000,
+  "sample_rate": 48000,
+  "channels": 2,
+  "voices": 32,
+  "streamed_qoa_voices": 16,
+  "block_frames": 128,
+  "ms": 272.800,
+  "realtime_fraction": 0.27280,
+  "bound_ms": 1000
+}

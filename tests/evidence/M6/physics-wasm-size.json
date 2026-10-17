@@ -1,0 +1,39 @@
+{
+  "what": "wasm bytes og-physics (rapier3d/rapier2d 0.36.1, enhanced-determinism, serde) adds to a cdylib that already links og-core and og-ecs",
+  "method": "a probe cdylib outside the workspace (path deps on og-core, og-ecs, og-physics at 49ed935; the workspace Cargo.lock; release opt-level 3, thin LTO, codegen-units 1) exporting run(ticks, profile): base steps an og-ecs world, snapshots and restores; the physics variants also install og.physics, spawn every primitive shape plus a trimesh and a convex hull, step, raycast and snapshot/restore. cargo build --release --target wasm32-unknown-unknown [--features p3d|p2d|p2d,p3d]; wasm-opt -Oz --enable-bulk-memory --enable-nontrapping-float-to-int; brotli -q 11 (the gate's pipeline, without wasm-bindgen)",
+  "variants": {
+    "base": {
+      "raw": 252379,
+      "opt": 189345,
+      "brotli": 59893
+    },
+    "p3d": {
+      "raw": 3463910,
+      "opt": 2688813,
+      "brotli": 753683
+    },
+    "p2d": {
+      "raw": 2805660,
+      "opt": 2120732,
+      "brotli": 601249
+    },
+    "both": {
+      "raw": 5635902,
+      "opt": 4273644,
+      "brotli": 1110512
+    }
+  },
+  "physics_brotli_bytes": {
+    "3d": 693790,
+    "2d": 541356,
+    "2d_and_3d": 1050619
+  },
+  "og_host_web_brotli_bytes_at_49ed935": 1099937,
+  "projected_og_host_web_with_physics_brotli_bytes": {
+    "3d": 1793727,
+    "2d": 1641293,
+    "2d_and_3d": 2150556
+  },
+  "budget_brotli_bytes": 4194304,
+  "note": "og-host-web does not link og-physics at 49ed935, so the size gate (size-gate.json) does not include it; the projection adds the measured delta to the gate's og_host_web.wasm and is within the 4 MB core budget even with both profiles. Rust 1.97.0, Apple M4 Pro, 2026-10-18."
+}

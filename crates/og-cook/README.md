@@ -238,18 +238,21 @@ without base colour textures), then restored.
 
 ## What phase 2 owes
 
-- **GPU-compressed textures**: og-render takes RGBA8 only, so the runtime
-  transcodes to RGBA8 (native, `transcode`). The renderer should accept
-  BC7/ASTC/ETC2 and the cooked mips; on the web the host transcodes with
-  Binomial's wasm transcoder (the Rust runtime has no Basis transcoder on
-  wasm32).
+- **GPU-compressed textures**: og-render now takes pre-encoded BC7/BC5,
+  ASTC and ETC2/EAC uploads with their mips and reports the tier's choice
+  (8d160fe), and the web host has Binomial's wasm transcoder
+  (`packages/engine/src/web/basis.ts`, 5c79c75). Still owed: the runtime
+  loaders transcode to the format `RenderInfo::texture_formats` names and
+  upload it (`CookedModel` still transcodes to RGBA8 natively, feature
+  `transcode`).
 - **Animation**: skins, clips, morph targets (counted and reported today).
 - **Fonts**: kerning and shaping (rustybuzz), runtime glyph generation for
   CJK, `msdfgen`-style error correction.
-- **Hot reload**: the M4 row's "glTF edit → `og cook` → reload in ≤ 300 ms
-  with world state kept" belongs with the host's bundle swap (og-cli /
-  og-host); the cook's part (an incremental re-cook of one model in ~10–50 ms)
-  is here.
+- **Hot reload**: the host side landed with `og dev` (5c79c75: re-cook of
+  the changed sources, bundle rebuild, the probe's `reload` keeping world
+  state, latency printed against 300 ms); the M4 row's measured "glTF edit →
+  reload ≤ 300 ms" run is not yet filed under `tests/evidence/M4/`. The
+  cook's part (an incremental re-cook of one model in ~10–50 ms) is here.
 - Archetype templates (`runner`, `match3`) and their assets.
 - KTX2 orientation/swizzle metadata, texture arrays, cube maps (IBL
   prefiltering at cook time), audio streaming chunks, navmesh baking.

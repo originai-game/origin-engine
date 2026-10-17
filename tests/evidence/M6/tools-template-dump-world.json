@@ -1,0 +1,91 @@
+{
+  "archetypes": [
+    {
+      "components": [
+        "og.Transform"
+      ],
+      "count": 1
+    },
+    {
+      "components": [
+        "og.Transform",
+        "og.Model"
+      ],
+      "count": 1
+    },
+    {
+      "components": [
+        "og.Transform",
+        "og.Parent"
+      ],
+      "count": 1
+    },
+    {
+      "components": [
+        "og.Transform",
+        "og.Model",
+        "Health",
+        "Spin",
+        "Label"
+      ],
+      "count": 1
+    }
+  ],
+  "entities": 4,
+  "hash": "3525b51239f84004",
+  "kind": "world",
+  "resources": [
+    "og.Time",
+    "og.Rng",
+    "og.Camera",
+    "og.RenderSettings",
+    "og.Input"
+  ],
+  "systems": [
+    {
+      "matched": 0,
+      "ms": null,
+      "name": "Move",
+      "reads": [
+        "Velocity"
+      ],
+      "writes": [
+        "og.Transform"
+      ]
+    },
+    {
+      "matched": 1,
+      "ms": null,
+      "name": "StartOnInput",
+      "reads": [
+        "og.Input"
+      ],
+      "writes": [
+        "Spin"
+      ]
+    },
+    {
+      "matched": 1,
+      "ms": null,
+      "name": "Rotate",
+      "reads": [
+        "Spin"
+      ],
+      "writes": [
+        "og.Transform"
+      ]
+    },
+    {
+      "matched": 1,
+      "ms": null,
+      "name": "Hud",
+      "reads": [
+        "og.Transform",
+        "Spin",
+        "Label"
+      ],
+      "writes": []
+    }
+  ],
+  "tick": 132
+}

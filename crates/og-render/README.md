@@ -212,31 +212,44 @@ and adapter, compared with 15 % tolerance.
 
 ## What phase 2 owes
 
-- **A render graph object** with declared resources and passes in place of
-  the fixed sequence; a depth prepass; Forward+ clustered lights (CPU tile
+Delivered since M3 (8d160fe, M6): the render graph object (`src/graph.rs`:
+declared targets and passes, data-flow order, aliased transients; the
+existing passes run on it with every reference unchanged);
+`StandardMaterial` from reflected material assets with sorted transparency
+(`transparent`, back to front, no depth write), double-sided and unlit
+materials; pre-encoded texture uploads (BC7/BC5, ASTC 4×4, ETC2/EAC, RGBA8)
+with their mips, chosen per tier and reported in
+`RenderInfo::texture_formats`; `shadow_map_size`, `shadow_cascades` and
+`RenderDesc::mobile()` (two 1024² cascades, ASTC/ETC2 first). Evidence:
+`tests/evidence/M6/render-*`.
+
+- **Render graph**: a depth prepass; Forward+ clustered lights (CPU tile
   table on WebGL2) beyond the 8-light uniform loop.
 - **GL-tier references**: the `msaa` scene and the other ten have no `gl` /
   `webgl2` references. Native GL needs wgpu's `gles`/`angle` features
   (Cargo.lock change, ANGLE dylibs on macOS) and was not set up; a committed
   browser runner for `webgpu` and `webgl2` is still owed, and with it a run
   of `Renderer::capture` in a browser.
-- **Material system** from reflected material assets; transparency and
-  blending for meshes; double-sided materials; a normal matrix for
-  non-uniform scale; vertex tangents; clearcoat.
+- **Materials**: a normal matrix for non-uniform scale (normals still go
+  through the model's upper 3×3); vertex tangents (the tangent frame comes
+  from screen derivatives); clearcoat. No gfx reference scene covers the M6
+  material features yet (transparency, double-sided, unlit are asserted on
+  pixels in `og-tests/tests/render.rs` only).
 - Shadows: cascade blending at split boundaries, PCSS/soft shadows, point
   shadows by tier (dual-paraboloid on WebGL2 if cube faces cost too much),
-  more than two shadowed local lights, a smaller shadow atlas for mobile
-  (three 2048² `R32Float` cascades plus depth are 64 MB).
+  more than two shadowed local lights.
 - TAA: per-object motion vectors (moving objects rely on the clamp today),
   Catmull-Rom history sampling, a sharpening pass; FXAA on the GL tier as an
   MSAA alternative.
 - Post: AgX, a grading LUT, temporal exposure adaptation (deterministic per
   tick), SSAO/GTAO, fog.
 - 2D: per-texture filtering (nearest for pixel art), screen-space UI
-  layering (sprites are world-space today), billboards, kerning and RTL
-  shaping (rustybuzz), CJK fallback atlases.
+  layering (sprites are world-space today; og-ui's README asks for an
+  overlay pass and a per-instance clip rectangle), billboards, kerning and
+  RTL shaping (rustybuzz), CJK fallback atlases.
 - Instance upload is the whole buffer every frame; dirty tracking, GPU
-  culling on the full tier. Resources cannot be removed. Textures are
-  uncompressed RGBA8 (KTX2/Basis is M4), no anisotropy. Shaders are WGSL
-  compiled by naga at pipeline creation; cooking per backend at build time is
-  still to do.
+  culling on the full tier. Resources cannot be removed. No anisotropy.
+  The runtime loaders do not upload the tier's compressed format yet (the
+  cook's native runtime transcodes Basis to RGBA8; see og-cook's README).
+  Shaders are WGSL compiled by naga at pipeline creation; cooking per
+  backend at build time is still to do.

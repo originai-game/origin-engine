@@ -104,5 +104,8 @@ reference belongs to; a lavapipe frame never replaces a Metal reference.
    default features, move debug-only code behind the non-`publish`
    configuration, avoid generic monomorphization blow-ups.
 4. Only when the growth is intended and unavoidable, update the budget as
-   above. Physics is expected to push past 4 MB and is meant to be a
-   feature-gated crate, not a budget raise (docs/phase-1.md §5).
+   above. Physics was expected to push past 4 MB; measured at 49ed935 it adds
+   0.69 MB brotli (3D), 0.54 MB (2D) or 1.05 MB (both) to og-host-web's
+   1.10 MB (`tests/evidence/M6/physics-wasm-size.json`), so it fits. If it
+   ever does not, the answer is a feature-gated physics crate, not a budget
+   raise (docs/phase-1.md §5).

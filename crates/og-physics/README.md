@@ -90,3 +90,19 @@ the persistent world, rewinding by restore), `queries.rs`, `profile_2d.rs`,
 `pile.rs` (determinism and restore; set `OG_PHYSICS_PILE_REPORT` to write
 its JSON report). The dev profile builds og-physics and rapier at
 `opt-level = 3`; the pile takes about 15 s.
+
+## Status 2026-10-18 (what phase 1 still owes)
+
+- **Reaching TypeScript**: at 49ed935 the records above are not in
+  `crates/og-api/api.ogt` and neither host links og-physics, so games
+  cannot use it yet; the IDL transcription and the runtime's `install` are
+  owed.
+- **Character controller**: not in phase 1's M6 scope (docs/phase-1.md);
+  kinematic bodies are the stand-in.
+- **wasm size**, measured (`tests/evidence/M6/physics-wasm-size.json`): the
+  crate adds 694 KB brotli for the 3D profile, 541 KB for 2D and 1.05 MB
+  for both to a module that already links og-core and og-ecs, which keeps
+  og-host-web (1.10 MB at 49ed935) inside the 4 MB core budget.
+- Evidence of the crate: `tests/evidence/M6/physics-*` (the pile's hashes
+  agree in debug and release, and the restore at tick 1800 ends in the
+  uninterrupted run's world).
