@@ -16,13 +16,14 @@
 //! | sound (`og.Sound`) | [`SoundMeta`] | `qoa` (a QOA file) |
 //! | font (`og.Font`) | [`FontMeta`] | `glyphs` [`GlyphRow`], `atlas.<n>` (KTX2 RGBA8, zlib) |
 //! | scene (`og.Scene`) | [`SceneMeta`] | `entities` [`EntityRow`], `refs` [`RefRow`], `components` [`ComponentRow`], `strings`, per component `c.<Type>` rows and `s.<Type>` its schema JSON |
+//! | animation (`og.Animation`, a glTF's `#anim`) | [`AnimMeta`] | `nodes` [`NodeRow`], `skins` [`SkinRow`], `joints` (u32 node indices), `inverse_binds` (16 f32 per joint, column-major), `clips` [`ClipRow`], `channels` [`ChannelRow`], `samples` (f32), `events` [`EventRow`], `skin_streams` [`SkinStreamRow`], `skin_data` (meshopt streams), `morphs` [`MorphRow`], `targets` [`TargetRow`], `morph_data` (meshopt streams), `strings` |
 
 use og_core::hash::StableHasher;
 use og_core::{Reflect, Schema};
 
 /// Changes whenever the bytes the cook writes for the same input change.
 /// Part of every cook stamp, so a new cooker re-cooks everything.
-pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r1");
+pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r2");
 
 /// "None" in a u32 index field.
 pub const NONE: u32 = u32::MAX;
@@ -79,7 +80,8 @@ row!(
         scene_count: u32,
         /// The scene `og.load.gltf` instantiates by default ([`NONE`] when the file names none and has no scenes).
         default_scene: u32,
-        /// glTF content the phase-1 cook does not carry (reported, not cooked).
+        /// The glTF's animations and skins: not in this blob, cooked into its
+        /// `#anim` blob ([`AnimMeta`]) when either is present.
         skipped_animations: u32,
         skipped_skins: u32,
         /// Bounds of the default scene's vertices with node transforms applied.
@@ -403,4 +405,149 @@ pub fn pool_str(pool: &[u8], offset: u32, len: u32) -> Option<&str> {
     let start = offset as usize;
     pool.get(start..start.checked_add(len as usize)?)
         .and_then(|b| std::str::from_utf8(b).ok())
+}
+
+// ── animation ────────────────────────────────────────────────────────────
+
+row!(
+    /// The root of an animation blob (`<model>#anim`): a glTF's skeleton
+    /// (every node, in the model blob's order), skins, clips resampled at a
+    /// fixed rate, the skinned primitives' joint streams and the morph
+    /// targets, each primitive indexed as in the model blob.
+    AnimMeta, "og.Animation", 1 {
+        node_count: u32,
+        skin_count: u32,
+        joint_count: u32,
+        clip_count: u32,
+        channel_count: u32,
+        event_count: u32,
+        skin_stream_count: u32,
+        morph_count: u32,
+    }
+);
+
+row!(
+    /// A glTF skin: a range of `joints` (and of `inverse_binds`, 16 floats each).
+    SkinRow, "og.AnimSkin", 1 {
+        joint_first: u32,
+        joint_count: u32,
+        /// glTF `skin.skeleton` as a node index, or [`NONE`].
+        skeleton: u32,
+        name_offset: u32,
+        name_len: u32,
+    }
+);
+
+row!(
+    /// A clip: `frames` samples per channel at `rate` Hz from 0 to `duration`
+    /// (the last at `duration`); `source_rate` is 1 / the source's smallest key interval.
+    ClipRow, "og.AnimClip", 1 {
+        name_offset: u32,
+        name_len: u32,
+        duration: f32,
+        rate: f32,
+        source_rate: f32,
+        frames: u32,
+        channel_first: u32,
+        channel_count: u32,
+        event_first: u32,
+        event_count: u32,
+    }
+);
+
+/// [`ChannelRow::path`] values (`og_anim::ChannelPath::code`).
+pub mod path {
+    pub const TRANSLATION: u32 = 0;
+    pub const ROTATION: u32 = 1;
+    pub const SCALE: u32 = 2;
+    pub const WEIGHTS: u32 = 3;
+}
+
+/// [`ChannelRow::interpolation`] values: the source sampler's.
+pub mod interpolation {
+    pub const LINEAR: u32 = 0;
+    pub const STEP: u32 = 1;
+    pub const CUBICSPLINE: u32 = 2;
+}
+
+row!(
+    /// One channel: `frames × lanes` floats of `samples` from `sample_offset`.
+    ChannelRow, "og.AnimChannel", 1 {
+        node: u32,
+        path: u32,
+        /// The source sampler; STEP channels hold each sample, the others interpolate.
+        interpolation: u32,
+        lanes: u32,
+        sample_offset: u32,
+    }
+);
+
+row!(
+    /// A named marker of clip `clip` (from the glTF animation's
+    /// `extras."og.events"` or the import settings).
+    EventRow, "og.AnimEvent", 1 {
+        clip: u32,
+        time: f32,
+        name_offset: u32,
+        name_len: u32,
+    }
+);
+
+row!(
+    /// The skin attributes of one skinned model primitive, per cooked vertex
+    /// (the model blob's order): joints `u16 x 4`, weights `u16 x 4` (unorm,
+    /// summing to 65535), meshopt-encoded at stride 16 in `skin_data`.
+    SkinStreamRow, "og.AnimSkinStream", 1 {
+        primitive: u32,
+        mesh: u32,
+        vertex_count: u32,
+        data_offset: u32,
+        data_size: u32,
+    }
+);
+
+row!(
+    /// The morph targets of one model primitive: per target (in glTF order),
+    /// per cooked vertex, the position delta `f32 x 3` then, when
+    /// `normals` is 1, the normal delta `f32 x 3`; one meshopt stream of
+    /// `target_count × vertex_count` elements in `morph_data`.
+    MorphRow, "og.AnimMorph", 1 {
+        primitive: u32,
+        mesh: u32,
+        vertex_count: u32,
+        target_first: u32,
+        target_count: u32,
+        normals: u32,
+        data_offset: u32,
+        data_size: u32,
+    }
+);
+
+row!(
+    /// A morph target's name (glTF `mesh.extras.targetNames`; empty when unnamed)
+    /// and its default weight (`mesh.weights`).
+    TargetRow, "og.AnimTarget", 1 {
+        name_offset: u32,
+        name_len: u32,
+        default_weight: f32,
+    }
+);
+
+/// The animation blob.
+pub struct Animation;
+impl BlobKind for Animation {
+    const NAME: &'static str = "og.Animation";
+    fn schemas() -> Vec<Schema> {
+        vec![
+            AnimMeta::schema(),
+            NodeRow::schema(),
+            SkinRow::schema(),
+            ClipRow::schema(),
+            ChannelRow::schema(),
+            EventRow::schema(),
+            SkinStreamRow::schema(),
+            MorphRow::schema(),
+            TargetRow::schema(),
+        ]
+    }
 }

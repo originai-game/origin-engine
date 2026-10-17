@@ -3,7 +3,7 @@
 #
 #   scripts/evidence.sh <milestone> <slug> <file> "<how it was produced>"
 #
-#   milestone  M0..M7 (docs/phase-1.md §2)
+#   milestone  M0..M7 or E1..E9 (docs/phase-1.md §2)
 #   slug       lowercase words joined by '-', e.g. spike-frame-native
 #   file       a .png, .json or .md file; its extension is kept
 #   note       the exact command or procedure that produced the file
@@ -14,7 +14,7 @@ set -eu -o pipefail
 # shellcheck source-path=SCRIPTDIR
 . "$(dirname "$0")/lib.sh"
 
-usage() { og_err "usage: scripts/evidence.sh <M0..M7> <slug> <file.png|json|md> \"<how it was produced>\""; exit 2; }
+usage() { og_err "usage: scripts/evidence.sh <M0..M7 or E1..E9> <slug> <file.png|json|md> \"<how it was produced>\""; exit 2; }
 [ "$#" -eq 4 ] || usage
 milestone="$1"; slug="$2"; src="$3"; note="$4"
 

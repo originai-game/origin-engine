@@ -1,0 +1,13 @@
+{
+  "walkers": 20,
+  "ik_chains": 60,
+  "ticks": 3600,
+  "profile": "release",
+  "run_a": [{"tick":600,"world_hash":"d582e16b53e32075"}, {"tick":1200,"world_hash":"bc551c7903481efe"}, {"tick":1800,"world_hash":"677fd80c38c92281"}, {"tick":2400,"world_hash":"68e08c5612f807c8"}, {"tick":3000,"world_hash":"711f02fe1f2a8f1f"}, {"tick":3600,"world_hash":"472dafa72c5124a8"}],
+  "run_b_equal": true,
+  "restored_at_1800": [{"tick":2400,"world_hash":"68e08c5612f807c8"}, {"tick":3000,"world_hash":"711f02fe1f2a8f1f"}, {"tick":3600,"world_hash":"472dafa72c5124a8"}],
+  "graph_states_seen": {0, 1},
+  "footstep_events": 3169,
+  "chains_reached_at_3600": 60,
+  "min_root_motion_travel_m": 51.984
+}

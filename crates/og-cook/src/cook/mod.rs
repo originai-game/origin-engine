@@ -10,6 +10,7 @@
 //! are written only when their bytes change; outputs of removed or failed
 //! sources are deleted. The same inputs give byte-identical `cooked/`.
 
+mod anim;
 mod audio;
 mod font;
 mod model;
@@ -402,6 +403,7 @@ struct Source {
 
 enum Work<'a> {
     Model(&'a Source, Vec<String>),
+    Animation(&'a Source, anim::AnimSettings),
     GltfTexture(&'a Source, usize, u32),
     Texture(&'a Source, u32),
     Sound(&'a Source),
@@ -480,6 +482,39 @@ fn texture_kind(s: &Source) -> Result<u32, String> {
             )),
         },
     }
+}
+
+fn anim_settings(s: &Source) -> Result<anim::AnimSettings, String> {
+    let mut a = anim::AnimSettings::default();
+    if let Some(b) = settings_block(s, "animation") {
+        for e in &b.entries {
+            let err = |x: og_core::Error| format!("line {}: {x}", e.line);
+            match e.key.as_str() {
+                "rate" => {
+                    let r = e.f32(0).map_err(err)?;
+                    if !(1.0..=120.0).contains(&r) {
+                        return Err(format!(
+                            "line {}: animation rate must be 1..=120 Hz",
+                            e.line
+                        ));
+                    }
+                    a.rate = Some(r);
+                }
+                "event" => a.events.push((
+                    e.string(0).map_err(err)?.to_string(),
+                    e.string(1).map_err(err)?.to_string(),
+                    e.f32(2).map_err(err)?,
+                )),
+                k => {
+                    return Err(format!(
+                        "line {}: unknown animation setting '{k}' (rate, event)",
+                        e.line
+                    ))
+                }
+            }
+        }
+    }
+    Ok(a)
 }
 
 fn font_settings(s: &Source, base: &FontSettings) -> Result<FontSettings, String> {
@@ -697,6 +732,28 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     0,
                     (s.rel.clone(), format::Model::NAME, st, Work::Model(s, ids)),
                 );
+                if anim::wanted(g) {
+                    match anim_settings(s) {
+                        Ok(a) => {
+                            let st = stamp(&[
+                                b"animation",
+                                mesh_desc.as_bytes(),
+                                a.describe().as_bytes(),
+                                &hash,
+                            ]);
+                            outs.insert(
+                                1,
+                                (
+                                    format!("{}#anim", s.rel),
+                                    format::Animation::NAME,
+                                    st,
+                                    Work::Animation(s, a),
+                                ),
+                            );
+                        }
+                        Err(e) => early_errors.push((s.rel.clone(), "model", e)),
+                    }
+                }
             }
             Kind::Texture => match texture_kind(s) {
                 Ok(k) => {
@@ -929,6 +986,10 @@ fn run(
         Work::Model(s, ids) => {
             let g = s.gltf.as_ref().expect("loaded");
             model::cook(g, ids, &options.mesh, p.stamp).map(|(b, n)| (b, n.notes))
+        }
+        Work::Animation(s, a) => {
+            let g = s.gltf.as_ref().expect("loaded");
+            anim::cook(g, &s.bytes, &options.mesh, a, p.stamp)
         }
         Work::GltfTexture(s, image, k) => {
             let g = s.gltf.as_ref().expect("loaded");

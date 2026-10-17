@@ -1,0 +1,324 @@
+//! A procedural walker rig shared by the og-anim tests (and the wasm probe):
+//! a 13-node skeleton (hips, spine, head with a two-target mesh, two
+//! three-joint legs, a three-joint left arm), five clips sampled at 30 Hz,
+//! and a two-layer graph (locomotion state machine plus an additive wave).
+#![allow(dead_code)]
+
+pub mod walk;
+
+use og_anim::*;
+use og_core::glam::{Mat4, Quat, Vec3};
+use og_core::math;
+
+pub const SKELETON: u64 = 1;
+pub const IDLE: u64 = 10;
+pub const WALK: u64 = 11;
+pub const RUN: u64 = 12;
+pub const WAVE: u64 = 13;
+pub const BLINK: u64 = 14;
+pub const GRAPH: u64 = 20;
+
+/// Joint indices (the skin's joints are nodes 1..=12).
+pub const J_HIPS: u32 = 0;
+pub const J_FOOT_L: u32 = 5;
+pub const J_FOOT_R: u32 = 8;
+pub const J_HAND_L: u32 = 11;
+
+pub fn skeleton() -> SkeletonAsset {
+    let n = |name: &str, parent: u32, t: [f32; 3], mesh: u32| SkeletonNode {
+        name: name.into(),
+        parent,
+        rest: Trs::new(Vec3::from(t), Quat::IDENTITY, Vec3::ONE),
+        mesh,
+    };
+    let nodes = vec![
+        n("Rig", NONE, [0.0, 0.0, 0.0], NONE),
+        n("hips", 0, [0.0, 1.0, 0.0], NONE),
+        n("spine", 1, [0.0, 0.3, 0.0], NONE),
+        n("head", 2, [0.0, 0.4, 0.0], 0),
+        n("thigh.L", 1, [0.15, 0.0, 0.0], NONE),
+        n("shin.L", 4, [0.0, -0.45, 0.0], NONE),
+        n("foot.L", 5, [0.0, -0.45, 0.0], NONE),
+        n("thigh.R", 1, [-0.15, 0.0, 0.0], NONE),
+        n("shin.R", 7, [0.0, -0.45, 0.0], NONE),
+        n("foot.R", 8, [0.0, -0.45, 0.0], NONE),
+        n("arm.L", 2, [0.25, 0.3, 0.0], NONE),
+        n("forearm.L", 10, [0.3, 0.0, 0.0], NONE),
+        n("hand.L", 11, [0.3, 0.0, 0.0], NONE),
+    ];
+    let mut s = SkeletonAsset {
+        nodes,
+        skins: Vec::new(),
+    };
+    let model = s.model_matrices(&s.rest_pose());
+    let joints: Vec<u32> = (1..13).collect();
+    let inverse_bind = joints
+        .iter()
+        .map(|&j| model[j as usize].inverse())
+        .collect();
+    s.skins.push(Skin {
+        name: "walker".into(),
+        joints,
+        inverse_bind,
+    });
+    s
+}
+
+fn rot_x(a: f32) -> Quat {
+    math::quat_from_axis_angle(Vec3::X, a)
+}
+
+fn rot_z(a: f32) -> Quat {
+    math::quat_from_axis_angle(Vec3::Z, a)
+}
+
+/// A channel as (node, node name, path, lanes, value at a time).
+pub type ChannelFn<'a> = (u32, &'a str, ChannelPath, u32, Box<dyn Fn(f32) -> Vec<f32>>);
+
+/// A clip from per-time functions of its channels.
+pub fn clip(
+    name: &str,
+    duration: f32,
+    events: &[(&str, f32)],
+    channels: Vec<ChannelFn>,
+) -> ClipAsset {
+    let rate = 30.0;
+    let frames = ClipAsset::frames_for(duration, rate);
+    let channels = channels
+        .into_iter()
+        .map(|(node, node_name, path, lanes, f)| {
+            let mut samples = Vec::new();
+            for i in 0..frames {
+                let t = (i as f32 / rate).min(duration);
+                samples.extend(f(t));
+            }
+            Channel {
+                node,
+                node_name: node_name.into(),
+                path,
+                step: false,
+                lanes,
+                samples,
+            }
+        })
+        .collect();
+    ClipAsset {
+        name: name.into(),
+        duration,
+        rate,
+        source_rate: rate,
+        frames,
+        channels,
+        events: events
+            .iter()
+            .map(|(n, t)| ClipEvent {
+                name: n.to_string(),
+                time: *t,
+            })
+            .collect(),
+    }
+}
+
+fn q(v: Quat) -> Vec<f32> {
+    v.to_array().to_vec()
+}
+
+const TAU: f32 = std::f32::consts::TAU;
+
+/// A gait: legs swinging by `swing` radians, hips travelling `stride` metres per cycle.
+fn gait(name: &str, duration: f32, swing: f32, stride: f32, events: &[(&str, f32)]) -> ClipAsset {
+    let phase = move |t: f32| t / duration * TAU;
+    clip(
+        name,
+        duration,
+        events,
+        vec![
+            (
+                1,
+                "hips",
+                ChannelPath::Translation,
+                3,
+                Box::new(move |t| {
+                    let bob = 0.03 * math::cos(2.0 * phase(t));
+                    vec![0.0, 1.0 + bob, stride * t / duration]
+                }),
+            ),
+            (
+                1,
+                "hips",
+                ChannelPath::Rotation,
+                4,
+                Box::new(move |t| {
+                    q(math::quat_from_axis_angle(
+                        Vec3::Y,
+                        0.1 * math::sin(phase(t)),
+                    ))
+                }),
+            ),
+            (
+                4,
+                "thigh.L",
+                ChannelPath::Rotation,
+                4,
+                Box::new(move |t| q(rot_x(swing * math::sin(phase(t))))),
+            ),
+            (
+                5,
+                "shin.L",
+                ChannelPath::Rotation,
+                4,
+                Box::new(move |t| q(rot_x(0.6 * swing * (1.0 + math::sin(phase(t) - 1.2))))),
+            ),
+            (
+                7,
+                "thigh.R",
+                ChannelPath::Rotation,
+                4,
+                Box::new(move |t| q(rot_x(-swing * math::sin(phase(t))))),
+            ),
+            (
+                8,
+                "shin.R",
+                ChannelPath::Rotation,
+                4,
+                Box::new(move |t| q(rot_x(0.6 * swing * (1.0 - math::sin(phase(t) - 1.2))))),
+            ),
+        ],
+    )
+}
+
+pub fn clips() -> Vec<(u64, ClipAsset)> {
+    vec![
+        (
+            IDLE,
+            clip(
+                "idle",
+                2.0,
+                &[],
+                vec![
+                    (
+                        2,
+                        "spine",
+                        ChannelPath::Rotation,
+                        4,
+                        Box::new(|t| q(rot_z(0.05 * math::sin(t * TAU / 2.0)))),
+                    ),
+                    (
+                        1,
+                        "hips",
+                        ChannelPath::Translation,
+                        3,
+                        Box::new(|t| vec![0.0, 1.0 - 0.01 * math::sin(t * TAU / 2.0), 0.0]),
+                    ),
+                ],
+            ),
+        ),
+        (
+            WALK,
+            gait("walk", 1.0, 0.5, 1.2, &[("footL", 0.26), ("footR", 0.76)]),
+        ),
+        (
+            RUN,
+            gait("run", 0.6, 0.9, 1.5, &[("footL", 0.16), ("footR", 0.46)]),
+        ),
+        (
+            WAVE,
+            clip(
+                "wave",
+                1.0,
+                &[("wave", 0.5)],
+                vec![(
+                    10,
+                    "arm.L",
+                    ChannelPath::Rotation,
+                    4,
+                    Box::new(|t| q(rot_z(1.2 * math::sin(t * TAU)))),
+                )],
+            ),
+        ),
+        (
+            BLINK,
+            clip(
+                "blink",
+                0.5,
+                &[],
+                vec![(
+                    3,
+                    "head",
+                    ChannelPath::Weights,
+                    2,
+                    Box::new(|t| vec![t * 2.0, 1.0 - t * 2.0]),
+                )],
+            ),
+        ),
+    ]
+}
+
+pub const GRAPH_TEXT: &str = r#"type animgraph
+version 1
+---
+param speed
+param wave
+clip idle "idle"
+clip walk "walk"
+clip run "run"
+clip waving "wave"
+blend1d move speed {
+  child walk 1.5
+  child run 4
+}
+layer base {
+  state idle idle
+  state move move
+  entry idle
+  transition idle move {
+    when speed gt 0.2
+    fade 0.25
+  }
+  transition move idle {
+    when speed le 0.2
+    fade 0.3
+  }
+}
+layer upper {
+  mode additive
+  weight wave
+  state wave waving
+  entry wave
+}
+"#;
+
+pub fn resolve(name: &str) -> Option<u64> {
+    match name {
+        "idle" => Some(IDLE),
+        "walk" => Some(WALK),
+        "run" => Some(RUN),
+        "wave" => Some(WAVE),
+        "blink" => Some(BLINK),
+        _ => None,
+    }
+}
+
+/// Registers the rig's skeleton, clips and graph.
+pub fn register(anim: &AnimationSystem) {
+    anim.add_skeleton(SKELETON, skeleton()).unwrap();
+    for (h, c) in clips() {
+        anim.add_clip(h, c).unwrap();
+    }
+    anim.add_graph(GRAPH, GraphAsset::parse(GRAPH_TEXT, &resolve).unwrap())
+        .unwrap();
+}
+
+/// Model-space position of a node in a pose.
+pub fn node_position(pose: &[Trs], node: u32) -> Vec3 {
+    let s = skeleton();
+    s.model_space(pose)[node as usize].translation
+}
+
+/// Matrix close to identity, element-wise.
+pub fn near_identity(m: &Mat4, eps: f32) -> bool {
+    m.to_cols_array()
+        .iter()
+        .zip(Mat4::IDENTITY.to_cols_array())
+        .all(|(a, b)| (a - b).abs() <= eps)
+}

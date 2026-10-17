@@ -1,0 +1,21 @@
+{
+  "tolerance": 1e-5,
+  "clips": [
+    {"cook":"source rate","model":"walker.glb","clip":"idle","duration":2,"source_rate":30.000029,"rate":30,"frames":61,"channels":2,"samples_checked":122,"max_error":1.1889639861539791e-7},
+    {"cook":"source rate","model":"walker.glb","clip":"walk","duration":1,"source_rate":24.000023,"rate":24,"frames":25,"channels":6,"samples_checked":150,"max_error":1.1635245655838844e-7},
+    {"cook":"source rate","model":"walker.glb","clip":"run","duration":0.6,"source_rate":10.000001,"rate":10,"frames":7,"channels":6,"samples_checked":42,"max_error":1.1415642198198128e-7},
+    {"cook":"source rate","model":"walker.glb","clip":"wave","duration":1,"source_rate":4,"rate":4,"frames":5,"channels":1,"samples_checked":5,"max_error":1.1968490309932633e-8},
+    {"cook":"source rate","model":"walker.glb","clip":"turn","duration":1,"source_rate":1,"rate":1,"frames":2,"channels":1,"samples_checked":2,"max_error":1.1657718235191794e-8},
+    {"cook":"source rate","model":"walker.glb","clip":"blink","duration":0.5,"source_rate":30.000002,"rate":30,"frames":16,"channels":1,"samples_checked":16,"max_error":3.704060935749709e-8},
+    {"cook":"source rate","model":"trickster.glb","clip":"bell","duration":0.7,"source_rate":30.000029,"rate":30,"frames":22,"channels":15,"samples_checked":330,"max_error":1.0125785898651429e-7},
+    {"cook":"source rate","model":"trickster.glb","clip":"die","duration":1,"source_rate":30.000029,"rate":30,"frames":31,"channels":15,"samples_checked":465,"max_error":1.1285359613477652e-7},
+    {"cook":"source rate","model":"trickster.glb","clip":"hurt","duration":0.36666667,"source_rate":30.000002,"rate":30,"frames":12,"channels":15,"samples_checked":180,"max_error":1.129472276817367e-7},
+    {"cook":"source rate","model":"trickster.glb","clip":"idle","duration":2,"source_rate":30.000029,"rate":30,"frames":61,"channels":15,"samples_checked":915,"max_error":1.1333049709794096e-7},
+    {"cook":"rate 60","model":"walker.glb","clip":"idle","duration":2,"source_rate":30.000029,"rate":60,"frames":121,"channels":2,"samples_checked":242,"max_error":1.1889639861539791e-7},
+    {"cook":"rate 60","model":"walker.glb","clip":"walk","duration":1,"source_rate":24.000023,"rate":60,"frames":61,"channels":6,"samples_checked":366,"max_error":1.1609229721987191e-7},
+    {"cook":"rate 60","model":"walker.glb","clip":"run","duration":0.6,"source_rate":10.000001,"rate":60,"frames":37,"channels":6,"samples_checked":222,"max_error":1.1415642198198128e-7},
+    {"cook":"rate 60","model":"walker.glb","clip":"wave","duration":1,"source_rate":4,"rate":60,"frames":61,"channels":1,"samples_checked":61,"max_error":1.1968490309932633e-8},
+    {"cook":"rate 60","model":"walker.glb","clip":"turn","duration":1,"source_rate":1,"rate":60,"frames":61,"channels":1,"samples_checked":61,"max_error":1.1291316248662753e-7},
+    {"cook":"rate 60","model":"walker.glb","clip":"blink","duration":0.5,"source_rate":30.000002,"rate":60,"frames":31,"channels":1,"samples_checked":31,"max_error":3.704060935749709e-8}
+  ]
+}

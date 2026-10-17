@@ -14,6 +14,7 @@ let (model, textures) = bundle.load_model_with_textures("assets/models/ship.glb"
 let parts = model.add_to(&mut render_scene, &textures);
 parts.instance(&mut render_scene, transform);
 let scene = bundle.load_scene("scenes/main.ogt")?;                             // plain data for the host to spawn
+let anim = bundle.load_animation("assets/models/walker.glb")?;                 // og_anim::SkeletonAsset, ClipAssets, skin and morph streams
 ```
 
 `og-cook <project> [--threads N] [--report out.md] [--json out.json] [--schemas schema.json]`
@@ -50,7 +51,8 @@ calls `cook_project`.
 
 | Source | Output (`cooked/…`) | What happens |
 |---|---|---|
-| glTF 2.0 | `<path>.ogb` (`og.Model`) + `<path>.tex<n>.ogb` per texture use | Per primitive (glTF order): positions, normals (flat when missing), uv0, colour0, tangents (MikkTSpace for normal-mapped primitives that lack them, via unwelding); weld; quantise (position u16×3 over the bounds, normal oct snorm16×2, uv u16×2 over the uv range, colour u8×4, tangent oct snorm16×2 + sign); weld again; meshopt vertex-cache and overdraw (1.05) ordering; LOD chain by `meshopt_simplify` (3 levels, each half the previous, max error 5 % of the extent, stops when a level saves < 5 %); vertex-fetch reorder over all LODs; meshopt vertex codec v1 and index codec v1. Materials (metallic-roughness, emissive strength, alpha mode, double-sided) plus a default material, nodes in topological order, scenes and their roots. Animations, skins and morph targets are counted and reported, not cooked. |
+| glTF 2.0 | `<path>.ogb` (`og.Model`) + `<path>.tex<n>.ogb` per texture use | Per primitive (glTF order): positions, normals (flat when missing), uv0, colour0, tangents (MikkTSpace for normal-mapped primitives that lack them, via unwelding); weld; quantise (position u16×3 over the bounds, normal oct snorm16×2, uv u16×2 over the uv range, colour u8×4, tangent oct snorm16×2 + sign); weld again; meshopt vertex-cache and overdraw (1.05) ordering; LOD chain by `meshopt_simplify` (3 levels, each half the previous, max error 5 % of the extent, stops when a level saves < 5 %); vertex-fetch reorder over all LODs; meshopt vertex codec v1 and index codec v1. Materials (metallic-roughness, emissive strength, alpha mode, double-sided) plus a default material, nodes in topological order, scenes and their roots. Skins, animations and morph targets go to the `#anim` blob (next row). Welding keys skinned and morphed vertices by their skin and morph data, so it never merges vertices that deform apart. |
+| glTF skins, animations, morph targets | `<path>.anim.ogb` (`og.Animation`, id `<path>#anim`) | Only when the glTF has any. The node hierarchy in the model blob's order; skins (joints, inverse bind matrices, `skeleton`); per clip, every channel evaluated by the glTF sampler (STEP, LINEAR with shortest-arc slerp, CUBICSPLINE Hermite; f64; a key within 1 µs of a sample counts as reached) at `i / rate` and at the end, `rate` = the import settings' `animation { rate }` or the source's key rate rounded (1–120 Hz), the source rate kept; markers from `animations[i].extras."og.events"` (`[{"name", "time"}]`) and `animation { event "<clip>" "<name>" <s> }`; per skinned primitive joints u16×4 and weights unorm16×4 (summing to 65535) per cooked vertex; per morphed primitive the targets' position (and normal) deltas per cooked vertex, names from `mesh.extras.targetNames`, default weights; streams meshopt-encoded. |
 | PNG/JPEG | `<path>.ogb` (`og.Texture`) | Decoded to RGBA8, then KTX2: colour → ETC1S/BasisLZ, sRGB, quality 128; `kind normal` → UASTC level 1 + RDO 1.0 + Zstandard, linear, tuned for normal maps; `kind linear` → the same without the normal-map tuning. Full mip chain. In a glTF, base colour and emissive are colour, metallic-roughness and occlusion linear, normal normal. |
 | WAV | `<path>.ogb` (`og.Sound`) | 8–32-bit integer or 32-bit float PCM, 1–8 channels, to 16-bit, then QOA (in-crate encoder: 3.2 bits per sample). |
 | TTF/OTF | `<path>.ogb` (`og.Font`) | The import settings' charset, rendered by fdsm as MTSDF (RGB multi-channel, A true SDF) at `em_px` with `px_range`, shelf-packed into pages, each page a lossless KTX2 (RGBA8 + zlib); a glyph table (advance, plane bounds in em, atlas rectangle) and ascender/descender/line gap. |
@@ -64,6 +66,10 @@ version 1
 ---
 texture {
   kind normal          # color (default) | normal | linear
+}
+animation {
+  rate 30                     # resampling rate for every clip; default: the source's key rate
+  event "walk" "footL" 0.26   # a marker: clip, name, seconds (also glTF extras."og.events")
 }
 font {
   charset latin cjk-punct   # ascii | latin | punct | cjk-punct | kana | all
@@ -115,6 +121,7 @@ type (`format::type_hash`); the schema version is the root's. All in
 | `og.Texture` | `TextureMeta` (size, levels, kind, codec, colour space, alpha, supercompression) | `ktx2`: a complete KTX2 file, 16-aligned |
 | `og.Sound` | `SoundMeta` (rate, channels, frames) | `qoa`: a complete QOA file |
 | `og.Font` | `FontMeta` (units/em, em_px, px_range, ascender, descender, line gap, glyph and page counts, page size, uncooked code points) | `glyphs` `GlyphRow` sorted by code point, `atlas.<n>` KTX2 RGBA8/zlib |
+| `og.Animation` | `AnimMeta` (counts) | `nodes` `NodeRow`, `skins` `SkinRow`, `joints` (u32), `inverse_binds` (f32 ×16 per joint, column-major), `clips` `ClipRow` (name, duration, rate, source rate, frames, channel and event ranges), `channels` `ChannelRow` (node, path, source interpolation, lanes, sample offset), `samples` (f32), `events` `EventRow`, `skin_streams` `SkinStreamRow` + `skin_data`, `morphs` `MorphRow` + `targets` `TargetRow` + `morph_data`, `strings` |
 | `og.Scene` | `SceneMeta` (counts, name) | `entities` `EntityRow` (name, parent, instance), `refs` `RefRow` (asset ids), `components` `ComponentRow` (name, layout hash, rows, inferred), `strings`, `c.<Type>` rows (`u32` entity index + packed fields), `s.<Type>` schema JSON |
 
 KTX2 files are standard: ETC1S as BasisLZ with basisu's DFD and global-data
@@ -143,6 +150,7 @@ A stamp is FNV-1a 64 (`og_core::hash`) over the cooker version
 | Output | Stamp inputs |
 |---|---|
 | model | mesh options, the glTF bytes (and the files it references), its texture ids |
+| animation | mesh options (it re-cooks the primitives for their vertex order), the animation settings, the glTF bytes |
 | glTF texture | texture options and encoder, the image's bytes, the texture kind |
 | texture | texture options and encoder, the file and its import settings, the kind |
 | sound | the file |
@@ -229,6 +237,7 @@ cargo run --release -p og-cook --bin og-cook -- templates/game --report report.m
 | `meshes_keep_their_triangles_and_bounds` | per primitive: LOD 0 triangle count equals the source's, decoded vertex bounds within 1 % of the source accessor's, LODs shrink, normals unit length; per model: decoded default-scene bounds within 1 % of og-render's own glTF loader |
 | `textures_decode_close_to_their_sources` | transcoded level 0 against the source pixels: ETC1S ≥ 30 dB (glTF base colour ≥ 27 dB), UASTC ≥ 35–38 dB; a row-flipped decode scores worse (orientation) |
 | `sounds_fonts_and_scenes_load_as_authored` | QOA SNR > 20 dB and the WAV's length; the charset, the extra characters, inside/outside of a glyph's distance field; scene entities, nesting, instances, the Transform rows' values |
+| `animation.rs` (separate file) | every cooked clip sample of `walker.glb` (source rates and 60 Hz) and `trickster.glb` equals an independent glTF sampler within 1e-5; skins, inverse binds, joints, weights and morph deltas follow the cooked vertices; markers from extras and import settings, bad ones refused; a cooked walker plays in og-anim; evidence `anim-cook-resample.json` |
 | `cooked_models_render_the_gltf_reference_scene` | og-tests' `gltf-reference` scene with the models swapped for cooked ones renders within RMSE 0.02 of `crates/og-tests/references/<tier>/gltf-reference.png` (0.0043 on Metal) |
 
 Each covered path was broken once and its test failed (font glyph order by
@@ -245,7 +254,8 @@ without base colour textures), then restored.
   loaders transcode to the format `RenderInfo::texture_formats` names and
   upload it (`CookedModel` still transcodes to RGBA8 natively, feature
   `transcode`).
-- **Animation**: skins, clips, morph targets (counted and reported today).
+- **Animation**: cooked (`#anim`, `crates/og-anim`); still owed: sample
+  quantisation/compression (f32 today), sparse morph targets.
 - **Fonts**: kerning and shaping (rustybuzz), runtime glyph generation for
   CJK, `msdfgen`-style error correction.
 - **Hot reload**: the host side landed with `og dev` (5c79c75: re-cook of

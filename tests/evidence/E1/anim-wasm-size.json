@@ -1,0 +1,21 @@
+{
+  "what": "wasm bytes og-anim adds to a cdylib that already links og-core and og-ecs, and the walker world hash on every target",
+  "method": "a probe cdylib outside the workspace (path deps on og-core, og-ecs, og-anim of the working tree; the workspace Cargo.lock; release opt-level 3, thin LTO, codegen-units 1) exporting run(ticks): base steps an og-ecs world, snapshots and restores; anim also installs og.anim and runs crates/og-anim/tests/support/walk.rs (20 walkers: graph state machine + additive layer, cross-fading players, planar root motion, blendshapes, 60 IK chains), snapshots and restores, returns world_hash. cargo build --release --target wasm32-unknown-unknown [--features anim]; wasm-opt -Oz --enable-bulk-memory --enable-nontrapping-float-to-int; brotli -q 11 (the physics measurement's pipeline, without wasm-bindgen)",
+  "variants": {
+    "base": { "raw": 233808, "opt": 177065, "brotli": 58366 },
+    "anim": { "raw": 616201, "opt": 466571, "brotli": 148131 }
+  },
+  "anim_brotli_bytes": 89765,
+  "note_on_size": "the delta includes the test driver system and the procedural rig (a few KB); og-anim itself has no dependencies beyond og-core, og-ecs and glam",
+  "budget_brotli_bytes": { "core": 4194304, "with_physics_and_animation": 6291456 },
+  "world_hash_after_3600_ticks_seed_7": {
+    "aarch64-apple-darwin debug (cargo test, walk.rs)": "472dafa72c5124a8",
+    "aarch64-apple-darwin release (cargo test, walk.rs)": "472dafa72c5124a8",
+    "aarch64-apple-darwin release (probe bin)": "472dafa72c5124a8",
+    "aarch64-apple-darwin debug (probe bin)": "472dafa72c5124a8",
+    "wasm32 scalar, node v26.3.0 (raw)": "472dafa72c5124a8",
+    "wasm32 scalar after wasm-opt -Oz, node v26.3.0": "472dafa72c5124a8",
+    "wasm32 +simd128, node v26.3.0": "472dafa72c5124a8"
+  },
+  "toolchain": "rustc 1.97.0 (2d8144b78 2026-07-07), Apple M4 Pro, 2026-10-18"
+}

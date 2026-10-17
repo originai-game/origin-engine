@@ -219,8 +219,8 @@ fn a_gltf_edit_recooks_exactly_its_outputs() {
         .collect();
     assert_eq!(
         cooked,
-        ["models/trickster.glb"],
-        "only the model blob depends on the material name"
+        ["models/trickster.glb", "models/trickster.glb#anim"],
+        "only the glTF's own blobs depend on its bytes (the #anim blob re-cooks the same primitives)"
     );
 
     let after = files(&root.join("cooked"));
@@ -228,7 +228,14 @@ fn a_gltf_edit_recooks_exactly_its_outputs() {
         .keys()
         .filter(|k| before.get(*k) != after.get(*k))
         .collect();
-    assert_eq!(changed, [".cook.ogt", "models/trickster.glb.ogb"]);
+    assert_eq!(
+        changed,
+        [
+            ".cook.ogt",
+            "models/trickster.glb.anim.ogb",
+            "models/trickster.glb.ogb"
+        ]
+    );
     assert_eq!(before.len(), after.len());
 
     let b = Bundle::open(&root.join("cooked")).unwrap();

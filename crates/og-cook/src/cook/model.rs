@@ -180,6 +180,9 @@ struct FVertex {
     uv: [f32; 2],
     c: [f32; 4],
     t: [f32; 4],
+    /// A hash of the source vertex's skin and morph data (zero without
+    /// either), so welding never merges vertices that skin or morph apart.
+    key: [u32; 2],
 }
 
 /// The quantised vertex (unused attributes stay zero and are not stored).
@@ -191,6 +194,7 @@ struct QVertex {
     uv: [u16; 2],
     c: [u8; 4],
     t: [i16; 4],
+    key: [u32; 2],
 }
 
 fn oct_encode(v: Vec3) -> [i16; 2] {
@@ -241,30 +245,108 @@ impl mikktspace::Geometry for Tangents<'_> {
     }
 }
 
-fn weld<T: bytemuck::Pod>(vertices: &[T], indices: &[u32]) -> (Vec<T>, Vec<u32>) {
+/// Welds identical vertices; `sources` (the source vertex of each input
+/// vertex) follows the vertices.
+fn weld<T: bytemuck::Pod>(
+    vertices: &[T],
+    indices: &[u32],
+    sources: &mut Vec<u32>,
+) -> (Vec<T>, Vec<u32>) {
     let (count, remap) = meshopt::generate_vertex_remap(vertices, Some(indices));
     let mut out = vec![T::zeroed(); count];
+    let mut src = vec![0u32; count];
     for (old, &new) in remap.iter().enumerate() {
         if new != u32::MAX {
             out[new as usize] = vertices[old];
+            src[new as usize] = sources[old];
         }
     }
+    *sources = src;
     (out, indices.iter().map(|&i| remap[i as usize]).collect())
+}
+
+/// The weld key of every source vertex of a primitive: a hash of its
+/// JOINTS_0/WEIGHTS_0 and morph-target deltas, or zero without either.
+fn vertex_keys(src: &GltfSource, prim: &gltf::Primitive, count: usize) -> Vec<[u32; 2]> {
+    let reader = prim.reader(|b| Some(&src.buffers[b.index()].0[..]));
+    let joints: Option<Vec<[u16; 4]>> = reader.read_joints(0).map(|j| j.into_u16().collect());
+    let weights: Option<Vec<[f32; 4]>> = reader.read_weights(0).map(|w| w.into_f32().collect());
+    type Deltas = Vec<[f32; 3]>;
+    let targets: Vec<(Deltas, Deltas)> = reader
+        .read_morph_targets()
+        .map(|(p, n, _)| {
+            (
+                p.map(|p| p.collect()).unwrap_or_default(),
+                n.map(|n| n.collect()).unwrap_or_default(),
+            )
+        })
+        .collect();
+    if joints.is_none() && weights.is_none() && targets.is_empty() {
+        return vec![[0, 0]; count];
+    }
+    (0..count)
+        .map(|i| {
+            let mut h = og_core::hash::StableHasher::new();
+            if let Some(j) = joints.as_ref().and_then(|j| j.get(i)) {
+                j.iter().for_each(|&x| h.write_u64(x as u64));
+            }
+            if let Some(w) = weights.as_ref().and_then(|w| w.get(i)) {
+                w.iter().for_each(|&x| h.write_u64(x.to_bits() as u64));
+            }
+            for (p, n) in &targets {
+                for v in p.get(i).into_iter().chain(n.get(i)) {
+                    v.iter().for_each(|&x| h.write_u64(x.to_bits() as u64));
+                }
+            }
+            let v = h.finish();
+            [v as u32, (v >> 32) as u32 | 1]
+        })
+        .collect()
 }
 
 fn positions_adapter(pos: &[[f32; 3]]) -> meshopt::VertexDataAdapter<'_> {
     meshopt::VertexDataAdapter::new(bytemuck::cast_slice(pos), 12, 0).expect("12-byte positions")
 }
 
-struct CookedPrimitive {
+/// A meshopt vertex stream (codec v1) of `count` elements of `stride` bytes.
+pub(super) fn encode_vertices(
+    packed: &[u8],
+    count: usize,
+    stride: usize,
+) -> Result<Vec<u8>, String> {
+    // SAFETY: `out` holds the bound meshopt asks for; `packed` holds
+    // `count * stride` bytes (asserted).
+    assert_eq!(packed.len(), count * stride);
+    unsafe {
+        let bound = meshopt::ffi::meshopt_encodeVertexBufferBound(count, stride);
+        let mut out = vec![0u8; bound];
+        let n = meshopt::ffi::meshopt_encodeVertexBufferLevel(
+            out.as_mut_ptr(),
+            out.len(),
+            packed.as_ptr().cast(),
+            count,
+            stride,
+            2,
+            1,
+        );
+        if n == 0 {
+            return Err("meshopt vertex encoding failed".into());
+        }
+        out.truncate(n);
+        Ok(out)
+    }
+}
+
+pub(super) struct CookedPrimitive {
     row: PrimitiveRow,
     lods: Vec<LodRow>,
     vertices: Vec<u8>,
     indices: Vec<u8>,
+    /// The source (glTF accessor) vertex of every cooked vertex.
+    pub sources: Vec<u32>,
 }
 
-#[allow(clippy::too_many_arguments)]
-fn cook_primitive(
+pub(super) fn cook_primitive(
     src: &GltfSource,
     prim: &gltf::Primitive,
     material: u32,
@@ -293,6 +375,7 @@ fn cook_primitive(
     if indices.iter().any(|&i| i as usize >= positions.len()) {
         return Err("index out of range".into());
     }
+    let keys = vertex_keys(src, prim, positions.len());
     let mut verts: Vec<FVertex> = (0..positions.len())
         .map(|i| FVertex {
             p: positions[i],
@@ -300,8 +383,10 @@ fn cook_primitive(
             uv: uvs.as_ref().map_or([0.0; 2], |u| u[i]),
             c: colors.as_ref().map_or([1.0; 4], |c| c[i]),
             t: tangents.as_ref().map_or([0.0; 4], |t| t[i]),
+            key: keys[i],
         })
         .collect();
+    let mut sources: Vec<u32> = (0..positions.len() as u32).collect();
     let want_tangents = opts.tangents && normal_mapped && uvs.is_some();
     let generate_tangents = want_tangents && tangents.is_none();
     if normals.is_none() || generate_tangents {
@@ -323,9 +408,10 @@ fn cook_primitive(
             return Err("mikktspace could not generate tangents".into());
         }
         let flat: Vec<u32> = (0..corners.len() as u32).collect();
-        (verts, indices) = weld(&corners, &flat);
+        sources = indices.clone();
+        (verts, indices) = weld(&corners, &flat, &mut sources);
     } else {
-        (verts, indices) = weld(&verts, &indices);
+        (verts, indices) = weld(&verts, &indices, &mut sources);
     }
     if indices.is_empty() {
         return Ok(None);
@@ -382,9 +468,10 @@ fn cook_primitive(
             } else {
                 [0; 4]
             },
+            key: v.key,
         })
         .collect();
-    let (q, mut lod0) = weld(&q, &indices);
+    let (q, mut lod0) = weld(&q, &indices, &mut sources);
     let pos: Vec<[f32; 3]> = q
         .iter()
         .map(|v| {
@@ -441,9 +528,11 @@ fn cook_primitive(
         )
     };
     let mut ordered = vec![QVertex::default(); vertex_count];
+    let mut ordered_sources = vec![0u32; vertex_count];
     for (old, &new) in remap.iter().enumerate() {
         if new != u32::MAX {
             ordered[new as usize] = q[old];
+            ordered_sources[new as usize] = sources[old];
         }
     }
     for i in all.iter_mut() {
@@ -469,24 +558,7 @@ fn cook_primitive(
             packed.extend_from_slice(&b[20..28]);
         }
     }
-    let vertices = unsafe {
-        let bound = meshopt::ffi::meshopt_encodeVertexBufferBound(vertex_count, stride);
-        let mut out = vec![0u8; bound];
-        let n = meshopt::ffi::meshopt_encodeVertexBufferLevel(
-            out.as_mut_ptr(),
-            out.len(),
-            packed.as_ptr().cast(),
-            vertex_count,
-            stride,
-            2,
-            1,
-        );
-        if n == 0 {
-            return Err("meshopt vertex encoding failed".into());
-        }
-        out.truncate(n);
-        out
-    };
+    let vertices = encode_vertices(&packed, vertex_count, stride)?;
     let index_bytes =
         meshopt::encode_index_buffer(&all, vertex_count).map_err(|e| format!("meshopt: {e}"))?;
     Ok(Some(CookedPrimitive {
@@ -528,12 +600,80 @@ fn cook_primitive(
         lods,
         vertices,
         indices: index_bytes,
+        sources: ordered_sources,
     }))
 }
 
-struct Strings(Vec<u8>);
+/// The glTF's nodes in topological order (roots by index, then depth
+/// first): the order both the model and the animation blob use.
+pub(super) struct NodeOrder {
+    /// The cooked index of every glTF node.
+    pub new_index: Vec<u32>,
+    /// In cooked order; names through the caller's string pool.
+    pub rows: Vec<NodeRow>,
+}
+
+pub(super) fn node_order(
+    doc: &gltf::Document,
+    add: &mut dyn FnMut(&str) -> (u32, u32),
+) -> Result<NodeOrder, CookError> {
+    let node_count = doc.nodes().count();
+    let mut parent = vec![NONE; node_count];
+    for n in doc.nodes() {
+        for c in n.children() {
+            parent[c.index()] = n.index() as u32;
+        }
+    }
+    let nodes_vec: Vec<gltf::Node> = doc.nodes().collect();
+    let mut order = Vec::with_capacity(node_count);
+    let mut stack: Vec<usize> = (0..node_count)
+        .rev()
+        .filter(|&i| parent[i] == NONE)
+        .collect();
+    while let Some(i) = stack.pop() {
+        order.push(i);
+        let children: Vec<usize> = nodes_vec[i].children().map(|c| c.index()).collect();
+        stack.extend(children.into_iter().rev());
+    }
+    if order.len() != node_count {
+        return Err(CookError("glTF: the node hierarchy has a cycle".into()));
+    }
+    let mut new_index = vec![0u32; node_count];
+    for (new, &old) in order.iter().enumerate() {
+        new_index[old] = new as u32;
+    }
+    let mut rows = Vec::with_capacity(node_count);
+    for &old in &order {
+        let n = &nodes_vec[old];
+        let (t, r, s) = n.transform().decomposed();
+        let (name_offset, name_len) = add(n.name().unwrap_or(""));
+        rows.push(NodeRow {
+            parent: if parent[old] == NONE {
+                NONE
+            } else {
+                new_index[parent[old] as usize]
+            },
+            mesh: n.mesh().map_or(NONE, |m| m.index() as u32),
+            name_offset,
+            name_len,
+            tx: t[0],
+            ty: t[1],
+            tz: t[2],
+            rx: r[0],
+            ry: r[1],
+            rz: r[2],
+            rw: r[3],
+            sx: s[0],
+            sy: s[1],
+            sz: s[2],
+        });
+    }
+    Ok(NodeOrder { new_index, rows })
+}
+
+pub(super) struct Strings(pub Vec<u8>);
 impl Strings {
-    fn add(&mut self, s: &str) -> (u32, u32) {
+    pub fn add(&mut self, s: &str) -> (u32, u32) {
         let at = self.0.len() as u32;
         self.0.extend_from_slice(s.as_bytes());
         (at, s.len() as u32)
@@ -677,58 +817,8 @@ pub fn cook(
         });
     }
 
-    // Nodes in topological order: roots by index, then depth first.
-    let node_count = doc.nodes().count();
-    let mut parent = vec![NONE; node_count];
-    for n in doc.nodes() {
-        for c in n.children() {
-            parent[c.index()] = n.index() as u32;
-        }
-    }
-    let nodes_vec: Vec<gltf::Node> = doc.nodes().collect();
-    let mut order = Vec::with_capacity(node_count);
-    let mut stack: Vec<usize> = (0..node_count)
-        .rev()
-        .filter(|&i| parent[i] == NONE)
-        .collect();
-    while let Some(i) = stack.pop() {
-        order.push(i);
-        let children: Vec<usize> = nodes_vec[i].children().map(|c| c.index()).collect();
-        stack.extend(children.into_iter().rev());
-    }
-    if order.len() != node_count {
-        return Err(CookError("glTF: the node hierarchy has a cycle".into()));
-    }
-    let mut new_index = vec![0u32; node_count];
-    for (new, &old) in order.iter().enumerate() {
-        new_index[old] = new as u32;
-    }
-    let mut nodes = Vec::with_capacity(node_count);
-    for &old in &order {
-        let n = &nodes_vec[old];
-        let (t, r, s) = n.transform().decomposed();
-        let (name_offset, name_len) = strings.add(n.name().unwrap_or(""));
-        nodes.push(NodeRow {
-            parent: if parent[old] == NONE {
-                NONE
-            } else {
-                new_index[parent[old] as usize]
-            },
-            mesh: n.mesh().map_or(NONE, |m| m.index() as u32),
-            name_offset,
-            name_len,
-            tx: t[0],
-            ty: t[1],
-            tz: t[2],
-            rx: r[0],
-            ry: r[1],
-            rz: r[2],
-            rw: r[3],
-            sx: s[0],
-            sy: s[1],
-            sz: s[2],
-        });
-    }
+    let NodeOrder { new_index, rows } = node_order(doc, &mut |s| strings.add(s))?;
+    let nodes = rows;
     let mut scenes = Vec::new();
     let mut roots: Vec<u32> = Vec::new();
     for sc in doc.scenes() {
@@ -788,17 +878,7 @@ pub fn cook(
     let skipped_skins = doc.skins().count() as u32;
     if skipped_animations + skipped_skins > 0 {
         notes.push(format!(
-            "{skipped_animations} animation(s) and {skipped_skins} skin(s) not cooked (phase 2: animation); the bind pose is cooked"
-        ));
-    }
-    let morphs = doc
-        .meshes()
-        .flat_map(|m| m.primitives())
-        .filter(|p| p.morph_targets().next().is_some())
-        .count();
-    if morphs > 0 {
-        notes.push(format!(
-            "{morphs} primitive(s) with morph targets: targets not cooked"
+            "{skipped_animations} animation(s) and {skipped_skins} skin(s): in the #anim blob; this blob holds the bind pose"
         ));
     }
     let mut texture_refs = Vec::new();
