@@ -1,0 +1,93 @@
+{
+  "crossOriginIsolated": true,
+  "hello": {
+    "build": "release",
+    "engine": "origin-engine 0.0.1",
+    "members": [
+      "hello",
+      "tick",
+      "state",
+      "advance",
+      "pause",
+      "resume",
+      "input",
+      "accepted",
+      "pick",
+      "entity",
+      "bounds",
+      "patch",
+      "run",
+      "capture",
+      "sweep",
+      "reload",
+      "snapshot",
+      "restore",
+      "dump",
+      "commands"
+    ],
+    "modules": [
+      "cook",
+      "render"
+    ],
+    "protocol": 5,
+    "substrate": "origin-engine",
+    "ticksPerSecond": 60,
+    "tier": "webgpu",
+    "wire": 1
+  },
+  "tick0": 0,
+  "scheduled": {
+    "scheduled": 49,
+    "untilTick": 501,
+    "warnings": []
+  },
+  "advanced": 600,
+  "tick": 600,
+  "hash": "ae3f57f7c49523a1",
+  "entities": 102,
+  "facts": {
+    "best": 0,
+    "cleared": 3,
+    "maxChain": 1,
+    "movesLeft": 19,
+    "phase": "idle",
+    "pointer": {
+      "pxPerM": 60,
+      "x0": 640,
+      "y0": 390
+    },
+    "rounds": 1,
+    "score": 30
+  },
+  "frames": {
+    "600": {
+      "tick": 600,
+      "width": 1280,
+      "height": 720
+    },
+    "title": {
+      "tick": 1,
+      "width": 1280,
+      "height": 720
+    },
+    "after": {
+      "tick": 630,
+      "width": 1280,
+      "height": 720,
+      "facts": {
+        "best": 0,
+        "cleared": 3,
+        "maxChain": 1,
+        "movesLeft": 19,
+        "phase": "idle",
+        "pointer": {
+          "pxPerM": 60,
+          "x0": 640,
+          "y0": 390
+        },
+        "rounds": 1,
+        "score": 30
+      }
+    }
+  }
+}

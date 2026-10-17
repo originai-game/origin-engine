@@ -1,0 +1,83 @@
+{
+  "crossOriginIsolated": true,
+  "hello": {
+    "build": "release",
+    "engine": "origin-engine 0.0.1",
+    "members": [
+      "hello",
+      "tick",
+      "state",
+      "advance",
+      "pause",
+      "resume",
+      "input",
+      "accepted",
+      "pick",
+      "entity",
+      "bounds",
+      "patch",
+      "run",
+      "capture",
+      "sweep",
+      "reload",
+      "snapshot",
+      "restore",
+      "dump",
+      "commands"
+    ],
+    "modules": [
+      "cook",
+      "render"
+    ],
+    "protocol": 5,
+    "substrate": "origin-engine",
+    "ticksPerSecond": 60,
+    "tier": "webgpu",
+    "wire": 1
+  },
+  "tick0": 0,
+  "scheduled": {
+    "scheduled": 10,
+    "untilTick": 483,
+    "warnings": []
+  },
+  "advanced": 600,
+  "tick": 600,
+  "hash": "692d75bc9ee5997b",
+  "entities": 57,
+  "facts": {
+    "best": 81,
+    "coins": 0,
+    "distance": 12.14,
+    "phase": "running",
+    "rounds": 2,
+    "score": 12,
+    "speed": 6.24
+  },
+  "frames": {
+    "600": {
+      "tick": 600,
+      "width": 1280,
+      "height": 720
+    },
+    "title": {
+      "tick": 1,
+      "width": 1280,
+      "height": 720
+    },
+    "over": {
+      "tick": 690,
+      "width": 1280,
+      "height": 720,
+      "facts": {
+        "best": 81,
+        "coins": 0,
+        "distance": 14.22,
+        "phase": "over",
+        "rounds": 2,
+        "score": 14,
+        "speed": 0
+      }
+    }
+  }
+}
