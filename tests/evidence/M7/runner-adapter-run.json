@@ -1,0 +1,368 @@
+{
+  "hello": {
+    "build": "release",
+    "engine": "origin-engine 0.0.1",
+    "members": [
+      "hello",
+      "tick",
+      "state",
+      "advance",
+      "pause",
+      "resume",
+      "input",
+      "accepted",
+      "pick",
+      "entity",
+      "bounds",
+      "patch",
+      "run",
+      "capture",
+      "sweep",
+      "reload",
+      "snapshot",
+      "restore",
+      "dump",
+      "commands"
+    ],
+    "modules": [
+      "cook",
+      "render"
+    ],
+    "protocol": 5,
+    "substrate": "origin-engine",
+    "ticksPerSecond": 60,
+    "tier": "metal",
+    "wire": 1
+  },
+  "frame": {
+    "path": ".origin/frames/tu-stage_capture/desktop-1280x720.png",
+    "tick": 33,
+    "width": 1280,
+    "height": 720,
+    "colours": 257,
+    "sha256": "e3884aeaa78b4a6d7e38f200303e599255f2cef508e1e5d857f4d34eb177b747"
+  },
+  "stateTitle": {
+    "entities": [
+      {
+        "id": "runner"
+      },
+      {
+        "id": "sun"
+      },
+      {
+        "id": "sky"
+      },
+      {
+        "id": "moon"
+      },
+      {
+        "id": "crate-0"
+      },
+      {
+        "id": "crate-1"
+      },
+      {
+        "id": "crate-2"
+      },
+      {
+        "id": "crate-3"
+      },
+      {
+        "id": "fence-0"
+      },
+      {
+        "id": "fence-1"
+      },
+      {
+        "id": "fence-2"
+      },
+      {
+        "id": "coin-0"
+      },
+      {
+        "id": "coin-1"
+      },
+      {
+        "id": "coin-2"
+      },
+      {
+        "id": "coin-3"
+      },
+      {
+        "id": "coin-4"
+      },
+      {
+        "id": "coin-5"
+      },
+      {
+        "id": "coin-6"
+      },
+      {
+        "id": "coin-7"
+      },
+      {
+        "id": "coin-8"
+      },
+      {
+        "id": "coin-9"
+      },
+      {
+        "id": "coin-10"
+      },
+      {
+        "id": "coin-11"
+      },
+      {
+        "id": "coin-12"
+      },
+      {
+        "id": "coin-13"
+      },
+      {
+        "id": "coin-14"
+      },
+      {
+        "id": "coin-15"
+      }
+    ],
+    "facts": {
+      "best": 0,
+      "coins": 0,
+      "distance": 0,
+      "phase": "title",
+      "rounds": 0,
+      "score": 0,
+      "speed": 1.5
+    },
+    "paused": true,
+    "seed": 1,
+    "tick": 33,
+    "timings": {
+      "frameMs": 0.5832920000000001,
+      "render": 0.28216700000000117,
+      "step": 0.301124999999999
+    }
+  },
+  "stateAfterSpace": {
+    "entities": [
+      {
+        "id": "runner"
+      },
+      {
+        "id": "sun"
+      },
+      {
+        "id": "sky"
+      },
+      {
+        "id": "moon"
+      },
+      {
+        "id": "crate-0"
+      },
+      {
+        "id": "crate-1"
+      },
+      {
+        "id": "crate-2"
+      },
+      {
+        "id": "crate-3"
+      },
+      {
+        "id": "fence-0"
+      },
+      {
+        "id": "fence-1"
+      },
+      {
+        "id": "fence-2"
+      },
+      {
+        "id": "coin-0"
+      },
+      {
+        "id": "coin-1"
+      },
+      {
+        "id": "coin-2"
+      },
+      {
+        "id": "coin-3"
+      },
+      {
+        "id": "coin-4"
+      },
+      {
+        "id": "coin-5"
+      },
+      {
+        "id": "coin-6"
+      },
+      {
+        "id": "coin-7"
+      },
+      {
+        "id": "coin-8"
+      },
+      {
+        "id": "coin-9"
+      },
+      {
+        "id": "coin-10"
+      },
+      {
+        "id": "coin-11"
+      },
+      {
+        "id": "coin-12"
+      },
+      {
+        "id": "coin-13"
+      },
+      {
+        "id": "coin-14"
+      },
+      {
+        "id": "coin-15"
+      }
+    ],
+    "facts": {
+      "best": 0,
+      "coins": 0,
+      "distance": 2.91,
+      "phase": "running",
+      "rounds": 1,
+      "score": 2,
+      "speed": 6.06
+    },
+    "paused": true,
+    "seed": 1,
+    "tick": 63,
+    "timings": {
+      "frameMs": 0.6605830000000168,
+      "render": 0.3594580000000178,
+      "step": 0.301124999999999
+    }
+  },
+  "recording": {
+    "path": ".origin/frames/tu-stage_record/recording.webm",
+    "durationMs": 500,
+    "bytes": 95413
+  },
+  "replay": {
+    "substrate": "origin-engine",
+    "revision": "unversioned",
+    "seed": null,
+    "beforeTick": 132,
+    "afterTick": 152,
+    "ticks": 20,
+    "dispatched": 1,
+    "state": {
+      "entities": [
+        {
+          "id": "runner"
+        },
+        {
+          "id": "sun"
+        },
+        {
+          "id": "sky"
+        },
+        {
+          "id": "moon"
+        },
+        {
+          "id": "crate-0"
+        },
+        {
+          "id": "crate-1"
+        },
+        {
+          "id": "crate-2"
+        },
+        {
+          "id": "crate-3"
+        },
+        {
+          "id": "fence-0"
+        },
+        {
+          "id": "fence-1"
+        },
+        {
+          "id": "fence-2"
+        },
+        {
+          "id": "coin-0"
+        },
+        {
+          "id": "coin-1"
+        },
+        {
+          "id": "coin-2"
+        },
+        {
+          "id": "coin-3"
+        },
+        {
+          "id": "coin-4"
+        },
+        {
+          "id": "coin-5"
+        },
+        {
+          "id": "coin-6"
+        },
+        {
+          "id": "coin-7"
+        },
+        {
+          "id": "coin-8"
+        },
+        {
+          "id": "coin-9"
+        },
+        {
+          "id": "coin-10"
+        },
+        {
+          "id": "coin-11"
+        },
+        {
+          "id": "coin-12"
+        },
+        {
+          "id": "coin-13"
+        },
+        {
+          "id": "coin-14"
+        },
+        {
+          "id": "coin-15"
+        }
+      ],
+      "facts": {
+        "best": 0,
+        "coins": 0,
+        "distance": 12.03,
+        "phase": "running",
+        "rounds": 1,
+        "score": 12,
+        "speed": 6.24
+      },
+      "paused": true,
+      "seed": 1,
+      "tick": 152,
+      "timings": {
+        "frameMs": 0.5184590000001208,
+        "render": 0.27004200000010314,
+        "step": 0.24841700000001765
+      }
+    },
+    "frame": ".origin/frames/tu-playtest_replay/playtest-end.png",
+    "frameTick": 152,
+    "frameError": null
+  }
+}

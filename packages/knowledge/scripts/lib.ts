@@ -71,8 +71,8 @@ export function walk(dir: string, skip: ReadonlySet<string> = new Set()): string
   return out;
 }
 
-/** What never travels with a template: build output and installs. */
-export const TEMPLATE_SKIP: ReadonlySet<string> = new Set(["cooked", "dist", "node_modules", ".DS_Store"]);
+/** What never travels with a template: build and run output (the template's .gitignore) and installs. */
+export const TEMPLATE_SKIP: ReadonlySet<string> = new Set(["cooked", "dist", "og-out", ".og", "node_modules", ".DS_Store"]);
 
 const fatal = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 

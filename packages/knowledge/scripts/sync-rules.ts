@@ -37,8 +37,12 @@ for (const file of readdirSync(guides).sort()) {
   for (const m of readFileSync(join(guides, file), "utf8").matchAll(/\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/g)) documented.add(m[0]);
 }
 const known = [...new Set([...offered, ...documented])].sort();
-const skills = readdirSync(join(knowledge, "production/game/skills")).sort();
-const overlays = readdirSync(join(knowledge, "production/game-scaffold")).sort();
+// What this package mounts there itself (scripts/mount.ts) is not a platform
+// skill or overlay it could collide with.
+const own = JSON.parse(readFileSync(join(here, "knowledge.json"), "utf8")) as { overlay: string };
+const ownSkills = new Set(readdirSync(join(here, "skills")));
+const skills = readdirSync(join(knowledge, "production/game/skills")).filter((s) => !ownSkills.has(s)).sort();
+const overlays = readdirSync(join(knowledge, "production/game-scaffold")).filter((o) => o !== own.overlay).sort();
 const godotPin = JSON.parse(readFileSync(join(knowledge, "production/game-scaffold/origin-engine/origin-engine.json"), "utf8"));
 
 const rules = {

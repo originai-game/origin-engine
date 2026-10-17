@@ -15,3 +15,11 @@ knowledge packs (`packages/game-knowledge/production` of OriginGame):
 source) and runs the tests in `tests/`. `bun scripts/validate.ts --bundle`
 prints the text payload in the platform's `readProductionBundle` shape
 (`{ schemaVersion: 1, files }`).
+
+`bun scripts/mount.ts <origingame checkout> [--check] [--commit <rev>]`
+writes the payload into the platform checkout's
+`packages/game-knowledge/production` (text files only; it owns
+`game/skills/og-*/` and `game-scaffold/origin-engine-ts/` there and removes
+what the package no longer has); `--check` exits 1 on any difference and
+`--commit` mounts a commit instead of the working tree. What the platform
+side looks like: the repository's `docs/m7-platform-notes.md`.

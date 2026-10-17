@@ -1,6 +1,6 @@
 ---
 name: og-build
-description: The Origin Engine build loop — og cook, og run with a scripted command channel, screenshots and world dumps read as evidence, og dev hot reload, og test playtests, and og build for publishing. Use whenever a change must be run, observed or shipped.
+description: The Origin Engine build loop — og cook, og run with a scripted command channel, screenshots and world dumps read as evidence, og dev hot reload, og test playtests, and og build for publishing. Use whenever a change to a project with a project.ogt must be run, observed or shipped (not a Godot project.godot).
 ---
 
 The `og` tool is the whole loop: it cooks assets, runs the game headless on
