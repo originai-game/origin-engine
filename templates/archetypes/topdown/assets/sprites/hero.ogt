@@ -1,0 +1,58 @@
+type flipbook
+version 1
+---
+# Written by tools/make-assets.py. Rows: down, up, side (facing right; flipX
+# faces left); columns: four walk frames, then the attack's wind-up and
+# strike. The clip order is the code's (src/art.ts): idle, walk, attack,
+# each down, up, side.
+texture "hero.png"
+pivot 0.5 0
+grid 16 16 6 3
+clip idle_down {
+  frames 0
+  fps 1
+}
+clip idle_up {
+  frames 6
+  fps 1
+}
+clip idle_side {
+  frames 12
+  fps 1
+}
+clip walk_down {
+  frames 0 1 2 3
+  fps 8
+  event 1 "step"
+  event 3 "step"
+}
+clip walk_up {
+  frames 6 7 8 9
+  fps 8
+  event 1 "step"
+  event 3 "step"
+}
+clip walk_side {
+  frames 12 13 14 15
+  fps 8
+  event 1 "step"
+  event 3 "step"
+}
+clip attack_down {
+  frames 4 5
+  durations 0.07 0.18
+  mode once
+  event 1 "hit"
+}
+clip attack_up {
+  frames 10 11
+  durations 0.07 0.18
+  mode once
+  event 1 "hit"
+}
+clip attack_side {
+  frames 16 17
+  durations 0.07 0.18
+  mode once
+  event 1 "hit"
+}
