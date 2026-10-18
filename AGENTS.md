@@ -63,6 +63,8 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   or copies the tree to build "in isolation". Isolation of changes is a Git
   worktree with its own `target/`, used only when two streams must build
   incompatible trees at once, and deleted with the worktree.
+- **One gate at a time.** `scripts/check.sh` and a release `build.sh` hold
+  `target/og-gate.lock` (`scripts/lock.sh`); a second one waits, never runs beside it.
 - **One profile per lane.** Everything in the gate that runs native code
   (tests, `og` for drift, cook, the addon the bun tests load) is the `dev`
   profile, whose heavy dependencies are already optimised per package in

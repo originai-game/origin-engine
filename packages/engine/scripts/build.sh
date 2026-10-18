@@ -9,13 +9,16 @@
 #                                     executors (cargo zigbuild against glibc
 #                                     2.31, from macOS or Linux)
 #
-# scripts/pack.sh packs what this leaves in native/ and dist/.
+# scripts/pack.sh packs what this leaves in native/ and dist/. A release
+# build holds the gate lock (scripts/lock.sh), so it never compiles beside a
+# running gate on the same target directory.
 set -eu
 here="$(cd "$(dirname "$0")/.." && pwd)"
 root="$(cd "$here/../.." && pwd)"
 target="${CARGO_TARGET_DIR:-$root/target}"
 case "$target" in /*) ;; *) target="$root/$target" ;; esac
 cd "$root"
+. "$root/scripts/lock.sh"
 # Under the gate (OG_GATE=1, scripts/check.sh) the addon and og are the dev
 # profile the test step already built, and the wasm is what the wasm-build
 # and wasm-opt steps produced; standalone, this script builds release and
@@ -24,6 +27,7 @@ if [ "${OG_GATE:-}" = 1 ]; then
   cargo build -q -p og-host-node -p og-cli
   bindir="$target/debug"
 else
+  og_lock_acquire "$target" "packages/engine/scripts/build.sh (release)"
   cargo build --release -q -p og-host-node -p og-cli
   bindir="$target/release"
 fi
@@ -57,6 +61,8 @@ if [ "${OG_GATE:-}" = 1 ] && [ -f "$gate_wasm/opt/og_host_web-publish.wasm" ] &&
   cp "$gate_wasm/bindgen/og_host_web/"* "$here/dist/web/"
   exit 0
 fi
+# From here on the wasm compiles in release: never beside a running gate.
+og_lock_acquire "$target" "packages/engine/scripts/build.sh (wasm)"
 wasm="$target/wasm32-unknown-unknown/release/og_host_web.wasm"
 cargo build --release -q --target wasm32-unknown-unknown -p og-host-web --lib --features publish
 wasm-bindgen --target web --out-dir "$here/dist/web-publish" --out-name origin-engine "$wasm"

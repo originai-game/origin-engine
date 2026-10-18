@@ -8,6 +8,8 @@ case "$OG_TARGET_DIR" in /*) ;; *) OG_TARGET_DIR="$OG_ROOT/$OG_TARGET_DIR" ;; es
 # Test harnesses (gfx diffs, perf reports) write here; CI uploads it on failure.
 export OG_EVIDENCE_DIR="${OG_EVIDENCE_DIR:-$OG_TARGET_DIR/evidence}"
 export OG_WASM_OUT="$OG_TARGET_DIR/og-wasm"
+# shellcheck source=lock.sh
+. "$OG_ROOT/scripts/lock.sh"
 
 og_say() { printf '%s\n' "$*"; }
 og_err() { printf '%s\n' "$*" >&2; }

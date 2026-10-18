@@ -13,6 +13,8 @@
 # produced and bun-test's build.sh takes the gate's wasm (OG_GATE=1), so run
 # them together. Every native step is the dev profile; release is only the
 # wasm the size gate measures (AGENTS.md §Build and gate discipline).
+# Holds the gate lock (scripts/lock.sh, <target>/og-gate.lock) for its whole
+# run; a second gate on the same target directory waits for it.
 # Honours CARGO_TARGET_DIR. Each step prints PASS, FAIL or SKIPPED; the
 # summary lands in $OG_EVIDENCE_DIR/check-summary.txt.
 set -u -o pipefail
@@ -281,6 +283,9 @@ for s in $selected; do
   case " $STEPS " in *" $s "*) ;; *) og_err "unknown step '$s' (scripts/check.sh --list)"; exit 2 ;; esac
 done
 
+# One gate (or release build.sh) per target directory: a second one waits
+# here instead of thrashing beside the first (scripts/lock.sh).
+og_lock_acquire "$OG_TARGET_DIR" "scripts/check.sh ${selected}" || exit 1
 mkdir -p "$OG_EVIDENCE_DIR"
 summary="$OG_EVIDENCE_DIR/check-summary.txt"
 : > "$summary"

@@ -69,6 +69,12 @@ scripts/check.sh --list
 make check                           # the same through the Makefile
 ```
 
+One gate per target directory: `scripts/check.sh` (and a release
+`packages/engine/scripts/build.sh`) holds `<target>/og-gate.lock` for its
+whole run (`scripts/lock.sh`: a mkdir lock with the holder's pid, taken over
+when that pid no longer runs a gate); a second one prints `another gate
+(pid N: …) is running on <target>, waiting` and starts when the first ends.
+
 Each step prints `==> [n/N] step`, its own output, then `PASS`, `FAIL` or
 `SKIPPED` with its duration; the script exits non-zero on the first `FAIL`
 and writes the per-step lines to `target/evidence/check-summary.txt`. The
