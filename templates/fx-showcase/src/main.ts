@@ -22,7 +22,7 @@
 // `dump_entity:e5` the E5 component.
 
 import { og, defineComponent, defineSystem, f32, f64, u32, Vector3 } from "@origingame/engine";
-import type { Entity, Quaternion, Vector3 as Vec3, World } from "@origingame/engine";
+import type { Entity, Font, Geometry, Material, Quaternion, Texture, Vector3 as Vec3, World } from "@origingame/engine";
 import { E5, E5_STATIONS, E5Show, PlatformMove, buildE5, resetE5, showE5, type E5Station } from "./e5.ts";
 
 /** The first five stations, then the E5 round's (src/e5.ts). */
@@ -104,12 +104,14 @@ export const Blink = defineSystem("Blink", { writes: [og.Blendshapes] }, (q, tim
  * shake), the 2D station's sprites, the fx station's ribbon, and the HUD.
  */
 export const Show = defineSystem("Show", { writes: [Stage, og.PostEffects] }, (q, time, world) => {
-  let s: { station: number; font: number; crate: number; tile: number; spark: number; dissolve: number; flash: number } | null = null;
+  let s: { station: number; font: Font; crate: Texture; tile: Texture; spark: Texture; dissolve: Material; flash: Material } | null = null;
   for (const a of q.archetypes()) {
     if (a.count === 0) continue;
     const c = a.column(Stage);
     c.shown[0] = c.shown[0]! + 1;
-    s = { station: c.station[0]!, font: c.font[0]!, crate: c.crate[0]!, tile: c.tile[0]!, spark: c.spark[0]!, dissolve: c.dissolve[0]!, flash: c.flash[0]! };
+    // The handles are kept as f64 in Stage; they are the engine's branded handles.
+    const h = <T>(v: number) => v as unknown as T;
+    s = { station: c.station[0]!, font: h<Font>(c.font[0]!), crate: h<Texture>(c.crate[0]!), tile: h<Texture>(c.tile[0]!), spark: h<Texture>(c.spark[0]!), dissolve: h<Material>(c.dissolve[0]!), flash: h<Material>(c.flash[0]!) };
   }
   if (s === null) return;
   const station = STATIONS[s.station] ?? "post";
@@ -144,7 +146,7 @@ export const Show = defineSystem("Show", { writes: [Stage, og.PostEffects] }, (q
   hud(world, s.font, station);
 });
 
-function draw2d(world: World, s: { crate: number; tile: number; spark: number }, t: number): void {
+function draw2d(world: World, s: { crate: Texture; tile: Texture; spark: Texture }, t: number): void {
   const x0 = ORIGIN["2d"];
   // The floor: 18 x 10 world units of tiles on layer 0, lit.
   for (let ty = -5; ty < 5; ty++) {
@@ -171,7 +173,7 @@ function draw2d(world: World, s: { crate: number; tile: number; spark: number },
 }
 
 /** The screen-space HUD: a panel, the title and the station, and a og.ui badge. */
-function hud(world: World, font: number, station: Station): void {
+function hud(world: World, font: Font, station: Station): void {
   og.render.sprite(world, { screen: true, position: { x: 16, y: 16, z: 0 }, width: 300, height: 76, anchor: { x: 0, y: 0 }, color: { r: 0.02, g: 0.02, b: 0.03 }, opacity: 0.72, layer: 0 });
   og.render.sprite(world, { screen: true, position: { x: 16, y: 16, z: 0 }, width: 6, height: 76, anchor: { x: 0, y: 0 }, color: { r: 1, g: 0.62, b: 0.08 }, layer: 1 });
   og.render.text(world, { font, text: "Origin Engine effects", position: { x: 34, y: 46, z: 0 }, size: 24, screen: true, layer: 2 });
@@ -281,7 +283,7 @@ function show(world: World, station: Station): void {
 
 // ── the world ──────────────────────────────────────────────────────────────
 
-function spawnMesh(world: World, name: string, geometry: number, material: number, position: Vec3, extra?: { quaternion?: Quaternion; scale?: Vec3 }): Entity {
+function spawnMesh(world: World, name: string, geometry: Geometry, material: Material, position: Vec3, extra?: { quaternion?: Quaternion; scale?: Vec3 }): Entity {
   const e = must(world.spawn({ name, position, ...(extra?.quaternion ? { quaternion: extra.quaternion } : {}) }));
   if (extra?.scale) world.set(e, og.Transform, { scale: extra.scale });
   world.insert(e, og.Mesh, { geometry, material, castShadow: true, receiveShadow: true });

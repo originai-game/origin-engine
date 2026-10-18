@@ -50,7 +50,7 @@
   },
   "scripts": {
     "build": "sh scripts/build.sh",
-    "typecheck": "bun x --package typescript@7.0.2 tsc --noEmit -p tsconfig.json & p=$!; bun x --package typescript@7.0.2 tsc --noEmit -p tsconfig.runtime.json; r=$?; wait $p && [ $r -eq 0 ]",
+    "typecheck": "bun x --package typescript@7.0.2 tsc --noEmit -p tsconfig.json & p=$!; bun x --package typescript@7.0.2 tsc --noEmit -p tsconfig.templates.json & q=$!; bun x --package typescript@7.0.2 tsc --noEmit -p tsconfig.runtime.json; r=$?; wait $p && wait $q && [ $r -eq 0 ]",
     "test": "bun run typecheck && sh scripts/build.sh && bun test tests/",
     "pack": "sh scripts/pack.sh",
     "test:browser": "bun tests/web/wire.ts && bun tests/web/player.ts && bun tests/web/export.ts",
