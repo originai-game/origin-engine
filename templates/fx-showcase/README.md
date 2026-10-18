@@ -29,7 +29,7 @@ particles) to settle, takes its frame at 1280×720 and compares it with
 that the HUD's opaque accent bar is exactly its authored colour on every
 station (the overlay is drawn after tone mapping, grading, vignette, grain
 and TAA). `references/metal` is recorded on Apple Metal, `references/vulkan-cpu`
-on Mesa lavapipe (CI's tier) in the platform's E2B sandbox.
+on Mesa lavapipe (CI's tier), in the platform's E2B sandbox or a local linux/amd64 Docker container (`tests/evidence/E3/fx-showcase-badge.md`).
 
 `dump_entity:stage` reads the `Stage` component (the station and how many
 ticks it has been shown).

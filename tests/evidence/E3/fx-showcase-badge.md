@@ -29,6 +29,16 @@ Re-recorded: `references/metal` (`OG_FX_CAPTURE=1 og test
 templates/fx-showcase`), `references/webgpu` and `references/webgl2`
 (`bun tests/web/reference.ts --record [--webgl]`, Chrome for Testing 150).
 Afterwards `og test templates/fx-showcase` passes at RMSE 0 and `make
-web-reference` passes both tiers. Owed: `references/vulkan-cpu` still holds
-the two-line badge; it is recorded on lavapipe in the platform's E2B sandbox
-(as the archetypes' were, bcbf941), which this machine does not run.
+web-reference` passes both tiers. `references/vulkan-cpu` followed in a later commit: lavapipe in a local
+Docker container (`oven/bun:1.4.2-debian` for linux/amd64 under Rosetta,
+Debian's mesa-vulkan-drivers, llvmpipe on LLVM 15 like the E2B sandbox; `og`
+and the addon cross-built with `cargo zigbuild --release --target
+x86_64-unknown-linux-gnu.2.31` on Rust 1.99.1). The container reproduces the
+E2B-recorded archetype references exactly (runner, match3 and topdown: RMSE
+0 on every frame, every suite passes). Against the old fx-showcase
+vulkan-cpu references the change is again the badge: fx, 2d and stylised
+differ only in x 1109–1263, y 648–693; post and lens also differ by at most
+2/255 elsewhere (RMSE 0.00001 and 0.00005 outside the badge, TAA and motion
+blur stations), within og-tests' tolerance. Recorded with `OG_FX_CAPTURE=1
+og test templates/fx-showcase` in the container; a second run there matches
+at RMSE 0.
