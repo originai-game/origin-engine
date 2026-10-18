@@ -40,9 +40,12 @@ pub(crate) enum RunSource {
     /// A 2D trail's strip: `first`/`count` are vertices of the ribbon
     /// buffer; the blend is `ParticleBlend as u8`.
     Strip(u8, Option<TextureHandle>),
+    /// A 2D fluid's metaball composite (the fluid's index this frame).
+    Metaballs(u8),
 }
 
-/// A ribbon run drawn in the sprite order at `layer` (a 2D trail).
+/// A ribbon run drawn in the sprite order at `layer` (a 2D trail, a 2D
+/// water body, a fluid's metaball composite).
 pub(crate) struct LayeredStrip {
     pub layer: i32,
     pub source: RunSource,
@@ -368,7 +371,7 @@ pub(crate) fn build<'a>(
         match runs.last_mut() {
             Some(run)
                 if run.source == source
-                    && !matches!(source, RunSource::Strip(..))
+                    && !matches!(source, RunSource::Strip(..) | RunSource::Metaballs(_))
                     && run.first + run.count == first =>
             {
                 run.count += count

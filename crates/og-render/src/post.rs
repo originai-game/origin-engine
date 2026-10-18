@@ -669,6 +669,8 @@ pub(crate) enum FramePass {
     Particles,
     /// The 2D light map.
     Light2d,
+    /// The 2D fluids' metaball field.
+    Metaballs,
     /// Opaque meshes, sky, transparent meshes, particles, strips, sprites
     /// and text into the HDR target.
     Main,
@@ -703,6 +705,7 @@ impl FramePass {
             FramePass::AoBlur => "ao-blur".into(),
             FramePass::Particles => "particles".into(),
             FramePass::Light2d => "lights-2d".into(),
+            FramePass::Metaballs => "metaballs".into(),
             FramePass::Main => "main".into(),
             FramePass::Glow => "glow".into(),
             FramePass::Outline => "outline".into(),
@@ -734,6 +737,8 @@ pub(crate) struct GraphConfig {
     pub lightmap: (u32, u32),
     /// GTAO (or SSAO).
     pub gtao: bool,
+    /// The main pass draws water: it copies the scene drawn so far.
+    pub water: bool,
 }
 
 fn luminance_name(i: u32) -> String {
@@ -798,7 +803,32 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
         .import("local-shadows")
         .import("output")
         .import("particles")
-        .transient("hdr", desc(w, h, HDR_FORMAT, 1, attach_bind));
+        .transient(
+            "hdr",
+            desc(
+                w,
+                h,
+                HDR_FORMAT,
+                1,
+                if cfg.water {
+                    attach_bind | wgpu::TextureUsages::COPY_SRC
+                } else {
+                    attach_bind
+                },
+            ),
+        );
+    if cfg.water {
+        g.transient(
+            "scene-copy",
+            desc(
+                w,
+                h,
+                HDR_FORMAT,
+                1,
+                wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            ),
+        );
+    }
     let msaa = cfg.samples > 1;
     if msaa {
         g.transient(
@@ -844,6 +874,9 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
     if has(FramePass::Light2d) {
         let (lw, lh) = cfg.lightmap;
         g.transient("lightmap", desc(lw, lh, HDR_FORMAT, 1, attach_bind));
+    }
+    if has(FramePass::Metaballs) {
+        g.transient("metaballs", desc(w, h, HDR_FORMAT, 1, attach_bind));
     }
     if has(FramePass::Glow) {
         g.transient("glow", desc(hw, hh, HDR_FORMAT, 1, attach_bind));
@@ -910,6 +943,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             }
             FramePass::Particles => g.pass(name, &[], &["particles"]),
             FramePass::Light2d => g.pass(name, &[], &["lightmap"]),
+            FramePass::Metaballs => g.pass(name, &[], &["metaballs"]),
             FramePass::Main => {
                 let mut reads = vec!["cascades", "local-shadows"];
                 if has(FramePass::AoBlur) {
@@ -924,12 +958,17 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 if has(FramePass::Light2d) {
                     reads.push("lightmap");
                 }
-                let writes: &[&str] = if msaa {
-                    &["hdr-msaa", "hdr", "depth"]
-                } else {
-                    &["hdr", "depth"]
-                };
-                g.pass(name, &reads, writes)
+                if has(FramePass::Metaballs) {
+                    reads.push("metaballs");
+                }
+                let mut writes = vec!["hdr", "depth"];
+                if msaa {
+                    writes.push("hdr-msaa");
+                }
+                if cfg.water {
+                    writes.push("scene-copy");
+                }
+                g.pass(name, &reads, &writes)
             }
             FramePass::Glow => g.pass(name, &[], &["glow"]),
             FramePass::Outline => g.pass(
@@ -1446,6 +1485,7 @@ impl FrameGraph {
             | FramePass::Prepass
             | FramePass::Particles
             | FramePass::Light2d
+            | FramePass::Metaballs
             | FramePass::Main
             | FramePass::Glow => 0,
         }
@@ -1457,6 +1497,7 @@ fn transient_names(cfg: &GraphConfig) -> Vec<String> {
     let mut names: Vec<String> = [
         "hdr",
         "hdr-msaa",
+        "scene-copy",
         "depth",
         "pre-depth",
         "gbuffer",
@@ -1465,6 +1506,7 @@ fn transient_names(cfg: &GraphConfig) -> Vec<String> {
         "ao.raw",
         "ao",
         "lightmap",
+        "metaballs",
         "glow",
         "hdr.outline",
         "hdr.dof",

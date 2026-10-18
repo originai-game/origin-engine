@@ -92,9 +92,18 @@ struct PrepassOut {
 };
 
 fn lit_vertex(model: mat4x4<f32>, v: VertexIn) -> VertexOut {
-  let world = model * vec4<f32>(v.position, 1.0);
+  var world = model * vec4<f32>(v.position, 1.0);
   // Normal through the model's upper 3x3; instances carry uniform scale, so no inverse-transpose.
   let n = normalize((model * vec4<f32>(v.normal, 0.0)).xyz);
+  // A material shader's vertex offset (none with the built-in hooks).
+  var h: Hook;
+  h.world = world.xyz;
+  h.local = v.position;
+  h.normal = n;
+  h.uv = v.uv;
+  h.color = v.color;
+  h.time = frame.time.x;
+  world = vec4<f32>(world.xyz + vertex_offset(h, shader_params()), world.w);
   var o: VertexOut;
   o.clip = frame.view_proj * world;
   o.world_pos = world.xyz;
@@ -418,7 +427,16 @@ fn apply_decals(p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, roughness: f32, d
 @fragment
 fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   let base_sample = textureSample(base_color_tex, material_sampler, in.uv);
-  let base = material.base_color * base_sample * in.color;
+  // A material shader's hooks (identities with the built-in hooks).
+  var hook: Hook;
+  hook.world = in.world_pos;
+  hook.local = in.local_pos;
+  hook.normal = in.normal;
+  hook.uv = in.uv;
+  hook.color = in.color;
+  hook.time = frame.time.x;
+  let params = shader_params();
+  let base = surface_color(hook, params, material.base_color * base_sample * in.color);
   var dissolve = vec4<f32>(0.0);
   if (EFFECTS) { dissolve = dissolve_at(in.uv, in.local_pos); }
   // One discard for the alpha cut-off and the dissolve (see dissolve_at).
@@ -431,7 +449,7 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   let alpha = select(1.0, base.a, (mode & 4u) != 0u);
   if ((mode & 2u) != 0u) {
     // Unlit (MeshBasicMaterial): the colour plus the emissive term.
-    let e = material.emissive.rgb * textureSample(emissive_tex, material_sampler, in.uv).rgb;
+    let e = surface_emissive(hook, params, material.emissive.rgb * textureSample(emissive_tex, material_sampler, in.uv).rgb);
     var unlit = base.rgb + e + dissolve_edge;
     if (EFFECTS && material.toon.w > 0.0) { unlit = mix(unlit, material.flash.rgb, material.toon.w); }
     return vec4<f32>(apply_fog(unlit, in.world_pos), alpha);
@@ -471,6 +489,7 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
     map = vec3<f32>(map.xy * material.mr.zw, map.z);
     n = perturb_normal(n, in.world_pos, in.uv, map);
   }
+  n = surface_normal(hook, params, n);
 
   // The directional light.
   let l = normalize(frame.light_dir.xyz);
@@ -514,7 +533,7 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   }
   color += (kd_ibl * diffuse_ibl + specular_ibl) * ibl_scale;
 
-  color += material.emissive.rgb * textureSample(emissive_tex, material_sampler, in.uv).rgb;
+  color += surface_emissive(hook, params, material.emissive.rgb * textureSample(emissive_tex, material_sampler, in.uv).rgb);
   if (EFFECTS && fx.decal_info.x > 0.5) { color += decal_emissive; }
   if (EFFECTS && material.rim.w > 0.0) { color += dissolve_edge; }
   if (EFFECTS && material.toon.y > 0.0) {

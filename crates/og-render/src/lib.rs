@@ -33,8 +33,10 @@ mod effects;
 mod frame;
 mod fx;
 pub mod graph;
+mod hooks;
 mod ibl;
 mod light2d;
+mod metaballs;
 mod material;
 mod mips;
 mod overlay;
@@ -47,13 +49,14 @@ pub mod shapes;
 mod skin;
 mod sprites;
 mod texture;
+mod water;
 
 #[cfg(feature = "gltf")]
 pub mod gltf;
 #[cfg(not(target_arch = "wasm32"))]
 mod headless;
 
-pub use atmosphere::{Fog, SkyLook};
+pub use atmosphere::{DayNightLook, Fog, SkyLook, day_night};
 pub use capture::{CAPTURE_TIMEOUT, CaptureRequest};
 pub use effects::*;
 pub use graph::{GraphError, GraphPlan, RenderGraph, TargetDesc};
@@ -70,6 +73,11 @@ pub use scene::*;
 pub use skin::{
     JointPalette, MAX_JOINTS, MAX_MORPH_TARGETS, MorphTargets, SkinData, SkinnedInstance,
 };
+pub use hooks::{
+    MAX_SHADER_PARAMS, MaterialShader, ParamKind, SHADER_HOOKS, ShaderParam, lit_module_source,
+};
+pub use metaballs::{MAX_FLUIDS, Metaballs};
+pub use water::{Water, Water2d, WaterHeights};
 pub use texture::{TextureCompression, TextureDesc, TextureFormat, TextureFormats, TextureUpload};
 /// The wgpu this crate is built on, for hosts that create surfaces or pass views.
 pub use wgpu;
@@ -101,6 +109,28 @@ pub const MSAA_SAMPLES: u32 = 4;
 
 const FRAME_WGSL: &str = include_str!("../shaders/frame.wgsl");
 const PBR_WGSL: &str = include_str!("../shaders/pbr.wgsl");
+
+/// The lit shader's source with `hooks` (`hooks.rs`) and the joint palette
+/// read as `palette`.
+fn lit_source_with(hooks: &str, palette: skin::PaletteMode) -> String {
+    format!(
+        "{FRAME_WGSL}{}{MATERIAL_WGSL}{}{hooks}{PBR_WGSL}",
+        particles_gpu::NOISE_WGSL,
+        palette.wgsl(3)
+    )
+}
+
+/// [`lit_source_with`] for a tier (`full`: the storage-buffer palette).
+pub(crate) fn lit_source(hooks: &str, full: bool) -> String {
+    lit_source_with(
+        hooks,
+        if full {
+            skin::PaletteMode::Storage
+        } else {
+            skin::PaletteMode::Texture
+        },
+    )
+}
 const SHADOW_WGSL: &str = include_str!("../shaders/shadow.wgsl");
 const SKY_WGSL: &str = include_str!("../shaders/sky.wgsl");
 const SPRITE_WGSL: &str = include_str!("../shaders/sprite.wgsl");
@@ -435,6 +465,8 @@ struct GpuMaterial {
     outline: bool,
     /// Uses toon, rim, flash or dissolve.
     effects: bool,
+    /// Its material shader (the scene's index).
+    shader: Option<usize>,
 }
 
 struct GpuTexture {
@@ -452,6 +484,10 @@ struct GpuFont {
 struct SceneCache {
     scene_id: u64,
     meshes: Vec<GpuMesh>,
+    /// The lit shader with each of the scene's material shaders.
+    shaders: Vec<wgpu::ShaderModule>,
+    /// Their pipelines by (shader, side, blended, effects).
+    hook_pipelines: HashMap<(usize, Side, bool, bool), wgpu::RenderPipeline>,
     textures: Vec<GpuTexture>,
     materials: Vec<GpuMaterial>,
     /// Sprite bind groups per texture, made on first use.
@@ -483,6 +519,8 @@ struct Batch {
     dissolve: bool,
     /// Needs the effect shader (its material's or the frame's effects).
     effects: bool,
+    /// Its material's shader (never for skinned batches).
+    shader: Option<usize>,
 }
 
 /// The effect bind groups and what they were made from.
@@ -622,6 +660,8 @@ pub struct Renderer {
     sky_pipeline: wgpu::RenderPipeline,
     /// The procedural sky of a chosen look drawn per pixel ([`Background::Procedural`]).
     sky_look_pipeline: wgpu::RenderPipeline,
+    water: water::WaterRenderer,
+    metaballs: metaballs::MetaballRenderer,
     /// The image-based light, regenerated into the same textures for a new sky.
     ibl: ibl::IblGenerator,
     sprite_pipeline: wgpu::RenderPipeline,
@@ -1223,7 +1263,8 @@ impl Renderer {
         let material_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("material"),
             entries: &[
-                uniform_entry(0, wgpu::ShaderStages::FRAGMENT),
+                // The vertex stage reads a material shader's parameters.
+                uniform_entry(0, wgpu::ShaderStages::VERTEX_FRAGMENT),
                 tex2d(1),
                 tex2d(2),
                 tex2d(3),
@@ -1345,11 +1386,7 @@ impl Renderer {
         let pbr_shader = shader(
             &device,
             "pbr",
-            format!(
-                "{FRAME_WGSL}{}{MATERIAL_WGSL}{}{PBR_WGSL}",
-                particles_gpu::NOISE_WGSL,
-                palette_mode.wgsl(3)
-            ),
+            lit_source_with(&hooks::default_hooks(), palette_mode),
         );
         let sky_shader = shader(&device, "sky", format!("{FRAME_WGSL}{SKY_WGSL}"));
         let sprite_shader = shader(&device, "sprite", format!("{FRAME_WGSL}{SPRITE_WGSL}"));
@@ -1425,6 +1462,9 @@ impl Renderer {
         let sky_pipeline = hdr_pipeline(&device, sky_state("fs_sky"));
         let sky_look_pipeline = hdr_pipeline(&device, sky_state("fs_sky_look"));
         let ibl = ibl::IblGenerator::new(&device);
+        let water = water::WaterRenderer::new(&device, &frame_layout, FRAME_WGSL, samples);
+        let metaballs =
+            metaballs::MetaballRenderer::new(&device, &frame_layout, FRAME_WGSL, samples);
         let additive = wgpu::BlendState {
             color: wgpu::BlendComponent {
                 src_factor: wgpu::BlendFactor::SrcAlpha,
@@ -1618,6 +1658,8 @@ impl Renderer {
             prepass_pipelines: HashMap::new(),
             sky_pipeline,
             sky_look_pipeline,
+            water,
+            metaballs,
             ibl,
             sprite_pipeline,
             sprite_additive_pipeline,
@@ -1714,6 +1756,15 @@ impl Renderer {
                 ..Default::default()
             };
             self.taa_history = None;
+        }
+        for index in self.cache.shaders.len()..scene.shaders().len() {
+            let hooks = scene.shaders()[index].hooks_wgsl();
+            let module = shader(
+                &self.device,
+                "pbr (material shader)",
+                lit_source_with(&hooks, self.palette.mode()),
+            );
+            self.cache.shaders.push(module);
         }
         for index in self.cache.meshes.len()..scene.meshes().len() {
             let mesh = &scene.meshes()[index];
@@ -1828,9 +1879,10 @@ impl Renderer {
             {
                 continue;
             }
+            let hooked = scene.material_shader(MaterialHandle::from_index(i));
             let gpu = GpuMaterial {
                 revision,
-                bind_group: self.material_bind_group(i, material)?,
+                bind_group: self.material_bind_group(i, material, hooked.map(|h| h.1))?,
                 side: material.side(),
                 transparent: material.is_transparent(),
                 dissolve: material.dissolves(),
@@ -1839,6 +1891,7 @@ impl Renderer {
                     || material.flash > 0.0
                     || material.dissolves(),
                 outline: material.outlineWidth > 0.0,
+                shader: hooked.map(|h| h.0.index()),
             };
             if i < self.cache.materials.len() {
                 self.cache.materials[i] = gpu;
@@ -2021,6 +2074,7 @@ impl Renderer {
         &self,
         index: usize,
         m: &StandardMaterial,
+        custom: Option<[[f32; 4]; MAX_SHADER_PARAMS]>,
     ) -> Result<wgpu::BindGroup, RenderError> {
         let [
             map,
@@ -2058,7 +2112,10 @@ impl Renderer {
         let gradient = view(gradient, &self.default_white)?;
         let dissolve = view(dissolve, &self.default_white)?;
         let two_channel = normal_gpu.is_some_and(|g| g.format.two_channel());
-        let uniform: MaterialUniform = material::uniform(m, two_channel);
+        let mut uniform: MaterialUniform = material::uniform(m, two_channel);
+        if let Some(c) = custom {
+            uniform.custom = c;
+        }
         let factors = self
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -2167,6 +2224,7 @@ impl Renderer {
                         transparent: m.transparent,
                         dissolve: m.dissolve,
                         effects: m.effects,
+                        shader: m.shader,
                     })
                 }
             }
@@ -2325,6 +2383,19 @@ impl Renderer {
             .map(|b| (b, false))
             .chain(skinned.iter().map(|b| (b, true)));
         for (b, is_skinned) in all {
+            if let Some(sh) = b.shader {
+                let key = (sh, b.side, b.transparent, b.effects);
+                if !self.cache.hook_pipelines.contains_key(&key) {
+                    let p = pbr_pipeline(
+                        &self.device,
+                        (&self.pbr_layout, &self.pbr_skinned_layout),
+                        &self.cache.shaders[sh],
+                        (b.side, b.transparent, false, b.effects),
+                        self.samples,
+                    );
+                    self.cache.hook_pipelines.insert(key, p);
+                }
+            }
             let key = (b.side, b.transparent, is_skinned, b.effects);
             if !self.pbr_pipelines.contains_key(&key) {
                 let p = pbr_pipeline(
@@ -2423,6 +2494,7 @@ impl Renderer {
                         transparent: m.transparent,
                         dissolve: m.dissolve,
                         effects: m.effects,
+                        shader: None,
                     });
                 }
             }
@@ -2560,7 +2632,9 @@ impl Renderer {
             || dof.is_some()
             || motion_blur.is_some()
             || god_rays.is_some()
-            || particle_frame.needs_depth;
+            || particle_frame.needs_depth
+            // Water reads the depth below it.
+            || !scene.water.is_empty();
         // Decals and screen-space AO need the effect shader on every batch.
         if ao.is_some() || !scene.decals.is_empty() {
             for b in batches.iter_mut().chain(skinned_batches.iter_mut()) {
@@ -2588,7 +2662,7 @@ impl Renderer {
                 self.sprite_group(t);
             }
         }
-        let ribbon_frame = self
+        let mut ribbon_frame = self
             .trails
             .build(
                 scene.id(),
@@ -2638,7 +2712,8 @@ impl Renderer {
             }
             Projection::Perspective { .. } => None,
         };
-        let layered: Vec<sprites::LayeredStrip> = ribbon_frame
+        water::water_2d_strips(&scene.water_2d, &mut ribbon_frame);
+        let mut layered: Vec<sprites::LayeredStrip> = ribbon_frame
             .runs
             .iter()
             .filter_map(|r| {
@@ -2650,6 +2725,20 @@ impl Renderer {
                 })
             })
             .collect();
+        let fluids = self.metaballs.prepare(
+            &self.device,
+            &self.queue,
+            &scene.metaballs,
+            (self.width, self.height),
+        );
+        layered.extend(
+            metaballs::layers(&scene.metaballs).map(|(i, layer)| sprites::LayeredStrip {
+                layer,
+                source: RunSource::Metaballs(i as u8),
+                first: 0,
+                count: 1,
+            }),
+        );
         let fonts = &self.cache.fonts;
         let sprite_frame = sprites::build(
             scene,
@@ -3074,6 +3163,9 @@ impl Renderer {
         if scene.lighting_2d.is_some() {
             passes.push(FramePass::Light2d);
         }
+        if fluids > 0 {
+            passes.push(FramePass::Metaballs);
+        }
         passes.push(FramePass::Main);
         if glow {
             passes.push(FramePass::Glow);
@@ -3129,6 +3221,7 @@ impl Renderer {
                         ((self.height as f32 * lightmap_scale) as u32).max(1),
                     ),
                     gtao,
+                    water: !scene.water.is_empty(),
                 },
                 &self.post,
                 &self.persistent,
@@ -3295,6 +3388,22 @@ impl Renderer {
             .unwrap_or(&self.post.far_depth);
         let particle_group = (!particle_frame.systems.is_empty())
             .then(|| self.particles.draw_group(&self.device, scene_depth));
+        let metaball_group = self
+            .graph
+            .try_view("metaballs")
+            .map(|v| self.metaballs.group(&self.device, v));
+        let water_draws = match self.graph.try_view("scene-copy") {
+            Some(copy) if !scene.water.is_empty() => self.water.prepare(
+                &self.device,
+                &self.queue,
+                &scene.water,
+                (self.width, self.height),
+                self.info.tier == Tier::Full,
+                copy,
+                scene_depth,
+            ),
+            _ => Vec::new(),
+        };
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -3327,17 +3436,23 @@ impl Renderer {
         let draw_list = |pass: &mut wgpu::RenderPass,
                          list: &DrawList,
                          lit: bool,
-                         current: &mut Option<(Side, bool, bool)>| {
+                         current: &mut Option<(Side, bool, bool, Option<usize>)>| {
             let mut shadow_key: Option<ShadowKey> = None;
             for &(b, first, count) in &list.ranges {
                 let batch = &batches[b as usize];
                 if lit {
-                    let key = (batch.side, batch.transparent, batch.effects);
+                    let key = (batch.side, batch.transparent, batch.effects, batch.shader);
                     if *current != Some(key) {
-                        pass.set_pipeline(
-                            &self.pbr_pipelines
-                                [&(batch.side, batch.transparent, false, batch.effects)],
-                        );
+                        pass.set_pipeline(match batch.shader {
+                            Some(sh) => {
+                                &self.cache.hook_pipelines
+                                    [&(sh, batch.side, batch.transparent, batch.effects)]
+                            }
+                            None => {
+                                &self.pbr_pipelines
+                                    [&(batch.side, batch.transparent, false, batch.effects)]
+                            }
+                        });
                         *current = Some(key);
                     }
                     pass.set_bind_group(1, &self.cache.materials[batch.material].bind_group, &[]);
@@ -3451,7 +3566,7 @@ impl Renderer {
                 &mut pass,
                 list,
                 false,
-                &mut Some((Side::Front, false, false)),
+                &mut Some((Side::Front, false, false, None)),
             );
             stats.draw_calls += list.ranges.len() as u32;
             stats.shadow_casters += list.instances;
@@ -3559,6 +3674,14 @@ impl Renderer {
                         self.graph.try_view("gbuffer").unwrap_or(&self.post.white),
                     );
                 }
+                FramePass::Metaballs => {
+                    self.metaballs.encode_field(
+                        &mut encoder,
+                        self.graph.view("metaballs"),
+                        frame_bind_group,
+                    );
+                    stats.draw_calls += 1;
+                }
                 FramePass::Light2d => {
                     let ambient = scene.lighting_2d.map_or(Vec3::ONE, |l| l.ambient);
                     self.lights_2d
@@ -3576,43 +3699,67 @@ impl Renderer {
                         Background::Sky | Background::Procedural { .. } => wgpu::Color::BLACK,
                     };
                     let hdr = self.graph.view("hdr");
-                    let (view, resolve_target, store) = if self.samples > 1 {
-                        (
-                            self.graph.view("hdr-msaa"),
-                            Some(hdr),
-                            wgpu::StoreOp::Discard,
-                        )
-                    } else {
-                        (hdr, None, wgpu::StoreOp::Store)
-                    };
-                    let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                        label: Some("main"),
-                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                            view,
-                            depth_slice: None,
-                            resolve_target,
-                            ops: wgpu::Operations {
-                                load: wgpu::LoadOp::Clear(clear),
-                                store,
-                            },
-                        })],
-                        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                            view: self.graph.view("depth"),
-                            depth_ops: Some(wgpu::Operations {
-                                load: wgpu::LoadOp::Clear(1.0),
-                                // TAA reads the depth to reproject the history.
-                                store: if taa {
+                    let msaa = self.samples > 1;
+                    // With water the pass is split after the sky: the
+                    // scene so far is copied for the water to refract and
+                    // reflect, then the pass goes on over it.
+                    let split = !water_draws.is_empty();
+                    let begin = |encoder: &mut wgpu::CommandEncoder, first: bool| {
+                        let (view, resolve_target, store) = if msaa {
+                            (
+                                self.graph.view("hdr-msaa"),
+                                Some(hdr),
+                                if first && split {
                                     wgpu::StoreOp::Store
                                 } else {
                                     wgpu::StoreOp::Discard
                                 },
-                            }),
-                            stencil_ops: None,
-                        }),
-                        timestamp_writes: None,
-                        occlusion_query_set: None,
-                        multiview_mask: None,
-                    });
+                            )
+                        } else {
+                            (hdr, None, wgpu::StoreOp::Store)
+                        };
+                        encoder
+                            .begin_render_pass(&wgpu::RenderPassDescriptor {
+                                label: Some(if first { "main" } else { "main (after water)" }),
+                                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                                    view,
+                                    depth_slice: None,
+                                    resolve_target,
+                                    ops: wgpu::Operations {
+                                        load: if first {
+                                            wgpu::LoadOp::Clear(clear)
+                                        } else {
+                                            wgpu::LoadOp::Load
+                                        },
+                                        store,
+                                    },
+                                })],
+                                depth_stencil_attachment: Some(
+                                    wgpu::RenderPassDepthStencilAttachment {
+                                        view: self.graph.view("depth"),
+                                        depth_ops: Some(wgpu::Operations {
+                                            load: if first {
+                                                wgpu::LoadOp::Clear(1.0)
+                                            } else {
+                                                wgpu::LoadOp::Load
+                                            },
+                                            // TAA reads the depth to reproject the history.
+                                            store: if taa || (first && split) {
+                                                wgpu::StoreOp::Store
+                                            } else {
+                                                wgpu::StoreOp::Discard
+                                            },
+                                        }),
+                                        stencil_ops: None,
+                                    },
+                                ),
+                                timestamp_writes: None,
+                                occlusion_query_set: None,
+                                multiview_mask: None,
+                            })
+                            .forget_lifetime()
+                    };
+                    let mut pass = begin(&mut encoder, true);
                     pass.set_pipeline(&self.pbr_pipelines[&(Side::Front, false, false, false)]);
                     pass.set_bind_group(0, frame_bind_group, &[]);
                     pass.set_bind_group(2, fx_group, &[]);
@@ -3620,7 +3767,7 @@ impl Renderer {
                         &mut pass,
                         &main_list,
                         true,
-                        &mut Some((Side::Front, false, false)),
+                        &mut Some((Side::Front, false, false, None)),
                     );
                     stats.draw_calls += main_list.ranges.len() as u32;
                     stats.draw_calls +=
@@ -3635,6 +3782,22 @@ impl Renderer {
                         pass.set_bind_group(1, sky_group, &[]);
                         pass.draw(0..3, 0..1);
                         stats.draw_calls += 1;
+                    }
+                    if split {
+                        drop(pass);
+                        let size = wgpu::Extent3d {
+                            width: self.width,
+                            height: self.height,
+                            depth_or_array_layers: 1,
+                        };
+                        encoder.copy_texture_to_texture(
+                            hdr.texture().as_image_copy(),
+                            self.graph.view("scene-copy").texture().as_image_copy(),
+                            size,
+                        );
+                        pass = begin(&mut encoder, false);
+                        pass.set_bind_group(0, frame_bind_group, &[]);
+                        stats.draw_calls += self.water.draw(&mut pass, &water_draws);
                     }
                     // Transparent meshes, back to front over the opaque scene.
                     pass.set_bind_group(2, fx_group, &[]);
@@ -3691,6 +3854,15 @@ impl Renderer {
                     pass.set_bind_group(2, sprite_fx_group, &[]);
                     let mut current: Option<(bool, SpriteBlend)> = None;
                     for run in &sprite_frame.runs {
+                        if let (RunSource::Metaballs(i), Some(group)) =
+                            (run.source, &metaball_group)
+                        {
+                            self.metaballs.composite(&mut pass, group, i);
+                            stats.draw_calls += 1;
+                            pass.set_bind_group(2, sprite_fx_group, &[]);
+                            current = None;
+                            continue;
+                        }
                         if let RunSource::Strip(blend, texture) = run.source {
                             pass.set_pipeline(
                                 &self.ribbon_pipelines
@@ -3721,7 +3893,9 @@ impl Renderer {
                             continue;
                         }
                         let (msdf, blend, group) = match run.source {
-                            RunSource::Strip(..) => unreachable!("drawn above"),
+                            RunSource::Strip(..) | RunSource::Metaballs(_) => {
+                                unreachable!("drawn above")
+                            }
                             RunSource::Sprite(blend, None) => {
                                 (false, blend, &self.white_sprite_group)
                             }
@@ -3846,7 +4020,9 @@ impl Renderer {
                             .expect("made before the pass"),
                     ),
                     RunSource::Font(f) => (true, &self.cache.fonts[f.index()].bind_group),
-                    RunSource::Strip(..) => unreachable!("the overlay has no strips"),
+                    RunSource::Strip(..) | RunSource::Metaballs(_) => {
+                        unreachable!("the overlay has no strips or fluids")
+                    }
                 };
                 if msdf_bound != Some(msdf) {
                     pass.set_pipeline(if msdf {

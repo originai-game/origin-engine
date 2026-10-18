@@ -183,6 +183,10 @@ handle!(
     /// A texture added to a [`RenderScene`].
     TextureHandle
 );
+handle!(
+    /// A material shader added to a [`RenderScene`].
+    ShaderHandle
+);
 
 impl TextureHandle {
     /// The handle as a [`crate::StandardMaterial`] texture slot: its index
@@ -712,6 +716,9 @@ pub struct RenderScene {
     textures: Vec<TextureSource>,
     /// What every material draws as.
     materials: Vec<StandardMaterial>,
+    /// Per material: its shader and parameters.
+    material_shaders: Vec<Option<(ShaderHandle, [[f32; 4]; crate::MAX_SHADER_PARAMS])>>,
+    shaders: Vec<crate::MaterialShader>,
     /// The glTF-shaped form of the materials added as [`Material`].
     gltf_materials: Vec<Option<Material>>,
     material_revisions: Vec<u64>,
@@ -769,6 +776,13 @@ pub struct RenderScene {
     pub overlay: Option<Overlay>,
     /// Fog over the main pass (`None`: none).
     pub fog: Option<crate::Fog>,
+    /// Planar 3D water surfaces, drawn after the opaque scene and the sky.
+    pub water: Vec<crate::Water>,
+    /// Side-on 2D water bodies, drawn in the sprite order.
+    pub water_2d: Vec<crate::Water2d>,
+    /// 2D fluids drawn as metaballs in the sprite order (the first
+    /// [`crate::MAX_FLUIDS`]).
+    pub metaballs: Vec<crate::Metaballs>,
     /// Sort keys of single sprites within their layer (top-down y sorting):
     /// a layer draws its sprites by ascending key, then texture, then
     /// submission order; a sprite without one has key 0.
@@ -798,6 +812,8 @@ impl RenderScene {
             meshes: Vec::new(),
             textures: Vec::new(),
             materials: Vec::new(),
+            material_shaders: Vec::new(),
+            shaders: Vec::new(),
             gltf_materials: Vec::new(),
             material_revisions: Vec::new(),
             fonts: Vec::new(),
@@ -833,6 +849,9 @@ impl RenderScene {
             skinned_instances: Vec::new(),
             overlay: None,
             fog: None,
+            water: Vec::new(),
+            water_2d: Vec::new(),
+            metaballs: Vec::new(),
             sprite_order: Vec::new(),
             text_outlines: Vec::new(),
             tile_layers: Vec::new(),
@@ -1079,6 +1098,66 @@ impl RenderScene {
     /// Any material, in the form it is drawn.
     pub fn standard_material(&self, handle: MaterialHandle) -> Option<&StandardMaterial> {
         self.materials.get(handle.index())
+    }
+
+    /// Adds a material shader (`hooks.rs`). The cook validates shader
+    /// assets; one added here directly is compiled when first drawn.
+    pub fn add_shader(&mut self, shader: crate::MaterialShader) -> ShaderHandle {
+        self.shaders.push(shader);
+        ShaderHandle(self.shaders.len() as u32 - 1)
+    }
+
+    pub fn shaders(&self) -> &[crate::MaterialShader] {
+        &self.shaders
+    }
+
+    /// Draws `material` with `shader` (`None`: the built-in hooks again),
+    /// its parameters at the shader's defaults. False for a bad handle.
+    pub fn set_material_shader(
+        &mut self,
+        material: MaterialHandle,
+        shader: Option<ShaderHandle>,
+    ) -> bool {
+        let i = material.index();
+        if i >= self.materials.len() || shader.is_some_and(|s| s.index() >= self.shaders.len()) {
+            return false;
+        }
+        if self.material_shaders.len() <= i {
+            self.material_shaders.resize(i + 1, None);
+        }
+        self.material_shaders[i] = shader.map(|s| (s, self.shaders[s.index()].defaults()));
+        self.material_revisions[i] += 1;
+        true
+    }
+
+    /// Sets parameter `name` of `material`'s shader (as many numbers as its
+    /// type takes; missing ones are 0). False when the material has no
+    /// shader or the shader no such parameter.
+    pub fn set_shader_param(&mut self, material: MaterialHandle, name: &str, value: &[f32]) -> bool {
+        let i = material.index();
+        let Some(Some((shader, params))) = self.material_shaders.get_mut(i) else {
+            return false;
+        };
+        let Some((slot, kind)) = self.shaders[shader.index()].param(name) else {
+            return false;
+        };
+        let mut v = [0.0; 4];
+        for (d, s) in v.iter_mut().zip(value.iter().take(kind.count())) {
+            *d = *s;
+        }
+        if params[slot] != v {
+            params[slot] = v;
+            self.material_revisions[i] += 1;
+        }
+        true
+    }
+
+    /// `material`'s shader and parameters.
+    pub fn material_shader(
+        &self,
+        material: MaterialHandle,
+    ) -> Option<(ShaderHandle, [[f32; 4]; crate::MAX_SHADER_PARAMS])> {
+        self.material_shaders.get(material.index()).copied().flatten()
     }
 
     pub fn mesh_count(&self) -> usize {

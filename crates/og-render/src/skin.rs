@@ -304,6 +304,10 @@ pub(crate) struct GpuPalette {
 }
 
 impl GpuPalette {
+    pub(crate) fn mode(&self) -> PaletteMode {
+        self.mode
+    }
+
     pub fn new(mode: PaletteMode) -> GpuPalette {
         GpuPalette {
             mode,

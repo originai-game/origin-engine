@@ -296,6 +296,8 @@ pub(crate) struct MaterialUniform {
     pub dissolve: [f32; 4],
     /// rgb: outline colour, w: outline width in pixels.
     pub outline: [f32; 4],
+    /// A material shader's parameters (`hooks.rs`).
+    pub custom: [[f32; 4]; crate::MAX_SHADER_PARAMS],
 }
 
 /// The uniform for `m`; `two_channel_normal` when its normal map is BC5/EAC.
@@ -363,5 +365,6 @@ pub(crate) fn uniform(m: &StandardMaterial, two_channel_normal: bool) -> Materia
             m.outlineColor.z,
             m.outlineWidth.clamp(0.0, 31.0),
         ],
+        custom: [[0.0; 4]; crate::MAX_SHADER_PARAMS],
     }
 }

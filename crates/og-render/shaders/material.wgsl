@@ -12,6 +12,7 @@ struct MaterialFactors {
   flash: vec4<f32>,       // rgb: flash colour, w: dissolve edge width
   dissolve: vec4<f32>,    // rgb: dissolve edge colour, w: noise scale (<0: dissolve map)
   outline: vec4<f32>,     // rgb: outline colour, w: outline width (px)
+  custom: array<vec4<f32>, 8>,  // a material shader's parameters (hooks.rs)
 };
 
 @group(1) @binding(0) var<uniform> material: MaterialFactors;

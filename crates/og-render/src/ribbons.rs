@@ -141,6 +141,19 @@ pub(crate) struct RibbonVertex {
     extra: [f32; 4],
 }
 
+impl RibbonVertex {
+    /// A vertex at `position` with strip coordinates (`u`, `v`); textured
+    /// vertices multiply the run's texture (white without one), others get
+    /// the soft edge across v.
+    pub(crate) fn new(position: glam::Vec3, u: f32, v: f32, color: [f32; 4], textured: bool) -> Self {
+        RibbonVertex {
+            position_v: position.extend(v).to_array(),
+            color,
+            extra: [u, f32::from(textured), 0.0, 0.0],
+        }
+    }
+}
+
 pub(crate) const RIBBON_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
     array_stride: std::mem::size_of::<RibbonVertex>() as u64,
     step_mode: wgpu::VertexStepMode::Vertex,
