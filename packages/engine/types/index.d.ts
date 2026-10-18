@@ -7206,7 +7206,9 @@ export interface Perception {
   memory: number;
   /** Its team: it perceives og.Perceivable entities of other teams. */
   team: number;
-  /** Where it looks; zero: the way it last moved. */
+  /**
+   * Where it looks; zero: the way it last moved (before it moves, the way its Transform faces: +Z in 3D, +X in 2D).
+   */
   forward: Vector3;
   /**
    * What it sees or remembers seeing (written by og.ai).

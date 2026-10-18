@@ -8467,7 +8467,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "",
                 label: "",
-                doc: "Where it looks; zero: the way it last moved.",
+                doc: "Where it looks; zero: the way it last moved (before it moves, the way its Transform faces: +Z in 3D, +X in 2D).",
                 variants: &[],
             },
             FieldDecl {

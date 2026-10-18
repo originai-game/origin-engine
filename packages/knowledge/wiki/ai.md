@@ -301,7 +301,7 @@ Token `og.Perception`, registered under the schema name `og.Perception`; its val
 | `hearing` | `number` | `6` | 0 … 500 | `m` | tunable | How far it hears a sound of loudness 1 (a source's volume). |
 | `memory` | `number` | `3` | 0 … 600 | `s` | tunable | How long a lost target stays its target. |
 | `team` | `number` | `0` | — | — | — | Its team: it perceives og.Perceivable entities of other teams. |
-| `forward` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | — | Where it looks; zero: the way it last moved. |
+| `forward` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | — | Where it looks; zero: the way it last moved (before it moves, the way its Transform faces: +Z in 3D, +X in 2D). |
 | `target` | `Entity` | `0` | — | — | read only | What it sees or remembers seeing (written by og.ai). |
 | `sees` | `boolean` | `false` | — | — | read only | It sees the target now (written by og.ai). |
 | `lastSeen` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | read only | Where it last saw the target (written by og.ai). |
@@ -351,7 +351,7 @@ component Perception {
     tunable true
   }
   field team u32 "Its team: it perceives og.Perceivable entities of other teams."
-  field forward Vector3 "Where it looks; zero: the way it last moved."
+  field forward Vector3 "Where it looks; zero: the way it last moved (before it moves, the way its Transform faces: +Z in 3D, +X in 2D)."
   field target Entity "What it sees or remembers seeing (written by og.ai)." {
     readonly true
   }

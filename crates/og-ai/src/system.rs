@@ -96,7 +96,7 @@ pub struct Perception {
     pub memory: f32,
     /// Its team: it perceives og.Perceivable entities of other teams.
     pub team: u32,
-    /// Where it looks; zero: the way it last moved.
+    /// Where it looks; zero: the way it last moved (before it moves, the way its Transform faces: +Z in 3D, +X in 2D).
     pub forward: Vec3,
     /// What it sees or remembers seeing (written by og.ai).
     pub target: u64,
@@ -527,7 +527,8 @@ fn run(
     let behaviours = lock(&sys.behaviours);
     for (n, &e) in agents.iter().enumerate() {
         let key = e.to_bits();
-        let pos = ctx.get::<Transform>(e)?.position;
+        let xf = ctx.get::<Transform>(e)?;
+        let pos = xf.position;
         let nav = ctx.get::<og_nav::NavAgent>(e).ok();
         // 1. Perception.
         if let Ok(mut p) = ctx.get::<Perception>(e) {
@@ -541,9 +542,18 @@ fn run(
                 st.forward.insert(key, plane.to_world(v, 0.0));
                 v
             } else {
-                st.forward
-                    .get(&key)
-                    .map_or(Vec2::ZERO, |f| plane.to_plane(*f))
+                // The way it last moved; before it ever has, the way it faces
+                // (og.nav's faceMovement convention: +Z in 3D, +X in 2D).
+                st.forward.get(&key).map_or_else(
+                    || {
+                        let axis = match plane {
+                            Plane::Xz => Vec3::Z,
+                            Plane::Xy => Vec3::X,
+                        };
+                        plane.to_plane(xf.quaternion.normalize() * axis)
+                    },
+                    |f| plane.to_plane(*f),
+                )
             };
             let cos_half = og_core::math::cos((p.fov.clamp(0.0, 360.0) * 0.5).to_radians());
             let mut best: Option<(f32, Entity, Vec3)> = None;

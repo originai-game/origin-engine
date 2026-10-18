@@ -107,7 +107,8 @@ Built-in keys, written every think: `self`, `position`, `sees`, `heard`,
 adds `og.ai`, which the runtime runs before the game's systems (og.nav
 moves agents after them). Per tick, in query order: perception (the
 nearest perceivable of another team within sight, inside the cone around
-`forward` or the way the agent last moved, not behind a collider by the
+`forward`, else the way the agent last moved, else (before it has moved) the
+way its Transform faces (+Z in 3D, +X in 2D), not behind a collider by the
 host's `SightRay`; spatial sounds that started and `noise` calls within
 `hearing × loudness`), then every `thinkEvery` ticks the tree or machine,
 then the running action's target and speed go to the agent's

@@ -4665,7 +4665,7 @@ module ai {
       tunable true
     }
     field team u32 "Its team: it perceives og.Perceivable entities of other teams."
-    field forward Vector3 "Where it looks; zero: the way it last moved."
+    field forward Vector3 "Where it looks; zero: the way it last moved (before it moves, the way its Transform faces: +Z in 3D, +X in 2D)."
     field target Entity "What it sees or remembers seeing (written by og.ai)." {
       readonly true
     }

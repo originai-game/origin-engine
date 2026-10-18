@@ -14033,7 +14033,7 @@
         },
         "forward": {
           "$ref": "#/$defs/Vector3",
-          "description": "Where it looks; zero: the way it last moved.",
+          "description": "Where it looks; zero: the way it last moved (before it moves, the way its Transform faces: +Z in 3D, +X in 2D).",
           "default": {
             "x": 0,
             "y": 0,
