@@ -7,6 +7,58 @@ the platform can run it in an `engine`-class sandbox. Spike findings
 (`docs/spike-results.md`) are the baseline; the spike crate is the seed
 of `og-render` and is deleted once its code has moved.
 
+## Owed
+
+Every item a round's status left owed or out, in one place; the round
+sections below point here instead of repeating them. Size: S a day or
+less, M a few days, L a workstream. Owner: **engine** is this repository
+(E7 when this round closes it, else phase 2), **platform** is
+`origingame/origingame` (read only from here), **owner** is a decision or
+resource only the owner can give.
+
+| # | Item | Round | Size | Owner | State |
+|---|---|---|---|---|---|
+| 1 | `og.ui.shake` for game code (only a refused press shakes today) | E3 | S | engine, E7 | open |
+| 2 | Nine-slice edges and centre tiled, not stretched, when the skin says so | E3 | S | engine, E7 | open |
+| 3 | Phone references for the six ui-kit skin packs (desktop only) | E3 | S | engine, E7 | open |
+| 4 | Camera zones that scroll between rooms instead of only clamping; topdown's door uses it | E4 | S | engine, E7 | open |
+| 5 | Core commands that read and set resources; game commands' usage text in `help` | E4 | S | engine, E7 | open |
+| 6 | `og.tilemap.getTile` on a terrain layer answers the resolved tile, not the terrain bit | E4 | S | engine, E7 | open |
+| 7 | Ragdoll bodies follow the animation at weight 0 (the runtime never called `set_ragdoll_targets`) | E5 | S | engine, E7 | open |
+| 8 | runner on the 2D platformer controller, topdown on the 2D character movement | E5 | S | engine, E7 | open |
+| 9 | Japanese line breaking with kinsoku rules in og-ui (CJK breaks between any two characters) | E6 | S | engine, E7 | open |
+| 10 | `og polish`'s text measures count icon names and disabled buttons | E6 | S | engine, E7 | open |
+| 11 | fx-showcase's E5 stations built lazily per station (its playtests and polish frame time dropped to 100/88) | E6 | S | engine, E7 | open |
+| 12 | `templates/fx-showcase/src/main.ts`'s type errors; templates are not typechecked in the gate | E6 | S | engine, E7 | open |
+| 13 | Native and Chrome world hashes of the three archetypes compared (match3 differed, not investigated) | E6 | S | engine, E7 | open |
+| 14 | The publish wasm under 65 % of the 4 MB brotli budget without removing features (71 % before E7) | E7 | M | engine, E7 | open |
+| 15 | UI sounds start one tick after the input (`og.ui.sound` runs after `og.audio`) | E3 | S | engine, phase 2 | open |
+| 16 | Springs for the skin's hover and press (eased curves today) | E3 | S | engine, phase 2 | open |
+| 17 | Per-glyph tracking from a skin's ramp (needs per-glyph spacing in og-render's text) | E3 | M | engine, phase 2 | open |
+| 18 | A real text glow (an MSDF outline in og-render; four offset copies today) | E3 | M | engine, phase 2 | open |
+| 19 | An atlas tool for skins drawn by hand, beyond `make-skins.py` | E3 | M | engine, phase 2 | open |
+| 20 | `vulkan-cpu` and browser references for og-ui's scenes, the UI kit, the skin packs and the locale screens (metal only) | E2, E3, E6 | M | engine, phase 2 | open |
+| 21 | Pads beyond the first in og-ui | E2 | M | engine, phase 2 | open |
+| 22 | Browser runs of og-tests' own gfx scenes (a wasm harness) and GL-tier references (`msaa` among them) | M3, E2 | M | engine, phase 2 | open |
+| 23 | Shader hooks on skinned meshes; shadows and the depth prepass displaced by `vertex_offset` | E5 | M | engine, phase 2 | open |
+| 24 | Planar water reflection, shadowed water, an underwater view | E5 | L | engine, phase 2 | open |
+| 25 | More than four metaball fluids a frame, fluids that interact | E5 | M | engine, phase 2 | open |
+| 26 | Cloth self-collision | E5 | M | engine, phase 2 | open |
+| 27 | 2D ragdolls | E5 | M | engine, phase 2 | open |
+| 28 | A moon disc in the night sky | E5 | S | engine, phase 2 | open |
+| 29 | 3D SPH (3D water is the height field) | E5 | L | engine, phase 2 | open |
+| 30 | Forward+ clustered lights beyond the 8-light uniform loop (CPU tile table on WebGL2) | M3, M6 | L | engine, phase 2 | open |
+| 31 | A normal matrix for non-uniform scale, vertex tangents, clearcoat, and a gfx scene of the M6 material features | M6 | M | engine, phase 2 | open |
+| 32 | The runtime loaders transcode to the tier's compressed texture format and upload it (RGBA8 today) | M4, M6 | M | engine, phase 2 | open |
+| 33 | og-ui's rich text, accessibility tree, glass, two-axis scrolling (`crates/og-ui/README.md` §What phase 2 owes) | M6 | L | engine, phase 2 | open |
+| 34 | The M4 "glTF edit to reload in 300 ms" run and the M5 timed 8-frame `sweep`, filed as evidence (`og dev` prints the first) | M4, M5 | S | engine, phase 2 | open |
+| 35 | wgpu and naga 31 when published, kept only if every reference frame passes unchanged | Toolchain | S | engine, phase 2 | open |
+| 36 | `og polish` measures frame time on the tier it runs on (metal here), not on the executors' lavapipe | E6 | S | platform | open |
+| 37 | The eight platform asks (`docs/platform-asks.md`) | E6 | M | platform | open |
+| 38 | The platform side of the cutover: merge `origin-engine-cutover`, pin this revision | E1 | S | platform | open |
+| 39 | A third native tier beside `metal` and `vulkan-cpu` (the browser tiers stand in) | E4 | M | owner | open |
+| 40 | Mobile measurements: the iPhone first frame and frame times (Safari, WebGPU), the mid-range Android view benchmark | M6, E1 | S | owner (devices) | open |
+
 ## 0. Rules that shape the plan
 
 - **The IDL is the contract between workstreams.** `crates/og-api/api.ogt`
@@ -44,8 +96,8 @@ of `og-render` and is deleted once its code has moved.
 | M1 World | 1–3 | `og-core`: `#[derive(Reflect)]` → schema JSON, `.ogt` reader/writer with round-trip, handles, rng, math; `og-ecs`: archetype storage, queries, system schedule, resources, events, snapshot/restore | logic tests: 10k-entity structural churn, snapshot→restore→identical world hash, `.ogt` round-trip on every template file; a Rust-only "bouncing boxes" world advanced 3600 ticks twice gives the same hash. **Filed** (`tests/evidence/M1/`, 2026-10-17): `cross-target-determinism.md` (bouncing boxes 3600 ticks, the same hash on host and wasm32). The churn, snapshot and `.ogt` round-trip tests run in the gate (`cargo test -p og-ecs`, `og-core`) with no file of their own. |
 | M2 API | 2–4 | `og-api`: `api.ogt` v1 (world, components, systems, resources, transform, camera, input, time, rng, load, probe), generators for Rust traits, wasm-bindgen glue, napi glue, `.d.ts`, JSON schema, wiki pages; typed views over columns with tick-stamped invalidation; `og-host-web` Worker + OffscreenCanvas; `og-host-node` | a TypeScript hello-world (spawn 10k entities, one `Move` system) runs identically on both hosts: same world hash after 600 ticks; the spike's view benchmark re-run through the real API within 2× of the raw loop. **Filed** (`tests/evidence/M2/`, 2026-10-17): `hello-world-hash-node.json`, `hello-world-hash-web.json`, `hello-world-two-hosts.md`, `view-benchmark.json`, `wasm-size.json`. |
 | M3 Renderer | 3–6 | render graph; material system from reflected material assets; automatic instancing by (mesh, material); directional + point/spot lights; 3-cascade CSM; IBL + sky pass; mip generation; MSAA (GL) / TAA (WebGPU); bloom, tonemap, exposure; 2D sprite batch and MSDF text; capture readback on both hosts | gfx reference frames for 12 scenes (committed PNGs, per backend tier); the spike's glTF scene within ±10 % of the spike's frame time; 20k moving sprites ≤ 2 ms on the M4 Pro. **Filed** (`tests/evidence/M3/`, 2026-10-17): `showcase-metal.png`, `showcase-vulkan-cpu.png`, `perf-baselines.json`, `feature-costs.md`. 11 Metal and 11 vulkan-cpu references are committed (`crates/og-tests/references/`); the `msaa` scene and the GL/WebGL2 tier have none. |
-| M4 Cook | 5–8 | `og cook`: glTF → `.ogb` (meshopt vertex/index codec, cache ordering, LOD chain, tangents), textures → KTX2 Basis (UASTC for normals, ETC1S for colour), audio → QOA, fonts → MSDF atlas, scenes `.ogt` → `.ogb`; incremental by hash; cook stamps checked at load; runtime loaders; hot reload by snapshot + bundle swap | cook of the template and archetypes is deterministic (same bytes twice); a glTF edit → `og cook` → reload shows the change in ≤ 300 ms with world state kept; cooked size of the template ≤ 60 % of its sources. **Filed** (`tests/evidence/M4/`, 2026-10-17): `cook-determinism.json`, `cook-report-template.md` (cooked 35.7 % of sources), `cooked-gltf-reference.png`, `cooked-gltf-reference-compare.json`, `texture-psnr.md`. Not filed: the glTF edit → reload ≤ 300 ms measurement (`og dev` prints it since 5c79c75). |
-| M5 Probe | 6–9 | `og-probe`: command channel (core actions of design §3.3), module-registered commands, probe protocol 5 members + `capture`, `sweep`, `reload`, `snapshot`, `restore`, `dump`, `commands`; native loopback WebSocket; in-page request ring; `publish` trim | the platform's probe conformance suite (`origin/packages/contracts`) green on both hosts; `og run --commands "0.5:touch_move_to:Start;0.6:touch_start;0.7:touch_end;2.0:screenshot;2.2:dump_world;2.5:quit"` on the template produces the frame and the dump; a `sweep` over a tunable yields 8 frames in ≤ 1 s native. **Filed** (`tests/evidence/M5/`, 2026-10-17): `probe-conformance-test-output.md`, `probe-conformance-transcript.json`, `scripted-run-dump-world.json`. Not filed: the `og run --commands` run on the template (see M6 `tools-template-*`) and the timed 8-frame `sweep`. |
+| M4 Cook | 5–8 | `og cook`: glTF → `.ogb` (meshopt vertex/index codec, cache ordering, LOD chain, tangents), textures → KTX2 Basis (UASTC for normals, ETC1S for colour), audio → QOA, fonts → MSDF atlas, scenes `.ogt` → `.ogb`; incremental by hash; cook stamps checked at load; runtime loaders; hot reload by snapshot + bundle swap | cook of the template and archetypes is deterministic (same bytes twice); a glTF edit → `og cook` → reload shows the change in ≤ 300 ms with world state kept; cooked size of the template ≤ 60 % of its sources. **Filed** (`tests/evidence/M4/`, 2026-10-17): `cook-determinism.json`, `cook-report-template.md` (cooked 35.7 % of sources), `cooked-gltf-reference.png`, `cooked-gltf-reference-compare.json`, `texture-psnr.md`. Not filed: the glTF edit → reload ≤ 300 ms measurement (`og dev` prints it since 5c79c75; §Owed row 34). |
+| M5 Probe | 6–9 | `og-probe`: command channel (core actions of design §3.3), module-registered commands, probe protocol 5 members + `capture`, `sweep`, `reload`, `snapshot`, `restore`, `dump`, `commands`; native loopback WebSocket; in-page request ring; `publish` trim | the platform's probe conformance suite (`origin/packages/contracts`) green on both hosts; `og run --commands "0.5:touch_move_to:Start;0.6:touch_start;0.7:touch_end;2.0:screenshot;2.2:dump_world;2.5:quit"` on the template produces the frame and the dump; a `sweep` over a tunable yields 8 frames in ≤ 1 s native. **Filed** (`tests/evidence/M5/`, 2026-10-17): `probe-conformance-test-output.md`, `probe-conformance-transcript.json`, `scripted-run-dump-world.json`. Not filed: the `og run --commands` run on the template (see M6 `tools-template-*`) and the timed 8-frame `sweep` (§Owed row 34). |
 | M6 Games | 8–11 | input (pointer, keys, gamepad, touch), camera controllers, audio (AudioWorklet ring, cpal), 2D physics (rapier2d) and 3D rigid bodies (rapier3d, static + dynamic, no character controller yet), minimal UI (panels, buttons, text, stable ids), project template, `npm create @origingame/game`, two archetypes rebuilt (`runner` 2D, `match3`), wiki generated, skills and scaffold in `packages/knowledge` | both archetypes playable in a browser and through `og run --commands`; their playtest scripts pass headless; the knowledge package validates against the platform's `packages/game-knowledge` schema; first-frame on an iPhone and the Android view benchmark recorded. **Filed so far** (`tests/evidence/M6/`, 2026-10-17 UTC; partial, M6 is not done): Core `core-cross-target-determinism.md`, `core-input-edges-transcript.json`, `core-break-and-restore.md`; Render `render-showcase-metal.png`, `render-showcase-vulkan-cpu.png`, `render-shadow-map-256.png`, `render-shadow-map-2048.png`, `render-texture-formats.md`, `render-test-run.md`, `render-feature-costs.md`, `render-perf.md`; UI `ui-sample-screen-metal.png`, `ui-dump-ui-sample.json`, `ui-test-run.md`; Audio `audio-determinism.json`, `audio-mix-timing-release.json`, `audio-mix-timing-debug.json`, `audio-scene-waveform.png`, `audio-test-run.md`; ECS `ecs-state-blocks.md`; Physics `physics-pile-determinism.json`, `physics-pile-determinism-debug.json`, `physics-wasm-size.json`, `physics-test-run.md`; Tools `tools-template-run-frame.png`, `tools-template-dump-world.json`, `tools-template-dump-entity.json`, `tools-template-run.md`; gate `check-summary.md`, `size-gate.json`. Not yet: the archetypes, their playtests, the knowledge package against the live platform schema, the mobile numbers. |
 | M7 Platform | 11–13 | `@origingame/engine` published (wasm + native addon per platform via optionalDependencies, `.d.ts`); E2B `engine` class image (bun + engine + lavapipe); runner `og.rs` for `stage_capture`/`stage_record`/`level_report`; mode table without substrate; one Discover prototype produced end to end by a thread on the new engine | the thread's session transcript with frames; `engine` image ≤ 600 MB; `bun deploy/ovh/state.ts` shows the new class live; the platform goal's phase-1 row filled in |
 
@@ -101,14 +153,7 @@ hosts; M6 needs M3, M4, M5; M7 needs M6.
 - Topdown's `vulkan-cpu` references for the slime on og.ai were recorded
   after the merge into main, in the og-lavapipe container with the x86_64
   Linux build (reproduced at RMSE 0; within RMSE 0.0031 of `metal`).
-- Owed: `vulkan-cpu` references for ui-kit's locale screens (metal only);
-  `og polish`'s frame time is measured on the tier it runs on (metal
-  here), not on lavapipe; its text measures are heuristics (icon names and disabled buttons read as text,
-  noted in og-taste §11); og-ui breaks CJK lines between any two
-  characters (ja's title wraps a word); the platform asks; the
-  archetypes' native and Chrome world hashes were not compared this round
-  (`tests/web/template.ts` and `og run` disagree on match3 with or without
-  this round's sound change, at another viewport; not investigated).
+- Owed: §Owed rows 9–13, 20 and 36–37.
 
 ### Status 2026-10-19, E5 round
 
@@ -157,20 +202,7 @@ hosts; M6 needs M3, M4, M5; M7 needs M6.
   - **Wasm**: 2,664,999 bytes brotli, 63 % of the budget (60 % before),
     with no feature behind a cargo flag.
   - Evidence: `tests/evidence/E5/`.
-- **Owed**:
-  - The runtime never calls `set_ragdoll_targets`, so at weight 0 a
-    ragdoll's bodies hold the rig's rest pose, not the animation. The drawn
-    model blends from the animation, but going limp starts the bodies from
-    the rest pose.
-  - Shader hooks skip skinned meshes. Shadows and the depth prepass ignore
-    `vertex_offset`, so swaying grass casts still shadows.
-  - Water has no planar reflection (screen-space only, and the sky cubemap
-    on WebGL2). It is not shadowed and has no underwater view.
-  - At most four metaball fluids are drawn per frame, and fluids do not
-    interact with one another. Cloth has no self-collision. Ragdolls are
-    3D only, and the night sky has stars but no moon disc.
-  - 3D SPH was not attempted: 3D water is the height field.
-  - The runner and topdown archetypes do not yet use the new controllers.
+- Owed: §Owed rows 7–8 and 23–29.
 
 ### Status 2026-10-18, E3 round
 
@@ -192,13 +224,7 @@ hosts; M6 needs M3, M4, M5; M7 needs M6.
   `og-ui/tests/packs.rs`; the kit's 20 screens in every pack against one
   metal sheet per pack; the og-taste skill. Full gate at 24d3663 in 4 min 2 s
   (wasm 2,428,536 bytes brotli, 57 % of the budget; +59,841 over E1).
-  Evidence `tests/evidence/E3/`. Owed: phone and `vulkan-cpu`/browser
-  references for the packs (metal desktop only); per-glyph tracking from a
-  skin's ramp and a real text glow (an MSDF outline in og-render); tiled
-  (not stretched) nine-slice edges; springs for hover and press; the UI
-  sounds start one tick after the input (`og.ui.sound` runs after
-  `og.audio`); skins drawn by hand for a game still need an atlas tool
-  beyond `make-skins.py`.
+  Evidence `tests/evidence/E3/`. Owed: §Owed rows 1–3 and 15–20.
 
 ### Toolchain 2026-10
 
@@ -212,7 +238,7 @@ hosts; M6 needs M3, M4, M5; M7 needs M6.
   LFS attributes are stored as `gitattributes` and renamed by the
   scaffolder, so this repository's checkouts are clean again; fx-showcase's
   references on all four tiers carry the one-line badge of 00653bf. wgpu
-  31 is not published yet. Versions: `docs/ci.md` §Toolchain; evidence
+  31 is not published yet (§Owed row 35). Versions: `docs/ci.md` §Toolchain; evidence
   `tests/evidence/toolchain-2026-10.md`.
 
 ### Build speed 2026-10
@@ -265,11 +291,7 @@ hosts; M6 needs M3, M4, M5; M7 needs M6.
   default, presets started with a hit stop showing nothing until it ended,
   and a sheet's `filter linear` ignored on a pixel texture. Knowledge: the
   og-feel skill and og-game's 2D and feel sections. Evidence
-  `tests/evidence/E4/`. Owed: no third native tier exists (only `metal`
-  and `vulkan-cpu`; the browser tiers stand in for topdown); game
-  commands cannot read or set resources; camera zones clamp the frame
-  without scrolling between rooms; `getTile` on a terrain layer answers
-  the terrain bit, not the resolved tile.
+  `tests/evidence/E4/`. Owed: §Owed rows 4–6 and 39.
 
 ### Status 2026-10-18, E2 round
 
@@ -292,9 +314,7 @@ hosts; M6 needs M3, M4, M5; M7 needs M6.
   (TAA's depth read, 18 of 16 GL texture slots in the lit skinned
   pipeline, the local shadow map created as a cube-map array) and the
   Worker's probe call trapping the wasm on a non-string argument.
-  Evidence `tests/evidence/E2/`. Owed: browser runs of og-tests' own gfx
-  scenes (they need a wasm harness), `vulkan-cpu` references for og-ui
-  and the UI kit, pads beyond the first in og-ui.
+  Evidence `tests/evidence/E2/`. Owed: §Owed rows 20–22.
 
 ### Status 2026-10-18, E1 rounds
 
@@ -322,8 +342,8 @@ M6: og-anim, og-ui, og-physics and the effects are the growth).
   blendshapes, toon/rim/dissolve (`crates/og-render/README.md` §E1
   effects). Fourteen reference scenes on `metal` and `vulkan-cpu`, 25
   effects tests, features-off references byte-identical. Costs
-  `tests/evidence/E1/vfx-feature-costs.md`. Owed: the browser-tier
-  references for the effect scenes, and an overlay pass (above).
+  `tests/evidence/E1/vfx-feature-costs.md`. Owed: the overlay pass (delivered in E2) and
+  browser runs of the effect scenes (§Owed row 22).
 - **Web export** (`docs/web-export.md`): project.ogt's `publish` block,
   `og-build.json` with every file's bytes and sha256, `_headers`,
   `origingame.runtime.json`, the PWA manifest and service worker, byte-
@@ -332,54 +352,20 @@ M6: og-anim, og-ui, og-physics and the effects are the growth).
   isolated, postMessage otherwise) and the Player protocol 2; gamepad
   input; `og run` reports a dying game process at once; `og doctor`
   outside a project. Browser evidence `tests/evidence/E1/web-*`.
-- **Still pending**: the mobile measurements below (devices), and the
-  platform side of the cutover (`origin-engine-cutover` branch in the
-  platform repository: merge, then pin this revision).
+- **Still pending**: §Owed rows 38 and 40.
 
 ### Status 2026-10-18, M6
 
 The M6 crates are committed (8d160fe render, 4fb20c7 ui, 55ac8a2 audio,
 5c79c75 tools, d214078 ECS state blocks, 49ed935 physics) and
 `scripts/check.sh` passes end to end at 49ed935 (all nine steps; wasm
-1,099,937 bytes brotli of the 4 MB budget). What each still owes, by its
-README:
-
-- **og-render** (§What phase 2 owes): "a depth prepass; Forward+ clustered
-  lights"; "GL-tier references … a committed browser runner for `webgpu`
-  and `webgl2` is still owed, and with it a run of `Renderer::capture` in a
-  browser" (both since delivered for fx-showcase: `make web-reference`, see
-  the E2 status above); "a normal matrix for non-uniform scale; vertex tangents;
-  clearcoat"; "screen-space UI layering (sprites are world-space today)";
-  the runtime loaders do not upload the tier's compressed format yet. No
-  gfx reference scene shows the M6 material features.
-- **og-ui** (§What phase 2 owes): "The og-render overlay and per-instance
-  clip above; then drop CPU clipping"; the `ui` module is not in
-  `api.ogt` and no host links og-ui, so games cannot call it; rich text,
-  animations, accessibility, glass and layout extensions are phase 2.
-- **og-audio** (§Status): "the wiring listed under §Host contract is not
-  done: the `og-api` runtime does not `install` og-audio or publish the
-  link, `og run` and the web shell/Worker open no sink, and `api.ogt` has
-  `load.sound`/`Sound` but no `AudioSource`/`AudioListener`/`Audio`
-  records"; effects, occlusion, music transitions and probe audio capture
-  are phase 2.
-- **og-physics** (§Status): not in `api.ogt` and not linked by either host;
-  no character controller (this table's M6 row defers it). Its wasm cost is
-  measured: 694 KB brotli for 3D, 541 KB for 2D, 1.05 MB for both
-  (`tests/evidence/M6/physics-wasm-size.json`), inside the 4 MB budget
-  without the §5 feature-gating fallback.
-- **og-cook** (§What phase 2 owes): "the runtime loaders transcode to the
-  format `RenderInfo::texture_formats` names and upload it"; "Archetype
-  templates (`runner`, `match3`) and their assets"; the M4 hot-reload
-  measurement is not filed.
-- **og-ecs**: state blocks are done; its README lists nothing owed.
-- **Tools**: the template run passes headless (`tools-template-run.md`),
-  but its frame shows no UI (the playtest starts through the `s` key) and
-  the world-space label is partly hidden behind the dropship.
-- **Pending mobile measurements** (this row's evidence and
-  `docs/spike-results.md`): the iPhone first frame and frame times (Safari,
-  WebGPU) and the mid-range Android run of the view benchmark
-  (`bench/views.ts`, ≤ 1.0 ms per tick for 10,000 entities); neither is
-  recorded, both need devices (§5: scheduled for week 9).
+1,099,937 bytes brotli of the 4 MB budget). What each crate's README owed
+then has since landed or is in §Owed: the overlay pass and the `ui` module
+in the IDL (E1, E2), og-audio's host wiring, effects and `listen` (E6),
+og-physics in the IDL with its controllers (E5), the depth prepass (E1's
+effects), the archetypes (E4) and the template's playtest starting on its
+Start button (E6); still open are §Owed rows 30–34 and the mobile
+measurements, row 40 (§5: scheduled for week 9, they need devices).
 
 ## 3. The first two weeks, concretely
 
