@@ -53,6 +53,62 @@ Dependencies: M1 → M2 → everything TypeScript-facing; M0 → M3 (renderer
 work starts from the spike immediately); M4 needs M1's `.ogb`; M5 needs M2's
 hosts; M6 needs M3, M4, M5; M7 needs M6.
 
+### Status 2026-10-19, E6 round
+
+- **Navigation and AI** (bf15ac2..8e631ee): og-nav (grid A* and jump point
+  search without corner cutting, flow fields, a tiled navmesh baked by
+  `og cook` from `type navmesh` .ogt with obstacles that rebuild only their
+  tiles, steering, the `og.nav` agent system; 200 agents a tick in 0.25 ms
+  on a 256 grid) and og-ai (behaviour trees and state machines as `type
+  behaviour` .ogt, checks on blackboard keys and component and resource
+  fields, sight cones against a physics ray and hearing, the game's
+  commands; 200 guards think in 0.28 ms a tick over og.nav's 0.24), IDL
+  modules `nav` and `ai`, `dump_ai` and `dump_nav`. The topdown slime runs
+  on a tree; templates/game has a 3D guard on a state machine and a baked
+  navmesh.
+- **Audio** (802c95b..a3ce21b): per-bus inserts (high- and low-pass,
+  compressor, ducking, a reverb send), per-voice low-pass for distance and
+  occlusion, voice priority and a cap, sample-accurate `startAt`, fades,
+  the `og.Music` clock with `og.MusicBeat`; `listen` (probe member and
+  command) and `og run --audio`; 18 procedural presets synthesised by
+  `og cook` (`og sfx`). 32 voices through every insert mix in 1 % of real
+  time; the busy scene renders the same PCM twice.
+- **Platform services** (917a861, 88764c5): `og.platform` (store with
+  revisions, leaderboards, telemetry, Origin Point, AI marks, settings
+  helpers) answered at a later tick; a local JSON store natively, Player
+  protocol 2 on the web with a localStorage fallback; `dump_platform`.
+  `docs/platform-asks.md` records eight asks.
+- **Localization** (7ae351a..ee3b32e): og-i18n (string tables, ICU
+  messages, CLDR plurals, negotiation, direction), rustybuzz shaping and
+  right-to-left layout in og-ui, per-locale font chains, the cook's key
+  check, ui-kit in en, zh-CN, ja, ko and ar against metal references
+  (`tests/evidence/E6/i18n/locale-sheet.png`).
+- **og polish** (da276d8): playtests played headless and scored against
+  og-taste and og-feel (contrast, text size, HUD, transitions, UI sounds,
+  latency, hit feedback, idle ticks, frame time, sound on input, locale
+  keys), reports with frames and fixes mapped to skill sections. Its first
+  run found runner and match3 silent (their sounds were cooked, never
+  played), ui-kit's UI sounds off by default and templates/game's Start
+  press silent; all four fixed (a98019f..1fcb224). Reports for the six
+  templates are in `tests/evidence/E6/polish/`.
+- **Knowledge**: skills og-ai, og-audio, og-i18n and og-platform-sdk;
+  og-taste §10 and og-feel §13 for the polish measures; og-game's map and
+  performance budget.
+- Full gate at b6fa67a in 4 min 5 s; publish wasm 2,862,533 bytes brotli
+  (68 % of the budget, +433,997 over E3's 2,428,536), shaping (rustybuzz, ttf-parser)
+  the largest new share (`tests/evidence/E6/wasm-size.json`). Evidence
+  `tests/evidence/E6/`.
+- Owed: `vulkan-cpu` references for topdown's frames since the slime moved
+  to og.ai (metal, webgpu and webgl2 re-recorded; this Mac has no lavapipe)
+  and for ui-kit's locale screens (metal only); `og polish`'s frame time is
+  measured on the tier it runs on (metal here), not on lavapipe; its text
+  measures are heuristics (icon names and disabled buttons read as text,
+  noted in og-taste §10); og-ui breaks CJK lines between any two
+  characters (ja's title wraps a word); the platform asks; the
+  archetypes' native and Chrome world hashes were not compared this round
+  (`tests/web/template.ts` and `og run` already disagree on match3 before
+  E6's changes, at another viewport; not investigated).
+
 ### Status 2026-10-18, E3 round
 
 - **UI style** (d612bc3..24d3663): og-ui's skin layer: a `Skin` the theme
