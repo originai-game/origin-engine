@@ -81,6 +81,21 @@ hosts; M6 needs M3, M4, M5; M7 needs M6.
   `og.audio`); skins drawn by hand for a game still need an atlas tool
   beyond `make-skins.py`.
 
+### Toolchain 2026-10
+
+- **2026-10-19** (c1290aa..HEAD): Rust 1.97.0 to 1.99.1 with every crate
+  on edition 2024 (clippy's new as_chunks and let-chain lints applied),
+  binaryen 123 to 133 plus `--low-memory-unused`, wasm-bindgen 0.2.127 to
+  0.2.129, TypeScript 5.9.3 to 7.0.2 (0.26 s instead of 1.2 s for the
+  engine typecheck), cargo-nextest, cargo-zigbuild and zig newer locally.
+  The shipping wasm is 1.0 % smaller (2,518,068 bytes brotli, 60 % of the
+  budget); no reference frame or determinism number moved. The template's
+  LFS attributes are stored as `gitattributes` and renamed by the
+  scaffolder, so this repository's checkouts are clean again; fx-showcase's
+  references on all four tiers carry the one-line badge of 00653bf. wgpu
+  31 is not published yet. Versions: `docs/ci.md` §Toolchain; evidence
+  `tests/evidence/toolchain-2026-10.md`.
+
 ### Status 2026-10-18, E4 round
 
 - **2D and game feel** (b6da6a1..4e63a59, branch `e4-2d-feel`): `og.TimeScale`

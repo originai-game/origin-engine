@@ -7,6 +7,43 @@ machine. The rules the lanes rest on are AGENTS.md §Build and gate
 discipline: one target directory, the dev profile for every native step,
 tests that never run `cargo`.
 
+## Toolchain
+
+The one place the versions are stated. Each is pinned where the third
+column says, and CI installs the same: the Rust toolchain from
+`rust-toolchain.toml` (`actions-rust-lang/setup-rust-toolchain`), the rest
+from `scripts/install-tools.sh`, except cargo-nextest, which CI takes from
+`taiki-e/install-action@nextest` (latest) and the script installs when
+absent.
+
+| Tool | Version | Pinned by |
+|---|---|---|
+| Rust (rustc, rustfmt, clippy; wasm32 and x86_64-linux-gnu targets) | 1.99.1, edition 2024, `rust-version` 1.99 | `rust-toolchain.toml`, `Cargo.toml` `[workspace.package]` |
+| wgpu / naga | 30.0.1 | `Cargo.toml` `[workspace.dependencies]` |
+| wasm-bindgen (crate and CLI), js-sys, web-sys, wasm-bindgen-futures | 0.2.129, 0.3.106, 0.3.106, 0.4.79 | `crates/og-host-web/Cargo.toml` (exact), the CLI from `Cargo.lock` |
+| binaryen (`wasm-opt`) | 133 | `BINARYEN_VERSION` in `scripts/install-tools.sh` (release archive on Linux and macOS) |
+| bun | 1.4.2 | `BUN_VERSION` in `scripts/install-tools.sh` |
+| TypeScript (type checking only; Bun bundles) | 7.0.2 | `packages/engine/package.json` `typecheck`, `crates/og-api/tests/idl.rs`, the templates' `devDependencies` |
+| cargo-nextest | 0.9.148 here | not pinned |
+| cargo-zigbuild, zig (`build.sh --linux-x64`) | 0.23.4, 0.17.0 here | not pinned; outside the gate |
+| Chrome for Testing (`make web-reference`, browser tests) | 150 | `CHROME_PATH`; outside the gate |
+
+wgpu 31 is not on crates.io (2026-10-19: `cargo search wgpu` lists 30.0.1
+as the newest), so wgpu and naga stay on 30.0.1; the upgrade is owed when
+31 ships, kept only if every committed reference frame passes without
+re-recording. `cargo update` within semver had nothing left to move on
+2026-10-19; the dependencies behind their latest are majors (bincode 3,
+cpal 0.18, meshopt 0.7, miniz_oxide 0.9, nalgebra 0.35, syn 3 for our
+derive) and tungstenite, pinned at `=0.30.0`.
+
+The 2026-10 move (Rust 1.97.0 to 1.99.1 and edition 2024, binaryen 123 to
+133, wasm-bindgen 0.2.127 to 0.2.129, TypeScript 5.9.3 to 7.0.2) changed
+no committed reference frame on metal, vulkan-cpu, webgpu or webgl2 and
+no determinism number. The shipping wasm (`og_host_web-publish`, after
+wasm-opt) went from 9,438,293 bytes, 2,543,558 brotli, to 9,283,994 bytes,
+2,518,068 brotli (-1.0 %); `tests/evidence/toolchain-2026-10.md` has each
+step.
+
 ## Lanes
 
 | Lane | Steps | When | Warm, Apple M4 Pro |
@@ -39,7 +76,7 @@ had grown `target/` to 143 GB.
 | `test-quick` | `cargo nextest run --workspace --exclude og-tests` (`cargo test` without nextest) | quick | yes, on lavapipe | | |
 | `test` | `cargo nextest run --workspace && cargo test --workspace --doc` (`cargo test --workspace` without nextest); gfx tests in `og-tests`. Runs after `wasm-build`, whose og-render artifact `og-tests::wasm` takes when it is newer than og-render's sources (else that test runs `cargo check --target wasm32-unknown-unknown -p og-render` itself) | full | | yes, on lavapipe | |
 | `wasm-build` | `cargo build --release --target wasm32-unknown-unknown -p <crate> --lib` for `scripts/wasm-crates.txt`, plus the `publish` feature variant of crates marked `publish`; copies to `target/og-wasm/raw/` | full | | yes | |
-| `wasm-opt` | `wasm-bindgen --target web --out-name origin-engine` (when the module uses it) then `wasm-opt -Oz --enable-bulk-memory --enable-nontrapping-float-to-int`; `opt.txt` lists the shipping (publish) variants, `opt-all.txt` every one | full | | yes | |
+| `wasm-opt` | `wasm-bindgen --target web --out-name origin-engine` (when the module uses it) then `wasm-opt -Oz --enable-bulk-memory --enable-nontrapping-float-to-int --low-memory-unused` (rustc links wasm32 stack-first, so the low 1 KiB is only the bottom of an overflowing stack); `opt.txt` lists the shipping (publish) variants, `opt-all.txt` every one | full | | yes | |
 | `size-gate` | `scripts/size-gate.sh`: brotli `-q 11` sum of `opt.txt` ≤ `wasm_core_brotli_bytes` | full | | yes | |
 | `drift` | `og api check` (generated `.d.ts`, wiki, JSON schema, Rust glue vs `crates/og-api/api.ogt`), the dev `og` the test step built | both | yes | yes | |
 | `bun-quick` | `bun run test` in `packages/knowledge` and `packages/create` (no native build) | quick | yes | | |
@@ -71,7 +108,7 @@ are uploaded on every run as `size-gate-<run>`.
 ## Running the gate locally
 
 ```
-scripts/install-tools.sh             # once; macOS uses Homebrew for binaryen and brotli
+scripts/install-tools.sh             # once; macOS uses Homebrew for brotli
 scripts/check.sh quick               # the quick lane (make quick)
 scripts/check.sh                     # the full lane, stops at the first FAIL
 scripts/check.sh clippy test         # selected steps, in the order given

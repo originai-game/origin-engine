@@ -95,6 +95,11 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
 
 ## Validation
 
+- Toolchain versions (Rust 1.99.1 and edition 2024, wgpu 30, binaryen 133,
+  wasm-bindgen 0.2.129, TypeScript 7.0.2, bun 1.4.2) and where each is
+  pinned: `docs/ci.md` §Toolchain, the one place they are stated. A version
+  move changes that table and its pin in the same commit.
+
 - Rust: `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test`
   (or `scripts/check.sh quick`, which runs the same with nextest).
 - Engine tests: `og test` in `tests/` (logic, multicore, gfx against committed
