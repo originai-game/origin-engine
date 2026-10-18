@@ -195,7 +195,9 @@ export default og.game({
     world.insert(guard, og.Perception, { sight: 9, fov: 120, eyeHeight: 1.6, team: 2 });
     world.insert(guard, Alarm);
     const font = og.load.font(world, "fonts/NotoSansSC-Regular-subset.ttf");
-    if (font.ok) og.ui.configure(world, { font: font.value });
+    // A press answers with a sound as well as its look (og-taste §6): the `click` preset, synthesised by og cook.
+    const click = og.load.sound(world, "audio/click.ogt");
+    og.ui.configure(world, { ...(font.ok ? { font: font.value } : {}), ...(click.ok ? { sounds: { press: click.value } } : {}) });
   },
   commands: {
     spawn_wave: (world, args) => spawnWave(world, Number(args[0] ?? 3)),
