@@ -76,14 +76,17 @@ pub struct UiDesc {
 }
 
 /// The fonts of each role; `display` and `mono` (the numeric role) fall
-/// back to `body`. `fallback` draws a text whose role font lacks one of its
-/// characters (a skin's Latin display face and Chinese text).
+/// back to `body`. A text the role's font cannot draw whole takes the first
+/// font of `chain` (the locale's, og.i18n) that can, then `fallback` (a
+/// skin's Latin display face and Chinese text).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Fonts {
     pub body: UiFont,
     pub display: Option<UiFont>,
     pub mono: Option<UiFont>,
     pub fallback: Option<UiFont>,
+    /// The active locale's fonts, first first.
+    pub chain: Vec<UiFont>,
 }
 
 impl Fonts {
@@ -99,6 +102,16 @@ impl Fonts {
     /// or the fallback when the role's lacks a character the fallback has.
     pub fn for_text(&self, role: FontRole, text: &str) -> &UiFont {
         let f = self.get(role);
+        let covers = |font: &UiFont| {
+            text.chars()
+                .all(|c| c.is_whitespace() || font.metrics.has(c))
+        };
+        if !self.chain.is_empty()
+            && !covers(f)
+            && let Some(c) = self.chain.iter().find(|c| covers(c))
+        {
+            return c;
+        }
         match &self.fallback {
             Some(fb)
                 if text
@@ -450,6 +463,9 @@ pub struct Ui {
     pub(crate) cover: Option<crate::juice::Cover>,
     /// The configured skin's name (empty: the tokens).
     pub(crate) skin_name: String,
+    /// The writing direction: right to left mirrors the layout and turns
+    /// text alignment round (og.i18n's locale, or og.ui.configure).
+    pub(crate) direction: og_i18n::Direction,
 }
 
 impl Default for Ui {
@@ -491,6 +507,7 @@ impl Ui {
             sounds: Vec::new(),
             cover: None,
             skin_name: String::new(),
+            direction: og_i18n::Direction::Ltr,
         }
     }
 
@@ -606,6 +623,16 @@ impl Ui {
 
     pub fn set_fonts(&mut self, fonts: Fonts) {
         self.fonts = fonts;
+    }
+
+    /// The writing direction (left to right by default).
+    pub fn direction(&self) -> og_i18n::Direction {
+        self.direction
+    }
+
+    /// Right to left mirrors every frame's layout from the next `end` on.
+    pub fn set_direction(&mut self, direction: og_i18n::Direction) {
+        self.direction = direction;
     }
 
     /// The control sizes in effect for the current viewport.
@@ -1676,6 +1703,13 @@ impl Ui {
         for &f in &self.floating {
             order.extend(preorder(&self.nodes, f));
         }
+        if self.direction == og_i18n::Direction::Rtl {
+            // Right to left: the whole layout mirrored about the surface's centre.
+            for &i in &order {
+                let r = &mut self.nodes[i].rect;
+                r.x = vp.width - r.x - r.width;
+            }
+        }
         self.apply_stagger(&order);
         self.apply_fx(&order);
 
@@ -2197,12 +2231,20 @@ impl Ui {
                     for (k, line) in n.lines.iter().enumerate() {
                         let ly = top + k as f32 * lh;
                         let free = inner.width - line.width * sk;
+                        // Right to left, start is the right edge.
+                        let rtl = self.direction == og_i18n::Direction::Rtl;
                         let x = inner.x
-                            + match tc.align {
-                                TextAlign::Start => 0.0,
-                                TextAlign::Center => free / 2.0,
-                                TextAlign::End => free,
+                            + match (tc.align, rtl) {
+                                (TextAlign::Start, false) | (TextAlign::End, true) => 0.0,
+                                (TextAlign::Center, _) => free / 2.0,
+                                (TextAlign::End, false) | (TextAlign::Start, true) => free,
                             };
+                        // Shaped words in visual order (crate::shape).
+                        let drawn = if crate::shape::needs_visual(&line.text) {
+                            m.visual(&line.text, self.direction)
+                        } else {
+                            line.text.clone()
+                        };
                         let baseline =
                             ly + (lh - (m.ascender - m.descender) * size) / 2.0 + m.ascender * size;
                         let bounds = Rect::new(x, ly, line.width * sk, lh);
@@ -2211,7 +2253,7 @@ impl Ui {
                             x: snap(x + dx),
                             baseline: snap(baseline + dy),
                             size,
-                            text: line.text.clone(),
+                            text: drawn.clone(),
                             color: color.fade(alpha).linear(),
                             font: handle,
                             bounds: Rect::new(
@@ -2522,7 +2564,11 @@ impl Ui {
                         x: snap(x),
                         baseline: snap(baseline),
                         size,
-                        text: text.clone(),
+                        text: if crate::shape::needs_visual(text) {
+                            m.visual(text, self.direction)
+                        } else {
+                            text.clone()
+                        },
                         color: color.fade(alpha).linear(),
                         font: handle,
                         bounds: Rect::new(x, ly, w, lh),

@@ -12,6 +12,9 @@ og-ecs = { path = "../og-ecs" }
 og-input = { path = "../og-input" }
 og-render = { path = "../og-render" }
 og-probe = { path = "../og-probe", default-features = false }
+# Localization: text direction and shaped scripts (og-i18n), shaping (rustybuzz).
+og-i18n = { path = "../og-i18n" }
+rustybuzz = "0.20.1"
 
 [dev-dependencies]
 serde_json = "1"

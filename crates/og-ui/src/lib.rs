@@ -28,6 +28,7 @@ mod layout;
 mod motion;
 mod nav;
 mod probe;
+pub mod shape;
 pub mod skin;
 mod style;
 mod text;
