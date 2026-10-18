@@ -20,6 +20,11 @@
 //   bun tests/web/reference.ts [--webgl] [--record] [--out <dir>] [--chrome <path>]
 //   make web-reference                        both tiers
 //
+// Another project's playtest frames: --project <dir> (relative to the
+// repository) with --script "<og run --commands script>" and
+// --shots name@tick,... (the ticks its screenshots run at); the script runs
+// as it is and each shot is compared with <dir>/references/<tier>/<name>.png.
+//
 // --record writes the frames as references/<tier>/ instead of comparing.
 // Writes <out>/<tier>/<station>.png, <station>.diff.rgba on a mismatch (raw
 // RGBA, differences x4, outliers red) and reference-<tier>.json (default
@@ -46,7 +51,7 @@ const opt = (name: string) => (args.includes(name) ? args[args.indexOf(name) + 1
 const here = dirname(fileURLToPath(import.meta.url));
 const pkg = join(here, "..", "..");
 const repo = join(pkg, "..", "..");
-const project = join(repo, "templates", "fx-showcase");
+const project = join(repo, opt("--project") ?? join("templates", "fx-showcase"));
 const webgl = args.includes("--webgl");
 const tier = webgl ? "webgl2" : "webgpu";
 const record = args.includes("--record");
@@ -58,14 +63,20 @@ const WIDTH = 1280;
 const HEIGHT = 720;
 
 /** The playtest's stations (tests/frames.og.ts): switched at `at` seconds, captured at tick `tick`, the tick its `screenshot` runs at. */
-const STATIONS = [
-  { name: "post", at: 0, tick: 60 },
-  { name: "lens", at: 1.1, tick: 120 },
-  { name: "fx", at: 2.1, tick: 240 },
-  { name: "2d", at: 4.1, tick: 300 },
-  { name: "stylised", at: 5.1, tick: 420 },
-] as const;
-const SCRIPT = STATIONS.filter((s) => s.at > 0).map((s) => `${s.at}:station:${s.name}`).join(";");
+const SHOTS = opt("--shots");
+const STATIONS: ReadonlyArray<{ name: string; at: number; tick: number }> = SHOTS
+  ? SHOTS.split(",").map((s) => {
+      const [name, tick] = s.split("@");
+      return { name: name!.replace(/\.png$/, ""), at: 0, tick: Number(tick) };
+    })
+  : [
+      { name: "post", at: 0, tick: 60 },
+      { name: "lens", at: 1.1, tick: 120 },
+      { name: "fx", at: 2.1, tick: 240 },
+      { name: "2d", at: 4.1, tick: 300 },
+      { name: "stylised", at: 5.1, tick: 420 },
+    ];
+const SCRIPT = opt("--script") ?? STATIONS.filter((s) => s.at > 0).map((s) => `${s.at}:station:${s.name}`).join(";");
 
 /** og-tests' rule (crates/og-tests/src/compare.rs `Tolerance::default`). */
 const TOLERANCE = { channel: 32, outliers: 0.005, rmse: 0.01 };
@@ -95,7 +106,7 @@ if (!existsSync(join(project, "cooked", ".cook.ogt"))) {
   const r = Bun.spawnSync([ogBin(), "cook", project], { cwd: repo, stdout: "ignore", stderr: "pipe" });
   if (r.exitCode !== 0) throw new Error(`cooking ${project}: ${new TextDecoder().decode(r.stderr)}`);
 }
-const dist = join(work, "fx-showcase");
+const dist = join(work, project.split("/").pop()!);
 const built = await webBuild(project, join(project, "src", "main.ts"), dist, false, settingsOf(project));
 if (!built.ok) throw new Error(built.reason);
 
@@ -111,7 +122,7 @@ const log: string[] = [];
 const dir = join(out, tier);
 mkdirSync(dir, { recursive: true });
 const own = join(project, "references", tier);
-const against = record ? own : existsSync(join(own, "post.png")) ? own : join(project, "references", "metal");
+const against = record ? own : existsSync(join(own, `${STATIONS[0]!.name}.png`)) ? own : join(project, "references", "metal");
 const result: Record<string, unknown> = { tier, against: against.slice(repo.length + 1), tolerance: TOLERANCE, stations: {} as Record<string, unknown> };
 let failures = 0;
 const t0 = performance.now();
