@@ -48,7 +48,7 @@ resolves against, so a scripted `touch_move_to` and a click agree.
 | `open(id, Element)` / `close() -> Response` | a container (`row`, `column`, `container` take a closure) | — |
 | `panel(id, PanelDesc, f)` | a card: `surface`, `radius.card`, `space.lg` padding, `space.md` gap, a column unless `row` | — |
 | `scroll(id, ScrollDesc, f)` | a vertical scroll column: wheel or drag scrolls it, it clips its content, a capsule indicator shows the position | — |
-| `label(id, text, LabelDesc)` | MSDF text; wraps at its width (word breaks, any CJK character, long words between characters) unless `nowrap`; `align` start/center/end; type step from the ramp | the text |
+| `label(id, text, LabelDesc)` | MSDF text; wraps at its width (word breaks; between CJK characters under kinsoku, so no line starts with closing punctuation, a small kana or `ー` nor ends with an opening bracket, and a katakana word stays whole; long words between characters) unless `nowrap`; `align` start/center/end; type step from the ramp | the text |
 | `button(id, text, ButtonDesc) -> Response` | a capsule of `h-control-sm/md/lg`; `Secondary` (neutral fill, default), `Primary` (amber, one per screen), `Quiet`, `Danger`; `disabled` turns neutral and inert; pressed shrinks by `press-scale` | the label |
 | `image(id, ImageDesc)` | a texture region (`uv`, `tint`), or a solid rectangle without a texture | — |
 | `progress(id, value, ProgressDesc)` | a capsule track filled to 0–1 | — |

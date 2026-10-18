@@ -169,25 +169,145 @@ pub(crate) fn is_cjk(c: char) -> bool {
         | 0xf900..=0xfaff | 0xff00..=0xffef | 0x20000..=0x2fa1f)
 }
 
-/// Words, spaces and single CJK characters: the units lines break between.
+/// Characters a line may not start with (行頭禁則, JIS X 4051 and the
+/// Chinese equivalent): closing brackets and quotes, punctuation, the
+/// iteration marks, the prolonged sound mark and small kana.
+fn no_start(c: char) -> bool {
+    matches!(
+        c,
+        '、' | '。'
+            | '，'
+            | '．'
+            | '・'
+            | '：'
+            | '；'
+            | '？'
+            | '！'
+            | '‼'
+            | '⁇'
+            | '⁈'
+            | '⁉'
+            | 'ー'
+            | '‐'
+            | '゠'
+            | '–'
+            | '〜'
+            | '～'
+            | '…'
+            | '‥'
+            | '%'
+            | '％'
+            | '‰'
+            | '）'
+            | '」'
+            | '』'
+            | '】'
+            | '〕'
+            | '〉'
+            | '》'
+            | '］'
+            | '｝'
+            | '〙'
+            | '〗'
+            | '｠'
+            | '»'
+            | '”'
+            | '’'
+            | '〟'
+            | ')'
+            | ']'
+            | '}'
+            | ','
+            | '.'
+            | ':'
+            | ';'
+            | '?'
+            | '!'
+            | 'ぁ'
+            | 'ぃ'
+            | 'ぅ'
+            | 'ぇ'
+            | 'ぉ'
+            | 'っ'
+            | 'ゃ'
+            | 'ゅ'
+            | 'ょ'
+            | 'ゎ'
+            | 'ゕ'
+            | 'ゖ'
+            | 'ァ'
+            | 'ィ'
+            | 'ゥ'
+            | 'ェ'
+            | 'ォ'
+            | 'ッ'
+            | 'ャ'
+            | 'ュ'
+            | 'ョ'
+            | 'ヮ'
+            | 'ヵ'
+            | 'ヶ'
+            | 'ㇰ'..='ㇿ' | '々' | '〻' | 'ゝ' | 'ゞ' | 'ヽ' | 'ヾ'
+    )
+}
+
+/// Characters a line may not end with (行末禁則): opening brackets and quotes.
+fn no_end(c: char) -> bool {
+    matches!(
+        c,
+        '（' | '「'
+            | '『'
+            | '【'
+            | '〔'
+            | '〈'
+            | '《'
+            | '［'
+            | '｛'
+            | '〘'
+            | '〖'
+            | '｟'
+            | '«'
+            | '“'
+            | '‘'
+            | '〝'
+            | '('
+            | '['
+            | '{'
+    )
+}
+
+/// Katakana and the prolonged sound mark: a loanword's letters, kept on one
+/// line as a word is (the middle dot `・` between words breaks after it).
+fn katakana(c: char) -> bool {
+    matches!(c, 'ァ'..='ヺ' | 'ー' | 'ヽ' | 'ヾ' | 'ㇰ'..='ㇿ' | 'ｦ'..='ﾟ')
+}
+
+/// Words, spaces and the CJK units: the units lines break between. A CJK
+/// character is its own unit (a line may break before or after it), a run
+/// of katakana is one, and kinsoku glues a character that may not start a
+/// line to the unit before it and one that may not end a line to the unit
+/// after it.
 fn tokens(paragraph: &str) -> Vec<(&str, bool)> {
-    let mut out = Vec::new();
+    let mut raw: Vec<(usize, usize, bool)> = Vec::new();
     let mut start = 0;
-    let mut kind: Option<u8> = None; // 0 word, 1 space
-    for (i, c) in paragraph.char_indices() {
-        if is_cjk(c) {
-            if let Some(k) = kind.take() {
-                out.push((&paragraph[start..i], k == 1));
-            }
-            out.push((&paragraph[i..i + c.len_utf8()], false));
-            start = i + c.len_utf8();
-            continue;
+    let mut kind: Option<u8> = None; // 0 word, 1 space, 2 katakana
+    let push = |raw: &mut Vec<(usize, usize, bool)>, a: usize, b: usize, k: u8| {
+        if a < b {
+            raw.push((a, b, k == 1));
         }
-        let k = u8::from(c == ' ');
+    };
+    for (i, c) in paragraph.char_indices() {
+        let k = if katakana(c) {
+            2
+        } else if is_cjk(c) {
+            3
+        } else {
+            u8::from(c == ' ')
+        };
         match kind {
-            Some(prev) if prev == k => {}
+            Some(prev) if prev == k && k != 3 => {}
             Some(prev) => {
-                out.push((&paragraph[start..i], prev == 1));
+                push(&mut raw, start, i, prev);
                 start = i;
                 kind = Some(k);
             }
@@ -196,11 +316,37 @@ fn tokens(paragraph: &str) -> Vec<(&str, bool)> {
                 kind = Some(k);
             }
         }
+        if k == 3 {
+            // Each other CJK character is a unit of its own.
+            push(&mut raw, start, i + c.len_utf8(), 3);
+            start = i + c.len_utf8();
+            kind = None;
+        }
     }
     if let Some(k) = kind {
-        out.push((&paragraph[start..], k == 1));
+        push(&mut raw, start, paragraph.len(), k);
     }
-    out
+    // Kinsoku: glue across a boundary with no space where the next unit
+    // starts with a no-start character or this one ends with a no-end one.
+    let mut out: Vec<(usize, usize, bool)> = Vec::with_capacity(raw.len());
+    for (a, b, space) in raw {
+        if let Some(last) = out.last_mut()
+            && !space
+            && !last.2
+            && last.1 == a
+        {
+            let first = paragraph[a..b].chars().next().is_some_and(no_start);
+            let open = paragraph[last.0..last.1].chars().last().is_some_and(no_end);
+            if first || open {
+                last.1 = b;
+                continue;
+            }
+        }
+        out.push((a, b, space));
+    }
+    out.into_iter()
+        .map(|(a, b, space)| (&paragraph[a..b], space))
+        .collect()
 }
 
 /// The widest unbreakable unit: a wrapping text's minimum width.
