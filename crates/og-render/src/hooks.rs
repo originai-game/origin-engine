@@ -120,8 +120,14 @@ impl MaterialShader {
             ));
         }
         for (i, p) in self.params.iter().enumerate() {
-            let ok = p.name.chars().next().is_some_and(|c| c.is_ascii_alphabetic())
-                && p.name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_');
+            let ok = p
+                .name
+                .chars()
+                .next()
+                .is_some_and(|c| c.is_ascii_alphabetic())
+                && p.name
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '_');
             if !ok {
                 return Err(format!(
                     "parameter '{}' is not a name (a letter, then letters, digits and _)",

@@ -36,8 +36,8 @@ pub mod graph;
 mod hooks;
 mod ibl;
 mod light2d;
-mod metaballs;
 mod material;
+mod metaballs;
 mod mips;
 mod overlay;
 pub mod particles;
@@ -63,7 +63,11 @@ pub use effects::*;
 pub use graph::{GraphError, GraphPlan, RenderGraph, TargetDesc};
 #[cfg(not(target_arch = "wasm32"))]
 pub use headless::render_to_rgba;
+pub use hooks::{
+    MAX_SHADER_PARAMS, MaterialShader, ParamKind, SHADER_HOOKS, ShaderParam, lit_module_source,
+};
 pub use material::{Side, StandardMaterial};
+pub use metaballs::{MAX_FLUIDS, Metaballs};
 pub use particles::{
     Burst, ColorCurve, Curve, EmitterHandle, EmitterShape, MAX_CURVE_KEYS, ParticleAlign,
     ParticleBlend, ParticleCollision, ParticleEmitter, ParticleNoise, ParticleRender,
@@ -74,15 +78,11 @@ pub use scene::*;
 pub use skin::{
     JointPalette, MAX_JOINTS, MAX_MORPH_TARGETS, MorphTargets, SkinData, SkinnedInstance,
 };
-pub use hooks::{
-    MAX_SHADER_PARAMS, MaterialShader, ParamKind, SHADER_HOOKS, ShaderParam, lit_module_source,
-};
-pub use metaballs::{MAX_FLUIDS, Metaballs};
+pub use texture::{TextureCompression, TextureDesc, TextureFormat, TextureFormats, TextureUpload};
 pub use water::{Water, Water2d, WaterHeights};
 pub use weather::{
     WEATHER_DUST, WEATHER_MIST, WEATHER_NONE, WEATHER_RAIN, WEATHER_SNOW, WeatherLook, weather,
 };
-pub use texture::{TextureCompression, TextureDesc, TextureFormat, TextureFormats, TextureUpload};
 /// The wgpu this crate is built on, for hosts that create surfaces or pass views.
 pub use wgpu;
 
@@ -454,6 +454,8 @@ struct GpuMesh {
     vertices: wgpu::Buffer,
     indices: wgpu::Buffer,
     index_count: u32,
+    /// The scene's revision of the mesh this holds (`RenderScene::set_mesh`).
+    revision: u64,
     /// Local-space bounds as (center, half extent).
     bounds: Option<(Vec3, Vec3)>,
 }
@@ -1770,9 +1772,11 @@ impl Renderer {
             );
             self.cache.shaders.push(module);
         }
+        self.refresh_meshes(scene);
         for index in self.cache.meshes.len()..scene.meshes().len() {
             let mesh = &scene.meshes()[index];
-            let gpu = self.upload_mesh(mesh);
+            let mut gpu = self.upload_mesh(mesh);
+            gpu.revision = scene.mesh_revisions()[index];
             self.cache.meshes.push(gpu);
             let mut range = (0u32, 0u32);
             if let Some(m) = &scene.morphs()[index] {
@@ -1944,14 +1948,14 @@ impl Renderer {
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("vertices"),
                 contents: &bytes(bytemuck::cast_slice(&mesh.vertices)),
-                usage: wgpu::BufferUsages::VERTEX,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             });
         let indices = self
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("indices"),
                 contents: &bytes(bytemuck::cast_slice(&mesh.indices)),
-                usage: wgpu::BufferUsages::INDEX,
+                usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
             });
         let bounds = mesh
             .bounds()
@@ -1965,6 +1969,40 @@ impl Renderer {
                 mesh.indices.len() as u32
             },
             bounds,
+            revision: 0,
+        }
+    }
+
+    /// Uploads meshes the scene replaced since they were last uploaded: in
+    /// place when the sizes match, else as new buffers.
+    fn refresh_meshes(&mut self, scene: &RenderScene) {
+        for (i, &revision) in scene.mesh_revisions().iter().enumerate() {
+            let Some(gpu) = self.cache.meshes.get(i) else {
+                break;
+            };
+            if gpu.revision == revision {
+                continue;
+            }
+            let mesh = &scene.meshes()[i];
+            let vb: &[u8] = bytemuck::cast_slice(&mesh.vertices);
+            let ib: &[u8] = bytemuck::cast_slice(&mesh.indices);
+            if !vb.is_empty()
+                && vb.len() as u64 == gpu.vertices.size()
+                && ib.len() as u64 == gpu.indices.size()
+            {
+                self.queue.write_buffer(&gpu.vertices, 0, vb);
+                self.queue.write_buffer(&gpu.indices, 0, ib);
+                let bounds = mesh
+                    .bounds()
+                    .map(|(lo, hi)| ((lo + hi) * 0.5, (hi - lo) * 0.5));
+                let gpu = &mut self.cache.meshes[i];
+                gpu.bounds = bounds;
+                gpu.revision = revision;
+            } else {
+                let mut fresh = self.upload_mesh(mesh);
+                fresh.revision = revision;
+                self.cache.meshes[i] = fresh;
+            }
         }
     }
 
@@ -2735,14 +2773,14 @@ impl Renderer {
             &scene.metaballs,
             (self.width, self.height),
         );
-        layered.extend(
-            metaballs::layers(&scene.metaballs).map(|(i, layer)| sprites::LayeredStrip {
+        layered.extend(metaballs::layers(&scene.metaballs).map(|(i, layer)| {
+            sprites::LayeredStrip {
                 layer,
                 source: RunSource::Metaballs(i as u8),
                 first: 0,
                 count: 1,
-            }),
-        );
+            }
+        }));
         let fonts = &self.cache.fonts;
         let sprite_frame = sprites::build(
             scene,
@@ -2981,7 +3019,12 @@ impl Renderer {
                         sun_direction,
                         sun_color,
                     } => Some((
-                        scene.environment.sky.look.as_ref().unwrap_or(&SkyLook::DEFAULT),
+                        scene
+                            .environment
+                            .sky
+                            .look
+                            .as_ref()
+                            .unwrap_or(&SkyLook::DEFAULT),
                         sun_direction,
                         sun_color,
                     )),
@@ -3437,56 +3480,61 @@ impl Renderer {
         // Draws a list's ranges. Lit passes switch the pipeline when the
         // batch's (side, blending) changes and bind each batch's material;
         // shadow passes switch on the side and dissolve (with the material).
-        let draw_list = |pass: &mut wgpu::RenderPass,
-                         list: &DrawList,
-                         lit: bool,
-                         current: &mut Option<(Side, bool, bool, Option<usize>)>| {
-            let mut shadow_key: Option<ShadowKey> = None;
-            for &(b, first, count) in &list.ranges {
-                let batch = &batches[b as usize];
-                if lit {
-                    let key = (batch.side, batch.transparent, batch.effects, batch.shader);
-                    if *current != Some(key) {
-                        pass.set_pipeline(match batch.shader {
-                            Some(sh) => {
-                                &self.cache.hook_pipelines
-                                    [&(sh, batch.side, batch.transparent, batch.effects)]
-                            }
-                            None => {
-                                &self.pbr_pipelines
-                                    [&(batch.side, batch.transparent, false, batch.effects)]
-                            }
-                        });
-                        *current = Some(key);
-                    }
-                    pass.set_bind_group(1, &self.cache.materials[batch.material].bind_group, &[]);
-                } else {
-                    let key = (batch.side, false, batch.dissolve);
-                    if shadow_key != Some(key) {
-                        pass.set_pipeline(&self.shadow_pipelines[&key]);
-                        shadow_key = Some(key);
-                    }
-                    if batch.dissolve {
+        let draw_list =
+            |pass: &mut wgpu::RenderPass,
+             list: &DrawList,
+             lit: bool,
+             current: &mut Option<(Side, bool, bool, Option<usize>)>| {
+                let mut shadow_key: Option<ShadowKey> = None;
+                for &(b, first, count) in &list.ranges {
+                    let batch = &batches[b as usize];
+                    if lit {
+                        let key = (batch.side, batch.transparent, batch.effects, batch.shader);
+                        if *current != Some(key) {
+                            pass.set_pipeline(match batch.shader {
+                                Some(sh) => {
+                                    &self.cache.hook_pipelines
+                                        [&(sh, batch.side, batch.transparent, batch.effects)]
+                                }
+                                None => {
+                                    &self.pbr_pipelines
+                                        [&(batch.side, batch.transparent, false, batch.effects)]
+                                }
+                            });
+                            *current = Some(key);
+                        }
                         pass.set_bind_group(
                             1,
                             &self.cache.materials[batch.material].bind_group,
                             &[],
                         );
+                    } else {
+                        let key = (batch.side, false, batch.dissolve);
+                        if shadow_key != Some(key) {
+                            pass.set_pipeline(&self.shadow_pipelines[&key]);
+                            shadow_key = Some(key);
+                        }
+                        if batch.dissolve {
+                            pass.set_bind_group(
+                                1,
+                                &self.cache.materials[batch.material].bind_group,
+                                &[],
+                            );
+                        }
                     }
+                    let mesh = &self.cache.meshes[batch.mesh];
+                    pass.set_vertex_buffer(0, mesh.vertices.slice(..));
+                    // A buffer slice, not first_instance: WebGL2 has no base instance.
+                    let start = first as u64 * INSTANCE_STRIDE;
+                    pass.set_vertex_buffer(
+                        1,
+                        self.instance_buffer
+                            .slice(start..start + count as u64 * INSTANCE_STRIDE),
+                    );
+                    pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..mesh.index_count, 0, 0..count);
                 }
-                let mesh = &self.cache.meshes[batch.mesh];
-                pass.set_vertex_buffer(0, mesh.vertices.slice(..));
-                // A buffer slice, not first_instance: WebGL2 has no base instance.
-                let start = first as u64 * INSTANCE_STRIDE;
-                pass.set_vertex_buffer(
-                    1,
-                    self.instance_buffer
-                        .slice(start..start + count as u64 * INSTANCE_STRIDE),
-                );
-                pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..mesh.index_count, 0, 0..count);
-            }
-        };
+            };
         // The skinned batches (`transparent`: which of them) with the
         // pipelines `pipeline` picks; materials at group `material_group`.
         let draw_skinned = |pass: &mut wgpu::RenderPass,

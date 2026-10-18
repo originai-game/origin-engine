@@ -145,7 +145,13 @@ impl RibbonVertex {
     /// A vertex at `position` with strip coordinates (`u`, `v`); textured
     /// vertices multiply the run's texture (white without one), others get
     /// the soft edge across v.
-    pub(crate) fn new(position: glam::Vec3, u: f32, v: f32, color: [f32; 4], textured: bool) -> Self {
+    pub(crate) fn new(
+        position: glam::Vec3,
+        u: f32,
+        v: f32,
+        color: [f32; 4],
+        textured: bool,
+    ) -> Self {
         RibbonVertex {
             position_v: position.extend(v).to_array(),
             color,

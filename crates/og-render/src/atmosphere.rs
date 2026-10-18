@@ -97,16 +97,16 @@ impl Default for SkyLook {
 impl SkyLook {
     /// The built-in sky's numbers ([`Default`]).
     pub const DEFAULT: SkyLook = SkyLook {
-            zenith: Vec3::new(0.18, 0.36, 0.78),
-            horizon: Vec3::new(0.78, 0.84, 0.92),
-            ground: Vec3::new(0.16, 0.14, 0.12),
-            sun_size: 1.8,
-            sun_intensity: 40.0,
-            glow: 0.6,
-            glow_power: 24.0,
-            stars: 0.0,
-            brightness: 1.1,
-        };
+        zenith: Vec3::new(0.18, 0.36, 0.78),
+        horizon: Vec3::new(0.78, 0.84, 0.92),
+        ground: Vec3::new(0.16, 0.14, 0.12),
+        sun_size: 1.8,
+        sun_intensity: 40.0,
+        glow: 0.6,
+        glow_power: 24.0,
+        stars: 0.0,
+        brightness: 1.1,
+    };
     /// The cosines of the sun disc's outer and inner edge.
     pub(crate) fn disc(&self) -> (f32, f32) {
         let r = self.sun_size.clamp(0.0, 20.0).to_radians();
@@ -234,17 +234,29 @@ pub fn day_night(hours: f32, tilt: f32, azimuth: f32) -> DayNightLook {
     let golden = ramp(-0.12, 0.06, e);
     let night = 1.0 - ramp(-0.22, -0.04, e);
     let zenith = mix3(
-        mix3(Vec3::new(0.10, 0.12, 0.32), Vec3::new(0.18, 0.36, 0.78), day),
+        mix3(
+            Vec3::new(0.10, 0.12, 0.32),
+            Vec3::new(0.18, 0.36, 0.78),
+            day,
+        ),
         Vec3::new(0.004, 0.006, 0.02),
         night,
     );
     let horizon = mix3(
-        mix3(Vec3::new(0.98, 0.52, 0.26), Vec3::new(0.78, 0.84, 0.92), day),
+        mix3(
+            Vec3::new(0.98, 0.52, 0.26),
+            Vec3::new(0.78, 0.84, 0.92),
+            day,
+        ),
         Vec3::new(0.02, 0.03, 0.07),
         night,
     );
     let ground = mix3(
-        mix3(Vec3::new(0.14, 0.09, 0.08), Vec3::new(0.16, 0.14, 0.12), day),
+        mix3(
+            Vec3::new(0.14, 0.09, 0.08),
+            Vec3::new(0.16, 0.14, 0.12),
+            day,
+        ),
         Vec3::new(0.005, 0.005, 0.01),
         night,
     );
@@ -255,7 +267,11 @@ pub fn day_night(hours: f32, tilt: f32, azimuth: f32) -> DayNightLook {
     );
     let moon = night > 0.5;
     let (light_direction, light_color, light_intensity) = if moon {
-        (-sun, Vec3::new(0.55, 0.65, 1.0), 0.45 * ramp(0.5, 1.0, night))
+        (
+            -sun,
+            Vec3::new(0.55, 0.65, 1.0),
+            0.45 * ramp(0.5, 1.0, night),
+        )
     } else {
         (sun, sun_color, 3.0 * golden * (0.35 + 0.65 * day))
     };

@@ -274,13 +274,27 @@ impl IblGenerator {
         let dummy = cube_view(&irradiance, "dummy");
         let mut passes = Vec::new();
         for face in 0..6 {
-            passes.push(pass(face_view(&sky, face, 0), SKY, group(&dummy), face, 0.0, 0));
+            passes.push(pass(
+                face_view(&sky, face, 0),
+                SKY,
+                group(&dummy),
+                face,
+                0.0,
+                0,
+            ));
         }
         // Sky mips: each level samples the one above through a view restricted to it.
         for mip in 1..sky_mips {
             let above = cube_view_mips(&sky, "sky above", mip - 1, 1);
             for face in 0..6 {
-                passes.push(pass(face_view(&sky, face, mip), DOWN, group(&above), face, 0.0, 0));
+                passes.push(pass(
+                    face_view(&sky, face, mip),
+                    DOWN,
+                    group(&above),
+                    face,
+                    0.0,
+                    0,
+                ));
             }
         }
         let sky_full = cube_view(&sky, "sky");
@@ -307,7 +321,14 @@ impl IblGenerator {
                 ));
             }
         }
-        let lut_pass = pass(lut.create_view(&Default::default()), LUT, group(&dummy), 0, 0.0, 0);
+        let lut_pass = pass(
+            lut.create_view(&Default::default()),
+            LUT,
+            group(&dummy),
+            0,
+            0.0,
+            0,
+        );
         let views = Ibl {
             sky: cube_view(&sky, "sky"),
             irradiance: cube_view(&irradiance, "irradiance"),
@@ -367,7 +388,8 @@ impl IblGenerator {
                 ..base
             };
             let at = i * SLOT as usize;
-            bytes[at..at + std::mem::size_of::<Params>()].copy_from_slice(bytemuck::bytes_of(&params));
+            bytes[at..at + std::mem::size_of::<Params>()]
+                .copy_from_slice(bytemuck::bytes_of(&params));
         }
         queue.write_buffer(&self.params, 0, &bytes);
         let mut encoder =

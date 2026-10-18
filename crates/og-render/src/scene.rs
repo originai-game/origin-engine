@@ -713,6 +713,8 @@ static NEXT_SCENE_ID: AtomicU64 = AtomicU64::new(1);
 pub struct RenderScene {
     id: u64,
     meshes: Vec<MeshData>,
+    /// Per mesh: how many times [`RenderScene::set_mesh`] replaced it.
+    mesh_revisions: Vec<u64>,
     textures: Vec<TextureSource>,
     /// What every material draws as.
     materials: Vec<StandardMaterial>,
@@ -810,6 +812,7 @@ impl RenderScene {
         RenderScene {
             id: NEXT_SCENE_ID.fetch_add(1, Ordering::Relaxed),
             meshes: Vec::new(),
+            mesh_revisions: Vec::new(),
             textures: Vec::new(),
             materials: Vec::new(),
             material_shaders: Vec::new(),
@@ -969,7 +972,25 @@ impl RenderScene {
         self.meshes.push(mesh);
         self.skins.push(None);
         self.morphs.push(None);
+        self.mesh_revisions.push(0);
         MeshHandle(self.meshes.len() as u32 - 1)
+    }
+
+    /// Replaces a mesh's vertices and indices (cloth, generated geometry);
+    /// the renderer uploads it again before the next frame, in place when
+    /// the sizes match. False for a bad handle or a skinned or morphed mesh.
+    pub fn set_mesh(&mut self, handle: MeshHandle, mesh: MeshData) -> bool {
+        let i = handle.index();
+        if i >= self.meshes.len() || self.skins[i].is_some() || self.morphs[i].is_some() {
+            return false;
+        }
+        self.meshes[i] = mesh;
+        self.mesh_revisions[i] += 1;
+        true
+    }
+
+    pub(crate) fn mesh_revisions(&self) -> &[u64] {
+        &self.mesh_revisions
     }
 
     /// Adds an RGBA8 texture (mips generated on the GPU when asked).
@@ -1133,7 +1154,12 @@ impl RenderScene {
     /// Sets parameter `name` of `material`'s shader (as many numbers as its
     /// type takes; missing ones are 0). False when the material has no
     /// shader or the shader no such parameter.
-    pub fn set_shader_param(&mut self, material: MaterialHandle, name: &str, value: &[f32]) -> bool {
+    pub fn set_shader_param(
+        &mut self,
+        material: MaterialHandle,
+        name: &str,
+        value: &[f32],
+    ) -> bool {
         let i = material.index();
         let Some(Some((shader, params))) = self.material_shaders.get_mut(i) else {
             return false;
@@ -1157,7 +1183,10 @@ impl RenderScene {
         &self,
         material: MaterialHandle,
     ) -> Option<(ShaderHandle, [[f32; 4]; crate::MAX_SHADER_PARAMS])> {
-        self.material_shaders.get(material.index()).copied().flatten()
+        self.material_shaders
+            .get(material.index())
+            .copied()
+            .flatten()
     }
 
     pub fn mesh_count(&self) -> usize {

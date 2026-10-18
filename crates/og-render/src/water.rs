@@ -283,7 +283,11 @@ impl WaterRenderer {
                     && f.size > 0.0
             });
             if let Some(f) = field {
-                if slot.heights.as_ref().is_none_or(|(r, ..)| *r != f.resolution) {
+                if slot
+                    .heights
+                    .as_ref()
+                    .is_none_or(|(r, ..)| *r != f.resolution)
+                {
                     let (t, v) = height_texture(device, f.resolution);
                     slot.heights = Some((f.resolution, t, v));
                 }
@@ -424,14 +428,25 @@ pub(crate) fn water_2d_strips(waters: &[Water2d], frame: &mut crate::ribbons::Ri
             let v = |x: f32, y: f32| glam::Vec3::new(x, y, w.z);
             // Body: two triangles from the surface down.
             let (a, b, c, d) = (v(x0, y0), v(x1, y1), v(x0, bottom_y), v(x1, bottom_y));
-            for (p, col) in [(a, top), (c, bottom), (b, top), (b, top), (c, bottom), (d, bottom)] {
-                frame.vertices.push(RibbonVertex::new(p, 0.5, 0.5, col, true));
+            for (p, col) in [
+                (a, top),
+                (c, bottom),
+                (b, top),
+                (b, top),
+                (c, bottom),
+                (d, bottom),
+            ] {
+                frame
+                    .vertices
+                    .push(RibbonVertex::new(p, 0.5, 0.5, col, true));
             }
             if half > 0.0 {
                 let (a, b) = (v(x0, y0 + half), v(x1, y1 + half));
                 let (c, d) = (v(x0, y0 - half), v(x1, y1 - half));
                 for (p, vv) in [(a, 0.0), (c, 1.0), (b, 0.0), (b, 0.0), (c, 1.0), (d, 1.0)] {
-                    frame.vertices.push(RibbonVertex::new(p, 0.5, vv, lip, false));
+                    frame
+                        .vertices
+                        .push(RibbonVertex::new(p, 0.5, vv, lip, false));
                 }
             }
         }

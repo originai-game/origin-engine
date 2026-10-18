@@ -10,9 +10,7 @@
 //! shader moves only the grass with the clock.
 
 use glam::{Mat4, Vec2, Vec3, Vec4};
-use og_render::{
-    Camera, RenderScene, RenderTarget, Renderer, RgbaImage, Sprite, Water2d,
-};
+use og_render::{Camera, RenderScene, RenderTarget, Renderer, RgbaImage, Sprite, Water2d};
 use og_tests::atmo_scenes as atmo;
 use og_tests::gfx;
 use og_tests::scenes;
@@ -99,19 +97,31 @@ fn atmosphere_scenes_match_their_references() {
 fn weather_presets_match_their_references() {
     for scene in ["weather-rain", "weather-snow"] {
         let r = check(scene);
-        assert_eq!(r.stats.particle_systems, 1, "{scene}: the preset's particles");
-        assert!(r.stats.particle_capacity >= 6000, "{scene}: {}", r.stats.particle_capacity);
+        assert_eq!(
+            r.stats.particle_systems, 1,
+            "{scene}: the preset's particles"
+        );
+        assert!(
+            r.stats.particle_capacity >= 6000,
+            "{scene}: {}",
+            r.stats.particle_capacity
+        );
     }
     let w = |kind, intensity, dim, layer| {
         og_render::weather(kind, intensity, Vec3::X, 18.0, Vec3::ONE, dim, layer)
     };
-    let (rain, snow) = (w(og_render::WEATHER_RAIN, 1.0, 1.0, None), w(og_render::WEATHER_SNOW, 1.0, 1.0, None));
+    let (rain, snow) = (
+        w(og_render::WEATHER_RAIN, 1.0, 1.0, None),
+        w(og_render::WEATHER_SNOW, 1.0, 1.0, None),
+    );
     assert!(rain.light < snow.light && snow.light < 1.0);
     assert_eq!(w(og_render::WEATHER_RAIN, 1.0, 0.0, None).light, 1.0);
     assert_eq!(w(og_render::WEATHER_RAIN, 0.0, 1.0, None).light, 1.0);
     let mist = w(og_render::WEATHER_MIST, 1.0, 1.0, None);
     assert!(mist.emitter.is_none() && mist.fog.is_some_and(|f| f.height_density > 0.0));
-    let flat = w(og_render::WEATHER_SNOW, 1.0, 1.0, Some(7)).emitter.unwrap();
+    let flat = w(og_render::WEATHER_SNOW, 1.0, 1.0, Some(7))
+        .emitter
+        .unwrap();
     assert_eq!(flat.render, og_render::ParticleRender::Sprite { layer: 7 });
 }
 
@@ -175,8 +185,16 @@ fn day_night_darkens_towards_night_with_stars() {
         og_render::day_night(18.2, 25.0, -20.0),
         og_render::day_night(23.0, 25.0, -20.0),
     );
-    assert!(l12.light_intensity > 2.0 * l18.light_intensity, "{} vs {}", l12.light_intensity, l18.light_intensity);
-    assert!(l23.light_direction.dot(l23.sun_direction) < -0.99, "the moon is opposite the sun");
+    assert!(
+        l12.light_intensity > 2.0 * l18.light_intensity,
+        "{} vs {}",
+        l12.light_intensity,
+        l18.light_intensity
+    );
+    assert!(
+        l23.light_direction.dot(l23.sun_direction) < -0.99,
+        "the moon is opposite the sun"
+    );
     assert!(l23.light_intensity > 0.0 && l23.light_intensity < 0.2 * l12.light_intensity);
     // Stars: sky pixels much brighter than their neighbours, between the
     // two nearest pillars (x 420..840, y 20..300).
@@ -185,7 +203,11 @@ fn day_night_darkens_towards_night_with_stars() {
         for y in 21..300 {
             for x in 421..840 {
                 let l = luma(px(img, x, y));
-                let around = (luma(px(img, x - 1, y)) + luma(px(img, x + 1, y)) + luma(px(img, x, y - 1)) + luma(px(img, x, y + 1))) / 4.0;
+                let around = (luma(px(img, x - 1, y))
+                    + luma(px(img, x + 1, y))
+                    + luma(px(img, x, y - 1))
+                    + luma(px(img, x, y + 1)))
+                    / 4.0;
                 if l > around + 40.0 {
                     n += 1;
                 }
@@ -210,8 +232,8 @@ fn water_darkens_with_depth_foams_ripples_and_reflects() {
             ..s.camera
         };
         // A steeper bed: 0.2 m deep at the image's bottom edge, 3.5 m at its top.
-        s.instances[0].transform = Mat4::from_translation(Vec3::new(0.0, -5.55, -22.0))
-            * Mat4::from_rotation_x(-0.206);
+        s.instances[0].transform =
+            Mat4::from_translation(Vec3::new(0.0, -5.55, -22.0)) * Mat4::from_rotation_x(-0.206);
         f(&mut s.water[0]);
         frame(&s)
     };
@@ -219,7 +241,10 @@ fn water_darkens_with_depth_foams_ripples_and_reflects() {
     // Near end (image bottom, under 1 m deep) against the far end (top, over 3 m).
     let shallow = mean(&base, 400, 620, 880, 700);
     let deep = mean(&base, 400, 20, 880, 100);
-    assert!(shallow > deep + 15.0, "shallow {shallow:.1} vs deep {deep:.1}");
+    assert!(
+        shallow > deep + 15.0,
+        "shallow {shallow:.1} vs deep {deep:.1}"
+    );
     let no_foam = above(&|w| w.foam_width = 0.0);
     let changed = (0..720)
         .flat_map(|y| (0..1280).map(move |x| (x, y)))
@@ -238,7 +263,10 @@ fn water_darkens_with_depth_foams_ripples_and_reflects() {
     flat.water[0].heights = None;
     let flat = frame(&flat);
     let moved = diff(&side, &flat, 0, 230, 1280, 720);
-    assert!(moved > 1.0, "the height field moves the surface ({moved:.2})");
+    assert!(
+        moved > 1.0,
+        "the height field moves the surface ({moved:.2})"
+    );
     let mut side_matte = atmo::water_scene();
     side_matte.water[0].reflectivity = 0.0;
     let side_matte = frame(&side_matte);
@@ -283,9 +311,18 @@ fn water_2d_follows_its_surface_in_the_sprite_order() {
     raised[2] = 2.0;
     let raised_img = frame(&body(raised));
     // x = -6 world is pixel 640 - 6 * 60 = 280; 1 unit is 60 pixels.
-    let (a, b) = (lip_row(&flat, 280).unwrap(), lip_row(&raised_img, 280).unwrap());
-    assert!(a - b > 100 && a - b < 140, "the lip rose by 2 units: {a} -> {b}");
-    let (c, d) = (lip_row(&flat, 1000).unwrap(), lip_row(&raised_img, 1000).unwrap());
+    let (a, b) = (
+        lip_row(&flat, 280).unwrap(),
+        lip_row(&raised_img, 280).unwrap(),
+    );
+    assert!(
+        a - b > 100 && a - b < 140,
+        "the lip rose by 2 units: {a} -> {b}"
+    );
+    let (c, d) = (
+        lip_row(&flat, 1000).unwrap(),
+        lip_row(&raised_img, 1000).unwrap(),
+    );
     assert!(c.abs_diff(d) <= 1, "the far end stays: {c} -> {d}");
     // A red sprite below the water's layer is tinted by it; one above is not.
     let mut s = body(vec![0.0; 11]);
@@ -301,8 +338,14 @@ fn water_2d_follows_its_surface_in_the_sprite_order() {
     let img = frame(&s);
     let below = px(&img, 640 - 180, 360 + 180);
     let above = px(&img, 640 + 180, 360 + 180);
-    assert!(above[0] > 250.0 && above[2] < 5.0, "above the water: pure red {above:?}");
-    assert!(below[0] < 200.0 && below[2] > 40.0, "under the water: tinted {below:?}");
+    assert!(
+        above[0] > 250.0 && above[2] < 5.0,
+        "above the water: pure red {above:?}"
+    );
+    assert!(
+        below[0] < 200.0 && below[2] > 40.0,
+        "under the water: tinted {below:?}"
+    );
 }
 
 /// Two particles closer than their kernels' reach merge into one blob
@@ -354,7 +397,10 @@ fn shader_hooks_dissolve_and_sway() {
         assert!(s.set_material_shader(m, Some(shader)));
         assert!(s.set_shader_param(m, "amount", &[amount]));
         assert!(s.set_shader_param(m, "edgeColor", &[0.0, 0.0, 0.0]));
-        assert!(!s.set_shader_param(m, "nothing", &[1.0]), "unknown parameter");
+        assert!(
+            !s.set_shader_param(m, "nothing", &[1.0]),
+            "unknown parameter"
+        );
         s.add_instance(quad, m, Mat4::IDENTITY);
         s.environment.background = og_render::Background::Color(Vec3::ZERO);
         s.camera = Camera {
@@ -382,4 +428,60 @@ fn shader_hooks_dissolve_and_sway() {
     let objects = diff(&early, &late, 250, 200, 1000, 380);
     assert!(grass > 1.0, "the grass moved ({grass:.2})");
     assert!(objects < grass * 0.1, "the rest did not ({objects:.2})");
+}
+
+/// A mesh replaced with RenderScene::set_mesh (cloth) draws its new shape
+/// on the next frame, in place when the sizes match and in new buffers when
+/// they do not; a skinned mesh is refused.
+#[test]
+fn a_replaced_mesh_draws_its_new_shape() {
+    let mut s = RenderScene::new();
+    let quad = |x: f32, w: f32| og_render::MeshData {
+        vertices: [(x - w, -1.0), (x + w, -1.0), (x + w, 1.0), (x - w, 1.0)]
+            .iter()
+            .map(|&(px, py)| og_render::Vertex {
+                position: [px, py, 0.0],
+                normal: [0.0, 0.0, 1.0],
+                ..Default::default()
+            })
+            .collect(),
+        indices: vec![0, 1, 2, 0, 2, 3],
+    };
+    let mesh = s.add_mesh(quad(-2.0, 1.0));
+    let white = s.add_standard_material(og_render::StandardMaterial {
+        unlit: 1,
+        side: 2,
+        ..Default::default()
+    });
+    s.add_instance(mesh, white, Mat4::IDENTITY);
+    s.environment.background = og_render::Background::Color(Vec3::ZERO);
+    s.camera = Camera {
+        position: Vec3::new(0.0, 0.0, 8.0),
+        target: Vec3::ZERO,
+        ..Default::default()
+    };
+    let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let mut draw = |s: &RenderScene| {
+        r.render(s, &RenderTarget::Offscreen).expect("render");
+        r.read_offscreen().expect("capture")
+    };
+    let lit = |img: &RgbaImage, x: u32| luma(px(img, x, 360)) > 100.0;
+    let a = draw(&s);
+    assert!(lit(&a, 420) && !lit(&a, 860), "the quad on the left");
+    assert!(s.set_mesh(mesh, quad(2.0, 1.0)));
+    let b = draw(&s);
+    assert!(!lit(&b, 420) && lit(&b, 860), "moved in place to the right");
+    let mut wide = quad(0.0, 3.0);
+    wide.vertices.push(wide.vertices[0]);
+    assert!(s.set_mesh(mesh, wide));
+    let c = draw(&s);
+    assert!(lit(&c, 420) && lit(&c, 860), "a bigger mesh in new buffers");
+    let skinned = s.add_skinned_mesh(
+        quad(0.0, 1.0),
+        og_render::SkinData {
+            joints: vec![[0; 4]; 4],
+            weights: vec![[1.0, 0.0, 0.0, 0.0]; 4],
+        },
+    );
+    assert!(!s.set_mesh(skinned, quad(0.0, 1.0)), "skinned meshes are refused");
 }

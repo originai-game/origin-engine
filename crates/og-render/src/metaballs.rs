@@ -219,15 +219,10 @@ impl MetaballRenderer {
             let mut channel = [0.0; 4];
             channel[i] = 1.0;
             let radius = f.radius.max(1e-4);
-            blobs.extend(
-                f.particles
-                    .iter()
-                    .filter(|p| p.is_finite())
-                    .map(|p| Blob {
-                        position_radius: [p.x, p.y, f.z, radius],
-                        channel,
-                    }),
-            );
+            blobs.extend(f.particles.iter().filter(|p| p.is_finite()).map(|p| Blob {
+                position_radius: [p.x, p.y, f.z, radius],
+                channel,
+            }));
             let gpu = FluidGpu {
                 color: f.color.to_array(),
                 rim: f.rim.extend(f.rim_width.max(0.0)).to_array(),
@@ -290,7 +285,11 @@ impl MetaballRenderer {
     }
 
     /// The bind group the composite reads the field through.
-    pub(crate) fn group(&self, device: &wgpu::Device, field: &wgpu::TextureView) -> wgpu::BindGroup {
+    pub(crate) fn group(
+        &self,
+        device: &wgpu::Device,
+        field: &wgpu::TextureView,
+    ) -> wgpu::BindGroup {
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("metaballs"),
             layout: &self.layout,
@@ -327,4 +326,3 @@ pub(crate) fn layers(fluids: &[Metaballs]) -> impl Iterator<Item = (usize, i32)>
         .enumerate()
         .map(|(i, f)| (i, f.layer))
 }
-
