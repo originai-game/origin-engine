@@ -283,8 +283,13 @@ pub const CORE_ACTIONS: &[(&str, &str, &str)] = &[
     ),
     (
         "set",
-        "set:<entity>.<component>.<field>=<value>",
-        "Write one field through the schema; vectors as `x,y,z`; range-checked, never clamped.",
+        "set:<entity>.<component>.<field>=<value> | set:<Resource>.<field>=<value>",
+        "Write one field of a component or a resource through the schema; vectors as `x,y,z`; range-checked, never clamped.",
+    ),
+    (
+        "get",
+        "get:<Resource>[.<field>] | get:<entity>[.<component>[.<field>]][:path]",
+        "Read a resource, an entity, a component or one field: logged and written as JSON (`get-<tick>.json`).",
     ),
     ("seed", "seed:<n>", "Reseed the world's Rng resource."),
     ("pause", "pause", "Hold the clock; advance still steps."),

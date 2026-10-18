@@ -766,6 +766,12 @@ export interface GameDesc {
    */
   readonly commands?: Readonly<Record<string, CommandHandler>>;
   /**
+   * Each game action's argument form and one sentence, by its name in commands, for `help`: `{ place: { usage: "<x>:<y>", doc: "Move the hero there." } }`. An action without an entry is listed by name alone.
+   *
+   * @default {}
+   */
+  readonly commandHelp?: Readonly<Record<string, CommandDesc>>;
+  /**
    * The most ticks one frame may run to catch up with the clock; the accumulator drops the rest.
    *
    * @default 4
@@ -13581,7 +13587,8 @@ export interface AlertDesc {
  * - `"dump_world"`: `dump_world[:path]`: tables, systems and their matched counts.
  * - `"dump_entity"`: `dump_entity:<name>[:path]`: one entity's components and transform.
  * - `"dump_ui"`: `dump_ui[:path]`: the UI tree with bounds.
- * - `"set"`: `set:<entity>.<component>.<field>=<value>`: a Tune write through the schema.
+ * - `"set"`: `set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema.
+ * - `"get"`: `get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema, logged and written as JSON.
  * - `"seed"`: `seed:<n>`: reseed the Rng resource.
  * - `"pause"`: `pause`: hold the clock; advance still steps.
  * - `"resume"`: `resume`: release the clock.
@@ -13589,7 +13596,7 @@ export interface AlertDesc {
  * - `"quit"`: `quit`: exit.
  * - `"help"`: `help`: list every action the channel knows, core and registered.
  */
-export type CoreAction = "screenshot" | "listen" | "touch_move_to" | "touch_move" | "touch_start" | "touch_end" | "scroll" | "touch" | "gamepad" | "key_down" | "key_up" | "type" | "move_to_text" | "teleport" | "frame_entity" | "dump_world" | "dump_entity" | "dump_ui" | "set" | "seed" | "pause" | "resume" | "advance" | "quit" | "help";
+export type CoreAction = "screenshot" | "listen" | "touch_move_to" | "touch_move" | "touch_start" | "touch_end" | "scroll" | "touch" | "gamepad" | "key_down" | "key_up" | "type" | "move_to_text" | "teleport" | "frame_entity" | "dump_world" | "dump_entity" | "dump_ui" | "set" | "get" | "seed" | "pause" | "resume" | "advance" | "quit" | "help";
 
 /**
  * A registered action. It runs at the start of the tick it was scheduled for.

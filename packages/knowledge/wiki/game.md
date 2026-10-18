@@ -55,7 +55,7 @@ fn game {
 }
 ```
 
-<sub>`api.ogt` line 474</sub>
+<sub>`api.ogt` line 475</sub>
 
 ## Interfaces
 
@@ -71,7 +71,7 @@ interface Game {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 468</sub>
+<sub>`api.ogt` line 469</sub>
 
 <a id="member-Game-tick"></a>
 
@@ -89,7 +89,7 @@ Binding symbol `og_game_get_tick` · publish builds: kept
 prop tick u32 "The fixed tick rate in hertz."
 ```
 
-<sub>`api.ogt` line 470</sub>
+<sub>`api.ogt` line 471</sub>
 
 <a id="member-Game-systems"></a>
 
@@ -107,7 +107,7 @@ Binding symbol `og_game_get_systems` · publish builds: kept
 prop systems List.System "The systems in declaration order."
 ```
 
-<sub>`api.ogt` line 471</sub>
+<sub>`api.ogt` line 472</sub>
 
 ## Types
 
@@ -179,6 +179,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `systems` | `readonly System[]` | `[]` | — | — | — | The systems, in declaration order before `after`/`before` constraints apply. |
 | `resources` | `readonly AnyResource[]` | `[]` | — | — | — | The game's own resources, created at their defaults. |
 | `commands` | `Readonly<Record<string, CommandHandler>>` | `{}` | — | — | — | Game actions registered into the command channel, by action name. |
+| `commandHelp` | `Readonly<Record<string, CommandDesc>>` | `{}` | — | — | — | Each game action's argument form and one sentence, by its name in commands, for `help`: `{ place: { usage: "<x>:<y>", doc: "Move the hero there." } }`. An action without an entry is listed by name alone. |
 | `maxCatchUp` | `number` | `4` | 1 … 60 | `ticks` | — | The most ticks one frame may run to catch up with the clock; the accumulator drops the rest. |
 | `facts` | `FactsFn \| null` | `null` | — | — | — | The game's own facts for the probe's state(). |
 | `start` | `StartFn \| null` | `null` | — | — | — | Called once before the first tick, after the first scene spawned. |
@@ -202,6 +203,7 @@ struct GameDesc {
   field systems List.System "The systems, in declaration order before `after`/`before` constraints apply."
   field resources List.AnyResource "The game's own resources, created at their defaults."
   field commands Map.CommandHandler "Game actions registered into the command channel, by action name."
+  field commandHelp Map.CommandDesc "Each game action's argument form and one sentence, by its name in commands, for `help`: `{ place: { usage: \"<x>:<y>\", doc: \"Move the hero there.\" } }`. An action without an entry is listed by name alone."
   field maxCatchUp u32 "The most ticks one frame may run to catch up with the clock; the accumulator drops the rest." {
     default 4
     min 1

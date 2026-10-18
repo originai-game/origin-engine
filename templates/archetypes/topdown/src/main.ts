@@ -233,6 +233,13 @@ export default og.game({
   render: { antialias: "off" },
   start,
   commands: { place, slime, give, face, bite: biteHero },
+  commandHelp: {
+    place: { usage: "<x>:<y>", doc: "Put the hero's feet at a world point, standing still." },
+    slime: { usage: "<x>:<y>", doc: "Move the slime there." },
+    give: { usage: "<key|coin|door>", doc: "Give the key or a coin, or open the doorway." },
+    face: { usage: "<down|up|left|right>", doc: "Turn the hero." },
+    bite: { usage: "<slime>", doc: "The slime's attack (og.ai queues it with the slime's handle): hurts a hero within 0.85 m." },
+  },
   facts: (world) => {
     const g = world.resource(Game);
     const hero = world.find("hero");

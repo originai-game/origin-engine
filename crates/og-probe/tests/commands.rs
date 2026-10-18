@@ -10,7 +10,7 @@ use og_core::glam::Vec3;
 use og_probe::command::{CORE_ACTIONS, parse};
 use og_probe::{CommandDesc, Input, Payload};
 use serde_json::{Value, json};
-use support::{Camera, Harness, Health, Transform, build};
+use support::{Camera, Harness, Health, Stats, Transform, build};
 
 /// Run the host loop: one tick per frame until `quit` (or a bound).
 fn run(h: &mut Harness, max_ticks: u64) {
@@ -465,4 +465,58 @@ fn teleport_set_frame_and_dump_entity_write_through_the_schema() {
     bare.probe.schedule(&bare.world, "0:screenshot").unwrap();
     bare.probe.pump(&mut bare.world);
     assert!(bare.probe.take_log()[0].text.contains("no renderer"));
+}
+
+#[test]
+fn set_and_get_reach_resources_entities_components_and_fields() {
+    let mut h = build(1, false);
+    h.probe
+        .schedule(
+            &h.world,
+            "0:set:Stats.draws=7;0:set:og.Camera.position=1,2,3;0:set:player.Health.hp=40;\
+             0:get:Stats.draws;0:get:og.Camera:camera.json;0:get:player.Health.hp;0:get:player.Health;0:get:player",
+        )
+        .unwrap();
+    h.probe.pump(&mut h.world);
+    let log = h.probe.take_log();
+    assert!(log.iter().all(|l| !l.warning), "{log:?}");
+    assert_eq!(h.world.resource::<Stats>().unwrap().draws, 7);
+    assert_eq!(
+        h.world.resource::<Camera>().unwrap().position,
+        Vec3::new(1.0, 2.0, 3.0),
+        "a resource name with a dot"
+    );
+    let notes: Vec<&str> = log.iter().map(|l| l.text.as_str()).collect();
+    assert!(notes.contains(&"get Stats.draws = 7"), "{notes:?}");
+    assert!(notes.contains(&"get player.Health.hp = 40.0"), "{notes:?}");
+    let outputs: Vec<(String, Value)> = h
+        .probe
+        .take_outputs()
+        .into_iter()
+        .filter_map(|o| match &o.payload {
+            Payload::Json(v) => Some((o.file_name(), v["value"].clone())),
+            _ => None,
+        })
+        .collect();
+    let values: Vec<(&str, &Value)> = outputs.iter().map(|(n, v)| (n.as_str(), v)).collect();
+    assert_eq!(values[0], ("get-000000.json", &json!(7)));
+    assert_eq!(values[1].0, "camera.json");
+    assert_eq!(values[1].1["position"], json!([1.0, 2.0, 3.0]));
+    assert_eq!(values[2].1, &json!(40.0));
+    assert_eq!(values[3].1, &json!({"hp": 40.0, "max": 100.0}));
+    assert_eq!(values[4].1["components"]["Health"]["hp"], json!(40.0));
+
+    // Refusals name the fix and change nothing.
+    h.probe
+        .schedule(
+            &h.world,
+            "0:set:Stats.nope=1;0:get:Stats.nope;0:get:ghost;0:get:player.Nope;0:set:Stats.draws=x",
+        )
+        .unwrap();
+    h.probe.pump(&mut h.world);
+    let log = h.probe.take_log();
+    assert_eq!(log.iter().filter(|l| l.warning).count(), 5, "{log:?}");
+    assert!(log[0].text.contains("'Stats' has no field 'nope'"), "{log:?}");
+    assert!(log[2].text.contains("no resource or live entity 'ghost'"), "{log:?}");
+    assert_eq!(h.world.resource::<Stats>().unwrap().draws, 7);
 }

@@ -172,6 +172,10 @@ export default og.game({
   render: { antialias: "msaa4" },
   start,
   commands: { deal: dealCommand, swap: swapCommand },
+  commandHelp: {
+    deal: { usage: "<rows>", doc: "Lay out the board: 7 lines of 7 colour digits joined by /, the top row first; needs an idle board." },
+    swap: { usage: "<col>,<row>:<col>,<row>", doc: "Swap two neighbouring cells on the next tick, as two taps would." },
+  },
   facts: (world) => {
     const { match: m } = matchOf(world);
     return {

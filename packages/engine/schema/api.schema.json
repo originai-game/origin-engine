@@ -7092,6 +7092,14 @@
           "description": "Game actions registered into the command channel, by action name.",
           "default": {}
         },
+        "commandHelp": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/CommandDesc"
+          },
+          "description": "Each game action's argument form and one sentence, by its name in commands, for `help`: `{ place: { usage: \"<x>:<y>\", doc: \"Move the hero there.\" } }`. An action without an entry is listed by name alone.",
+          "default": {}
+        },
         "maxCatchUp": {
           "type": "integer",
           "minimum": 0,
@@ -22986,6 +22994,7 @@
         "dump_entity",
         "dump_ui",
         "set",
+        "get",
         "seed",
         "pause",
         "resume",
@@ -23012,7 +23021,8 @@
         "dump_world": "`dump_world[:path]`: tables, systems and their matched counts.",
         "dump_entity": "`dump_entity:<name>[:path]`: one entity's components and transform.",
         "dump_ui": "`dump_ui[:path]`: the UI tree with bounds.",
-        "set": "`set:<entity>.<component>.<field>=<value>`: a Tune write through the schema.",
+        "set": "`set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema.",
+        "get": "`get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema, logged and written as JSON.",
         "seed": "`seed:<n>`: reseed the Rng resource.",
         "pause": "`pause`: hold the clock; advance still steps.",
         "resume": "`resume`: release the clock.",

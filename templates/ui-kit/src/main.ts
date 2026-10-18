@@ -763,6 +763,17 @@ export default og.game({
       if (d) update(world, { hp: Math.min(100, d.hp + Number(args[0] ?? 10)) });
     },
   },
+  commandHelp: {
+    show: { usage: "<screen>", doc: "Open a screen of the kit (gallery, widgets, mainMenu, pause, settings, ...)." },
+    viewport: { usage: "<desktop|tablet|phone|landscape>", doc: "Lay the UI out for that surface (og.ui.previewViewport)." },
+    pad: { usage: "<up|down|left|right|next|prev|activate|back>", doc: "A gamepad intent through og.ui.navigate." },
+    toast: { usage: "<text>", doc: "Queue a toast." },
+    damage: { usage: "<hp>", doc: "Take hit points off the HUDs' health." },
+    heal: { usage: "<hp>", doc: "Give hit points back." },
+    skin: { usage: "<tokens|pixel|cartoon|fantasy|scifi|paper|neon>", doc: "Dress every screen in a style pack." },
+    transition: { usage: "<none|fade|wipe|iris|dissolve|slide>", doc: "Send screen changes through og.ui.screenTransition." },
+    sounds: { usage: "<on|off>", doc: "Hand the UI's event sounds their blips (on by default)." },
+  },
   facts: (world) => {
     const d = current(world);
     return d ? { screen: SCREENS[d.screen] ?? "gallery", skin: SKINS[d.skin] ?? "tokens", hp: d.hp, balance: d.balance, saves: d.saves } : {};

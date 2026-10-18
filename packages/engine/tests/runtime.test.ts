@@ -129,3 +129,24 @@ test("refusals are Results that name the reason", () => {
   const rng = engine.world.resource(og.Rng);
   expect(rng.ok).toBeTrue();
 });
+
+test("GameDesc.commandHelp gives a game's actions their usage in help, and get reads a resource", () => {
+  const engine = start(
+    og.game({
+      commands: { spawn: spawnMovers, other: () => {} },
+      commandHelp: { spawn: { usage: "<count>", doc: "Spawn that many movers." }, ghost: { usage: "x" } },
+    }) as unknown as GameToken,
+  );
+  const help = og.commands.help(engine.world as never) as Array<{ name: string; usage: string; doc: string; core: boolean }>;
+  const spawn = help.find((c) => c.name === "spawn");
+  expect(spawn).toEqual({ name: "spawn", usage: "spawn:<count>", doc: "Spawn that many movers.", core: false });
+  expect(help.find((c) => c.name === "other")?.usage).toBe("other");
+  expect(help.find((c) => c.name === "get")?.core).toBeTrue();
+  const log = engine.takeLog().map((l) => l.text);
+  expect(log.some((t) => t.includes("GameDesc.commandHelp names 'ghost', which GameDesc.commands does not declare"))).toBeTrue();
+  expect(og.commands.schedule(engine.world as never, "0:set:og.Camera.fov=70;0:get:og.Camera.fov").ok).toBeTrue();
+  engine.advance(1);
+  expect(engine.takeLog().map((l) => l.text)).toContain("get og.Camera.fov = 70.0");
+  const out = engine.takeOutputs().find((o) => o.action === "get") as { payload?: unknown } | undefined;
+  expect(out).toBeDefined();
+});

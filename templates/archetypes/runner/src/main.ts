@@ -210,6 +210,9 @@ export default og.game({
   commands: {
     place: placeCommand,
   },
+  commandHelp: {
+    place: { usage: "<crate|fence|coin>:<x>[:<y>]", doc: "Put a pooled obstacle or coin in play at x (y defaults to its resting height)." },
+  },
   facts: (world) => {
     const r = runOf(world);
     if (r === null) return null;

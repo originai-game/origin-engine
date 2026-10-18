@@ -18,7 +18,7 @@ module commands {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 8731</sub>
+<sub>`api.ogt` line 8732</sub>
 
 ## Contents
 
@@ -67,7 +67,7 @@ fn register {
 }
 ```
 
-<sub>`api.ogt` line 8802</sub>
+<sub>`api.ogt` line 8804</sub>
 
 <a id="fn-parse"></a>
 
@@ -95,7 +95,7 @@ fn parse {
 }
 ```
 
-<sub>`api.ogt` line 8810</sub>
+<sub>`api.ogt` line 8812</sub>
 
 <a id="fn-help"></a>
 
@@ -123,7 +123,7 @@ fn help {
 }
 ```
 
-<sub>`api.ogt` line 8816</sub>
+<sub>`api.ogt` line 8818</sub>
 
 <a id="fn-schedule"></a>
 
@@ -153,7 +153,7 @@ fn schedule {
 }
 ```
 
-<sub>`api.ogt` line 8822</sub>
+<sub>`api.ogt` line 8824</sub>
 
 ## Types
 
@@ -185,7 +185,8 @@ A string: one of the variants below. The zero value is `"screenshot"`.
 | `"dump_world"` | `dump_world[:path]`: tables, systems and their matched counts. |
 | `"dump_entity"` | `dump_entity:<name>[:path]`: one entity's components and transform. |
 | `"dump_ui"` | `dump_ui[:path]`: the UI tree with bounds. |
-| `"set"` | `set:<entity>.<component>.<field>=<value>`: a Tune write through the schema. |
+| `"set"` | `set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema. |
+| `"get"` | `get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema, logged and written as JSON. |
 | `"seed"` | `seed:<n>`: reseed the Rng resource. |
 | `"pause"` | `pause`: hold the clock; advance still steps. |
 | `"resume"` | `resume`: release the clock. |
@@ -214,7 +215,8 @@ enum CoreAction {
   variant dump_world "`dump_world[:path]`: tables, systems and their matched counts."
   variant dump_entity "`dump_entity:<name>[:path]`: one entity's components and transform."
   variant dump_ui "`dump_ui[:path]`: the UI tree with bounds."
-  variant set "`set:<entity>.<component>.<field>=<value>`: a Tune write through the schema."
+  variant set "`set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema."
+  variant get "`get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema, logged and written as JSON."
   variant seed "`seed:<n>`: reseed the Rng resource."
   variant pause "`pause`: hold the clock; advance still steps."
   variant resume "`resume`: release the clock."
@@ -224,7 +226,7 @@ enum CoreAction {
 }
 ```
 
-<sub>`api.ogt` line 8736</sub>
+<sub>`api.ogt` line 8737</sub>
 
 <a id="type-CommandHandler"></a>
 
@@ -251,7 +253,7 @@ callback CommandHandler {
 }
 ```
 
-<sub>`api.ogt` line 8765</sub>
+<sub>`api.ogt` line 8767</sub>
 
 <a id="type-CommandDesc"></a>
 
@@ -275,7 +277,7 @@ struct CommandDesc {
 }
 ```
 
-<sub>`api.ogt` line 8771</sub>
+<sub>`api.ogt` line 8773</sub>
 
 <a id="type-CommandStep"></a>
 
@@ -300,7 +302,7 @@ struct CommandStep {
 }
 ```
 
-<sub>`api.ogt` line 8778</sub>
+<sub>`api.ogt` line 8780</sub>
 
 <a id="type-CommandInfo"></a>
 
@@ -325,7 +327,7 @@ struct CommandInfo {
 }
 ```
 
-<sub>`api.ogt` line 8787</sub>
+<sub>`api.ogt` line 8789</sub>
 
 <a id="type-CommandsReport"></a>
 
@@ -348,4 +350,4 @@ struct CommandsReport {
 }
 ```
 
-<sub>`api.ogt` line 8795</sub>
+<sub>`api.ogt` line 8797</sub>

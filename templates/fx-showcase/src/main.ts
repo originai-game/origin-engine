@@ -429,6 +429,7 @@ export default og.game({
       show(world, STATIONS.includes(name) ? name : STATIONS[Number(name) - 1] ?? "post");
     },
   },
+  commandHelp: { station: { usage: "<name|1-13>", doc: "Show a station: post, lens, fx, 2d, stylised, then the E5 round's eight." } },
   facts: (world) => {
     const e = world.find("stage");
     const s = e === null ? null : world.get(e, Stage);

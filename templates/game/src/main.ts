@@ -214,6 +214,11 @@ export default og.game({
       must(world.set(t, og.Transform, { position: { x: Number(args[0]), y: 0, z: Number(args[1]) } }) as never);
     },
   },
+  commandHelp: {
+    spawn_wave: { usage: "[count]", doc: "Drop that many dropships (3 by default)." },
+    alarm: { usage: "<guard>", doc: "The guard's state machine raises it on entering alert; og.ai passes the guard's handle." },
+    lure: { usage: "<x>:<z>", doc: "Move the trickster on the ground." },
+  },
   facts: (world) => {
     const run = world.resource(Run);
     const trickster = world.find("trickster");

@@ -135,6 +135,8 @@ pub(crate) struct GameDecl {
     pub systems: Vec<u32>,
     pub resources: Vec<String>,
     pub commands: Vec<(String, u32)>,
+    /// GameDesc.commandHelp: each action's usage and doc.
+    pub command_help: BTreeMap<String, (String, String)>,
     pub max_catch_up: u32,
     pub facts: Option<u32>,
     pub scene: String,
@@ -463,6 +465,17 @@ pub(crate) fn declare_game(desc: &Value) -> u32 {
                     .collect()
             })
             .unwrap_or_default(),
+        command_help: desc["commandHelp"]
+            .as_object()
+            .map(|o| {
+                o.iter()
+                    .map(|(k, v)| {
+                        let text = |f: &str| v[f].as_str().unwrap_or_default().to_string();
+                        (k.clone(), (text("usage"), text("doc")))
+                    })
+                    .collect()
+            })
+            .unwrap_or_default(),
         max_catch_up: num("maxCatchUp", 4),
         facts: desc["facts"].as_u64().map(|n| n as u32),
         scene: desc["scene"].as_str().unwrap_or("main").to_string(),
@@ -769,14 +782,22 @@ pub(crate) fn assemble(
     }
     let mut all_commands = commands;
     for (name, handler) in &game.commands {
+        let (usage, doc) = game.command_help.get(name).cloned().unwrap_or_default();
         all_commands.insert(
             name.clone(),
             CommandDecl {
                 handler: *handler,
-                usage: String::new(),
-                doc: String::new(),
+                usage,
+                doc,
             },
         );
+    }
+    for name in game.command_help.keys() {
+        if !game.commands.iter().any(|(n, _)| n == name) {
+            warnings.push(format!(
+                "GameDesc.commandHelp names '{name}', which GameDesc.commands does not declare"
+            ));
+        }
     }
     // og-anim after the game's systems (they set players, parameters and IK
     // targets), before the UI's end and physics (root motion moves Transforms).
@@ -864,8 +885,14 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         start: a.game.start,
         step_ms: 0.0,
         render_ms: 0.0,
+        // A GameDesc mistake is logged at once (the others answer the call that meets them).
+        log: a
+            .warnings
+            .iter()
+            .filter(|w| w.starts_with("GameDesc."))
+            .map(|w| json!({ "tick": 0, "warning": true, "text": w }))
+            .collect(),
         warnings: a.warnings,
-        log: Vec::new(),
         outputs: Vec::new(),
         reloaded: None,
         profile,

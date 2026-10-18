@@ -950,10 +950,14 @@ impl Probe {
                 Ok(())
             }
             "set" => {
-                let usage = "set:<entity>.<component>.<field>=<value>";
+                let usage = "set:<entity>.<component>.<field>=<value> or set:<Resource>.<field>=<value>";
                 let (target, text) = joined
                     .split_once('=')
                     .ok_or_else(|| format!("write `{usage}`"))?;
+                let value = value::text_json(text)?;
+                if let Some((resource, field)) = Self::resource_target(world, target) {
+                    return Self::write_resource_field(world, resource, &field, &value);
+                }
                 let (entity, parameter) = match target.strip_prefix('#') {
                     Some(rest) => {
                         let mut parts = rest.splitn(3, '.');
@@ -970,8 +974,34 @@ impl Probe {
                     }
                 };
                 let e = self.entity_of(world, &entity)?;
-                let value = value::text_json(text)?;
                 self.write_field(world, e, &parameter, &value, false)
+            }
+            "get" => {
+                let usage = "get:<Resource>[.<field>] or get:<entity>[.<component>[.<field>]]";
+                let target = arg(0, usage)?.trim();
+                let value = self.read_target(world, target)?;
+                let mut shown = value.to_string();
+                if shown.len() > 160 {
+                    let mut end = 157;
+                    while !shown.is_char_boundary(end) {
+                        end -= 1;
+                    }
+                    shown.truncate(end);
+                    shown.push_str("...");
+                }
+                self.note(tick, false, format!("get {target} = {shown}"));
+                self.outputs.push(Output {
+                    tick,
+                    action: "get".into(),
+                    path: args.get(1).filter(|p| !p.is_empty()).cloned(),
+                    payload: Payload::Json(json!({
+                        "kind": "get",
+                        "target": target,
+                        "tick": tick,
+                        "value": value,
+                    })),
+                });
+                Ok(())
             }
             "seed" => {
                 let seed: u32 = arg(0, "seed:<n>")?
@@ -1110,6 +1140,103 @@ impl Probe {
         world
             .insert_bytes(e, id, &bytes)
             .map_err(|e| e.reason().to_owned())
+    }
+
+    /// `Resource.field` when the part before the last dot names a resource
+    /// the world holds (resource names may themselves hold dots: `og.Camera`).
+    fn resource_target(world: &World, target: &str) -> Option<(SchemaId, String)> {
+        let (name, field) = target.rsplit_once('.')?;
+        let id = world.id_by_name(name).ok()?;
+        world
+            .has_resource_id(id)
+            .then(|| (id, field.to_owned()))
+    }
+
+    /// Write one field of a resource through its schema.
+    fn write_resource_field(
+        world: &mut World,
+        id: SchemaId,
+        field: &str,
+        value: &Value,
+    ) -> Result<(), String> {
+        let schema = world.schema(id).map_err(|e| e.reason().to_owned())?.clone();
+        let index = schema
+            .field_index(field)
+            .ok_or_else(|| format!("'{}' has no field '{field}'", schema.name))?;
+        let mut bytes = world
+            .resource_bytes(id)
+            .map_err(|e| e.reason().to_owned())?;
+        let packed = value::json_field(&schema.fields[index], value)
+            .map_err(|r| format!("{}.{field}: {r}", schema.name))?;
+        bytes[Layout::of(&schema).range(index)].copy_from_slice(&packed);
+        world
+            .insert_resource_bytes(id, &bytes)
+            .map_err(|e| e.reason().to_owned())
+    }
+
+    /// What `get` reads: a resource or one of its fields, an entity (its
+    /// dump), one of its components or one field.
+    fn read_target(&self, world: &World, target: &str) -> Result<Value, String> {
+        let resource = |name: &str| {
+            world
+                .id_by_name(name)
+                .ok()
+                .filter(|&id| world.has_resource_id(id))
+        };
+        if let Some(id) = resource(target) {
+            let schema = world.schema(id).map_err(|e| e.reason().to_owned())?;
+            let bytes = world
+                .resource_bytes(id)
+                .map_err(|e| e.reason().to_owned())?;
+            return Ok(Value::Object(value::component_json(schema, &bytes)));
+        }
+        if let Some((id, field)) = Self::resource_target(world, target) {
+            let schema = world.schema(id).map_err(|e| e.reason().to_owned())?;
+            let bytes = world
+                .resource_bytes(id)
+                .map_err(|e| e.reason().to_owned())?;
+            return value::component_json(schema, &bytes)
+                .remove(&field)
+                .ok_or_else(|| format!("'{}' has no field '{field}'", schema.name));
+        }
+        // An entity: `#i.g` or a name, then `.Component[.field]`, where a
+        // component's name may hold dots (`og.Transform`).
+        let (entity, rest) = match target.strip_prefix('#') {
+            Some(r) => {
+                let mut parts = r.splitn(3, '.');
+                match (parts.next(), parts.next(), parts.next()) {
+                    (Some(i), Some(g), rest) => (format!("#{i}.{g}"), rest.unwrap_or("")),
+                    _ => return Err(format!("no resource or live entity '{target}'")),
+                }
+            }
+            None => match target.split_once('.') {
+                Some((e, rest)) => (e.to_owned(), rest),
+                None => (target.to_owned(), ""),
+            },
+        };
+        let e = self.names.resolve(world, &entity).ok_or_else(|| {
+            format!("no resource or live entity '{entity}' (a resource name, an entity name, or #<index>.<generation>)")
+        })?;
+        if rest.is_empty() {
+            return Ok(self.dump_entity(world, e));
+        }
+        let read = |name: &str| -> Option<Map<String, Value>> {
+            let id = world.id_by_name(name).ok()?;
+            let schema = world.schema(id).ok()?;
+            let bytes = world.get_bytes(e, id).ok()?;
+            Some(value::component_json(schema, &bytes))
+        };
+        if let Some(fields) = read(rest) {
+            return Ok(Value::Object(fields));
+        }
+        let (component, field) = rest
+            .rsplit_once('.')
+            .ok_or_else(|| format!("'{entity}' has no component '{rest}'"))?;
+        let mut fields =
+            read(component).ok_or_else(|| format!("'{entity}' has no component '{component}'"))?;
+        fields
+            .remove(field)
+            .ok_or_else(|| format!("'{component}' has no field '{field}'"))
     }
 
     /// Each component of an entity with its schema and packed value.

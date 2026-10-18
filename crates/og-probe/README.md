@@ -79,7 +79,8 @@ and when it runs still unknown, warns and the script continues. `type` and
 | `teleport:<entity>:x,y[,z]` | write `og.Transform.position` (two numbers keep z) | — |
 | `frame_entity:<entity>` | turn `og.Camera.quaternion` so its -Z looks at the entity | warns without `og.Camera` |
 | `dump_world[:path]` / `dump_entity:<entity>[:path]` / `dump_ui[:path]` | JSON outputs, as `dump` returns them | `dump_ui` is empty |
-| `set:<entity>.<component>.<field>=<value>` | write any field through the schema (`1.5`, `1,2,3`); range-checked, never clamped | — |
+| `set:<entity>.<component>.<field>=<value>`, `set:<Resource>.<field>=<value>` | write any field of a component or a resource through the schema (a resource name may hold dots: `og.Camera.trauma`) (`1.5`, `1,2,3`); range-checked, never clamped | — |
+| `get:<Resource>[.<field>]`, `get:<entity>[.<component>[.<field>]][:path]` | read through the schema: a log line `get <target> = <value>` and a JSON output | `get-<tick>.json` |
 | `seed:<n>` / `pause` / `resume` / `advance:<ticks>` / `quit` | reseed the world's `Rng`, hold and release the clock, take ≤ 3600 ticks now, end the run | — |
 | `listen[:path][:seconds]` | a `Wav` output: the last seconds (default 1, at most 2) of what the mixer rendered | warns without a listen hook |
 | `help` | a `Text` output listing every action, core and registered | — |

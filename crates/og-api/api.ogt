@@ -454,6 +454,7 @@ module game {
     field systems List.System "The systems, in declaration order before `after`/`before` constraints apply."
     field resources List.AnyResource "The game's own resources, created at their defaults."
     field commands Map.CommandHandler "Game actions registered into the command channel, by action name."
+    field commandHelp Map.CommandDesc "Each game action's argument form and one sentence, by its name in commands, for `help`: `{ place: { usage: \"<x>:<y>\", doc: \"Move the hero there.\" } }`. An action without an entry is listed by name alone."
     field maxCatchUp u32 "The most ticks one frame may run to catch up with the clock; the accumulator drops the rest." {
       default 4
       min 1
@@ -8753,7 +8754,8 @@ module commands {
     variant dump_world "`dump_world[:path]`: tables, systems and their matched counts."
     variant dump_entity "`dump_entity:<name>[:path]`: one entity's components and transform."
     variant dump_ui "`dump_ui[:path]`: the UI tree with bounds."
-    variant set "`set:<entity>.<component>.<field>=<value>`: a Tune write through the schema."
+    variant set "`set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema."
+    variant get "`get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema, logged and written as JSON."
     variant seed "`seed:<n>`: reseed the Rng resource."
     variant pause "`pause`: hold the clock; advance still steps."
     variant resume "`resume`: release the clock."
