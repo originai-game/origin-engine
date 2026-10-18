@@ -17,7 +17,7 @@ export interface PlatformCall {
 /** An answer, as og_platform_answer takes it. */
 export type PlatformAnswer =
   | { readonly ok: true; readonly data: unknown }
-  | { readonly ok: false; readonly error: { readonly code: string; readonly message: string; readonly retryable: boolean } };
+  | { readonly ok: false; readonly error: { readonly code: string; readonly message: string; readonly retryable: boolean; readonly revision?: number } };
 
 /** What answers an engine's platform calls. */
 export interface PlatformHost {
@@ -69,6 +69,9 @@ export const fail = (code: string, message: string): PlatformAnswer => ({
 
 const okData = (data: unknown): PlatformAnswer => ({ ok: true, data });
 
+/** A refused conditional write: `conflict`, with the revision the key is at now. */
+export const conflict = (message: string, revision: number): PlatformAnswer => ({ ok: false, error: { code: "conflict", message, retryable: false, revision } });
+
 /** Ranked entries of a board, best first. */
 export function ranked(order: "asc" | "desc", entries: ReadonlyArray<{ name: string; score: number }>, me: string) {
   const sorted = [...entries].sort((a, b) => (order === "asc" ? a.score - b.score : b.score - a.score) || (a.name < b.name ? -1 : 1));
@@ -89,7 +92,8 @@ export function answerLocally(doc: LocalDocument, call: PlatformCall): PlatformA
       const want = Number(a["revision"] ?? 0);
       const slot = doc.store[key];
       const have = slot?.revision ?? 0;
-      if (want > 0 && want !== have) return fail("conflict", `'${key}' is at revision ${have}, not ${want}: read it again and merge`);
+      // `create`: only a key never written (the Player's revision 0).
+      if (a["create"] === true ? have !== 0 : want > 0 && want !== have) return conflict(`'${key}' is at revision ${have}${a["create"] === true ? ", not new" : `, not ${want}`}: read it again and merge`, have);
       doc.store[key] = { value: a["value"] ?? null, revision: have + 1 };
       return okData({ key, revision: have + 1 });
     }

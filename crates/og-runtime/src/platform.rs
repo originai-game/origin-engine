@@ -156,10 +156,11 @@ pub fn og_platform_store_set(world: u32, desc: Option<String>) -> String {
         ));
     }
     let revision = d["revision"].as_u64().unwrap_or(0);
+    let create = d["create"].as_bool().unwrap_or(false);
     request(
         world,
         "store.set",
-        json!({ "key": key, "value": value, "revision": revision }),
+        json!({ "key": key, "value": value, "revision": revision, "create": create }),
     )
 }
 
@@ -250,6 +251,21 @@ pub fn og_platform_telemetry(world: u32, name: String, attrs: Option<String>) ->
     if o.len() > 16 || o.values().any(|v| v.is_array() || v.is_object()) {
         return refuse("attrs holds at most 16 strings, numbers, booleans or null");
     }
+    let key_ok = |k: &str| {
+        let mut b = k.bytes();
+        b.next().is_some_and(|c| c.is_ascii_lowercase())
+            && b.all(|c| c.is_ascii_alphanumeric() || c == b'_')
+    };
+    if let Some(k) = o.keys().find(|k| !key_ok(k)) {
+        return refuse(format!(
+            "attribute '{k}' is not a name: a lowercase letter, then letters, digits and '_'"
+        ));
+    }
+    if o.values()
+        .any(|v| v.as_str().is_some_and(|t| t.chars().count() > 512))
+    {
+        return refuse("an attribute's string is at most 512 characters");
+    }
     match call(
         world,
         "telemetry",
@@ -264,8 +280,10 @@ pub fn og_platform_telemetry(world: u32, name: String, attrs: Option<String>) ->
 pub fn og_platform_point(world: u32, desc: Option<String>) -> String {
     let d = parse(desc.as_deref()).unwrap_or(json!({}));
     let reason = d["reason"].as_str().unwrap_or("").trim().to_string();
-    if reason.is_empty() || reason.len() > 64 {
-        return refuse("reason names what the player did, 1 to 64 characters");
+    if reason.is_empty() || !valid_key(&reason) {
+        return refuse(format!(
+            "'{reason}' is not a reason: 1 to 64 of letters, digits, '.', '_' and '-', as `level.completed`"
+        ));
     }
     let amount = d["amount"].as_u64().unwrap_or(1).clamp(1, 1000);
     request(
@@ -279,11 +297,21 @@ pub fn og_platform_ai_mark(world: u32, desc: Option<String>) -> String {
     let d = parse(desc.as_deref()).unwrap_or(json!({}));
     let kind = d["kind"].as_str().unwrap_or("").trim().to_string();
     let label = d["label"].as_str().unwrap_or("").trim().to_string();
-    if kind.is_empty() || label.is_empty() || label.chars().count() > 120 {
-        return refuse("an AI mark needs a kind and a label of 1 to 120 characters");
+    let kind_ok = kind.len() <= 32
+        && kind.bytes().next().is_some_and(|c| c.is_ascii_lowercase())
+        && kind
+            .bytes()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || matches!(c, b'_' | b'-'));
+    if !kind_ok || label.is_empty() || label.chars().count() > 120 {
+        return refuse(
+            "an AI mark needs a kind (1 to 32 of a-z, 0-9, '_' and '-', a letter first: `text`, `image`) and a label of 1 to 120 characters",
+        );
     }
     let mut args = json!({ "kind": kind, "label": label });
     if let Some(m) = d["model"].as_str().filter(|m| !m.is_empty()) {
+        if m.chars().count() > 80 {
+            return refuse("an AI mark's model is at most 80 characters");
+        }
         args["model"] = json!(m);
     }
     request(world, "ai.mark", args)
@@ -304,6 +332,7 @@ fn result_of(id: u32, r: &Record) -> Option<Value> {
             "code": code,
             "message": e["message"].as_str().unwrap_or(""),
             "retryable": e["retryable"].as_bool().unwrap_or(RETRYABLE.contains(&code)),
+            "revision": e["revision"].as_u64().unwrap_or(0),
         });
     }
     Some(v)

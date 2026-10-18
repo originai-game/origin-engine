@@ -80,7 +80,7 @@ fn storeGet {
 }
 ```
 
-<sub>`api.ogt` line 6393</sub>
+<sub>`api.ogt` line 6395</sub>
 
 <a id="fn-storeSet"></a>
 
@@ -110,7 +110,7 @@ fn storeSet {
 }
 ```
 
-<sub>`api.ogt` line 6400</sub>
+<sub>`api.ogt` line 6402</sub>
 
 <a id="fn-storeList"></a>
 
@@ -138,7 +138,7 @@ fn storeList {
 }
 ```
 
-<sub>`api.ogt` line 6407</sub>
+<sub>`api.ogt` line 6409</sub>
 
 <a id="fn-leaderboardSubmit"></a>
 
@@ -168,7 +168,7 @@ fn leaderboardSubmit {
 }
 ```
 
-<sub>`api.ogt` line 6413</sub>
+<sub>`api.ogt` line 6415</sub>
 
 <a id="fn-leaderboardTop"></a>
 
@@ -198,7 +198,7 @@ fn leaderboardTop {
 }
 ```
 
-<sub>`api.ogt` line 6420</sub>
+<sub>`api.ogt` line 6422</sub>
 
 <a id="fn-leaderboardAround"></a>
 
@@ -228,7 +228,7 @@ fn leaderboardAround {
 }
 ```
 
-<sub>`api.ogt` line 6427</sub>
+<sub>`api.ogt` line 6429</sub>
 
 <a id="fn-telemetry"></a>
 
@@ -244,7 +244,7 @@ og.platform.telemetry(world: World, name: string, attrs?: unknown): Result<void>
 |---|---|---|---|
 | `world` | `World` | no | The world. |
 | `name` | `string` | no | The event: `level.started`, `level.completed`, `boss.defeated` (letters, digits, `.`, `_`; the Player files it as `game.custom.<name>`). |
-| `attrs` | `unknown` | yes | Its attributes: an object of strings, numbers, booleans or null, at most 16. |
+| `attrs` | `unknown` | yes | Its attributes: an object of at most 16 strings (up to 512 characters), numbers, booleans or null, keys a lowercase letter then letters, digits and `_`. |
 
 **Returns** `Result<void>`: Refused for a malformed name or attributes. Fire and forget: nothing answers.
 
@@ -255,14 +255,14 @@ fn telemetry {
   doc "Record a game event for the game's analytics."
   param world World "The world."
   param name String "The event: `level.started`, `level.completed`, `boss.defeated` (letters, digits, `.`, `_`; the Player files it as `game.custom.<name>`)."
-  param attrs Json "Its attributes: an object of strings, numbers, booleans or null, at most 16." {
+  param attrs Json "Its attributes: an object of at most 16 strings (up to 512 characters), numbers, booleans or null, keys a lowercase letter then letters, digits and `_`." {
     optional true
   }
   returns Result.Void "Refused for a malformed name or attributes. Fire and forget: nothing answers."
 }
 ```
 
-<sub>`api.ogt` line 6434</sub>
+<sub>`api.ogt` line 6436</sub>
 
 <a id="fn-point"></a>
 
@@ -279,7 +279,7 @@ og.platform.point(world: World, desc?: PointDesc): Result<number>
 | `world` | `World` | no | The world. |
 | `desc` | `PointDesc` | yes | Why and how many. |
 
-**Returns** `Result<number>`: Refused for an empty reason. The answer's data is `{ granted, balance }`.
+**Returns** `Result<number>`: Refused for a reason outside 1 to 64 of letters, digits, `.`, `_` and `-`. The answer's data is `{ granted, balance }`; under a Player today always `{ granted: 0, balance: null }` (the platform grants nothing until a release carries an approved point policy), locally the amount asked.
 
 Binding symbol `og_platform_point` · publish builds: kept
 
@@ -288,11 +288,11 @@ fn point {
   doc "Ask for Origin Point for something the player did."
   param world World "The world."
   param desc PointDesc "Why and how many."
-  returns Result.u32 "Refused for an empty reason. The answer's data is `{ granted, balance }`."
+  returns Result.u32 "Refused for a reason outside 1 to 64 of letters, digits, `.`, `_` and `-`. The answer's data is `{ granted, balance }`; under a Player today always `{ granted: 0, balance: null }` (the platform grants nothing until a release carries an approved point policy), locally the amount asked."
 }
 ```
 
-<sub>`api.ogt` line 6444</sub>
+<sub>`api.ogt` line 6446</sub>
 
 <a id="fn-aiMark"></a>
 
@@ -322,7 +322,7 @@ fn aiMark {
 }
 ```
 
-<sub>`api.ogt` line 6451</sub>
+<sub>`api.ogt` line 6453</sub>
 
 <a id="fn-loadSettings"></a>
 
@@ -350,7 +350,7 @@ fn loadSettings {
 }
 ```
 
-<sub>`api.ogt` line 6458</sub>
+<sub>`api.ogt` line 6460</sub>
 
 <a id="fn-saveSettings"></a>
 
@@ -380,7 +380,7 @@ fn saveSettings {
 }
 ```
 
-<sub>`api.ogt` line 6464</sub>
+<sub>`api.ogt` line 6466</sub>
 
 <a id="fn-result"></a>
 
@@ -410,7 +410,7 @@ fn result {
 }
 ```
 
-<sub>`api.ogt` line 6471</sub>
+<sub>`api.ogt` line 6473</sub>
 
 <a id="fn-info"></a>
 
@@ -438,7 +438,7 @@ fn info {
 }
 ```
 
-<sub>`api.ogt` line 6478</sub>
+<sub>`api.ogt` line 6480</sub>
 
 ## Components, resources and events
 
@@ -502,7 +502,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 |---|---|---|---|---|---|---|
 | `key` | `string` | `""` | — | — | — | The key: 1 to 64 of letters, digits, `.`, `_` and `-`. |
 | `value` | `unknown` | `null` | — | — | — | Any JSON value, at most 64 KiB encoded. |
-| `revision` | `number` | `0` | — | — | — | Write only if the key is at this revision (conflict otherwise); 0 writes whatever is there. |
+| `revision` | `number` | `0` | — | — | — | Write only if the key is at this revision (a conflict otherwise, whose error carries the revision the key is at now); 0 writes whatever is there (the last write wins). |
+| `create` | `boolean` | `false` | — | — | — | Write only if the key has never been written (a conflict otherwise); revision is then ignored. |
 
 ```ogt
 struct StoreSetDesc {
@@ -510,7 +511,8 @@ struct StoreSetDesc {
   desc true
   field key String "The key: 1 to 64 of letters, digits, `.`, `_` and `-`."
   field value Json "Any JSON value, at most 64 KiB encoded."
-  field revision u32 "Write only if the key is at this revision (conflict otherwise); 0 writes whatever is there."
+  field revision u32 "Write only if the key is at this revision (a conflict otherwise, whose error carries the revision the key is at now); 0 writes whatever is there (the last write wins)."
+  field create bool "Write only if the key has never been written (a conflict otherwise); revision is then ignored."
 }
 ```
 
@@ -542,7 +544,7 @@ struct LeaderboardSubmitDesc {
 }
 ```
 
-<sub>`api.ogt` line 6325</sub>
+<sub>`api.ogt` line 6326</sub>
 
 <a id="type-LeaderboardQueryDesc"></a>
 
@@ -572,7 +574,7 @@ struct LeaderboardQueryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6335</sub>
+<sub>`api.ogt` line 6336</sub>
 
 <a id="type-PointDesc"></a>
 
@@ -584,14 +586,14 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `reason` | `string` | `""` | — | — | — | Why, as the game names it: `level.completed`, `daily.streak`. |
+| `reason` | `string` | `""` | — | — | — | Why, as the game names it: `level.completed`, `daily.streak` (1 to 64 of letters, digits, `.`, `_` and `-`). |
 | `amount` | `number` | `1` | 1 … 1000 | — | — | How many points the game asks for; the platform decides what it grants. |
 
 ```ogt
 struct PointDesc {
   doc "Origin Point for something the player did."
   desc true
-  field reason String "Why, as the game names it: `level.completed`, `daily.streak`."
+  field reason String "Why, as the game names it: `level.completed`, `daily.streak` (1 to 64 of letters, digits, `.`, `_` and `-`)."
   field amount u32 "How many points the game asks for; the platform decides what it grants." {
     default 1
     min 1
@@ -600,7 +602,7 @@ struct PointDesc {
 }
 ```
 
-<sub>`api.ogt` line 6348</sub>
+<sub>`api.ogt` line 6349</sub>
 
 <a id="type-AiMarkDesc"></a>
 
@@ -612,21 +614,21 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `kind` | `string` | `""` | — | — | — | What: `text`, `image`, `audio`, `level`, `character`. |
+| `kind` | `string` | `""` | — | — | — | What: `text`, `image`, `audio`, `level`, `character` (1 to 32 of a-z, 0-9, `_` and `-`, a letter first). |
 | `label` | `string` | `""` | — | — | — | What the player sees it as, at most 120 characters. |
-| `model` | `string` | `""` | — | — | — | The model or service, when known. |
+| `model` | `string` | `""` | — | — | — | The model or service, when known (at most 80 characters). |
 
 ```ogt
 struct AiMarkDesc {
   doc "Marks content the game shows as generated by AI, for the platform's disclosure."
   desc true
-  field kind String "What: `text`, `image`, `audio`, `level`, `character`."
+  field kind String "What: `text`, `image`, `audio`, `level`, `character` (1 to 32 of a-z, 0-9, `_` and `-`, a letter first)."
   field label String "What the player sees it as, at most 120 characters."
-  field model String "The model or service, when known."
+  field model String "The model or service, when known (at most 80 characters)."
 }
 ```
 
-<sub>`api.ogt` line 6359</sub>
+<sub>`api.ogt` line 6360</sub>
 
 <a id="type-PlatformError"></a>
 
@@ -639,6 +641,7 @@ Why a call failed.
 | `code` | `string` | `""` | — | — | — | offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable or failed. |
 | `message` | `string` | `""` | — | — | — | What happened, in words. |
 | `retryable` | `boolean` | `false` | — | — | — | Whether the same call may succeed later. |
+| `revision` | `number` | `0` | — | — | — | For a conflict of a conditional write: the revision the key is at now (read it again, merge, write at it); 0 otherwise. |
 
 ```ogt
 struct PlatformError {
@@ -646,10 +649,11 @@ struct PlatformError {
   field code String "offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable or failed."
   field message String "What happened, in words."
   field retryable bool "Whether the same call may succeed later."
+  field revision u32 "For a conflict of a conditional write: the revision the key is at now (read it again, merge, write at it); 0 otherwise."
 }
 ```
 
-<sub>`api.ogt` line 6367</sub>
+<sub>`api.ogt` line 6368</sub>
 
 <a id="type-PlatformResult"></a>
 
@@ -663,7 +667,7 @@ The answer to one call.
 | `method` | `string` | `""` | — | — | — | Its method, such as `store.get`. |
 | `ok` | `boolean` | `false` | — | — | — | Whether it succeeded. |
 | `data` | `unknown` | `null` | — | — | — | The answer (see each function); null on failure. |
-| `error` | `PlatformError` | `{ code: "", message: "", retryable: false }` | — | — | optional | Why it failed. |
+| `error` | `PlatformError` | `{ code: "", message: "", retryable: false, revision: 0 }` | — | — | optional | Why it failed. |
 | `tick` | `number` | `0` | — | — | — | The tick it was answered at. |
 
 ```ogt
@@ -680,7 +684,7 @@ struct PlatformResult {
 }
 ```
 
-<sub>`api.ogt` line 6374</sub>
+<sub>`api.ogt` line 6376</sub>
 
 <a id="type-PlatformInfo"></a>
 
@@ -703,4 +707,4 @@ struct PlatformInfo {
 }
 ```
 
-<sub>`api.ogt` line 6386</sub>
+<sub>`api.ogt` line 6388</sub>

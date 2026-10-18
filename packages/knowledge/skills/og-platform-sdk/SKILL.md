@@ -44,11 +44,11 @@ if (answer.ok && typeof answer.data.value === "number") run.best[i] = Math.max(r
 
 | Need | Call | Notes |
 |---|---|---|
-| Progress, unlocks, a best score | `storeGet(world, key)`, `storeSet(world, { key, value, revision })` | one key per independent thing; values ≤ 64 KiB; pass the revision you read to refuse a stale write (`conflict`: read again and merge) |
+| Progress, unlocks, a best score | `storeGet(world, key)`, `storeSet(world, { key, value, revision })` | one key per independent thing; values ≤ 64 KiB, at most 64 keys and 1 MiB per player and game; pass the revision you read to refuse a stale write (`conflict`, whose `error.revision` is where the key is now: read again and merge), `create: true` to write only a key never written, no revision for "the last write wins" |
 | Volume, controls, language | `loadSettings(world)`, `saveSettings(world, settings)` | the key `og.settings`, last save wins, local fallback when offline |
 | A leaderboard | `leaderboardSubmit(world, { board, score })`, `leaderboardTop`, `leaderboardAround` | the board keeps the player's best; show "around me" as well as the top |
 | Analytics | `telemetry(world, "round.over", { score, coins })` | one-way; names `a.b_c`, at most 16 scalar attributes; never personal data |
-| Origin Point | `point(world, { reason, amount })` | the platform decides what it grants |
+| Origin Point | `point(world, { reason, amount })` | the platform decides what it grants (today nothing under a Player: `{ granted: 0, balance: null }` until an approved point policy; show nothing that depends on it) |
 | AI-generated content shown | `aiMark(world, { kind, label })` | disclosure, not permission |
 
 `og.platform.info(world)` says what answers here (`player`, `local` or
@@ -76,15 +76,19 @@ trying.
   for the run.
 - In the browser, `packages/engine/tests/web/player.ts` shows the Player
   side: a framed game's first calls wait for the Player's `hello`, then go
-  as protocol 2 `call`s.
+  as protocol 2 `call`s (`store.get`, `store.set`, `leaderboard.around`,
+  `point.award`, `ai.mark`, as the hello lists them; `docs/web-export.md`
+  §Platform services has the mapping).
 
 ## 5. When a method is missing: ask
 
-The engine maps what protocol 2 offers and answers the rest `unavailable`
-(the engine repository's `docs/platform-asks.md` lists each gap: per-key
-store revisions, `leaderboard.around`, the best on submit, `point.award`,
-`ai.mark`, capabilities for a verification run, telemetry names). When a
-game needs something neither lists, do not work around it with a server of
+The engine maps what the Player's protocol 2 offers and answers the rest
+`unavailable`. Every ask the engine made (the engine repository's
+`docs/platform-asks.md`: the keyed store with per-key revisions,
+`leaderboard.around`, the best on submit, `point.award`, `ai.mark`,
+capabilities for a verification run, telemetry names) landed on
+2026-10-19; an older Player answers what its hello lists. When a game
+needs something none of them gives, do not work around it with a server of
 your own or by reaching the page: write the ask (the method, its arguments,
 its answer, why a game needs it) for the platform owners and keep the
 feature behind `info(world)` until it lands.

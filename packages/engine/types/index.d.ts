@@ -9706,11 +9706,17 @@ export interface StoreSetDesc {
    */
   readonly value?: unknown;
   /**
-   * Write only if the key is at this revision (conflict otherwise); 0 writes whatever is there.
+   * Write only if the key is at this revision (a conflict otherwise, whose error carries the revision the key is at now); 0 writes whatever is there (the last write wins).
    *
    * @default 0
    */
   readonly revision?: number;
+  /**
+   * Write only if the key has never been written (a conflict otherwise); revision is then ignored.
+   *
+   * @default false
+   */
+  readonly create?: boolean;
 }
 
 /**
@@ -9767,7 +9773,7 @@ export interface LeaderboardQueryDesc {
  */
 export interface PointDesc {
   /**
-   * Why, as the game names it: `level.completed`, `daily.streak`.
+   * Why, as the game names it: `level.completed`, `daily.streak` (1 to 64 of letters, digits, `.`, `_` and `-`).
    *
    * @default ""
    */
@@ -9788,7 +9794,7 @@ export interface PointDesc {
  */
 export interface AiMarkDesc {
   /**
-   * What: `text`, `image`, `audio`, `level`, `character`.
+   * What: `text`, `image`, `audio`, `level`, `character` (1 to 32 of a-z, 0-9, `_` and `-`, a letter first).
    *
    * @default ""
    */
@@ -9800,7 +9806,7 @@ export interface AiMarkDesc {
    */
   readonly label?: string;
   /**
-   * The model or service, when known.
+   * The model or service, when known (at most 80 characters).
    *
    * @default ""
    */
@@ -9817,6 +9823,10 @@ export interface PlatformError {
   readonly message: string;
   /** Whether the same call may succeed later. */
   readonly retryable: boolean;
+  /**
+   * For a conflict of a conditional write: the revision the key is at now (read it again, merge, write at it); 0 otherwise.
+   */
+  readonly revision: number;
 }
 
 /** The answer to one call. */
@@ -15554,7 +15564,7 @@ export declare namespace og {
      *
      * @param world The world.
      * @param name The event: `level.started`, `level.completed`, `boss.defeated` (letters, digits, `.`, `_`; the Player files it as `game.custom.<name>`).
-     * @param attrs Its attributes: an object of strings, numbers, booleans or null, at most 16.
+     * @param attrs Its attributes: an object of at most 16 strings (up to 512 characters), numbers, booleans or null, keys a lowercase letter then letters, digits and `_`.
      * @returns Refused for a malformed name or attributes. Fire and forget: nothing answers.
      */
     function telemetry(world: World, name: string, attrs?: unknown): Result<void>;
@@ -15563,7 +15573,7 @@ export declare namespace og {
      *
      * @param world The world.
      * @param desc Why and how many.
-     * @returns Refused for an empty reason. The answer's data is `{ granted, balance }`.
+     * @returns Refused for a reason outside 1 to 64 of letters, digits, `.`, `_` and `-`. The answer's data is `{ granted, balance }`; under a Player today always `{ granted: 0, balance: null }` (the platform grants nothing until a release carries an approved point policy), locally the amount asked.
      */
     function point(world: World, desc?: PointDesc): Result<number>;
     /**

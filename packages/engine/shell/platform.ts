@@ -1,22 +1,27 @@
 // og.platform on the web: the shell's answer to the engine Worker's
 // platform calls. With a Player framing the page, each call goes to it over
 // Player protocol 2 (./player.ts, origin-checked postMessage; the Player
-// owns every credential); without one, or where the Player has no such
-// method, the browser's own storage answers (../src/platform-local.ts over
-// localStorage). The mapping, and what protocol 2 lacks, are in
-// docs/web-export.md §Platform services and docs/platform-asks.md.
+// owns every credential), as its hello's capabilities allow; without one, or
+// where the Player answers no such method, the browser's own storage answers
+// (../src/platform-local.ts over localStorage). The mapping:
+// docs/web-export.md §Platform services.
 //
-//   store.get/set/list   save.get / save.set: the store lives in the save's
-//                        `store` object, each key with its own revision; a
-//                        conditional write checks the key's revision here
-//                        (protocol 2's save.get carries no revision of its
-//                        own). Without save.* (a verification run), or
-//                        `unavailable`, the browser's storage.
-//   leaderboard.submit   leaderboard.submit { score, board, order }
-//   leaderboard.top      leaderboard.top { n, board }
-//   leaderboard.around   leaderboard.top { n: 100 }, cut around `me`
+//   store.get/set/list   store.get / store.set / store.list, each key with its
+//                        own revision: og.platform's revision N sends
+//                        revision N, `create` sends revision 0 (only a key
+//                        never written), revision 0 sends none (the last
+//                        write wins); a conflict carries the key's revision.
+//                        A Player with save.* but no store.* (older ones)
+//                        keeps the store in the save's `store` object, read
+//                        with save.read (or save.get) and written back at the
+//                        save's revision; neither: the browser's storage.
+//   leaderboard.submit   leaderboard.submit { score, board, order } → { board, rank, best }
+//   leaderboard.top      leaderboard.top { n, board } → { board, sort, top, me }
+//   leaderboard.around   leaderboard.around { n, board } → { board, sort, entries, me }
+//                        (older Players: leaderboard.top { n: 100 }, cut around me)
 //   telemetry            an `event` named game.custom.<name>
-//   point, ai.mark       `unavailable`: protocol 2 has no such methods
+//   point                point.award { reason, amount } → { granted, balance }
+//   ai.mark              ai.mark { kind, label, model? } → { marked }
 
 import { answerLocally, fail, localPlatform, type LocalDocument, type LocalPersistence, type PlatformAnswer, type PlatformCall, type PlatformHost } from "../src/platform-local.ts";
 export { storagePersistence } from "../src/platform-local.ts";
@@ -37,16 +42,38 @@ function asSave(data: unknown): Save {
   return data && typeof data === "object" && !Array.isArray(data) ? (data as Save) : {};
 }
 
-/** The Player's answer as og.platform's. */
-const fromPlayer = (r: PlayerResult, data: (d: unknown) => unknown): PlatformAnswer => (r.ok ? { ok: true, data: data(r.data) } : { ok: false, error: { code: r.error.code, message: r.error.message, retryable: r.error.retryable } });
+/** The Player's answer as og.platform's (a conflict keeps the revision it names). */
+const fromPlayer = (r: PlayerResult, data: (d: unknown) => unknown): PlatformAnswer =>
+  r.ok
+    ? { ok: true, data: data(r.data) }
+    : { ok: false, error: { code: r.error.code, message: r.error.message, retryable: r.error.retryable, ...(typeof r.error.revision === "number" ? { revision: r.error.revision } : {}) } };
 
 const STORE = ["store.get", "store.set", "store.list"];
+type Entry = { rank: number; name: string; score: number; me?: boolean };
+
+/** og.platform's leaderboard answer: `order` from the Player's `sort`. */
+const board = (a: Record<string, unknown>, d: unknown, list: "top" | "entries") => {
+  const t = (d ?? {}) as { board?: string; sort?: string; top?: Entry[]; entries?: Entry[]; me?: { rank: number } | null };
+  const me = t.me ?? null;
+  const entries = (t[list] ?? []).map((e) => ({ rank: e.rank, name: e.name, score: e.score, me: e.me ?? (!!me && e.rank === me.rank) }));
+  return { board: t.board ?? a["board"], order: t.sort === "asc" ? "asc" : "desc", entries, me };
+};
 
 /** The Player-backed platform, falling back to `local` (the browser's storage). */
 export function playerPlatform(player: PlayerLink, local: LocalPersistence): PlatformHost {
   const fallback = localPlatform(local);
   const has = (m: string) => player.capabilities.includes(m);
-  const capabilities = [...STORE, "telemetry", ...(has("leaderboard.submit") ? ["leaderboard.submit"] : []), ...(has("leaderboard.top") ? ["leaderboard.top", "leaderboard.around"] : [])];
+  const keyed = STORE.every(has);
+  const saved = (has("save.read") || has("save.get")) && has("save.set");
+  const capabilities = [
+    ...STORE,
+    "telemetry",
+    ...(has("leaderboard.submit") ? ["leaderboard.submit"] : []),
+    ...(has("leaderboard.top") ? ["leaderboard.top"] : []),
+    ...(has("leaderboard.around") || has("leaderboard.top") ? ["leaderboard.around"] : []),
+    ...(has("point.award") ? ["point"] : []),
+    ...(has("ai.mark") ? ["ai.mark"] : []),
+  ];
   let queue: Promise<void> = Promise.resolve();
 
   const viaLocal = (call: PlatformCall): PlatformAnswer | null => {
@@ -55,21 +82,38 @@ export function playerPlatform(player: PlayerLink, local: LocalPersistence): Pla
     return out;
   };
 
+  /** The keyed store, through the Player's store.* methods. */
+  const keyedStore = async (call: PlatformCall): Promise<PlatformAnswer | null> => {
+    const a = call.args;
+    if (call.method === "store.get") return fromPlayer(await player.request("store.get", { key: a["key"] }), (d) => d);
+    if (call.method === "store.list") return fromPlayer(await player.request("store.list"), (d) => ({ keys: ((d ?? {}) as { keys?: unknown[] }).keys ?? [] }));
+    const revision = a["create"] === true ? 0 : Number(a["revision"] ?? 0) > 0 ? Number(a["revision"]) : undefined;
+    const r = await player.request("store.set", { key: a["key"], value: a["value"] ?? null, ...(revision === undefined ? {} : { revision }) });
+    return r.ok || r.error.code !== "unavailable" ? fromPlayer(r, (d) => d) : viaLocal(call);
+  };
+
+  /** The store in the save's `store` object (a Player with save.* and no store.*). */
+  const savedStore = async (call: PlatformCall): Promise<PlatformAnswer | null> => {
+    const read = has("save.read");
+    const got = await player.request(read ? "save.read" : "save.get");
+    if (!got.ok) return got.error.code === "unavailable" ? viaLocal(call) : fromPlayer(got, () => null);
+    const at = read ? ((got.data ?? {}) as { data?: unknown; revision?: number | null }) : { data: got.data, revision: undefined };
+    const save = asSave(at.data);
+    const doc: LocalDocument = { version: 1, player: "", store: { ...(save.store ?? {}) }, boards: {}, points: { balance: 0, grants: [] }, marks: [], events: [] };
+    const answer = answerLocally(doc, call);
+    if (call.method !== "store.set" || !answer?.ok) return answer;
+    // Written back at the revision it was read at: a write from another device in between is a conflict.
+    const revision = typeof at.revision === "number" ? at.revision : undefined;
+    const put = await player.request("save.set", { data: { ...save, store: doc.store }, ...(revision === undefined ? {} : { revision }) });
+    if (!put.ok) return fromPlayer(put, () => null);
+    const queued = (put.data as { queued?: boolean } | null)?.queued === true;
+    return { ok: true, data: { ...(answer.data as object), ...(queued ? { queued: true } : {}) } };
+  };
+
   const one = async (call: PlatformCall): Promise<PlatformAnswer | null> => {
     const a = call.args;
-    if (STORE.includes(call.method)) {
-      if (!has("save.get") || !has("save.set")) return viaLocal(call);
-      const got = await player.request("save.get");
-      if (!got.ok) return got.error.code === "unavailable" ? viaLocal(call) : fromPlayer(got, () => null);
-      const save = asSave(got.data);
-      const doc: LocalDocument = { version: 1, player: "", store: { ...(save.store ?? {}) }, boards: {}, points: { balance: 0, grants: [] }, marks: [], events: [] };
-      const answer = answerLocally(doc, call);
-      if (call.method !== "store.set" || !answer?.ok) return answer;
-      const put = await player.request("save.set", { data: { ...save, store: doc.store } });
-      if (!put.ok) return fromPlayer(put, () => null);
-      const queued = (put.data as { queued?: boolean } | null)?.queued === true;
-      return { ok: true, data: { ...(answer.data as object), ...(queued ? { queued: true } : {}) } };
-    }
+    if (STORE.includes(call.method)) return keyed ? keyedStore(call) : saved ? savedStore(call) : viaLocal(call);
+    const n = Math.max(1, Math.min(100, Number(a["count"] ?? 10)));
     switch (call.method) {
       case "telemetry":
         player.event(`game.custom.${String(a["name"])}`, a["attrs"] as Record<string, string | number | boolean | null>);
@@ -77,28 +121,34 @@ export function playerPlatform(player: PlayerLink, local: LocalPersistence): Pla
       case "leaderboard.submit":
         if (!has("leaderboard.submit")) return fail("unavailable", "this Player answers no leaderboard.submit here");
         return fromPlayer(await player.request("leaderboard.submit", { score: a["score"], board: a["board"], order: a["order"] }), (d) => {
-          const r = (d ?? {}) as { rank?: number | null; queued?: boolean };
-          return { board: a["board"], rank: r.rank ?? null, best: null, ...(r.queued ? { queued: true } : {}) };
+          const r = (d ?? {}) as { board?: string; rank?: number | null; best?: number | null; queued?: boolean };
+          return { board: r.board ?? a["board"], rank: r.rank ?? null, best: r.best ?? null, ...(r.queued ? { queued: true } : {}) };
         });
       case "leaderboard.top":
-      case "leaderboard.around": {
         if (!has("leaderboard.top")) return fail("unavailable", "this Player answers no leaderboard.top here");
-        const count = Number(a["count"] ?? 10);
-        const around = call.method === "leaderboard.around";
-        return fromPlayer(await player.request("leaderboard.top", { n: around ? 100 : count, board: a["board"] }), (d) => {
-          const t = (d ?? {}) as { board?: string; sort?: string; top?: Array<{ rank: number; name: string; score: number }>; me?: { rank: number } | null };
-          const me = t.me ?? null;
-          let entries = (t.top ?? []).map((e) => ({ ...e, me: !!me && e.rank === me.rank }));
-          if (around && me) {
-            const at = entries.findIndex((e) => e.me);
-            const start = Math.max(0, Math.min(entries.length - count, (at < 0 ? entries.length : at) - Math.floor(count / 2)));
-            entries = entries.slice(start, start + count);
-          } else entries = entries.slice(0, count);
-          return { board: t.board ?? a["board"], order: t.sort === "asc" ? "asc" : "desc", entries, me };
+        return fromPlayer(await player.request("leaderboard.top", { n, board: a["board"] }), (d) => board(a, d, "top"));
+      case "leaderboard.around": {
+        if (has("leaderboard.around")) return fromPlayer(await player.request("leaderboard.around", { n, board: a["board"] }), (d) => board(a, d, "entries"));
+        if (!has("leaderboard.top")) return fail("unavailable", "this Player answers no leaderboard.around here");
+        // An older Player: the top 100, cut around the player.
+        return fromPlayer(await player.request("leaderboard.top", { n: 100, board: a["board"] }), (d) => {
+          const b = board(a, d, "top");
+          const at = b.entries.findIndex((e) => e.me);
+          const from = b.me && at >= 0 ? Math.max(0, Math.min(b.entries.length - n, at - Math.floor(n / 2))) : 0;
+          return { ...b, entries: b.entries.slice(from, from + n) };
         });
       }
+      case "point":
+        if (!has("point.award")) return fail("unavailable", "this Player answers no point.award here");
+        return fromPlayer(await player.request("point.award", { reason: a["reason"], amount: a["amount"] ?? 1 }), (d) => {
+          const r = (d ?? {}) as { granted?: number; balance?: number | null };
+          return { granted: r.granted ?? 0, balance: r.balance ?? null };
+        });
+      case "ai.mark":
+        if (!has("ai.mark")) return fail("unavailable", "this Player answers no ai.mark here");
+        return fromPlayer(await player.request("ai.mark", { kind: a["kind"], label: a["label"], ...(typeof a["model"] === "string" ? { model: a["model"] } : {}) }), () => ({ marked: true }));
       default:
-        return fail("unavailable", `the Player has no ${call.method} method in protocol 2 (docs/platform-asks.md)`);
+        return fail("unavailable", `the Player has no ${call.method} method in protocol 2`);
     }
   };
 
@@ -106,7 +156,7 @@ export function playerPlatform(player: PlayerLink, local: LocalPersistence): Pla
     host: "player",
     capabilities,
     handle(calls, answer) {
-      // In order: a store write reads the save first, so calls never interleave.
+      // In order: a store write through the save reads it first, so calls never interleave.
       for (const call of calls) {
         queue = queue.then(async () => {
           let r: PlatformAnswer | null;

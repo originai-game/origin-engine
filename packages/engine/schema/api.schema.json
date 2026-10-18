@@ -3749,7 +3749,7 @@
               "name": "attrs",
               "type": "Json",
               "optional": true,
-              "doc": "Its attributes: an object of strings, numbers, booleans or null, at most 16."
+              "doc": "Its attributes: an object of at most 16 strings (up to 512 characters), numbers, booleans or null, keys a lowercase letter then letters, digits and `_`."
             }
           ],
           "returns": "Result<Void>",
@@ -3774,7 +3774,7 @@
             }
           ],
           "returns": "Result<u32>",
-          "returnsDoc": "Refused for an empty reason. The answer's data is `{ granted, balance }`.",
+          "returnsDoc": "Refused for a reason outside 1 to 64 of letters, digits, `.`, `_` and `-`. The answer's data is `{ granted, balance }`; under a Player today always `{ granted: 0, balance: null }` (the platform grants nothing until a release carries an approved point policy), locally the amount asked.",
           "publish": true
         },
         {
@@ -17727,8 +17727,13 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "Write only if the key is at this revision (conflict otherwise); 0 writes whatever is there.",
+          "description": "Write only if the key is at this revision (a conflict otherwise, whose error carries the revision the key is at now); 0 writes whatever is there (the last write wins).",
           "default": 0
+        },
+        "create": {
+          "type": "boolean",
+          "description": "Write only if the key has never been written (a conflict otherwise); revision is then ignored.",
+          "default": false
         }
       },
       "additionalProperties": false
@@ -17788,7 +17793,7 @@
       "properties": {
         "reason": {
           "type": "string",
-          "description": "Why, as the game names it: `level.completed`, `daily.streak`.",
+          "description": "Why, as the game names it: `level.completed`, `daily.streak` (1 to 64 of letters, digits, `.`, `_` and `-`).",
           "default": ""
         },
         "amount": {
@@ -17811,7 +17816,7 @@
       "properties": {
         "kind": {
           "type": "string",
-          "description": "What: `text`, `image`, `audio`, `level`, `character`.",
+          "description": "What: `text`, `image`, `audio`, `level`, `character` (1 to 32 of a-z, 0-9, `_` and `-`, a letter first).",
           "default": ""
         },
         "label": {
@@ -17821,7 +17826,7 @@
         },
         "model": {
           "type": "string",
-          "description": "The model or service, when known.",
+          "description": "The model or service, when known (at most 80 characters).",
           "default": ""
         }
       },
@@ -17844,12 +17849,19 @@
         "retryable": {
           "type": "boolean",
           "description": "Whether the same call may succeed later."
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "For a conflict of a conditional write: the revision the key is at now (read it again, merge, write at it); 0 otherwise."
         }
       },
       "required": [
         "code",
         "message",
-        "retryable"
+        "retryable",
+        "revision"
       ],
       "additionalProperties": false
     },

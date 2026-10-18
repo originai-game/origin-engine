@@ -38,7 +38,7 @@ export function fingerprint(message: string): string {
 /** A `result`: the data, or the Player's error. */
 export type PlayerResult =
   | { readonly ok: true; readonly data: unknown }
-  | { readonly ok: false; readonly error: { readonly code: string; readonly message: string; readonly retryable: boolean; readonly status?: number } };
+  | { readonly ok: false; readonly error: { readonly code: string; readonly message: string; readonly retryable: boolean; readonly status?: number; readonly revision?: number } };
 
 /** How long a call waits for its `result` before it fails with `timeout`. */
 export const CALL_TIMEOUT_MS = 15_000;
@@ -99,6 +99,7 @@ export function connectPlayer(events: PlayerEvents) {
               message: typeof e["message"] === "string" ? e["message"] : "",
               retryable: e["retryable"] === true,
               ...(typeof e["status"] === "number" ? { status: e["status"] } : {}),
+              ...(typeof e["revision"] === "number" ? { revision: e["revision"] } : {}),
             },
           });
         }

@@ -208,22 +208,36 @@ messages the shell now sends and hears:
 
 | Shell → Player | When | Answered by |
 |---|---|---|
-| `call` `save.get` | `store.get`, `store.list`, and before every `store.set` | `result` with the save (the store is its `store` object: `{ <key>: { value, revision } }`) |
-| `call` `save.set` `{ data }` | `store.set` (the whole save with the key written; the per-key revision is checked in the shell) | `result` `{ ok, revision }` or `{ ok, queued: true }` |
-| `call` `leaderboard.submit` `{ score, board, order }` | `leaderboardSubmit` | `result` `{ ok, rank, board? }` (or queued) |
-| `call` `leaderboard.top` `{ n, board }` | `leaderboardTop`; `leaderboardAround` asks `n: 100` and cuts around `me` | `result` `{ board, sort, top, me }` |
-| `event` `game.custom.<name>` `{ attrs }` | `telemetry` (one-way) | — |
+| `call` `store.get` `{ key }` | `storeGet`, `loadSettings` | `result` `{ key, value, revision }` (`value` null, `revision` 0 for a key never written) |
+| `call` `store.set` `{ key, value, revision? }` | `storeSet`, `saveSettings`: og.platform's revision N sends `revision: N`, `create` sends `revision: 0` (only a key never written), revision 0 sends none (the last write wins) | `result` `{ key, revision }`, or `conflict` with `error.revision`, the key's revision now |
+| `call` `store.list` | `storeList` | `result` `{ keys: [{ key, revision }] }` |
+| `call` `leaderboard.submit` `{ score, board, order }` | `leaderboardSubmit` | `result` `{ ok, rank, board, best }` (or `{ rank: null, queued: true }` offline) |
+| `call` `leaderboard.top` `{ n, board }` | `leaderboardTop` | `result` `{ board, sort, top, me }` |
+| `call` `leaderboard.around` `{ n, board }` | `leaderboardAround` | `result` `{ board, sort, entries: [{ rank, name, score, me }], me }` |
+| `call` `point.award` `{ reason, amount }` | `point` | `result` `{ granted, balance }` (today `{ granted: 0, balance: null }`: no release carries an approved point policy, origingame `docs/public-api.md` §15) |
+| `call` `ai.mark` `{ kind, label, model? }` | `aiMark` | `result` `{ marked: true }` |
+| `event` `game.custom.<name>` `{ attrs }` | `telemetry` (one-way; `<name>` 1–64 of letters, digits, `.` and `_`, at most 16 scalar attributes, checked by og.platform) | — |
 
+The answers reach og.platform renamed only where its shape differs: a
+leaderboard's `sort` is og.platform's `order`, and `top` its `entries`.
 Each `call` carries the shell's own `id` (`oe-<n>`), and its `result` is
-matched by it; a call unanswered in 15 s fails with `timeout`. Where the
-Player's `hello.capabilities` lacks `save.get`/`save.set` (a verification
-run) or answers `unavailable`, the store falls back to the browser's
-`localStorage` (`og.platform:<path>`); unframed, every call is answered from
-there (the native host's local platform, `src/platform-local.ts`). `point`
-and `ai.mark` answer `unavailable` under a Player: protocol 2 has no such
-methods (docs/platform-asks.md). Errors keep the Player's codes and
-`retryable`. `tests/web/player.ts` checks the `save.get` round trip from a
-stand-in Player (the runner's stored best becomes its best).
+matched by it; a call unanswered in 15 s fails with `timeout`. What the
+shell asks follows the Player's `hello.capabilities`: a Player that lists
+`save.read`/`save.get` and `save.set` but no `store.*` (released before
+2026-10-19) keeps the store in the save's `store` object, read with
+`save.read` and written back with `save.set { data, revision }` at the
+revision it was read at; one with `leaderboard.top` but no
+`leaderboard.around` answers `around` from the top 100; a method the hello
+does not list answers `unavailable`; and where the Player keeps no store
+(none listed, or `unavailable`) the browser's `localStorage`
+(`og.platform:<path>`) does (a verification run lists `store.*` from a
+throwaway store of its own). Unframed, every call is answered from there
+(the native host's local platform, `src/platform-local.ts`). Errors keep
+the Player's codes, `retryable` and a conflict's `revision`.
+`tests/platform-player.test.ts` runs the bridge against a stand-in Player
+that answers the protocol's calls (and an older one, and none);
+`tests/web/player.ts` checks the `store.get` round trip in Chrome (the
+runner's stored best becomes its best).
 
 ### The og-probe wire (`origin/packages/contracts/src/probe-wire.ts`)
 

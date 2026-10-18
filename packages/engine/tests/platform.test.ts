@@ -33,7 +33,7 @@ function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
   return r.value;
 }
 
-type Res = { request: number; method: string; ok: boolean; data: Record<string, unknown>; error?: { code: string; retryable: boolean }; tick: number } | null;
+type Res = { request: number; method: string; ok: boolean; data: Record<string, unknown>; error?: { code: string; retryable: boolean; revision: number }; tick: number } | null;
 const result = (w: World, r: number) => og.platform.result(w, r) as unknown as Res;
 
 /** Requests made by the Caller system on tick 1, and answers it saw. */
@@ -98,13 +98,19 @@ test("og.platform: a game's calls are answered by the local platform at the next
   expect(local.document().marks[0]).toEqual({ kind: "level", label: "Level 3 layout", model: "maker", tick: 1 });
 
   // A write at a stale revision is a conflict; at the current one it lands.
+  // A write at a stale revision, or a create of a key already written, is a
+  // conflict naming the revision the key is at; at the current one it lands.
   const stale = must(og.platform.storeSet(w, { key: "progress", value: {}, revision: 7 }));
   const fresh = must(og.platform.storeSet(w, { key: "progress", value: { level: 4 }, revision: 1 }));
+  const again = must(og.platform.storeSet(w, { key: "progress", value: {}, create: true }));
+  const born = must(og.platform.storeSet(w, { key: "fresh", value: 1, create: true }));
   engine.advance(1); // answered before the tick, applied at its start
   const s1 = result(w, stale)!;
-  expect([s1.ok, s1.error?.code, s1.error?.retryable]).toEqual([false, "conflict", false]);
+  expect([s1.ok, s1.error?.code, s1.error?.retryable, s1.error?.revision]).toEqual([false, "conflict", false, 1]);
   const f1 = result(w, fresh)!;
   expect([f1.ok, f1.data["revision"]]).toEqual([true, 2]);
+  expect([result(w, again)!.ok, result(w, again)!.error?.revision]).toEqual([false, 2]);
+  expect(result(w, born)!.data).toEqual({ key: "fresh", revision: 1 });
 
   // dump_platform lists every call with its state and answer.
   engine.probe.commands("0:dump_platform:platform.json");
@@ -114,7 +120,7 @@ test("og.platform: a game's calls are answered by the local platform at the next
   expect(dump.host).toBe("local");
   expect(dump.calls.map((x) => `${x.method}:${x.state}`)).toEqual([
     "store.set:answered", "store.get:answered", "leaderboard.submit:answered", "leaderboard.top:answered", "leaderboard.around:answered",
-    "telemetry:sent", "point:answered", "ai.mark:answered", "store.set:answered", "store.set:answered",
+    "telemetry:sent", "point:answered", "ai.mark:answered", "store.set:answered", "store.set:answered", "store.set:answered", "store.set:answered",
   ]);
 });
 
@@ -128,6 +134,9 @@ test("og.platform: malformed calls are refused naming the fix, and without a hos
   expect(og.platform.telemetry(w, "ok", { nested: { no: 1 } }).ok).toBeFalse();
   expect(og.platform.leaderboardSubmit(w, { score: Number.NaN }).ok).toBeFalse();
   expect(og.platform.aiMark(w, { kind: "image", label: "" }).ok).toBeFalse();
+  expect(og.platform.aiMark(w, { kind: "Image!", label: "a picture" }).ok).toBeFalse();
+  expect(og.platform.telemetry(w, "ok", { BadKey: 1 }).ok).toBeFalse();
+  expect(og.platform.point(w, { reason: "has space" }).ok).toBeFalse();
   expect(og.platform.saveSettings(w, [1, 2]).ok).toBeFalse();
   const r = must(og.platform.storeGet(w, "anything"));
   engine.advance(1); // answered before tick 0, applied at its start
