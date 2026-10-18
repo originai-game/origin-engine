@@ -69,3 +69,17 @@ opt-level = 3
 opt-level = 3
 [profile.dev.package.wide]
 opt-level = 3
+# Every GPU test records hundreds of commands through wgpu-core at -O0;
+# optimised, og-tests' effects and gfx suites ran 23 % faster (13.4 s to
+# 10.4 s for five tests, tests/evidence/build-speed-2026-10.md). They are
+# dependencies, so the cost is one rebuild (cached by sccache), not the loop.
+[profile.dev.package.wgpu-core]
+opt-level = 3
+[profile.dev.package.wgpu-hal]
+opt-level = 3
+[profile.dev.package.wgpu]
+opt-level = 3
+[profile.dev.package.wgpu-types]
+opt-level = 3
+[profile.dev.package.naga]
+opt-level = 3
