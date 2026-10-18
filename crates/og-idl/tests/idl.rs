@@ -42,6 +42,7 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
         "commands",
         "probe",
         "anim",
+        "atmosphere",
     ] {
         assert!(
             modules.contains(&want),
@@ -111,6 +112,7 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
             "sound",
             "lut",
             "emitter",
+            "shader",
             "texture",
             "skin",
             "soundInfo",
