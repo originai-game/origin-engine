@@ -3,7 +3,7 @@
 // ball stays within the rope's reach of its anchor; the flags move.
 import { moved, stationPlaytest } from "./station.ts";
 
-export default stationPlaytest("rope", 2, ["rope-ball"], ({ t, frame, before, field }) => {
+export default stationPlaytest("rope", 2.5, ["rope-ball"], ({ t, frame, before, field }) => {
   const p = field<number[]>("rope-ball", "Transform", "position");
   const reach = Math.hypot(p[0]! - 1098, p[1]! - 4.05);
   t.ok(reach <= 2.35, `the ball is within the rope's reach (${reach.toFixed(2)} m)`);

@@ -185,6 +185,10 @@ export function resetE5(world: World): void {
 
 /** Shows an E5 station: its camera, light and atmosphere. */
 export function showE5(world: World, station: E5Station): void {
+  if (world.find(`e5-${station}`) === null) {
+    builders[station]?.(world);
+    must(world.spawn({ name: `e5-${station}` }));
+  }
   const e = world.find("e5");
   if (e !== null) world.set(e, E5, { station: E5_STATIONS.indexOf(station) + 1, shown: 0 });
   const cam = must(world.resource(og.Camera));
@@ -265,6 +269,9 @@ export function showE5(world: World, station: E5Station): void {
 
 // ── the world ──────────────────────────────────────────────────────────────
 
+/** Each station's world, built when it is first shown (buildE5 fills it). */
+let builders: Partial<Record<E5Station, (world: World) => void>> = {};
+
 interface Kit {
   box: Geometry;
   sphere: Geometry;
@@ -294,6 +301,12 @@ function crate(world: World, k: Kit, name: string, material: Material, at: Vec3,
   return e;
 }
 
+/**
+ * Prepares the E5 stations: the shared materials now, each station's world
+ * when it is first shown (showE5), so a run that never shows a station never
+ * simulates it. A marker entity `e5-<station>` says a station is built (a
+ * restored snapshot keeps it, so a station is never built twice).
+ */
 export function buildE5(world: World, k: Kit, walkerModel: Asset, walkerRig: { skeleton: SkeletonAsset; clips: ReadonlyArray<{ clip: ClipAsset; name: string }> }, stoneTexture: Texture): void {
   const stone = k.mat({ color: { r: 0.7, g: 0.66, b: 0.6 }, roughness: 0.85 });
   const wood = k.mat({ color: { r: 0.42, g: 0.28, b: 0.16 }, roughness: 0.7 });
@@ -301,23 +314,24 @@ export function buildE5(world: World, k: Kit, walkerModel: Asset, walkerRig: { s
   const grass = k.mat({ color: { r: 0.3, g: 0.42, b: 0.2 }, roughness: 0.95 });
   const sand = k.mat({ color: { r: 0.76, g: 0.68, b: 0.5 }, roughness: 0.9 });
 
+  builders = {
   // sky: a colonnade towards the west.
-  {
+    sky: (world: World) => {
     const x = E5_ORIGIN.sky;
     k.ground(x, { x: 0.3, y: 0.32, z: 0.26 });
     for (let i = 0; i < 12; i++) {
       for (const z of [-5, 5]) mesh(world, `col-${i}-${z}`, k.box, stone, { x: x - i * 8, y: 4, z }, { scale: { x: 1, y: 8, z: 1 } });
     }
-  }
+    },
   // weather: a yard of crates and a wall.
-  {
+    weather: (world: World) => {
     const x = E5_ORIGIN.weather;
     k.ground(x, { x: 0.22, y: 0.24, z: 0.22 });
     mesh(world, "yard-wall", k.box, stone, { x, y: 2, z: -6 }, { scale: { x: 14, y: 4, z: 0.6 } });
     for (let i = 0; i < 6; i++) mesh(world, `yard-crate-${i}`, k.box, wood, { x: x - 5 + i * 2, y: 0.5, z: -3 + (i % 2) * 1.5 }, {});
-  }
+    },
   // water: a sloping bed, posts and a red ball breaking the surface, and a crate to drop.
-  {
+    water: (world: World) => {
     const x = E5_ORIGIN.water;
     block(world, k, "bed", sand, { x, y: -2.4, z: -6 }, { x: 40, y: 0.4, z: 40 }, axisAngle({ x: 1, y: 0, z: 0 }, -0.1));
     for (const s of [-1, 1]) block(world, k, `bank-${s}`, grass, { x: x + s * 18, y: -1.2, z: -6 }, { x: 20, y: 2, z: 40 }, axisAngle({ x: 0, y: 0, z: 1 }, s * 0.35));
@@ -330,9 +344,9 @@ export function buildE5(world: World, k: Kit, walkerModel: Asset, walkerRig: { s
     block(world, k, "water-shelf", wood, { x: x + 20, y: -21, z: -0.5 }, { x: 2, y: 0.2, z: 2 });
     const c = crate(world, k, "water-crate", wood, { x: x + 20, y: -20.4, z: -0.5 }, 0.8);
     world.set(world.find("e5")!, E5, { crate: c });
-  }
+    },
   // shaders: a dissolving sphere and a patch of grass.
-  {
+    shaders: (world: World) => {
     const x = E5_ORIGIN.shaders;
     k.ground(x, { x: 0.3, y: 0.27, z: 0.2 });
     const dissolveShader = must(og.load.shader(world, "shaders/dissolve.ogt"));
@@ -354,9 +368,9 @@ export function buildE5(world: World, k: Kit, walkerModel: Asset, walkerRig: { s
       mesh(world, `blade-${i}`, blade, bladeMat, { x: bx, y: 0.35 * s, z: bz }, { quaternion: axisAngle({ x: 0, y: 1, z: 0 }, (rnd() - 0.5) * 1.6), scale: { x: s, y: s, z: s } });
     }
     world.set(world.find("e5")!, E5, { dissolve });
-  }
+    },
   // controller: a slope, stairs, a moving platform, and the character.
-  {
+    controller: (world: World) => {
     const x = E5_ORIGIN.controller;
     block(world, k, "ctl-floor", k.mat({ color: { r: 0.36, g: 0.38, b: 0.4 }, roughness: 0.9 }), { x: x + 4, y: -0.5, z: 0 }, { x: 30, y: 1, z: 12 });
     // Three steps (each under stepHeight), a slope, a landing, and a lift
@@ -373,9 +387,9 @@ export function buildE5(world: World, k: Kit, walkerModel: Asset, walkerRig: { s
     world.insert(hero, og.CharacterController, { jumpSpeed: 5 });
     mesh(world, "hero-body", k.sphere, red, { x: 0, y: 0, z: 0 }, { parent: hero, scale: { x: 0.6, y: 1.5, z: 0.6 } });
     world.set(world.find("e5")!, E5, { hero });
-  }
+    },
   // joints: a motorised hinge, a chain, a spring, and a ragdoll.
-  {
+    joints: (world: World) => {
     const x = E5_ORIGIN.joints;
     block(world, k, "joint-floor", k.mat({ color: { r: 0.34, g: 0.34, b: 0.38 }, roughness: 0.9 }), { x, y: -0.5, z: 0 }, { x: 30, y: 1, z: 12 });
     const door = mesh(world, "spinner", k.box, wood, { x: x - 3.5, y: 1.4, z: -1 }, { scale: { x: 1.6, y: 0.2, z: 0.6 } });
@@ -402,9 +416,9 @@ export function buildE5(world: World, k: Kit, walkerModel: Asset, walkerRig: { s
     world.insert(doll, og.Ragdoll, { weight: 0, blendTime: 0.3 });
     must(og.physics.setRagdollRig(world, doll, must(og.physics.ragdollRigFromSkeleton(world, walkerRig.skeleton))));
     world.set(world.find("e5")!, E5, { ragdoll: doll });
-  }
+    },
   // rope: ropes holding a ball under a beam, and two flags.
-  {
+    rope: (world: World) => {
     const x = E5_ORIGIN.rope;
     k.ground(x, { x: 0.3, y: 0.32, z: 0.36 });
     mesh(world, "beam", k.box, wood, { x, y: 4.2, z: -1 }, { scale: { x: 6, y: 0.3, z: 0.3 } });
@@ -422,9 +436,9 @@ export function buildE5(world: World, k: Kit, walkerModel: Asset, walkerRig: { s
       const flag = must(world.spawn({ name: `flag-${i}`, position: { x: fx + 0.06, y: 3.5, z: -1.6 } }));
       world.insert(flag, og.Cloth, { columns: 14, rows: 10, spacing: 0.1, pins: i === 0 ? PIN_TOP : PIN_TOP_CORNERS, wind: { x: 3, y: 0, z: 1.2 }, gust: 0.7, material: k.mat({ color: i === 0 ? { r: 0.8, g: 0.12, b: 0.1 } : { r: 0.12, g: 0.3, b: 0.8 }, roughness: 0.85, side: "double" }) });
     }
-  }
+    },
   // fluid: a basin of water particles, a dam, and a pond with a crate to drop.
-  {
+    fluid: (world: World) => {
     const x = E5_ORIGIN.fluid;
     for (const [i, [wx, wy, w, h]] of WALLS.entries()) {
       const e = must(world.spawn({ name: `basin-${i}`, position: { x: x + wx, y: wy, z: 0 } }));
@@ -448,6 +462,7 @@ export function buildE5(world: World, k: Kit, walkerModel: Asset, walkerRig: { s
     world.insert(c, og.Collider, { shape: SHAPE_BOX, size: { x: 0.7, y: 0.7, z: 0.7 } });
     world.insert(c, og.Sprite, { texture: stoneTexture, width: 0.7, height: 0.7, layer: 1 });
     world.set(world.find("e5")!, E5, { pondCrate: c, stone: stoneTexture });
-  }
+    },
+  };
 }
 

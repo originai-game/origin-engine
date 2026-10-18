@@ -3,7 +3,7 @@
 // og.Water2D) where a dropped crate floats and the surface still waves.
 import { mean, moved, stationPlaytest } from "./station.ts";
 
-export default stationPlaytest("fluid", 2, ["pond-crate"], ({ t, frame, before, field }) => {
+export default stationPlaytest("fluid", 3, ["pond-crate"], ({ t, frame, before, field }) => {
   const y = field<number[]>("pond-crate", "Transform", "position")[1]!;
   t.ok(y > -2.6 && y < -1.0, `the crate floats in the pond (y ${y.toFixed(2)})`);
   const water = mean(frame, 420, 440, 700, 480);

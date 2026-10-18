@@ -3,7 +3,7 @@
 // limp (og.Ragdoll.blend reached 1).
 import { stationPlaytest } from "./station.ts";
 
-export default stationPlaytest("joints", 2.5, ["spinner", "chain-5", "bob", "ragdoll"], ({ t, field }) => {
+export default stationPlaytest("joints", 3, ["spinner", "chain-5", "bob", "ragdoll"], ({ t, field }) => {
   const angle = field<number>("spinner", "Joint", "value");
   t.ok(Math.abs(angle) > 1, `the hinge turned (${angle.toFixed(2)} rad)`);
   const end = field<number[]>("chain-5", "Transform", "position")[1]!;

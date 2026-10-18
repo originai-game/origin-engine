@@ -8,7 +8,9 @@ sprites and text, `og.load.lut`, `og.load.emitter`, a skinned model posed
 by `og.anim`), on five stations, with a screen-space HUD and an `og.ui`
 badge over every frame. The E5 round adds eight stations (`src/e5.ts`):
 atmosphere, weather, water, material shaders and the physics beyond rigid
-bodies, each with its own playtest.
+bodies, each with its own playtest. An E5 station's world is built when it
+is first shown (a marker entity `e5-<station>` records it), so a run that
+never shows one never simulates its fluid, cloth, ropes and ragdoll.
 
 ```sh
 og run templates/fx-showcase                        # the window
