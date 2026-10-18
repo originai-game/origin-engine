@@ -66,7 +66,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-786 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+788 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -594,6 +594,7 @@ Field units the docs and Tune use.
 | [`og.ui.select`](ui.md#fn-select) | function | ui | `og_ui_select` |
 | [`og.ui.setNavigation`](ui.md#fn-setNavigation) | function | ui | `og_ui_set_navigation` |
 | [`og.ui.settingsScreen`](ui.md#fn-settingsScreen) | function | ui | — |
+| [`og.ui.shake`](ui.md#fn-shake) | function | ui | `og_ui_shake` |
 | [`og.ui.shooterHud`](ui.md#fn-shooterHud) | function | ui | — |
 | [`og.ui.shopScreen`](ui.md#fn-shopScreen) | function | ui | — |
 | [`og.ui.skeleton`](ui.md#fn-skeleton) | function | ui | `og_ui_skeleton` |
@@ -728,6 +729,7 @@ Field units the docs and Tune use.
 | [`SettingsDesc`](ui.md#type-SettingsDesc) | desc struct | ui | — |
 | [`SettingsResult`](ui.md#type-SettingsResult) | struct | ui | — |
 | [`Shader`](render.md#type-Shader) | handle | render | — |
+| [`ShakeDesc`](ui.md#type-ShakeDesc) | desc struct | ui | — |
 | [`SHAPE_BOX`](physics.md#const-SHAPE_BOX) | constant | physics | — |
 | [`SHAPE_CAPSULE`](physics.md#const-SHAPE_CAPSULE) | constant | physics | — |
 | [`SHAPE_CONVEX`](physics.md#const-SHAPE_CONVEX) | constant | physics | — |

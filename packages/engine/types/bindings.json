@@ -10912,6 +10912,23 @@
     {
       "id": 234,
       "kind": "fn",
+      "path": "og.ui.shake",
+      "symbol": "og_ui_shake",
+      "module": "ui",
+      "name": "shake",
+      "params": [
+        {
+          "name": "desc",
+          "type": "ShakeDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Void",
+      "publish": true
+    },
+    {
+      "id": 235,
+      "kind": "fn",
       "path": "og.ui.screenTransition",
       "symbol": "og_ui_screen_transition",
       "module": "ui",
@@ -10937,7 +10954,7 @@
       "publish": true
     },
     {
-      "id": 235,
+      "id": 236,
       "kind": "fn",
       "path": "og.ui.previewViewport",
       "symbol": "og_ui_preview_viewport",
@@ -10959,7 +10976,7 @@
       "publish": true
     },
     {
-      "id": 236,
+      "id": 237,
       "kind": "fn",
       "path": "og.commands.register",
       "symbol": "og_commands_register",
@@ -10986,7 +11003,7 @@
       "publish": false
     },
     {
-      "id": 237,
+      "id": 238,
       "kind": "fn",
       "path": "og.commands.parse",
       "symbol": "og_commands_parse",
@@ -11003,7 +11020,7 @@
       "publish": false
     },
     {
-      "id": 238,
+      "id": 239,
       "kind": "fn",
       "path": "og.commands.help",
       "symbol": "og_commands_help",
@@ -11020,7 +11037,7 @@
       "publish": false
     },
     {
-      "id": 239,
+      "id": 240,
       "kind": "fn",
       "path": "og.commands.schedule",
       "symbol": "og_commands_schedule",
@@ -11042,7 +11059,7 @@
       "publish": false
     },
     {
-      "id": 240,
+      "id": 241,
       "kind": "prop",
       "path": "RuntimeProbe.version",
       "symbol": "og_runtime_probe_get_version",
@@ -11053,7 +11070,7 @@
       "publish": true
     },
     {
-      "id": 241,
+      "id": 242,
       "kind": "method",
       "path": "RuntimeProbe.tick",
       "symbol": "og_runtime_probe_tick",
@@ -11065,7 +11082,7 @@
       "publish": true
     },
     {
-      "id": 242,
+      "id": 243,
       "kind": "method",
       "path": "RuntimeProbe.state",
       "symbol": "og_runtime_probe_state",
@@ -11077,7 +11094,7 @@
       "publish": true
     },
     {
-      "id": 243,
+      "id": 244,
       "kind": "method",
       "path": "RuntimeProbe.advance",
       "symbol": "og_runtime_probe_advance",
@@ -11095,7 +11112,7 @@
       "publish": false
     },
     {
-      "id": 244,
+      "id": 245,
       "kind": "method",
       "path": "RuntimeProbe.pause",
       "symbol": "og_runtime_probe_pause",
@@ -11107,7 +11124,7 @@
       "publish": false
     },
     {
-      "id": 245,
+      "id": 246,
       "kind": "method",
       "path": "RuntimeProbe.resume",
       "symbol": "og_runtime_probe_resume",
@@ -11119,7 +11136,7 @@
       "publish": false
     },
     {
-      "id": 246,
+      "id": 247,
       "kind": "method",
       "path": "RuntimeProbe.input",
       "symbol": "og_runtime_probe_input",
@@ -11137,7 +11154,7 @@
       "publish": true
     },
     {
-      "id": 247,
+      "id": 248,
       "kind": "method",
       "path": "RuntimeProbe.accepted",
       "symbol": "og_runtime_probe_accepted",
@@ -11149,7 +11166,7 @@
       "publish": false
     },
     {
-      "id": 248,
+      "id": 249,
       "kind": "method",
       "path": "RuntimeProbe.pick",
       "symbol": "og_runtime_probe_pick",
@@ -11172,7 +11189,7 @@
       "publish": true
     },
     {
-      "id": 249,
+      "id": 250,
       "kind": "method",
       "path": "RuntimeProbe.entity",
       "symbol": "og_runtime_probe_entity",
@@ -11190,7 +11207,7 @@
       "publish": true
     },
     {
-      "id": 250,
+      "id": 251,
       "kind": "method",
       "path": "RuntimeProbe.bounds",
       "symbol": "og_runtime_probe_bounds",
@@ -11208,7 +11225,7 @@
       "publish": false
     },
     {
-      "id": 251,
+      "id": 252,
       "kind": "method",
       "path": "RuntimeProbe.patch",
       "symbol": "og_runtime_probe_patch",
@@ -11236,7 +11253,7 @@
       "publish": false
     },
     {
-      "id": 252,
+      "id": 253,
       "kind": "method",
       "path": "RuntimeProbe.run",
       "symbol": "og_runtime_probe_run",
@@ -11254,7 +11271,7 @@
       "publish": false
     },
     {
-      "id": 253,
+      "id": 254,
       "kind": "method",
       "path": "EngineProbe.hello",
       "symbol": "og_engine_probe_hello",
@@ -11266,7 +11283,7 @@
       "publish": true
     },
     {
-      "id": 254,
+      "id": 255,
       "kind": "method",
       "path": "EngineProbe.capture",
       "symbol": "og_engine_probe_capture",
@@ -11291,7 +11308,7 @@
       "publish": true
     },
     {
-      "id": 255,
+      "id": 256,
       "kind": "method",
       "path": "EngineProbe.sweep",
       "symbol": "og_engine_probe_sweep",
@@ -11310,7 +11327,7 @@
       "publish": false
     },
     {
-      "id": 256,
+      "id": 257,
       "kind": "method",
       "path": "EngineProbe.reload",
       "symbol": "og_engine_probe_reload",
@@ -11322,7 +11339,7 @@
       "publish": false
     },
     {
-      "id": 257,
+      "id": 258,
       "kind": "method",
       "path": "EngineProbe.snapshot",
       "symbol": "og_engine_probe_snapshot",
@@ -11334,7 +11351,7 @@
       "publish": false
     },
     {
-      "id": 258,
+      "id": 259,
       "kind": "method",
       "path": "EngineProbe.restore",
       "symbol": "og_engine_probe_restore",
@@ -11352,7 +11369,7 @@
       "publish": false
     },
     {
-      "id": 259,
+      "id": 260,
       "kind": "method",
       "path": "EngineProbe.dump",
       "symbol": "og_engine_probe_dump",
@@ -11371,7 +11388,7 @@
       "publish": false
     },
     {
-      "id": 260,
+      "id": 261,
       "kind": "method",
       "path": "EngineProbe.commands",
       "symbol": "og_engine_probe_commands",
@@ -11389,7 +11406,7 @@
       "publish": false
     },
     {
-      "id": 261,
+      "id": 262,
       "kind": "method",
       "path": "EngineProbe.listen",
       "symbol": "og_engine_probe_listen",

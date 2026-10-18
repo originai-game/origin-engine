@@ -41,7 +41,8 @@ pub use draw::{DrawCmd, DrawItem, EmitDesc, atlas_texture};
 pub use id::{Id, ui_id, ui_idi};
 pub use input::{GamepadFrame, InputFrame, InputSource, Nav, OgInput, UiKey};
 pub use juice::{
-    BurstDesc, CounterDesc, ScreenTransition, ScreenTransitionDesc, ScreenWipe, Side, format_count,
+    BurstDesc, CounterDesc, ScreenTransition, ScreenTransitionDesc, ScreenWipe, ShakeDesc, Side,
+    format_count,
 };
 pub use layout::{
     Align, Anchor, Cross, Direction, Element, FontRole, Insets, Rect, Size, TextAlign,

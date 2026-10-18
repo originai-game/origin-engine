@@ -606,6 +606,8 @@ pub trait UiApi: Wire {
     fn og_ui_counter(&self, id: String, value: f64, desc: Option<String>) -> f64;
     /// `og.ui.burst`
     fn og_ui_burst(&self, desc: Option<String>);
+    /// `og.ui.shake`
+    fn og_ui_shake(&self, desc: Option<String>);
     /// `og.ui.screenTransition`
     fn og_ui_screen_transition(&self, id: String, screen: String, desc: Option<String>) -> String;
     /// `og.ui.previewViewport`
@@ -913,6 +915,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_tick",
     "og_ui_counter",
     "og_ui_burst",
+    "og_ui_shake",
     "og_ui_screen_transition",
     "og_ui_preview_viewport",
     "og_commands_register",

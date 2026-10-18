@@ -368,3 +368,82 @@ fn press_at(x: f32, y: f32) -> InputFrame {
         ..InputFrame::default()
     }
 }
+
+/// One tick of a screen whose `Answer` label is shaken when `shake` says so.
+fn answer(ui: &mut Ui, shake: Option<ShakeDesc>, reduced: bool) -> f32 {
+    let mut t = *ui.theme();
+    t.reduced_motion = reduced;
+    ui.set_theme(t);
+    ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+    ui.label("Answer", "42", LabelDesc::default());
+    if let Some(d) = shake {
+        ui.shake(d);
+    }
+    ui.end();
+    ui.frame().element("Answer").expect("the label").x
+}
+
+#[test]
+fn game_code_shakes_an_element_once_and_it_comes_to_rest_by_itself() {
+    let (mut ui, _) = skinned_ui();
+    let rest = answer(&mut ui, None, false);
+    let mut xs = vec![answer(&mut ui, Some(ShakeDesc::default()), false)];
+    for _ in 0..40 {
+        xs.push(answer(&mut ui, None, false));
+    }
+    let far = xs.iter().map(|x| (x - rest).abs()).fold(0.0, f32::max);
+    assert!(
+        far > 2.0 && far <= 6.01,
+        "it swings by up to the skin's 6 px with no further call: {xs:?}"
+    );
+    assert!(
+        xs[xs.len() - 1] == rest && ui.take_sounds().is_empty(),
+        "it comes to rest where it was, silently by default"
+    );
+    // A snapshot mid-shake replays the same swings.
+    let mut a = skinned_ui().0;
+    answer(&mut a, None, false);
+    answer(
+        &mut a,
+        Some(ShakeDesc {
+            amount: 10.0,
+            sound: true,
+            ..ShakeDesc::default()
+        }),
+        false,
+    );
+    answer(&mut a, None, false);
+    let saved = a.save_state();
+    let tail: Vec<f32> = (0..10).map(|_| answer(&mut a, None, false)).collect();
+    let mut b = skinned_ui().0;
+    b.restore_state(&saved).unwrap();
+    let again: Vec<f32> = (0..10).map(|_| answer(&mut b, None, false)).collect();
+    assert_eq!(tail, again, "the shake is UI state");
+    assert!(
+        tail.iter().any(|x| (x - rest).abs() > 6.5),
+        "amount 10: {tail:?}"
+    );
+    assert_eq!(
+        a.take_sounds()
+            .into_iter()
+            .map(|(e, _)| e)
+            .collect::<Vec<_>>(),
+        vec![UiSound::Error],
+        "sound: true queues the error sound"
+    );
+    // Reduced motion keeps it still; no element before it warns.
+    let mut c = skinned_ui().0;
+    answer(&mut c, None, true);
+    let still: Vec<f32> = std::iter::once(answer(&mut c, Some(ShakeDesc::default()), true))
+        .chain((0..10).map(|_| answer(&mut c, None, true)))
+        .collect();
+    assert!(still.iter().all(|&x| x == rest), "{still:?}");
+    c.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+    c.shake(ShakeDesc::default());
+    let warnings = c.end().warnings.clone();
+    assert!(
+        warnings
+            .iter()
+            .any(|w| w.contains("shake with no element before it"))
+    );
+}

@@ -147,6 +147,5 @@ test("GameDesc.commandHelp gives a game's actions their usage in help, and get r
   expect(og.commands.schedule(engine.world as never, "0:set:og.Camera.fov=70;0:get:og.Camera.fov").ok).toBeTrue();
   engine.advance(1);
   expect(engine.takeLog().map((l) => l.text)).toContain("get og.Camera.fov = 70.0");
-  const out = engine.takeOutputs().find((o) => o.action === "get") as { payload?: unknown } | undefined;
-  expect(out).toBeDefined();
+  expect(engine.takeOutputs().some((o) => o.action === "get")).toBeTrue();
 });

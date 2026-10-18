@@ -503,6 +503,8 @@ export interface HostAbi<A, V> {
   og_ui_counter(id: string, value: number, desc: string | undefined): number;
   /** `og.ui.burst` */
   og_ui_burst(desc: string | undefined): void;
+  /** `og.ui.shake` */
+  og_ui_shake(desc: string | undefined): void;
   /** `og.ui.screenTransition` */
   og_ui_screen_transition(id: string, screen: string, desc: string | undefined): string;
   /** `og.ui.previewViewport` */
@@ -797,6 +799,7 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_tick",
   "og_ui_counter",
   "og_ui_burst",
+  "og_ui_shake",
   "og_ui_screen_transition",
   "og_ui_preview_viewport",
   "og_commands_register",

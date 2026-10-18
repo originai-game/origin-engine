@@ -1249,6 +1249,11 @@ pub fn og_ui_burst(desc: Option<String>) {
 }
 
 #[wasm_bindgen]
+pub fn og_ui_shake(desc: Option<String>) {
+    <Host as UiApi>::og_ui_shake(&Host, desc)
+}
+
+#[wasm_bindgen]
 pub fn og_ui_screen_transition(id: String, screen: String, desc: Option<String>) -> String {
     <Host as UiApi>::og_ui_screen_transition(&Host, id, screen, desc)
 }

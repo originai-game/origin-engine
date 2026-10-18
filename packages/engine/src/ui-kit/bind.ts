@@ -98,6 +98,7 @@ export const widgets = {
   tick: (): number => abi().og_ui_tick(),
   counter: (id: string, value: number, desc?: Api.CounterDesc): number => abi().og_ui_counter(id, value, json(desc)),
   burst: (desc?: Api.BurstDesc): void => abi().og_ui_burst(json(desc)),
+  shake: (desc?: Api.ShakeDesc): void => abi().og_ui_shake(json(desc)),
   screenTransition: (id: string, screen: string, desc?: Api.ScreenTransitionDesc): Api.ScreenTransitionResult =>
     parse(abi().og_ui_screen_transition(id, screen, json(desc))),
   previewViewport: (world: Api.World, viewport: Api.Viewport | null): void =>

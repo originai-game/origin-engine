@@ -597,6 +597,9 @@ impl UiApi for NodeHost {
     fn og_ui_burst(&self, desc: Option<String>) {
         rt::og_ui_burst(desc)
     }
+    fn og_ui_shake(&self, desc: Option<String>) {
+        rt::og_ui_shake(desc)
+    }
     fn og_ui_screen_transition(&self, id: String, screen: String, desc: Option<String>) -> String {
         rt::og_ui_screen_transition(id, screen, desc)
     }

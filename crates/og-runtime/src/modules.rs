@@ -1323,6 +1323,17 @@ pub fn og_ui_burst(desc: Option<String>) {
     });
 }
 
+pub fn og_ui_shake(desc: Option<String>) {
+    let d = desc_of(desc);
+    with_ui("og.ui.shake", |ui| {
+        ui.shake(og_ui::ShakeDesc {
+            amount: f(&d, "amount", 0.0),
+            duration_ms: f(&d, "durationMs", 0.0),
+            sound: d["sound"].as_bool().unwrap_or(false),
+        })
+    });
+}
+
 pub fn og_ui_screen_transition(id: String, screen: String, desc: Option<String>) -> String {
     let d = desc_of(desc);
     let texture = d["texture"].as_f64().and_then(|h| {

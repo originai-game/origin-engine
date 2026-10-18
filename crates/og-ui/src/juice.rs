@@ -1,4 +1,4 @@
-//! Juice: number count-ups, bursts and screen transitions. Each is a call
+//! Juice: number count-ups, bursts, shakes and screen transitions. Each is a call
 //! per tick whose progress lives in the UI state (ticks counted by the UI,
 //! never a clock), so snapshots and replays carry it; `reduced_motion`
 //! turns movement into fades (and bursts off).
@@ -10,6 +10,21 @@ use crate::motion::{Fx, ease_out};
 use crate::style::{Srgba, TypeStep};
 use crate::ui::{Anim, Ui};
 use og_render::TextureHandle;
+
+/// A shake of the element built just before (a wrong answer, a locked door):
+/// three decaying swings, as a refused press shakes a button.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct ShakeDesc {
+    /// The first swing, CSS px (0: the skin's `motion.shake`, else 6).
+    pub amount: f32,
+    /// 0: `motion.duration.slow`.
+    pub duration_ms: f32,
+    /// Also queue the skin's error sound, as a refused press does.
+    pub sound: bool,
+}
+
+/// The tag of a shake's memory (`Anim::h`), so [`Ui::end`] finds them.
+pub(crate) const SHAKE: u64 = 0x5348_414b_4500_0001;
 
 /// A number that counts to its value.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -312,6 +327,79 @@ impl Ui {
             });
         }
         self.nodes[anchor].shapes.extend(shapes);
+    }
+
+    /// Shakes the element built just before from this tick on: it swings
+    /// sideways three times, decaying to rest over the duration, with no
+    /// further call (the shake lives in the UI state, so snapshots carry
+    /// it). A second shake restarts it. Still under reduced motion (the
+    /// sound, when asked, still plays).
+    pub fn shake(&mut self, desc: ShakeDesc) {
+        let anchor = self.last_closed;
+        if anchor == NONE {
+            self.warnings.push(
+                "shake with no element before it: call ui.shake() right after the element".into(),
+            );
+            return;
+        }
+        let t = self.theme;
+        let amount = if desc.amount > 0.0 {
+            desc.amount
+        } else if t.skin.motion.shake > 0.0 {
+            t.skin.motion.shake
+        } else {
+            6.0
+        };
+        let ms = if desc.duration_ms > 0.0 {
+            desc.duration_ms
+        } else {
+            t.durations_ms.slow
+        };
+        let key = child_key(self.nodes[anchor].key, "shake");
+        let ticks = self.ticks_for(ms) as f32;
+        self.set_anim(
+            key,
+            Anim {
+                a: amount,
+                b: ticks,
+                t: self.state.tick,
+                h: SHAKE,
+            },
+        );
+        if desc.sound {
+            self.sound(crate::skin::UiSound::Error);
+        }
+    }
+
+    /// Moves every element with a shake in progress (called by `end`
+    /// before the transitions apply): the swing of this tick, kept until
+    /// it has come to rest.
+    pub(crate) fn apply_shakes(&mut self, order: &[usize]) {
+        if !self.state.anims.values().any(|a| a.h == SHAKE) {
+            return;
+        }
+        let now = self.state.tick;
+        let still = self.theme.reduced_motion;
+        for &i in order {
+            let key = child_key(self.nodes[i].key, "shake");
+            let Some(&a) = self.state.anims.get(&key).filter(|a| a.h == SHAKE) else {
+                continue;
+            };
+            let k = (now - a.t) as f32 / a.b.max(1.0);
+            if k >= 1.0 {
+                continue;
+            }
+            self.touched.insert(key);
+            if still {
+                continue;
+            }
+            // Three decaying swings, arithmetic only (a triangle wave).
+            let x = k * 3.0;
+            let tri = 4.0 * (x - x.floor() - 0.5).abs() - 1.0;
+            let mut f = self.nodes[i].fx.unwrap_or_default();
+            f.dx += a.a * (1.0 - k) * tri;
+            self.nodes[i].fx = Some(f);
+        }
     }
 
     /// A transition between game screens, drawn over the whole frame: pass

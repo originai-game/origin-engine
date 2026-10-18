@@ -12001,6 +12001,37 @@ export interface BurstDesc {
 
 
 /**
+ * A shake of an element: three sideways swings decaying to rest.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ShakeDesc {
+  /**
+   * The first swing; 0 is the skin's motion.shake, else 6.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly amount?: number;
+  /**
+   * How long it takes to come to rest; 0 is motion.duration.slow.
+   *
+   * @default 0
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly durationMs?: number;
+  /**
+   * Also play the skin's error sound, as a refused press does.
+   *
+   * @default false
+   */
+  readonly sound?: boolean;
+}
+
+
+/**
  * How a screen transition covers the old screen and reveals the new one.
  * - `"fade"`: The cover fades in and out.
  * - `"wipe"`: An edge sweeps across.
@@ -16049,6 +16080,12 @@ export declare namespace og {
      * @param desc Count, ink, reach and timing.
      */
     function burst(desc?: BurstDesc): void;
+    /**
+     * Shake the element built just before, from this tick (a wrong answer, a locked door, a refused purchase): call it once, on the tick it happens; the element swings and comes to rest by itself, and snapshots carry it. Still under reduced motion. A refused press on a disabled button already shakes when the skin's motion.shake is set.
+     *
+     * @param desc Amount, duration and sound.
+     */
+    function shake(desc?: ShakeDesc): void;
     /**
      * A transition between game screens drawn over the whole frame (through the overlay, over every other UI layer). Pass the screen the game wants every tick and build the one it answers: when the wanted screen changes the cover closes over the old screen for half the duration, the answer switches, and the cover opens on the new one. Deterministic by the tick; snapshots carry it; under reduced motion every kind is a fade.
      *

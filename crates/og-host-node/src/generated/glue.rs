@@ -1497,6 +1497,12 @@ pub fn og_ui_burst(env: Env, desc: Option<String>) {
     <Host as UiApi>::og_ui_burst(&Host, desc)
 }
 
+#[napi(js_name = "og_ui_shake")]
+pub fn og_ui_shake(env: Env, desc: Option<String>) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_shake(&Host, desc)
+}
+
 #[napi(js_name = "og_ui_screen_transition")]
 pub fn og_ui_screen_transition(env: Env, id: String, screen: String, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);

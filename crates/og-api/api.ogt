@@ -7999,6 +7999,26 @@ module ui {
     returns Void
   }
 
+  struct ShakeDesc {
+    doc "A shake of an element: three sideways swings decaying to rest."
+    desc true
+    field amount f32 "The first swing; 0 is the skin's motion.shake, else 6." {
+      unit cssPx
+      min 0
+    }
+    field durationMs f32 "How long it takes to come to rest; 0 is motion.duration.slow." {
+      unit ms
+      min 0
+    }
+    field sound bool "Also play the skin's error sound, as a refused press does."
+  }
+
+  fn shake {
+    doc "Shake the element built just before, from this tick (a wrong answer, a locked door, a refused purchase): call it once, on the tick it happens; the element swings and comes to rest by itself, and snapshots carry it. Still under reduced motion. A refused press on a disabled button already shakes when the skin's motion.shake is set."
+    param desc ShakeDesc "Amount, duration and sound."
+    returns Void
+  }
+
   enum ScreenWipe {
     doc "How a screen transition covers the old screen and reveals the new one."
     variant fade "The cover fades in and out."

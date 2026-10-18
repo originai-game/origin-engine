@@ -1710,6 +1710,7 @@ impl Ui {
                 r.x = vp.width - r.x - r.width;
             }
         }
+        self.apply_shakes(&order);
         self.apply_stagger(&order);
         self.apply_fx(&order);
 
