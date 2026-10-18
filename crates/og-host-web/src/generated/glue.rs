@@ -64,6 +64,21 @@ pub fn og_engine_write_resource(world: u32, resource: String, value: String) -> 
 }
 
 #[wasm_bindgen]
+pub fn og_platform_take(engine: u32) -> String {
+    <Host as Lifecycle>::og_platform_take(&Host, engine)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_answer(engine: u32, request: u32, answer: String) -> bool {
+    <Host as Lifecycle>::og_platform_answer(&Host, engine, request, answer)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_set_host(engine: u32, info: String) {
+    <Host as Lifecycle>::og_platform_set_host(&Host, engine, info)
+}
+
+#[wasm_bindgen]
 pub fn og_reflect_define_component(name: String, fields: String) -> String {
     <Host as ReflectApi>::og_reflect_define_component(&Host, name, fields)
 }
@@ -766,6 +781,71 @@ pub fn og_ai_noise(world: u32, desc: Option<String>) -> String {
 #[wasm_bindgen]
 pub fn og_ai_describe(world: u32, entity: f64) -> String {
     <Host as AiApi>::og_ai_describe(&Host, world, entity)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_store_get(world: u32, key: String) -> String {
+    <Host as PlatformApi>::og_platform_store_get(&Host, world, key)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_store_set(world: u32, desc: Option<String>) -> String {
+    <Host as PlatformApi>::og_platform_store_set(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_store_list(world: u32) -> u32 {
+    <Host as PlatformApi>::og_platform_store_list(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_leaderboard_submit(world: u32, desc: Option<String>) -> String {
+    <Host as PlatformApi>::og_platform_leaderboard_submit(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_leaderboard_top(world: u32, desc: Option<String>) -> u32 {
+    <Host as PlatformApi>::og_platform_leaderboard_top(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_leaderboard_around(world: u32, desc: Option<String>) -> u32 {
+    <Host as PlatformApi>::og_platform_leaderboard_around(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_telemetry(world: u32, name: String, attrs: Option<String>) -> String {
+    <Host as PlatformApi>::og_platform_telemetry(&Host, world, name, attrs)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_point(world: u32, desc: Option<String>) -> String {
+    <Host as PlatformApi>::og_platform_point(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_ai_mark(world: u32, desc: Option<String>) -> String {
+    <Host as PlatformApi>::og_platform_ai_mark(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_load_settings(world: u32) -> u32 {
+    <Host as PlatformApi>::og_platform_load_settings(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_save_settings(world: u32, value: String) -> String {
+    <Host as PlatformApi>::og_platform_save_settings(&Host, world, value)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_result(world: u32, request: u32) -> String {
+    <Host as PlatformApi>::og_platform_result(&Host, world, request)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_info(world: u32) -> String {
+    <Host as PlatformApi>::og_platform_info(&Host, world)
 }
 
 #[wasm_bindgen]

@@ -42,12 +42,18 @@ pub trait Lifecycle: Wire {
     fn og_host_begin_bundle(&self);
     /// The probe's JSON-RPC 2.0 entry: one request frame in, its answer frame out (og-probe `Probe::call`). The native loopback WebSocket and the web request ring carry exactly these frames. Call it between ticks, never from a system.
     fn og_engine_call(&self, engine: u32, frame: String) -> String;
-    /// The files the command channel produced since the last call (`screenshot`, `dump_*`, `help`), as JSON `[{ tick, action, file, kind, data }]`: `file` is og-probe's `Output::file_name()`, `kind` is `png`, `json` or `text`, `data` is base64 for a PNG and the text otherwise. The host writes them (og run) or posts them.
+    /// The files the command channel produced since the last call (`screenshot`, `dump_*`, `help`), as JSON `[{ tick, action, file, kind, data }]`: `file` is og-probe's `Output::file_name()`, `kind` is `png`, `json`, `text` or `wav`, `data` is base64 for a PNG or a WAV and the text otherwise. The host writes them (og run) or posts them.
     fn og_engine_take_outputs(&self, engine: u32) -> String;
     /// Log lines since the last call, as JSON `[{ tick, warning, text }]`: the command channel's and the probe's warnings and the loader's, each naming the fix.
     fn og_engine_take_log(&self, engine: u32) -> String;
     /// Write some fields of a resource: how the runtime makes `world.resource(R).value` a live value. A Result.
     fn og_engine_write_resource(&self, world: u32, resource: String, value: String) -> String;
+    /// The platform calls (IDL `platform`) made since the last call, oldest first, as JSON `[{ request, method, args, tick }]`. The host answers each but `telemetry` (one-way) with og_platform_answer.
+    fn og_platform_take(&self, engine: u32) -> String;
+    /// Answer one platform call: JSON `{ ok: true, data }` or `{ ok: false, error: { code, message, retryable } }`. It is applied at the start of the next tick (og.platform sends PlatformAnswered). False for an unknown, one-way or answered request, or a malformed answer.
+    fn og_platform_answer(&self, engine: u32, request: u32, answer: String) -> bool;
+    /// Say what answers this engine's platform calls: JSON `{ host, capabilities }` (`player`, `local` or `none`; the methods it answers), as og.platform.info reports.
+    fn og_platform_set_host(&self, engine: u32, info: String);
 }
 
 /// `reflect`: packages/knowledge/wiki/reflect.md.
@@ -400,6 +406,36 @@ pub trait AiApi: Wire {
     fn og_ai_describe(&self, world: u32, entity: f64) -> String;
 }
 
+/// `platform`: packages/knowledge/wiki/platform.md.
+pub trait PlatformApi: Wire {
+    /// `og.platform.storeGet`
+    fn og_platform_store_get(&self, world: u32, key: String) -> String;
+    /// `og.platform.storeSet`
+    fn og_platform_store_set(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.platform.storeList`
+    fn og_platform_store_list(&self, world: u32) -> u32;
+    /// `og.platform.leaderboardSubmit`
+    fn og_platform_leaderboard_submit(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.platform.leaderboardTop`
+    fn og_platform_leaderboard_top(&self, world: u32, desc: Option<String>) -> u32;
+    /// `og.platform.leaderboardAround`
+    fn og_platform_leaderboard_around(&self, world: u32, desc: Option<String>) -> u32;
+    /// `og.platform.telemetry`
+    fn og_platform_telemetry(&self, world: u32, name: String, attrs: Option<String>) -> String;
+    /// `og.platform.point`
+    fn og_platform_point(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.platform.aiMark`
+    fn og_platform_ai_mark(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.platform.loadSettings`
+    fn og_platform_load_settings(&self, world: u32) -> u32;
+    /// `og.platform.saveSettings`
+    fn og_platform_save_settings(&self, world: u32, value: String) -> String;
+    /// `og.platform.result`
+    fn og_platform_result(&self, world: u32, request: u32) -> String;
+    /// `og.platform.info`
+    fn og_platform_info(&self, world: u32) -> String;
+}
+
 /// `ui`: packages/knowledge/wiki/ui.md.
 pub trait UiApi: Wire {
     /// `og.ui.configure`
@@ -595,9 +631,9 @@ pub trait ProbeApi: Wire {
 }
 
 /// Every trait: a host is a type that implements all of them.
-pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AnimApi + TweenApi + TilemapApi + NavApi + AiApi + UiApi + CommandsApi + ProbeApi {}
+pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AnimApi + TweenApi + TilemapApi + NavApi + AiApi + PlatformApi + UiApi + CommandsApi + ProbeApi {}
 
-impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AnimApi + TweenApi + TilemapApi + NavApi + AiApi + UiApi + CommandsApi + ProbeApi> Host for T {}
+impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AnimApi + TweenApi + TilemapApi + NavApi + AiApi + PlatformApi + UiApi + CommandsApi + ProbeApi> Host for T {}
 
 /// Every binding symbol, in binding-table order (`bindings.json` ids).
 pub const SYMBOLS: &[&str] = &[
@@ -742,6 +778,19 @@ pub const SYMBOLS: &[&str] = &[
     "og_ai_set",
     "og_ai_noise",
     "og_ai_describe",
+    "og_platform_store_get",
+    "og_platform_store_set",
+    "og_platform_store_list",
+    "og_platform_leaderboard_submit",
+    "og_platform_leaderboard_top",
+    "og_platform_leaderboard_around",
+    "og_platform_telemetry",
+    "og_platform_point",
+    "og_platform_ai_mark",
+    "og_platform_load_settings",
+    "og_platform_save_settings",
+    "og_platform_result",
+    "og_platform_info",
     "og_ui_configure",
     "og_ui_viewport",
     "og_ui_theme",
@@ -9206,6 +9255,41 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 label: "",
                 doc: "AI_RUNNING, AI_SUCCESS or AI_FAILURE.",
+                variants: &[],
+            },
+        ],
+    },
+    RecordDecl {
+        kind: "event",
+        name: "PlatformAnswered",
+        schema: "og.PlatformAnswered",
+        fields: &[
+            FieldDecl {
+                name: "request",
+                column: "u32",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The call's request number.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "ok",
+                column: "bool",
+                default: "false",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Whether it succeeded; og.platform.result has the data or the error.",
                 variants: &[],
             },
         ],

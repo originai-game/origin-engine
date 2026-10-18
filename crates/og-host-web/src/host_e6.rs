@@ -1,4 +1,4 @@
-//! The E6 modules' trait implementations (NavApi, AiApi): every
+//! The E6 modules' trait implementations (NavApi, AiApi, PlatformApi): every
 //! member is the host-neutral runtime's.
 
 use crate::WebHost;
@@ -77,5 +77,47 @@ impl AiApi for WebHost {
     }
     fn og_ai_describe(&self, world: u32, entity: f64) -> String {
         rt::og_ai_describe(world, entity)
+    }
+}
+
+impl PlatformApi for WebHost {
+    fn og_platform_store_get(&self, world: u32, key: String) -> String {
+        rt::og_platform_store_get(world, key)
+    }
+    fn og_platform_store_set(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_platform_store_set(world, desc)
+    }
+    fn og_platform_store_list(&self, world: u32) -> u32 {
+        rt::og_platform_store_list(world)
+    }
+    fn og_platform_leaderboard_submit(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_platform_leaderboard_submit(world, desc)
+    }
+    fn og_platform_leaderboard_top(&self, world: u32, desc: Option<String>) -> u32 {
+        rt::og_platform_leaderboard_top(world, desc)
+    }
+    fn og_platform_leaderboard_around(&self, world: u32, desc: Option<String>) -> u32 {
+        rt::og_platform_leaderboard_around(world, desc)
+    }
+    fn og_platform_telemetry(&self, world: u32, name: String, attrs: Option<String>) -> String {
+        rt::og_platform_telemetry(world, name, attrs)
+    }
+    fn og_platform_point(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_platform_point(world, desc)
+    }
+    fn og_platform_ai_mark(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_platform_ai_mark(world, desc)
+    }
+    fn og_platform_load_settings(&self, world: u32) -> u32 {
+        rt::og_platform_load_settings(world)
+    }
+    fn og_platform_save_settings(&self, world: u32, value: String) -> String {
+        rt::og_platform_save_settings(world, value)
+    }
+    fn og_platform_result(&self, world: u32, request: u32) -> String {
+        rt::og_platform_result(world, request)
+    }
+    fn og_platform_info(&self, world: u32) -> String {
+        rt::og_platform_info(world)
     }
 }

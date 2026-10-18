@@ -75,6 +75,24 @@ pub fn og_engine_write_resource(env: Env, world: u32, resource: String, value: S
     <Host as Lifecycle>::og_engine_write_resource(&Host, world, resource, value)
 }
 
+#[napi(js_name = "og_platform_take")]
+pub fn og_platform_take(env: Env, engine: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_platform_take(&Host, engine)
+}
+
+#[napi(js_name = "og_platform_answer")]
+pub fn og_platform_answer(env: Env, engine: u32, request: u32, answer: String) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_platform_answer(&Host, engine, request, answer)
+}
+
+#[napi(js_name = "og_platform_set_host")]
+pub fn og_platform_set_host(env: Env, engine: u32, info: String) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_platform_set_host(&Host, engine, info)
+}
+
 #[napi(js_name = "og_reflect_define_component")]
 pub fn og_reflect_define_component(env: Env, name: String, fields: String) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -919,6 +937,84 @@ pub fn og_ai_noise(env: Env, world: u32, desc: Option<String>) -> String {
 pub fn og_ai_describe(env: Env, world: u32, entity: f64) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as AiApi>::og_ai_describe(&Host, world, entity)
+}
+
+#[napi(js_name = "og_platform_store_get")]
+pub fn og_platform_store_get(env: Env, world: u32, key: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_store_get(&Host, world, key)
+}
+
+#[napi(js_name = "og_platform_store_set")]
+pub fn og_platform_store_set(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_store_set(&Host, world, desc)
+}
+
+#[napi(js_name = "og_platform_store_list")]
+pub fn og_platform_store_list(env: Env, world: u32) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_store_list(&Host, world)
+}
+
+#[napi(js_name = "og_platform_leaderboard_submit")]
+pub fn og_platform_leaderboard_submit(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_leaderboard_submit(&Host, world, desc)
+}
+
+#[napi(js_name = "og_platform_leaderboard_top")]
+pub fn og_platform_leaderboard_top(env: Env, world: u32, desc: Option<String>) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_leaderboard_top(&Host, world, desc)
+}
+
+#[napi(js_name = "og_platform_leaderboard_around")]
+pub fn og_platform_leaderboard_around(env: Env, world: u32, desc: Option<String>) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_leaderboard_around(&Host, world, desc)
+}
+
+#[napi(js_name = "og_platform_telemetry")]
+pub fn og_platform_telemetry(env: Env, world: u32, name: String, attrs: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_telemetry(&Host, world, name, attrs)
+}
+
+#[napi(js_name = "og_platform_point")]
+pub fn og_platform_point(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_point(&Host, world, desc)
+}
+
+#[napi(js_name = "og_platform_ai_mark")]
+pub fn og_platform_ai_mark(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_ai_mark(&Host, world, desc)
+}
+
+#[napi(js_name = "og_platform_load_settings")]
+pub fn og_platform_load_settings(env: Env, world: u32) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_load_settings(&Host, world)
+}
+
+#[napi(js_name = "og_platform_save_settings")]
+pub fn og_platform_save_settings(env: Env, world: u32, value: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_save_settings(&Host, world, value)
+}
+
+#[napi(js_name = "og_platform_result")]
+pub fn og_platform_result(env: Env, world: u32, request: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_result(&Host, world, request)
+}
+
+#[napi(js_name = "og_platform_info")]
+pub fn og_platform_info(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_info(&Host, world)
 }
 
 #[napi(js_name = "og_ui_configure")]

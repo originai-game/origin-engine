@@ -29,6 +29,10 @@ declare module "node:fs" {
   export function watch(path: string, listener: (event: string, file: string | null) => void): { close(): void };
 }
 
+declare module "node:crypto" {
+  export function createHash(algorithm: string): { update(data: Uint8Array | string): { digest(encoding: "hex"): string } };
+}
+
 declare module "node:zlib" {
   export function inflateSync(data: Uint8Array): Uint8Array;
 }

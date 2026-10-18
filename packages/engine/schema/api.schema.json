@@ -3111,6 +3111,289 @@
       "callbacks": []
     },
     {
+      "name": "platform",
+      "doc": "Platform services as host capabilities (docs/design.md §2.8): cloud store, leaderboards, telemetry, Origin Point and AI marks. Game code names a method and its arguments, never a credential, a URL or a cookie: the host owns them. On the web the shell forwards each call to the Player through origin-checked postMessage (Player protocol 2, docs/web-export.md); natively the host answers from a local JSON store (`og run --platform-store`, default `<project>/.og/platform.json`).\nCalls are asynchronous: each returns a request number at once, and the answer arrives at the start of a later tick, when og.platform sends PlatformAnswered; read it with og.platform.result. Answers are host input, like key presses: the probe's `dump_platform` lists every call, its arguments, its answer and the ticks.\nErrors carry the Player's stable codes: offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable, failed; retryable is true for offline, timeout, unavailable and rate_limited.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "PlatformOrder",
+        "PlatformAnswered",
+        "StoreSetDesc",
+        "LeaderboardSubmitDesc",
+        "LeaderboardQueryDesc",
+        "PointDesc",
+        "AiMarkDesc",
+        "PlatformError",
+        "PlatformResult",
+        "PlatformInfo"
+      ],
+      "consts": [],
+      "functions": [
+        {
+          "name": "storeGet",
+          "doc": "Read one key of the player's store for this game.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "key",
+              "type": "String",
+              "optional": false,
+              "doc": "The key."
+            }
+          ],
+          "returns": "Result<u32>",
+          "returnsDoc": "Refused for a malformed key. The answer's data is `{ key, value, revision }` (value null and revision 0 for a key never written).",
+          "publish": true
+        },
+        {
+          "name": "storeSet",
+          "doc": "Write one key of the player's store for this game; with a revision, only if nobody wrote it since (another device, another tab).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "StoreSetDesc",
+              "optional": true,
+              "doc": "The key, the value and the revision it must be at."
+            }
+          ],
+          "returns": "Result<u32>",
+          "returnsDoc": "Refused for a malformed key or a value over 64 KiB. The answer's data is `{ key, revision }` (the new revision); `conflict` when the key moved past desc.revision.",
+          "publish": true
+        },
+        {
+          "name": "storeList",
+          "doc": "The keys of the player's store and their revisions.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "u32",
+          "returnsDoc": "The answer's data is `{ keys: [{ key, revision }] }`.",
+          "publish": true
+        },
+        {
+          "name": "leaderboardSubmit",
+          "doc": "Submit a score; the board keeps the player's best.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "LeaderboardSubmitDesc",
+              "optional": true,
+              "doc": "The board, the score and its order."
+            }
+          ],
+          "returns": "Result<u32>",
+          "returnsDoc": "Refused for a score that is not finite. The answer's data is `{ board, rank, best }`, or `{ board, rank: null, queued: true }` while offline.",
+          "publish": true
+        },
+        {
+          "name": "leaderboardTop",
+          "doc": "The best entries of a board, and the player's own.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "LeaderboardQueryDesc",
+              "optional": true,
+              "doc": "The board and how many."
+            }
+          ],
+          "returns": "u32",
+          "returnsDoc": "The answer's data is `{ board, order, entries: [{ rank, name, score, me }], me }`.",
+          "publish": true
+        },
+        {
+          "name": "leaderboardAround",
+          "doc": "The entries around the player's rank.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "LeaderboardQueryDesc",
+              "optional": true,
+              "doc": "The board and how many around the player."
+            }
+          ],
+          "returns": "u32",
+          "returnsDoc": "The answer's data is the leaderboardTop shape with the entries around the player's rank.",
+          "publish": true
+        },
+        {
+          "name": "telemetry",
+          "doc": "Record a game event for the game's analytics.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "The event: `level.started`, `level.completed`, `boss.defeated` (letters, digits, `.`, `_`; the Player files it as `game.custom.<name>`)."
+            },
+            {
+              "name": "attrs",
+              "type": "Json",
+              "optional": true,
+              "doc": "Its attributes: an object of strings, numbers, booleans or null, at most 16."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for a malformed name or attributes. Fire and forget: nothing answers.",
+          "publish": true
+        },
+        {
+          "name": "point",
+          "doc": "Ask for Origin Point for something the player did.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "PointDesc",
+              "optional": true,
+              "doc": "Why and how many."
+            }
+          ],
+          "returns": "Result<u32>",
+          "returnsDoc": "Refused for an empty reason. The answer's data is `{ granted, balance }`.",
+          "publish": true
+        },
+        {
+          "name": "aiMark",
+          "doc": "Disclose AI-generated content the game shows.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "AiMarkDesc",
+              "optional": true,
+              "doc": "What was generated."
+            }
+          ],
+          "returns": "Result<u32>",
+          "returnsDoc": "Refused for an empty kind or label. The answer's data is `{ marked: true }`.",
+          "publish": true
+        },
+        {
+          "name": "loadSettings",
+          "doc": "Ask for the game's saved settings (volume, controls, language): store.get of the key `og.settings`. Where the Player has no store, or is offline, the shell answers from the browser's own storage; natively, from the local store.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "u32",
+          "returnsDoc": "The request; its answer's data is `{ key, value, revision }` (value null before the first save).",
+          "publish": true
+        },
+        {
+          "name": "saveSettings",
+          "doc": "Save the game's settings under `og.settings` (the last save wins), with the same local fallback as loadSettings.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "value",
+              "type": "Json",
+              "optional": false,
+              "doc": "The settings: an object, at most 64 KiB encoded."
+            }
+          ],
+          "returns": "Result<u32>",
+          "returnsDoc": "Refused for a value that is not an object or is too large.",
+          "publish": true
+        },
+        {
+          "name": "result",
+          "doc": "The answer to a call, once it arrived.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "request",
+              "type": "u32",
+              "optional": false,
+              "doc": "The call."
+            }
+          ],
+          "returns": "Option<PlatformResult>",
+          "returnsDoc": "Null while it is in flight, or for an unknown request.",
+          "publish": true
+        },
+        {
+          "name": "info",
+          "doc": "What answers platform calls here, and what it answers.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "PlatformInfo",
+          "publish": true
+        }
+      ],
+      "interfaces": [],
+      "callbacks": []
+    },
+    {
       "name": "ui",
       "doc": "The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, themes it with the platform's design tokens, draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it.\nThe engine opens the frame before the game's systems (from og.Input and the play surface) and closes it after them, so calls belong inside systems; outside one they do nothing and log a warning. Interaction is decided against the previous tick's rectangles, which are also what the probe resolves, so a scripted touch_move_to and a click agree; response edges (clicked, changed, submitted) last one tick.\nLengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Ids: an element's id is unique among its siblings (`idi(\"Slot\", 3)` is `Slot#3`); a path `Inventory/Slot#3` names it after its nearest ancestors. The UI state (hover, press, focus, caret, scroll) is world state: snapshots and the world hash carry it.",
       "place": "namespace",
@@ -14633,6 +14916,262 @@
         "blackboard",
         "sees",
         "target"
+      ],
+      "additionalProperties": false
+    },
+    "PlatformOrder": {
+      "x-og-kind": "enum",
+      "x-og-module": "platform",
+      "description": "How a leaderboard sorts; the first submission to a board fixes it.",
+      "type": "string",
+      "enum": [
+        "desc",
+        "asc"
+      ],
+      "x-og-variants": {
+        "desc": "Higher is better (scores).",
+        "asc": "Lower is better (times)."
+      }
+    },
+    "PlatformAnswered": {
+      "x-og-kind": "event",
+      "x-og-module": "platform",
+      "description": "An answer arrived: sent by og.platform at the start of the tick it was applied, read by systems the tick after (og.platform.result has it at once).",
+      "type": "object",
+      "properties": {
+        "request": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The call's request number."
+        },
+        "ok": {
+          "type": "boolean",
+          "description": "Whether it succeeded; og.platform.result has the data or the error."
+        }
+      },
+      "required": [
+        "request",
+        "ok"
+      ],
+      "additionalProperties": false
+    },
+    "StoreSetDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "platform",
+      "description": "A write to the store.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "The key: 1 to 64 of letters, digits, `.`, `_` and `-`.",
+          "default": ""
+        },
+        "value": {
+          "description": "Any JSON value, at most 64 KiB encoded.",
+          "default": null
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Write only if the key is at this revision (conflict otherwise); 0 writes whatever is there.",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "LeaderboardSubmitDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "platform",
+      "description": "A score.",
+      "type": "object",
+      "properties": {
+        "board": {
+          "type": "string",
+          "description": "The board (default `main`).",
+          "default": "main"
+        },
+        "score": {
+          "type": "number",
+          "description": "The score, or a time in seconds for an ascending board.",
+          "default": 0
+        },
+        "order": {
+          "$ref": "#/$defs/PlatformOrder",
+          "description": "How the board sorts, fixed by its first submission.",
+          "default": "desc"
+        }
+      },
+      "additionalProperties": false
+    },
+    "LeaderboardQueryDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "platform",
+      "description": "Which entries.",
+      "type": "object",
+      "properties": {
+        "board": {
+          "type": "string",
+          "description": "The board (default `main`).",
+          "default": "main"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many entries: the top `count`, or `count` around the player.",
+          "default": 10,
+          "minimum": 1,
+          "maximum": 100
+        }
+      },
+      "additionalProperties": false
+    },
+    "PointDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "platform",
+      "description": "Origin Point for something the player did.",
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Why, as the game names it: `level.completed`, `daily.streak`.",
+          "default": ""
+        },
+        "amount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many points the game asks for; the platform decides what it grants.",
+          "default": 1,
+          "minimum": 1,
+          "maximum": 1000
+        }
+      },
+      "additionalProperties": false
+    },
+    "AiMarkDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "platform",
+      "description": "Marks content the game shows as generated by AI, for the platform's disclosure.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "What: `text`, `image`, `audio`, `level`, `character`.",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "What the player sees it as, at most 120 characters.",
+          "default": ""
+        },
+        "model": {
+          "type": "string",
+          "description": "The model or service, when known.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "PlatformError": {
+      "x-og-kind": "struct",
+      "x-og-module": "platform",
+      "description": "Why a call failed.",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable or failed."
+        },
+        "message": {
+          "type": "string",
+          "description": "What happened, in words."
+        },
+        "retryable": {
+          "type": "boolean",
+          "description": "Whether the same call may succeed later."
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable"
+      ],
+      "additionalProperties": false
+    },
+    "PlatformResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "platform",
+      "description": "The answer to one call.",
+      "type": "object",
+      "properties": {
+        "request": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The call's request number."
+        },
+        "method": {
+          "type": "string",
+          "description": "Its method, such as `store.get`."
+        },
+        "ok": {
+          "type": "boolean",
+          "description": "Whether it succeeded."
+        },
+        "data": {
+          "description": "The answer (see each function); null on failure."
+        },
+        "error": {
+          "$ref": "#/$defs/PlatformError",
+          "description": "Why it failed."
+        },
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick it was answered at."
+        }
+      },
+      "required": [
+        "request",
+        "method",
+        "ok",
+        "data",
+        "tick"
+      ],
+      "additionalProperties": false
+    },
+    "PlatformInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "platform",
+      "description": "What answers platform calls here.",
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "string",
+          "description": "`player` (a Player frames the game), `local` (the native host's JSON store or the browser's own storage) or `none`."
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The methods it answers: store.get, store.set, store.list, leaderboard.submit, leaderboard.top, leaderboard.around, telemetry, point, ai.mark."
+        },
+        "pending": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Calls not answered yet."
+        }
+      },
+      "required": [
+        "host",
+        "capabilities",
+        "pending"
       ],
       "additionalProperties": false
     },

@@ -2,7 +2,7 @@
 
 # The Origin Engine API
 
-`@origingame/engine`, API version 1: 23 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
+`@origingame/engine`, API version 1: 24 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
 
 The Origin Engine API. Game code declares components and systems, and reads the world through typed views over engine memory.
 
@@ -31,6 +31,7 @@ Every failure is a returned Result; desc objects may omit any field; nothing rea
 | [`audio`](audio.md) | types and tokens | kept | Sound: inside the tick, the engine's og.audio system (after the game's systems and physics) turns AudioSource changes into a deterministic, time-stamped command stream; outside the tick the host's mixer renders it (an AudioWorklet on the web, the output device, a capture or a null sink natively). |
 | [`nav`](nav.md) | `og.nav.*` | kept | Navigation: grids (A* and jump point search with eight-way moves that never cut a blocked corner, line-of-sight smoothing), flow fields for crowds, and navmeshes (baked at cook time from a level's static colliders and models, or built at runtime for a flat procedural level) with funnel paths and box obstacles that rebuild only the tiles they touch. |
 | [`ai`](ai.md) | `og.ai.*` | kept | Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (crates/og-ai/README.md has the grammar), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent. |
+| [`platform`](platform.md) | `og.platform.*` | kept | Platform services as host capabilities (docs/design.md §2.8): cloud store, leaderboards, telemetry, Origin Point and AI marks. Game code names a method and its arguments, never a credential, a URL or a cookie: the host owns them. On the web the shell forwards each call to the Player through origin-checked postMessage (Player protocol 2, docs/web-export.md); natively the host answers from a local JSON store (`og run --platform-store`, default `<project>/.og/platform.json`). |
 | [`ui`](ui.md) | `og.ui.*` | kept | The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, themes it with the platform's design tokens, draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it. |
 | [`systems`](systems.md) | types and tokens | kept | Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for. |
 | [`commands`](commands.md) | `og.commands.*` | dropped | The command channel: actions scheduled on simulation time, from `og run --commands "t:action[:args];..."` or the probe's commands(). |
@@ -63,7 +64,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-695 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+718 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -74,6 +75,7 @@ Field units the docs and Tune use.
 | [`AI_RUNNING`](ai.md#const-AI_RUNNING) | constant | ai | — |
 | [`AI_SUCCESS`](ai.md#const-AI_SUCCESS) | constant | ai | — |
 | [`AiDescription`](ai.md#type-AiDescription) | struct | ai | — |
+| [`AiMarkDesc`](platform.md#type-AiMarkDesc) | desc struct | platform | — |
 | [`AlertDesc`](ui.md#type-AlertDesc) | desc struct | ui | — |
 | [`Align`](ui.md#type-Align) | enum | ui | — |
 | [`Anchor`](ui.md#type-Anchor) | enum | ui | — |
@@ -247,7 +249,9 @@ Field units the docs and Tune use.
 | [`LanguageOption`](ui.md#type-LanguageOption) | desc struct | ui | — |
 | [`LeaderboardDesc`](ui.md#type-LeaderboardDesc) | desc struct | ui | — |
 | [`LeaderboardEntry`](ui.md#type-LeaderboardEntry) | desc struct | ui | — |
+| [`LeaderboardQueryDesc`](platform.md#type-LeaderboardQueryDesc) | desc struct | platform | — |
 | [`LeaderboardResult`](ui.md#type-LeaderboardResult) | struct | ui | — |
+| [`LeaderboardSubmitDesc`](platform.md#type-LeaderboardSubmitDesc) | desc struct | platform | — |
 | [`LevelInfo`](ui.md#type-LevelInfo) | desc struct | ui | — |
 | [`LevelSelectDesc`](ui.md#type-LevelSelectDesc) | desc struct | ui | — |
 | [`LevelSelectResult`](ui.md#type-LevelSelectResult) | struct | ui | — |
@@ -398,6 +402,20 @@ Field units the docs and Tune use.
 | [`og.physics.raycast`](physics.md#fn-raycast) | function | physics | `og_physics_raycast` |
 | [`og.physics.setMesh`](physics.md#fn-setMesh) | function | physics | `og_physics_set_mesh` |
 | [`og.physics.shapeCast`](physics.md#fn-shapeCast) | function | physics | `og_physics_shape_cast` |
+| [`og.platform.aiMark`](platform.md#fn-aiMark) | function | platform | `og_platform_ai_mark` |
+| [`og.platform.info`](platform.md#fn-info) | function | platform | `og_platform_info` |
+| [`og.platform.leaderboardAround`](platform.md#fn-leaderboardAround) | function | platform | `og_platform_leaderboard_around` |
+| [`og.platform.leaderboardSubmit`](platform.md#fn-leaderboardSubmit) | function | platform | `og_platform_leaderboard_submit` |
+| [`og.platform.leaderboardTop`](platform.md#fn-leaderboardTop) | function | platform | `og_platform_leaderboard_top` |
+| [`og.platform.loadSettings`](platform.md#fn-loadSettings) | function | platform | `og_platform_load_settings` |
+| [`og.platform.point`](platform.md#fn-point) | function | platform | `og_platform_point` |
+| [`og.platform.result`](platform.md#fn-result) | function | platform | `og_platform_result` |
+| [`og.platform.saveSettings`](platform.md#fn-saveSettings) | function | platform | `og_platform_save_settings` |
+| [`og.platform.storeGet`](platform.md#fn-storeGet) | function | platform | `og_platform_store_get` |
+| [`og.platform.storeList`](platform.md#fn-storeList) | function | platform | `og_platform_store_list` |
+| [`og.platform.storeSet`](platform.md#fn-storeSet) | function | platform | `og_platform_store_set` |
+| [`og.platform.telemetry`](platform.md#fn-telemetry) | function | platform | `og_platform_telemetry` |
+| [`og.PlatformAnswered`](platform.md#record-PlatformAnswered) | event | platform | — |
 | [`og.PointerDown`](input.md#record-PointerDown) | event | input | — |
 | [`og.PointerMove`](input.md#record-PointerMove) | event | input | — |
 | [`og.Pointers`](input.md#record-Pointers) | resource | input | — |
@@ -557,7 +575,12 @@ Field units the docs and Tune use.
 | [`PickResult`](probe.md#type-PickResult) | struct | probe | — |
 | [`PlaneGeometryDesc`](render.md#type-PlaneGeometryDesc) | desc struct | render | — |
 | [`PlatformerHudDesc`](ui.md#type-PlatformerHudDesc) | desc struct | ui | — |
+| [`PlatformError`](platform.md#type-PlatformError) | struct | platform | — |
+| [`PlatformInfo`](platform.md#type-PlatformInfo) | struct | platform | — |
+| [`PlatformOrder`](platform.md#type-PlatformOrder) | enum | platform | — |
+| [`PlatformResult`](platform.md#type-PlatformResult) | struct | platform | — |
 | [`PLAYTEST_MAX_TICKS`](probe.md#const-PLAYTEST_MAX_TICKS) | constant | probe | — |
+| [`PointDesc`](platform.md#type-PointDesc) | desc struct | platform | — |
 | [`PointerAction`](input.md#type-PointerAction) | enum | input | — |
 | [`PointerButton`](input.md#type-PointerButton) | enum | input | — |
 | [`PointerInput`](input.md#type-PointerInput) | struct | input | — |
@@ -686,6 +709,7 @@ Field units the docs and Tune use.
 | [`StatRow`](ui.md#type-StatRow) | desc struct | ui | — |
 | [`StepperDesc`](ui.md#type-StepperDesc) | desc struct | ui | — |
 | [`StepperResult`](ui.md#type-StepperResult) | struct | ui | — |
+| [`StoreSetDesc`](platform.md#type-StoreSetDesc) | desc struct | platform | — |
 | [`StripBlend`](render.md#type-StripBlend) | enum | render | — |
 | [`StripBlend()`](render.md#column-StripBlend) | column kind | render | — |
 | [`SweepDesc`](probe.md#type-SweepDesc) | desc struct | probe | — |

@@ -39,6 +39,7 @@ mod feel;
 mod fx;
 mod modules;
 mod nav;
+mod platform;
 mod probe;
 
 pub use ai::{og_ai_describe, og_ai_get, og_ai_load, og_ai_noise, og_ai_parse, og_ai_set};
@@ -77,6 +78,13 @@ pub use nav::{
     og_nav_build, og_nav_cell_at, og_nav_find_path, og_nav_flow_at, og_nav_flow_field, og_nav_grid,
     og_nav_grid_from_tilemap, og_nav_load, og_nav_nearest, og_nav_path_of, og_nav_set_cost,
     og_nav_set_flow_targets, og_nav_set_obstacle,
+};
+pub use platform::{
+    og_platform_ai_mark, og_platform_answer, og_platform_info, og_platform_leaderboard_around,
+    og_platform_leaderboard_submit, og_platform_leaderboard_top, og_platform_load_settings,
+    og_platform_point, og_platform_result, og_platform_save_settings, og_platform_set_host,
+    og_platform_store_get, og_platform_store_list, og_platform_store_set, og_platform_take,
+    og_platform_telemetry,
 };
 pub use probe::png;
 

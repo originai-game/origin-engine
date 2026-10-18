@@ -5,7 +5,7 @@
 //   bun src/node/run.ts --entry <game.js|.ts> [--root <project>] [--ticks N] [--seed S]
 //       [--setup action[:arg...]]... [--commands "t:action[:args];..."] [--out <dir>]
 //       [--port P] [--size WxH] [--realtime] [--watch <bundle.js>] [--no-render]
-//       [--audio null|device|<out.wav>] [--json]
+//       [--audio null|device|<out.wav>] [--platform-store <file.json>] [--json]
 //
 // - Without --commands, --port or --watch: advance --ticks N at once and print
 //   the world hash (M2's hello world).
@@ -26,6 +26,7 @@ import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { loadNativeHost, native } from "./index.ts";
 import { openAudio, type AudioSink } from "./audio.ts";
+import { nativePlatform } from "./platform.ts";
 import { beginBundle, createEngine, type Engine, type GameToken } from "../runtime.ts";
 
 const argv = process.argv.slice(2);
@@ -42,6 +43,7 @@ let watchFile: string | undefined;
 let render = true;
 let asJson = false;
 let audioOut = "null";
+let platformStore: string | undefined;
 const setup: string[] = [];
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i]!;
@@ -67,6 +69,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--no-render") render = false;
   else if (a === "--json") asJson = true;
   else if (a === "--audio") audioOut = next();
+  else if (a === "--platform-store") platformStore = resolve(next());
   else if (a === "--headless") {
     // Native runs are always headless; accepted for `og run --headless`.
   } else fail(`unknown argument '${a}'`);
@@ -117,6 +120,8 @@ const profile = projectProfile(root);
 const created = createEngine(game, { ...(seed === undefined ? {} : { seed }), ...(root ? { root } : {}), ...(profile ? { profile } : {}) });
 if (!created.ok) fail(`${entry}: ${created.reason}`);
 const engine: Engine = created.value;
+// og.platform: the local store, in memory unless --platform-store names a file.
+engine.attachPlatform(nativePlatform(platformStore));
 // One sink per engine, pumped after every step (crates/og-audio/README.md
 // §Host contract): null keeps the stream drained, a .wav path captures it.
 const audioMode = audioOut === "device" ? "device" : audioOut === "null" ? "null" : "capture";

@@ -119,6 +119,7 @@ pub(crate) fn mount_front(
             inbox.push(name, args);
         }
     });
+    super::platform::mount(world, engine)?;
     let ai = og_ai::install(
         world,
         records,
@@ -197,6 +198,7 @@ pub(crate) fn take_warnings(engine: u32) -> Vec<String> {
 /// The engine is gone.
 pub(crate) fn retire(engine: u32) {
     MODULES.with(|m| m.borrow_mut().remove(&engine));
+    super::platform::retire(engine);
 }
 
 /// The dump actions (`dump_ai:<entity>[:path]`, `dump_nav:<entity>[:path]`)
@@ -227,6 +229,15 @@ pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine: u32) {
             let e = og_probe::Names.resolve(world, id).ok_or_else(|| format!("no live entity '{id}'"))?;
             super::ai::describe_json(engine, world, e).ok_or_else(|| format!("{id} has not thought: it needs an og.AiAgent with a loaded behaviour"))
         },
+    );
+    let _ = probe.register_dump(
+        "dump_platform",
+        og_probe::CommandDesc {
+            usage: "dump_platform[:path]".into(),
+            doc: "every platform call (store, leaderboard, telemetry, point, AI mark): its method, arguments, tick, state and answer, and what answers them".into(),
+        },
+        0,
+        move |_world, _args| Ok(super::platform::dump(engine)),
     );
     let _ = probe.register_dump(
         "dump_nav",

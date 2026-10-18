@@ -12,6 +12,7 @@ import bindings from "../types/bindings.json" with { type: "json" };
 import type * as Api from "@origingame/engine";
 import type { Dispatcher, HostAbi } from "./generated/abi.ts";
 import { SYMBOLS } from "./generated/abi.ts";
+import { noPlatform, type PlatformAnswer, type PlatformCall, type PlatformHost } from "./platform-local.ts";
 
 // ── host binding ──────────────────────────────────────────────────────────
 
@@ -678,18 +679,41 @@ export class Engine {
   /** The engine's probe: RuntimeProbe protocol 5 and the wire members. */
   readonly probe: Api.EngineProbe;
 
+  #platform: PlatformHost = noPlatform;
+
   constructor(id: number, game: GameToken) {
     this.id = id;
     this.game = game;
     this.world = worldFor(id) as unknown as Api.World;
     this.probe = makeProbe(id) as unknown as Api.EngineProbe;
     rates.set(id, game.tick);
+    this.attachPlatform(noPlatform);
+  }
+
+  /** Attach what answers og.platform's calls: the native host's local store, the web shell's Player bridge. */
+  attachPlatform(host: PlatformHost): void {
+    this.#platform = host;
+    abi().og_platform_set_host(this.id, JSON.stringify({ host: host.host, capabilities: host.capabilities }));
+  }
+
+  /** Hand the platform calls made since the last pump to the attached host (before and after every advance and frame, after a command). */
+  pumpPlatform(): void {
+    const calls = parse<PlatformCall[]>(abi().og_platform_take(this.id));
+    if (calls.length > 0) this.#platform.handle(calls, (request, answer) => void this.answerPlatform(request, answer));
+  }
+
+  /** Answer one platform call; applied at the start of the next tick. */
+  answerPlatform(request: number, answer: PlatformAnswer): boolean {
+    return abi().og_platform_answer(this.id, request, JSON.stringify(answer));
   }
 
   /** Take fixed steps: the tick reached, or the first failing system with its tick. */
   advance(steps: number): Result<number> {
+    // Calls made between ticks are answered before the first of these ticks applies answers.
+    this.pumpPlatform();
     const answer = parse<Result<number>>(abi().og_engine_advance(this.id, steps));
     epoch++;
+    this.pumpPlatform();
     return answer;
   }
 
@@ -697,13 +721,16 @@ export class Engine {
   command(action: string, args: readonly string[] = []): Result<void> {
     const answer = parse<Result<void>>(abi().og_engine_command(this.id, action, JSON.stringify(args)));
     epoch++;
+    this.pumpPlatform();
     return answer;
   }
 
   /** One display frame: tick by the wall clock (through the probe: due command steps run), then render. */
   frame(elapsedMs: number): { ok: boolean; ticks?: number; tick?: number; rendered?: boolean; paused?: boolean; quit?: boolean; reason?: string } {
+    this.pumpPlatform();
     const answer = parse<{ ok: boolean; ticks?: number }>(abi().og_engine_frame(this.id, elapsedMs));
     epoch++;
+    this.pumpPlatform();
     return answer;
   }
 

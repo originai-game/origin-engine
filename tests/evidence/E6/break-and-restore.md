@@ -88,3 +88,12 @@ Each break rebuilt the dev addon (`OG_GATE=1 sh packages/engine/scripts/build.sh
 |---|---|---|
 | `og run --audio` | og-cli drops the flag | the test (mode `null`, not `capture`) |
 | `listen` | the action's default is a quarter second | the test (12000 frames, not 48000) |
+
+## og.platform (`packages/engine/tests/platform.test.ts`, `templates/archetypes/runner/tests/records.og.ts`)
+
+| Broken | Edit | Failed |
+|---|---|---|
+| applying answers | og.platform drops each answer | all three platform tests and `records` |
+| store conflicts | a write at a stale revision lands | `og.platform: a game's calls are answered …` (no `conflict`) |
+| leaderboard around | the around query returns the top | the same test (ranks 1–3, not 12–14) |
+| the runner's best | the crash does not save a new best | `records` |

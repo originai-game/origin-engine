@@ -1,4 +1,4 @@
-// The E6 modules' namespaces (IDL `nav`, `ai`): thin calls into the host's
+// The E6 modules' namespaces (IDL `nav`, `ai`, `platform`): thin calls into the host's
 // binding symbols, typed by the generated declarations through index.ts.
 
 import type { HostAbi } from "./generated/abi.ts";
@@ -38,4 +38,20 @@ export const ai = Object.freeze({
   set: (world: W, entity: number, key: string, value: unknown) => parse(abi().og_ai_set(world.id, entity, key, JSON.stringify(value))),
   noise: (world: W, desc?: unknown) => parse(abi().og_ai_noise(world.id, json(desc))),
   describe: (world: W, entity: number) => parse(abi().og_ai_describe(world.id, entity)),
+});
+
+export const platform = Object.freeze({
+  storeGet: (world: W, key: string) => parse(abi().og_platform_store_get(world.id, key)),
+  storeSet: (world: W, desc?: unknown) => parse(abi().og_platform_store_set(world.id, json(desc))),
+  storeList: (world: W) => abi().og_platform_store_list(world.id),
+  leaderboardSubmit: (world: W, desc?: unknown) => parse(abi().og_platform_leaderboard_submit(world.id, json(desc))),
+  leaderboardTop: (world: W, desc?: unknown) => abi().og_platform_leaderboard_top(world.id, json(desc)),
+  leaderboardAround: (world: W, desc?: unknown) => abi().og_platform_leaderboard_around(world.id, json(desc)),
+  telemetry: (world: W, name: string, attrs?: unknown) => parse(abi().og_platform_telemetry(world.id, name, json(attrs))),
+  point: (world: W, desc?: unknown) => parse(abi().og_platform_point(world.id, json(desc))),
+  aiMark: (world: W, desc?: unknown) => parse(abi().og_platform_ai_mark(world.id, json(desc))),
+  loadSettings: (world: W) => abi().og_platform_load_settings(world.id),
+  saveSettings: (world: W, value: unknown) => parse(abi().og_platform_save_settings(world.id, JSON.stringify(value))),
+  result: (world: W, request: number) => parse(abi().og_platform_result(world.id, request)),
+  info: (world: W) => parse(abi().og_platform_info(world.id)),
 });

@@ -229,7 +229,7 @@ const LIFECYCLE: &[LifecycleMember] = &[
         "og_engine_take_outputs",
         &[("engine", "u32", "number")],
         "String",
-        "The files the command channel produced since the last call (`screenshot`, `dump_*`, `help`), as JSON `[{ tick, action, file, kind, data }]`: `file` is og-probe's `Output::file_name()`, `kind` is `png`, `json` or `text`, `data` is base64 for a PNG and the text otherwise. The host writes them (og run) or posts them.",
+        "The files the command channel produced since the last call (`screenshot`, `dump_*`, `help`), as JSON `[{ tick, action, file, kind, data }]`: `file` is og-probe's `Output::file_name()`, `kind` is `png`, `json`, `text` or `wav`, `data` is base64 for a PNG or a WAV and the text otherwise. The host writes them (og run) or posts them.",
     ),
     (
         "og_engine_take_log",
@@ -246,6 +246,28 @@ const LIFECYCLE: &[LifecycleMember] = &[
         ],
         "String",
         "Write some fields of a resource: how the runtime makes `world.resource(R).value` a live value. A Result.",
+    ),
+    (
+        "og_platform_take",
+        &[("engine", "u32", "number")],
+        "String",
+        "The platform calls (IDL `platform`) made since the last call, oldest first, as JSON `[{ request, method, args, tick }]`. The host answers each but `telemetry` (one-way) with og_platform_answer.",
+    ),
+    (
+        "og_platform_answer",
+        &[
+            ("engine", "u32", "number"),
+            ("request", "u32", "number"),
+            ("answer", "String", "string"),
+        ],
+        "bool",
+        "Answer one platform call: JSON `{ ok: true, data }` or `{ ok: false, error: { code, message, retryable } }`. It is applied at the start of the next tick (og.platform sends PlatformAnswered). False for an unknown, one-way or answered request, or a malformed answer.",
+    ),
+    (
+        "og_platform_set_host",
+        &[("engine", "u32", "number"), ("info", "String", "string")],
+        "()",
+        "Say what answers this engine's platform calls: JSON `{ host, capabilities }` (`player`, `local` or `none`; the methods it answers), as og.platform.info reports.",
     ),
 ];
 

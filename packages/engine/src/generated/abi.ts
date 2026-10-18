@@ -23,12 +23,18 @@ export interface HostAbi<A, V> {
   og_host_begin_bundle(): void;
   /** The probe's JSON-RPC 2.0 entry: one request frame in, its answer frame out (og-probe `Probe::call`). The native loopback WebSocket and the web request ring carry exactly these frames. Call it between ticks, never from a system. */
   og_engine_call(engine: number, frame: string): string;
-  /** The files the command channel produced since the last call (`screenshot`, `dump_*`, `help`), as JSON `[{ tick, action, file, kind, data }]`: `file` is og-probe's `Output::file_name()`, `kind` is `png`, `json` or `text`, `data` is base64 for a PNG and the text otherwise. The host writes them (og run) or posts them. */
+  /** The files the command channel produced since the last call (`screenshot`, `dump_*`, `help`), as JSON `[{ tick, action, file, kind, data }]`: `file` is og-probe's `Output::file_name()`, `kind` is `png`, `json`, `text` or `wav`, `data` is base64 for a PNG or a WAV and the text otherwise. The host writes them (og run) or posts them. */
   og_engine_take_outputs(engine: number): string;
   /** Log lines since the last call, as JSON `[{ tick, warning, text }]`: the command channel's and the probe's warnings and the loader's, each naming the fix. */
   og_engine_take_log(engine: number): string;
   /** Write some fields of a resource: how the runtime makes `world.resource(R).value` a live value. A Result. */
   og_engine_write_resource(world: number, resource: string, value: string): string;
+  /** The platform calls (IDL `platform`) made since the last call, oldest first, as JSON `[{ request, method, args, tick }]`. The host answers each but `telemetry` (one-way) with og_platform_answer. */
+  og_platform_take(engine: number): string;
+  /** Answer one platform call: JSON `{ ok: true, data }` or `{ ok: false, error: { code, message, retryable } }`. It is applied at the start of the next tick (og.platform sends PlatformAnswered). False for an unknown, one-way or answered request, or a malformed answer. */
+  og_platform_answer(engine: number, request: number, answer: string): boolean;
+  /** Say what answers this engine's platform calls: JSON `{ host, capabilities }` (`player`, `local` or `none`; the methods it answers), as og.platform.info reports. */
+  og_platform_set_host(engine: number, info: string): void;
   /** `defineComponent` */
   og_reflect_define_component(name: string, fields: string): string;
   /** `defineResource` */
@@ -311,6 +317,32 @@ export interface HostAbi<A, V> {
   og_ai_noise(world: number, desc: string | undefined): string;
   /** `og.ai.describe` */
   og_ai_describe(world: number, entity: number): string;
+  /** `og.platform.storeGet` */
+  og_platform_store_get(world: number, key: string): string;
+  /** `og.platform.storeSet` */
+  og_platform_store_set(world: number, desc: string | undefined): string;
+  /** `og.platform.storeList` */
+  og_platform_store_list(world: number): number;
+  /** `og.platform.leaderboardSubmit` */
+  og_platform_leaderboard_submit(world: number, desc: string | undefined): string;
+  /** `og.platform.leaderboardTop` */
+  og_platform_leaderboard_top(world: number, desc: string | undefined): number;
+  /** `og.platform.leaderboardAround` */
+  og_platform_leaderboard_around(world: number, desc: string | undefined): number;
+  /** `og.platform.telemetry` */
+  og_platform_telemetry(world: number, name: string, attrs: string | undefined): string;
+  /** `og.platform.point` */
+  og_platform_point(world: number, desc: string | undefined): string;
+  /** `og.platform.aiMark` */
+  og_platform_ai_mark(world: number, desc: string | undefined): string;
+  /** `og.platform.loadSettings` */
+  og_platform_load_settings(world: number): number;
+  /** `og.platform.saveSettings` */
+  og_platform_save_settings(world: number, value: string): string;
+  /** `og.platform.result` */
+  og_platform_result(world: number, request: number): string;
+  /** `og.platform.info` */
+  og_platform_info(world: number): string;
   /** `og.ui.configure` */
   og_ui_configure(world: number, desc: string | undefined): string;
   /** `og.ui.viewport` */
@@ -638,6 +670,19 @@ export const SYMBOLS: readonly string[] = [
   "og_ai_set",
   "og_ai_noise",
   "og_ai_describe",
+  "og_platform_store_get",
+  "og_platform_store_set",
+  "og_platform_store_list",
+  "og_platform_leaderboard_submit",
+  "og_platform_leaderboard_top",
+  "og_platform_leaderboard_around",
+  "og_platform_telemetry",
+  "og_platform_point",
+  "og_platform_ai_mark",
+  "og_platform_load_settings",
+  "og_platform_save_settings",
+  "og_platform_result",
+  "og_platform_info",
   "og_ui_configure",
   "og_ui_viewport",
   "og_ui_theme",
@@ -740,4 +785,7 @@ export const SYMBOLS: readonly string[] = [
   "og_engine_take_outputs",
   "og_engine_take_log",
   "og_engine_write_resource",
+  "og_platform_take",
+  "og_platform_answer",
+  "og_platform_set_host",
 ];
