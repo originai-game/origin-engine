@@ -58,11 +58,20 @@ The gate was measured at seven minutes warm with four agents compiling the
 same crates into private target directories (143 GB of `target/`), so these
 rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
 
-- **One target directory.** Everyone, agents included, builds into `target/`
-  and lets cargo's lock serialise; nobody sets `CARGO_TARGET_DIR=target/agent-*`
-  or copies the tree to build "in isolation". Isolation of changes is a Git
-  worktree with its own `target/`, used only when two streams must build
-  incompatible trees at once, and deleted with the worktree.
+- **One target directory per checkout.** Everyone, agents included, builds
+  into the checkout's `target/` and lets cargo's lock serialise; nobody sets
+  `CARGO_TARGET_DIR=target/agent-*` or copies the tree to build "in
+  isolation".
+- **Parallel rounds reuse persistent worktrees.** A round that must build
+  beside another takes `scripts/worktree.sh <name>`: it creates
+  `/Volumes/app/origin-engine-<name>` on branch `<name>` from main once and
+  reuses it (branch, changes and `target/` as they are) every time after,
+  so only the first build there is cold, and sccache (`.cargo/config.toml`)
+  serves that one the main checkout's dependencies. Never `git worktree add`
+  a fresh one per round, and never delete a worktree's `target/` (nor the
+  main one's): a stale crate is cleaned with `cargo clean -p <crate>`,
+  never wholesale. A worktree is removed only when its stream of work is
+  over for good.
 - **One gate at a time.** `scripts/check.sh` and a release `build.sh` hold
   `target/og-gate.lock` (`scripts/lock.sh`); a second one waits, never runs beside it.
 - **One profile per lane.** Everything in the gate that runs native code
@@ -78,14 +87,22 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   `cargo run` is waiting behind the build lock and may rebuild the world.
 - **Two lanes.** `scripts/check.sh quick` (fmt, clippy, drift, the logic
   tests of every crate but og-tests, the knowledge and create packages) is
-  the loop while working and the PR signal, under a minute warm.
+  the loop while working and the PR signal, under half a minute warm.
   `scripts/check.sh` (full) adds the gfx, perf-shaped and browser-shaped
   suites, the wasm build, the size gate and determinism, and is what a
   commit to main must pass. Changes to rendering, animation, physics, the
   tick or the export run the full lane before they are called done.
+- **Path-aware steps.** Both lanes skip what none of its inputs changed
+  since it last passed (`docs/ci.md` §Lanes has the rules): the GPU
+  reference tests, the wasm build, wasm-opt and size gate (their last
+  outputs are reused), drift, web-reference. Each skip is printed with its
+  reason; `--all` runs everything and CI always does. Do not work around a
+  skip by touching files, and do not delete `target/og-gate/`: pass `--all`.
 - **Parallel test binaries.** The test steps use `cargo nextest` when it is
-  installed; test binaries that write a shared directory (a cook in place)
-  are serialised through `.config/nextest.toml` test groups, never by
+  installed, one process per test. A fixture several tests read is made
+  once across their processes under a file lock (og-cook's
+  `tests/support`), and what cannot run beside others is declared in
+  `.config/nextest.toml` (test groups, slots, priorities), never handled by
   sleeping or retrying.
 - **No cold rebuilds for size.** `build.sh` under the gate (`OG_GATE=1`),
   and standalone wherever the gate has built, takes the dev addon and `og`
