@@ -11,13 +11,18 @@ og dev templates/ui-kit                       # the browser, reloading on save
 og test templates/ui-kit                      # the playtests below
 OG_UI_CAPTURE=1 og test templates/ui-kit      # re-record this tier's reference frames
 python3 templates/ui-kit/tools/make-assets.py templates/ui-kit/assets   # regenerate icons and backdrop
+python3 templates/ui-kit/tools/make-skins.py templates/ui-kit/assets    # regenerate the six style packs and UI blips
 ```
 
 Commands: `show:<screen>`, `viewport:<desktop|tablet|phone|landscape>`
 (lays the UI out for that surface through `og.ui.previewViewport`; render at
 `--size 1170x2532` for the 390×844@3 phone), `pad:<up|down|left|right|next|prev|activate|back>`
 (a gamepad, through `og.ui.navigate`), `toast:<text>`, `damage:<hp>`, `heal:<hp>`.
-`dump_entity:demo` reads the demo's state (the `Demo` component).
+`skin:<tokens|pixel|cartoon|fantasy|scifi|paper|neon>` dresses every screen
+in a style pack (`assets/skins/<pack>/skin.ogt` through `og.load.skin`),
+`transition:<none|fade|wipe|iris|dissolve|slide>` sends screen changes through
+`og.ui.screenTransition`, `sounds:<on|off>` hands `assets/audio/ui-*.wav` to
+the UI's event sounds. `dump_entity:demo` reads the demo's state (the `Demo` component).
 
 Screens: gallery, widgets, mainMenu, pause, settings, platformer, shooter,
 puzzle, idle, racing, cutscene, shop, inventory, levels, results,
@@ -42,3 +47,22 @@ tier without its own references compares with `metal` and says so.
 | `drag` | a press on slot 0 dragged to slot 7 moves the potion; Use runs for it |
 | `phone` | on a phone the HUD corners sit in the safe area, every touch control is at least 44 CSS px, a tap on Jump answers once |
 | `tutorial` | the spotlight's hole contains each step's target, a press on the dimmed part changes nothing, Next walks to Done |
+| `skin-<pack>` (six) | every screen but the gallery, in that style pack at 1280×720, matches its 640×360 cell of `crates/og-ui/references/<tier>/kit-skin-<pack>.png` (7 × 3 cells in `FRAME_SCREENS` order) |
+| `juice` | an iris transition keeps the old screen until it has closed and builds the new one as it opens; the results score counts and lands on 12,840; a dialog's open, a hover and a press start voices on the ui bus |
+
+## Style packs
+
+`assets/skins/<pack>/` holds a skin (`skin.ogt`), its atlas and icons (CC0,
+drawn by `tools/make-skins.py`) and its OFL fonts (`LICENSES.md`). Copy a
+pack's directory into a game's `assets/skins/`, keep
+`fonts/NotoSansSC-Regular-subset.ttf` for the CJK fallback, and configure:
+`og.ui.configure(world, { skin: og.load.skin(world, "skins/fantasy/skin.ogt").value })`.
+
+| Pack | Look |
+|---|---|
+| `pixel` | retro: square frames with cut corners, 2 px outlines and bevels, hard drop shadows, DotGothic16 |
+| `cartoon` | casual: cream panels, thick dark outlines, glossy capsules, squash on press, pops, Lilita One and Fredoka |
+| `fantasy` | parchment panels, gold filigree corners and flourishes, Cinzel display over Newsreader |
+| `scifi` | HUD: hairline frames with cut corners, corner brackets, scanlines, cyan glow, Orbitron, Chakra Petch, JetBrains Mono numerals |
+| `paper` | minimal: off-white sheets, hand-drawn ink outlines, soft shadows, a vermilion accent, Newsreader and Instrument Sans |
+| `neon` | arcade: dark glass, glowing magenta and cyan tubes, italic Chakra Petch display, Orbitron numerals |

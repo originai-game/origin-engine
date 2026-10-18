@@ -1841,7 +1841,9 @@ impl Ui {
     }
 
     /// Staggered entrances: under a node with a stagger, the k-th drawn
-    /// leaf (a label, a control, an icon) enters `k` steps after the first.
+    /// leaf (a label, a control, an icon) enters `k` steps after the first;
+    /// a long list shortens the step so the cascade ends within one more
+    /// entrance.
     fn apply_stagger(&mut self, order: &[usize]) {
         let now = self.state.tick as f32;
         let (reduced, distance) = (self.theme.reduced_motion, self.theme.space.lg);
@@ -1862,8 +1864,14 @@ impl Ui {
                             || !n.shapes.is_empty())
                 })
                 .collect();
+            // The whole cascade takes at most one entrance more.
+            let step = if leaves.len() > 1 {
+                st.step.min(st.ticks / (leaves.len() - 1) as f32)
+            } else {
+                st.step
+            };
             for (k, &j) in leaves.iter().enumerate() {
-                let start = st.since as f32 + st.step * k.min(12) as f32;
+                let start = st.since as f32 + step * k as f32;
                 let p = ((now - start + 1.0) / st.ticks).clamp(0.0, 1.0);
                 if p >= 1.0 || self.nodes[j].fx.is_some() {
                     continue;

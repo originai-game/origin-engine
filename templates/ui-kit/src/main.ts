@@ -10,7 +10,9 @@
 //
 // Commands: show:<screen>, viewport:<desktop|tablet|phone|landscape>,
 // pad:<up|down|left|right|next|prev|activate|back>, toast:<text>,
-// damage:<hp>, heal:<hp>.
+// damage:<hp>, heal:<hp>, skin:<tokens|pixel|cartoon|fantasy|scifi|paper|neon>
+// (a style pack from assets/skins), transition:<none|fade|wipe|iris|dissolve|slide>
+// (screen changes go through og.ui.screenTransition), sounds:<on|off>.
 
 import { og, defineComponent, defineSystem, bool, f32, f64, u32 } from "@origingame/engine";
 import type { Entity, GameSettings, Viewport, World } from "@origingame/engine";
@@ -20,6 +22,11 @@ export const SCREENS = [
   "cutscene", "shop", "inventory", "levels", "results", "leaderboard", "tutorial", "loading", "confirm", "alert", "toasts",
 ] as const;
 export type Screen = (typeof SCREENS)[number];
+
+/** The style packs under assets/skins; "tokens" is the platform look. */
+export const SKINS = ["tokens", "pixel", "cartoon", "fantasy", "scifi", "paper", "neon"] as const;
+const WIPES = ["none", "fade", "wipe", "iris", "dissolve", "slide"] as const;
+const UI_SOUNDS = ["hover", "press", "open", "close", "success", "error"] as const;
 
 const BLURBS: Record<Screen, string> = {
   gallery: "",
@@ -110,10 +117,14 @@ export const Demo = defineComponent("Demo", {
   // Dialogs.
   confirmed: u32(0),
   level: u32(0),
+  // Look: the style pack (SKINS index), the screen transition (WIPES index), UI sounds.
+  skin: u32(0),
+  wipe: u32(0),
+  sounds: bool(),
 });
 type DemoState = { -readonly [K in keyof ReturnType<typeof demoDefaults>]: ReturnType<typeof demoDefaults>[K] };
 function demoDefaults() {
-  return { screen: 0, paused: false, font: 0, icons: 0, backdrop: 0, hp: 72, mana: 40, coins: 128, score: 4250, lives: 2, time: 95, masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false, quality: 1, showFps: false, reducedMotion: false, highContrast: false, vibration: true, invertY: false, sensitivity: 1, language: 0, saves: 0, tab: 0, difficulty: 1, amount: 3, mode: 0, optA: true, optB: false, chip: 0, stickX: 0, stickY: 0, line: 0, step: 0, balance: 1250, owned: 0, bought: 0, inv0: 0, inv1: 1, inv2: 2, inv3: 5, inv4: 9, inv5: 13, moves: 0, used: 0, gold: 40, gen0: 1, gen1: 0, gen2: 0, taps: 0, scope: 0, scopeTick: 0, confirmed: 0, level: 0 };
+  return { screen: 0, paused: false, font: 0, icons: 0, backdrop: 0, hp: 72, mana: 40, coins: 128, score: 4250, lives: 2, time: 95, masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false, quality: 1, showFps: false, reducedMotion: false, highContrast: false, vibration: true, invertY: false, sensitivity: 1, language: 0, saves: 0, tab: 0, difficulty: 1, amount: 3, mode: 0, optA: true, optB: false, chip: 0, stickX: 0, stickY: 0, line: 0, step: 0, balance: 1250, owned: 0, bought: 0, inv0: 0, inv1: 1, inv2: 2, inv3: 5, inv4: 9, inv5: 13, moves: 0, used: 0, gold: 40, gen0: 1, gen1: 0, gen2: 0, taps: 0, scope: 0, scopeTick: 0, confirmed: 0, level: 0, skin: 0, wipe: 0, sounds: false };
 }
 
 export const ICONS = [
@@ -215,13 +226,26 @@ function settingsOf(d: DemoState): GameSettings {
   };
 }
 
-/** Applies the theme-affecting settings (contrast, motion) with the demo's font and icons. */
+/** Applies the theme-affecting settings (contrast, motion, the style pack,
+ * sounds) with the demo's font and icons, or the pack's. */
 function applyTheme(world: World, d: DemoState): void {
+  const name = SKINS[d.skin] ?? "tokens";
+  const loaded = name === "tokens" ? null : og.load.skin(world, `skins/${name}/skin.ogt`);
+  if (loaded && !loaded.ok) throw new Error(loaded.reason);
+  const skin = loaded && loaded.ok ? loaded.value : null;
+  const sounds: Record<string, unknown> = {};
+  if (d.sounds) {
+    for (const e of UI_SOUNDS) {
+      const s = og.load.sound(world, `audio/ui-${e}.wav`);
+      if (s.ok) sounds[e] = s.value;
+    }
+  }
   og.ui.configure(world, {
-    ...(d.font ? { font: d.font as never } : {}),
+    ...(d.font && !skin ? { font: d.font as never } : {}),
     contrast: d.highContrast ? "high" : "standard",
     reducedMotion: d.reducedMotion,
-    icons: d.icons ? { texture: d.icons as never, columns: 8, rows: 4, names: ICONS } : {},
+    ...(skin ? { skin } : { icons: d.icons ? { texture: d.icons as never, columns: 8, rows: 4, names: ICONS } : {} }),
+    ...(d.sounds ? { sounds } : {}),
   });
 }
 
@@ -359,7 +383,12 @@ export const Kit = defineSystem("Kit", { reads: [og.Input], writes: [Demo] }, (q
 
 /** One tick of the demo's UI over its state. */
 function kitFrame(world: World, dt: number, d: DemoState): void {
-  const screen = SCREENS[d.screen] ?? "gallery";
+  let screen: Screen = SCREENS[d.screen] ?? "gallery";
+  const wipe = WIPES[d.wipe] ?? "none";
+  if (wipe !== "none") {
+    // Screen changes cover the old screen, switch, and reveal the new one.
+    screen = og.ui.screenTransition("Screens", screen, { kind: wipe, durationMs: 700 }).shown as Screen;
+  }
   // The game behind every screen but the gallery and the widget sheet: a dusk landscape.
   if (screen !== "gallery" && screen !== "widgets" && d.backdrop) og.render.sprite(world, { texture: d.backdrop as never, width: 640, height: 360, layer: -10 });
 
@@ -689,6 +718,17 @@ export default og.game({
       const d = current(world);
       if (d) update(world, { hp: Math.max(0, d.hp - Number(args[0] ?? 10)) });
     },
+    skin: (world, args) => {
+      update(world, { skin: Math.max(0, SKINS.indexOf((args[0] ?? "tokens") as (typeof SKINS)[number])) });
+      const d = current(world);
+      if (d) applyTheme(world, d);
+    },
+    transition: (world, args) => update(world, { wipe: Math.max(0, WIPES.indexOf((args[0] ?? "none") as (typeof WIPES)[number])) }),
+    sounds: (world, args) => {
+      update(world, { sounds: args[0] !== "off" });
+      const d = current(world);
+      if (d) applyTheme(world, d);
+    },
     heal: (world, args) => {
       const d = current(world);
       if (d) update(world, { hp: Math.min(100, d.hp + Number(args[0] ?? 10)) });
@@ -696,6 +736,6 @@ export default og.game({
   },
   facts: (world) => {
     const d = current(world);
-    return d ? { screen: SCREENS[d.screen] ?? "gallery", hp: d.hp, balance: d.balance, saves: d.saves } : {};
+    return d ? { screen: SCREENS[d.screen] ?? "gallery", skin: SKINS[d.skin] ?? "tokens", hp: d.hp, balance: d.balance, saves: d.saves } : {};
   },
 });
