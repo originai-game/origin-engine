@@ -1715,8 +1715,9 @@ fn blob_texture(scene: &mut og_render::RenderScene) -> og_render::TextureHandle 
         for x in 0..N {
             let u = (x as f32 + 0.5) / N as f32 * 2.0 - 1.0;
             let v = (y as f32 + 0.5) / N as f32 * 2.0 - 1.0;
-            let d = (1.0 - (u * u + v * v)).clamp(0.0, 1.0);
-            rgba.extend_from_slice(&[255, 255, 255, (d * d * 255.0).round() as u8]);
+            // A solid core with a soft rim (the outer quarter fades).
+            let d = ((1.0 - (u * u + v * v).sqrt()) * 4.0).clamp(0.0, 1.0);
+            rgba.extend_from_slice(&[255, 255, 255, (d * 255.0).round() as u8]);
         }
     }
     scene.add_texture(og_render::TextureData {

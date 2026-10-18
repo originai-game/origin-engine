@@ -52,3 +52,4 @@ Each new test was run once against broken code (the break below), seen to fail, 
 | og-api/src/runtime/feel.rs: camera feel never reaches the frame | bun test tests/feel.test.ts | camera trauma, punch and kick ... FAIL |
 | og-api/src/runtime/feel.rs: presets start recovering on their first tick | bun test tests/feel.test.ts | tweens animate a field, report once, and squash recovers to rest FAIL |
 | og-api/src/runtime/fx.rs: the immediate sprites clear og.Sprite's effects (the bug found while writing the test) | bun test tests/feel.test.ts | og.tween.flash whitens an og.Sprite and fades back FAIL |
+| og-api/src/runtime/feel.rs: blob shadows drawn over the sprites of their layer | bun test tests/feel.test.ts | og.Sprite draws at its entity, y-sorted, with a blob shadow under it FAIL |

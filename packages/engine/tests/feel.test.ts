@@ -66,6 +66,9 @@ test("og.Sprite draws at its entity, y-sorted, with a blob shadow under it", () 
     w.insert(a, og.Sprite, { width: 3, height: 3, color: red, sortY });
     const b = must(w.spawn({ name: "b", position: { x: 0, y: 0.5, z: 0 } }));
     w.insert(b, og.Sprite, { width: 3, height: 3, color: blue, sortY });
+    // Grey ground under the shadowed sprite.
+    const g = must(w.spawn({ name: "g", position: { x: 6, y: 0, z: -1 } }));
+    w.insert(g, og.Sprite, { width: 6, height: 8, color: { r: 0.5, g: 0.5, b: 0.5 }, layer: -1 });
     const c = must(w.spawn({ name: "c", position: { x: 5, y: 0, z: 0 } }));
     w.insert(c, og.Sprite, { width: 1, height: 1, color: { r: 1, g: 1, b: 1 }, anchor: { x: 0.5, y: 0 }, shadow: 1, shadowSize: { x: 3, y: 1 } });
   };
@@ -77,10 +80,13 @@ test("og.Sprite draws at its entity, y-sorted, with a blob shadow under it", () 
   const plain = start(og.game({ start: scene(false) }), true);
   plain.advance(1);
   expect(pixel(capture(plain), W / 2, H / 2).slice(0, 3)).toEqual([0, 0, 255]);
-  // The shadow: dark beside the white sprite's feet, the sprite above it untouched.
+  // The shadow: dark on the grey ground beside the white sprite's feet,
+  // the sprite above it untouched, the ground away from it unchanged.
   const px = (x: number, y: number) => pixel(img, Math.round(W / 2 + (x * H) / 9), Math.round(H / 2 - (y * H) / 9));
   expect(px(5, 0.5).slice(0, 3)).toEqual([255, 255, 255]);
-  expect(px(6.2, 0)[0]).toBe(0);
+  const ground = px(7.5, 2)[0]!;
+  expect(ground).toBeGreaterThan(150);
+  expect(px(5.8, 0)[0]!).toBeLessThan(ground / 4);
 });
 
 const Log = defineResource("FtLog", { done: u32(), tag: u32(), squashX: f32(), y: f32(), ticks: u32(), scaledDt: f32(), hitStop: u32() });
