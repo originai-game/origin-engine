@@ -163,6 +163,7 @@ pub(crate) fn mount_back(
             Ok(())
         })
         .map_err(err)?;
+    super::physics_ext::schedule_ragdoll_targets(world, engine_id, &physics)?;
     physics.schedule(world).map_err(err)?;
     let audio = og_audio::install(
         world,

@@ -55,3 +55,18 @@ test("og.anim poses the walker the same way on both hosts", () => {
   // The pose moved the world: a different tick count is another hash.
   expect(run("node", "--ticks", "301").hash).not.toBe(node.hash);
 }, 240_000);
+
+test("a ragdoll at weight 0 follows the animation and goes limp from it", () => {
+  const r = Bun.spawnSync(["bun", "tests/support/ragdoll-follow.ts", "--project", project, "--ticks", "40"], { cwd: pkg });
+  const out = new TextDecoder().decode(r.stdout);
+  if (r.exitCode !== 0) throw new Error(new TextDecoder().decode(r.stderr) + out);
+  type P = { x: number; y: number; z: number };
+  const { a, b, rest, limp } = JSON.parse(out.trim().split("\n").pop()!) as { a: P[]; b: P[]; rest: P[]; limp: P[] };
+  const far = (u: P[], v: P[]) => Math.max(...u.map((p, i) => Math.hypot(p.x - v[i]!.x, p.y - v[i]!.y, p.z - v[i]!.z)));
+  expect(a.length).toBeGreaterThan(3);
+  // The walk moves the bones from tick to tick, away from the rig's rest pose.
+  expect(far(a, b)).toBeGreaterThan(0.005);
+  expect(far(b, rest)).toBeGreaterThan(0.02);
+  // Going limp starts from the animated pose, not the rest pose.
+  expect(far(limp, b)).toBeLessThan(far(limp, rest));
+}, 120_000);

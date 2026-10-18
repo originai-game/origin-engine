@@ -356,6 +356,91 @@ pub(crate) fn rig_from_skeleton(s: &og_anim::SkeletonAsset) -> Result<Value, Str
     Ok(json!({ "bones": bones }))
 }
 
+/// The system that hands each og.Ragdoll the animation's pose of this
+/// tick (after og.anim, before og.physics): every bone of a rig made from a
+/// skeleton (`ragdollRigFromSkeleton`) follows its joint, in world space, so
+/// a ragdoll at weight 0 tracks the animation and goes limp from it. A bone
+/// with no joint, or an entity with no pose yet, keeps the rig's rest pose.
+pub(crate) fn schedule_ragdoll_targets(
+    world: &mut og_ecs::World,
+    engine_id: u32,
+    physics: &og_physics::PhysicsSystem,
+) -> Result<(), String> {
+    use og_physics::{Ragdoll, Transform};
+    let physics = physics.clone();
+    world
+        .register::<Transform>()
+        .and_then(|_| world.register::<Ragdoll>())
+        .map_err(|e| e.reason().to_string())?;
+    world
+        .add_system(
+            og_ecs::SystemDesc::new(RAGDOLL_TARGETS)
+                .read::<Ragdoll>()
+                .read::<Transform>()
+                .query(
+                    og_ecs::QueryDesc::new()
+                        .read::<Ragdoll>()
+                        .read::<Transform>(),
+                ),
+            move |ctx| {
+                let Ok(eng) = engine(engine_id) else {
+                    return Ok(());
+                };
+                let Some(anim) = eng.state.try_borrow().ok().and_then(|s| s.anim.clone()) else {
+                    return Ok(());
+                };
+                let Ok(render) = eng.render.try_borrow() else {
+                    return Ok(());
+                };
+                let rigs = &render.atmo.rigs;
+                if rigs.is_empty() {
+                    return Ok(());
+                }
+                for a in ctx.query(0)? {
+                    for &e in a.entities() {
+                        let Some(kept) = rigs.get(&e.to_bits()) else {
+                            continue;
+                        };
+                        let (Some(skeleton), Some(pose)) =
+                            (anim.skeleton(kept.skeleton), anim.pose(e))
+                        else {
+                            continue;
+                        };
+                        let Some(skin) = skeleton.skins.first() else {
+                            continue;
+                        };
+                        let t = ctx.get::<Transform>(e)?;
+                        let model = skeleton.model_space(&pose);
+                        let targets = kept
+                            .rig
+                            .bones
+                            .iter()
+                            .zip(&kept.joints)
+                            .map(|(b, &j)| {
+                                let (p, q) = usize::try_from(j)
+                                    .ok()
+                                    .and_then(|j| skin.joints.get(j))
+                                    .and_then(|&n| model.get(n as usize))
+                                    .map_or(b.rest, |m| (m.translation, m.rotation));
+                                (
+                                    t.position + t.quaternion * p,
+                                    (t.quaternion * q).normalize(),
+                                )
+                            })
+                            .collect();
+                        physics.set_ragdoll_targets(e, targets);
+                    }
+                }
+                Ok(())
+            },
+        )
+        .map(|_| ())
+        .map_err(|e| e.reason().to_string())
+}
+
+/// The name of the ragdoll target system.
+pub(crate) const RAGDOLL_TARGETS: &str = "og.ragdollTargets";
+
 pub fn og_physics_ragdoll_rig_from_skeleton(world: u32, skeleton: f64) -> String {
     answer((|| {
         let eng = engine(world)?;

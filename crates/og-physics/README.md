@@ -96,7 +96,7 @@ reached from TypeScript through `crates/og-api/api.ogt`'s physics module):
 | `og.Rope`, `og.Cloth` | Verlet strands and grids with pins, wind and gusts, pushed out of every solid collider; `rope_points`, `cloth_points` |
 | `og.Fluid2D` | double density relaxation (Clavet et al.) on a grid in a fixed order, velocity capped at half the radius per substep; `fluid_particles` |
 | `og.WaterSurface`, `og.WaterLine` | a height field and a spring line splashed by crossing bodies (`og.Splash`), buoyancy and drag on dynamic bodies; `water_heights`, `water_line` |
-| `og.Ragdoll` | capsule bones with limited ball joints from a host-registered rig (`set_ragdoll_rig`; og-runtime makes one from an og-anim skeleton), following targets kinematically at weight 0, simulated above it, `blend` moving to `weight` over `blend_time` |
+| `og.Ragdoll` | capsule bones with limited ball joints from a host-registered rig (`set_ragdoll_rig`; og-runtime makes one from an og-anim skeleton), following targets kinematically at weight 0 (og-runtime's `og.ragdollTargets` system hands it the animation's pose each tick, between og.anim and og.physics), simulated above it, `blend` moving to `weight` over `blend_time` |
 
 Everything simulates with + − × ÷ and square roots (og_core::math for the
 rest), in entity order, inside the state block: `tests/beyond_determinism.rs`
