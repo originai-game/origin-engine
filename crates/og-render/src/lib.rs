@@ -572,6 +572,8 @@ pub struct Renderer {
     width: u32,
     height: u32,
     output_format: wgpu::TextureFormat,
+    /// The offscreen target's sRGB view format ([`linear_view_format`]).
+    offscreen_linear: Option<wgpu::TextureFormat>,
     surface: Option<(wgpu::Surface<'static>, wgpu::SurfaceConfiguration)>,
     samples: u32,
     persistent: post::Persistent,
@@ -679,6 +681,25 @@ fn sampler_entry(binding: u32, kind: wgpu::SamplerBindingType) -> wgpu::BindGrou
 
 fn tex2d(binding: u32) -> wgpu::BindGroupLayoutEntry {
     texture_entry(binding, true, wgpu::TextureViewDimension::D2)
+}
+
+/// The sRGB view format of a non-sRGB 8-bit output, when the backend can
+/// view the texture (`surface`: a surface's) in it: the overlay blends
+/// there in linear light, as on an sRGB output. `None` on an sRGB output,
+/// or where reinterpretation is missing (GL: textures; GL and Android
+/// Vulkan: surfaces), where the overlay shader encodes instead.
+pub(crate) fn linear_view_format(
+    adapter: &wgpu::Adapter,
+    output: wgpu::TextureFormat,
+    surface: bool,
+) -> Option<wgpu::TextureFormat> {
+    let flag = if surface {
+        wgpu::DownlevelFlags::SURFACE_VIEW_FORMATS
+    } else {
+        wgpu::DownlevelFlags::VIEW_FORMATS
+    };
+    let srgb = output.add_srgb_suffix();
+    (srgb != output && adapter.get_downlevel_capabilities().flags.contains(flag)).then_some(srgb)
 }
 
 pub(crate) fn target_texture(
@@ -1025,21 +1046,24 @@ impl Renderer {
             .await
             .map_err(|e| RenderError::NoAdapter(format!("{:?}: {e}", desc.backend)))?;
         let caps = surface.get_capabilities(&adapter);
+        // An sRGB surface where one is offered (WebGL2, native windows): the
+        // hardware encodes and blends in linear light, as offscreen. A
+        // WebGPU canvas offers none; its sRGB view (below) does the same.
+        let eight_bit = |f: &wgpu::TextureFormat, srgb: bool| {
+            f.is_srgb() == srgb
+                && matches!(
+                    f.remove_srgb_suffix(),
+                    wgpu::TextureFormat::Bgra8Unorm | wgpu::TextureFormat::Rgba8Unorm
+                )
+        };
         let format = match desc.output_format {
             Some(f) => f,
             None => caps
                 .formats
                 .iter()
                 .copied()
-                .find(|f| {
-                    matches!(
-                        f,
-                        wgpu::TextureFormat::Bgra8Unorm
-                            | wgpu::TextureFormat::Rgba8Unorm
-                            | wgpu::TextureFormat::Bgra8UnormSrgb
-                            | wgpu::TextureFormat::Rgba8UnormSrgb
-                    )
-                })
+                .find(|f| eight_bit(f, true))
+                .or_else(|| caps.formats.iter().copied().find(|f| eight_bit(f, false)))
                 .ok_or_else(|| {
                     RenderError::Surface(format!(
                         "no 8-bit RGBA surface format in {:?}",
@@ -1055,7 +1079,9 @@ impl Renderer {
             height: desc.height.max(1),
             present_mode: wgpu::PresentMode::Fifo,
             alpha_mode: wgpu::CompositeAlphaMode::Opaque,
-            view_formats: vec![],
+            view_formats: linear_view_format(&adapter, format, true)
+                .into_iter()
+                .collect(),
             desired_maximum_frame_latency: 2,
         };
         Self::from_adapter(adapter, Some((surface, config)), format, desc).await
@@ -1499,8 +1525,24 @@ impl Renderer {
             &sprite_sampler,
             [0.0; 4],
         );
-        let persistent = post::Persistent::new(&device, width, height, output_format, antialias);
-        let overlay = overlay::OverlayRenderer::new(&device, output_format, &sprite_layout);
+        let offscreen_linear = linear_view_format(&adapter, output_format, false);
+        let persistent = post::Persistent::new(
+            &device,
+            width,
+            height,
+            output_format,
+            offscreen_linear,
+            antialias,
+        );
+        let surface_linear = surface
+            .as_ref()
+            .and_then(|(_, config)| config.view_formats.first().copied());
+        let overlay = overlay::OverlayRenderer::new(
+            &device,
+            output_format,
+            offscreen_linear.or(surface_linear),
+            &sprite_layout,
+        );
 
         Ok(Renderer {
             device,
@@ -1509,6 +1551,7 @@ impl Renderer {
             width,
             height,
             output_format,
+            offscreen_linear,
             surface,
             samples,
             persistent,
@@ -1608,6 +1651,7 @@ impl Renderer {
             width,
             height,
             self.output_format,
+            self.offscreen_linear,
             self.info.antialias,
         );
         self.graph.invalidate();
@@ -2681,7 +2725,7 @@ impl Renderer {
                 self.width,
                 self.height,
                 o,
-                !self.output_format.is_srgb(),
+                !self.output_format.is_srgb() && !self.has_linear_view(target),
             );
             self.queue
                 .write_buffer(&self.overlay.uniform, 0, bytemuck::cast_slice(&u));
@@ -2979,7 +3023,13 @@ impl Renderer {
                             format: Some(config.format),
                             ..Default::default()
                         });
-                        Some((t, view))
+                        let linear = config.view_formats.first().map(|&format| {
+                            t.texture.create_view(&wgpu::TextureViewDescriptor {
+                                format: Some(format),
+                                ..Default::default()
+                            })
+                        });
+                        Some((t, view, linear))
                     }
                     other => {
                         surface.configure(&self.device, config);
@@ -2993,6 +3043,15 @@ impl Renderer {
             RenderTarget::Offscreen => &self.persistent.offscreen_view,
             RenderTarget::View(v) => v,
             RenderTarget::Surface => &surface_frame.as_ref().expect("acquired above").1,
+        };
+        // Where the overlay blends: the output when it is sRGB, else its sRGB
+        // view where the backend has one (linear light either way), else the
+        // output itself with the shader encoding (a caller's non-sRGB view).
+        let overlay_view = match target {
+            _ if self.output_format.is_srgb() => None,
+            RenderTarget::Offscreen => self.persistent.offscreen_linear.as_ref(),
+            RenderTarget::Surface => surface_frame.as_ref().and_then(|f| f.2.as_ref()),
+            RenderTarget::View(_) => None,
         };
 
         let lights = scene.lights.len().min(MAX_LIGHTS) as u32;
@@ -3585,12 +3644,20 @@ impl Renderer {
                 }
             }
         }
-        // The overlay: over the finished frame, in the output itself.
+        // The overlay: over the finished frame, in the output (or its sRGB view).
         if let Some(of) = overlay_frame.as_ref().filter(|f| !f.runs.is_empty()) {
+            let pipelines = match overlay_view {
+                Some(_) => self
+                    .overlay
+                    .linear
+                    .as_ref()
+                    .expect("an sRGB view's pipelines"),
+                None => &self.overlay.output,
+            };
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("overlay"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: output,
+                    view: overlay_view.unwrap_or(output),
                     depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
@@ -3618,9 +3685,9 @@ impl Renderer {
                 };
                 if msdf_bound != Some(msdf) {
                     pass.set_pipeline(if msdf {
-                        &self.overlay.msdf
+                        &pipelines.msdf
                     } else {
-                        &self.overlay.sprite
+                        &pipelines.sprite
                     });
                     msdf_bound = Some(msdf);
                 }
@@ -3637,7 +3704,7 @@ impl Renderer {
             }
         }
         self.queue.submit(Some(encoder.finish()));
-        if let Some((frame, _)) = surface_frame {
+        if let Some((frame, ..)) = surface_frame {
             self.queue.present(frame);
         }
         if taa {
@@ -3653,6 +3720,19 @@ impl Renderer {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn read_particles(&self, id: u64) -> Option<Vec<ParticleState>> {
         self.particles.read(&self.device, &self.queue, id)
+    }
+
+    /// Whether `target`, not sRGB itself, has an sRGB view the overlay
+    /// blends in ([`linear_view_format`]).
+    fn has_linear_view(&self, target: &RenderTarget) -> bool {
+        match target {
+            RenderTarget::Offscreen => self.persistent.offscreen_linear.is_some(),
+            RenderTarget::Surface => self
+                .surface
+                .as_ref()
+                .is_some_and(|(_, config)| !config.view_formats.is_empty()),
+            RenderTarget::View(_) => false,
+        }
     }
 
     /// Forgets the TAA history: the next frame starts from its own samples

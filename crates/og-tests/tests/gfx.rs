@@ -565,13 +565,15 @@ fn the_overlay_is_drawn_after_post_untonemapped_and_clipped() {
     }
 }
 
-/// On a non-sRGB output (a WebGPU canvas's Bgra8Unorm) the overlay shader
-/// encodes sRGB itself: the same opaque overlay pixels as on the sRGB
-/// output (translucent ones blend in encoded space there, so they differ).
+/// On a non-sRGB output (a WebGPU canvas's Bgra8Unorm) the overlay blends
+/// in linear light through the output's sRGB view: the same pixels as on the
+/// sRGB output, opaque and translucent (the panel at (30, 30), 85 % over a
+/// light background, came out 29 levels darker when it blended encoded
+/// values).
 #[test]
-fn the_overlay_encodes_on_a_non_srgb_output() {
+fn the_overlay_blends_in_linear_light_on_a_non_srgb_output() {
     let mut scene = RenderScene::new();
-    scene.environment.background = Background::Color(Vec3::new(0.05, 0.05, 0.05));
+    scene.environment.background = Background::Color(Vec3::new(0.5, 0.5, 0.5));
     og_tests::fx_scenes::overlay_hud(&mut scene).expect("hud");
     let desc = RenderDesc {
         width: 1280,
@@ -584,7 +586,7 @@ fn the_overlay_encodes_on_a_non_srgb_output() {
         ..desc
     };
     let (bgra, _) = frame(&bgra_desc, &scene, 1);
-    for (x, y) in [(100, 102), (240, 102), (1100, 302), (1180, 90)] {
+    for (x, y) in [(100, 102), (240, 102), (1100, 302), (1180, 90), (30, 30)] {
         let (a, b) = (overlay_px(&rgba, x, y), overlay_px(&bgra, x, y));
         assert!(
             a.iter()

@@ -576,6 +576,9 @@ impl PostPasses {
 pub(crate) struct Persistent {
     pub offscreen: wgpu::Texture,
     pub offscreen_view: wgpu::TextureView,
+    /// The offscreen target seen as sRGB when its format is not
+    /// ([`crate::linear_view_format`]): where the overlay blends.
+    pub offscreen_linear: Option<wgpu::TextureView>,
     /// TAA history ping-pong: frame `n` writes `history[n % 2]`.
     pub history: Option<[wgpu::TextureView; 2]>,
 }
@@ -586,19 +589,32 @@ impl Persistent {
         width: u32,
         height: u32,
         output_format: wgpu::TextureFormat,
+        linear_format: Option<wgpu::TextureFormat>,
         antialias: Antialias,
     ) -> Persistent {
         let attach_bind =
             wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING;
-        let offscreen = target_texture(
-            device,
-            "offscreen",
-            width,
-            height,
-            output_format,
-            attach_bind | wgpu::TextureUsages::COPY_SRC,
-        );
+        let offscreen = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("offscreen"),
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: output_format,
+            usage: attach_bind | wgpu::TextureUsages::COPY_SRC,
+            view_formats: linear_format.as_slice(),
+        });
         let offscreen_view = offscreen.create_view(&Default::default());
+        let offscreen_linear = linear_format.map(|format| {
+            offscreen.create_view(&wgpu::TextureViewDescriptor {
+                format: Some(format),
+                ..Default::default()
+            })
+        });
         let history = (antialias == Antialias::Taa).then(|| {
             [0, 1].map(|_| {
                 target_texture(
@@ -615,6 +631,7 @@ impl Persistent {
         Persistent {
             offscreen,
             offscreen_view,
+            offscreen_linear,
             history,
         }
     }

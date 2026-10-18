@@ -162,10 +162,17 @@ pub(crate) fn build<'a>(
     })
 }
 
-/// The overlay's pipelines and buffers, in the output's format.
-pub(crate) struct OverlayRenderer {
+/// The overlay's sprite and MSDF pipelines for one target format.
+pub(crate) struct OverlayPipelines {
     pub sprite: wgpu::RenderPipeline,
     pub msdf: wgpu::RenderPipeline,
+}
+
+/// The overlay's pipelines and buffers: in the output's format and, for a
+/// non-sRGB output the backend can view as sRGB, in that sRGB format.
+pub(crate) struct OverlayRenderer {
+    pub output: OverlayPipelines,
+    pub linear: Option<OverlayPipelines>,
     pub uniform: wgpu::Buffer,
     pub group: wgpu::BindGroup,
     pub buffer: wgpu::Buffer,
@@ -175,6 +182,7 @@ impl OverlayRenderer {
     pub fn new(
         device: &wgpu::Device,
         output_format: wgpu::TextureFormat,
+        linear_format: Option<wgpu::TextureFormat>,
         sprite_layout: &wgpu::BindGroupLayout,
     ) -> OverlayRenderer {
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -214,7 +222,7 @@ impl OverlayRenderer {
             source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/overlay.wgsl").into()),
         });
         let buffers = [Some(OVERLAY_LAYOUT)];
-        let pipeline = |label: &str, fs: &str| {
+        let pipeline = |label: &str, fs: &str, format: wgpu::TextureFormat| {
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some(label),
                 layout: Some(&pl),
@@ -232,7 +240,7 @@ impl OverlayRenderer {
                     entry_point: Some(fs),
                     compilation_options: Default::default(),
                     targets: &[Some(wgpu::ColorTargetState {
-                        format: output_format,
+                        format,
                         blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                         write_mask: wgpu::ColorWrites::ALL,
                     })],
@@ -247,9 +255,13 @@ impl OverlayRenderer {
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
+        let pipelines = |format| OverlayPipelines {
+            sprite: pipeline("overlay sprite", "fs", format),
+            msdf: pipeline("overlay msdf", "fs_msdf", format),
+        };
         OverlayRenderer {
-            sprite: pipeline("overlay sprite", "fs"),
-            msdf: pipeline("overlay msdf", "fs_msdf"),
+            output: pipelines(output_format),
+            linear: linear_format.map(pipelines),
             uniform,
             group,
             buffer,
