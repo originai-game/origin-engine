@@ -12,7 +12,7 @@
         },
         {
           "tick": 23,
-          "hash": "4d4ee8aaaab89773"
+          "hash": "ac304a2f3b1f8852"
         },
         {
           "tick": 40,
@@ -45,7 +45,7 @@
         },
         {
           "tick": 23,
-          "hash": "4d4ee8aaaab89773"
+          "hash": "ac304a2f3b1f8852"
         },
         {
           "tick": 40,
@@ -78,7 +78,7 @@
         },
         {
           "tick": 23,
-          "hash": "4d4ee8aaaab89773"
+          "hash": "ac304a2f3b1f8852"
         },
         {
           "tick": 40,
@@ -140,5 +140,6 @@
     "twoRunsEqual": true,
     "replayEqualsEnd": true,
     "hitStopChangesHash": true
-  }
+  },
+  "commit": "738a66a (after the preset fix b20b854, which changed the tick-23 hash: the presets now show their impact inside the hit stop)"
 }
