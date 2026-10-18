@@ -44,3 +44,56 @@ impl Time {
         self.elapsed = self.tick as f64 * f64::from(self.dt);
     }
 }
+
+/// Global slow motion and hit stop: how much simulation time the modules
+/// that honour it (physics, animation, flipbooks, tweens) advance per tick.
+///
+/// The tick itself never changes: every tick still runs every system, so the
+/// UI, input and the probe keep their pace. A module reads [`TimeScale::dt`]
+/// instead of [`Time::dt`]. During a hit stop (`hit_stop` ticks left) that is
+/// 0; otherwise `Time::dt * scale`. The world counts `hit_stop` down and adds
+/// the tick's scaled `dt` to `elapsed` after the tick's last system, so a hit
+/// stop of `n` started during tick N freezes ticks N to N + n - 1.
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "og.TimeScale")]
+pub struct TimeScale {
+    /// The rate of scaled time: 1 is normal, 0.5 half speed, 0 stopped.
+    #[reflect(default = 1, min = 0, max = 10)]
+    pub scale: f32,
+    /// Ticks of hit stop left: while above 0, scaled time does not advance.
+    #[reflect(name = "hitStop", unit = "ticks")]
+    pub hit_stop: u32,
+    /// Scaled seconds since load: the sum of every finished tick's scaled `dt`.
+    #[reflect(unit = "s")]
+    pub elapsed: f64,
+}
+
+/// The largest [`TimeScale::scale`].
+pub const MAX_TIME_SCALE: f32 = 10.0;
+
+impl Default for TimeScale {
+    fn default() -> Self {
+        TimeScale {
+            scale: 1.0,
+            hit_stop: 0,
+            elapsed: 0.0,
+        }
+    }
+}
+
+impl TimeScale {
+    /// The scaled length of the tick: 0 during a hit stop, else `time.dt * scale`.
+    pub fn dt(&self, time: &Time) -> f32 {
+        if self.hit_stop > 0 {
+            0.0
+        } else {
+            time.dt * self.scale
+        }
+    }
+
+    /// After the tick's last system: adds its scaled `dt`, counts the hit stop down.
+    pub fn end_tick(&mut self, time: &Time) {
+        self.elapsed += f64::from(self.dt(time));
+        self.hit_stop = self.hit_stop.saturating_sub(1);
+    }
+}

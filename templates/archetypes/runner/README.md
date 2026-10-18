@@ -42,24 +42,45 @@ og build .                   # dist/: the play page for the browser
 
 Everything is deterministic from the project seed (`project.ogt`, or
 `og run --seed`): the patterns come from `og.Rng`, the clock is the fixed
-tick, and the arithmetic is plain `+ − × ÷` (the coins' turn is a triangle
-wave of the tick), so the same script gives the same world hash on the
-native and the web host.
+tick, and the feel (tweens, flipbooks, hit stop, shake, floating text,
+afterimages) is engine world state, so the same script gives the same world
+hash on the native and the web host (`tests/replay.og.ts` runs it twice).
 
 ## The world
 
-Every drawn thing is an entity with `og.Transform` (position; scale is the
-sprite's size), `og.Mesh` (a quad and a material from
-`assets/models/sprites.glb`), and the game's three components below. The
-roof tiles, buildings and clouds wrap; the crates, fences and coins are
-pools (4, 3 and 16) parked at x = −1000 until a pattern puts them in play.
+A night city in pixel art: every sheet is drawn texel by texel by
+`tools/make-assets.py`, imported as `kind pixel` (lossless, sampled
+nearest) and outlined in the brand ink `#14161b` so the silhouettes read
+on the dark sky. Layers, back to front:
+
+| Layer | What | Drawn by |
+|---|---|---|
+| −40 | the sky's colour bands | `og.Sprite` over `sprites/sky.png` |
+| −38, −36 | the moon, three clouds (drifting at 0.06 of the speed) | `og.Sprite` + `og.Flipbook` (`sprites/props.ogt`) |
+| −30 | the far skyline, antenna lights blinking | `og.Tilemap` of `maps/far.ogt`, parallax 0.15 |
+| −20 | the near buildings, warm windows (one goes on and off), a neon sign, a water tank | `og.Tilemap` of `maps/near.ogt`, parallax 0.45 |
+| −10 | the roof the courier runs on | `og.Tilemap` of `maps/roofs.ogt`, parallax 1 |
+| 0, 1 | crates and fences; coins (a 6-frame turn) and dust puffs | `og.Sprite` + `og.Flipbook` |
+| 2 | the courier (idle, run, jump, fall, crash) | `og.Sprite` + `og.Flipbook` (`sprites/courier.ogt`) + `og.Afterimage` |
+| 10, 100 | the HUD; "+10" | `og.render.text`; `og.render.floatingText` |
+
+The three city strips are text tilemaps (`.ogt` rows of legend
+characters: the script writes them, a person can edit them by hand) over one
+tileset (`tiles/city.ogt`, with its animated tiles) and draw with `repeat
+x`; the camera stays still, so each strip's entity scrolls left at the run
+speed times its parallax and jumps right by its own width, seamlessly. The
+crates, fences, coins and dust are pools (4, 3, 16 and 4) parked at
+x = −1000 until a pattern or a footfall puts them in play.
 
 | Component | On | What it holds |
 |---|---|---|
-| `Actor` | every row | `kind` (sky, moon, cloud, building, ground, runner, crate, fence, coin), `active`, the hit box `w`×`h`, `parallax` (the share of the run speed a row scrolls at), `wrap` (the span scenery jumps right by), `vy`, and up to five looks (materials) |
+| `Actor` | every row | `kind` (sky, moon, cloud, city, dust, runner, crate, fence, coin), `active` (collides), the hit box `w`×`h`, `parallax` (the share of the run speed a row scrolls at), `wrap` (the span scenery jumps right by), `vy` |
 | `Run` | every row; **the runner's is the authority** | `phase` (0 title, 1 running, 2 over), `phaseTicks`, `speed`, `distance`, `coins`, `score`, `best`, `rounds`, `spawnIn`, and the jump's `grounded`, `buffer`, `hold`, `rising` |
 | `Tuning` | every row; **the runner's is the authority** | the tunables below |
 | `Hud` | the runner only | the font handle and the visible area the HUD lays out in |
+
+The runner's position is its feet (the sheet's pivot is `0.5 0`), so a
+squash keeps them on the roof; its hit box is centred 0.8125 m above them.
 
 Why `Run` and `Tuning` sit on every row: a system sees exactly one query,
 the AND of what it declares, and inside a system the engine reaches no other
@@ -73,17 +94,33 @@ become a resource or the runner's alone and the systems keep their shape.
 
 | System | Reads | Writes | Job |
 |---|---|---|---|
-| `Director` | `og.Input`, `Tuning` | `Run`, `Actor`, `og.Transform`, `og.Mesh` | phases; the speed ramp, distance and score; a new round (pools retired) |
-| `Jump` | `og.Input`, `Tuning` | `Run`, `Actor`, `og.Transform` | buffered take-off, the hold and the cut, gravity, landing |
-| `Scroll` | `Run` | `Actor`, `og.Transform`, `og.Mesh` | everything left at speed × parallax; scenery wraps over 30 m; pooled rows retire past x = −13 |
-| `Spawn` | `Tuning` | `og.Rng`, `Run`, `Actor`, `og.Transform`, `og.Mesh` | the next pattern at x = 13 from the dice |
-| `Collide` | `og.Transform`, `Tuning` | `Run`, `Actor`, `og.Mesh` | coins collected, crashes, the best score |
-| `Animate` | `Run`, `Actor` | `og.Mesh`, `og.Transform` | the runner's pose (idle, two run frames, jump, crash); the coins' turn |
+| `Director` | `og.Input`, `Tuning` | `Run`, `Actor`, `og.Transform`, `og.Sprite` | phases; the speed ramp, distance and score; a new round (pools retired, the courier stood up) |
+| `Jump` | `og.Input`, `Tuning` | `Run`, `Actor`, `og.Transform` | buffered take-off (a stretch), the hold and the cut, gravity, landing (a squash) |
+| `Scroll` | `Run` | `Actor`, `og.Transform` | everything left at speed × parallax; scenery wraps by its span; pooled rows retire past x = −13 |
+| `Spawn` | `Tuning` | `og.Rng`, `Run`, `Actor`, `og.Transform`, `og.Sprite` | the next pattern at x = 13 from the dice |
+| `Collide` | `og.Transform`, `Tuning` | `Run`, `Actor` | coins collected ("+10" and the coin's pop), crashes (the crash's feel), the best score |
+| `Dust` | `og.FlipbookEvent`, `Run` | `Actor`, `og.Transform` | a dust puff at the feet on each `step` event of the run clip |
+| `Animate` | `Run`, `Actor`, `Tuning` | `og.Flipbook`, `og.Afterimage` | the courier's clip from the phase and the body, the run clip's pace from the speed, the afterimage near top speed |
 | `Hud` | `Run`, `Hud`, `Tuning` | — | the score line, the title card and the game-over card (`og.render.text`) |
 
-Spawning and retiring at fixed x (beyond the widest view) keeps the play
-surface's shape out of the simulation: a phone and a desktop see the same
-obstacles at the same ticks.
+Motion reads `Time.scaledDt`, so a hit stop freezes the world while the
+camera still shakes. Spawning and retiring at fixed x (beyond the widest
+view) keeps the play surface's shape out of the simulation: a phone and a
+desktop see the same obstacles at the same ticks.
+
+## Feel (E4)
+
+| Moment | What happens | Where |
+|---|---|---|
+| running | an 8-frame run at 14 fps, faster with the speed (×0.8–1.6); `step` events on the footfalls kick up dust | `sprites/courier.ogt`, `Animate`, `Dust` |
+| take-off | stretch (0.78, 1.28), then the jump frame | `og.tween.squash` in `Jump` |
+| landing | squash (1.3, 0.72), recovering with `backOut` | `og.tween.squash` in `Jump` |
+| a coin | "+10" pops and rises; the coin grows, lifts and fades | `og.render.floatingText`, `og.tween.parallel` in `Collide` |
+| a crash | 8 ticks of hit stop, shake 0.5, a kick of the view, the courier knocked back 0.9 m and up, flashing red, the crash clip played once | `og.time.hitStop`, `og.camera.shake`/`kick`, tweens in `Collide` |
+| top speed | four mint ghosts trail the courier | `og.Afterimage` in `Animate` |
+
+The numbers are `FEEL` in `src/systems.ts`. None of them changes a rule:
+the playtests below hold with any of them.
 
 ## Tunables (`Tuning`, on the runner)
 
@@ -91,12 +128,12 @@ obstacles at the same ticks.
 |---|---|---|---|---|
 | `speed` | 6 | 3–12 | m/s | the pace a round starts at |
 | `speedRamp` | 0.12 | 0–1 | m/s² | how fast the pace rises (the cap after 50 s) |
-| `speedMax` | 12 | 4–20 | m/s | the top pace |
+| `speedMax` | 12 | 4–20 | m/s | the top pace (and where the afterimage shows) |
 | `gravity` | 36 | 10–80 | m/s² | how heavy jumps feel; a full jump peaks at jumpSpeed² / (2 gravity) |
 | `jumpSpeed` | 12 | 6–20 | m/s | take-off speed |
 | `jumpCut` | 0.5 | 0.1–1 | × | what a release keeps of the rise: the hop's height |
 | `spawnInterval` | 1.3 | 0.5–60 | s | the gap between patterns |
-| `coinValue` | 10 | 0–100 | points | what a coin adds |
+| `coinValue` | 10 | 0–100 | points | what a coin adds (and the floating text shows) |
 
 They are written in `assets/scenes/main.ogt` (the runner's `Tuning` block)
 and live with `set:runner.Tuning.<field>=<value>` from the command channel
@@ -108,13 +145,15 @@ crate arrives, a full jump clears a fence if it leaves 13–24 ticks before.
 
 1. **Feel**: `jumpSpeed`, `gravity` and `jumpCut` in the scene's `Tuning`.
    Keep the hop below the fence and above the crate (`tests/jump.og.ts`
-   checks exactly that).
+   checks exactly that). The juice is `FEEL` in `src/systems.ts`.
 2. **Pace**: `speed`, `speedRamp`, `speedMax`, `spawnInterval`.
 3. **What comes**: `placePattern` and the `top` gate in `Spawn`
    (`src/systems.ts`): add a pattern, change when fences appear.
-4. **Look**: the shapes and colours in `tools/make-assets.py`, then
-   `python3 tools/make-assets.py && og cook .`. A new sprite goes at the end
-   of `SPRITES` there and in `src/art.ts`.
+4. **Look**: the pixel art and the city in `tools/make-assets.py`
+   (`courier`, `run_frame`, `tile`, `far_rows`, `near_rows`), then
+   `python3 tools/make-assets.py && og cook .`. A new courier clip goes in
+   `COURIER_OGT` there and `COURIER` in `src/art.ts` (which checks the
+   order). Re-record the reference frames afterwards (below).
 5. **Words**: the HUD strings in `Hud`. A CJK character must be in `CHARS`
    of `tools/make-assets.py` (it writes `assets/fonts/ui.ttf.ogt`).
 
@@ -136,27 +175,28 @@ crate arrives, a full jump clears a fence if it leaves 13–24 ticks before.
 | `tests/coins.og.ts` | a coin in reach is collected and adds `coinValue`; one hung at 3.2 m passes over a standing runner |
 | `tests/jump.og.ts` | a full jump clears a crate and a fence; a hop clears a crate and crashes into a fence |
 | `tests/tune.og.ts` | `set` writes `Tuning`: the start speed and the jump height follow |
+| `tests/frames.og.ts` | the title, a coin's pickup ("+10", the pop, dust) and the crash inside its hit stop (red flash, shake) match `references/<tier>/frames-*.png` under og-tests' tolerance (`tests/frames.ts`) |
+| `tests/replay.og.ts` | the same script of jumps, coins, a crash and a second round, run twice in fresh processes, ends on one world hash |
 
 Each one fails when the behaviour it names is broken (checked by breaking
-coin collection, the hop's minimum hold and the card's hold).
+coin collection, the hop's minimum hold, the card's hold, the coin's
+floating text, the crash flash through the hit stop and the determinism of
+the dust). After a deliberate change to the look, re-record the frames:
+`OG_FX_CAPTURE=1 og test .` (a tier without its own references compares
+with `metal` and says so).
 
 ## Assets
 
-`tools/make-assets.py` regenerates every asset byte for byte (sprites,
-sounds, the font subset); `LICENSES.md` lists them. The sounds are cooked
-but not played yet: the engine's audio module is not in the API this
-archetype was built on.
+`tools/make-assets.py` regenerates every asset byte for byte (sheets,
+tileset, maps, sounds, the font subset); `LICENSES.md` lists them. The
+sounds are cooked but not played yet: wiring them to `og.AudioSource` is
+the next step for this archetype.
 
-## Known limits (engine gaps, not design)
+## Known limits
 
-- No sprite or immediate-mode quad API: sprites are glTF quads with
-  emissive, alpha-masked materials, and colour is lit out (no environment
-  light, a dark sun, tone mapping off).
-- No UI module yet: the title and game-over cards are world-space text, and
-  there is no Start button for `touch_move_to`.
 - Systems cannot read other entities or game resources (hence `Run` and
-  `Tuning` on every row), cannot spawn (hence the pools) and cannot move the
-  camera (hence the fixed camera and the scrolling world).
+  `Tuning` on every row) and cannot spawn (hence the pools, the dust's
+  included); the camera stays still and the world scrolls.
 - The view's size is read once in `start`; on the web the renderer is not
   attached yet then, so the layout assumes 16:9 and a portrait phone sees a
   narrow slice of the roofs.

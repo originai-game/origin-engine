@@ -115,6 +115,56 @@ events) before using an asset, and spawn a loaded scene or model with
 `GameDesc.scene` is spawned for you when the world starts. The wiki's `load`
 page lists every loader and what each returns.
 
+## 2D: sprites, flipbooks, tilemaps
+
+- **Sprites** are components: an entity with `og.Transform` and `og.Sprite`
+  (`width`, `height`, `anchor`, `color`, `opacity`, `layer`, `sortY`,
+  `flipX`, `flash`, `shadow`, nine-slice `sliceX`/`sliceY`) is drawn every
+  frame at its transform, its scale multiplying the size (so squash and
+  stretch is a tween of `og.Transform.scale`). `og.render.sprite` stays for
+  one-tick, immediate drawing (HUDs, debug).
+- **Sprite sheets** are `.ogt` files of `type flipbook` next to the PNG
+  (grid or named frames, or an Aseprite / TexturePacker JSON `atlas`; clips
+  with `fps`, `mode loop | pingPong | once` and `event <frame> "name"`).
+  `og.load.flipbook(world, "sprites/hero.ogt")` answers the sheet and its
+  clips; `og.Flipbook { sheet, clip: og.anim.clip(info, "walk") }` on the
+  sprite's entity plays it, and `og.FlipbookEvent` reports the frames named
+  by `event` (footsteps, the frame a hit lands). Give pixel art
+  `texture { kind pixel }` import settings (lossless, nearest).
+- **Tilemaps**: a tileset `.ogt` (`type tileset`: grid, `solid` tiles,
+  `collide` rects, animated tiles, `terrain` auto-tiling rules) and a map:
+  a Tiled `.tmj`, an LDtk `.ldtk` or a hand-written `.ogt` of `type tilemap`
+  (layers of rows, objects). `og.load.tilemap` answers its layers and
+  objects; an entity with `og.Tilemap { map }` draws it from its position
+  (top-left corner) and gives the collision layers static colliders.
+  `og.tilemap.setTile` edits a cell (terrain layers re-tile their
+  neighbours, colliders follow); `getTile`, `cellAt`, `cellCenter` read it.
+  Layers scroll by their `parallax`; `repeat x` tiles a background.
+
+## Feel: tweens, time scale, camera
+
+- `og.tween.to(world, { entity, component, field: "position.y", to: [2],
+  duration, ease, delay, loops, yoyo })`, `og.tween.sequence` and
+  `og.tween.parallel` animate any numeric component field; `og.TweenCompleted`
+  reports the end; `og.tween.squash` and `og.tween.flash` are the presets.
+- `og.time.hitStop(world, ticks)` and `og.time.setScale(world, s)` slow or
+  freeze physics, animation, flipbooks and tweens while input and the UI
+  keep going; move your own gameplay by `time.scaledDt`.
+- `og.camera.shake(world, trauma)` (decays by itself), `og.camera.kick`,
+  `og.camera.punch`; `og.Follow2D` has a dead zone, look-ahead and per-axis
+  smoothing, `og.CameraZone` keeps the view in a room, `og.CameraRail`
+  moves it along a spline.
+- `og.render.floatingText(world, { text: "-12", position, color })` pops a
+  damage number or a pickup text that rises and fades by itself.
+- How much of each (hit stop by impact, shake by event, squash amounts,
+  easing by intent, frame rates by action) is the **og-feel** skill.
+
+`templates/archetypes/topdown` (a Zelda-like room: a Tiled map with
+auto-tiled walls and collision, a 4-direction flipbook hero, an enemy with
+a hurt flash and knockback, pickups with floating text, a door),
+`templates/archetypes/runner` and `templates/archetypes/match3` use all of
+this.
+
 ## Input
 
 `world.resource(og.Input)` is the keyboard, the mouse and the first touch
@@ -157,7 +207,9 @@ Every effect is off until the game turns it on, as data:
   in CSS pixels from the top-left over the finished frame, untouched by
   post effects, with an optional `clip`; `og.ui` uses the same layer.
 
-`templates/fx-showcase` shows every one of these on five stations.
+`templates/fx-showcase` shows every one of these on five stations. Camera
+shake for gameplay is `og.camera.shake` (it decays by itself);
+`PostEffects.shakeTrauma` holds a fixed shake.
 
 ## Where to look things up
 

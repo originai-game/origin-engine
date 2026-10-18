@@ -12,10 +12,12 @@
 
 mod anim;
 mod audio;
+mod flipbook;
 mod font;
 mod model;
 mod scene;
 mod texture;
+pub mod tilemap;
 
 use crate::format::{self, BlobKind, COOKER_VERSION};
 use crate::runtime::{Manifest, ManifestAsset, ManifestOutput, MANIFEST};
@@ -379,6 +381,9 @@ enum Kind {
     Lut,
     Emitter,
     Skin,
+    Tileset,
+    Tilemap,
+    Flipbook,
 }
 
 impl Kind {
@@ -392,6 +397,9 @@ impl Kind {
             Kind::Lut => "lut",
             Kind::Emitter => "emitter",
             Kind::Skin => "skin",
+            Kind::Tileset => "tileset",
+            Kind::Tilemap => "tilemap",
+            Kind::Flipbook => "flipbook",
         }
     }
 }
@@ -416,6 +424,9 @@ enum Work<'a> {
     Lut(&'a Source),
     Emitter(&'a Source),
     Skin(&'a Source),
+    Tileset(&'a Source),
+    Tilemap(&'a Source, tilemap::MapSettings),
+    Flipbook(&'a Source),
     Font(&'a Source, FontSettings),
     Scene(&'a Source),
 }
@@ -485,8 +496,9 @@ fn texture_kind(s: &Source) -> Result<u32, String> {
             "color" => Ok(format::kind::COLOR),
             "normal" => Ok(format::kind::NORMAL),
             "linear" => Ok(format::kind::LINEAR),
+            "pixel" => Ok(format::kind::PIXEL),
             w => Err(format!(
-                "line {}: texture kind '{w}' (expected color, normal or linear)",
+                "line {}: texture kind '{w}' (expected color, normal, linear or pixel)",
                 e.line
             )),
         },
@@ -588,6 +600,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
             "wav" => Kind::Sound,
             "ttf" | "otf" => Kind::Font,
             "cube" => Kind::Lut,
+            "tmj" | "ldtk" => Kind::Tilemap,
             "ogt" => {
                 let text = std::fs::read_to_string(path)
                     .map_err(|e| CookError(format!("{}: {e}", path.display())))?;
@@ -608,12 +621,15 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     Ok(doc) if doc.ty == "scene" => Kind::Scene,
                     Ok(doc) if doc.ty == crate::fx::EMITTER_TYPE => Kind::Emitter,
                     Ok(doc) if doc.ty == og_ui::skin::SKIN_TYPE => Kind::Skin,
+                    Ok(doc) if doc.ty == "tileset" => Kind::Tileset,
+                    Ok(doc) if doc.ty == "tilemap" => Kind::Tilemap,
+                    Ok(doc) if doc.ty == "flipbook" => Kind::Flipbook,
                     Ok(doc) => {
                         early_errors.push((
                             rel.clone(),
                             "scene",
                             format!(
-                                "an .ogt of type '{}' is not a cookable asset (scene, particles, skin or import)",
+                                "an .ogt of type '{}' is not a cookable asset (scene, particles, skin, tileset, tilemap, flipbook or import)",
                                 doc.ty
                             ),
                         ));
@@ -806,6 +822,37 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     .collect();
                 let st = stamp(&[b"skin", &hash, refs.join("\n").as_bytes()]);
                 outs.push((s.rel.clone(), format::Skin::NAME, st, Work::Skin(s)));
+            }
+            Kind::Tileset => {
+                let st = stamp(&[
+                    b"tileset",
+                    &hash,
+                    tilemap::references_of_tileset(&s.bytes, &|id| known.contains(id)).as_bytes(),
+                ]);
+                outs.push((s.rel.clone(), format::Tileset::NAME, st, Work::Tileset(s)));
+            }
+            Kind::Tilemap => match tilemap::MapSettings::parse(settings_block(s, "tilemap")) {
+                Ok(m) => {
+                    let refs = tilemap::references(&s.rel, &s.bytes, &m, &|id| known.contains(id));
+                    let st = stamp(&[
+                        b"tilemap",
+                        &hash,
+                        m.describe().as_bytes(),
+                        refs.join("\n").as_bytes(),
+                    ]);
+                    outs.push((
+                        s.rel.clone(),
+                        format::Tilemap::NAME,
+                        st,
+                        Work::Tilemap(s, m),
+                    ));
+                }
+                Err(e) => early_errors.push((s.rel.clone(), "tilemap", e)),
+            },
+            Kind::Flipbook => {
+                let deps = flipbook::dependency_hashes(s);
+                let st = stamp(&[b"flipbook", &hash, deps.as_bytes()]);
+                outs.push((s.rel.clone(), format::Flipbook::NAME, st, Work::Flipbook(s)));
             }
             Kind::Font => match font_settings(s, &options.font) {
                 Ok(f) => {
@@ -1040,7 +1087,12 @@ fn run(
                 "{}x{} {}",
                 img.width,
                 img.height,
-                ["colour (ETC1S)", "normal (UASTC)", "linear (UASTC)"][*k as usize]
+                match *k {
+                    format::kind::NORMAL => "normal (UASTC)",
+                    format::kind::LINEAR => "linear (UASTC)",
+                    format::kind::PIXEL => "pixel art (RGBA8, no mips)",
+                    _ => "colour (ETC1S)",
+                }
             );
             texture::cook(&img, *k, &options.texture, p.stamp).map(|b| (b, vec![note]))
         }
@@ -1135,6 +1187,15 @@ fn run(
                 vec![format!("skin '{}', {parts} frame(s)", file.name)],
             ))
         }
+        Work::Tileset(s) => {
+            let text = std::str::from_utf8(&s.bytes)
+                .map_err(|_| CookError("a tileset is text (UTF-8)".into()))?;
+            tilemap::cook_tileset(text, &|id| known.contains(id), p.stamp)
+        }
+        Work::Tilemap(s, m) => {
+            tilemap::cook_tilemap(&s.rel, &s.bytes, m, &|id| known.contains(id), p.stamp)
+        }
+        Work::Flipbook(s) => flipbook::cook(s, p.stamp),
         Work::Font(s, f) => {
             font::cook(&s.bytes, f, threads, p.stamp).map(|(b, n)| (b, vec![n.note]))
         }

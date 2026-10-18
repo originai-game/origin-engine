@@ -2,13 +2,14 @@ type scene
 version 1
 ---
 # The match3 scene: the board, with the round's tuning. `start` in
-# src/main.ts adds the sprites: the backdrop, the cells, the 49 tiles and
-# the selection frame.
+# src/main.ts gives it its nine-sliced panel and adds the backdrop, the
+# checker tilemap, the 49 gems and the selection frame.
 name "Main"
 entity "board" {
   Transform {
     position 0 -0.4 -2
-    scale 7.5 7.5 1
+    quaternion 0 0 0 1
+    scale 1 1 1
   }
   # Tune's parameters: edit them here, live with `set:board.Tuning.<field>=<value>`.
   Tuning {

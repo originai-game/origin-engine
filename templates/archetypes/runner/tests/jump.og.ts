@@ -35,7 +35,7 @@ export default playtest({
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
     const air = positionOf(run, "airborne.json");
-    t.ok(air.y > 0.8125 + 1, `the held jump is high over the crate (centre at ${air.y.toFixed(2)} m)`);
+    t.ok(air.y > 1, `the held jump is high over the crate (feet at ${air.y.toFixed(2)} m)`);
     t.equal(runOf(run, "after-full.json").phase, RUNNING, "the full jump cleared crate 1");
     t.equal(runOf(run, "after-hop.json").phase, RUNNING, "the hop cleared crate 2");
     t.equal(runOf(run, "after-fence.json").phase, RUNNING, "the full jump cleared fence 1");

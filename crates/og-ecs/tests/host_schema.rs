@@ -80,7 +80,7 @@ fn a_host_layout_is_registered_by_name_and_used_as_bytes() {
     let json: serde_json::Value = serde_json::from_str(&w.schemas_json()).unwrap();
     let types = json["types"].as_array().unwrap();
     let names: Vec<_> = types.iter().map(|t| t["name"].as_str().unwrap()).collect();
-    assert_eq!(names, ["og.Time", "og.Rng", "Velocity"]);
+    assert_eq!(names, ["og.Time", "og.Rng", "og.TimeScale", "Velocity"]);
     // Engine-owned names are dotted, the same as the TypeScript tokens.
     assert_eq!(w.id_by_name("og.Time").unwrap(), w.id::<Time>().unwrap());
     assert_eq!(w.id_by_name("og.Rng").unwrap(), w.id::<Rng>().unwrap());
@@ -88,8 +88,8 @@ fn a_host_layout_is_registered_by_name_and_used_as_bytes() {
         w.id_by_name("Time").unwrap_err().kind(),
         ErrorKind::NotFound
     );
-    assert_eq!(types[2]["fields"][1]["tunable"], true);
-    assert_eq!(types[2]["fields"][1]["default"][0], 0.1);
+    assert_eq!(types[3]["fields"][1]["tunable"], true);
+    assert_eq!(types[3]["fields"][1]["default"][0], 0.1);
     assert_eq!(types[0]["fields"][1]["unit"], "s");
 }
 

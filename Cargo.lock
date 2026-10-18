@@ -1615,6 +1615,8 @@ dependencies = [
  "og-physics",
  "og-probe",
  "og-render",
+ "og-tilemap",
+ "og-tween",
  "og-ui",
  "serde_json",
 ]
@@ -1668,6 +1670,7 @@ dependencies = [
  "og-ecs",
  "og-render",
  "og-tests",
+ "og-tilemap",
  "og-ui",
  "ruzstd",
  "serde_json",
@@ -1791,6 +1794,23 @@ dependencies = [
  "image",
  "og-core",
  "og-render",
+ "og-tilemap",
+]
+
+[[package]]
+name = "og-tilemap"
+version = "0.0.1"
+dependencies = [
+ "glam 0.34.1",
+ "og-core",
+]
+
+[[package]]
+name = "og-tween"
+version = "0.0.1"
+dependencies = [
+ "og-core",
+ "og-ecs",
 ]
 
 [[package]]

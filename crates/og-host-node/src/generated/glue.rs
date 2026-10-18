@@ -297,6 +297,18 @@ pub fn og_transform_from_axis_angle(env: Env, axis: String, angle: f64) -> Strin
     <Host as TransformApi>::og_transform_from_axis_angle(&Host, axis, angle)
 }
 
+#[napi(js_name = "og_time_set_scale")]
+pub fn og_time_set_scale(env: Env, world: u32, scale: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TimeApi>::og_time_set_scale(&Host, world, scale)
+}
+
+#[napi(js_name = "og_time_hit_stop")]
+pub fn og_time_hit_stop(env: Env, world: u32, ticks: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TimeApi>::og_time_hit_stop(&Host, world, ticks)
+}
+
 #[napi(js_name = "og_rng_stream_get_seed")]
 pub fn og_rng_stream_get_seed(env: Env, rng_stream: u32) -> u32 {
     let _env = crate::EnvScope::enter(&env);
@@ -495,6 +507,24 @@ pub fn og_camera_screen_to_ray(env: Env, world: u32, x: f64, y: f64) -> String {
     <Host as CameraApi>::og_camera_screen_to_ray(&Host, world, x, y)
 }
 
+#[napi(js_name = "og_camera_shake")]
+pub fn og_camera_shake(env: Env, world: u32, trauma: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as CameraApi>::og_camera_shake(&Host, world, trauma)
+}
+
+#[napi(js_name = "og_camera_punch")]
+pub fn og_camera_punch(env: Env, world: u32, amount: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as CameraApi>::og_camera_punch(&Host, world, amount)
+}
+
+#[napi(js_name = "og_camera_kick")]
+pub fn og_camera_kick(env: Env, world: u32, direction: String, distance: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as CameraApi>::og_camera_kick(&Host, world, direction, distance)
+}
+
 #[napi(js_name = "og_render_ribbon")]
 pub fn og_render_ribbon(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -505,6 +535,12 @@ pub fn og_render_ribbon(env: Env, world: u32, desc: Option<String>) -> String {
 pub fn og_render_sprite(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as RenderApi>::og_render_sprite(&Host, world, desc)
+}
+
+#[napi(js_name = "og_render_floating_text")]
+pub fn og_render_floating_text(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_floating_text(&Host, world, desc)
 }
 
 #[napi(js_name = "og_render_measure_text")]
@@ -657,6 +693,18 @@ pub fn og_load_animation(env: Env, world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_animation(&Host, world, path)
 }
 
+#[napi(js_name = "og_load_flipbook")]
+pub fn og_load_flipbook(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_flipbook(&Host, world, path)
+}
+
+#[napi(js_name = "og_load_tilemap")]
+pub fn og_load_tilemap(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_tilemap(&Host, world, path)
+}
+
 #[napi(js_name = "og_physics_raycast")]
 pub fn og_physics_raycast(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -685,6 +733,78 @@ pub fn og_physics_set_mesh(env: Env, world: u32, mesh: f64, desc: Option<String>
 pub fn og_anim_graph(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as AnimApi>::og_anim_graph(&Host, world, desc)
+}
+
+#[napi(js_name = "og_tween_to")]
+pub fn og_tween_to(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_to(&Host, world, desc)
+}
+
+#[napi(js_name = "og_tween_sequence")]
+pub fn og_tween_sequence(env: Env, world: u32, steps: String, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_sequence(&Host, world, steps, desc)
+}
+
+#[napi(js_name = "og_tween_parallel")]
+pub fn og_tween_parallel(env: Env, world: u32, tweens: String, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_parallel(&Host, world, tweens, desc)
+}
+
+#[napi(js_name = "og_tween_cancel")]
+pub fn og_tween_cancel(env: Env, world: u32, tween: f64) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_cancel(&Host, world, tween)
+}
+
+#[napi(js_name = "og_tween_cancel_entity")]
+pub fn og_tween_cancel_entity(env: Env, world: u32, entity: f64) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_cancel_entity(&Host, world, entity)
+}
+
+#[napi(js_name = "og_tween_active")]
+pub fn og_tween_active(env: Env, world: u32, tween: f64) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_active(&Host, world, tween)
+}
+
+#[napi(js_name = "og_tween_squash")]
+pub fn og_tween_squash(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_squash(&Host, world, desc)
+}
+
+#[napi(js_name = "og_tween_flash")]
+pub fn og_tween_flash(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_flash(&Host, world, desc)
+}
+
+#[napi(js_name = "og_tilemap_set_tile")]
+pub fn og_tilemap_set_tile(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TilemapApi>::og_tilemap_set_tile(&Host, world, desc)
+}
+
+#[napi(js_name = "og_tilemap_get_tile")]
+pub fn og_tilemap_get_tile(env: Env, world: u32, entity: f64, layer: String, x: u32, y: u32) -> i32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TilemapApi>::og_tilemap_get_tile(&Host, world, entity, layer, x, y)
+}
+
+#[napi(js_name = "og_tilemap_cell_at")]
+pub fn og_tilemap_cell_at(env: Env, world: u32, entity: f64, point: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TilemapApi>::og_tilemap_cell_at(&Host, world, entity, point)
+}
+
+#[napi(js_name = "og_tilemap_cell_center")]
+pub fn og_tilemap_cell_center(env: Env, world: u32, entity: f64, x: u32, y: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TilemapApi>::og_tilemap_cell_center(&Host, world, entity, x, y)
 }
 
 #[napi(js_name = "og_ui_configure")]

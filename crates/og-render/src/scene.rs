@@ -754,6 +754,20 @@ pub struct RenderScene {
     pub skinned_instances: Vec<SkinnedInstance>,
     /// Screen-space sprites and text over the finished frame (`None`: none).
     pub overlay: Option<Overlay>,
+    /// Sort keys of single sprites within their layer (top-down y sorting):
+    /// a layer draws its sprites by ascending key, then texture, then
+    /// submission order; a sprite without one has key 0.
+    pub sprite_order: Vec<SpriteOrder>,
+    /// Outlines of single world texts, by text index.
+    pub text_outlines: Vec<TextOutline>,
+    /// Tile layers: chunked quads drawn through the sprite batch, each
+    /// under the sprites of its layer.
+    pub tile_layers: Vec<TileLayer>,
+    /// Trails drawn in the sprite order at a layer (2D) instead of with the
+    /// 3D scene: `(Trail::id, layer)`.
+    pub trail_layers: Vec<(u64, i32)>,
+    /// How each texture is sampled by sprites, tiles and text (by texture index).
+    texture_filters: Vec<TextureFilter>,
 }
 
 impl Default for RenderScene {
@@ -803,7 +817,35 @@ impl RenderScene {
             joint_palettes: Vec::new(),
             skinned_instances: Vec::new(),
             overlay: None,
+            sprite_order: Vec::new(),
+            text_outlines: Vec::new(),
+            tile_layers: Vec::new(),
+            trail_layers: Vec::new(),
+            texture_filters: Vec::new(),
         }
+    }
+
+    /// Samples a texture of this scene nearest (pixel art) or linear (the
+    /// default) wherever sprites, tiles and particles draw it. `false` for
+    /// a handle of another scene.
+    pub fn set_texture_filter(&mut self, texture: TextureHandle, filter: TextureFilter) -> bool {
+        let i = texture.index();
+        if i >= self.textures.len() {
+            return false;
+        }
+        if self.texture_filters.len() <= i {
+            self.texture_filters.resize(i + 1, TextureFilter::Linear);
+        }
+        self.texture_filters[i] = filter;
+        true
+    }
+
+    /// How sprites sample `texture`.
+    pub fn texture_filter(&self, texture: TextureHandle) -> TextureFilter {
+        self.texture_filters
+            .get(texture.index())
+            .copied()
+            .unwrap_or_default()
     }
 
     /// Adds a mesh with a per-vertex skin (four joints and weights each),
@@ -1061,4 +1103,155 @@ impl RenderScene {
             .iter()
             .zip(self.material_revisions.iter().copied())
     }
+}
+
+/// How a texture is sampled where sprites draw it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum TextureFilter {
+    /// Bilinear, with mips when the texture has them.
+    #[default]
+    Linear,
+    /// The nearest texel: crisp pixel art at any scale.
+    Nearest,
+}
+
+/// A sprite's sort key within its layer ([`RenderScene::sprite_order`]).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SpriteOrder {
+    /// The index in [`RenderScene::sprites`].
+    pub sprite: u32,
+    /// Lower keys draw first (under); top-down games use `-y` of the feet.
+    pub key: f32,
+}
+
+/// An outline around one world text ([`RenderScene::text_outlines`]).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TextOutline {
+    /// The index in [`RenderScene::texts`].
+    pub text: u32,
+    /// The width as a fraction of the font's distance range (1: the widest
+    /// the atlas holds, half its `distance_range` in atlas pixels).
+    pub width: f32,
+    /// Linear RGBA.
+    pub color: [f32; 4],
+}
+
+/// One quad of a tile chunk, in the layer's local coordinates.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TileQuad {
+    /// The bottom-left corner.
+    pub min: glam::Vec2,
+    pub size: glam::Vec2,
+    /// `[u0, v0, u1, v1]`, v down (a flipped tile swaps u or v).
+    pub uv: [f32; 4],
+}
+
+/// An animated quad of a chunk: its uv cycles through `uvs`, each held for
+/// its duration (seconds), looping, by [`TileLayer::time`].
+#[derive(Clone, Debug, PartialEq)]
+pub struct TileAnimation {
+    /// The index in [`TileChunk::quads`].
+    pub quad: u32,
+    pub uvs: std::sync::Arc<[[f32; 4]]>,
+    pub durations: std::sync::Arc<[f32]>,
+}
+
+/// A square of tiles, culled as one against the view.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct TileChunk {
+    /// The chunk's bounds in the layer's local coordinates.
+    pub min: glam::Vec2,
+    pub max: glam::Vec2,
+    pub quads: Vec<TileQuad>,
+    pub animated: Vec<TileAnimation>,
+}
+
+/// A layer of tiles drawn through the sprite batch: the chunks inside the
+/// (orthographic) view, placed at `origin`, before the sprites of `layer`.
+/// The chunks are shared (`Arc`), so a frame that resubmits an unchanged
+/// layer copies no tiles.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TileLayer {
+    pub texture: TextureHandle,
+    pub chunks: std::sync::Arc<Vec<TileChunk>>,
+    /// Where the layer's local origin is drawn (parallax already applied).
+    pub origin: Vec3,
+    pub layer: i32,
+    /// Linear RGBA multiplied with every tile.
+    pub color: [f32; 4],
+    /// Repeat the layer every this many world units along x and y (a
+    /// scrolling background); `None` draws it once.
+    pub repeat: [Option<f32>; 2],
+    /// Seconds of animated-tile time.
+    pub time: f32,
+}
+
+/// The nine pieces of a nine-slice sprite: the corners keep their size, the
+/// edges stretch along one axis and the centre along both. `insets` are
+/// `[left, top, right, bottom]` in texture pixels of the sprite's region
+/// (its `uv_rect` in a texture of `texture_size`), drawn at `world_per_pixel`
+/// world units each (clamped to half the sprite). A flipped region (u0 > u1)
+/// stays flipped. Empty pieces are left out.
+pub fn nine_slice(
+    sprite: &Sprite,
+    insets: [f32; 4],
+    texture_size: (u32, u32),
+    world_per_pixel: f32,
+) -> Vec<Sprite> {
+    let [u0, v0, u1, v1] = sprite.uv_rect;
+    let region = glam::Vec2::new(
+        (u1 - u0).abs() * texture_size.0 as f32,
+        (v1 - v0).abs() * texture_size.1 as f32,
+    );
+    let size = sprite.size;
+    let half = size * 0.5;
+    let [l, t, r, b] = insets.map(|v| v.max(0.0) * world_per_pixel);
+    let (l, r) = (l.min(half.x), r.min(half.x));
+    let (t, b) = (t.min(half.y), b.min(half.y));
+    let frac = |px: f32, span: f32| {
+        if span > 0.0 {
+            (px / span).clamp(0.0, 1.0)
+        } else {
+            0.0
+        }
+    };
+    let wpp = world_per_pixel.max(1e-9);
+    // Splits along x (world, from the left edge) and u; along y (world, from
+    // the bottom edge) and v (v runs down: the bottom of the quad is v1).
+    let xs = [0.0, l, size.x - r, size.x];
+    let us = [
+        u0,
+        u0 + (u1 - u0) * frac(l / wpp, region.x),
+        u1 - (u1 - u0) * frac(r / wpp, region.x),
+        u1,
+    ];
+    let ys = [0.0, b, size.y - t, size.y];
+    let vs = [
+        v1,
+        v1 + (v0 - v1) * frac(b / wpp, region.y),
+        v0 - (v0 - v1) * frac(t / wpp, region.y),
+        v0,
+    ];
+    let (sin, cos) = sprite.rotation.sin_cos();
+    let origin = -sprite.anchor * size;
+    let mut out = Vec::with_capacity(9);
+    for j in 0..3 {
+        for i in 0..3 {
+            let (w, h) = (xs[i + 1] - xs[i], ys[j + 1] - ys[j]);
+            if w <= 0.0 || h <= 0.0 {
+                continue;
+            }
+            let local = origin + glam::Vec2::new(xs[i], ys[j]);
+            let rotated =
+                glam::Vec2::new(local.x * cos - local.y * sin, local.x * sin + local.y * cos);
+            out.push(Sprite {
+                position: sprite.position + rotated.extend(0.0),
+                size: glam::Vec2::new(w, h),
+                anchor: glam::Vec2::ZERO,
+                uv_rect: [us[i], vs[j + 1], us[i + 1], vs[j]],
+                ..*sprite
+            });
+        }
+    }
+    out
 }

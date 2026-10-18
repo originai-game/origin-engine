@@ -5,13 +5,13 @@
 // (the AND of the components it declares), and inside a system the engine
 // reaches no other entity and no game resource yet. So the systems that
 // swap, clear and refill tiles must see the round's state on the same rows
-// as the tiles. Every row is spawned with the same five components
-// (og.Transform, og.Mesh, Piece, Match, Tuning) and the row whose
+// as the tiles. Every row is spawned with the same six components
+// (og.Transform, og.Sprite, og.Flipbook, Piece, Match, Tuning) and the row whose
 // Piece.kind is Kind.Board, the entity named "board", is the authority: the
 // other rows' Match and Tuning keep their defaults and nothing reads them.
 // Tune and `set:board.Tuning.<field>=<value>` write that row.
 
-import { Material, bool, defineComponent, f32, f64, i32, u32 } from "@origingame/engine";
+import { bool, defineComponent, f32, f64, i32, u32 } from "@origingame/engine";
 
 import { SIZE } from "./layout.ts";
 
@@ -27,15 +27,12 @@ export const Piece = defineComponent("Piece", {
   kind: u32(0, { doc: "Kind.* of src/components.ts." }),
   col: i32(0, { min: 0, max: SIZE - 1, doc: "The tile's column, 0 at the left." }),
   row: i32(0, { min: 0, max: SIZE - 1, doc: "The tile's row, 0 at the bottom." }),
-  colour: i32(-1, { min: -1, max: 5, doc: "The tile's colour index (art.ts TILE_SPRITES); -1 is an empty cell." }),
+  colour: i32(-1, { min: -1, max: 5, doc: "The tile's colour index (art.ts GEMS); -1 is an empty cell." }),
   marked: bool(false, { doc: "Part of a line being cleared this step." }),
-  look0: Material(),
-  look1: Material(),
-  look2: Material(),
-  look3: Material(),
-  look4: Material(),
-  look5: Material(),
 });
+
+/** og.TweenCompleted tags: the tween group a phase waits for (Match.wait). */
+export const Tag = { None: 0, Swap: 1, SwapBack: 2, Clear: 3, Fall: 4, Deal: 5 } as const;
 
 /** The round. Authoritative on the board row. Cells are indexed row * SIZE + col; -1 is none. */
 export const Match = defineComponent("Match", {
@@ -61,6 +58,8 @@ export const Match = defineComponent("Match", {
   pxPerM: f32(60, { doc: "Pixels of the play surface per metre, worked out by Pick every tick from the render target." }),
   screenX0: f32(640, { doc: "Surface x of the world origin (Pick)." }),
   screenY0: f32(390, { doc: "Surface y of the world origin (Pick)." }),
+  wait: u32(0, { doc: "The Tag.* of the tween group the phase waits for; 0 once its og.TweenCompleted arrived." }),
+  font: f64(0, { doc: "The Font handle, for the floating scores Resolve spawns." }),
 });
 
 /** Tune's parameters. Authoritative on the board row. */

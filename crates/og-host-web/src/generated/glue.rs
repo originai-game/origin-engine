@@ -249,6 +249,16 @@ pub fn og_transform_from_axis_angle(axis: String, angle: f64) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_time_set_scale(world: u32, scale: f64) -> String {
+    <Host as TimeApi>::og_time_set_scale(&Host, world, scale)
+}
+
+#[wasm_bindgen]
+pub fn og_time_hit_stop(world: u32, ticks: u32) -> String {
+    <Host as TimeApi>::og_time_hit_stop(&Host, world, ticks)
+}
+
+#[wasm_bindgen]
 pub fn og_rng_stream_get_seed(rng_stream: u32) -> u32 {
     <Host as RngApi>::og_rng_stream_get_seed(&Host, rng_stream)
 }
@@ -414,6 +424,21 @@ pub fn og_camera_screen_to_ray(world: u32, x: f64, y: f64) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_camera_shake(world: u32, trauma: f64) -> String {
+    <Host as CameraApi>::og_camera_shake(&Host, world, trauma)
+}
+
+#[wasm_bindgen]
+pub fn og_camera_punch(world: u32, amount: f64) -> String {
+    <Host as CameraApi>::og_camera_punch(&Host, world, amount)
+}
+
+#[wasm_bindgen]
+pub fn og_camera_kick(world: u32, direction: String, distance: f64) -> String {
+    <Host as CameraApi>::og_camera_kick(&Host, world, direction, distance)
+}
+
+#[wasm_bindgen]
 pub fn og_render_ribbon(world: u32, desc: Option<String>) -> String {
     <Host as RenderApi>::og_render_ribbon(&Host, world, desc)
 }
@@ -421,6 +446,11 @@ pub fn og_render_ribbon(world: u32, desc: Option<String>) -> String {
 #[wasm_bindgen]
 pub fn og_render_sprite(world: u32, desc: Option<String>) -> String {
     <Host as RenderApi>::og_render_sprite(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_render_floating_text(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_floating_text(&Host, world, desc)
 }
 
 #[wasm_bindgen]
@@ -549,6 +579,16 @@ pub fn og_load_animation(world: u32, path: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_load_flipbook(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_flipbook(&Host, world, path)
+}
+
+#[wasm_bindgen]
+pub fn og_load_tilemap(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_tilemap(&Host, world, path)
+}
+
+#[wasm_bindgen]
 pub fn og_physics_raycast(world: u32, desc: Option<String>) -> String {
     <Host as PhysicsApi>::og_physics_raycast(&Host, world, desc)
 }
@@ -571,6 +611,66 @@ pub fn og_physics_set_mesh(world: u32, mesh: f64, desc: Option<String>) -> Strin
 #[wasm_bindgen]
 pub fn og_anim_graph(world: u32, desc: Option<String>) -> String {
     <Host as AnimApi>::og_anim_graph(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_to(world: u32, desc: Option<String>) -> String {
+    <Host as TweenApi>::og_tween_to(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_sequence(world: u32, steps: String, desc: Option<String>) -> String {
+    <Host as TweenApi>::og_tween_sequence(&Host, world, steps, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_parallel(world: u32, tweens: String, desc: Option<String>) -> String {
+    <Host as TweenApi>::og_tween_parallel(&Host, world, tweens, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_cancel(world: u32, tween: f64) -> bool {
+    <Host as TweenApi>::og_tween_cancel(&Host, world, tween)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_cancel_entity(world: u32, entity: f64) -> u32 {
+    <Host as TweenApi>::og_tween_cancel_entity(&Host, world, entity)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_active(world: u32, tween: f64) -> bool {
+    <Host as TweenApi>::og_tween_active(&Host, world, tween)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_squash(world: u32, desc: Option<String>) -> String {
+    <Host as TweenApi>::og_tween_squash(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_flash(world: u32, desc: Option<String>) -> String {
+    <Host as TweenApi>::og_tween_flash(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_tilemap_set_tile(world: u32, desc: Option<String>) -> String {
+    <Host as TilemapApi>::og_tilemap_set_tile(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_tilemap_get_tile(world: u32, entity: f64, layer: String, x: u32, y: u32) -> i32 {
+    <Host as TilemapApi>::og_tilemap_get_tile(&Host, world, entity, layer, x, y)
+}
+
+#[wasm_bindgen]
+pub fn og_tilemap_cell_at(world: u32, entity: f64, point: String) -> String {
+    <Host as TilemapApi>::og_tilemap_cell_at(&Host, world, entity, point)
+}
+
+#[wasm_bindgen]
+pub fn og_tilemap_cell_center(world: u32, entity: f64, x: u32, y: u32) -> String {
+    <Host as TilemapApi>::og_tilemap_cell_center(&Host, world, entity, x, y)
 }
 
 #[wasm_bindgen]

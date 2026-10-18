@@ -8,6 +8,7 @@
 //! | [`install`] | registers the types, schedules `og.anim` and adds its state block; returns an [`AnimationSystem`] |
 //! | [`Skeleton`], [`AnimationPlayer`], [`AnimationGraph`], [`Blendshapes`], [`IkChain`] | the components (`og.Skeleton`, …) |
 //! | [`AnimationEvent`] | a clip marker passed in the last tick |
+//! | [`Flipbook`], [`FlipbookEvent`], [`FlipbookSheet`], [`install_flipbook`] | sprite animation: sheets of frames, clips with fps, loop / ping-pong / once and frame events, played by `og.flipbook` |
 //! | [`SkeletonAsset`], [`ClipAsset`], [`GraphAsset`] | the assets (the cook's `<model>#anim` blob, an `animgraph` `.ogt`) |
 //! | [`AnimationSystem`] | asset registration, the final pose, the per-entity [`AnimOutput`] (joint palette, blendshape weights) and [`PaletteSink`], the renderer contract |
 //!
@@ -22,6 +23,7 @@
 
 mod asset;
 mod codec;
+mod flipbook;
 mod graph;
 mod ik;
 mod pose;
@@ -32,6 +34,10 @@ mod xform;
 pub use asset::{
     bind, Channel, ChannelPath, ClipAsset, ClipEvent, FramePos, SkeletonAsset, SkeletonNode, Skin,
     NONE,
+};
+pub use flipbook::{
+    install_flipbook, FlipClip, FlipMode, Flipbook, FlipbookEvent, FlipbookSheet, FlipbookSystem,
+    SheetFilter, SheetFrame, FLIPBOOK_SYSTEM,
 };
 pub use graph::{
     Condition, GraphAsset, Layer, LayerMode, Motion, MotionNode, Op, State, Transition,

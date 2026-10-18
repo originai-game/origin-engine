@@ -81,6 +81,41 @@ hosts; M6 needs M3, M4, M5; M7 needs M6.
   `og.audio`); skins drawn by hand for a game still need an atlas tool
   beyond `make-skins.py`.
 
+### Status 2026-10-18, E4 round
+
+- **2D and game feel** (b6da6a1..4e63a59, branch `e4-2d-feel`): `og.TimeScale`
+  in every world (`og.time.setScale`, `og.time.hitStop`; physics, animation,
+  flipbooks and scaled tweens step by `scaledDt`, systems, the UI and the
+  probe keep ticking); og-render's 2D batch sorted by layer then y, with
+  nearest textures, nine-slice, chunked tile layers, text outlines and
+  layered trails; `og.Sprite` (y sorting, flips, flash, blob shadow,
+  nine-slice) and `og.Afterimage`; og-anim flipbooks (grid, named or
+  Aseprite / TexturePacker atlas sheets, clips with fps, loop / pingPong /
+  once, speed, `og.FlipbookEvent`) and `texture { kind pixel }`; the new
+  og-tween (every numeric field, 22 easings, delay, loops, yoyo, sequence
+  and parallel, `og.TweenCompleted`, squash and flash presets) and
+  og-tilemap (tilesets with collision and animated tiles, 47-blob and
+  16-bitmask auto-tiling, chunked layers with parallax and repeat, merged
+  static colliders, deterministic `setTile` edits that re-tile their
+  neighbours) with Tiled `.tmj` and LDtk `.ldtk` importers in og-cook;
+  camera feel (trauma shake, punch, kick, Follow2D dead zone, look-ahead and
+  per-axis damping, `og.CameraZone`, `og.CameraRail`; frame-only) and
+  `og.render.floatingText`. Every piece has a state block, so snapshots
+  replay. The archetypes `runner` and `match3` are rebuilt on it and
+  `topdown` (Tomb Room) is new; each has frames and replay playtests with
+  `metal` and `vulkan-cpu` references (topdown also `webgpu` and `webgl2`
+  through the generalised web reference runner). A 256×256 four-layer map
+  draws in 0.22 ms at 1280×720 on the M4 Pro (budget 1 ms). Fixed on the
+  way: a scene component's omitted fields cooked as zero instead of the IDL
+  default, presets started with a hit stop showing nothing until it ended,
+  and a sheet's `filter linear` ignored on a pixel texture. Knowledge: the
+  og-feel skill and og-game's 2D and feel sections. Evidence
+  `tests/evidence/E4/`. Owed: no third native tier exists (only `metal`
+  and `vulkan-cpu`; the browser tiers stand in for topdown); game
+  commands cannot read or set resources; camera zones clamp the frame
+  without scrolling between rooms; `getTile` on a terrain layer answers
+  the terrain bit, not the resolved tile.
+
 ### Status 2026-10-18, E2 round
 
 - **Render and Runtime** (96adafe..393c2d6): every E1 effect is declared

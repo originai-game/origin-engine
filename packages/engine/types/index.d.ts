@@ -118,6 +118,8 @@ export interface ColumnKinds {
   AoMethod: { readonly array: Uint32Array; readonly stride: 1; readonly value: AoMethod };
   /** A DofQuality field: the variant's index. */
   DofQuality: { readonly array: Uint32Array; readonly stride: 1; readonly value: DofQuality };
+  /** A SpriteBlend field: the variant's index. */
+  SpriteBlend: { readonly array: Uint32Array; readonly stride: 1; readonly value: SpriteBlend };
   /** A StripBlend field: the variant's index. */
   StripBlend: { readonly array: Uint32Array; readonly stride: 1; readonly value: StripBlend };
   /** An Asset handle field. */
@@ -138,6 +140,12 @@ export interface ColumnKinds {
   IkSolver: { readonly array: Uint32Array; readonly stride: 1; readonly value: IkSolver };
   /** An IkSpace field: the variant's index. */
   IkSpace: { readonly array: Uint32Array; readonly stride: 1; readonly value: IkSpace };
+  /** A FlipbookSheet handle field. */
+  FlipbookSheet: { readonly array: Uint32Array; readonly stride: 2; readonly value: FlipbookSheet };
+  /** A Tween handle field. */
+  Tween: { readonly array: Uint32Array; readonly stride: 2; readonly value: Tween };
+  /** A TilemapAsset handle field. */
+  TilemapAsset: { readonly array: Uint32Array; readonly stride: 2; readonly value: TilemapAsset };
   /** An AudioBus field: the variant's index. */
   AudioBus: { readonly array: Uint32Array; readonly stride: 1; readonly value: AudioBus };
 }
@@ -880,7 +888,38 @@ export interface Time {
    * @readonly written by the engine
    */
   readonly rate: number;
+  /**
+   * Global slow motion, set with og.time.setScale: 1 is normal, 0.5 half speed, 0 stopped. Physics, animation, flipbooks and tweens advance by scaledDt; the tick itself, the UI, input and the probe keep their pace.
+   *
+   * @default 1
+   * @range 0..10
+   * @readonly written by the engine
+   */
+  readonly scale: number;
+  /**
+   * Ticks of hit stop left (og.time.hitStop): while above 0, scaledDt is 0.
+   *
+   * @unit ticks (fixed simulation steps)
+   * @readonly written by the engine
+   */
+  readonly hitStop: number;
+  /**
+   * This tick's scaled length: 0 during a hit stop, else dt * scale. Move gameplay by it so slow motion and hit stop reach game code too.
+   *
+   * @unit s (seconds of simulation time)
+   * @readonly written by the engine
+   */
+  readonly scaledDt: number;
+  /**
+   * Scaled seconds since load: the sum of every finished tick's scaledDt.
+   *
+   * @unit s (seconds of simulation time)
+   * @readonly written by the engine
+   */
+  readonly scaledElapsed: number;
 }
+
+
 
 // ── rng ─────────────────────────────────────────────────────────
 // Deterministic randomness. Every random draw comes from an Rng stream; the sequence for a seed is identical on every host and in the Web scaffold's rng.ts.
@@ -1835,6 +1874,77 @@ export interface Camera {
    */
   exposure: number;
   /**
+   * Screen shake, 0 to 1, added by og.camera.shake and decayed by traumaDecay every tick (unscaled, so a hit stop still shakes). The offset and roll grow with trauma squared and follow smooth noise of the tick: visual only, a replay shakes the same.
+   *
+   * @range 0..1
+   * @tunable
+   */
+  trauma: number;
+  /**
+   * How much trauma drains per second.
+   *
+   * @default 1.5
+   * @range 0..
+   * @unit perSecond (a rate per second: the fraction of a value that decays in one second)
+   * @tunable
+   */
+  traumaDecay: number;
+  /**
+   * The largest offset at trauma 1, as a fraction of the view height.
+   *
+   * @default 0.04
+   * @range 0..
+   * @tunable
+   */
+  shakeOffset: number;
+  /**
+   * The largest roll at trauma 1.
+   *
+   * @default 2
+   * @range 0..
+   * @unit deg (degrees)
+   * @tunable
+   */
+  shakeRoll: number;
+  /**
+   * How fast the shake moves.
+   *
+   * @default 15
+   * @range 0..
+   * @unit hz (ticks or cycles per second)
+   */
+  shakeFrequency: number;
+  /**
+   * A zoom punch in progress (og.camera.punch): the view is narrowed by this fraction, decaying by punchDecay. Visual only.
+   *
+   * @range -0.9..4
+   */
+  punch: number;
+  /**
+   * How fast a punch springs back (exponential, per second).
+   *
+   * @default 8
+   * @range 0..
+   * @unit perSecond (a rate per second: the fraction of a value that decays in one second)
+   * @tunable
+   */
+  punchDecay: number;
+  /**
+   * A kick in progress (og.camera.kick): the view is offset by this, decaying by kickDecay. Visual only.
+   *
+   * @unit m (metres)
+   */
+  kick: Vector3;
+  /**
+   * How fast a kick returns (exponential, per second).
+   *
+   * @default 12
+   * @range 0..
+   * @unit perSecond (a rate per second: the fraction of a value that decays in one second)
+   * @tunable
+   */
+  kickDecay: number;
+  /**
    * Rotate the camera to look at a point, as three.js Camera.lookAt.
    *
    * @param target The point to look at.
@@ -2010,7 +2120,7 @@ export interface FollowCamera {
 }
 
 /**
- * Keeps og.Camera on the entity carrying it in the xy plane, for 2D games: the camera moves only when the entity leaves the dead zone, eases by smoothTime and, with clamp, stays inside the bounds. The camera keeps its z, rotation and projection. Driven by og.systems.cameras.
+ * Keeps og.Camera on the entity carrying it in the xy plane, for 2D games: the camera moves only when the entity leaves the dead zone, eases by smoothTime (smoothTimeY for y when set) and, with clamp, stays inside the bounds; lookAhead leads it in the direction the entity moves. The camera keeps its z, rotation and projection. Driven by og.systems.cameras; og.CameraZone entities then keep the view inside the zone the entity is in.
  *
  * The value of the `Follow2D` component (token `og.Follow2D`).
  */
@@ -2036,6 +2146,53 @@ export interface Follow2D {
    * @tunable
    */
   smoothTime: number;
+  /**
+   * The same for y alone (a platformer follows jumps more lazily than runs); below 0 uses smoothTime.
+   *
+   * @default -1
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  smoothTimeY: number;
+  /**
+   * Lead the entity by its velocity times this many seconds (0: no look-ahead).
+   *
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  lookAhead: number;
+  /**
+   * The largest lead along x and y.
+   *
+   * @default { x: 3, y: 1.5 }
+   * @range 0..
+   * @unit m (metres)
+   */
+  lookAheadMax: Vector2;
+  /**
+   * Roughly how long the lead takes to turn when the entity does.
+   *
+   * @default 0.4
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  lookAheadSmoothing: number;
+  /**
+   * Controller state: the current lead.
+   *
+   * @unit m (metres)
+   * @readonly written by the engine
+   */
+  readonly lead: Vector2;
+  /**
+   * Controller state: the entity's position on the previous tick.
+   *
+   * @unit m (metres)
+   * @readonly written by the engine
+   */
+  readonly last: Vector2;
   /** Keep the camera centre between boundsMin and boundsMax. */
   clamp: boolean;
   /**
@@ -2051,6 +2208,105 @@ export interface Follow2D {
    */
   boundsMax: Vector2;
 }
+
+/**
+ * A rectangle of the xy plane (min to max, world units, not moved by the entity's Transform) that keeps a 2D view inside it while the entity followed by og.Follow2D is in it: rooms, arenas, a level's bounds. Of overlapping zones the highest priority wins, then the first in query order. Applied by the engine's og.camera system after the game's systems; a zone smaller than the view centres it.
+ *
+ * The value of the `CameraZone` component (token `og.CameraZone`).
+ */
+export interface CameraZone {
+  /**
+   * The bottom-left corner.
+   *
+   * @unit m (metres)
+   */
+  min: Vector2;
+  /**
+   * The top-right corner.
+   *
+   * @default { x: 10, y: 10 }
+   * @unit m (metres)
+   */
+  max: Vector2;
+  /** Higher wins where zones overlap. */
+  priority: number;
+}
+
+/**
+ * Moves og.Camera along a spline through p0 to p(points - 1) (Catmull-Rom, through every point) to the point nearest the entity carrying it, easing by smoothTime: a corridor, a side-scroller's track, a 3D chase on rails. A perspective camera looks at the entity; an orthographic one keeps its z and rotation. Applied by the engine's og.camera system after the game's systems.
+ *
+ * The value of the `CameraRail` component (token `og.CameraRail`).
+ */
+export interface CameraRail {
+  /**
+   * How many of p0...p7 the rail uses (2 to 8).
+   *
+   * @default 2
+   * @range 2..8
+   */
+  points: number;
+  /**
+   * Rail point 0.
+   *
+   * @unit m (metres)
+   */
+  p0: Vector3;
+  /**
+   * Rail point 1.
+   *
+   * @default { x: 10, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  p1: Vector3;
+  /**
+   * Rail point 2.
+   *
+   * @unit m (metres)
+   */
+  p2: Vector3;
+  /**
+   * Rail point 3.
+   *
+   * @unit m (metres)
+   */
+  p3: Vector3;
+  /**
+   * Rail point 4.
+   *
+   * @unit m (metres)
+   */
+  p4: Vector3;
+  /**
+   * Rail point 5.
+   *
+   * @unit m (metres)
+   */
+  p5: Vector3;
+  /**
+   * Rail point 6.
+   *
+   * @unit m (metres)
+   */
+  p6: Vector3;
+  /**
+   * Rail point 7.
+   *
+   * @unit m (metres)
+   */
+  p7: Vector3;
+  /**
+   * Roughly how long the camera takes to catch up along the rail; 0 snaps.
+   *
+   * @default 0.2
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  smoothTime: number;
+}
+
+
+
 
 // ── render ──────────────────────────────────────────────────────
 // What is drawn: meshes with materials. Draws are instanced by (geometry, material) automatically; there is no per-object draw call.
@@ -2391,6 +2647,19 @@ export interface Mesh {
    * @default true
    */
   visible: boolean;
+  /**
+   * A hit flash: the lit colour mixed towards flashColor by this much (og.tween.flash fades it out). Drawn through a copy of the material per flash level (16 levels).
+   *
+   * @range 0..1
+   * @tunable
+   */
+  flash: number;
+  /**
+   * The flash's linear colour.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  flashColor: Color;
 }
 
 /**
@@ -2650,6 +2919,15 @@ export declare function DofQuality(value?: DofQuality, options?: FieldOptions): 
  * - `"additive"`: Added (light, fire, magic): order-independent within a layer.
  */
 export type SpriteBlend = "alpha" | "additive";
+
+/**
+ * A SpriteBlend field: the variant's index.
+ *
+ * A `SpriteBlend` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function SpriteBlend(value?: SpriteBlend, options?: FieldOptions): FieldSpec<"SpriteBlend">;
 
 /**
  * How a trail, ribbon or beam is blended.
@@ -2916,7 +3194,7 @@ export interface PostEffects {
    */
   flashColor: Color;
   /**
-   * Camera shake: 0 none, 1 the most (the amplitude is trauma squared). The shake is smooth value noise by the tick, so a replay shakes the same; decay it in a system. Visual only.
+   * Camera shake held at a fixed level (decay it yourself): 0 none, 1 the most (the amplitude is trauma squared). Prefer og.camera.shake, which decays by itself; the frame shakes by the larger of the two. Smooth value noise by the tick, so a replay shakes the same. Visual only.
    *
    * @range 0..1
    * @tunable
@@ -3212,6 +3490,12 @@ export interface Trail {
   uvTile: number;
   /** Additive or alpha blended. */
   blend: StripBlend;
+  /**
+   * Draw it in the 2D sprite order at `layer` (a sprite's trail over a tile background) instead of with the 3D scene.
+   */
+  layered: boolean;
+  /** With layered: the sprite layer it is drawn in, before that layer's sprites. */
+  layer: number;
 }
 
 /**
@@ -3419,6 +3703,19 @@ export interface TextDesc {
    */
   readonly align?: TextAlign;
   /**
+   * World text: an outline around the glyphs, as a fraction (0 to 1) of the widest the font's distance range allows (a font cooked with a larger px_range takes thicker outlines).
+   *
+   * @default 0
+   * @range 0..1
+   */
+  readonly outline?: number;
+  /**
+   * The outline's linear colour.
+   *
+   * @default { r: 0, g: 0, b: 0 }
+   */
+  readonly outlineColor?: Color;
+  /**
    * Draw in screen space over the finished frame: position is the first baseline's origin in CSS pixels from the top left, y down, size in CSS pixels, rotation clockwise.
    *
    * @default false
@@ -3575,6 +3872,37 @@ export interface SpriteDesc {
    */
   readonly castShadow?: boolean;
   /**
+   * Mirror the region left to right.
+   *
+   * @default false
+   */
+  readonly flipX?: boolean;
+  /**
+   * Mirror the region top to bottom.
+   *
+   * @default false
+   */
+  readonly flipY?: boolean;
+  /**
+   * Within its layer, draw by y: lower on the screen draws in front (top-down games).
+   *
+   * @default false
+   */
+  readonly sortY?: boolean;
+  /**
+   * Nine-slice: [left, top, right, bottom] insets in texture pixels of the region; the corners keep their size (sliceScale world units per pixel), edges and centre stretch. null draws it whole.
+   *
+   * @default null
+   */
+  readonly slice?: [number, number, number, number] | null;
+  /**
+   * Nine-slice: world units (CSS pixels on screen) per texture pixel of the insets.
+   *
+   * @default 0.0625
+   * @range 0..
+   */
+  readonly sliceScale?: number;
+  /**
    * Draw in screen space over the finished frame instead of the world: position x, y in CSS pixels from the top left with y down, width and height in CSS pixels, anchor from the top left, rotation clockwise; never tone mapped, blurred or depth tested (a HUD). flash, glow, blend and castShadow apply to world sprites only.
    *
    * @default false
@@ -3586,6 +3914,292 @@ export interface SpriteDesc {
    * @default null
    */
   readonly clip?: [number, number, number, number] | null;
+}
+
+
+/**
+ * A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture, region and anchor come from the flipbook's current frame.
+ * Sorted with the immediate sprites and text by layer, then (sortY) by y, then texture: one draw per run of one texture. Tile layers draw before the sprites of their layer.
+ *
+ * The value of the `Sprite` component (token `og.Sprite`).
+ */
+export interface Sprite {
+  /** The texture (og.load.texture); 0 draws a solid quad of the colour. */
+  texture: Texture;
+  /**
+   * Its width in world units (times Transform.scale.x).
+   *
+   * @default 1
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  width: number;
+  /**
+   * Its height in world units (times Transform.scale.y).
+   *
+   * @default 1
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  height: number;
+  /**
+   * The point of the quad at the entity's position, as a fraction from the bottom-left corner: (0.5, 0) stands it on its feet. A flipbook frame's pivot replaces it.
+   *
+   * @default { x: 0.5, y: 0.5 }
+   */
+  anchor: Vector2;
+  /**
+   * A linear colour multiplied with the texture.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  color: Color;
+  /**
+   * The alpha.
+   *
+   * @default 1
+   * @range 0..1
+   * @tunable
+   */
+  opacity: number;
+  /** The texture region's top-left corner, v down. */
+  uvMin: Vector2;
+  /**
+   * The texture region's bottom-right corner, v down.
+   *
+   * @default { x: 1, y: 1 }
+   */
+  uvMax: Vector2;
+  /** Draw order among sprites, tiles and text; higher draws on top. */
+  layer: number;
+  /**
+   * Within its layer, lower y draws in front: top-down characters, props and trees overlap by their feet.
+   */
+  sortY: boolean;
+  /** Mirror left to right (a character facing left). */
+  flipX: boolean;
+  /** Mirror top to bottom. */
+  flipY: boolean;
+  /**
+   * A hit flash: the colour mixed towards flashColor by this much (og.tween.flash fades it out).
+   *
+   * @range 0..1
+   * @tunable
+   */
+  flash: number;
+  /**
+   * The flash's linear colour.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  flashColor: Color;
+  /**
+   * Strength in the 2D glow buffer (PostEffects.glow); 0 none.
+   *
+   * @range 0..
+   */
+  glow: number;
+  /** Alpha or additive. */
+  blend: SpriteBlend;
+  /** Block 2D light (Lighting2D) with the sprite's rectangle. */
+  castShadow: boolean;
+  /**
+   * Nine-slice: the left and right insets in texture pixels of the region (0 0 with sliceY 0 0 draws it whole). World panels, health bars, speech bubbles.
+   */
+  sliceX: Vector2;
+  /** Nine-slice: the top and bottom insets in texture pixels. */
+  sliceY: Vector2;
+  /**
+   * Nine-slice: world units per texture pixel of the insets.
+   *
+   * @default 0.0625
+   * @range 0..
+   */
+  sliceScale: number;
+  /**
+   * A soft blob shadow on the ground under the sprite's anchor, this dark (0 none, 0.4 typical), drawn under every sprite of its layer.
+   *
+   * @range 0..1
+   * @tunable
+   */
+  shadow: number;
+  /**
+   * The blob's width and height; 0 0 is 0.8 by 0.3 of the sprite's width.
+   *
+   * @range 0..
+   * @unit m (metres)
+   */
+  shadowSize: Vector2;
+  /**
+   * The blob's centre relative to the anchor.
+   *
+   * @unit m (metres)
+   */
+  shadowOffset: Vector2;
+  /**
+   * Whether it is drawn.
+   *
+   * @default true
+   */
+  visible: boolean;
+}
+
+/**
+ * Ghosts of the entity's og.Sprite: every `interval` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by color. A dash, a speed-up, a teleport. The history is world state (the og.sprite state block).
+ *
+ * The value of the `Afterimage` component (token `og.Afterimage`).
+ */
+export interface Afterimage {
+  /**
+   * How many ghosts.
+   *
+   * @default 4
+   * @range 0..16
+   */
+  count: number;
+  /**
+   * Ticks between ghosts.
+   *
+   * @default 3
+   * @range 1..
+   * @unit ticks (fixed simulation steps)
+   */
+  interval: number;
+  /**
+   * The newest ghost's alpha.
+   *
+   * @default 0.5
+   * @range 0..1
+   * @tunable
+   */
+  opacity: number;
+  /**
+   * A linear tint (above 1 with additive, a glow).
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  color: Color;
+  /** Add the ghosts instead of blending them. */
+  additive: boolean;
+  /**
+   * Record new ghosts; false lets the existing ones fade out.
+   *
+   * @default true
+   */
+  active: boolean;
+}
+
+/**
+ * A damage number or pickup text that pops at a point, rises, spreads and fades by itself (no per-tick submission). Deterministic: its drift comes from the tick and its order, and it is world state (the og.sprite state block).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface FloatingTextDesc {
+  /**
+   * The text, such as `-12` or `+1 key`.
+   *
+   * @default ""
+   */
+  readonly text?: string;
+  /**
+   * Where it appears (above a hit, usually).
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly position?: Vector3;
+  /**
+   * The font; null uses the UI's body font.
+   *
+   * @default null
+   */
+  readonly font?: Font | null;
+  /**
+   * The em size in world units.
+   *
+   * @default 0.5
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly size?: number;
+  /**
+   * The linear fill colour.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  readonly color?: Color;
+  /**
+   * The outline's width as a fraction of the font's distance range (0 none).
+   *
+   * @default 0.6
+   * @range 0..1
+   */
+  readonly outline?: number;
+  /**
+   * The outline's linear colour.
+   *
+   * @default { r: 0.02, g: 0.02, b: 0.03 }
+   */
+  readonly outlineColor?: Color;
+  /**
+   * How far it climbs over its life.
+   *
+   * @default 1
+   * @unit m (metres)
+   */
+  readonly rise?: number;
+  /**
+   * The largest sideways drift, left or right.
+   *
+   * @default 0.3
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly spread?: number;
+  /**
+   * How long it shows.
+   *
+   * @default 0.8
+   * @range 0.05..
+   * @unit s (seconds of simulation time)
+   */
+  readonly lifetime?: number;
+  /**
+   * The last part of its life it fades over.
+   *
+   * @default 0.4
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly fade?: number;
+  /**
+   * How much bigger it starts, settling to its size in the first fifth of its life.
+   *
+   * @default 0.4
+   * @range 0..
+   */
+  readonly pop?: number;
+  /**
+   * A critical hit: critScale times bigger, a stronger pop.
+   *
+   * @default false
+   */
+  readonly crit?: boolean;
+  /**
+   * The size of a crit.
+   *
+   * @default 1.6
+   * @range 1..
+   */
+  readonly critScale?: number;
+  /**
+   * The sprite layer (above the action).
+   *
+   * @default 100
+   */
+  readonly layer?: number;
 }
 
 
@@ -3862,6 +4476,8 @@ export interface Model {
   /** The glTF asset. */
   asset: Asset;
 }
+
+
 
 
 
@@ -5018,6 +5634,616 @@ export interface GraphDesc {
    */
   readonly clips?: readonly ClipInfo[];
 }
+
+
+/**
+ * A sprite sheet's frames and clips (a cooked `.ogt` of `type flipbook`), from og.load.flipbook.
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type FlipbookSheet = number & { readonly [handleType]: "FlipbookSheet" };
+
+/**
+ * A FlipbookSheet handle field.
+ *
+ * A `FlipbookSheet` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function FlipbookSheet(value?: FlipbookSheet, options?: FieldOptions): FieldSpec<"FlipbookSheet">;
+
+/**
+ * How a flipbook clip runs past its last frame.
+ * - `"loop"`: Back to the first frame.
+ * - `"pingPong"`: Back and forth, without repeating the end frames.
+ * - `"once"`: Hold the last frame and set Flipbook.finished.
+ */
+export type FlipMode = "loop" | "pingPong" | "once";
+
+/**
+ * Plays a clip of a flipbook sheet on the entity's og.Sprite: extraction draws the sprite with the sheet's texture and the current frame's region and pivot (the sprite keeps its size, colour, flips and layer). Played by the engine's og.flipbook system by scaled time (Time.scaledDt: slow motion, hit stop), after the game's systems.
+ * Changing clip restarts at the clip's first frame (or at `time`, written in the same tick); writing a different time is a seek. Frame events are og.FlipbookEvent. The playback position is world state (the og.flipbook state block).
+ *
+ * The value of the `Flipbook` component (token `og.Flipbook`).
+ */
+export interface Flipbook {
+  /** The sheet (og.load.flipbook's `sheet`); 0 is none. */
+  sheet: FlipbookSheet;
+  /**
+   * The clip: an index into FlipbookInfo.clips (og.anim.clip finds one by name).
+   *
+   * @range 0..
+   */
+  clip: number;
+  /**
+   * The playback rate: 1 as authored, 2 twice as fast, 0 holds the frame.
+   *
+   * @default 1
+   * @range 0..10
+   * @tunable
+   */
+  speed: number;
+  /**
+   * Whether time advances.
+   *
+   * @default true
+   */
+  playing: boolean;
+  /**
+   * Written: the clip frame shown (an index into the clip's frames).
+   *
+   * @readonly written by the engine
+   */
+  readonly frame: number;
+  /**
+   * Seconds into the current cycle; written every tick, set it to seek (no events fire across a seek).
+   *
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  time: number;
+  /**
+   * Written: a `once` clip reached and holds its last frame.
+   *
+   * @readonly written by the engine
+   */
+  readonly finished: boolean;
+  /**
+   * Written: cycles completed by a looping or ping-pong clip.
+   *
+   * @readonly written by the engine
+   */
+  readonly loops: number;
+}
+
+/**
+ * A flipbook entered a frame its clip names in an `event` line (`event 2 "step"`): footsteps, the frame a hit lands, a pickup's sparkle. Read in the tick after, like every event; a clip started at 0 fires its first frame's events.
+ *
+ * The payload of the `FlipbookEvent` event (token `og.FlipbookEvent`).
+ */
+export interface FlipbookEvent {
+  /** The entity with the og.Flipbook. */
+  readonly entity: Entity;
+  /** The clip index. */
+  readonly clip: number;
+  /** The clip frame entered. */
+  readonly frame: number;
+  /** The event's name (at most 63 bytes). */
+  readonly name: string;
+}
+
+/** One clip of a loaded flipbook sheet. */
+export interface FlipbookClipInfo {
+  /** Its index, what Flipbook.clip takes. */
+  readonly clip: number;
+  /** Its name in the sheet. */
+  readonly name: string;
+  /** How many frames. */
+  readonly frames: number;
+  /**
+   * Seconds of one cycle (a ping-pong cycle goes there and back).
+   *
+   * @unit s (seconds of simulation time)
+   */
+  readonly duration: number;
+  /** How it runs past its end. */
+  readonly mode: FlipMode;
+  /** Its events' names, in frame order. */
+  readonly events: readonly string[];
+}
+
+/** What og.load.flipbook registered. */
+export interface FlipbookInfo {
+  /** What Flipbook.sheet takes. */
+  readonly sheet: FlipbookSheet;
+  /**
+   * The sheet's texture (loaded with it; sampled nearest unless the sheet says `filter linear`).
+   */
+  readonly texture: Texture;
+  /** Its clips, in sheet order. */
+  readonly clips: readonly FlipbookClipInfo[];
+  /** Frames in the sheet. */
+  readonly frames: number;
+  /** The first frame's width in pixels. */
+  readonly frameWidth: number;
+  /** The first frame's height in pixels. */
+  readonly frameHeight: number;
+}
+
+
+// ── tween ───────────────────────────────────────────────────────
+// Tweens: animate any numeric field of a component (og.Transform.position, og.Sprite.color, og.Sprite.opacity, a game's own f32) from its value to a target over time with an easing curve, a delay, loops and yoyo; chain them in sequences or run them in parallel. Advanced by the engine's og.tween system after the game's systems and before og.anim and physics, by scaled time (slow motion, hit stop) unless unscaled.
+// Running tweens are world state (the og.tween state block): snapshots, restore and the world hash cover them. og.TweenCompleted reports a tween or group that ends on its own; a cancelled one, or one whose entity or component went away, ends silently.
+// Feel presets are tweens too: og.tween.squash (squash and stretch that recovers) and og.tween.flash (a hit flash that fades).
+
+/**
+ * A running tween or group.
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type Tween = number & { readonly [handleType]: "Tween" };
+
+/**
+ * A Tween handle field.
+ *
+ * A `Tween` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function Tween(value?: Tween, options?: FieldOptions): FieldSpec<"Tween">;
+
+/**
+ * An easing curve from the start (0) to the end (1). In starts slow, out ends slow, inOut both. back overshoots, elastic rings, bounce bounces at the end.
+ * - `"quadOut"`: Gentle ease out: the default for most motion.
+ * - `"linear"`: Constant speed: scrolling, timers, colour cycles.
+ * - `"quadIn"`: Gentle ease in.
+ * - `"quadInOut"`: Gentle in and out.
+ * - `"cubicIn"`: Ease in.
+ * - `"cubicOut"`: Ease out: UI sliding in, things settling.
+ * - `"cubicInOut"`: In and out: camera moves, deliberate motion.
+ * - `"quartIn"`: Strong ease in.
+ * - `"quartOut"`: Strong ease out.
+ * - `"quartInOut"`: Strong in and out.
+ * - `"expoIn"`: Exponential ease in: things falling away, warp-outs.
+ * - `"expoOut"`: Exponential ease out: snappy arrivals.
+ * - `"expoInOut"`: Exponential in and out.
+ * - `"backIn"`: Pulls back first, then goes: anticipation.
+ * - `"backOut"`: Overshoots, then settles: pops, squash recovery, buttons.
+ * - `"backInOut"`: Pulls back and overshoots.
+ * - `"elasticIn"`: Rings before leaving.
+ * - `"elasticOut"`: Rings after arriving: springy, cartoon impacts.
+ * - `"elasticInOut"`: Rings at both ends.
+ * - `"bounceIn"`: Bounces before leaving.
+ * - `"bounceOut"`: Bounces at the end: drops, landings.
+ * - `"bounceInOut"`: Bounces at both ends.
+ */
+export type Ease = "quadOut" | "linear" | "quadIn" | "quadInOut" | "cubicIn" | "cubicOut" | "cubicInOut" | "quartIn" | "quartOut" | "quartInOut" | "expoIn" | "expoOut" | "expoInOut" | "backIn" | "backOut" | "backInOut" | "elasticIn" | "elasticOut" | "elasticInOut" | "bounceIn" | "bounceOut" | "bounceInOut";
+
+/**
+ * One tween of one field.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TweenDesc {
+  /**
+   * The entity whose component is tweened.
+   *
+   * @default 0
+   */
+  readonly entity?: Entity;
+  /**
+   * The component token (og.Transform, og.Sprite, a game's own); null is og.Transform.
+   *
+   * @default null
+   */
+  readonly component?: AnyComponent | null;
+  /**
+   * The field, or one lane of it: `position`, `position.y`, `scale`, `color.r`, `opacity`. f32, f64, i32 and u32 fields (rounded), vectors, colours and quaternions (as a rotation) tween; bool, enum and handle fields do not.
+   *
+   * @default ""
+   */
+  readonly field?: string;
+  /**
+   * The end value: one number for a scalar or for every lane, or one per lane.
+   *
+   * @default []
+   */
+  readonly to?: readonly number[];
+  /**
+   * The start value, written from the tick the tween is started and held through its delay; null takes the field's value when the tween starts (after its delay).
+   *
+   * @default null
+   */
+  readonly from?: readonly number[] | null;
+  /**
+   * `to` is added to the start value.
+   *
+   * @default false
+   */
+  readonly relative?: boolean;
+  /**
+   * Seconds from start to end (one cycle).
+   *
+   * @default 0.3
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly duration?: number;
+  /**
+   * Seconds before it starts.
+   *
+   * @default 0
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly delay?: number;
+  /**
+   * The curve.
+   *
+   * @default "quadOut"
+   */
+  readonly ease?: Ease;
+  /**
+   * Extra cycles: 0 plays once, n repeats n more times, -1 forever.
+   *
+   * @default 0
+   * @range -1..
+   */
+  readonly loops?: number;
+  /**
+   * Every other cycle plays backwards (pulses, bobbing).
+   *
+   * @default false
+   */
+  readonly yoyo?: boolean;
+  /**
+   * Advance by real ticks, ignoring Time.scale and hit stop (UI motion).
+   *
+   * @default false
+   */
+  readonly unscaled?: boolean;
+  /**
+   * A number of yours, carried by og.TweenCompleted.
+   *
+   * @default 0
+   */
+  readonly tag?: number;
+}
+
+/**
+ * How a sequence or parallel group runs.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TweenGroupDesc {
+  /**
+   * Extra runs of the whole group: 0 once, -1 forever; each run replays the spans its tweens resolved in the first.
+   *
+   * @default 0
+   * @range -1..
+   */
+  readonly loops?: number;
+  /**
+   * Advance by real ticks, ignoring Time.scale and hit stop.
+   *
+   * @default false
+   */
+  readonly unscaled?: boolean;
+  /**
+   * A number of yours, carried by og.TweenCompleted.
+   *
+   * @default 0
+   */
+  readonly tag?: number;
+}
+
+/**
+ * A tween or group ended on its own (read in the tick after).
+ *
+ * The payload of the `TweenCompleted` event (token `og.TweenCompleted`).
+ */
+export interface TweenCompleted {
+  /** The handle og.tween.to, sequence, parallel, squash or flash answered. */
+  readonly tween: Tween;
+  /** The entity of its (first) tween. */
+  readonly entity: Entity;
+  /** Its tag. */
+  readonly tag: number;
+}
+
+/**
+ * Squash and stretch: the entity's og.Transform.scale jumps to rest times impact and eases back to rest.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SquashDesc {
+  /**
+   * The entity.
+   *
+   * @default 0
+   */
+  readonly entity?: Entity;
+  /**
+   * The x and y factors at the impact: (1.25, 0.8) squashes (a landing, a hit), (0.8, 1.25) stretches (a jump).
+   *
+   * @default { x: 1.25, y: 0.8 }
+   */
+  readonly impact?: Vector2;
+  /**
+   * The scale it recovers to.
+   *
+   * @default { x: 1, y: 1, z: 1 }
+   */
+  readonly rest?: Vector3;
+  /**
+   * Seconds to recover.
+   *
+   * @default 0.18
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly duration?: number;
+  /**
+   * The recovery curve; backOut overshoots a little, elasticOut wobbles.
+   *
+   * @default "backOut"
+   */
+  readonly ease?: Ease;
+}
+
+/**
+ * A hit flash: the entity's og.Sprite (else og.Mesh) flashColor set and its flash faded from amount to 0.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface FlashDesc {
+  /**
+   * The entity.
+   *
+   * @default 0
+   */
+  readonly entity?: Entity;
+  /**
+   * The flash colour (white for a hit, red for damage taken).
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  readonly color?: Color;
+  /**
+   * How far it starts towards the colour.
+   *
+   * @default 1
+   * @range 0..1
+   */
+  readonly amount?: number;
+  /**
+   * Seconds to fade.
+   *
+   * @default 0.12
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly duration?: number;
+  /**
+   * The fade's curve; quadIn holds the flash, then drops it.
+   *
+   * @default "quadIn"
+   */
+  readonly ease?: Ease;
+}
+
+
+
+
+
+
+
+
+
+// ── tilemap ─────────────────────────────────────────────────────
+// Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component.
+// Layers draw through the sprite batch in 16x16-tile chunks culled to the view, each at the map's sprite layer plus its z, scrolled by its parallax; solid tiles become static og-physics colliders merged into rectangles. Runtime edits (og.tilemap.setTile, re-auto-tiling the neighbourhood) are world state (the og.tilemap state block), and the colliders follow them.
+// Cells count from the top-left corner, x right and y down (Tiled's); the map's top-left corner is at the entity's position.
+
+/**
+ * A loaded map: its layers, tilesets and objects.
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type TilemapAsset = number & { readonly [handleType]: "TilemapAsset" };
+
+/**
+ * A TilemapAsset handle field.
+ *
+ * A `TilemapAsset` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function TilemapAsset(value?: TilemapAsset, options?: FieldOptions): FieldSpec<"TilemapAsset">;
+
+/**
+ * Draws a loaded map with its top-left corner at the entity's position (z included) and gives its collision layers static colliders. The og.tilemap system adopts it in the first tick it exists: from then on og.tilemap.setTile and getTile reach it.
+ *
+ * The value of the `Tilemap` component (token `og.Tilemap`).
+ */
+export interface Tilemap {
+  /** The map (og.load.tilemap's `map`); 0 is none. */
+  map: TilemapAsset;
+  /**
+   * The sprite layer of the map's layer 0; every layer draws at this plus its z (default: its index).
+   *
+   * @default -10
+   */
+  layer: number;
+  /**
+   * A linear tint.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  color: Color;
+  /**
+   * The alpha, times each layer's.
+   *
+   * @default 1
+   * @range 0..1
+   */
+  opacity: number;
+  /**
+   * Whether it is drawn.
+   *
+   * @default true
+   */
+  visible: boolean;
+  /**
+   * Give the layers marked collision static colliders (rectangles merged from the solid tiles).
+   *
+   * @default true
+   */
+  collision: boolean;
+  /**
+   * The collision layers of those colliders, as bits (Collider.layers).
+   *
+   * @default 1
+   */
+  colliderLayers: number;
+  /**
+   * The colliders' friction.
+   *
+   * @default 0.5
+   * @range 0..2
+   */
+  friction: number;
+}
+
+/** One layer of a map. */
+export interface TileLayerInfo {
+  /** Its name. */
+  readonly name: string;
+  /** Its index (what drawing order and z start from). */
+  readonly index: number;
+  /** Its sprite-layer offset from Tilemap.layer. */
+  readonly z: number;
+  /**
+   * Its scroll factors: 1 1 moves with the world, 0.5 at half the camera's speed (far away), 0 stays with the camera.
+   */
+  readonly parallax: Vector2;
+  /** Its solid tiles collide. */
+  readonly collision: boolean;
+  /**
+   * The auto-tiling terrain of a terrain layer (its cells are 1 filled or 0 empty); empty for a tile layer.
+   */
+  readonly terrain: string;
+  /** Whether it is drawn. */
+  readonly visible: boolean;
+}
+
+/**
+ * An object of a map (a Tiled object, an LDtk entity, an `object` block): spawn points, doors, triggers.
+ */
+export interface TileObject {
+  /** Its name. */
+  readonly name: string;
+  /** Its type or class. */
+  readonly kind: string;
+  /**
+   * Its top-left corner, in world units relative to the map's top-left corner (y up, so below the corner is negative).
+   *
+   * @unit m (metres)
+   */
+  readonly position: Vector2;
+  /**
+   * Its width and height (0 0 for a point).
+   *
+   * @unit m (metres)
+   */
+  readonly size: Vector2;
+  /**
+   * Its centre, relative to the map's corner.
+   *
+   * @unit m (metres)
+   */
+  readonly center: Vector2;
+  /** Its custom properties, as text. */
+  readonly properties: Readonly<Record<string, string>>;
+}
+
+/** What og.load.tilemap loaded. */
+export interface TilemapInfo {
+  /** What Tilemap.map takes. */
+  readonly map: TilemapAsset;
+  /** Cells across. */
+  readonly width: number;
+  /** Cells down. */
+  readonly height: number;
+  /**
+   * A cell's width in world units.
+   *
+   * @unit m (metres)
+   */
+  readonly tileWidth: number;
+  /**
+   * A cell's height in world units.
+   *
+   * @unit m (metres)
+   */
+  readonly tileHeight: number;
+  /** Its layers, drawing order. */
+  readonly layers: readonly TileLayerInfo[];
+  /** Its objects. */
+  readonly objects: readonly TileObject[];
+}
+
+/**
+ * One cell to change.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SetTileDesc {
+  /**
+   * The entity with the og.Tilemap.
+   *
+   * @default 0
+   */
+  readonly entity?: Entity;
+  /**
+   * The layer's name.
+   *
+   * @default ""
+   */
+  readonly layer?: string;
+  /**
+   * The column (0 is the left).
+   *
+   * @default 0
+   */
+  readonly x?: number;
+  /**
+   * The row (0 is the top).
+   *
+   * @default 0
+   */
+  readonly y?: number;
+  /**
+   * A tile layer: the tile id, -1 empty. A terrain layer: 1 fills, 0 clears, and the neighbours re-tile.
+   *
+   * @default 0
+   * @range -1..
+   */
+  readonly tile?: number;
+}
+
+/** A cell of a map. */
+export interface TileCell {
+  /** The column. */
+  readonly x: number;
+  /** The row. */
+  readonly y: number;
+  /** Whether the point was on the map. */
+  readonly inside: boolean;
+}
+
+
+
 
 
 // ── audio ───────────────────────────────────────────────────────
@@ -9681,7 +10907,25 @@ export declare namespace og {
   /**
    * The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers.
    */
-  const Time: ResourceType<{ readonly tick: FieldSpec<"u32">; readonly dt: FieldSpec<"f32">; readonly elapsed: FieldSpec<"f64">; readonly rate: FieldSpec<"u32"> }, Time>;
+  const Time: ResourceType<{ readonly tick: FieldSpec<"u32">; readonly dt: FieldSpec<"f32">; readonly elapsed: FieldSpec<"f64">; readonly rate: FieldSpec<"u32">; readonly scale: FieldSpec<"f32">; readonly hitStop: FieldSpec<"u32">; readonly scaledDt: FieldSpec<"f32">; readonly scaledElapsed: FieldSpec<"f64"> }, Time>;
+  /** Simulation time. Game code never reads the wall clock; it reads Time. */
+  namespace time {
+    /**
+     * Set the global time scale (slow motion): physics, og.anim, flipbooks and tweens advance by dt * scale from the system after the call; systems may call it.
+     *
+     * @param world The world.
+     * @param scale 0 to 10: 1 is normal speed.
+     * @returns Refused outside 0..10.
+     */
+    function setScale(world: World, scale: number): Result<void>;
+    /**
+     * Freeze scaled time for `ticks` ticks from now (this tick included): physics, og.anim, flipbooks and scaled tweens hold while input, the UI, unscaled tweens and camera shake keep moving. A longer hit stop in progress is never shortened. Typical values: 2-3 ticks for a light hit, 5-8 heavy, 10-15 a finishing blow.
+     *
+     * @param world The world.
+     * @param ticks Ticks to hold.
+     */
+    function hitStop(world: World, ticks: number): Result<void>;
+  }
   /**
    * The world's main random stream, seeded from GameDesc.seed (or the replay seed). Its state is part of every snapshot.
    */
@@ -9718,7 +10962,7 @@ export declare namespace og {
   /**
    * The camera the frame is rendered from. Rendering reads it after the tick; it never feeds back into the simulation.
    */
-  const Camera: ResourceType<{ readonly position: FieldSpec<"Vector3">; readonly quaternion: FieldSpec<"Quaternion">; readonly fov: FieldSpec<"f32">; readonly near: FieldSpec<"f32">; readonly far: FieldSpec<"f32">; readonly zoom: FieldSpec<"f32">; readonly orthographic: FieldSpec<"bool">; readonly height: FieldSpec<"f32">; readonly background: FieldSpec<"Color">; readonly exposure: FieldSpec<"f32"> }, Camera>;
+  const Camera: ResourceType<{ readonly position: FieldSpec<"Vector3">; readonly quaternion: FieldSpec<"Quaternion">; readonly fov: FieldSpec<"f32">; readonly near: FieldSpec<"f32">; readonly far: FieldSpec<"f32">; readonly zoom: FieldSpec<"f32">; readonly orthographic: FieldSpec<"bool">; readonly height: FieldSpec<"f32">; readonly background: FieldSpec<"Color">; readonly exposure: FieldSpec<"f32">; readonly trauma: FieldSpec<"f32">; readonly traumaDecay: FieldSpec<"f32">; readonly shakeOffset: FieldSpec<"f32">; readonly shakeRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly punch: FieldSpec<"f32">; readonly punchDecay: FieldSpec<"f32">; readonly kick: FieldSpec<"Vector3">; readonly kickDecay: FieldSpec<"f32"> }, Camera>;
   /**
    * Orbits og.Camera around the entity carrying it, as three.js OrbitControls: a left-button drag on the play surface turns it, the wheel zooms, autoRotate turns it on its own.
    * Camera controllers are game-level systems the engine ships in TypeScript (og.systems.cameras); list them in GameDesc.systems: `systems: [...og.systems.cameras, ...yours]`. The first entity carrying one, in query order, drives the camera.
@@ -9730,14 +10974,50 @@ export declare namespace og {
    */
   const FollowCamera: ComponentType<{ readonly offset: FieldSpec<"Vector3">; readonly lookOffset: FieldSpec<"Vector3">; readonly followRotation: FieldSpec<"bool">; readonly smoothTime: FieldSpec<"f32"> }, FollowCamera>;
   /**
-   * Keeps og.Camera on the entity carrying it in the xy plane, for 2D games: the camera moves only when the entity leaves the dead zone, eases by smoothTime and, with clamp, stays inside the bounds. The camera keeps its z, rotation and projection. Driven by og.systems.cameras.
+   * Keeps og.Camera on the entity carrying it in the xy plane, for 2D games: the camera moves only when the entity leaves the dead zone, eases by smoothTime (smoothTimeY for y when set) and, with clamp, stays inside the bounds; lookAhead leads it in the direction the entity moves. The camera keeps its z, rotation and projection. Driven by og.systems.cameras; og.CameraZone entities then keep the view inside the zone the entity is in.
    */
-  const Follow2D: ComponentType<{ readonly offset: FieldSpec<"Vector2">; readonly deadZone: FieldSpec<"Vector2">; readonly smoothTime: FieldSpec<"f32">; readonly clamp: FieldSpec<"bool">; readonly boundsMin: FieldSpec<"Vector2">; readonly boundsMax: FieldSpec<"Vector2"> }, Follow2D>;
+  const Follow2D: ComponentType<{ readonly offset: FieldSpec<"Vector2">; readonly deadZone: FieldSpec<"Vector2">; readonly smoothTime: FieldSpec<"f32">; readonly smoothTimeY: FieldSpec<"f32">; readonly lookAhead: FieldSpec<"f32">; readonly lookAheadMax: FieldSpec<"Vector2">; readonly lookAheadSmoothing: FieldSpec<"f32">; readonly lead: FieldSpec<"Vector2">; readonly last: FieldSpec<"Vector2">; readonly clamp: FieldSpec<"bool">; readonly boundsMin: FieldSpec<"Vector2">; readonly boundsMax: FieldSpec<"Vector2"> }, Follow2D>;
+  /**
+   * A rectangle of the xy plane (min to max, world units, not moved by the entity's Transform) that keeps a 2D view inside it while the entity followed by og.Follow2D is in it: rooms, arenas, a level's bounds. Of overlapping zones the highest priority wins, then the first in query order. Applied by the engine's og.camera system after the game's systems; a zone smaller than the view centres it.
+   */
+  const CameraZone: ComponentType<{ readonly min: FieldSpec<"Vector2">; readonly max: FieldSpec<"Vector2">; readonly priority: FieldSpec<"i32"> }, CameraZone>;
+  /**
+   * Moves og.Camera along a spline through p0 to p(points - 1) (Catmull-Rom, through every point) to the point nearest the entity carrying it, easing by smoothTime: a corridor, a side-scroller's track, a 3D chase on rails. A perspective camera looks at the entity; an orthographic one keeps its z and rotation. Applied by the engine's og.camera system after the game's systems.
+   */
+  const CameraRail: ComponentType<{ readonly points: FieldSpec<"u32">; readonly p0: FieldSpec<"Vector3">; readonly p1: FieldSpec<"Vector3">; readonly p2: FieldSpec<"Vector3">; readonly p3: FieldSpec<"Vector3">; readonly p4: FieldSpec<"Vector3">; readonly p5: FieldSpec<"Vector3">; readonly p6: FieldSpec<"Vector3">; readonly p7: FieldSpec<"Vector3">; readonly smoothTime: FieldSpec<"f32"> }, CameraRail>;
+  /**
+   * The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names.
+   * Camera controllers are components (OrbitCamera, FollowCamera, Follow2D) on the entity the camera orbits or follows; the systems that drive them ship in TypeScript as og.systems.cameras.
+   */
+  namespace camera {
+    /**
+     * Add screen shake: trauma, clamped to 1, which og.Camera decays by traumaDecay. The shake grows with trauma squared, so 0.2 is a nudge, 0.5 a heavy hit, 1 an explosion. Visual only. Systems may call it; it takes effect at the engine's og.camera system this tick.
+     *
+     * @param world The world.
+     * @param trauma Trauma to add, 0 to 1.
+     */
+    function shake(world: World, trauma: number): Result<void>;
+    /**
+     * A zoom punch: the view narrows by `amount` (0.05 is a tap, 0.15 a slam) and springs back by Camera.punchDecay. Visual only.
+     *
+     * @param world The world.
+     * @param amount The fraction to zoom in (negative zooms out), -0.9 to 4.
+     */
+    function punch(world: World, amount: number): Result<void>;
+    /**
+     * A directional nudge of the view (recoil, an impact from one side): offset by `distance` along `direction`, returning by Camera.kickDecay. Visual only.
+     *
+     * @param world The world.
+     * @param direction The direction to push the view (normalised here; zero does nothing).
+     * @param distance How far, in world units.
+     */
+    function kick(world: World, direction: Vector3, distance: number): Result<void>;
+  }
   /**
    * Draws a geometry with a material at the entity's MatrixWorld, as a three.js Mesh.
    * The material is a handle from og.render.standardMaterial or from a loaded glTF (GltfInfo.materials); its StandardMaterialDesc maps to the renderer as that struct's docs say.
    */
-  const Mesh: ComponentType<{ readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly castShadow: FieldSpec<"bool">; readonly receiveShadow: FieldSpec<"bool">; readonly visible: FieldSpec<"bool"> }, Mesh>;
+  const Mesh: ComponentType<{ readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly castShadow: FieldSpec<"bool">; readonly receiveShadow: FieldSpec<"bool">; readonly visible: FieldSpec<"bool">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color"> }, Mesh>;
   /**
    * The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). The first one found is drawn, with three shadow cascades.
    * Without one, the renderer's default sun (from above and to the side, intensity 3) lights the scene.
@@ -9782,11 +11062,20 @@ export declare namespace og {
   /**
    * A streak behind the entity: its world positions over the last `lifetime` seconds as a camera-facing strip, from widthStart and color at the head to widthEnd and colorEnd at the tail.
    */
-  const Trail: ComponentType<{ readonly lifetime: FieldSpec<"f32">; readonly minDistance: FieldSpec<"f32">; readonly widthStart: FieldSpec<"f32">; readonly widthEnd: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly colorEnd: FieldSpec<"Color">; readonly opacityEnd: FieldSpec<"f32">; readonly texture: FieldSpec<"Texture">; readonly uvTile: FieldSpec<"f32">; readonly blend: FieldSpec<"StripBlend"> }, Trail>;
+  const Trail: ComponentType<{ readonly lifetime: FieldSpec<"f32">; readonly minDistance: FieldSpec<"f32">; readonly widthStart: FieldSpec<"f32">; readonly widthEnd: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly colorEnd: FieldSpec<"Color">; readonly opacityEnd: FieldSpec<"f32">; readonly texture: FieldSpec<"Texture">; readonly uvTile: FieldSpec<"f32">; readonly blend: FieldSpec<"StripBlend">; readonly layered: FieldSpec<"bool">; readonly layer: FieldSpec<"i32"> }, Trail>;
   /**
    * A strip from the entity's position to `end` whose texture scrolls with the tick: lasers, tethers, lightning (jitter).
    */
   const Beam: ComponentType<{ readonly end: FieldSpec<"Vector3">; readonly width: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly texture: FieldSpec<"Texture">; readonly tile: FieldSpec<"f32">; readonly scroll: FieldSpec<"f32">; readonly segments: FieldSpec<"u32">; readonly jitter: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly blend: FieldSpec<"StripBlend"> }, Beam>;
+  /**
+   * A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture, region and anchor come from the flipbook's current frame.
+   * Sorted with the immediate sprites and text by layer, then (sortY) by y, then texture: one draw per run of one texture. Tile layers draw before the sprites of their layer.
+   */
+  const Sprite: ComponentType<{ readonly texture: FieldSpec<"Texture">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly anchor: FieldSpec<"Vector2">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly uvMin: FieldSpec<"Vector2">; readonly uvMax: FieldSpec<"Vector2">; readonly layer: FieldSpec<"i32">; readonly sortY: FieldSpec<"bool">; readonly flipX: FieldSpec<"bool">; readonly flipY: FieldSpec<"bool">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly glow: FieldSpec<"f32">; readonly blend: FieldSpec<"SpriteBlend">; readonly castShadow: FieldSpec<"bool">; readonly sliceX: FieldSpec<"Vector2">; readonly sliceY: FieldSpec<"Vector2">; readonly sliceScale: FieldSpec<"f32">; readonly shadow: FieldSpec<"f32">; readonly shadowSize: FieldSpec<"Vector2">; readonly shadowOffset: FieldSpec<"Vector2">; readonly visible: FieldSpec<"bool"> }, Sprite>;
+  /**
+   * Ghosts of the entity's og.Sprite: every `interval` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by color. A dash, a speed-up, a teleport. The history is world state (the og.sprite state block).
+   */
+  const Afterimage: ComponentType<{ readonly count: FieldSpec<"u32">; readonly interval: FieldSpec<"u32">; readonly opacity: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly additive: FieldSpec<"bool">; readonly active: FieldSpec<"bool"> }, Afterimage>;
   /**
    * What is drawn: meshes with materials. Draws are instanced by (geometry, material) automatically; there is no per-object draw call.
    */
@@ -9807,6 +11096,14 @@ export declare namespace og {
      * @returns Refused for a dead texture.
      */
     function sprite(world: World, desc?: SpriteDesc): Result<void>;
+    /**
+     * Spawn a floating text (damage numbers, +coins, `blocked`). It lives `lifetime` seconds of scaled time on its own; systems and commands may call it.
+     *
+     * @param world The world whose renderer draws it.
+     * @param desc The text, the point and the style.
+     * @returns Refused for a dead font, or no font when the UI has none.
+     */
+    function floatingText(world: World, desc?: FloatingTextDesc): Result<void>;
     /**
      * The size text takes when og.render.text draws it, for centring, wrapping and layout.
      *
@@ -10012,6 +11309,22 @@ export declare namespace og {
      * @returns Refused for an uncooked path, a model the cook wrote no `#anim` blob for (no skins, clips or morph targets), a cook stamp mismatch or an invalid rig.
      */
     function animation(world: World, path: string): Result<Animation>;
+    /**
+     * Load a cooked flipbook sheet (an `.ogt` of `type flipbook`, with its Aseprite or TexturePacker atlas resolved by the cook) and its texture, and register it with og.flipbook. Loading the same path again answers the same handles.
+     *
+     * @param world The world whose animation and renderer own it.
+     * @param path The sheet's asset id, such as `sprites/hero.ogt`.
+     * @returns Refused for a path not in the bundle (run og cook) or a texture it cannot load.
+     */
+    function flipbook(world: World, path: string): Result<FlipbookInfo>;
+    /**
+     * Load a cooked map (a tilemap `.ogt`, a Tiled `.tmj` or an LDtk `.ldtk`), its tilesets and their textures. Loading the same path again answers the same handles.
+     *
+     * @param world The world whose renderer and tilemaps own it.
+     * @param path The map's asset id, such as `maps/room.tmj`.
+     * @returns Refused for a path not in the bundle, a missing tileset or texture, or a terrain its tileset lacks.
+     */
+    function tilemap(world: World, path: string): Result<TilemapInfo>;
   }
   /**
    * A body the physics step simulates. It needs an og.Transform and usually has an og.Collider; a dynamic body without an og.Velocity gets one.
@@ -10106,6 +11419,15 @@ export declare namespace og {
    */
   const AnimationEvent: EventType<AnimationEvent>;
   /**
+   * Plays a clip of a flipbook sheet on the entity's og.Sprite: extraction draws the sprite with the sheet's texture and the current frame's region and pivot (the sprite keeps its size, colour, flips and layer). Played by the engine's og.flipbook system by scaled time (Time.scaledDt: slow motion, hit stop), after the game's systems.
+   * Changing clip restarts at the clip's first frame (or at `time`, written in the same tick); writing a different time is a seek. Frame events are og.FlipbookEvent. The playback position is world state (the og.flipbook state block).
+   */
+  const Flipbook: ComponentType<{ readonly sheet: FieldSpec<"FlipbookSheet">; readonly clip: FieldSpec<"u32">; readonly speed: FieldSpec<"f32">; readonly playing: FieldSpec<"bool">; readonly frame: FieldSpec<"u32">; readonly time: FieldSpec<"f32">; readonly finished: FieldSpec<"bool">; readonly loops: FieldSpec<"u32"> }, Flipbook>;
+  /**
+   * A flipbook entered a frame its clip names in an `event` line (`event 2 "step"`): footsteps, the frame a hit lands, a pickup's sparkle. Read in the tick after, like every event; a clip started at 0 fires its first frame's events.
+   */
+  const FlipbookEvent: EventType<FlipbookEvent>;
+  /**
    * Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics.
    * Game code owns the components and sets players, graph parameters and IK targets; og.anim writes the pose (kept as world state in the `og.anim` state block, so snapshots, restore and the world hash cover it), the joint palette, root motion into og.Transform and the fields marked written. Asset handles are what og.load.animation and og.anim.graph answer; 0 is none.
    * Clips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names. Assets are not world state: a hot reload registers them again.
@@ -10119,6 +11441,131 @@ export declare namespace og {
      * @returns Refused for a parse error (the reason names the line), a clip name `clips` lacks, or an invalid graph.
      */
     function graph(world: World, desc?: GraphDesc): Result<GraphAsset>;
+    /**
+     * The index of a flipbook clip by name, for Flipbook.clip: `og.anim.clip(hero, "walk_down")`. -1 when the sheet has no such clip.
+     *
+     * @param info What og.load.flipbook answered.
+     * @param name The clip's name.
+     */
+    function clip(info: FlipbookInfo, name: string): number;
+  }
+  /** A tween or group ended on its own (read in the tick after). */
+  const TweenCompleted: EventType<TweenCompleted>;
+  /**
+   * Tweens: animate any numeric field of a component (og.Transform.position, og.Sprite.color, og.Sprite.opacity, a game's own f32) from its value to a target over time with an easing curve, a delay, loops and yoyo; chain them in sequences or run them in parallel. Advanced by the engine's og.tween system after the game's systems and before og.anim and physics, by scaled time (slow motion, hit stop) unless unscaled.
+   * Running tweens are world state (the og.tween state block): snapshots, restore and the world hash cover them. og.TweenCompleted reports a tween or group that ends on its own; a cancelled one, or one whose entity or component went away, ends silently.
+   * Feel presets are tweens too: og.tween.squash (squash and stretch that recovers) and og.tween.flash (a hit flash that fades).
+   */
+  namespace tween {
+    /**
+     * Start a tween. Systems may call it; it first moves in this tick's og.tween run.
+     *
+     * @param world The world.
+     * @param desc The field, the values and the timing.
+     * @returns Refused for a dead entity, a component it lacks, a field that is not numeric, or values of the wrong length.
+     */
+    function to(world: World, desc?: TweenDesc): Result<Tween>;
+    /**
+     * Start tweens one after another (each with its own delay, duration and loops); the time one leaves over goes to the next.
+     *
+     * @param world The world.
+     * @param steps The tweens, in order.
+     * @param desc Loops, scaling and the tag.
+     */
+    function sequence(world: World, steps: readonly TweenDesc[], desc?: TweenGroupDesc): Result<Tween>;
+    /**
+     * Start tweens together; the group ends with the last one.
+     *
+     * @param world The world.
+     * @param tweens The tweens.
+     * @param desc Loops, scaling and the tag.
+     */
+    function parallel(world: World, tweens: readonly TweenDesc[], desc?: TweenGroupDesc): Result<Tween>;
+    /**
+     * Stop a tween where it is (no event).
+     *
+     * @param world The world.
+     * @param tween The handle.
+     * @returns False when it was not running.
+     */
+    function cancel(world: World, tween: Tween): boolean;
+    /**
+     * Stop every tween of an entity (no events), say before starting a new reaction.
+     *
+     * @param world The world.
+     * @param entity The entity.
+     * @returns How many stopped.
+     */
+    function cancelEntity(world: World, entity: Entity): number;
+    /**
+     * Whether a tween is still running.
+     *
+     * @param world The world.
+     * @param tween The handle.
+     */
+    function active(world: World, tween: Tween): boolean;
+    /**
+     * Squash and stretch the entity's og.Transform.scale (cancels its earlier squash).
+     *
+     * @param world The world.
+     * @param desc The entity and the impact.
+     * @returns Refused for an entity without og.Transform.
+     */
+    function squash(world: World, desc?: SquashDesc): Result<Tween>;
+    /**
+     * Flash the entity's og.Sprite, or its og.Mesh (cancels its earlier flash).
+     *
+     * @param world The world.
+     * @param desc The entity and the flash.
+     * @returns Refused for an entity with neither og.Sprite nor og.Mesh.
+     */
+    function flash(world: World, desc?: FlashDesc): Result<Tween>;
+  }
+  /**
+   * Draws a loaded map with its top-left corner at the entity's position (z included) and gives its collision layers static colliders. The og.tilemap system adopts it in the first tick it exists: from then on og.tilemap.setTile and getTile reach it.
+   */
+  const Tilemap: ComponentType<{ readonly map: FieldSpec<"TilemapAsset">; readonly layer: FieldSpec<"i32">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly visible: FieldSpec<"bool">; readonly collision: FieldSpec<"bool">; readonly colliderLayers: FieldSpec<"u32">; readonly friction: FieldSpec<"f32"> }, Tilemap>;
+  /**
+   * Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component.
+   * Layers draw through the sprite batch in 16x16-tile chunks culled to the view, each at the map's sprite layer plus its z, scrolled by its parallax; solid tiles become static og-physics colliders merged into rectangles. Runtime edits (og.tilemap.setTile, re-auto-tiling the neighbourhood) are world state (the og.tilemap state block), and the colliders follow them.
+   * Cells count from the top-left corner, x right and y down (Tiled's); the map's top-left corner is at the entity's position.
+   */
+  namespace tilemap {
+    /**
+     * Change a cell. It applies at once to getTile, and to drawing and colliders at the og.tilemap system (this tick when called before it). Deterministic: equal edits in equal order give equal maps.
+     *
+     * @param world The world.
+     * @param desc The map, the layer, the cell and the tile.
+     * @returns Refused for an entity whose map is not adopted yet, an unknown layer, a cell outside the map or a tile the tileset lacks.
+     */
+    function setTile(world: World, desc?: SetTileDesc): Result<void>;
+    /**
+     * A cell's tile: a tile layer's tile id (-1 empty), a terrain layer's 1 or 0; -1 outside the map or before the map is adopted.
+     *
+     * @param world The world.
+     * @param entity The entity with the og.Tilemap.
+     * @param layer The layer's name.
+     * @param x The column.
+     * @param y The row.
+     */
+    function getTile(world: World, entity: Entity, layer: string, x: number, y: number): number;
+    /**
+     * The cell under a world point (its xy), for a map at its entity's position.
+     *
+     * @param world The world.
+     * @param entity The entity with the og.Tilemap.
+     * @param point A world point.
+     */
+    function cellAt(world: World, entity: Entity, point: Vector3): TileCell;
+    /**
+     * A cell's centre in world coordinates (z of the map).
+     *
+     * @param world The world.
+     * @param entity The entity with the og.Tilemap.
+     * @param x The column.
+     * @param y The row.
+     */
+    function cellCenter(world: World, entity: Entity, x: number, y: number): Vector3;
   }
   /**
    * A sound an entity plays. Level-triggered: while `playing` is true it plays (inserting a source plays it), setting it false stops it, and a one-shot that reaches its end sets it back to false and sends og.SoundEnded.

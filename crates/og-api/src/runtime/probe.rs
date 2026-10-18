@@ -279,10 +279,12 @@ pub(crate) fn after_reload(eng: &Engine, swapped: bool) {
         st.physics = Some(a.mounted.physics.clone());
         st.ui = Some(a.mounted.ui.clone());
         st.anim = Some(a.anim.clone());
+        st.feel = Some(a.feel.clone());
         st.physics_meshes.clone()
     };
     // Animation assets too: the new og.anim gets every skeleton, clip and graph.
     eng.state.borrow().anim_assets.replay(&a.anim);
+    eng.state.borrow().feel_assets.replay(&a.feel);
     // Meshes are assets: the new physics gets every one the old one had.
     for (handle, mesh) in meshes {
         let _ = a.mounted.physics.set_mesh(handle, mesh);
@@ -301,6 +303,7 @@ pub(crate) fn after_reload(eng: &Engine, swapped: bool) {
     rs.settings = settings;
     rs.draw = draw;
     rs.fx.anim = Some(a.anim.clone());
+    rs.feel.feel = Some((a.feel.clone(), a.feel_records.clone()));
 }
 
 /// One JSON-RPC call through the probe, with the runtime's additions to

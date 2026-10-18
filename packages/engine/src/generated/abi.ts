@@ -103,6 +103,10 @@ export interface HostAbi<A, V> {
   og_transform_look_at(eye: string, target: string, up: string | undefined): string;
   /** `og.transform.fromAxisAngle` */
   og_transform_from_axis_angle(axis: string, angle: number): string;
+  /** `og.time.setScale` */
+  og_time_set_scale(world: number, scale: number): string;
+  /** `og.time.hitStop` */
+  og_time_hit_stop(world: number, ticks: number): string;
   /** `RngStream.seed` */
   og_rng_stream_get_seed(rng_stream: number): number;
   /** `RngStream.next` */
@@ -169,10 +173,18 @@ export interface HostAbi<A, V> {
   og_camera_world_to_screen(world: number, point: string): string;
   /** `Camera.screenToRay` */
   og_camera_screen_to_ray(world: number, x: number, y: number): string;
+  /** `og.camera.shake` */
+  og_camera_shake(world: number, trauma: number): string;
+  /** `og.camera.punch` */
+  og_camera_punch(world: number, amount: number): string;
+  /** `og.camera.kick` */
+  og_camera_kick(world: number, direction: string, distance: number): string;
   /** `og.render.ribbon` */
   og_render_ribbon(world: number, desc: string | undefined): string;
   /** `og.render.sprite` */
   og_render_sprite(world: number, desc: string | undefined): string;
+  /** `og.render.floatingText` */
+  og_render_floating_text(world: number, desc: string | undefined): string;
   /** `og.render.measureText` */
   og_render_measure_text(world: number, desc: string | undefined): string;
   /** `og.render.boxGeometry` */
@@ -223,6 +235,10 @@ export interface HostAbi<A, V> {
   og_load_gltf_info(world: number, asset: number): string;
   /** `og.load.animation` */
   og_load_animation(world: number, path: string): string;
+  /** `og.load.flipbook` */
+  og_load_flipbook(world: number, path: string): string;
+  /** `og.load.tilemap` */
+  og_load_tilemap(world: number, path: string): string;
   /** `og.physics.raycast` */
   og_physics_raycast(world: number, desc: string | undefined): string;
   /** `og.physics.shapeCast` */
@@ -233,6 +249,30 @@ export interface HostAbi<A, V> {
   og_physics_set_mesh(world: number, mesh: number, desc: string | undefined): string;
   /** `og.anim.graph` */
   og_anim_graph(world: number, desc: string | undefined): string;
+  /** `og.tween.to` */
+  og_tween_to(world: number, desc: string | undefined): string;
+  /** `og.tween.sequence` */
+  og_tween_sequence(world: number, steps: string, desc: string | undefined): string;
+  /** `og.tween.parallel` */
+  og_tween_parallel(world: number, tweens: string, desc: string | undefined): string;
+  /** `og.tween.cancel` */
+  og_tween_cancel(world: number, tween: number): boolean;
+  /** `og.tween.cancelEntity` */
+  og_tween_cancel_entity(world: number, entity: number): number;
+  /** `og.tween.active` */
+  og_tween_active(world: number, tween: number): boolean;
+  /** `og.tween.squash` */
+  og_tween_squash(world: number, desc: string | undefined): string;
+  /** `og.tween.flash` */
+  og_tween_flash(world: number, desc: string | undefined): string;
+  /** `og.tilemap.setTile` */
+  og_tilemap_set_tile(world: number, desc: string | undefined): string;
+  /** `og.tilemap.getTile` */
+  og_tilemap_get_tile(world: number, entity: number, layer: string, x: number, y: number): number;
+  /** `og.tilemap.cellAt` */
+  og_tilemap_cell_at(world: number, entity: number, point: string): string;
+  /** `og.tilemap.cellCenter` */
+  og_tilemap_cell_center(world: number, entity: number, x: number, y: number): string;
   /** `og.ui.configure` */
   og_ui_configure(world: number, desc: string | undefined): string;
   /** `og.ui.viewport` */
@@ -454,6 +494,8 @@ export const SYMBOLS: readonly string[] = [
   "og_transform_decompose",
   "og_transform_look_at",
   "og_transform_from_axis_angle",
+  "og_time_set_scale",
+  "og_time_hit_stop",
   "og_rng_stream_get_seed",
   "og_rng_stream_next",
   "og_rng_stream_range",
@@ -487,8 +529,12 @@ export const SYMBOLS: readonly string[] = [
   "og_camera_look_at",
   "og_camera_world_to_screen",
   "og_camera_screen_to_ray",
+  "og_camera_shake",
+  "og_camera_punch",
+  "og_camera_kick",
   "og_render_ribbon",
   "og_render_sprite",
+  "og_render_floating_text",
   "og_render_measure_text",
   "og_render_box_geometry",
   "og_render_plane_geometry",
@@ -514,11 +560,25 @@ export const SYMBOLS: readonly string[] = [
   "og_load_error",
   "og_load_gltf_info",
   "og_load_animation",
+  "og_load_flipbook",
+  "og_load_tilemap",
   "og_physics_raycast",
   "og_physics_shape_cast",
   "og_physics_overlap",
   "og_physics_set_mesh",
   "og_anim_graph",
+  "og_tween_to",
+  "og_tween_sequence",
+  "og_tween_parallel",
+  "og_tween_cancel",
+  "og_tween_cancel_entity",
+  "og_tween_active",
+  "og_tween_squash",
+  "og_tween_flash",
+  "og_tilemap_set_tile",
+  "og_tilemap_get_tile",
+  "og_tilemap_cell_at",
+  "og_tilemap_cell_center",
   "og_ui_configure",
   "og_ui_viewport",
   "og_ui_theme",

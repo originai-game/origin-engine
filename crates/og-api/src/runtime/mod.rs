@@ -33,6 +33,7 @@ mod assets;
 mod codec;
 mod engine;
 mod extract;
+mod feel;
 mod fx;
 mod modules;
 mod probe;
@@ -45,6 +46,13 @@ pub use engine::{
     advance, answer_call, begin_bundle, call_rpc, command, create, destroy, frame, render_options,
     set_render_backend, take_log, take_outputs, view_columns, view_entities, write_resource,
     ColumnPtr, Dispatch, Hooks, RenderBackend,
+};
+pub use feel::{
+    og_camera_kick, og_camera_punch, og_camera_shake, og_load_flipbook, og_load_tilemap,
+    og_render_floating_text, og_tilemap_cell_at, og_tilemap_cell_center, og_tilemap_get_tile,
+    og_tilemap_set_tile, og_time_hit_stop, og_time_set_scale, og_tween_active, og_tween_cancel,
+    og_tween_cancel_entity, og_tween_flash, og_tween_parallel, og_tween_sequence, og_tween_squash,
+    og_tween_to,
 };
 pub use modules::{
     og_load_skin, og_physics_overlap, og_physics_raycast, og_physics_set_mesh,

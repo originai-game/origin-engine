@@ -1,52 +1,57 @@
-// The sprite sheet: assets/models/sprites.glb holds one unit quad per sprite,
-// each with its own material, in this order (tools/make-assets.py writes it).
-// A sprite is drawn by an og.Mesh with that geometry and material; its size
-// is the entity's Transform.scale.
+// The art: pixel-art flipbook sheets and the city's tilemaps, all made by
+// tools/make-assets.py and loaded once in `start` from the cooked bundle.
+//
+// - sprites/courier.ogt: the courier's clips (COURIER below, in sheet order),
+// - sprites/props.ogt: crate, fence, moon and cloud, one frame each,
+// - sprites/coin.ogt: the coin's turn,
+// - sprites/sky.png: the sky's colour bands, stretched over the view,
+// - maps/far.ogt, near.ogt, roofs.ogt: the three parallax strips (tilemaps
+//   with `repeat x` over tiles/city.ogt).
 
 import { og } from "@origingame/engine";
-import type { Geometry, Material, World } from "@origingame/engine";
+import type { FlipbookInfo, Texture, TilemapInfo, World } from "@origingame/engine";
 
-export const SPRITES = [
-  "sky",
-  "moon",
-  "cloud",
-  "building_a",
-  "building_b",
-  "building_c",
-  "ground",
-  "crate",
-  "fence",
-  "coin",
-  "runner_idle",
-  "runner_run_a",
-  "runner_run_b",
-  "runner_jump",
-  "runner_crash",
-] as const;
+/** The courier's clips, by index in sprites/courier.ogt (checked against the sheet in `loadArt`). */
+export const COURIER = { idle: 0, run: 1, jump: 2, fall: 3, crash: 4 } as const;
+/** The props' clips, by index in sprites/props.ogt. */
+export const PROPS = { crate: 0, fence: 1, moon: 2, cloud: 3 } as const;
 
-export type SpriteName = (typeof SPRITES)[number];
-
-export interface Sprite {
-  readonly geometry: Geometry;
-  readonly material: Material;
+export interface Art {
+  readonly courier: FlipbookInfo;
+  readonly props: FlipbookInfo;
+  readonly coin: FlipbookInfo;
+  readonly sky: Texture;
+  readonly far: TilemapInfo;
+  readonly near: TilemapInfo;
+  readonly roofs: TilemapInfo;
 }
 
-export type Sheet = Readonly<Record<SpriteName, Sprite>>;
+function ok<T>(r: { ok: true; value: T } | { ok: false; reason: string }, what: string): T {
+  if (!r.ok) throw new Error(`${what}: ${r.reason} (run python3 tools/make-assets.py and og cook .)`);
+  return r.value;
+}
 
-/** Loads the sheet once, in `start`; every sprite is ready at once from the cooked bundle. */
-export function loadSheet(world: World): Sheet {
-  const asset = og.load.gltf(world, "models/sprites.glb");
-  if (!asset.ok) throw new Error(asset.reason);
-  const info = og.load.gltfInfo(world, asset.value);
-  if (!info.ok) throw new Error(info.reason);
-  const out: Partial<Record<SpriteName, Sprite>> = {};
-  SPRITES.forEach((name, i) => {
-    const geometry = info.value.geometries[i];
-    const material = info.value.materials[i];
-    if (geometry === undefined || material === undefined) {
-      throw new Error(`models/sprites.glb has no sprite ${i} (${name}); run tools/make-assets.py and og cook`);
-    }
-    out[name] = { geometry, material };
-  });
-  return out as Sheet;
+function expectClips(info: FlipbookInfo, clips: Readonly<Record<string, number>>, path: string): void {
+  for (const [name, index] of Object.entries(clips)) {
+    const found = og.anim.clip(info, name);
+    if (found !== index) throw new Error(`${path}: clip ${name} is ${found}, the code expects ${index}`);
+  }
+}
+
+/** Loads every sheet, texture and map; the cooked bundle has them ready at once. */
+export function loadArt(world: World): Art {
+  const courier = ok(og.load.flipbook(world, "sprites/courier.ogt"), "sprites/courier.ogt");
+  const props = ok(og.load.flipbook(world, "sprites/props.ogt"), "sprites/props.ogt");
+  const coin = ok(og.load.flipbook(world, "sprites/coin.ogt"), "sprites/coin.ogt");
+  expectClips(courier, COURIER, "sprites/courier.ogt");
+  expectClips(props, PROPS, "sprites/props.ogt");
+  return {
+    courier,
+    props,
+    coin,
+    sky: ok(og.load.texture(world, "sprites/sky.png"), "sprites/sky.png"),
+    far: ok(og.load.tilemap(world, "maps/far.ogt"), "maps/far.ogt"),
+    near: ok(og.load.tilemap(world, "maps/near.ogt"), "maps/near.ogt"),
+    roofs: ok(og.load.tilemap(world, "maps/roofs.ogt"), "maps/roofs.ogt"),
+  };
 }

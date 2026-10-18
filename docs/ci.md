@@ -140,6 +140,13 @@ them. It takes about 2 s a tier after the export (Apple M4 Pro, Chrome 150)
 and passes on both tiers, but it is not in the gate: CI's machine has no
 Chrome for Testing (a missing Chrome is an error, never a skip).
 
+The same runner takes another project's playtest frames: `--project
+templates/archetypes/topdown --script "<the frames playtest's commands
+without screenshot and quit>" --shots start@30,crit@131,dash@168,east@216`
+compares (or with `--record` writes) `<project>/references/<tier>/`. The
+topdown archetype's four frames matched `metal` at RMSE ≤ 0.00009 on WebGPU
+and ≤ 0.00005 on WebGL2 (2026-10-18) and are committed for both tiers.
+
 Against their own references both tiers reproduce exactly (RMSE 0 on two
 clean runs). Against `metal`, measured at the commit that recorded them
 (2026-10-18):

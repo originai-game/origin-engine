@@ -5,28 +5,34 @@
 // before the moves run out.
 //
 // scenes/main.ogt places the board (with its Tuning); `start` below sets up
-// the orthographic camera and spawns the backdrop, the cells, the tiles and
-// the selection frame. The board logic is src/board.ts, the systems
-// src/systems.ts, the components src/components.ts.
+// the orthographic camera and spawns the backdrop, the checker tilemap, the
+// 49 gems and the selection frame, every one an og.Sprite (the gems play
+// og.Flipbook clips). The board logic is src/board.ts, the systems
+// src/systems.ts, the components src/components.ts, the art src/art.ts.
 
 import { og } from "@origingame/engine";
-import type { Entity, World } from "@origingame/engine";
-import { loadSheet, TILE_SPRITES } from "./art.ts";
-import type { SpriteName } from "./art.ts";
+import type { Entity, Texture, World } from "@origingame/engine";
+import { PANEL_INSET, idleClip, loadArt } from "./art.ts";
 import { adjacent, cellOf, parseBoard } from "./board.ts";
 import { Hud, Kind, Match, PHASE_NAMES, Phase, Piece, Tuning } from "./components.ts";
-import { BOARD_Y, PITCH, SIZE, cellCentre } from "./layout.ts";
+import { BOARD_TOP, BOARD_Y, GEM_SIZE, PITCH, SIZE, cellCentre } from "./layout.ts";
 import { Animate, Flow, HudText, Pick, Resolve } from "./systems.ts";
 
 /** The view keeps at least this much of the world visible. */
 const MIN_VIEW = { width: 8.6, height: 12 } as const;
 
-function must(r: { ok: true } | { ok: false; reason: string }): void {
+/** The brand ink #14161b, linear. */
+const INK = { r: 0.007, g: 0.008, b: 0.0103 } as const;
+
+/** Sprite layers: higher draws on top. The checker tilemap sits at -10, floating scores at 100. */
+const LAYER = { backdrop: -30, panel: -20, cells: -10, gem: 0, cursor: 1 } as const;
+
+function must<T>(r: { ok: true; value?: T } | { ok: false; reason: string }): void {
   if (!r.ok) throw new Error(r.reason);
 }
 
 function start(world: World): void {
-  const sheet = loadSheet(world);
+  const art = loadArt(world);
   const font = og.load.font(world, "fonts/ui.ttf");
   if (!font.ok) throw new Error(font.reason);
 
@@ -41,58 +47,52 @@ function start(world: World): void {
   camera.value.orthographic = true;
   camera.value.height = height;
   camera.value.position = { x: 0, y: centreY, z: 50 };
-  camera.value.background = { r: 0.0118, g: 0.0137, b: 0.0273 };
+  camera.value.background = INK;
   const settings = world.resource(og.RenderSettings);
   if (settings.ok) {
     settings.value.environmentIntensity = 0;
     settings.value.toneMapped = false;
   }
-  const sun = world.spawn({ name: "sun" });
-  if (sun.ok) must(world.insert(sun.value, og.DirectionalLight, { intensity: 0, castShadow: false }));
 
-  const row = (d: { name?: string; kind: number; sprite: SpriteName; x: number; y: number; z: number; w: number; h: number; visible?: boolean; colour?: number }): Entity => {
-    const s = world.spawn({ name: d.name ?? "", position: { x: d.x, y: d.y, z: d.z }, scale: { x: d.w, y: d.h, z: 1 } });
+  // Every row the systems see carries the same six components (src/components.ts says why).
+  const row = (d: { name?: string; kind: number; x: number; y: number; z: number; texture: Texture; w: number; h: number; layer: number; visible?: boolean }): Entity => {
+    const s = world.spawn({ name: d.name ?? "", position: { x: d.x, y: d.y, z: d.z } });
     if (!s.ok) throw new Error(s.reason);
-    const sprite = sheet[d.sprite];
-    must(world.insert(s.value, og.Mesh, { geometry: sprite.geometry, material: sprite.material, visible: d.visible ?? true }));
-    must(
-      world.insert(s.value, Piece, {
-        kind: d.kind,
-        colour: d.colour ?? -1,
-        look0: sheet[TILE_SPRITES[0]].material,
-        look1: sheet[TILE_SPRITES[1]].material,
-        look2: sheet[TILE_SPRITES[2]].material,
-        look3: sheet[TILE_SPRITES[3]].material,
-        look4: sheet[TILE_SPRITES[4]].material,
-        look5: sheet[TILE_SPRITES[5]].material,
-      }),
-    );
+    must(world.insert(s.value, og.Sprite, { texture: d.texture, width: d.w, height: d.h, layer: d.layer, visible: d.visible ?? true }));
+    must(world.insert(s.value, og.Flipbook));
+    must(world.insert(s.value, Piece, { kind: d.kind }));
     must(world.insert(s.value, Match));
     must(world.insert(s.value, Tuning));
     return s.value;
   };
 
-  row({ name: "backdrop", kind: Kind.Backdrop, sprite: "backdrop", x: 0, y: centreY, z: -20, w: Math.max(60, halfWidth * 2 + 1), h: Math.max(30, height + 1) });
-  for (let r = 0; r < SIZE; r++) {
-    for (let c = 0; c < SIZE; c++) {
-      const p = cellCentre(c, r);
-      row({ kind: Kind.Cell, sprite: "cell", x: p.x, y: p.y, z: -1, w: PITCH * 0.96, h: PITCH * 0.96 });
-    }
-  }
-  // The tiles: dealt on the first press (Flow); until then hidden.
+  // A soft lift of light behind the board; around it the camera's background is the ink itself.
+  row({ name: "backdrop", kind: Kind.Backdrop, texture: art.backdrop, x: 0, y: BOARD_Y, z: -3, w: 16, h: 13, layer: LAYER.backdrop });
+
+  // The checker under the gems: a hand-written tilemap (sprites/board.ogt), placed by its top-left corner.
+  const cells = world.spawn({ name: "cells", position: { x: -(SIZE / 2) * PITCH, y: BOARD_TOP, z: -1 } });
+  if (!cells.ok) throw new Error(cells.reason);
+  must(world.insert(cells.value, og.Tilemap, { map: art.board, layer: LAYER.cells, collision: false }));
+
+  // The gems: dealt on the first press (Flow); until then hidden.
   for (let k = 0; k < SIZE * SIZE; k++) {
     const p = cellCentre(k % SIZE, Math.floor(k / SIZE));
-    const t = row({ name: `tile-${k}`, kind: Kind.Tile, sprite: "tile_ruby", x: p.x, y: p.y, z: 0, w: PITCH * 0.92, h: PITCH * 0.92, visible: false });
+    const t = row({ name: `tile-${k}`, kind: Kind.Tile, texture: art.gemTexture, x: p.x, y: p.y, z: 0, w: GEM_SIZE * PITCH, h: GEM_SIZE * PITCH, layer: LAYER.gem, visible: false });
     must(world.set(t, Piece, { col: k % SIZE, row: Math.floor(k / SIZE) }));
+    must(world.set(t, og.Flipbook, { sheet: art.gems, clip: idleClip(0) }));
   }
-  row({ name: "cursor", kind: Kind.Cursor, sprite: "ring", x: 0, y: 0, z: 1, w: PITCH * 1.04, h: PITCH * 1.04, visible: false });
+  const cursor = row({ name: "cursor", kind: Kind.Cursor, texture: art.ring, x: 0, y: 0, z: 1, w: PITCH * 1.06, h: PITCH * 1.06, layer: LAYER.cursor, visible: false });
+  // The selection frame breathes forever: one looping tween, no per-tick code.
+  must(og.tween.to(world, { entity: cursor, field: "scale", to: [1.07, 1.07, 1], duration: 0.45, ease: "quadInOut", loops: -1, yoyo: true }));
 
-  // The board comes from the scene with its Tuning; give it the sprite, the round (with the view Pick maps the pointer through) and the HUD.
+  // The board comes from the scene with its Tuning; give it the panel (a nine-slice), the round and the HUD.
   const board = world.find("board");
   if (board === null) throw new Error("scenes/main.ogt has no entity named board");
-  must(world.insert(board, og.Mesh, { geometry: sheet.board.geometry, material: sheet.board.material }));
+  const inset = { x: PANEL_INSET, y: PANEL_INSET };
+  must(world.insert(board, og.Sprite, { texture: art.panel, width: SIZE * PITCH + 0.7, height: SIZE * PITCH + 0.7, layer: LAYER.panel, sliceX: inset, sliceY: inset, sliceScale: 0.45 / PANEL_INSET }));
+  must(world.insert(board, og.Flipbook));
   must(world.insert(board, Piece, { kind: Kind.Board }));
-  must(world.insert(board, Match, { viewHeight: height, viewCentreY: centreY }));
+  must(world.insert(board, Match, { viewHeight: height, viewCentreY: centreY, font: font.value as unknown as number }));
   must(world.insert(board, Hud, { font: font.value as unknown as number, top: centreY + height / 2, halfWidth }));
 }
 

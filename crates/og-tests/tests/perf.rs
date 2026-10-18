@@ -29,7 +29,9 @@ fn slug(s: &str) -> String {
     out.trim_matches('-').to_string()
 }
 
-fn perf(scene: &str) {
+/// Times `scene`, checks it against its baseline, and returns the best
+/// run's milliseconds per frame and the adapter.
+fn perf(scene: &str) -> (f64, String) {
     if cfg!(debug_assertions) {
         panic!(
             "perf tests measure release builds: cargo test -p og-tests --release -- --ignored perf"
@@ -86,7 +88,7 @@ fn perf(scene: &str) {
         );
         std::fs::write(&path, json).expect("write baseline");
         println!("  recorded {}", path.display());
-        return;
+        return (ms, info.adapter.clone());
     }
     let text = std::fs::read_to_string(&path).unwrap_or_else(|_| {
         panic!(
@@ -107,6 +109,7 @@ fn perf(scene: &str) {
         "{scene}: {ms:.3} ms per frame exceeds the baseline {baseline:.3} ms by more than {:.0} %",
         TOLERANCE * 100.0
     );
+    (ms, info.adapter.clone())
 }
 
 #[test]
@@ -132,4 +135,18 @@ fn perf_sprites_20k() {
 #[ignore]
 fn perf_showcase() {
     perf("showcase");
+}
+
+/// The E4 budget: a 256x256 map with four layers (one animated, one at half
+/// parallax) panned at 1280x720 in under 1 ms per frame on the M4 Pro.
+#[test]
+#[ignore]
+fn perf_tilemap_256() {
+    let (ms, adapter) = perf("tilemap-256");
+    if adapter.contains("M4 Pro") {
+        assert!(
+            ms < 1.0,
+            "tilemap-256 takes {ms:.3} ms per frame on {adapter}: the budget is 1 ms"
+        );
+    }
 }

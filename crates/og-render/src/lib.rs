@@ -323,6 +323,9 @@ pub enum RenderTarget<'a> {
 pub struct FrameStats {
     /// Draw calls across every pass (shadows, main, sky, sprites, post).
     pub draw_calls: u32,
+    /// Tile quads drawn this frame (after culling) and the chunks they came from.
+    pub tiles: u32,
+    pub tile_chunks: u32,
     /// Distinct (mesh, material) pairs submitted.
     pub batches: u32,
     /// Instances submitted.
@@ -451,6 +454,8 @@ struct SceneCache {
     materials: Vec<GpuMaterial>,
     /// Sprite bind groups per texture, made on first use.
     sprite_groups: Vec<Option<wgpu::BindGroup>>,
+    /// The filter each texture's sprite group was made with.
+    filters: Vec<TextureFilter>,
     /// The same with a repeating sampler (trails, ribbons, beams).
     ribbon_groups: Vec<Option<wgpu::BindGroup>>,
     fonts: Vec<GpuFont>,
@@ -593,6 +598,7 @@ pub struct Renderer {
     local_map: ShadowMap,
     material_sampler: wgpu::Sampler,
     sprite_sampler: wgpu::Sampler,
+    sprite_sampler_nearest: wgpu::Sampler,
     frame_layout: wgpu::BindGroupLayout,
     sky_layout: wgpu::BindGroupLayout,
     material_layout: wgpu::BindGroupLayout,
@@ -1285,6 +1291,15 @@ impl Renderer {
             mipmap_filter: wgpu::MipmapFilterMode::Linear,
             ..Default::default()
         });
+        let sprite_sampler_nearest = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("sprite (nearest)"),
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
+            ..Default::default()
+        });
         // At least two layers: GL cannot view a single-layer texture as an array.
         let cascade_map = ShadowMap::new(&device, "cascades", shadow_size, cascades.max(2));
         let local_map = ShadowMap::new(
@@ -1579,6 +1594,7 @@ impl Renderer {
             local_map,
             material_sampler,
             sprite_sampler,
+            sprite_sampler_nearest,
             frame_layout,
             sky_layout,
             material_layout,
@@ -2257,13 +2273,18 @@ impl Renderer {
         let Some(t) = texture else {
             return &self.white_sprite_group;
         };
+        let nearest = self.cache.filters.get(t.index()) == Some(&TextureFilter::Nearest);
         let slot = &mut self.cache.sprite_groups[t.index()];
         if slot.is_none() {
             *slot = Some(sprite_bind_group(
                 &self.device,
                 &self.sprite_layout,
                 &self.cache.textures[t.index()].view,
-                &self.sprite_sampler,
+                if nearest {
+                    &self.sprite_sampler_nearest
+                } else {
+                    &self.sprite_sampler
+                },
                 [0.0; 4],
             ));
         }
@@ -2525,23 +2546,6 @@ impl Renderer {
         self.ensure_pipelines(&batches, &skinned_batches, prepass);
         self.particles
             .ensure_pipelines(&self.device, &particle_frame, self.samples);
-        let lit_range = scene.lighting_2d.map(|l| (l.min_layer, l.max_layer));
-        let fonts = &self.cache.fonts;
-        let sprite_frame = sprites::build(
-            scene,
-            |i| fonts.get(i).map(|f| &f.layout),
-            self.cache.textures.len(),
-            &particle_frame.sprites,
-            |layer| lit_range.is_some_and(|(lo, hi)| (lo..=hi).contains(&layer)),
-        )?;
-        for run in sprite_frame.runs.iter().chain(&sprite_frame.glow_runs) {
-            if let RunSource::Sprite(_, t) = run.source {
-                self.sprite_group(t);
-            }
-        }
-        for s in &particle_frame.systems {
-            self.sprite_group(s.texture);
-        }
         let fonts = &self.cache.fonts;
         let overlay_frame = match &scene.overlay {
             Some(o) => Some(overlay::build(
@@ -2563,6 +2567,7 @@ impl Renderer {
                 scene.id(),
                 scene.trail_styles(),
                 &scene.trails,
+                &scene.trail_layers,
                 &scene.ribbons,
                 &scene.beams,
                 scene.tick,
@@ -2582,6 +2587,59 @@ impl Renderer {
                 }
             }
             self.ribbon_group(run.texture);
+        }
+        // Texture filters: a sprite group made with the other sampler is remade.
+        for i in 0..self.cache.textures.len() {
+            let f = scene.texture_filter(TextureHandle::from_index(i));
+            if self.cache.filters.len() <= i {
+                self.cache.filters.resize(i + 1, TextureFilter::Linear);
+            }
+            if self.cache.filters[i] != f {
+                self.cache.filters[i] = f;
+                self.cache.sprite_groups[i] = None;
+            }
+        }
+        let lit_range = scene.lighting_2d.map(|l| (l.min_layer, l.max_layer));
+        let view = match camera.projection {
+            Projection::Orthographic { height } => {
+                let half = Vec2::new(height * 0.5 * aspect, height * 0.5);
+                let c = camera.position.truncate();
+                Some(sprites::ViewRect {
+                    min: c - half,
+                    max: c + half,
+                })
+            }
+            Projection::Perspective { .. } => None,
+        };
+        let layered: Vec<sprites::LayeredStrip> = ribbon_frame
+            .runs
+            .iter()
+            .filter_map(|r| {
+                Some(sprites::LayeredStrip {
+                    layer: r.layer?,
+                    source: RunSource::Strip(r.blend as u8, r.texture),
+                    first: r.first,
+                    count: r.count,
+                })
+            })
+            .collect();
+        let fonts = &self.cache.fonts;
+        let sprite_frame = sprites::build(
+            scene,
+            |i| fonts.get(i).map(|f| &f.layout),
+            self.cache.textures.len(),
+            &particle_frame.sprites,
+            |layer| lit_range.is_some_and(|(lo, hi)| (lo..=hi).contains(&layer)),
+            view,
+            &layered,
+        )?;
+        for run in sprite_frame.runs.iter().chain(&sprite_frame.glow_runs) {
+            if let RunSource::Sprite(_, t) = run.source {
+                self.sprite_group(t);
+            }
+        }
+        for s in &particle_frame.systems {
+            self.sprite_group(s.texture);
         }
         if let Some(t) = scene.decal_atlas {
             if t.index() >= self.cache.textures.len() {
@@ -3089,6 +3147,8 @@ impl Renderer {
             lights,
             lights_dropped: scene.lights.len() as u32 - lights,
             sprites: sprite_frame.sprites,
+            tiles: sprite_frame.tiles,
+            tile_chunks: sprite_frame.tile_chunks,
             glyphs: sprite_frame.glyphs,
             sprite_draws: sprite_frame.runs.len() as u32,
             missing_glyphs: sprite_frame.missing_glyphs,
@@ -3551,8 +3611,8 @@ impl Renderer {
                             },
                         );
                     }
-                    // Trails, ribbons and beams.
-                    for run in &ribbon_frame.runs {
+                    // Trails, ribbons and beams (layered 2D trails go with the sprites).
+                    for run in ribbon_frame.runs.iter().filter(|r| r.layer.is_none()) {
                         pass.set_pipeline(
                             &self.ribbon_pipelines[match run.blend {
                                 ParticleBlend::Additive => 0,
@@ -3583,7 +3643,37 @@ impl Renderer {
                     pass.set_bind_group(2, sprite_fx_group, &[]);
                     let mut current: Option<(bool, SpriteBlend)> = None;
                     for run in &sprite_frame.runs {
+                        if let RunSource::Strip(blend, texture) = run.source {
+                            pass.set_pipeline(
+                                &self.ribbon_pipelines
+                                    [usize::from(blend != ParticleBlend::Additive as u8)],
+                            );
+                            pass.set_bind_group(
+                                1,
+                                match texture {
+                                    None => &self.white_sprite_group,
+                                    Some(t) => self.cache.ribbon_groups[t.index()]
+                                        .as_ref()
+                                        .expect("made before the pass"),
+                                },
+                                &[],
+                            );
+                            let stride = std::mem::size_of::<ribbons::RibbonVertex>() as u64;
+                            let start = run.first as u64 * stride;
+                            pass.set_vertex_buffer(
+                                0,
+                                self.ribbon_buffer
+                                    .slice(start..start + run.count as u64 * stride),
+                            );
+                            pass.draw(0..run.count, 0..1);
+                            stats.draw_calls += 1;
+                            // The sprite pipeline and its groups again.
+                            pass.set_bind_group(2, sprite_fx_group, &[]);
+                            current = None;
+                            continue;
+                        }
                         let (msdf, blend, group) = match run.source {
+                            RunSource::Strip(..) => unreachable!("drawn above"),
                             RunSource::Sprite(blend, None) => {
                                 (false, blend, &self.white_sprite_group)
                             }
@@ -3708,6 +3798,7 @@ impl Renderer {
                             .expect("made before the pass"),
                     ),
                     RunSource::Font(f) => (true, &self.cache.fonts[f.index()].bind_group),
+                    RunSource::Strip(..) => unreachable!("the overlay has no strips"),
                 };
                 if msdf_bound != Some(msdf) {
                     pass.set_pipeline(if msdf {

@@ -44,7 +44,7 @@ export function readRules(pkg: string): Rules {
 }
 
 /** The skills this package ships. */
-export const SKILLS = ["og-build", "og-core", "og-game", "og-taste", "og-ui"] as const;
+export const SKILLS = ["og-build", "og-core", "og-feel", "og-game", "og-taste", "og-ui"] as const;
 
 /** What a scaffolded project must contain (scaffold/README.md describes each). */
 export const TEMPLATE_FILES = ["project.ogt", "src/main.ts", "package.json", "tsconfig.json", "tests/smoke.og.ts"] as const;

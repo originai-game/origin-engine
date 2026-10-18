@@ -1,0 +1,145 @@
+{
+  "what": "packages/engine/tests/support/feel-hash.ts: tweens (sequence elasticOut/backInOut, yoyo bounceOut forever, parallel quartInOut/expoOut), squash and flash presets, a falling rigid body, a system moving by time.scaledDt, camera shake/punch/kick, og.time.hitStop(8) at tick 20, setScale(0.5) for 40 ticks; snapshot at tick 23 (inside the hit stop) restored and replayed to tick 140. Asserted by packages/engine/tests/hosts.test.ts.",
+  "date": "2026-10-18",
+  "runs": {
+    "node": {
+      "host": "node",
+      "hitStop": true,
+      "checkpoints": [
+        {
+          "tick": 20,
+          "hash": "516d392cbf0f7265"
+        },
+        {
+          "tick": 23,
+          "hash": "ac304a2f3b1f8852"
+        },
+        {
+          "tick": 40,
+          "hash": "243503b67e10528f"
+        },
+        {
+          "tick": 80,
+          "hash": "288dabe1bbfa35cc"
+        },
+        {
+          "tick": 140,
+          "hash": "7922d16316ad160c"
+        }
+      ],
+      "tally": {
+        "done": 4,
+        "tags": 7,
+        "frozen": 8
+      },
+      "end": "7922d16316ad160c",
+      "replayed": "7922d16316ad160c"
+    },
+    "node-again": {
+      "host": "node",
+      "hitStop": true,
+      "checkpoints": [
+        {
+          "tick": 20,
+          "hash": "516d392cbf0f7265"
+        },
+        {
+          "tick": 23,
+          "hash": "ac304a2f3b1f8852"
+        },
+        {
+          "tick": 40,
+          "hash": "243503b67e10528f"
+        },
+        {
+          "tick": 80,
+          "hash": "288dabe1bbfa35cc"
+        },
+        {
+          "tick": 140,
+          "hash": "7922d16316ad160c"
+        }
+      ],
+      "tally": {
+        "done": 4,
+        "tags": 7,
+        "frozen": 8
+      },
+      "end": "7922d16316ad160c",
+      "replayed": "7922d16316ad160c"
+    },
+    "web": {
+      "host": "web",
+      "hitStop": true,
+      "checkpoints": [
+        {
+          "tick": 20,
+          "hash": "516d392cbf0f7265"
+        },
+        {
+          "tick": 23,
+          "hash": "ac304a2f3b1f8852"
+        },
+        {
+          "tick": 40,
+          "hash": "243503b67e10528f"
+        },
+        {
+          "tick": 80,
+          "hash": "288dabe1bbfa35cc"
+        },
+        {
+          "tick": 140,
+          "hash": "7922d16316ad160c"
+        }
+      ],
+      "tally": {
+        "done": 4,
+        "tags": 7,
+        "frozen": 8
+      },
+      "end": "7922d16316ad160c",
+      "replayed": "7922d16316ad160c"
+    },
+    "node-no-hit-stop": {
+      "host": "node",
+      "hitStop": false,
+      "checkpoints": [
+        {
+          "tick": 20,
+          "hash": "516d392cbf0f7265"
+        },
+        {
+          "tick": 23,
+          "hash": "6fb6cb9bbc412362"
+        },
+        {
+          "tick": 40,
+          "hash": "f3b9d1e2e33c8164"
+        },
+        {
+          "tick": 80,
+          "hash": "3178f9525fcff7a1"
+        },
+        {
+          "tick": 140,
+          "hash": "269572c736bef034"
+        }
+      ],
+      "tally": {
+        "done": 4,
+        "tags": 7,
+        "frozen": 0
+      },
+      "end": "269572c736bef034",
+      "replayed": "269572c736bef034"
+    }
+  },
+  "verdict": {
+    "nodeEqualsWeb": true,
+    "twoRunsEqual": true,
+    "replayEqualsEnd": true,
+    "hitStopChangesHash": true
+  },
+  "commit": "738a66a (after the preset fix b20b854, which changed the tick-23 hash: the presets now show their impact inside the hit stop)"
+}

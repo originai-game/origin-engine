@@ -28,6 +28,7 @@ og-render = { path = "../og-render" }
 og-anim = { path = "../og-anim" }
 # The cook validates UI skins with og-ui's parser (the runtime only reads their text).
 og-ui = { path = "../og-ui", optional = true }
+og-tilemap = { path = "../og-tilemap" }
 glam = { workspace = true }
 bytemuck = { workspace = true }
 miniz_oxide = "0.8"

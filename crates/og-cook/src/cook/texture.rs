@@ -169,6 +169,36 @@ pub fn cook(img: &Image, k: u32, opts: &TextureOptions, stamp: u64) -> Result<Ve
         return Err(CookError("image has no pixels".into()));
     }
     let alpha = has_alpha(img);
+    if k == kind::PIXEL {
+        // Pixel art: lossless RGBA8, sRGB, one level (the runtime samples
+        // it nearest; mips would blur sprite sheets across frames).
+        let ktx = ktx2::write_rgba8_zlib(
+            img.width,
+            img.height,
+            &img.rgba,
+            true,
+            false,
+            crate::format::COOKER_VERSION,
+        );
+        let meta = TextureMeta {
+            width: img.width,
+            height: img.height,
+            levels: 1,
+            kind: k,
+            codec: codec::RGBA8,
+            color_space: 0,
+            has_alpha: alpha as u32,
+            supercompression: 0,
+        };
+        let mut w = BlobWriter::new(
+            format::Texture::type_hash(),
+            format::Texture::schema_version(),
+            stamp,
+        );
+        w.table("meta", &[meta], row_hash::<TextureMeta>())
+            .raw("ktx2", ktx, 16);
+        return Ok(w.finish());
+    }
     let srgb = k == kind::COLOR;
     #[cfg(feature = "basis")]
     let ktx = if opts.force_toktx {

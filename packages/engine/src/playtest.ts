@@ -18,6 +18,8 @@ export interface PlaytestRun {
   readonly tick: number;
   /** The world hash at the end, hex. */
   readonly hash: string;
+  /** The end hash of every run (`PlaytestDesc.runs`), the first being `hash`: equal hashes are a replay that matched. */
+  readonly hashes: readonly string[];
   readonly entities: number;
   /** Whether a `quit` step ran. */
   readonly quit: boolean;
@@ -51,6 +53,8 @@ export interface PlaytestDesc {
   readonly seed?: number;
   /** The render target, `WIDTHxHEIGHT` (default 1280x720). */
   readonly size?: string;
+  /** Run the script this many times in fresh processes (default 1) and report every end hash in `run.hashes`: a determinism check. The files are the first run's. */
+  readonly runs?: number;
   readonly check: (run: PlaytestRun, t: PlaytestChecks) => void | Promise<void>;
 }
 

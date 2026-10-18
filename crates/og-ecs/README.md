@@ -7,7 +7,8 @@ fixed tick at a time, snapshotted and restored whole.
 
 | Item | Entry points |
 |---|---|
-| `World`, `WorldDesc { tick_rate: 60, seed: 0 }` | `World::new(&desc)` — `Time` and `Rng` are registered (as `og.Time`, `og.Rng`) and present as resources |
+| `World`, `WorldDesc { tick_rate: 60, seed: 0 }` | `World::new(&desc)` — `Time`, `Rng` and `TimeScale` are registered (as `og.Time`, `og.Rng`, `og.TimeScale`) and present as resources |
+| time scale | `time_scale()`, `scaled_dt()`, `set_time_scale(scale)` (0..=10), `hit_stop(ticks)` (never shortens one in progress) |
 | types | `register::<T>()`, `register_schema(Schema)` (host layouts by name), `id::<T>()`, `id_by_name`, `SchemaId::{index, from_index}`, `field::<T>("name")` → `FieldRef`, `schemas_json()` |
 | entities | `spawn(bundle)`, `spawn_bytes`, `despawn`, `insert`, `insert_bytes`, `remove`, `remove_id`, `get`, `get_bytes`, `has`, `is_alive`, `components_of`, `entities()` |
 | names | `set_name(e, name)`, `clear_name`, `name(e)`, `find(name)`, `names()`, `MAX_NAME` |
@@ -18,7 +19,7 @@ fixed tick at a time, snapshotted and restored whole.
 | schedule | `add_system(SystemDesc { name, reads, writes, queries }, fn(&mut SystemContext) -> Result<()>)`, `step()`, `systems()`, `system_info()` → `SystemInfo { name, reads, writes, queries, matched, query_matched, last_tick }` |
 | state | `add_state_block(name, Box<dyn StateBlock>)`, `snapshot() -> Vec<u8>`, `restore(&[u8])`, `restore_migrating(&[u8]) -> MigrationReport`, `world_hash() -> u64` |
 
-`SystemContext`: `time()`, `query(i)`, `resource`, `resource_mut`, `events`,
+`SystemContext`: `time()`, `time_scale()`, `scaled_dt()`, `set_time_scale`, `hit_stop`, `query(i)`, `resource`, `resource_mut`, `events`,
 `send`, `get`, `set`, `spawn`, `insert`, `remove`, `despawn`, `is_alive`,
 `name_of`, `find`, and the packed-byte forms by `SchemaId` with the same
 declared-access checks: `spawn_bytes`, `insert_bytes`, `remove_id`,
@@ -67,6 +68,15 @@ world.add_system(
   system did not declare, unknown names, duplicate system names and writes to
   `Time`. At run time every column, resource, event and command is checked
   against the declaration; `Time` is readable by every system.
+- **Time scale**: `og.TimeScale` (`scale`, `hitStop`, `elapsed`) is how
+  much simulation time the modules that honour it advance per tick
+  (`scaled_dt()`: 0 while `hitStop` > 0, else `dt × scale`); the tick itself
+  never changes, so every system still runs every tick. Every system may
+  read it and call `set_time_scale`/`hit_stop` without declaring it; a
+  declared write is refused. After the last system of a tick the world adds
+  the tick's scaled dt to `elapsed` and counts `hitStop` down, so a hit stop
+  of n started in tick N freezes ticks N..N+n-1. A restored snapshot
+  without it reads as the default (scale 1).
 - **Ticks**: `step()` delivers pending events, runs systems in registration
   order, applies each system's commands when it returns (a system never sees
   its own structural changes; the next system sees them all), then advances

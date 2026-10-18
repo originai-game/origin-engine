@@ -44,7 +44,13 @@ pub fn engine_schemas() -> Vec<og_core::Schema> {
             let fields = r
                 .fields
                 .iter()
-                .map(|f| ty(f.column).map(|t| FieldSchema::new(f.name.to_string(), t)))
+                .map(|f| {
+                    ty(f.column).map(|t| {
+                        let mut fs = FieldSchema::new(f.name.to_string(), t);
+                        fs.default = default_lanes(f, t.lanes());
+                        fs
+                    })
+                })
                 .collect::<Option<Vec<_>>>()?;
             Some(og_core::Schema {
                 name: r.name.to_string(),
@@ -54,6 +60,30 @@ pub fn engine_schemas() -> Vec<og_core::Schema> {
             })
         })
         .collect()
+}
+
+/// A field's IDL default (JSON) as the lanes the cook packs, so a scene
+/// row that omits a field gets the component's default, not zero.
+fn default_lanes(f: &og_api::host::FieldDecl, lanes: usize) -> Option<Vec<f64>> {
+    use serde_json::Value;
+    let v: Value = serde_json::from_str(f.default).ok()?;
+    let out: Vec<f64> = match &v {
+        Value::Number(n) => vec![n.as_f64()?],
+        Value::Bool(b) => vec![f64::from(u8::from(*b))],
+        Value::String(s) => vec![f.variants.iter().position(|x| x == s)? as f64],
+        Value::Object(m) if m.contains_key("elements") => m["elements"]
+            .as_array()?
+            .iter()
+            .map(Value::as_f64)
+            .collect::<Option<_>>()?,
+        Value::Object(m) => ["x", "y", "z", "w", "r", "g", "b"]
+            .iter()
+            .filter_map(|k| m.get(*k))
+            .map(Value::as_f64)
+            .collect::<Option<_>>()?,
+        _ => return None,
+    };
+    (out.len() == lanes).then_some(out)
 }
 
 /// Cooks a project; `Err` names the failing assets.

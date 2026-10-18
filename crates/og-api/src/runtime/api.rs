@@ -440,8 +440,13 @@ pub fn og_world_set(world: u32, entity_id: f64, comp: String, value: String) -> 
     })())
 }
 
-fn time_json(t: Time, rate: u32) -> Value {
-    json!({ "tick": t.tick, "dt": f64::from(t.dt), "elapsed": t.elapsed, "rate": rate })
+fn time_json(t: Time, scale: og_core::TimeScale, rate: u32) -> Value {
+    let mut v =
+        json!({ "tick": t.tick, "dt": f64::from(t.dt), "elapsed": t.elapsed, "rate": rate });
+    if let (Value::Object(o), Value::Object(s)) = (&mut v, super::feel::time_scale_json(scale, t)) {
+        o.extend(s);
+    }
+    v
 }
 
 fn rng_json(r: &Rng) -> Value {
@@ -458,7 +463,7 @@ pub(crate) fn resource_value(eng: &Engine, name: &str) -> Result<Value, String> 
         let s = &st.systems[f.system];
         let declared = s.reads.iter().chain(&s.writes).any(|r| r == name);
         if name == Time::NAME {
-            return Ok(time_json(ctx.time(), rate));
+            return Ok(time_json(ctx.time(), ctx.time_scale(), rate));
         }
         if !declared {
             return Err(format!(
@@ -482,7 +487,7 @@ pub(crate) fn resource_value(eng: &Engine, name: &str) -> Result<Value, String> 
     }
     let w = eng.world()?;
     if name == Time::NAME {
-        return Ok(time_json(w.time(), rate));
+        return Ok(time_json(w.time(), w.time_scale(), rate));
     }
     if name == Rng::NAME {
         return w.resource::<Rng>().map(|r| rng_json(&r)).map_err(err);
@@ -1422,6 +1427,14 @@ pub fn og_render_text(world: u32, desc: Option<String>) -> String {
         let layer = d["layer"].as_i64().unwrap_or(0) as i32;
         let screen = d["screen"].as_bool().unwrap_or(false);
         let clip = clip_of(&d["clip"]);
+        let outline = num(&d, "outline", 0.0).clamp(0.0, 1.0);
+        let oc = &d["outlineColor"];
+        let outline_color = [
+            num(oc, "r", 0.0),
+            num(oc, "g", 0.0),
+            num(oc, "b", 0.0),
+            color[3],
+        ];
         let shift = match d["align"].as_str() {
             Some("center") => 0.5,
             Some("end") => 1.0,
@@ -1438,6 +1451,8 @@ pub fn og_render_text(world: u32, desc: Option<String>) -> String {
                 layer,
                 screen,
                 clip,
+                outline,
+                outline_color,
             });
             return Ok(());
         }
@@ -1465,6 +1480,8 @@ pub fn og_render_text(world: u32, desc: Option<String>) -> String {
                 layer,
                 screen,
                 clip,
+                outline,
+                outline_color,
             });
         }
         Ok(())
@@ -1645,15 +1662,51 @@ pub fn og_render_sprite(world: u32, desc: Option<String>) -> String {
             layer: d["layer"].as_i64().unwrap_or(0) as i32,
             clip: None,
         };
-        rs.fx.sprites.push(super::fx::QueuedSprite {
-            sprite,
-            flash,
-            glow: num(&d, "glow", 0.0).max(0.0),
-            additive: d["blend"].as_str() == Some("additive"),
-            cast_shadow: d["castShadow"].as_bool().unwrap_or(false),
-            screen: d["screen"].as_bool().unwrap_or(false),
-            clip: clip_of(&d["clip"]),
-        });
+        // Flips swap the region's edges; a nine-slice becomes its pieces.
+        let mut sprite = sprite;
+        if d["flipX"].as_bool().unwrap_or(false) {
+            sprite.uv_rect.swap(0, 2);
+        }
+        if d["flipY"].as_bool().unwrap_or(false) {
+            sprite.uv_rect.swap(1, 3);
+        }
+        let screen = d["screen"].as_bool().unwrap_or(false);
+        let order = if d["sortY"].as_bool().unwrap_or(false) {
+            if screen {
+                sprite.position.y
+            } else {
+                -sprite.position.y
+            }
+        } else {
+            0.0
+        };
+        let pieces = match (
+            d["slice"].as_array(),
+            texture.and_then(|t| rs.scene.texture_size(t)),
+        ) {
+            (Some(a), Some(size)) if a.len() == 4 => {
+                let n = |i: usize| a[i].as_f64().unwrap_or(0.0) as f32;
+                og_render::nine_slice(
+                    &sprite,
+                    [n(0), n(1), n(2), n(3)],
+                    size,
+                    num(&d, "sliceScale", 0.0625),
+                )
+            }
+            _ => vec![sprite],
+        };
+        for (i, sprite) in pieces.into_iter().enumerate() {
+            rs.fx.sprites.push(super::fx::QueuedSprite {
+                sprite,
+                flash,
+                glow: num(&d, "glow", 0.0).max(0.0),
+                additive: d["blend"].as_str() == Some("additive"),
+                cast_shadow: i == 0 && d["castShadow"].as_bool().unwrap_or(false),
+                screen,
+                clip: clip_of(&d["clip"]),
+                order,
+            });
+        }
         Ok(())
     })())
 }

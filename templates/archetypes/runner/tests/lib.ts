@@ -26,7 +26,7 @@ export function runOf(run: PlaytestRun, file: string): RunDump {
   return r as unknown as RunDump;
 }
 
-/** The runner's position from a dump_entity file. */
+/** The runner's position (its feet; the hit box is centred 0.8125 m above) from a dump_entity file. */
 export function positionOf(run: PlaytestRun, file: string): { x: number; y: number } {
   const dump = run.json<EntityDump>(file);
   const t = (dump.components["og.Transform"] ?? dump.components["Transform"]) as { position: [number, number, number] } | undefined;

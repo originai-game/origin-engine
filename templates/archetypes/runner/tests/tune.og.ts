@@ -28,7 +28,7 @@ export default playtest({
     t.equal(fast.phase, RUNNING, "running");
     t.near(fast.speed, 10, 1e-4, "the round starts at the tuned speed");
     t.near(fast.distance, 10, 0.4, `about 10 m in the first second (${fast.distance.toFixed(2)})`);
-    const apex = positionOf(run, "apex.json").y - 0.8125;
+    const apex = positionOf(run, "apex.json").y;
     t.near(apex, 4, 0.15, `the jump peaks near 4 m at half gravity (${apex.toFixed(2)} m)`);
   },
 });

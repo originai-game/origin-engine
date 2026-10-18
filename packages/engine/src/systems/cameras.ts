@@ -4,6 +4,10 @@
 // them and nothing moves the camera unless the game asked. Each drives
 // og.Camera from the first entity in query order that carries its component.
 //
+// The engine's og.camera system (Rust, after the game's systems) adds what
+// needs more than one query: og.CameraRail, og.CameraZone (on the frame), and
+// the decay of shake, punch and kick.
+//
 // og.Camera is world state (snapshots, the world hash), so every number here
 // comes from + - * / and sqrt, which JavaScript engines round identically:
 // angles go through `sincos` below, never Math.sin, and rotations through
@@ -187,10 +191,10 @@ export const followCamera = defineSystem(
   },
 );
 
-/** og.follow2D: a dead-zone follower in the xy plane. */
+/** og.follow2D: a dead-zone follower in the xy plane, with look-ahead and per-axis smoothing. */
 export const follow2D = defineSystem(
   "og.follow2D",
-  { reads: [Transform, Follow2D], writes: [Camera] },
+  { reads: [Transform], writes: [Follow2D, Camera] },
   (q: QueryLike, time: { dt: number }, world: WorldImpl) => {
     for (const a of q.archetypes()) {
       if (a.count === 0) continue;
@@ -203,9 +207,32 @@ export const follow2D = defineSystem(
         const d = target - cur;
         return d > dead ? target - dead : d < -dead ? target + dead : cur;
       };
-      const k = ease(time.dt, f.smoothTime[0]!);
-      let x = c.x + (goal(c.x, p[0]! + f.offset[0]!, f.deadZone[0]!) - c.x) * k;
-      let y = c.y + (goal(c.y, p[1]! + f.offset[1]!, f.deadZone[1]!) - c.y) * k;
+      // Look-ahead: lead by the entity's velocity times lookAhead, eased.
+      const last = f.last;
+      const lead = f.lead;
+      const px = p[0]!;
+      const py = p[1]!;
+      const la = f.lookAhead[0]!;
+      if (la > 0 && time.dt > 0) {
+        const fresh = last[0] === 0 && last[1] === 0;
+        const vx = fresh ? 0 : (px - last[0]!) / time.dt;
+        const vy = fresh ? 0 : (py - last[1]!) / time.dt;
+        const max = f.lookAheadMax;
+        const k = ease(time.dt, f.lookAheadSmoothing[0]!);
+        lead[0] = lead[0]! + (clamp(vx * la, -max[0]!, max[0]!) - lead[0]!) * k;
+        lead[1] = lead[1]! + (clamp(vy * la, -max[1]!, max[1]!) - lead[1]!) * k;
+      } else {
+        lead[0] = 0;
+        lead[1] = 0;
+      }
+      last[0] = px;
+      last[1] = py;
+      const st = f.smoothTime[0]!;
+      const sy = f.smoothTimeY[0]!;
+      const kx = ease(time.dt, st);
+      const ky = ease(time.dt, sy >= 0 ? sy : st);
+      let x = c.x + (goal(c.x, px + f.offset[0]! + lead[0]!, f.deadZone[0]!) - c.x) * kx;
+      let y = c.y + (goal(c.y, py + f.offset[1]! + lead[1]!, f.deadZone[1]!) - c.y) * ky;
       if (f.clamp[0]) {
         x = clamp(x, f.boundsMin[0]!, Math.max(f.boundsMin[0]!, f.boundsMax[0]!));
         y = clamp(y, f.boundsMin[1]!, Math.max(f.boundsMin[1]!, f.boundsMax[1]!));

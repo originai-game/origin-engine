@@ -82,6 +82,20 @@ if (r.exitCode !== 0 || !summary) {
   finish();
 }
 result = { ...result, tick: summary!.tick, hash: summary!.hash, tier: summary!.tier, warnings: summary!.warnings };
+// More runs of the same script (desc.runs), each in a fresh process into its
+// own directory: only their end hashes are kept.
+const hashes = [summary!.hash];
+for (let i = 1; i < Math.max(1, Math.floor(desc!.runs ?? 1)); i++) {
+  const again = cmd.map((a, k) => (cmd[k - 1] === "--out" ? join(out, `.run-${i + 1}`) : a));
+  const r2 = Bun.spawnSync(again, { stdout: "pipe", stderr: "pipe" });
+  const s2 = new TextDecoder().decode(r2.stdout).trim().split("\n").pop() ?? "";
+  try {
+    hashes.push((JSON.parse(s2) as { hash: string }).hash);
+  } catch {
+    failures.push(`run ${i + 1} of ${desc!.runs} failed (exit ${r2.exitCode}): ${new TextDecoder().decode(r2.stderr).trim()}`);
+  }
+}
+result = { ...result, hashes };
 
 const path = (f: string) => {
   const p = resolve(out, f);
@@ -91,6 +105,7 @@ const path = (f: string) => {
 const run: PlaytestRun = {
   tick: summary!.tick,
   hash: summary!.hash,
+  hashes,
   entities: summary!.entities,
   quit: summary!.quit,
   tier: summary!.tier,

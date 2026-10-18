@@ -70,6 +70,9 @@ pub(crate) struct QueuedText {
     /// In the overlay (CSS pixels, y down), cut to this clip.
     pub screen: bool,
     pub clip: Option<[f32; 4]>,
+    /// World text: an outline (width as a fraction of the distance range) and its colour.
+    pub outline: f32,
+    pub outline_color: [f32; 4],
 }
 
 /// One model's parts: per part the mesh, the material and the node's
@@ -112,6 +115,8 @@ pub(crate) struct RenderState {
     pub ui_pages: BTreeMap<FontHandle, Vec<FontHandle>>,
     /// Warnings of the last extraction, for the engine's log.
     pub notes: Vec<String>,
+    /// The feel modules' drawing state (`super::feel`).
+    pub feel: super::feel::FeelRender,
 }
 
 impl RenderState {
@@ -136,6 +141,7 @@ impl RenderState {
             ui_atlas: None,
             ui_pages: BTreeMap::new(),
             notes: Vec::new(),
+            feel: Default::default(),
         }
     }
 }
@@ -307,6 +313,11 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     scene.overlay = None;
     scene.joint_palettes.clear();
     scene.skinned_instances.clear();
+    scene.sprite_order.clear();
+    scene.sprite_fx.clear();
+    scene.text_outlines.clear();
+    scene.tile_layers.clear();
+    scene.trail_layers.clear();
     let time = world.time();
     scene.tick = time.tick;
     scene.tick_rate = if time.dt > 0.0 { 1.0 / time.dt } else { 60.0 };
@@ -401,6 +412,19 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         .map(|m| rows(world, m))
         .unwrap_or_default();
     let (geometries, materials) = (geometries.clone(), materials.clone());
+    // Flashing meshes draw through a flash copy of their material.
+    let mut flashed: BTreeMap<u64, MaterialHandle> = BTreeMap::new();
+    for (e, v) in &mesh_rows {
+        let amount = v["flash"].as_f64().unwrap_or(0.0) as f32;
+        if amount > 0.0 {
+            let mi = (v["material"].as_f64().unwrap_or(0.0) as u64 & 0xffff_ffff) as usize;
+            if let Some(m) =
+                super::feel::flash_material(rs, mi, amount, color(&v["flashColor"], 1.0))
+            {
+                flashed.insert(*e, m);
+            }
+        }
+    }
     for (e, asset, parts) in model_parts {
         let m = h.world_of(e);
         if posed.contains(&e) && super::fx::posed_model(rs, e, asset, m, &parts, &mut keys) {
@@ -426,7 +450,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 continue;
             };
             let w = h.world_of(e);
-            scene.add_instance(g, m, w);
+            scene.add_instance(g, flashed.get(&e).copied().unwrap_or(m), w);
             keys.push((e, 0));
         }
     }
@@ -493,6 +517,15 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     super::fx::settings(world, rs);
     super::fx::components(world, rs, &mut h, tick);
     let vp = super::fx::viewport(rs);
+    // The camera's shake, punch, kick and zones (on the frame only), then
+    // og.Sprite rows, floating texts and tile layers.
+    let aspect = match rs.backend.as_ref().map(|b| b.size()) {
+        Some((w, ht)) if ht > 0 => w as f32 / ht as f32,
+        _ if vp.1 > 0.0 => vp.0 / vp.1,
+        _ => 16.0 / 9.0,
+    };
+    super::feel::camera_frame(world, rs, &mut h, aspect);
+    super::feel::extract(world, rs, &mut h);
 
     // Text, page by page; screen text into the overlay.
     let queued_texts: &[QueuedText] = if fresh { &rs.texts } else { &[] };
@@ -519,6 +552,13 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 let clip = t.clip.map(|c| o.add_clip(c));
                 o.texts.push(og_render::Text { clip, ..text });
             } else {
+                if t.outline > 0.0 {
+                    scene.text_outlines.push(og_render::TextOutline {
+                        text: scene.texts.len() as u32,
+                        width: t.outline,
+                        color: t.outline_color,
+                    });
+                }
                 scene.texts.push(text);
             }
         }

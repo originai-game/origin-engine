@@ -27,7 +27,10 @@ the world → scene extraction belongs to the layer above.
 | `DirectionalLight` | `direction_to_light`, `color`, `intensity`, `cast_shadows`, `shadow_bounds` (`Auto`: the instances' bounds; `Sphere`), `max_shadow_distance` (default 200 m; shadows fade over its last tenth). Three cascades. |
 | `Light`, `LightKind` | Point and spot lights (`Point`; `Spot { direction, angle_degrees, penumbra }`) with `position`, `color`, `intensity` (radiance at 1 m), `range`, `cast_shadows`. `MAX_LIGHTS` = 8 per frame (the rest are counted in `FrameStats::lights_dropped`); the first `MAX_SHADOWED_LIGHTS` = 2 with `cast_shadows` get shadows. |
 | `PostEffects`, `Bloom`, `Tonemap` | `bloom: Option<Bloom { threshold, knee, intensity }>` (threshold in exposed units: 1.0 is display white), `tonemap: Aces` (default) or `None` (clamp: authored 2D colours come out exact). |
-| `Sprite` | A textured quad in the world xy plane facing +z: `texture` (`None` = solid), `position`, `size`, `anchor`, `rotation`, `color` (linear RGBA), `uv_rect` (v down), `layer`, `clip` (an index into the overlay's clip rectangles; ignored in the world). Sorted by (layer, texture); within a layer and texture, submission order. |
+| `Sprite` | A textured quad in the world xy plane facing +z: `texture` (`None` = solid), `position`, `size`, `anchor`, `rotation`, `color` (linear RGBA), `uv_rect` (v down; a flipped region swaps u0/u1 or v0/v1), `layer`, `clip` (an index into the overlay's clip rectangles; ignored in the world). Sorted by (layer, sort key, texture); within those, submission order. |
+| `SpriteOrder`, `TextOutline`, `TextureFilter` | Per-frame side lists by index, so `Sprite` and `Text` keep their fields: `sprite_order` gives a sprite a sort key within its layer (top-down y sorting: `-y` of the feet; default 0), `text_outlines` an outline (width as a fraction of half the font's distance range, linear colour) to a world text; `set_texture_filter(texture, Nearest)` samples a texture by its nearest texel wherever sprites, tiles and particles draw it (pixel art). |
+| `TileLayer`, `TileChunk`, `TileQuad`, `TileAnimation` | `tile_layers`: chunked tile quads (shared `Arc<Vec<TileChunk>>`, so an unchanged layer copies no tiles) drawn through the sprite batch before the sprites of their layer, chunks culled to an orthographic view, with `repeat` per axis (scrolling backgrounds) and animated quads cycling uvs by `time`. `FrameStats::tiles` / `tile_chunks` count what was drawn. |
+| `nine_slice(sprite, insets, texture_size, world_per_pixel)` | The nine sprites of a nine-slice panel: corners keep their size, edges stretch along one axis, the centre along both; insets clamp to half the sprite. |
 | `MsdfFont`, `Glyph`, `Text` | An MSDF atlas (`TextureHandle`, linear, no mips) plus `distance_range`, `line_height` and the glyph table (`advance`, `plane_bounds` in em y up, `atlas_bounds` in pixels y down: msdf-atlas-gen's layout). `Text { font, text, position, size, rotation, color, layer, clip }` lays out left to right with `\n`; missing characters are counted in `FrameStats::missing_glyphs`. Text sorts with the sprites. |
 | `Overlay` | The screen-space layer drawn last (`RenderScene::overlay: Option<Overlay>`): `sprites` and `texts` in CSS pixels, origin top left, y down; `width`, `height` (the CSS viewport) and `scale` (device pixels per CSS pixel; 0 fits the height); `clips` (`add_clip([x, y, w, h])` → the index a sprite or text names in `clip`). See [The overlay](#the-overlay). |
 | `DebugView` | `None`, `Cascades` (red/green/blue per cascade, black beyond). |
@@ -275,6 +278,29 @@ sprites moved and resubmitted every frame, takes 1.0–1.3 ms (the M3 budget
 is 2 ms). Per-feature costs are in `tests/evidence/M3/feature-costs.md`
 (`og-gfx --costs`); perf baselines are in `crates/og-tests/perf/` per tier
 and adapter, compared with 15 % tolerance.
+
+## The 2D batch (E4)
+
+Everything world-space 2D goes through one sorted list per frame: sprites,
+2D particles and glyphs keyed by (layer, sort key, source), then tile
+layers and layered trails (`trail_layers: (Trail::id, layer)`) placed
+before the sprites of their layer (tiles first), adjacent runs of one
+source merged into one instanced draw. A layered trail is drawn with the
+ribbon pipeline inside the sprite order (unlayered trails, ribbons and
+beams still draw with the 3D scene), so a 2D sprite's trail shows over a
+tile background. Glyph instances carry an outline in their otherwise
+unused flash colour and glow strength; `fs_msdf` grows the shape by the
+width and mixes the fill over the outline (width 0 is the old shader's
+output exactly). With every new list empty the frame is the pre-E4 frame:
+every gfx and effects reference passes unchanged.
+
+Tests: `tests/sprites2d.rs` (sort keys across textures within a layer,
+layers still win; tile culling, tiles under their layer's sprites, repeat
+filling the view's edge, an animated quad on its second frame; nearest
+against linear sampling; nine-slice borders at their texel size; an
+outline only when asked, the fill kept; a trail hidden under a layer-0
+sprite without a layer and shown over it on layer 1), each broken once
+(`tests/evidence/E4/break-and-restore.md`).
 
 ## E1 effects
 

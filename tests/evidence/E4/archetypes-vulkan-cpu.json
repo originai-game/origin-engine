@@ -1,0 +1,153 @@
+{
+ "machine": "x86_64\n2\nDebian GNU/Linux 12 (bookworm)",
+ "runner": {
+  "install": "2 packages installed [619.00ms]",
+  "againstMetal": {
+   "exitCode": 0,
+   "out": [
+    "PASS coins (7 checks, 15666 ms): a coin in reach is collected and scores; one out of reach is not",
+    "PASS flow (26 checks, 22269 ms): title, run, crash on a crate, game over, run again",
+    "  note: no vulkan-cpu references; comparing with metal",
+    "  title.png: 0.001 % outliers, RMSE 0.00255 against /tmp/og/runner/references/metal/frames-title.png",
+    "  coin.png: 0.001 % outliers, RMSE 0.00254 against /tmp/og/runner/references/metal/frames-coin.png",
+    "  crash.png: 0.001 % outliers, RMSE 0.00291 against /tmp/og/runner/references/metal/frames-crash.png",
+    "PASS frames (7 checks, 13524 ms): reference frames: title, a coin's pickup, the crash",
+    "PASS jump (6 checks, 35990 ms): a full jump clears a crate and a fence; a hop clears a crate, not a fence",
+    "PASS replay (6 checks, 74117 ms): replay: two runs of jumps, coins and a crash end on one hash",
+    "PASS tune (7 checks, 10921 ms): set writes Tuning: start speed and gravity change the run",
+    "og test: 6 suite(s) passed"
+   ]
+  },
+  "record": {
+   "exitCode": 0,
+   "out": [
+    "PASS coins (7 checks, 12361 ms): a coin in reach is collected and scores; one out of reach is not",
+    "PASS flow (26 checks, 21337 ms): title, run, crash on a crate, game over, run again",
+    "PASS frames (7 checks, 12550 ms): reference frames: title, a coin's pickup, the crash",
+    "PASS jump (6 checks, 35348 ms): a full jump clears a crate and a fence; a hop clears a crate, not a fence",
+    "PASS replay (6 checks, 73672 ms): replay: two runs of jumps, coins and a crash end on one hash",
+    "PASS tune (7 checks, 11378 ms): set writes Tuning: start speed and gravity change the run",
+    "og test: 6 suite(s) passed"
+   ]
+  },
+  "verify": {
+   "exitCode": 0,
+   "out": [
+    "PASS coins (7 checks, 12779 ms): a coin in reach is collected and scores; one out of reach is not",
+    "PASS flow (26 checks, 22342 ms): title, run, crash on a crate, game over, run again",
+    "  title.png: 0.000 % outliers, RMSE 0.00000 against /tmp/og/runner/references/vulkan-cpu/frames-title.png",
+    "  coin.png: 0.000 % outliers, RMSE 0.00000 against /tmp/og/runner/references/vulkan-cpu/frames-coin.png",
+    "  crash.png: 0.000 % outliers, RMSE 0.00000 against /tmp/og/runner/references/vulkan-cpu/frames-crash.png",
+    "PASS frames (7 checks, 13694 ms): reference frames: title, a coin's pickup, the crash",
+    "PASS jump (6 checks, 35662 ms): a full jump clears a crate and a fence; a hop clears a crate, not a fence",
+    "PASS replay (6 checks, 75753 ms): replay: two runs of jumps, coins and a crash end on one hash",
+    "PASS tune (7 checks, 10487 ms): set writes Tuning: start speed and gravity change the run",
+    "og test: 6 suite(s) passed"
+   ]
+  },
+  "frames": [
+   "frames-coin.png",
+   "frames-crash.png",
+   "frames-title.png"
+  ]
+ },
+ "match3": {
+  "install": "2 packages installed [170.00ms]",
+  "againstMetal": {
+   "exitCode": 0,
+   "out": [
+    "PASS drag (8 checks, 12508 ms): a drag onto a neighbour swaps like two taps",
+    "PASS endings (9 checks, 20371 ms): reaching the target wins, running out of moves loses, a press deals again",
+    "  note: no vulkan-cpu references; comparing with metal",
+    "  dealt.png: 0.000 % outliers, RMSE 0.00093 against /tmp/og/match3/references/metal/dealt.png",
+    "  clearing.png: 0.000 % outliers, RMSE 0.00095 against /tmp/og/match3/references/metal/clearing.png",
+    "  cascade.png: 0.000 % outliers, RMSE 0.00099 against /tmp/og/match3/references/metal/cascade.png",
+    "PASS frames (12 checks, 8602 ms): the dealt board, a clear and a cascade match their reference frames",
+    "PASS replay (5 checks, 20175 ms): a replay of swaps, clears and a cascade lands on the same world hash",
+    "PASS swap (23 checks, 15063 ms): a swap that makes a line clears, scores and cascades; one that makes nothing is free",
+    "og test: 5 suite(s) passed"
+   ]
+  },
+  "record": {
+   "exitCode": 0,
+   "out": [
+    "PASS drag (8 checks, 11779 ms): a drag onto a neighbour swaps like two taps",
+    "PASS endings (9 checks, 21398 ms): reaching the target wins, running out of moves loses, a press deals again",
+    "PASS frames (12 checks, 8777 ms): the dealt board, a clear and a cascade match their reference frames",
+    "PASS replay (5 checks, 21583 ms): a replay of swaps, clears and a cascade lands on the same world hash",
+    "PASS swap (23 checks, 15575 ms): a swap that makes a line clears, scores and cascades; one that makes nothing is free",
+    "og test: 5 suite(s) passed"
+   ]
+  },
+  "verify": {
+   "exitCode": 0,
+   "out": [
+    "PASS drag (8 checks, 11932 ms): a drag onto a neighbour swaps like two taps",
+    "PASS endings (9 checks, 21912 ms): reaching the target wins, running out of moves loses, a press deals again",
+    "  dealt.png: 0.000 % outliers, RMSE 0.00000 against /tmp/og/match3/references/vulkan-cpu/dealt.png",
+    "  clearing.png: 0.000 % outliers, RMSE 0.00000 against /tmp/og/match3/references/vulkan-cpu/clearing.png",
+    "  cascade.png: 0.000 % outliers, RMSE 0.00000 against /tmp/og/match3/references/vulkan-cpu/cascade.png",
+    "PASS frames (12 checks, 9263 ms): the dealt board, a clear and a cascade match their reference frames",
+    "PASS replay (5 checks, 21210 ms): a replay of swaps, clears and a cascade lands on the same world hash",
+    "PASS swap (23 checks, 15583 ms): a swap that makes a line clears, scores and cascades; one that makes nothing is free",
+    "og test: 5 suite(s) passed"
+   ]
+  },
+  "frames": [
+   "cascade.png",
+   "clearing.png",
+   "dealt.png"
+  ]
+ },
+ "topdown": {
+  "install": "2 packages installed [162.00ms]",
+  "againstMetal": {
+   "exitCode": 0,
+   "out": [
+    "PASS combat (19 checks, 5414 ms): a bite hurts the hero; three sword hits kill the slime with hit stop, flash and a crit",
+    "PASS door (11 checks, 5704 ms): the doorway blocks until the key, then opens and leads into room 2",
+    "  note: no vulkan-cpu references; comparing with metal",
+    "  start.png: 0.008 % outliers, RMSE 0.00309 against /tmp/og/topdown/references/metal/start.png",
+    "  crit.png: 0.001 % outliers, RMSE 0.00102 against /tmp/og/topdown/references/metal/crit.png",
+    "  dash.png: 0.003 % outliers, RMSE 0.00236 against /tmp/og/topdown/references/metal/dash.png",
+    "  east.png: 0.005 % outliers, RMSE 0.00225 against /tmp/og/topdown/references/metal/east.png",
+    "PASS frames (11 checks, 6261 ms): the rooms, a crit's freeze frame and a dash match their reference frames",
+    "PASS replay (5 checks, 23060 ms): a whole visit replays to the same hash",
+    "PASS walk (13 checks, 8869 ms): the hero walks at its speed, steps on the walk frames and stops at walls",
+    "og test: 5 suite(s) passed"
+   ]
+  },
+  "record": {
+   "exitCode": 0,
+   "out": [
+    "PASS combat (19 checks, 5235 ms): a bite hurts the hero; three sword hits kill the slime with hit stop, flash and a crit",
+    "PASS door (11 checks, 5575 ms): the doorway blocks until the key, then opens and leads into room 2",
+    "PASS frames (11 checks, 6468 ms): the rooms, a crit's freeze frame and a dash match their reference frames",
+    "PASS replay (5 checks, 23417 ms): a whole visit replays to the same hash",
+    "PASS walk (13 checks, 8599 ms): the hero walks at its speed, steps on the walk frames and stops at walls",
+    "og test: 5 suite(s) passed"
+   ]
+  },
+  "verify": {
+   "exitCode": 0,
+   "out": [
+    "PASS combat (19 checks, 5408 ms): a bite hurts the hero; three sword hits kill the slime with hit stop, flash and a crit",
+    "PASS door (11 checks, 6062 ms): the doorway blocks until the key, then opens and leads into room 2",
+    "  start.png: 0.000 % outliers, RMSE 0.00000 against /tmp/og/topdown/references/vulkan-cpu/start.png",
+    "  crit.png: 0.000 % outliers, RMSE 0.00000 against /tmp/og/topdown/references/vulkan-cpu/crit.png",
+    "  dash.png: 0.000 % outliers, RMSE 0.00000 against /tmp/og/topdown/references/vulkan-cpu/dash.png",
+    "  east.png: 0.000 % outliers, RMSE 0.00000 against /tmp/og/topdown/references/vulkan-cpu/east.png",
+    "PASS frames (11 checks, 5666 ms): the rooms, a crit's freeze frame and a dash match their reference frames",
+    "PASS replay (5 checks, 20336 ms): a whole visit replays to the same hash",
+    "PASS walk (13 checks, 8384 ms): the hero walks at its speed, steps on the walk frames and stops at walls",
+    "og test: 5 suite(s) passed"
+   ]
+  },
+  "frames": [
+   "crit.png",
+   "dash.png",
+   "east.png",
+   "start.png"
+  ]
+ }
+}

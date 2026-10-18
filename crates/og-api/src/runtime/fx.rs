@@ -61,6 +61,8 @@ pub(crate) struct QueuedSprite {
     /// Drawn in the overlay (CSS pixels, y down) with this clip.
     pub screen: bool,
     pub clip: Option<[f32; 4]>,
+    /// The sort key within its layer (`sortY`: -y); 0 keeps submission order.
+    pub order: f32,
 }
 
 /// One loaded model's primitives, for skinning: the scene mesh of its first
@@ -437,6 +439,11 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
                 h
             }
         };
+        if on(&v, "layered", false) {
+            scene
+                .trail_layers
+                .push((e, v["layer"].as_i64().unwrap_or(0) as i32));
+        }
         scene.trails.push(Trail {
             id: e,
             style: handle,
@@ -493,8 +500,8 @@ fn style_key(s: &TrailStyle) -> Vec<u32> {
 /// Queued sprites and ribbons into the scene (world sprites with their
 /// effects, screen sprites into the overlay).
 pub(crate) fn queued(rs: &mut RenderState, fresh: bool, viewport: (f32, f32)) {
+    // (sprite_fx is cleared with the frame's lists in extract: og.Sprite rows add to it first.)
     let RenderState { scene, fx, .. } = rs;
-    scene.sprite_fx.clear();
     if !fresh {
         return;
     }
@@ -510,6 +517,12 @@ pub(crate) fn queued(rs: &mut RenderState, fresh: bool, viewport: (f32, f32)) {
         }
         let index = scene.sprites.len() as u32;
         scene.sprites.push(q.sprite);
+        if q.order != 0.0 {
+            scene.sprite_order.push(og_render::SpriteOrder {
+                sprite: index,
+                key: q.order,
+            });
+        }
         if q.cast_shadow {
             scene
                 .occluders_2d

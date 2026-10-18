@@ -31,7 +31,8 @@ fn idl_schema(decl: &RecordDecl) -> Schema {
                         "Quaternion" => FieldType::Quat,
                         "Matrix4" => FieldType::Mat4,
                         "Entity" | "Geometry" | "Material" | "Asset" | "Sound"
-                        | "SkeletonAsset" | "ClipAsset" | "GraphAsset" => FieldType::U64,
+                        | "SkeletonAsset" | "ClipAsset" | "GraphAsset" | "FlipbookSheet"
+                        | "Tween" | "TilemapAsset" => FieldType::U64,
                         // Event text: og-anim's marker names are str64.
                         "String" => FieldType::Str64,
                         other => panic!(
@@ -97,6 +98,9 @@ fn physics_audio_animation_and_input_records_have_the_idl_layouts() {
     check::<og_anim::Blendshapes>(&mut failures);
     check::<og_anim::IkChain>(&mut failures);
     check::<og_anim::AnimationEvent>(&mut failures);
+    check::<og_anim::Flipbook>(&mut failures);
+    check::<og_anim::FlipbookEvent>(&mut failures);
+    check::<og_tween::TweenCompleted>(&mut failures);
     check::<og_input::Pointers>(&mut failures);
     check::<og_input::Gamepad>(&mut failures);
     check::<og_input::PointerDown>(&mut failures);

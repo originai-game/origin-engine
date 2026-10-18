@@ -2,7 +2,7 @@
 
 # The Origin Engine API
 
-`@origingame/engine`, API version 1: 19 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
+`@origingame/engine`, API version 1: 21 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
 
 The Origin Engine API. Game code declares components and systems, and reads the world through typed views over engine memory.
 
@@ -18,14 +18,16 @@ Every failure is a returned Result; desc objects may omit any field; nothing rea
 | [`system`](system.md) | named exports | kept | Systems: functions the engine calls once per tick with their matched archetypes. |
 | [`game`](game.md) | `og.*` | kept | The game entry: what the bundle's default export declares. |
 | [`transform`](transform.md) | `og.transform.*` | kept | Transforms in the three.js vocabulary: position, quaternion and scale, composed into matrixWorld down the parent chain. |
-| [`time`](time.md) | types and tokens | kept | Simulation time. Game code never reads the wall clock; it reads Time. |
+| [`time`](time.md) | `og.time.*` | kept | Simulation time. Game code never reads the wall clock; it reads Time. |
 | [`rng`](rng.md) | types and tokens | kept | Deterministic randomness. Every random draw comes from an Rng stream; the sequence for a seed is identical on every host and in the Web scaffold's rng.ts. |
 | [`input`](input.md) | types and tokens | kept | Input as the game sees it: the Input resource for polling, events for edges. |
-| [`camera`](camera.md) | types and tokens | kept | The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names. |
+| [`camera`](camera.md) | `og.camera.*` | kept | The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names. |
 | [`render`](render.md) | `og.render.*` | kept | What is drawn: meshes with materials. Draws are instanced by (geometry, material) automatically; there is no per-object draw call. |
 | [`load`](load.md) | `og.load.*` | kept | Asset loading from cooked output: `og cook` turns assets/ into cooked/ (.ogb blobs and the manifest cooked/.cook.ogt), and the runtime reads only cooked/. |
 | [`physics`](physics.md) | `og.physics.*` | kept | Rigid bodies over rapier (rapier3d in the 3D profile, rapier2d in 2D, both with enhanced determinism): game code owns the components, the engine's og.physics system steps them after the game's systems and writes the dynamic bodies back. |
 | [`anim`](anim.md) | `og.anim.*` | kept | Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics. |
+| [`tween`](tween.md) | `og.tween.*` | kept | Tweens: animate any numeric field of a component (og.Transform.position, og.Sprite.color, og.Sprite.opacity, a game's own f32) from its value to a target over time with an easing curve, a delay, loops and yoyo; chain them in sequences or run them in parallel. Advanced by the engine's og.tween system after the game's systems and before og.anim and physics, by scaled time (slow motion, hit stop) unless unscaled. |
+| [`tilemap`](tilemap.md) | `og.tilemap.*` | kept | Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component. |
 | [`audio`](audio.md) | types and tokens | kept | Sound: inside the tick, the engine's og.audio system (after the game's systems and physics) turns AudioSource changes into a deterministic, time-stamped command stream; outside the tick the host's mixer renders it (an AudioWorklet on the web, the output device, a capture or a null sink natively). |
 | [`ui`](ui.md) | `og.ui.*` | kept | The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, themes it with the platform's design tokens, draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it. |
 | [`systems`](systems.md) | types and tokens | kept | Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for. |
@@ -57,7 +59,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-588 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+638 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -141,6 +143,7 @@ Field units the docs and Tune use.
 | [`DumpDesc`](probe.md#type-DumpDesc) | desc struct | probe | — |
 | [`DumpKind`](probe.md#type-DumpKind) | enum | probe | — |
 | [`DumpResult`](probe.md#type-DumpResult) | union | probe | — |
+| [`Ease`](tween.md#type-Ease) | enum | tween | — |
 | [`ElementDesc`](ui.md#type-ElementDesc) | desc struct | ui | — |
 | [`EngineProbe`](probe.md#type-EngineProbe) | interface | probe | — |
 | [`EngineProbe.capture`](probe.md#member-EngineProbe-capture) | method | probe | `og_engine_probe_capture` |
@@ -162,6 +165,13 @@ Field units the docs and Tune use.
 | [`FieldOptions`](reflect.md#type-FieldOptions) | desc struct | reflect | — |
 | [`FieldResult`](ui.md#type-FieldResult) | struct | ui | — |
 | [`FixedSize`](ui.md#type-FixedSize) | struct | ui | — |
+| [`FlashDesc`](tween.md#type-FlashDesc) | desc struct | tween | — |
+| [`FlipbookClipInfo`](anim.md#type-FlipbookClipInfo) | struct | anim | — |
+| [`FlipbookInfo`](anim.md#type-FlipbookInfo) | struct | anim | — |
+| [`FlipbookSheet`](anim.md#type-FlipbookSheet) | handle | anim | — |
+| [`FlipbookSheet()`](anim.md#column-FlipbookSheet) | column kind | anim | — |
+| [`FlipMode`](anim.md#type-FlipMode) | enum | anim | — |
+| [`FloatingTextDesc`](render.md#type-FloatingTextDesc) | desc struct | render | — |
 | [`Font`](load.md#type-Font) | handle | load | — |
 | [`FontInfo`](load.md#type-FontInfo) | struct | load | — |
 | [`FontRole`](ui.md#type-FontRole) | enum | ui | — |
@@ -259,6 +269,8 @@ Field units the docs and Tune use.
 | [`ModalResult`](ui.md#type-ModalResult) | struct | ui | — |
 | [`Modifiers`](input.md#type-Modifiers) | struct | input | — |
 | [`NavIntent`](ui.md#type-NavIntent) | enum | ui | — |
+| [`og.Afterimage`](render.md#record-Afterimage) | component | render | — |
+| [`og.anim.clip`](anim.md#fn-clip) | function | anim | — |
 | [`og.anim.graph`](anim.md#fn-graph) | function | anim | `og_anim_graph` |
 | [`og.AnimationEvent`](anim.md#record-AnimationEvent) | event | anim | — |
 | [`og.AnimationGraph`](anim.md#record-AnimationGraph) | component | anim | — |
@@ -271,6 +283,11 @@ Field units the docs and Tune use.
 | [`og.Beam`](render.md#record-Beam) | component | render | — |
 | [`og.Blendshapes`](anim.md#record-Blendshapes) | component | anim | — |
 | [`og.Camera`](camera.md#record-Camera) | resource | camera | — |
+| [`og.camera.kick`](camera.md#fn-kick) | function | camera | `og_camera_kick` |
+| [`og.camera.punch`](camera.md#fn-punch) | function | camera | `og_camera_punch` |
+| [`og.camera.shake`](camera.md#fn-shake) | function | camera | `og_camera_shake` |
+| [`og.CameraRail`](camera.md#record-CameraRail) | component | camera | — |
+| [`og.CameraZone`](camera.md#record-CameraZone) | component | camera | — |
 | [`og.Collider`](physics.md#record-Collider) | component | physics | — |
 | [`og.CollisionEnded`](physics.md#record-CollisionEnded) | event | physics | — |
 | [`og.CollisionStarted`](physics.md#record-CollisionStarted) | event | physics | — |
@@ -281,6 +298,8 @@ Field units the docs and Tune use.
 | [`og.Contact`](physics.md#record-Contact) | event | physics | — |
 | [`og.Decal`](render.md#record-Decal) | component | render | — |
 | [`og.DirectionalLight`](render.md#record-DirectionalLight) | component | render | — |
+| [`og.Flipbook`](anim.md#record-Flipbook) | component | anim | — |
+| [`og.FlipbookEvent`](anim.md#record-FlipbookEvent) | event | anim | — |
 | [`og.Follow2D`](camera.md#record-Follow2D) | component | camera | — |
 | [`og.FollowCamera`](camera.md#record-FollowCamera) | component | camera | — |
 | [`og.game`](game.md#fn-game) | function | game | `og_game_game` |
@@ -297,6 +316,7 @@ Field units the docs and Tune use.
 | [`og.load.defaultBundle`](load.md#fn-defaultBundle) | function | load | `og_load_default_bundle` |
 | [`og.load.emitter`](load.md#fn-emitter) | function | load | `og_load_emitter` |
 | [`og.load.error`](load.md#fn-error) | function | load | `og_load_error` |
+| [`og.load.flipbook`](load.md#fn-flipbook) | function | load | `og_load_flipbook` |
 | [`og.load.font`](load.md#fn-font) | function | load | `og_load_font` |
 | [`og.load.fontInfo`](load.md#fn-fontInfo) | function | load | `og_load_font_info` |
 | [`og.load.gltf`](load.md#fn-gltf) | function | load | `og_load_gltf` |
@@ -308,6 +328,7 @@ Field units the docs and Tune use.
 | [`og.load.soundInfo`](load.md#fn-soundInfo) | function | load | `og_load_sound_info` |
 | [`og.load.status`](load.md#fn-status) | function | load | `og_load_status` |
 | [`og.load.texture`](load.md#fn-texture) | function | load | `og_load_texture` |
+| [`og.load.tilemap`](load.md#fn-tilemap) | function | load | `og_load_tilemap` |
 | [`og.MatrixWorld`](transform.md#record-MatrixWorld) | component | transform | — |
 | [`og.Mesh`](render.md#record-Mesh) | component | render | — |
 | [`og.Model`](load.md#record-Model) | component | load | — |
@@ -328,6 +349,7 @@ Field units the docs and Tune use.
 | [`og.PostEffects`](render.md#record-PostEffects) | resource | render | — |
 | [`og.render.boxGeometry`](render.md#fn-boxGeometry) | function | render | `og_render_box_geometry` |
 | [`og.render.capabilities`](render.md#fn-capabilities) | function | render | `og_render_capabilities` |
+| [`og.render.floatingText`](render.md#fn-floatingText) | function | render | `og_render_floating_text` |
 | [`og.render.measureText`](render.md#fn-measureText) | function | render | `og_render_measure_text` |
 | [`og.render.planeGeometry`](render.md#fn-planeGeometry) | function | render | `og_render_plane_geometry` |
 | [`og.render.ribbon`](render.md#fn-ribbon) | function | render | `og_render_ribbon` |
@@ -345,14 +367,31 @@ Field units the docs and Tune use.
 | [`og.SoundEnded`](audio.md#record-SoundEnded) | event | audio | — |
 | [`og.SoundStarted`](audio.md#record-SoundStarted) | event | audio | — |
 | [`og.SpotLight`](render.md#record-SpotLight) | component | render | — |
+| [`og.Sprite`](render.md#record-Sprite) | component | render | — |
 | [`og.systems.cameras`](systems.md#value-cameras) | value | systems | — |
+| [`og.Tilemap`](tilemap.md#record-Tilemap) | component | tilemap | — |
+| [`og.tilemap.cellAt`](tilemap.md#fn-cellAt) | function | tilemap | `og_tilemap_cell_at` |
+| [`og.tilemap.cellCenter`](tilemap.md#fn-cellCenter) | function | tilemap | `og_tilemap_cell_center` |
+| [`og.tilemap.getTile`](tilemap.md#fn-getTile) | function | tilemap | `og_tilemap_get_tile` |
+| [`og.tilemap.setTile`](tilemap.md#fn-setTile) | function | tilemap | `og_tilemap_set_tile` |
 | [`og.Time`](time.md#record-Time) | resource | time | — |
+| [`og.time.hitStop`](time.md#fn-hitStop) | function | time | `og_time_hit_stop` |
+| [`og.time.setScale`](time.md#fn-setScale) | function | time | `og_time_set_scale` |
 | [`og.Trail`](render.md#record-Trail) | component | render | — |
 | [`og.Transform`](transform.md#record-Transform) | component | transform | — |
 | [`og.transform.compose`](transform.md#fn-compose) | function | transform | `og_transform_compose` |
 | [`og.transform.decompose`](transform.md#fn-decompose) | function | transform | `og_transform_decompose` |
 | [`og.transform.fromAxisAngle`](transform.md#fn-fromAxisAngle) | function | transform | `og_transform_from_axis_angle` |
 | [`og.transform.lookAt`](transform.md#fn-lookAt) | function | transform | `og_transform_look_at` |
+| [`og.tween.active`](tween.md#fn-active) | function | tween | `og_tween_active` |
+| [`og.tween.cancel`](tween.md#fn-cancel) | function | tween | `og_tween_cancel` |
+| [`og.tween.cancelEntity`](tween.md#fn-cancelEntity) | function | tween | `og_tween_cancel_entity` |
+| [`og.tween.flash`](tween.md#fn-flash) | function | tween | `og_tween_flash` |
+| [`og.tween.parallel`](tween.md#fn-parallel) | function | tween | `og_tween_parallel` |
+| [`og.tween.sequence`](tween.md#fn-sequence) | function | tween | `og_tween_sequence` |
+| [`og.tween.squash`](tween.md#fn-squash) | function | tween | `og_tween_squash` |
+| [`og.tween.to`](tween.md#fn-to) | function | tween | `og_tween_to` |
+| [`og.TweenCompleted`](tween.md#record-TweenCompleted) | event | tween | — |
 | [`og.ui.actionButton`](ui.md#fn-actionButton) | function | ui | `og_ui_action_button` |
 | [`og.ui.alertDialog`](ui.md#fn-alertDialog) | function | ui | — |
 | [`og.ui.anchor`](ui.md#fn-anchor) | function | ui | — |
@@ -539,6 +578,7 @@ Field units the docs and Tune use.
 | [`ScreenWipe`](ui.md#type-ScreenWipe) | enum | ui | — |
 | [`ScrollDesc`](ui.md#type-ScrollDesc) | desc struct | ui | — |
 | [`SelectDesc`](ui.md#type-SelectDesc) | desc struct | ui | — |
+| [`SetTileDesc`](tilemap.md#type-SetTileDesc) | desc struct | tilemap | — |
 | [`SettingsChanged`](ui.md#type-SettingsChanged) | callback | ui | — |
 | [`SettingsDesc`](ui.md#type-SettingsDesc) | desc struct | ui | — |
 | [`SettingsResult`](ui.md#type-SettingsResult) | struct | ui | — |
@@ -578,7 +618,9 @@ Field units the docs and Tune use.
 | [`SphereGeometryDesc`](render.md#type-SphereGeometryDesc) | desc struct | render | — |
 | [`SpotlightDesc`](ui.md#type-SpotlightDesc) | desc struct | ui | — |
 | [`SpriteBlend`](render.md#type-SpriteBlend) | enum | render | — |
+| [`SpriteBlend()`](render.md#column-SpriteBlend) | column kind | render | — |
 | [`SpriteDesc`](render.md#type-SpriteDesc) | desc struct | render | — |
+| [`SquashDesc`](tween.md#type-SquashDesc) | desc struct | tween | — |
 | [`StandardMaterialDesc`](render.md#type-StandardMaterialDesc) | desc struct | render | — |
 | [`StartFn`](game.md#type-StartFn) | callback | game | — |
 | [`StatRow`](ui.md#type-StatRow) | desc struct | ui | — |
@@ -604,6 +646,12 @@ Field units the docs and Tune use.
 | [`Texture`](render.md#type-Texture) | handle | render | — |
 | [`Texture()`](render.md#column-Texture) | column kind | render | — |
 | [`ThemeColor`](ui.md#type-ThemeColor) | enum | ui | — |
+| [`TileCell`](tilemap.md#type-TileCell) | struct | tilemap | — |
+| [`TileLayerInfo`](tilemap.md#type-TileLayerInfo) | struct | tilemap | — |
+| [`TilemapAsset`](tilemap.md#type-TilemapAsset) | handle | tilemap | — |
+| [`TilemapAsset()`](tilemap.md#column-TilemapAsset) | column kind | tilemap | — |
+| [`TilemapInfo`](tilemap.md#type-TilemapInfo) | struct | tilemap | — |
+| [`TileObject`](tilemap.md#type-TileObject) | struct | tilemap | — |
 | [`ToastDesc`](ui.md#type-ToastDesc) | desc struct | ui | — |
 | [`ToggleResult`](ui.md#type-ToggleResult) | struct | ui | — |
 | [`Tone`](ui.md#type-Tone) | enum | ui | — |
@@ -612,6 +660,10 @@ Field units the docs and Tune use.
 | [`TutorialDesc`](ui.md#type-TutorialDesc) | desc struct | ui | — |
 | [`TutorialResult`](ui.md#type-TutorialResult) | struct | ui | — |
 | [`TutorialStep`](ui.md#type-TutorialStep) | desc struct | ui | — |
+| [`Tween`](tween.md#type-Tween) | handle | tween | — |
+| [`Tween()`](tween.md#column-Tween) | column kind | tween | — |
+| [`TweenDesc`](tween.md#type-TweenDesc) | desc struct | tween | — |
+| [`TweenGroupDesc`](tween.md#type-TweenGroupDesc) | desc struct | tween | — |
 | [`TypeStep`](ui.md#type-TypeStep) | struct | ui | — |
 | [`TypeStepName`](ui.md#type-TypeStepName) | enum | ui | — |
 | [`u32()`](reflect.md#column-u32) | column kind | reflect | — |
