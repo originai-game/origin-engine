@@ -234,8 +234,21 @@ step_wasm_build() {
 # else all. size-gate reads opt.txt; build.sh under OG_GATE=1 reads both.
 # wasm_opt_one RAW NAME: wasm-bindgen (when the module uses it) then wasm-opt
 # into $OG_WASM_OUT/opt/NAME.wasm.
+WASM_OPT_FLAGS="-Oz --enable-bulk-memory --enable-nontrapping-float-to-int --low-memory-unused"
 wasm_opt_one() {
-  local raw="$1" name="$2" input="$1" lock have
+  local raw="$1" name="$2" input="$1" lock have key cache
+  # A raw module byte-identical to one already optimised (an edit that does
+  # not reach the wasm: a test, a comment, native-only code) takes the
+  # earlier result: same input, tools and flags, same output.
+  key="$(og_sha256 "$raw") $(wasm-bindgen --version 2>/dev/null) $(wasm-opt --version 2>/dev/null) $WASM_OPT_FLAGS"
+  cache="$OG_CONTENT_CACHE/opt/$name"
+  if [ -f "$cache/key" ] && [ "$(cat "$cache/key")" = "$key" ] && [ -f "$cache/opt.wasm" ]; then
+    rm -rf "$OG_WASM_OUT/bindgen/$name"
+    if [ -d "$cache/bindgen" ]; then mkdir -p "$OG_WASM_OUT/bindgen" && cp -R "$cache/bindgen" "$OG_WASM_OUT/bindgen/$name"; fi
+    cp "$cache/opt.wasm" "$OG_WASM_OUT/opt/$name.wasm" || return 1
+    og_say "$name: $(og_bytes "$raw") B raw, byte-identical to the last optimised module: reused $(og_bytes "$OG_WASM_OUT/opt/$name.wasm") B ($OG_CONTENT_CACHE/opt)"
+    return 0
+  fi
   if grep -q '__wbindgen_placeholder__' "$raw"; then
     og_need wasm-bindgen || return 1
     lock="$(og_lock_version wasm-bindgen)"
@@ -253,9 +266,12 @@ wasm_opt_one() {
   # a stack about to overflow; it lets wasm-opt fold constant offsets into
   # loads and stores (binaryen 133: -100 KB, -23.7 KB brotli on the publish
   # variant). --converge, a second -Oz and the strip flags gained nothing.
-  wasm-opt -Oz --enable-bulk-memory --enable-nontrapping-float-to-int --low-memory-unused \
-    "$input" -o "$OG_WASM_OUT/opt/$name.wasm" || return 1
+  # shellcheck disable=SC2086 # the flags are words
+  wasm-opt $WASM_OPT_FLAGS "$input" -o "$OG_WASM_OUT/opt/$name.wasm" || return 1
   og_say "$name: $(og_bytes "$raw") B raw -> $(og_bytes "$input") B bindgen -> $(og_bytes "$OG_WASM_OUT/opt/$name.wasm") B wasm-opt -Oz"
+  rm -rf "$cache"; mkdir -p "$cache"
+  [ ! -d "$OG_WASM_OUT/bindgen/$name" ] || cp -R "$OG_WASM_OUT/bindgen/$name" "$cache/bindgen"
+  cp "$OG_WASM_OUT/opt/$name.wasm" "$cache/opt.wasm" && printf '%s\n' "$key" > "$cache/key"
 }
 
 step_wasm_opt() {

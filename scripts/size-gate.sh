@@ -42,7 +42,15 @@ printf '%-28s %12s %12s\n' "wasm" "bytes" "brotli-q11"
 for f in "${files[@]}"; do
   if [ ! -f "$f" ]; then og_err "size-gate: $f does not exist"; exit 1; fi
   raw="$(og_bytes "$f")"
-  br="$(brotli -q 11 -c "$f" | wc -c | tr -d ' ')"
+  # brotli -q 11 of a module measured before is that size again.
+  key="$(og_sha256 "$f")-$(brotli --version 2>/dev/null | tr -c 'A-Za-z0-9.' _)"
+  cached="$OG_CONTENT_CACHE/brotli/$key"
+  if [ -s "$cached" ]; then
+    br="$(cat "$cached")"
+  else
+    br="$(brotli -q 11 -c "$f" | wc -c | tr -d ' ')"
+    mkdir -p "$OG_CONTENT_CACHE/brotli" && printf '%s\n' "$br" > "$cached"
+  fi
   total=$((total + br))
   name="$(basename "$f")"
   printf '%-28s %12s %12s\n' "$name" "$raw" "$br"

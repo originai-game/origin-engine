@@ -60,6 +60,16 @@ og_words() { tr -s ' \n\t' '   ' | sed 's/^ //; s/ $//'; }
 
 og_bytes() { wc -c < "$1" | tr -d ' '; }
 
+# og_sha256 FILE: the file's SHA-256, hex.
+og_sha256() {
+  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'
+  else shasum -a 256 "$1" | awk '{print $1}'; fi
+}
+
+# Results keyed by content, kept across gate runs (wasm-opt and size-gate
+# reuse them for a byte-identical input).
+OG_CONTENT_CACHE="$OG_TARGET_DIR/og-wasm-cache"
+
 # og_gate_excluded: crate names from scripts/gate-exclude.txt.
 og_gate_excluded() {
   awk '{ sub(/#.*/, "") } NF >= 1 { print $1 }' "$OG_ROOT/scripts/gate-exclude.txt"
