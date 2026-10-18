@@ -14,9 +14,6 @@ Pillow only; no randomness, so the output is reproducible.
 import math, os, sys
 from PIL import Image, ImageDraw
 
-out = sys.argv[1] if len(sys.argv) > 1 else "templates/ui-kit/assets"
-os.makedirs(os.path.join(out, "textures"), exist_ok=True)
-
 ICONS = ["heart", "star", "coin", "lock", "pause", "gear", "sword", "shield",
          "potion", "gem", "key", "map", "bolt", "clock", "trophy", "home",
          "plus", "close", "check", "play", "back", "bag", "bomb", "crown",
@@ -140,32 +137,46 @@ def draw(name, d):
         raise SystemExit(f"no drawing for {name}")
 
 
-cell, cols, rows = 64, 8, 4
-atlas = Image.new("LA", (cell * cols, cell * rows), (255, 0))
-for k, name in enumerate(ICONS):
+def glyph_mask(name, cell=64):
+    """One icon's coverage (L, cell x cell): drawn at S and box-filtered down."""
     big = Image.new("L", (S, S), 0)
     draw(name, ImageDraw.Draw(big))
-    small = big.resize((cell, cell), Image.BOX)
-    glyph = Image.merge("LA", (Image.new("L", (cell, cell), 255), small))
-    atlas.paste(glyph, ((k % cols) * cell, (k // cols) * cell))
-atlas.convert("RGBA").save(os.path.join(out, "textures", "icons.png"), optimize=True)
+    return big.resize((cell, cell), Image.BOX)
 
-# The backdrop: sky bands from deep blue to dusk orange, a sun, two hill ranges.
-w, h = 640, 360
-sky = Image.new("RGB", (w, h))
-px = sky.load()
-top, mid, low = (18, 24, 54), (68, 52, 104), (214, 120, 84)
-for y in range(h):
-    t = y / (h * 0.62)
-    a, b, u = (top, mid, t / 0.6) if t < 0.6 else (mid, low, min(1.0, (t - 0.6) / 0.4))
-    c = tuple(round(a[i] + (b[i] - a[i]) * u) for i in range(3))
-    for x in range(w):
-        px[x, y] = c
-d = ImageDraw.Draw(sky)
-d.ellipse([430, 150, 510, 230], fill=(250, 196, 120))
-far = [(0, 250)] + [(x, 236 + 18 * math.sin(x / 70) + 10 * math.sin(x / 23)) for x in range(0, w + 1, 8)] + [(w, h), (0, h)]
-d.polygon(far, fill=(54, 40, 78))
-near = [(0, 290)] + [(x, 284 + 22 * math.sin(x / 95 + 1.3) + 6 * math.sin(x / 17)) for x in range(0, w + 1, 8)] + [(w, h), (0, h)]
-d.polygon(near, fill=(26, 22, 44))
-sky.save(os.path.join(out, "textures", "backdrop.png"), optimize=True)
-print("wrote", os.path.join(out, "textures"))
+
+def main():
+    out = sys.argv[1] if len(sys.argv) > 1 else "templates/ui-kit/assets"
+    os.makedirs(os.path.join(out, "textures"), exist_ok=True)
+    cell, cols, rows = 64, 8, 4
+    atlas = Image.new("LA", (cell * cols, cell * rows), (255, 0))
+    for k, name in enumerate(ICONS):
+        big = Image.new("L", (S, S), 0)
+        draw(name, ImageDraw.Draw(big))
+        small = big.resize((cell, cell), Image.BOX)
+        glyph = Image.merge("LA", (Image.new("L", (cell, cell), 255), small))
+        atlas.paste(glyph, ((k % cols) * cell, (k // cols) * cell))
+    atlas.convert("RGBA").save(os.path.join(out, "textures", "icons.png"), optimize=True)
+
+    # The backdrop: sky bands from deep blue to dusk orange, a sun, two hill ranges.
+    w, h = 640, 360
+    sky = Image.new("RGB", (w, h))
+    px = sky.load()
+    top, mid, low = (18, 24, 54), (68, 52, 104), (214, 120, 84)
+    for y in range(h):
+        t = y / (h * 0.62)
+        a, b, u = (top, mid, t / 0.6) if t < 0.6 else (mid, low, min(1.0, (t - 0.6) / 0.4))
+        c = tuple(round(a[i] + (b[i] - a[i]) * u) for i in range(3))
+        for x in range(w):
+            px[x, y] = c
+    d = ImageDraw.Draw(sky)
+    d.ellipse([430, 150, 510, 230], fill=(250, 196, 120))
+    far = [(0, 250)] + [(x, 236 + 18 * math.sin(x / 70) + 10 * math.sin(x / 23)) for x in range(0, w + 1, 8)] + [(w, h), (0, h)]
+    d.polygon(far, fill=(54, 40, 78))
+    near = [(0, 290)] + [(x, 284 + 22 * math.sin(x / 95 + 1.3) + 6 * math.sin(x / 17)) for x in range(0, w + 1, 8)] + [(w, h), (0, h)]
+    d.polygon(near, fill=(26, 22, 44))
+    sky.save(os.path.join(out, "textures", "backdrop.png"), optimize=True)
+    print("wrote", os.path.join(out, "textures"))
+
+
+if __name__ == "__main__":
+    main()
