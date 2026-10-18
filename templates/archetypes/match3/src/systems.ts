@@ -113,18 +113,23 @@ function newRound(q: Query, board: Row, rng: Rng, world: World): void {
 /** The title and the end cards: a press (after the card's hold) deals a new round. */
 export const Flow = defineSystem(
   "Flow",
-  { reads: [og.Input, Tuning], writes: [og.Rng, Match, Piece, og.Transform] },
+  { reads: [og.Input, Tuning], writes: [og.Rng, Match, Piece, og.Transform, Sounds] },
   (q, _time, world) => {
     const board = boardRow(q);
     const input = world.resource(og.Input);
     const rng = world.resource(og.Rng);
+    const sounds = world.resource(Sounds);
     if (board === null || !input.ok || !rng.ok) return;
     const m = board.a.column(Match);
     const b = board.i;
     m.phaseTicks[b] = m.phaseTicks[b]! + 1;
     const phase = m.phase[b];
     const waiting = phase === Phase.Title || ((phase === Phase.Won || phase === Phase.Lost) && m.phaseTicks[b]! >= END_HOLD);
-    if (waiting && anyPress(input.value)) newRound(q, board, rng.value, world);
+    if (waiting && anyPress(input.value)) {
+      newRound(q, board, rng.value, world);
+      // The press that deals is answered by a sound too (og-taste §6).
+      if (sounds.ok) sounds.value.sfx |= Sound.Select;
+    }
   },
 );
 
