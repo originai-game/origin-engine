@@ -140,8 +140,11 @@ fn particles_are_deterministic(path: ParticleSimulation) {
         ..small()
     };
     let stepped = |scene: &mut RenderScene, f: u32| fx::tick_all(scene, f as u64);
+    // The second run has its own renderer (and device) on its own thread:
+    // the same frames either way, in about half the wall time.
+    let second = std::thread::spawn(move || run(&desc, &mut fx::particles_scene(), 601, stepped).0);
     let (a, sa, _) = run(&desc, &mut fx::particles_scene(), 601, stepped);
-    let (b, _, _) = run(&desc, &mut fx::particles_scene(), 601, stepped);
+    let b = second.join().unwrap();
     let (c, _, _) = run(&desc, &mut fx::particles_scene(), 1, |s, _| {
         fx::tick_all(s, 600)
     });

@@ -73,10 +73,15 @@ fn a_3600_tick_walk_gives_the_same_hash_twice_and_after_a_restore_at_1800() {
         .iter()
         .map(|&e| a.get::<Transform>(e).unwrap())
         .collect();
+    // The second run goes on its own thread (a world is Send); it is the
+    // same simulation either way, in about half the wall time.
+    let second = std::thread::spawn(|| {
+        let (mut b, _) = build(7);
+        run(&mut b, 0, 3600).hashes
+    });
     let ra = run(&mut a, 0, 3600);
-    let (mut b, _) = build(7);
-    let rb = run(&mut b, 0, 3600);
-    assert_eq!(ra.hashes, rb.hashes, "two runs from one seed diverge");
+    let rb_hashes = second.join().unwrap();
+    assert_eq!(ra.hashes, rb_hashes, "two runs from one seed diverge");
 
     // Restore the tick-1800 snapshot into a fresh world and continue.
     let (mut c, anim_c) = build(7);

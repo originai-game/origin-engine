@@ -5,7 +5,8 @@
 #   a file lock (og-cook's tests/support: the template and the two rigged
 #   models are cooked once per test build), so those tests run in parallel;
 # - a test that asserts a wall-clock bound takes every slot, so it never
-#   measures while other binaries compile shaders or cook textures.
+#   measures while other binaries compile shaders or cook textures;
+# - GPU-bound binaries share a group, and the longest work starts first.
 
 [test-groups]
 # GPU-bound binaries: beyond a few at once they only share one adapter and
@@ -21,9 +22,33 @@ filter = '''
 test(one_second_of_a_busy_mix_renders_in_bounded_time)
 | test(run_reports_a_dead_game_process_at_once)
 | test(capture_is_bounded_and_cancellable)
-| test(the_pile_is_deterministic_and_a_restore_at_tick_1800_ends_in_the_same_world)
 '''
 threads-required = 'num-cpus'
+# Each waits for every slot to drain and holds back the tests queued behind
+# it; last, they drain the run once instead of three times.
+priority = -50
+
+# Determinism runs that step two worlds (or two renderers) on two threads
+# take two slots. The 500-body pile reports, never asserts, its seconds, so
+# it needs no more than that.
+[[profile.default.overrides]]
+filter = '''
+test(the_pile_is_deterministic_and_a_restore_at_tick_1800_ends_in_the_same_world)
+| test(a_3600_tick_walk_gives_the_same_hash_twice_and_after_a_restore_at_1800)
+| test(a_600_tick_gpu_particle_run_is_deterministic)
+| test(a_600_tick_cpu_particle_run_is_deterministic)
+'''
+threads-required = 2
+
+# The long poles start first: og-tests is the most work behind the
+# narrowest group (gpu, 4 at once), and og-cook's cooks, the pile and the
+# walk are the longest single tests. Started last, they set the wall time.
+[[profile.default.overrides]]
+filter = '''
+package(og-tests) | binary_id(og-cook::animation) | binary_id(og-cook::template)
+| binary_id(og-physics::pile) | binary_id(og-anim::walk)
+'''
+priority = 50
 
 [profile.default]
 slow-timeout = { period = "120s", terminate-after = 3 }
