@@ -113,12 +113,12 @@ pub fn bouncing_boxes_hash() -> u64 {
 
 #[cfg(target_arch = "wasm32")]
 mod wasm {
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     pub extern "C" fn math_digest() -> u64 {
         super::math_digest()
     }
 
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     pub extern "C" fn bouncing_boxes_hash() -> u64 {
         super::bouncing_boxes_hash()
     }
