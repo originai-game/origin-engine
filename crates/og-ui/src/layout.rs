@@ -539,6 +539,8 @@ pub(crate) struct Node {
     pub widget: Widget,
     /// The text the probe reports for it.
     pub probe_text: String,
+    /// A disabled control (the probe reports it; contrast rules exempt it).
+    pub disabled: bool,
     pub focusable: bool,
     /// For a floating element: the node it is placed against.
     pub anchor: usize,
@@ -600,6 +602,7 @@ impl Node {
             content: Content::None,
             widget: Widget::None,
             probe_text: String::new(),
+            disabled: false,
             focusable: false,
             anchor: NONE,
             float: Float::None,

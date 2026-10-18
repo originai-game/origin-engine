@@ -6,7 +6,7 @@
 // without playtests is refused. The report stays in
 // target/evidence/polish-test/ for inspection.
 import { expect, test } from "bun:test";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ogBin } from "./support/og-bin.ts";
@@ -88,4 +88,48 @@ test("og polish reports the string tables' missing keys as a finding for og-i18n
   expect(out.scores["locale"]).toBeLessThan(100);
   const f = out.findings.find((x) => x.measure === "locale keys");
   expect(f?.fix ?? "").toContain("og-i18n");
+}, 300_000);
+
+test("og polish reads a phone's UI at its device pixels and measures text, not disabled controls", () => {
+  const p = join(evidence, "phone-ui");
+  rmSync(p, { recursive: true, force: true });
+  for (const d of ["src", "tests", "assets/fonts"]) mkdirSync(join(p, d), { recursive: true });
+  copyFileSync(join(repo, "templates", "game", "assets", "fonts", "NotoSansSC-Regular-subset.ttf"), join(p, "assets", "fonts", "NotoSansSC-Regular-subset.ttf"));
+  writeFileSync(join(p, "project.ogt"), 'type project\nversion 1\n---\nname "Phone UI"\nid "phone-ui"\nengine "0.0.1"\nentry "src/main.ts"\n');
+  // A phone at 3x: a faint label (a real finding), a readable one, and a
+  // disabled button whose dimmed text is exempt.
+  writeFileSync(
+    join(p, "src", "main.ts"),
+    `import { og, defineSystem } from "@origingame/engine";
+const Screen = defineSystem("Screen", {}, () => {
+  og.ui.panel("Menu", { width: "fill" }, () => {
+    og.ui.label("Faint", "Hard to read", { step: "body", color: { color: { r: 0.17, g: 0.17, b: 0.19 } } });
+    og.ui.label("Plain", "Easy to read", { step: "body" });
+    og.ui.button("Locked", "Locked door", { disabled: true });
+  });
+});
+export default og.game({
+  tick: 60,
+  systems: [Screen],
+  start: (world) => {
+    const font = og.load.font(world, "fonts/NotoSansSC-Regular-subset.ttf");
+    if (font.ok) og.ui.configure(world, { font: font.value });
+    og.ui.previewViewport(world, { width: 390, height: 844, dpr: 3, safeArea: { left: 0, top: 47, right: 0, bottom: 34 }, coarsePointer: true, breakpoint: "phonePortrait" });
+  },
+});
+`,
+  );
+  writeFileSync(join(p, "tests", "menu.og.ts"), 'import { playtest } from "@origingame/engine/playtest";\nexport default playtest({ name: "menu", size: "1170x2532", commands: "0.5:screenshot:menu.png;0.6:quit", check(run, t) { t.ok(run.quit, "quit"); } });\n');
+  const r = run([ogBin(), "polish", p, "--frames", "1"]);
+  if (r.code !== 0) throw new Error(r.out);
+  const out = JSON.parse(readFileSync(join(p, "og-out", "polish", "polish.json"), "utf8")) as Polish & {
+    playtests: Array<{ contrast: { texts: number; passing: number; worst: Array<{ id: string; ratio: number }> } }>;
+  };
+  const c = out.playtests[0]!.contrast;
+  // Two labels measured where they are drawn: the plain one passes, the faint one does not; the disabled button is not counted.
+  expect(c.texts).toBe(2);
+  expect(c.passing).toBe(1);
+  expect(c.worst[0]!.id).toBe("Faint");
+  expect(out.findings.some((f) => f.where.includes("Locked"))).toBeFalse();
+  expect(out.findings.some((f) => f.measure === "contrast" && f.where.includes("Faint"))).toBeTrue();
 }, 300_000);

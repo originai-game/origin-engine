@@ -4356,7 +4356,7 @@
         },
         {
           "name": "label",
-          "doc": "MSDF text that wraps at its width (word breaks, any CJK character, long words between characters) unless nowrap. The probe reads its text.",
+          "doc": "MSDF text that wraps at its width (word breaks; between CJK characters under kinsoku, katakana words kept whole; long words between characters) unless nowrap. The probe reads its text.",
           "params": [
             {
               "name": "id",
@@ -6332,6 +6332,7 @@
         "WorldDump",
         "EntityDump",
         "UiElement",
+        "UiSurface",
         "UiDump",
         "DumpResult"
       ],
@@ -24186,6 +24187,18 @@
           "type": "string",
           "description": "Its parent's id; empty at the root."
         },
+        "kind": {
+          "type": "string",
+          "description": "What made it: `label`, `button`, `icon`, `image`, `panel` and the other widget names; empty when the UI module does not say."
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "A disabled control (its text is exempt from contrast rules, as WCAG exempts inactive controls)."
+        },
+        "clipped": {
+          "type": "boolean",
+          "description": "Only part of it shows: a scroll container or the surface cuts it, and the bounds are the part that shows."
+        },
         "text": {
           "type": "string",
           "description": "The text it shows, if any."
@@ -24214,11 +24227,43 @@
       "required": [
         "id",
         "parent",
+        "kind",
+        "disabled",
+        "clipped",
         "text",
         "x",
         "y",
         "width",
         "height"
+      ],
+      "additionalProperties": false
+    },
+    "UiSurface": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "The surface UI bounds are laid out on.",
+      "type": "object",
+      "properties": {
+        "width": {
+          "type": "number",
+          "description": "Its width.",
+          "x-og-unit": "cssPx"
+        },
+        "height": {
+          "type": "number",
+          "description": "Its height.",
+          "x-og-unit": "cssPx"
+        },
+        "dpr": {
+          "type": "number",
+          "description": "Device pixels per CSS pixel: a frame of this surface is width × dpr pixels wide.",
+          "default": 1
+        }
+      },
+      "required": [
+        "width",
+        "height",
+        "dpr"
       ],
       "additionalProperties": false
     },
@@ -24234,6 +24279,17 @@
           "maximum": 4294967295,
           "description": "The tick."
         },
+        "surface": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UiSurface"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The surface the bounds are on; null without a UI module."
+        },
         "elements": {
           "type": "array",
           "items": {
@@ -24244,6 +24300,7 @@
       },
       "required": [
         "tick",
+        "surface",
         "elements"
       ],
       "additionalProperties": false
@@ -24361,6 +24418,17 @@
               "maximum": 4294967295,
               "description": "The tick."
             },
+            "surface": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/UiSurface"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The surface the bounds are on; null without a UI module."
+            },
             "elements": {
               "type": "array",
               "items": {
@@ -24372,6 +24440,7 @@
           "required": [
             "kind",
             "tick",
+            "surface",
             "elements"
           ],
           "additionalProperties": false,

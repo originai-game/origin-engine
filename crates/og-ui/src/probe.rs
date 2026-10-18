@@ -68,4 +68,9 @@ impl UiTree for UiProbe {
     fn elements(&self, _world: &World) -> Vec<UiElement> {
         self.0.lock().frame().elements.clone()
     }
+
+    fn surface(&self, _world: &World) -> Option<(f32, f32, f32)> {
+        let v = self.0.lock().viewport();
+        Some((v.width, v.height, if v.dpr > 0.0 { v.dpr } else { 1.0 }))
+    }
 }

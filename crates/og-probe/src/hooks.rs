@@ -53,6 +53,14 @@ pub struct UiElement {
     pub id: String,
     /// Its parent's id; empty at the root.
     pub parent: String,
+    /// What made it (`label`, `button`, `icon`, `image`, ...); empty when
+    /// the UI module does not say.
+    pub kind: String,
+    /// A disabled control.
+    pub disabled: bool,
+    /// Only part of it shows: a scroll container or the surface cuts it
+    /// (the bounds below are the part that shows).
+    pub clipped: bool,
     /// The text it shows; empty for none.
     pub text: String,
     pub x: f32,
@@ -68,7 +76,7 @@ impl UiElement {
 
     pub fn to_json(&self) -> Value {
         json!({
-            "id": self.id, "parent": self.parent, "text": self.text,
+            "id": self.id, "parent": self.parent, "kind": self.kind, "disabled": self.disabled, "clipped": self.clipped, "text": self.text,
             "x": self.x, "y": self.y, "width": self.width, "height": self.height,
         })
     }
@@ -80,6 +88,12 @@ pub trait UiTree {
     /// Every element, flattened in draw order (a later element is drawn on
     /// top of an earlier one), with its layout as of the current tick.
     fn elements(&self, world: &World) -> Vec<UiElement>;
+
+    /// The surface the elements are laid out on: width and height in CSS
+    /// pixels and device pixels per CSS pixel. `None` when unknown.
+    fn surface(&self, _world: &World) -> Option<(f32, f32, f32)> {
+        None
+    }
 }
 
 /// A fixed UI tree: for tests, and for a host with no UI module yet.

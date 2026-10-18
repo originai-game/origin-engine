@@ -62,6 +62,7 @@ module probe {
 | [`WorldDump`](#type-WorldDump) | struct | The world: tables, systems, resources. |
 | [`EntityDump`](#type-EntityDump) | struct | One entity. |
 | [`UiElement`](#type-UiElement) | struct | One UI element with its bounds. |
+| [`UiSurface`](#type-UiSurface) | struct | The surface UI bounds are laid out on. |
 | [`UiDump`](#type-UiDump) | struct | The UI tree, flattened in draw order. |
 | [`DumpResult`](#type-DumpResult) | union | A dump, tagged by its kind. |
 | [`RuntimeProbe`](#type-RuntimeProbe) | interface | RuntimeProbe protocol 5, member for member. Every member answers synchronously with JSON-serialisable values. |
@@ -82,7 +83,7 @@ interface RuntimeProbe {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 9129</sub>
+<sub>`api.ogt` line 9146</sub>
 
 <a id="member-RuntimeProbe-version"></a>
 
@@ -102,7 +103,7 @@ prop version u32 "PROBE_VERSION." {
 }
 ```
 
-<sub>`api.ogt` line 9133</sub>
+<sub>`api.ogt` line 9150</sub>
 
 <a id="member-RuntimeProbe-tick"></a>
 
@@ -126,7 +127,7 @@ fn tick {
 }
 ```
 
-<sub>`api.ogt` line 9136</sub>
+<sub>`api.ogt` line 9153</sub>
 
 <a id="member-RuntimeProbe-state"></a>
 
@@ -150,7 +151,7 @@ fn state {
 }
 ```
 
-<sub>`api.ogt` line 9141</sub>
+<sub>`api.ogt` line 9158</sub>
 
 <a id="member-RuntimeProbe-advance"></a>
 
@@ -178,7 +179,7 @@ fn advance {
 }
 ```
 
-<sub>`api.ogt` line 9146</sub>
+<sub>`api.ogt` line 9163</sub>
 
 <a id="member-RuntimeProbe-pause"></a>
 
@@ -201,7 +202,7 @@ fn pause {
 }
 ```
 
-<sub>`api.ogt` line 9151</sub>
+<sub>`api.ogt` line 9168</sub>
 
 <a id="member-RuntimeProbe-resume"></a>
 
@@ -224,7 +225,7 @@ fn resume {
 }
 ```
 
-<sub>`api.ogt` line 9155</sub>
+<sub>`api.ogt` line 9172</sub>
 
 <a id="member-RuntimeProbe-input"></a>
 
@@ -253,7 +254,7 @@ fn input {
 }
 ```
 
-<sub>`api.ogt` line 9159</sub>
+<sub>`api.ogt` line 9176</sub>
 
 <a id="member-RuntimeProbe-accepted"></a>
 
@@ -276,7 +277,7 @@ fn accepted {
 }
 ```
 
-<sub>`api.ogt` line 9165</sub>
+<sub>`api.ogt` line 9182</sub>
 
 <a id="member-RuntimeProbe-pick"></a>
 
@@ -307,7 +308,7 @@ fn pick {
 }
 ```
 
-<sub>`api.ogt` line 9169</sub>
+<sub>`api.ogt` line 9186</sub>
 
 <a id="member-RuntimeProbe-entity"></a>
 
@@ -336,7 +337,7 @@ fn entity {
 }
 ```
 
-<sub>`api.ogt` line 9176</sub>
+<sub>`api.ogt` line 9193</sub>
 
 <a id="member-RuntimeProbe-bounds"></a>
 
@@ -364,7 +365,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 9182</sub>
+<sub>`api.ogt` line 9199</sub>
 
 <a id="member-RuntimeProbe-patch"></a>
 
@@ -396,7 +397,7 @@ fn patch {
 }
 ```
 
-<sub>`api.ogt` line 9187</sub>
+<sub>`api.ogt` line 9204</sub>
 
 <a id="member-RuntimeProbe-run"></a>
 
@@ -424,7 +425,7 @@ fn run {
 }
 ```
 
-<sub>`api.ogt` line 9194</sub>
+<sub>`api.ogt` line 9211</sub>
 
 <a id="type-EngineProbe"></a>
 
@@ -442,7 +443,7 @@ interface EngineProbe {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 9201</sub>
+<sub>`api.ogt` line 9218</sub>
 
 <a id="member-EngineProbe-hello"></a>
 
@@ -466,7 +467,7 @@ fn hello {
 }
 ```
 
-<sub>`api.ogt` line 9206</sub>
+<sub>`api.ogt` line 9223</sub>
 
 <a id="member-EngineProbe-capture"></a>
 
@@ -507,7 +508,7 @@ fn capture {
 }
 ```
 
-<sub>`api.ogt` line 9211</sub>
+<sub>`api.ogt` line 9228</sub>
 
 <a id="member-EngineProbe-sweep"></a>
 
@@ -537,7 +538,7 @@ fn sweep {
 }
 ```
 
-<sub>`api.ogt` line 9224</sub>
+<sub>`api.ogt` line 9241</sub>
 
 <a id="member-EngineProbe-reload"></a>
 
@@ -560,7 +561,7 @@ fn reload {
 }
 ```
 
-<sub>`api.ogt` line 9231</sub>
+<sub>`api.ogt` line 9248</sub>
 
 <a id="member-EngineProbe-snapshot"></a>
 
@@ -583,7 +584,7 @@ fn snapshot {
 }
 ```
 
-<sub>`api.ogt` line 9235</sub>
+<sub>`api.ogt` line 9252</sub>
 
 <a id="member-EngineProbe-restore"></a>
 
@@ -611,7 +612,7 @@ fn restore {
 }
 ```
 
-<sub>`api.ogt` line 9239</sub>
+<sub>`api.ogt` line 9256</sub>
 
 <a id="member-EngineProbe-dump"></a>
 
@@ -641,7 +642,7 @@ fn dump {
 }
 ```
 
-<sub>`api.ogt` line 9244</sub>
+<sub>`api.ogt` line 9261</sub>
 
 <a id="member-EngineProbe-commands"></a>
 
@@ -669,7 +670,7 @@ fn commands {
 }
 ```
 
-<sub>`api.ogt` line 9251</sub>
+<sub>`api.ogt` line 9268</sub>
 
 <a id="member-EngineProbe-listen"></a>
 
@@ -699,7 +700,7 @@ fn listen {
 }
 ```
 
-<sub>`api.ogt` line 9256</sub>
+<sub>`api.ogt` line 9273</sub>
 
 ## Types
 
@@ -1386,6 +1387,9 @@ One UI element with its bounds.
 |---|---|---|---|---|---|---|
 | `id` | `string` | `""` | — | — | — | Its stable id, as the command channel targets it. |
 | `parent` | `string` | `""` | — | — | — | Its parent's id; empty at the root. |
+| `kind` | `string` | `""` | — | — | — | What made it: `label`, `button`, `icon`, `image`, `panel` and the other widget names; empty when the UI module does not say. |
+| `disabled` | `boolean` | `false` | — | — | — | A disabled control (its text is exempt from contrast rules, as WCAG exempts inactive controls). |
+| `clipped` | `boolean` | `false` | — | — | — | Only part of it shows: a scroll container or the surface cuts it, and the bounds are the part that shows. |
 | `text` | `string` | `""` | — | — | — | The text it shows, if any. |
 | `x` | `number` | `0` | — | `cssPx` | — | Left edge. |
 | `y` | `number` | `0` | — | `cssPx` | — | Top edge. |
@@ -1397,6 +1401,9 @@ struct UiElement {
   doc "One UI element with its bounds."
   field id String "Its stable id, as the command channel targets it."
   field parent String "Its parent's id; empty at the root."
+  field kind String "What made it: `label`, `button`, `icon`, `image`, `panel` and the other widget names; empty when the UI module does not say."
+  field disabled bool "A disabled control (its text is exempt from contrast rules, as WCAG exempts inactive controls)."
+  field clipped bool "Only part of it shows: a scroll container or the surface cuts it, and the bounds are the part that shows."
   field text String "The text it shows, if any."
   field x f32 "Left edge." {
     unit cssPx
@@ -1415,6 +1422,35 @@ struct UiElement {
 
 <sub>`api.ogt` line 9096</sub>
 
+<a id="type-UiSurface"></a>
+
+### `UiSurface` (struct)
+
+The surface UI bounds are laid out on.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `width` | `number` | `0` | — | `cssPx` | — | Its width. |
+| `height` | `number` | `0` | — | `cssPx` | — | Its height. |
+| `dpr` | `number` | `1` | — | — | — | Device pixels per CSS pixel: a frame of this surface is width × dpr pixels wide. |
+
+```ogt
+struct UiSurface {
+  doc "The surface UI bounds are laid out on."
+  field width f32 "Its width." {
+    unit cssPx
+  }
+  field height f32 "Its height." {
+    unit cssPx
+  }
+  field dpr f32 "Device pixels per CSS pixel: a frame of this surface is width × dpr pixels wide." {
+    default 1
+  }
+}
+```
+
+<sub>`api.ogt` line 9118</sub>
+
 <a id="type-UiDump"></a>
 
 ### `UiDump` (struct)
@@ -1424,17 +1460,19 @@ The UI tree, flattened in draw order.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `tick` | `number` | `0` | — | — | — | The tick. |
+| `surface` | `UiSurface \| null` | `null` | — | — | — | The surface the bounds are on; null without a UI module. |
 | `elements` | `readonly UiElement[]` | `[]` | — | — | — | The elements. |
 
 ```ogt
 struct UiDump {
   doc "The UI tree, flattened in draw order."
   field tick u32 "The tick."
+  field surface Option.UiSurface "The surface the bounds are on; null without a UI module."
   field elements List.UiElement "The elements."
 }
 ```
 
-<sub>`api.ogt` line 9115</sub>
+<sub>`api.ogt` line 9131</sub>
 
 <a id="type-DumpResult"></a>
 
@@ -1460,7 +1498,7 @@ union DumpResult {
 }
 ```
 
-<sub>`api.ogt` line 9121</sub>
+<sub>`api.ogt` line 9138</sub>
 
 ## Constants
 

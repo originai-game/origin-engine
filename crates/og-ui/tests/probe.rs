@@ -132,12 +132,28 @@ fn dump_ui_lists_every_visible_element_with_bounds_and_text() {
     std::fs::write(out_dir().join("dump-ui.json"), &bytes).expect("write dump");
     let dump: Value = serde_json::from_slice(&bytes).expect("dump is JSON");
     assert_eq!(dump["kind"], "ui");
+    // The surface the CSS-pixel bounds are on, so a frame of another size maps onto them.
+    let vp = viewport();
+    assert_eq!(
+        dump["surface"],
+        serde_json::json!({ "width": vp.width, "height": vp.height, "dpr": vp.dpr })
+    );
     let listed = dump["elements"].as_array().expect("elements");
+    // The store's list cuts its last row: that row and what it holds say so.
+    let clipped: Vec<&str> = listed
+        .iter()
+        .filter(|e| e["clipped"] == true)
+        .map(|e| e["id"].as_str().unwrap_or_default())
+        .collect();
+    assert!(clipped.contains(&"Row#6"), "{clipped:?}");
+    assert!(
+        listed.iter().any(|e| e["kind"] == "button") && listed.iter().all(|e| e["kind"] != ""),
+        "every element names its kind"
+    );
     let live = rig.elements();
     assert_eq!(listed.len(), live.len());
     assert!(listed.len() > 40, "{} elements", listed.len());
 
-    let vp = viewport();
     let by_id = |path: &str| rig.element(path);
     for (e, json) in live.iter().zip(listed) {
         assert_eq!(json["id"], e.id.as_str());

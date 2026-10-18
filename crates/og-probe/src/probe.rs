@@ -1728,6 +1728,10 @@ impl Probe {
             .as_ref()
             .map(|ui| ui.elements(world).iter().map(|e| e.to_json()).collect())
             .unwrap_or_default();
-        json!({"kind": "ui", "tick": world.time().tick, "elements": elements})
+        let surface = self.ui.as_ref().and_then(|ui| ui.surface(world)).map_or(
+            Value::Null,
+            |(w, h, dpr)| json!({ "width": w, "height": h, "dpr": dpr }),
+        );
+        json!({"kind": "ui", "tick": world.time().tick, "surface": surface, "elements": elements})
     }
 }

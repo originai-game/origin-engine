@@ -14106,6 +14106,18 @@ export interface UiElement {
   readonly id: string;
   /** Its parent's id; empty at the root. */
   readonly parent: string;
+  /**
+   * What made it: `label`, `button`, `icon`, `image`, `panel` and the other widget names; empty when the UI module does not say.
+   */
+  readonly kind: string;
+  /**
+   * A disabled control (its text is exempt from contrast rules, as WCAG exempts inactive controls).
+   */
+  readonly disabled: boolean;
+  /**
+   * Only part of it shows: a scroll container or the surface cuts it, and the bounds are the part that shows.
+   */
+  readonly clipped: boolean;
   /** The text it shows, if any. */
   readonly text: string;
   /**
@@ -14134,10 +14146,34 @@ export interface UiElement {
   readonly height: number;
 }
 
+/** The surface UI bounds are laid out on. */
+export interface UiSurface {
+  /**
+   * Its width.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly width: number;
+  /**
+   * Its height.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly height: number;
+  /**
+   * Device pixels per CSS pixel: a frame of this surface is width × dpr pixels wide.
+   *
+   * @default 1
+   */
+  readonly dpr: number;
+}
+
 /** The UI tree, flattened in draw order. */
 export interface UiDump {
   /** The tick. */
   readonly tick: number;
+  /** The surface the bounds are on; null without a UI module. */
+  readonly surface: UiSurface | null;
   /** The elements. */
   readonly elements: readonly UiElement[];
 }
@@ -15645,7 +15681,7 @@ export declare namespace og {
      */
     function scroll(id: string, desc: ScrollDesc, build: UiBuild): void;
     /**
-     * MSDF text that wraps at its width (word breaks, any CJK character, long words between characters) unless nowrap. The probe reads its text.
+     * MSDF text that wraps at its width (word breaks; between CJK characters under kinsoku, katakana words kept whole; long words between characters) unless nowrap. The probe reads its text.
      *
      * @param id Its id.
      * @param text The text.

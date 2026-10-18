@@ -75,7 +75,7 @@ module ui {
 | [`og.ui.column`](#fn-column) | function | A column built by `build`: open(id, {...desc, direction: column}), build(), close(). |
 | [`og.ui.panel`](#fn-panel) | function | A card built by `build`: openPanel(id, desc), build(), close(). |
 | [`og.ui.scroll`](#fn-scroll) | function | A vertical scroll container built by `build`: openScroll(id, desc), build(), close(). |
-| [`og.ui.label`](#fn-label) | function | MSDF text that wraps at its width (word breaks, any CJK character, long words between characters) unless nowrap. The probe reads its text. |
+| [`og.ui.label`](#fn-label) | function | MSDF text that wraps at its width (word breaks; between CJK characters under kinsoku, katakana words kept whole; long words between characters) unless nowrap. The probe reads its text. |
 | [`og.ui.button`](#fn-button) | function | A capsule button with a label; `clicked` is a press and a release inside it. The probe reads its label. |
 | [`og.ui.image`](#fn-image) | function | A texture region, or a solid rectangle. |
 | [`og.ui.progress`](#fn-progress) | function | A capsule track filled to a fraction. |
@@ -592,7 +592,7 @@ fn scroll {
 
 ### `og.ui.label`
 
-MSDF text that wraps at its width (word breaks, any CJK character, long words between characters) unless nowrap. The probe reads its text.
+MSDF text that wraps at its width (word breaks; between CJK characters under kinsoku, katakana words kept whole; long words between characters) unless nowrap. The probe reads its text.
 
 ```ts
 og.ui.label(id: string, text: string, desc?: LabelDesc): void
@@ -610,7 +610,7 @@ Binding symbol `og_ui_label` · publish builds: kept
 
 ```ogt
 fn label {
-  doc "MSDF text that wraps at its width (word breaks, any CJK character, long words between characters) unless nowrap. The probe reads its text."
+  doc "MSDF text that wraps at its width (word breaks; between CJK characters under kinsoku, katakana words kept whole; long words between characters) unless nowrap. The probe reads its text."
   param id String "Its id."
   param text String "The text."
   param desc LabelDesc "Type step, ink, alignment, wrapping, width and font."

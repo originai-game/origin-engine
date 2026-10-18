@@ -73,7 +73,9 @@ export interface Pulse {
 
 interface UiDump {
   tick: number;
-  elements: Array<{ id: string; parent: string; text: string; x: number; y: number; width: number; height: number }>;
+  /** The surface the CSS-pixel bounds are on (dpr: device pixels per CSS pixel). */
+  surface?: { width: number; height: number; dpr: number } | null;
+  elements: Array<{ id: string; parent: string; kind?: string; disabled?: boolean; clipped?: boolean; text: string; x: number; y: number; width: number; height: number }>;
 }
 
 /** What `--one` writes as run.json. */
@@ -268,13 +270,23 @@ interface TextBox {
   ink: number;
 }
 
+/** Kinds that show a picture, whose `text` is the picture's name (`heart`, `coin`), not words. */
+const PICTURES = new Set(["icon", "image"]);
+
 /**
- * Elements whose text names a picture, not words: og-ui reports an icon's
- * name (`heart`, `star`, `coin`) as its text, so an element whose id says
- * picture, or whose text is one lowercase ASCII word, is left out.
+ * Whether an element's text is read as text: not a picture (og-ui reports
+ * an icon's name as its text), not cut by a scroll container (a sliver of a
+ * line is no measure of it) and not a disabled control or inside one (WCAG
+ * exempts inactive controls from contrast). The dump names each element's
+ * `kind`, `clipped` and `disabled`.
  */
-const PICTURE = /^(Icon|Picture|Image|Star|Glyph|Sprite)(#|$)/;
-const ICON_NAME = /^[a-z]+(-[a-z]+)*$/;
+function readsAsText(e: UiDump["elements"][number], byId: Map<string, UiDump["elements"][number]>): boolean {
+  if (PICTURES.has(e.kind ?? "") || e.clipped) return false;
+  for (let at: UiDump["elements"][number] | undefined = e, n = 0; at && n < 64; at = at.parent ? byId.get(at.parent) : undefined, n++) {
+    if (at.disabled) return false;
+  }
+  return true;
+}
 
 /**
  * The text elements of a frame: the contrast between ink and ground, and the
@@ -285,8 +297,9 @@ const ICON_NAME = /^[a-z]+(-[a-z]+)*$/;
  */
 function textBoxes(img: Image, ui: UiDump): TextBox[] {
   const out: TextBox[] = [];
+  const byId = new Map(ui.elements.map((e) => [e.id, e]));
   for (const e of ui.elements) {
-    if (!/[\p{L}\p{N}]/u.test(e.text) || PICTURE.test(e.id) || ICON_NAME.test(e.text) || e.width < 6 || e.height < 6) continue;
+    if (!/[\p{L}\p{N}]/u.test(e.text) || !readsAsText(e, byId) || e.width < 6 || e.height < 6) continue;
     // A pill's rounded ends show what is behind it: inset a wide element's ends.
     const ix = e.width > 3 * e.height ? Math.min(e.height / 2, 12) : 0, iy = e.height * 0.12;
     const x0 = Math.max(0, Math.floor(e.x + ix)), y0 = Math.max(0, Math.floor(e.y + iy));
@@ -528,10 +541,11 @@ function measure(rec: RunRecord, frameDir: string, frames: number, relTo: string
     if (!shot.file || !existsSync(shot.file)) continue;
     const img = decodePng(new Uint8Array(readFileSync(shot.file)));
     const ui: UiDump = shot.ui && existsSync(shot.ui) ? (JSON.parse(readFileSync(shot.ui, "utf8")) as UiDump) : { tick: shot.tick, elements: [] };
-    const scale = img.width / rec.size.width;
+    // The bounds are CSS pixels of the UI's surface; the frame is device pixels, maybe halved.
+    const scale = img.width / (ui.surface?.width ?? rec.size.width);
     const scaled: UiDump = { ...ui, elements: ui.elements.map((e) => ({ ...e, x: e.x * scale, y: e.y * scale, width: e.width * scale, height: e.height * scale })) };
     const boxes = textBoxes(img, scaled).map((b) => ({ ...b, ink: r2(b.ink / scale) }));
-    const occ = occupancy(ui, rec.size);
+    const occ = occupancy(ui, ui.surface ? { width: ui.surface.width, height: ui.surface.height } : rec.size);
     let frame: string | null = null;
     if (written < frames) {
       mkdirSync(frameDir, { recursive: true });

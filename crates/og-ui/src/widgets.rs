@@ -1450,6 +1450,7 @@ impl Ui {
                 ..Element::default()
             },
         );
+        self.nodes[i].disabled = desc.disabled;
         let key = self.nodes[i].key;
         let mut r = if desc.disabled {
             Response::default()
@@ -1911,6 +1912,7 @@ impl Ui {
                 ..Element::default()
             },
         );
+        self.nodes[i].disabled = desc.disabled;
         let r = if desc.disabled {
             Response::default()
         } else {

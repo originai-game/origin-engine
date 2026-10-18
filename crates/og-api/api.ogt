@@ -7042,7 +7042,7 @@ module ui {
   }
 
   fn label {
-    doc "MSDF text that wraps at its width (word breaks, any CJK character, long words between characters) unless nowrap. The probe reads its text."
+    doc "MSDF text that wraps at its width (word breaks; between CJK characters under kinsoku, katakana words kept whole; long words between characters) unless nowrap. The probe reads its text."
     param id String "Its id."
     param text String "The text."
     param desc LabelDesc "Type step, ink, alignment, wrapping, width and font."
@@ -9097,6 +9097,9 @@ module probe {
     doc "One UI element with its bounds."
     field id String "Its stable id, as the command channel targets it."
     field parent String "Its parent's id; empty at the root."
+    field kind String "What made it: `label`, `button`, `icon`, `image`, `panel` and the other widget names; empty when the UI module does not say."
+    field disabled bool "A disabled control (its text is exempt from contrast rules, as WCAG exempts inactive controls)."
+    field clipped bool "Only part of it shows: a scroll container or the surface cuts it, and the bounds are the part that shows."
     field text String "The text it shows, if any."
     field x f32 "Left edge." {
       unit cssPx
@@ -9112,9 +9115,23 @@ module probe {
     }
   }
 
+  struct UiSurface {
+    doc "The surface UI bounds are laid out on."
+    field width f32 "Its width." {
+      unit cssPx
+    }
+    field height f32 "Its height." {
+      unit cssPx
+    }
+    field dpr f32 "Device pixels per CSS pixel: a frame of this surface is width × dpr pixels wide." {
+      default 1
+    }
+  }
+
   struct UiDump {
     doc "The UI tree, flattened in draw order."
     field tick u32 "The tick."
+    field surface Option.UiSurface "The surface the bounds are on; null without a UI module."
     field elements List.UiElement "The elements."
   }
 

@@ -1074,6 +1074,7 @@ impl Ui {
                 ..Element::default()
             },
         );
+        self.nodes[i].disabled = desc.disabled;
         let refused =
             desc.disabled && t.skin.motion.shake > 0.0 && self.respond(self.nodes[i].key).clicked;
         let r = if desc.disabled {
@@ -1811,6 +1812,9 @@ impl Ui {
             elements.push(UiElement {
                 id: n.id.clone(),
                 parent,
+                kind: self.kinds.get(i).map_or("", |k| k.0).to_string(),
+                disabled: n.disabled,
+                clipped: visible.width + 0.01 < r.width || visible.height + 0.01 < r.height,
                 text: n.probe_text.clone(),
                 x: visible.x,
                 y: visible.y,

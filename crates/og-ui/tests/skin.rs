@@ -546,3 +546,20 @@ fn a_slice_tiles_its_edges_and_centre_when_the_skin_says_repeat_or_round() {
         "a slice that is all corners cannot tile"
     );
 }
+
+#[test]
+fn the_probe_names_each_elements_kind_and_a_disabled_control() {
+    let (mut ui, _) = skinned_ui();
+    ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+    screen(&mut ui, true);
+    ui.icon("Heart", "heart", IconDesc::default());
+    ui.button("On", "On", ButtonDesc::default());
+    ui.end();
+    let f = ui.frame();
+    let go = f.element("Menu/Go").expect("the disabled button");
+    assert_eq!((go.kind.as_str(), go.disabled), ("button", true));
+    let on = f.element("On").expect("an enabled button");
+    assert_eq!((on.kind.as_str(), on.disabled), ("button", false));
+    assert_eq!(f.element("Menu/Title").unwrap().kind, "label");
+    assert_eq!(f.element("Heart").unwrap().kind, "icon");
+}

@@ -1,8 +1,11 @@
 {
   "elements": [
     {
+      "clipped": false,
+      "disabled": false,
       "height": 40.0,
       "id": "Bar",
+      "kind": "row",
       "parent": "",
       "text": "",
       "width": 390.0,
@@ -10,8 +13,11 @@
       "y": 20.0
     },
     {
+      "clipped": false,
+      "disabled": false,
       "height": 32.0,
       "id": "Icon",
+      "kind": "image",
       "parent": "Bar",
       "text": "",
       "width": 32.0,
@@ -19,8 +25,11 @@
       "y": 24.0
     },
     {
+      "clipped": false,
+      "disabled": false,
       "height": 20.0,
       "id": "Title",
+      "kind": "label",
       "parent": "Bar",
       "text": "Hello",
       "width": 35.0,
@@ -28,8 +37,11 @@
       "y": 30.0
     },
     {
+      "clipped": false,
+      "disabled": false,
       "height": 0.0,
       "id": "Spacer",
+      "kind": "column",
       "parent": "Bar",
       "text": "",
       "width": 241.0,
@@ -37,8 +49,11 @@
       "y": 40.0
     },
     {
+      "clipped": false,
+      "disabled": false,
       "height": 10.0,
       "id": "Badge",
+      "kind": "image",
       "parent": "Bar",
       "text": "",
       "width": 50.0,
@@ -46,8 +61,11 @@
       "y": 35.0
     },
     {
+      "clipped": false,
+      "disabled": false,
       "height": 60.0,
       "id": "Wrap",
+      "kind": "row",
       "parent": "",
       "text": "",
       "width": 200.0,
@@ -55,8 +73,11 @@
       "y": 60.0
     },
     {
+      "clipped": false,
+      "disabled": false,
       "height": 20.0,
       "id": "Tile#0",
+      "kind": "image",
       "parent": "Wrap",
       "text": "",
       "width": 50.0,
@@ -64,8 +85,11 @@
       "y": 65.0
     },
     {
+      "clipped": false,
+      "disabled": false,
       "height": 20.0,
       "id": "Tile#1",
+      "kind": "image",
       "parent": "Wrap",
       "text": "",
       "width": 50.0,
@@ -73,8 +97,11 @@
       "y": 65.0
     },
     {
+      "clipped": false,
+      "disabled": false,
       "height": 20.0,
       "id": "Tile#2",
+      "kind": "image",
       "parent": "Wrap",
       "text": "",
       "width": 50.0,
@@ -82,8 +109,11 @@
       "y": 65.0
     },
     {
+      "clipped": false,
+      "disabled": false,
       "height": 20.0,
       "id": "Tile#3",
+      "kind": "image",
       "parent": "Wrap",
       "text": "",
       "width": 50.0,
@@ -91,8 +121,11 @@
       "y": 95.0
     },
     {
+      "clipped": false,
+      "disabled": false,
       "height": 20.0,
       "id": "Tile#4",
+      "kind": "image",
       "parent": "Wrap",
       "text": "",
       "width": 50.0,
@@ -100,8 +133,11 @@
       "y": 95.0
     },
     {
+      "clipped": false,
+      "disabled": false,
       "height": 20.0,
       "id": "Tile#5",
+      "kind": "image",
       "parent": "Wrap",
       "text": "",
       "width": 50.0,
@@ -109,8 +145,11 @@
       "y": 95.0
     },
     {
+      "clipped": false,
+      "disabled": false,
       "height": 20.0,
       "id": "Fill",
+      "kind": "image",
       "parent": "Wrap",
       "text": "",
       "width": 10.0,
@@ -118,8 +157,11 @@
       "y": 95.0
     },
     {
+      "clipped": false,
+      "disabled": false,
       "height": 40.0,
       "id": "Shrink",
+      "kind": "row",
       "parent": "",
       "text": "",
       "width": 150.0,
@@ -127,8 +169,11 @@
       "y": 120.0
     },
     {
+      "clipped": false,
+      "disabled": false,
       "height": 40.0,
       "id": "Long",
+      "kind": "label",
       "parent": "Shrink",
       "text": "aaaa bbbb cccc",
       "width": 75.0,
@@ -136,8 +181,11 @@
       "y": 120.0
     },
     {
+      "clipped": false,
+      "disabled": false,
       "height": 20.0,
       "id": "Short",
+      "kind": "label",
       "parent": "Shrink",
       "text": "dd ee",
       "width": 35.0,
@@ -145,8 +193,11 @@
       "y": 120.0
     },
     {
+      "clipped": false,
+      "disabled": false,
       "height": 10.0,
       "id": "Box",
+      "kind": "image",
       "parent": "Shrink",
       "text": "",
       "width": 40.0,
@@ -154,8 +205,11 @@
       "y": 120.0
     },
     {
+      "clipped": false,
+      "disabled": false,
       "height": 60.0,
       "id": "Split",
+      "kind": "row",
       "parent": "",
       "text": "",
       "width": 200.0,
@@ -163,8 +217,11 @@
       "y": 160.0
     },
     {
+      "clipped": false,
+      "disabled": false,
       "height": 60.0,
       "id": "Center",
+      "kind": "column",
       "parent": "Split",
       "text": "",
       "width": 100.0,
@@ -172,8 +229,11 @@
       "y": 160.0
     },
     {
+      "clipped": false,
+      "disabled": false,
       "height": 20.0,
       "id": "Mid",
+      "kind": "label",
       "parent": "Center",
       "text": "Hi",
       "width": 14.0,
@@ -181,8 +241,11 @@
       "y": 180.0
     },
     {
+      "clipped": false,
+      "disabled": false,
       "height": 10.0,
       "id": "Quarter",
+      "kind": "image",
       "parent": "Split",
       "text": "",
       "width": 50.0,
@@ -190,8 +253,11 @@
       "y": 160.0
     },
     {
+      "clipped": false,
+      "disabled": false,
       "height": 60.0,
       "id": "Rest",
+      "kind": "image",
       "parent": "Split",
       "text": "",
       "width": 50.0,
@@ -199,8 +265,11 @@
       "y": 160.0
     },
     {
+      "clipped": false,
+      "disabled": false,
       "height": 10.0,
       "id": "Between",
+      "kind": "row",
       "parent": "",
       "text": "",
       "width": 200.0,
@@ -208,8 +277,11 @@
       "y": 220.0
     },
     {
+      "clipped": false,
+      "disabled": false,
       "height": 10.0,
       "id": "Dot#0",
+      "kind": "image",
       "parent": "Between",
       "text": "",
       "width": 20.0,
@@ -217,8 +289,11 @@
       "y": 220.0
     },
     {
+      "clipped": false,
+      "disabled": false,
       "height": 10.0,
       "id": "Dot#1",
+      "kind": "image",
       "parent": "Between",
       "text": "",
       "width": 20.0,
@@ -226,8 +301,11 @@
       "y": 220.0
     },
     {
+      "clipped": false,
+      "disabled": false,
       "height": 10.0,
       "id": "Dot#2",
+      "kind": "image",
       "parent": "Between",
       "text": "",
       "width": 20.0,
@@ -235,8 +313,11 @@
       "y": 220.0
     },
     {
+      "clipped": false,
+      "disabled": false,
       "height": 5.0,
       "id": "Stack",
+      "kind": "column",
       "parent": "",
       "text": "",
       "width": 120.0,
@@ -244,8 +325,11 @@
       "y": 230.0
     },
     {
+      "clipped": false,
+      "disabled": false,
       "height": 5.0,
       "id": "Wide",
+      "kind": "image",
       "parent": "Stack",
       "text": "",
       "width": 100.0,
