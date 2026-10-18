@@ -62,6 +62,8 @@ pub(crate) struct LoadedFont {
     pub info: Value,
     /// Index into the render state's fonts.
     pub render: usize,
+    /// A shaped script's font file (og-ui shapes with it).
+    pub ttf: Option<std::sync::Arc<Vec<u8>>>,
 }
 
 /// Everything an engine loaded.
@@ -374,8 +376,14 @@ pub(crate) fn load_font(eng: &Engine, path: &str) -> Result<usize, String> {
     let pages = add_font(&mut rs.scene, &font);
     rs.fonts.push(pages);
     let render = rs.fonts.len() - 1;
+    let ttf = font.ttf.clone().map(std::sync::Arc::new);
     let mut assets = eng.assets.borrow_mut();
-    assets.fonts.push(LoadedFont { id, info, render });
+    assets.fonts.push(LoadedFont {
+        id,
+        info,
+        render,
+        ttf,
+    });
     Ok(assets.fonts.len() - 1)
 }
 

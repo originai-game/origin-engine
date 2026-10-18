@@ -67,6 +67,8 @@ interface Start {
   basis?: { js: string; wasm: string };
   /** The project's physics profile (project.ogt `profile`). */
   profile?: "2d" | "3d";
+  /** The locale og.i18n is asked for (the page's `navigator.language`). */
+  locale?: string;
   /** The play surface in CSS pixels, its DPR and safe area: what the UI lays out in. */
   viewport?: Viewport;
   /** Bytes the boot will fetch (the wasm, the cooked bundle), for real progress; omitted: counted as they arrive. */
@@ -508,6 +510,7 @@ export function startWorker(game: GameToken): void {
           ...(data.seed === undefined ? {} : { seed: data.seed }),
           ...(data.root === undefined ? {} : { root: data.root }),
           ...(data.profile === undefined ? {} : { profile: data.profile }),
+          ...(data.locale ? { locale: data.locale } : {}),
           deferStart: true,
         });
         if (!created.ok) throw new Error(created.reason);

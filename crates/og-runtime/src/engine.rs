@@ -907,6 +907,8 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         super::e6::commit(engine_id, probe.inbox());
         super::e6::register_commands(&mut probe, engine_id);
     }
+    // The host's locale (og run --locale, the browser's language).
+    super::i18n::request(engine_id, options["locale"].as_str().unwrap_or(""));
     ENGINES.with(|e| e.borrow_mut().push(Some(engine.clone())));
     rprobe::set_reloader(&engine);
 

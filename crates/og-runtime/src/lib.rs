@@ -37,6 +37,7 @@ mod engine;
 mod extract;
 mod feel;
 mod fx;
+mod i18n;
 mod modules;
 mod nav;
 mod platform;
@@ -59,6 +60,7 @@ pub use feel::{
     og_tween_cancel_entity, og_tween_flash, og_tween_parallel, og_tween_sequence, og_tween_squash,
     og_tween_to,
 };
+pub use i18n::{og_i18n_has, og_i18n_load, og_i18n_locale, og_i18n_set_locale, og_i18n_t};
 pub use modules::{
     THEME_COLORS, TYPE_STEPS, og_load_skin, og_physics_overlap, og_physics_raycast,
     og_physics_set_mesh, og_physics_shape_cast, og_ui_action_button, og_ui_back, og_ui_badge,

@@ -3394,6 +3394,121 @@
       "callbacks": []
     },
     {
+      "name": "i18n",
+      "doc": "Localization: one string table per locale (`.ogt` of `type strings`: `locale \"ja\"`, its font chain `fonts \"...\"`, `string \"key\" \"message\"`), messages in a subset of ICU MessageFormat (`{name}`, `{n, number}`, `{n, plural, =0 {..} one {..} other {..}}` with `#`, `{g, select, a {..} other {..}}`), CLDR plural rules, and the locale the host asks for (the browser's `navigator.language` on the web, `og run --locale` natively).\nThe active locale is the best loaded table for the request (ja-JP takes ja; zh-TW takes zh-Hant or zh-TW), else the base table (`base true`, else en, else the first). A key it lacks is read from its `fallback` table, then the base. It also sets the UI's font chain (its fonts first, then the other tables') and direction: a right-to-left locale (ar, he, fa, ur) mirrors og.ui's layout, and og-ui shapes Arabic words with the font's own tables (a font cooked with the `arabic` charset carries them). `og cook` warns about every key a locale lacks, or takes other arguments for, than the base.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "LocaleInfo"
+      ],
+      "consts": [],
+      "functions": [
+        {
+          "name": "load",
+          "doc": "Load a cooked string table; the active locale is negotiated again.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The table, such as `strings/ja.ogt`."
+            }
+          ],
+          "returns": "Result<LocaleInfo>",
+          "returnsDoc": "Refused for a path that is not a cooked string table, or a font of its chain that is not cooked.",
+          "publish": true
+        },
+        {
+          "name": "setLocale",
+          "doc": "Ask for a locale (a player's choice in settings); the active one is the best table for it.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "locale",
+              "type": "String",
+              "optional": false,
+              "doc": "A BCP 47 tag: `ja`, `zh-CN`, `ar-EG`."
+            }
+          ],
+          "returns": "LocaleInfo",
+          "publish": true
+        },
+        {
+          "name": "locale",
+          "doc": "The requested and active locales, the direction and the font chain.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "LocaleInfo",
+          "publish": true
+        },
+        {
+          "name": "t",
+          "doc": "A key's message in the active locale, formatted with its arguments; a key no table has answers the key itself and logs one warning.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "key",
+              "type": "String",
+              "optional": false,
+              "doc": "The key, such as `menu.start`."
+            },
+            {
+              "name": "args",
+              "type": "Json",
+              "optional": true,
+              "doc": "The arguments: an object of strings and numbers, `{ count: 3, name: \"Kai\" }`."
+            }
+          ],
+          "returns": "String",
+          "publish": true
+        },
+        {
+          "name": "has",
+          "doc": "Whether the active locale's own table has the key (not a fallback).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "key",
+              "type": "String",
+              "optional": false,
+              "doc": "The key."
+            }
+          ],
+          "returns": "bool",
+          "publish": true
+        }
+      ],
+      "interfaces": [],
+      "callbacks": []
+    },
+    {
       "name": "ui",
       "doc": "The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, themes it with the platform's design tokens, draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it.\nThe engine opens the frame before the game's systems (from og.Input and the play surface) and closes it after them, so calls belong inside systems; outside one they do nothing and log a warning. Interaction is decided against the previous tick's rectangles, which are also what the probe resolves, so a scripted touch_move_to and a click agree; response edges (clicked, changed, submitted) last one tick.\nLengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Ids: an element's id is unique among its siblings (`idi(\"Slot\", 3)` is `Slot#3`); a path `Inventory/Slot#3` names it after its nearest ancestors. The UI state (hover, press, focus, caret, scroll) is world state: snapshots and the world hash carry it.",
       "place": "namespace",
@@ -15172,6 +15287,48 @@
         "host",
         "capabilities",
         "pending"
+      ],
+      "additionalProperties": false
+    },
+    "LocaleInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "i18n",
+      "description": "The localization state.",
+      "type": "object",
+      "properties": {
+        "requested": {
+          "type": "string",
+          "description": "The locale the host or the game asked for (empty: none)."
+        },
+        "active": {
+          "type": "string",
+          "description": "The table in use (empty: none loaded)."
+        },
+        "direction": {
+          "type": "string",
+          "description": "`ltr` or `rtl`."
+        },
+        "locales": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Every loaded table's locale."
+        },
+        "fonts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The UI's font chain, first first."
+        }
+      },
+      "required": [
+        "requested",
+        "active",
+        "direction",
+        "locales",
+        "fonts"
       ],
       "additionalProperties": false
     },

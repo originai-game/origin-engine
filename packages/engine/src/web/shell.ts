@@ -50,6 +50,8 @@ export interface ShellOptions {
   readonly onFirstFrame?: () => void;
   /** Without autoplay, take one tick before the first frame (the first screen behind a play gate). */
   readonly prime?: boolean;
+  /** The locale og.i18n is asked for; default: `navigator.language`. */
+  readonly locale?: string;
   /** What answers og.platform's calls; default: the browser's own storage (`setPlatform` changes it, a Player bridge for instance). */
   readonly platform?: PlatformHost;
 }
@@ -188,6 +190,7 @@ export class Shell {
         root: options.root,
         basis: options.basis,
         profile: options.profile,
+        locale: options.locale ?? globalThis.navigator?.language,
         ...(options.expect ? { expect: options.expect } : {}),
         ...(options.prime ? { prime: true } : {}),
         viewport: { width: canvas.clientWidth || canvas.width / dpr, height: canvas.clientHeight || canvas.height / dpr, dpr, coarsePointer: globalThis.matchMedia?.("(pointer: coarse)").matches ?? false },

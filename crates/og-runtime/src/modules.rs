@@ -855,6 +855,8 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
                 None => skin_font(2)?,
             },
             fallback: skin_font(3)?,
+            // The locale's chain (og.i18n) stays.
+            chain: Vec::new(),
         };
         let ui = eng
             .state
@@ -903,7 +905,8 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
         };
         let mut ui = ui.lock();
         ui.set_theme(theme);
-        ui.set_fonts(fonts);
+        let chain = ui.fonts().chain.clone();
+        ui.set_fonts(Fonts { chain, ..fonts });
         ui.set_icons(atlas);
         ui.set_skin_name(skin.as_ref().map_or("", |s| s.0.name.as_str()));
         ui.set_toast_anchor(anchor_of(&d["toastAnchor"]).unwrap_or(Anchor::Bottom));
@@ -987,14 +990,14 @@ pub fn og_load_skin(world: u32, path: String) -> String {
 /// A loaded font as the UI lays out and draws with it: its first atlas
 /// page's handle and metrics (every page carries every glyph's advance);
 /// the renderer draws the other pages from the same layout.
-fn ui_font(eng: &Engine, handle: f64) -> Result<UiFont, String> {
+pub(crate) fn ui_font(eng: &Engine, handle: f64) -> Result<UiFont, String> {
     let index = super::assets::index_of(handle).ok_or_else(|| format!("{handle} is not a font"))?;
-    let render = eng
+    let (render, ttf) = eng
         .assets
         .borrow()
         .fonts
         .get(index)
-        .map(|f| f.render)
+        .map(|f| (f.render, f.ttf.clone()))
         .ok_or_else(|| format!("font {handle} is not alive"))?;
     let mut rs = eng.render.borrow_mut();
     let pages = rs
@@ -1009,7 +1012,11 @@ fn ui_font(eng: &Engine, handle: f64) -> Result<UiFont, String> {
         .cloned()
         .ok_or("the font's first page is missing")?;
     rs.ui_pages.insert(first, pages);
-    Ok(UiFont::new(first, &msdf))
+    let mut font = UiFont::new(first, &msdf);
+    font.metrics = font
+        .metrics
+        .with_shaper(ttf.and_then(og_ui::shape::Shaper::new));
+    Ok(font)
 }
 
 pub fn og_ui_viewport(world: u32) -> String {

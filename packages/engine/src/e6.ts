@@ -1,4 +1,4 @@
-// The E6 modules' namespaces (IDL `nav`, `ai`, `platform`): thin calls into the host's
+// The E6 modules' namespaces (IDL `nav`, `ai`, `platform`, `i18n`): thin calls into the host's
 // binding symbols, typed by the generated declarations through index.ts.
 
 import type { HostAbi } from "./generated/abi.ts";
@@ -54,4 +54,12 @@ export const platform = Object.freeze({
   saveSettings: (world: W, value: unknown) => parse(abi().og_platform_save_settings(world.id, JSON.stringify(value))),
   result: (world: W, request: number) => parse(abi().og_platform_result(world.id, request)),
   info: (world: W) => parse(abi().og_platform_info(world.id)),
+});
+
+export const i18n = Object.freeze({
+  load: (world: W, path: string) => parse(abi().og_i18n_load(world.id, path)),
+  setLocale: (world: W, locale: string) => parse(abi().og_i18n_set_locale(world.id, locale)),
+  locale: (world: W) => parse(abi().og_i18n_locale(world.id)),
+  t: (world: W, key: string, args?: unknown) => abi().og_i18n_t(world.id, key, json(args)),
+  has: (world: W, key: string) => abi().og_i18n_has(world.id, key),
 });

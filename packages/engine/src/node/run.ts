@@ -5,7 +5,7 @@
 //   bun src/node/run.ts --entry <game.js|.ts> [--root <project>] [--ticks N] [--seed S]
 //       [--setup action[:arg...]]... [--commands "t:action[:args];..."] [--out <dir>]
 //       [--port P] [--size WxH] [--realtime] [--watch <bundle.js>] [--no-render]
-//       [--audio null|device|<out.wav>] [--platform-store <file.json>] [--json]
+//       [--audio null|device|<out.wav>] [--platform-store <file.json>] [--locale <tag>] [--json]
 //
 // - Without --commands, --port or --watch: advance --ticks N at once and print
 //   the world hash (M2's hello world).
@@ -44,6 +44,7 @@ let render = true;
 let asJson = false;
 let audioOut = "null";
 let platformStore: string | undefined;
+let locale: string | undefined;
 const setup: string[] = [];
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i]!;
@@ -70,6 +71,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--json") asJson = true;
   else if (a === "--audio") audioOut = next();
   else if (a === "--platform-store") platformStore = resolve(next());
+  else if (a === "--locale") locale = next();
   else if (a === "--headless") {
     // Native runs are always headless; accepted for `og run --headless`.
   } else fail(`unknown argument '${a}'`);
@@ -117,7 +119,7 @@ function projectProfile(dir: string | undefined): "2d" | "3d" | undefined {
 
 const game = await importGame(entry);
 const profile = projectProfile(root);
-const created = createEngine(game, { ...(seed === undefined ? {} : { seed }), ...(root ? { root } : {}), ...(profile ? { profile } : {}) });
+const created = createEngine(game, { ...(seed === undefined ? {} : { seed }), ...(root ? { root } : {}), ...(profile ? { profile } : {}), ...(locale ? { locale } : {}) });
 if (!created.ok) fail(`${entry}: ${created.reason}`);
 const engine: Engine = created.value;
 // og.platform: the local store, in memory unless --platform-store names a file.

@@ -25,6 +25,7 @@ og-tween = { path = "../og-tween" }
 og-tilemap = { path = "../og-tilemap" }
 og-nav = { path = "../og-nav" }
 og-ai = { path = "../og-ai" }
+og-i18n = { path = "../og-i18n" }
 
 [features]
 default = []

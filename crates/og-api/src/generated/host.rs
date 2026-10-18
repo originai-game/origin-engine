@@ -436,6 +436,20 @@ pub trait PlatformApi: Wire {
     fn og_platform_info(&self, world: u32) -> String;
 }
 
+/// `i18n`: packages/knowledge/wiki/i18n.md.
+pub trait I18nApi: Wire {
+    /// `og.i18n.load`
+    fn og_i18n_load(&self, world: u32, path: String) -> String;
+    /// `og.i18n.setLocale`
+    fn og_i18n_set_locale(&self, world: u32, locale: String) -> String;
+    /// `og.i18n.locale`
+    fn og_i18n_locale(&self, world: u32) -> String;
+    /// `og.i18n.t`
+    fn og_i18n_t(&self, world: u32, key: String, args: Option<String>) -> String;
+    /// `og.i18n.has`
+    fn og_i18n_has(&self, world: u32, key: String) -> bool;
+}
+
 /// `ui`: packages/knowledge/wiki/ui.md.
 pub trait UiApi: Wire {
     /// `og.ui.configure`
@@ -631,9 +645,9 @@ pub trait ProbeApi: Wire {
 }
 
 /// Every trait: a host is a type that implements all of them.
-pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AnimApi + TweenApi + TilemapApi + NavApi + AiApi + PlatformApi + UiApi + CommandsApi + ProbeApi {}
+pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AnimApi + TweenApi + TilemapApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi {}
 
-impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AnimApi + TweenApi + TilemapApi + NavApi + AiApi + PlatformApi + UiApi + CommandsApi + ProbeApi> Host for T {}
+impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AnimApi + TweenApi + TilemapApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi> Host for T {}
 
 /// Every binding symbol, in binding-table order (`bindings.json` ids).
 pub const SYMBOLS: &[&str] = &[
@@ -791,6 +805,11 @@ pub const SYMBOLS: &[&str] = &[
     "og_platform_save_settings",
     "og_platform_result",
     "og_platform_info",
+    "og_i18n_load",
+    "og_i18n_set_locale",
+    "og_i18n_locale",
+    "og_i18n_t",
+    "og_i18n_has",
     "og_ui_configure",
     "og_ui_viewport",
     "og_ui_theme",

@@ -645,6 +645,8 @@ export interface CreateOptions {
   readonly profile?: "2d" | "3d";
   /** Run GameDesc.start at the first tick boundary instead of now, so a host can attach its renderer and report the viewport first (the web Worker does). */
   readonly deferStart?: boolean;
+  /** The locale the host asks og.i18n for: the browser's language, `og run --locale`. */
+  readonly locale?: string;
 }
 
 /** A file the command channel produced (`og_engine_take_outputs`). */

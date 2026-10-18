@@ -343,6 +343,16 @@ export interface HostAbi<A, V> {
   og_platform_result(world: number, request: number): string;
   /** `og.platform.info` */
   og_platform_info(world: number): string;
+  /** `og.i18n.load` */
+  og_i18n_load(world: number, path: string): string;
+  /** `og.i18n.setLocale` */
+  og_i18n_set_locale(world: number, locale: string): string;
+  /** `og.i18n.locale` */
+  og_i18n_locale(world: number): string;
+  /** `og.i18n.t` */
+  og_i18n_t(world: number, key: string, args: string | undefined): string;
+  /** `og.i18n.has` */
+  og_i18n_has(world: number, key: string): boolean;
   /** `og.ui.configure` */
   og_ui_configure(world: number, desc: string | undefined): string;
   /** `og.ui.viewport` */
@@ -683,6 +693,11 @@ export const SYMBOLS: readonly string[] = [
   "og_platform_save_settings",
   "og_platform_result",
   "og_platform_info",
+  "og_i18n_load",
+  "og_i18n_set_locale",
+  "og_i18n_locale",
+  "og_i18n_t",
+  "og_i18n_has",
   "og_ui_configure",
   "og_ui_viewport",
   "og_ui_theme",

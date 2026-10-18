@@ -2,7 +2,7 @@
 
 # The Origin Engine API
 
-`@origingame/engine`, API version 1: 24 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
+`@origingame/engine`, API version 1: 25 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
 
 The Origin Engine API. Game code declares components and systems, and reads the world through typed views over engine memory.
 
@@ -32,6 +32,7 @@ Every failure is a returned Result; desc objects may omit any field; nothing rea
 | [`nav`](nav.md) | `og.nav.*` | kept | Navigation: grids (A* and jump point search with eight-way moves that never cut a blocked corner, line-of-sight smoothing), flow fields for crowds, and navmeshes (baked at cook time from a level's static colliders and models, or built at runtime for a flat procedural level) with funnel paths and box obstacles that rebuild only the tiles they touch. |
 | [`ai`](ai.md) | `og.ai.*` | kept | Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (crates/og-ai/README.md has the grammar), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent. |
 | [`platform`](platform.md) | `og.platform.*` | kept | Platform services as host capabilities (docs/design.md §2.8): cloud store, leaderboards, telemetry, Origin Point and AI marks. Game code names a method and its arguments, never a credential, a URL or a cookie: the host owns them. On the web the shell forwards each call to the Player through origin-checked postMessage (Player protocol 2, docs/web-export.md); natively the host answers from a local JSON store (`og run --platform-store`, default `<project>/.og/platform.json`). |
+| [`i18n`](i18n.md) | `og.i18n.*` | kept | Localization: one string table per locale (`.ogt` of `type strings`: `locale "ja"`, its font chain `fonts "..."`, `string "key" "message"`), messages in a subset of ICU MessageFormat (`{name}`, `{n, number}`, `{n, plural, =0 {..} one {..} other {..}}` with `#`, `{g, select, a {..} other {..}}`), CLDR plural rules, and the locale the host asks for (the browser's `navigator.language` on the web, `og run --locale` natively). |
 | [`ui`](ui.md) | `og.ui.*` | kept | The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, themes it with the platform's design tokens, draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it. |
 | [`systems`](systems.md) | types and tokens | kept | Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for. |
 | [`commands`](commands.md) | `og.commands.*` | dropped | The command channel: actions scheduled on simulation time, from `og run --commands "t:action[:args];..."` or the probe's commands(). |
@@ -64,7 +65,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-718 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+724 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -260,6 +261,7 @@ Field units the docs and Tune use.
 | [`ListResult`](ui.md#type-ListResult) | struct | ui | — |
 | [`LoadingDesc`](ui.md#type-LoadingDesc) | desc struct | ui | — |
 | [`LoadStatus`](load.md#type-LoadStatus) | enum | load | — |
+| [`LocaleInfo`](i18n.md#type-LocaleInfo) | struct | i18n | — |
 | [`LOCK_ROTATION_X`](physics.md#const-LOCK_ROTATION_X) | constant | physics | — |
 | [`LOCK_ROTATION_Y`](physics.md#const-LOCK_ROTATION_Y) | constant | physics | — |
 | [`LOCK_ROTATION_Z`](physics.md#const-LOCK_ROTATION_Z) | constant | physics | — |
@@ -347,6 +349,11 @@ Field units the docs and Tune use.
 | [`og.FollowCamera`](camera.md#record-FollowCamera) | component | camera | — |
 | [`og.game`](game.md#fn-game) | function | game | `og_game_game` |
 | [`og.Gamepad`](input.md#record-Gamepad) | resource | input | — |
+| [`og.i18n.has`](i18n.md#fn-has) | function | i18n | `og_i18n_has` |
+| [`og.i18n.load`](i18n.md#fn-load) | function | i18n | `og_i18n_load` |
+| [`og.i18n.locale`](i18n.md#fn-locale) | function | i18n | `og_i18n_locale` |
+| [`og.i18n.setLocale`](i18n.md#fn-setLocale) | function | i18n | `og_i18n_set_locale` |
+| [`og.i18n.t`](i18n.md#fn-t) | function | i18n | `og_i18n_t` |
 | [`og.IkChain`](anim.md#record-IkChain) | component | anim | — |
 | [`og.Input`](input.md#record-Input) | resource | input | — |
 | [`og.KeyDown`](input.md#record-KeyDown) | event | input | — |

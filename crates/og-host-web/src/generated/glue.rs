@@ -849,6 +849,31 @@ pub fn og_platform_info(world: u32) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_i18n_load(world: u32, path: String) -> String {
+    <Host as I18nApi>::og_i18n_load(&Host, world, path)
+}
+
+#[wasm_bindgen]
+pub fn og_i18n_set_locale(world: u32, locale: String) -> String {
+    <Host as I18nApi>::og_i18n_set_locale(&Host, world, locale)
+}
+
+#[wasm_bindgen]
+pub fn og_i18n_locale(world: u32) -> String {
+    <Host as I18nApi>::og_i18n_locale(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_i18n_t(world: u32, key: String, args: Option<String>) -> String {
+    <Host as I18nApi>::og_i18n_t(&Host, world, key, args)
+}
+
+#[wasm_bindgen]
+pub fn og_i18n_has(world: u32, key: String) -> bool {
+    <Host as I18nApi>::og_i18n_has(&Host, world, key)
+}
+
+#[wasm_bindgen]
 pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
     <Host as UiApi>::og_ui_configure(&Host, world, desc)
 }

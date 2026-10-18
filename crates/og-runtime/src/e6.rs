@@ -199,6 +199,7 @@ pub(crate) fn take_warnings(engine: u32) -> Vec<String> {
 pub(crate) fn retire(engine: u32) {
     MODULES.with(|m| m.borrow_mut().remove(&engine));
     super::platform::retire(engine);
+    super::i18n::retire(engine);
 }
 
 /// The dump actions (`dump_ai:<entity>[:path]`, `dump_nav:<entity>[:path]`)
@@ -228,6 +229,21 @@ pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine: u32) {
             let id = args.first().ok_or("write dump_ai:<entity>[:path]")?;
             let e = og_probe::Names.resolve(world, id).ok_or_else(|| format!("no live entity '{id}'"))?;
             super::ai::describe_json(engine, world, e).ok_or_else(|| format!("{id} has not thought: it needs an og.AiAgent with a loaded behaviour"))
+        },
+    );
+    let _ = probe.register_command(
+        "locale",
+        og_probe::CommandDesc {
+            usage: "locale:<tag>".into(),
+            doc: "ask for a locale (og.i18n.setLocale): ja, zh-CN, ar".into(),
+        },
+        move |_world, args| {
+            let tag = args
+                .first()
+                .filter(|a| !a.is_empty())
+                .ok_or("write locale:<tag>, such as locale:ja")?;
+            super::i18n::og_i18n_set_locale(engine, tag.clone());
+            Ok(())
         },
     );
     let _ = probe.register_dump(

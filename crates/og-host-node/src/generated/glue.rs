@@ -1017,6 +1017,36 @@ pub fn og_platform_info(env: Env, world: u32) -> String {
     <Host as PlatformApi>::og_platform_info(&Host, world)
 }
 
+#[napi(js_name = "og_i18n_load")]
+pub fn og_i18n_load(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as I18nApi>::og_i18n_load(&Host, world, path)
+}
+
+#[napi(js_name = "og_i18n_set_locale")]
+pub fn og_i18n_set_locale(env: Env, world: u32, locale: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as I18nApi>::og_i18n_set_locale(&Host, world, locale)
+}
+
+#[napi(js_name = "og_i18n_locale")]
+pub fn og_i18n_locale(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as I18nApi>::og_i18n_locale(&Host, world)
+}
+
+#[napi(js_name = "og_i18n_t")]
+pub fn og_i18n_t(env: Env, world: u32, key: String, args: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as I18nApi>::og_i18n_t(&Host, world, key, args)
+}
+
+#[napi(js_name = "og_i18n_has")]
+pub fn og_i18n_has(env: Env, world: u32, key: String) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as I18nApi>::og_i18n_has(&Host, world, key)
+}
+
 #[napi(js_name = "og_ui_configure")]
 pub fn og_ui_configure(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);

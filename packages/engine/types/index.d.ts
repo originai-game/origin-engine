@@ -7848,6 +7848,29 @@ export interface PlatformInfo {
 
 
 
+// ── i18n ────────────────────────────────────────────────────────
+// Localization: one string table per locale (`.ogt` of `type strings`: `locale "ja"`, its font chain `fonts "..."`, `string "key" "message"`), messages in a subset of ICU MessageFormat (`{name}`, `{n, number}`, `{n, plural, =0 {..} one {..} other {..}}` with `#`, `{g, select, a {..} other {..}}`), CLDR plural rules, and the locale the host asks for (the browser's `navigator.language` on the web, `og run --locale` natively).
+// The active locale is the best loaded table for the request (ja-JP takes ja; zh-TW takes zh-Hant or zh-TW), else the base table (`base true`, else en, else the first). A key it lacks is read from its `fallback` table, then the base. It also sets the UI's font chain (its fonts first, then the other tables') and direction: a right-to-left locale (ar, he, fa, ur) mirrors og.ui's layout, and og-ui shapes Arabic words with the font's own tables (a font cooked with the `arabic` charset carries them). `og cook` warns about every key a locale lacks, or takes other arguments for, than the base.
+
+/** The localization state. */
+export interface LocaleInfo {
+  /** The locale the host or the game asked for (empty: none). */
+  readonly requested: string;
+  /** The table in use (empty: none loaded). */
+  readonly active: string;
+  /** `ltr` or `rtl`. */
+  readonly direction: string;
+  /** Every loaded table's locale. */
+  readonly locales: readonly string[];
+  /** The UI's font chain, first first. */
+  readonly fonts: readonly string[];
+}
+
+
+
+
+
+
 // ── ui ──────────────────────────────────────────────────────────
 // The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, themes it with the platform's design tokens, draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it.
 // The engine opens the frame before the game's systems (from og.Input and the play surface) and closes it after them, so calls belong inside systems; outside one they do nothing and log a warning. Interaction is decided against the previous tick's rectangles, which are also what the probe resolves, so a scripted touch_move_to and a click agree; response edges (clicked, changed, submitted) last one tick.
@@ -13320,6 +13343,48 @@ export declare namespace og {
      * @param world The world.
      */
     function info(world: World): PlatformInfo;
+  }
+  /**
+   * Localization: one string table per locale (`.ogt` of `type strings`: `locale "ja"`, its font chain `fonts "..."`, `string "key" "message"`), messages in a subset of ICU MessageFormat (`{name}`, `{n, number}`, `{n, plural, =0 {..} one {..} other {..}}` with `#`, `{g, select, a {..} other {..}}`), CLDR plural rules, and the locale the host asks for (the browser's `navigator.language` on the web, `og run --locale` natively).
+   * The active locale is the best loaded table for the request (ja-JP takes ja; zh-TW takes zh-Hant or zh-TW), else the base table (`base true`, else en, else the first). A key it lacks is read from its `fallback` table, then the base. It also sets the UI's font chain (its fonts first, then the other tables') and direction: a right-to-left locale (ar, he, fa, ur) mirrors og.ui's layout, and og-ui shapes Arabic words with the font's own tables (a font cooked with the `arabic` charset carries them). `og cook` warns about every key a locale lacks, or takes other arguments for, than the base.
+   */
+  namespace i18n {
+    /**
+     * Load a cooked string table; the active locale is negotiated again.
+     *
+     * @param world The world.
+     * @param path The table, such as `strings/ja.ogt`.
+     * @returns Refused for a path that is not a cooked string table, or a font of its chain that is not cooked.
+     */
+    function load(world: World, path: string): Result<LocaleInfo>;
+    /**
+     * Ask for a locale (a player's choice in settings); the active one is the best table for it.
+     *
+     * @param world The world.
+     * @param locale A BCP 47 tag: `ja`, `zh-CN`, `ar-EG`.
+     */
+    function setLocale(world: World, locale: string): LocaleInfo;
+    /**
+     * The requested and active locales, the direction and the font chain.
+     *
+     * @param world The world.
+     */
+    function locale(world: World): LocaleInfo;
+    /**
+     * A key's message in the active locale, formatted with its arguments; a key no table has answers the key itself and logs one warning.
+     *
+     * @param world The world.
+     * @param key The key, such as `menu.start`.
+     * @param args The arguments: an object of strings and numbers, `{ count: 3, name: "Kai" }`.
+     */
+    function t(world: World, key: string, args?: unknown): string;
+    /**
+     * Whether the active locale's own table has the key (not a fallback).
+     *
+     * @param world The world.
+     * @param key The key.
+     */
+    function has(world: World, key: string): boolean;
   }
   /**
    * The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, themes it with the platform's design tokens, draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it.

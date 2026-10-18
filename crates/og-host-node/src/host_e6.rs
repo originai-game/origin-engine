@@ -1,4 +1,4 @@
-//! The E6 modules' trait implementations (NavApi, AiApi, PlatformApi): every
+//! The E6 modules' trait implementations (NavApi, AiApi, PlatformApi, I18nApi): every
 //! member is the host-neutral runtime's.
 
 use crate::NodeHost;
@@ -119,5 +119,23 @@ impl PlatformApi for NodeHost {
     }
     fn og_platform_info(&self, world: u32) -> String {
         rt::og_platform_info(world)
+    }
+}
+
+impl I18nApi for NodeHost {
+    fn og_i18n_load(&self, world: u32, path: String) -> String {
+        rt::og_i18n_load(world, path)
+    }
+    fn og_i18n_set_locale(&self, world: u32, locale: String) -> String {
+        rt::og_i18n_set_locale(world, locale)
+    }
+    fn og_i18n_locale(&self, world: u32) -> String {
+        rt::og_i18n_locale(world)
+    }
+    fn og_i18n_t(&self, world: u32, key: String, args: Option<String>) -> String {
+        rt::og_i18n_t(world, key, args)
+    }
+    fn og_i18n_has(&self, world: u32, key: String) -> bool {
+        rt::og_i18n_has(world, key)
     }
 }

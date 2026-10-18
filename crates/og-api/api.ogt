@@ -5176,6 +5176,59 @@ module platform {
   }
 }
 
+# ── i18n ──────────────────────────────────────────────────────────────────
+
+module i18n {
+  doc "Localization: one string table per locale (`.ogt` of `type strings`: `locale \"ja\"`, its font chain `fonts \"...\"`, `string \"key\" \"message\"`), messages in a subset of ICU MessageFormat (`{name}`, `{n, number}`, `{n, plural, =0 {..} one {..} other {..}}` with `#`, `{g, select, a {..} other {..}}`), CLDR plural rules, and the locale the host asks for (the browser's `navigator.language` on the web, `og run --locale` natively)."
+  doc "The active locale is the best loaded table for the request (ja-JP takes ja; zh-TW takes zh-Hant or zh-TW), else the base table (`base true`, else en, else the first). A key it lacks is read from its `fallback` table, then the base. It also sets the UI's font chain (its fonts first, then the other tables') and direction: a right-to-left locale (ar, he, fa, ur) mirrors og.ui's layout, and og-ui shapes Arabic words with the font's own tables (a font cooked with the `arabic` charset carries them). `og cook` warns about every key a locale lacks, or takes other arguments for, than the base."
+
+  struct LocaleInfo {
+    doc "The localization state."
+    field requested String "The locale the host or the game asked for (empty: none)."
+    field active String "The table in use (empty: none loaded)."
+    field direction String "`ltr` or `rtl`."
+    field locales List.String "Every loaded table's locale."
+    field fonts List.String "The UI's font chain, first first."
+  }
+
+  fn load {
+    doc "Load a cooked string table; the active locale is negotiated again."
+    param world World "The world."
+    param path String "The table, such as `strings/ja.ogt`."
+    returns Result.LocaleInfo "Refused for a path that is not a cooked string table, or a font of its chain that is not cooked."
+  }
+
+  fn setLocale {
+    doc "Ask for a locale (a player's choice in settings); the active one is the best table for it."
+    param world World "The world."
+    param locale String "A BCP 47 tag: `ja`, `zh-CN`, `ar-EG`."
+    returns LocaleInfo
+  }
+
+  fn locale {
+    doc "The requested and active locales, the direction and the font chain."
+    param world World "The world."
+    returns LocaleInfo
+  }
+
+  fn t {
+    doc "A key's message in the active locale, formatted with its arguments; a key no table has answers the key itself and logs one warning."
+    param world World "The world."
+    param key String "The key, such as `menu.start`."
+    param args Json "The arguments: an object of strings and numbers, `{ count: 3, name: \"Kai\" }`." {
+      optional true
+    }
+    returns String
+  }
+
+  fn has {
+    doc "Whether the active locale's own table has the key (not a fallback)."
+    param world World "The world."
+    param key String "The key."
+    returns bool
+  }
+}
+
 # ── ui ────────────────────────────────────────────────────────────────────
 
 module ui {
