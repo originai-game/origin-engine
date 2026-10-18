@@ -38,6 +38,8 @@ pub(crate) struct FrameUniform {
     pub cascade_bias: [[f32; 4]; CASCADES],
     pub lights: [LightGpu; MAX_LIGHTS],
     pub local_view_proj: [[[f32; 4]; 4]; LOCAL_SHADOW_LAYERS],
+    /// Fog, the drawn sky's look and the clock (`atmosphere.rs`).
+    pub atmosphere: crate::atmosphere::AtmosphereGpu,
 }
 
 /// The camera's matrices for one frame.

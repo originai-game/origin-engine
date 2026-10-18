@@ -10,6 +10,10 @@ struct Params {
   source_size: f32,
   sun_dir: vec4<f32>,
   sun_color: vec4<f32>,
+  // A chosen look (`SkyLook::gpu`): zenith (w: 1 when set), horizon (w:
+  // brightness), ground (w: stars), disc (outer, inner, intensity, glow),
+  // glow power and sun colour. Unset: the built-in sky below.
+  look: array<vec4<f32>, 5>,
 };
 @group(0) @binding(0) var<uniform> params: Params;
 @group(0) @binding(1) var source_cube: texture_cube<f32>;
@@ -46,10 +50,24 @@ fn face_dir(face: u32, uv: vec2<f32>) -> vec3<f32> {
 
 const PI: f32 = 3.14159265359;
 
+// The sky of a chosen look (frame.wgsl's sky_look without the stars, which
+// would only add noise to the lighting).
+fn looked_sky(d: vec3<f32>) -> vec3<f32> {
+  let sun = normalize(params.sun_dir.xyz);
+  let up = clamp(d.y, -1.0, 1.0);
+  var sky = mix(params.look[1].rgb, params.look[0].rgb, pow(max(up, 0.0), 0.55));
+  sky = mix(params.look[2].rgb, sky, smoothstep(-0.08, 0.02, up));
+  let cos_sun = dot(d, sun);
+  let glow = pow(max(cos_sun, 0.0), max(params.look[4].x, 1.0)) * params.look[3].w;
+  let disc = smoothstep(params.look[3].x, params.look[3].y, cos_sun) * params.look[3].z;
+  return sky * params.look[1].w + params.look[4].yzw * (glow + disc);
+}
+
 // A simple analytic sky: horizon haze, zenith blue, a sun disc with a glow, dark ground.
 @fragment
 fn fs_sky(in: VsOut) -> @location(0) vec4<f32> {
   let d = face_dir(params.face, in.uv);
+  if (params.look[0].w > 0.5) { return vec4<f32>(looked_sky(d), 1.0); }
   let sun = normalize(params.sun_dir.xyz);
   let up = clamp(d.y, -1.0, 1.0);
   let zenith = vec3<f32>(0.18, 0.36, 0.78);

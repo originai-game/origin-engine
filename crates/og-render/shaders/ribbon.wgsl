@@ -17,6 +17,7 @@ struct RibbonOut {
   @location(0) uv: vec2<f32>,
   @location(1) color: vec4<f32>,
   @location(2) textured: f32,
+  @location(3) world: vec3<f32>,
 };
 
 @vertex
@@ -26,6 +27,7 @@ fn vs(r: RibbonIn) -> RibbonOut {
   o.uv = vec2<f32>(r.extra.x, r.position_v.w);
   o.color = r.color;
   o.textured = r.extra.y;
+  o.world = r.position_v.xyz;
   return o;
 }
 
@@ -39,6 +41,7 @@ fn fs(in: RibbonOut) -> @location(0) vec4<f32> {
     let e = 1.0 - abs(in.uv.y * 2.0 - 1.0);
     c.a *= e * e * (3.0 - 2.0 * e);
   }
+  c.a *= fog_keep(in.world);
   if (c.a <= 0.0) { discard; }
   return c;
 }

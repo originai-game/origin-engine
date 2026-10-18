@@ -580,6 +580,7 @@ pub fn dim_scene(brightness: f32) -> RenderScene {
         sky: ProceduralSky {
             sun_direction: sun,
             sun_color: Vec3::new(1.0, 0.7, 0.45),
+            look: None,
         },
         intensity: 0.03 * brightness,
         background: Background::Color(Vec3::new(0.01, 0.012, 0.02) * brightness),
@@ -807,6 +808,7 @@ fn sky_only() -> RenderScene {
     scene.environment.sky = ProceduralSky {
         sun_direction: sun,
         sun_color: Vec3::new(1.0, 0.85, 0.65),
+        look: None,
     };
     scene.light.direction_to_light = sun;
     scene.camera = Camera {
@@ -902,6 +904,7 @@ fn showcase() -> Result<RenderScene, String> {
         sky: ProceduralSky {
             sun_direction: sun,
             sun_color: Vec3::new(1.0, 0.7, 0.45),
+            look: None,
         },
         intensity: 0.35,
         background: Background::Sky,
@@ -1074,6 +1077,7 @@ fn layout(scene: &mut RenderScene, models: &[Parts], count: u32, spacing: f32) {
         sky: ProceduralSky {
             sun_direction: SUN,
             sun_color: SUN_COLOR,
+            look: None,
         },
         intensity: 0.55,
         background: Background::Sky,

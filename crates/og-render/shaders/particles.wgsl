@@ -23,6 +23,7 @@ struct ParticleOut {
   @location(1) local: vec2<f32>,
   @location(2) color: vec4<f32>,
   @location(3) depth: f32,
+  @location(4) world: vec3<f32>,
 };
 
 @vertex
@@ -79,6 +80,7 @@ fn vs(@builtin(vertex_index) vi: u32, p: ParticleIn) -> ParticleOut {
   o.local = c;
   o.color = color_curve(emitter, t) * emitter.color;
   o.depth = dot(world - view.cam_pos.xyz, view.cam_forward.xyz);
+  o.world = world;
   return o;
 }
 
@@ -97,6 +99,7 @@ fn fs(in: ParticleOut) -> @location(0) vec4<f32> {
     let scene = textureLoad(scene_depth, vec2<i32>(in.clip.xy), 0).r;
     c.a *= clamp((scene - in.depth) / emitter.render.z, 0.0, 1.0);
   }
+  c.a *= fog_keep(in.world);
   if (c.a <= 0.0) { discard; }
   return c;
 }

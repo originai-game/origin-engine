@@ -1,7 +1,15 @@
 //! Image-based lighting generated on the GPU with render passes: a procedural sky
 //! cubemap with mips, its irradiance convolution, GGX-prefiltered specular mips and
 //! the split-sum BRDF LUT.
+//!
+//! The generator is made once per renderer and keeps its pipelines, its
+//! textures and their bind groups: a new sky (a day-night cycle moving the
+//! sun) rewrites one uniform buffer and re-records the passes into the same
+//! textures, and the BRDF LUT, which does not depend on the sky, is drawn
+//! once. Every regeneration draws the same passes as the first.
 
+use crate::HDR_FORMAT;
+use crate::atmosphere::SkyLook;
 use glam::Vec3;
 
 pub const SKY_SIZE: u32 = 256;
@@ -9,7 +17,8 @@ const IRRADIANCE_SIZE: u32 = 32;
 pub const PREFILTER_SIZE: u32 = 128;
 pub const PREFILTER_MIPS: u32 = 5;
 const LUT_SIZE: u32 = 256;
-use crate::HDR_FORMAT;
+/// Uniform slots: one per pass, at the 256-byte dynamic offset alignment.
+const SLOT: u64 = 256;
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -20,8 +29,12 @@ struct Params {
     source_size: f32,
     sun_dir: [f32; 4],
     sun_color: [f32; 4],
+    /// The look (`SkyLook::gpu`); zenith.w 0 is the built-in sky.
+    look: [[f32; 4]; 5],
+    pad: [f32; 32],
 }
 
+/// The views the frame binds.
 pub struct Ibl {
     /// The sky itself (full mip chain): the background the sky pass draws.
     pub sky: wgpu::TextureView,
@@ -83,13 +96,31 @@ fn face_view(tex: &wgpu::Texture, face: u32, mip: u32) -> wgpu::TextureView {
     })
 }
 
-impl Ibl {
-    pub fn generate(
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        sun_dir: Vec3,
-        sun_color: Vec3,
-    ) -> Ibl {
+/// What one pass draws: its target, pipeline, the source it samples and
+/// its parameters (all but the sky's, which every pass shares).
+struct Pass {
+    target: wgpu::TextureView,
+    pipeline: usize,
+    group: wgpu::BindGroup,
+    face: u32,
+    roughness: f32,
+    sample_count: u32,
+}
+
+/// The IBL generator: made once, regenerates for every new sky.
+pub struct IblGenerator {
+    pipelines: Vec<wgpu::RenderPipeline>,
+    params: wgpu::Buffer,
+    passes: Vec<Pass>,
+    lut_pass: Pass,
+    lut_drawn: bool,
+    /// Kept alive for the bind groups and views.
+    _textures: Vec<wgpu::Texture>,
+    views: Ibl,
+}
+
+impl IblGenerator {
+    pub fn new(device: &wgpu::Device) -> IblGenerator {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("ibl"),
             source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/ibl.wgsl").into()),
@@ -112,8 +143,10 @@ impl Ibl {
                     visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                        has_dynamic_offset: true,
+                        min_binding_size: wgpu::BufferSize::new(
+                            std::mem::size_of::<Params>() as u64
+                        ),
                     },
                     count: None,
                 },
@@ -167,11 +200,18 @@ impl Ibl {
                 cache: None,
             })
         };
-        let sky_pipeline = make_pipeline("fs_sky");
-        let down_pipeline = make_pipeline("fs_downsample");
-        let irradiance_pipeline = make_pipeline("fs_irradiance");
-        let prefilter_pipeline = make_pipeline("fs_prefilter");
-        let lut_pipeline = make_pipeline("fs_brdf_lut");
+        const SKY: usize = 0;
+        const DOWN: usize = 1;
+        const IRRADIANCE: usize = 2;
+        const PREFILTER: usize = 3;
+        const LUT: usize = 4;
+        let pipelines = vec![
+            make_pipeline("fs_sky"),
+            make_pipeline("fs_downsample"),
+            make_pipeline("fs_irradiance"),
+            make_pipeline("fs_prefilter"),
+            make_pipeline("fs_brdf_lut"),
+        ];
 
         let sky_mips = SKY_SIZE.ilog2() + 1;
         let sky = cube_texture(device, "sky", SKY_SIZE, sky_mips);
@@ -191,24 +231,25 @@ impl Ibl {
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
             view_formats: &[],
         });
-
-        // Every pass has its own uniform buffer and bind group (small, one-time work).
-        let mut passes: Vec<(wgpu::TextureView, &wgpu::RenderPipeline, wgpu::BindGroup)> =
-            Vec::new();
-        let bind = |params: Params, source: &wgpu::TextureView| -> wgpu::BindGroup {
-            use wgpu::util::DeviceExt;
-            let buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("ibl params"),
-                contents: bytemuck::bytes_of(&params),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
+        let count = 6 * (sky_mips as usize + 1 + PREFILTER_MIPS as usize) + 1;
+        let params = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("ibl params"),
+            size: SLOT * count as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let group = |source: &wgpu::TextureView| -> wgpu::BindGroup {
             device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("ibl bg"),
                 layout: &layout,
                 entries: &[
                     wgpu::BindGroupEntry {
                         binding: 0,
-                        resource: buf.as_entire_binding(),
+                        resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                            buffer: &params,
+                            offset: 0,
+                            size: wgpu::BufferSize::new(std::mem::size_of::<Params>() as u64),
+                        }),
                     },
                     wgpu::BindGroupEntry {
                         binding: 1,
@@ -221,6 +262,86 @@ impl Ibl {
                 ],
             })
         };
+        let pass = |target, pipeline, group, face, roughness, sample_count| Pass {
+            target,
+            pipeline,
+            group,
+            face,
+            roughness,
+            sample_count,
+        };
+        // The sky pass samples nothing, but the layout needs a cube: the irradiance texture.
+        let dummy = cube_view(&irradiance, "dummy");
+        let mut passes = Vec::new();
+        for face in 0..6 {
+            passes.push(pass(face_view(&sky, face, 0), SKY, group(&dummy), face, 0.0, 0));
+        }
+        // Sky mips: each level samples the one above through a view restricted to it.
+        for mip in 1..sky_mips {
+            let above = cube_view_mips(&sky, "sky above", mip - 1, 1);
+            for face in 0..6 {
+                passes.push(pass(face_view(&sky, face, mip), DOWN, group(&above), face, 0.0, 0));
+            }
+        }
+        let sky_full = cube_view(&sky, "sky");
+        for face in 0..6 {
+            passes.push(pass(
+                face_view(&irradiance, face, 0),
+                IRRADIANCE,
+                group(&sky_full),
+                face,
+                0.0,
+                0,
+            ));
+        }
+        for mip in 0..PREFILTER_MIPS {
+            let roughness = mip as f32 / (PREFILTER_MIPS - 1) as f32;
+            for face in 0..6 {
+                passes.push(pass(
+                    face_view(&prefiltered, face, mip),
+                    PREFILTER,
+                    group(&sky_full),
+                    face,
+                    roughness,
+                    128,
+                ));
+            }
+        }
+        let lut_pass = pass(lut.create_view(&Default::default()), LUT, group(&dummy), 0, 0.0, 0);
+        let views = Ibl {
+            sky: cube_view(&sky, "sky"),
+            irradiance: cube_view(&irradiance, "irradiance"),
+            prefiltered: cube_view(&prefiltered, "prefiltered"),
+            brdf_lut: lut.create_view(&Default::default()),
+            sampler,
+        };
+        IblGenerator {
+            pipelines,
+            params,
+            passes,
+            lut_pass,
+            lut_drawn: false,
+            _textures: vec![sky, irradiance, prefiltered, lut],
+            views,
+        }
+    }
+
+    /// The views the frame binds (the same textures after every regeneration).
+    pub fn views(&self) -> &Ibl {
+        &self.views
+    }
+
+    /// Draws the sky of `sun_dir`, `sun_color` and `look` (`None`: the
+    /// built-in sky) and its convolutions into the textures.
+    pub fn generate(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        sun_dir: Vec3,
+        sun_color: Vec3,
+        look: Option<&SkyLook>,
+    ) {
+        let look = look.map_or([[0.0; 4]; 5], |l| l.gpu(true, sun_color));
         let base = Params {
             face: 0,
             roughness: 0.0,
@@ -228,75 +349,34 @@ impl Ibl {
             source_size: SKY_SIZE as f32,
             sun_dir: [sun_dir.x, sun_dir.y, sun_dir.z, 0.0],
             sun_color: [sun_color.x, sun_color.y, sun_color.z, 0.0],
+            look,
+            pad: [0.0; 32],
         };
-        let lut_view = lut.create_view(&Default::default());
-        // The sky pass samples nothing, but the layout needs a cube: use the irradiance texture.
-        let dummy = cube_view(&irradiance, "dummy");
-        for face in 0..6 {
-            passes.push((
-                face_view(&sky, face, 0),
-                &sky_pipeline,
-                bind(Params { face, ..base }, &dummy),
-            ));
+        let lut = !self.lut_drawn;
+        let all: Vec<&Pass> = self
+            .passes
+            .iter()
+            .chain(lut.then_some(&self.lut_pass))
+            .collect();
+        let mut bytes = vec![0u8; SLOT as usize * all.len()];
+        for (i, p) in all.iter().enumerate() {
+            let params = Params {
+                face: p.face,
+                roughness: p.roughness,
+                sample_count: p.sample_count,
+                ..base
+            };
+            let at = i * SLOT as usize;
+            bytes[at..at + std::mem::size_of::<Params>()].copy_from_slice(bytemuck::bytes_of(&params));
         }
-        // Sky mips: each level samples the one above through a view restricted to it.
-        let mut sky_level_views = Vec::new();
-        for mip in 1..sky_mips {
-            let above = cube_view_mips(&sky, "sky above", mip - 1, 1);
-            sky_level_views.push(above);
-        }
-        for mip in 1..sky_mips {
-            let above = &sky_level_views[(mip - 1) as usize];
-            for face in 0..6 {
-                passes.push((
-                    face_view(&sky, face, mip),
-                    &down_pipeline,
-                    bind(
-                        Params {
-                            face,
-                            roughness: 0.0,
-                            ..base
-                        },
-                        above,
-                    ),
-                ));
-            }
-        }
-        let sky_full = cube_view(&sky, "sky");
-        for face in 0..6 {
-            passes.push((
-                face_view(&irradiance, face, 0),
-                &irradiance_pipeline,
-                bind(Params { face, ..base }, &sky_full),
-            ));
-        }
-        for mip in 0..PREFILTER_MIPS {
-            let roughness = mip as f32 / (PREFILTER_MIPS - 1) as f32;
-            for face in 0..6 {
-                passes.push((
-                    face_view(&prefiltered, face, mip),
-                    &prefilter_pipeline,
-                    bind(
-                        Params {
-                            face,
-                            roughness,
-                            sample_count: 128,
-                            ..base
-                        },
-                        &sky_full,
-                    ),
-                ));
-            }
-        }
-        passes.push((lut_view, &lut_pipeline, bind(base, &dummy)));
-
+        queue.write_buffer(&self.params, 0, &bytes);
         let mut encoder =
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("ibl") });
-        for (view, pipeline, bg) in &passes {
+        for (i, p) in all.iter().enumerate() {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("ibl pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view,
+                    view: &p.target,
                     depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
@@ -309,18 +389,11 @@ impl Ibl {
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
-            pass.set_pipeline(pipeline);
-            pass.set_bind_group(0, bg, &[]);
+            pass.set_pipeline(&self.pipelines[p.pipeline]);
+            pass.set_bind_group(0, &p.group, &[(i as u64 * SLOT) as u32]);
             pass.draw(0..3, 0..1);
         }
         queue.submit(Some(encoder.finish()));
-
-        Ibl {
-            sky: cube_view(&sky, "sky"),
-            irradiance: cube_view(&irradiance, "irradiance"),
-            prefiltered: cube_view(&prefiltered, "prefiltered"),
-            brdf_lut: lut.create_view(&Default::default()),
-            sampler,
-        }
+        self.lut_drawn = true;
     }
 }

@@ -27,6 +27,7 @@
 //! # Ok(()) }
 //! ```
 
+mod atmosphere;
 mod capture;
 mod effects;
 mod frame;
@@ -52,6 +53,7 @@ pub mod gltf;
 #[cfg(not(target_arch = "wasm32"))]
 mod headless;
 
+pub use atmosphere::{Fog, SkyLook};
 pub use capture::{CAPTURE_TIMEOUT, CaptureRequest};
 pub use effects::*;
 pub use graph::{GraphError, GraphPlan, RenderGraph, TargetDesc};
@@ -618,6 +620,10 @@ pub struct Renderer {
     /// Prepass pipelines by (side, skinned).
     prepass_pipelines: HashMap<(Side, bool), wgpu::RenderPipeline>,
     sky_pipeline: wgpu::RenderPipeline,
+    /// The procedural sky of a chosen look drawn per pixel ([`Background::Procedural`]).
+    sky_look_pipeline: wgpu::RenderPipeline,
+    /// The image-based light, regenerated into the same textures for a new sky.
+    ibl: ibl::IblGenerator,
     sprite_pipeline: wgpu::RenderPipeline,
     sprite_additive_pipeline: wgpu::RenderPipeline,
     sprite_glow_pipeline: wgpu::RenderPipeline,
@@ -1403,22 +1409,22 @@ impl Renderer {
             shadow_pipeline(&device, &shadow_layouts, &shadow_shader, key),
         );
         // At the far plane, after the opaque batches: only uncovered pixels pass.
-        let sky_pipeline = hdr_pipeline(
-            &device,
-            HdrPipeline {
-                label: "sky",
-                layout: &sky_pl,
-                module: &sky_shader,
-                vs: "vs_sky",
-                fs: "fs_sky",
-                buffers: &[],
-                cull: None,
-                depth_write: false,
-                depth_compare: wgpu::CompareFunction::LessEqual,
-                blend: None,
-                samples,
-            },
-        );
+        let sky_state = |fs| HdrPipeline {
+            label: "sky",
+            layout: &sky_pl,
+            module: &sky_shader,
+            vs: "vs_sky",
+            fs,
+            buffers: &[],
+            cull: None,
+            depth_write: false,
+            depth_compare: wgpu::CompareFunction::LessEqual,
+            blend: None,
+            samples,
+        };
+        let sky_pipeline = hdr_pipeline(&device, sky_state("fs_sky"));
+        let sky_look_pipeline = hdr_pipeline(&device, sky_state("fs_sky_look"));
+        let ibl = ibl::IblGenerator::new(&device);
         let additive = wgpu::BlendState {
             color: wgpu::BlendComponent {
                 src_factor: wgpu::BlendFactor::SrcAlpha,
@@ -1611,6 +1617,8 @@ impl Renderer {
             shadow_pipelines,
             prepass_pipelines: HashMap::new(),
             sky_pipeline,
+            sky_look_pipeline,
+            ibl,
             sprite_pipeline,
             sprite_additive_pipeline,
             sprite_glow_pipeline,
@@ -2083,7 +2091,14 @@ impl Renderer {
         if self.environment.as_ref().is_some_and(|(s, ..)| s == sky) {
             return;
         }
-        let ibl = ibl::Ibl::generate(&self.device, &self.queue, sky.sun_direction, sky.sun_color);
+        self.ibl.generate(
+            &self.device,
+            &self.queue,
+            sky.sun_direction,
+            sky.sun_color,
+            sky.look.as_ref(),
+        );
+        let ibl = self.ibl.views();
         let entries = [
             self.frame_buffer.as_entire_binding(),
             wgpu::BindingResource::TextureView(&self.cascade_map.array_view),
@@ -2866,6 +2881,22 @@ impl Renderer {
             cascade_bias: [[0.0; 4]; CASCADES],
             lights: lights_gpu,
             local_view_proj: [[[0.0; 4]; 4]; LOCAL_SHADOW_LAYERS],
+            atmosphere: atmosphere::AtmosphereGpu::new(
+                scene.fog.as_ref(),
+                match scene.environment.background {
+                    Background::Procedural {
+                        sun_direction,
+                        sun_color,
+                    } => Some((
+                        scene.environment.sky.look.as_ref().unwrap_or(&SkyLook::DEFAULT),
+                        sun_direction,
+                        sun_color,
+                    )),
+                    _ => None,
+                },
+                scene.tick,
+                scene.tick_rate,
+            ),
         };
         let mut shadow_slots = vec![bytemuck::Zeroable::zeroed(); SHADOW_SLOTS];
         for (i, c) in cascades.iter().enumerate() {
@@ -3542,7 +3573,7 @@ impl Renderer {
                             b: c.z as f64,
                             a: 1.0,
                         },
-                        Background::Sky => wgpu::Color::BLACK,
+                        Background::Sky | Background::Procedural { .. } => wgpu::Color::BLACK,
                     };
                     let hdr = self.graph.view("hdr");
                     let (view, resolve_target, store) = if self.samples > 1 {
@@ -3594,8 +3625,13 @@ impl Renderer {
                     stats.draw_calls += main_list.ranges.len() as u32;
                     stats.draw_calls +=
                         draw_skinned(&mut pass, &skinned_visible, false, 1, 3, &lit_skinned);
-                    if scene.environment.background == Background::Sky {
-                        pass.set_pipeline(&self.sky_pipeline);
+                    let sky = match scene.environment.background {
+                        Background::Sky => Some(&self.sky_pipeline),
+                        Background::Procedural { .. } => Some(&self.sky_look_pipeline),
+                        Background::Color(_) => None,
+                    };
+                    if let Some(sky) = sky {
+                        pass.set_pipeline(sky);
                         pass.set_bind_group(1, sky_group, &[]);
                         pass.draw(0..3, 0..1);
                         stats.draw_calls += 1;

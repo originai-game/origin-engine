@@ -37,6 +37,7 @@ struct SpriteOut {
   @location(2) flash: vec4<f32>,
   @location(3) fx: vec3<f32>,
   @location(4) corner: vec2<f32>,
+  @location(5) world: vec3<f32>,
 };
 
 @vertex
@@ -59,6 +60,7 @@ fn vs(@builtin(vertex_index) vi: u32, s: SpriteIn) -> SpriteOut {
   o.flash = s.flash;
   o.fx = s.fx;
   o.corner = c;
+  o.world = world;
   return o;
 }
 
@@ -83,7 +85,7 @@ fn fs(in: SpriteOut) -> @location(0) vec4<f32> {
     let light = textureSampleLevel(light_map, light_sampler, in.clip.xy * sprite_fx.screen.zw, 0.0).rgb;
     c = vec4<f32>(c.rgb * light, c.a);
   }
-  return c;
+  return vec4<f32>(apply_fog(c.rgb, in.world), c.a);
 }
 
 // Into the glow buffer: the sprite's light, whatever covers it.
@@ -114,5 +116,5 @@ fn fs_msdf(in: SpriteOut) -> @location(0) vec4<f32> {
   let opacity = select(fill, outer, w > 0.0) * in.color.a;
   if (opacity <= 0.0) { discard; }
   let rgb = select(in.color.rgb, mix(in.flash.rgb, in.color.rgb, fill / max(outer, 1e-4)), w > 0.0);
-  return vec4<f32>(rgb, opacity);
+  return vec4<f32>(apply_fog(rgb, in.world), opacity);
 }

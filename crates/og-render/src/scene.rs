@@ -411,12 +411,16 @@ impl Default for Light {
 }
 
 /// The procedural sky the environment lighting is generated from: a zenith
-/// to horizon gradient, dark ground, and a sun disc with a glow.
+/// to horizon gradient, dark ground, and a sun disc with a glow. A change
+/// regenerates the image-based light (a few passes; a day-night cycle
+/// changes it in steps).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ProceduralSky {
     /// Where the sun sits on the sky (from the origin towards the sun).
     pub sun_direction: Vec3,
     pub sun_color: Vec3,
+    /// The sky's colours, disc, glow and stars (`None`: the built-in sky).
+    pub look: Option<crate::SkyLook>,
 }
 
 impl Default for ProceduralSky {
@@ -424,6 +428,7 @@ impl Default for ProceduralSky {
         ProceduralSky {
             sun_direction: Vec3::new(0.45, 0.8, 0.35),
             sun_color: Vec3::new(1.0, 0.95, 0.85),
+            look: None,
         }
     }
 }
@@ -436,6 +441,14 @@ pub enum Background {
     Sky,
     /// A flat linear HDR colour (exposed and tonemapped like the scene).
     Color(Vec3),
+    /// The procedural sky drawn per pixel with the environment sky's look
+    /// (or the built-in colours), its sun at `sun_direction` with
+    /// `sun_color`: the sun of a day-night cycle moves smoothly while the
+    /// image-based light follows in steps. Stars are drawn here only.
+    Procedural {
+        sun_direction: Vec3,
+        sun_color: Vec3,
+    },
 }
 
 /// Environment lighting and background.
@@ -754,6 +767,8 @@ pub struct RenderScene {
     pub skinned_instances: Vec<SkinnedInstance>,
     /// Screen-space sprites and text over the finished frame (`None`: none).
     pub overlay: Option<Overlay>,
+    /// Fog over the main pass (`None`: none).
+    pub fog: Option<crate::Fog>,
     /// Sort keys of single sprites within their layer (top-down y sorting):
     /// a layer draws its sprites by ascending key, then texture, then
     /// submission order; a sprite without one has key 0.
@@ -817,6 +832,7 @@ impl RenderScene {
             joint_palettes: Vec::new(),
             skinned_instances: Vec::new(),
             overlay: None,
+            fog: None,
             sprite_order: Vec::new(),
             text_outlines: Vec::new(),
             tile_layers: Vec::new(),

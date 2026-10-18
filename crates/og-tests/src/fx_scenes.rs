@@ -413,6 +413,7 @@ fn night(scene: &mut RenderScene) {
         sky: ProceduralSky {
             sun_direction: moon,
             sun_color: Vec3::new(0.3, 0.35, 0.5),
+            look: None,
         },
         intensity: 0.06,
         background: Background::Color(Vec3::new(0.008, 0.01, 0.022)),
@@ -1158,6 +1159,7 @@ pub fn ao_scene(method: AoMethod) -> RenderScene {
         sky: ProceduralSky {
             sun_direction: sun,
             sun_color: Vec3::new(1.0, 0.98, 0.95),
+            look: None,
         },
         intensity: 1.0,
         background: Background::Sky,
@@ -1236,6 +1238,7 @@ pub fn dof_scene(quality: DofQuality) -> Result<RenderScene, String> {
         sky: ProceduralSky {
             sun_direction: sun,
             sun_color: Vec3::new(1.0, 0.7, 0.45),
+            look: None,
         },
         intensity: 0.25,
         background: Background::Color(Vec3::new(0.01, 0.012, 0.02)),
@@ -1296,6 +1299,7 @@ pub fn god_rays_scene() -> RenderScene {
         sky: ProceduralSky {
             sun_direction: sun,
             sun_color: Vec3::new(1.0, 0.75, 0.45),
+            look: None,
         },
         intensity: 0.4,
         background: Background::Sky,
@@ -1518,6 +1522,7 @@ pub fn stylised_scene() -> Result<RenderScene, String> {
         sky: ProceduralSky {
             sun_direction: sun,
             sun_color: Vec3::ONE,
+            look: None,
         },
         intensity: 0.3,
         background: Background::Color(Vec3::new(0.35, 0.55, 0.85)),

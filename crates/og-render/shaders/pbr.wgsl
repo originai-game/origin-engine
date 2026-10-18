@@ -434,7 +434,7 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
     let e = material.emissive.rgb * textureSample(emissive_tex, material_sampler, in.uv).rgb;
     var unlit = base.rgb + e + dissolve_edge;
     if (EFFECTS && material.toon.w > 0.0) { unlit = mix(unlit, material.flash.rgb, material.toon.w); }
-    return vec4<f32>(unlit, alpha);
+    return vec4<f32>(apply_fog(unlit, in.world_pos), alpha);
   }
   let metalness_sample = textureSample(metalness_tex, material_sampler, in.uv);
   let roughness_sample = textureSample(roughness_tex, material_sampler, in.uv);
@@ -539,7 +539,7 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
     if (c == 2u) { tint = vec3<f32>(0.0, 0.0, 1.0); }
     return vec4<f32>(tint * 4.0, 1.0);
   }
-  return vec4<f32>(color, alpha);
+  return vec4<f32>(apply_fog(color, in.world_pos), alpha);
 }
 
 // Octahedral encoding of a unit vector into -1..1 (two channels).
