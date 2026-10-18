@@ -1793,6 +1793,7 @@ dependencies = [
  "image",
  "og-core",
  "og-render",
+ "og-tilemap",
 ]
 
 [[package]]

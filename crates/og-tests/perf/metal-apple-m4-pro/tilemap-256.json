@@ -1,0 +1,10 @@
+{
+  "scene": "tilemap-256",
+  "tier": "metal",
+  "adapter": "Apple M4 Pro",
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 100,
+  "runs_ms": [0.223, 0.223, 0.247, 0.247, 0.268, 0.286, 0.346],
+  "frame_ms": 0.223
+}

@@ -40,7 +40,7 @@ const edit = (path: string, f: (s: string) => string) => writeFileSync(path, f(r
 test("the committed package is valid against the platform rules", () => {
   expect(validate(real)).toEqual([]);
   const names = Object.keys(packs(payload(real)));
-  expect(names).toEqual(["scaffold:origin-engine-ts", "skill:og-build", "skill:og-core", "skill:og-game", "skill:og-ui"]);
+  expect(names).toEqual(["scaffold:origin-engine-ts", "skill:og-build", "skill:og-core", "skill:og-feel", "skill:og-game", "skill:og-ui"]);
 });
 
 test("the bundle is the platform's production layout, text only", () => {
