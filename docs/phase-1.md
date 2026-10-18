@@ -98,11 +98,12 @@ hosts; M6 needs M3, M4, M5; M7 needs M6.
   (68 % of the budget, +433,997 over E3's 2,428,536), shaping (rustybuzz, ttf-parser)
   the largest new share (`tests/evidence/E6/wasm-size.json`). Evidence
   `tests/evidence/E6/`.
-- Owed: `vulkan-cpu` references for topdown's frames since the slime moved
-  to og.ai (metal, webgpu and webgl2 re-recorded; this Mac has no lavapipe)
-  and for ui-kit's locale screens (metal only); `og polish`'s frame time is
-  measured on the tier it runs on (metal here), not on lavapipe; its text
-  measures are heuristics (icon names and disabled buttons read as text,
+- Topdown's `vulkan-cpu` references for the slime on og.ai were recorded
+  after the merge into main, in the og-lavapipe container with the x86_64
+  Linux build (reproduced at RMSE 0; within RMSE 0.0031 of `metal`).
+- Owed: `vulkan-cpu` references for ui-kit's locale screens (metal only);
+  `og polish`'s frame time is measured on the tier it runs on (metal
+  here), not on lavapipe; its text measures are heuristics (icon names and disabled buttons read as text,
   noted in og-taste §11); og-ui breaks CJK lines between any two
   characters (ja's title wraps a word); the platform asks; the
   archetypes' native and Chrome world hashes were not compared this round
