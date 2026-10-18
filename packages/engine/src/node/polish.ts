@@ -298,11 +298,37 @@ function readsAsText(e: UiDump["elements"][number], byId: Map<string, UiDump["el
  * pixels farthest from it; a rectangle with no ink is not drawn (covered by
  * a transition, faded out) and is left out.
  */
+/**
+ * What a dialog's or a tutorial's scrim covers: the elements built before the
+ * topmost `modal` or `spotlight` layer and outside it, dimmed on purpose
+ * (what shows through a spotlight's `hole` is not).
+ */
+function behindScrim(ui: UiDump): Set<number> {
+  const out = new Set<number>();
+  const els = ui.elements;
+  let d = -1;
+  for (let i = 0; i < els.length; i++) if (els[i]!.kind === "modal" || els[i]!.kind === "spotlight") d = i;
+  if (d < 0) return out;
+  const byId = new Map(els.map((e) => [e.id, e]));
+  const inside = (e: UiDump["elements"][number]) => {
+    for (let at: UiDump["elements"][number] | undefined = e, n = 0; at && n < 64; at = at.parent ? byId.get(at.parent) : undefined, n++) if (at === els[d]) return true;
+    return false;
+  };
+  const holes = els.filter((e) => e.kind === "hole" && inside(e));
+  for (let i = 0; i < d; i++) {
+    const e = els[i]!;
+    const cx = e.x + e.width / 2, cy = e.y + e.height / 2;
+    if (!holes.some((h) => cx >= h.x && cx <= h.x + h.width && cy >= h.y && cy <= h.y + h.height)) out.add(i);
+  }
+  return out;
+}
+
 function textBoxes(img: Image, ui: UiDump): TextBox[] {
   const out: TextBox[] = [];
   const byId = new Map(ui.elements.map((e) => [e.id, e]));
-  for (const e of ui.elements) {
-    if (!/[\p{L}\p{N}]/u.test(e.text) || !readsAsText(e, byId) || e.width < 6 || e.height < 6) continue;
+  const dimmed = behindScrim(ui);
+  for (const [n, e] of ui.elements.entries()) {
+    if (dimmed.has(n) || !/[\p{L}\p{N}]/u.test(e.text) || !readsAsText(e, byId) || e.width < 6 || e.height < 6) continue;
     // A pill's rounded ends show what is behind it: inset a wide element's ends.
     const ix = e.width > 3 * e.height ? Math.min(e.height / 2, 12) : 0, iy = e.height * 0.12;
     const x0 = Math.max(0, Math.floor(e.x + ix)), y0 = Math.max(0, Math.floor(e.y + iy));
@@ -358,13 +384,23 @@ interface Occupancy {
   share: number;
   /** Of the central third (the middle ninth), how much leaves cover. */
   centre: number;
-  /** A menu or modal: three or more text leaves in the central third. */
+  /** A screen, not gameplay: a modal or dialogue layer, a large scroll list, or three or more text leaves in the central third. */
   menu: boolean;
 }
 
+/** og-ui's touch controls: the joystick, the d-pad and action buttons. */
+const TOUCH_CONTROLS = new Set(["joystick", "dpad", "action"]);
+
 function occupancy(ui: UiDump, size: { width: number; height: number }): Occupancy {
   const parents = new Set(ui.elements.map((e) => e.parent));
-  const leaves = ui.elements.filter((e) => !parents.has(e.id) && e.width * e.height < 0.9 * size.width * size.height && e.width > 0 && e.height > 0);
+  // Touch controls are the player's thumbs, not information on the play
+  // surface (og-ui sizes them to at least 44 CSS px): they do not count.
+  const byId = new Map(ui.elements.map((e) => [e.id, e]));
+  const touch = (e: UiDump["elements"][number]) => {
+    for (let at: UiDump["elements"][number] | undefined = e, n = 0; at && n < 64; at = at.parent ? byId.get(at.parent) : undefined, n++) if (TOUCH_CONTROLS.has(at.kind ?? "")) return true;
+    return false;
+  };
+  const leaves = ui.elements.filter((e) => !parents.has(e.id) && !touch(e) && e.width * e.height < 0.9 * size.width * size.height && e.width > 0 && e.height > 0);
   const cell = 8;
   const cw = Math.ceil(size.width / cell), ch = Math.ceil(size.height / cell);
   const grid = new Uint8Array(cw * ch);
@@ -385,7 +421,10 @@ function occupancy(ui: UiDump, size: { width: number; height: number }): Occupan
     const cx = e.x + e.width / 2, cy = e.y + e.height / 2;
     return cx > size.width / 3 && cx < (2 * size.width) / 3 && cy > size.height / 3 && cy < (2 * size.height) / 3;
   };
-  return { share: r2((100 * all) / (cw * ch)), centre: r2((100 * centre) / Math.max(1, centreCells)), menu: leaves.filter((e) => e.text.trim() && inCentre(e)).length >= 3 };
+  // A screen, not a HUD: a dialog or loading layer, a conversation, a list
+  // that fills a quarter of the surface, or three texts in the centre.
+  const screen = ui.elements.some((e) => e.kind === "modal" || e.kind === "dialogue" || (e.kind === "scroll" && e.width * e.height >= 0.25 * size.width * size.height));
+  return { share: r2((100 * all) / (cw * ch)), centre: r2((100 * centre) / Math.max(1, centreCells)), menu: screen || leaves.filter((e) => e.text.trim() && inCentre(e)).length >= 3 };
 }
 
 /** Numeric leaves of the facts by path. */

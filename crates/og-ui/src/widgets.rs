@@ -2780,9 +2780,11 @@ impl Ui {
         let t = self.theme;
         let p = t.palette;
         let arm = (if desc.size > 0.0 { desc.size } else { 132.0 } / 3.0).max(self.min_target());
-        // Nine cells in a wrapping row three wide: the arms are the pad's children.
-        self.open(
-            id,
+        // Nine cells in a wrapping row three wide: the arms are the pad's
+        // children. The probe names the row `dpad` (a touch control).
+        let pad = self.push(
+            "dpad",
+            id.into(),
             Element {
                 direction: Direction::Row,
                 wrap: true,
@@ -2791,6 +2793,7 @@ impl Ui {
                 ..Element::default()
             },
         );
+        self.stack.push(pad);
         let mut out = DpadResponse::default();
         let cells: [Option<(&str, f32)>; 9] = [
             None,

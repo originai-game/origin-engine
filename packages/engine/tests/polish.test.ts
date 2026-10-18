@@ -108,6 +108,68 @@ export default og.game({
   expect(unresolved(f?.fix ?? "")).toEqual([]);
 }, 300_000);
 
+test("og polish reads a dialog as a screen, leaves out what its scrim dims, and does not count touch controls as HUD", () => {
+  const p = join(evidence, "screens");
+  rmSync(p, { recursive: true, force: true });
+  for (const d of ["src", "tests", "assets/fonts"]) mkdirSync(join(p, d), { recursive: true });
+  copyFileSync(join(repo, "templates", "game", "assets", "fonts", "NotoSansSC-Regular-subset.ttf"), join(p, "assets", "fonts", "NotoSansSC-Regular-subset.ttf"));
+  writeFileSync(join(p, "project.ogt"), 'type project\nversion 1\n---\nname "Screens"\nid "screens"\nengine "0.0.1"\nentry "src/main.ts"\n');
+  // Play: a score in a corner and the thumbs' controls (a stick and a big
+  // button). Asking: a faint caption under a confirm dialog's scrim.
+  writeFileSync(
+    join(p, "src", "main.ts"),
+    `import { og, defineResource, defineSystem, bool } from "@origingame/engine";
+const Ask = defineResource("Ask", { open: bool(false), loading: bool(false) });
+const Screen = defineSystem("Screen", { writes: [Ask] }, (_q, _t, world) => {
+  const ask = world.resource(Ask);
+  const open = ask.ok && ask.value.open;
+  og.ui.anchor("Score", { anchor: "topLeft" }, () => og.ui.label("Points", "Score 120", { step: "body" }));
+  og.ui.anchor("Thumbs", { anchor: "bottomLeft" }, () => og.ui.joystick("Stick", { size: 200 }));
+  og.ui.anchor("Fire", { anchor: "bottomRight" }, () => og.ui.actionButton("Shoot", "Fire", { size: 160 }));
+  og.ui.anchor("Note", { anchor: "center" }, () => og.ui.label("Faint", "Paused", { step: "body", color: { color: { r: 0.42, g: 0.42, b: 0.45 } } }));
+  if (ask.ok && ask.value.loading) og.ui.loadingScreen("Load", { title: "Loading" });
+  og.ui.confirmDialog("Quit", { open, title: "Leave the run?", message: "Your score is kept.", confirmLabel: "Leave" });
+});
+export default og.game({
+  tick: 60,
+  resources: [Ask],
+  systems: [Screen],
+  commands: {
+    ask: (world) => { const a = world.resource(Ask); if (a.ok) a.value.open = true; },
+    load: (world) => { const a = world.resource(Ask); if (a.ok) { a.value.open = false; a.value.loading = true; } },
+  },
+  start: (world) => {
+    const font = og.load.font(world, "fonts/NotoSansSC-Regular-subset.ttf");
+    if (font.ok) og.ui.configure(world, { font: font.value });
+  },
+});
+`,
+  );
+  writeFileSync(
+    join(p, "tests", "screens.og.ts"),
+    'import { playtest } from "@origingame/engine/playtest";\nexport default playtest({ name: "screens", size: "1280x720", commands: "0.5:screenshot:play.png;0.6:ask;1.4:screenshot:asking.png;1.5:load;2.3:screenshot:loading.png;2.4:quit", check(run, t) { t.ok(run.quit, "quit"); } });\n',
+  );
+  const r = run([ogBin(), "polish", p, "--frames", "3"]);
+  if (r.code !== 0) throw new Error(r.out);
+  const out = JSON.parse(readFileSync(join(p, "og-out", "polish", "polish.json"), "utf8")) as Polish & {
+    playtests: Array<{ shots: Array<{ name: string; menu: boolean; hud: number; texts: number }>; contrast: { worst: Array<{ id: string }> } }>;
+  };
+  const [play, asking, loading] = out.playtests[0]!.shots;
+  // Playing: a HUD, small although the stick and the button are big.
+  expect(play!.menu).toBeFalse();
+  expect(play!.hud).toBeLessThan(3);
+  // Asking: the dialog is a screen, and the caption under its scrim is not read
+  // (in play it is, and too faint).
+  expect(asking!.menu).toBeTrue();
+  expect(out.findings.some((f) => f.where.startsWith("screens play") && f.where.includes("Faint"))).toBeTrue();
+  expect(play!.texts).toBe(2);
+  expect(asking!.texts).toBe(4); // the title, the message, Leave and Cancel; not the score or the caption
+  expect(out.findings.some((f) => f.where.startsWith("screens asking") && f.where.includes("Faint"))).toBeFalse();
+  // Loading: one title in the centre, still a screen (its layer is a modal).
+  expect(loading!.menu).toBeTrue();
+  expect(out.findings.some((f) => f.measure === "HUD occupancy")).toBeFalse();
+}, 300_000);
+
 test("og polish refuses a project without playtests", () => {
   const bare = join(evidence, "bare");
   rmSync(bare, { recursive: true, force: true });

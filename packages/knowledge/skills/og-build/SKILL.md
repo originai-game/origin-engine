@@ -110,7 +110,7 @@ every screen that matters.
 |---|---|---|---|---|
 | taste | Contrast | each text element's rectangle in a shot: the ground (its median) against its ink (the 1 % farthest pixels) | 4.5:1 | og-taste §3 |
 | taste | Text size | the tallest run of ink rows in each text element, CSS px | 9 px, a 13 px face's capitals | og-taste §4, §10 |
-| taste | HUD occupancy | the union of leaf elements on gameplay shots (a shot with three text elements in the central third counts as a menu) | at most 15 % of the surface and 5 % of the central third | og-taste §2 |
+| taste | HUD occupancy | the union of leaf elements on gameplay shots, touch controls (joystick, d-pad, action buttons) left out; a shot with a dialog or loading layer, a conversation, a list over a quarter of the surface or three texts in the central third is a screen, not gameplay | at most 15 % of the surface and 5 % of the central third | og-taste §2 |
 | taste | Screen transitions | a change of three or more elements with UI motion or a tween in the 20 ticks around it | every change | og-taste §5 |
 | taste | UI sounds | a press that changed the UI and started a voice on the ui bus within 8 ticks | every press | og-taste §6, og-audio §3 |
 | taste | Locale keys | `og cook`'s warnings | none | og-i18n §1 |
@@ -122,8 +122,9 @@ every screen that matters.
 
 The report also lists clipped samples in the mix (og-audio §4). Contrast and
 text size read text only: icons and images (their "text" is a picture's
-name), disabled controls and what they hold (WCAG exempts them) and the
-slivers a scroll container cuts are left out, and each element is measured
+name), disabled controls and what they hold (WCAG exempts them), the
+slivers a scroll container cuts and what a dialog's or a tutorial's scrim
+dims on purpose are left out, and each element is measured
 at the pixels of the surface `dump_ui` reports, so a phone preview
 (390×844 at 3×) is read at its own size. Facts are the game's `facts`
 (og-game §3): expose `hp`, `hits` or `kills` there or the hit measures stay
