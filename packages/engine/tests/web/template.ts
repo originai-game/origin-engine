@@ -1,11 +1,13 @@
-// The template in headless Chrome, through `og build`'s web output: builds
-// templates/game (cooking it first when cooked/ is missing) with
+// A template in headless Chrome, through `og build`'s web output: builds
+// templates/game or --project (cooking it first when cooked/ is missing) with
 // src/node/web-build.ts, serves the output with COOP/COEP, loads the play
 // page and calls the probe published on globalThis.__runtime_probe__ over the
-// request ring: hello, capture (answered once the readback lands), dump world.
-// Prints the result as JSON and writes the captured frame.
+// request ring: hello, the --commands script (scheduled from the current
+// tick), --advance ticks (the page leaves the clock to the probe), capture (answered once the readback lands),
+// dump world. Prints the result as JSON and writes the captured frame.
 //
-//   bun tests/web/template.ts [--webgl] [--publish] [--entry <file>] [--png <out.png>] [--chrome <path>]
+//   bun tests/web/template.ts [--project <dir>] [--commands <script>] [--advance <ticks>] [--webgl] [--publish]
+//     [--entry <file>] [--png <out.png>] [--chrome <path>]
 
 import { existsSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -25,7 +27,9 @@ const opt = (name: string) => (args.includes(name) ? args[args.indexOf(name) + 1
 const here = dirname(fileURLToPath(import.meta.url));
 const pkg = join(here, "..", "..");
 const repo = join(pkg, "..", "..");
-const project = join(repo, "templates", "game");
+const project = resolve(opt("--project") ?? join(repo, "templates", "game"));
+const script = opt("--commands");
+const advance = Number(opt("--advance") ?? 0);
 const chrome =
   opt("--chrome") ??
   process.env.CHROME ??
@@ -54,18 +58,21 @@ const post = (body) => fetch("/result", { method: "POST", body: JSON.stringify(b
 try {
   const t0 = performance.now();
   while (!globalThis.__runtime_probe__) {
-    if (performance.now() - t0 > 30000) throw new Error("the probe was never published");
+    if (performance.now() - t0 > 80000) throw new Error("the probe was never published; the page says: " + document.body.innerText.trim().slice(0, 600));
     await new Promise((r) => setTimeout(r, 50));
   }
   const p = globalThis.__runtime_probe__;
   const ready = performance.now() - t0;
   await new Promise((r) => setTimeout(r, 1500));
   const hello = await p.hello();
+  const script = ${JSON.stringify(script ?? null)};
+  const scheduled = script === null ? null : await p.commands(script);
+  for (let left = ${advance}; left > 0; left -= 60) await p.advance(Math.min(60, left));
   const c0 = performance.now();
   const capture = await p.capture();
   const captureMs = performance.now() - c0;
   const dump = await p.dump({ what: "world" });
-  await post({ crossOriginIsolated, readyMs: Math.round(ready), hello, captureMs: Math.round(captureMs), capture, dump });
+  await post({ crossOriginIsolated, readyMs: Math.round(ready), hello, scheduled, captureMs: Math.round(captureMs), capture, dump });
 } catch (e) {
   await post({ error: String(e && e.stack || e) });
 }
@@ -108,7 +115,7 @@ const browser = Bun.spawn(
   ],
   { stdout: "ignore", stderr: "ignore" },
 );
-const timeout = new Promise((r) => setTimeout(() => r({ error: "timed out after 90 s" }), 90_000));
+const timeout = new Promise((r) => setTimeout(() => r({ error: "timed out after 150 s" }), 150_000));
 const answer = (await Promise.race([result, timeout])) as { error?: string; capture?: { png: string; width: number; height: number; tick: number } | null };
 browser.kill();
 await browser.exited;

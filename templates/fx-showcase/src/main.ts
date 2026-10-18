@@ -57,7 +57,8 @@ function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
 }
 
 const axisAngle = (axis: Vec3, angle: number): Quaternion => og.transform.fromAxisAngle(axis, angle);
-const FLOOR = axisAngle({ x: 1, y: 0, z: 0 }, -Math.PI / 2);
+// A function, not a constant: the web Worker binds the engine host after this module loads.
+const floor = (): Quaternion => axisAngle({ x: 1, y: 0, z: 0 }, -Math.PI / 2);
 
 // ── systems ────────────────────────────────────────────────────────────────
 
@@ -279,7 +280,7 @@ function spawnMesh(world: World, name: string, geometry: number, material: numbe
 function ground(world: World, x: number, color: Vec3): void {
   const plane = must(og.render.planeGeometry(world, { width: 60, height: 60 }));
   const m = must(og.render.standardMaterial(world, { color: { r: color.x, g: color.y, b: color.z }, roughness: 0.95 }));
-  const e = must(world.spawn({ name: `ground-${x}`, position: { x, y: 0, z: 0 }, quaternion: FLOOR }));
+  const e = must(world.spawn({ name: `ground-${x}`, position: { x, y: 0, z: 0 }, quaternion: floor() }));
   world.insert(e, og.Mesh, { geometry: plane, material: m, receiveShadow: true });
 }
 
@@ -338,10 +339,10 @@ function build(world: World): void {
     world.set(e, og.Transform, { scale: size });
     world.insert(e, og.Decal, { uvMin: { x: uv[0], y: uv[1] }, uvMax: { x: uv[2], y: uv[3] }, ...d });
   };
-  decal("scorch", { x: fx, y: 0, z: 0 }, { x: 3.2, y: 3.2, z: 1 }, FLOOR, [0, 0, 0.5, 0.5], {});
+  decal("scorch", { x: fx, y: 0, z: 0 }, { x: 3.2, y: 3.2, z: 1 }, floor(), [0, 0, 0.5, 0.5], {});
   decal("rune", { x: fx - 2.6, y: 2.6, z: -3 }, { x: 2, y: 2, z: 1 }, { x: 0, y: 0, z: 0, w: 1 }, [0.5, 0, 1, 0.5], { color: { r: 0.2, g: 0.9, b: 1 }, emissive: { r: 0.4, g: 1.8, b: 2.4 } });
   decal("arrow", { x: fx + 2.8, y: 2.2, z: -3 }, { x: 1.8, y: 1.8, z: 1 }, { x: 0, y: 0, z: 0, w: 1 }, [0, 0.5, 0.5, 1], {});
-  decal("splat", { x: fx + 1.8, y: 0, z: 1.6 }, { x: 1.2, y: 1.2, z: 1 }, FLOOR, [0.5, 0.5, 1, 1], {});
+  decal("splat", { x: fx + 1.8, y: 0, z: 1.6 }, { x: 1.2, y: 1.2, z: 1 }, floor(), [0.5, 0.5, 1, 1], {});
   const wisp = spawnMesh(world, "wisp", sphere, mat({ color: { r: 0.1, g: 0.1, b: 0.1 }, emissive: { r: 0.4, g: 1, b: 2 }, emissiveIntensity: 4 }), { x: fx + 1.8, y: 1.3, z: 0 }, { scale: { x: 0.18, y: 0.18, z: 0.18 } });
   world.insert(wisp, Orbit, { centre: { x: fx, y: 1.3, z: 0 }, radius: 1.8, speed: 0.35 });
   world.insert(wisp, og.Trail, { lifetime: 1.2, widthStart: 0.22, widthEnd: 0, color: { r: 0.6, g: 1.4, b: 3 }, colorEnd: { r: 0.2, g: 0.4, b: 1.2 }, opacity: 1, opacityEnd: 0, blend: "additive" });
