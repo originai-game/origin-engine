@@ -516,7 +516,13 @@ fn set_and_get_reach_resources_entities_components_and_fields() {
     h.probe.pump(&mut h.world);
     let log = h.probe.take_log();
     assert_eq!(log.iter().filter(|l| l.warning).count(), 5, "{log:?}");
-    assert!(log[0].text.contains("'Stats' has no field 'nope'"), "{log:?}");
-    assert!(log[2].text.contains("no resource or live entity 'ghost'"), "{log:?}");
+    assert!(
+        log[0].text.contains("'Stats' has no field 'nope'"),
+        "{log:?}"
+    );
+    assert!(
+        log[2].text.contains("no resource or live entity 'ghost'"),
+        "{log:?}"
+    );
     assert_eq!(h.world.resource::<Stats>().unwrap().draws, 7);
 }

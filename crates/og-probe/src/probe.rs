@@ -950,7 +950,8 @@ impl Probe {
                 Ok(())
             }
             "set" => {
-                let usage = "set:<entity>.<component>.<field>=<value> or set:<Resource>.<field>=<value>";
+                let usage =
+                    "set:<entity>.<component>.<field>=<value> or set:<Resource>.<field>=<value>";
                 let (target, text) = joined
                     .split_once('=')
                     .ok_or_else(|| format!("write `{usage}`"))?;
@@ -1147,9 +1148,7 @@ impl Probe {
     fn resource_target(world: &World, target: &str) -> Option<(SchemaId, String)> {
         let (name, field) = target.rsplit_once('.')?;
         let id = world.id_by_name(name).ok()?;
-        world
-            .has_resource_id(id)
-            .then(|| (id, field.to_owned()))
+        world.has_resource_id(id).then(|| (id, field.to_owned()))
     }
 
     /// Write one field of a resource through its schema.
