@@ -212,6 +212,12 @@ impl<'w> SystemContext<'w> {
         self.world.time()
     }
 
+    /// The component types `e` has (archetype membership, not component
+    /// data, so no declaration is needed). `DeadHandle` for a dead entity.
+    pub fn components_of(&self, e: Entity) -> Result<Vec<SchemaId>> {
+        self.world.components_of(e)
+    }
+
     /// Slow motion and hit stop, readable by every system.
     pub fn time_scale(&self) -> og_core::TimeScale {
         self.world.time_scale()

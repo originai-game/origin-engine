@@ -559,6 +559,38 @@ module time {
       readonly true
       unit hz
     }
+    field scale f32 "Global slow motion, set with og.time.setScale: 1 is normal, 0.5 half speed, 0 stopped. Physics, animation, flipbooks and tweens advance by scaledDt; the tick itself, the UI, input and the probe keep their pace." {
+      readonly true
+      default 1
+      min 0
+      max 10
+    }
+    field hitStop u32 "Ticks of hit stop left (og.time.hitStop): while above 0, scaledDt is 0." {
+      readonly true
+      unit ticks
+    }
+    field scaledDt f32 "This tick's scaled length: 0 during a hit stop, else dt * scale. Move gameplay by it so slow motion and hit stop reach game code too." {
+      readonly true
+      unit s
+    }
+    field scaledElapsed f64 "Scaled seconds since load: the sum of every finished tick's scaledDt." {
+      readonly true
+      unit s
+    }
+  }
+
+  fn setScale {
+    doc "Set the global time scale (slow motion): physics, og.anim, flipbooks and tweens advance by dt * scale from the system after the call; systems may call it."
+    param world World "The world."
+    param scale f32 "0 to 10: 1 is normal speed."
+    returns Result.Void "Refused outside 0..10."
+  }
+
+  fn hitStop {
+    doc "Freeze scaled time for `ticks` ticks from now (this tick included): physics, og.anim, flipbooks and scaled tweens hold while input, the UI, unscaled tweens and camera shake keep moving. A longer hit stop in progress is never shortened. Typical values: 2-3 ticks for a light hit, 5-8 heavy, 10-15 a finishing blow."
+    param world World "The world."
+    param ticks u32 "Ticks to hold."
+    returns Result.Void
   }
 }
 
@@ -1193,6 +1225,52 @@ module camera {
       max 16
       tunable true
     }
+    field trauma f32 "Screen shake, 0 to 1, added by og.camera.shake and decayed by traumaDecay every tick (unscaled, so a hit stop still shakes). The offset and roll grow with trauma squared and follow smooth noise of the tick: visual only, a replay shakes the same." {
+      min 0
+      max 1
+      tunable true
+    }
+    field traumaDecay f32 "How much trauma drains per second." {
+      default 1.5
+      min 0
+      unit perSecond
+      tunable true
+    }
+    field shakeOffset f32 "The largest offset at trauma 1, as a fraction of the view height." {
+      default 0.04
+      min 0
+      tunable true
+    }
+    field shakeRoll f32 "The largest roll at trauma 1." {
+      default 2
+      min 0
+      unit deg
+      tunable true
+    }
+    field shakeFrequency f32 "How fast the shake moves." {
+      default 15
+      min 0
+      unit hz
+    }
+    field punch f32 "A zoom punch in progress (og.camera.punch): the view is narrowed by this fraction, decaying by punchDecay. Visual only." {
+      min -0.9
+      max 4
+    }
+    field punchDecay f32 "How fast a punch springs back (exponential, per second)." {
+      default 8
+      min 0
+      unit perSecond
+      tunable true
+    }
+    field kick Vector3 "A kick in progress (og.camera.kick): the view is offset by this, decaying by kickDecay. Visual only." {
+      unit m
+    }
+    field kickDecay f32 "How fast a kick returns (exponential, per second)." {
+      default 12
+      min 0
+      unit perSecond
+      tunable true
+    }
     fn lookAt {
       doc "Rotate the camera to look at a point, as three.js Camera.lookAt."
       param target Vector3 "The point to look at."
@@ -1304,7 +1382,7 @@ module camera {
   }
 
   component Follow2D {
-    doc "Keeps og.Camera on the entity carrying it in the xy plane, for 2D games: the camera moves only when the entity leaves the dead zone, eases by smoothTime and, with clamp, stays inside the bounds. The camera keeps its z, rotation and projection. Driven by og.systems.cameras."
+    doc "Keeps og.Camera on the entity carrying it in the xy plane, for 2D games: the camera moves only when the entity leaves the dead zone, eases by smoothTime (smoothTimeY for y when set) and, with clamp, stays inside the bounds; lookAhead leads it in the direction the entity moves. The camera keeps its z, rotation and projection. Driven by og.systems.cameras; og.CameraZone entities then keep the view inside the zone the entity is in."
     field offset Vector2 "Where the camera centre sits relative to the entity." {
       unit m
     }
@@ -1317,6 +1395,35 @@ module camera {
       unit s
       tunable true
     }
+    field smoothTimeY f32 "The same for y alone (a platformer follows jumps more lazily than runs); below 0 uses smoothTime." {
+      default -1
+      unit s
+      tunable true
+    }
+    field lookAhead f32 "Lead the entity by its velocity times this many seconds (0: no look-ahead)." {
+      min 0
+      unit s
+      tunable true
+    }
+    field lookAheadMax Vector2 "The largest lead along x and y." {
+      default 3 1.5
+      min 0
+      unit m
+    }
+    field lookAheadSmoothing f32 "Roughly how long the lead takes to turn when the entity does." {
+      default 0.4
+      min 0
+      unit s
+      tunable true
+    }
+    field lead Vector2 "Controller state: the current lead." {
+      readonly true
+      unit m
+    }
+    field last Vector2 "Controller state: the entity's position on the previous tick." {
+      readonly true
+      unit m
+    }
     field clamp bool "Keep the camera centre between boundsMin and boundsMax."
     field boundsMin Vector2 "The smallest x and y the camera centre takes with clamp." {
       unit m
@@ -1324,6 +1431,80 @@ module camera {
     field boundsMax Vector2 "The largest x and y the camera centre takes with clamp." {
       unit m
     }
+  }
+
+  component CameraZone {
+    doc "A rectangle of the xy plane (min to max, world units, not moved by the entity's Transform) that keeps a 2D view inside it while the entity followed by og.Follow2D is in it: rooms, arenas, a level's bounds. Of overlapping zones the highest priority wins, then the first in query order. Applied by the engine's og.camera system after the game's systems; a zone smaller than the view centres it."
+    field min Vector2 "The bottom-left corner." {
+      unit m
+    }
+    field max Vector2 "The top-right corner." {
+      default 10 10
+      unit m
+    }
+    field priority i32 "Higher wins where zones overlap."
+  }
+
+  component CameraRail {
+    doc "Moves og.Camera along a spline through p0 to p(points - 1) (Catmull-Rom, through every point) to the point nearest the entity carrying it, easing by smoothTime: a corridor, a side-scroller's track, a 3D chase on rails. A perspective camera looks at the entity; an orthographic one keeps its z and rotation. Applied by the engine's og.camera system after the game's systems."
+    field points u32 "How many of p0...p7 the rail uses (2 to 8)." {
+      default 2
+      min 2
+      max 8
+    }
+    field p0 Vector3 "Rail point 0." {
+      unit m
+    }
+    field p1 Vector3 "Rail point 1." {
+      default 10 0 0
+      unit m
+    }
+    field p2 Vector3 "Rail point 2." {
+      unit m
+    }
+    field p3 Vector3 "Rail point 3." {
+      unit m
+    }
+    field p4 Vector3 "Rail point 4." {
+      unit m
+    }
+    field p5 Vector3 "Rail point 5." {
+      unit m
+    }
+    field p6 Vector3 "Rail point 6." {
+      unit m
+    }
+    field p7 Vector3 "Rail point 7." {
+      unit m
+    }
+    field smoothTime f32 "Roughly how long the camera takes to catch up along the rail; 0 snaps." {
+      default 0.2
+      min 0
+      unit s
+      tunable true
+    }
+  }
+
+  fn shake {
+    doc "Add screen shake: trauma, clamped to 1, which og.Camera decays by traumaDecay. The shake grows with trauma squared, so 0.2 is a nudge, 0.5 a heavy hit, 1 an explosion. Visual only. Systems may call it; it takes effect at the engine's og.camera system this tick."
+    param world World "The world."
+    param trauma f32 "Trauma to add, 0 to 1."
+    returns Result.Void
+  }
+
+  fn punch {
+    doc "A zoom punch: the view narrows by `amount` (0.05 is a tap, 0.15 a slam) and springs back by Camera.punchDecay. Visual only."
+    param world World "The world."
+    param amount f32 "The fraction to zoom in (negative zooms out), -0.9 to 4."
+    returns Result.Void
+  }
+
+  fn kick {
+    doc "A directional nudge of the view (recoil, an impact from one side): offset by `distance` along `direction`, returning by Camera.kickDecay. Visual only."
+    param world World "The world."
+    param direction Vector3 "The direction to push the view (normalised here; zero does nothing)."
+    param distance f32 "How far, in world units."
+    returns Result.Void
   }
 }
 
@@ -1490,6 +1671,14 @@ module render {
     field visible bool "Whether it is drawn." {
       default true
     }
+    field flash f32 "A hit flash: the lit colour mixed towards flashColor by this much (og.tween.flash fades it out). Drawn through a copy of the material per flash level (16 levels)." {
+      min 0
+      max 1
+      tunable true
+    }
+    field flashColor Color "The flash's linear colour." {
+      default 1 1 1
+    }
   }
 
   component DirectionalLight {
@@ -1651,6 +1840,13 @@ module render {
     doc "How a sprite is blended over what is below it."
     variant alpha "Ordinary alpha blending."
     variant additive "Added (light, fire, magic): order-independent within a layer."
+  }
+
+  column SpriteBlend {
+    doc "A SpriteBlend field: the variant's index."
+    array Uint32Array
+    stride 1
+    value SpriteBlend
   }
 
   enum StripBlend {
@@ -1819,7 +2015,7 @@ module render {
     field flashColor Color "The flash's linear display colour." {
       default 1 1 1
     }
-    field shakeTrauma f32 "Camera shake: 0 none, 1 the most (the amplitude is trauma squared). The shake is smooth value noise by the tick, so a replay shakes the same; decay it in a system. Visual only." {
+    field shakeTrauma f32 "Camera shake held at a fixed level (decay it yourself): 0 none, 1 the most (the amplitude is trauma squared). Prefer og.camera.shake, which decays by itself; the frame shakes by the larger of the two. Smooth value noise by the tick, so a replay shakes the same. Visual only." {
       min 0
       max 1
       tunable true
@@ -1991,6 +2187,8 @@ module render {
       unit m
     }
     field blend StripBlend "Additive or alpha blended."
+    field layered bool "Draw it in the 2D sprite order at `layer` (a sprite's trail over a tile background) instead of with the 3D scene."
+    field layer i32 "With layered: the sprite layer it is drawn in, before that layer's sprites."
   }
 
   component Beam {
@@ -2098,6 +2296,11 @@ module render {
     }
     field layer i32 "Draw order among sprites and text; higher draws on top."
     field align TextAlign "How each line sits on `position`: start puts its left end there, center its middle, end its right end."
+    field outline f32 "World text: an outline around the glyphs, as a fraction (0 to 1) of the widest the font's distance range allows (a font cooked with a larger px_range takes thicker outlines)." {
+      min 0
+      max 1
+    }
+    field outlineColor Color "The outline's linear colour."
     field screen bool "Draw in screen space over the finished frame: position is the first baseline's origin in CSS pixels from the top left, y down, size in CSS pixels, rotation clockwise."
     field clip Option.Array.f32.4 "Screen text: cut to [x, y, width, height] in CSS pixels, per pixel; null draws it whole."
   }
@@ -2165,6 +2368,14 @@ module render {
     }
     field blend SpriteBlend "Alpha or additive."
     field castShadow bool "Block 2D light (Lighting2D) with the sprite's rectangle."
+    field flipX bool "Mirror the region left to right."
+    field flipY bool "Mirror the region top to bottom."
+    field sortY bool "Within its layer, draw by y: lower on the screen draws in front (top-down games)."
+    field slice Option.Array.f32.4 "Nine-slice: [left, top, right, bottom] insets in texture pixels of the region; the corners keep their size (sliceScale world units per pixel), edges and centre stretch. null draws it whole."
+    field sliceScale f32 "Nine-slice: world units (CSS pixels on screen) per texture pixel of the insets." {
+      default 0.0625
+      min 0
+    }
     field screen bool "Draw in screen space over the finished frame instead of the world: position x, y in CSS pixels from the top left with y down, width and height in CSS pixels, anchor from the top left, rotation clockwise; never tone mapped, blurred or depth tested (a HUD). flash, glow, blend and castShadow apply to world sprites only."
     field clip Option.Array.f32.4 "Screen sprites: cut to [x, y, width, height] in CSS pixels; null draws it whole."
   }
@@ -2174,6 +2385,170 @@ module render {
     param world World "The world whose renderer draws it."
     param desc SpriteDesc "The texture, placement, region and colour."
     returns Result.Void "Refused for a dead texture."
+  }
+
+  component Sprite {
+    doc "A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture, region and anchor come from the flipbook's current frame."
+    doc "Sorted with the immediate sprites and text by layer, then (sortY) by y, then texture: one draw per run of one texture. Tile layers draw before the sprites of their layer."
+    field texture Texture "The texture (og.load.texture); 0 draws a solid quad of the colour."
+    field width f32 "Its width in world units (times Transform.scale.x)." {
+      default 1
+      min 0
+      unit m
+      tunable true
+    }
+    field height f32 "Its height in world units (times Transform.scale.y)." {
+      default 1
+      min 0
+      unit m
+      tunable true
+    }
+    field anchor Vector2 "The point of the quad at the entity's position, as a fraction from the bottom-left corner: (0.5, 0) stands it on its feet. A flipbook frame's pivot replaces it." {
+      default 0.5 0.5
+    }
+    field color Color "A linear colour multiplied with the texture." {
+      default 1 1 1
+    }
+    field opacity f32 "The alpha." {
+      default 1
+      min 0
+      max 1
+      tunable true
+    }
+    field uvMin Vector2 "The texture region's top-left corner, v down."
+    field uvMax Vector2 "The texture region's bottom-right corner, v down." {
+      default 1 1
+    }
+    field layer i32 "Draw order among sprites, tiles and text; higher draws on top."
+    field sortY bool "Within its layer, lower y draws in front: top-down characters, props and trees overlap by their feet."
+    field flipX bool "Mirror left to right (a character facing left)."
+    field flipY bool "Mirror top to bottom."
+    field flash f32 "A hit flash: the colour mixed towards flashColor by this much (og.tween.flash fades it out)." {
+      min 0
+      max 1
+      tunable true
+    }
+    field flashColor Color "The flash's linear colour." {
+      default 1 1 1
+    }
+    field glow f32 "Strength in the 2D glow buffer (PostEffects.glow); 0 none." {
+      min 0
+    }
+    field blend SpriteBlend "Alpha or additive."
+    field castShadow bool "Block 2D light (Lighting2D) with the sprite's rectangle."
+    field sliceX Vector2 "Nine-slice: the left and right insets in texture pixels of the region (0 0 with sliceY 0 0 draws it whole). World panels, health bars, speech bubbles."
+    field sliceY Vector2 "Nine-slice: the top and bottom insets in texture pixels."
+    field sliceScale f32 "Nine-slice: world units per texture pixel of the insets." {
+      default 0.0625
+      min 0
+    }
+    field shadow f32 "A soft blob shadow on the ground under the sprite's anchor, this dark (0 none, 0.4 typical), drawn under every sprite of its layer." {
+      min 0
+      max 1
+      tunable true
+    }
+    field shadowSize Vector2 "The blob's width and height; 0 0 is 0.8 by 0.3 of the sprite's width." {
+      min 0
+      unit m
+    }
+    field shadowOffset Vector2 "The blob's centre relative to the anchor." {
+      unit m
+    }
+    field visible bool "Whether it is drawn." {
+      default true
+    }
+  }
+
+  component Afterimage {
+    doc "Ghosts of the entity's og.Sprite: every `interval` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by color. A dash, a speed-up, a teleport. The history is world state (the og.sprite state block)."
+    field count u32 "How many ghosts." {
+      default 4
+      min 0
+      max 16
+    }
+    field interval u32 "Ticks between ghosts." {
+      default 3
+      min 1
+      unit ticks
+    }
+    field opacity f32 "The newest ghost's alpha." {
+      default 0.5
+      min 0
+      max 1
+      tunable true
+    }
+    field color Color "A linear tint (above 1 with additive, a glow)." {
+      default 1 1 1
+    }
+    field additive bool "Add the ghosts instead of blending them."
+    field active bool "Record new ghosts; false lets the existing ones fade out." {
+      default true
+    }
+  }
+
+  struct FloatingTextDesc {
+    doc "A damage number or pickup text that pops at a point, rises, spreads and fades by itself (no per-tick submission). Deterministic: its drift comes from the tick and its order, and it is world state (the og.sprite state block)."
+    desc true
+    field text String "The text, such as `-12` or `+1 key`."
+    field position Vector3 "Where it appears (above a hit, usually)." {
+      unit m
+    }
+    field font Option.Font "The font; null uses the UI's body font."
+    field size f32 "The em size in world units." {
+      default 0.5
+      min 0
+      unit m
+    }
+    field color Color "The linear fill colour." {
+      default 1 1 1
+    }
+    field outline f32 "The outline's width as a fraction of the font's distance range (0 none)." {
+      default 0.6
+      min 0
+      max 1
+    }
+    field outlineColor Color "The outline's linear colour." {
+      default 0.02 0.02 0.03
+    }
+    field rise f32 "How far it climbs over its life." {
+      default 1
+      unit m
+    }
+    field spread f32 "The largest sideways drift, left or right." {
+      default 0.3
+      min 0
+      unit m
+    }
+    field lifetime f32 "How long it shows." {
+      default 0.8
+      min 0.05
+      unit s
+    }
+    field fade f32 "The last part of its life it fades over." {
+      default 0.4
+      min 0
+      max 1
+      unit ratio
+    }
+    field pop f32 "How much bigger it starts, settling to its size in the first fifth of its life." {
+      default 0.4
+      min 0
+    }
+    field crit bool "A critical hit: critScale times bigger, a stronger pop."
+    field critScale f32 "The size of a crit." {
+      default 1.6
+      min 1
+    }
+    field layer i32 "The sprite layer (above the action)." {
+      default 100
+    }
+  }
+
+  fn floatingText {
+    doc "Spawn a floating text (damage numbers, +coins, `blocked`). It lives `lifetime` seconds of scaled time on its own; systems and commands may call it."
+    param world World "The world whose renderer draws it."
+    param desc FloatingTextDesc "The text, the point and the style."
+    returns Result.Void "Refused for a dead font, or no font when the UI has none."
   }
 
   fn measureText {
@@ -2492,6 +2867,20 @@ module load {
     param world World "The world whose animation owns the assets."
     param path String "The model's asset id, such as `models/walker.glb` (a `#anim` suffix is accepted)."
     returns Result.Animation "Refused for an uncooked path, a model the cook wrote no `#anim` blob for (no skins, clips or morph targets), a cook stamp mismatch or an invalid rig."
+  }
+
+  fn flipbook {
+    doc "Load a cooked flipbook sheet (an `.ogt` of `type flipbook`, with its Aseprite or TexturePacker atlas resolved by the cook) and its texture, and register it with og.flipbook. Loading the same path again answers the same handles."
+    param world World "The world whose animation and renderer own it."
+    param path String "The sheet's asset id, such as `sprites/hero.ogt`."
+    returns Result.FlipbookInfo "Refused for a path not in the bundle (run og cook) or a texture it cannot load."
+  }
+
+  fn tilemap {
+    doc "Load a cooked map (a tilemap `.ogt`, a Tiled `.tmj` or an LDtk `.ldtk`), its tilesets and their textures. Loading the same path again answers the same handles."
+    param world World "The world whose renderer and tilemaps own it."
+    param path String "The map's asset id, such as `maps/room.tmj`."
+    returns Result.TilemapInfo "Refused for a path not in the bundle, a missing tileset or texture, or a terrain its tileset lacks."
   }
 
   event AssetReady {
@@ -3161,6 +3550,424 @@ module anim {
     param world World "The world whose animation owns the graph."
     param desc GraphDesc "The text and the clips it may name."
     returns Result.GraphAsset "Refused for a parse error (the reason names the line), a clip name `clips` lacks, or an invalid graph."
+  }
+
+  handle FlipbookSheet "A sprite sheet's frames and clips (a cooked `.ogt` of `type flipbook`), from og.load.flipbook."
+
+  column FlipbookSheet {
+    doc "A FlipbookSheet handle field."
+    array Uint32Array
+    stride 2
+    value FlipbookSheet
+  }
+
+  enum FlipMode {
+    doc "How a flipbook clip runs past its last frame."
+    variant loop "Back to the first frame."
+    variant pingPong "Back and forth, without repeating the end frames."
+    variant once "Hold the last frame and set Flipbook.finished."
+  }
+
+  component Flipbook {
+    doc "Plays a clip of a flipbook sheet on the entity's og.Sprite: extraction draws the sprite with the sheet's texture and the current frame's region and pivot (the sprite keeps its size, colour, flips and layer). Played by the engine's og.flipbook system by scaled time (Time.scaledDt: slow motion, hit stop), after the game's systems."
+    doc "Changing clip restarts at the clip's first frame (or at `time`, written in the same tick); writing a different time is a seek. Frame events are og.FlipbookEvent. The playback position is world state (the og.flipbook state block)."
+    field sheet FlipbookSheet "The sheet (og.load.flipbook's `sheet`); 0 is none."
+    field clip u32 "The clip: an index into FlipbookInfo.clips (og.anim.clip finds one by name)." {
+      min 0
+    }
+    field speed f32 "The playback rate: 1 as authored, 2 twice as fast, 0 holds the frame." {
+      default 1
+      min 0
+      max 10
+      tunable true
+    }
+    field playing bool "Whether time advances." {
+      default true
+    }
+    field frame u32 "Written: the clip frame shown (an index into the clip's frames)." {
+      readonly true
+    }
+    field time f32 "Seconds into the current cycle; written every tick, set it to seek (no events fire across a seek)." {
+      min 0
+      unit s
+    }
+    field finished bool "Written: a `once` clip reached and holds its last frame." {
+      readonly true
+    }
+    field loops u32 "Written: cycles completed by a looping or ping-pong clip." {
+      readonly true
+    }
+  }
+
+  event FlipbookEvent {
+    doc "A flipbook entered a frame its clip names in an `event` line (`event 2 \"step\"`): footsteps, the frame a hit lands, a pickup's sparkle. Read in the tick after, like every event; a clip started at 0 fires its first frame's events."
+    field entity Entity "The entity with the og.Flipbook."
+    field clip u32 "The clip index."
+    field frame u32 "The clip frame entered."
+    field name String "The event's name (at most 63 bytes)."
+  }
+
+  struct FlipbookClipInfo {
+    doc "One clip of a loaded flipbook sheet."
+    field clip u32 "Its index, what Flipbook.clip takes."
+    field name String "Its name in the sheet."
+    field frames u32 "How many frames."
+    field duration f32 "Seconds of one cycle (a ping-pong cycle goes there and back)." {
+      unit s
+    }
+    field mode FlipMode "How it runs past its end."
+    field events List.String "Its events' names, in frame order."
+  }
+
+  struct FlipbookInfo {
+    doc "What og.load.flipbook registered."
+    field sheet FlipbookSheet "What Flipbook.sheet takes."
+    field texture Texture "The sheet's texture (loaded with it; sampled nearest unless the sheet says `filter linear`)."
+    field clips List.FlipbookClipInfo "Its clips, in sheet order."
+    field frames u32 "Frames in the sheet."
+    field frameWidth u32 "The first frame's width in pixels."
+    field frameHeight u32 "The first frame's height in pixels."
+  }
+
+  fn clip {
+    doc "The index of a flipbook clip by name, for Flipbook.clip: `og.anim.clip(hero, \"walk_down\")`. -1 when the sheet has no such clip."
+    host false
+    param info FlipbookInfo "What og.load.flipbook answered."
+    param name String "The clip's name."
+    returns i32
+  }
+}
+
+# ── tween ─────────────────────────────────────────────────────────────────
+
+module tween {
+  doc "Tweens: animate any numeric field of a component (og.Transform.position, og.Sprite.color, og.Sprite.opacity, a game's own f32) from its value to a target over time with an easing curve, a delay, loops and yoyo; chain them in sequences or run them in parallel. Advanced by the engine's og.tween system after the game's systems and before og.anim and physics, by scaled time (slow motion, hit stop) unless unscaled."
+  doc "Running tweens are world state (the og.tween state block): snapshots, restore and the world hash cover them. og.TweenCompleted reports a tween or group that ends on its own; a cancelled one, or one whose entity or component went away, ends silently."
+  doc "Feel presets are tweens too: og.tween.squash (squash and stretch that recovers) and og.tween.flash (a hit flash that fades)."
+
+  handle Tween "A running tween or group."
+
+  column Tween {
+    doc "A Tween handle field."
+    array Uint32Array
+    stride 2
+    value Tween
+  }
+
+  enum Ease {
+    doc "An easing curve from the start (0) to the end (1). In starts slow, out ends slow, inOut both. back overshoots, elastic rings, bounce bounces at the end."
+    variant quadOut "Gentle ease out: the default for most motion."
+    variant linear "Constant speed: scrolling, timers, colour cycles."
+    variant quadIn "Gentle ease in."
+    variant quadInOut "Gentle in and out."
+    variant cubicIn "Ease in."
+    variant cubicOut "Ease out: UI sliding in, things settling."
+    variant cubicInOut "In and out: camera moves, deliberate motion."
+    variant quartIn "Strong ease in."
+    variant quartOut "Strong ease out."
+    variant quartInOut "Strong in and out."
+    variant expoIn "Exponential ease in: things falling away, warp-outs."
+    variant expoOut "Exponential ease out: snappy arrivals."
+    variant expoInOut "Exponential in and out."
+    variant backIn "Pulls back first, then goes: anticipation."
+    variant backOut "Overshoots, then settles: pops, squash recovery, buttons."
+    variant backInOut "Pulls back and overshoots."
+    variant elasticIn "Rings before leaving."
+    variant elasticOut "Rings after arriving: springy, cartoon impacts."
+    variant elasticInOut "Rings at both ends."
+    variant bounceIn "Bounces before leaving."
+    variant bounceOut "Bounces at the end: drops, landings."
+    variant bounceInOut "Bounces at both ends."
+  }
+
+  struct TweenDesc {
+    doc "One tween of one field."
+    desc true
+    field entity Entity "The entity whose component is tweened."
+    field component Option.AnyComponent "The component token (og.Transform, og.Sprite, a game's own); null is og.Transform."
+    field field String "The field, or one lane of it: `position`, `position.y`, `scale`, `color.r`, `opacity`. f32, f64, i32 and u32 fields (rounded), vectors, colours and quaternions (as a rotation) tween; bool, enum and handle fields do not."
+    field to List.f32 "The end value: one number for a scalar or for every lane, or one per lane."
+    field from Option.List.f32 "The start value; null takes the field's value when the tween starts (after its delay)."
+    field relative bool "`to` is added to the start value."
+    field duration f32 "Seconds from start to end (one cycle)." {
+      default 0.3
+      min 0
+      unit s
+    }
+    field delay f32 "Seconds before it starts." {
+      min 0
+      unit s
+    }
+    field ease Ease "The curve."
+    field loops i32 "Extra cycles: 0 plays once, n repeats n more times, -1 forever." {
+      min -1
+    }
+    field yoyo bool "Every other cycle plays backwards (pulses, bobbing)."
+    field unscaled bool "Advance by real ticks, ignoring Time.scale and hit stop (UI motion)."
+    field tag u32 "A number of yours, carried by og.TweenCompleted."
+  }
+
+  struct TweenGroupDesc {
+    doc "How a sequence or parallel group runs."
+    desc true
+    field loops i32 "Extra runs of the whole group: 0 once, -1 forever; each run replays the spans its tweens resolved in the first." {
+      min -1
+    }
+    field unscaled bool "Advance by real ticks, ignoring Time.scale and hit stop."
+    field tag u32 "A number of yours, carried by og.TweenCompleted."
+  }
+
+  event TweenCompleted {
+    doc "A tween or group ended on its own (read in the tick after)."
+    field tween Tween "The handle og.tween.to, sequence, parallel, squash or flash answered."
+    field entity Entity "The entity of its (first) tween."
+    field tag u32 "Its tag."
+  }
+
+  struct SquashDesc {
+    doc "Squash and stretch: the entity's og.Transform.scale jumps to rest times impact and eases back to rest."
+    desc true
+    field entity Entity "The entity."
+    field impact Vector2 "The x and y factors at the impact: (1.25, 0.8) squashes (a landing, a hit), (0.8, 1.25) stretches (a jump)." {
+      default 1.25 0.8
+    }
+    field rest Vector3 "The scale it recovers to." {
+      default 1 1 1
+    }
+    field duration f32 "Seconds to recover." {
+      default 0.18
+      min 0
+      unit s
+    }
+    field ease Ease "The recovery curve; backOut overshoots a little, elasticOut wobbles." {
+      default backOut
+    }
+  }
+
+  struct FlashDesc {
+    doc "A hit flash: the entity's og.Sprite (else og.Mesh) flashColor set and its flash faded from amount to 0."
+    desc true
+    field entity Entity "The entity."
+    field color Color "The flash colour (white for a hit, red for damage taken)." {
+      default 1 1 1
+    }
+    field amount f32 "How far it starts towards the colour." {
+      default 1
+      min 0
+      max 1
+    }
+    field duration f32 "Seconds to fade." {
+      default 0.12
+      min 0
+      unit s
+    }
+    field ease Ease "The fade's curve; quadIn holds the flash, then drops it." {
+      default quadIn
+    }
+  }
+
+  fn to {
+    doc "Start a tween. Systems may call it; it first moves in this tick's og.tween run."
+    param world World "The world."
+    param desc TweenDesc "The field, the values and the timing."
+    returns Result.Tween "Refused for a dead entity, a component it lacks, a field that is not numeric, or values of the wrong length."
+  }
+
+  fn sequence {
+    doc "Start tweens one after another (each with its own delay, duration and loops); the time one leaves over goes to the next."
+    param world World "The world."
+    param steps List.TweenDesc "The tweens, in order."
+    param desc TweenGroupDesc "Loops, scaling and the tag." {
+      optional true
+    }
+    returns Result.Tween
+  }
+
+  fn parallel {
+    doc "Start tweens together; the group ends with the last one."
+    param world World "The world."
+    param tweens List.TweenDesc "The tweens."
+    param desc TweenGroupDesc "Loops, scaling and the tag." {
+      optional true
+    }
+    returns Result.Tween
+  }
+
+  fn cancel {
+    doc "Stop a tween where it is (no event)."
+    param world World "The world."
+    param tween Tween "The handle."
+    returns bool "False when it was not running."
+  }
+
+  fn cancelEntity {
+    doc "Stop every tween of an entity (no events), say before starting a new reaction."
+    param world World "The world."
+    param entity Entity "The entity."
+    returns u32 "How many stopped."
+  }
+
+  fn active {
+    doc "Whether a tween is still running."
+    param world World "The world."
+    param tween Tween "The handle."
+    returns bool
+  }
+
+  fn squash {
+    doc "Squash and stretch the entity's og.Transform.scale (cancels its earlier squash)."
+    param world World "The world."
+    param desc SquashDesc "The entity and the impact."
+    returns Result.Tween "Refused for an entity without og.Transform."
+  }
+
+  fn flash {
+    doc "Flash the entity's og.Sprite, or its og.Mesh (cancels its earlier flash)."
+    param world World "The world."
+    param desc FlashDesc "The entity and the flash."
+    returns Result.Tween "Refused for an entity with neither og.Sprite nor og.Mesh."
+  }
+}
+
+# ── tilemap ───────────────────────────────────────────────────────────────
+
+module tilemap {
+  doc "Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component."
+  doc "Layers draw through the sprite batch in 16x16-tile chunks culled to the view, each at the map's sprite layer plus its z, scrolled by its parallax; solid tiles become static og-physics colliders merged into rectangles. Runtime edits (og.tilemap.setTile, re-auto-tiling the neighbourhood) are world state (the og.tilemap state block), and the colliders follow them."
+  doc "Cells count from the top-left corner, x right and y down (Tiled's); the map's top-left corner is at the entity's position."
+
+  handle TilemapAsset "A loaded map: its layers, tilesets and objects."
+
+  column TilemapAsset {
+    doc "A TilemapAsset handle field."
+    array Uint32Array
+    stride 2
+    value TilemapAsset
+  }
+
+  component Tilemap {
+    doc "Draws a loaded map with its top-left corner at the entity's position (z included) and gives its collision layers static colliders. The og.tilemap system adopts it in the first tick it exists: from then on og.tilemap.setTile and getTile reach it."
+    field map TilemapAsset "The map (og.load.tilemap's `map`); 0 is none."
+    field layer i32 "The sprite layer of the map's layer 0; every layer draws at this plus its z (default: its index)." {
+      default -10
+    }
+    field color Color "A linear tint." {
+      default 1 1 1
+    }
+    field opacity f32 "The alpha, times each layer's." {
+      default 1
+      min 0
+      max 1
+    }
+    field visible bool "Whether it is drawn." {
+      default true
+    }
+    field collision bool "Give the layers marked collision static colliders (rectangles merged from the solid tiles)." {
+      default true
+    }
+    field colliderLayers u32 "The collision layers of those colliders, as bits (Collider.layers)." {
+      default 1
+    }
+    field friction f32 "The colliders' friction." {
+      default 0.5
+      min 0
+      max 2
+    }
+  }
+
+  struct TileLayerInfo {
+    doc "One layer of a map."
+    field name String "Its name."
+    field index u32 "Its index (what drawing order and z start from)."
+    field z i32 "Its sprite-layer offset from Tilemap.layer."
+    field parallax Vector2 "Its scroll factors: 1 1 moves with the world, 0.5 at half the camera's speed (far away), 0 stays with the camera."
+    field collision bool "Its solid tiles collide."
+    field terrain String "The auto-tiling terrain of a terrain layer (its cells are 1 filled or 0 empty); empty for a tile layer."
+    field visible bool "Whether it is drawn."
+  }
+
+  struct TileObject {
+    doc "An object of a map (a Tiled object, an LDtk entity, an `object` block): spawn points, doors, triggers."
+    field name String "Its name."
+    field kind String "Its type or class."
+    field position Vector2 "Its top-left corner, in world units relative to the map's top-left corner (y up, so below the corner is negative)." {
+      unit m
+    }
+    field size Vector2 "Its width and height (0 0 for a point)." {
+      unit m
+    }
+    field center Vector2 "Its centre, relative to the map's corner." {
+      unit m
+    }
+    field properties Map.String "Its custom properties, as text."
+  }
+
+  struct TilemapInfo {
+    doc "What og.load.tilemap loaded."
+    field map TilemapAsset "What Tilemap.map takes."
+    field width u32 "Cells across."
+    field height u32 "Cells down."
+    field tileWidth f32 "A cell's width in world units." {
+      unit m
+    }
+    field tileHeight f32 "A cell's height in world units." {
+      unit m
+    }
+    field layers List.TileLayerInfo "Its layers, drawing order."
+    field objects List.TileObject "Its objects."
+  }
+
+  struct SetTileDesc {
+    doc "One cell to change."
+    desc true
+    field entity Entity "The entity with the og.Tilemap."
+    field layer String "The layer's name."
+    field x u32 "The column (0 is the left)."
+    field y u32 "The row (0 is the top)."
+    field tile i32 "A tile layer: the tile id, -1 empty. A terrain layer: 1 fills, 0 clears, and the neighbours re-tile." {
+      min -1
+    }
+  }
+
+  struct TileCell {
+    doc "A cell of a map."
+    field x u32 "The column."
+    field y u32 "The row."
+    field inside bool "Whether the point was on the map."
+  }
+
+  fn setTile {
+    doc "Change a cell. It applies at once to getTile, and to drawing and colliders at the og.tilemap system (this tick when called before it). Deterministic: equal edits in equal order give equal maps."
+    param world World "The world."
+    param desc SetTileDesc "The map, the layer, the cell and the tile."
+    returns Result.Void "Refused for an entity whose map is not adopted yet, an unknown layer, a cell outside the map or a tile the tileset lacks."
+  }
+
+  fn getTile {
+    doc "A cell's tile: a tile layer's tile id (-1 empty), a terrain layer's 1 or 0; -1 outside the map or before the map is adopted."
+    param world World "The world."
+    param entity Entity "The entity with the og.Tilemap."
+    param layer String "The layer's name."
+    param x u32 "The column."
+    param y u32 "The row."
+    returns i32
+  }
+
+  fn cellAt {
+    doc "The cell under a world point (its xy), for a map at its entity's position."
+    param world World "The world."
+    param entity Entity "The entity with the og.Tilemap."
+    param point Vector3 "A world point."
+    returns TileCell
+  }
+
+  fn cellCenter {
+    doc "A cell's centre in world coordinates (z of the map)."
+    param world World "The world."
+    param entity Entity "The entity with the og.Tilemap."
+    param x u32 "The column."
+    param y u32 "The row."
+    returns Vector3
   }
 }
 

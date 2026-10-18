@@ -16,6 +16,10 @@ import {
   render,
   transform,
   ui,
+  time,
+  camera,
+  tween,
+  tilemap,
   type FieldSpec,
 } from "./runtime.ts";
 import { cameras } from "./systems/cameras.ts";
@@ -99,6 +103,10 @@ export const og: typeof Api.og = Object.freeze({
   commands,
   physics,
   anim,
+  time,
+  camera,
+  tween,
+  tilemap,
   ui: Object.freeze({ ...ui, ...uiKit }),
   systems: Object.freeze({ cameras }),
 }) as unknown as typeof Api.og;

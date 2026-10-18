@@ -301,6 +301,15 @@ impl CameraApi for WebHost {
     fn og_camera_screen_to_ray(&self, world: u32, x: f64, y: f64) -> String {
         rt::og_camera_screen_to_ray(world, x, y)
     }
+    fn og_camera_shake(&self, world: u32, trauma: f64) -> String {
+        rt::og_camera_shake(world, trauma)
+    }
+    fn og_camera_punch(&self, world: u32, amount: f64) -> String {
+        rt::og_camera_punch(world, amount)
+    }
+    fn og_camera_kick(&self, world: u32, direction: String, distance: f64) -> String {
+        rt::og_camera_kick(world, direction, distance)
+    }
 }
 
 impl RenderApi for WebHost {
@@ -333,6 +342,9 @@ impl RenderApi for WebHost {
     }
     fn og_render_ribbon(&self, world: u32, desc: Option<String>) -> String {
         rt::og_render_ribbon(world, desc)
+    }
+    fn og_render_floating_text(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_floating_text(world, desc)
     }
 }
 
@@ -384,6 +396,63 @@ impl LoadApi for WebHost {
     }
     fn og_load_emitter(&self, world: u32, path: String) -> String {
         rt::og_load_emitter(world, path)
+    }
+    fn og_load_flipbook(&self, world: u32, path: String) -> String {
+        rt::og_load_flipbook(world, path)
+    }
+    fn og_load_tilemap(&self, world: u32, path: String) -> String {
+        rt::og_load_tilemap(world, path)
+    }
+}
+
+impl TimeApi for WebHost {
+    fn og_time_set_scale(&self, world: u32, scale: f64) -> String {
+        rt::og_time_set_scale(world, scale)
+    }
+    fn og_time_hit_stop(&self, world: u32, ticks: u32) -> String {
+        rt::og_time_hit_stop(world, ticks)
+    }
+}
+
+impl TweenApi for WebHost {
+    fn og_tween_to(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_tween_to(world, desc)
+    }
+    fn og_tween_sequence(&self, world: u32, steps: String, desc: Option<String>) -> String {
+        rt::og_tween_sequence(world, steps, desc)
+    }
+    fn og_tween_parallel(&self, world: u32, tweens: String, desc: Option<String>) -> String {
+        rt::og_tween_parallel(world, tweens, desc)
+    }
+    fn og_tween_cancel(&self, world: u32, tween: f64) -> bool {
+        rt::og_tween_cancel(world, tween)
+    }
+    fn og_tween_cancel_entity(&self, world: u32, entity: f64) -> u32 {
+        rt::og_tween_cancel_entity(world, entity)
+    }
+    fn og_tween_active(&self, world: u32, tween: f64) -> bool {
+        rt::og_tween_active(world, tween)
+    }
+    fn og_tween_squash(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_tween_squash(world, desc)
+    }
+    fn og_tween_flash(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_tween_flash(world, desc)
+    }
+}
+
+impl TilemapApi for WebHost {
+    fn og_tilemap_set_tile(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_tilemap_set_tile(world, desc)
+    }
+    fn og_tilemap_get_tile(&self, world: u32, entity: f64, layer: String, x: u32, y: u32) -> i32 {
+        rt::og_tilemap_get_tile(world, entity, layer, x, y)
+    }
+    fn og_tilemap_cell_at(&self, world: u32, entity: f64, point: String) -> String {
+        rt::og_tilemap_cell_at(world, entity, point)
+    }
+    fn og_tilemap_cell_center(&self, world: u32, entity: f64, x: u32, y: u32) -> String {
+        rt::og_tilemap_cell_center(world, entity, x, y)
     }
 }
 

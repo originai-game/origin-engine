@@ -51,6 +51,8 @@ impl Kind {
             "SkeletonAsset" | "ClipAsset" | "GraphAsset" => Kind::Asset,
             // The effect assets and textures in records (Decal atlas, LUT, emitter).
             "Texture" | "Lut" | "ParticleEmitter" => Kind::Asset,
+            // The E4 handles: flipbook sheets, tilemaps, tweens.
+            "FlipbookSheet" | "TilemapAsset" | "Tween" => Kind::Asset,
             "String" => Kind::Str,
             _ => return None,
         })

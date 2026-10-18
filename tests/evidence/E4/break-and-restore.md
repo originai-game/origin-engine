@@ -46,3 +46,9 @@ Each new test was run once against broken code (the break below), seen to fail, 
 | og-cook/src/cook/flipbook.rs: a tag replaces the sheet's own clip of that name | og-cook --test flipbook | aseprite_and_... FAIL |
 | og-cook/src/cook/mod.rs: the flipbook stamp leaves out its texture and atlas | og-cook --test flipbook | aseprite_and_... FAIL (the edited atlas is not recooked) |
 | og-cook/src/cook/texture.rs: `kind pixel` goes through Basis Universal | og-cook --test flipbook | aseprite_and_... FAIL (not RGBA8, mips) |
+| og-api/src/runtime/feel.rs: og.Sprite ignores sortY | packages/engine bun test tests/feel.test.ts | og.Sprite draws at its entity, y-sorted, ... FAIL |
+| og-api/src/runtime/feel.rs: the systems' `time` gets Time::dt as scaledDt | bun test tests/feel.test.ts | a hit stop holds physics and scaled tweens ... FAIL |
+| og-api/src/runtime/feel.rs: og.camera never decays trauma, punch and kick | bun test tests/feel.test.ts | camera trauma, punch and kick ... FAIL |
+| og-api/src/runtime/feel.rs: camera feel never reaches the frame | bun test tests/feel.test.ts | camera trauma, punch and kick ... FAIL |
+| og-api/src/runtime/feel.rs: presets start recovering on their first tick | bun test tests/feel.test.ts | tweens animate a field, report once, and squash recovers to rest FAIL |
+| og-api/src/runtime/fx.rs: the immediate sprites clear og.Sprite's effects (the bug found while writing the test) | bun test tests/feel.test.ts | og.tween.flash whitens an og.Sprite and fades back FAIL |

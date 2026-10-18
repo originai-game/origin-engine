@@ -1615,6 +1615,8 @@ dependencies = [
  "og-physics",
  "og-probe",
  "og-render",
+ "og-tilemap",
+ "og-tween",
  "og-ui",
  "serde_json",
 ]

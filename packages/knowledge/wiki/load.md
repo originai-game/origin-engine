@@ -20,7 +20,7 @@ module load {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 2304</sub>
+<sub>`api.ogt` line 2679</sub>
 
 ## Contents
 
@@ -54,6 +54,8 @@ module load {
 | [`og.load.error`](#fn-error) | function | Why a load failed. |
 | [`og.load.gltfInfo`](#fn-gltfInfo) | function | What a ready glTF holds. |
 | [`og.load.animation`](#fn-animation) | function | Load a cooked glTF's animation (its `<model>#anim` blob: the rig, the clips, the skin and morph streams) and register its skeleton and clips with og.anim. Loading the same model again answers the same handles. |
+| [`og.load.flipbook`](#fn-flipbook) | function | Load a cooked flipbook sheet (an `.ogt` of `type flipbook`, with its Aseprite or TexturePacker atlas resolved by the cook) and its texture, and register it with og.flipbook. Loading the same path again answers the same handles. |
+| [`og.load.tilemap`](#fn-tilemap) | function | Load a cooked map (a tilemap `.ogt`, a Tiled `.tmj` or an LDtk `.ldtk`), its tilesets and their textures. Loading the same path again answers the same handles. |
 | [`og.AssetReady`](#record-AssetReady) | event | A load completed. |
 | [`og.AssetFailed`](#record-AssetFailed) | event | A load failed. |
 
@@ -87,7 +89,7 @@ fn bundle {
 }
 ```
 
-<sub>`api.ogt` line 2385</sub>
+<sub>`api.ogt` line 2760</sub>
 
 <a id="fn-bundleInfo"></a>
 
@@ -117,7 +119,7 @@ fn bundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 2392</sub>
+<sub>`api.ogt` line 2767</sub>
 
 <a id="fn-defaultBundle"></a>
 
@@ -145,7 +147,7 @@ fn defaultBundle {
 }
 ```
 
-<sub>`api.ogt` line 2399</sub>
+<sub>`api.ogt` line 2774</sub>
 
 <a id="fn-gltf"></a>
 
@@ -177,7 +179,7 @@ fn gltf {
 }
 ```
 
-<sub>`api.ogt` line 2405</sub>
+<sub>`api.ogt` line 2780</sub>
 
 <a id="fn-scene"></a>
 
@@ -207,7 +209,7 @@ fn scene {
 }
 ```
 
-<sub>`api.ogt` line 2413</sub>
+<sub>`api.ogt` line 2788</sub>
 
 <a id="fn-font"></a>
 
@@ -237,7 +239,7 @@ fn font {
 }
 ```
 
-<sub>`api.ogt` line 2420</sub>
+<sub>`api.ogt` line 2795</sub>
 
 <a id="fn-fontInfo"></a>
 
@@ -267,7 +269,7 @@ fn fontInfo {
 }
 ```
 
-<sub>`api.ogt` line 2427</sub>
+<sub>`api.ogt` line 2802</sub>
 
 <a id="fn-sound"></a>
 
@@ -297,7 +299,7 @@ fn sound {
 }
 ```
 
-<sub>`api.ogt` line 2434</sub>
+<sub>`api.ogt` line 2809</sub>
 
 <a id="fn-lut"></a>
 
@@ -327,7 +329,7 @@ fn lut {
 }
 ```
 
-<sub>`api.ogt` line 2441</sub>
+<sub>`api.ogt` line 2816</sub>
 
 <a id="fn-emitter"></a>
 
@@ -357,7 +359,7 @@ fn emitter {
 }
 ```
 
-<sub>`api.ogt` line 2448</sub>
+<sub>`api.ogt` line 2823</sub>
 
 <a id="fn-texture"></a>
 
@@ -387,7 +389,7 @@ fn texture {
 }
 ```
 
-<sub>`api.ogt` line 2455</sub>
+<sub>`api.ogt` line 2830</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -417,7 +419,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 2462</sub>
+<sub>`api.ogt` line 2837</sub>
 
 <a id="fn-status"></a>
 
@@ -447,7 +449,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 2469</sub>
+<sub>`api.ogt` line 2844</sub>
 
 <a id="fn-error"></a>
 
@@ -477,7 +479,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 2476</sub>
+<sub>`api.ogt` line 2851</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -507,7 +509,7 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 2483</sub>
+<sub>`api.ogt` line 2858</sub>
 
 <a id="fn-animation"></a>
 
@@ -537,7 +539,67 @@ fn animation {
 }
 ```
 
-<sub>`api.ogt` line 2490</sub>
+<sub>`api.ogt` line 2865</sub>
+
+<a id="fn-flipbook"></a>
+
+### `og.load.flipbook`
+
+Load a cooked flipbook sheet (an `.ogt` of `type flipbook`, with its Aseprite or TexturePacker atlas resolved by the cook) and its texture, and register it with og.flipbook. Loading the same path again answers the same handles.
+
+```ts
+og.load.flipbook(world: World, path: string): Result<FlipbookInfo>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose animation and renderer own it. |
+| `path` | `string` | no | The sheet's asset id, such as `sprites/hero.ogt`. |
+
+**Returns** `Result<FlipbookInfo>`: Refused for a path not in the bundle (run og cook) or a texture it cannot load.
+
+Binding symbol `og_load_flipbook` · publish builds: kept
+
+```ogt
+fn flipbook {
+  doc "Load a cooked flipbook sheet (an `.ogt` of `type flipbook`, with its Aseprite or TexturePacker atlas resolved by the cook) and its texture, and register it with og.flipbook. Loading the same path again answers the same handles."
+  param world World "The world whose animation and renderer own it."
+  param path String "The sheet's asset id, such as `sprites/hero.ogt`."
+  returns Result.FlipbookInfo "Refused for a path not in the bundle (run og cook) or a texture it cannot load."
+}
+```
+
+<sub>`api.ogt` line 2872</sub>
+
+<a id="fn-tilemap"></a>
+
+### `og.load.tilemap`
+
+Load a cooked map (a tilemap `.ogt`, a Tiled `.tmj` or an LDtk `.ldtk`), its tilesets and their textures. Loading the same path again answers the same handles.
+
+```ts
+og.load.tilemap(world: World, path: string): Result<TilemapInfo>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer and tilemaps own it. |
+| `path` | `string` | no | The map's asset id, such as `maps/room.tmj`. |
+
+**Returns** `Result<TilemapInfo>`: Refused for a path not in the bundle, a missing tileset or texture, or a terrain its tileset lacks.
+
+Binding symbol `og_load_tilemap` · publish builds: kept
+
+```ogt
+fn tilemap {
+  doc "Load a cooked map (a tilemap `.ogt`, a Tiled `.tmj` or an LDtk `.ldtk`), its tilesets and their textures. Loading the same path again answers the same handles."
+  param world World "The world whose renderer and tilemaps own it."
+  param path String "The map's asset id, such as `maps/room.tmj`."
+  returns Result.TilemapInfo "Refused for a path not in the bundle, a missing tileset or texture, or a terrain its tileset lacks."
+}
+```
+
+<sub>`api.ogt` line 2879</sub>
 
 ## Components, resources and events
 
@@ -560,7 +622,7 @@ component Model {
 }
 ```
 
-<sub>`api.ogt` line 2380</sub>
+<sub>`api.ogt` line 2755</sub>
 
 <a id="record-AssetReady"></a>
 
@@ -583,7 +645,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 2497</sub>
+<sub>`api.ogt` line 2886</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -608,7 +670,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 2503</sub>
+<sub>`api.ogt` line 2892</sub>
 
 ## Types
 
@@ -624,7 +686,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Asset "A loaded bundle, scene or glTF asset."
 ```
 
-<sub>`api.ogt` line 2309</sub>
+<sub>`api.ogt` line 2684</sub>
 
 <a id="type-Font"></a>
 
@@ -638,7 +700,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Font "A cooked MSDF font: its glyph table and one or more atlas pages."
 ```
 
-<sub>`api.ogt` line 2310</sub>
+<sub>`api.ogt` line 2685</sub>
 
 <a id="type-Sound"></a>
 
@@ -652,7 +714,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Sound "A cooked sound: QOA-encoded PCM the audio module plays."
 ```
 
-<sub>`api.ogt` line 2311</sub>
+<sub>`api.ogt` line 2686</sub>
 
 <a id="type-LoadStatus"></a>
 
@@ -677,7 +739,7 @@ enum LoadStatus {
 }
 ```
 
-<sub>`api.ogt` line 2327</sub>
+<sub>`api.ogt` line 2702</sub>
 
 <a id="type-GltfDesc"></a>
 
@@ -703,7 +765,7 @@ struct GltfDesc {
 }
 ```
 
-<sub>`api.ogt` line 2334</sub>
+<sub>`api.ogt` line 2709</sub>
 
 <a id="type-GltfInfo"></a>
 
@@ -728,7 +790,7 @@ struct GltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 2342</sub>
+<sub>`api.ogt` line 2717</sub>
 
 <a id="type-BundleInfo"></a>
 
@@ -751,7 +813,7 @@ struct BundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 2350</sub>
+<sub>`api.ogt` line 2725</sub>
 
 <a id="type-FontInfo"></a>
 
@@ -782,7 +844,7 @@ struct FontInfo {
 }
 ```
 
-<sub>`api.ogt` line 2357</sub>
+<sub>`api.ogt` line 2732</sub>
 
 <a id="type-SoundInfo"></a>
 
@@ -811,7 +873,7 @@ struct SoundInfo {
 }
 ```
 
-<sub>`api.ogt` line 2368</sub>
+<sub>`api.ogt` line 2743</sub>
 
 ## Column kinds
 
@@ -831,7 +893,7 @@ column Asset {
 }
 ```
 
-<sub>`api.ogt` line 2313</sub>
+<sub>`api.ogt` line 2688</sub>
 
 ```ogt
 column Sound {
@@ -842,4 +904,4 @@ column Sound {
 }
 ```
 
-<sub>`api.ogt` line 2320</sub>
+<sub>`api.ogt` line 2695</sub>

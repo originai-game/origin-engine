@@ -116,10 +116,27 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
             "status",
             "error",
             "gltfInfo",
-            "animation"
+            "animation",
+            "flipbook",
+            "tilemap"
         ]
     );
-    assert_eq!(fns("anim"), ["graph"]);
+    assert_eq!(fns("anim"), ["graph", "clip"]);
+    // E4: time scale, camera feel, tweens, tilemaps, floating text.
+    assert_eq!(fns("time"), ["setScale", "hitStop"]);
+    assert_eq!(fns("camera"), ["shake", "punch", "kick"]);
+    assert_eq!(
+        fns("tween"),
+        ["to", "sequence", "parallel", "cancel", "cancelEntity", "active", "squash", "flash"]
+    );
+    assert_eq!(fns("tilemap"), ["setTile", "getTile", "cellAt", "cellCenter"]);
+    assert!(fns("render").contains(&"floatingText".to_string()));
+    for name in ["Sprite", "Afterimage", "Flipbook", "Tilemap", "CameraZone", "CameraRail"] {
+        assert!(
+            records.contains(&(RecordKind::Component, name)),
+            "component {name}"
+        );
+    }
     assert_eq!(fns("reflect"), ["defineComponent", "defineResource"]);
     assert_eq!(fns("system"), ["defineSystem"]);
     assert_eq!(fns("game"), ["game"]);

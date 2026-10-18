@@ -260,3 +260,22 @@ view tables. Both hosts depend on it with the feature; `og-cli` does not.
   drawn over the finished frame whatever the camera; the effect resources
   and components are read by `runtime/fx.rs` during extraction.
 - Entity names live in the runtime, not in snapshots or the world hash.
+- **E4 feel modules** (`runtime/feel.rs`): `og.tween` (og-tween, writing
+  every registered component) and `og.flipbook` (og-anim) run after the
+  game's systems and before `og.anim`; `og.tilemap` (adopts og.Tilemap
+  entities, keeps their og-tilemap `MapState`, spawns and despawns the
+  merged static colliders as edits land) and `og.camera` (applies queued
+  `og.camera.shake/punch/kick`, decays trauma, punch and kick by the
+  unscaled tick, moves the camera along an og.CameraRail) after it;
+  `og.sprite` (afterimage samples, floating text expiry) after physics and
+  audio. Each has a state block. A system's `time` carries the time scale
+  (`scale`, `hitStop`, `scaledDt`, `scaledElapsed`) in the dispatch payload;
+  `og.Time` reads the same through `og.TimeScale`. Extraction draws og.Sprite
+  rows (their flipbook frame, flips, nine-slice pieces, y sort keys, blob
+  shadows and afterimages), floating texts and tile layers (chunks cached
+  per layer and rebuilt when a chunk's version moves), gives flashing
+  og.Mesh entities a flash copy of their material (16 levels), and applies
+  trauma shake, punch, kick and og.CameraZone clamping to the frame only.
+  Presets (`og.tween.squash`, `flash`) hold their impact for the tick they
+  start in. Tested through TypeScript in `packages/engine/tests/feel.test.ts`.
+

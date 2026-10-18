@@ -609,7 +609,12 @@ const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed, payloa
       const system = systems.get(id);
       if (!system || !fn) return `the dispatcher has no system with callback id ${id}: the bundle declared ${systems.size} system(s); was the engine built from another bundle?`;
       running = { system, tick };
-      const time = Object.freeze({ tick, dt, elapsed, rate: rates.get(engine) ?? Math.round(1 / dt) });
+      // The payload carries the time scale: scale,hitStop,scaledDt,scaledElapsed.
+      const ts = (payload || "1,0,0,0").split(",").map(Number);
+      const time = Object.freeze({
+        tick, dt, elapsed, rate: rates.get(engine) ?? Math.round(1 / dt),
+        scale: ts[0] ?? 1, hitStop: ts[1] ?? 0, scaledDt: ts[2] ?? dt, scaledElapsed: ts[3] ?? elapsed,
+      });
       fn(new QueryImpl(query, system), time, world);
       return "";
     }
@@ -836,6 +841,7 @@ export const render = Object.freeze({
   sprite: (world: WorldImpl, desc?: unknown) => parse(abi().og_render_sprite(world.id, json(desc))),
   ribbon: (world: WorldImpl, desc?: unknown) => parse(abi().og_render_ribbon(world.id, json(desc))),
   measureText: (world: WorldImpl, desc?: unknown) => parse(abi().og_render_measure_text(world.id, json(desc))),
+  floatingText: (world: WorldImpl, desc?: unknown) => parse(abi().og_render_floating_text(world.id, json(desc))),
   boxGeometry: (world: WorldImpl, desc?: unknown) => parse(abi().og_render_box_geometry(world.id, json(desc))),
   planeGeometry: (world: WorldImpl, desc?: unknown) => parse(abi().og_render_plane_geometry(world.id, json(desc))),
   sphereGeometry: (world: WorldImpl, desc?: unknown) => parse(abi().og_render_sphere_geometry(world.id, json(desc))),
@@ -858,10 +864,51 @@ export const load = Object.freeze({
   error: (world: WorldImpl, asset: number) => parse(abi().og_load_error(world.id, asset)),
   gltfInfo: (world: WorldImpl, asset: number) => parse(abi().og_load_gltf_info(world.id, asset)),
   animation: (world: WorldImpl, path: string) => parse(abi().og_load_animation(world.id, path)),
+  flipbook: (world: WorldImpl, path: string) => parse(abi().og_load_flipbook(world.id, path)),
+  tilemap: (world: WorldImpl, path: string) => parse(abi().og_load_tilemap(world.id, path)),
 });
 
 export const anim = Object.freeze({
   graph: (world: WorldImpl, desc?: unknown) => parse(abi().og_anim_graph(world.id, json(desc))),
+  clip: (info: { clips?: ReadonlyArray<{ clip: number; name: string }> }, name: string): number =>
+    info?.clips?.find((c) => c.name === name)?.clip ?? -1,
+});
+
+// ── E4: time scale, camera feel, tweens, tilemaps ───────────────────────────
+
+export const time = Object.freeze({
+  setScale: (world: WorldImpl, scale: number) => parse(abi().og_time_set_scale(world.id, scale)),
+  hitStop: (world: WorldImpl, ticks: number) => parse(abi().og_time_hit_stop(world.id, ticks)),
+});
+
+export const camera = Object.freeze({
+  shake: (world: WorldImpl, trauma: number) => parse(abi().og_camera_shake(world.id, trauma)),
+  punch: (world: WorldImpl, amount: number) => parse(abi().og_camera_punch(world.id, amount)),
+  kick: (world: WorldImpl, direction: unknown, distance: number) =>
+    parse(abi().og_camera_kick(world.id, JSON.stringify(direction), distance)),
+});
+
+export const tween = Object.freeze({
+  to: (world: WorldImpl, desc?: unknown) => parse(abi().og_tween_to(world.id, json(desc))),
+  sequence: (world: WorldImpl, steps: unknown, desc?: unknown) =>
+    parse(abi().og_tween_sequence(world.id, JSON.stringify(steps), json(desc))),
+  parallel: (world: WorldImpl, tweens: unknown, desc?: unknown) =>
+    parse(abi().og_tween_parallel(world.id, JSON.stringify(tweens), json(desc))),
+  cancel: (world: WorldImpl, t: number) => abi().og_tween_cancel(world.id, t),
+  cancelEntity: (world: WorldImpl, entity: number) => abi().og_tween_cancel_entity(world.id, entity),
+  active: (world: WorldImpl, t: number) => abi().og_tween_active(world.id, t),
+  squash: (world: WorldImpl, desc?: unknown) => parse(abi().og_tween_squash(world.id, json(desc))),
+  flash: (world: WorldImpl, desc?: unknown) => parse(abi().og_tween_flash(world.id, json(desc))),
+});
+
+export const tilemap = Object.freeze({
+  setTile: (world: WorldImpl, desc?: unknown) => parse(abi().og_tilemap_set_tile(world.id, json(desc))),
+  getTile: (world: WorldImpl, entity: number, layer: string, x: number, y: number) =>
+    abi().og_tilemap_get_tile(world.id, entity, layer, x, y),
+  cellAt: (world: WorldImpl, entity: number, point: unknown) =>
+    parse(abi().og_tilemap_cell_at(world.id, entity, JSON.stringify(point))),
+  cellCenter: (world: WorldImpl, entity: number, x: number, y: number) =>
+    parse(abi().og_tilemap_cell_center(world.id, entity, x, y)),
 });
 
 export const commands = Object.freeze({

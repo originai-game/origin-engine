@@ -384,12 +384,14 @@ pub(crate) fn load_texture(eng: &Engine, path: &str) -> Result<usize, String> {
     if let Some(&i) = eng.assets.borrow().by_path.get(&format!("texture:{id}")) {
         return Ok(i);
     }
+    let pixel;
     let data = {
         let assets = eng.assets.borrow();
         let (bytes, bundle) = assets.blob(&id)?;
         let tex = bundle
             .texture(&id, bytes.bytes())
             .map_err(|e| e.to_string())?;
+        pixel = tex.is_pixel_art();
         match hooks().map(|h| h.texture(&tex)) {
             Some(Fetch::Ready(d)) => d,
             Some(Fetch::Pending) => {
@@ -401,6 +403,10 @@ pub(crate) fn load_texture(eng: &Engine, path: &str) -> Result<usize, String> {
     };
     let mut rs = eng.render.borrow_mut();
     let handle = rs.scene.add_texture(data);
+    if pixel {
+        rs.scene
+            .set_texture_filter(handle, og_render::TextureFilter::Nearest);
+    }
     rs.textures.push(handle);
     let i = rs.textures.len() - 1;
     eng.assets

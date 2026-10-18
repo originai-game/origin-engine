@@ -275,6 +275,10 @@ pub(crate) struct State {
     /// og-anim on this world, and its assets (replayed into a reload's world).
     pub anim: Option<og_anim::AnimationSystem>,
     pub anim_assets: super::anim::AnimAssets,
+    /// Tweens, flipbooks, tilemaps, camera feel and sprites on this world,
+    /// and their assets (replayed into a reload's world).
+    pub feel: Option<super::feel::Feel>,
+    pub feel_assets: super::feel::FeelAssets,
 }
 
 pub(crate) struct Engine {
@@ -558,6 +562,9 @@ pub(crate) struct Assembled {
     pub mounted: super::modules::Mounted,
     /// og-anim on the new world.
     pub anim: og_anim::AnimationSystem,
+    /// Tweens, flipbooks, tilemaps, camera feel and sprites of the new world.
+    pub feel: super::feel::Feel,
+    pub feel_records: super::feel::Records,
 }
 
 /// Engine-owned records og-probe or og-input register themselves.
@@ -618,6 +625,7 @@ pub(crate) fn assemble(
             || decl.schema == Rng::NAME
             || REGISTERED_BY_MODULES.contains(&decl.schema)
             || super::anim::REGISTERED_BY_ANIM.contains(&decl.schema)
+            || super::feel::REGISTERED_BY_FEEL.contains(&decl.schema)
         {
             continue;
         }
@@ -637,8 +645,14 @@ pub(crate) fn assemble(
             Err(e) => warnings.push(format!("{} not registered: {e}", decl.schema)),
         }
     }
-    // og-anim's event (its name is a str64), before any system can read it.
+    // og-anim's events (their names are str64), before any system can read them.
     for layout in super::anim::register_records(&mut world)? {
+        layouts.insert(layout.schema.clone(), layout);
+    }
+    {
+        world.register::<og_anim::FlipbookEvent>().map_err(err)?;
+        let id = world.id_by_name("og.FlipbookEvent").map_err(err)?;
+        let layout = Layout::from_schema(world.schema(id).map_err(err)?, RecordKind::Event);
         layouts.insert(layout.schema.clone(), layout);
     }
     // The game's own records, in declaration order; its resources start at
@@ -764,9 +778,20 @@ pub(crate) fn assemble(
     }
     // og-anim after the game's systems (they set players, parameters and IK
     // targets), before the UI's end and physics (root motion moves Transforms).
+    // Tweens and flipbooks, then og-anim, then tilemaps and camera feel;
+    // og.sprite after physics (the poses at the tick's end).
+    let components: Vec<String> = layouts
+        .values()
+        .filter(|l| l.kind == RecordKind::Component)
+        .map(|l| l.schema.clone())
+        .collect();
+    let feel = super::feel::install_front(&mut world, &components)?;
     let anim = super::anim::install(&mut world)?;
+    let feel_records = super::feel::Records::of(&world, &layouts)?;
+    super::feel::install_middle(&mut world, &feel, &feel_records)?;
     let mounted =
         super::modules::mount_back(&mut world, engine_id, physics, ui, previous.map(|p| p.1))?;
+    super::feel::install_back(&mut world, &feel, &feel_records)?;
     let names_by_id = world.schemas().into_iter().map(|s| s.name).collect();
     Ok(Assembled {
         world,
@@ -780,6 +805,8 @@ pub(crate) fn assemble(
         game,
         mounted,
         anim,
+        feel,
+        feel_records,
     })
 }
 
@@ -844,6 +871,8 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         ui_warned: BTreeSet::new(),
         anim: Some(a.anim.clone()),
         anim_assets: Default::default(),
+        feel: Some(a.feel.clone()),
+        feel_assets: Default::default(),
     };
     og_audio::publish_link(engine_id, a.mounted.audio.clone());
     let render = Rc::new(RefCell::new(RenderState::new(a.game.render.clone())));
@@ -867,6 +896,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         rs.settings = settings;
         rs.draw = draw;
         rs.fx.anim = Some(a.anim.clone());
+        rs.feel.feel = Some((a.feel.clone(), a.feel_records.clone()));
     }
     rprobe::install(&engine, a.game.facts)?;
     ENGINES.with(|e| e.borrow_mut().push(Some(engine.clone())));
@@ -1215,7 +1245,7 @@ fn run_system(engine_id: u32, index: usize, ctx: &mut SystemContext<'_>) -> og_c
             tick: tick as f64,
             dt: f64::from(time.dt),
             elapsed: time.elapsed,
-            payload: String::new(),
+            payload: super::feel::time_payload(ctx),
         }),
         None => Err("no dispatcher is installed (og_host_set_dispatcher)".into()),
     };

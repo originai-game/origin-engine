@@ -14,7 +14,7 @@ module render {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1332</sub>
+<sub>`api.ogt` line 1513</sub>
 
 ## Contents
 
@@ -45,6 +45,7 @@ module render {
 | [`DofQuality`](#type-DofQuality) | enum | How many taps depth of field gathers per pixel. |
 | [`DofQuality()`](#column-DofQuality) | column kind | A DofQuality field: the variant's index. |
 | [`SpriteBlend`](#type-SpriteBlend) | enum | How a sprite is blended over what is below it. |
+| [`SpriteBlend()`](#column-SpriteBlend) | column kind | A SpriteBlend field: the variant's index. |
 | [`StripBlend`](#type-StripBlend) | enum | How a trail, ribbon or beam is blended. |
 | [`StripBlend()`](#column-StripBlend) | column kind | A StripBlend field: the variant's index. |
 | [`og.PostEffects`](#record-PostEffects) | resource | The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then costs nothing: no pass is recorded. Read after each tick; it never feeds back into the simulation. |
@@ -63,6 +64,10 @@ module render {
 | [`TextMetrics`](#type-TextMetrics) | struct | The extent of a laid-out text, in world units. |
 | [`SpriteDesc`](#type-SpriteDesc) | desc struct | A textured or solid quad in the world's xy plane facing +z, drawn this frame only (immediate mode, as og.render.text): submit it every tick it should show. Sprites and text are sorted by layer and drawn over the 3D scene. |
 | [`og.render.sprite`](#fn-sprite) | function | Draw a sprite this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the sprite should show. |
+| [`og.Sprite`](#record-Sprite) | component | A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture, region and anchor come from the flipbook's current frame. |
+| [`og.Afterimage`](#record-Afterimage) | component | Ghosts of the entity's og.Sprite: every `interval` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by color. A dash, a speed-up, a teleport. The history is world state (the og.sprite state block). |
+| [`FloatingTextDesc`](#type-FloatingTextDesc) | desc struct | A damage number or pickup text that pops at a point, rises, spreads and fades by itself (no per-tick submission). Deterministic: its drift comes from the tick and its order, and it is world state (the og.sprite state block). |
+| [`og.render.floatingText`](#fn-floatingText) | function | Spawn a floating text (damage numbers, +coins, `blocked`). It lives `lifetime` seconds of scaled time on its own; systems and commands may call it. |
 | [`og.render.measureText`](#fn-measureText) | function | The size text takes when og.render.text draws it, for centring, wrapping and layout. |
 | [`BoxGeometryDesc`](#type-BoxGeometryDesc) | desc struct | A box centred at the origin, as three.js BoxGeometry(width, height, depth). |
 | [`PlaneGeometryDesc`](#type-PlaneGeometryDesc) | desc struct | A rectangle in the xy plane facing +z, centred at the origin, as three.js PlaneGeometry(width, height); turn it -pi/2 about x for a floor. |
@@ -107,7 +112,7 @@ fn ribbon {
 }
 ```
 
-<sub>`api.ogt` line 2069</sub>
+<sub>`api.ogt` line 2267</sub>
 
 <a id="fn-sprite"></a>
 
@@ -137,7 +142,37 @@ fn sprite {
 }
 ```
 
-<sub>`api.ogt` line 2172</sub>
+<sub>`api.ogt` line 2383</sub>
+
+<a id="fn-floatingText"></a>
+
+### `og.render.floatingText`
+
+Spawn a floating text (damage numbers, +coins, `blocked`). It lives `lifetime` seconds of scaled time on its own; systems and commands may call it.
+
+```ts
+og.render.floatingText(world: World, desc?: FloatingTextDesc): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer draws it. |
+| `desc` | `FloatingTextDesc` | yes | The text, the point and the style. |
+
+**Returns** `Result<void>`: Refused for a dead font, or no font when the UI has none.
+
+Binding symbol `og_render_floating_text` · publish builds: kept
+
+```ogt
+fn floatingText {
+  doc "Spawn a floating text (damage numbers, +coins, `blocked`). It lives `lifetime` seconds of scaled time on its own; systems and commands may call it."
+  param world World "The world whose renderer draws it."
+  param desc FloatingTextDesc "The text, the point and the style."
+  returns Result.Void "Refused for a dead font, or no font when the UI has none."
+}
+```
+
+<sub>`api.ogt` line 2547</sub>
 
 <a id="fn-measureText"></a>
 
@@ -167,7 +202,7 @@ fn measureText {
 }
 ```
 
-<sub>`api.ogt` line 2179</sub>
+<sub>`api.ogt` line 2554</sub>
 
 <a id="fn-boxGeometry"></a>
 
@@ -197,7 +232,7 @@ fn boxGeometry {
 }
 ```
 
-<sub>`api.ogt` line 2239</sub>
+<sub>`api.ogt` line 2614</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -227,7 +262,7 @@ fn planeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 2246</sub>
+<sub>`api.ogt` line 2621</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -257,7 +292,7 @@ fn sphereGeometry {
 }
 ```
 
-<sub>`api.ogt` line 2253</sub>
+<sub>`api.ogt` line 2628</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -287,7 +322,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 2273</sub>
+<sub>`api.ogt` line 2648</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -319,7 +354,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 2280</sub>
+<sub>`api.ogt` line 2655</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -347,7 +382,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 2288</sub>
+<sub>`api.ogt` line 2663</sub>
 
 <a id="fn-text"></a>
 
@@ -377,7 +412,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 2294</sub>
+<sub>`api.ogt` line 2669</sub>
 
 ## Components, resources and events
 
@@ -398,6 +433,8 @@ Token `og.Mesh`, registered under the schema name `og.Mesh`; its value type is `
 | `castShadow` | `boolean` | `false` | — | — | — | Cast shadows, as three.js Object3D.castShadow. |
 | `receiveShadow` | `boolean` | `false` | — | — | — | Receive shadows, as three.js Object3D.receiveShadow. |
 | `visible` | `boolean` | `true` | — | — | — | Whether it is drawn. |
+| `flash` | `number` | `0` | 0 … 1 | — | tunable | A hit flash: the lit colour mixed towards flashColor by this much (og.tween.flash fades it out). Drawn through a copy of the material per flash level (16 levels). |
+| `flashColor` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The flash's linear colour. |
 
 ```ogt
 component Mesh {
@@ -410,10 +447,18 @@ component Mesh {
   field visible bool "Whether it is drawn." {
     default true
   }
+  field flash f32 "A hit flash: the lit colour mixed towards flashColor by this much (og.tween.flash fades it out). Drawn through a copy of the material per flash level (16 levels)." {
+    min 0
+    max 1
+    tunable true
+  }
+  field flashColor Color "The flash's linear colour." {
+    default 1 1 1
+  }
 }
 ```
 
-<sub>`api.ogt` line 1483</sub>
+<sub>`api.ogt` line 1664</sub>
 
 <a id="record-DirectionalLight"></a>
 
@@ -455,7 +500,7 @@ component DirectionalLight {
 }
 ```
 
-<sub>`api.ogt` line 1495</sub>
+<sub>`api.ogt` line 1684</sub>
 
 <a id="record-PointLight"></a>
 
@@ -496,7 +541,7 @@ component PointLight {
 }
 ```
 
-<sub>`api.ogt` line 1516</sub>
+<sub>`api.ogt` line 1705</sub>
 
 <a id="record-SpotLight"></a>
 
@@ -548,7 +593,7 @@ component SpotLight {
 }
 ```
 
-<sub>`api.ogt` line 1536</sub>
+<sub>`api.ogt` line 1725</sub>
 
 <a id="record-RenderSettings"></a>
 
@@ -602,7 +647,7 @@ resource RenderSettings {
 }
 ```
 
-<sub>`api.ogt` line 1567</sub>
+<sub>`api.ogt` line 1756</sub>
 
 <a id="record-PostEffects"></a>
 
@@ -656,7 +701,7 @@ Token `og.PostEffects`, registered under the schema name `og.PostEffects`; its v
 | `filmGrainSize` | `number` | `1.5` | ≥ 0.5 | — | — | The grain size in pixels. |
 | `flash` | `number` | `0` | 0 … 1 | — | tunable | A full-screen flash: the display colour mixed towards flashColor by this much (animate it per tick); 0 is off. |
 | `flashColor` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The flash's linear display colour. |
-| `shakeTrauma` | `number` | `0` | 0 … 1 | — | tunable | Camera shake: 0 none, 1 the most (the amplitude is trauma squared). The shake is smooth value noise by the tick, so a replay shakes the same; decay it in a system. Visual only. |
+| `shakeTrauma` | `number` | `0` | 0 … 1 | — | tunable | Camera shake held at a fixed level (decay it yourself): 0 none, 1 the most (the amplitude is trauma squared). Prefer og.camera.shake, which decays by itself; the frame shakes by the larger of the two. Smooth value noise by the tick, so a replay shakes the same. Visual only. |
 | `shakeMaxOffset` | `number` | `0.05` | ≥ 0 | — | — | The largest offset at trauma 1, as a fraction of the view height. |
 | `shakeMaxRoll` | `number` | `3` | ≥ 0 | `deg` | — | The largest roll at trauma 1. |
 | `shakeFrequency` | `number` | `12` | ≥ 0 | `hz` | — | How fast the shake moves. |
@@ -816,7 +861,7 @@ resource PostEffects {
   field flashColor Color "The flash's linear display colour." {
     default 1 1 1
   }
-  field shakeTrauma f32 "Camera shake: 0 none, 1 the most (the amplitude is trauma squared). The shake is smooth value noise by the tick, so a replay shakes the same; decay it in a system. Visual only." {
+  field shakeTrauma f32 "Camera shake held at a fixed level (decay it yourself): 0 none, 1 the most (the amplitude is trauma squared). Prefer og.camera.shake, which decays by itself; the frame shakes by the larger of the two. Smooth value noise by the tick, so a replay shakes the same. Visual only." {
     min 0
     max 1
     tunable true
@@ -839,7 +884,7 @@ resource PostEffects {
 }
 ```
 
-<sub>`api.ogt` line 1669</sub>
+<sub>`api.ogt` line 1865</sub>
 
 <a id="record-Lighting2D"></a>
 
@@ -878,7 +923,7 @@ resource Lighting2D {
 }
 ```
 
-<sub>`api.ogt` line 1844</sub>
+<sub>`api.ogt` line 2040</sub>
 
 <a id="record-Light2D"></a>
 
@@ -929,7 +974,7 @@ component Light2D {
 }
 ```
 
-<sub>`api.ogt` line 1863</sub>
+<sub>`api.ogt` line 2059</sub>
 
 <a id="record-Occluder2D"></a>
 
@@ -960,7 +1005,7 @@ component Occluder2D {
 }
 ```
 
-<sub>`api.ogt` line 1893</sub>
+<sub>`api.ogt` line 2089</sub>
 
 <a id="record-Decal"></a>
 
@@ -1015,7 +1060,7 @@ component Decal {
 }
 ```
 
-<sub>`api.ogt` line 1907</sub>
+<sub>`api.ogt` line 2103</sub>
 
 <a id="record-ParticleSystem"></a>
 
@@ -1046,7 +1091,7 @@ component ParticleSystem {
 }
 ```
 
-<sub>`api.ogt` line 1939</sub>
+<sub>`api.ogt` line 2135</sub>
 
 <a id="record-Trail"></a>
 
@@ -1069,6 +1114,8 @@ Token `og.Trail`, registered under the schema name `og.Trail`; its value type is
 | `texture` | `Texture` | `0` | — | — | — | A texture along the strip; 0 is solid. |
 | `uvTile` | `number` | `0` | ≥ 0 | `m` | — | The texture repeats every this many world units; 0 stretches it once over the length. |
 | `blend` | `StripBlend` | `"additive"` | — | — | — | Additive or alpha blended. |
+| `layered` | `boolean` | `false` | — | — | — | Draw it in the 2D sprite order at `layer` (a sprite's trail over a tile background) instead of with the 3D scene. |
+| `layer` | `number` | `0` | — | — | — | With layered: the sprite layer it is drawn in, before that layer's sprites. |
 
 ```ogt
 component Trail {
@@ -1115,10 +1162,12 @@ component Trail {
     unit m
   }
   field blend StripBlend "Additive or alpha blended."
+  field layered bool "Draw it in the 2D sprite order at `layer` (a sprite's trail over a tile background) instead of with the 3D scene."
+  field layer i32 "With layered: the sprite layer it is drawn in, before that layer's sprites."
 }
 ```
 
-<sub>`api.ogt` line 1950</sub>
+<sub>`api.ogt` line 2146</sub>
 
 <a id="record-Beam"></a>
 
@@ -1184,7 +1233,168 @@ component Beam {
 }
 ```
 
-<sub>`api.ogt` line 1996</sub>
+<sub>`api.ogt` line 2194</sub>
+
+<a id="record-Sprite"></a>
+
+### `og.Sprite` (component)
+
+A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture, region and anchor come from the flipbook's current frame.
+
+Sorted with the immediate sprites and text by layer, then (sortY) by y, then texture: one draw per run of one texture. Tile layers draw before the sprites of their layer.
+
+Token `og.Sprite`, registered under the schema name `og.Sprite`; its value type is `Sprite`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `texture` | `Texture` | `0` | — | — | — | The texture (og.load.texture); 0 draws a solid quad of the colour. |
+| `width` | `number` | `1` | ≥ 0 | `m` | tunable | Its width in world units (times Transform.scale.x). |
+| `height` | `number` | `1` | ≥ 0 | `m` | tunable | Its height in world units (times Transform.scale.y). |
+| `anchor` | `Vector2` | `{ x: 0.5, y: 0.5 }` | — | — | — | The point of the quad at the entity's position, as a fraction from the bottom-left corner: (0.5, 0) stands it on its feet. A flipbook frame's pivot replaces it. |
+| `color` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | A linear colour multiplied with the texture. |
+| `opacity` | `number` | `1` | 0 … 1 | — | tunable | The alpha. |
+| `uvMin` | `Vector2` | `{ x: 0, y: 0 }` | — | — | — | The texture region's top-left corner, v down. |
+| `uvMax` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | The texture region's bottom-right corner, v down. |
+| `layer` | `number` | `0` | — | — | — | Draw order among sprites, tiles and text; higher draws on top. |
+| `sortY` | `boolean` | `false` | — | — | — | Within its layer, lower y draws in front: top-down characters, props and trees overlap by their feet. |
+| `flipX` | `boolean` | `false` | — | — | — | Mirror left to right (a character facing left). |
+| `flipY` | `boolean` | `false` | — | — | — | Mirror top to bottom. |
+| `flash` | `number` | `0` | 0 … 1 | — | tunable | A hit flash: the colour mixed towards flashColor by this much (og.tween.flash fades it out). |
+| `flashColor` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The flash's linear colour. |
+| `glow` | `number` | `0` | ≥ 0 | — | — | Strength in the 2D glow buffer (PostEffects.glow); 0 none. |
+| `blend` | `SpriteBlend` | `"alpha"` | — | — | — | Alpha or additive. |
+| `castShadow` | `boolean` | `false` | — | — | — | Block 2D light (Lighting2D) with the sprite's rectangle. |
+| `sliceX` | `Vector2` | `{ x: 0, y: 0 }` | — | — | — | Nine-slice: the left and right insets in texture pixels of the region (0 0 with sliceY 0 0 draws it whole). World panels, health bars, speech bubbles. |
+| `sliceY` | `Vector2` | `{ x: 0, y: 0 }` | — | — | — | Nine-slice: the top and bottom insets in texture pixels. |
+| `sliceScale` | `number` | `0.0625` | ≥ 0 | — | — | Nine-slice: world units per texture pixel of the insets. |
+| `shadow` | `number` | `0` | 0 … 1 | — | tunable | A soft blob shadow on the ground under the sprite's anchor, this dark (0 none, 0.4 typical), drawn under every sprite of its layer. |
+| `shadowSize` | `Vector2` | `{ x: 0, y: 0 }` | ≥ 0 | `m` | — | The blob's width and height; 0 0 is 0.8 by 0.3 of the sprite's width. |
+| `shadowOffset` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | — | The blob's centre relative to the anchor. |
+| `visible` | `boolean` | `true` | — | — | — | Whether it is drawn. |
+
+```ogt
+component Sprite {
+  doc "A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture, region and anchor come from the flipbook's current frame."
+  doc "Sorted with the immediate sprites and text by layer, then (sortY) by y, then texture: one draw per run of one texture. Tile layers draw before the sprites of their layer."
+  field texture Texture "The texture (og.load.texture); 0 draws a solid quad of the colour."
+  field width f32 "Its width in world units (times Transform.scale.x)." {
+    default 1
+    min 0
+    unit m
+    tunable true
+  }
+  field height f32 "Its height in world units (times Transform.scale.y)." {
+    default 1
+    min 0
+    unit m
+    tunable true
+  }
+  field anchor Vector2 "The point of the quad at the entity's position, as a fraction from the bottom-left corner: (0.5, 0) stands it on its feet. A flipbook frame's pivot replaces it." {
+    default 0.5 0.5
+  }
+  field color Color "A linear colour multiplied with the texture." {
+    default 1 1 1
+  }
+  field opacity f32 "The alpha." {
+    default 1
+    min 0
+    max 1
+    tunable true
+  }
+  field uvMin Vector2 "The texture region's top-left corner, v down."
+  field uvMax Vector2 "The texture region's bottom-right corner, v down." {
+    default 1 1
+  }
+  field layer i32 "Draw order among sprites, tiles and text; higher draws on top."
+  field sortY bool "Within its layer, lower y draws in front: top-down characters, props and trees overlap by their feet."
+  field flipX bool "Mirror left to right (a character facing left)."
+  field flipY bool "Mirror top to bottom."
+  field flash f32 "A hit flash: the colour mixed towards flashColor by this much (og.tween.flash fades it out)." {
+    min 0
+    max 1
+    tunable true
+  }
+  field flashColor Color "The flash's linear colour." {
+    default 1 1 1
+  }
+  field glow f32 "Strength in the 2D glow buffer (PostEffects.glow); 0 none." {
+    min 0
+  }
+  field blend SpriteBlend "Alpha or additive."
+  field castShadow bool "Block 2D light (Lighting2D) with the sprite's rectangle."
+  field sliceX Vector2 "Nine-slice: the left and right insets in texture pixels of the region (0 0 with sliceY 0 0 draws it whole). World panels, health bars, speech bubbles."
+  field sliceY Vector2 "Nine-slice: the top and bottom insets in texture pixels."
+  field sliceScale f32 "Nine-slice: world units per texture pixel of the insets." {
+    default 0.0625
+    min 0
+  }
+  field shadow f32 "A soft blob shadow on the ground under the sprite's anchor, this dark (0 none, 0.4 typical), drawn under every sprite of its layer." {
+    min 0
+    max 1
+    tunable true
+  }
+  field shadowSize Vector2 "The blob's width and height; 0 0 is 0.8 by 0.3 of the sprite's width." {
+    min 0
+    unit m
+  }
+  field shadowOffset Vector2 "The blob's centre relative to the anchor." {
+    unit m
+  }
+  field visible bool "Whether it is drawn." {
+    default true
+  }
+}
+```
+
+<sub>`api.ogt` line 2390</sub>
+
+<a id="record-Afterimage"></a>
+
+### `og.Afterimage` (component)
+
+Ghosts of the entity's og.Sprite: every `interval` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by color. A dash, a speed-up, a teleport. The history is world state (the og.sprite state block).
+
+Token `og.Afterimage`, registered under the schema name `og.Afterimage`; its value type is `Afterimage`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `count` | `number` | `4` | 0 … 16 | — | — | How many ghosts. |
+| `interval` | `number` | `3` | ≥ 1 | `ticks` | — | Ticks between ghosts. |
+| `opacity` | `number` | `0.5` | 0 … 1 | — | tunable | The newest ghost's alpha. |
+| `color` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | A linear tint (above 1 with additive, a glow). |
+| `additive` | `boolean` | `false` | — | — | — | Add the ghosts instead of blending them. |
+| `active` | `boolean` | `true` | — | — | — | Record new ghosts; false lets the existing ones fade out. |
+
+```ogt
+component Afterimage {
+  doc "Ghosts of the entity's og.Sprite: every `interval` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by color. A dash, a speed-up, a teleport. The history is world state (the og.sprite state block)."
+  field count u32 "How many ghosts." {
+    default 4
+    min 0
+    max 16
+  }
+  field interval u32 "Ticks between ghosts." {
+    default 3
+    min 1
+    unit ticks
+  }
+  field opacity f32 "The newest ghost's alpha." {
+    default 0.5
+    min 0
+    max 1
+    tunable true
+  }
+  field color Color "A linear tint (above 1 with additive, a glow)." {
+    default 1 1 1
+  }
+  field additive bool "Add the ghosts instead of blending them."
+  field active bool "Record new ghosts; false lets the existing ones fade out." {
+    default true
+  }
+}
+```
+
+<sub>`api.ogt` line 2462</sub>
 
 ## Types
 
@@ -1200,7 +1410,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Geometry "Vertex and index data, as three.js BufferGeometry. Comes from a loaded glTF."
 ```
 
-<sub>`api.ogt` line 1335</sub>
+<sub>`api.ogt` line 1516</sub>
 
 <a id="type-Material"></a>
 
@@ -1214,7 +1424,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Material "A material instance."
 ```
 
-<sub>`api.ogt` line 1336</sub>
+<sub>`api.ogt` line 1517</sub>
 
 <a id="type-Texture"></a>
 
@@ -1228,7 +1438,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Texture "A cooked texture."
 ```
 
-<sub>`api.ogt` line 1337</sub>
+<sub>`api.ogt` line 1518</sub>
 
 <a id="type-Side"></a>
 
@@ -1253,7 +1463,7 @@ enum Side {
 }
 ```
 
-<sub>`api.ogt` line 1353</sub>
+<sub>`api.ogt` line 1534</sub>
 
 <a id="type-RenderTier"></a>
 
@@ -1282,7 +1492,7 @@ enum RenderTier {
 }
 ```
 
-<sub>`api.ogt` line 1360</sub>
+<sub>`api.ogt` line 1541</sub>
 
 <a id="type-Antialias"></a>
 
@@ -1309,7 +1519,7 @@ enum Antialias {
 }
 ```
 
-<sub>`api.ogt` line 1369</sub>
+<sub>`api.ogt` line 1550</sub>
 
 <a id="type-RenderOptions"></a>
 
@@ -1337,7 +1547,7 @@ struct RenderOptions {
 }
 ```
 
-<sub>`api.ogt` line 1377</sub>
+<sub>`api.ogt` line 1558</sub>
 
 <a id="type-StandardMaterialDesc"></a>
 
@@ -1485,7 +1695,7 @@ struct StandardMaterialDesc {
 }
 ```
 
-<sub>`api.ogt` line 1388</sub>
+<sub>`api.ogt` line 1569</sub>
 
 <a id="type-Lut"></a>
 
@@ -1499,7 +1709,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Lut "A colour lookup table for PostEffects.lut, from og.load.lut (a `.cube` file)."
 ```
 
-<sub>`api.ogt` line 1599</sub>
+<sub>`api.ogt` line 1788</sub>
 
 <a id="type-ParticleEmitter"></a>
 
@@ -1513,7 +1723,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle ParticleEmitter "A particle emitter asset for ParticleSystem.emitter, from og.load.emitter (an `.ogt` of `type particles`)."
 ```
 
-<sub>`api.ogt` line 1600</sub>
+<sub>`api.ogt` line 1789</sub>
 
 <a id="type-AoMethod"></a>
 
@@ -1538,7 +1748,7 @@ enum AoMethod {
 }
 ```
 
-<sub>`api.ogt` line 1623</sub>
+<sub>`api.ogt` line 1812</sub>
 
 <a id="type-DofQuality"></a>
 
@@ -1561,7 +1771,7 @@ enum DofQuality {
 }
 ```
 
-<sub>`api.ogt` line 1637</sub>
+<sub>`api.ogt` line 1826</sub>
 
 <a id="type-SpriteBlend"></a>
 
@@ -1584,7 +1794,7 @@ enum SpriteBlend {
 }
 ```
 
-<sub>`api.ogt` line 1650</sub>
+<sub>`api.ogt` line 1839</sub>
 
 <a id="type-StripBlend"></a>
 
@@ -1607,7 +1817,7 @@ enum StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 1656</sub>
+<sub>`api.ogt` line 1852</sub>
 
 <a id="type-RibbonPoint"></a>
 
@@ -1647,7 +1857,7 @@ struct RibbonPoint {
 }
 ```
 
-<sub>`api.ogt` line 2036</sub>
+<sub>`api.ogt` line 2234</sub>
 
 <a id="type-RibbonDesc"></a>
 
@@ -1678,7 +1888,7 @@ struct RibbonDesc {
 }
 ```
 
-<sub>`api.ogt` line 2057</sub>
+<sub>`api.ogt` line 2255</sub>
 
 <a id="type-TextDesc"></a>
 
@@ -1699,6 +1909,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `opacity` | `number` | `1` | 0 … 1 | — | — | The alpha. |
 | `layer` | `number` | `0` | — | — | — | Draw order among sprites and text; higher draws on top. |
 | `align` | `TextAlign` | `"start"` | — | — | — | How each line sits on `position`: start puts its left end there, center its middle, end its right end. |
+| `outline` | `number` | `0` | 0 … 1 | — | — | World text: an outline around the glyphs, as a fraction (0 to 1) of the widest the font's distance range allows (a font cooked with a larger px_range takes thicker outlines). |
+| `outlineColor` | `Color` | `{ r: 0, g: 0, b: 0 }` | — | — | — | The outline's linear colour. |
 | `screen` | `boolean` | `false` | — | — | — | Draw in screen space over the finished frame: position is the first baseline's origin in CSS pixels from the top left, y down, size in CSS pixels, rotation clockwise. |
 | `clip` | `[number, number, number, number] \| null` | `null` | — | — | — | Screen text: cut to [x, y, width, height] in CSS pixels, per pixel; null draws it whole. |
 
@@ -1728,12 +1940,17 @@ struct TextDesc {
   }
   field layer i32 "Draw order among sprites and text; higher draws on top."
   field align TextAlign "How each line sits on `position`: start puts its left end there, center its middle, end its right end."
+  field outline f32 "World text: an outline around the glyphs, as a fraction (0 to 1) of the widest the font's distance range allows (a font cooked with a larger px_range takes thicker outlines)." {
+    min 0
+    max 1
+  }
+  field outlineColor Color "The outline's linear colour."
   field screen bool "Draw in screen space over the finished frame: position is the first baseline's origin in CSS pixels from the top left, y down, size in CSS pixels, rotation clockwise."
   field clip Option.Array.f32.4 "Screen text: cut to [x, y, width, height] in CSS pixels, per pixel; null draws it whole."
 }
 ```
 
-<sub>`api.ogt` line 2076</sub>
+<sub>`api.ogt` line 2274</sub>
 
 <a id="type-TextMeasureDesc"></a>
 
@@ -1762,7 +1979,7 @@ struct TextMeasureDesc {
 }
 ```
 
-<sub>`api.ogt` line 2105</sub>
+<sub>`api.ogt` line 2308</sub>
 
 <a id="type-TextMetrics"></a>
 
@@ -1785,7 +2002,7 @@ struct TextMetrics {
 }
 ```
 
-<sub>`api.ogt` line 2116</sub>
+<sub>`api.ogt` line 2319</sub>
 
 <a id="type-SpriteDesc"></a>
 
@@ -1812,6 +2029,11 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `glow` | `number` | `0` | ≥ 0 | — | — | Strength in the 2D glow buffer (PostEffects.glow); 0 none. |
 | `blend` | `SpriteBlend` | `"alpha"` | — | — | — | Alpha or additive. |
 | `castShadow` | `boolean` | `false` | — | — | — | Block 2D light (Lighting2D) with the sprite's rectangle. |
+| `flipX` | `boolean` | `false` | — | — | — | Mirror the region left to right. |
+| `flipY` | `boolean` | `false` | — | — | — | Mirror the region top to bottom. |
+| `sortY` | `boolean` | `false` | — | — | — | Within its layer, draw by y: lower on the screen draws in front (top-down games). |
+| `slice` | `[number, number, number, number] \| null` | `null` | — | — | — | Nine-slice: [left, top, right, bottom] insets in texture pixels of the region; the corners keep their size (sliceScale world units per pixel), edges and centre stretch. null draws it whole. |
+| `sliceScale` | `number` | `0.0625` | ≥ 0 | — | — | Nine-slice: world units (CSS pixels on screen) per texture pixel of the insets. |
 | `screen` | `boolean` | `false` | — | — | — | Draw in screen space over the finished frame instead of the world: position x, y in CSS pixels from the top left with y down, width and height in CSS pixels, anchor from the top left, rotation clockwise; never tone mapped, blurred or depth tested (a HUD). flash, glow, blend and castShadow apply to world sprites only. |
 | `clip` | `[number, number, number, number] \| null` | `null` | — | — | — | Screen sprites: cut to [x, y, width, height] in CSS pixels; null draws it whole. |
 
@@ -1861,12 +2083,108 @@ struct SpriteDesc {
   }
   field blend SpriteBlend "Alpha or additive."
   field castShadow bool "Block 2D light (Lighting2D) with the sprite's rectangle."
+  field flipX bool "Mirror the region left to right."
+  field flipY bool "Mirror the region top to bottom."
+  field sortY bool "Within its layer, draw by y: lower on the screen draws in front (top-down games)."
+  field slice Option.Array.f32.4 "Nine-slice: [left, top, right, bottom] insets in texture pixels of the region; the corners keep their size (sliceScale world units per pixel), edges and centre stretch. null draws it whole."
+  field sliceScale f32 "Nine-slice: world units (CSS pixels on screen) per texture pixel of the insets." {
+    default 0.0625
+    min 0
+  }
   field screen bool "Draw in screen space over the finished frame instead of the world: position x, y in CSS pixels from the top left with y down, width and height in CSS pixels, anchor from the top left, rotation clockwise; never tone mapped, blurred or depth tested (a HUD). flash, glow, blend and castShadow apply to world sprites only."
   field clip Option.Array.f32.4 "Screen sprites: cut to [x, y, width, height] in CSS pixels; null draws it whole."
 }
 ```
 
-<sub>`api.ogt` line 2123</sub>
+<sub>`api.ogt` line 2326</sub>
+
+<a id="type-FloatingTextDesc"></a>
+
+### `FloatingTextDesc` (desc struct)
+
+A damage number or pickup text that pops at a point, rises, spreads and fades by itself (no per-tick submission). Deterministic: its drift comes from the tick and its order, and it is world state (the og.sprite state block).
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `text` | `string` | `""` | — | — | — | The text, such as `-12` or `+1 key`. |
+| `position` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where it appears (above a hit, usually). |
+| `font` | `Font \| null` | `null` | — | — | — | The font; null uses the UI's body font. |
+| `size` | `number` | `0.5` | ≥ 0 | `m` | — | The em size in world units. |
+| `color` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The linear fill colour. |
+| `outline` | `number` | `0.6` | 0 … 1 | — | — | The outline's width as a fraction of the font's distance range (0 none). |
+| `outlineColor` | `Color` | `{ r: 0.02, g: 0.02, b: 0.03 }` | — | — | — | The outline's linear colour. |
+| `rise` | `number` | `1` | — | `m` | — | How far it climbs over its life. |
+| `spread` | `number` | `0.3` | ≥ 0 | `m` | — | The largest sideways drift, left or right. |
+| `lifetime` | `number` | `0.8` | ≥ 0.05 | `s` | — | How long it shows. |
+| `fade` | `number` | `0.4` | 0 … 1 | `ratio` | — | The last part of its life it fades over. |
+| `pop` | `number` | `0.4` | ≥ 0 | — | — | How much bigger it starts, settling to its size in the first fifth of its life. |
+| `crit` | `boolean` | `false` | — | — | — | A critical hit: critScale times bigger, a stronger pop. |
+| `critScale` | `number` | `1.6` | ≥ 1 | — | — | The size of a crit. |
+| `layer` | `number` | `100` | — | — | — | The sprite layer (above the action). |
+
+```ogt
+struct FloatingTextDesc {
+  doc "A damage number or pickup text that pops at a point, rises, spreads and fades by itself (no per-tick submission). Deterministic: its drift comes from the tick and its order, and it is world state (the og.sprite state block)."
+  desc true
+  field text String "The text, such as `-12` or `+1 key`."
+  field position Vector3 "Where it appears (above a hit, usually)." {
+    unit m
+  }
+  field font Option.Font "The font; null uses the UI's body font."
+  field size f32 "The em size in world units." {
+    default 0.5
+    min 0
+    unit m
+  }
+  field color Color "The linear fill colour." {
+    default 1 1 1
+  }
+  field outline f32 "The outline's width as a fraction of the font's distance range (0 none)." {
+    default 0.6
+    min 0
+    max 1
+  }
+  field outlineColor Color "The outline's linear colour." {
+    default 0.02 0.02 0.03
+  }
+  field rise f32 "How far it climbs over its life." {
+    default 1
+    unit m
+  }
+  field spread f32 "The largest sideways drift, left or right." {
+    default 0.3
+    min 0
+    unit m
+  }
+  field lifetime f32 "How long it shows." {
+    default 0.8
+    min 0.05
+    unit s
+  }
+  field fade f32 "The last part of its life it fades over." {
+    default 0.4
+    min 0
+    max 1
+    unit ratio
+  }
+  field pop f32 "How much bigger it starts, settling to its size in the first fifth of its life." {
+    default 0.4
+    min 0
+  }
+  field crit bool "A critical hit: critScale times bigger, a stronger pop."
+  field critScale f32 "The size of a crit." {
+    default 1.6
+    min 1
+  }
+  field layer i32 "The sprite layer (above the action)." {
+    default 100
+  }
+}
+```
+
+<sub>`api.ogt` line 2489</sub>
 
 <a id="type-BoxGeometryDesc"></a>
 
@@ -1904,7 +2222,7 @@ struct BoxGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 2186</sub>
+<sub>`api.ogt` line 2561</sub>
 
 <a id="type-PlaneGeometryDesc"></a>
 
@@ -1936,7 +2254,7 @@ struct PlaneGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 2206</sub>
+<sub>`api.ogt` line 2581</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -1972,7 +2290,7 @@ struct SphereGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 2221</sub>
+<sub>`api.ogt` line 2596</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -2003,7 +2321,7 @@ struct RenderCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 2262</sub>
+<sub>`api.ogt` line 2637</sub>
 
 ## Column kinds
 
@@ -2018,6 +2336,7 @@ Each is a factory, `Geometry(value?, options?)`, that makes one field of a compo
 | <a id="column-ParticleEmitter"></a>`ParticleEmitter` | `ParticleEmitter` | `Uint32Array` | 2 | A ParticleEmitter handle field (0 is none). |
 | <a id="column-AoMethod"></a>`AoMethod` | `AoMethod` | `Uint32Array` | 1 | An AoMethod field: the variant's index. |
 | <a id="column-DofQuality"></a>`DofQuality` | `DofQuality` | `Uint32Array` | 1 | A DofQuality field: the variant's index. |
+| <a id="column-SpriteBlend"></a>`SpriteBlend` | `SpriteBlend` | `Uint32Array` | 1 | A SpriteBlend field: the variant's index. |
 | <a id="column-StripBlend"></a>`StripBlend` | `StripBlend` | `Uint32Array` | 1 | A StripBlend field: the variant's index. |
 
 ```ogt
@@ -2029,7 +2348,7 @@ column Geometry {
 }
 ```
 
-<sub>`api.ogt` line 1339</sub>
+<sub>`api.ogt` line 1520</sub>
 
 ```ogt
 column Material {
@@ -2040,7 +2359,7 @@ column Material {
 }
 ```
 
-<sub>`api.ogt` line 1346</sub>
+<sub>`api.ogt` line 1527</sub>
 
 ```ogt
 column Texture {
@@ -2051,7 +2370,7 @@ column Texture {
 }
 ```
 
-<sub>`api.ogt` line 1602</sub>
+<sub>`api.ogt` line 1791</sub>
 
 ```ogt
 column Lut {
@@ -2062,7 +2381,7 @@ column Lut {
 }
 ```
 
-<sub>`api.ogt` line 1609</sub>
+<sub>`api.ogt` line 1798</sub>
 
 ```ogt
 column ParticleEmitter {
@@ -2073,7 +2392,7 @@ column ParticleEmitter {
 }
 ```
 
-<sub>`api.ogt` line 1616</sub>
+<sub>`api.ogt` line 1805</sub>
 
 ```ogt
 column AoMethod {
@@ -2084,7 +2403,7 @@ column AoMethod {
 }
 ```
 
-<sub>`api.ogt` line 1630</sub>
+<sub>`api.ogt` line 1819</sub>
 
 ```ogt
 column DofQuality {
@@ -2095,7 +2414,18 @@ column DofQuality {
 }
 ```
 
-<sub>`api.ogt` line 1643</sub>
+<sub>`api.ogt` line 1832</sub>
+
+```ogt
+column SpriteBlend {
+  doc "A SpriteBlend field: the variant's index."
+  array Uint32Array
+  stride 1
+  value SpriteBlend
+}
+```
+
+<sub>`api.ogt` line 1845</sub>
 
 ```ogt
 column StripBlend {
@@ -2106,7 +2436,7 @@ column StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 1662</sub>
+<sub>`api.ogt` line 1858</sub>
 
 ## Constants
 
@@ -2118,4 +2448,4 @@ column StripBlend {
 const MAX_LIGHTS u32 8 "The most point and spot lights one frame draws."
 ```
 
-<sub>`api.ogt` line 2260</sub>
+<sub>`api.ogt` line 2635</sub>

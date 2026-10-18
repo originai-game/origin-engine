@@ -20,7 +20,7 @@ module anim {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 2850</sub>
+<sub>`api.ogt` line 3239</sub>
 
 ## Contents
 
@@ -50,6 +50,14 @@ module anim {
 | [`Animation`](#type-Animation) | struct | What og.load.animation registered from a model's `#anim` blob. |
 | [`GraphDesc`](#type-GraphDesc) | desc struct | A blend-tree graph to register. |
 | [`og.anim.graph`](#fn-graph) | function | Register a blend-tree graph for AnimationGraph.asset. Its `clip` lines are resolved by name against `clips`. |
+| [`FlipbookSheet`](#type-FlipbookSheet) | handle | A sprite sheet's frames and clips (a cooked `.ogt` of `type flipbook`), from og.load.flipbook. |
+| [`FlipbookSheet()`](#column-FlipbookSheet) | column kind | A FlipbookSheet handle field. |
+| [`FlipMode`](#type-FlipMode) | enum | How a flipbook clip runs past its last frame. |
+| [`og.Flipbook`](#record-Flipbook) | component | Plays a clip of a flipbook sheet on the entity's og.Sprite: extraction draws the sprite with the sheet's texture and the current frame's region and pivot (the sprite keeps its size, colour, flips and layer). Played by the engine's og.flipbook system by scaled time (Time.scaledDt: slow motion, hit stop), after the game's systems. |
+| [`og.FlipbookEvent`](#record-FlipbookEvent) | event | A flipbook entered a frame its clip names in an `event` line (`event 2 "step"`): footsteps, the frame a hit lands, a pickup's sparkle. Read in the tick after, like every event; a clip started at 0 fires its first frame's events. |
+| [`FlipbookClipInfo`](#type-FlipbookClipInfo) | struct | One clip of a loaded flipbook sheet. |
+| [`FlipbookInfo`](#type-FlipbookInfo) | struct | What og.load.flipbook registered. |
+| [`og.anim.clip`](#fn-clip) | function | The index of a flipbook clip by name, for Flipbook.clip: `og.anim.clip(hero, "walk_down")`. -1 when the sheet has no such clip. |
 
 ## Functions
 
@@ -81,7 +89,38 @@ fn graph {
 }
 ```
 
-<sub>`api.ogt` line 3159</sub>
+<sub>`api.ogt` line 3548</sub>
+
+<a id="fn-clip"></a>
+
+### `og.anim.clip`
+
+The index of a flipbook clip by name, for Flipbook.clip: `og.anim.clip(hero, "walk_down")`. -1 when the sheet has no such clip.
+
+```ts
+og.anim.clip(info: FlipbookInfo, name: string): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `info` | `FlipbookInfo` | no | What og.load.flipbook answered. |
+| `name` | `string` | no | The clip's name. |
+
+**Returns** `number`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn clip {
+  doc "The index of a flipbook clip by name, for Flipbook.clip: `og.anim.clip(hero, \"walk_down\")`. -1 when the sheet has no such clip."
+  host false
+  param info FlipbookInfo "What og.load.flipbook answered."
+  param name String "The clip's name."
+  returns i32
+}
+```
+
+<sub>`api.ogt` line 3632</sub>
 
 ## Components, resources and events
 
@@ -118,7 +157,7 @@ component Skeleton {
 }
 ```
 
-<sub>`api.ogt` line 2933</sub>
+<sub>`api.ogt` line 3322</sub>
 
 <a id="record-AnimationPlayer"></a>
 
@@ -174,7 +213,7 @@ component AnimationPlayer {
 }
 ```
 
-<sub>`api.ogt` line 2948</sub>
+<sub>`api.ogt` line 3337</sub>
 
 <a id="record-AnimationGraph"></a>
 
@@ -250,7 +289,7 @@ component AnimationGraph {
 }
 ```
 
-<sub>`api.ogt` line 2982</sub>
+<sub>`api.ogt` line 3371</sub>
 
 <a id="record-Blendshapes"></a>
 
@@ -323,7 +362,7 @@ component Blendshapes {
 }
 ```
 
-<sub>`api.ogt` line 3030</sub>
+<sub>`api.ogt` line 3419</sub>
 
 <a id="record-IkChain"></a>
 
@@ -394,7 +433,7 @@ component IkChain {
 }
 ```
 
-<sub>`api.ogt` line 3078</sub>
+<sub>`api.ogt` line 3467</sub>
 
 <a id="record-AnimationEvent"></a>
 
@@ -425,7 +464,90 @@ event AnimationEvent {
 }
 ```
 
-<sub>`api.ogt` line 3122</sub>
+<sub>`api.ogt` line 3511</sub>
+
+<a id="record-Flipbook"></a>
+
+### `og.Flipbook` (component)
+
+Plays a clip of a flipbook sheet on the entity's og.Sprite: extraction draws the sprite with the sheet's texture and the current frame's region and pivot (the sprite keeps its size, colour, flips and layer). Played by the engine's og.flipbook system by scaled time (Time.scaledDt: slow motion, hit stop), after the game's systems.
+
+Changing clip restarts at the clip's first frame (or at `time`, written in the same tick); writing a different time is a seek. Frame events are og.FlipbookEvent. The playback position is world state (the og.flipbook state block).
+
+Token `og.Flipbook`, registered under the schema name `og.Flipbook`; its value type is `Flipbook`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `sheet` | `FlipbookSheet` | `0` | — | — | — | The sheet (og.load.flipbook's `sheet`); 0 is none. |
+| `clip` | `number` | `0` | ≥ 0 | — | — | The clip: an index into FlipbookInfo.clips (og.anim.clip finds one by name). |
+| `speed` | `number` | `1` | 0 … 10 | — | tunable | The playback rate: 1 as authored, 2 twice as fast, 0 holds the frame. |
+| `playing` | `boolean` | `true` | — | — | — | Whether time advances. |
+| `frame` | `number` | `0` | — | — | read only | Written: the clip frame shown (an index into the clip's frames). |
+| `time` | `number` | `0` | ≥ 0 | `s` | — | Seconds into the current cycle; written every tick, set it to seek (no events fire across a seek). |
+| `finished` | `boolean` | `false` | — | — | read only | Written: a `once` clip reached and holds its last frame. |
+| `loops` | `number` | `0` | — | — | read only | Written: cycles completed by a looping or ping-pong clip. |
+
+```ogt
+component Flipbook {
+  doc "Plays a clip of a flipbook sheet on the entity's og.Sprite: extraction draws the sprite with the sheet's texture and the current frame's region and pivot (the sprite keeps its size, colour, flips and layer). Played by the engine's og.flipbook system by scaled time (Time.scaledDt: slow motion, hit stop), after the game's systems."
+  doc "Changing clip restarts at the clip's first frame (or at `time`, written in the same tick); writing a different time is a seek. Frame events are og.FlipbookEvent. The playback position is world state (the og.flipbook state block)."
+  field sheet FlipbookSheet "The sheet (og.load.flipbook's `sheet`); 0 is none."
+  field clip u32 "The clip: an index into FlipbookInfo.clips (og.anim.clip finds one by name)." {
+    min 0
+  }
+  field speed f32 "The playback rate: 1 as authored, 2 twice as fast, 0 holds the frame." {
+    default 1
+    min 0
+    max 10
+    tunable true
+  }
+  field playing bool "Whether time advances." {
+    default true
+  }
+  field frame u32 "Written: the clip frame shown (an index into the clip's frames)." {
+    readonly true
+  }
+  field time f32 "Seconds into the current cycle; written every tick, set it to seek (no events fire across a seek)." {
+    min 0
+    unit s
+  }
+  field finished bool "Written: a `once` clip reached and holds its last frame." {
+    readonly true
+  }
+  field loops u32 "Written: cycles completed by a looping or ping-pong clip." {
+    readonly true
+  }
+}
+```
+
+<sub>`api.ogt` line 3571</sub>
+
+<a id="record-FlipbookEvent"></a>
+
+### `og.FlipbookEvent` (event)
+
+A flipbook entered a frame its clip names in an `event` line (`event 2 "step"`): footsteps, the frame a hit lands, a pickup's sparkle. Read in the tick after, like every event; a clip started at 0 fires its first frame's events.
+
+Token `og.FlipbookEvent`, registered under the schema name `og.FlipbookEvent`; its value type is `FlipbookEvent`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `entity` | `Entity` | `0` | — | — | — | The entity with the og.Flipbook. |
+| `clip` | `number` | `0` | — | — | — | The clip index. |
+| `frame` | `number` | `0` | — | — | — | The clip frame entered. |
+| `name` | `string` | `""` | — | — | — | The event's name (at most 63 bytes). |
+
+```ogt
+event FlipbookEvent {
+  doc "A flipbook entered a frame its clip names in an `event` line (`event 2 \"step\"`): footsteps, the frame a hit lands, a pickup's sparkle. Read in the tick after, like every event; a clip started at 0 fires its first frame's events."
+  field entity Entity "The entity with the og.Flipbook."
+  field clip u32 "The clip index."
+  field frame u32 "The clip frame entered."
+  field name String "The event's name (at most 63 bytes)."
+}
+```
+
+<sub>`api.ogt` line 3602</sub>
 
 ## Types
 
@@ -441,7 +563,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle SkeletonAsset "A rig: a glTF's nodes in topological order with their rest transforms, and its skins (joints and inverse bind matrices)."
 ```
 
-<sub>`api.ogt` line 2855</sub>
+<sub>`api.ogt` line 3244</sub>
 
 <a id="type-ClipAsset"></a>
 
@@ -455,7 +577,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle ClipAsset "An animation clip, resampled at the cook's rate, with its markers."
 ```
 
-<sub>`api.ogt` line 2856</sub>
+<sub>`api.ogt` line 3245</sub>
 
 <a id="type-GraphAsset"></a>
 
@@ -469,7 +591,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle GraphAsset "A blend-tree graph (`type animgraph`) whose clip references were resolved to clip handles."
 ```
 
-<sub>`api.ogt` line 2857</sub>
+<sub>`api.ogt` line 3246</sub>
 
 <a id="type-RootMotion"></a>
 
@@ -494,7 +616,7 @@ enum RootMotion {
 }
 ```
 
-<sub>`api.ogt` line 2880</sub>
+<sub>`api.ogt` line 3269</sub>
 
 <a id="type-BlendshapeSource"></a>
 
@@ -517,7 +639,7 @@ enum BlendshapeSource {
 }
 ```
 
-<sub>`api.ogt` line 2894</sub>
+<sub>`api.ogt` line 3283</sub>
 
 <a id="type-IkSolver"></a>
 
@@ -540,7 +662,7 @@ enum IkSolver {
 }
 ```
 
-<sub>`api.ogt` line 2907</sub>
+<sub>`api.ogt` line 3296</sub>
 
 <a id="type-IkSpace"></a>
 
@@ -563,7 +685,7 @@ enum IkSpace {
 }
 ```
 
-<sub>`api.ogt` line 2920</sub>
+<sub>`api.ogt` line 3309</sub>
 
 <a id="type-ClipInfo"></a>
 
@@ -590,7 +712,7 @@ struct ClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 3133</sub>
+<sub>`api.ogt` line 3522</sub>
 
 <a id="type-Animation"></a>
 
@@ -617,7 +739,7 @@ struct Animation {
 }
 ```
 
-<sub>`api.ogt` line 3143</sub>
+<sub>`api.ogt` line 3532</sub>
 
 <a id="type-GraphDesc"></a>
 
@@ -641,7 +763,106 @@ struct GraphDesc {
 }
 ```
 
-<sub>`api.ogt` line 3152</sub>
+<sub>`api.ogt` line 3541</sub>
+
+<a id="type-FlipbookSheet"></a>
+
+### `FlipbookSheet` (handle)
+
+A sprite sheet's frames and clips (a cooked `.ogt` of `type flipbook`), from og.load.flipbook.
+
+A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+
+```ogt
+handle FlipbookSheet "A sprite sheet's frames and clips (a cooked `.ogt` of `type flipbook`), from og.load.flipbook."
+```
+
+<sub>`api.ogt` line 3555</sub>
+
+<a id="type-FlipMode"></a>
+
+### `FlipMode` (enum)
+
+How a flipbook clip runs past its last frame.
+
+A string: one of the variants below. The zero value is `"loop"`.
+
+| Variant | Doc |
+|---|---|
+| `"loop"` | Back to the first frame. |
+| `"pingPong"` | Back and forth, without repeating the end frames. |
+| `"once"` | Hold the last frame and set Flipbook.finished. |
+
+```ogt
+enum FlipMode {
+  doc "How a flipbook clip runs past its last frame."
+  variant loop "Back to the first frame."
+  variant pingPong "Back and forth, without repeating the end frames."
+  variant once "Hold the last frame and set Flipbook.finished."
+}
+```
+
+<sub>`api.ogt` line 3564</sub>
+
+<a id="type-FlipbookClipInfo"></a>
+
+### `FlipbookClipInfo` (struct)
+
+One clip of a loaded flipbook sheet.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `clip` | `number` | `0` | — | — | — | Its index, what Flipbook.clip takes. |
+| `name` | `string` | `""` | — | — | — | Its name in the sheet. |
+| `frames` | `number` | `0` | — | — | — | How many frames. |
+| `duration` | `number` | `0` | — | `s` | — | Seconds of one cycle (a ping-pong cycle goes there and back). |
+| `mode` | `FlipMode` | `"loop"` | — | — | — | How it runs past its end. |
+| `events` | `readonly string[]` | `[]` | — | — | — | Its events' names, in frame order. |
+
+```ogt
+struct FlipbookClipInfo {
+  doc "One clip of a loaded flipbook sheet."
+  field clip u32 "Its index, what Flipbook.clip takes."
+  field name String "Its name in the sheet."
+  field frames u32 "How many frames."
+  field duration f32 "Seconds of one cycle (a ping-pong cycle goes there and back)." {
+    unit s
+  }
+  field mode FlipMode "How it runs past its end."
+  field events List.String "Its events' names, in frame order."
+}
+```
+
+<sub>`api.ogt` line 3610</sub>
+
+<a id="type-FlipbookInfo"></a>
+
+### `FlipbookInfo` (struct)
+
+What og.load.flipbook registered.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `sheet` | `FlipbookSheet` | `0` | — | — | — | What Flipbook.sheet takes. |
+| `texture` | `Texture` | `0` | — | — | — | The sheet's texture (loaded with it; sampled nearest unless the sheet says `filter linear`). |
+| `clips` | `readonly FlipbookClipInfo[]` | `[]` | — | — | — | Its clips, in sheet order. |
+| `frames` | `number` | `0` | — | — | — | Frames in the sheet. |
+| `frameWidth` | `number` | `0` | — | — | — | The first frame's width in pixels. |
+| `frameHeight` | `number` | `0` | — | — | — | The first frame's height in pixels. |
+
+```ogt
+struct FlipbookInfo {
+  doc "What og.load.flipbook registered."
+  field sheet FlipbookSheet "What Flipbook.sheet takes."
+  field texture Texture "The sheet's texture (loaded with it; sampled nearest unless the sheet says `filter linear`)."
+  field clips List.FlipbookClipInfo "Its clips, in sheet order."
+  field frames u32 "Frames in the sheet."
+  field frameWidth u32 "The first frame's width in pixels."
+  field frameHeight u32 "The first frame's height in pixels."
+}
+```
+
+<sub>`api.ogt` line 3622</sub>
 
 ## Column kinds
 
@@ -656,6 +877,7 @@ Each is a factory, `SkeletonAsset(value?, options?)`, that makes one field of a 
 | <a id="column-BlendshapeSource"></a>`BlendshapeSource` | `BlendshapeSource` | `Uint32Array` | 1 | A BlendshapeSource field: the variant's index. |
 | <a id="column-IkSolver"></a>`IkSolver` | `IkSolver` | `Uint32Array` | 1 | An IkSolver field: the variant's index. |
 | <a id="column-IkSpace"></a>`IkSpace` | `IkSpace` | `Uint32Array` | 1 | An IkSpace field: the variant's index. |
+| <a id="column-FlipbookSheet"></a>`FlipbookSheet` | `FlipbookSheet` | `Uint32Array` | 2 | A FlipbookSheet handle field. |
 
 ```ogt
 column SkeletonAsset {
@@ -666,7 +888,7 @@ column SkeletonAsset {
 }
 ```
 
-<sub>`api.ogt` line 2859</sub>
+<sub>`api.ogt` line 3248</sub>
 
 ```ogt
 column ClipAsset {
@@ -677,7 +899,7 @@ column ClipAsset {
 }
 ```
 
-<sub>`api.ogt` line 2866</sub>
+<sub>`api.ogt` line 3255</sub>
 
 ```ogt
 column GraphAsset {
@@ -688,7 +910,7 @@ column GraphAsset {
 }
 ```
 
-<sub>`api.ogt` line 2873</sub>
+<sub>`api.ogt` line 3262</sub>
 
 ```ogt
 column RootMotion {
@@ -699,7 +921,7 @@ column RootMotion {
 }
 ```
 
-<sub>`api.ogt` line 2887</sub>
+<sub>`api.ogt` line 3276</sub>
 
 ```ogt
 column BlendshapeSource {
@@ -710,7 +932,7 @@ column BlendshapeSource {
 }
 ```
 
-<sub>`api.ogt` line 2900</sub>
+<sub>`api.ogt` line 3289</sub>
 
 ```ogt
 column IkSolver {
@@ -721,7 +943,7 @@ column IkSolver {
 }
 ```
 
-<sub>`api.ogt` line 2913</sub>
+<sub>`api.ogt` line 3302</sub>
 
 ```ogt
 column IkSpace {
@@ -732,4 +954,15 @@ column IkSpace {
 }
 ```
 
-<sub>`api.ogt` line 2926</sub>
+<sub>`api.ogt` line 3315</sub>
+
+```ogt
+column FlipbookSheet {
+  doc "A FlipbookSheet handle field."
+  array Uint32Array
+  stride 2
+  value FlipbookSheet
+}
+```
+
+<sub>`api.ogt` line 3557</sub>
