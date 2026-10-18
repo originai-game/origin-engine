@@ -163,6 +163,70 @@ while it moves. Dialogs scale in over a fading scrim; toasts slide. Under
 The transform applies to the laid-out rectangles (so drawing, hit testing and
 the probe agree), to opacity and to text size.
 
+## Skins (`src/skin.rs`)
+
+The tokens are the default look; a game's own is a **skin** the theme
+carries by value (`Theme::skin`, `Copy`). `Skin::default()` dresses nothing,
+so every draw path is exactly the token one without a skin (the reference
+frames of `tests/gfx.rs`, `tests/kit_gfx.rs` and the UI kit's
+`frames-desktop`/`frames-phone` are unchanged, and were pixel-identical
+before and after the skin layer: `tests/evidence/E3/break-and-restore.md`).
+
+A skin file is an `.ogt` of `type skin` (`parse_skin`, grammar in its doc
+comment; og-cook validates it and cooks it as an `og.UiSkin` blob,
+`og.load.skin` loads it with its assets). It declares:
+
+| Part | What it does |
+|---|---|
+| `base`, `palette`, `radius`, `ramp`, `durations` | the token scheme it starts from and the ThemeColor, radius, TypeStepName and duration values it changes: these go into the `Theme` itself, so every widget follows |
+| `atlas "<id>" <w> <h>`, `scale` | the texture every frame, ornament and tile is cut from |
+| `slice <part> x y w h <inset…> [tint\|authored]` | a nine-slice frame per element class (`SkinPart`): `panel` (dialogs, anchored screen panels), `card` (`Ui::panel`), `button`, `buttonHover`, `buttonPressed`, `buttonDisabled`, `field`, `slot` (grid cells), `tooltip`, `capsule` (HUD capsules, toasts), `track` and `fill` (progress). `tint` frames are white art multiplied by the element's colour (so primary and secondary buttons keep their palette); `authored` ones keep their own colours |
+| `soft` | a blurred white rectangle: soft shadows and glows |
+| `corner` + `corners <parts>`, `divider`, `flourish` | ornaments: four mirrored corners on the named parts, an ornament over `Ui::divider`, a flourish beside a heading (`LabelDesc::heading`; both sides when centred). Ink `authored`, `accent`, `fg`, `muted`, `border` or `focus` |
+| `tile x y w h <tw> <th> <alpha> [inset] <parts>` | a texture tiled over the parts' fill (parchment, scanlines, grain) |
+| `shadow <part> dx dy blur spread "#rrggbbaa"`, `glow <part> size ink alpha` | per class (button states share the button's); blur 0 is a hard shadow |
+| `textShadow <role> dx dy blur colour`, `textGlow <role> size ink alpha` | per font role (`body`, `display`, `numeric`) |
+| `press sx sy dy`, `hover dy scale` | the press squash and sink, the hover lift (eased over `instant`) |
+| `fonts { body display numeric fallback }`, `icons "<id>" cols rows { names … }` | fonts per role (numeric is the `Mono` role) and the CJK `fallback`: a text whose role font lacks one of its characters is measured and drawn in the fallback (`Fonts::for_text`); the icon set |
+| `motion { enter stagger toast progress shake pop }` | dialog and panel entrance (`pop` springs past 1 and settles), the stagger of a panel's controls (shortened so a long list ends within one more entrance), the toast arrival, eased progress bars, the refused-press shake, the count-up landing pop |
+| `sound <event> "<id>"` | UI sounds (below) |
+
+Six packs to start from live in `templates/ui-kit/assets/skins/` (pixel,
+cartoon, fantasy, scifi, paper, neon), drawn by
+`templates/ui-kit/tools/make-skins.py`; `tests/packs.rs` holds each to 4.5:1
+for every ink a template puts on a skinned surface, measured over the frame
+art really under the text.
+
+## Juice and screen transitions (`src/juice.rs`)
+
+- `counter(id, value, CounterDesc)`: a label that counts (ease-out cubic,
+  by the tick, f64) from what it shows to `value` whenever `value` changes;
+  the first count starts at `from` (none: no count). Grouped with commas,
+  decimals, prefix and suffix; a skin's `motion.pop` bumps it on landing.
+- `burst(BurstDesc)`: rays and sparks from the element built just before,
+  once, from when it first appears (the results stars); off under reduced
+  motion.
+- `screen_transition(id, wanted, ScreenTransitionDesc) -> ScreenTransition`:
+  call every tick with the screen the game wants and build `shown`. A change
+  starts a cover over the old screen (half the duration), switches `shown`
+  at full cover, and reveals the new one. `Fade`, `Wipe`, `Iris` (2 px
+  bands), `Dissolve` (24 px cells in a fixed hash order) and `Slide`, in a
+  colour or a texture region stretched over the surface, from any side; drawn
+  after every other command (over every layer) through the overlay pass. The
+  state (`shown`, `wanted`, the start tick) is in `Ui::save_state`. Under
+  `reduced_motion` every kind is a fade.
+
+## UI sounds
+
+The UI queues an event when the skin (or `UiDesc.sounds` through the host)
+has a sound for it: `Hover` (the pointer reaches a navigable control),
+`Press`, `Open` and `Close` (a dialog's first tick each way), `Success`
+(a success toast), `Error` (a danger toast or a refused press).
+`Ui::take_sounds()` hands them to the host; the runtime's `og.ui.sound`
+system (after `og.audio`) plays each through og-audio on the `ui` bus, one
+voice per event kept in the UI state (`Ui::voices_mut`), restarted on a
+repeat. The source starts in og-audio's next pass, one tick after the input.
+
 ## Responsive layout and the safe area
 
 `Viewport::breakpoint()` / `Ui::breakpoint()`: `PhonePortrait` and
@@ -395,8 +459,10 @@ cargo check --target wasm32-unknown-unknown -p og-ui
 | `tests/gfx.rs` | the sample screen rendered headless matches `references/<tier>/sample-screen.png` (og-tests' tolerance: 32/255 per channel, ≤ 0.5 % outliers, RMSE ≤ 0.01) in at most 2 sprite draws per painter level, no missing glyph; a scroll container cuts every sprite and text line it draws to its rectangle |
 | `tests/theme.rs` | `src/theme.rs` equals the generator's output for the vendored tokens |
 | `tests/widgets.rs` | focus: arrows pick the aligned neighbour and wrap, Tab/Shift+Tab walk reading order and wrap, Enter and Space press, the gamepad d-pad and A, the stick at once then after 24 and every 11 ticks; a dialog takes focus, keeps Tab inside, blocks presses to what is under it, closes on the backdrop and Back (not when locked) and returns focus; a select opens, chooses (mouse and keys) and closes on a press outside; a 1000-row list builds at most 13 rows, reaches its last row and scrolls a keyboard-focused row into view; toasts cap at three, leave after 3.2 s and come back with a restored state; a transition advances 1/15 per tick, is inert while moving, leaves; a meter's trail follows a drop and two runs draw identical frames; the dialogue types 15 characters in 30 ticks at 30/s, a press finishes, the next advances; anchors keep to the safe area and touch controls to 44 px; a joystick answers (1, 0) at its edge; amber in gives the token palette back, a hue accent derives lighter hovers in dark, high contrast takes `fg` for muted ink; a drag from cell 0 to cell 6 drops once and a click is no drop |
+| `tests/skin.rs` | a skinned card is nine atlas pieces that cover it with fixed corners, its shadow and corners reach past it; the default theme emits no skin piece; a skin file names the wrong line (a typo, a region outside the atlas, a glow without `soft`, a bad colour); every screen-transition kind keeps the old screen while covering, switches at full cover, ends, and is one fade per tick under reduced motion; a counter starts at `from`, never goes back, lands at 900 ms and replays after a restore; a refused press shakes and comes to rest, queues `Error` only, an enabled press queues `Press` |
+| `tests/packs.rs` | the six packs parse, name only existing assets, and every ink a template draws on a skinned surface is at least 4.5:1 over the frame art under it (and `fg` on a selected tab) |
 | `tests/kit_gfx.rs` | the widget set (tabs, an open select menu with the focus ring, stepper, radio, checkboxes, chips, badges, meters with trail, notches and label, skeleton, four cooldown rings, stick, d-pad, action button, spinner, a toast) matches `references/<tier>/widget-set.png` in 4 sprite draws; the pies are the expected half-disc angles |
-| `templates/ui-kit/tests/*.og.ts` | through the command channel on the native host: every template at 1280×720 and 390×844@3 matches `references/<tier>/kit-{desktop,phone}-<screen>.png`; touch, keyboard and gamepad flows, drag and drop, the phone's safe area and 44 px targets, the tutorial spotlight (`templates/ui-kit/README.md`) |
+| `templates/ui-kit/tests/*.og.ts` | through the command channel on the native host: every template at 1280×720 and 390×844@3 matches `references/<tier>/kit-{desktop,phone}-<screen>.png`; every screen in each style pack matches its cell of `references/<tier>/kit-skin-<pack>.png`; an iris transition, the count-up and UI voices (`juice`); touch, keyboard and gamepad flows, drag and drop, the phone's safe area and 44 px targets, the tutorial spotlight (`templates/ui-kit/README.md`) |
 
 Each was checked by breaking the code it covers (the kit round's breaks are
 in `tests/evidence/E1/ui-break-and-restore.md`; earlier: grow caps, the
@@ -414,16 +480,20 @@ font is og-tests' committed MSDF atlas (Noto Sans SC subset, OFL).
   (needs per-glyph spacing in og-render's `Text`); kerning and shaping
   (rustybuzz, with og-render); RTL; ellipsis truncation; selection in fields;
   multi-line text areas; IME composition.
-- **Animations**: hover and press transitions on the token springs
-  (`SPRING_DEFAULT`); momentum scrolling on `SPRING_MOMENTUM`; caret blink.
+- **Animations**: springs (`SPRING_DEFAULT`) for the skin's hover and press
+  (eased curves today); momentum scrolling on `SPRING_MOMENTUM`; caret blink.
+- **Skins**: phone references for the packs (`kit-skin-*` are desktop
+  only); per-glyph tracking from a skin's ramp; text glows are four offset
+  copies (a real blur needs an MSDF outline in og-render); nine-slices
+  stretch rather than tile their edges.
   (Overlay entry and exit, toasts, meters and typing run on the token
   easings by the tick since the kit round.)
 - **Accessibility**: an accessibility tree mirrored to the shell (roles,
   names, values, states) so screen readers and the DOM can read the canvas
   UI; `prefers-reduced-motion` and `prefers-contrast` read from the shell
   into `UiDesc` (the theme flags exist; nothing sets them from the page yet).
-- Materials: glass (blur needs a render-graph pass), shadows and the dark
-  edge light; icons (iconoir) as an MTSDF atlas.
+- Materials: glass (blur needs a render-graph pass) and the dark edge
+  light (skins have shadows and glows); icons (iconoir) as an MTSDF atlas.
 - Layout: horizontal and two-axis scrolling, nested scroll chaining,
   aspect-ratio images.
 - **Input**: pads beyond the first; several touches for widgets other than

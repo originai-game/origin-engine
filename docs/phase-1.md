@@ -53,6 +53,34 @@ Dependencies: M1 → M2 → everything TypeScript-facing; M0 → M3 (renderer
 work starts from the spike immediately); M4 needs M1's `.ogb`; M5 needs M2's
 hosts; M6 needs M3, M4, M5; M7 needs M6.
 
+### Status 2026-10-18, E3 round
+
+- **UI style** (d612bc3..24d3663): og-ui's skin layer: a `Skin` the theme
+  carries (nine-slice frames per element class from one atlas, corner,
+  divider and heading ornaments, panel tiles, shadows and glows per class,
+  text shadows and glows per font role, press squash and hover lift, fonts per
+  role with a CJK fallback, an icon set, motion and sounds), cooked from
+  `.ogt` files of `type skin` (`og.UiSkin` blobs) and loaded with
+  `og.load.skin`; `UiDesc.skin` and `sounds`, `og.ui.counter`,
+  `og.ui.burst`, `og.ui.screenTransition` (fade, wipe, iris, dissolve,
+  slide; colour or texture, over every layer through the overlay pass),
+  `TransitionKind.pop`, `ElementDesc.frame`, `LabelDesc.heading`; UI events
+  sound through og-audio on the ui bus (`og.ui.sound`). The default skin
+  dresses nothing: every token reference frame is unchanged and the
+  captures were pixel-identical before and after. Six style packs (pixel,
+  cartoon, fantasy, scifi, paper, neon) in `templates/ui-kit/assets/skins/`
+  with generated atlases and icons and OFL fonts, held to 4.5:1 by
+  `og-ui/tests/packs.rs`; the kit's 20 screens in every pack against one
+  metal sheet per pack; the og-taste skill. Full gate at 24d3663 in 4 min 2 s
+  (wasm 2,428,536 bytes brotli, 57 % of the budget; +59,841 over E1).
+  Evidence `tests/evidence/E3/`. Owed: phone and `vulkan-cpu`/browser
+  references for the packs (metal desktop only); per-glyph tracking from a
+  skin's ramp and a real text glow (an MSDF outline in og-render); tiled
+  (not stretched) nine-slice edges; springs for hover and press; the UI
+  sounds start one tick after the input (`og.ui.sound` runs after
+  `og.audio`); skins drawn by hand for a game still need an atlas tool
+  beyond `make-skins.py`.
+
 ### Status 2026-10-18, E2 round
 
 - **Render and Runtime** (96adafe..393c2d6): every E1 effect is declared

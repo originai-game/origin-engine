@@ -190,7 +190,11 @@ lighting falls back to a forward tile table built on the CPU).
 - **UI**: immediate-mode (Clay-like layout) rendered by the engine, themed by
   the platform's design tokens so a game's menus and the platform read as one
   system; element ids are stable strings so the command channel can target
-  them (`touch_move_to`, `move_to_text`, `dump_ui`).
+  them (`touch_move_to`, `move_to_text`, `dump_ui`). A game replaces the
+  token look with a **skin** (`og.load.skin`: nine-slice frames per element
+  class, ornaments, palette, type ramp, fonts, icons, motion and sounds),
+  so games do not all share the platform's chrome; screen transitions,
+  count-ups and bursts run by the tick in the UI state.
 
 ### 2.8 Platform SDK as host ABI **(D)**
 
@@ -384,6 +388,9 @@ Measured in the spike (§10) and gated in CI afterwards.
   core. Geometry lives in
   `packages/ui-svelte/src/lib/brand/product-marks.ts`, never redrawn
   elsewhere.
+- **Game skins are not brand**: a game's UI skin (og-ui, `og.load.skin`)
+  styles that game's own screens; the engine's marks, the boot splash, the
+  loading state and the player shell stay the platform ink and tokens.
 - **Voice**: documentation, the wiki and `og` output use the platform's
   editorial voice (`origingame/goals/editorial-design`): plain sentences, no
   exclamation marks, every error names the fix.
