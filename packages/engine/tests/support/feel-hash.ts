@@ -51,7 +51,6 @@ const Run = defineSystem("FhRun", { reads: [Runner, og.TweenCompleted], writes: 
 });
 
 const game = og.game({
-  components: [Runner],
   resources: [Tally],
   systems: [Run],
   start: (w: World) => {
