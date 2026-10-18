@@ -308,7 +308,7 @@ fn the_generated_declarations_type_check_with_the_examples() {
         .args([
             "x",
             "--package",
-            "typescript@5.9.3",
+            "typescript@7.0.2",
             "tsc",
             "--noEmit",
             "-p",
