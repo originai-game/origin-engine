@@ -4,8 +4,9 @@
 player shell, the engine (wasm in a Worker on an OffscreenCanvas), the game
 bundle and its cooked assets. This page is the output layout, what a host
 must send, project.ogt's publish settings, the shell's behaviour, the
-contract the platform's Player and Stage rely on, and how the package is
-packed. Design: `docs/design.md` §2.2, §4, §6, §9.
+contract the platform's Player and Stage rely on, the `og` commands
+around it, and how the package is packed. Design: `docs/design.md` §2.2,
+§4, §6, §9.
 
 ```sh
 og build .              # dev build: every probe member, no service worker
@@ -25,7 +26,7 @@ og build . --publish    # what ships: the player probe members, minified, the PW
 | `cooked/` | The project's cooked bundle (`og cook`, run by `og build`). |
 | `icons/` | `publish.icon` as `icons/icon.png`, or the brand tile at 192 and 512 px. |
 | `og-build.json` | The build manifest (below). |
-| `_headers` | COOP/COEP/CORP and caching for static hosts (Netlify and Cloudflare Pages format). |
+| `_headers` | For static hosts (Netlify and Cloudflare Pages format): `Cross-Origin-Resource-Policy: cross-origin` and `X-Content-Type-Options: nosniff` on everything, COOP `same-origin` and COEP `require-corp` unless `isolation off`, `Cache-Control: no-cache` on `/`, `index.html`, `sw.js` and `og-build.json`, and the `.wasm` and `manifest.webmanifest` content types. |
 | `origingame.runtime.json` | `{"version":1,"crossOriginIsolated":true}` when `isolation` is not `off`: the platform's per-release isolation declaration (`server/src/releases/isolation.ts`). |
 | `manifest.webmanifest`, `sw.js` | `--publish` only: the PWA manifest and the service worker. |
 
@@ -61,12 +62,18 @@ dates, no absolute paths, files in sorted order
 - `engine.version` is the engine that built it; `engine.pinned` is
   project.ogt's `engine`. `probe.members` is read from the copied wasm's own
   `hello`, so a publish build proves its trim.
-- `crossOriginIsolation`: `required` (the game needs SharedArrayBuffer),
+- `crossOriginIsolation`: `required` (the game needs SharedArrayBuffer; a
+  page served without isolation still starts, single-threaded, with a
+  warning in the log),
   `preferred` (it uses the input, request and audio rings when isolated and
   runs single-threaded otherwise; the default), `off`.
 - `files` lists every file beside it (not itself) with bytes and sha256;
-  `version` is their identity (the service worker's cache name is its first
-  16 hex digits, computed before `sw.js` is added).
+  `version` is the sha256 over the path and sha256 of each of them except
+  `sw.js`, so it is the same before and after `sw.js` is written; the
+  service worker's cache name is `og-` and its first 16 hex digits.
+- `probe.build` is what the copied wasm's `hello` reports: `publish` for a
+  `--publish` build, `release` for a dev build (the web host is a release
+  wasm either way; the top-level `build` is what says `dev`).
 
 ## Hosting
 
@@ -89,7 +96,7 @@ dates, no absolute paths, files in sorted order
 
 ```text
 publish {
-  probe player            # player | all
+  probe player            # player | all (checked; the probe set follows --publish, see below)
   out "dist"
   isolation preferred     # required | preferred | off
   fit fill                # fill | letterbox
@@ -105,46 +112,67 @@ publish {
 ```
 
 `og build` checks every value first (`crates/og-cli/src/publish.rs`); a bad
-one names its line and the values it takes.
+one, an unknown key, or `fit letterbox` without `aspect` names its line and
+the values it takes. Every key is optional; the defaults are the values
+shown, with no aspect, icon or short name. `probe` is read and checked but
+does not choose anything today: a `--publish` build always serves the
+player members and a dev build every member, whatever it says.
 
 ## The shell
 
 - **Boot**: the brand symbol, white on ink `#14161b`, plays `genesis` once,
   then `progress` with the real value: bytes of the wasm and of `cooked/`
   received (streamed, counted in the Worker), never backwards. Motion never
-  delays the game: a fast load skips straight to it.
+  delays the game: progress shows after genesis or after 1.2 s, whichever
+  comes first, a fast load skips straight to the game, and
+  `prefers-reduced-motion` skips genesis.
 - **Play gate**: the first screen is drawn behind it (the shell takes the
   game's first tick, which builds its UI, then holds the clock). The first
   tap, click, Enter or Space unlocks audio (one AudioContext), asks for
-  fullscreen when `fullscreen gesture` (and locks `orientation`), takes a
-  screen wake lock and starts the clock. `gate none` starts at once; audio
-  then unlocks on the first gesture.
+  fullscreen when `fullscreen gesture` and the page is not framed (and locks
+  `orientation`), takes a screen wake lock and starts the clock. `gate none`
+  starts at once; audio then unlocks on the first gesture.
 - **Layout**: `fill` covers the whole `100dvh` viewport and passes the
   safe-area insets to the UI (`og.ui` viewport); `letterbox` fits `aspect`
   inside the safe area on ink. The canvas is drawn at
   `min(devicePixelRatio, dpr_cap)`; resizes and orientation changes resize
   the render target in the Worker (`og_web_resize`) before the next frame.
-- **Visibility**: a hidden page pauses the clock and suspends audio, releases
-  the wake lock, and resumes all three.
-- **Input**: keyboard (`KeyboardEvent.code`; keys that would scroll the page
-  are kept), pointer events of every type with pointer capture (the primary
-  pointer drives the engine's pointer; touch ids ride in the ring for the
-  IDL change that will take them), wheel, and gamepads polled on the display
-  frame as the keys of their standard mapping (A Space, B Escape, X KeyX,
-  Y KeyZ, LB KeyQ, RB KeyE, Back Tab, Start Enter, d-pad and left stick
-  arrows).
+- **Visibility**: a hidden page (and `pagehide`) pauses the clock and
+  suspends audio, releases the wake lock, and resumes all three.
+- **Input** (`src/web/shell.ts`, `src/web/gamepad.ts`): keyboard
+  (`KeyboardEvent.code`; keys that would scroll the page or move focus are
+  kept from it; nothing is taken while an input field has focus); pointer
+  events of every type (mouse, pen, touch) with pointer capture, up to five
+  held at once: each pressed pointer takes the lowest free engine id, 0
+  (the primary pointer `og.Input` follows) while none is held, then 1 to 4,
+  and `og.Pointers` reports each with its position and press point, so a
+  stick and a button can be held together; a hovering mouse moves pointer
+  0; wheel. Gamepads are polled on the display frame while one is
+  connected: the first four standard-mapping pads reach `og.Gamepad` whole
+  (buttons, both sticks, both triggers) whenever they change, and, for
+  games that only read keys, every pad also presses the keys of its
+  standard mapping (A Space, B Escape, X KeyX, Y KeyZ, LB KeyQ, RB KeyE,
+  Back Tab, Start Enter, d-pad and the left stick past 0.5 the arrows);
+  og-ui counts a pad intent and the key it maps to once.
 - **Error card** (design §6): a failed start or a crash after it (a trap, a
   failing system, an uncaught Worker error) shows the reason, the last 200
-  lines of the engine's log and the Worker's console, and the world dump (a
-  dev build) or the state (a publish build), with Reload and Copy report.
-- **PWA** (publish builds): the service worker precaches every file the page
-  fetches under `og-<version>`, drops other `og-*` caches on activation,
+  lines of the engine's log, the Worker's console and the page's errors,
+  and the world dump (a dev build) or the state (a publish build), with
+  Reload and Copy report; the brand symbol switches to `drift`.
+- **PWA** (publish builds, in a secure context): the service worker
+  precaches `./` and every file of the build except `og-build.json`,
+  `_headers`, `origingame.runtime.json`, licence and README files and itself
+  under `og-<version>` (a failed install keeps the old build), drops the
+  scope's other `og-*` caches on activation,
   serves the page from the network first (so a host's additions to it are
   current) and from the cache offline, and every other file from the cache.
   The install hint appears only when the criteria hold: not framed, not
   installed, a manifest and a service worker, and either Chromium's
   `beforeinstallprompt` (an Install button) or iOS Safari (Share, then Add to
   Home Screen); "Not now" is remembered.
+- **Language**: the shell's own words (loading, the gate, the error card,
+  the install hint) are Chinese when `navigator.language` is `zh*`, else
+  English.
 - **Marks** for tests and telemetry: `performance` marks `og:ready`,
   `og:first-frame` and `og:start`.
 - **URL parameters**: `webgl=1` (the WebGL2 fallback; also taken when WebGPU
@@ -157,13 +185,16 @@ one names its line and the values it takes.
 
 The shell says `hello` (`substrate: "origin-engine"`) at startup and owns its
 readiness: `loading` with the byte fraction, `ready` at the first rendered
-frame, `fail` (`engine_start`, retryable) before it, `crash` (`EngineCrash`
-and a fingerprint of the message, nothing else) after it, and one `sample`
-with `renderer` (the tier) and `timings.firstFrame`. Under a Player that
-answered `hello`, the shell draws no gate: it plays on `start` (or a hello
-with `started: true`), pauses on `pause`, resumes on `resume`, and resumes
-its AudioContext on `gesture`. It posts only to `window.parent` at its own
-origin and hears only `window.parent` at its own origin.
+frame (or two seconds after the boot when nothing renders), `fail`
+(`engine_start`, retryable) before it, `crash` (`EngineCrash` and a
+fingerprint of the message, nothing else) after it, and one `sample` with
+`renderer` (the tier) and `timings.firstFrame` and `timings.boot`. A framed
+page waits 300 ms for a Player's `hello` before drawing its own gate; under
+a Player that answered, the shell draws no gate: it plays on `start` (or a
+hello with `started: true`), pauses on `pause`, resumes on `resume`, and
+resumes its AudioContext on `gesture`. It posts only to `window.parent` at
+its own origin and hears only `window.parent` at its own origin with
+`og: "player", protocol: 2`; an unframed page sends and hears nothing.
 
 ### The og-probe wire (`origin/packages/contracts/src/probe-wire.ts`)
 
@@ -175,26 +206,56 @@ which lives in the Worker and answers asynchronously:
   told no origin, or another origin, or a call of another `v`, gets nothing.
   Every post names that origin. It posts `hello` on load, when the told
   origin or the probe's availability changes, and after a `hello` call.
-- Shapes: `hello` `{protocol: 5, substrate: "origin-engine"}`; `state`,
-  `pause`, `resume`, `advance` `{tick, paused, timings: {frameMs}}` (the
-  engine's own `paused` and `frameMs`); `entities` `{items: [{id}]}`; `bounds`
-  `{items: [{parameter, label?, path?, min?, max?, step?, value?}]}`; `entity`
-  `{id, params}`; `patch` `{applied: true, roundTripMs}`; `capture` `{tick,
-  width, height, png}` from the engine's own readback (the canvas belongs to
-  the Worker), fitted into `width`×`height` without upscaling; `record`
-  `{mime, base64, durationMs}` from the canvas's capture stream.
+- Shapes: `hello` `{protocol: 5, substrate: "origin-engine"}` (both `null`
+  before the engine is ready); `state`, `pause`, `resume`, `advance`
+  `{tick, paused, timings: {frameMs}}` (the engine's own `paused` and
+  `frameMs`); `entities` `{items: [{id, label?}]}`; `bounds` `{items:
+  [{parameter, label?, path?, min?, max?, step?, value?}]}`; `entity` `{id,
+  params}`; `patch` `{applied: true, roundTripMs}`; `capture` `{tick, width,
+  height, png}` from the engine's own readback (the canvas belongs to the
+  Worker), fitted into `width`×`height` without upscaling; `record` `{mime,
+  base64, durationMs}` from the canvas's capture stream.
+- Bounds: `advance` takes 0 to 3600 steps, `capture` a width and height
+  within 0–4096, `record` up to 15 seconds and one recording at a time.
 - Errors: `refused` for a probe refusal (`false`/`null`) and parameters out
   of bounds; `unsupported` for an unknown method (including `input`, which
   the wire does not carry), no probe yet, and every member a publish build
   drops (`pause`, `resume`, `advance`, `bounds`, `patch`); `failed` for a
   fault.
 - A dev (Stage) build serves every member; a publish build the 7 player
-  members. `globalThis.__runtime_probe__` (protocol 5, `substrate:
+  members. `globalThis.__runtime_probe__` (`version: 5`, `substrate:
   "origin-engine"`, every member a Promise) stays for in-page callers.
 
-Proven in headless Chrome 150 by `tests/web/wire.ts` (dev and publish,
-isolated and not: 120 checks), `tests/web/player.ts` and
-`tests/web/export.ts`.
+Proven in headless Chrome 150 by `bun run test:browser` in
+`packages/engine`: `tests/web/wire.ts` (dev and publish, isolated and not:
+120 checks), `tests/web/player.ts` (10) and `tests/web/export.ts` (40;
+transcripts in `tests/evidence/E1/web-*`). These need a Chrome and are not
+in the gate; `tests/web-export.test.ts` (layout, manifest, determinism,
+icons) is.
+
+## The `og` commands around the export
+
+- `og build [project] [--publish] [--out DIR] [--json]` cooks the project,
+  checks project.ogt (above) and writes the directory into `--out`, else
+  `publish.out`, else `<project>/dist`; it prints each file's bytes and
+  brotli `-q 11` size (gzip `-9` without the brotli CLI), the probe build
+  and members read from the copied wasm, and the manifest's version;
+  `--json` prints one JSON line instead. The web host comes from
+  `packages/engine/dist/web` or `dist/web-publish`; a checkout without them
+  is told to run `bun run build` in `packages/engine`.
+- `og run` (the native host under bun) supervises the game process: when
+  it dies with a failure, `og run` says at once how (its exit status, or
+  the signal), whether its probe had been serving (`--port`: it stops
+  answering), and its last stderr lines, and exits with the process's code
+  (128 + the signal).
+- `og doctor` (no arguments) checks what the author's loop needs: bun
+  (node is optional when bun is present), the engine package, its native
+  addon, both web host wasm files, and a 64×64 frame rendered headless
+  (Metal, Vulkan or lavapipe: the executor path that needs no sandbox).
+  Inside the engine repository it also compares rustc, cargo and
+  wasm-bindgen with `rust-toolchain.toml` and `Cargo.lock`; outside, those
+  lines say `skipped`. Each problem prints one line naming its fix, and the
+  exit code is non-zero when there is any.
 
 ## Packaging
 

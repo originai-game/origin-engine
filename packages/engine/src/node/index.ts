@@ -58,7 +58,7 @@ export function loadNativeHost(path: string = addonPath()): HostBinding {
   const bound = boundHost();
   if (bound) return bound;
   if (!existsSync(path)) {
-    throw new Error(`no native addon at ${path}: build it with \`bun run build\` in packages/engine (cargo build --release -p og-host-node), or point OG_NATIVE_ADDON at one`);
+    throw new Error(`no native addon at ${path}: build it with \`bun run build\` in packages/engine (scripts/build.sh), or point OG_NATIVE_ADDON at one`);
   }
   const addon = createRequire(import.meta.url)(path) as HostAbi<Uint32Array, unknown> & NativeExtras;
   extras = addon;
