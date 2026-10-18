@@ -299,6 +299,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     scene.texts.clear();
     scene.sprites.clear();
     scene.overlay = None;
+    // og.render.sprite and og.render.text are immediate mode: what the last
+    // tick submitted (or a command since it) is drawn, and a tick that
+    // submitted nothing draws nothing. The queues are cleared lazily by the
+    // next submission, so a queue from an older tick is stale here.
+    let now = world.time().tick;
+    let fresh = rs.texts_tick == now || rs.texts_tick + 1 == now;
 
     // Camera.
     let mut exposure = 1.0f32;
@@ -449,7 +455,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     scene.lights = locals.into_iter().map(|(_, l)| l).collect();
 
     // Text, page by page.
-    for t in &rs.texts {
+    let queued_texts: &[QueuedText] = if fresh { &rs.texts } else { &[] };
+    for t in queued_texts {
         let Some(font) = rs.fonts.get(t.font) else {
             continue;
         };
@@ -468,7 +475,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     }
 
     // Sprites queued this tick.
-    rs.scene.sprites.extend(rs.sprites.iter().cloned());
+    if fresh {
+        rs.scene.sprites.extend(rs.sprites.iter().cloned());
+    }
 
     // The UI, over everything else, in the overlay.
     super::modules::emit(rs);
