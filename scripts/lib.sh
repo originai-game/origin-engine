@@ -71,3 +71,61 @@ og_workspace_crates() {
     | grep -o '"name":"[^"]*","version":"[^"]*","id":"path+file' \
     | sed 's/^"name":"\([^"]*\)".*/\1/'
 }
+
+# --- Path-aware steps (scripts/check.sh, docs/ci.md §Lanes) -----------------
+# Each step that passes records the tree it passed on in
+# <target>/og-gate/green/<step>: a git tree of the whole working tree,
+# untracked files included (a private index, so the real one is untouched).
+# A later run compares that tree with this one (git diff --name-only) and
+# skips a step none of whose inputs changed.
+OG_GATE_STATE="$OG_TARGET_DIR/og-gate"
+
+# og_worktree_tree: the tree hash of the working tree as it is now.
+og_worktree_tree() {
+  local idx="$OG_GATE_STATE/index" real
+  mkdir -p "$OG_GATE_STATE" || return 1
+  real="$(git -C "$OG_ROOT" rev-parse --git-path index 2>/dev/null)" || return 1
+  case "$real" in /*) ;; *) real="$OG_ROOT/$real" ;; esac
+  # Starting from the real index makes git re-hash only what changed.
+  cp "$real" "$idx" 2>/dev/null || rm -f "$idx"
+  GIT_INDEX_FILE="$idx" git -C "$OG_ROOT" add -A . >/dev/null 2>&1 || return 1
+  GIT_INDEX_FILE="$idx" git -C "$OG_ROOT" write-tree 2>/dev/null
+}
+
+og_green_get() { cat "$OG_GATE_STATE/green/$1" 2>/dev/null; }
+og_green_set() {
+  [ -n "${OG_GATE_TREE:-}" ] || return 0
+  mkdir -p "$OG_GATE_STATE/green" && printf '%s\n' "$OG_GATE_TREE" > "$OG_GATE_STATE/green/$1"
+}
+og_green_clear() { rm -f "$OG_GATE_STATE/green/$1"; }
+
+# og_unchanged KEY PATH...: true when KEY last passed on a tree that differs
+# from OG_GATE_TREE in no PATH (a file, or a directory and all under it).
+# Sets OG_GREEN to that tree. False when anything is unknown.
+og_unchanged() {
+  local key="$1" green changed f p
+  shift
+  OG_GREEN=""
+  [ -n "${OG_GATE_TREE:-}" ] || return 1
+  green="$(og_green_get "$key")" && [ -n "$green" ] || return 1
+  changed="$(git -C "$OG_ROOT" diff --no-renames --name-only "$green" "$OG_GATE_TREE" 2>/dev/null)" || return 1
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    for p in "$@"; do
+      case "$f" in "$p" | "$p"/*) return 1 ;; esac
+    done
+  done <<< "$changed"
+  OG_GREEN="$green"
+  return 0
+}
+
+# og_crate_dirs CARGO-TREE-ARGS...: the repository-relative directories of
+# the workspace crates in a dependency closure (`cargo tree`); "crates" when
+# cargo cannot say, so a rule never misses a crate.
+og_crate_dirs() {
+  local out
+  out="$(cargo tree "$@" --prefix none 2>/dev/null | awk -v root="$OG_ROOT/" '
+    { i = index($0, "(" root); if (i) { s = substr($0, i + 1); print substr(s, 1, index(s, ")") - 1) } }
+  ' | sort -u | sed "s|^$OG_ROOT/||")"
+  if [ -n "$out" ]; then printf '%s\n' "$out"; else echo crates; fi
+}

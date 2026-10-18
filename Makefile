@@ -16,5 +16,6 @@ determinism: ; scripts/check.sh determinism
 tools:      ; scripts/install-tools.sh
 perf:       ; cargo test -p og-tests --release -- --ignored perf
 # The webgpu and webgl2 tiers of templates/fx-showcase in headless Chrome (docs/ci.md); needs Chrome.
-web-reference: ; cd packages/engine && bun tests/web/reference.ts; a=$$?; bun tests/web/reference.ts --webgl; b=$$?; exit $$((a | b))
+# Path-aware like the lanes: skipped when its inputs did not change (scripts/check.sh --all web-reference runs it).
+web-reference: ; scripts/check.sh web-reference
 list:       ; scripts/check.sh --list
