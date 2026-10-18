@@ -1,0 +1,13 @@
+# Sourced by non-interactive login shells in this checkout. No secrets or
+# services belong in the shared project snapshot.
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+# Browser tests use CHROME (not CHROME_PATH). Reuse the orb's browser rather
+# than downloading another copy; an explicit caller override wins.
+if [[ -z ${CHROME:-} ]]; then
+  for chrome in "$HOME"/.agent-browser/browsers/chrome-*/chrome; do
+    if [[ -x $chrome ]]; then
+      export CHROME="$chrome"
+    fi
+  done
+  unset chrome
+fi
