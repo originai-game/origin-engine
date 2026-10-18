@@ -135,3 +135,10 @@ Each break rebuilt the dev addon (`OG_GATE=1 sh packages/engine/scripts/build.sh
 | runner voices | Voices clears the request without setting `playing` | runner `sounds` (no og.AudioPlayback on the start, jump, coin and crash voices; the crash's peak 0) |
 | match3 swap sounds | Resolve no longer asks for the swap or refused sound | match3 `sounds` (a swap and a refused swap played 0 times) |
 | ui-kit's default | Demo.sounds defaults to false again | ui-kit `sounds` (no voice and peak 0 for a press without `sounds:on`) |
+| a locale's missing keys (`packages/engine/tests/polish.test.ts`) | polish.ts counts only warnings that say "lacks" | `og polish reports the string tables' missing keys …` (locale 100, expected under 100) |
+
+## The knowledge package (`packages/knowledge/tests/validate.test.ts`)
+
+| Broken | Edit | Failed |
+|---|---|---|
+| a listed skill | `skills/og-ai/SKILL.md` moved away | `the committed package is valid against the platform rules` ("skills/og-ai/SKILL.md: missing") |
