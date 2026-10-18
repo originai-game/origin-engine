@@ -862,3 +862,25 @@ impl BlobKind for NavMesh {
         ]
     }
 }
+
+// ── E6: string tables ────────────────────────────────────────────────────
+
+row!(
+    /// The root of a string table blob (an `.ogt` of `type strings`).
+    StringsMeta, "og.Strings", 1 {
+        /// Bytes of the validated table text in `text`.
+        text_bytes: u32,
+        /// Its entries.
+        strings: u32,
+    }
+);
+
+/// The string table blob: `text` holds the table the cook validated
+/// (og-i18n's `StringTable::parse`), parsed again at load.
+pub struct Strings;
+impl BlobKind for Strings {
+    const NAME: &'static str = "og.Strings";
+    fn schemas() -> Vec<Schema> {
+        vec![StringsMeta::schema()]
+    }
+}

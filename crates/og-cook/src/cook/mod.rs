@@ -217,6 +217,8 @@ pub struct Report {
     pub ignored: Vec<String>,
     /// Outputs deleted because their source is gone or failed.
     pub removed: Vec<String>,
+    /// Problems that do not stop the cook: a locale's missing string keys.
+    pub warnings: Vec<String>,
     pub elapsed_ms: f64,
 }
 
@@ -372,6 +374,7 @@ impl Report {
             "root": self.root, "cooker": self.cooker, "texture_encoder": self.texture_encoder,
             "elapsed_ms": self.elapsed_ms, "source_bytes": self.source_bytes(), "cooked_bytes": self.cooked_bytes(),
             "by_kind": kinds, "assets": assets, "ignored": self.ignored, "removed": self.removed,
+            "warnings": self.warnings,
         }))
         .expect("the report serializes")
     }
@@ -392,6 +395,7 @@ enum Kind {
     Flipbook,
     Behaviour,
     NavMesh,
+    Strings,
 }
 
 impl Kind {
@@ -410,6 +414,7 @@ impl Kind {
             Kind::Flipbook => "flipbook",
             Kind::Behaviour => "behaviour",
             Kind::NavMesh => "navmesh",
+            Kind::Strings => "strings",
         }
     }
 }
@@ -439,6 +444,7 @@ enum Work<'a> {
     Flipbook(&'a Source),
     Behaviour(&'a Source),
     NavMesh(&'a Source),
+    Strings(&'a Source),
     Font(&'a Source, FontSettings),
     Scene(&'a Source),
 }
@@ -638,13 +644,14 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     Ok(doc) if doc.ty == "flipbook" => Kind::Flipbook,
                     Ok(doc) if doc.ty == sfx::SFX_TYPE => Kind::Sound,
                     Ok(doc) if doc.ty == e6::BEHAVIOUR_TYPE => Kind::Behaviour,
+                    Ok(doc) if doc.ty == og_i18n::STRINGS_TYPE => Kind::Strings,
                     Ok(doc) if doc.ty == e6::NAVMESH_TYPE => Kind::NavMesh,
                     Ok(doc) => {
                         early_errors.push((
                             rel.clone(),
                             "scene",
                             format!(
-                                "an .ogt of type '{}' is not a cookable asset (scene, particles, skin, tileset, tilemap, flipbook, behaviour, navmesh or import)",
+                                "an .ogt of type '{}' is not a cookable asset (scene, particles, skin, tileset, tilemap, flipbook, behaviour, navmesh, sfx, strings or import)",
                                 doc.ty
                             ),
                         ));
@@ -883,6 +890,10 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     Work::Behaviour(s),
                 ));
             }
+            Kind::Strings => {
+                let st = stamp(&[b"strings", &hash]);
+                outs.push((s.rel.clone(), format::Strings::NAME, st, Work::Strings(s)));
+            }
             Kind::NavMesh => {
                 let deps = e6::navmesh_dependencies(s);
                 let st = stamp(&[b"navmesh", &hash, deps.as_bytes()]);
@@ -1079,8 +1090,22 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
         std::fs::write(&manifest_path, &text)
             .map_err(|e| CookError(format!("{}: {e}", manifest_path.display())))?;
     }
+    // Across the string tables: every locale has every key, with its arguments.
+    let tables: Vec<(&str, &[u8])> = sources
+        .iter()
+        .filter(|s| s.kind == Kind::Strings)
+        .map(|s| (s.rel.as_str(), s.bytes.as_slice()))
+        .collect();
+    let mut warnings = Vec::new();
+    for (rel, what) in e6::check_strings(&tables) {
+        warnings.push(format!("assets/{rel}: {what}"));
+        if let Some(r) = reports.iter_mut().find(|r| r.source == rel) {
+            r.notes.push(what);
+        }
+    }
     reports.sort_by(|a, b| a.source.cmp(&b.source));
     Ok(Report {
+        warnings,
         root: root.display().to_string(),
         cooker: COOKER_VERSION.to_string(),
         texture_encoder: texture_encoder.unwrap_or_else(|e| format!("none ({e})")),
@@ -1236,6 +1261,7 @@ fn run(
         }
         Work::Flipbook(s) => flipbook::cook(s, p.stamp),
         Work::Behaviour(s) => e6::cook_behaviour(s, p.stamp),
+        Work::Strings(s) => e6::cook_strings(s, p.stamp),
         Work::NavMesh(s) => e6::cook_navmesh(s, p.stamp),
         Work::Font(s, f) => {
             font::cook(&s.bytes, f, threads, p.stamp).map(|(b, n)| (b, vec![n.note]))

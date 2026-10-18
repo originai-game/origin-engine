@@ -16,7 +16,7 @@ runtime = []
 # transcodes with Binomial's wasm transcoder).
 transcode = ["runtime", "dep:basis-universal", "dep:ruzstd"]
 # The cook itself (native only): importers, encoders, the incremental manifest.
-cook = ["runtime", "dep:og-ai", "og-nav/bake", "dep:gltf", "dep:image", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:hound", "dep:ruzstd", "dep:serde_json", "dep:nalgebra", "dep:og-ui"]
+cook = ["runtime", "dep:og-ai", "dep:og-i18n", "og-nav/bake", "dep:gltf", "dep:image", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:hound", "dep:ruzstd", "dep:serde_json", "dep:nalgebra", "dep:og-ui"]
 # Encode textures with the basis-universal crate (a default). Without it the
 # cook looks for KTX-Software's `toktx` on PATH.
 basis = ["dep:basis-universal", "dep:ruzstd"]
@@ -33,6 +33,8 @@ og-tilemap = { path = "../og-tilemap" }
 # and validates behaviours with og-ai's parser.
 og-nav = { path = "../og-nav" }
 og-ai = { path = "../og-ai", optional = true }
+# String tables are checked, and shaped scripts found, at cook time.
+og-i18n = { path = "../og-i18n", optional = true }
 glam = { workspace = true }
 bytemuck = { workspace = true }
 miniz_oxide = "0.8"

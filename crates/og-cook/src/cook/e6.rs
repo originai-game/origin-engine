@@ -456,3 +456,64 @@ pub(super) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
     );
     Ok((w.finish(), notes))
 }
+
+/// Cooks a string table (`type strings`): validated by og-i18n, kept as text.
+pub(super) fn cook_strings(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
+    let text = std::str::from_utf8(&s.bytes)
+        .map_err(|_| CookError("a string table is text (UTF-8)".into()))?;
+    let t = og_i18n::StringTable::parse(text).map_err(CookError)?;
+    let mut w = BlobWriter::new(
+        format::Strings::type_hash(),
+        format::Strings::schema_version(),
+        stamp,
+    );
+    w.table(
+        "meta",
+        &[format::StringsMeta {
+            text_bytes: text.len() as u32,
+            strings: t.entries.len() as u32,
+        }],
+        format::row_hash::<format::StringsMeta>(),
+    )
+    .raw("text", text.as_bytes().to_vec(), 16);
+    Ok((
+        w.finish(),
+        vec![format!(
+            "strings '{}' ({}): {} entries{}",
+            t.locale,
+            t.direction.as_str(),
+            t.entries.len(),
+            if t.fonts.is_empty() {
+                String::new()
+            } else {
+                format!(", fonts {}", t.fonts.join(", "))
+            }
+        )],
+    ))
+}
+
+/// The cook's check across a project's string tables: per table, every
+/// key the base table has and it lacks, takes other arguments for, or
+/// has that the base lacks (og-i18n's `check_tables`), as (source, line).
+pub(super) fn check_strings(sources: &[(&str, &[u8])]) -> Vec<(String, String)> {
+    let tables: Vec<(String, og_i18n::StringTable)> = sources
+        .iter()
+        .filter_map(|(rel, bytes)| {
+            let t = og_i18n::StringTable::parse(std::str::from_utf8(bytes).ok()?).ok()?;
+            Some((rel.to_string(), t))
+        })
+        .collect();
+    let only: Vec<og_i18n::StringTable> = tables.iter().map(|(_, t)| t.clone()).collect();
+    og_i18n::check_tables(&only)
+        .into_iter()
+        .filter_map(|g| {
+            let rel = tables.iter().find(|(_, t)| t.locale == g.locale)?.0.clone();
+            let what = match g.problem {
+                "missing" => format!("missing key '{}' ({})", g.key, g.detail),
+                "arguments" => format!("key '{}' takes other arguments ({})", g.key, g.detail),
+                _ => format!("key '{}' is not in the base table ({})", g.key, g.detail),
+            };
+            Some((rel, what))
+        })
+        .collect()
+}
