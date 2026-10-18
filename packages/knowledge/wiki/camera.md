@@ -8,16 +8,15 @@ Camera controllers are components (OrbitCamera, FollowCamera, Follow2D) on the e
 
 - **TypeScript**: functions are the namespace `og.camera`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Skill**: `og-feel`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module camera {
-  doc "The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names."
-  doc "Camera controllers are components (OrbitCamera, FollowCamera, Follow2D) on the entity the camera orbits or follows; the systems that drive them ship in TypeScript as og.systems.cameras."
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1183</sub>
+<sub>`api.ogt` line 1192</sub>
 
 ## Contents
 
@@ -63,7 +62,7 @@ fn shake {
 }
 ```
 
-<sub>`api.ogt` line 1518</sub>
+<sub>`api.ogt` line 1528</sub>
 
 <a id="fn-punch"></a>
 
@@ -93,7 +92,7 @@ fn punch {
 }
 ```
 
-<sub>`api.ogt` line 1525</sub>
+<sub>`api.ogt` line 1535</sub>
 
 <a id="fn-kick"></a>
 
@@ -125,7 +124,7 @@ fn kick {
 }
 ```
 
-<sub>`api.ogt` line 1532</sub>
+<sub>`api.ogt` line 1542</sub>
 
 ## Components, resources and events
 
@@ -299,7 +298,7 @@ resource Camera {
 }
 ```
 
-<sub>`api.ogt` line 1187</sub>
+<sub>`api.ogt` line 1197</sub>
 
 <a id="member-Camera-lookAt"></a>
 
@@ -326,7 +325,7 @@ fn lookAt {
 }
 ```
 
-<sub>`api.ogt` line 1300</sub>
+<sub>`api.ogt` line 1310</sub>
 
 <a id="member-Camera-worldToScreen"></a>
 
@@ -354,7 +353,7 @@ fn worldToScreen {
 }
 ```
 
-<sub>`api.ogt` line 1304</sub>
+<sub>`api.ogt` line 1314</sub>
 
 <a id="member-Camera-screenToRay"></a>
 
@@ -384,7 +383,7 @@ fn screenToRay {
 }
 ```
 
-<sub>`api.ogt` line 1309</sub>
+<sub>`api.ogt` line 1319</sub>
 
 <a id="record-OrbitCamera"></a>
 
@@ -492,7 +491,7 @@ component OrbitCamera {
 }
 ```
 
-<sub>`api.ogt` line 1317</sub>
+<sub>`api.ogt` line 1327</sub>
 
 <a id="record-FollowCamera"></a>
 
@@ -530,7 +529,7 @@ component FollowCamera {
 }
 ```
 
-<sub>`api.ogt` line 1391</sub>
+<sub>`api.ogt` line 1401</sub>
 
 <a id="record-Follow2D"></a>
 
@@ -609,7 +608,7 @@ component Follow2D {
 }
 ```
 
-<sub>`api.ogt` line 1410</sub>
+<sub>`api.ogt` line 1420</sub>
 
 <a id="record-CameraZone"></a>
 
@@ -644,7 +643,7 @@ component CameraZone {
 }
 ```
 
-<sub>`api.ogt` line 1462</sub>
+<sub>`api.ogt` line 1472</sub>
 
 <a id="record-CameraRail"></a>
 
@@ -709,4 +708,4 @@ component CameraRail {
 }
 ```
 
-<sub>`api.ogt` line 1478</sub>
+<sub>`api.ogt` line 1488</sub>

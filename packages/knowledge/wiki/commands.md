@@ -8,17 +8,15 @@ Core actions ship with the engine; a module or a game registers more. Unknown ac
 
 - **TypeScript**: functions are the namespace `og.commands`; components, resources and events are tokens on `og`.
 - **Publish builds**: dropped (members may override).
+- **Skill**: `og-build`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module commands {
-  doc "The command channel: actions scheduled on simulation time, from `og run --commands \"t:action[:args];...\"` or the probe's commands()."
-  doc "Core actions ship with the engine; a module or a game registers more. Unknown actions warn and continue. Not in publish builds."
-  publish false
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 8781</sub>
+<sub>`api.ogt` line 8805</sub>
 
 ## Contents
 
@@ -67,7 +65,7 @@ fn register {
 }
 ```
 
-<sub>`api.ogt` line 8853</sub>
+<sub>`api.ogt` line 8878</sub>
 
 <a id="fn-parse"></a>
 
@@ -95,7 +93,7 @@ fn parse {
 }
 ```
 
-<sub>`api.ogt` line 8861</sub>
+<sub>`api.ogt` line 8886</sub>
 
 <a id="fn-help"></a>
 
@@ -123,7 +121,7 @@ fn help {
 }
 ```
 
-<sub>`api.ogt` line 8867</sub>
+<sub>`api.ogt` line 8892</sub>
 
 <a id="fn-schedule"></a>
 
@@ -153,7 +151,7 @@ fn schedule {
 }
 ```
 
-<sub>`api.ogt` line 8873</sub>
+<sub>`api.ogt` line 8898</sub>
 
 ## Types
 
@@ -226,7 +224,7 @@ enum CoreAction {
 }
 ```
 
-<sub>`api.ogt` line 8786</sub>
+<sub>`api.ogt` line 8811</sub>
 
 <a id="type-CommandHandler"></a>
 
@@ -253,7 +251,7 @@ callback CommandHandler {
 }
 ```
 
-<sub>`api.ogt` line 8816</sub>
+<sub>`api.ogt` line 8841</sub>
 
 <a id="type-CommandDesc"></a>
 
@@ -277,7 +275,7 @@ struct CommandDesc {
 }
 ```
 
-<sub>`api.ogt` line 8822</sub>
+<sub>`api.ogt` line 8847</sub>
 
 <a id="type-CommandStep"></a>
 
@@ -302,7 +300,7 @@ struct CommandStep {
 }
 ```
 
-<sub>`api.ogt` line 8829</sub>
+<sub>`api.ogt` line 8854</sub>
 
 <a id="type-CommandInfo"></a>
 
@@ -327,7 +325,7 @@ struct CommandInfo {
 }
 ```
 
-<sub>`api.ogt` line 8838</sub>
+<sub>`api.ogt` line 8863</sub>
 
 <a id="type-CommandsReport"></a>
 
@@ -350,4 +348,4 @@ struct CommandsReport {
 }
 ```
 
-<sub>`api.ogt` line 8846</sub>
+<sub>`api.ogt` line 8871</sub>

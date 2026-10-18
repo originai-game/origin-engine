@@ -28,6 +28,17 @@ const run = (cmd: string[]) => {
   return { code: r.exitCode, out: decode(r.stdout) + decode(r.stderr) };
 };
 
+/** The skill sections a text names (`og-feel §3`, `og-taste §4, §10`) that the knowledge package's skills do not have. */
+function unresolved(text: string): string[] {
+  const missing: string[] = [];
+  for (const m of text.matchAll(/(og-[a-z]+(?:-[a-z]+)*) §(\d+)((?:, §\d+| and §\d+)*)/g)) {
+    const skill = join(repo, "packages", "knowledge", "skills", m[1]!, "SKILL.md");
+    const have = existsSync(skill) ? new Set([...readFileSync(skill, "utf8").matchAll(/^## (\d+)\. /gm)].map((h) => h[1]!)) : new Set<string>();
+    for (const n of [m[2]!, ...[...m[3]!.matchAll(/§(\d+)/g)].map((x) => x[1]!)]) if (!have.has(n)) missing.push(`${m[1]} §${n}`);
+  }
+  return missing;
+}
+
 interface Polish {
   scores: Record<string, number | null>;
   findings: Array<{ measure: string; where: string; detail: string; fix: string }>;
@@ -55,6 +66,7 @@ test("og polish scores the topdown playtests and maps each finding to its skill"
   expect(bite?.fix ?? "").toContain("og-feel §3");
   const report = readFileSync(join(out, "report.md"), "utf8");
   expect(report).toContain("| Hit feedback | 100 |");
+  expect(unresolved(report)).toEqual([]);
   const frames = [...report.matchAll(/\]\((frames\/[^)]+\.png)\)/g)].map((m) => m[1]!);
   expect(frames.length).toBe(3);
   for (const f of frames) expect(existsSync(join(out, f))).toBeTrue();

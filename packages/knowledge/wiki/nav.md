@@ -10,17 +10,15 @@ Agents move on the profile's plane: x and y in 2D (a grid's rows run up), x and 
 
 - **TypeScript**: functions are the namespace `og.nav`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Skill**: `og-ai`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module nav {
-  doc "Navigation: grids (A* and jump point search with eight-way moves that never cut a blocked corner, line-of-sight smoothing), flow fields for crowds, and navmeshes (baked at cook time from a level's static colliders and models, or built at runtime for a flat procedural level) with funnel paths and box obstacles that rebuild only the tiles they touch."
-  doc "Agents are entities with an og.NavAgent (and an og.Transform): the og.nav system, after the game's systems and before physics, plans their paths, follows them and adds the og.Steering behaviours; an entity with an og.Velocity (a physics body) gets its velocity written, any other its Transform moved. Everything is deterministic and in snapshots: paths, grid edits, obstacles and flow targets."
-  doc "Agents move on the profile's plane: x and y in 2D (a grid's rows run up), x and z in 3D (y kept on grids, from the surface on a navmesh)."
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 5619</sub>
+<sub>`api.ogt` line 5637</sub>
 
 ## Contents
 
@@ -90,7 +88,7 @@ fn grid {
 }
 ```
 
-<sub>`api.ogt` line 5974</sub>
+<sub>`api.ogt` line 5993</sub>
 
 <a id="fn-gridFromTilemap"></a>
 
@@ -120,7 +118,7 @@ fn gridFromTilemap {
 }
 ```
 
-<sub>`api.ogt` line 5981</sub>
+<sub>`api.ogt` line 6000</sub>
 
 <a id="fn-setCost"></a>
 
@@ -156,7 +154,7 @@ fn setCost {
 }
 ```
 
-<sub>`api.ogt` line 5988</sub>
+<sub>`api.ogt` line 6007</sub>
 
 <a id="fn-cellAt"></a>
 
@@ -188,7 +186,7 @@ fn cellAt {
 }
 ```
 
-<sub>`api.ogt` line 5998</sub>
+<sub>`api.ogt` line 6017</sub>
 
 <a id="fn-findPath"></a>
 
@@ -218,7 +216,7 @@ fn findPath {
 }
 ```
 
-<sub>`api.ogt` line 6006</sub>
+<sub>`api.ogt` line 6025</sub>
 
 <a id="fn-flowField"></a>
 
@@ -248,7 +246,7 @@ fn flowField {
 }
 ```
 
-<sub>`api.ogt` line 6013</sub>
+<sub>`api.ogt` line 6032</sub>
 
 <a id="fn-setFlowTargets"></a>
 
@@ -280,7 +278,7 @@ fn setFlowTargets {
 }
 ```
 
-<sub>`api.ogt` line 6020</sub>
+<sub>`api.ogt` line 6039</sub>
 
 <a id="fn-flowAt"></a>
 
@@ -312,7 +310,7 @@ fn flowAt {
 }
 ```
 
-<sub>`api.ogt` line 6028</sub>
+<sub>`api.ogt` line 6047</sub>
 
 <a id="fn-load"></a>
 
@@ -342,7 +340,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 6036</sub>
+<sub>`api.ogt` line 6055</sub>
 
 <a id="fn-build"></a>
 
@@ -372,7 +370,7 @@ fn build {
 }
 ```
 
-<sub>`api.ogt` line 6043</sub>
+<sub>`api.ogt` line 6062</sub>
 
 <a id="fn-setObstacle"></a>
 
@@ -408,7 +406,7 @@ fn setObstacle {
 }
 ```
 
-<sub>`api.ogt` line 6050</sub>
+<sub>`api.ogt` line 6069</sub>
 
 <a id="fn-nearest"></a>
 
@@ -444,7 +442,7 @@ fn nearest {
 }
 ```
 
-<sub>`api.ogt` line 6061</sub>
+<sub>`api.ogt` line 6080</sub>
 
 <a id="fn-pathOf"></a>
 
@@ -474,7 +472,7 @@ fn pathOf {
 }
 ```
 
-<sub>`api.ogt` line 6072</sub>
+<sub>`api.ogt` line 6091</sub>
 
 ## Components, resources and events
 
@@ -595,7 +593,7 @@ component NavAgent {
 }
 ```
 
-<sub>`api.ogt` line 5645</sub>
+<sub>`api.ogt` line 5664</sub>
 
 <a id="record-Steering"></a>
 
@@ -722,7 +720,7 @@ component Steering {
 }
 ```
 
-<sub>`api.ogt` line 5730</sub>
+<sub>`api.ogt` line 5749</sub>
 
 ## Types
 
@@ -738,7 +736,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Navigation "A grid, a navmesh or a flow field agents plan on."
 ```
 
-<sub>`api.ogt` line 5624</sub>
+<sub>`api.ogt` line 5643</sub>
 
 <a id="type-NavAlgorithm"></a>
 
@@ -761,7 +759,7 @@ enum NavAlgorithm {
 }
 ```
 
-<sub>`api.ogt` line 5639</sub>
+<sub>`api.ogt` line 5658</sub>
 
 <a id="type-NavGridDesc"></a>
 
@@ -806,7 +804,7 @@ struct NavGridDesc {
 }
 ```
 
-<sub>`api.ogt` line 5824</sub>
+<sub>`api.ogt` line 5843</sub>
 
 <a id="type-TilemapGridDesc"></a>
 
@@ -834,7 +832,7 @@ struct TilemapGridDesc {
 }
 ```
 
-<sub>`api.ogt` line 5849</sub>
+<sub>`api.ogt` line 5868</sub>
 
 <a id="type-NavCell"></a>
 
@@ -857,7 +855,7 @@ struct NavCell {
 }
 ```
 
-<sub>`api.ogt` line 5859</sub>
+<sub>`api.ogt` line 5878</sub>
 
 <a id="type-PathDesc"></a>
 
@@ -899,7 +897,7 @@ struct PathDesc {
 }
 ```
 
-<sub>`api.ogt` line 5866</sub>
+<sub>`api.ogt` line 5885</sub>
 
 <a id="type-NavPath"></a>
 
@@ -928,7 +926,7 @@ struct NavPath {
 }
 ```
 
-<sub>`api.ogt` line 5887</sub>
+<sub>`api.ogt` line 5906</sub>
 
 <a id="type-FlowDesc"></a>
 
@@ -952,7 +950,7 @@ struct FlowDesc {
 }
 ```
 
-<sub>`api.ogt` line 5898</sub>
+<sub>`api.ogt` line 5917</sub>
 
 <a id="type-NavBox"></a>
 
@@ -980,7 +978,7 @@ struct NavBox {
 }
 ```
 
-<sub>`api.ogt` line 5905</sub>
+<sub>`api.ogt` line 5924</sub>
 
 <a id="type-NavMeshDesc"></a>
 
@@ -1038,7 +1036,7 @@ struct NavMeshDesc {
 }
 ```
 
-<sub>`api.ogt` line 5916</sub>
+<sub>`api.ogt` line 5935</sub>
 
 <a id="type-NavMeshInfo"></a>
 
@@ -1073,7 +1071,7 @@ struct NavMeshInfo {
 }
 ```
 
-<sub>`api.ogt` line 5952</sub>
+<sub>`api.ogt` line 5971</sub>
 
 <a id="type-NavRebuild"></a>
 
@@ -1094,7 +1092,7 @@ struct NavRebuild {
 }
 ```
 
-<sub>`api.ogt` line 5968</sub>
+<sub>`api.ogt` line 5987</sub>
 
 ## Column kinds
 
@@ -1113,7 +1111,7 @@ column Navigation {
 }
 ```
 
-<sub>`api.ogt` line 5626</sub>
+<sub>`api.ogt` line 5645</sub>
 
 ## Constants
 
@@ -1129,28 +1127,28 @@ column Navigation {
 const NAV_IDLE u32 0 "NavAgent.status: not seeking."
 ```
 
-<sub>`api.ogt` line 5633</sub>
+<sub>`api.ogt` line 5652</sub>
 
 ```ogt
 const NAV_MOVING u32 1 "NavAgent.status: following a path or a flow field."
 ```
 
-<sub>`api.ogt` line 5634</sub>
+<sub>`api.ogt` line 5653</sub>
 
 ```ogt
 const NAV_ARRIVED u32 2 "NavAgent.status: within stopDistance of the target."
 ```
 
-<sub>`api.ogt` line 5635</sub>
+<sub>`api.ogt` line 5654</sub>
 
 ```ogt
 const NAV_UNREACHABLE u32 3 "NavAgent.status: no path reaches the target, or the agent is off its grid or navmesh."
 ```
 
-<sub>`api.ogt` line 5636</sub>
+<sub>`api.ogt` line 5655</sub>
 
 ```ogt
 const NAV_PARTIAL u32 4 "NavAgent.status: the target is cut off; moving to the reachable point nearest it."
 ```
 
-<sub>`api.ogt` line 5637</sub>
+<sub>`api.ogt` line 5656</sub>

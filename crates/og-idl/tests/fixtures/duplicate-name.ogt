@@ -1,11 +1,12 @@
 type api
 version 1
 ---
-# expect: 32: duplicate type name `Thing`
+# expect: 35: duplicate type name `Thing`
 package "@origingame/fixture"
 doc "A fixture: the smallest valid API plus one mistake below."
 
 module reflect {
+  skill og-core
   doc "Reflection."
   place top
   struct FieldOptions {
@@ -22,12 +23,14 @@ module reflect {
 }
 
 module a {
+  skill og-core
   doc "Module a."
   struct Thing {
     doc "A thing."
   }
 }
 module b {
+  skill og-core
   doc "Module b."
   struct Thing {
     doc "Another thing."

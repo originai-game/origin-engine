@@ -1,6 +1,6 @@
 ---
 name: og-i18n
-description: Localizing a game on Origin Engine with og.i18n — string tables per locale as .ogt, messages with arguments, plurals and select (ICU), the host's locale and the player's choice, font chains for Chinese, Japanese, Korean and Arabic, shaping and right-to-left layout in og.ui, the cook-time check for missing keys, and how to prove each locale with frames. Use when a game shows text to players in more than one language, adds a language, or shows boxes or broken Arabic.
+description: Localizing a game on Origin Engine with og.i18n — string tables per locale as .ogt, messages with arguments, plurals and select (ICU), the host's locale and the player's choice, font chains for Chinese, Japanese, Korean and Arabic, CJK line breaking (kinsoku), shaping and right-to-left layout in og.ui, the cook-time check for missing keys, and how to prove each locale with frames. Use when a game shows text to players in more than one language, adds a language, or shows boxes or broken Arabic.
 ---
 
 Every string a player reads comes from a table, never from a literal in a
@@ -32,7 +32,7 @@ string "results.time" "タイム {time}"
   `ja`, `zh-TW` takes `zh-Hant` or `zh-TW`, else the base).
 - A key a table lacks falls back to its `fallback` table, then the base, and
   `og cook` warns about it. Treat a cook warning as a bug: `og polish`
-  scores missing keys.
+  scores missing keys (og-build §5).
 
 ## 2. Messages
 
@@ -67,6 +67,12 @@ string "results.time" "タイム {time}"
 - og-ui looks a glyph up in the active locale's fonts first, then every
   other loaded table's, then the skin's. A box (tofu) in a frame means a
   font lacks the character: add it to the subset and to `chars`.
+- Chinese, Japanese and Korean break between characters under kinsoku:
+  closing brackets and quotes, 、。，？！, small kana, ー and the iteration
+  marks never start a line, opening brackets never end one, and a katakana
+  word stays whole (オリジン・ / クエスト, not オリジン・クエス / ト);
+  Latin breaks at spaces. Nothing to configure: write the string as it
+  reads and check the frame.
 
 ## 4. Right to left
 

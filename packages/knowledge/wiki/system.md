@@ -8,17 +8,15 @@ A system declares what it reads and writes; a write to an undeclared component i
 
 - **TypeScript**: functions are named exports of the package: `import { … } from "@origingame/engine"`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Skill**: `og-core`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module system {
-  doc "Systems: functions the engine calls once per tick with their matched archetypes."
-  doc "A system declares what it reads and writes; a write to an undeclared component is refused at registration with the field name."
-  place top
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 385</sub>
+<sub>`api.ogt` line 388</sub>
 
 ## Contents
 
@@ -61,7 +59,7 @@ fn defineSystem {
 }
 ```
 
-<sub>`api.ogt` line 414</sub>
+<sub>`api.ogt` line 418</sub>
 
 ## Interfaces
 
@@ -77,7 +75,7 @@ interface System {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 407</sub>
+<sub>`api.ogt` line 411</sub>
 
 <a id="member-System-name"></a>
 
@@ -95,7 +93,7 @@ Binding symbol `og_system_get_name` · publish builds: kept
 prop name String "The system's unique name."
 ```
 
-<sub>`api.ogt` line 409</sub>
+<sub>`api.ogt` line 413</sub>
 
 <a id="member-System-reads"></a>
 
@@ -113,7 +111,7 @@ Binding symbol `og_system_get_reads` · publish builds: kept
 prop reads List.AnyReflected "What it reads."
 ```
 
-<sub>`api.ogt` line 410</sub>
+<sub>`api.ogt` line 414</sub>
 
 <a id="member-System-writes"></a>
 
@@ -131,7 +129,7 @@ Binding symbol `og_system_get_writes` · publish builds: kept
 prop writes List.AnyReflected "What it writes."
 ```
 
-<sub>`api.ogt` line 411</sub>
+<sub>`api.ogt` line 415</sub>
 
 ## Types
 
@@ -163,7 +161,7 @@ struct SystemDesc {
 }
 ```
 
-<sub>`api.ogt` line 390</sub>
+<sub>`api.ogt` line 394</sub>
 
 <a id="type-SystemRun"></a>
 
@@ -192,4 +190,4 @@ callback SystemRun {
 }
 ```
 
-<sub>`api.ogt` line 400</sub>
+<sub>`api.ogt` line 404</sub>

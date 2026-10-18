@@ -47,7 +47,7 @@ if (answer.ok && typeof answer.data.value === "number") run.best[i] = Math.max(r
 | Progress, unlocks, a best score | `storeGet(world, key)`, `storeSet(world, { key, value, revision })` | one key per independent thing; values ≤ 64 KiB, at most 64 keys and 1 MiB per player and game; pass the revision you read to refuse a stale write (`conflict`, whose `error.revision` is where the key is now: read again and merge), `create: true` to write only a key never written, no revision for "the last write wins" |
 | Volume, controls, language | `loadSettings(world)`, `saveSettings(world, settings)` | the key `og.settings`, last save wins, local fallback when offline |
 | A leaderboard | `leaderboardSubmit(world, { board, score })`, `leaderboardTop`, `leaderboardAround` | the board keeps the player's best; show "around me" as well as the top |
-| Analytics | `telemetry(world, "round.over", { score, coins })` | one-way; names `a.b_c`, at most 16 scalar attributes; never personal data |
+| Analytics | `telemetry(world, "round.over", { score, coins })` | one-way; a name of 1–64 letters, digits, `.` and `_` (the Player files it as `game.custom.<name>`), at most 16 scalar attributes; never personal data |
 | Origin Point | `point(world, { reason, amount })` | the platform decides what it grants (today nothing under a Player: `{ granted: 0, balance: null }` until an approved point policy; show nothing that depends on it) |
 | AI-generated content shown | `aiMark(world, { kind, label })` | disclosure, not permission |
 

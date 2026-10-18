@@ -53,6 +53,10 @@ pub struct Module {
     pub place: Place,
     /// `false` drops the whole module from `publish` builds.
     pub publish: bool,
+    /// The knowledge skill that teaches the module (`skill og-feel`: the
+    /// engine repository's packages/knowledge/skills/og-feel); the wiki's
+    /// index groups the modules by it and each page names it.
+    pub skill: String,
     pub items: Vec<Item>,
     pub line: usize,
 }

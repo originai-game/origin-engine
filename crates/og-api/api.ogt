@@ -32,6 +32,7 @@ unit bpm "beats per minute"
 # ── math ──────────────────────────────────────────────────────────────────
 
 module math {
+  skill og-core
   doc "Plain math values in the three.js vocabulary. They are data: the engine owns the operations, so results are identical on every host."
   place top
 
@@ -82,6 +83,7 @@ module math {
 # ── reflect ───────────────────────────────────────────────────────────────
 
 module reflect {
+  skill og-core
   doc "Reflection: components and resources are declared once with their field layout and metadata, and registered by name."
   doc "The inspector, Tune, the probe, scene text and the wiki read this one schema. Each column factory below makes one field."
   place top
@@ -189,6 +191,7 @@ module reflect {
 # ── world ─────────────────────────────────────────────────────────────────
 
 module world {
+  skill og-core
   doc "The world: an archetype ECS. Entities are generational handles; components are columns in engine memory."
   doc "Structural changes (spawn, despawn, insert, remove) invalidate typed views; the API refuses a stale view."
 
@@ -383,6 +386,7 @@ module world {
 # ── system ────────────────────────────────────────────────────────────────
 
 module system {
+  skill og-core
   doc "Systems: functions the engine calls once per tick with their matched archetypes."
   doc "A system declares what it reads and writes; a write to an undeclared component is refused at registration with the field name."
   place top
@@ -423,6 +427,7 @@ module system {
 # ── game ──────────────────────────────────────────────────────────────────
 
 module game {
+  skill og-game
   doc "The game entry: what the bundle's default export declares."
   place root
 
@@ -482,6 +487,7 @@ module game {
 # ── transform ─────────────────────────────────────────────────────────────
 
 module transform {
+  skill og-game
   doc "Transforms in the three.js vocabulary: position, quaternion and scale, composed into matrixWorld down the parent chain."
 
   component Transform {
@@ -542,6 +548,7 @@ module transform {
 # ── time ──────────────────────────────────────────────────────────────────
 
 module time {
+  skill og-feel
   doc "Simulation time. Game code never reads the wall clock; it reads Time."
 
   resource Time {
@@ -600,6 +607,7 @@ module time {
 # ── rng ───────────────────────────────────────────────────────────────────
 
 module rng {
+  skill og-core
   doc "Deterministic randomness. Every random draw comes from an Rng stream; the sequence for a seed is identical on every host and in the Web scaffold's rng.ts."
 
   interface RngStream {
@@ -673,6 +681,7 @@ module rng {
 # ── input ─────────────────────────────────────────────────────────────────
 
 module input {
+  skill og-game
   doc "Input as the game sees it: the Input resource for polling, events for edges."
   doc "The shell collects pointer, keyboard and wheel input on the main thread; the probe and the command channel inject through the same path."
   doc "Several pointers at once (multi-touch) are og.Pointers; the first four gamepads, in the W3C standard mapping, are og.Gamepad. Both are world state, as og.Input is, so they replay."
@@ -1181,6 +1190,7 @@ module input {
 # ── camera ────────────────────────────────────────────────────────────────
 
 module camera {
+  skill og-feel
   doc "The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names."
   doc "Camera controllers are components (OrbitCamera, FollowCamera, Follow2D) on the entity the camera orbits or follows; the systems that drive them ship in TypeScript as og.systems.cameras."
 
@@ -1541,6 +1551,7 @@ module camera {
 # ── render ────────────────────────────────────────────────────────────────
 
 module render {
+  skill og-game
   doc "What is drawn: meshes with materials. Draws are instanced by (geometry, material) automatically; there is no per-object draw call."
 
   handle Geometry "Vertex and index data, as three.js BufferGeometry. Comes from a loaded glTF."
@@ -2726,6 +2737,7 @@ module render {
 # ── load ──────────────────────────────────────────────────────────────────
 
 module load {
+  skill og-game
   doc "Asset loading from cooked output: `og cook` turns assets/ into cooked/ (.ogb blobs and the manifest cooked/.cook.ogt), and the runtime reads only cooked/."
   doc "Paths are asset ids: the path under assets/ (`models/ship.glb`, `scenes/main.ogt`); an `assets/` prefix is accepted. Every blob is checked against the manifest's type, schema version and cook stamp."
   doc "The game's bundle (`cooked`) is opened before the first tick and GameDesc.scene is spawned then. Loads from an open bundle complete at once on both hosts (the web host fetches the bundle's files before the engine starts); only og.load.bundle of another bundle can be pending, and it completes at a tick boundary."
@@ -2964,6 +2976,7 @@ module load {
 # ── physics ───────────────────────────────────────────────────────────────
 
 module physics {
+  skill og-game
   doc "Rigid bodies over rapier (rapier3d in the 3D profile, rapier2d in 2D, both with enhanced determinism): game code owns the components, the engine's og.physics system steps them after the game's systems and writes the dynamic bodies back."
   doc "The profile is the project's (`profile \"2d\"` or `\"3d\"` in project.ogt). In 2D, bodies move in the xy plane and rotate about z; a transform keeps its z. A collider without a RigidBody is static at its transform."
   doc "The rapier world persists between ticks and is world state: snapshots, restore and the world hash cover the whole simulation. Events sent in tick N are read in tick N + 1."
@@ -4236,6 +4249,7 @@ module physics {
 # ── atmosphere ────────────────────────────────────────────────────────────
 
 module atmosphere {
+  skill og-game
   doc "Fog, a procedural sky, the day-night cycle, weather and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before."
   doc "The day-night clock is a function of the tick (DayNight.start plus the simulated time times speed), so it is the same on every run and after a restore; rendering reads the world and never writes it."
 
@@ -4553,6 +4567,7 @@ module atmosphere {
 # ── anim ──────────────────────────────────────────────────────────────────
 
 module anim {
+  skill og-game
   doc "Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics."
   doc "Game code owns the components and sets players, graph parameters and IK targets; og.anim writes the pose (kept as world state in the `og.anim` state block, so snapshots, restore and the world hash cover it), the joint palette, root motion into og.Transform and the fields marked written. Asset handles are what og.load.animation and og.anim.graph answer; 0 is none."
   doc "Clips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names. Assets are not world state: a hot reload registers them again."
@@ -4957,6 +4972,7 @@ module anim {
 # ── tween ─────────────────────────────────────────────────────────────────
 
 module tween {
+  skill og-feel
   doc "Tweens: animate any numeric field of a component (og.Transform.position, og.Sprite.color, og.Sprite.opacity, a game's own f32) from its value to a target over time with an easing curve, a delay, loops and yoyo; chain them in sequences or run them in parallel. Advanced by the engine's og.tween system after the game's systems and before og.anim and physics, by scaled time (slow motion, hit stop) unless unscaled."
   doc "Running tweens are world state (the og.tween state block): snapshots, restore and the world hash cover them. og.TweenCompleted reports a tween or group that ends on its own; a cancelled one, or one whose entity or component went away, ends silently."
   doc "Feel presets are tweens too: og.tween.squash (squash and stretch that recovers) and og.tween.flash (a hit flash that fades)."
@@ -5148,6 +5164,7 @@ module tween {
 # ── tilemap ───────────────────────────────────────────────────────────────
 
 module tilemap {
+  skill og-game
   doc "Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component."
   doc "Layers draw through the sprite batch in 16x16-tile chunks culled to the view, each at the map's sprite layer plus its z, scrolled by its parallax; solid tiles become static og-physics colliders merged into rectangles. Runtime edits (og.tilemap.setTile, re-auto-tiling the neighbourhood) are world state (the og.tilemap state block), and the colliders follow them."
   doc "Cells count from the top-left corner, x right and y down (Tiled's); the map's top-left corner is at the entity's position."
@@ -5290,6 +5307,7 @@ module tilemap {
 # ── audio ─────────────────────────────────────────────────────────────────
 
 module audio {
+  skill og-audio
   doc "Sound: inside the tick, the engine's og.audio system (after the game's systems and physics) turns AudioSource changes into a deterministic, time-stamped command stream; outside the tick the host's mixer renders it (an AudioWorklet on the web, the output device, a capture or a null sink natively)."
   doc "The stream, not the PCM, is world state: snapshots, restore and the world hash cover it, and nothing a sink does reaches the world. Load sounds with og.load.sound; inserting a source plays it, setting `playing` false stops it, and a one-shot sets `playing` back to false when it ends."
   doc "Spatial gain and pan are computed in the tick from the source's og.Transform relative to the first AudioListener (three.js convention: the listener looks down -Z, +X is right; with none, the origin looking down -Z)."
@@ -5617,6 +5635,7 @@ module audio {
 # ── nav ───────────────────────────────────────────────────────────────────
 
 module nav {
+  skill og-ai
   doc "Navigation: grids (A* and jump point search with eight-way moves that never cut a blocked corner, line-of-sight smoothing), flow fields for crowds, and navmeshes (baked at cook time from a level's static colliders and models, or built at runtime for a flat procedural level) with funnel paths and box obstacles that rebuild only the tiles they touch."
   doc "Agents are entities with an og.NavAgent (and an og.Transform): the og.nav system, after the game's systems and before physics, plans their paths, follows them and adds the og.Steering behaviours; an entity with an og.Velocity (a physics body) gets its velocity written, any other its Transform moved. Everything is deterministic and in snapshots: paths, grid edits, obstacles and flow targets."
   doc "Agents move on the profile's plane: x and y in 2D (a grid's rows run up), x and z in 3D (y kept on grids, from the surface on a navmesh)."
@@ -6080,6 +6099,7 @@ module nav {
 # ── ai ────────────────────────────────────────────────────────────────────
 
 module ai {
+  skill og-ai
   doc "Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (crates/og-ai/README.md has the grammar), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent."
   doc "An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent (og.nav plans and walks after the game's systems) or runs one of the game's commands (GameDesc.commands, with the agent's entity handle as its first argument) before the next tick."
   doc "Conditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`). Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard."
@@ -6298,6 +6318,7 @@ module ai {
 # ── platform ──────────────────────────────────────────────────────────────
 
 module platform {
+  skill og-platform-sdk
   doc "Platform services as host capabilities (docs/design.md §2.8): cloud store, leaderboards, telemetry, Origin Point and AI marks. Game code names a method and its arguments, never a credential, a URL or a cookie: the host owns them. On the web the shell forwards each call to the Player through origin-checked postMessage (Player protocol 2, docs/web-export.md); natively the host answers from a local JSON store (`og run --platform-store`, default `<project>/.og/platform.json`)."
   doc "Calls are asynchronous: each returns a request number at once, and the answer arrives at the start of a later tick, when og.platform sends PlatformAnswered; read it with og.platform.result. Answers are host input, like key presses: the probe's `dump_platform` lists every call, its arguments, its answer and the ticks."
   doc "Errors carry the Player's stable codes: offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable, failed; retryable is true for offline, timeout, unavailable and rate_limited."
@@ -6487,6 +6508,7 @@ module platform {
 # ── i18n ──────────────────────────────────────────────────────────────────
 
 module i18n {
+  skill og-i18n
   doc "Localization: one string table per locale (`.ogt` of `type strings`: `locale \"ja\"`, its font chain `fonts \"...\"`, `string \"key\" \"message\"`), messages in a subset of ICU MessageFormat (`{name}`, `{n, number}`, `{n, plural, =0 {..} one {..} other {..}}` with `#`, `{g, select, a {..} other {..}}`), CLDR plural rules, and the locale the host asks for (the browser's `navigator.language` on the web, `og run --locale` natively)."
   doc "The active locale is the best loaded table for the request (ja-JP takes ja; zh-TW takes zh-Hant or zh-TW), else the base table (`base true`, else en, else the first). A key it lacks is read from its `fallback` table, then the base. It also sets the UI's font chain (its fonts first, then the other tables') and direction: a right-to-left locale (ar, he, fa, ur) mirrors og.ui's layout, and og-ui shapes Arabic words with the font's own tables (a font cooked with the `arabic` charset carries them). `og cook` warns about every key a locale lacks, or takes other arguments for, than the base."
 
@@ -6540,6 +6562,7 @@ module i18n {
 # ── ui ────────────────────────────────────────────────────────────────────
 
 module ui {
+  skill og-ui
   doc "The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, themes it with the platform's design tokens, draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it."
   doc "The engine opens the frame before the game's systems (from og.Input and the play surface) and closes it after them, so calls belong inside systems; outside one they do nothing and log a warning. Interaction is decided against the previous tick's rectangles, which are also what the probe resolves, so a scripted touch_move_to and a click agree; response edges (clicked, changed, submitted) last one tick."
   doc "Lengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Ids: an element's id is unique among its siblings (`idi(\"Slot\", 3)` is `Slot#3`); a path `Inventory/Slot#3` names it after its nearest ancestors. The UI state (hover, press, focus, caret, scroll) is world state: snapshots and the world hash carry it."
@@ -8771,6 +8794,7 @@ module ui {
 # ── systems ───────────────────────────────────────────────────────────────
 
 module systems {
+  skill og-feel
   doc "Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for."
 
   value cameras List.System "The camera controllers, in this order: og.orbitCamera (og.OrbitCamera), og.followCamera (og.FollowCamera) and og.follow2D (og.Follow2D). Each moves og.Camera only while an entity carries its component. List them before the game's systems that read og.Camera: `systems: [...og.systems.cameras, ...yours]`."
@@ -8779,6 +8803,7 @@ module systems {
 # ── commands ──────────────────────────────────────────────────────────────
 
 module commands {
+  skill og-build
   doc "The command channel: actions scheduled on simulation time, from `og run --commands \"t:action[:args];...\"` or the probe's commands()."
   doc "Core actions ship with the engine; a module or a game registers more. Unknown actions warn and continue. Not in publish builds."
   publish false
@@ -8881,6 +8906,7 @@ module commands {
 # ── probe ─────────────────────────────────────────────────────────────────
 
 module probe {
+  skill og-build
   doc "The probe: RuntimeProbe protocol 5 (origin/packages/contracts/src/probe.ts) served natively, plus the engine's wire members."
   doc "In a page it is published on globalThis.__runtime_probe__; on native, `og` serves it as JSON-RPC 2.0 over a loopback WebSocket at /probe."
   doc "A refusal is false or null exactly as protocol 5; a JSON-RPC error is only for a malformed call or an unknown method."

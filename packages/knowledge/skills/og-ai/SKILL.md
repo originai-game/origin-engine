@@ -124,4 +124,4 @@ tree {
   cone.
 - Determinism: a playtest with `runs: 2` over a chase must end on one hash.
 - `og polish` reports damage moments without hit feedback and inputs nobody
-  answered; enemies that bite with no hit stop show up there.
+  answered (og-build §5); enemies that bite with no hit stop show up there.

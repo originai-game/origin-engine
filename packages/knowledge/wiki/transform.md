@@ -6,15 +6,15 @@ Transforms in the three.js vocabulary: position, quaternion and scale, composed 
 
 - **TypeScript**: functions are the namespace `og.transform`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Skill**: `og-game`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module transform {
-  doc "Transforms in the three.js vocabulary: position, quaternion and scale, composed into matrixWorld down the parent chain."
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 484</sub>
+<sub>`api.ogt` line 489</sub>
 
 ## Contents
 
@@ -60,7 +60,7 @@ fn compose {
 }
 ```
 
-<sub>`api.ogt` line 510</sub>
+<sub>`api.ogt` line 516</sub>
 
 <a id="fn-decompose"></a>
 
@@ -88,7 +88,7 @@ fn decompose {
 }
 ```
 
-<sub>`api.ogt` line 518</sub>
+<sub>`api.ogt` line 524</sub>
 
 <a id="fn-lookAt"></a>
 
@@ -122,7 +122,7 @@ fn lookAt {
 }
 ```
 
-<sub>`api.ogt` line 524</sub>
+<sub>`api.ogt` line 530</sub>
 
 <a id="fn-fromAxisAngle"></a>
 
@@ -152,7 +152,7 @@ fn fromAxisAngle {
 }
 ```
 
-<sub>`api.ogt` line 534</sub>
+<sub>`api.ogt` line 540</sub>
 
 ## Components, resources and events
 
@@ -183,7 +183,7 @@ component Transform {
 }
 ```
 
-<sub>`api.ogt` line 487</sub>
+<sub>`api.ogt` line 493</sub>
 
 <a id="record-Parent"></a>
 
@@ -204,7 +204,7 @@ component Parent {
 }
 ```
 
-<sub>`api.ogt` line 498</sub>
+<sub>`api.ogt` line 504</sub>
 
 <a id="record-MatrixWorld"></a>
 
@@ -227,4 +227,4 @@ component MatrixWorld {
 }
 ```
 
-<sub>`api.ogt` line 503</sub>
+<sub>`api.ogt` line 509</sub>

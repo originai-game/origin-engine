@@ -6,8 +6,9 @@ description: Art direction for a game on Origin Engine — choosing a style from
 A game is judged in its first second, before anyone reads a word. The
 engine's UI is correct by default and characterless by default: the platform
 tokens are grey glass that suits a settings page. This skill is how to give a
-game a look of its own and keep it consistent. The mechanics are in og-ui
-(`reference/ui.md`, the og-ui skill); this is the taste.
+game a look of its own and keep it consistent. The mechanics are og-ui's
+(skins, motion and sounds are og-ui §6) and the amounts of game feel
+og-feel's; this is the taste.
 
 ## 1. Choose a style from the premise
 
@@ -113,10 +114,12 @@ neon UI reads as two games.
 
 ## 6. Feedback
 
-Every input is answered **within one frame** by a visual and a sound:
-hover (the skin's lift or highlight), press (squash, the `press` sound),
-success (a toast, a burst, `success`), refusal (a disabled button shakes and
-plays `error`; never silently ignore a press). Hand the UI its sounds with
+Every input is answered **on the same tick** (og-feel §1) by a visual and a
+sound: hover (the skin's lift or highlight), press (squash, the `press`
+sound), success (a toast, a burst, `success`), refusal (a disabled button
+shakes and plays `error` by itself; a wrong answer or a locked door shakes
+its element with `og.ui.shake` and the `error` sound; never silently ignore
+a press, and never shake the camera for it). Hand the UI its sounds with
 `og.ui.configure(world, { sounds: { hover, press, open, close, success, error } })`
 or the skin's `sound` lines. Results land with a count-up, stars with a
 `og.ui.burst`, rewards with a pop.
@@ -206,26 +209,15 @@ Run each item; each is checkable from a scripted run.
 11. **CJK**: switch the language to Chinese in settings and capture: no
     missing-glyph boxes (the skin's fallback font covers it).
 12. **None of section 9** is visible in any capture.
+13. **`og polish .` scores taste 90 or more** where it applies, and every
+    finding left is one you read in the frames and can name a reason for
+    (og-build §5).
 
 ## 11. Polish, measured: `og polish`
 
-`og polish .` plays every playtest headless and scores what can be
-measured of this checklist from the frames, the UI trees and the run's
-audio; `og-out/polish/report.md` has the scores, the frames and, for each
-finding, the section of this skill (or og-feel, og-audio, og-i18n) that
-fixes it. It refuses a project without playtests: write them first
-(og-build §Tests), with a `screenshot` on every screen that matters.
-
-| Measure | From | Passes at |
-|---|---|---|
-| Contrast | each text element's rectangle in a shot: the ground (its median) against its ink (the 1 % farthest pixels) | 4.5:1 (§3) |
-| Text size | the tallest run of ink rows in each text element, CSS px | 9 px, a 13 px face's capitals (§4, §10.6) |
-| HUD occupancy | the union of leaf elements on gameplay shots (a shot with three text elements in the central third counts as a menu) | at most 15 % of the surface and 5 % of the central third (§2) |
-| Screen transitions | a change of three or more elements with UI motion or a tween in the 20 ticks around it | every change (§5) |
-| UI sounds | a press that changed the UI and started a voice on the ui bus within 8 ticks | every press (§6) |
-| Locale keys | `og cook`'s warnings | none (og-i18n) |
-
-The numbers cannot judge a style. A disabled button's low contrast and an
-icon's small "ink" are expected; read the frames before changing anything,
-and fix the cause in the skin or the template, never per call. Run it
-again after the fix: the report is the evidence.
+`og polish .` scores the measurable part of §10 (contrast, text size, HUD
+occupancy, screen transitions, UI sounds, locale keys) from the frames, the
+UI trees and the run's audio, with og-feel's measures beside it; og-build §5
+is the one list of its measures, thresholds and fixes. The numbers cannot
+judge a style: read the frames before changing anything, and fix the cause
+in the skin or the template, never per call.

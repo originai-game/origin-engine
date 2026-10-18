@@ -10,17 +10,15 @@ Cells count from the top-left corner, x right and y down (Tiled's); the map's to
 
 - **TypeScript**: functions are the namespace `og.tilemap`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Skill**: `og-game`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module tilemap {
-  doc "Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component."
-  doc "Layers draw through the sprite batch in 16x16-tile chunks culled to the view, each at the map's sprite layer plus its z, scrolled by its parallax; solid tiles become static og-physics colliders merged into rectangles. Runtime edits (og.tilemap.setTile, re-auto-tiling the neighbourhood) are world state (the og.tilemap state block), and the colliders follow them."
-  doc "Cells count from the top-left corner, x right and y down (Tiled's); the map's top-left corner is at the entity's position."
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 5150</sub>
+<sub>`api.ogt` line 5166</sub>
 
 ## Contents
 
@@ -69,7 +67,7 @@ fn setTile {
 }
 ```
 
-<sub>`api.ogt` line 5255</sub>
+<sub>`api.ogt` line 5272</sub>
 
 <a id="fn-getTile"></a>
 
@@ -105,7 +103,7 @@ fn getTile {
 }
 ```
 
-<sub>`api.ogt` line 5262</sub>
+<sub>`api.ogt` line 5279</sub>
 
 <a id="fn-cellAt"></a>
 
@@ -137,7 +135,7 @@ fn cellAt {
 }
 ```
 
-<sub>`api.ogt` line 5272</sub>
+<sub>`api.ogt` line 5289</sub>
 
 <a id="fn-cellCenter"></a>
 
@@ -171,7 +169,7 @@ fn cellCenter {
 }
 ```
 
-<sub>`api.ogt` line 5280</sub>
+<sub>`api.ogt` line 5297</sub>
 
 ## Components, resources and events
 
@@ -226,7 +224,7 @@ component Tilemap {
 }
 ```
 
-<sub>`api.ogt` line 5164</sub>
+<sub>`api.ogt` line 5181</sub>
 
 ## Types
 
@@ -242,7 +240,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TilemapAsset "A loaded map: its layers, tilesets and objects."
 ```
 
-<sub>`api.ogt` line 5155</sub>
+<sub>`api.ogt` line 5172</sub>
 
 <a id="type-TileLayerInfo"></a>
 
@@ -273,7 +271,7 @@ struct TileLayerInfo {
 }
 ```
 
-<sub>`api.ogt` line 5194</sub>
+<sub>`api.ogt` line 5211</sub>
 
 <a id="type-TileObject"></a>
 
@@ -308,7 +306,7 @@ struct TileObject {
 }
 ```
 
-<sub>`api.ogt` line 5205</sub>
+<sub>`api.ogt` line 5222</sub>
 
 <a id="type-TilemapInfo"></a>
 
@@ -343,7 +341,7 @@ struct TilemapInfo {
 }
 ```
 
-<sub>`api.ogt` line 5221</sub>
+<sub>`api.ogt` line 5238</sub>
 
 <a id="type-SetTileDesc"></a>
 
@@ -375,7 +373,7 @@ struct SetTileDesc {
 }
 ```
 
-<sub>`api.ogt` line 5236</sub>
+<sub>`api.ogt` line 5253</sub>
 
 <a id="type-TileCell"></a>
 
@@ -398,7 +396,7 @@ struct TileCell {
 }
 ```
 
-<sub>`api.ogt` line 5248</sub>
+<sub>`api.ogt` line 5265</sub>
 
 ## Column kinds
 
@@ -417,4 +415,4 @@ column TilemapAsset {
 }
 ```
 
-<sub>`api.ogt` line 5157</sub>
+<sub>`api.ogt` line 5174</sub>

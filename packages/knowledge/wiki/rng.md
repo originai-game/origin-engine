@@ -6,15 +6,15 @@ Deterministic randomness. Every random draw comes from an Rng stream; the sequen
 
 - **TypeScript**: functions are none at module level (its members live on the types below); components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Skill**: `og-core`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module rng {
-  doc "Deterministic randomness. Every random draw comes from an Rng stream; the sequence for a seed is identical on every host and in the Web scaffold's rng.ts."
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 602</sub>
+<sub>`api.ogt` line 609</sub>
 
 ## Contents
 
@@ -76,7 +76,7 @@ resource Rng {
 }
 ```
 
-<sub>`api.ogt` line 636</sub>
+<sub>`api.ogt` line 644</sub>
 
 <a id="member-Rng-next"></a>
 
@@ -99,7 +99,7 @@ fn next {
 }
 ```
 
-<sub>`api.ogt` line 644</sub>
+<sub>`api.ogt` line 652</sub>
 
 <a id="member-Rng-range"></a>
 
@@ -129,7 +129,7 @@ fn range {
 }
 ```
 
-<sub>`api.ogt` line 648</sub>
+<sub>`api.ogt` line 656</sub>
 
 <a id="member-Rng-integer"></a>
 
@@ -159,7 +159,7 @@ fn integer {
 }
 ```
 
-<sub>`api.ogt` line 654</sub>
+<sub>`api.ogt` line 662</sub>
 
 <a id="member-Rng-chance"></a>
 
@@ -187,7 +187,7 @@ fn chance {
 }
 ```
 
-<sub>`api.ogt` line 660</sub>
+<sub>`api.ogt` line 668</sub>
 
 <a id="member-Rng-fork"></a>
 
@@ -215,7 +215,7 @@ fn fork {
 }
 ```
 
-<sub>`api.ogt` line 665</sub>
+<sub>`api.ogt` line 673</sub>
 
 ## Interfaces
 
@@ -231,7 +231,7 @@ interface RngStream {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 605</sub>
+<sub>`api.ogt` line 613</sub>
 
 <a id="member-RngStream-seed"></a>
 
@@ -249,7 +249,7 @@ Binding symbol `og_rng_stream_get_seed` · publish builds: kept
 prop seed u32 "The stream's derived seed."
 ```
 
-<sub>`api.ogt` line 607</sub>
+<sub>`api.ogt` line 615</sub>
 
 <a id="member-RngStream-next"></a>
 
@@ -272,7 +272,7 @@ fn next {
 }
 ```
 
-<sub>`api.ogt` line 608</sub>
+<sub>`api.ogt` line 616</sub>
 
 <a id="member-RngStream-range"></a>
 
@@ -302,7 +302,7 @@ fn range {
 }
 ```
 
-<sub>`api.ogt` line 612</sub>
+<sub>`api.ogt` line 620</sub>
 
 <a id="member-RngStream-integer"></a>
 
@@ -332,7 +332,7 @@ fn integer {
 }
 ```
 
-<sub>`api.ogt` line 618</sub>
+<sub>`api.ogt` line 626</sub>
 
 <a id="member-RngStream-chance"></a>
 
@@ -360,7 +360,7 @@ fn chance {
 }
 ```
 
-<sub>`api.ogt` line 624</sub>
+<sub>`api.ogt` line 632</sub>
 
 <a id="member-RngStream-fork"></a>
 
@@ -388,4 +388,4 @@ fn fork {
 }
 ```
 
-<sub>`api.ogt` line 629</sub>
+<sub>`api.ogt` line 637</sub>

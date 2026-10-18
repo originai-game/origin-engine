@@ -79,6 +79,7 @@ export function validate(roots: Roots = defaultRoots()): string[] {
   }
 
   skills(rules, files, problems);
+  coherence(files, problems);
   scaffold(roots, rules, manifest.overlay, files, byPath, problems);
   return problems;
 }
@@ -217,6 +218,68 @@ function scaffold(roots: Roots, rules: Rules, overlay: string, files: readonly P
 }
 
 /** The bundle the platform's production reader would build: text files only. */
+/**
+ * The skills as one set: the wiki index's grouping (a `### \`og-x\`` heading
+ * over its modules' rows, from each module's `skill` in api.ogt) names
+ * shipped skills; the skill a module is grouped under names its page
+ * (`reference/<module>.md`) and no other skill does (they point to that
+ * skill); and every section reference (`og-feel §4`, or `§4` for the skill's
+ * own) names a numbered `## N.` section that exists.
+ */
+function coherence(files: readonly PayloadFile[], problems: string[]): void {
+  const textOf = (path: string) => {
+    const f = files.find((x) => x.path === path);
+    return f && isText(f.bytes) ? decoder.decode(f.bytes) : undefined;
+  };
+  const index = textOf("game/skills/og-game/reference/index.md");
+  if (index === undefined) return;
+  const home = new Map<string, string>();
+  let group: string | undefined;
+  for (const line of index.slice(0, index.indexOf("\n## Units")).split("\n")) {
+    const heading = /^### `([^`]+)`$/.exec(line);
+    if (heading) {
+      group = heading[1]!;
+      if (!(SKILLS as readonly string[]).includes(group)) problems.push(`wiki/index.md: groups modules under ${group}, which is no skill this package ships; fix the modules' \`skill\` in api.ogt`);
+      continue;
+    }
+    const row = /^\| \[`([a-z0-9]+)`\]\(([a-z0-9]+)\.md\)/.exec(line);
+    if (row && group) home.set(row[1]!, group);
+  }
+  const texts = new Map<string, string>();
+  for (const s of SKILLS) {
+    const t = textOf(`game/skills/${s}/SKILL.md`);
+    if (t !== undefined) texts.set(s, t);
+  }
+  const sections = new Map([...texts].map(([s, t]) => [s, new Set([...t.matchAll(/^## (\d+)\. /gm)].map((m) => m[1]!))]));
+  for (const [module, skill] of home) {
+    const t = texts.get(skill);
+    if (t !== undefined && !t.includes(`reference/${module}.md`)) problems.push(`skills/${skill}/SKILL.md: teaches the ${module} module (wiki/index.md) but never names reference/${module}.md`);
+  }
+  for (const [skill, t] of texts) {
+    for (const m of new Set([...t.matchAll(/\breference\/([a-z0-9-]+)\.md\b/g)].map((x) => x[1]!))) {
+      const owner = home.get(m);
+      if (owner && owner !== skill) problems.push(`skills/${skill}/SKILL.md: names reference/${m}.md, which ${owner} teaches; point to ${owner} instead, so each module is taught in one place`);
+    }
+    const prose = t.replace(/^```[\s\S]*?^```/gm, "");
+    for (const m of prose.matchAll(/(og-[a-z]+(?:-[a-z]+)*) §([A-Za-z][\w ]*)/g)) problems.push(`skills/${skill}/SKILL.md: refers to ${m[1]} §${m[2]!.split(" ")[0]} by name; refer to a skill's sections by their numbers (## N.)`);
+    for (const m of prose.matchAll(/§(\d+)/g)) {
+      // The skill this § belongs to: walk back over a list of §s ("og-feel
+      // §9–§11", "og-taste §4, §10") to the word before it.
+      const before = prose.slice(0, m.index).split(/\s+/);
+      let i = before.length - 1;
+      while (i >= 0 && (before[i] === "" || /^\(?§\d+(\.\d+)?[–,;)]*$/.test(before[i]!) || before[i] === "and" || before[i] === "or")) i--;
+      const word = (before[i] ?? "").replace(/^[(`*]+/, "");
+      let target: string | undefined = skill;
+      if (/^og-[a-z]+(?:-[a-z]+)*$/.test(word)) target = word;
+      else if (/\.md\b|\//.test(word) || /^design/.test(word)) target = undefined;
+      if (target === undefined) continue;
+      const have = sections.get(target);
+      if (!have) problems.push(`skills/${skill}/SKILL.md: refers to ${target} §${m[1]}, and there is no skill ${target}`);
+      else if (!have.has(m[1]!)) problems.push(`skills/${skill}/SKILL.md: refers to ${target === skill ? "its own" : target} §${m[1]}, which ${target === skill ? "it does not have" : "does not exist there"} (its sections: ${[...have].join(", ") || "none numbered"})`);
+    }
+  }
+}
+
 export function bundle(roots: Roots = defaultRoots()): { schemaVersion: 1; files: Record<string, string> } {
   const files: Record<string, string> = {};
   for (const f of payload(roots)) if (isText(f.bytes)) files[f.path] = decoder.decode(f.bytes);

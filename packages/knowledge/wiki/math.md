@@ -6,12 +6,11 @@ Plain math values in the three.js vocabulary. They are data: the engine owns the
 
 - **TypeScript**: functions are none at module level (its members live on the types below); components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Skill**: `og-core`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module math {
-  doc "Plain math values in the three.js vocabulary. They are data: the engine owns the operations, so results are identical on every host."
-  place top
   # declarations follow, each quoted below
 ```
 
@@ -49,7 +48,7 @@ struct Vector2 {
 }
 ```
 
-<sub>`api.ogt` line 38</sub>
+<sub>`api.ogt` line 39</sub>
 
 <a id="type-Vector3"></a>
 
@@ -72,7 +71,7 @@ struct Vector3 {
 }
 ```
 
-<sub>`api.ogt` line 44</sub>
+<sub>`api.ogt` line 45</sub>
 
 <a id="type-Quaternion"></a>
 
@@ -99,7 +98,7 @@ struct Quaternion {
 }
 ```
 
-<sub>`api.ogt` line 51</sub>
+<sub>`api.ogt` line 52</sub>
 
 <a id="type-Matrix4"></a>
 
@@ -120,7 +119,7 @@ struct Matrix4 {
 }
 ```
 
-<sub>`api.ogt` line 61</sub>
+<sub>`api.ogt` line 62</sub>
 
 <a id="type-Color"></a>
 
@@ -143,7 +142,7 @@ struct Color {
 }
 ```
 
-<sub>`api.ogt` line 68</sub>
+<sub>`api.ogt` line 69</sub>
 
 <a id="type-Ray"></a>
 
@@ -164,4 +163,4 @@ struct Ray {
 }
 ```
 
-<sub>`api.ogt` line 75</sub>
+<sub>`api.ogt` line 76</sub>

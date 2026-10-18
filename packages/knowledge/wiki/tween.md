@@ -10,17 +10,15 @@ Feel presets are tweens too: og.tween.squash (squash and stretch that recovers) 
 
 - **TypeScript**: functions are the namespace `og.tween`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Skill**: `og-feel`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module tween {
-  doc "Tweens: animate any numeric field of a component (og.Transform.position, og.Sprite.color, og.Sprite.opacity, a game's own f32) from its value to a target over time with an easing curve, a delay, loops and yoyo; chain them in sequences or run them in parallel. Advanced by the engine's og.tween system after the game's systems and before og.anim and physics, by scaled time (slow motion, hit stop) unless unscaled."
-  doc "Running tweens are world state (the og.tween state block): snapshots, restore and the world hash cover them. og.TweenCompleted reports a tween or group that ends on its own; a cancelled one, or one whose entity or component went away, ends silently."
-  doc "Feel presets are tweens too: og.tween.squash (squash and stretch that recovers) and og.tween.flash (a hit flash that fades)."
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 4959</sub>
+<sub>`api.ogt` line 4974</sub>
 
 ## Contents
 
@@ -73,7 +71,7 @@ fn to {
 }
 ```
 
-<sub>`api.ogt` line 5085</sub>
+<sub>`api.ogt` line 5101</sub>
 
 <a id="fn-sequence"></a>
 
@@ -107,7 +105,7 @@ fn sequence {
 }
 ```
 
-<sub>`api.ogt` line 5092</sub>
+<sub>`api.ogt` line 5108</sub>
 
 <a id="fn-parallel"></a>
 
@@ -141,7 +139,7 @@ fn parallel {
 }
 ```
 
-<sub>`api.ogt` line 5102</sub>
+<sub>`api.ogt` line 5118</sub>
 
 <a id="fn-cancel"></a>
 
@@ -171,7 +169,7 @@ fn cancel {
 }
 ```
 
-<sub>`api.ogt` line 5112</sub>
+<sub>`api.ogt` line 5128</sub>
 
 <a id="fn-cancelEntity"></a>
 
@@ -201,7 +199,7 @@ fn cancelEntity {
 }
 ```
 
-<sub>`api.ogt` line 5119</sub>
+<sub>`api.ogt` line 5135</sub>
 
 <a id="fn-active"></a>
 
@@ -231,7 +229,7 @@ fn active {
 }
 ```
 
-<sub>`api.ogt` line 5126</sub>
+<sub>`api.ogt` line 5142</sub>
 
 <a id="fn-squash"></a>
 
@@ -261,7 +259,7 @@ fn squash {
 }
 ```
 
-<sub>`api.ogt` line 5133</sub>
+<sub>`api.ogt` line 5149</sub>
 
 <a id="fn-flash"></a>
 
@@ -291,7 +289,7 @@ fn flash {
 }
 ```
 
-<sub>`api.ogt` line 5140</sub>
+<sub>`api.ogt` line 5156</sub>
 
 ## Components, resources and events
 
@@ -318,7 +316,7 @@ event TweenCompleted {
 }
 ```
 
-<sub>`api.ogt` line 5036</sub>
+<sub>`api.ogt` line 5052</sub>
 
 ## Types
 
@@ -334,7 +332,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Tween "A running tween or group."
 ```
 
-<sub>`api.ogt` line 4964</sub>
+<sub>`api.ogt` line 4980</sub>
 
 <a id="type-Ease"></a>
 
@@ -397,7 +395,7 @@ enum Ease {
 }
 ```
 
-<sub>`api.ogt` line 4973</sub>
+<sub>`api.ogt` line 4989</sub>
 
 <a id="type-TweenDesc"></a>
 
@@ -452,7 +450,7 @@ struct TweenDesc {
 }
 ```
 
-<sub>`api.ogt` line 4999</sub>
+<sub>`api.ogt` line 5015</sub>
 
 <a id="type-TweenGroupDesc"></a>
 
@@ -480,7 +478,7 @@ struct TweenGroupDesc {
 }
 ```
 
-<sub>`api.ogt` line 5026</sub>
+<sub>`api.ogt` line 5042</sub>
 
 <a id="type-SquashDesc"></a>
 
@@ -520,7 +518,7 @@ struct SquashDesc {
 }
 ```
 
-<sub>`api.ogt` line 5043</sub>
+<sub>`api.ogt` line 5059</sub>
 
 <a id="type-FlashDesc"></a>
 
@@ -562,7 +560,7 @@ struct FlashDesc {
 }
 ```
 
-<sub>`api.ogt` line 5063</sub>
+<sub>`api.ogt` line 5079</sub>
 
 ## Column kinds
 
@@ -581,4 +579,4 @@ column Tween {
 }
 ```
 
-<sub>`api.ogt` line 4966</sub>
+<sub>`api.ogt` line 4982</sub>

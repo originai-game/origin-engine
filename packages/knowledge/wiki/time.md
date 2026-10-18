@@ -6,15 +6,15 @@ Simulation time. Game code never reads the wall clock; it reads Time.
 
 - **TypeScript**: functions are the namespace `og.time`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Skill**: `og-feel`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module time {
-  doc "Simulation time. Game code never reads the wall clock; it reads Time."
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 544</sub>
+<sub>`api.ogt` line 550</sub>
 
 ## Contents
 
@@ -54,7 +54,7 @@ fn setScale {
 }
 ```
 
-<sub>`api.ogt` line 585</sub>
+<sub>`api.ogt` line 592</sub>
 
 <a id="fn-hitStop"></a>
 
@@ -84,7 +84,7 @@ fn hitStop {
 }
 ```
 
-<sub>`api.ogt` line 592</sub>
+<sub>`api.ogt` line 599</sub>
 
 ## Components, resources and events
 
@@ -147,4 +147,4 @@ resource Time {
 }
 ```
 
-<sub>`api.ogt` line 547</sub>
+<sub>`api.ogt` line 554</sub>

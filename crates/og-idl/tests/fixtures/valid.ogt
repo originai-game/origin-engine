@@ -5,6 +5,7 @@ package "@origingame/fixture"
 doc "A fixture: the smallest valid API plus one mistake below."
 
 module reflect {
+  skill og-core
   doc "Reflection."
   place top
   struct FieldOptions {

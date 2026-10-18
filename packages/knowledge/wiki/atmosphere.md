@@ -8,16 +8,15 @@ The day-night clock is a function of the tick (DayNight.start plus the simulated
 
 - **TypeScript**: functions are the namespace `og.atmosphere`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Skill**: `og-game`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module atmosphere {
-  doc "Fog, a procedural sky, the day-night cycle, weather and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before."
-  doc "The day-night clock is a function of the tick (DayNight.start plus the simulated time times speed), so it is the same on every run and after a restore; rendering reads the world and never writes it."
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 4238</sub>
+<sub>`api.ogt` line 4251</sub>
 
 ## Contents
 
@@ -64,7 +63,7 @@ fn timeOfDay {
 }
 ```
 
-<sub>`api.ogt` line 4546</sub>
+<sub>`api.ogt` line 4560</sub>
 
 ## Components, resources and events
 
@@ -155,7 +154,7 @@ resource Fog {
 }
 ```
 
-<sub>`api.ogt` line 4248</sub>
+<sub>`api.ogt` line 4262</sub>
 
 <a id="record-Sky"></a>
 
@@ -235,7 +234,7 @@ resource Sky {
 }
 ```
 
-<sub>`api.ogt` line 4310</sub>
+<sub>`api.ogt` line 4324</sub>
 
 <a id="record-DayNight"></a>
 
@@ -301,7 +300,7 @@ resource DayNight {
 }
 ```
 
-<sub>`api.ogt` line 4363</sub>
+<sub>`api.ogt` line 4377</sub>
 
 <a id="record-Weather"></a>
 
@@ -363,7 +362,7 @@ resource Weather {
 }
 ```
 
-<sub>`api.ogt` line 4406</sub>
+<sub>`api.ogt` line 4420</sub>
 
 <a id="record-Water"></a>
 
@@ -459,7 +458,7 @@ component Water {
 }
 ```
 
-<sub>`api.ogt` line 4446</sub>
+<sub>`api.ogt` line 4460</sub>
 
 <a id="record-Water2D"></a>
 
@@ -513,7 +512,7 @@ component Water2D {
 }
 ```
 
-<sub>`api.ogt` line 4514</sub>
+<sub>`api.ogt` line 4528</sub>
 
 ## Constants
 
@@ -529,28 +528,28 @@ component Water2D {
 const WEATHER_NONE u32 0 "Weather.kind: clear."
 ```
 
-<sub>`api.ogt` line 4242</sub>
+<sub>`api.ogt` line 4256</sub>
 
 ```ogt
 const WEATHER_RAIN u32 1 "Weather.kind: rain streaks falling with the wind, the light dimmed and a grey distance fog."
 ```
 
-<sub>`api.ogt` line 4243</sub>
+<sub>`api.ogt` line 4257</sub>
 
 ```ogt
 const WEATHER_SNOW u32 2 "Weather.kind: flakes drifting down on gusts, a pale fog."
 ```
 
-<sub>`api.ogt` line 4244</sub>
+<sub>`api.ogt` line 4258</sub>
 
 ```ogt
 const WEATHER_DUST u32 3 "Weather.kind: dust blowing along the wind near the ground, a warm thick fog."
 ```
 
-<sub>`api.ogt` line 4245</sub>
+<sub>`api.ogt` line 4259</sub>
 
 ```ogt
 const WEATHER_MIST u32 4 "Weather.kind: no particles, a dense low height fog."
 ```
 
-<sub>`api.ogt` line 4246</sub>
+<sub>`api.ogt` line 4260</sub>

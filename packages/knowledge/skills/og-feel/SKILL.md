@@ -7,10 +7,12 @@ A game feels right when every input shows an answer at once, every impact
 has weight, and the camera helps the player read what comes next. On
 Origin Engine all of it is deterministic data: tweens, flipbooks, the time
 scale, camera trauma and floating texts live in the world's state blocks,
-so a replay shows the same juice and `og test` can check it. The API is in
-`reference/` (`tween.md`, `time.md`, `camera.md`, `render.md` for
-og.Sprite and floating text, `anim.md` for flipbooks, `tilemap.md`); this
-skill is how much of each to use, and how to prove it.
+so a replay shows the same juice and `og test` can check it. This skill's
+modules are `reference/time.md` (time scale, hit stop), `reference/tween.md`,
+`reference/camera.md` and `reference/systems.md` (the camera controllers the
+engine ships in TypeScript); sprites, flipbooks, tilemaps and floating text
+are og-game's (§8, §10). This skill is how much of each to use, and how to
+prove it.
 
 ## 1. Answer on the same tick
 
@@ -76,9 +78,11 @@ and roll grow with trauma squared, so small values stay subtle.
 | An explosion, a boss slam, the player's death | 0.5–0.8 |
 | 1.0 | almost never: it is nauseating |
 
-- Shake for what hurts or hits hard; **never** for UI, pickups, menus,
-  steady events (engine hum, rain), or every shot of a rapid weapon. A game
-  that shakes all the time has no shake left for the moments that count.
+- Shake the camera for what hurts or hits hard; **never** for UI, pickups,
+  menus, steady events (engine hum, rain), or every shot of a rapid weapon.
+  A game that shakes all the time has no shake left for the moments that
+  count. A refused press or a wrong answer shakes the element, not the
+  camera (`og.ui.shake`, og-ui §6).
 - Prefer `og.camera.kick(world, direction, distance)` (0.1–0.3 units in the
   direction of the force) for directional impacts and recoil, and
   `og.camera.punch(world, 0.05–0.15)` for a zoom-in on a crit or a slam.
@@ -99,12 +103,19 @@ back (default backOut, 0.18 s). Keep the area roughly constant: x × y ≈ 1.
 | Take-off | (0.85, 1.15) | 0.1 s |
 | Hit taken | (1.2, 0.8) | 0.15 s, with a flash |
 | Pickup collected (on the pickup) | (1.4, 1.4) then shrink to 0 | 0.15 s |
-| UI button press | (0.92, 0.92) | 0.08 s, unscaled |
+| UI button press (the skin's `press` does it for og.ui) | (0.92, 0.92) | 0.08 s, unscaled |
 
 Do not squash rigid things (crates, walls, the camera's target in a
 cutscene) or anything more than once per 6 ticks.
 
 ## 6. Easing by intent
+
+`og.tween.to(world, { entity, component, field: "position.y", to: [2],
+duration, ease, delay, loops, yoyo })` animates any numeric component field;
+`og.tween.sequence` and `og.tween.parallel` chain them, `og.TweenCompleted`
+reports the end, and `unscaled: true` keeps a tween going through slow
+motion and hit stop (UI motion). `og.tween.squash` (§5) and
+`og.tween.flash` are the presets.
 
 | Intent | Ease |
 |---|---|
@@ -118,9 +129,10 @@ cutscene) or anything more than once per 6 ticks.
 | Constant motion, timers, scrolling, colour cycles | `linear` |
 | Most small motion when unsure | `quadOut` (the default) |
 
-Durations: 0.1–0.2 s for feedback, 0.2–0.35 s for UI and swaps, 0.4–0.8 s
-for camera moves and reveals. Longer feels sluggish unless it is a
-cutscene.
+Durations: 0.1–0.2 s for feedback, 0.12–0.3 s for UI (the skin's
+durations, og-taste §5), 0.2–0.35 s for swaps, 0.4–0.8 s for camera moves,
+reveals and screen transitions (up to 0.7 s). Longer feels sluggish unless
+it is a cutscene or a reward.
 
 ## 7. Floating text
 
@@ -149,11 +161,18 @@ rises, drifts and fades by itself (world state, deterministic).
   lightly.
 - `og.CameraZone` per room or arena keeps the view inside it (applied to
   the frame, from the real aspect, so the simulation stays independent of
-  the screen); a zone smaller than the view centres it.
+  the screen); a zone smaller than the view centres it. Its `scrollTime`
+  (0.3–0.6 s, eased in and out) scrolls the view from the room the player
+  left into this one when they cross; 0 cuts at once. og.Camera's
+  `zoneScroll` says how far a transition has come.
 - `og.CameraRail` for corridors and set pieces: the camera rides a
   Catmull-Rom spline to the point nearest the player.
-- The camera never moves on its own during play except for shake, kick and
-  punch. Do not tween the camera while the player has control.
+- 3D: `og.OrbitCamera` (drag to turn, wheel to zoom) and `og.FollowCamera`
+  on the entity the camera orbits or follows, driven by
+  `og.systems.cameras` listed in `GameDesc.systems`.
+- The camera never moves on its own during play except for shake, kick,
+  punch and a zone's scroll. Do not tween the camera while the player has
+  control.
 
 ## 9. 2D animation: frames and rates
 
@@ -245,7 +264,10 @@ from these (the defaults are the first column):
   starts from the hit pose.
 - Prove it: `0.5:key_down:Space;0.9:dump_entity:hero:apex.json` — the dump
   shows `og.PlatformerController.jumping` and a height within 10 % of
-  `jumpHeight` at `timeToApex`.
+  `jumpHeight` at `timeToApex`. `templates/archetypes/runner`'s courier is a
+  PlatformerController with its tuning in a `Tuning` resource;
+  `templates/archetypes/topdown`'s hero is a CharacterController in its
+  top-down mode.
 
 ## 13. The checklist, proved
 
@@ -271,27 +293,15 @@ outputs you read:
    `t.equal(run.hashes[1], run.hashes[0], ...)` over a session with hits,
    pickups and a hit stop: the juice must replay exactly.
 9. **No stray slow motion**: the last world dump shows `og.Time.scale` 1.
+10. **Rooms scroll**: `get:og.Camera` on the ticks after the hero crosses a
+    doorway shows `zoneScroll` rising from 0 to 1 (topdown's `door.og.ts`).
 
 `templates/archetypes/topdown`, `runner` and `match3` do all of this; read
 their `src/` and `tests/` for working patterns.
 
 ## 14. Feel, measured: `og polish`
 
-`og polish .` (og-taste §11) also samples every tick of every playtest
-(`dump_pulse`: time scale and hit stop, camera trauma, punch and kick,
-floating texts, afterimages, tweens, particle systems, voices by bus, the
-named entities' positions and flipbook frames, step and render time) and
-scores this skill's checklist:
-
-| Measure | From | Passes at |
-|---|---|---|
-| Input latency | ticks from the tick an input lands to the first thing seen or heard to change (a named entity accelerating or changing clip, the UI, a sound, a tween, a floating text, shake, hit stop, a particle burst); a press answered on its release counts from the release | 0–1 ticks (§1) |
-| Hit feedback | each damage moment (a fact named `hp`, `health`, `lives`… falling, or `hits`, `damage`, `kills`… rising): hit stop, shake, floating text and a sound within 8 ticks | three of the four (§3, §4, §7, og-audio §1) |
-| Idle frames | ticks after the first ten where nothing moves or animates, no UI moves, no sound starts or plays, no tween, text or particle runs | at most 10 % (§9: idle loops) |
-| Sound on input | inputs answered by a sound within 6 ticks | every action (og-audio §1) |
-| Frame time | step + render, p95, on the tier it ran on (`metal` on a Mac, `vulkan-cpu` on CI's lavapipe) | 8.3 ms (half the frame) |
-
-Facts are the game's `facts` (og-game): expose `hp`, `hits` or `kills`
-there or the hit measures stay n/a. A baseline line in the report says how
-often things change with no input at all; when it is high (a runner that
-always moves), read latency together with the frames.
+`og polish .` scores this checklist's measurable part (input latency, hit
+feedback, idle frames, sound on input, frame time) next to og-taste's;
+og-build §5 is the one list of its measures, thresholds and fixes. Expose
+`hp`, `hits` or `kills` as facts (og-game §3) or the hit measures stay n/a.

@@ -15,8 +15,8 @@
 // scale, hit stop, trauma, floating texts, tweens, particles, voices by
 // bus, named entities, UI bounds, step and render times). The run's audio
 // is captured to a WAV. The playtest's checks do not run: `og test` does
-// that. What is measured, and the thresholds, are in og-taste §11 and
-// og-feel §14.
+// that. What is measured, and the thresholds, are og-build §5 (the
+// knowledge package's skills); each finding's fix names a skill section.
 
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
@@ -687,7 +687,7 @@ function measure(rec: RunRecord, frameDir: string, frames: number, relTo: string
   }
   const step = s.slice(5).map((p) => p.stepMs), render = s.slice(5).map((p) => p.renderMs), total = s.slice(5).map((p) => p.stepMs + p.renderMs);
   const frame = { tier: rec.tier, stepMedianMs: r2(median(step)), stepP95Ms: r2(pct(step, 0.95)), renderMedianMs: r2(median(render)), renderP95Ms: r2(pct(render, 0.95)), frameP95Ms: r2(pct(total, 0.95)), frameMaxMs: r2(Math.max(0, ...total)) };
-  if (frame.frameP95Ms > 16.7) findings.push({ measure: "frame time", where: rec.playtest, detail: `p95 step + render ${frame.frameP95Ms} ms on ${rec.tier} (the frame is 16.7 ms)`, fix: "og-game §Performance: fewer draws and particles, cheaper systems; og run --json measures" });
+  if (frame.frameP95Ms > 16.7) findings.push({ measure: "frame time", where: rec.playtest, detail: `p95 step + render ${frame.frameP95Ms} ms on ${rec.tier} (the frame is 16.7 ms)`, fix: "og-game §14 (performance): fewer draws and particles, cheaper systems; og run --json measures" });
   const audio = audioStats(rec.wav, rec.rate);
   if (audio.clipped > 0) findings.push({ measure: "audio clipping", where: rec.playtest, detail: `${audio.clipped} samples at full scale (peak ${audio.peak})`, fix: "og-audio §4 (the mix): lower the loud sources or put a limiter on master" });
 
@@ -772,7 +772,7 @@ const show = (x: number | null) => (x === null ? "n/a" : String(x));
 function markdown(project: string, ms: PlaytestMeasures[], sc: Scores, findings: Finding[], warnings: string[], date: string): string {
   const L: string[] = [];
   L.push(`# og polish: ${project}`, "");
-  L.push(`${date}, ${ms.length} playtest(s) on ${[...new Set(ms.map((m) => m.tier))].join(", ")}. Mechanical measures of og-taste §11 and og-feel §14; a score is 0 to 100, n/a when nothing in the playtests exercises it. The measures cannot judge style: read the frames.`, "");
+  L.push(`${date}, ${ms.length} playtest(s) on ${[...new Set(ms.map((m) => m.tier))].join(", ")}. Mechanical measures of og-taste and og-feel (og-build §5); a score is 0 to 100, n/a when nothing in the playtests exercises it. The measures cannot judge style: read the frames.`, "");
   L.push("## Scores", "");
   L.push("| | Score | Measure |", "|---|---|---|");
   L.push(`| **Taste** | **${show(sc.taste)}** | mean of the taste rows |`);
@@ -830,7 +830,7 @@ async function main(): Promise<void> {
   if (!entry || !root || !out) fail("usage: bun src/node/polish.ts --entry <bundle> --root <project> --out <dir> [--warnings <file>] [--frames N] [--json] <tests/x.og.ts>...");
   if (one) return runOne(resolve(one), resolve(entry!), resolve(root!), resolve(out!));
   const files = positional.map((f) => resolve(f));
-  if (files.length === 0) fail(`${root} has no playtests: og polish measures what playtests play; add tests/*.og.ts (og-build §Tests)`);
+  if (files.length === 0) fail(`${root} has no playtests: og polish measures what playtests play; add tests/*.og.ts (og-build §3)`);
   const outDir = resolve(out!);
   mkdirSync(outDir, { recursive: true });
   const runs = join(outDir, ".runs");

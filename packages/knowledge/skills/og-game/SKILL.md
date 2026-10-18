@@ -1,13 +1,34 @@
 ---
 name: og-game
-description: Building a game on Origin Engine — the project layout, components and systems on the ECS, the game entry, scenes as .ogt text, assets cooked from assets/ to cooked/, the og.load loaders, effects, fog, sky, day and night, weather and water, material shaders in WGSL, physics beyond rigid bodies (joints, character and platformer controllers, vehicles, ropes, cloth, 2D fluids, ragdolls), which skill covers enemies, sound, platform services and languages, and the performance budget. Use when creating, structuring or extending a TypeScript Origin Engine game (a project with a project.ogt; not a Godot project.godot).
+description: Building a game on Origin Engine — the project layout, components and systems on the ECS, the game entry, scenes as .ogt text, assets cooked from assets/ to cooked/, the og.load loaders, effects, fog, sky, day and night, weather and water, material shaders in WGSL, physics beyond rigid bodies (joints, character and platformer controllers, vehicles, ropes, cloth, 2D fluids, ragdolls), skeletal animation, and the performance budget; the entry point, with the map of the other nine skills and the modules each teaches. Use first, and when creating, structuring or extending a TypeScript Origin Engine game (a project with a project.ogt; not a Godot project.godot).
 ---
 
 An Origin Engine project is plain files: TypeScript in `src/`, source assets
 in `assets/`, text scenes, and a manifest. `npm create @origingame/game`
-produces it; everything after that is code and text, never an editor.
+produces it; everything after that is code and text, never an editor. This
+skill is where to start: what a game is made of, and which skill to read
+next for each part.
 
-## The project
+## 1. The skills
+
+| Skill | Read it for | Its modules (`reference/<module>.md`) |
+|---|---|---|
+| **og-core** | the rules every line obeys: TypeScript only, the fixed tick, Results, archetype views, reflection | math, reflect, world, system, rng |
+| **og-game** (this one) | the project, scenes, assets and loading, input, 2D, animation, effects, atmosphere, shaders, physics, performance | game, transform, input, load, render, physics, atmosphere, anim, tilemap |
+| **og-build** | the loop: cook, run with a script, read frames and dumps, hot reload, playtests, `og polish` (§5 there: the one list of what it scores), shipping | commands, probe |
+| **og-feel** | how much: hit stop, shake, squash, easing, floating text, the camera, frame rates, sorting, parallax, controller tunables | time, tween, camera, systems |
+| **og-ui** | screens and HUDs: templates, widgets, focus, phones, skins and motion | ui |
+| **og-taste** | the look: a style from the premise, composition, colour, type, motion, feedback, atmosphere by intent, the done checklist | — (it uses ui and atmosphere) |
+| **og-ai** | enemies and NPCs: navigation and minds as data | nav, ai |
+| **og-audio** | sound: events, presets, UI sounds, the mix, music, space | audio |
+| **og-i18n** | languages: string tables, messages, fonts, line breaking, right to left | i18n |
+| **og-platform-sdk** | the platform from inside the game: saves, settings, leaderboards, telemetry, points, AI marks | platform |
+
+Each module's page names its skill, and `reference/index.md` groups the
+modules the same way. When two skills seem to touch the same thing, the one
+in this table owns it and the other points there.
+
+## 2. The project
 
 | Path | What it is |
 |---|---|
@@ -21,7 +42,7 @@ produces it; everything after that is code and text, never an editor.
 The engine version in `project.ogt` is a pin. Upgrading it is an explicit
 change with its own run, never a side effect.
 
-## Components, resources, systems, the game
+## 3. Components, resources, systems, the game
 
 ```ts
 import { og, defineComponent, defineSystem, f32, Vector3 } from "@origingame/engine";
@@ -42,6 +63,7 @@ export default og.game({
   scenes: { main: "scenes/main.ogt" },
   systems: [Move],
   commands: { spawn_wave: (world, args) => spawnWave(world, Number(args[0])) },
+  commandHelp: { spawn_wave: { usage: "spawn_wave:<count>", doc: "Spawns a wave of <count> enemies now." } },
 });
 ```
 
@@ -50,19 +72,23 @@ export default og.game({
   Engine-owned ones are tokens on `og`: `og.Transform`, `og.Time`, `og.Rng`,
   `og.Input`, `og.Camera`.
 - A **system** is a function over its matched archetypes, once per tick
-  (`og-core` has the rules). Keep each system to one job; share state through
+  (og-core §4 has the rules). Keep each system to one job; share state through
   components and resources, never module variables.
 - **Entities** are spawned with `world.spawn({ name, parent, position })` and
   addressed by name everywhere outside the hot loop: `world.find(name)`, the
   probe's ids, `teleport`, `set`, `dump_entity`. Give every entity a person
   will ask about a stable name.
 - **Commands** in `GameDesc.commands` are snake_case actions the command
-  channel and playtests can call (`0.5:spawn_wave:3`). Add one for each
-  state a test needs to reach quickly, instead of playing there.
+  channel and playtests can call (`0.5:spawn_wave:3`), with their usage in
+  `GameDesc.commandHelp` for `help` (og-build §1). Add one for each state a
+  test needs to reach quickly, instead of playing there.
 - **Facts** (`GameDesc.facts`) return a small JSON object for the probe's
   `state()`: score, phase, lives. Tests assert on facts and dumps.
 
-## Scenes are text
+`reference/game.md` is `og.game` and every `GameDesc` field;
+`reference/transform.md` is `og.Transform`, parents and the matrix helpers.
+
+## 4. Scenes are text
 
 A scene is an `.ogt` file under `assets/`, cooked like any asset:
 
@@ -91,7 +117,7 @@ entities. Fields not written take their defaults. Edit scenes as text and
 diff them like code; the cook checks field names and lane counts against the
 registered schema and refuses a model path that does not exist.
 
-## Assets: assets/ to cooked/
+## 5. Assets: assets/ to cooked/
 
 - Put sources in `assets/`; `og cook` turns them into `cooked/`: glTF into
   meshopt-compressed meshes with LODs, textures into KTX2 Basis Universal
@@ -104,7 +130,7 @@ registered schema and refuses a model path that does not exist.
 - Reusable production assets come through the platform's asset catalog into
   `assets/`; record each file's licence next to it.
 
-## Loading
+## 6. Loading
 
 `og.load.*` returns a handle at once and completes at a tick boundary; under
 `og run` and in replays every load completes before the next tick, so the
@@ -112,10 +138,22 @@ tick it lands on is deterministic. Paths are asset ids (the path under
 `assets/`). Check `og.load.status` (or the `AssetReady` / `AssetFailed`
 events) before using an asset, and spawn a loaded scene or model with
 `world.instantiate(asset, { name, position })`. The scene in
-`GameDesc.scene` is spawned for you when the world starts. The wiki's `load`
-page lists every loader and what each returns.
+`GameDesc.scene` is spawned for you when the world starts. `reference/load.md`
+lists every loader and what each returns.
 
-## 2D: sprites, flipbooks, tilemaps
+## 7. Input
+
+`world.resource(og.Input)` is the keyboard, the mouse and the first touch
+(`down("KeyW")`, `pressed`, `axis`, `buttonDown`). Two more resources carry
+what one pointer cannot: `og.Pointers` (pointer 0 is og.Input's, 1 to 4
+further touches: `down(id)`, `pressed(id)`, `position(id)`, `start(id)`)
+and `og.Gamepad` (up to four pads: `connected(pad)`, `down("a", pad)`,
+`pressed`, `released`, `axis("leftX", pad)`; sticks are y down). All three
+are world state, so playtests and replays reproduce them; script them with
+`touch:<id>:<down|move|up>:<x,y>` and `gamepad:<a+b+...|->[:lx,ly][:lt,rt]`
+(og-build §1). The fields and methods are `reference/input.md`.
+
+## 8. 2D: sprites, flipbooks, tilemaps
 
 - **Sprites** are components: an entity with `og.Transform` and `og.Sprite`
   (`width`, `height`, `anchor`, `color`, `opacity`, `layer`, `sortY`,
@@ -138,54 +176,43 @@ page lists every loader and what each returns.
   objects; an entity with `og.Tilemap { map }` draws it from its position
   (top-left corner) and gives the collision layers static colliders.
   `og.tilemap.setTile` edits a cell (terrain layers re-tile their
-  neighbours, colliders follow); `getTile`, `cellAt`, `cellCenter` read it.
-  Layers scroll by their `parallax`; `repeat x` tiles a background.
+  neighbours, colliders follow); `getTile` answers the tile there (on a
+  terrain layer the one auto-tiling chose, -1 when empty), `cellAt` and
+  `cellCenter` convert positions. Layers scroll by their `parallax`;
+  `repeat x` tiles a background (`reference/tilemap.md`).
 
-## Feel: tweens, time scale, camera
-
-- `og.tween.to(world, { entity, component, field: "position.y", to: [2],
-  duration, ease, delay, loops, yoyo })`, `og.tween.sequence` and
-  `og.tween.parallel` animate any numeric component field; `og.TweenCompleted`
-  reports the end; `og.tween.squash` and `og.tween.flash` are the presets.
-- `og.time.hitStop(world, ticks)` and `og.time.setScale(world, s)` slow or
-  freeze physics, animation, flipbooks and tweens while input and the UI
-  keep going; move your own gameplay by `time.scaledDt`.
-- `og.camera.shake(world, trauma)` (decays by itself), `og.camera.kick`,
-  `og.camera.punch`; `og.Follow2D` has a dead zone, look-ahead and per-axis
-  smoothing, `og.CameraZone` keeps the view in a room, `og.CameraRail`
-  moves it along a spline.
-- `og.render.floatingText(world, { text: "-12", position, color })` pops a
-  damage number or a pickup text that rises and fades by itself.
-- How much of each (hit stop by impact, shake by event, squash amounts,
-  easing by intent, frame rates by action) is the **og-feel** skill.
-
-`templates/archetypes/topdown` (a Zelda-like room: a Tiled map with
-auto-tiled walls and collision, a 4-direction flipbook hero, an enemy with
-a hurt flash and knockback, pickups with floating text, a door),
+How many frames, how fast, which layer and how much parallax is og-feel
+§9–§11. `templates/archetypes/topdown` (a Zelda-like dungeon: a Tiled map
+with auto-tiled walls and collision, a four-direction flipbook hero on a
+top-down character controller, an enemy with a hurt flash and knockback,
+pickups with floating text, a door to a second room the camera scrolls to),
 `templates/archetypes/runner` and `templates/archetypes/match3` use all of
 this.
 
-## Input
+## 9. Animation
 
-`world.resource(og.Input)` is the keyboard, the mouse and the first touch
-(`down("KeyW")`, `pressed`, `axis`, `buttonDown`). Two more resources carry
-what one pointer cannot: `og.Pointers` (pointer 0 is og.Input's, 1 to 4
-further touches: `down(id)`, `pressed(id)`, `position(id)`, `start(id)`)
-and `og.Gamepad` (up to four pads: `connected(pad)`, `down("a", pad)`,
-`pressed`, `released`, `axis("leftX", pad)`; sticks are y down). All three
-are world state, so playtests and replays reproduce them; script them with
-`touch:<id>:<down|move|up>:<x,y>` and `gamepad:<a+b|->[:lx,ly][:lt,rt]`.
+Skinned glTF models animate through `og.anim` (`reference/anim.md`):
+`og.load.animation(world, "models/walker.glb")` answers the rig's skeleton
+and clips; on the instantiated model's entity, `og.Skeleton { asset }` poses
+it and `og.AnimationPlayer { clip, speed, loop, fade }` plays a clip
+(changing `clip` cross-fades over `fade`). `og.AnimationGraph` runs a blend
+tree with layered state machines registered by `og.anim.graph` (parameters
+such as speed pick the motion), `og.IkChain` turns a chain of bones to a
+target after the clips, `og.Blendshapes` weighs morph targets, and
+`og.AnimationEvent` reports a clip's named frames. Root motion is a
+`Skeleton` field. `templates/fx-showcase`'s walker is the pattern.
 
-## Effects
+## 10. Effects
 
 Every effect is off until the game turns it on, as data:
 
 - **Post** — the `og.PostEffects` resource: `ao`, `outline`,
   `depthOfField`, `motionBlur`, `godRays`, `glow`, `lut` (a handle from
   `og.load.lut(world, "luts/look.cube")`), `vignette`,
-  `chromaticAberration`, `filmGrain`, `flash`, and camera shake through
-  `shakeTrauma` (set it on a hit and let it decay). A game with fast motion
-  wants `render: { antialias: "taa" }` in `og.game`.
+  `chromaticAberration`, `filmGrain`, `flash`, and a fixed shake of the
+  frame through `shakeTrauma` (an earthquake that lasts; a hit's shake is
+  `og.camera.shake`, which decays by itself: og-feel §4). A game with fast
+  motion wants `render: { antialias: "taa" }` in `og.game`.
 - **Particles** — an emitter is an `.ogt` asset of `type particles`
   (rate, bursts, lifetime, speed, curves, collision; cooked like any asset)
   loaded with `og.load.emitter`; an entity with `og.ParticleSystem
@@ -207,11 +234,13 @@ Every effect is off until the game turns it on, as data:
   in CSS pixels from the top-left over the finished frame, untouched by
   post effects, with an optional `clip`; `og.ui` uses the same layer.
 
-`templates/fx-showcase` shows every one of these on its first five stations. Camera
-shake for gameplay is `og.camera.shake` (it decays by itself);
-`PostEffects.shakeTrauma` holds a fixed shake.
+`templates/fx-showcase` shows every one of these on its first five stations;
+every field is in `reference/render.md`. Floating text,
+`og.render.floatingText(world, { text: "-12", position, color })`, pops a
+damage number or a pickup that rises and fades by itself (amounts: og-feel
+§7).
 
-## Atmosphere and water
+## 11. Atmosphere and water
 
 `og.atmosphere` is data too, and off until set (`reference/atmosphere.md`):
 
@@ -239,7 +268,9 @@ shake for gameplay is `og.camera.shake` (it decays by itself);
   splash it (`og.Splash` events) and float. In 2D, `og.WaterLine` with
   `og.Water2D` is a side-on pool drawn in the sprite order.
 
-## Material shaders
+Which look for which mood is og-taste §8.
+
+## 12. Material shaders
 
 A material can run your own WGSL in four hooks of the lit shader. Write the
 hooks in a `.wgsl` file and declare it in an `.ogt` of `type shader`:
@@ -275,58 +306,54 @@ shadows and the depth prepass use the mesh undisplaced; skinned meshes draw
 without the hooks. `templates/fx-showcase/assets/shaders/` has a dissolve
 and wind-swayed grass.
 
-## Physics beyond rigid bodies
+## 13. Physics
 
-All are components over the same simulation, deterministic and part of
-snapshots (`reference/physics.md`):
+`og.RigidBody`, `og.Collider` and `og.Velocity` on an entity make it a body
+in the profile's simulation (rapier3d in 3D, rapier2d in 2D); contacts and
+sensors arrive as events, and `og.physics` answers ray, shape and overlap
+queries. Beyond rigid bodies, all are components over the same simulation,
+deterministic and part of snapshots (`reference/physics.md`):
 
 - `og.Joint` — fixed, hinge (`JOINT_REVOLUTE`, limits, a velocity or
   position motor), slider, spring, rope, ball; to another body (`other`) or
   a world point (`otherAnchor`); `value` reads the angle or slide.
-- `og.CharacterController` (3D or top-down) — set `move` every tick and
-  `jump` to jump; it climbs `maxSlope` and `stepHeight`, snaps to the
-  ground, rides moving platforms, pushes bodies; read `grounded`,
-  `velocity`, `ground`.
+- `og.CharacterController` (3D, or top-down with `gravityScale` 0) — set
+  `move` every tick and `jump` to jump; it climbs `maxSlope` and
+  `stepHeight`, snaps to the ground, rides moving platforms, slides along
+  walls, pushes bodies; read `grounded`, `velocity`, `ground`.
 - `og.PlatformerController` (2D) — `moveX`, `jump`, `down` in; jump height
   and time to apex, coyote time, jump buffer, wall jumps, one-way layers,
   corner correction as tunables (og-feel §12 has values by genre);
   `og.CharacterEvent` reports jumps and landings for dust and sounds.
+  `templates/archetypes/runner`'s courier is one.
 - `og.Vehicle` — a raycast car (3D, `throttle`, `steer`, `brake`; wheels
   from `og.physics.vehicleWheels`) or a car on wheel joints (2D).
 - `og.Rope` and `og.Cloth` — Verlet, drawn by the engine when `visible`;
   `og.Fluid2D` — a particle fluid drawn as metaballs on a sprite layer.
 - `og.Ragdoll` — give the entity a rig
   (`og.physics.setRagdollRig(world, e, must(og.physics.ragdollRigFromSkeleton(world, anim.skeleton)))`),
-  then set `weight` 1 to go limp; its model is drawn blended from the
-  animation to the bones over `blendTime`.
+  then set `weight` 1 to go limp. At weight 0 its bodies follow the
+  animation's pose every tick, so the fall starts from the pose and its
+  velocity; the model is drawn blended from the animation to the bones over
+  `blendTime`.
 
 Readouts (`ropePoints`, `clothPoints`, `fluidParticles`, `waterHeight`,
 `vehicleWheels`, `ragdollPose`) show the last step. `templates/fx-showcase`
 has a station for each.
 
-## Enemies, sound, platform, languages, polish
-
-| Need | Skill |
-|---|---|
-| Enemies and NPCs: navigation (`og.nav`) and minds as data (`og.ai`) | og-ai |
-| Sound effects, presets, UI sounds, the mix, music | og-audio |
-| Saves, settings, leaderboards, telemetry (`og.platform`) | og-platform-sdk |
-| Text in several languages (`og.i18n`), fonts, right to left | og-i18n |
-| Scoring a build against og-taste and og-feel | `og polish .` (og-taste §11, og-feel §14) |
-
-## Performance
+## 14. Performance
 
 A frame is 16.7 ms at 60 Hz; keep step + render under half of it on a
 desktop so phones have room. `og run --json` prints `advanceMs`, and `og
-polish` the p95 step and render time of every playtest. The usual costs:
+polish` the p95 step and render time of every playtest (og-build §5). The usual costs:
 draws (share geometry and one material per look), particle systems (cap
 `maxParticles` in the emitter's .ogt, despawn emitters that are done),
 per-tick TypeScript over many entities (iterate archetype columns, never
 `world.get` per entity; spread expensive work over ticks, as og.ai's
 `thinkEvery` does), and loads in the middle of play (load in `start`).
 
-## Where to look things up
+## 15. Where to look things up
 
 `reference/index.md` (the generated wiki shipped with this skill) maps every
-module, type and function to its page, with the IDL text, defaults, ranges
+module (grouped by skill, as in §1), type and function to its page, with the IDL text, defaults, ranges
 and units of every field.

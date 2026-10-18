@@ -41,7 +41,8 @@ game's style needs it; presets are a floor, not a style.
 
 `og.ui.configure(world, { sounds: { hover, press, open, close, success, error } })`
 (or the skin's `sound` lines) plays them on the `ui` bus: `click` for
-press, `select` for success, `back` for close, `error` for a refused press.
+press, `select` for success, `back` for close, `error` for a refused press
+(and for `og.ui.shake({ sound: true })`, og-ui §6).
 Hover sounds only on desktop menus, and quiet (volume ≤ 0.3).
 
 ## 4. Buses and the mix
@@ -59,8 +60,8 @@ Four buses: `master`, `music`, `sfx`, `ui`. Set levels with the sources'
 | Even out loud and quiet effects | compressor: `threshold` −18 (dB), `ratio` 3–4, `attack` 0.005 and `release` 0.15 (s), `makeup` 3 (dB) |
 | Never clip | a limiter on master: `threshold` −1, `ratio` 20, `attack` 0.001 |
 
-`og polish` reports clipped samples in the run's mix; a peak at 1.0 is a
-mix bug, not loudness.
+`og polish` reports clipped samples in the run's mix (og-build §5); a peak
+at 1.0 is a mix bug, not loudness.
 
 ## 5. Music
 
@@ -98,4 +99,4 @@ mix bug, not loudness.
 - `dump_entity:<voice>` shows `og.AudioPlayback` while it plays; a counter
   on the voice (`Sfx.plays`) proves a short sound played at all.
 - `og polish` scores inputs answered by a sound, UI presses with a ui-bus
-  sound and hits with a sound.
+  sound and hits with a sound (og-build §5).

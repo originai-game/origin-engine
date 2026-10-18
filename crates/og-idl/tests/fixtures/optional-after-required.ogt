@@ -1,11 +1,12 @@
 type api
 version 1
 ---
-# expect: 31: required param `count` follows an optional one in fn `world.spawn`
+# expect: 33: required param `count` follows an optional one in fn `world.spawn`
 package "@origingame/fixture"
 doc "A fixture: the smallest valid API plus one mistake below."
 
 module reflect {
+  skill og-core
   doc "Reflection."
   place top
   struct FieldOptions {
@@ -22,6 +23,7 @@ module reflect {
 }
 
 module world {
+  skill og-core
   doc "The world."
   fn spawn {
     doc "Spawn entities."

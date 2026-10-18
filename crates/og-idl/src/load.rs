@@ -68,6 +68,7 @@ impl Loader {
             doc: self.inline(node, 1),
             place: Place::Namespace,
             publish: true,
+            skill: String::new(),
             items: Vec::new(),
             line: node.line,
         };
@@ -81,12 +82,25 @@ impl Loader {
                     _ => self.error(child.line, "`place` is one of namespace, root, top"),
                 },
                 "publish" => module.publish = self.bool_value(child).unwrap_or(true),
+                "skill" => match child.values.first().and_then(Value::as_word) {
+                    Some(w) if w.starts_with("og-") => module.skill = w.to_string(),
+                    _ => self.error(
+                        child.line,
+                        "`skill` names the og-* skill that teaches the module (`skill og-feel`)",
+                    ),
+                },
                 _ => {
                     if let Some(item) = self.item(child) {
                         module.items.push(item);
                     }
                 }
             }
+        }
+        if module.skill.is_empty() {
+            self.error(
+                node.line,
+                format!("module `{}` names no `skill`: the og-* skill that teaches it (the wiki's index groups modules by it)", module.name),
+            );
         }
         Some(module)
     }
@@ -126,7 +140,7 @@ impl Loader {
                 self.error(
                     node.line,
                     format!(
-                        "unknown key `{other}` in a module: expected doc, place, publish, fn, const, value, handle, struct, enum, union, interface, callback, column, component, resource or event"
+                        "unknown key `{other}` in a module: expected doc, place, publish, skill, fn, const, value, handle, struct, enum, union, interface, callback, column, component, resource or event"
                     ),
                 );
                 return None;

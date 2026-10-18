@@ -540,6 +540,11 @@ fn module_page(ix: &Index<'_>, m: &Module, binds: &[Binding<'_>]) -> String {
         "- **Publish builds**: {} (members may override).",
         publish_text(m.publish)
     );
+    let _ = writeln!(
+        out,
+        "- **Skill**: `{}`, which teaches the module (how much of it to use, and how to prove it).",
+        m.skill
+    );
     out.push_str("- **Index**: [every module and name](index.md).\n\n");
     quote(
         &mut out,
@@ -803,27 +808,41 @@ fn index(ix: &Index<'_>, binds: &[Binding<'_>]) -> String {
     );
     paragraphs(&mut out, &api.doc);
 
+    // Grouped as the skills teach them (each module's `skill`), the skills
+    // in the order their first module is declared.
     out.push_str(
-        "## Modules\n\n| Module | TypeScript | Publish builds | Summary |\n|---|---|---|---|\n",
+        "## Modules\n\nGrouped by the skill that teaches them: the skill says how much of each to use and how to prove it, the module's page is every signature.\n\n",
     );
+    let mut skills: Vec<&str> = Vec::new();
     for m in &api.modules {
-        let ts_form = match m.place {
-            _ if !has_fns(m) => "types and tokens".to_string(),
-            Place::Top => "named exports".to_string(),
-            Place::Root => "`og.*`".to_string(),
-            Place::Namespace => format!("`og.{}.*`", m.name),
-        };
+        if !skills.contains(&m.skill.as_str()) {
+            skills.push(&m.skill);
+        }
+    }
+    for skill in skills {
         let _ = writeln!(
             out,
-            "| [`{}`]({}.md) | {} | {} | {} |",
-            m.name,
-            m.name,
-            ts_form,
-            publish_text(m.publish),
-            cell(first(&m.doc))
+            "### `{skill}`\n\n| Module | TypeScript | Publish builds | Summary |\n|---|---|---|---|"
         );
+        for m in api.modules.iter().filter(|m| m.skill == skill) {
+            let ts_form = match m.place {
+                _ if !has_fns(m) => "types and tokens".to_string(),
+                Place::Top => "named exports".to_string(),
+                Place::Root => "`og.*`".to_string(),
+                Place::Namespace => format!("`og.{}.*`", m.name),
+            };
+            let _ = writeln!(
+                out,
+                "| [`{}`]({}.md) | {} | {} | {} |",
+                m.name,
+                m.name,
+                ts_form,
+                publish_text(m.publish),
+                cell(first(&m.doc))
+            );
+        }
+        out.push('\n');
     }
-    out.push('\n');
 
     if !api.units.is_empty() {
         out.push_str(

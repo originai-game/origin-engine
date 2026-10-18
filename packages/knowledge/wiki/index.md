@@ -10,32 +10,76 @@ Every failure is a returned Result; desc objects may omit any field; nothing rea
 
 ## Modules
 
+Grouped by the skill that teaches them: the skill says how much of each to use and how to prove it, the module's page is every signature.
+
+### `og-core`
+
 | Module | TypeScript | Publish builds | Summary |
 |---|---|---|---|
 | [`math`](math.md) | types and tokens | kept | Plain math values in the three.js vocabulary. They are data: the engine owns the operations, so results are identical on every host. |
 | [`reflect`](reflect.md) | named exports | kept | Reflection: components and resources are declared once with their field layout and metadata, and registered by name. |
 | [`world`](world.md) | types and tokens | kept | The world: an archetype ECS. Entities are generational handles; components are columns in engine memory. |
 | [`system`](system.md) | named exports | kept | Systems: functions the engine calls once per tick with their matched archetypes. |
+| [`rng`](rng.md) | types and tokens | kept | Deterministic randomness. Every random draw comes from an Rng stream; the sequence for a seed is identical on every host and in the Web scaffold's rng.ts. |
+
+### `og-game`
+
+| Module | TypeScript | Publish builds | Summary |
+|---|---|---|---|
 | [`game`](game.md) | `og.*` | kept | The game entry: what the bundle's default export declares. |
 | [`transform`](transform.md) | `og.transform.*` | kept | Transforms in the three.js vocabulary: position, quaternion and scale, composed into matrixWorld down the parent chain. |
-| [`time`](time.md) | `og.time.*` | kept | Simulation time. Game code never reads the wall clock; it reads Time. |
-| [`rng`](rng.md) | types and tokens | kept | Deterministic randomness. Every random draw comes from an Rng stream; the sequence for a seed is identical on every host and in the Web scaffold's rng.ts. |
 | [`input`](input.md) | types and tokens | kept | Input as the game sees it: the Input resource for polling, events for edges. |
-| [`camera`](camera.md) | `og.camera.*` | kept | The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names. |
 | [`render`](render.md) | `og.render.*` | kept | What is drawn: meshes with materials. Draws are instanced by (geometry, material) automatically; there is no per-object draw call. |
 | [`load`](load.md) | `og.load.*` | kept | Asset loading from cooked output: `og cook` turns assets/ into cooked/ (.ogb blobs and the manifest cooked/.cook.ogt), and the runtime reads only cooked/. |
 | [`physics`](physics.md) | `og.physics.*` | kept | Rigid bodies over rapier (rapier3d in the 3D profile, rapier2d in 2D, both with enhanced determinism): game code owns the components, the engine's og.physics system steps them after the game's systems and writes the dynamic bodies back. |
 | [`atmosphere`](atmosphere.md) | `og.atmosphere.*` | kept | Fog, a procedural sky, the day-night cycle, weather and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before. |
 | [`anim`](anim.md) | `og.anim.*` | kept | Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics. |
-| [`tween`](tween.md) | `og.tween.*` | kept | Tweens: animate any numeric field of a component (og.Transform.position, og.Sprite.color, og.Sprite.opacity, a game's own f32) from its value to a target over time with an easing curve, a delay, loops and yoyo; chain them in sequences or run them in parallel. Advanced by the engine's og.tween system after the game's systems and before og.anim and physics, by scaled time (slow motion, hit stop) unless unscaled. |
 | [`tilemap`](tilemap.md) | `og.tilemap.*` | kept | Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component. |
+
+### `og-feel`
+
+| Module | TypeScript | Publish builds | Summary |
+|---|---|---|---|
+| [`time`](time.md) | `og.time.*` | kept | Simulation time. Game code never reads the wall clock; it reads Time. |
+| [`camera`](camera.md) | `og.camera.*` | kept | The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names. |
+| [`tween`](tween.md) | `og.tween.*` | kept | Tweens: animate any numeric field of a component (og.Transform.position, og.Sprite.color, og.Sprite.opacity, a game's own f32) from its value to a target over time with an easing curve, a delay, loops and yoyo; chain them in sequences or run them in parallel. Advanced by the engine's og.tween system after the game's systems and before og.anim and physics, by scaled time (slow motion, hit stop) unless unscaled. |
+| [`systems`](systems.md) | types and tokens | kept | Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for. |
+
+### `og-audio`
+
+| Module | TypeScript | Publish builds | Summary |
+|---|---|---|---|
 | [`audio`](audio.md) | types and tokens | kept | Sound: inside the tick, the engine's og.audio system (after the game's systems and physics) turns AudioSource changes into a deterministic, time-stamped command stream; outside the tick the host's mixer renders it (an AudioWorklet on the web, the output device, a capture or a null sink natively). |
+
+### `og-ai`
+
+| Module | TypeScript | Publish builds | Summary |
+|---|---|---|---|
 | [`nav`](nav.md) | `og.nav.*` | kept | Navigation: grids (A* and jump point search with eight-way moves that never cut a blocked corner, line-of-sight smoothing), flow fields for crowds, and navmeshes (baked at cook time from a level's static colliders and models, or built at runtime for a flat procedural level) with funnel paths and box obstacles that rebuild only the tiles they touch. |
 | [`ai`](ai.md) | `og.ai.*` | kept | Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (crates/og-ai/README.md has the grammar), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent. |
+
+### `og-platform-sdk`
+
+| Module | TypeScript | Publish builds | Summary |
+|---|---|---|---|
 | [`platform`](platform.md) | `og.platform.*` | kept | Platform services as host capabilities (docs/design.md §2.8): cloud store, leaderboards, telemetry, Origin Point and AI marks. Game code names a method and its arguments, never a credential, a URL or a cookie: the host owns them. On the web the shell forwards each call to the Player through origin-checked postMessage (Player protocol 2, docs/web-export.md); natively the host answers from a local JSON store (`og run --platform-store`, default `<project>/.og/platform.json`). |
+
+### `og-i18n`
+
+| Module | TypeScript | Publish builds | Summary |
+|---|---|---|---|
 | [`i18n`](i18n.md) | `og.i18n.*` | kept | Localization: one string table per locale (`.ogt` of `type strings`: `locale "ja"`, its font chain `fonts "..."`, `string "key" "message"`), messages in a subset of ICU MessageFormat (`{name}`, `{n, number}`, `{n, plural, =0 {..} one {..} other {..}}` with `#`, `{g, select, a {..} other {..}}`), CLDR plural rules, and the locale the host asks for (the browser's `navigator.language` on the web, `og run --locale` natively). |
+
+### `og-ui`
+
+| Module | TypeScript | Publish builds | Summary |
+|---|---|---|---|
 | [`ui`](ui.md) | `og.ui.*` | kept | The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, themes it with the platform's design tokens, draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it. |
-| [`systems`](systems.md) | types and tokens | kept | Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for. |
+
+### `og-build`
+
+| Module | TypeScript | Publish builds | Summary |
+|---|---|---|---|
 | [`commands`](commands.md) | `og.commands.*` | dropped | The command channel: actions scheduled on simulation time, from `og run --commands "t:action[:args];..."` or the probe's commands(). |
 | [`probe`](probe.md) | types and tokens | kept | The probe: RuntimeProbe protocol 5 (origin/packages/contracts/src/probe.ts) served natively, plus the engine's wire members. |
 

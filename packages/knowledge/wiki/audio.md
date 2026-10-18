@@ -10,17 +10,15 @@ Spatial gain and pan are computed in the tick from the source's og.Transform rel
 
 - **TypeScript**: functions are none at module level (its members live on the types below); components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Skill**: `og-audio`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module audio {
-  doc "Sound: inside the tick, the engine's og.audio system (after the game's systems and physics) turns AudioSource changes into a deterministic, time-stamped command stream; outside the tick the host's mixer renders it (an AudioWorklet on the web, the output device, a capture or a null sink natively)."
-  doc "The stream, not the PCM, is world state: snapshots, restore and the world hash cover it, and nothing a sink does reaches the world. Load sounds with og.load.sound; inserting a source plays it, setting `playing` false stops it, and a one-shot sets `playing` back to false when it ends."
-  doc "Spatial gain and pan are computed in the tick from the source's og.Transform relative to the first AudioListener (three.js convention: the listener looks down -Z, +X is right; with none, the origin looking down -Z)."
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 5292</sub>
+<sub>`api.ogt` line 5309</sub>
 
 ## Contents
 
@@ -162,7 +160,7 @@ component AudioSource {
 }
 ```
 
-<sub>`api.ogt` line 5318</sub>
+<sub>`api.ogt` line 5336</sub>
 
 <a id="record-AudioListener"></a>
 
@@ -188,7 +186,7 @@ component AudioListener {
 }
 ```
 
-<sub>`api.ogt` line 5402</sub>
+<sub>`api.ogt` line 5420</sub>
 
 <a id="record-Audio"></a>
 
@@ -270,7 +268,7 @@ resource Audio {
 }
 ```
 
-<sub>`api.ogt` line 5412</sub>
+<sub>`api.ogt` line 5430</sub>
 
 <a id="record-AudioBusFx"></a>
 
@@ -391,7 +389,7 @@ component AudioBusFx {
 }
 ```
 
-<sub>`api.ogt` line 5470</sub>
+<sub>`api.ogt` line 5488</sub>
 
 <a id="record-Music"></a>
 
@@ -447,7 +445,7 @@ component Music {
 }
 ```
 
-<sub>`api.ogt` line 5559</sub>
+<sub>`api.ogt` line 5577</sub>
 
 <a id="record-MusicBeat"></a>
 
@@ -474,7 +472,7 @@ event MusicBeat {
 }
 ```
 
-<sub>`api.ogt` line 5593</sub>
+<sub>`api.ogt` line 5611</sub>
 
 <a id="record-SoundStarted"></a>
 
@@ -499,7 +497,7 @@ event SoundStarted {
 }
 ```
 
-<sub>`api.ogt` line 5601</sub>
+<sub>`api.ogt` line 5619</sub>
 
 <a id="record-SoundEnded"></a>
 
@@ -526,7 +524,7 @@ event SoundEnded {
 }
 ```
 
-<sub>`api.ogt` line 5608</sub>
+<sub>`api.ogt` line 5626</sub>
 
 ## Types
 
@@ -555,7 +553,7 @@ enum AudioBus {
 }
 ```
 
-<sub>`api.ogt` line 5303</sub>
+<sub>`api.ogt` line 5321</sub>
 
 ## Column kinds
 
@@ -574,7 +572,7 @@ column AudioBus {
 }
 ```
 
-<sub>`api.ogt` line 5311</sub>
+<sub>`api.ogt` line 5329</sub>
 
 ## Constants
 
@@ -590,28 +588,28 @@ column AudioBus {
 const SOUND_FINISHED u32 0 "SoundEnded.reason: a one-shot played to its end."
 ```
 
-<sub>`api.ogt` line 5297</sub>
+<sub>`api.ogt` line 5315</sub>
 
 ```ogt
 const SOUND_STOPPED u32 1 "SoundEnded.reason: `playing` was set to false."
 ```
 
-<sub>`api.ogt` line 5298</sub>
+<sub>`api.ogt` line 5316</sub>
 
 ```ogt
 const SOUND_REMOVED u32 2 "SoundEnded.reason: the AudioSource was removed from a living entity."
 ```
 
-<sub>`api.ogt` line 5299</sub>
+<sub>`api.ogt` line 5317</sub>
 
 ```ogt
 const SOUND_REPLACED u32 3 "SoundEnded.reason: `sound` changed while it played."
 ```
 
-<sub>`api.ogt` line 5300</sub>
+<sub>`api.ogt` line 5318</sub>
 
 ```ogt
 const SOUND_CULLED u32 4 "SoundEnded.reason: more sources played than Audio.maxVoices and this one stood lowest (priority, then volume, then age)."
 ```
 
-<sub>`api.ogt` line 5301</sub>
+<sub>`api.ogt` line 5319</sub>

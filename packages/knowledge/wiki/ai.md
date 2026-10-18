@@ -10,17 +10,15 @@ Conditions read blackboard keys (declared, set by actions or og.ai.set, or built
 
 - **TypeScript**: functions are the namespace `og.ai`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Skill**: `og-ai`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module ai {
-  doc "Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (crates/og-ai/README.md has the grammar), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent."
-  doc "An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent (og.nav plans and walks after the game's systems) or runs one of the game's commands (GameDesc.commands, with the agent's entity handle as its first argument) before the next tick."
-  doc "Conditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`). Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard."
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 6082</sub>
+<sub>`api.ogt` line 6101</sub>
 
 ## Contents
 
@@ -75,7 +73,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 6252</sub>
+<sub>`api.ogt` line 6272</sub>
 
 <a id="fn-parse"></a>
 
@@ -105,7 +103,7 @@ fn parse {
 }
 ```
 
-<sub>`api.ogt` line 6259</sub>
+<sub>`api.ogt` line 6279</sub>
 
 <a id="fn-get"></a>
 
@@ -137,7 +135,7 @@ fn get {
 }
 ```
 
-<sub>`api.ogt` line 6266</sub>
+<sub>`api.ogt` line 6286</sub>
 
 <a id="fn-set"></a>
 
@@ -171,7 +169,7 @@ fn set {
 }
 ```
 
-<sub>`api.ogt` line 6274</sub>
+<sub>`api.ogt` line 6294</sub>
 
 <a id="fn-noise"></a>
 
@@ -201,7 +199,7 @@ fn noise {
 }
 ```
 
-<sub>`api.ogt` line 6283</sub>
+<sub>`api.ogt` line 6303</sub>
 
 <a id="fn-describe"></a>
 
@@ -231,7 +229,7 @@ fn describe {
 }
 ```
 
-<sub>`api.ogt` line 6290</sub>
+<sub>`api.ogt` line 6310</sub>
 
 ## Components, resources and events
 
@@ -281,7 +279,7 @@ component AiAgent {
 }
 ```
 
-<sub>`api.ogt` line 6100</sub>
+<sub>`api.ogt` line 6120</sub>
 
 <a id="record-Perception"></a>
 
@@ -382,7 +380,7 @@ component Perception {
 }
 ```
 
-<sub>`api.ogt` line 6126</sub>
+<sub>`api.ogt` line 6146</sub>
 
 <a id="record-Perceivable"></a>
 
@@ -411,7 +409,7 @@ component Perceivable {
 }
 ```
 
-<sub>`api.ogt` line 6196</sub>
+<sub>`api.ogt` line 6216</sub>
 
 <a id="record-AiChanged"></a>
 
@@ -438,7 +436,7 @@ event AiChanged {
 }
 ```
 
-<sub>`api.ogt` line 6208</sub>
+<sub>`api.ogt` line 6228</sub>
 
 ## Types
 
@@ -454,7 +452,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Behaviour "A loaded behaviour tree or state machine."
 ```
 
-<sub>`api.ogt` line 6087</sub>
+<sub>`api.ogt` line 6107</sub>
 
 <a id="type-BehaviourInfo"></a>
 
@@ -483,7 +481,7 @@ struct BehaviourInfo {
 }
 ```
 
-<sub>`api.ogt` line 6216</sub>
+<sub>`api.ogt` line 6236</sub>
 
 <a id="type-NoiseDesc"></a>
 
@@ -513,7 +511,7 @@ struct NoiseDesc {
 }
 ```
 
-<sub>`api.ogt` line 6226</sub>
+<sub>`api.ogt` line 6246</sub>
 
 <a id="type-AiDescription"></a>
 
@@ -548,7 +546,7 @@ struct AiDescription {
 }
 ```
 
-<sub>`api.ogt` line 6239</sub>
+<sub>`api.ogt` line 6259</sub>
 
 ## Column kinds
 
@@ -567,7 +565,7 @@ column Behaviour {
 }
 ```
 
-<sub>`api.ogt` line 6089</sub>
+<sub>`api.ogt` line 6109</sub>
 
 ## Constants
 
@@ -581,16 +579,16 @@ column Behaviour {
 const AI_RUNNING u32 1 "AiAgent.status: the tree or state is still running."
 ```
 
-<sub>`api.ogt` line 6096</sub>
+<sub>`api.ogt` line 6116</sub>
 
 ```ogt
 const AI_SUCCESS u32 2 "AiAgent.status: the tree succeeded on the last think."
 ```
 
-<sub>`api.ogt` line 6097</sub>
+<sub>`api.ogt` line 6117</sub>
 
 ```ogt
 const AI_FAILURE u32 3 "AiAgent.status: the tree failed on the last think."
 ```
 
-<sub>`api.ogt` line 6098</sub>
+<sub>`api.ogt` line 6118</sub>

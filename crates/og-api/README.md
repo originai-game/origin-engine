@@ -81,8 +81,11 @@ comment   = "#" to the end of the line, where "#" starts a token
 ## The IDL
 
 Top level: `package "<npm name>"`, `doc "..."` lines, `unit <name> "<doc>"`
-and `module <name> { ... }`. A module holds `doc`, optionally
-`place namespace|root|top` and `publish false`, then declarations.
+and `module <name> { ... }`. A module holds `skill og-<name>` (the
+knowledge skill that teaches it: the wiki's index groups modules by it, each
+page names it, and the knowledge package checks that skill names the page),
+`doc`, optionally `place namespace|root|top` and `publish false`, then
+declarations.
 
 Most declarations accept a trailing quoted doc on their own line
 (`field x f32 "The x component."`) and `doc "..."` lines in their block;

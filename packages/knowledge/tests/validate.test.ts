@@ -127,3 +127,30 @@ test("a skill that names a reference page the generated wiki does not have is re
     "game/skills/og-taste/SKILL.md: names reference/weather.md, which the generated wiki does not have (the wiki's pages: reference/index.md lists them; a module's page is reference/<module>.md)",
   ]);
 });
+
+test("each module is taught by the one skill the wiki's index groups it under", () => {
+  // og-taste names og-ui's page, og-core stops naming one of its own.
+  const p = added((r) => {
+    edit(join(r.pkg, "skills/og-taste/SKILL.md"), (s) => `${s}\nThe calls are in \`reference/ui.md\`.\n`);
+    edit(join(r.pkg, "skills/og-core/SKILL.md"), (s) => s.replace("`reference/rng.md` (seeded streams)", "the Rng resource (seeded streams)"));
+  });
+  expect(p).toEqual([
+    "skills/og-core/SKILL.md: teaches the rng module (wiki/index.md) but never names reference/rng.md",
+    "skills/og-taste/SKILL.md: names reference/ui.md, which og-ui teaches; point to og-ui instead, so each module is taught in one place",
+  ]);
+  const grouped = added((r) => edit(join(r.pkg, "wiki/index.md"), (s) => s.replace("### `og-ai`", "### `og-enemies`")));
+  expect(grouped).toContain("wiki/index.md: groups modules under og-enemies, which is no skill this package ships; fix the modules' `skill` in api.ogt");
+});
+
+test("a section reference names a numbered section that exists", () => {
+  const p = added((r) =>
+    edit(join(r.pkg, "skills/og-audio/SKILL.md"), (s) => `${s}\nSee og-feel §15, og-taste §4, §12 and §9, og-build §Tests.\n\n\`\`\`text\nog-feel §99 in a code block is not a reference\n\`\`\`\n`),
+  );
+  expect(p).toEqual([
+    "skills/og-audio/SKILL.md: refers to og-build §Tests by name; refer to a skill's sections by their numbers (## N.)",
+    "skills/og-audio/SKILL.md: refers to og-feel §15, which does not exist there (its sections: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14)",
+    "skills/og-audio/SKILL.md: refers to og-taste §12, which does not exist there (its sections: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)",
+  ]);
+  const own = added((r) => edit(join(r.pkg, "skills/og-audio/SKILL.md"), (s) => `${s}\nAs §8 says.\n`));
+  expect(own).toEqual(["skills/og-audio/SKILL.md: refers to its own §8, which it does not have (its sections: 1, 2, 3, 4, 5, 6, 7)"]);
+});

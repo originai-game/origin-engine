@@ -8,17 +8,15 @@ The inspector, Tune, the probe, scene text and the wiki read this one schema. Ea
 
 - **TypeScript**: functions are named exports of the package: `import { … } from "@origingame/engine"`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
+- **Skill**: `og-core`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module reflect {
-  doc "Reflection: components and resources are declared once with their field layout and metadata, and registered by name."
-  doc "The inspector, Tune, the probe, scene text and the wiki read this one schema. Each column factory below makes one field."
-  place top
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 84</sub>
+<sub>`api.ogt` line 85</sub>
 
 ## Contents
 
@@ -72,7 +70,7 @@ fn defineComponent {
 }
 ```
 
-<sub>`api.ogt` line 171</sub>
+<sub>`api.ogt` line 173</sub>
 
 <a id="fn-defineResource"></a>
 
@@ -103,7 +101,7 @@ fn defineResource {
 }
 ```
 
-<sub>`api.ogt` line 180</sub>
+<sub>`api.ogt` line 182</sub>
 
 ## Types
 
@@ -139,7 +137,7 @@ struct FieldOptions {
 }
 ```
 
-<sub>`api.ogt` line 89</sub>
+<sub>`api.ogt` line 91</sub>
 
 ## Column kinds
 
@@ -167,7 +165,7 @@ column f32 {
 }
 ```
 
-<sub>`api.ogt` line 101</sub>
+<sub>`api.ogt` line 103</sub>
 
 ```ogt
 column f64 {
@@ -178,7 +176,7 @@ column f64 {
 }
 ```
 
-<sub>`api.ogt` line 108</sub>
+<sub>`api.ogt` line 110</sub>
 
 ```ogt
 column u32 {
@@ -189,7 +187,7 @@ column u32 {
 }
 ```
 
-<sub>`api.ogt` line 115</sub>
+<sub>`api.ogt` line 117</sub>
 
 ```ogt
 column i32 {
@@ -200,7 +198,7 @@ column i32 {
 }
 ```
 
-<sub>`api.ogt` line 122</sub>
+<sub>`api.ogt` line 124</sub>
 
 ```ogt
 column bool {
@@ -211,7 +209,7 @@ column bool {
 }
 ```
 
-<sub>`api.ogt` line 129</sub>
+<sub>`api.ogt` line 131</sub>
 
 ```ogt
 column Vector2 {
@@ -222,7 +220,7 @@ column Vector2 {
 }
 ```
 
-<sub>`api.ogt` line 136</sub>
+<sub>`api.ogt` line 138</sub>
 
 ```ogt
 column Vector3 {
@@ -233,7 +231,7 @@ column Vector3 {
 }
 ```
 
-<sub>`api.ogt` line 143</sub>
+<sub>`api.ogt` line 145</sub>
 
 ```ogt
 column Quaternion {
@@ -244,7 +242,7 @@ column Quaternion {
 }
 ```
 
-<sub>`api.ogt` line 150</sub>
+<sub>`api.ogt` line 152</sub>
 
 ```ogt
 column Matrix4 {
@@ -255,7 +253,7 @@ column Matrix4 {
 }
 ```
 
-<sub>`api.ogt` line 157</sub>
+<sub>`api.ogt` line 159</sub>
 
 ```ogt
 column Color {
@@ -266,4 +264,4 @@ column Color {
 }
 ```
 
-<sub>`api.ogt` line 164</sub>
+<sub>`api.ogt` line 166</sub>
