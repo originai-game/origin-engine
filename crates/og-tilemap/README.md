@@ -126,7 +126,8 @@ object door {
   `decode` refuses bytes saved for another size or layer count, and
   re-resolves terrain from the cells.
 - **Edits** (`set`): tile layers take a tile id of their tileset or −1;
-  terrain layers 1 or 0, and re-resolve the 3×3 neighbourhood. Every change
+  terrain layers 1 or 0, and re-resolve the 3×3 neighbourhood; `get`
+  answers the tile drawn there (a terrain cell's resolved tile). Every change
   to a drawn tile bumps the layer's and its chunk's version (setting a cell
   to its current value bumps nothing).
 - **Collision.** Full-tile solids (`solid`, or a `collide` rect covering the
