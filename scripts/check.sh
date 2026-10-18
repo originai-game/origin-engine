@@ -4,7 +4,8 @@
 #   scripts/check.sh            the full lane, every step in order, stopping at the first FAIL
 #   scripts/check.sh quick      the quick lane: fmt clippy test-quick drift bun-quick
 #   scripts/check.sh STEP...    only the named steps, in the order given
-#   scripts/check.sh --all ...  any of the above with every step and test run (CI always is)
+#   scripts/check.sh --all ...  any of the above with every step and test run and
+#                               nothing reused from target/og-wasm-cache (CI always is)
 #   scripts/check.sh --list     the step names
 #
 # Path-aware (docs/ci.md §Lanes): a step that passes records the working
@@ -242,7 +243,7 @@ wasm_opt_one() {
   # earlier result: same input, tools and flags, same output.
   key="$(og_sha256 "$raw") $(wasm-bindgen --version 2>/dev/null) $(wasm-opt --version 2>/dev/null) $WASM_OPT_FLAGS"
   cache="$OG_CONTENT_CACHE/opt/$name"
-  if [ -f "$cache/key" ] && [ "$(cat "$cache/key")" = "$key" ] && [ -f "$cache/opt.wasm" ]; then
+  if [ "$FORCE_ALL" != 1 ] && [ -f "$cache/key" ] && [ "$(cat "$cache/key")" = "$key" ] && [ -f "$cache/opt.wasm" ]; then
     rm -rf "$OG_WASM_OUT/bindgen/$name"
     if [ -d "$cache/bindgen" ]; then mkdir -p "$OG_WASM_OUT/bindgen" && cp -R "$cache/bindgen" "$OG_WASM_OUT/bindgen/$name"; fi
     cp "$cache/opt.wasm" "$OG_WASM_OUT/opt/$name.wasm" || return 1
@@ -310,6 +311,8 @@ step_wasm_opt() {
 }
 
 step_size_gate() {
+  # --all measures afresh; otherwise a module measured before is not again.
+  [ "$FORCE_ALL" = 1 ] && export OG_SIZE_GATE_FRESH=1
   case "$RAN" in *" wasm-opt "*) ;; *)
     if [ -f "$OG_EVIDENCE_DIR/size-gate.json" ] \
         && skip_unchanged size-gate "size-gate (the wasm it measured is unchanged)" "$(rule_wasm)"; then
@@ -402,7 +405,7 @@ step_web_reference() {
 
 case "${1:-}" in
   --list) for s in $STEPS; do echo "$s"; done; exit 0 ;;
-  -h|--help) sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  -h|--help) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
 esac
 args=()
 for a in "$@"; do

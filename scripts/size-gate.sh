@@ -6,7 +6,9 @@
 #
 # With no arguments it measures every file listed in target/og-wasm/opt.txt,
 # which scripts/check.sh's wasm-opt step writes. The budget applies to the sum
-# of all measured files. Writes $OG_EVIDENCE_DIR/size-gate.json.
+# of all measured files. Writes $OG_EVIDENCE_DIR/size-gate.json. A module
+# measured before (same SHA-256 and brotli) takes its recorded size, unless
+# OG_SIZE_GATE_FRESH is set (scripts/check.sh --all sets it).
 set -u -o pipefail
 # shellcheck source-path=SCRIPTDIR
 . "$(dirname "$0")/lib.sh"
@@ -45,7 +47,7 @@ for f in "${files[@]}"; do
   # brotli -q 11 of a module measured before is that size again.
   key="$(og_sha256 "$f")-$(brotli --version 2>/dev/null | tr -c 'A-Za-z0-9.' _)"
   cached="$OG_CONTENT_CACHE/brotli/$key"
-  if [ -s "$cached" ]; then
+  if [ -z "${OG_SIZE_GATE_FRESH:-}" ] && [ -s "$cached" ]; then
     br="$(cat "$cached")"
   else
     br="$(brotli -q 11 -c "$f" | wc -c | tr -d ' ')"
