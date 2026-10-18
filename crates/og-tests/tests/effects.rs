@@ -964,6 +964,42 @@ fn motion_blur_follows_object_and_camera_motion() {
     assert!(s1 < 0.8 * s0);
 }
 
+/// Every effect pass at once under TAA (depth of field, motion blur, god
+/// rays, ambient occlusion, outlines): the render graph must not alias a
+/// target a pass writes with the prepass textures it binds (it did: depth
+/// of field, motion blur and TAA together failed wgpu's validation, and
+/// motion blur after depth of field drew nothing), and motion blur still
+/// moves the frame behind depth of field.
+#[test]
+fn every_effect_pass_together_under_taa() {
+    let desc = RenderDesc {
+        antialias: og_render::Antialias::Taa,
+        ..small()
+    };
+    let all = |mb: bool| {
+        let mut s = fx::motion_blur_scene();
+        s.post.depth_of_field = Some(DepthOfField {
+            focus_distance: 4.0,
+            ..Default::default()
+        });
+        s.post.ao = Some(AmbientOcclusion::default());
+        s.post.outline = Some(Outline::default());
+        s.post.god_rays = Some(GodRays::default());
+        if !mb {
+            s.post.motion_blur = None;
+        }
+        let (img, _, _) = run(&desc, &mut s, 4, fx::move_blur);
+        img
+    };
+    let (with, without) = (all(true), all(false));
+    let moved = differing(&with, &without, 8.0);
+    println!("motion blur behind depth of field changed {moved} pixels");
+    assert!(
+        moved > 500,
+        "motion blur after depth of field changed {moved} pixels"
+    );
+}
+
 /// God rays brighten the shafts between columns; with the sun behind the
 /// camera nothing changes.
 #[test]

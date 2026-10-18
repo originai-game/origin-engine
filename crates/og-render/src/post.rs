@@ -891,7 +891,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 &["pre-depth", "gbuffer", "lindepth", "outline-id"],
             ),
             FramePass::Ao => g.pass(name, &["lindepth", "gbuffer"], &["ao.raw"]),
-            FramePass::AoBlur => g.pass(name, &["ao.raw", "lindepth"], &["ao"]),
+            FramePass::AoBlur => g.pass(name, &["ao.raw", "lindepth", "gbuffer"], &["ao"]),
             FramePass::Particles if prepass => {
                 g.pass(name, &["lindepth", "gbuffer"], &["particles"])
             }
@@ -929,12 +929,19 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 &[names.main, "depth", "history-read"],
                 &["history-write"],
             ),
-            FramePass::DofCoc => g.pass(name, &[aa, "lindepth"], &["dof.coc"]),
-            FramePass::DofBlur => g.pass(name, &["dof.coc"], &["dof.blur"]),
-            FramePass::DofComposite => g.pass(name, &[aa, "dof.blur"], &["hdr.dof"]),
+            // Every effect pass binds the prepass's lindepth and gbuffer
+            // (`fx_group`), so each declares them: a target written here may
+            // not alias a texture the pass still has bound.
+            FramePass::DofCoc => g.pass(name, &[aa, "lindepth", "gbuffer"], &["dof.coc"]),
+            FramePass::DofBlur => g.pass(name, &["dof.coc", "lindepth", "gbuffer"], &["dof.blur"]),
+            FramePass::DofComposite => {
+                g.pass(name, &[aa, "dof.blur", "lindepth", "gbuffer"], &["hdr.dof"])
+            }
             FramePass::MotionBlur => g.pass(name, &[after_dof, "gbuffer", "lindepth"], &["hdr.mb"]),
-            FramePass::GodRaysMask => g.pass(name, &[lit, "lindepth"], &["god.mask"]),
-            FramePass::GodRaysBlur => g.pass(name, &["god.mask"], &["god.blur"]),
+            FramePass::GodRaysMask => g.pass(name, &[lit, "lindepth", "gbuffer"], &["god.mask"]),
+            FramePass::GodRaysBlur => {
+                g.pass(name, &["god.mask", "lindepth", "gbuffer"], &["god.blur"])
+            }
             FramePass::Meter => g.pass(name, &[lit], &["luminance.0"]),
             FramePass::Reduce(i) => g.pass(name, &[&luminance_name(i)], &[&luminance_name(i + 1)]),
             FramePass::BloomPrefilter => {
