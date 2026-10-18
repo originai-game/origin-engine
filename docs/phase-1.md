@@ -65,15 +65,18 @@ hosts; M6 needs M3, M4, M5; M7 needs M6.
   `og.Pointers` (five pointers) and `og.Gamepad` (four pads) in og-input
   through the input ring, read by og-ui's touch controls and focus
   navigation; `templates/fx-showcase` with five stations and references on
-  `metal` and `vulkan-cpu`, and a WebGPU frame in Chrome. Fixed on the way:
-  immediate-mode sprites and text outliving their tick, effect passes that
-  aliased the prepass textures they bind, and dissolved pixels drawn black
-  on Metal. Evidence `tests/evidence/E2/`. Owed: `webgpu`/`webgl2`
-  reference tiers for the effect and overlay scenes (the runner exists,
-  `make web-reference`; it found the overlay's translucent fills blended
-  in sRGB on the WebGPU canvas and fx-showcase panicking on WebGL2 in the
-  `taa` pipeline, docs/ci.md §Browser reference tiers), `vulkan-cpu`
-  references for og-ui and the UI kit, pads beyond the first in og-ui.
+  `metal`, `vulkan-cpu`, `webgpu` and `webgl2` (the browser tiers from
+  `make web-reference`, each within og-tests' tolerance of `metal`,
+  docs/ci.md §Browser reference tiers). Fixed on the way: immediate-mode
+  sprites and text outliving their tick, effect passes that aliased the
+  prepass textures they bind, dissolved pixels drawn black on Metal, the
+  overlay blending encoded sRGB on the WebGPU canvas, three WebGL2 defects
+  (TAA's depth read, 18 of 16 GL texture slots in the lit skinned
+  pipeline, the local shadow map created as a cube-map array) and the
+  Worker's probe call trapping the wasm on a non-string argument.
+  Evidence `tests/evidence/E2/`. Owed: browser runs of og-tests' own gfx
+  scenes (they need a wasm harness), `vulkan-cpu` references for og-ui
+  and the UI kit, pads beyond the first in og-ui.
 
 ### Status 2026-10-18, E1 rounds
 
@@ -126,7 +129,8 @@ README:
 - **og-render** (§What phase 2 owes): "a depth prepass; Forward+ clustered
   lights"; "GL-tier references … a committed browser runner for `webgpu`
   and `webgl2` is still owed, and with it a run of `Renderer::capture` in a
-  browser"; "a normal matrix for non-uniform scale; vertex tangents;
+  browser" (both since delivered for fx-showcase: `make web-reference`, see
+  the E2 status above); "a normal matrix for non-uniform scale; vertex tangents;
   clearcoat"; "screen-space UI layering (sprites are world-space today)";
   the runtime loaders do not upload the tier's compressed format yet. No
   gfx reference scene shows the M6 material features.

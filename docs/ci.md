@@ -130,36 +130,39 @@ export of `templates/fx-showcase` on a 1280×720 canvas at DPR 1 in headless
 Chrome for Testing, driven one tick and one render per `frame` call as
 `og run --commands` drives the native host, each station captured at its
 playtest screenshot's tick and compared with
-`templates/fx-showcase/references/<webgpu|webgl2>/` when committed, else
-with `metal`, at og-tests' default tolerance (32/255 per channel, 0.5 %
-outliers, RMSE 0.01). `--record` writes the tier's references. It takes
-about 2 s a tier after the export (Apple M4 Pro, Chrome 150), but it is not
-in the gate: CI's machine has no Chrome for Testing (a missing Chrome is an
-error, never a skip), and it does not pass yet.
+`templates/fx-showcase/references/<webgpu|webgl2>/` (committed; `metal`
+when a tier has none) at og-tests' default tolerance (32/255 per channel,
+0.5 % outliers, RMSE 0.01). `--record` writes the tier's references. Before
+the stations it sends `call("probe", "commands", {…})` with an object
+through the engine Worker and requires the probe's refusal ("probe.commands:
+script must be a string, not object") from the same Worker that then runs
+them. It takes about 2 s a tier after the export (Apple M4 Pro, Chrome 150)
+and passes on both tiers, but it is not in the gate: CI's machine has no
+Chrome for Testing (a missing Chrome is an error, never a skip).
 
-Measured at 35cffd7 (2026-10-18), against `metal`:
+Against their own references both tiers reproduce exactly (RMSE 0 on two
+clean runs). Against `metal`, measured at the commit that recorded them
+(2026-10-18):
 
-| Station | webgpu outliers | webgpu RMSE | outside the HUD and badge |
-|---|---|---|---|
-| post | 2.079 % | 0.02093 | 0.000 %, 0.00110 |
-| lens | 2.299 % | 0.02226 | 0.007 %, 0.00193 |
-| fx | 0.152 % | 0.00697 (passes) | 0.000 %, 0.00177 |
-| 2d | 0.135 % | 0.00865 (passes) | 0.000 %, 0.00234 |
-| stylised | 2.297 % | 0.02418 | 0.023 %, 0.00370 |
+| Station | webgpu outliers | webgpu RMSE | webgl2 outliers | webgl2 RMSE |
+|---|---|---|---|---|
+| post | 0.000 % | 0.00107 | 0.000 % | 0.00498 |
+| lens | 0.007 % | 0.00188 | 0.007 % | 0.00186 |
+| fx | 0.000 % | 0.00173 | 0.013 % | 0.00272 |
+| 2d | 0.000 % | 0.00228 | 0.000 % | 0.00231 |
+| stylised | 0.022 % | 0.00360 | 0.022 % | 0.00360 |
 
-Every effect matches Metal on WebGPU; what fails is the overlay. Its
-translucent fills come out darker in the browser (the HUD panel at
-(150, 40) is sRGB 87,89,99 on webgpu, 123,128,135 on metal and
-vulkan-cpu; opaque overlay colours are exact): on a non-sRGB output (the
-WebGPU canvas's `Bgra8Unorm`) `overlay.wgsl` encodes sRGB in the shader
-and the hardware then blends encoded values, where the native tiers blend
-in linear. `webgl2` does not reach a frame: fx-showcase's engine panics
-creating the `taa` pipeline (`textureLoad` from a depth texture is not
-supported in GLSL). The og-tests `overlay` gfx scene has no browser run:
-og-tests' scenes load their assets from disk and read back synchronously,
-so they would need a wasm harness of their own; fx-showcase's HUD and
-badge go through the same overlay pass. No webgpu or webgl2 references
-are committed until both defects are fixed.
+The runner found four defects, all fixed in og-render before the tiers
+were recorded (`crates/og-render/README.md` §The overlay and §Backend
+tiers): the overlay blended encoded sRGB values on the WebGPU canvas's
+`Bgra8Unorm` (the HUD panel was 87,89,99 against 123,128,135; RMSE up to
+0.024); on WebGL2 TAA's `textureLoad` from a depth texture had no GLSL
+form, the lit skinned pipeline needed 18 of the GL backend's 16 texture
+slots, and the twelve-layer local shadow map was created as a cube-map
+array, which left every shadowed light black. The og-tests `overlay` gfx
+scene has no browser run: og-tests' scenes load their assets from disk and
+read back synchronously, so they would need a wasm harness of their own;
+fx-showcase's HUD and badge go through the same overlay pass.
 
 ## Updating a budget
 

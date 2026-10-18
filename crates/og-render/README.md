@@ -100,17 +100,25 @@ object; see below). Passes whose feature is off are not recorded.
    upsamples added back level by level.
 9. **Tonemap**: exposure × (HDR + bloom × intensity) → ACES or clamp → the
    output. An sRGB output is encoded by the hardware; a non-sRGB one
-   (WebGPU canvases are `Bgra8Unorm`) by the shader (`fs_srgb_encode`).
+   (WebGPU canvases are `Bgra8Unorm`) by the shader (`fs_srgb_encode`). A
+   surface takes an sRGB format where one is offered (WebGL2, native
+   windows).
 10. **Overlay** (when `scene.overlay` is set; `overlay.rs`, `overlay.wgsl`):
-    after the graph, straight into the output (see below).
+    after the graph, straight into the output or its sRGB view (see below).
 
 ## The overlay
 
 The screen-space layer for HUDs and og-ui. It is drawn after every post
 effect (tone mapping, the LUT, vignette, aberration, grain, bloom, TAA), so
-an authored colour comes out exactly (linear in, sRGB out, encoded by the
-shader on a non-sRGB output), with no depth test and straight alpha
-blending. Positions are CSS pixels from the top-left corner, scaled by
+an authored colour comes out exactly (linear in, sRGB out), with no depth
+test and straight alpha blending in linear light on every tier: an sRGB
+output encodes in hardware, and a non-sRGB 8-bit one (the WebGPU canvas's
+`Bgra8Unorm`, a `Bgra8Unorm` offscreen target) is drawn through its sRGB
+view (`view_formats`, where `DownlevelFlags::VIEW_FORMATS` or
+`SURFACE_VIEW_FORMATS` allow it), so translucent fills blend as on Metal.
+Only a caller's non-sRGB `RenderTarget::View`, or a backend without view
+reinterpretation, falls back to the shader encoding, which blends encoded
+values. Positions are CSS pixels from the top-left corner, scaled by
 `Overlay::scale` (0: the output's height over `Overlay::height`). Sprites and
 text are sorted by (layer, texture or font) into instanced runs (stable
 within a run); each instance carries an optional clip rectangle tested per
@@ -119,8 +127,10 @@ tier runs it (render passes only); screenshots, `capture` and
 `read_offscreen` include it; `FrameStats` counts `overlay_sprites`,
 `overlay_glyphs` and `overlay_draws`. Tests: `tests/gfx.rs`
 `the_overlay_is_drawn_after_post_untonemapped_and_clipped`,
-`the_overlay_encodes_on_a_non_srgb_output`, and the `overlay` reference
-scene (the showcase under TAA with a HUD; `metal` and `vulkan-cpu`).
+`the_overlay_blends_in_linear_light_on_a_non_srgb_output`, the `overlay`
+reference scene (the showcase under TAA with a HUD; `metal` and
+`vulkan-cpu`), and fx-showcase's HUD and og.ui badge on `webgpu` and
+`webgl2` (`make web-reference`).
 
 ## From TypeScript
 
@@ -140,15 +150,17 @@ module `render`), on both hosts, off by default:
 | `Overlay` | `SpriteDesc.screen` / `TextDesc.screen` with an optional `clip` `[x, y, w, h]`; og-ui draws into it |
 
 `templates/fx-showcase` shows each of them on five stations with references
-on `metal` and `vulkan-cpu` and a web frame (`tests/evidence/E2/`).
+on `metal`, `vulkan-cpu`, `webgpu` and `webgl2` (the last two from headless
+Chrome, `make web-reference`; each matches `metal` within og-tests'
+tolerance; `tests/evidence/E2/`).
 
 **Capture** (`capture.rs`): the offscreen target copied to a buffer and
 mapped. One async function on both hosts: natively it polls the device; on
 the web the mapping completes through WebGPU's `mapAsync` or, on WebGL2, on
 the next submit or `Renderer::poll()`. It reads only the offscreen target, so
 a page needs no `preserveDrawingBuffer`; a probe capture renders a frame to
-`Offscreen` first. Compiled and clippy-clean for `wasm32-unknown-unknown`,
-not yet run in a browser.
+`Offscreen` first. It runs in Chrome on WebGPU and WebGL2: every frame
+`make web-reference` compares is a probe capture.
 
 ## Backend tiers
 
@@ -165,6 +177,19 @@ filter, `textureLod` nor gather a depth texture), the HDR target is
 `Rgba16Float` (`EXT_color_buffer_float`), IBL, mips, metering and bloom are
 render passes, there is no `first_instance`, and the uniform arrays stay far
 below the 16 KB WebGL2 uniform block limit (the frame uniform is 1.7 KB).
+Three constraints of wgpu's GL backend, each of which once broke
+fx-showcase on WebGL2:
+
+- GLSL has no `textureLoad` from a depth texture: TAA binds the depth
+  buffer as an unfilterable float texture (WebGPU allows a depth format
+  there) and reads `.r`, on every backend.
+- A pipeline has 16 texture slots across all its bind groups, not per
+  stage: the lit skinned pipeline uses all 16 (frame 5, material 8, fx 2,
+  skin 1), so the sky cube is the sky pass's own group and on the texture
+  path the morph deltas and the joint palette share one texture.
+- The texture target is chosen at creation, and a square 2D texture with a
+  multiple of six layers becomes a cube map (array): the local shadow map
+  (twelve layers) gets a spare thirteenth to stay a 2D array.
 
 ## Testing
 
@@ -281,7 +306,8 @@ default records no pass and costs nothing (`effects_off_add_no_passes`).
   sprite layer range is affected; `SpriteFx` adds flash, glow, lit and soft
   per sprite.
 - **Skinning and blendshapes**: `SkinData` + `JointPalette` (storage buffer
-  on the full tier, `Rgba32Float` vertex texture on WebGL2),
+  on the full tier; on WebGL2 one `Rgba32Float` vertex texture, the morph
+  deltas in its first rows and the palette after them),
   `MorphTargets` weighted per instance; og-anim writes the palettes.
 - **Stylised**: toon ramp, rim light, dissolve per material. Every
   fragment entry point has one `discard` (`dissolve_at` returns a flag the
@@ -315,11 +341,14 @@ with their mips, chosen per tier and reported in
 
 - **Render graph**: a depth prepass; Forward+ clustered lights (CPU tile
   table on WebGL2) beyond the 8-light uniform loop.
-- **GL-tier references**: the `msaa` scene and the other ten have no `gl` /
-  `webgl2` references. Native GL needs wgpu's `gles`/`angle` features
-  (Cargo.lock change, ANGLE dylibs on macOS) and was not set up; a committed
-  browser runner for `webgpu` and `webgl2` is still owed, and with it a run
-  of `Renderer::capture` in a browser.
+- **GL-tier references**: the og-tests scenes (`msaa` among them) have no
+  `gl` / `webgl2` references: native GL needs wgpu's
+  `gles`/`angle` features (Cargo.lock change, ANGLE dylibs on macOS) and was
+  not set up, and og-tests' scenes load assets from disk and read back
+  synchronously, so a browser run would need a wasm harness of its own.
+  The browser runner (`make web-reference`) covers `templates/fx-showcase`
+  on `webgpu` and `webgl2`, which draws every E1 effect, skinning and the
+  overlay.
 - **Materials**: a normal matrix for non-uniform scale (normals still go
   through the model's upper 3×3); vertex tangents (the tangent frame comes
   from screen derivatives); clearcoat. No gfx reference scene covers the M6

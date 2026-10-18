@@ -11,42 +11,43 @@
       "post": {
         "tick": 60,
         "size": "1280x720",
-        "outliers": 2.079,
-        "rmse": 0.02093,
-        "ok": false
+        "outliers": 0,
+        "rmse": 0.00107,
+        "ok": true
       },
       "lens": {
         "tick": 120,
         "size": "1280x720",
-        "outliers": 2.299,
-        "rmse": 0.02226,
-        "ok": false
+        "outliers": 0.007,
+        "rmse": 0.00188,
+        "ok": true
       },
       "fx": {
         "tick": 240,
         "size": "1280x720",
-        "outliers": 0.152,
-        "rmse": 0.00697,
+        "outliers": 0,
+        "rmse": 0.00173,
         "ok": true
       },
       "2d": {
         "tick": 300,
         "size": "1280x720",
-        "outliers": 0.135,
-        "rmse": 0.00865,
+        "outliers": 0,
+        "rmse": 0.00228,
         "ok": true
       },
       "stylised": {
         "tick": 420,
         "size": "1280x720",
-        "outliers": 2.297,
-        "rmse": 0.02418,
-        "ok": false
+        "outliers": 0.022,
+        "rmse": 0.0036,
+        "ok": true
       }
     },
     "renderer": "webgpu",
+    "refused": "probe.commands: script must be a string, not object",
     "ticks": 420,
-    "ms": 1847
+    "ms": 3030
   },
   "webgl2": {
     "tier": "webgl2",
@@ -56,8 +57,46 @@
       "outliers": 0.005,
       "rmse": 0.01
     },
-    "stations": {},
-    "error": "Error: the engine did not start: Uncaught RuntimeError: unreachable\nError: Uncaught RuntimeError: unreachable\nerror: origin-engine panicked: panicked at ~/.cargo/registry/src/…/wgpu-30.0.1/src/backend/wgpu_core.rs:1414:26:\nwgpu error: Validation Error\n\nCaused by:\n  In Device::create_render_pipeline, label = 'taa'\n    Internal error in ShaderStages(FRAGMENT) shader: WGSL `textureLoad` from depth textures is not supported in GLSL\n\n",
-    "ms": 505
+    "stations": {
+      "post": {
+        "tick": 60,
+        "size": "1280x720",
+        "outliers": 0,
+        "rmse": 0.00498,
+        "ok": true
+      },
+      "lens": {
+        "tick": 120,
+        "size": "1280x720",
+        "outliers": 0.007,
+        "rmse": 0.00186,
+        "ok": true
+      },
+      "fx": {
+        "tick": 240,
+        "size": "1280x720",
+        "outliers": 0.013,
+        "rmse": 0.00272,
+        "ok": true
+      },
+      "2d": {
+        "tick": 300,
+        "size": "1280x720",
+        "outliers": 0,
+        "rmse": 0.00231,
+        "ok": true
+      },
+      "stylised": {
+        "tick": 420,
+        "size": "1280x720",
+        "outliers": 0.022,
+        "rmse": 0.0036,
+        "ok": true
+      }
+    },
+    "renderer": "webgl2",
+    "refused": "probe.commands: script must be a string, not object",
+    "ticks": 420,
+    "ms": 2146
   }
 }
