@@ -83,7 +83,10 @@ export const Control = defineSystem(
         // The flipbook's frame events from the hero's clips.
         for (const e of world.events(og.FlipbookEvent)) {
           if (e.entity !== me) continue;
-          if (e.name === "step") g.steps += 1;
+          if (e.name === "step") {
+            g.steps += 1;
+            g.sfx |= Sound.Step;
+          }
           if (e.name === "hit") {
             const d = facingVector(g.facing);
             g.swing = true;
@@ -339,6 +342,9 @@ function hurtHero(world: World, g: GameValue, t: TuneValue, dx: number, dy: numb
     must(og.tween.flash(world, { entity: hero, color: RED, duration: 0.2 }));
     must(og.tween.squash(world, { entity: hero, impact: { x: 1.3, y: 0.75 }, duration: 0.22 }));
   }
+  // A hit taken holds the world a light hit's length (og-feel §3), shorter
+  // than the hero's own blows, with the flash, the shake and the sound.
+  must(og.time.hitStop(world, Math.max(2, t.hitStop - 1)));
   must(og.camera.shake(world, 0.4));
   float(world, font, "-1", { x: g.heroX, y: g.heroY + 1.2, z: 0 }, RED);
   g.sfx |= Sound.Hurt;
@@ -431,11 +437,12 @@ export function openDoor(world: World, g: GameValue): void {
 }
 
 /** Plays each requested sound once: a voice already playing is stopped this tick and restarted the next. */
-export const Voices = defineSystem("Voices", { reads: [Sfx], writes: [Game, og.AudioSource], after: ["Door"] }, (q, _time, world) => {
+export const Voices = defineSystem("Voices", { reads: [Sfx], writes: [Game, og.Rng, og.AudioSource], after: ["Door"] }, (q, _time, world) => {
   const game = world.resource(Game);
   if (!game.ok) return;
   const g = game.value;
   if (g.sfx === 0) return;
+  const rng = world.resource(og.Rng);
   let left = g.sfx;
   for (const a of q.archetypes()) {
     const bit = a.column(Sfx).bit;
@@ -447,6 +454,8 @@ export const Voices = defineSystem("Voices", { reads: [Sfx], writes: [Game, og.A
         src.playing[i] = 0;
       } else {
         src.playing[i] = 1;
+        // Footsteps vary a little, so a walk does not machine-gun (og-audio §1).
+        if (b === Sound.Step && rng.ok) src.pitch[i] = rng.value.range(0.92, 1.08);
         left &= ~b;
       }
     }

@@ -23,20 +23,20 @@ clip idle_side {
 clip walk_down {
   frames 0 1 2 3
   fps 8
-  event 1 "step"
-  event 3 "step"
+  event 0 "step"
+  event 2 "step"
 }
 clip walk_up {
   frames 6 7 8 9
   fps 8
-  event 1 "step"
-  event 3 "step"
+  event 0 "step"
+  event 2 "step"
 }
 clip walk_side {
   frames 12 13 14 15
   fps 8
-  event 1 "step"
-  event 3 "step"
+  event 0 "step"
+  event 2 "step"
 }
 clip attack_down {
   frames 4 5

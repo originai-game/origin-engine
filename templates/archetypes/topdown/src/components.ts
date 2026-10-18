@@ -15,7 +15,7 @@ export const Facing = { Down: 0, Up: 1, Left: 2, Right: 3 } as const;
 export const PickupKind = { Coin: 1, Key: 2 } as const;
 
 /** Sound requests: bits of Game.sfx that the Sfx system plays once each. */
-export const Sound = { Hit: 1, Hurt: 2, Coin: 4, Key: 8, Door: 16 } as const;
+export const Sound = { Hit: 1, Hurt: 2, Coin: 4, Key: 8, Door: 16, Step: 32 } as const;
 
 /** The run: the hero's health and purse, the door, the room and the effects' bookkeeping. */
 export const Game = defineResource("Game", {

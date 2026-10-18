@@ -60,10 +60,9 @@ test("og polish scores the topdown playtests and maps each finding to its skill"
   expect(p.scores["latency"]).toBe(100);
   for (const x of p.playtests) expect(x.latency.answered).toBe(x.latency.inputs);
   expect(p.scores["taste"]).toBeNull();
-  // The slime's bite hurts the hero with no hit stop: a finding, mapped to og-feel §3.
-  const bite = p.findings.find((f) => f.measure === "hit feedback" && f.where === "ai");
-  expect(bite?.detail ?? "").toContain("no hit stop");
-  expect(bite?.fix ?? "").toContain("og-feel §3");
+  // Every hit, the slime's bite on the hero too, holds the world: no hit-feedback finding.
+  expect(combat.damage.hitStop).toBe(combat.damage.moments);
+  expect(p.findings.filter((f) => f.measure === "hit feedback")).toEqual([]);
   const report = readFileSync(join(out, "report.md"), "utf8");
   expect(report).toContain("| Hit feedback | 100 |");
   expect(unresolved(report)).toEqual([]);
@@ -71,6 +70,43 @@ test("og polish scores the topdown playtests and maps each finding to its skill"
   expect(frames.length).toBe(3);
   for (const f of frames) expect(existsSync(join(out, f))).toBeTrue();
 }, 600_000);
+
+test("a damage moment without hit stop is a finding, mapped to og-feel §3", () => {
+  const p = join(evidence, "no-hit-stop");
+  rmSync(p, { recursive: true, force: true });
+  for (const d of ["src", "tests"]) mkdirSync(join(p, d), { recursive: true });
+  writeFileSync(join(p, "project.ogt"), 'type project\nversion 1\n---\nname "Hurt"\nid "hurt"\nengine "0.0.1"\nentry "src/main.ts"\n');
+  // A hurt command lowers hp and shakes the camera, but nothing holds the world.
+  writeFileSync(
+    join(p, "src", "main.ts"),
+    `import { og, defineResource, u32 } from "@origingame/engine";
+const Life = defineResource("Life", { hp: u32(3) });
+export default og.game({
+  tick: 60,
+  resources: [Life],
+  commands: {
+    hurt: (world) => {
+      const life = world.resource(Life);
+      if (life.ok) life.value.hp -= 1;
+      og.camera.shake(world, 0.3);
+    },
+  },
+  facts: (world) => {
+    const life = world.resource(Life);
+    return { hp: life.ok ? life.value.hp : 0 };
+  },
+});
+`,
+  );
+  writeFileSync(join(p, "tests", "hurt.og.ts"), 'import { playtest } from "@origingame/engine/playtest";\nexport default playtest({ name: "hurt", commands: "0.3:hurt;0.8:hurt;1.2:quit", check(run, t) { t.ok(run.quit, "quit"); } });\n');
+  const r = run([ogBin(), "polish", p, "--frames", "0"]);
+  if (r.code !== 0) throw new Error(r.out);
+  const out = JSON.parse(readFileSync(join(p, "og-out", "polish", "polish.json"), "utf8")) as Polish;
+  const f = out.findings.find((x) => x.measure === "hit feedback");
+  expect(f?.detail ?? "").toContain("no hit stop");
+  expect(f?.fix ?? "").toContain("og-feel §3");
+  expect(unresolved(f?.fix ?? "")).toEqual([]);
+}, 300_000);
 
 test("og polish refuses a project without playtests", () => {
   const bare = join(evidence, "bare");

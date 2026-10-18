@@ -170,11 +170,13 @@ function start(world: World): void {
     ["audio/coin.wav", Sound.Coin],
     ["audio/key.wav", Sound.Key],
     ["audio/door.wav", Sound.Door],
+    // og cook synthesises og sfx's footstep preset; quiet, under the rest.
+    ["audio/step.ogt", Sound.Step],
   ];
   for (const [path, bit] of voices) {
     const sound = must(og.load.sound(world, path));
     const v = must(world.spawn({ name: `sfx-${bit}` }));
-    must(world.insert(v, og.AudioSource, { sound, playing: false, volume: 0.6 }));
+    must(world.insert(v, og.AudioSource, { sound, playing: false, volume: bit === Sound.Step ? 0.25 : 0.6 }));
     must(world.insert(v, Sfx, { bit }));
   }
 }
