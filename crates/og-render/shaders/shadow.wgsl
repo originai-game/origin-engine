@@ -120,6 +120,6 @@ fn fs(in: VsOut) -> @location(0) vec4<f32> {
 // Dissolving casters: the dissolved pixels cast no shadow.
 @fragment
 fn fs_dissolve(in: VsOut) -> @location(0) vec4<f32> {
-  _ = apply_dissolve(in.uv, in.local_pos);
+  if (dissolve_at(in.uv, in.local_pos).w > 0.5) { discard; }
   return shadow_value(in);
 }

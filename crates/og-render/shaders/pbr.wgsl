@@ -419,11 +419,13 @@ fn apply_decals(p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, roughness: f32, d
 fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   let base_sample = textureSample(base_color_tex, material_sampler, in.uv);
   let base = material.base_color * base_sample * in.color;
-  if (material.emissive.w >= 0.0 && base.a < material.emissive.w) {
+  var dissolve = vec4<f32>(0.0);
+  if (EFFECTS) { dissolve = dissolve_at(in.uv, in.local_pos); }
+  // One discard for the alpha cut-off and the dissolve (see dissolve_at).
+  if ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || dissolve.w > 0.5) {
     discard;
   }
-  var dissolve_edge = vec3<f32>(0.0);
-  if (EFFECTS) { dissolve_edge = apply_dissolve(in.uv, in.local_pos); }
+  let dissolve_edge = dissolve.rgb;
   let mode = u32(material.flags.w);
   // Blended materials keep their alpha; opaque ones write 1.
   let alpha = select(1.0, base.a, (mode & 4u) != 0u);
@@ -560,10 +562,10 @@ struct PrepassTargets {
 fn fs_prepass(in: PrepassOut) -> PrepassTargets {
   let base_sample = textureSample(base_color_tex, material_sampler, in.uv);
   let base = material.base_color * base_sample * in.color;
-  if (material.emissive.w >= 0.0 && base.a < material.emissive.w) {
+  let dissolved = dissolve_at(in.uv, in.local_pos).w > 0.5;
+  if ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || dissolved) {
     discard;
   }
-  _ = apply_dissolve(in.uv, in.local_pos);
   var n = normalize(in.normal);
   if ((u32(material.flags.w) & 1u) != 0u) {
     n = normalize(cross(dpdx(in.world_pos), dpdy(in.world_pos)));

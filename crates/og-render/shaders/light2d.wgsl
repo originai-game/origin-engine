@@ -89,7 +89,7 @@ fn fs(in: LightOut) -> @location(0) vec4<f32> {
       let al = angle_from(base, to_light);
       let covered = clamp(min(hi, al + alpha) - max(lo, al - alpha), 0.0, 2.0 * alpha);
       atten *= 1.0 - covered / (2.0 * alpha);
-      if (atten <= 0.0) { discard; }
+      if (atten <= 0.0) { break; }
     }
   }
   return vec4<f32>(in.color_source.rgb * atten, 0.0);

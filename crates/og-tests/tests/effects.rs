@@ -1160,6 +1160,44 @@ fn toon_rim_flash_and_dissolve() {
     assert!(holes > 300 && glowing > 20);
 }
 
+/// A dissolved pixel is gone from every pass, not only the lit one: with the
+/// depth-normal prepass on (outlines, ambient occlusion, TAA) a fully
+/// dissolved sphere leaves the background, and half-dissolved holes show
+/// the background too (on Metal they showed black: the prepass kept them).
+#[test]
+fn dissolved_pixels_leave_no_trace_in_the_prepass() {
+    let desc = RenderDesc {
+        antialias: og_render::Antialias::Taa,
+        ..small()
+    };
+    let with_prepass = |dissolve: f32| {
+        let mut s = sphere_scene(StandardMaterial { dissolve, ..red() });
+        s.post.outline = Some(Outline::default());
+        s.post.ao = Some(AmbientOcclusion::default());
+        let (img, stats, _) = run(&desc, &mut s, 4, |_, _| {});
+        assert!(stats.prepass_draws > 0, "the prepass ran");
+        img
+    };
+    let gone = with_prepass(1.0);
+    let bg = px(&gone, 2, 2);
+    let left: usize = (130..190)
+        .flat_map(|x| (60..120).map(move |y| (x, y)))
+        .filter(|&(x, y)| px(&gone, x, y) != bg)
+        .count();
+    println!("dissolve 1 with the prepass: {left} pixels differ from the background {bg:?}");
+    assert_eq!(left, 0, "a fully dissolved sphere left {left} pixels");
+    let half = with_prepass(0.5);
+    let dark = (130..190)
+        .flat_map(|x| (60..120).map(move |y| (x, y)))
+        .filter(|&(x, y)| luma(px(&half, x, y)) < 20.0)
+        .count();
+    println!("dissolve 0.5 with the prepass: {dark} near-black pixels");
+    assert!(
+        dark < 20,
+        "{dark} holes drew black instead of the background"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Skinning and blendshapes.
 // ---------------------------------------------------------------------------
