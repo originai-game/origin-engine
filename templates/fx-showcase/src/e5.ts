@@ -32,7 +32,7 @@ import {
   WEATHER_NONE,
   WEATHER_RAIN,
 } from "@origingame/engine";
-import type { Entity, Quaternion, Vector3 as Vec3, World } from "@origingame/engine";
+import type { Asset, ClipAsset, Entity, Geometry, Material, Quaternion, SkeletonAsset, Texture, Vector3 as Vec3, World } from "@origingame/engine";
 
 export const E5_STATIONS = ["sky", "weather", "water", "shaders", "controller", "joints", "rope", "fluid"] as const;
 export type E5Station = (typeof E5_STATIONS)[number];
@@ -106,7 +106,7 @@ export const E5Show = defineSystem(
       case "shaders": {
         // The dissolve sweeps 0 → 0.8 over 3 s and back.
         const phase = (time.tick % 360) / 360;
-        must(og.render.setShaderParam(world, s.dissolve, "amount", [0.8 * (phase < 0.5 ? phase * 2 : 2 - phase * 2)]));
+        must(og.render.setShaderParam(world, s.dissolve as unknown as Material, "amount", [0.8 * (phase < 0.5 ? phase * 2 : 2 - phase * 2)]));
         break;
       }
       case "controller": {
@@ -122,7 +122,7 @@ export const E5Show = defineSystem(
         break;
       case "fluid":
         if (shown === 20) drop(s.pondCrate, { x: E5_ORIGIN.fluid + 4.4, y: 1.5, z: 0 });
-        basin(world, s.stone);
+        basin(world, s.stone as unknown as Texture);
         break;
       case "joints":
         world.set(s.ragdoll as Entity, og.Ragdoll, { weight: shown > 40 ? 1 : 0 });
@@ -157,7 +157,7 @@ export const PlatformMove = defineSystem(
 );
 
 /** The fluid station's walls, drawn as sprites over the colliders. */
-function basin(world: World, stone: number): void {
+function basin(world: World, stone: Texture): void {
   const x0 = E5_ORIGIN.fluid;
   for (const [x, y, w, h] of WALLS) {
     og.render.sprite(world, { texture: stone, position: { x: x0 + x, y, z: 0 }, width: w, height: h, layer: 4, color: { r: 0.55, g: 0.52, b: 0.5 } });
@@ -266,13 +266,13 @@ export function showE5(world: World, station: E5Station): void {
 // ── the world ──────────────────────────────────────────────────────────────
 
 interface Kit {
-  box: number;
-  sphere: number;
-  mat: (d: Parameters<typeof og.render.standardMaterial>[1]) => number;
+  box: Geometry;
+  sphere: Geometry;
+  mat: (d: Parameters<typeof og.render.standardMaterial>[1]) => Material;
   ground: (x: number, color: Vec3) => void;
 }
 
-function mesh(world: World, name: string, geometry: number, material: number, position: Vec3, extra?: { quaternion?: Quaternion; scale?: Vec3; parent?: Entity }): Entity {
+function mesh(world: World, name: string, geometry: Geometry, material: Material, position: Vec3, extra?: { quaternion?: Quaternion; scale?: Vec3; parent?: Entity }): Entity {
   const e = must(world.spawn({ name, position, ...(extra?.quaternion ? { quaternion: extra.quaternion } : {}), ...(extra?.parent !== undefined ? { parent: extra.parent } : {}) }));
   if (extra?.scale) world.set(e, og.Transform, { scale: extra.scale });
   world.insert(e, og.Mesh, { geometry, material, castShadow: true, receiveShadow: true });
@@ -280,21 +280,21 @@ function mesh(world: World, name: string, geometry: number, material: number, po
 }
 
 /** A static box collider with a mesh of the same size. */
-function block(world: World, k: Kit, name: string, material: number, at: Vec3, size: Vec3, q?: Quaternion): Entity {
+function block(world: World, k: Kit, name: string, material: Material, at: Vec3, size: Vec3, q?: Quaternion): Entity {
   const e = mesh(world, name, k.box, material, at, { scale: size, ...(q ? { quaternion: q } : {}) });
   world.insert(e, og.Collider, { shape: SHAPE_BOX });
   return e;
 }
 
 /** A dynamic box with a mesh, a quarter as dense as the water it floats on. */
-function crate(world: World, k: Kit, name: string, material: number, at: Vec3, size: number): Entity {
+function crate(world: World, k: Kit, name: string, material: Material, at: Vec3, size: number): Entity {
   const e = mesh(world, name, k.box, material, at, { scale: { x: size, y: size, z: size } });
   world.insert(e, og.RigidBody, { mass: 0.25 * size * size * size });
   world.insert(e, og.Collider, { shape: SHAPE_BOX });
   return e;
 }
 
-export function buildE5(world: World, k: Kit, walkerModel: number, walkerRig: { skeleton: number; clips: ReadonlyArray<{ clip: number; name: string }> }, stoneTexture: number): void {
+export function buildE5(world: World, k: Kit, walkerModel: Asset, walkerRig: { skeleton: SkeletonAsset; clips: ReadonlyArray<{ clip: ClipAsset; name: string }> }, stoneTexture: Texture): void {
   const stone = k.mat({ color: { r: 0.7, g: 0.66, b: 0.6 }, roughness: 0.85 });
   const wood = k.mat({ color: { r: 0.42, g: 0.28, b: 0.16 }, roughness: 0.7 });
   const red = k.mat({ color: { r: 0.8, g: 0.16, b: 0.1 }, roughness: 0.45 });
