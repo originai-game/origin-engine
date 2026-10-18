@@ -8,6 +8,7 @@ use crate::layout::{
     Metrics, Node, Rect, Shape, Size, TextAlign, TextContent, Widget, NONE,
 };
 use crate::motion::Fx;
+use crate::skin::{Ink, Ornament, SkinPart, Slice};
 use crate::style::{Breakpoint, Density, Srgba, Theme, TypeStep};
 use crate::text::{FontMetrics, UiFont};
 use og_core::glam::Vec2;
@@ -74,12 +75,15 @@ pub struct UiDesc {
     pub fonts: Fonts,
 }
 
-/// The fonts of each role; `display` and `mono` fall back to `body`.
+/// The fonts of each role; `display` and `mono` (the numeric role) fall
+/// back to `body`. `fallback` draws a text whose role font lacks one of its
+/// characters (a skin's Latin display face and Chinese text).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Fonts {
     pub body: UiFont,
     pub display: Option<UiFont>,
     pub mono: Option<UiFont>,
+    pub fallback: Option<UiFont>,
 }
 
 impl Fonts {
@@ -90,11 +94,27 @@ impl Fonts {
             FontRole::Mono => self.mono.as_ref().unwrap_or(&self.body),
         }
     }
+
+    /// The font a text of `role` is measured and drawn with: the role's,
+    /// or the fallback when the role's lacks a character the fallback has.
+    pub fn for_text(&self, role: FontRole, text: &str) -> &UiFont {
+        let f = self.get(role);
+        match &self.fallback {
+            Some(fb)
+                if text
+                    .chars()
+                    .any(|c| !c.is_whitespace() && !f.metrics.has(c) && fb.metrics.has(c)) =>
+            {
+                fb
+            }
+            _ => f,
+        }
+    }
 }
 
 impl Metrics for Fonts {
-    fn metrics(&self, role: FontRole) -> &FontMetrics {
-        &self.get(role).metrics
+    fn metrics_for(&self, role: FontRole, text: &str) -> &FontMetrics {
+        &self.for_text(role, text).metrics
     }
 }
 
@@ -209,6 +229,10 @@ pub(crate) struct State {
     pub anims: BTreeMap<u64, Anim>,
     pub toasts: Vec<Toast>,
     pub next_toast: u32,
+    /// Screen transitions by key.
+    pub screens: BTreeMap<u64, crate::juice::ScreenState>,
+    /// The host's voice entity for each UI sound (bits; 0: none).
+    pub voices: [u64; 6],
 }
 
 /// What navigation decided at the start of this frame.
@@ -325,6 +349,8 @@ pub struct LabelDesc {
     pub nowrap: bool,
     pub width: Size,
     pub font: FontRole,
+    /// A heading: a skin with a flourish frames it.
+    pub heading: bool,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -418,6 +444,10 @@ pub struct Ui {
     pub(crate) scopes: Vec<usize>,
     pub(crate) icons: IconAtlas,
     pub(crate) toast_anchor: Anchor,
+    /// UI events with a skin sound, not yet taken by the host.
+    pub(crate) sounds: Vec<crate::skin::UiSound>,
+    /// This frame's screen-transition cover.
+    pub(crate) cover: Option<crate::juice::Cover>,
 }
 
 impl Default for Ui {
@@ -426,7 +456,7 @@ impl Default for Ui {
     }
 }
 
-const STATE_VERSION: u32 = 2;
+const STATE_VERSION: u32 = 3;
 
 impl Ui {
     pub fn new(desc: UiDesc) -> Ui {
@@ -456,6 +486,8 @@ impl Ui {
             scopes: Vec::new(),
             icons: IconAtlas::default(),
             toast_anchor: Anchor::Bottom,
+            sounds: Vec::new(),
+            cover: None,
         }
     }
 
@@ -608,6 +640,7 @@ impl Ui {
         self.request_focus = 0;
         self.scopes.clear();
         self.nav_on = true;
+        self.cover = None;
 
         // Hit test against last frame's rectangles, topmost first.
         let p = input.pointer;
@@ -630,6 +663,12 @@ impl Ui {
         } else {
             0
         };
+        if hot != 0 && hot != self.state.hot && self.hit(hot).is_some_and(|h| h.has(HIT_NAV)) {
+            self.sound(crate::skin::UiSound::Hover);
+        }
+        if input.pressed && self.hit(hot).is_some_and(|h| h.has(HIT_NAV)) {
+            self.sound(crate::skin::UiSound::Press);
+        }
         self.state.hot = hot;
         self.state.focus_click = None;
         if input.pressed {
@@ -897,6 +936,7 @@ impl Ui {
             cross: desc.cross,
             background: Some(desc.background.unwrap_or(t.palette.surface)),
             radius: t.radius.card,
+            skin: Some(crate::skin::SkinPart::Card),
             ..Element::default()
         };
         let id = id.into();
@@ -966,6 +1006,7 @@ impl Ui {
             font: desc.font,
         });
         n.probe_text = text.to_owned();
+        n.heading = desc.heading;
     }
 
     /// A capsule button with a label. `clicked` is a press and a release inside it.
@@ -989,11 +1030,14 @@ impl Ui {
                 width: desc.width.unwrap_or_default(),
                 height: Size::Fixed(h),
                 padding: Insets::xy(pad, 0.0),
-                interactive: !desc.disabled,
+                // A skin that shakes a refused press hears presses on a disabled button.
+                interactive: !desc.disabled || t.skin.motion.shake > 0.0,
                 radius: t.radius.button,
                 ..Element::default()
             },
         );
+        let refused =
+            desc.disabled && t.skin.motion.shake > 0.0 && self.respond(self.nodes[i].key).clicked;
         let r = if desc.disabled {
             Response::default()
         } else {
@@ -1036,8 +1080,19 @@ impl Ui {
         let mut content = self.text_content(text, t.type_ramp.body, fg);
         content.align = TextAlign::Center;
         content.wrap = false;
+        let part = if desc.disabled {
+            SkinPart::ButtonDisabled
+        } else if r.pressed {
+            SkinPart::ButtonPressed
+        } else if r.hovered {
+            SkinPart::ButtonHover
+        } else {
+            SkinPart::Button
+        };
+        self.button_motion(i, r, refused);
         let n = &mut self.nodes[i];
         n.el.background = bg;
+        n.el.skin = Some(part);
         n.content = Content::Text(content);
         n.widget = Widget::Button { pressed: r.pressed };
         n.probe_text = text.to_owned();
@@ -1074,12 +1129,98 @@ impl Ui {
                 ..Element::default()
             },
         );
-        let v = if value.is_finite() {
+        let mut v = if value.is_finite() {
             value.clamp(0.0, 1.0)
         } else {
             0.0
         };
+        let ms = t.skin.motion.progress_ms;
+        if ms > 0.0 && !t.reduced_motion {
+            // Eases toward the value: a constant share of the gap per tick.
+            let key = child_key(self.nodes[i].key, "ease");
+            let fresh = !self.has_anim(key);
+            let mut a = self.anim(key);
+            if fresh {
+                a.a = v;
+            } else {
+                let k = (4.0 / self.ticks_for(ms) as f32).min(1.0);
+                a.a += (v - a.a) * k;
+                if (v - a.a).abs() < 0.002 {
+                    a.a = v;
+                }
+            }
+            self.set_anim(key, a);
+            v = a.a;
+        }
         self.nodes[i].widget = Widget::Progress { value: v };
+    }
+
+    /// A button's skin motion: the hover lift eased in and out, the press
+    /// sink, and the shake of a refused press (`motion.duration.slow`).
+    fn button_motion(&mut self, i: usize, r: Response, refused: bool) {
+        let t = self.theme;
+        let skin = t.skin;
+        if skin.hover.is_none() && skin.press.is_none() && skin.motion.shake <= 0.0 {
+            return;
+        }
+        let key = child_key(self.nodes[i].key, "motion");
+        let mut a = self.anim(key);
+        let step = 1.0 / self.ticks_for(t.durations_ms.instant) as f32;
+        a.a = if r.hovered {
+            (a.a + step).min(1.0)
+        } else {
+            (a.a - step).max(0.0)
+        };
+        let now = self.state.tick;
+        if refused {
+            a.t = now;
+            a.b = 1.0;
+            self.sound(crate::skin::UiSound::Error);
+        }
+        self.set_anim(key, a);
+        if t.reduced_motion {
+            return;
+        }
+        let e = crate::motion::ease_out(a.a);
+        let mut f = Fx::default();
+        if let Some(h) = skin.hover {
+            f.dy += h.dy * e;
+            f.scale = 1.0 + (h.scale - 1.0) * e;
+        }
+        if r.pressed {
+            if let Some(p) = skin.press {
+                f.dy += p.dy;
+            }
+        }
+        if a.b > 0.0 {
+            let k = (now - a.t) as f32 / self.ticks_for(t.durations_ms.slow) as f32;
+            if k < 1.0 {
+                // Three decaying swings, arithmetic only (a triangle wave).
+                let x = k * 3.0;
+                let tri = 4.0 * (x - x.floor() - 0.5).abs() - 1.0;
+                f.dx = skin.motion.shake * (1.0 - k) * tri;
+            }
+        }
+        if f != Fx::default() {
+            self.nodes[i].fx = Some(f);
+        }
+    }
+
+    /// Queues a UI event's sound when the skin has one for it.
+    pub(crate) fn sound(&mut self, event: crate::skin::UiSound) {
+        if self.theme.skin.sound(event) != 0 {
+            self.sounds.push(event);
+        }
+    }
+
+    /// The UI events of the last frames that have a sound in the skin,
+    /// oldest first; taking them empties the queue (the host plays them).
+    pub fn take_sounds(&mut self) -> Vec<(crate::skin::UiSound, u64)> {
+        let skin = self.theme.skin;
+        std::mem::take(&mut self.sounds)
+            .into_iter()
+            .map(|e| (e, skin.sound(e)))
+            .collect()
     }
 
     /// A horizontal slider over `value`; dragging anywhere on it sets the value.
@@ -1205,6 +1346,7 @@ impl Ui {
                 padding: Insets::xy(t.space.md, 0.0),
                 interactive: true,
                 radius: t.radius.field,
+                skin: Some(SkinPart::Field),
                 ..Element::default()
             },
         );
@@ -1319,6 +1461,7 @@ impl Ui {
                 padding: Insets::xy(t.space.sm, t.space.xs),
                 background: Some(t.palette.surface_raised),
                 radius: t.radius.control,
+                skin: Some(SkinPart::Tooltip),
                 ..Element::default()
             },
         );
@@ -1521,6 +1664,7 @@ impl Ui {
         for &f in &self.floating {
             order.extend(preorder(&self.nodes, f));
         }
+        self.apply_stagger(&order);
         self.apply_fx(&order);
 
         // Interaction state for the next tick.
@@ -1536,6 +1680,7 @@ impl Ui {
         }
         let touched = std::mem::take(&mut self.touched);
         self.state.anims.retain(|k, _| touched.contains(k));
+        self.state.screens.retain(|k, _| touched.contains(k));
         self.touched = touched;
 
         // Scopes: the nearest scope around each node, by walking the order.
@@ -1670,7 +1815,10 @@ impl Ui {
         self.state.nav_off = !self.nav_on;
         self.state.hits = hits;
 
-        let cmds = self.commands(&order);
+        let mut cmds = self.commands(&order);
+        if let Some(c) = self.cover {
+            self.cover_commands(&c, &mut cmds);
+        }
         self.frame = UiFrame {
             viewport: vp,
             elements,
@@ -1678,6 +1826,53 @@ impl Ui {
             warnings: std::mem::take(&mut self.warnings),
         };
         &self.frame
+    }
+
+    /// Staggered entrances: under a node with a stagger, the k-th drawn
+    /// leaf (a label, a control, an icon) enters `k` steps after the first.
+    fn apply_stagger(&mut self, order: &[usize]) {
+        let now = self.state.tick as f32;
+        let (reduced, distance) = (self.theme.reduced_motion, self.theme.space.lg);
+        for &i in order {
+            let Some(st) = self.nodes[i].stagger else {
+                continue;
+            };
+            let leaves: Vec<usize> = preorder(&self.nodes, i)
+                .into_iter()
+                .skip(1)
+                .filter(|&j| {
+                    let n = &self.nodes[j];
+                    n.children.is_empty()
+                        && !matches!(n.widget, Widget::Spacer)
+                        && (!matches!(n.content, Content::None)
+                            || n.el.background.is_some()
+                            || !matches!(n.widget, Widget::None)
+                            || !n.shapes.is_empty())
+                })
+                .collect();
+            for (k, &j) in leaves.iter().enumerate() {
+                let start = st.since as f32 + st.step * k.min(12) as f32;
+                let p = ((now - start + 1.0) / st.ticks).clamp(0.0, 1.0);
+                if p >= 1.0 || self.nodes[j].fx.is_some() {
+                    continue;
+                }
+                let mut f =
+                    crate::motion::fx(st.kind, crate::motion::ease_out(p), distance, reduced);
+                f.inert = true;
+                self.nodes[j].fx = Some(f);
+            }
+        }
+    }
+
+    /// The tick `key` was first seen on (kept while it is asked every tick).
+    pub(crate) fn since(&mut self, key: u64) -> u64 {
+        let fresh = !self.has_anim(key);
+        let mut a = self.anim(key);
+        if fresh {
+            a.t = self.state.tick;
+        }
+        self.set_anim(key, a);
+        a.t
     }
 
     /// Applies each transition to its subtree: moves and scales the
@@ -1833,13 +2028,76 @@ impl Ui {
             }
         }
         if let Some(bg) = n.el.background {
-            let r = match n.widget {
-                Widget::Button { pressed: true } => rect.scaled(t.press_scale),
-                _ => rect,
-            };
-            cmds.push(quad(r, n.el.radius, bg));
+            let pressed = matches!(n.widget, Widget::Button { pressed: true });
+            match n
+                .el
+                .skin
+                .and_then(|part| t.skin.slice(part).map(|s| (part, s)))
+            {
+                Some((part, slice)) => {
+                    let r = match (pressed, t.skin.press) {
+                        (true, Some(pr)) => scaled_xy(rect, pr.sx, pr.sy),
+                        (true, None) => rect.scaled(t.press_scale),
+                        _ => rect,
+                    };
+                    self.dress(part, slice, r, n.el.radius, bg, alpha, clip, cmds);
+                }
+                None => {
+                    let r = if pressed {
+                        rect.scaled(t.press_scale)
+                    } else {
+                        rect
+                    };
+                    cmds.push(quad(r, n.el.radius, bg));
+                }
+            }
         }
+        if self.kinds[i].0 == "divider" {
+            if let Some(o) = t.skin.divider.filter(|_| t.skin.atlas.is_some()) {
+                let (cx, cy) = rect.center();
+                self.ornament(
+                    o,
+                    Rect::new(cx - o.w / 2.0, cy - o.h / 2.0, o.w, o.h),
+                    false,
+                    false,
+                    alpha,
+                    clip,
+                    cmds,
+                );
+            }
+        }
+        let track = t.skin.slice(SkinPart::Track);
         match n.widget {
+            Widget::Progress { value } if track.is_some() => {
+                let fill = t.skin.slice(SkinPart::Fill);
+                if let Some(s) = track {
+                    self.dress(
+                        SkinPart::Track,
+                        s,
+                        rect,
+                        rect.height / 2.0,
+                        p.fill_strong,
+                        alpha,
+                        clip,
+                        cmds,
+                    );
+                }
+                if let (Some(s), true) = (fill, value > 0.0) {
+                    let min = s.border[0] + s.border[2];
+                    let w = (rect.width * value).max(min.min(rect.width));
+                    let r = Rect::new(rect.x, rect.y, w, rect.height).snapped(dpr);
+                    self.dress(
+                        SkinPart::Fill,
+                        s,
+                        r,
+                        rect.height / 2.0,
+                        p.accent,
+                        alpha,
+                        clip,
+                        cmds,
+                    );
+                }
+            }
             Widget::Progress { value } => {
                 cmds.push(quad(rect, rect.height / 2.0, p.fill_strong));
                 if value > 0.0 {
@@ -1895,7 +2153,7 @@ impl Ui {
         }
         match &n.content {
             Content::Text(tc) => {
-                let font = self.fonts.get(tc.font);
+                let font = self.fonts.for_text(tc.font, &tc.text);
                 if let Some(handle) = font.handle {
                     let m = &font.metrics;
                     let sk = n.scale;
@@ -1927,16 +2185,55 @@ impl Ui {
                             };
                         let baseline =
                             ly + (lh - (m.ascender - m.descender) * size) / 2.0 + m.ascender * size;
-                        cmds.push(DrawCmd::Text {
-                            x: snap(x),
-                            baseline: snap(baseline),
+                        let bounds = Rect::new(x, ly, line.width * sk, lh);
+                        let role = tc.font as usize;
+                        let text = |dx: f32, dy: f32, color: Srgba| DrawCmd::Text {
+                            x: snap(x + dx),
+                            baseline: snap(baseline + dy),
                             size,
                             text: line.text.clone(),
-                            color: tc.color.fade(alpha).linear(),
+                            color: color.fade(alpha).linear(),
                             font: handle,
-                            bounds: Rect::new(x, ly, line.width * sk, lh),
+                            bounds: Rect::new(
+                                bounds.x + dx,
+                                bounds.y + dy,
+                                bounds.width,
+                                bounds.height,
+                            ),
                             clip: text_clip,
-                        });
+                        };
+                        if let Some(g) = t.skin.text_glows[role] {
+                            let c = g.ink.color(p).fade(g.alpha * tc.color.alpha / 4.0);
+                            for (dx, dy) in
+                                [(-g.size, 0.0), (g.size, 0.0), (0.0, -g.size), (0.0, g.size)]
+                            {
+                                cmds.push(text(dx, dy, c));
+                            }
+                        }
+                        if let Some(sh) = t.skin.text_shadows[role] {
+                            let c = sh.color.fade(tc.color.alpha);
+                            cmds.push(text(sh.dx, sh.dy, c));
+                            if sh.blur > 0.0 {
+                                cmds.push(text(
+                                    sh.dx + sh.blur / 2.0,
+                                    sh.dy + sh.blur / 2.0,
+                                    c.fade(0.5),
+                                ));
+                            }
+                        }
+                        cmds.push(text(0.0, 0.0, tc.color));
+                        if n.heading && k == 0 {
+                            if let Some(o) = t.skin.flourish.filter(|_| t.skin.atlas.is_some()) {
+                                let cy = ly + lh / 2.0;
+                                let gap = o.offset + t.space.sm;
+                                let (w, h) = (o.w * sk, o.h * sk);
+                                let left = Rect::new(x - gap - w, cy - h / 2.0, w, h);
+                                let right =
+                                    Rect::new(x + line.width * sk + gap, cy - h / 2.0, w, h);
+                                self.ornament(o, left, false, false, alpha, clip, cmds);
+                                self.ornament(o, right, true, false, alpha, clip, cmds);
+                            }
+                        }
                     }
                     if let Widget::Field { caret: Some(c), .. } = n.widget {
                         let text = match &n.content {
@@ -1967,6 +2264,130 @@ impl Ui {
             Content::None => {}
         }
         self.shape_commands(n, cmds);
+    }
+
+    /// A skinned background: the part's shadow and glow, its nine-slice
+    /// frame (tinted by `bg`), the tiled texture and the corner ornaments.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn dress(
+        &self,
+        part: SkinPart,
+        slice: Slice,
+        rect: Rect,
+        radius: f32,
+        bg: Srgba,
+        alpha: f32,
+        clip: Rect,
+        cmds: &mut Vec<DrawCmd>,
+    ) {
+        let skin = &self.theme.skin;
+        let Some(atlas) = skin.atlas else { return };
+        let p = &self.theme.palette;
+        let fade = alpha * if slice.tint { 1.0 } else { bg.alpha };
+        if let Some(sh) = skin.shadow(part) {
+            let r = rect.outset(sh.spread);
+            let r = Rect::new(r.x + sh.dx, r.y + sh.dy, r.width, r.height);
+            match skin.soft.filter(|_| sh.blur > 0.0) {
+                Some(soft) => nine(
+                    atlas,
+                    soft,
+                    r.outset(sh.blur),
+                    sh.color.fade(fade),
+                    clip,
+                    cmds,
+                ),
+                None => cmds.push(DrawCmd::Quad {
+                    rect: r,
+                    radius,
+                    color: sh.color.fade(fade).linear(),
+                    clip,
+                }),
+            }
+        }
+        if let (Some(g), Some(soft)) = (skin.glow(part), skin.soft) {
+            let c = g.ink.color(p).fade(g.alpha * fade);
+            nine(atlas, soft, rect.outset(g.size), c, clip, cmds);
+        }
+        let tint = if slice.tint {
+            bg.fade(alpha)
+        } else {
+            Srgba::WHITE.fade(fade)
+        };
+        nine(atlas, slice, rect, tint, clip, cmds);
+        if let Some(tile) = skin.tile(part) {
+            let inner = Rect::new(
+                rect.x + tile.inset,
+                rect.y + tile.inset,
+                (rect.width - 2.0 * tile.inset).max(0.0),
+                (rect.height - 2.0 * tile.inset).max(0.0),
+            );
+            let c = clip.intersect(&inner);
+            let (tw, th) = (tile.w.max(4.0), tile.h.max(4.0));
+            let mut y = inner.y;
+            while y < inner.bottom() {
+                let mut x = inner.x;
+                while x < inner.right() {
+                    cmds.push(DrawCmd::Image {
+                        rect: Rect::new(x, y, tw, th),
+                        texture: Some(atlas),
+                        uv: tile.uv,
+                        color: Srgba::WHITE.fade(tile.alpha * fade).linear(),
+                        clip: c,
+                    });
+                    x += tw;
+                }
+                y += th;
+            }
+        }
+        if let Some(o) = skin.corners(part) {
+            let (w, h) = (o.w, o.h);
+            let d = o.offset;
+            let (l, t, r, b) = (
+                rect.x - d,
+                rect.y - d,
+                rect.right() + d - w,
+                rect.bottom() + d - h,
+            );
+            for (x, y, fx, fy) in [
+                (l, t, false, false),
+                (r, t, true, false),
+                (l, b, false, true),
+                (r, b, true, true),
+            ] {
+                self.ornament(o, Rect::new(x, y, w, h), fx, fy, alpha, clip, cmds);
+            }
+        }
+    }
+
+    /// An ornament in `rect`, mirrored across x and or y.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn ornament(
+        &self,
+        o: Ornament,
+        rect: Rect,
+        flip_x: bool,
+        flip_y: bool,
+        alpha: f32,
+        clip: Rect,
+        cmds: &mut Vec<DrawCmd>,
+    ) {
+        let Some(atlas) = self.theme.skin.atlas else {
+            return;
+        };
+        let [u0, v0, u1, v1] = o.uv;
+        let (u0, u1) = if flip_x { (u1, u0) } else { (u0, u1) };
+        let (v0, v1) = if flip_y { (v1, v0) } else { (v0, v1) };
+        let color = match o.ink {
+            Ink::Authored => Srgba::WHITE,
+            ink => ink.color(&self.theme.palette),
+        };
+        cmds.push(DrawCmd::Image {
+            rect,
+            texture: Some(atlas),
+            uv: [u0, v0, u1, v1],
+            color: color.fade(alpha).linear(),
+            clip,
+        });
     }
 
     /// What is behind node `i`: its nearest ancestor's fill over the theme's
@@ -2060,7 +2481,7 @@ impl Ui {
                     color,
                     font,
                 } => {
-                    let f = self.fonts.get(*font);
+                    let f = self.fonts.for_text(*font, text);
                     let Some(handle) = f.handle else { continue };
                     let m = &f.metrics;
                     let r = frame.resolve(&n.rect);
@@ -2153,7 +2574,25 @@ impl Ui {
             u64_(&mut b, t.leaving);
         }
         u32_(&mut b, s.next_toast);
+        u32_(&mut b, s.screens.len() as u32);
+        for (k, sc) in &s.screens {
+            u64_(&mut b, *k);
+            for text in [&sc.shown, &sc.wanted] {
+                u32_(&mut b, text.len() as u32);
+                b.extend_from_slice(text.as_bytes());
+            }
+            u64_(&mut b, sc.since);
+        }
+        for v in s.voices {
+            u64_(&mut b, v);
+        }
         b
+    }
+
+    /// The host's voice entity for each UI sound (by `UiSound` index), kept
+    /// in the UI state so snapshots carry it.
+    pub fn voices_mut(&mut self) -> &mut [u64; 6] {
+        &mut self.state.voices
     }
 
     /// Restores [`Ui::save_state`] bytes. Refused, with nothing changed, for
@@ -2181,6 +2620,71 @@ impl Ui {
     }
 }
 
+/// `r` scaled by `sx` and `sy` around its centre.
+fn scaled_xy(r: Rect, sx: f32, sy: f32) -> Rect {
+    let (cx, cy) = r.center();
+    Rect::new(
+        cx - r.width * sx / 2.0,
+        cy - r.height * sy / 2.0,
+        r.width * sx,
+        r.height * sy,
+    )
+}
+
+/// The nine pieces of a slice over `rect` (corners keep their size, shrunk
+/// together when the rectangle is smaller than two of them).
+fn nine(
+    atlas: TextureHandle,
+    s: Slice,
+    rect: Rect,
+    tint: Srgba,
+    clip: Rect,
+    cmds: &mut Vec<DrawCmd>,
+) {
+    if rect.is_empty() {
+        return;
+    }
+    let [l, t, r, b] = s.border;
+    let kx = if l + r > rect.width {
+        rect.width / (l + r)
+    } else {
+        1.0
+    };
+    let ky = if t + b > rect.height {
+        rect.height / (t + b)
+    } else {
+        1.0
+    };
+    let (l, r, t, b) = (l * kx, r * kx, t * ky, b * ky);
+    let xs = [rect.x, rect.x + l, rect.right() - r, rect.right()];
+    let ys = [rect.y, rect.y + t, rect.bottom() - b, rect.bottom()];
+    let [u0, v0, u1, v1] = s.uv;
+    let [bl, bt, br, bb] = s.border_uv;
+    let us = [u0, u0 + bl, u1 - br, u1];
+    let vs = [v0, v0 + bt, v1 - bb, v1];
+    let color = tint.linear();
+    for row in 0..3 {
+        for col in 0..3 {
+            let piece = Rect::new(
+                xs[col],
+                ys[row],
+                xs[col + 1] - xs[col],
+                ys[row + 1] - ys[row],
+            );
+            if piece.width <= 0.0 || piece.height <= 0.0 {
+                continue;
+            }
+            cmds.push(DrawCmd::Image {
+                rect: piece,
+                texture: Some(atlas),
+                uv: [us[col], vs[row], us[col + 1], vs[row + 1]],
+                color,
+                clip,
+            });
+        }
+    }
+}
+
 struct Reader<'a> {
     bytes: &'a [u8],
     at: usize,
@@ -2203,6 +2707,13 @@ impl Reader<'_> {
     }
     fn f32(&mut self) -> Option<f32> {
         self.take().map(f32::from_le_bytes)
+    }
+
+    fn string(&mut self) -> Option<String> {
+        let len = self.u32()? as usize;
+        let raw = self.bytes.get(self.at..self.at + len)?;
+        self.at += len;
+        String::from_utf8(raw.to_vec()).ok()
     }
 
     fn rect(&mut self) -> Option<Rect> {
@@ -2274,6 +2785,23 @@ impl Reader<'_> {
             });
         }
         s.next_toast = self.u32()?;
+        for _ in 0..self.u32()? {
+            let k = self.u64()?;
+            let shown = self.string()?;
+            let wanted = self.string()?;
+            let since = self.u64()?;
+            s.screens.insert(
+                k,
+                crate::juice::ScreenState {
+                    shown,
+                    wanted,
+                    since,
+                },
+            );
+        }
+        for v in s.voices.iter_mut() {
+            *v = self.u64()?;
+        }
         Some(s)
     }
 }

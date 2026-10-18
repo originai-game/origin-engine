@@ -260,6 +260,9 @@ pub struct Element {
     pub background: Option<Srgba>,
     /// Corner radius in CSS pixels (clamped to half the shorter side).
     pub radius: f32,
+    /// The skin frame its background takes (`None`: a plain fill). Without
+    /// a skin, or a skin without that part, the background is the fill.
+    pub skin: Option<crate::skin::SkinPart>,
 }
 
 impl Element {
@@ -515,6 +518,16 @@ pub(crate) enum Widget {
 
 pub(crate) const NONE: usize = usize::MAX;
 
+/// A staggered entrance: descendant k starts `k × step` ticks after `since`
+/// and takes `ticks`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Stagger {
+    pub since: u64,
+    pub step: f32,
+    pub ticks: f32,
+    pub kind: crate::motion::TransitionKind,
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct Node {
     pub key: u64,
@@ -549,6 +562,10 @@ pub(crate) struct Node {
     pub shapes: Vec<Shape>,
     /// Widget data its children read (a list's row height, a grid's cell size).
     pub aux: [f32; 3],
+    /// A heading label: the skin's flourish frames it.
+    pub heading: bool,
+    /// Its descendants enter one after another (a skin's stagger).
+    pub stagger: Option<Stagger>,
     // Computed by the frame.
     pub alpha: f32,
     pub scale: f32,
@@ -595,6 +612,8 @@ impl Node {
             scope: false,
             shapes: Vec::new(),
             aux: [0.0; 3],
+            heading: false,
+            stagger: None,
             alpha: 1.0,
             scale: 1.0,
             inert: false,
@@ -623,7 +642,7 @@ impl Node {
 
 /// The fonts layout measures with, by role.
 pub(crate) trait Metrics {
-    fn metrics(&self, role: FontRole) -> &FontMetrics;
+    fn metrics_for(&self, role: FontRole, text: &str) -> &FontMetrics;
 }
 
 pub(crate) fn preorder(nodes: &[Node], root: usize) -> Vec<usize> {
@@ -745,7 +764,7 @@ fn size_w(nodes: &mut [Node], i: usize, fonts: &dyn Metrics) {
     let n = &nodes[i];
     let (pref, min) = match &n.content {
         Content::Text(t) => {
-            let m = fonts.metrics(t.font);
+            let m = fonts.metrics_for(t.font, &t.text);
             let pref = widest_line(&t.text, m, t.step.size);
             let min = if t.wrap {
                 longest_word(&t.text, m, t.step.size)
@@ -839,7 +858,7 @@ fn main_sizes(
 fn distribute_w(nodes: &mut [Node], i: usize, fonts: &dyn Metrics) {
     let inner = (nodes[i].w - nodes[i].el.padding.horizontal()).max(0.0);
     if let Content::Text(t) = &nodes[i].content {
-        let m = fonts.metrics(t.font);
+        let m = fonts.metrics_for(t.font, &t.text);
         let lines = break_lines(&t.text, m, t.step.size, t.wrap.then_some(inner));
         nodes[i].lines = lines;
         return;

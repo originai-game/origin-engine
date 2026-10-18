@@ -242,6 +242,8 @@ pub struct Theme {
     pub outline: bool,
     /// `prefers-reduced-motion`: transitions keep opacity and drop movement and scale; skeleton sheens stop.
     pub reduced_motion: bool,
+    /// The game's look beyond the tokens (`crate::skin`); the default dresses nothing.
+    pub skin: crate::skin::Skin,
 }
 
 impl Default for Theme {
@@ -277,6 +279,7 @@ impl Theme {
             contrast: Contrast::Standard,
             outline: false,
             reduced_motion: false,
+            skin: crate::skin::Skin::default(),
         }
     }
 
@@ -285,7 +288,13 @@ impl Theme {
     /// `border-strong`, borders to `border-strong`, and controls are
     /// outlined. Only token values are used.
     pub fn high_contrast(scheme: Scheme) -> Theme {
-        let mut t = Theme::new(scheme);
+        Theme::new(scheme).to_high_contrast()
+    }
+
+    /// This theme's high-contrast variant (see [`Theme::high_contrast`]): a
+    /// skin's palette is remapped the same way.
+    pub fn to_high_contrast(self) -> Theme {
+        let mut t = self;
         let p = t.palette;
         t.palette.fg_muted = p.fg;
         t.palette.fg_subtle = p.fg_muted;

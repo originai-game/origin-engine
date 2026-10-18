@@ -51,6 +51,8 @@ pub enum TransitionKind {
     SlideRight,
     /// Grows from slightly smaller around its centre.
     Scale,
+    /// Springs up from smaller around its centre, overshoots and settles.
+    Pop,
 }
 
 /// What a transition does to its subtree this frame.
@@ -94,6 +96,11 @@ pub(crate) fn fx(kind: TransitionKind, e: f32, distance: f32, reduced: bool) -> 
         TransitionKind::SlideLeft => f.dx = away * distance,
         TransitionKind::SlideRight => f.dx = -away * distance,
         TransitionKind::Scale => f.scale = 1.0 - 0.08 * away,
+        TransitionKind::Pop => {
+            // Arithmetic only: a parabola past 1 that lands back on it.
+            f.scale = 0.8 + 0.2 * e + 0.8 * e * e * away;
+            f.alpha = (2.0 * e).min(1.0);
+        }
     }
     f
 }

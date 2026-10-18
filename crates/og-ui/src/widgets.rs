@@ -46,6 +46,8 @@ pub struct AnchorDesc {
     pub height: Size,
     /// Draws over dialogs and spotlights (a tutorial callout, a dragged item).
     pub over: bool,
+    /// The skin frame its background takes (`None`: the panel's).
+    pub skin: Option<crate::skin::SkinPart>,
 }
 
 /// How a transition moves.
@@ -409,9 +411,10 @@ impl Ui {
             cross: desc.cross,
             background: desc.background,
             radius: desc.radius,
+            skin: desc.skin.or(Some(crate::skin::SkinPart::Panel)),
             ..Element::default()
         };
-        self.open_layer(
+        let i = self.open_layer(
             "anchor",
             id.into(),
             el,
@@ -424,6 +427,37 @@ impl Ui {
             },
             NONE,
         );
+        // A skin's entrance and stagger for a screen panel.
+        let m = self.theme.skin.motion;
+        if desc.background.is_some() && (m.enter.is_some() || m.stagger_ms > 0.0) {
+            let key = crate::id::child_key(self.nodes[i].key, "enter");
+            let since = self.since(key);
+            self.enter(i, since, m.enter);
+        }
+    }
+
+    /// Plays a skin entrance on layer `i` from tick `since`: its own
+    /// transition (`kind`) and its controls' stagger.
+    fn enter(&mut self, i: usize, since: u64, kind: Option<TransitionKind>) {
+        let t = self.theme;
+        let ticks = self.ticks_for(t.durations_ms.base) as f32;
+        let p = ((self.state.tick - since) as f32 + 1.0) / ticks;
+        if let Some(kind) = kind {
+            if p < 1.0 {
+                let mut f = fx(kind, ease_out(p.min(1.0)), t.space.xl, t.reduced_motion);
+                f.inert = true;
+                self.nodes[i].fx = Some(f);
+            }
+        }
+        let stagger = t.skin.motion.stagger_ms;
+        if stagger > 0.0 && !t.reduced_motion {
+            self.nodes[i].stagger = Some(crate::layout::Stagger {
+                since,
+                step: stagger * self.ticks_per_second as f32 / 1000.0,
+                ticks,
+                kind: TransitionKind::SlideUp,
+            });
+        }
     }
 
     /// An anchored group built by `f`.
@@ -547,7 +581,18 @@ impl Ui {
         );
         let key = self.nodes[backdrop].key;
         let (pr, e) = self.presence(key, open, t.durations_ms.base, false);
-        let kind = desc.transition.unwrap_or(TransitionKind::Scale);
+        if pr.entering && pr.progress <= 1.0 / self.ticks_for(t.durations_ms.base) as f32 + 1e-6 {
+            self.sound(crate::skin::UiSound::Open);
+        }
+        if pr.leaving
+            && pr.progress >= 1.0 - 1.0 / self.ticks_for(t.durations_ms.base) as f32 - 1e-6
+        {
+            self.sound(crate::skin::UiSound::Close);
+        }
+        let kind = desc
+            .transition
+            .or(t.skin.motion.enter)
+            .unwrap_or(TransitionKind::Scale);
         let mut r = ModalResponse {
             visible: pr.visible,
             dismissed: false,
@@ -591,6 +636,7 @@ impl Ui {
                 gap: t.space.md,
                 background: (!desc.bare).then_some(t.palette.surface_raised),
                 radius: t.radius.panel,
+                skin: Some(crate::skin::SkinPart::Panel),
                 interactive: !desc.bare,
                 cross: if desc.bare {
                     Cross::Center
@@ -601,6 +647,10 @@ impl Ui {
             },
         );
         self.stack.push(panel);
+        if open && t.skin.motion.stagger_ms > 0.0 {
+            let since = self.since(crate::id::child_key(key, "enter"));
+            self.enter(panel, since, None);
+        }
         let moving = fx(kind, e, t.space.xl, t.reduced_motion);
         self.nodes[panel].fx = Some(crate::motion::Fx {
             alpha: 1.0,
@@ -613,6 +663,7 @@ impl Ui {
                 &desc.title,
                 crate::LabelDesc {
                     step: Some(t.type_ramp.xl),
+                    heading: true,
                     ..Default::default()
                 },
             );
@@ -657,6 +708,11 @@ impl Ui {
         let id = self.state.next_toast;
         let born = self.state.tick + u64::from(!self.building);
         let ticks = self.ticks_for(ms);
+        match desc.tone {
+            Tone::Success => self.sound(crate::skin::UiSound::Success),
+            Tone::Danger => self.sound(crate::skin::UiSound::Error),
+            _ => {}
+        }
         self.state.toasts.push(Toast {
             id,
             text: text.to_owned(),
@@ -748,10 +804,14 @@ impl Ui {
             } else {
                 ease_out(p)
             };
-            let kind = if top {
+            let kind = t.skin.motion.toast.unwrap_or(if top {
                 TransitionKind::SlideDown
             } else {
                 TransitionKind::SlideUp
+            });
+            let distance = match kind {
+                TransitionKind::SlideLeft | TransitionKind::SlideRight => 4.0 * t.space.xxl,
+                _ => t.space.lg,
             };
             let i = self.push(
                 "toast",
@@ -765,11 +825,12 @@ impl Ui {
                     background: Some(t.palette.surface_raised),
                     radius: t.radius.button,
                     interactive: true,
+                    skin: Some(crate::skin::SkinPart::Capsule),
                     ..Element::default()
                 },
             );
             self.stack.push(i);
-            let mut f = fx(kind, e, t.space.lg, t.reduced_motion);
+            let mut f = fx(kind, e, distance, t.reduced_motion);
             f.inert = toast.leaving != 0;
             self.nodes[i].fx = Some(f);
             if self.respond(self.nodes[i].key).clicked {
@@ -1222,6 +1283,7 @@ impl Ui {
                 padding: Insets::all(t.space.xs),
                 interactive: true,
                 radius: t.radius.block,
+                skin: Some(crate::skin::SkinPart::Slot),
                 ..Element::default()
             },
         );

@@ -79,6 +79,11 @@ impl FontMetrics {
         }
     }
 
+    /// Whether the font has a glyph for `c` (fixed metrics have every one).
+    pub fn has(&self, c: char) -> bool {
+        self.fixed.is_some() || self.advances.binary_search_by_key(&c, |(k, _)| *k).is_ok()
+    }
+
     /// The width of one line of text at `size` CSS pixels per em.
     pub fn measure(&self, text: &str, size: f32) -> f32 {
         text.chars().map(|c| self.advance(c)).sum::<f32>() * size
