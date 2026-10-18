@@ -1,12 +1,16 @@
 //! `og run [project|entry] [--headless] [--commands "t:action[:args];..."] [--seed S]
-//! [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--json]`
+//! [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]...
+//! [--audio null|device|<out.wav>] [--json]`
 //!
 //! Cooks the project, bundles its entry for the native host and runs it with
 //! `packages/engine/src/node/run.ts` under bun on the napi addon: the probe is
 //! mounted, `--commands` are scheduled through og-probe, outputs
 //! (`screenshot`, `dump_*`) are written under `--out` (default
 //! `<project>/og-out`) at the probe's `Output::file_name()`, and `--port`
-//! serves the probe at `ws://127.0.0.1:<port>/probe` (`og probe`). Native runs
+//! serves the probe at `ws://127.0.0.1:<port>/probe` (`og probe`). `--audio
+//! out.wav` renders the run's audio with a capture mixer into a 16-bit WAV
+//! (relative to the current directory; its SHA-256 is in `--json`'s summary,
+//! the same for two runs of the same script). Native runs
 //! are always headless: `--headless` is accepted, and without it the run is
 //! paced by the wall clock instead of as fast as it can go.
 
@@ -14,7 +18,7 @@ use crate::project::{self, Project};
 use std::path::Path;
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--json]";
+const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--json]";
 
 /// What `og run` was asked.
 pub struct RunArgs {
@@ -39,13 +43,25 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
             "--headless" => r.headless = true,
             "--json" | "--no-render" => r.forward.push(args[i].into()),
             flag @ ("--ticks" | "--seed" | "--setup" | "--commands" | "--size" | "--out"
-            | "--port") => {
+            | "--port" | "--audio") => {
                 let Some(v) = args.get(i + 1) else {
                     return Err(format!("{flag} needs a value. {USAGE}"));
                 };
                 match flag {
                     "--out" => r.out = Some(v.to_string()),
                     "--port" => r.port = Some(v.to_string()),
+                    "--audio" => {
+                        // A WAV path is the caller's, not bun's working directory's.
+                        let v = match *v {
+                            "null" | "device" => v.to_string(),
+                            path => std::path::absolute(path)
+                                .map_err(|e| format!("--audio {path}: {e}"))?
+                                .display()
+                                .to_string(),
+                        };
+                        r.forward.push(flag.into());
+                        r.forward.push(v);
+                    }
                     _ => {
                         r.forward.push(flag.into());
                         r.forward.push(v.to_string());

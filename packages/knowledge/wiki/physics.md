@@ -20,7 +20,7 @@ module physics {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 2910</sub>
+<sub>`api.ogt` line 2912</sub>
 
 ## Contents
 
@@ -95,7 +95,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 3215</sub>
+<sub>`api.ogt` line 3217</sub>
 
 <a id="fn-shapeCast"></a>
 
@@ -125,7 +125,7 @@ fn shapeCast {
 }
 ```
 
-<sub>`api.ogt` line 3222</sub>
+<sub>`api.ogt` line 3224</sub>
 
 <a id="fn-overlap"></a>
 
@@ -155,7 +155,7 @@ fn overlap {
 }
 ```
 
-<sub>`api.ogt` line 3229</sub>
+<sub>`api.ogt` line 3231</sub>
 
 <a id="fn-setMesh"></a>
 
@@ -187,7 +187,7 @@ fn setMesh {
 }
 ```
 
-<sub>`api.ogt` line 3236</sub>
+<sub>`api.ogt` line 3238</sub>
 
 ## Components, resources and events
 
@@ -254,7 +254,7 @@ component RigidBody {
 }
 ```
 
-<sub>`api.ogt` line 2933</sub>
+<sub>`api.ogt` line 2935</sub>
 
 <a id="record-Collider"></a>
 
@@ -341,7 +341,7 @@ component Collider {
 }
 ```
 
-<sub>`api.ogt` line 2974</sub>
+<sub>`api.ogt` line 2976</sub>
 
 <a id="record-Velocity"></a>
 
@@ -370,7 +370,7 @@ component Velocity {
 }
 ```
 
-<sub>`api.ogt` line 3033</sub>
+<sub>`api.ogt` line 3035</sub>
 
 <a id="record-Physics"></a>
 
@@ -425,7 +425,7 @@ resource Physics {
 }
 ```
 
-<sub>`api.ogt` line 3045</sub>
+<sub>`api.ogt` line 3047</sub>
 
 <a id="record-CollisionStarted"></a>
 
@@ -452,7 +452,7 @@ event CollisionStarted {
 }
 ```
 
-<sub>`api.ogt` line 3080</sub>
+<sub>`api.ogt` line 3082</sub>
 
 <a id="record-CollisionEnded"></a>
 
@@ -475,7 +475,7 @@ event CollisionEnded {
 }
 ```
 
-<sub>`api.ogt` line 3088</sub>
+<sub>`api.ogt` line 3090</sub>
 
 <a id="record-SensorEntered"></a>
 
@@ -498,7 +498,7 @@ event SensorEntered {
 }
 ```
 
-<sub>`api.ogt` line 3094</sub>
+<sub>`api.ogt` line 3096</sub>
 
 <a id="record-SensorExited"></a>
 
@@ -521,7 +521,7 @@ event SensorExited {
 }
 ```
 
-<sub>`api.ogt` line 3100</sub>
+<sub>`api.ogt` line 3102</sub>
 
 <a id="record-Contact"></a>
 
@@ -546,7 +546,7 @@ event Contact {
 }
 ```
 
-<sub>`api.ogt` line 3106</sub>
+<sub>`api.ogt` line 3108</sub>
 
 ## Types
 
@@ -574,7 +574,7 @@ struct QueryFilter {
 }
 ```
 
-<sub>`api.ogt` line 3113</sub>
+<sub>`api.ogt` line 3115</sub>
 
 <a id="type-RaycastDesc"></a>
 
@@ -609,7 +609,7 @@ struct RaycastDesc {
 }
 ```
 
-<sub>`api.ogt` line 3121</sub>
+<sub>`api.ogt` line 3123</sub>
 
 <a id="type-RaycastHit"></a>
 
@@ -636,7 +636,7 @@ struct RaycastHit {
 }
 ```
 
-<sub>`api.ogt` line 3137</sub>
+<sub>`api.ogt` line 3139</sub>
 
 <a id="type-ShapeDesc"></a>
 
@@ -678,7 +678,7 @@ struct ShapeDesc {
 }
 ```
 
-<sub>`api.ogt` line 3147</sub>
+<sub>`api.ogt` line 3149</sub>
 
 <a id="type-ShapeCastDesc"></a>
 
@@ -717,7 +717,7 @@ struct ShapeCastDesc {
 }
 ```
 
-<sub>`api.ogt` line 3169</sub>
+<sub>`api.ogt` line 3171</sub>
 
 <a id="type-ShapeCastHit"></a>
 
@@ -744,7 +744,7 @@ struct ShapeCastHit {
 }
 ```
 
-<sub>`api.ogt` line 3187</sub>
+<sub>`api.ogt` line 3189</sub>
 
 <a id="type-OverlapDesc"></a>
 
@@ -774,7 +774,7 @@ struct OverlapDesc {
 }
 ```
 
-<sub>`api.ogt` line 3197</sub>
+<sub>`api.ogt` line 3199</sub>
 
 <a id="type-MeshDesc"></a>
 
@@ -798,7 +798,7 @@ struct MeshDesc {
 }
 ```
 
-<sub>`api.ogt` line 3208</sub>
+<sub>`api.ogt` line 3210</sub>
 
 ## Constants
 
@@ -826,100 +826,100 @@ struct MeshDesc {
 const BODY_DYNAMIC u32 0 "RigidBody.kind: moved by the solver; its Transform and Velocity are written back every tick."
 ```
 
-<sub>`api.ogt` line 2915</sub>
+<sub>`api.ogt` line 2917</sub>
 
 ```ogt
 const BODY_STATIC u32 1 "RigidBody.kind: never moves; collides with dynamic bodies."
 ```
 
-<sub>`api.ogt` line 2916</sub>
+<sub>`api.ogt` line 2918</sub>
 
 ```ogt
 const BODY_KINEMATIC u32 2 "RigidBody.kind: moved by game code through its Transform; its Velocity, if any, is how fast it pushes."
 ```
 
-<sub>`api.ogt` line 2917</sub>
+<sub>`api.ogt` line 2919</sub>
 
 ```ogt
 const LOCK_TRANSLATION_X u32 1 "RigidBody.lock bit: no translation along x."
 ```
 
-<sub>`api.ogt` line 2918</sub>
+<sub>`api.ogt` line 2920</sub>
 
 ```ogt
 const LOCK_TRANSLATION_Y u32 2 "RigidBody.lock bit: no translation along y."
 ```
 
-<sub>`api.ogt` line 2919</sub>
+<sub>`api.ogt` line 2921</sub>
 
 ```ogt
 const LOCK_TRANSLATION_Z u32 4 "RigidBody.lock bit: no translation along z."
 ```
 
-<sub>`api.ogt` line 2920</sub>
+<sub>`api.ogt` line 2922</sub>
 
 ```ogt
 const LOCK_ROTATION_X u32 8 "RigidBody.lock bit: no rotation about x."
 ```
 
-<sub>`api.ogt` line 2921</sub>
+<sub>`api.ogt` line 2923</sub>
 
 ```ogt
 const LOCK_ROTATION_Y u32 16 "RigidBody.lock bit: no rotation about y."
 ```
 
-<sub>`api.ogt` line 2922</sub>
+<sub>`api.ogt` line 2924</sub>
 
 ```ogt
 const LOCK_ROTATION_Z u32 32 "RigidBody.lock bit: no rotation about z (the 2D profile's only rotation)."
 ```
 
-<sub>`api.ogt` line 2923</sub>
+<sub>`api.ogt` line 2925</sub>
 
 ```ogt
 const SHAPE_BOX u32 0 "Collider.shape: a box of `size` (both profiles)."
 ```
 
-<sub>`api.ogt` line 2924</sub>
+<sub>`api.ogt` line 2926</sub>
 
 ```ogt
 const SHAPE_SPHERE u32 1 "Collider.shape: a sphere of `radius` (a circle in 2D)."
 ```
 
-<sub>`api.ogt` line 2925</sub>
+<sub>`api.ogt` line 2927</sub>
 
 ```ogt
 const SHAPE_CAPSULE u32 2 "Collider.shape: a capsule along y of `radius`, with `height` between the cap centres (both profiles)."
 ```
 
-<sub>`api.ogt` line 2926</sub>
+<sub>`api.ogt` line 2928</sub>
 
 ```ogt
 const SHAPE_CYLINDER u32 3 "Collider.shape: a cylinder along y of `radius` and `height` (3D only)."
 ```
 
-<sub>`api.ogt` line 2927</sub>
+<sub>`api.ogt` line 2929</sub>
 
 ```ogt
 const SHAPE_CONVEX u32 4 "Collider.shape: the convex hull of the vertices of `mesh` (3D), or of their xy (a convex polygon, 2D)."
 ```
 
-<sub>`api.ogt` line 2928</sub>
+<sub>`api.ogt` line 2930</sub>
 
 ```ogt
 const SHAPE_TRIMESH u32 5 "Collider.shape: the triangles of `mesh` (3D only; for static and kinematic bodies)."
 ```
 
-<sub>`api.ogt` line 2929</sub>
+<sub>`api.ogt` line 2931</sub>
 
 ```ogt
 const PROFILE_2D u32 2 "Physics.profile: rapier2d, bodies in the xy plane rotating about z."
 ```
 
-<sub>`api.ogt` line 2930</sub>
+<sub>`api.ogt` line 2932</sub>
 
 ```ogt
 const PROFILE_3D u32 3 "Physics.profile: rapier3d."
 ```
 
-<sub>`api.ogt` line 2931</sub>
+<sub>`api.ogt` line 2933</sub>

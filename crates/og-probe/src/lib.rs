@@ -37,7 +37,7 @@ pub use hooks::{Capture, Frame, Pick, Rebuilt, Reloader, StaticUi, UiElement, Ui
 pub use input::{InjectedInput, Input, InputSink, WorldInput};
 pub use names::Names;
 pub use probe::{
-    BUILD, DumpKind, ENGINE_VERSION, MAX_CAPTURE_EDGE, MAX_SNAPSHOTS, MAX_SWEEP_VALUES, MEMBERS,
-    PLAYTEST_MAX_TICKS, PROBE_PROGRAM_MAX_OPERATIONS, PROBE_VERSION, PROBE_WIRE_VERSION,
-    PUBLISH_MEMBERS, Probe, SweepDesc, served_members,
+    BUILD, DumpKind, ENGINE_VERSION, Heard, ListenFn, MAX_CAPTURE_EDGE, MAX_SNAPSHOTS,
+    MAX_SWEEP_VALUES, MEMBERS, PLAYTEST_MAX_TICKS, PROBE_PROGRAM_MAX_OPERATIONS, PROBE_VERSION,
+    PROBE_WIRE_VERSION, PUBLISH_MEMBERS, Probe, SweepDesc, served_members,
 };

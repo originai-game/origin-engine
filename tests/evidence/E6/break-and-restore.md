@@ -56,3 +56,35 @@ Each break rebuilt the dev addon (`OG_GATE=1 sh packages/engine/scripts/build.sh
 |---|---|---|
 | occlusion | the guard's `og.Perception` gets `occlude: false` | `guard` (seen through the wall at once; searching and alarmed six times) |
 | the cone before the first move | og.ai's forward falls back to zero instead of the Transform's facing | `guard` (the trickster 4 m behind it is seen; it then chases it the wrong way) |
+
+## og-audio's E6 mixer and tick (`crates/og-audio/tests/mix.rs`)
+
+| Broken | Edit | Failed |
+|---|---|---|
+| bus inserts | the bus low-pass is built as a high-pass | `bus_filters_shape_their_bus_only` |
+| ducking | the ducker's target is always unity | `ducking_turns_music_down_under_effects_and_back` |
+| the compressor | the gain computer never reduces | `the_compressor_reduces_a_loud_bus` |
+| the reverb | the wet signal is multiplied by 0 | `a_reverb_send_leaves_a_tail` |
+| scheduled starts | a start inside a tick gets no delay | `scheduled_starts_land_on_their_sample_and_stems_stay_aligned` (48000, not 48123) |
+| the music clock | the next bar line rounds down | `the_music_clock_beats_and_a_stinger_lands_on_the_bar_line` |
+| crossfades | a stop ignores its fade | `a_crossfade_ramps_over_its_fade` |
+| the voice cap | the cap is never reached | `the_voice_cap_culls_the_lowest_priority` |
+| distance low-pass | `distanceCutoff` is ignored | `occlusion_and_distance_dull_a_source` |
+| occlusion gain | an occluded source keeps its gain | `occlusion_and_distance_dull_a_source` (low band 1.0, not 0.35) |
+| listen | the ring records half of each render | `the_mix_is_the_same_twice_and_listen_returns_its_last_second` |
+
+## Sound presets (`crates/og-cook/tests/sfx.rs`)
+
+| Broken | Edit | Failed |
+|---|---|---|
+| synthesis | the output gain is 0 | `every_preset_renders_…`, `seed_pitch_and_length_vary_a_preset`, `a_cooked_preset_is_a_sound_the_runtime_loads` |
+| pitch | `pitch` is ignored | `seed_pitch_and_length_vary_a_preset` (ratio 1, not 2) |
+| refusals | an unknown preset passes `parse` | `malformed_presets_are_refused_with_the_fix`, `a_cooked_preset_is_a_sound_the_runtime_loads` |
+| cooking | `type sfx` is not classified as a sound | `a_cooked_preset_is_a_sound_the_runtime_loads` |
+
+## Audio through `og run` (`packages/engine/tests/audio.test.ts`)
+
+| Broken | Edit | Failed |
+|---|---|---|
+| `og run --audio` | og-cli drops the flag | the test (mode `null`, not `capture`) |
+| `listen` | the action's default is a quarter second | the test (12000 frames, not 48000) |

@@ -6268,6 +6268,11 @@ export declare const SOUND_REMOVED: 2;
 export declare const SOUND_REPLACED: 3;
 
 /**
+ * SoundEnded.reason: more sources played than Audio.maxVoices and this one stood lowest (priority, then volume, then age).
+ */
+export declare const SOUND_CULLED: 4;
+
+/**
  * The bus a source plays on; every bus passes through master.
  * - `"master"`: The master bus: what every bus passes through.
  * - `"music"`: Music.
@@ -6375,6 +6380,48 @@ export interface AudioSource {
    * @default true
    */
   playing: boolean;
+  /**
+   * When more than Audio.maxVoices would play, the lowest priority is stopped first (then the quietest, then the oldest), with SoundEnded reason SOUND_CULLED.
+   *
+   * @default 128
+   * @range 0..255
+   */
+  priority: number;
+  /**
+   * A low-pass filter on this source, its cutoff; 0 is off.
+   *
+   * @range 0..20000
+   * @unit hz (ticks or cycles per second)
+   * @tunable
+   */
+  lowpass: number;
+  /**
+   * A spatial source behind a collider (a physics ray to the listener) plays at Audio.occlusionGain through a low-pass at Audio.occlusionCutoff.
+   */
+  occlude: boolean;
+  /**
+   * A spatial source's low-pass by distance: the cutoff at maxDistance, from 20 kHz at refDistance (log-linear between); 0 is off.
+   *
+   * @range 0..20000
+   * @unit hz (ticks or cycles per second)
+   * @tunable
+   */
+  distanceCutoff: number;
+  /**
+   * Starts at this world time (seconds since tick 0), to the sample, even inside a tick; 0 or a time past starts at once. Music.nextBar and Music.nextBeat give musical times.
+   *
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  startAt: number;
+  /**
+   * Starts, stops and volume changes ramp over this long: a crossfade is one source stopped and another started with the same fade; 0 is 5 ms.
+   *
+   * @range 0..30
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  fade: number;
 }
 
 /**
@@ -6431,6 +6478,243 @@ export interface Audio {
    * @tunable
    */
   ui: number;
+  /**
+   * The most sources that play at once; past it the lowest AudioSource.priority is stopped (SoundEnded reason SOUND_CULLED).
+   *
+   * @default 32
+   * @range 1..256
+   */
+  maxVoices: number;
+  /**
+   * The gain of an occluded source (AudioSource.occlude).
+   *
+   * @default 0.35
+   * @range 0..1
+   * @tunable
+   */
+  occlusionGain: number;
+  /**
+   * The low-pass cutoff of an occluded source.
+   *
+   * @default 900
+   * @range 20..20000
+   * @unit hz (ticks or cycles per second)
+   * @tunable
+   */
+  occlusionCutoff: number;
+  /**
+   * The shared reverb's room size (the AudioBusFx.reverb sends feed it).
+   *
+   * @default 0.6
+   * @range 0..1
+   * @tunable
+   */
+  reverbRoom: number;
+  /**
+   * The shared reverb's damping of high frequencies.
+   *
+   * @default 0.4
+   * @range 0..1
+   * @tunable
+   */
+  reverbDamping: number;
+}
+
+/**
+ * A bus's insert effects: a high- and low-pass (12 dB/octave), a compressor, side-chain ducking by another bus, and a send to the shared reverb, whose return joins master. One entity per bus (the first in query order counts); without one a bus passes straight through.
+ * Changes reach the mixer through the command stream, so they are deterministic and in the world hash; the PCM is the mixer's.
+ *
+ * The value of the `AudioBusFx` component (token `og.AudioBusFx`).
+ */
+export interface AudioBusFx {
+  /**
+   * The bus these effects are on.
+   *
+   * @default "music"
+   */
+  bus: AudioBus;
+  /**
+   * Low-pass cutoff; 0 is off.
+   *
+   * @range 0..20000
+   * @unit hz (ticks or cycles per second)
+   * @tunable
+   */
+  lowpass: number;
+  /**
+   * High-pass cutoff; 0 is off.
+   *
+   * @range 0..20000
+   * @unit hz (ticks or cycles per second)
+   * @tunable
+   */
+  highpass: number;
+  /**
+   * How much of the bus goes to the reverb.
+   *
+   * @range 0..1
+   * @tunable
+   */
+  reverb: number;
+  /**
+   * The compressor's threshold; 0 dB is off.
+   *
+   * @range -60..0
+   * @unit db (decibels)
+   * @tunable
+   */
+  threshold: number;
+  /**
+   * The compressor's ratio: dB in over the threshold per dB out.
+   *
+   * @default 4
+   * @range 1..30
+   * @tunable
+   */
+  ratio: number;
+  /**
+   * The compressor's attack.
+   *
+   * @default 0.005
+   * @range 0..1
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  attack: number;
+  /**
+   * The compressor's release.
+   *
+   * @default 0.15
+   * @range 0..3
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  release: number;
+  /**
+   * Gain after the compressor.
+   *
+   * @range -24..24
+   * @unit db (decibels)
+   * @tunable
+   */
+  makeup: number;
+  /** Turns this bus down while duckBus is loud: music under effects or dialogue. */
+  duck: boolean;
+  /**
+   * The bus that ducks this one.
+   *
+   * @default "sfx"
+   */
+  duckBus: AudioBus;
+  /**
+   * How far it is turned down.
+   *
+   * @default 9
+   * @range 0..60
+   * @unit db (decibels)
+   * @tunable
+   */
+  duckDepth: number;
+  /**
+   * How loud the key bus must be.
+   *
+   * @default -36
+   * @range -80..0
+   * @unit db (decibels)
+   * @tunable
+   */
+  duckThreshold: number;
+  /**
+   * How fast it goes down.
+   *
+   * @default 0.02
+   * @range 0..2
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  duckAttack: number;
+  /**
+   * How fast it comes back.
+   *
+   * @default 0.4
+   * @range 0..5
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  duckRelease: number;
+}
+
+/**
+ * A musical clock: tempo, metre and where bar 1 starts. The og.music system (before og.audio) writes the bar and beat and the times of the next beat and bar line every tick, and sends MusicBeat for every beat; an AudioSource whose startAt is nextBar starts on the bar line to the sample, so stems started together stay in step and a stinger lands on the downbeat.
+ *
+ * The value of the `Music` component (token `og.Music`).
+ */
+export interface Music {
+  /**
+   * Beats per minute.
+   *
+   * @default 120
+   * @range 20..400
+   * @unit bpm (beats per minute)
+   * @tunable
+   */
+  bpm: number;
+  /**
+   * Beats per bar.
+   *
+   * @default 4
+   * @range 1..16
+   */
+  beatsPerBar: number;
+  /**
+   * The world time of bar 1's first beat.
+   *
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  start: number;
+  /**
+   * The bar the next tick starts in, from 1 (0 before start; written by og.music).
+   *
+   * @readonly written by the engine
+   */
+  readonly bar: number;
+  /**
+   * The beat in that bar, from 1 (written by og.music).
+   *
+   * @readonly written by the engine
+   */
+  readonly beat: number;
+  /**
+   * The world time of the next beat from the next tick on (written by og.music).
+   *
+   * @unit s (seconds of simulation time)
+   * @readonly written by the engine
+   */
+  readonly nextBeat: number;
+  /**
+   * The world time of the next bar line from the next tick on (written by og.music).
+   *
+   * @unit s (seconds of simulation time)
+   * @readonly written by the engine
+   */
+  readonly nextBar: number;
+}
+
+/**
+ * A beat of a Music clock, sent in the tick whose interval holds it (systems read it the tick after).
+ *
+ * The payload of the `MusicBeat` event (token `og.MusicBeat`).
+ */
+export interface MusicBeat {
+  /** The entity with the Music. */
+  readonly entity: Entity;
+  /** The bar, from 1. */
+  readonly bar: number;
+  /** The beat in the bar, from 1 (1 is the bar line). */
+  readonly beat: number;
+  /** Its world time. */
+  readonly time: number;
 }
 
 /**
@@ -6459,7 +6743,9 @@ export interface SoundEnded {
   readonly sound: Sound;
   /** The voice id in the command stream. */
   readonly voice: number;
-  /** Why: SOUND_FINISHED (0), SOUND_STOPPED (1), SOUND_REMOVED (2) or SOUND_REPLACED (3). */
+  /**
+   * Why: SOUND_FINISHED (0), SOUND_STOPPED (1), SOUND_REMOVED (2), SOUND_REPLACED (3) or SOUND_CULLED (4).
+   */
   readonly reason: number;
 }
 
@@ -11101,6 +11387,7 @@ export interface AlertDesc {
 /**
  * The actions the engine ships. Arguments follow the action, separated by `:`.
  * - `"screenshot"`: `screenshot[:path][:full|:N]`: capture the next frame.
+ * - `"listen"`: `listen[:path][:seconds]`: write the last seconds of rendered audio as a WAV.
  * - `"touch_move_to"`: `touch_move_to:<ui id>`: move the pointer to a UI element.
  * - `"touch_move"`: `touch_move:x,y`: move the pointer to CSS pixel coordinates.
  * - `"touch_start"`: `touch_start`: press the pointer where it is.
@@ -11125,7 +11412,7 @@ export interface AlertDesc {
  * - `"quit"`: `quit`: exit.
  * - `"help"`: `help`: list every action the channel knows, core and registered.
  */
-export type CoreAction = "screenshot" | "touch_move_to" | "touch_move" | "touch_start" | "touch_end" | "scroll" | "touch" | "gamepad" | "key_down" | "key_up" | "type" | "move_to_text" | "teleport" | "frame_entity" | "dump_world" | "dump_entity" | "dump_ui" | "set" | "seed" | "pause" | "resume" | "advance" | "quit" | "help";
+export type CoreAction = "screenshot" | "listen" | "touch_move_to" | "touch_move" | "touch_start" | "touch_end" | "scroll" | "touch" | "gamepad" | "key_down" | "key_up" | "type" | "move_to_text" | "teleport" | "frame_entity" | "dump_world" | "dump_entity" | "dump_ui" | "set" | "seed" | "pause" | "resume" | "advance" | "quit" | "help";
 
 /**
  * A registered action. It runs at the start of the tick it was scheduled for.
@@ -11394,6 +11681,26 @@ export interface Capture {
   readonly height: number;
   /** The PNG, base64. */
   readonly png: string;
+}
+
+/** What the host's mixer rendered last: the audio up to the current tick. */
+export interface Heard {
+  /** The tick it ends at. */
+  readonly tick: number;
+  /**
+   * Frames per second.
+   *
+   * @unit hz (ticks or cycles per second)
+   */
+  readonly rate: number;
+  /** Stereo frames in the WAV. */
+  readonly frames: number;
+  /** The largest sample, 0 to 1. */
+  readonly peak: number;
+  /** The root mean square of both channels. */
+  readonly rms: number;
+  /** A 16-bit stereo WAV, base64. */
+  readonly wav: string;
 }
 
 /**
@@ -11750,6 +12057,13 @@ export interface EngineProbe extends RuntimeProbe {
    * @returns Null for a malformed script.
    */
   commands(script: string): CommandsReport | null;
+  /**
+   * The last seconds of audio the host's mixer rendered (a null sink renders too, into a two-second ring), as a WAV with its peak and RMS: what a person would have heard.
+   *
+   * @param seconds How many seconds, 0 to 2. Default `1`.
+   * @returns Null without audio, or before anything was rendered.
+   */
+  listen(seconds?: number): Heard | null;
 }
 
 // ── og ──────────────────────────────────────────────────────────
@@ -12475,13 +12789,26 @@ export declare namespace og {
    * A sound an entity plays. Level-triggered: while `playing` is true it plays (inserting a source plays it), setting it false stops it, and a one-shot that reaches its end sets it back to false and sends og.SoundEnded.
    * A one-shot of F frames at rate R and pitch p started in tick S ends in tick S + ceil(F * tickRate / (R * p)) - 1. A despawned entity's voice is silenced without an event.
    */
-  const AudioSource: ComponentType<{ readonly sound: FieldSpec<"Sound">; readonly bus: FieldSpec<"AudioBus">; readonly volume: FieldSpec<"f32">; readonly pitch: FieldSpec<"f32">; readonly pan: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly loopStart: FieldSpec<"f32">; readonly loopEnd: FieldSpec<"f32">; readonly spatial: FieldSpec<"bool">; readonly refDistance: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly rolloffFactor: FieldSpec<"f32">; readonly playing: FieldSpec<"bool"> }, AudioSource>;
+  const AudioSource: ComponentType<{ readonly sound: FieldSpec<"Sound">; readonly bus: FieldSpec<"AudioBus">; readonly volume: FieldSpec<"f32">; readonly pitch: FieldSpec<"f32">; readonly pan: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly loopStart: FieldSpec<"f32">; readonly loopEnd: FieldSpec<"f32">; readonly spatial: FieldSpec<"bool">; readonly refDistance: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly rolloffFactor: FieldSpec<"f32">; readonly playing: FieldSpec<"bool">; readonly priority: FieldSpec<"u32">; readonly lowpass: FieldSpec<"f32">; readonly occlude: FieldSpec<"bool">; readonly distanceCutoff: FieldSpec<"f32">; readonly startAt: FieldSpec<"f64">; readonly fade: FieldSpec<"f32"> }, AudioSource>;
   /**
    * Where spatial sources are heard from: the entity's og.Transform, looking down its -Z with +X to the right. The first listener in query order is used.
    */
   const AudioListener: ComponentType<{ readonly volume: FieldSpec<"f32"> }, AudioListener>;
   /** Bus volumes; master scales every bus. A change ramps over 256 frames in the mixer. */
-  const Audio: ResourceType<{ readonly master: FieldSpec<"f32">; readonly music: FieldSpec<"f32">; readonly sfx: FieldSpec<"f32">; readonly ui: FieldSpec<"f32"> }, Audio>;
+  const Audio: ResourceType<{ readonly master: FieldSpec<"f32">; readonly music: FieldSpec<"f32">; readonly sfx: FieldSpec<"f32">; readonly ui: FieldSpec<"f32">; readonly maxVoices: FieldSpec<"u32">; readonly occlusionGain: FieldSpec<"f32">; readonly occlusionCutoff: FieldSpec<"f32">; readonly reverbRoom: FieldSpec<"f32">; readonly reverbDamping: FieldSpec<"f32"> }, Audio>;
+  /**
+   * A bus's insert effects: a high- and low-pass (12 dB/octave), a compressor, side-chain ducking by another bus, and a send to the shared reverb, whose return joins master. One entity per bus (the first in query order counts); without one a bus passes straight through.
+   * Changes reach the mixer through the command stream, so they are deterministic and in the world hash; the PCM is the mixer's.
+   */
+  const AudioBusFx: ComponentType<{ readonly bus: FieldSpec<"AudioBus">; readonly lowpass: FieldSpec<"f32">; readonly highpass: FieldSpec<"f32">; readonly reverb: FieldSpec<"f32">; readonly threshold: FieldSpec<"f32">; readonly ratio: FieldSpec<"f32">; readonly attack: FieldSpec<"f32">; readonly release: FieldSpec<"f32">; readonly makeup: FieldSpec<"f32">; readonly duck: FieldSpec<"bool">; readonly duckBus: FieldSpec<"AudioBus">; readonly duckDepth: FieldSpec<"f32">; readonly duckThreshold: FieldSpec<"f32">; readonly duckAttack: FieldSpec<"f32">; readonly duckRelease: FieldSpec<"f32"> }, AudioBusFx>;
+  /**
+   * A musical clock: tempo, metre and where bar 1 starts. The og.music system (before og.audio) writes the bar and beat and the times of the next beat and bar line every tick, and sends MusicBeat for every beat; an AudioSource whose startAt is nextBar starts on the bar line to the sample, so stems started together stay in step and a stinger lands on the downbeat.
+   */
+  const Music: ComponentType<{ readonly bpm: FieldSpec<"f32">; readonly beatsPerBar: FieldSpec<"u32">; readonly start: FieldSpec<"f64">; readonly bar: FieldSpec<"u32">; readonly beat: FieldSpec<"u32">; readonly nextBeat: FieldSpec<"f64">; readonly nextBar: FieldSpec<"f64"> }, Music>;
+  /**
+   * A beat of a Music clock, sent in the tick whose interval holds it (systems read it the tick after).
+   */
+  const MusicBeat: EventType<MusicBeat>;
   /** A source started, sent in the tick it happens (systems read it the tick after). */
   const SoundStarted: EventType<SoundStarted>;
   /** A sound ended, sent in the tick it happens (systems read it the tick after). */

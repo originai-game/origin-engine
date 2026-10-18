@@ -168,6 +168,7 @@ pub(crate) fn mount_back(
         world,
         &og_audio::AudioDesc {
             link,
+            occluder: Some(super::e6::occluder(&physics)),
             ..og_audio::AudioDesc::default()
         },
     )

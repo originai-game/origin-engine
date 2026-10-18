@@ -652,7 +652,7 @@ export interface CommandOutput {
   readonly action: string;
   /** Where to write it: the script's path, or `<action>-<tick>.<ext>`. */
   readonly file: string;
-  readonly kind: "png" | "json" | "text";
+  readonly kind: "png" | "json" | "text" | "wav";
   /** Base64 for a PNG, the text otherwise. */
   readonly data: string;
 }

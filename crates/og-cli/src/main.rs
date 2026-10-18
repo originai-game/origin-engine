@@ -14,6 +14,7 @@ mod probe;
 mod project;
 mod publish;
 mod run;
+mod sfx;
 mod test;
 
 use std::path::{Path, PathBuf};
@@ -28,7 +29,7 @@ usage: og <command> [options]
 
 commands:
   run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P]
-      [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--json]
+      [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio <out.wav>] [--json]
                       cook, bundle and run the game on the native host with the probe; outputs of
                       screenshot/dump_* land in --out (default <project>/og-out)
   probe <method> [params-json] [--port P] [--out file.png] [--raw]
@@ -44,6 +45,11 @@ commands:
                       only the player-facing probe members and adds the PWA (sw.js, manifest)
   cook [project] [--threads N] [--report out.md] [--json]
                       assets/ into cooked/, incrementally
+  sfx [<preset> [--seed N] [--pitch P] [--length L] [--volume V] --out <file.ogt|file.wav>]
+  sfx library <dir>
+                      the procedural sound presets (coin, jump, hit, click, ...): list them,
+                      write one as an asset `og cook` synthesises (or render it to a WAV),
+                      or write the whole library
   doctor              check bun, the engine package, the native addon, the wasm, a headless
                       renderer, and (in the engine repository) the build toolchain, naming each fix
   api gen [--wiki] [--root <dir>]
@@ -76,6 +82,7 @@ fn main() -> ExitCode {
         ["build", rest @ ..] => bundle::run(rest),
         ["cook", rest @ ..] => cook::run(rest),
         ["api", rest @ ..] => api::run(rest),
+        ["sfx", rest @ ..] => sfx::run(rest),
         [] => {
             eprint!("{USAGE}");
             ExitCode::from(2)

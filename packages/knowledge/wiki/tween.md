@@ -20,7 +20,7 @@ module tween {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 3651</sub>
+<sub>`api.ogt` line 3653</sub>
 
 ## Contents
 
@@ -73,7 +73,7 @@ fn to {
 }
 ```
 
-<sub>`api.ogt` line 3777</sub>
+<sub>`api.ogt` line 3779</sub>
 
 <a id="fn-sequence"></a>
 
@@ -107,7 +107,7 @@ fn sequence {
 }
 ```
 
-<sub>`api.ogt` line 3784</sub>
+<sub>`api.ogt` line 3786</sub>
 
 <a id="fn-parallel"></a>
 
@@ -141,7 +141,7 @@ fn parallel {
 }
 ```
 
-<sub>`api.ogt` line 3794</sub>
+<sub>`api.ogt` line 3796</sub>
 
 <a id="fn-cancel"></a>
 
@@ -171,7 +171,7 @@ fn cancel {
 }
 ```
 
-<sub>`api.ogt` line 3804</sub>
+<sub>`api.ogt` line 3806</sub>
 
 <a id="fn-cancelEntity"></a>
 
@@ -201,7 +201,7 @@ fn cancelEntity {
 }
 ```
 
-<sub>`api.ogt` line 3811</sub>
+<sub>`api.ogt` line 3813</sub>
 
 <a id="fn-active"></a>
 
@@ -231,7 +231,7 @@ fn active {
 }
 ```
 
-<sub>`api.ogt` line 3818</sub>
+<sub>`api.ogt` line 3820</sub>
 
 <a id="fn-squash"></a>
 
@@ -261,7 +261,7 @@ fn squash {
 }
 ```
 
-<sub>`api.ogt` line 3825</sub>
+<sub>`api.ogt` line 3827</sub>
 
 <a id="fn-flash"></a>
 
@@ -291,7 +291,7 @@ fn flash {
 }
 ```
 
-<sub>`api.ogt` line 3832</sub>
+<sub>`api.ogt` line 3834</sub>
 
 ## Components, resources and events
 
@@ -318,7 +318,7 @@ event TweenCompleted {
 }
 ```
 
-<sub>`api.ogt` line 3728</sub>
+<sub>`api.ogt` line 3730</sub>
 
 ## Types
 
@@ -334,7 +334,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Tween "A running tween or group."
 ```
 
-<sub>`api.ogt` line 3656</sub>
+<sub>`api.ogt` line 3658</sub>
 
 <a id="type-Ease"></a>
 
@@ -397,7 +397,7 @@ enum Ease {
 }
 ```
 
-<sub>`api.ogt` line 3665</sub>
+<sub>`api.ogt` line 3667</sub>
 
 <a id="type-TweenDesc"></a>
 
@@ -452,7 +452,7 @@ struct TweenDesc {
 }
 ```
 
-<sub>`api.ogt` line 3691</sub>
+<sub>`api.ogt` line 3693</sub>
 
 <a id="type-TweenGroupDesc"></a>
 
@@ -480,7 +480,7 @@ struct TweenGroupDesc {
 }
 ```
 
-<sub>`api.ogt` line 3718</sub>
+<sub>`api.ogt` line 3720</sub>
 
 <a id="type-SquashDesc"></a>
 
@@ -520,7 +520,7 @@ struct SquashDesc {
 }
 ```
 
-<sub>`api.ogt` line 3735</sub>
+<sub>`api.ogt` line 3737</sub>
 
 <a id="type-FlashDesc"></a>
 
@@ -562,7 +562,7 @@ struct FlashDesc {
 }
 ```
 
-<sub>`api.ogt` line 3755</sub>
+<sub>`api.ogt` line 3757</sub>
 
 ## Column kinds
 
@@ -581,4 +581,4 @@ column Tween {
 }
 ```
 
-<sub>`api.ogt` line 3658</sub>
+<sub>`api.ogt` line 3660</sub>

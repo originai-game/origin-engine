@@ -26,6 +26,8 @@ unit mps2 "metres per second squared"
 unit radps "radians per second"
 unit perSecond "a rate per second: the fraction of a value that decays in one second"
 unit kgPerM3 "kilograms per cubic metre (per square metre in the 2D profile)"
+unit db "decibels"
+unit bpm "beats per minute"
 
 # ── math ──────────────────────────────────────────────────────────────────
 
@@ -3990,6 +3992,7 @@ module audio {
   const SOUND_STOPPED u32 1 "SoundEnded.reason: `playing` was set to false."
   const SOUND_REMOVED u32 2 "SoundEnded.reason: the AudioSource was removed from a living entity."
   const SOUND_REPLACED u32 3 "SoundEnded.reason: `sound` changed while it played."
+  const SOUND_CULLED u32 4 "SoundEnded.reason: more sources played than Audio.maxVoices and this one stood lowest (priority, then volume, then age)."
 
   enum AudioBus {
     doc "The bus a source plays on; every bus passes through master."
@@ -4060,6 +4063,34 @@ module audio {
     field playing bool "Plays while true; the engine sets it false when a one-shot ends." {
       default true
     }
+    field priority u32 "When more than Audio.maxVoices would play, the lowest priority is stopped first (then the quietest, then the oldest), with SoundEnded reason SOUND_CULLED." {
+      default 128
+      min 0
+      max 255
+    }
+    field lowpass f32 "A low-pass filter on this source, its cutoff; 0 is off." {
+      min 0
+      max 20000
+      unit hz
+      tunable true
+    }
+    field occlude bool "A spatial source behind a collider (a physics ray to the listener) plays at Audio.occlusionGain through a low-pass at Audio.occlusionCutoff."
+    field distanceCutoff f32 "A spatial source's low-pass by distance: the cutoff at maxDistance, from 20 kHz at refDistance (log-linear between); 0 is off." {
+      min 0
+      max 20000
+      unit hz
+      tunable true
+    }
+    field startAt f64 "Starts at this world time (seconds since tick 0), to the sample, even inside a tick; 0 or a time past starts at once. Music.nextBar and Music.nextBeat give musical times." {
+      min 0
+      unit s
+    }
+    field fade f32 "Starts, stops and volume changes ramp over this long: a crossfade is one source stopped and another started with the same fade; 0 is 5 ms." {
+      min 0
+      max 30
+      unit s
+      tunable true
+    }
   }
 
   component AudioListener {
@@ -4098,6 +4129,167 @@ module audio {
       max 2
       tunable true
     }
+    field maxVoices u32 "The most sources that play at once; past it the lowest AudioSource.priority is stopped (SoundEnded reason SOUND_CULLED)." {
+      default 32
+      min 1
+      max 256
+    }
+    field occlusionGain f32 "The gain of an occluded source (AudioSource.occlude)." {
+      default 0.35
+      min 0
+      max 1
+      tunable true
+    }
+    field occlusionCutoff f32 "The low-pass cutoff of an occluded source." {
+      default 900
+      min 20
+      max 20000
+      unit hz
+      tunable true
+    }
+    field reverbRoom f32 "The shared reverb's room size (the AudioBusFx.reverb sends feed it)." {
+      default 0.6
+      min 0
+      max 1
+      tunable true
+    }
+    field reverbDamping f32 "The shared reverb's damping of high frequencies." {
+      default 0.4
+      min 0
+      max 1
+      tunable true
+    }
+  }
+
+  component AudioBusFx {
+    doc "A bus's insert effects: a high- and low-pass (12 dB/octave), a compressor, side-chain ducking by another bus, and a send to the shared reverb, whose return joins master. One entity per bus (the first in query order counts); without one a bus passes straight through."
+    doc "Changes reach the mixer through the command stream, so they are deterministic and in the world hash; the PCM is the mixer's."
+    field bus AudioBus "The bus these effects are on." {
+      default music
+    }
+    field lowpass f32 "Low-pass cutoff; 0 is off." {
+      min 0
+      max 20000
+      unit hz
+      tunable true
+    }
+    field highpass f32 "High-pass cutoff; 0 is off." {
+      min 0
+      max 20000
+      unit hz
+      tunable true
+    }
+    field reverb f32 "How much of the bus goes to the reverb." {
+      min 0
+      max 1
+      tunable true
+    }
+    field threshold f32 "The compressor's threshold; 0 dB is off." {
+      min -60
+      max 0
+      unit db
+      tunable true
+    }
+    field ratio f32 "The compressor's ratio: dB in over the threshold per dB out." {
+      default 4
+      min 1
+      max 30
+      tunable true
+    }
+    field attack f32 "The compressor's attack." {
+      default 0.005
+      min 0
+      max 1
+      unit s
+      tunable true
+    }
+    field release f32 "The compressor's release." {
+      default 0.15
+      min 0
+      max 3
+      unit s
+      tunable true
+    }
+    field makeup f32 "Gain after the compressor." {
+      min -24
+      max 24
+      unit db
+      tunable true
+    }
+    field duck bool "Turns this bus down while duckBus is loud: music under effects or dialogue."
+    field duckBus AudioBus "The bus that ducks this one." {
+      default sfx
+    }
+    field duckDepth f32 "How far it is turned down." {
+      default 9
+      min 0
+      max 60
+      unit db
+      tunable true
+    }
+    field duckThreshold f32 "How loud the key bus must be." {
+      default -36
+      min -80
+      max 0
+      unit db
+      tunable true
+    }
+    field duckAttack f32 "How fast it goes down." {
+      default 0.02
+      min 0
+      max 2
+      unit s
+      tunable true
+    }
+    field duckRelease f32 "How fast it comes back." {
+      default 0.4
+      min 0
+      max 5
+      unit s
+      tunable true
+    }
+  }
+
+  component Music {
+    doc "A musical clock: tempo, metre and where bar 1 starts. The og.music system (before og.audio) writes the bar and beat and the times of the next beat and bar line every tick, and sends MusicBeat for every beat; an AudioSource whose startAt is nextBar starts on the bar line to the sample, so stems started together stay in step and a stinger lands on the downbeat."
+    field bpm f32 "Beats per minute." {
+      default 120
+      min 20
+      max 400
+      unit bpm
+      tunable true
+    }
+    field beatsPerBar u32 "Beats per bar." {
+      default 4
+      min 1
+      max 16
+    }
+    field start f64 "The world time of bar 1's first beat." {
+      min 0
+      unit s
+    }
+    field bar u32 "The bar the next tick starts in, from 1 (0 before start; written by og.music)." {
+      readonly true
+    }
+    field beat u32 "The beat in that bar, from 1 (written by og.music)." {
+      readonly true
+    }
+    field nextBeat f64 "The world time of the next beat from the next tick on (written by og.music)." {
+      unit s
+      readonly true
+    }
+    field nextBar f64 "The world time of the next bar line from the next tick on (written by og.music)." {
+      unit s
+      readonly true
+    }
+  }
+
+  event MusicBeat {
+    doc "A beat of a Music clock, sent in the tick whose interval holds it (systems read it the tick after)."
+    field entity Entity "The entity with the Music."
+    field bar u32 "The bar, from 1."
+    field beat u32 "The beat in the bar, from 1 (1 is the bar line)."
+    field time f64 "Its world time."
   }
 
   event SoundStarted {
@@ -4112,7 +4304,7 @@ module audio {
     field entity Entity "The entity whose AudioSource ended."
     field sound Sound "The sound."
     field voice u32 "The voice id in the command stream."
-    field reason u32 "Why: SOUND_FINISHED (0), SOUND_STOPPED (1), SOUND_REMOVED (2) or SOUND_REPLACED (3)."
+    field reason u32 "Why: SOUND_FINISHED (0), SOUND_STOPPED (1), SOUND_REMOVED (2), SOUND_REPLACED (3) or SOUND_CULLED (4)."
   }
 }
 
@@ -7026,6 +7218,7 @@ module commands {
   enum CoreAction {
     doc "The actions the engine ships. Arguments follow the action, separated by `:`."
     variant screenshot "`screenshot[:path][:full|:N]`: capture the next frame."
+    variant listen "`listen[:path][:seconds]`: write the last seconds of rendered audio as a WAV."
     variant touch_move_to "`touch_move_to:<ui id>`: move the pointer to a UI element."
     variant touch_move "`touch_move:x,y`: move the pointer to CSS pixel coordinates."
     variant touch_start "`touch_start`: press the pointer where it is."
@@ -7254,6 +7447,18 @@ module probe {
     field width u32 "Width in pixels."
     field height u32 "Height in pixels."
     field png String "The PNG, base64."
+  }
+
+  struct Heard {
+    doc "What the host's mixer rendered last: the audio up to the current tick."
+    field tick u32 "The tick it ends at."
+    field rate u32 "Frames per second." {
+      unit hz
+    }
+    field frames u32 "Stereo frames in the WAV."
+    field peak f32 "The largest sample, 0 to 1."
+    field rms f32 "The root mean square of both channels."
+    field wav String "A 16-bit stereo WAV, base64."
   }
 
   struct SweepDesc {
@@ -7507,6 +7712,13 @@ module probe {
       doc "Schedule a command script on simulation time, as `og run --commands`."
       param script String "`t:action[:args];...`."
       returns Option.CommandsReport "Null for a malformed script."
+    }
+    fn listen {
+      doc "The last seconds of audio the host's mixer rendered (a null sink renders too, into a two-second ring), as a WAV with its peak and RMS: what a person would have heard."
+      param seconds f32 "How many seconds, 0 to 2." {
+        default 1
+      }
+      returns Option.Heard "Null without audio, or before anything was rendered."
     }
   }
 }

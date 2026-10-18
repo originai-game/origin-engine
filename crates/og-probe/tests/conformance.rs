@@ -100,7 +100,7 @@ fn every_member_answers_as_protocol_5_says() {
     assert_eq!(hello["tier"], json!("vulkan"));
     assert!(["dev", "release"].contains(&hello["build"].as_str().unwrap()));
     assert_eq!(hello["members"], json!(MEMBERS));
-    assert_eq!(MEMBERS.len(), 20, "13 protocol-5 members + 7 wire members");
+    assert_eq!(MEMBERS.len(), 21, "13 protocol-5 members + 8 wire members");
 
     // tick, state: the fixed head, then the game's facts.
     assert_eq!(t.tick(), 0);
@@ -506,6 +506,11 @@ fn every_member_answers_as_protocol_5_says() {
 
     // reload without a bundle loader: null, the world keeps running.
     assert_eq!(t.ok("reload", json!({})), Value::Null);
+
+    // listen without audio: null; a malformed length is refused.
+    assert_eq!(t.ok("listen", json!({})), Value::Null);
+    assert_eq!(t.ok("listen", json!({"seconds": 0.5})), Value::Null);
+    t.err("listen", json!({"seconds": 3}), INVALID_PARAMS);
 
     // Unknown methods, including names the in-page probe has but the wire does not.
     for method in ["teleport", "version", "entities", "record", "Hello", ""] {

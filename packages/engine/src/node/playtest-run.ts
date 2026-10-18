@@ -119,6 +119,22 @@ const run: PlaytestRun = {
     if (bytes.length < 24 || view.getUint32(12) !== 0x49484452) throw new Error(`${f} is not a PNG`);
     return { width: view.getUint32(16), height: view.getUint32(20), bytes: bytes.length };
   },
+  wav: (f: string) => {
+    const bytes = readFileSync(path(f));
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    if (bytes.length < 44 || view.getUint32(0) !== 0x52494646 || view.getUint32(8) !== 0x57415645) throw new Error(`${f} is not a WAV`);
+    const rate = view.getUint32(24, true);
+    const channels = view.getUint16(22, true);
+    const samples = (bytes.length - 44) >> 1;
+    let peak = 0;
+    let sum = 0;
+    for (let i = 0; i < samples; i++) {
+      const x = view.getInt16(44 + i * 2, true) / 32767;
+      peak = Math.max(peak, Math.abs(x));
+      sum += x * x;
+    }
+    return { rate, frames: samples / Math.max(1, channels), peak, rms: samples > 0 ? Math.sqrt(sum / samples) : 0 };
+  },
 };
 const t: PlaytestChecks = {
   ok(condition, what) {

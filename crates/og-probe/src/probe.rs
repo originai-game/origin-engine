@@ -41,7 +41,7 @@ pub const ENGINE_VERSION: &str = concat!("origin-engine ", env!("CARGO_PKG_VERSI
 pub const MEMBERS: &[&str] = &[
     "hello", "tick", "state", "advance", "pause", "resume", "input", "accepted", "pick", "entity",
     "bounds", "patch", "run", "capture", "sweep", "reload", "snapshot", "restore", "dump",
-    "commands",
+    "commands", "listen",
 ];
 
 /// The player-facing members a `publish` build keeps.
@@ -150,7 +150,21 @@ pub struct Probe {
     pointer: (f32, f32),
     target_missed: bool,
     inbox: Inbox,
+    listen: Option<ListenFn>,
 }
+
+/// What the host's mixer rendered last, for `listen`: the last `seconds`
+/// as a 16-bit stereo WAV and its rate, frames, peak and RMS.
+pub struct Heard {
+    pub wav: Vec<u8>,
+    pub rate: u32,
+    pub frames: u64,
+    pub peak: f32,
+    pub rms: f32,
+}
+
+/// The host's `listen` hook.
+pub type ListenFn = Box<dyn Fn(f32) -> Option<Heard>>;
 
 fn fault(context: &str, err: Error) -> Error {
     err.context(context)
@@ -220,6 +234,7 @@ impl Probe {
             ui: None,
             reloader: None,
             facts: None,
+            listen: None,
             commands: BTreeMap::new(),
             queue: BTreeMap::new(),
             seq: 0,
@@ -262,6 +277,26 @@ impl Probe {
     /// The game's own facts for `state().facts` (`GameDesc.facts`).
     pub fn set_facts(&mut self, facts: impl Fn(&World) -> Value + 'static) {
         self.facts = Some(Box::new(facts));
+    }
+
+    /// Gives `listen` the host's audio: the last seconds its mixer rendered.
+    pub fn set_listen(&mut self, listen: impl Fn(f32) -> Option<Heard> + 'static) {
+        self.listen = Some(Box::new(listen));
+    }
+
+    /// `listen`: the last `seconds` (0 to 2) of audio the host's mixer
+    /// rendered, a WAV in base64 with its rate, frames, peak and RMS; `None`
+    /// without audio or before anything was rendered.
+    pub fn listen(&mut self, world: &World, seconds: f32) -> Option<Value> {
+        let h = (self.listen.as_ref()?)(seconds.clamp(0.0, 2.0))?;
+        Some(json!({
+            "tick": world.time().tick,
+            "rate": h.rate,
+            "frames": h.frames,
+            "peak": h.peak,
+            "rms": h.rms,
+            "wav": base64::encode(&h.wav),
+        }))
     }
 
     /// The last tick's timings for `state().timings`, measured by the host.
@@ -591,6 +626,29 @@ impl Probe {
                         height: frame.height,
                         bytes: frame.png,
                     },
+                });
+                Ok(())
+            }
+            "listen" => {
+                let mut path = None;
+                let mut seconds = 1.0f32;
+                for a in args {
+                    if let Ok(s) = a.parse::<f32>() {
+                        seconds = s.clamp(0.0, 2.0);
+                    } else if path.is_none() && !a.is_empty() {
+                        path = Some(a.clone());
+                    }
+                }
+                let listen = self
+                    .listen
+                    .as_ref()
+                    .ok_or("no audio in this host: nothing to listen to")?;
+                let heard = listen(seconds).ok_or("the mixer has rendered nothing yet")?;
+                self.outputs.push(Output {
+                    tick,
+                    action: step.action.clone(),
+                    path,
+                    payload: Payload::Wav(heard.wav),
                 });
                 Ok(())
             }

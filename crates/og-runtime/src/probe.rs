@@ -375,6 +375,7 @@ pub(crate) fn outputs_json(outputs: Vec<og_probe::Output>) -> Value {
                         json!(String::from_utf8_lossy(&o.bytes()).into_owned()),
                     ),
                     og_probe::Payload::Text(t) => ("text", json!(t)),
+                    og_probe::Payload::Wav(bytes) => ("wav", json!(base64(bytes))),
                 };
                 json!({ "tick": o.tick, "action": o.action, "file": o.file_name(), "kind": kind, "data": data })
             })

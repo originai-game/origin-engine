@@ -780,4 +780,8 @@ impl ProbeApi for WebHost {
     fn og_engine_probe_commands(&self, engine_probe: u32, script: String) -> String {
         rt::og_engine_probe_commands(engine_probe, script)
     }
+
+    fn og_engine_probe_listen(&self, engine_probe: u32, seconds: Option<f64>) -> String {
+        rt::og_engine_probe_listen(engine_probe, seconds)
+    }
 }

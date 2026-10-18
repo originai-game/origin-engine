@@ -22,6 +22,7 @@
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, watch, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { loadNativeHost, native } from "./index.ts";
 import { openAudio, type AudioSink } from "./audio.ts";
@@ -136,7 +137,7 @@ function drain(): void {
   for (const o of engine.takeOutputs()) {
     const path = resolve(out, o.file);
     mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, o.kind === "png" ? decode(o.data) : o.data);
+    writeFileSync(path, o.kind === "png" || o.kind === "wav" ? decode(o.data) : o.data);
     outputs.push(path);
     if (!asJson) process.stdout.write(`tick ${o.tick} ${o.action}: wrote ${path}\n`);
   }
@@ -251,10 +252,13 @@ if (!probing) {
 }
 const ms = performance.now() - t0;
 drain();
+let wavSha256: string | undefined;
 if (audioMode === "capture") {
   const wavPath = resolve(audioOut);
   mkdirSync(dirname(wavPath), { recursive: true });
-  writeFileSync(wavPath, sink.wav());
+  const wav = sink.wav();
+  writeFileSync(wavPath, wav);
+  wavSha256 = createHash("sha256").update(wav).digest("hex");
   outputs.push(wavPath);
 }
 const audioStats = sink.stats();
@@ -271,7 +275,7 @@ const summary = {
   runtime: typeof Bun !== "undefined" ? `bun ${Bun.version}` : `node ${process.version}`,
   tier,
   quit,
-  audio: { mode: audioMode, commands: audioStats.commands, receivedHash: audioStats.receivedHash },
+  audio: { mode: audioMode, commands: audioStats.commands, receivedHash: audioStats.receivedHash, wavSha256 },
   outputs,
   warnings,
 };

@@ -1477,3 +1477,10 @@ pub fn og_engine_probe_commands(env: Env, engine_probe: u32, script: String) -> 
     let _env = crate::EnvScope::enter(&env);
     <Host as ProbeApi>::og_engine_probe_commands(&Host, engine_probe, script)
 }
+
+#[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_engine_probe_listen")]
+pub fn og_engine_probe_listen(env: Env, engine_probe: u32, seconds: Option<f64>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as ProbeApi>::og_engine_probe_listen(&Host, engine_probe, seconds)
+}

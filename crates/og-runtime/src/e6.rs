@@ -76,6 +76,30 @@ fn ray(
     .flatten()
 }
 
+/// og.audio's occlusion: whether a collider stands between a source and
+/// the listener (a physics ray between them, a quarter metre clear of the
+/// source and half a metre of the listener, so neither's own body counts).
+pub(crate) fn occluder(physics: &PhysicsSystem) -> og_audio::Occluder {
+    let p = physics.clone();
+    Arc::new(move |from, to| {
+        let d = to - from;
+        let dist = d.length();
+        if dist < 0.8 {
+            return false;
+        }
+        let dir = d / dist;
+        ray(
+            &p,
+            from + dir * 0.25,
+            dir,
+            dist - 0.75,
+            0,
+            Entity::from_bits(0),
+        )
+        .is_some()
+    })
+}
+
 /// og.ai, before the game's systems. `records` are every component and
 /// resource the world has (what a behaviour's checks may read).
 pub(crate) fn mount_front(
@@ -175,8 +199,22 @@ pub(crate) fn retire(engine: u32) {
     MODULES.with(|m| m.borrow_mut().remove(&engine));
 }
 
-/// The dump actions: `dump_ai:<entity>[:path]` and `dump_nav:<entity>[:path]`.
+/// The dump actions (`dump_ai:<entity>[:path]`, `dump_nav:<entity>[:path]`)
+/// and the probe's `listen`, over the engine's audio link.
 pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine: u32) {
+    probe.set_listen(move |seconds| {
+        let link = og_audio::link(engine)?;
+        let (pcm, rate) = link.listen().last(seconds)?;
+        let peak = pcm.iter().fold(0.0f32, |m, x| m.max(x.abs()));
+        let rms = (pcm.iter().map(|x| x * x).sum::<f32>() / pcm.len().max(1) as f32).sqrt();
+        Some(og_probe::Heard {
+            wav: og_audio::wav(&pcm, 2, rate),
+            rate,
+            frames: (pcm.len() / 2) as u64,
+            peak,
+            rms,
+        })
+    });
     let _ = probe.register_dump(
         "dump_ai",
         og_probe::CommandDesc {

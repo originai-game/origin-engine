@@ -294,6 +294,11 @@ pub const CORE_ACTIONS: &[(&str, &str, &str)] = &[
         "advance:<ticks>",
         "Take fixed steps now (at most 3600), running the steps scheduled on the way.",
     ),
+    (
+        "listen",
+        "listen[:path][:seconds]",
+        "Write the last seconds (default 1, at most 2) of audio the host's mixer rendered as a 16-bit stereo WAV.",
+    ),
     ("quit", "quit", "End the run."),
     (
         "help",
@@ -332,6 +337,8 @@ pub enum Payload {
     Json(Value),
     /// A listing, such as `help`.
     Text(String),
+    /// Audio: a WAV file (`listen`).
+    Wav(Vec<u8>),
 }
 
 /// A file a command produced (`screenshot`, `dump_*`, `help`). The probe
@@ -358,6 +365,7 @@ impl Output {
             Payload::Png { .. } => "png",
             Payload::Json(_) => "json",
             Payload::Text(_) => "txt",
+            Payload::Wav(_) => "wav",
         };
         format!("{}-{:06}.{ext}", self.action, self.tick)
     }
@@ -372,6 +380,7 @@ impl Output {
                 text.into_bytes()
             }
             Payload::Text(text) => text.clone().into_bytes(),
+            Payload::Wav(bytes) => bytes.clone(),
         }
     }
 }

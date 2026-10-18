@@ -23,7 +23,7 @@ module probe {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7121</sub>
+<sub>`api.ogt` line 7314</sub>
 
 ## Contents
 
@@ -49,6 +49,7 @@ module probe {
 | [`Hello`](#type-Hello) | struct | The wire's hello: who is speaking. |
 | [`BuildProfile`](#type-BuildProfile) | enum | The build configuration; publish builds keep only the player-facing probe members. |
 | [`Capture`](#type-Capture) | struct | A captured frame. |
+| [`Heard`](#type-Heard) | struct | What the host's mixer rendered last: the audio up to the current tick. |
 | [`SweepDesc`](#type-SweepDesc) | desc struct | A parameter sweep: for each value, restore the snapshot taken at the call, patch, advance and capture. |
 | [`SweepFrame`](#type-SweepFrame) | struct | One frame of a sweep. |
 | [`SweepResult`](#type-SweepResult) | struct | A sweep's frames, one per value. |
@@ -81,7 +82,7 @@ interface RuntimeProbe {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7384</sub>
+<sub>`api.ogt` line 7589</sub>
 
 <a id="member-RuntimeProbe-version"></a>
 
@@ -101,7 +102,7 @@ prop version u32 "PROBE_VERSION." {
 }
 ```
 
-<sub>`api.ogt` line 7388</sub>
+<sub>`api.ogt` line 7593</sub>
 
 <a id="member-RuntimeProbe-tick"></a>
 
@@ -125,7 +126,7 @@ fn tick {
 }
 ```
 
-<sub>`api.ogt` line 7391</sub>
+<sub>`api.ogt` line 7596</sub>
 
 <a id="member-RuntimeProbe-state"></a>
 
@@ -149,7 +150,7 @@ fn state {
 }
 ```
 
-<sub>`api.ogt` line 7396</sub>
+<sub>`api.ogt` line 7601</sub>
 
 <a id="member-RuntimeProbe-advance"></a>
 
@@ -177,7 +178,7 @@ fn advance {
 }
 ```
 
-<sub>`api.ogt` line 7401</sub>
+<sub>`api.ogt` line 7606</sub>
 
 <a id="member-RuntimeProbe-pause"></a>
 
@@ -200,7 +201,7 @@ fn pause {
 }
 ```
 
-<sub>`api.ogt` line 7406</sub>
+<sub>`api.ogt` line 7611</sub>
 
 <a id="member-RuntimeProbe-resume"></a>
 
@@ -223,7 +224,7 @@ fn resume {
 }
 ```
 
-<sub>`api.ogt` line 7410</sub>
+<sub>`api.ogt` line 7615</sub>
 
 <a id="member-RuntimeProbe-input"></a>
 
@@ -252,7 +253,7 @@ fn input {
 }
 ```
 
-<sub>`api.ogt` line 7414</sub>
+<sub>`api.ogt` line 7619</sub>
 
 <a id="member-RuntimeProbe-accepted"></a>
 
@@ -275,7 +276,7 @@ fn accepted {
 }
 ```
 
-<sub>`api.ogt` line 7420</sub>
+<sub>`api.ogt` line 7625</sub>
 
 <a id="member-RuntimeProbe-pick"></a>
 
@@ -306,7 +307,7 @@ fn pick {
 }
 ```
 
-<sub>`api.ogt` line 7424</sub>
+<sub>`api.ogt` line 7629</sub>
 
 <a id="member-RuntimeProbe-entity"></a>
 
@@ -335,7 +336,7 @@ fn entity {
 }
 ```
 
-<sub>`api.ogt` line 7431</sub>
+<sub>`api.ogt` line 7636</sub>
 
 <a id="member-RuntimeProbe-bounds"></a>
 
@@ -363,7 +364,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 7437</sub>
+<sub>`api.ogt` line 7642</sub>
 
 <a id="member-RuntimeProbe-patch"></a>
 
@@ -395,7 +396,7 @@ fn patch {
 }
 ```
 
-<sub>`api.ogt` line 7442</sub>
+<sub>`api.ogt` line 7647</sub>
 
 <a id="member-RuntimeProbe-run"></a>
 
@@ -423,7 +424,7 @@ fn run {
 }
 ```
 
-<sub>`api.ogt` line 7449</sub>
+<sub>`api.ogt` line 7654</sub>
 
 <a id="type-EngineProbe"></a>
 
@@ -441,7 +442,7 @@ interface EngineProbe {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7456</sub>
+<sub>`api.ogt` line 7661</sub>
 
 <a id="member-EngineProbe-hello"></a>
 
@@ -465,7 +466,7 @@ fn hello {
 }
 ```
 
-<sub>`api.ogt` line 7461</sub>
+<sub>`api.ogt` line 7666</sub>
 
 <a id="member-EngineProbe-capture"></a>
 
@@ -506,7 +507,7 @@ fn capture {
 }
 ```
 
-<sub>`api.ogt` line 7466</sub>
+<sub>`api.ogt` line 7671</sub>
 
 <a id="member-EngineProbe-sweep"></a>
 
@@ -536,7 +537,7 @@ fn sweep {
 }
 ```
 
-<sub>`api.ogt` line 7479</sub>
+<sub>`api.ogt` line 7684</sub>
 
 <a id="member-EngineProbe-reload"></a>
 
@@ -559,7 +560,7 @@ fn reload {
 }
 ```
 
-<sub>`api.ogt` line 7486</sub>
+<sub>`api.ogt` line 7691</sub>
 
 <a id="member-EngineProbe-snapshot"></a>
 
@@ -582,7 +583,7 @@ fn snapshot {
 }
 ```
 
-<sub>`api.ogt` line 7490</sub>
+<sub>`api.ogt` line 7695</sub>
 
 <a id="member-EngineProbe-restore"></a>
 
@@ -610,7 +611,7 @@ fn restore {
 }
 ```
 
-<sub>`api.ogt` line 7494</sub>
+<sub>`api.ogt` line 7699</sub>
 
 <a id="member-EngineProbe-dump"></a>
 
@@ -640,7 +641,7 @@ fn dump {
 }
 ```
 
-<sub>`api.ogt` line 7499</sub>
+<sub>`api.ogt` line 7704</sub>
 
 <a id="member-EngineProbe-commands"></a>
 
@@ -668,7 +669,37 @@ fn commands {
 }
 ```
 
-<sub>`api.ogt` line 7506</sub>
+<sub>`api.ogt` line 7711</sub>
+
+<a id="member-EngineProbe-listen"></a>
+
+#### `EngineProbe.listen`
+
+The last seconds of audio the host's mixer rendered (a null sink renders too, into a two-second ring), as a WAV with its peak and RMS: what a person would have heard.
+
+```ts
+EngineProbe.listen(seconds?: number): Heard | null
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `seconds` | `number` | yes | How many seconds, 0 to 2. Default `1`. |
+
+**Returns** `Heard | null`: Null without audio, or before anything was rendered.
+
+Binding symbol `og_engine_probe_listen` · publish builds: dropped
+
+```ogt
+fn listen {
+  doc "The last seconds of audio the host's mixer rendered (a null sink renders too, into a two-second ring), as a WAV with its peak and RMS: what a person would have heard."
+  param seconds f32 "How many seconds, 0 to 2." {
+    default 1
+  }
+  returns Option.Heard "Null without audio, or before anything was rendered."
+}
+```
+
+<sub>`api.ogt` line 7716</sub>
 
 ## Types
 
@@ -693,7 +724,7 @@ struct PickResult {
 }
 ```
 
-<sub>`api.ogt` line 7134</sub>
+<sub>`api.ogt` line 7327</sub>
 
 <a id="type-ProbeTunable"></a>
 
@@ -728,7 +759,7 @@ struct ProbeTunable {
 }
 ```
 
-<sub>`api.ogt` line 7141</sub>
+<sub>`api.ogt` line 7334</sub>
 
 <a id="type-ProbeEntityRef"></a>
 
@@ -751,7 +782,7 @@ struct ProbeEntityRef {
 }
 ```
 
-<sub>`api.ogt` line 7158</sub>
+<sub>`api.ogt` line 7351</sub>
 
 <a id="type-ProbeTimings"></a>
 
@@ -780,7 +811,7 @@ struct ProbeTimings {
 }
 ```
 
-<sub>`api.ogt` line 7166</sub>
+<sub>`api.ogt` line 7359</sub>
 
 <a id="type-ProbeState"></a>
 
@@ -809,7 +840,7 @@ struct ProbeState {
 }
 ```
 
-<sub>`api.ogt` line 7179</sub>
+<sub>`api.ogt` line 7372</sub>
 
 <a id="type-AdvanceOperation"></a>
 
@@ -828,7 +859,7 @@ struct AdvanceOperation {
 }
 ```
 
-<sub>`api.ogt` line 7189</sub>
+<sub>`api.ogt` line 7382</sub>
 
 <a id="type-InputOperation"></a>
 
@@ -847,7 +878,7 @@ struct InputOperation {
 }
 ```
 
-<sub>`api.ogt` line 7194</sub>
+<sub>`api.ogt` line 7387</sub>
 
 <a id="type-PickOperation"></a>
 
@@ -868,7 +899,7 @@ struct PickOperation {
 }
 ```
 
-<sub>`api.ogt` line 7199</sub>
+<sub>`api.ogt` line 7392</sub>
 
 <a id="type-EntityOperation"></a>
 
@@ -887,7 +918,7 @@ struct EntityOperation {
 }
 ```
 
-<sub>`api.ogt` line 7205</sub>
+<sub>`api.ogt` line 7398</sub>
 
 <a id="type-ProbeOperation"></a>
 
@@ -921,7 +952,7 @@ union ProbeOperation {
 }
 ```
 
-<sub>`api.ogt` line 7210</sub>
+<sub>`api.ogt` line 7403</sub>
 
 <a id="type-ProbeProgramResult"></a>
 
@@ -944,7 +975,7 @@ struct ProbeProgramResult {
 }
 ```
 
-<sub>`api.ogt` line 7222</sub>
+<sub>`api.ogt` line 7415</sub>
 
 <a id="type-Hello"></a>
 
@@ -981,7 +1012,7 @@ struct Hello {
 }
 ```
 
-<sub>`api.ogt` line 7229</sub>
+<sub>`api.ogt` line 7422</sub>
 
 <a id="type-BuildProfile"></a>
 
@@ -1006,7 +1037,7 @@ enum BuildProfile {
 }
 ```
 
-<sub>`api.ogt` line 7244</sub>
+<sub>`api.ogt` line 7437</sub>
 
 <a id="type-Capture"></a>
 
@@ -1031,7 +1062,38 @@ struct Capture {
 }
 ```
 
-<sub>`api.ogt` line 7251</sub>
+<sub>`api.ogt` line 7444</sub>
+
+<a id="type-Heard"></a>
+
+### `Heard` (struct)
+
+What the host's mixer rendered last: the audio up to the current tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `tick` | `number` | `0` | — | — | — | The tick it ends at. |
+| `rate` | `number` | `0` | — | `hz` | — | Frames per second. |
+| `frames` | `number` | `0` | — | — | — | Stereo frames in the WAV. |
+| `peak` | `number` | `0` | — | — | — | The largest sample, 0 to 1. |
+| `rms` | `number` | `0` | — | — | — | The root mean square of both channels. |
+| `wav` | `string` | `""` | — | — | — | A 16-bit stereo WAV, base64. |
+
+```ogt
+struct Heard {
+  doc "What the host's mixer rendered last: the audio up to the current tick."
+  field tick u32 "The tick it ends at."
+  field rate u32 "Frames per second." {
+    unit hz
+  }
+  field frames u32 "Stereo frames in the WAV."
+  field peak f32 "The largest sample, 0 to 1."
+  field rms f32 "The root mean square of both channels."
+  field wav String "A 16-bit stereo WAV, base64."
+}
+```
+
+<sub>`api.ogt` line 7452</sub>
 
 <a id="type-SweepDesc"></a>
 
@@ -1063,7 +1125,7 @@ struct SweepDesc {
 }
 ```
 
-<sub>`api.ogt` line 7259</sub>
+<sub>`api.ogt` line 7464</sub>
 
 <a id="type-SweepFrame"></a>
 
@@ -1086,7 +1148,7 @@ struct SweepFrame {
 }
 ```
 
-<sub>`api.ogt` line 7270</sub>
+<sub>`api.ogt` line 7475</sub>
 
 <a id="type-SweepResult"></a>
 
@@ -1105,7 +1167,7 @@ struct SweepResult {
 }
 ```
 
-<sub>`api.ogt` line 7277</sub>
+<sub>`api.ogt` line 7482</sub>
 
 <a id="type-ReloadReport"></a>
 
@@ -1134,7 +1196,7 @@ struct ReloadReport {
 }
 ```
 
-<sub>`api.ogt` line 7282</sub>
+<sub>`api.ogt` line 7487</sub>
 
 <a id="type-SnapshotInfo"></a>
 
@@ -1161,7 +1223,7 @@ struct SnapshotInfo {
 }
 ```
 
-<sub>`api.ogt` line 7293</sub>
+<sub>`api.ogt` line 7498</sub>
 
 <a id="type-DumpKind"></a>
 
@@ -1186,7 +1248,7 @@ enum DumpKind {
 }
 ```
 
-<sub>`api.ogt` line 7303</sub>
+<sub>`api.ogt` line 7508</sub>
 
 <a id="type-DumpDesc"></a>
 
@@ -1210,7 +1272,7 @@ struct DumpDesc {
 }
 ```
 
-<sub>`api.ogt` line 7310</sub>
+<sub>`api.ogt` line 7515</sub>
 
 <a id="type-ArchetypeDump"></a>
 
@@ -1231,7 +1293,7 @@ struct ArchetypeDump {
 }
 ```
 
-<sub>`api.ogt` line 7317</sub>
+<sub>`api.ogt` line 7522</sub>
 
 <a id="type-SystemDump"></a>
 
@@ -1260,7 +1322,7 @@ struct SystemDump {
 }
 ```
 
-<sub>`api.ogt` line 7323</sub>
+<sub>`api.ogt` line 7528</sub>
 
 <a id="type-WorldDump"></a>
 
@@ -1289,7 +1351,7 @@ struct WorldDump {
 }
 ```
 
-<sub>`api.ogt` line 7334</sub>
+<sub>`api.ogt` line 7539</sub>
 
 <a id="type-EntityDump"></a>
 
@@ -1312,7 +1374,7 @@ struct EntityDump {
 }
 ```
 
-<sub>`api.ogt` line 7344</sub>
+<sub>`api.ogt` line 7549</sub>
 
 <a id="type-UiElement"></a>
 
@@ -1351,7 +1413,7 @@ struct UiElement {
 }
 ```
 
-<sub>`api.ogt` line 7351</sub>
+<sub>`api.ogt` line 7556</sub>
 
 <a id="type-UiDump"></a>
 
@@ -1372,7 +1434,7 @@ struct UiDump {
 }
 ```
 
-<sub>`api.ogt` line 7370</sub>
+<sub>`api.ogt` line 7575</sub>
 
 <a id="type-DumpResult"></a>
 
@@ -1398,7 +1460,7 @@ union DumpResult {
 }
 ```
 
-<sub>`api.ogt` line 7376</sub>
+<sub>`api.ogt` line 7581</sub>
 
 ## Constants
 
@@ -1415,34 +1477,34 @@ union DumpResult {
 const PROBE_GLOBAL String "__runtime_probe__" "The global the page publishes the probe on."
 ```
 
-<sub>`api.ogt` line 7127</sub>
+<sub>`api.ogt` line 7320</sub>
 
 ```ogt
 const PROBE_VERSION u32 5 "The RuntimeProbe contract revision both sides speak."
 ```
 
-<sub>`api.ogt` line 7128</sub>
+<sub>`api.ogt` line 7321</sub>
 
 ```ogt
 const PROBE_WIRE_VERSION u32 1 "The wire revision hello reports."
 ```
 
-<sub>`api.ogt` line 7129</sub>
+<sub>`api.ogt` line 7322</sub>
 
 ```ogt
 const REPLAY_SEED_PARAM String "replay-seed" "The page query parameter that starts a deterministic replay from a uint32 seed."
 ```
 
-<sub>`api.ogt` line 7130</sub>
+<sub>`api.ogt` line 7323</sub>
 
 ```ogt
 const PLAYTEST_MAX_TICKS u32 3600 "The longest playtest one request may advance, in fixed steps."
 ```
 
-<sub>`api.ogt` line 7131</sub>
+<sub>`api.ogt` line 7324</sub>
 
 ```ogt
 const PROBE_PROGRAM_MAX_OPERATIONS u32 256 "The most operations one probe program may carry."
 ```
 
-<sub>`api.ogt` line 7132</sub>
+<sub>`api.ogt` line 7325</sub>

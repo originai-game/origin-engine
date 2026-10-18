@@ -58,10 +58,12 @@ Field units the docs and Tune use.
 | `radps` | radians per second |
 | `perSecond` | a rate per second: the fraction of a value that decays in one second |
 | `kgPerM3` | kilograms per cubic metre (per square metre in the 2D profile) |
+| `db` | decibels |
+| `bpm` | beats per minute |
 
 ## Every name
 
-689 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+695 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -159,6 +161,7 @@ Field units the docs and Tune use.
 | [`EngineProbe.commands`](probe.md#member-EngineProbe-commands) | method | probe | `og_engine_probe_commands` |
 | [`EngineProbe.dump`](probe.md#member-EngineProbe-dump) | method | probe | `og_engine_probe_dump` |
 | [`EngineProbe.hello`](probe.md#member-EngineProbe-hello) | method | probe | `og_engine_probe_hello` |
+| [`EngineProbe.listen`](probe.md#member-EngineProbe-listen) | method | probe | `og_engine_probe_listen` |
 | [`EngineProbe.reload`](probe.md#member-EngineProbe-reload) | method | probe | `og_engine_probe_reload` |
 | [`EngineProbe.restore`](probe.md#member-EngineProbe-restore) | method | probe | `og_engine_probe_restore` |
 | [`EngineProbe.snapshot`](probe.md#member-EngineProbe-snapshot) | method | probe | `og_engine_probe_snapshot` |
@@ -208,6 +211,7 @@ Field units the docs and Tune use.
 | [`GraphDesc`](anim.md#type-GraphDesc) | desc struct | anim | — |
 | [`GraphicsQuality`](ui.md#type-GraphicsQuality) | enum | ui | — |
 | [`GridDesc`](ui.md#type-GridDesc) | desc struct | ui | — |
+| [`Heard`](probe.md#type-Heard) | struct | probe | — |
 | [`Hello`](probe.md#type-Hello) | struct | probe | — |
 | [`HudResult`](ui.md#type-HudResult) | struct | ui | — |
 | [`HueName`](ui.md#type-HueName) | enum | ui | — |
@@ -312,6 +316,7 @@ Field units the docs and Tune use.
 | [`og.AssetFailed`](load.md#record-AssetFailed) | event | load | — |
 | [`og.AssetReady`](load.md#record-AssetReady) | event | load | — |
 | [`og.Audio`](audio.md#record-Audio) | resource | audio | — |
+| [`og.AudioBusFx`](audio.md#record-AudioBusFx) | component | audio | — |
 | [`og.AudioListener`](audio.md#record-AudioListener) | component | audio | — |
 | [`og.AudioSource`](audio.md#record-AudioSource) | component | audio | — |
 | [`og.Beam`](render.md#record-Beam) | component | render | — |
@@ -366,6 +371,8 @@ Field units the docs and Tune use.
 | [`og.MatrixWorld`](transform.md#record-MatrixWorld) | component | transform | — |
 | [`og.Mesh`](render.md#record-Mesh) | component | render | — |
 | [`og.Model`](load.md#record-Model) | component | load | — |
+| [`og.Music`](audio.md#record-Music) | component | audio | — |
+| [`og.MusicBeat`](audio.md#record-MusicBeat) | event | audio | — |
 | [`og.nav.build`](nav.md#fn-build) | function | nav | `og_nav_build` |
 | [`og.nav.cellAt`](nav.md#fn-cellAt) | function | nav | `og_nav_cell_at` |
 | [`og.nav.findPath`](nav.md#fn-findPath) | function | nav | `og_nav_find_path` |
@@ -661,6 +668,7 @@ Field units the docs and Tune use.
 | [`SnapshotInfo`](probe.md#type-SnapshotInfo) | struct | probe | — |
 | [`Sound`](load.md#type-Sound) | handle | load | — |
 | [`Sound()`](load.md#column-Sound) | column kind | load | — |
+| [`SOUND_CULLED`](audio.md#const-SOUND_CULLED) | constant | audio | — |
 | [`SOUND_FINISHED`](audio.md#const-SOUND_FINISHED) | constant | audio | — |
 | [`SOUND_REMOVED`](audio.md#const-SOUND_REMOVED) | constant | audio | — |
 | [`SOUND_REPLACED`](audio.md#const-SOUND_REPLACED) | constant | audio | — |

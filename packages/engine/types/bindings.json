@@ -1980,6 +1980,39 @@
           "name": "playing",
           "column": "bool",
           "default": true
+        },
+        {
+          "name": "priority",
+          "column": "u32",
+          "default": 128
+        },
+        {
+          "name": "lowpass",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "occlude",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "distanceCutoff",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "startAt",
+          "column": "f64",
+          "default": 0
+        },
+        {
+          "name": "fade",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
         }
       ]
     },
@@ -1999,6 +2032,149 @@
     },
     {
       "id": 33,
+      "name": "AudioBusFx",
+      "schema": "og.AudioBusFx",
+      "module": "audio",
+      "fields": [
+        {
+          "name": "bus",
+          "column": "AudioBus",
+          "default": "music"
+        },
+        {
+          "name": "lowpass",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "highpass",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "reverb",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "threshold",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "ratio",
+          "column": "f32",
+          "default": 4,
+          "tunable": true
+        },
+        {
+          "name": "attack",
+          "column": "f32",
+          "default": 0.005,
+          "tunable": true
+        },
+        {
+          "name": "release",
+          "column": "f32",
+          "default": 0.15,
+          "tunable": true
+        },
+        {
+          "name": "makeup",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "duck",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "duckBus",
+          "column": "AudioBus",
+          "default": "sfx"
+        },
+        {
+          "name": "duckDepth",
+          "column": "f32",
+          "default": 9,
+          "tunable": true
+        },
+        {
+          "name": "duckThreshold",
+          "column": "f32",
+          "default": -36,
+          "tunable": true
+        },
+        {
+          "name": "duckAttack",
+          "column": "f32",
+          "default": 0.02,
+          "tunable": true
+        },
+        {
+          "name": "duckRelease",
+          "column": "f32",
+          "default": 0.4,
+          "tunable": true
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "name": "Music",
+      "schema": "og.Music",
+      "module": "audio",
+      "fields": [
+        {
+          "name": "bpm",
+          "column": "f32",
+          "default": 120,
+          "tunable": true
+        },
+        {
+          "name": "beatsPerBar",
+          "column": "u32",
+          "default": 4
+        },
+        {
+          "name": "start",
+          "column": "f64",
+          "default": 0
+        },
+        {
+          "name": "bar",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "beat",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "nextBeat",
+          "column": "f64",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "nextBar",
+          "column": "f64",
+          "default": 0,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 35,
       "name": "NavAgent",
       "schema": "og.NavAgent",
       "module": "nav",
@@ -2123,7 +2299,7 @@
       ]
     },
     {
-      "id": 34,
+      "id": 36,
       "name": "Steering",
       "schema": "og.Steering",
       "module": "nav",
@@ -2239,7 +2415,7 @@
       ]
     },
     {
-      "id": 35,
+      "id": 37,
       "name": "AiAgent",
       "schema": "og.AiAgent",
       "module": "ai",
@@ -2286,7 +2462,7 @@
       ]
     },
     {
-      "id": 36,
+      "id": 38,
       "name": "Perception",
       "schema": "og.Perception",
       "module": "ai",
@@ -2397,7 +2573,7 @@
       ]
     },
     {
-      "id": 37,
+      "id": 39,
       "name": "Perceivable",
       "schema": "og.Perceivable",
       "module": "ai",
@@ -3516,6 +3692,35 @@
           "column": "f32",
           "default": 1,
           "tunable": true
+        },
+        {
+          "name": "maxVoices",
+          "column": "u32",
+          "default": 32
+        },
+        {
+          "name": "occlusionGain",
+          "column": "f32",
+          "default": 0.35,
+          "tunable": true
+        },
+        {
+          "name": "occlusionCutoff",
+          "column": "f32",
+          "default": 900,
+          "tunable": true
+        },
+        {
+          "name": "reverbRoom",
+          "column": "f32",
+          "default": 0.6,
+          "tunable": true
+        },
+        {
+          "name": "reverbDamping",
+          "column": "f32",
+          "default": 0.4,
+          "tunable": true
         }
       ]
     }
@@ -3889,6 +4094,34 @@
     },
     {
       "id": 16,
+      "name": "MusicBeat",
+      "schema": "og.MusicBeat",
+      "module": "audio",
+      "fields": [
+        {
+          "name": "entity",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "bar",
+          "type": "u32",
+          "default": 0
+        },
+        {
+          "name": "beat",
+          "type": "u32",
+          "default": 0
+        },
+        {
+          "name": "time",
+          "type": "f64",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 17,
       "name": "SoundStarted",
       "schema": "og.SoundStarted",
       "module": "audio",
@@ -3911,7 +4144,7 @@
       ]
     },
     {
-      "id": 17,
+      "id": 18,
       "name": "SoundEnded",
       "schema": "og.SoundEnded",
       "module": "audio",
@@ -3939,7 +4172,7 @@
       ]
     },
     {
-      "id": 18,
+      "id": 19,
       "name": "AiChanged",
       "schema": "og.AiChanged",
       "module": "ai",
@@ -8893,6 +9126,25 @@
         }
       ],
       "returns": "Option<CommandsReport>",
+      "publish": false
+    },
+    {
+      "id": 231,
+      "kind": "method",
+      "path": "EngineProbe.listen",
+      "symbol": "og_engine_probe_listen",
+      "module": "probe",
+      "owner": "EngineProbe",
+      "name": "listen",
+      "params": [
+        {
+          "name": "seconds",
+          "type": "f32",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "returns": "Option<Heard>",
       "publish": false
     }
   ],

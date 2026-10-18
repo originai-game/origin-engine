@@ -205,7 +205,8 @@ fn the_probe_is_protocol_5_plus_the_wire_members_with_the_publish_trim() {
     assert_eq!(
         names,
         [
-            "hello", "capture", "sweep", "reload", "snapshot", "restore", "dump", "commands"
+            "hello", "capture", "sweep", "reload", "snapshot", "restore", "dump", "commands",
+            "listen"
         ]
     );
     assert_eq!(

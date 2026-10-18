@@ -20,7 +20,9 @@
     "mps2": "metres per second squared",
     "radps": "radians per second",
     "perSecond": "a rate per second: the fraction of a value that decays in one second",
-    "kgPerM3": "kilograms per cubic metre (per square metre in the 2D profile)"
+    "kgPerM3": "kilograms per cubic metre (per square metre in the 2D profile)",
+    "db": "decibels",
+    "bpm": "beats per minute"
   },
   "x-og-modules": [
     {
@@ -2491,6 +2493,9 @@
         "AudioSource",
         "AudioListener",
         "Audio",
+        "AudioBusFx",
+        "Music",
+        "MusicBeat",
         "SoundStarted",
         "SoundEnded"
       ],
@@ -2518,6 +2523,12 @@
           "type": "u32",
           "value": 3,
           "doc": "SoundEnded.reason: `sound` changed while it played."
+        },
+        {
+          "name": "SOUND_CULLED",
+          "type": "u32",
+          "value": 4,
+          "doc": "SoundEnded.reason: more sources played than Audio.maxVoices and this one stood lowest (priority, then volume, then age)."
         }
       ],
       "functions": [],
@@ -5415,6 +5426,7 @@
         "Hello",
         "BuildProfile",
         "Capture",
+        "Heard",
         "SweepDesc",
         "SweepFrame",
         "SweepResult",
@@ -5749,6 +5761,22 @@
               ],
               "returns": "Option<CommandsReport>",
               "returnsDoc": "Null for a malformed script.",
+              "publish": false
+            },
+            {
+              "name": "listen",
+              "doc": "The last seconds of audio the host's mixer rendered (a null sink renders too, into a two-second ring), as a WAV with its peak and RMS: what a person would have heard.",
+              "params": [
+                {
+                  "name": "seconds",
+                  "type": "f32",
+                  "optional": true,
+                  "default": 1,
+                  "doc": "How many seconds, 0 to 2."
+                }
+              ],
+              "returns": "Option<Heard>",
+              "returnsDoc": "Null without audio, or before anything was rendered.",
               "publish": false
             }
           ]
@@ -13031,6 +13059,54 @@
           "type": "boolean",
           "description": "Plays while true; the engine sets it false when a one-shot ends.",
           "default": true
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "When more than Audio.maxVoices would play, the lowest priority is stopped first (then the quietest, then the oldest), with SoundEnded reason SOUND_CULLED.",
+          "default": 128,
+          "minimum": 0,
+          "maximum": 255
+        },
+        "lowpass": {
+          "type": "number",
+          "description": "A low-pass filter on this source, its cutoff; 0 is off.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 20000,
+          "x-og-unit": "hz",
+          "x-og-tunable": true
+        },
+        "occlude": {
+          "type": "boolean",
+          "description": "A spatial source behind a collider (a physics ray to the listener) plays at Audio.occlusionGain through a low-pass at Audio.occlusionCutoff.",
+          "default": false
+        },
+        "distanceCutoff": {
+          "type": "number",
+          "description": "A spatial source's low-pass by distance: the cutoff at maxDistance, from 20 kHz at refDistance (log-linear between); 0 is off.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 20000,
+          "x-og-unit": "hz",
+          "x-og-tunable": true
+        },
+        "startAt": {
+          "type": "number",
+          "description": "Starts at this world time (seconds since tick 0), to the sample, even inside a tick; 0 or a time past starts at once. Music.nextBar and Music.nextBeat give musical times.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "fade": {
+          "type": "number",
+          "description": "Starts, stops and volume changes ramp over this long: a crossfade is one source stopped and another started with the same fade; 0 is 5 ms.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 30,
+          "x-og-unit": "s",
+          "x-og-tunable": true
         }
       },
       "additionalProperties": false
@@ -13089,8 +13165,279 @@
           "minimum": 0,
           "maximum": 2,
           "x-og-tunable": true
+        },
+        "maxVoices": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most sources that play at once; past it the lowest AudioSource.priority is stopped (SoundEnded reason SOUND_CULLED).",
+          "default": 32,
+          "minimum": 1,
+          "maximum": 256
+        },
+        "occlusionGain": {
+          "type": "number",
+          "description": "The gain of an occluded source (AudioSource.occlude).",
+          "default": 0.35,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "occlusionCutoff": {
+          "type": "number",
+          "description": "The low-pass cutoff of an occluded source.",
+          "default": 900,
+          "minimum": 20,
+          "maximum": 20000,
+          "x-og-unit": "hz",
+          "x-og-tunable": true
+        },
+        "reverbRoom": {
+          "type": "number",
+          "description": "The shared reverb's room size (the AudioBusFx.reverb sends feed it).",
+          "default": 0.6,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "reverbDamping": {
+          "type": "number",
+          "description": "The shared reverb's damping of high frequencies.",
+          "default": 0.4,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
         }
       },
+      "additionalProperties": false
+    },
+    "AudioBusFx": {
+      "x-og-kind": "component",
+      "x-og-module": "audio",
+      "description": "A bus's insert effects: a high- and low-pass (12 dB/octave), a compressor, side-chain ducking by another bus, and a send to the shared reverb, whose return joins master. One entity per bus (the first in query order counts); without one a bus passes straight through.\nChanges reach the mixer through the command stream, so they are deterministic and in the world hash; the PCM is the mixer's.",
+      "type": "object",
+      "properties": {
+        "bus": {
+          "$ref": "#/$defs/AudioBus",
+          "description": "The bus these effects are on.",
+          "default": "music"
+        },
+        "lowpass": {
+          "type": "number",
+          "description": "Low-pass cutoff; 0 is off.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 20000,
+          "x-og-unit": "hz",
+          "x-og-tunable": true
+        },
+        "highpass": {
+          "type": "number",
+          "description": "High-pass cutoff; 0 is off.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 20000,
+          "x-og-unit": "hz",
+          "x-og-tunable": true
+        },
+        "reverb": {
+          "type": "number",
+          "description": "How much of the bus goes to the reverb.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "threshold": {
+          "type": "number",
+          "description": "The compressor's threshold; 0 dB is off.",
+          "default": 0,
+          "minimum": -60,
+          "maximum": 0,
+          "x-og-unit": "db",
+          "x-og-tunable": true
+        },
+        "ratio": {
+          "type": "number",
+          "description": "The compressor's ratio: dB in over the threshold per dB out.",
+          "default": 4,
+          "minimum": 1,
+          "maximum": 30,
+          "x-og-tunable": true
+        },
+        "attack": {
+          "type": "number",
+          "description": "The compressor's attack.",
+          "default": 0.005,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "release": {
+          "type": "number",
+          "description": "The compressor's release.",
+          "default": 0.15,
+          "minimum": 0,
+          "maximum": 3,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "makeup": {
+          "type": "number",
+          "description": "Gain after the compressor.",
+          "default": 0,
+          "minimum": -24,
+          "maximum": 24,
+          "x-og-unit": "db",
+          "x-og-tunable": true
+        },
+        "duck": {
+          "type": "boolean",
+          "description": "Turns this bus down while duckBus is loud: music under effects or dialogue.",
+          "default": false
+        },
+        "duckBus": {
+          "$ref": "#/$defs/AudioBus",
+          "description": "The bus that ducks this one.",
+          "default": "sfx"
+        },
+        "duckDepth": {
+          "type": "number",
+          "description": "How far it is turned down.",
+          "default": 9,
+          "minimum": 0,
+          "maximum": 60,
+          "x-og-unit": "db",
+          "x-og-tunable": true
+        },
+        "duckThreshold": {
+          "type": "number",
+          "description": "How loud the key bus must be.",
+          "default": -36,
+          "minimum": -80,
+          "maximum": 0,
+          "x-og-unit": "db",
+          "x-og-tunable": true
+        },
+        "duckAttack": {
+          "type": "number",
+          "description": "How fast it goes down.",
+          "default": 0.02,
+          "minimum": 0,
+          "maximum": 2,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "duckRelease": {
+          "type": "number",
+          "description": "How fast it comes back.",
+          "default": 0.4,
+          "minimum": 0,
+          "maximum": 5,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Music": {
+      "x-og-kind": "component",
+      "x-og-module": "audio",
+      "description": "A musical clock: tempo, metre and where bar 1 starts. The og.music system (before og.audio) writes the bar and beat and the times of the next beat and bar line every tick, and sends MusicBeat for every beat; an AudioSource whose startAt is nextBar starts on the bar line to the sample, so stems started together stay in step and a stinger lands on the downbeat.",
+      "type": "object",
+      "properties": {
+        "bpm": {
+          "type": "number",
+          "description": "Beats per minute.",
+          "default": 120,
+          "minimum": 20,
+          "maximum": 400,
+          "x-og-unit": "bpm",
+          "x-og-tunable": true
+        },
+        "beatsPerBar": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Beats per bar.",
+          "default": 4,
+          "minimum": 1,
+          "maximum": 16
+        },
+        "start": {
+          "type": "number",
+          "description": "The world time of bar 1's first beat.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "bar": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The bar the next tick starts in, from 1 (0 before start; written by og.music).",
+          "default": 0,
+          "readOnly": true
+        },
+        "beat": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The beat in that bar, from 1 (written by og.music).",
+          "default": 0,
+          "readOnly": true
+        },
+        "nextBeat": {
+          "type": "number",
+          "description": "The world time of the next beat from the next tick on (written by og.music).",
+          "default": 0,
+          "x-og-unit": "s",
+          "readOnly": true
+        },
+        "nextBar": {
+          "type": "number",
+          "description": "The world time of the next bar line from the next tick on (written by og.music).",
+          "default": 0,
+          "x-og-unit": "s",
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "MusicBeat": {
+      "x-og-kind": "event",
+      "x-og-module": "audio",
+      "description": "A beat of a Music clock, sent in the tick whose interval holds it (systems read it the tick after).",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "The entity with the Music."
+        },
+        "bar": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The bar, from 1."
+        },
+        "beat": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The beat in the bar, from 1 (1 is the bar line)."
+        },
+        "time": {
+          "type": "number",
+          "description": "Its world time."
+        }
+      },
+      "required": [
+        "entity",
+        "bar",
+        "beat",
+        "time"
+      ],
       "additionalProperties": false
     },
     "SoundStarted": {
@@ -13145,7 +13492,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "Why: SOUND_FINISHED (0), SOUND_STOPPED (1), SOUND_REMOVED (2) or SOUND_REPLACED (3)."
+          "description": "Why: SOUND_FINISHED (0), SOUND_STOPPED (1), SOUND_REMOVED (2), SOUND_REPLACED (3) or SOUND_CULLED (4)."
         }
       },
       "required": [
@@ -19379,6 +19726,7 @@
       "type": "string",
       "enum": [
         "screenshot",
+        "listen",
         "touch_move_to",
         "touch_move",
         "touch_start",
@@ -19405,6 +19753,7 @@
       ],
       "x-og-variants": {
         "screenshot": "`screenshot[:path][:full|:N]`: capture the next frame.",
+        "listen": "`listen[:path][:seconds]`: write the last seconds of rendered audio as a WAV.",
         "touch_move_to": "`touch_move_to:<ui id>`: move the pointer to a UI element.",
         "touch_move": "`touch_move:x,y`: move the pointer to CSS pixel coordinates.",
         "touch_start": "`touch_start`: press the pointer where it is.",
@@ -20079,6 +20428,54 @@
         "width",
         "height",
         "png"
+      ],
+      "additionalProperties": false
+    },
+    "Heard": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "What the host's mixer rendered last: the audio up to the current tick.",
+      "type": "object",
+      "properties": {
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick it ends at."
+        },
+        "rate": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Frames per second.",
+          "x-og-unit": "hz"
+        },
+        "frames": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Stereo frames in the WAV."
+        },
+        "peak": {
+          "type": "number",
+          "description": "The largest sample, 0 to 1."
+        },
+        "rms": {
+          "type": "number",
+          "description": "The root mean square of both channels."
+        },
+        "wav": {
+          "type": "string",
+          "description": "A 16-bit stereo WAV, base64."
+        }
+      },
+      "required": [
+        "tick",
+        "rate",
+        "frames",
+        "peak",
+        "rms",
+        "wav"
       ],
       "additionalProperties": false
     },

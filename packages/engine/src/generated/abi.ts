@@ -491,6 +491,8 @@ export interface HostAbi<A, V> {
   og_engine_probe_dump(engine_probe: number, desc: string | undefined): string;
   /** `EngineProbe.commands` */
   og_engine_probe_commands(engine_probe: number, script: string): string;
+  /** `EngineProbe.listen` */
+  og_engine_probe_listen(engine_probe: number, seconds: number | undefined): string;
 }
 
 /** Every binding symbol, in binding-table order, then the lifecycle members. */
@@ -726,6 +728,7 @@ export const SYMBOLS: readonly string[] = [
   "og_engine_probe_restore",
   "og_engine_probe_dump",
   "og_engine_probe_commands",
+  "og_engine_probe_listen",
   "og_host_set_dispatcher",
   "og_engine_create",
   "og_engine_destroy",

@@ -1234,3 +1234,9 @@ pub fn og_engine_probe_dump(engine_probe: u32, desc: Option<String>) -> String {
 pub fn og_engine_probe_commands(engine_probe: u32, script: String) -> String {
     <Host as ProbeApi>::og_engine_probe_commands(&Host, engine_probe, script)
 }
+
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_engine_probe_listen(engine_probe: u32, seconds: Option<f64>) -> String {
+    <Host as ProbeApi>::og_engine_probe_listen(&Host, engine_probe, seconds)
+}
