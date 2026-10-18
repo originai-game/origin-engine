@@ -394,6 +394,22 @@ impl Bundle {
             .map_err(|_| invalid(&blob, "the emitter text is not UTF-8"))
     }
 
+    /// The material shader of a shader blob.
+    pub fn shader(&self, id: &str, bytes: &[u8]) -> Result<og_render::MaterialShader, LoadError> {
+        let blob = self.blob::<format::Shader>(id, bytes)?;
+        let meta = one::<format::ShaderMeta>(&blob)?;
+        let text = blob.raw("text")?;
+        if text.len() < meta.text_bytes as usize {
+            return Err(invalid(&blob, "the shader text is cut short"));
+        }
+        let text = std::str::from_utf8(&text[..meta.text_bytes as usize])
+            .map_err(|_| invalid(&blob, "the shader text is not UTF-8"))?;
+        crate::shader::parse_shader(id, text, &mut |_| {
+            Err("a cooked shader carries its code".to_string())
+        })
+        .map_err(|e| invalid(&blob, &e))
+    }
+
     /// The validated text of a UI skin blob (parse it with og-ui's
     /// `parse_skin` and load the assets it names from the bundle).
     pub fn skin_text(&self, id: &str, bytes: &[u8]) -> Result<String, LoadError> {

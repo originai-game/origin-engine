@@ -1657,6 +1657,7 @@ dependencies = [
  "meshopt",
  "mikktspace",
  "miniz_oxide 0.8.9",
+ "naga",
  "nalgebra 0.34.2",
  "og-anim",
  "og-blob",

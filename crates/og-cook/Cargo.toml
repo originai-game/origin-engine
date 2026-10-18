@@ -16,7 +16,7 @@ runtime = []
 # transcodes with Binomial's wasm transcoder).
 transcode = ["runtime", "dep:basis-universal", "dep:ruzstd"]
 # The cook itself (native only): importers, encoders, the incremental manifest.
-cook = ["runtime", "dep:gltf", "dep:image", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:hound", "dep:ruzstd", "dep:serde_json", "dep:nalgebra", "dep:og-ui"]
+cook = ["runtime", "dep:gltf", "dep:image", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:hound", "dep:ruzstd", "dep:serde_json", "dep:nalgebra", "dep:og-ui", "dep:naga"]
 # Encode textures with the basis-universal crate (a default). Without it the
 # cook looks for KTX-Software's `toktx` on PATH.
 basis = ["dep:basis-universal", "dep:ruzstd"]
@@ -44,6 +44,9 @@ ttf-parser = { version = "0.25.1", optional = true }
 hound = { version = "3.5.1", optional = true }
 serde_json = { version = "1", optional = true }
 nalgebra = { version = "0.34.1", optional = true }
+# The cook compiles material shaders for every back end (WGSL in; SPIR-V,
+# MSL and GLSL ES out), as wgpu would at load.
+naga = { version = "30.0.1", optional = true, features = ["wgsl-in", "glsl-out", "msl-out", "spv-out"] }
 
 [dev-dependencies]
 og-tests = { path = "../og-tests" }

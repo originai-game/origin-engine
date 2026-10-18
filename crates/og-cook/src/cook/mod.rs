@@ -388,6 +388,7 @@ enum Kind {
     Tileset,
     Tilemap,
     Flipbook,
+    Shader,
 }
 
 impl Kind {
@@ -404,6 +405,7 @@ impl Kind {
             Kind::Tileset => "tileset",
             Kind::Tilemap => "tilemap",
             Kind::Flipbook => "flipbook",
+            Kind::Shader => "shader",
         }
     }
 }
@@ -431,6 +433,7 @@ enum Work<'a> {
     Tileset(&'a Source),
     Tilemap(&'a Source, tilemap::MapSettings),
     Flipbook(&'a Source),
+    Shader(&'a Source),
     Font(&'a Source, FontSettings),
     Scene(&'a Source),
 }
@@ -628,12 +631,13 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     Ok(doc) if doc.ty == "tileset" => Kind::Tileset,
                     Ok(doc) if doc.ty == "tilemap" => Kind::Tilemap,
                     Ok(doc) if doc.ty == "flipbook" => Kind::Flipbook,
+                    Ok(doc) if doc.ty == crate::shader::SHADER_TYPE => Kind::Shader,
                     Ok(doc) => {
                         early_errors.push((
                             rel.clone(),
                             "scene",
                             format!(
-                                "an .ogt of type '{}' is not a cookable asset (scene, particles, skin, tileset, tilemap, flipbook or import)",
+                                "an .ogt of type '{}' is not a cookable asset (scene, particles, skin, tileset, tilemap, flipbook, shader or import)",
                                 doc.ty
                             ),
                         ));
@@ -815,6 +819,15 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     .collect();
                 let st = stamp(&[b"emitter", &hash, refs.join("\n").as_bytes()]);
                 outs.push((s.rel.clone(), format::Emitter::NAME, st, Work::Emitter(s)));
+            }
+            Kind::Shader => {
+                // The stamp covers the WGSL file the shader names.
+                let text = String::from_utf8_lossy(&s.bytes);
+                let wgsl = crate::shader::shader_source(&text)
+                    .map(|src| read_sibling(s, &src).unwrap_or_default())
+                    .unwrap_or_default();
+                let st = stamp(&[b"shader", &hash, wgsl.as_bytes()]);
+                outs.push((s.rel.clone(), format::Shader::NAME, st, Work::Shader(s)));
             }
             Kind::Skin => {
                 let text = String::from_utf8_lossy(&s.bytes);
@@ -1159,6 +1172,37 @@ fn run(
                 )],
             ))
         }
+        Work::Shader(s) => {
+            let text = std::str::from_utf8(&s.bytes)
+                .map_err(|_| CookError("a shader is text (UTF-8)".into()))?;
+            let name = s.rel.trim_end_matches(".ogt");
+            let shader = crate::shader::parse_shader(name, text, &mut |src| read_sibling(s, src))
+                .map_err(CookError)?;
+            let compiled = crate::shader::validate_shader(&shader)
+                .map_err(|e| CookError(format!("the shader does not compile: {e}")))?;
+            let canonical = crate::shader::shader_text(&shader);
+            let mut w = og_blob::BlobWriter::new(
+                format::Shader::type_hash(),
+                format::Shader::schema_version(),
+                p.stamp,
+            );
+            w.table(
+                "meta",
+                &[format::ShaderMeta {
+                    text_bytes: canonical.len() as u32,
+                }],
+                format::row_hash::<format::ShaderMeta>(),
+            )
+            .raw("text", canonical.into_bytes(), 16);
+            Ok((
+                w.finish(),
+                vec![format!(
+                    "{} parameter(s); compiled for {}",
+                    shader.params.len(),
+                    compiled.join(", ")
+                )],
+            ))
+        }
         Work::Skin(s) => {
             let text = std::str::from_utf8(&s.bytes)
                 .map_err(|_| CookError("a skin is text (UTF-8)".into()))?;
@@ -1212,4 +1256,16 @@ fn run(
             scene::cook(&doc, schemas, &|id| known.contains(id), p.stamp)
         }
     }
+}
+
+/// The text of `rel` (an asset path) under the assets directory `s` came from.
+fn read_sibling(s: &Source, rel: &str) -> Result<String, String> {
+    let mut root = s.path.clone();
+    for _ in s.rel.split('/') {
+        root.pop();
+    }
+    if rel.split('/').any(|c| c == ".." || c.is_empty()) {
+        return Err(format!("'{rel}' is not a path under assets/"));
+    }
+    std::fs::read_to_string(root.join(rel)).map_err(|e| format!("{e}"))
 }

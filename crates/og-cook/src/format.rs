@@ -19,6 +19,7 @@
 //! | colour LUT (`og.Lut`, a `.cube`) | [`LutMeta`] | `rgba` (size³ RGBA8, red fastest) |
 //! | particle emitter (`og.ParticleEmitter`, an `.ogt` of `type particles`) | [`EmitterMeta`] | `text` (the validated emitter file) |
 //! | UI skin (`og.UiSkin`, an `.ogt` of `type skin`) | [`SkinMeta`] | `text` (the validated skin file) |
+//! | material shader (`og.MaterialShader`, an `.ogt` of `type shader`) | [`ShaderMeta`] | `text` (the canonical shader file, code inlined) |
 //! | flipbook sheet (`og.Flipbook`, an `.ogt` of `type flipbook`) | [`FlipbookMeta`] | `text` (the canonical sheet: frames resolved from the grid and an Aseprite or TexturePacker atlas, clips with frame indices and durations, the texture's size) |
 //! | animation (`og.Animation`, a glTF's `#anim`) | [`AnimMeta`] | `nodes` [`NodeRow`], `skins` [`SkinRow`], `joints` (u32 node indices), `inverse_binds` (16 f32 per joint, column-major), `clips` [`ClipRow`], `channels` [`ChannelRow`], `samples` (f32), `events` [`EventRow`], `skin_streams` [`SkinStreamRow`], `skin_data` (meshopt streams), `morphs` [`MorphRow`], `targets` [`TargetRow`], `morph_data` (meshopt streams), `strings` |
 //! | tileset (`og.Tileset`, an `.ogt` of `type tileset`) | [`TilesetMeta`] | `text` (the canonical tileset text) |
@@ -603,6 +604,24 @@ impl BlobKind for Skin {
     const NAME: &'static str = "og.UiSkin";
     fn schemas() -> Vec<Schema> {
         vec![SkinMeta::schema()]
+    }
+}
+
+row!(
+    /// The root of a material shader blob (an `.ogt` of `type shader`).
+    ShaderMeta, "og.MaterialShader", 1 {
+        /// Bytes of the canonical shader text (code inlined) in `text`.
+        text_bytes: u32,
+    }
+);
+
+/// The material shader blob: `text` holds the shader file the cook
+/// compiled for every back end (`crate::shader`), its code inlined.
+pub struct Shader;
+impl BlobKind for Shader {
+    const NAME: &'static str = "og.MaterialShader";
+    fn schemas() -> Vec<Schema> {
+        vec![ShaderMeta::schema()]
     }
 }
 
