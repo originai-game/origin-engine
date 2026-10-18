@@ -26,7 +26,8 @@ fn sound(bank: &SoundBank, id: &str, seconds: f64, freq: f64, decay: f64) -> u64
             (0.4 * (-t / decay).exp() * (TAU * freq * t).sin() * 32767.0) as i16
         })
         .collect();
-    bank.insert_qoa(id, &qoa::encode(&samples, 1, RATE).unwrap()).unwrap()
+    bank.insert_qoa(id, &qoa::encode(&samples, 1, RATE).unwrap())
+        .unwrap()
 }
 
 fn scene(effects: bool) -> (World, HeadlessSink) {
@@ -35,13 +36,31 @@ fn scene(effects: bool) -> (World, HeadlessSink) {
     let stem = sound(&bank, "stem", 4.0, 220.0, 1e9);
     let hum = sound(&bank, "hum", 2.0, 330.0, 1e9);
     let hit = sound(&bank, "hit", 0.3, 900.0, 0.08);
-    let mut world = World::new(&WorldDesc { tick_rate: 60, seed: 5 }).unwrap();
+    let mut world = World::new(&WorldDesc {
+        tick_rate: 60,
+        seed: 5,
+    })
+    .unwrap();
     world.register::<Transform>().unwrap();
     world.register::<AudioSource>().unwrap();
     world.register::<SoundEnded>().unwrap();
-    let link = install(&mut world, &AudioDesc { bank: Some(bank), ..AudioDesc::default() }).unwrap();
-    world.spawn((Transform::default(), AudioListener::default())).unwrap();
-    let looped = |sound, bus: Bus, volume| AudioSource { looping: true, bus: bus as u32, volume, ..AudioSource::new(sound) };
+    let link = install(
+        &mut world,
+        &AudioDesc {
+            bank: Some(bank),
+            ..AudioDesc::default()
+        },
+    )
+    .unwrap();
+    world
+        .spawn((Transform::default(), AudioListener::default()))
+        .unwrap();
+    let looped = |sound, bus: Bus, volume| AudioSource {
+        looping: true,
+        bus: bus as u32,
+        volume,
+        ..AudioSource::new(sound)
+    };
     world.spawn((looped(bed, Bus::Music, 0.5),)).unwrap();
     for _ in 0..3 {
         world.spawn((looped(stem, Bus::Music, 0.2),)).unwrap();
@@ -50,7 +69,10 @@ fn scene(effects: bool) -> (World, HeadlessSink) {
         let a = k as f32 * 0.39;
         world
             .spawn((
-                Transform { position: Vec3::new(8.0 * a.cos(), 0.0, 8.0 * a.sin()), ..Default::default() },
+                Transform {
+                    position: Vec3::new(8.0 * a.cos(), 0.0, 8.0 * a.sin()),
+                    ..Default::default()
+                },
                 AudioSource {
                     spatial: true,
                     distance_cutoff: if effects { 2500.0 } else { 0.0 },
@@ -62,13 +84,43 @@ fn scene(effects: bool) -> (World, HeadlessSink) {
     }
     for k in 0..12 {
         world
-            .spawn((AudioSource { looping: true, loop_start: 0.0, loop_end: 0.5 + k as f32 * 0.01, ..looped(hit, Bus::Sfx, 0.3) },))
+            .spawn((AudioSource {
+                looping: true,
+                loop_start: 0.0,
+                loop_end: 0.5 + k as f32 * 0.01,
+                ..looped(hit, Bus::Sfx, 0.3)
+            },))
             .unwrap();
     }
     if effects {
-        world.spawn((AudioBusFx { bus: Bus::Music as u32, lowpass: 4000.0, highpass: 60.0, duck: true, reverb: 0.1, ..AudioBusFx::default() },)).unwrap();
-        world.spawn((AudioBusFx { bus: Bus::Sfx as u32, threshold: -18.0, ratio: 4.0, reverb: 0.3, ..AudioBusFx::default() },)).unwrap();
-        world.spawn((AudioBusFx { bus: Bus::Master as u32, threshold: -1.0, ratio: 20.0, attack: 0.001, ..AudioBusFx::default() },)).unwrap();
+        world
+            .spawn((AudioBusFx {
+                bus: Bus::Music as u32,
+                lowpass: 4000.0,
+                highpass: 60.0,
+                duck: true,
+                reverb: 0.1,
+                ..AudioBusFx::default()
+            },))
+            .unwrap();
+        world
+            .spawn((AudioBusFx {
+                bus: Bus::Sfx as u32,
+                threshold: -18.0,
+                ratio: 4.0,
+                reverb: 0.3,
+                ..AudioBusFx::default()
+            },))
+            .unwrap();
+        world
+            .spawn((AudioBusFx {
+                bus: Bus::Master as u32,
+                threshold: -1.0,
+                ratio: 20.0,
+                attack: 0.001,
+                ..AudioBusFx::default()
+            },))
+            .unwrap();
     }
     let sink = HeadlessSink::new(&link, HeadlessMode::Capture { sample_rate: RATE });
     (world, sink)

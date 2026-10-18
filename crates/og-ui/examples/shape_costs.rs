@@ -20,9 +20,15 @@ fn per_call_us(n: u32, f: impl Fn() -> String) -> f64 {
 }
 
 fn main() {
-    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../templates/ui-kit/assets/fonts/NotoSansArabic-subset.ttf");
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../templates/ui-kit/assets/fonts/NotoSansArabic-subset.ttf"
+    );
     let t = Instant::now();
-    let sh = Shaper::new(Arc::new(std::fs::read(path).expect("the kit's Arabic font"))).expect("rustybuzz reads it");
+    let sh = Shaper::new(Arc::new(
+        std::fs::read(path).expect("the kit's Arabic font"),
+    ))
+    .expect("rustybuzz reads it");
     let load_ms = t.elapsed().as_secs_f64() * 1000.0;
     let all = |_c: char| true;
     let arabic = "هل تريد حذف هذا الحفظ؟ لا يمكن التراجع";

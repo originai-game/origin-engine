@@ -62,7 +62,11 @@ tree {
 "#;
 
 fn world(think_every: u32, active: bool) -> (World, Vec<Entity>) {
-    let mut world = World::new(&WorldDesc { tick_rate: 60, seed: 3 }).unwrap();
+    let mut world = World::new(&WorldDesc {
+        tick_rate: 60,
+        seed: 3,
+    })
+    .unwrap();
     world.register::<Health>().unwrap();
     // A wall along x = 32 with a gap: sight rays crossing it are blocked.
     let ray: SightRay = Arc::new(|o: Vec3, d: Vec3, max: f32, _m: u32, _e: Entity| {
@@ -76,7 +80,12 @@ fn world(think_every: u32, active: bool) -> (World, Vec<Entity>) {
     let ai = install(
         &mut world,
         &["Health".to_string()],
-        AiDesc { plane: Plane::Xy, ray: Some(ray), sink: Some(Arc::new(|_: &str, _: Vec<String>| {})), behaviours: None },
+        AiDesc {
+            plane: Plane::Xy,
+            ray: Some(ray),
+            sink: Some(Arc::new(|_: &str, _: Vec<String>| {})),
+            behaviours: None,
+        },
     )
     .unwrap();
     let mut grid = Grid::new(64, 64, 1.0, Vec2::ZERO);
@@ -87,16 +96,52 @@ fn world(think_every: u32, active: bool) -> (World, Vec<Entity>) {
     }
     let mut navs = Navs::default();
     let g = navs.insert(Nav::Grid(grid));
-    og_nav::install(&mut world, Arc::new(Mutex::new(navs)), NavDesc { plane: Plane::Xy, raycast: None, plans_per_tick: og_nav::PLANS_PER_TICK }).unwrap();
-    let b = ai.behaviours.lock().unwrap().insert(Behaviour::parse(GUARD).unwrap());
+    og_nav::install(
+        &mut world,
+        Arc::new(Mutex::new(navs)),
+        NavDesc {
+            plane: Plane::Xy,
+            raycast: None,
+            plans_per_tick: og_nav::PLANS_PER_TICK,
+        },
+    )
+    .unwrap();
+    let b = ai
+        .behaviours
+        .lock()
+        .unwrap()
+        .insert(Behaviour::parse(GUARD).unwrap());
     for k in 0..200u32 {
-        let p = Vec3::new(2.0 + (k % 20) as f32 * 3.0, 2.0 + (k / 20) as f32 * 6.0, 0.0);
+        let p = Vec3::new(
+            2.0 + (k % 20) as f32 * 3.0,
+            2.0 + (k / 20) as f32 * 6.0,
+            0.0,
+        );
         world
             .spawn((
-                Transform { position: p, ..Default::default() },
-                NavAgent { nav: g, speed: 2.0, acceleration: 30.0, radius: 0.3, ..Default::default() },
-                AiAgent { behaviour: b, active, think_every, ..Default::default() },
-                Perception { sight: 8.0, fov: 120.0, team: 2, ..Default::default() },
+                Transform {
+                    position: p,
+                    ..Default::default()
+                },
+                NavAgent {
+                    nav: g,
+                    speed: 2.0,
+                    acceleration: 30.0,
+                    radius: 0.3,
+                    ..Default::default()
+                },
+                AiAgent {
+                    behaviour: b,
+                    active,
+                    think_every,
+                    ..Default::default()
+                },
+                Perception {
+                    sight: 8.0,
+                    fov: 120.0,
+                    team: 2,
+                    ..Default::default()
+                },
                 Health { hp: 50.0 },
             ))
             .unwrap();
@@ -104,7 +149,16 @@ fn world(think_every: u32, active: bool) -> (World, Vec<Entity>) {
     let heroes = (0..4)
         .map(|k| {
             world
-                .spawn((Transform { position: Vec3::new(10.0 + k as f32 * 14.0, 30.0, 0.0), ..Default::default() }, Perceivable { team: 1, eye_height: 0.0 }))
+                .spawn((
+                    Transform {
+                        position: Vec3::new(10.0 + k as f32 * 14.0, 30.0, 0.0),
+                        ..Default::default()
+                    },
+                    Perceivable {
+                        team: 1,
+                        eye_height: 0.0,
+                    },
+                ))
                 .unwrap()
         })
         .collect();
@@ -119,7 +173,14 @@ fn run(think_every: u32, active: bool, warm: u32, ticks: u32) -> f64 {
         for (k, &h) in heroes.iter().enumerate() {
             let a = t as f32 * 0.01 + k as f32 * 1.57;
             let p = Vec3::new(32.0 + 20.0 * a.cos(), 32.0 + 20.0 * a.sin(), 0.0);
-            w.insert(h, Transform { position: p, ..Default::default() }).unwrap();
+            w.insert(
+                h,
+                Transform {
+                    position: p,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
         }
         let start = Instant::now();
         w.step().unwrap();

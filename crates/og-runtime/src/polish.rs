@@ -15,8 +15,9 @@ use serde_json::{Value, json};
 
 fn text_hash(s: &str) -> u32 {
     // FNV-1a: cheap and stable across hosts.
-    s.bytes()
-        .fold(0x811c_9dc5u32, |h, b| (h ^ u32::from(b)).wrapping_mul(0x0100_0193))
+    s.bytes().fold(0x811c_9dc5u32, |h, b| {
+        (h ^ u32::from(b)).wrapping_mul(0x0100_0193)
+    })
 }
 
 fn round(x: f32) -> f64 {
@@ -49,14 +50,18 @@ pub(crate) fn pulse(engine: u32, world: &World) -> Result<Value, String> {
     let cam = camera(world, &st.layouts);
     let num = |v: &Value, k: &str| v[k].as_f64().unwrap_or(0.0);
     let kick = &cam["kick"];
-    let kick_len = (num(kick, "x").powi(2) + num(kick, "y").powi(2) + num(kick, "z").powi(2)).sqrt();
+    let kick_len =
+        (num(kick, "x").powi(2) + num(kick, "y").powi(2) + num(kick, "z").powi(2)).sqrt();
     let (floating, spawned, texts, ghosts, tweens) = match st.feel.as_ref() {
         Some(f) => {
             let s = f.shared.lock().unwrap_or_else(|e| e.into_inner());
             (
                 s.floating.len(),
                 s.spawned,
-                s.floating.iter().map(|t| t.text.clone()).collect::<Vec<_>>(),
+                s.floating
+                    .iter()
+                    .map(|t| t.text.clone())
+                    .collect::<Vec<_>>(),
                 s.ghosts.values().map(Vec::len).sum::<usize>(),
                 f.tweens.count(),
             )
@@ -110,7 +115,11 @@ pub(crate) fn pulse(engine: u32, world: &World) -> Result<Value, String> {
                         round(el.y),
                         round(el.width),
                         round(el.height),
-                        if el.text.is_empty() { 0 } else { text_hash(&el.text) }
+                        if el.text.is_empty() {
+                            0
+                        } else {
+                            text_hash(&el.text)
+                        }
                     ])
                 })
                 .collect()

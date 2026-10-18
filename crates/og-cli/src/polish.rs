@@ -78,14 +78,17 @@ pub fn run(args: &[&str]) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    let out = out.map_or_else(|| p.root.join("og-out").join("polish"), |o| {
-        let o = Path::new(o);
-        if o.is_absolute() {
-            o.to_path_buf()
-        } else {
-            std::env::current_dir().unwrap_or_default().join(o)
-        }
-    });
+    let out = out.map_or_else(
+        || p.root.join("og-out").join("polish"),
+        |o| {
+            let o = Path::new(o);
+            if o.is_absolute() {
+                o.to_path_buf()
+            } else {
+                std::env::current_dir().unwrap_or_default().join(o)
+            }
+        },
+    );
     if let Err(e) = std::fs::create_dir_all(&out) {
         eprintln!("og polish: {}: {e}", out.display());
         return ExitCode::FAILURE;
