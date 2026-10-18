@@ -97,6 +97,7 @@ Each break rebuilt the dev addon (`OG_GATE=1 sh packages/engine/scripts/build.sh
 | store conflicts | a write at a stale revision lands | `og.platform: a game's calls are answered …` (no `conflict`) |
 | leaderboard around | the around query returns the top | the same test (ranks 1–3, not 12–14) |
 | the runner's best | the crash does not save a new best | `records` |
+| the Player's save (`packages/engine/tests/web/player.ts`, headless Chrome) | shell/platform.ts reads the save's store as empty | `the save's store.best is the game's best score` |
 
 ## og-i18n (`crates/og-i18n/tests/i18n.rs`)
 
