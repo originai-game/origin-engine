@@ -82,13 +82,40 @@ its residual velocity.
 Meshes are assets, not world state: register them again in a fresh engine
 before or after restoring.
 
+## Beyond rigid bodies (the E5 round)
+
+Components over the same rapier world and state block (`src/schema_ext.rs`,
+reached from TypeScript through `crates/og-api/api.ogt`'s physics module):
+
+| Record | What the step does with it |
+|---|---|
+| `og.Joint` | fixed, revolute (limits, velocity or position motor), prismatic, spring, rope and ball joints between a body and another (`other`) or a world point; the second frame keeps the pose it was made in; `value` is written back |
+| `og.CharacterController` | a kinematic capsule moved by `move` after the step: slopes to `max_slope`, steps to `step_height`, ground snapping, carried by the moving platform it stands on, jumps on the rising edge with coyote time, pushes dynamic bodies; writes `grounded`, `velocity`, `ground` |
+| `og.PlatformerController` | 2D: run acceleration, jump height and time to apex, fall and jump-cut gravity, apex hang, coyote time, jump buffer, air jumps, wall slide and jump, one-way layers with drop-through, corner correction, moving platforms; sends `og.CharacterEvent` |
+| `og.Vehicle` | 3D: rapier's raycast vehicle with a top-speed fade and reverse braking; 2D: wheel bodies on sprung, motorised wheel joints; `vehicle_wheels` for drawing |
+| `og.Rope`, `og.Cloth` | Verlet strands and grids with pins, wind and gusts, pushed out of every solid collider; `rope_points`, `cloth_points` |
+| `og.Fluid2D` | double density relaxation (Clavet et al.) on a grid in a fixed order, velocity capped at half the radius per substep; `fluid_particles` |
+| `og.WaterSurface`, `og.WaterLine` | a height field and a spring line splashed by crossing bodies (`og.Splash`), buoyancy and drag on dynamic bodies; `water_heights`, `water_line` |
+| `og.Ragdoll` | capsule bones with limited ball joints from a host-registered rig (`set_ragdoll_rig`; og-runtime makes one from an og-anim skeleton), following targets kinematically at weight 0, simulated above it, `blend` moving to `weight` over `blend_time` |
+
+Everything simulates with + − × ÷ and square roots (og_core::math for the
+rest), in entity order, inside the state block: `tests/beyond_determinism.rs`
+runs a 3D and a 2D world with every feature 1200 ticks twice to the same
+hash and snapshot, and a restore at tick 600 ends in the same world and the
+same ropes, cloth, fluid, water, wheels and bones. Rigs are assets like
+meshes. Not attempted: 3D SPH (the 3D water is the height field); cloth
+self-collision; ragdolls in 2D. CPU costs per feature:
+`cargo run --release -p og-physics --example soft_costs`
+(`tests/evidence/E5/feature-costs.md`).
+
 ## Tests
 
 `cargo test -p og-physics`: `bodies.rs` (write-back, events, sensors,
 layers, kinematic, locks, errors), `edits.rs` (component changes reaching
 the persistent world, rewinding by restore), `queries.rs`, `profile_2d.rs`,
 `pile.rs` (determinism and restore; set `OG_PHYSICS_PILE_REPORT` to write
-its JSON report). The dev profile builds og-physics and rapier at
+its JSON report), and the E5 round's `joints.rs`, `controllers.rs`,
+`vehicles.rs`, `soft.rs`, `ragdoll.rs`, `beyond_determinism.rs`. The dev profile builds og-physics and rapier at
 `opt-level = 3`; the pile takes about 15 s.
 
 ## Status 2026-10-18 (what phase 1 still owes)
@@ -97,8 +124,9 @@ its JSON report). The dev profile builds og-physics and rapier at
   `crates/og-api/api.ogt` and neither host links og-physics, so games
   cannot use it yet; the IDL transcription and the runtime's `install` are
   owed.
-- **Character controller**: not in phase 1's M6 scope (docs/phase-1.md);
-  kinematic bodies are the stand-in.
+- **Character controller**: delivered in the E5 round (above), with the 2D
+  platformer controller, joints, vehicles, soft bodies, fluids, water and
+  ragdolls.
 - **wasm size**, measured (`tests/evidence/M6/physics-wasm-size.json`): the
   crate adds 694 KB brotli for the 3D profile, 541 KB for 2D and 1.05 MB
   for both to a module that already links og-core and og-ecs, which keeps

@@ -3,6 +3,7 @@
 //!   og-gfx SCENE...|--all [--out frame.png] [--frames N]
 //!   og-gfx --all --capture DIR [--frames N]   frames to DIR/<tier>/<scene>.png, stats to DIR/report.txt
 //!   og-gfx --costs [--frames N]               the feature-cost table (markdown)
+//!   og-gfx --costs-e5 [--frames N]            the E5 rows alone (slow tiers: lavapipe)
 //!
 //! Prints the backend tier, the frame stats, setup, CPU-submit and frame
 //! times, and the comparison with the committed reference when one exists.
@@ -20,12 +21,17 @@ fn main() {
     let mut args = std::env::args().skip(1);
     let (mut names, mut out, mut frames, mut capture, mut costs) =
         (Vec::new(), None, 0u32, None, false);
+    let mut e5_only = false;
     while let Some(a) = args.next() {
         match a.as_str() {
             "--all" => names.extend(scenes::SCENES.iter().map(|s| s.to_string())),
             "--out" => out = Some(args.next().expect("--out PATH")),
             "--capture" => capture = Some(PathBuf::from(args.next().expect("--capture DIR"))),
             "--costs" => costs = true,
+            "--costs-e5" => {
+                costs = true;
+                e5_only = true;
+            }
             "--frames" => {
                 frames = args
                     .next()
@@ -43,7 +49,12 @@ fn main() {
         }
     }
     if costs {
-        match cost_table(frames.max(100)) {
+        let table = if e5_only {
+            effect_table(frames.max(10), true)
+        } else {
+            cost_table(frames.max(100))
+        };
+        match table {
             Ok(table) => print!("{table}"),
             Err(e) => {
                 eprintln!("og-gfx --costs: {e}");
@@ -336,64 +347,24 @@ fn best_ms(built: &mut GfxScene, frames: u32) -> Result<(f64, FrameStats), Strin
     Ok((best, stats))
 }
 
-fn cost_table(frames: u32) -> Result<String, String> {
+/// The effect scenes, each against itself with the effect removed (`e5_only`:
+/// the E5 rows, with their own header).
+fn effect_table(frames: u32, e5_only: bool) -> Result<String, String> {
     let mut table = String::new();
-    let probe = Renderer::new_blocking(&scenes::base_desc()).map_err(|e| e.to_string())?;
-    let _ = writeln!(
-        table,
-        "Feature costs on {} ({}), 1280x720, best of 2 sweeps x 5 runs of {frames} frames (`og-gfx --costs`).\n",
-        probe.info().adapter,
-        probe.info().backend_tier()
-    );
-    drop(probe);
-    // Bring the GPU to its working clock before the first measurement.
-    let mut warm = scenes::build("spheres-20k")?;
-    let t = Instant::now();
-    while t.elapsed().as_secs_f64() < 1.0 {
-        best_ms(&mut warm, 20)?;
+    if e5_only {
+        let probe = Renderer::new_blocking(&scenes::base_desc()).map_err(|e| e.to_string())?;
+        let _ = writeln!(
+            table,
+            "E5 feature costs on {} ({}), 1280x720, best of 5 runs of {frames} frames (`og-gfx --costs-e5`).\n",
+            probe.info().adapter,
+            probe.info().backend_tier()
+        );
+    } else {
+        let _ = writeln!(
+            table,
+            "\nEffect scenes of E1 and E5 (each against itself with the effect removed):\n"
+        );
     }
-    let _ = writeln!(
-        table,
-        "| Variant | gltf-reference ms | Δ | draws | spheres-20k ms | Δ | draws |"
-    );
-    let _ = writeln!(table, "|---|---|---|---|---|---|---|");
-    // Two sweeps over every cell, keeping each cell's best: slow drift from
-    // other work on the machine hits both sweeps differently.
-    let scenes_timed = ["gltf-reference", "spheres-20k"];
-    let mut cells = vec![[(f64::MAX, 0u32); 2]; VARIANTS.len()];
-    for _sweep in 0..2 {
-        for (i, (_, apply)) in VARIANTS.iter().enumerate() {
-            for (k, scene) in scenes_timed.iter().enumerate() {
-                let mut built = scenes::build(scene)?;
-                apply(&mut built);
-                let (ms, stats) = best_ms(&mut built, frames)?;
-                cells[i][k] = (cells[i][k].0.min(ms), stats.draw_calls);
-            }
-        }
-    }
-    for (i, (label, _)) in VARIANTS.iter().enumerate() {
-        let mut row = format!("| {label} |");
-        for (k, &(ms, draws)) in cells[i].iter().enumerate() {
-            let delta = if i == 0 {
-                String::new()
-            } else {
-                format!("{:+.3}", ms - cells[0][k].0)
-            };
-            let _ = write!(row, " {ms:.3} | {delta} | {draws} |");
-        }
-        let _ = writeln!(table, "{row}");
-    }
-    let mut sprites = scenes::build("sprites-20k")?;
-    let (ms, stats) = best_ms(&mut sprites, frames)?;
-    let _ = writeln!(
-        table,
-        "\n`sprites-20k` (20,000 sprites moved and resubmitted every frame, orthographic): {ms:.3} ms per frame, {} draws ({} sprite draws).",
-        stats.draw_calls, stats.sprite_draws
-    );
-    let _ = writeln!(
-        table,
-        "\nEffect scenes of E1 and E5 (each against itself with the effect removed):\n"
-    );
     let _ = writeln!(table, "| Scene | ms | without the effect | Δ | draws |");
     let _ = writeln!(table, "|---|---|---|---|---|");
     type Strip = fn(&mut GfxScene);
@@ -474,6 +445,9 @@ fn cost_table(frames: u32) -> Result<String, String> {
         ),
     ];
     for (scene, label, strip) in effect_rows {
+        if e5_only && !label.starts_with("E5") {
+            continue;
+        }
         let mut with = scenes::build(scene)?;
         let (ms, stats) = best_ms(&mut with, frames)?;
         let mut without = scenes::build(scene)?;
@@ -486,6 +460,64 @@ fn cost_table(frames: u32) -> Result<String, String> {
             stats.draw_calls
         );
     }
+    Ok(table)
+}
+
+fn cost_table(frames: u32) -> Result<String, String> {
+    let mut table = String::new();
+    let probe = Renderer::new_blocking(&scenes::base_desc()).map_err(|e| e.to_string())?;
+    let _ = writeln!(
+        table,
+        "Feature costs on {} ({}), 1280x720, best of 2 sweeps x 5 runs of {frames} frames (`og-gfx --costs`).\n",
+        probe.info().adapter,
+        probe.info().backend_tier()
+    );
+    drop(probe);
+    // Bring the GPU to its working clock before the first measurement.
+    let mut warm = scenes::build("spheres-20k")?;
+    let t = Instant::now();
+    while t.elapsed().as_secs_f64() < 1.0 {
+        best_ms(&mut warm, 20)?;
+    }
+    let _ = writeln!(
+        table,
+        "| Variant | gltf-reference ms | Δ | draws | spheres-20k ms | Δ | draws |"
+    );
+    let _ = writeln!(table, "|---|---|---|---|---|---|---|");
+    // Two sweeps over every cell, keeping each cell's best: slow drift from
+    // other work on the machine hits both sweeps differently.
+    let scenes_timed = ["gltf-reference", "spheres-20k"];
+    let mut cells = vec![[(f64::MAX, 0u32); 2]; VARIANTS.len()];
+    for _sweep in 0..2 {
+        for (i, (_, apply)) in VARIANTS.iter().enumerate() {
+            for (k, scene) in scenes_timed.iter().enumerate() {
+                let mut built = scenes::build(scene)?;
+                apply(&mut built);
+                let (ms, stats) = best_ms(&mut built, frames)?;
+                cells[i][k] = (cells[i][k].0.min(ms), stats.draw_calls);
+            }
+        }
+    }
+    for (i, (label, _)) in VARIANTS.iter().enumerate() {
+        let mut row = format!("| {label} |");
+        for (k, &(ms, draws)) in cells[i].iter().enumerate() {
+            let delta = if i == 0 {
+                String::new()
+            } else {
+                format!("{:+.3}", ms - cells[0][k].0)
+            };
+            let _ = write!(row, " {ms:.3} | {delta} | {draws} |");
+        }
+        let _ = writeln!(table, "{row}");
+    }
+    let mut sprites = scenes::build("sprites-20k")?;
+    let (ms, stats) = best_ms(&mut sprites, frames)?;
+    let _ = writeln!(
+        table,
+        "\n`sprites-20k` (20,000 sprites moved and resubmitted every frame, orthographic): {ms:.3} ms per frame, {} draws ({} sprite draws).",
+        stats.draw_calls, stats.sprite_draws
+    );
+    table.push_str(&effect_table(frames, false)?);
     let mut text = scenes::build("text-msdf")?;
     let (ms, stats) = best_ms(&mut text, frames)?;
     let _ = writeln!(

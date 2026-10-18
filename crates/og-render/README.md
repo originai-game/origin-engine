@@ -352,6 +352,59 @@ trails-beams}.png`); features-off references are byte-identical to the
 pre-E1 ones. Costs: `tests/evidence/E1/vfx-feature-costs.md` (`og-gfx
 --costs`).
 
+## E5: atmosphere, water, fluids, material shaders
+
+All off by default: a scene that sets none of them draws exactly the frame
+it drew before (every earlier reference is unchanged).
+
+- **Fog** (`RenderScene::fog`, `src/atmosphere.rs`): distance fog
+  (exponential from `start`, or a linear ramp to `end`), integrated
+  exponential height fog, forward scattering towards `sun_color`, applied
+  in the lit, sky, particle, strip and world-sprite shaders (blended
+  effects fade into it by `fog_keep`); the overlay is never fogged.
+- **Sky** (`SkyLook` on `ProceduralSky::look`, `Background::Procedural`):
+  zenith, horizon and ground colours, sun disc and glow, hashed stars, drawn
+  per pixel so a moving sun moves smoothly; the image-based light is
+  generated from the same look (`IblGenerator` keeps its pipelines and
+  textures, so regenerating it for a day-night step allocates nothing).
+  `day_night(hours, tilt, azimuth)` gives the sun or moon light, the sky,
+  the ambient and a fog tint as a pure function of the clock.
+- **Weather** (`weather(kind, …)`, `src/weather.rs`): rain, snow, dust and
+  mist as an emitter placed over the camera (`WeatherLook::origin`), a fog
+  and a dimming of the light.
+- **Water** (`RenderScene::water`, `src/water.rs`, `shaders/water.wgsl`): a
+  grid displaced by an optional height field, travelling detail normals,
+  colour by the water's depth over the scene (the depth prepass, which a
+  frame with water always runs), foam where it meets geometry and on steep
+  crests, refraction of a copy of the scene, reflections by a march through
+  the depth prepass on the full tier and the prefiltered sky cubemap where
+  that misses and on WebGL2. The main pass splits after the sky: the
+  resolved scene is copied to `scene-copy` (`hdr` gains `COPY_SRC` only in
+  frames with water), then water, transparents, particles, strips and
+  sprites draw over it.
+- **2D water** (`RenderScene::water_2d`): a side-on body and its lip as
+  strips in the sprite order.
+- **Metaballs** (`RenderScene::metaballs`, `src/metaballs.rs`): a fluid's
+  particles added as kernels into one channel of a field target before the
+  main pass (up to `MAX_FLUIDS`), composited at the fluid's sprite layer by a
+  threshold with an antialiased edge and a rim.
+- **Material shaders** (`MaterialShader`, `src/hooks.rs`): a WGSL snippet
+  defining any of `vertex_offset`, `surface_color`, `surface_normal`,
+  `surface_emissive`, with up to eight declared parameters read from the
+  material uniform; `RenderScene::add_shader`, `set_material_shader`,
+  `set_shader_param`. A material with a shader draws with its own lit
+  pipeline (non-skinned meshes; shadows and the prepass use the default),
+  every other material with the built-in identity hooks.
+  `lit_module_source` is the module og-cook compiles with naga for every
+  back end.
+- **Mesh replacement** (`RenderScene::set_mesh`): cloth and other generated
+  geometry, uploaded again in place when the sizes match.
+
+References on `metal` and `vulkan-cpu`: `og-tests/references/*/{atmosphere-fog,
+atmosphere-dusk,atmosphere-night,water-3d,water-2d,fluid-2d,shader-hooks,
+weather-rain,weather-snow}.png`, with behaviour tests in
+`og-tests/tests/atmosphere.rs`. Costs: `tests/evidence/E5/feature-costs.md`.
+
 ## What phase 2 owes
 
 Delivered since M3 (8d160fe, M6): the render graph object (`src/graph.rs`:
