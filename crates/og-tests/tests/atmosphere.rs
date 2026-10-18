@@ -483,5 +483,8 @@ fn a_replaced_mesh_draws_its_new_shape() {
             weights: vec![[1.0, 0.0, 0.0, 0.0]; 4],
         },
     );
-    assert!(!s.set_mesh(skinned, quad(0.0, 1.0)), "skinned meshes are refused");
+    assert!(
+        !s.set_mesh(skinned, quad(0.0, 1.0)),
+        "skinned meshes are refused"
+    );
 }

@@ -37,8 +37,11 @@ fn colonnade(scene: &mut RenderScene) {
         scene.add_instance(
             rock,
             moss,
-            Mat4::from_translation(Vec3::new(if i % 2 == 0 { -14.0 } else { 15.0 }, r * 0.3, z - 3.0))
-                * Mat4::from_scale(Vec3::splat(r * 2.0)),
+            Mat4::from_translation(Vec3::new(
+                if i % 2 == 0 { -14.0 } else { 15.0 },
+                r * 0.3,
+                z - 3.0,
+            )) * Mat4::from_scale(Vec3::splat(r * 2.0)),
         );
     }
 }
@@ -159,7 +162,8 @@ pub fn water_scene() -> RenderScene {
         scene.add_instance(
             bank,
             grass,
-            Mat4::from_translation(Vec3::new(x * 1.12, -1.6, -22.0)) * Mat4::from_rotation_z(x.signum() * 0.35),
+            Mat4::from_translation(Vec3::new(x * 1.12, -1.6, -22.0))
+                * Mat4::from_rotation_z(x.signum() * 0.35),
         );
     }
     let post = scene.add_mesh(shapes::cuboid(Vec3::new(0.35, 4.0, 0.35)));
@@ -242,7 +246,8 @@ pub fn water_2d_scene() -> RenderScene {
     let surface = (0..columns)
         .map(|i| {
             let x = i as f32 / (columns - 1) as f32 * 20.0 - 10.0;
-            let splash = 0.6 * (-(x - 1.0) * (x - 1.0) * 1.5).exp() - 0.25 * (-(x - 1.0) * (x - 1.0) * 0.3).exp();
+            let splash = 0.6 * (-(x - 1.0) * (x - 1.0) * 1.5).exp()
+                - 0.25 * (-(x - 1.0) * (x - 1.0) * 0.3).exp();
             splash + 0.08 * (x * 1.7).sin() + 0.05 * (x * 3.1 + 1.0).sin()
         })
         .collect();
@@ -292,7 +297,10 @@ pub fn fluid_2d_particles(seed: u32) -> (Vec<Vec2>, Vec<Vec2>) {
         }
     }
     for i in 0..6 {
-        water.push(Vec2::new(-1.2 + i as f32 * 0.35, -1.0 + (i as f32 * 1.3).sin() * 0.4));
+        water.push(Vec2::new(
+            -1.2 + i as f32 * 0.35,
+            -1.0 + (i as f32 * 1.3).sin() * 0.4,
+        ));
     }
     let mut lava = Vec::new();
     for row in 0..10 {
@@ -372,7 +380,7 @@ pub fn dissolve_shader() -> MaterialShader {
 }
 
 /// The grass shader: `wind` (xz, metres at the tip), `speed`, `waveScale`,
-/// blade `height`, `tip` colour.
+/// blade `height` above its root at local y `base`, `tip` colour.
 pub fn grass_shader() -> MaterialShader {
     MaterialShader {
         name: "grass".into(),
@@ -382,6 +390,7 @@ pub fn grass_shader() -> MaterialShader {
             param("speed", ParamKind::Float, [2.2, 0.0, 0.0, 0.0]),
             param("waveScale", ParamKind::Float, [0.9, 0.0, 0.0, 0.0]),
             param("height", ParamKind::Float, [0.7, 0.0, 0.0, 0.0]),
+            param("base", ParamKind::Float, [0.0; 4]),
             param("tip", ParamKind::Vec3, [0.75, 0.85, 0.35, 0.0]),
         ],
     }
@@ -447,7 +456,11 @@ pub fn hooks_scene_parts(tick: u64) -> (RenderScene, og_render::MaterialHandle) 
         gold,
         Mat4::from_translation(Vec3::new(-2.2, 1.2, -1.0)) * Mat4::from_scale(Vec3::splat(2.0)),
     );
-    scene.add_instance(cube, teal, Mat4::from_translation(Vec3::new(0.4, 0.9, -2.5)) * Mat4::from_rotation_y(0.6));
+    scene.add_instance(
+        cube,
+        teal,
+        Mat4::from_translation(Vec3::new(0.4, 0.9, -2.5)) * Mat4::from_rotation_y(0.6),
+    );
     scene.add_instance(
         sphere,
         whole,

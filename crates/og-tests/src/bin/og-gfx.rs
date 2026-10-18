@@ -392,7 +392,7 @@ fn cost_table(frames: u32) -> Result<String, String> {
     );
     let _ = writeln!(
         table,
-        "\nE1 effect scenes (each against itself with the effect removed):\n"
+        "\nEffect scenes of E1 and E5 (each against itself with the effect removed):\n"
     );
     let _ = writeln!(table, "| Scene | ms | without the effect | Δ | draws |");
     let _ = writeln!(table, "|---|---|---|---|---|");
@@ -432,6 +432,46 @@ fn cost_table(frames: u32) -> Result<String, String> {
         ("skinning", "5 skinned instances (vs none)", |g| {
             g.scene.skinned_instances.clear()
         }),
+        // The E5 round.
+        ("atmosphere-fog", "E5: fog (distance and height)", |g| {
+            g.scene.fog = None
+        }),
+        (
+            "atmosphere-dusk",
+            "E5: sky look drawn per pixel (vs the cubemap)",
+            |g| g.scene.environment.background = og_render::Background::Sky,
+        ),
+        (
+            "water-3d",
+            "E5: planar water (refraction, foam, SSR on the full tier)",
+            |g| g.scene.water.clear(),
+        ),
+        ("water-2d", "E5: 2D water line", |g| {
+            g.scene.water_2d.clear()
+        }),
+        (
+            "fluid-2d",
+            "E5: 2D fluids as metaballs (2 fluids, 1,500 particles)",
+            |g| g.scene.metaballs.clear(),
+        ),
+        (
+            "shader-hooks",
+            "E5: material shader hooks (3 dissolving, 900 grass blades)",
+            |g| {
+                let handles: Vec<_> = g.scene.material_handles().collect();
+                for h in handles {
+                    g.scene.set_material_shader(h, None);
+                }
+            },
+        ),
+        (
+            "weather-rain",
+            "E5: rain preset (particles, fog, dimming)",
+            |g| {
+                g.scene.particles.clear();
+                g.scene.fog = None;
+            },
+        ),
     ];
     for (scene, label, strip) in effect_rows {
         let mut with = scenes::build(scene)?;
