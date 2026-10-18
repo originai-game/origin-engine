@@ -339,7 +339,12 @@ pub fn compare(actual: &[u8], reference: &[u8]) -> Result<(f64, f64), String> {
     let mut sum = 0.0f64;
     let mut outliers = 0usize;
     let pixels = actual.len() / 4;
-    for (a, r) in actual.chunks_exact(4).zip(reference.chunks_exact(4)) {
+    for (a, r) in actual
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(reference.as_chunks::<4>().0.iter())
+    {
         let mut out = false;
         for c in 0..3 {
             let d = (f64::from(a[c]) - f64::from(r[c])) / 255.0;

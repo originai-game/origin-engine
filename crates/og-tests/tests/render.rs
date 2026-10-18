@@ -31,7 +31,7 @@ fn center(img: &RgbaImage) -> [u8; 3] {
     pixel(img, img.width / 2, img.height / 2)
 }
 
-fn luma(p: &[u8]) -> f32 {
+fn luma(p: &[u8; 4]) -> f32 {
     0.2126 * p[0] as f32 + 0.7152 * p[1] as f32 + 0.0722 * p[2] as f32
 }
 
@@ -262,10 +262,12 @@ fn the_default_material_is_the_schema_default() {
         let lanes = f.default.clone().unwrap_or_else(|| vec![0.0; f.ty.lanes()]);
         let raw = &bytes[layout.range(i)];
         let values: Vec<f64> = raw
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .map(|c| match f.ty.name() {
-                "u32" => u32::from_le_bytes(c.try_into().expect("4")) as f64,
-                _ => f32::from_le_bytes(c.try_into().expect("4")) as f64,
+                "u32" => u32::from_le_bytes(*c) as f64,
+                _ => f32::from_le_bytes(*c) as f64,
             })
             .collect();
         assert_eq!(values, lanes, "field {}", f.name);
@@ -377,7 +379,7 @@ fn normal_grid() -> Vec<Vec<[u8; 4]>> {
 /// The RGBA8 form of a normal grid as the shader sees it: z from x and y.
 fn with_z(mut upload: og_render::TextureUpload) -> og_render::TextureUpload {
     for level in &mut upload.levels {
-        for px in level.chunks_exact_mut(4) {
+        for px in level.as_chunks_mut::<4>().0.iter_mut() {
             let (x, y) = (
                 px[0] as f32 / 255.0 * 2.0 - 1.0,
                 px[1] as f32 / 255.0 * 2.0 - 1.0,
@@ -590,8 +592,10 @@ fn pole_scene() -> RenderScene {
 /// Pixels in the shadow edge's ramp: neither fully lit nor fully shadowed.
 fn penumbra(lit: &RgbaImage, unshadowed: &RgbaImage) -> usize {
     lit.pixels
-        .chunks_exact(4)
-        .zip(unshadowed.pixels.chunks_exact(4))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(unshadowed.pixels.as_chunks::<4>().0.iter())
         .filter(|(a, b)| {
             let (a, b) = (luma(a), luma(b));
             b > 40.0 && a / b > 0.6 && a / b < 0.93
@@ -622,8 +626,10 @@ fn shadow_map_size_sets_the_shadow_resolution() {
         let (unshadowed, _) = frame(&desc, &scene);
         let shadowed = lit
             .pixels
-            .chunks_exact(4)
-            .zip(unshadowed.pixels.chunks_exact(4))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(unshadowed.pixels.as_chunks::<4>().0.iter())
             .filter(|(a, b)| luma(a) < 0.6 * luma(b))
             .count();
         let ramp = penumbra(&lit, &unshadowed);
@@ -663,7 +669,7 @@ fn cascade_count_is_one_to_three() {
         let (img, stats) = frame(&desc, &scene);
         assert_eq!(stats.shadow_passes, expected, "{cascades} requested");
         let mut seen = [0usize; 3];
-        for p in img.pixels.chunks_exact(4) {
+        for p in img.pixels.as_chunks::<4>().0.iter() {
             let max = *p[..3].iter().max().expect("rgb");
             if max > 100 {
                 if let Some(c) =

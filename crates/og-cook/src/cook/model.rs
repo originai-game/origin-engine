@@ -394,7 +394,7 @@ pub(super) fn cook_primitive(
         // shading) and mikktspace both work per corner.
         let mut corners: Vec<FVertex> = indices.iter().map(|&i| verts[i as usize]).collect();
         if normals.is_none() {
-            for tri in corners.chunks_exact_mut(3) {
+            for tri in corners.as_chunks_mut::<3>().0 {
                 let (a, b, c) = (
                     Vec3::from(tri[0].p),
                     Vec3::from(tri[1].p),

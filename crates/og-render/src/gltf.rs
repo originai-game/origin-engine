@@ -95,11 +95,15 @@ fn to_rgba(img: &gltf::image::Data) -> Vec<u8> {
         Format::R8G8B8A8 => rgba.extend_from_slice(&img.pixels),
         Format::R8G8B8 => img
             .pixels
-            .chunks_exact(3)
+            .as_chunks::<3>()
+            .0
+            .iter()
             .for_each(|p| rgba.extend_from_slice(&[p[0], p[1], p[2], 255])),
         Format::R8G8 => img
             .pixels
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .for_each(|p| rgba.extend_from_slice(&[p[0], p[1], 0, 255])),
         Format::R8 => img
             .pixels
@@ -107,34 +111,43 @@ fn to_rgba(img: &gltf::image::Data) -> Vec<u8> {
             .for_each(|&p| rgba.extend_from_slice(&[p, p, p, 255])),
         Format::R16G16B16A16 => img
             .pixels
-            .chunks_exact(8)
+            .as_chunks::<8>()
+            .0
+            .iter()
             .for_each(|p| rgba.extend_from_slice(&[p[1], p[3], p[5], p[7]])),
         Format::R16G16B16 => img
             .pixels
-            .chunks_exact(6)
+            .as_chunks::<6>()
+            .0
+            .iter()
             .for_each(|p| rgba.extend_from_slice(&[p[1], p[3], p[5], 255])),
         Format::R16G16 => img
             .pixels
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .for_each(|p| rgba.extend_from_slice(&[p[1], p[3], 0, 255])),
         Format::R16 => img
             .pixels
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .for_each(|p| rgba.extend_from_slice(&[p[1], p[1], p[1], 255])),
-        Format::R32G32B32A32FLOAT => img.pixels.chunks_exact(16).for_each(|p| {
+        Format::R32G32B32A32FLOAT => img.pixels.as_chunks::<16>().0.iter().for_each(|p| {
             rgba.extend_from_slice(&[f32_at(p, 0), f32_at(p, 4), f32_at(p, 8), f32_at(p, 12)])
         }),
-        Format::R32G32B32FLOAT => img
-            .pixels
-            .chunks_exact(12)
-            .for_each(|p| rgba.extend_from_slice(&[f32_at(p, 0), f32_at(p, 4), f32_at(p, 8), 255])),
+        Format::R32G32B32FLOAT => {
+            img.pixels.as_chunks::<12>().0.iter().for_each(|p| {
+                rgba.extend_from_slice(&[f32_at(p, 0), f32_at(p, 4), f32_at(p, 8), 255])
+            })
+        }
     }
     rgba
 }
 
 fn flat_normals(positions: &[[f32; 3]]) -> Vec<[f32; 3]> {
     let mut out = vec![[0.0, 1.0, 0.0]; positions.len()];
-    for (i, t) in positions.chunks_exact(3).enumerate() {
+    for (i, t) in positions.as_chunks::<3>().0.iter().enumerate() {
         let (a, b, c) = (Vec3::from(t[0]), Vec3::from(t[1]), Vec3::from(t[2]));
         let n = (b - a).cross(c - a).normalize_or_zero().to_array();
         out[i * 3..i * 3 + 3].copy_from_slice(&[n, n, n]);

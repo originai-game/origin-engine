@@ -142,7 +142,7 @@ impl CaptureRequest {
         }
         self.buffer.unmap();
         if self.swizzle {
-            for p in pixels.chunks_exact_mut(4) {
+            for p in pixels.as_chunks_mut::<4>().0 {
                 p.swap(0, 2);
             }
         }

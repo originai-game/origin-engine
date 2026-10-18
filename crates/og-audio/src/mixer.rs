@@ -202,7 +202,7 @@ impl Voice {
     fn render_add(&mut self, out: &mut [f32]) -> bool {
         let step = self.base_step * f64::from(self.pitch);
         let span = (self.loop_end - self.loop_start) as f64;
-        for o in out.chunks_exact_mut(2) {
+        for o in out.as_chunks_mut::<2>().0.iter_mut() {
             let i = self.pos as u64;
             let frac = (self.pos - i as f64) as f32;
             let (al, ar) = self.reader.frame(i);
@@ -259,7 +259,7 @@ impl Limiter {
     fn process(&mut self, out: &mut [f32]) -> u64 {
         let mut limited = 0;
         let span = 1.0 - LIMITER_KNEE;
-        for o in out.chunks_exact_mut(2) {
+        for o in out.as_chunks_mut::<2>().0.iter_mut() {
             let (mut l, mut r) = (o[0], o[1]);
             if !l.is_finite() {
                 l = 0.0;

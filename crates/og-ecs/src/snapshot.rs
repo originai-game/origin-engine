@@ -611,7 +611,7 @@ impl Plan {
             None => out.extend_from_slice(columns[k]),
             Some(Source::Copy(f)) => out.extend_from_slice(columns[*f]),
             Some(Source::Enum(f, map)) => {
-                for raw in columns[*f].chunks_exact(4) {
+                for raw in columns[*f].as_chunks::<4>().0 {
                     self.mapped_enum(k, map, raw, out);
                 }
             }

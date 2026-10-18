@@ -426,7 +426,7 @@ fn psnr(a: &[u8], b: &[u8]) -> f64 {
     assert_eq!(a.len(), b.len());
     let mut se = 0.0f64;
     let mut n = 0usize;
-    for (pa, pb) in a.chunks_exact(4).zip(b.chunks_exact(4)) {
+    for (pa, pb) in a.as_chunks::<4>().0.iter().zip(b.as_chunks::<4>().0.iter()) {
         for c in 0..3 {
             let d = pa[c] as f64 - pb[c] as f64;
             se += d * d;
@@ -614,8 +614,10 @@ fn sounds_fonts_and_scenes_load_as_authored() {
     assert_eq!(fields, ["position", "quaternion", "scale"]);
     let marker = t.get(3).unwrap();
     let f32s: Vec<f32> = marker
-        .chunks_exact(4)
-        .map(|c| f32::from_le_bytes(c.try_into().unwrap()))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|c| f32::from_le_bytes(*c))
         .collect();
     assert_eq!(f32s, [0.0, 2.2, 0.0, 0.0, 0.0, 0.0, 1.0, 0.25, 0.25, 0.25]);
 }

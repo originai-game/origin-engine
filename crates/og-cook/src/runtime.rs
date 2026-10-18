@@ -1400,12 +1400,14 @@ impl CookedAnimation {
             )
             .map_err(|e| bad(format!("skin stream: {e}")))?;
             let u16s: Vec<u16> = raw
-                .chunks_exact(2)
+                .as_chunks::<2>()
+                .0
+                .iter()
                 .map(|b| u16::from_le_bytes([b[0], b[1]]))
                 .collect();
             let mut joints_out = Vec::with_capacity(n);
             let mut weights_out = Vec::with_capacity(n);
-            for v in u16s.chunks_exact(8) {
+            for v in u16s.as_chunks::<8>().0 {
                 joints_out.push([v[0], v[1], v[2], v[3]]);
                 weights_out.push([
                     v[4] as f32 / 65535.0,
@@ -1432,7 +1434,9 @@ impl CookedAnimation {
             )
             .map_err(|e| bad(format!("morph stream: {e}")))?;
             let f: Vec<f32> = raw
-                .chunks_exact(4)
+                .as_chunks::<4>()
+                .0
+                .iter()
                 .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
                 .collect();
             let lanes = stride / 4;
@@ -1557,7 +1561,9 @@ fn decode_tilemap(blob: &Blob) -> Result<og_tilemap::TilemapAsset, LoadError> {
             name: s(l.name_offset, l.name_len)?,
             tileset: l.tileset,
             cells: bytes
-                .chunks_exact(4)
+                .as_chunks::<4>()
+                .0
+                .iter()
                 .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
                 .collect(),
             terrain: if l.flags & fl::TERRAIN != 0 {

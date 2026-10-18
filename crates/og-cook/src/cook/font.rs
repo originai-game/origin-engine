@@ -7,6 +7,9 @@ use crate::ktx2;
 use og_blob::BlobWriter;
 
 /// The code points a charset word names.
+// A charset is a list of ranges and some charsets are one range: clippy's
+// single_range_in_vec_init reads `vec![a..=b]` as a mistaken `(a..=b).collect()`.
+#[allow(clippy::single_range_in_vec_init)]
 fn charset(word: &str) -> Option<Vec<std::ops::RangeInclusive<u32>>> {
     Some(match word {
         "ascii" => vec![0x20..=0x7e],

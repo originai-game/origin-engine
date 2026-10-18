@@ -19,10 +19,7 @@ fn theme_rs_is_generated_from_the_vendored_tokens() {
             .lines()
             .zip(generated.lines())
             .position(|(a, b)| a != b)
-            .map_or(
-                committed.lines().count().min(generated.lines().count()),
-                |i| i,
-            );
+            .unwrap_or(committed.lines().count().min(generated.lines().count()));
         panic!(
             "src/theme.rs differs from the generator's output at line {}:\n  committed: {:?}\n  generated: {:?}\nrun crates/og-ui/scripts/gen-theme.sh (never edit theme.rs by hand)",
             line + 1,

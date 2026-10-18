@@ -5,7 +5,7 @@ members = ["crates/og-core", "crates/og-core-derive", "crates/og-ecs", "crates/o
 [workspace.package]
 edition = "2021"
 license = "MIT"
-rust-version = "1.97"
+rust-version = "1.99"
 
 [workspace.dependencies]
 wgpu = { version = "30.0.1", default-features = false, features = ["wgsl"] }

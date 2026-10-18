@@ -52,7 +52,7 @@ fn toktx_version() -> Result<String, CookError> {
 }
 
 fn has_alpha(img: &Image) -> bool {
-    img.rgba.chunks_exact(4).any(|p| p[3] != 255)
+    img.rgba.as_chunks::<4>().0.iter().any(|p| p[3] != 255)
 }
 
 #[cfg(feature = "basis")]

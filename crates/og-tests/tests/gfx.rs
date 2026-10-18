@@ -51,12 +51,12 @@ fn built(name: &str) -> GfxScene {
     scenes::build(name).expect("scene")
 }
 
-fn luma(p: &[u8]) -> f32 {
+fn luma(p: &[u8; 4]) -> f32 {
     0.2126 * p[0] as f32 + 0.7152 * p[1] as f32 + 0.0722 * p[2] as f32
 }
 
 fn mean_luma(img: &RgbaImage) -> f32 {
-    img.pixels.chunks_exact(4).map(luma).sum::<f32>() / (img.width * img.height) as f32
+    img.pixels.as_chunks::<4>().0.iter().map(luma).sum::<f32>() / (img.width * img.height) as f32
 }
 
 /// The spike's reference scene (M0 reproduced it byte for byte before the
@@ -124,7 +124,7 @@ fn cascades_cover_the_view_near_to_far() {
     let (debug, _, _) = cascade_frames(true);
     let w = debug.width as usize;
     let mut counts = [0usize; 3];
-    for p in debug.pixels.chunks_exact(4) {
+    for p in debug.pixels.as_chunks::<4>().0.iter() {
         if let Some(c) = cascade_of(p) {
             counts[c] += 1;
         }
@@ -167,9 +167,11 @@ fn shadows_fall_in_every_cascade_at_200m_scale() {
     let mut shadowed = [0usize; 3];
     for ((d, a), b) in debug
         .pixels
-        .chunks_exact(4)
-        .zip(lit.pixels.chunks_exact(4))
-        .zip(unshadowed.pixels.chunks_exact(4))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(lit.pixels.as_chunks::<4>().0.iter())
+        .zip(unshadowed.pixels.as_chunks::<4>().0.iter())
     {
         if let Some(c) = cascade_of(d) {
             if luma(a) < 0.8 * luma(b) {
@@ -206,8 +208,10 @@ fn local_lights_cast_shadows() {
     assert_eq!(stats.shadow_passes, 0);
     let darker = lit
         .pixels
-        .chunks_exact(4)
-        .zip(unshadowed.pixels.chunks_exact(4))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(unshadowed.pixels.as_chunks::<4>().0.iter())
         .filter(|(a, b)| luma(a) + 8.0 < 0.75 * luma(b))
         .count();
     println!("{darker} pixels darker with local shadows");
@@ -288,7 +292,9 @@ fn edge_pixels(antialias: Antialias, frames: u32) -> (usize, Antialias) {
     let img = renderer.read_offscreen().expect("capture");
     let partial = img
         .pixels
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .filter(|p| (12..=243).contains(&p[0]))
         .count();
     (partial, renderer.info().antialias)
@@ -329,8 +335,10 @@ fn bloom_spreads_light_beyond_the_emitters() {
     );
     let brighter = bloomed
         .pixels
-        .chunks_exact(4)
-        .zip(plain.pixels.chunks_exact(4))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(plain.pixels.as_chunks::<4>().0.iter())
         .filter(|(a, b)| luma(a) > luma(b) + 10.0)
         .count();
     let frac = brighter as f64 / (bloomed.width * bloomed.height) as f64;

@@ -231,13 +231,17 @@ pub fn max_step(ch: &[f32]) -> (f32, usize) {
 
 /// Index of the last sample louder than `threshold` (either channel), in frames.
 pub fn last_sound(pcm: &[f32], threshold: f32) -> Option<usize> {
-    pcm.chunks_exact(2)
+    pcm.as_chunks::<2>()
+        .0
+        .iter()
         .rposition(|f| f[0].abs() > threshold || f[1].abs() > threshold)
 }
 
 /// Index of the first sample louder than `threshold`, in frames.
 pub fn first_sound(pcm: &[f32], threshold: f32) -> Option<usize> {
-    pcm.chunks_exact(2)
+    pcm.as_chunks::<2>()
+        .0
+        .iter()
         .position(|f| f[0].abs() > threshold || f[1].abs() > threshold)
 }
 

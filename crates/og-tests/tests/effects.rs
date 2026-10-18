@@ -85,8 +85,10 @@ fn region(img: &RgbaImage, r: (u32, u32, u32, u32)) -> f32 {
 /// Pixels whose luma differs by more than `by`.
 fn differing(a: &RgbaImage, b: &RgbaImage, by: f32) -> usize {
     a.pixels
-        .chunks_exact(4)
-        .zip(b.pixels.chunks_exact(4))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(b.pixels.as_chunks::<4>().0.iter())
         .filter(|(p, q)| (luma([p[0], p[1], p[2]]) - luma([q[0], q[1], q[2]])).abs() > by)
         .count()
 }
@@ -146,7 +148,13 @@ fn particles_are_deterministic(path: ParticleSimulation) {
     });
     save(&format!("particles-600-{path:?}"), &a);
     assert!(sa.particle_systems >= 6, "{} systems", sa.particle_systems);
-    let lit = a.pixels.chunks_exact(4).filter(|p| p[0] > 200).count();
+    let lit = a
+        .pixels
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .filter(|p| p[0] > 200)
+        .count();
     assert!(lit > 200, "the particles drew only {lit} bright pixels");
     assert_eq!(a.pixels, b.pixels, "two 600-tick runs differ ({path:?})");
     assert_eq!(
@@ -405,7 +413,7 @@ fn two_d_emitters_draw_as_sprites() {
     let (img, stats, _) = run(&small(), &mut scene, 30, |s, f| fx::tick_all(s, f as u64));
     assert_eq!(stats.sprites, stats.particles_cpu);
     assert!(stats.sprites >= 29 && stats.sprite_draws >= 1);
-    assert!(img.pixels.chunks_exact(4).any(|p| p[0] > 100));
+    assert!(img.pixels.as_chunks::<4>().0.iter().any(|p| p[0] > 100));
 }
 
 // ---------------------------------------------------------------------------
@@ -806,7 +814,9 @@ fn vignette_aberration_grain_and_flash() {
     let (flashed, _) = frame(&small(), &f);
     assert!(flashed
         .pixels
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .all(|p| p[0] == 255 && p[1] == 0 && p[2] == 0));
 }
 

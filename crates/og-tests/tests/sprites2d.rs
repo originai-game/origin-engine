@@ -324,11 +324,16 @@ fn an_outline_surrounds_text_only_when_asked() {
         width: 1.0,
         color: [1.0, 0.0, 0.0, 1.0],
     }));
-    let count = |img: &RgbaImage, f: &dyn Fn(&[u8]) -> bool| {
-        img.pixels.chunks_exact(4).filter(|p| f(p)).count()
+    let count = |img: &RgbaImage, f: &dyn Fn(&[u8; 4]) -> bool| {
+        img.pixels
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .filter(|p| f(p))
+            .count()
     };
-    let red = |p: &[u8]| p[0] > 200 && p[1] < 60 && p[2] < 60;
-    let white = |p: &[u8]| p[0] > 200 && p[1] > 200 && p[2] > 200;
+    let red = |p: &[u8; 4]| p[0] > 200 && p[1] < 60 && p[2] < 60;
+    let white = |p: &[u8; 4]| p[0] > 200 && p[1] > 200 && p[2] > 200;
     assert_eq!(count(&plain, &red), 0);
     assert!(
         count(&outlined, &red) > 500,

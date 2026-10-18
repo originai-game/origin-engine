@@ -148,8 +148,10 @@ pub fn encode(commands: &[Command]) -> Vec<u8> {
 /// Decodes back-to-back records (stops at the first malformed one).
 pub fn decode(bytes: &[u8]) -> Vec<Command> {
     bytes
-        .chunks_exact(COMMAND_BYTES)
-        .map_while(Command::decode)
+        .as_chunks::<COMMAND_BYTES>()
+        .0
+        .iter()
+        .map_while(|c| Command::decode(c))
         .collect()
 }
 

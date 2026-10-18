@@ -85,7 +85,12 @@ pub fn compare(
     let mut max_channel_diff = 0u8;
     let mut outliers = 0usize;
     let mut diff_image = Vec::with_capacity(expected);
-    for (a, r) in actual.chunks_exact(4).zip(reference.chunks_exact(4)) {
+    for (a, r) in actual
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(reference.as_chunks::<4>().0.iter())
+    {
         let mut pixel_max = 0u8;
         let mut amplified = [0u8; 3];
         for c in 0..3 {

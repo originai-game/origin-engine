@@ -775,7 +775,9 @@ fn tiled_data(l: &Value, name: &str) -> Result<Vec<u32>, String> {
                     "layer '{name}': base64 data is not whole u32 cells"
                 ));
             }
-            Ok(b.chunks_exact(4)
+            Ok(b.as_chunks::<4>()
+                .0
+                .iter()
                 .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
                 .collect())
         }

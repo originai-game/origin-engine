@@ -140,8 +140,10 @@ fn a_mat4_column_is_sixteen_floats_per_entity() {
     let floats: Vec<f32> = view
         .read_bytes(field)
         .unwrap()
-        .chunks_exact(4)
-        .map(|c| f32::from_le_bytes(c.try_into().unwrap()))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|c| f32::from_le_bytes(*c))
         .collect();
     assert_eq!(floats.len(), 32);
     assert_eq!(

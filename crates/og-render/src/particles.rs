@@ -682,7 +682,9 @@ impl ParticleState {
 pub(crate) fn mesh_points(mesh: &MeshData) -> Vec<[f32; 4]> {
     let tris: Vec<[Vec3; 3]> = mesh
         .indices
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .filter_map(|t| {
             let v = |i: u32| {
                 mesh.vertices
