@@ -16,3 +16,16 @@ failed and the line it failed on (`cargo test`, 2026-10-19, Apple M4 Pro).
 | snapshots | the state block drops the agents' paths on restore | `two_hundred_agents_cross_a_256_grid_and_replay_identically_after_a_snapshot` (the restored world diverged) |
 | separation | the push points at the neighbours | `separation_spreads_a_pile_of_agents_and_wander_is_deterministic` (agents still overlap) |
 | walking the surface | `move_along` stops at the first wall instead of sliding | `an_agent_walks_a_navmesh_around_the_wall_and_arrives_on_the_surface` |
+
+## og-ai (`crates/og-ai/tests/ai.rs`)
+
+| Broken | Edit | Failed |
+|---|---|---|
+| reactive selectors | a selector keeps ticking its running child | `a_resource_fact_redirects_the_patrol_and_the_selector_is_reactive` (the patrol keeps running under the alarm) |
+| command cooldowns | the cooldown is never checked | `a_guard_patrols_chases_on_sight_bites_on_a_cooldown_and_flees_when_hurt` (a bite every tick) |
+| occlusion | sight rays are not cast | `walls_the_view_cone_and_range_hide_the_target_and_noises_are_heard_within_hearing` (seen through the wall) |
+| the view cone | the cone test always passes | the same test (seen behind its back) |
+| field conditions | field offsets one byte off | `a_resource_fact_redirects_the_patrol_and_the_selector_is_reactive` (`Game.alarm` misread) |
+| machine timers | `after` is ignored | `a_state_machine_moves_on_facts_and_timers_and_runs_enter_and_exit` (left alert at once) |
+| snapshots | memories dropped on restore | `two_runs_and_a_restored_snapshot_decide_the_same` |
+| hearing | the hearing radius is ignored | `walls_the_view_cone_and_range_hide_the_target_and_noises_are_heard_within_hearing` (heard 9 m away) |

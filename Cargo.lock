@@ -1592,6 +1592,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "og-ai"
+version = "0.0.1"
+dependencies = [
+ "og-audio",
+ "og-core",
+ "og-ecs",
+ "og-nav",
+]
+
+[[package]]
 name = "og-anim"
 version = "0.0.1"
 dependencies = [
