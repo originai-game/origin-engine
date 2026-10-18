@@ -21,7 +21,7 @@ Commands: `show:<screen>`, `viewport:<desktop|tablet|phone|landscape>`
 `skin:<tokens|pixel|cartoon|fantasy|scifi|paper|neon>` dresses every screen
 in a style pack (`assets/skins/<pack>/skin.ogt` through `og.load.skin`),
 `transition:<none|fade|wipe|iris|dissolve|slide>` sends screen changes through
-`og.ui.screenTransition`, `sounds:<on|off>` hands `assets/audio/ui-*.wav` to
+`og.ui.screenTransition`, `sounds:<on|off>` (on by default) hands `assets/audio/ui-*.wav` to
 the UI's event sounds. `dump_entity:demo` reads the demo's state (the `Demo` component).
 
 Screens: gallery, widgets, mainMenu, pause, settings, platformer, shooter,
