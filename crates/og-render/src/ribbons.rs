@@ -151,6 +151,8 @@ pub(crate) const RIBBON_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::Vertex
 pub(crate) struct RibbonRun {
     pub texture: Option<TextureHandle>,
     pub blend: ParticleBlend,
+    /// Drawn in the sprite order at this layer (a 2D trail), not with the 3D scene.
+    pub layer: Option<i32>,
     pub first: u32,
     pub count: u32,
 }
@@ -179,6 +181,7 @@ pub(crate) struct Trails {
 }
 
 struct Strip {
+    layer: Option<i32>,
     texture: Option<TextureHandle>,
     blend: ParticleBlend,
     uv: RibbonUv,
@@ -197,6 +200,7 @@ impl Trails {
         scene_id: u64,
         styles: &[TrailStyle],
         trails: &[Trail],
+        trail_layers: &[(u64, i32)],
         ribbons: &[Ribbon],
         beams: &[Beam],
         tick: u64,
@@ -277,6 +281,10 @@ impl Trails {
                 })
                 .collect();
             strips.push(Strip {
+                layer: trail_layers
+                    .iter()
+                    .find(|(id, _)| *id == t.id)
+                    .map(|(_, l)| *l),
                 texture: style.texture,
                 blend: style.blend,
                 uv: style.uv,
@@ -288,6 +296,7 @@ impl Trails {
         self.histories.retain(|_, h| h.seen == frame);
         for r in ribbons.iter().filter(|r| r.points.len() >= 2) {
             strips.push(Strip {
+                layer: None,
                 texture: r.texture,
                 blend: r.blend,
                 uv: r.uv,
@@ -323,6 +332,7 @@ impl Trails {
                 })
                 .collect();
             strips.push(Strip {
+                layer: None,
                 texture: b.texture,
                 blend: b.blend,
                 uv: RibbonUv::Tile {
@@ -333,7 +343,8 @@ impl Trails {
             });
         }
         // Group by (texture, blend) for one draw each.
-        strips.sort_by_key(|s| (s.texture, s.blend as u8));
+        // (Layered strips after the 3D ones, by layer: each is its own run.)
+        strips.sort_by_key(|s| (s.layer, s.texture, s.blend as u8));
         let mut out = RibbonFrame::default();
         for s in &strips {
             let first = out.vertices.len() as u32;
@@ -345,10 +356,13 @@ impl Trails {
             out.strips += 1;
             out.segments += count / 6;
             match out.runs.last_mut() {
-                Some(r) if r.texture == s.texture && r.blend == s.blend => r.count += count,
+                Some(r) if r.texture == s.texture && r.blend == s.blend && r.layer == s.layer => {
+                    r.count += count
+                }
                 _ => out.runs.push(RibbonRun {
                     texture: s.texture,
                     blend: s.blend,
+                    layer: s.layer,
                     first,
                     count,
                 }),

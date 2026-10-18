@@ -105,8 +105,14 @@ fn fs_msdf(in: SpriteOut) -> @location(0) vec4<f32> {
   let unit_range = vec2<f32>(sprite_params.msdf.x) / sprite_params.msdf.yz;
   let screen_tex_size = vec2<f32>(1.0) / fwidth(in.uv);
   let screen_px_range = max(0.5 * dot(unit_range, screen_tex_size), 1.0);
-  let distance = screen_px_range * (median(m.r, m.g, m.b) - 0.5);
-  let opacity = clamp(distance + 0.5, 0.0, 1.0) * in.color.a;
+  let sd = median(m.r, m.g, m.b) - 0.5;
+  let fill = clamp(screen_px_range * sd + 0.5, 0.0, 1.0);
+  // An outline (fx.x: its width as a fraction of half the distance range,
+  // flash.rgb its colour) grows the shape outwards and shows behind the fill.
+  let w = clamp(in.fx.x, 0.0, 1.0) * 0.5;
+  let outer = clamp(screen_px_range * (sd + w) + 0.5, 0.0, 1.0);
+  let opacity = select(fill, outer, w > 0.0) * in.color.a;
   if (opacity <= 0.0) { discard; }
-  return vec4<f32>(in.color.rgb, opacity);
+  let rgb = select(in.color.rgb, mix(in.flash.rgb, in.color.rgb, fill / max(outer, 1e-4)), w > 0.0);
+  return vec4<f32>(rgb, opacity);
 }

@@ -3,7 +3,7 @@
 //! layer is a single instanced draw.
 
 use crate::effects::SpriteBlend;
-use crate::scene::{FontHandle, Glyph, RenderScene, Sprite, TextureHandle};
+use crate::scene::{FontHandle, Glyph, RenderScene, Sprite, TextureHandle, TileLayer};
 use crate::RenderError;
 use glam::Vec2;
 use std::collections::HashMap;
@@ -37,6 +37,17 @@ pub(crate) enum RunSource {
     /// A sprite texture (`None`: solid white) and its blend.
     Sprite(SpriteBlend, Option<TextureHandle>),
     Font(FontHandle),
+    /// A 2D trail's strip: `first`/`count` are vertices of the ribbon
+    /// buffer; the blend is `ParticleBlend as u8`.
+    Strip(u8, Option<TextureHandle>),
+}
+
+/// A ribbon run drawn in the sprite order at `layer` (a 2D trail).
+pub(crate) struct LayeredStrip {
+    pub layer: i32,
+    pub source: RunSource,
+    pub first: u32,
+    pub count: u32,
 }
 
 /// Consecutive instances drawn with one bind group and one pipeline.
@@ -72,6 +83,9 @@ pub(crate) struct SpriteFrame {
     pub sprites: u32,
     pub glyphs: u32,
     pub missing_glyphs: u32,
+    /// Tile quads drawn (after culling) and chunks they came from.
+    pub tiles: u32,
+    pub tile_chunks: u32,
 }
 
 /// A sprite's instance with its effects.
@@ -99,15 +113,110 @@ fn sprite_instance(
     }
 }
 
+/// The world rectangle an orthographic camera sees (for culling tiles).
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct ViewRect {
+    pub min: Vec2,
+    pub max: Vec2,
+}
+
+/// Appends the instances of a tile layer's chunks inside `view` (all of
+/// them without one), per repeat, and returns (quads, chunks).
+fn tile_instances(
+    layer: &TileLayer,
+    view: Option<ViewRect>,
+    out: &mut Vec<SpriteInstance>,
+) -> (u32, u32) {
+    let origin = layer.origin.truncate();
+    let mut offsets: Vec<Vec2> = vec![Vec2::ZERO];
+    if let Some(v) = view {
+        // Repeats: every copy of the layer that can touch the view.
+        let mut bounds = (Vec2::splat(f32::MAX), Vec2::splat(f32::MIN));
+        for c in layer.chunks.iter() {
+            bounds.0 = bounds.0.min(c.min);
+            bounds.1 = bounds.1.max(c.max);
+        }
+        for axis in 0..2 {
+            let Some(period) = layer.repeat[axis].filter(|p| *p > 0.0) else {
+                continue;
+            };
+            let lo = (v.min[axis] - origin[axis] - bounds.1[axis]) / period;
+            let hi = (v.max[axis] - origin[axis] - bounds.0[axis]) / period;
+            let (lo, hi) = (lo.floor() as i64, hi.ceil() as i64);
+            let mut next = Vec::new();
+            for o in &offsets {
+                for k in lo.max(-4096)..=hi.min(lo.max(-4096) + 4096) {
+                    let mut n = *o;
+                    n[axis] = k as f32 * period;
+                    next.push(n);
+                }
+            }
+            offsets = next;
+        }
+    }
+    let (mut quads, mut chunks) = (0u32, 0u32);
+    for off in offsets {
+        let at = origin + off;
+        for c in layer.chunks.iter() {
+            if let Some(v) = view {
+                if at.x + c.max.x < v.min.x
+                    || at.x + c.min.x > v.max.x
+                    || at.y + c.max.y < v.min.y
+                    || at.y + c.min.y > v.max.y
+                {
+                    continue;
+                }
+            }
+            chunks += 1;
+            let first = out.len();
+            for q in &c.quads {
+                out.push(SpriteInstance {
+                    position_rotation: [at.x + q.min.x, at.y + q.min.y, layer.origin.z, 0.0],
+                    size_anchor: [q.size.x, q.size.y, 0.0, 0.0],
+                    uv_rect: q.uv,
+                    color: layer.color,
+                    flash: NO_FLASH,
+                    fx: [0.0, 0.0, 0.0],
+                });
+            }
+            for a in &c.animated {
+                let total: f32 = a.durations.iter().sum();
+                if total <= 0.0 || a.uvs.is_empty() {
+                    continue;
+                }
+                let mut t = layer.time.rem_euclid(total);
+                let mut frame = 0;
+                for (i, d) in a.durations.iter().enumerate() {
+                    if t < *d {
+                        frame = i;
+                        break;
+                    }
+                    t -= d;
+                    frame = i;
+                }
+                if let Some(inst) = out.get_mut(first + a.quad as usize) {
+                    inst.uv_rect = a.uvs[frame.min(a.uvs.len() - 1)];
+                }
+            }
+            quads += c.quads.len() as u32;
+        }
+    }
+    (quads, chunks)
+}
+
 /// Sorts the scene's sprites, the frame's 2D particles (`extra`: sprite,
-/// blend, glow) and texts into runs. `font(i)` is the layout of the
-/// scene's font `i`; `lit` says which layers 2D lighting applies to.
+/// blend, glow) and texts into runs, with the tile layers and the layered
+/// strips placed before the sprites of their layer. `font(i)` is the layout
+/// of the scene's font `i`; `lit` says which layers 2D lighting applies to;
+/// `view` culls tile chunks (orthographic cameras).
 pub(crate) fn build<'a>(
     scene: &RenderScene,
     font: impl Fn(usize) -> Option<&'a FontLayout>,
     texture_count: usize,
     extra: &[(Sprite, SpriteBlend, f32)],
     lit: impl Fn(i32) -> bool,
+    view: Option<ViewRect>,
+    strips: &[LayeredStrip],
 ) -> Result<SpriteFrame, RenderError> {
     // Per-sprite effects by index (the last entry for an index wins).
     let mut fx: HashMap<u32, &crate::SpriteFx> = HashMap::new();
@@ -121,8 +230,21 @@ pub(crate) fn build<'a>(
         }
         fx.insert(f.sprite, f);
     }
-    // (layer, source, instance), in submission order.
-    let mut keyed: Vec<(i32, RunSource, SpriteInstance)> =
+    let mut order: HashMap<u32, f32> = HashMap::new();
+    for o in &scene.sprite_order {
+        if o.sprite as usize >= scene.sprites.len() {
+            return Err(RenderError::InvalidHandle(format!(
+                "sprite_order: sprite {} of {}",
+                o.sprite,
+                scene.sprites.len()
+            )));
+        }
+        order.insert(o.sprite, if o.key.is_finite() { o.key } else { 0.0 });
+    }
+    let outlines: HashMap<u32, &crate::TextOutline> =
+        scene.text_outlines.iter().map(|o| (o.text, o)).collect();
+    // (layer, key, source, instance), in submission order.
+    let mut keyed: Vec<(i32, f32, RunSource, SpriteInstance)> =
         Vec::with_capacity(scene.sprites.len() + extra.len());
     let mut glowing: Vec<(Option<TextureHandle>, SpriteInstance)> = Vec::new();
     for (i, s) in scene.sprites.iter().enumerate() {
@@ -147,7 +269,8 @@ pub(crate) fn build<'a>(
         if glow > 0.0 {
             glowing.push((s.texture, inst));
         }
-        keyed.push((s.layer, RunSource::Sprite(blend, s.texture), inst));
+        let key = order.get(&(i as u32)).copied().unwrap_or(0.0);
+        keyed.push((s.layer, key, RunSource::Sprite(blend, s.texture), inst));
     }
     for (s, blend, glow) in extra {
         let soft = s.texture.is_none();
@@ -155,7 +278,7 @@ pub(crate) fn build<'a>(
         if *glow > 0.0 {
             glowing.push((s.texture, inst));
         }
-        keyed.push((s.layer, RunSource::Sprite(*blend, s.texture), inst));
+        keyed.push((s.layer, 0.0, RunSource::Sprite(*blend, s.texture), inst));
     }
     let sprites = keyed.len() as u32;
     let mut missing_glyphs = 0;
@@ -163,6 +286,15 @@ pub(crate) fn build<'a>(
         let font = font(text.font.index()).ok_or_else(|| {
             RenderError::InvalidHandle(format!("text {i}: font {}", text.font.index()))
         })?;
+        // An outline rides on the glyph's flash colour and glow strength
+        // (which plain glyphs leave unused).
+        let (outline_color, outline) = match outlines.get(&(i as u32)) {
+            Some(o) if o.width > 0.0 => (
+                o.color.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8),
+                o.width.min(1.0),
+            ),
+            _ => ([255, 255, 255, 0], 0.0),
+        };
         let (sin, cos) = text.rotation.sin_cos();
         let rotate = |v: Vec2| Vec2::new(v.x * cos - v.y * sin, v.x * sin + v.y * cos);
         let origin = text.position.truncate();
@@ -184,6 +316,7 @@ pub(crate) fn build<'a>(
                 let [al, at, ar, ab] = g.atlas_bounds;
                 keyed.push((
                     text.layer,
+                    0.0,
                     RunSource::Font(text.font),
                     SpriteInstance {
                         position_rotation: [
@@ -200,8 +333,8 @@ pub(crate) fn build<'a>(
                             ab / font.atlas_size.y,
                         ],
                         color: text.color,
-                        flash: [255, 255, 255, 0],
-                        fx: [0.0, 0.0, 0.0],
+                        flash: outline_color,
+                        fx: [outline, 0.0, 0.0],
                     },
                 ));
             }
@@ -209,23 +342,79 @@ pub(crate) fn build<'a>(
         }
     }
     let glyphs = keyed.len() as u32 - sprites;
-    // Stable: within a (layer, source) run, submission order is kept.
-    keyed.sort_by_key(|(layer, source, _)| (*layer, *source));
-    // Adjacent entries with one source share a draw, even across layers: the
-    // order they draw in is the sorted order either way.
+    // Stable: within a (layer, key, source) run, submission order is kept.
+    keyed.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.total_cmp(&b.1)).then(a.2.cmp(&b.2)));
+    // Tile layers and layered strips, each before the sprites of its layer
+    // (tiles first), in submission order within a layer.
+    let mut under: Vec<(i32, u8, usize)> = Vec::new();
+    for (i, t) in scene.tile_layers.iter().enumerate() {
+        if t.texture.index() >= texture_count {
+            return Err(RenderError::InvalidHandle(format!(
+                "tile layer {i}: texture {}",
+                t.texture.index()
+            )));
+        }
+        under.push((t.layer, 0, i));
+    }
+    for (i, s) in strips.iter().enumerate() {
+        under.push((s.layer, 1, i));
+    }
+    under.sort_by_key(|u| (u.0, u.1));
     let mut runs: Vec<SpriteRun> = Vec::new();
-    let mut instances = Vec::with_capacity(keyed.len());
-    for (index, (_, source, inst)) in keyed.into_iter().enumerate() {
+    let mut instances: Vec<SpriteInstance> = Vec::with_capacity(keyed.len());
+    let push = |runs: &mut Vec<SpriteRun>, source: RunSource, first: u32, count: u32| {
+        if count == 0 {
+            return;
+        }
         match runs.last_mut() {
-            Some(run) if run.source == source => run.count += 1,
+            Some(run)
+                if run.source == source
+                    && !matches!(source, RunSource::Strip(..))
+                    && run.first + run.count == first =>
+            {
+                run.count += count
+            }
             _ => runs.push(SpriteRun {
                 source,
-                first: index as u32,
-                count: 1,
+                first,
+                count,
             }),
         }
+    };
+    let (mut tiles, mut tile_chunks) = (0u32, 0u32);
+    let mut next_under = 0;
+    let mut place_under = |below: i32,
+                           instances: &mut Vec<SpriteInstance>,
+                           runs: &mut Vec<SpriteRun>,
+                           next_under: &mut usize| {
+        while *next_under < under.len() && under[*next_under].0 <= below {
+            let (_, kind, i) = under[*next_under];
+            if kind == 0 {
+                let layer = &scene.tile_layers[i];
+                let first = instances.len() as u32;
+                let (q, c) = tile_instances(layer, view, instances);
+                tiles += q;
+                tile_chunks += c;
+                push(
+                    runs,
+                    RunSource::Sprite(SpriteBlend::Alpha, Some(layer.texture)),
+                    first,
+                    q,
+                );
+            } else {
+                let s = &strips[i];
+                push(runs, s.source, s.first, s.count);
+            }
+            *next_under += 1;
+        }
+    };
+    for (layer, _, source, inst) in keyed {
+        place_under(layer, &mut instances, &mut runs, &mut next_under);
+        let index = instances.len() as u32;
         instances.push(inst);
+        push(&mut runs, source, index, 1);
     }
+    place_under(i32::MAX, &mut instances, &mut runs, &mut next_under);
     // The glow pass: by texture (additive, so order does not matter).
     glowing.sort_by_key(|(t, _)| *t);
     let mut glow_runs: Vec<SpriteRun> = Vec::new();
@@ -250,5 +439,7 @@ pub(crate) fn build<'a>(
         sprites,
         glyphs,
         missing_glyphs,
+        tiles,
+        tile_chunks,
     })
 }
