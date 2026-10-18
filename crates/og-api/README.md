@@ -255,8 +255,8 @@ view tables. Both hosts depend on it with the feature; `og-cli` does not.
   profile (`profile: "2d" | "3d"`, from project.ogt) and may defer
   `GameDesc.start` to the first tick boundary (`deferStart`: the web Worker
   attaches its canvas first); the web host reports the CSS viewport
-  (`og_web_set_viewport`), native hosts use the render target. The UI is
-  drawn on a plane in front of a camera that looks down -Z (og-render has no
-  screen-space overlay yet); with any other camera it is not drawn and the
-  log says so, while the probe and the pointer still use it.
+  (`og_web_set_viewport`), native hosts use the render target. The UI, the
+  screen-space sprites and text (`screen: true`) go to og-render's overlay,
+  drawn over the finished frame whatever the camera; the effect resources
+  and components are read by `runtime/fx.rs` during extraction.
 - Entity names live in the runtime, not in snapshots or the world hash.

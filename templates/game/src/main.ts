@@ -130,11 +130,11 @@ export default og.game({
   scenes: { main: "scenes/main.ogt" },
   resources: [Run],
   systems: [Move, Menu, StartSpin, Drop, Chime, Rotate],
-  // MSAA keeps the UI and text sharp; TAA would blur them across frames.
+  // MSAA keeps world-space sprites and text sharp; TAA would blur them across
+  // frames. The UI draws over the finished frame either way.
   render: { antialias: "msaa4" },
   start(world) {
-    // The camera looks straight down -Z, so the UI draws over the frame
-    // (og-render has no screen-space overlay yet; see og-ui's README).
+    // The camera looks down -Z at the scene from in front.
     const camera = must(world.resource(og.Camera));
     camera.position = { x: 0.4, y: 1.8, z: 8 };
     camera.quaternion = { x: 0, y: 0, z: 0, w: 1 };

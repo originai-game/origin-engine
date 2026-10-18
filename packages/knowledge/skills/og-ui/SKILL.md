@@ -87,8 +87,20 @@ the edges), Tab and Shift+Tab walk reading order, Enter, Space and A press,
 Escape and B go back: the topmost dialog or menu closes, otherwise
 `og.ui.back()` answers true once (open pause on it). A gameplay HUD whose keys
 move the player calls `og.ui.setNavigation(false)` (the HUD templates do);
-dialogs turn navigation back on while open. For a gamepad the engine does not
-read yet, or a custom binding, queue intents with `og.ui.navigate(world, intent)`.
+dialogs turn navigation back on while open. The UI reads pad 0 from
+`og.Gamepad` itself (d-pad, A, B, the left stick); for a custom binding,
+queue intents with `og.ui.navigate(world, intent)`. Script a pad in a
+playtest with `gamepad:a` then `gamepad:-` (release), or `gamepad:-:0,0.9`
+for the stick.
+
+The touch controls (joystick, d-pad, action buttons) answer several fingers
+at once: a thumb holding the stick and another on a button both count. Test
+it with `touch_start` on the stick and `touch:1:down:<button id>` /
+`touch:1:up:<button id>` for the second finger.
+
+The UI is drawn over the finished frame (after bloom, grading and TAA), so
+its colours are exactly the tokens and it stays sharp whatever camera the
+game uses; a scroll list cuts its rows at the edge per pixel.
 
 ## Phones, tablets and the safe area
 

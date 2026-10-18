@@ -30,8 +30,9 @@ world.add_system(desc, run)?;          // builds the UI inside the tick from og.
 probe.set_ui(ui.probe());              // dump_ui, touch_move_to, move_to_text
 // after the tick, when rendering:
 let atlas = scene.add_texture(og_ui::atlas_texture());   // once
-ui.lock().frame().emit(&EmitDesc { atlas, layer: 0, z: 0.0 }, &mut scene.sprites, &mut scene.texts);
-scene.camera = og_ui::camera(&viewport);
+let mut overlay = Overlay::new(viewport.width, viewport.height, viewport.dpr);
+ui.lock().frame().emit(&EmitDesc { atlas, layer: 0 }, &mut overlay);
+scene.overlay = Some(overlay);                           // over the finished frame, any camera
 ```
 
 `Ui::begin(input, viewport)` … `Ui::end()` is the whole protocol; widgets
@@ -134,9 +135,20 @@ past half-way once, then after `motion.duration.slow` every
 - `set_navigation(false)` turns arrows and Tab off for a gameplay screen whose
   keys move the player (the HUD templates do); an open scope turns it on.
 
-The browser shell already maps a gamepad's standard buttons to keys (A Space,
-B Escape, d-pad and stick arrows, Back Tab, Start Enter), so pads navigate on
-the web today; `GamepadFrame` is ready for og-input's gamepad resource.
+`InputFrame::from_world` reads og-input's `og.Gamepad` (pad 0:
+`GamepadFrame::from_gamepad`, the press edges of the standard buttons and
+the left stick) on both hosts. The browser shell still maps a pad's buttons
+to keys too (A Space, B Escape, d-pad and stick arrows, Back Tab, Start
+Enter) as the fallback for a page without the resource; an intent that
+arrives both ways in one tick is taken once (`nav.rs`).
+
+**Several touches.** `InputFrame::pointers` is og-input's `og.Pointers`
+(pointer 0 is `og.Input`'s pointer; 1 to 4 are further touches). The touch
+controls (`joystick`, `dpad`, `action_button`) answer any of them: a stick
+keeps the finger that started on it, a button answers whichever is over it,
+so a thumb on the stick and another on Hit work together
+(`templates/ui-kit/tests/multitouch.og.ts`). Everything else is
+single-pointer.
 
 ## Motion (`src/motion.rs`)
 
@@ -257,7 +269,9 @@ regeneration does not pass. Colours convert to linear for og-render
 
 ## Drawing
 
-`UiFrame::emit` appends to a `RenderScene`'s `sprites` and `texts`:
+`UiFrame::emit` appends to an og-render `Overlay` (CSS pixels, origin top
+left, y down), drawn after every post effect, so token colours come out
+exactly as authored over any game, at any camera, sharp under TAA:
 
 - **One atlas.** Every rectangle, rounded or not, is a 9-slice of one 64×64
   white disc (`atlas_texture()`, coverage supersampled, mips), so panels,
@@ -267,69 +281,26 @@ regeneration does not pass. Colours convert to linear for og-render
   gets a level one above every earlier command it overlaps that batches
   differently, and the level of an overlapping earlier command of its own
   batch; commands of different batches on one level never overlap, so the
-  sort reorders nothing visible. The sample screen is 216 sprites and 173
-  glyphs in **4 sprite draws** (2 levels × atlas + font; `levels()` reports
-  the bound). Put the UI above game sprites with `EmitDesc::layer`.
-- **Clipping on the CPU.** og-render exposes neither scissor nor stencil, so
-  quads and images are cut to the clip rectangle with their UVs adjusted, and
-  text is clipped by whole lines vertically (a half-visible line is hidden)
-  and whole glyphs horizontally.
-- **Camera.** `camera(&viewport)` is the orthographic camera mapping CSS
-  pixels to the target (CSS (x, y) → world (x, −y)); render at
-  `width·dpr × height·dpr` with `Tonemap::None` and 0 EV so token colours come
-  out as authored.
+  sort reorders nothing visible. The sample screen is 231 sprites and 181
+  glyphs in **4 sprite draws** over 4 painter levels (`levels()` reports the
+  bound; the test allows two draws per level). Put the UI above other
+  overlay sprites with `EmitDesc::layer`.
+- **Clipping per pixel.** Each scroll container and clipped panel adds its
+  rectangle once to `Overlay::clips` (deduplicated); every quad, image,
+  rotated shape and glyph inside names it in `clip`, and the overlay pass
+  discards outside it. A row half out of a list is cut mid-glyph; rotated
+  shapes (`DrawCmd::Bar`, `DrawCmd::Half`: chevrons, ticks, the d-pad's
+  arrows, cooldown pies) are cut at the edge instead of dropped
+  (`tests/gfx.rs` `a_scroll_container_clips_everything_it_draws` reads the
+  pixels on both sides of the edge).
 
-- **Rotated shapes.** `DrawCmd::Bar` (a solid bar rotated about its centre:
-  chevrons, ticks, the d-pad's arrows) and `DrawCmd::Half` (the atlas disc's
-  right half on a quad anchored at the disc's centre, rotated: two make any
-  pie, so a cooldown ring is a track disc, two halves and a core disc) are
-  sprites with `rotation`; they cannot be cut by the CPU clip, so one that is
-  not wholly inside its clip is not drawn.
-
-**The og-render overlay ask** (for the render owner; until it lands, the
-runtime keeps drawing the UI on a plane in front of a camera that looks down
-−Z and skips it for any other camera, and TAA blurs it):
-
-```rust
-/// Drawn last, in output pixels, over the finished frame.
-pub struct Overlay {
-    /// Quads and text in overlay space: CSS pixels, origin top left, y down
-    /// (`position.y` grows downward; `rotation` clockwise on screen).
-    pub sprites: Vec<Sprite>,
-    pub texts: Vec<Text>,
-    /// The overlay's size in CSS pixels and device pixels per CSS pixel: the
-    /// projection maps (0, 0)–(width, height) onto the output's
-    /// (0, 0)–(width·scale, height·scale).
-    pub width: f32,
-    pub height: f32,
-    pub scale: f32,
-    /// Optional per-instance clip rectangles, overlay space: `clips[i]`
-    /// applies to the sprite or text whose `clip` index is `i` (fragment
-    /// discard; no run splitting).
-    pub clips: Vec<[f32; 4]>,
-}
-// RenderScene { ..., pub overlay: Option<Overlay> }
-```
-
-1. Drawn **after** every post effect (exposure, bloom, tonemap, TAA
-   resolve, FXAA) into the final target, so it is never tone mapped, never
-   exposed, never jittered, never in TAA history, and never depth-tested;
-   colours are linear in, encoded like sprite colours on write; straight alpha
-   over the frame.
-2. Sorted and batched exactly as sprites and text are today (layer, kind,
-   texture; the same atlas and font handles, MSDF text, `rotation` about the
-   anchor), so og-ui's painter levels keep working.
-3. Included in `read_offscreen`, the probe's `screenshot` and `capture`, and
-   counted in `FrameStats` (sprites, glyphs, draws).
-4. Available on every backend tier (Metal, Vulkan, WebGPU, WebGL2): one more
-   pass with the sprite pipeline and an orthographic view-projection.
-5. Optional, same pass: `Sprite::clip`/`Text::clip` as an index into
-   `clips` (16 bytes per instance or a `u32`), so og-ui can drop its CPU
-   clipping (text cut by whole lines, rotated shapes dropped at edges).
-
-With it, `og_api::runtime::modules::emit` hands og-ui's frame to the overlay
-with `UiFrame::emit` unchanged except for y-down coordinates, and the UI
-shows over 3D games at any camera, sharp under TAA.
+The runtime (`og_api::runtime::modules::emit`) writes the frame into
+`RenderScene::overlay` with scale 0 (fit the output's height), so the UI
+shows over 3D games at any camera; the camera-plane workaround is gone.
+Recapturing on the overlay moved only clipped content: the store list's top
+row now shows the lower half of "Item 0" and its Buy button, where the CPU
+clip hid the whole line (`tests/evidence/E2/ui-sample-screen-before-after.png`);
+eleven kit references moved the same way and were recaptured on `metal`.
 
 ## Input
 
@@ -455,13 +426,11 @@ font is og-tests' committed MSDF atlas (Noto Sans SC subset, OFL).
   edge light; icons (iconoir) as an MTSDF atlas.
 - Layout: horizontal and two-axis scrolling, nested scroll chaining,
   aspect-ratio images.
-- **Input**: og-input owes a gamepad resource (`InputSource::gamepad` reads
-  it then; today the web shell maps pads to keys) and multi-touch (`og.Input`
-  carries one pointer, so a stick and a button cannot be held together).
-- The og-render overlay and per-instance clip above; then drop CPU clipping.
+- **Input**: pads beyond the first; several touches for widgets other than
+  the touch controls (two-finger scroll, pinch).
+- `vulkan-cpu` references for og-ui's own scenes (`sample-screen`,
+  `widget-set`) and the kit templates: only `metal` exists, other tiers
+  compare with it.
 - og-probe re-exports og-input since 5c79c75, so the `ProbeInput` bridge in
   `tests/support/mod.rs` and the "og-probe still ships its interim
   `og.Input`" note in §Input are out of date; the bridge can go.
-- §Drawing says the sample screen is 4 sprite draws over 2 painter levels;
-  `tests/gfx.rs` reports 4 draws over **4** levels (2026-10-18 run,
-  `tests/evidence/M6/ui-test-run.md`).

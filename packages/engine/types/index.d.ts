@@ -10275,7 +10275,7 @@ export declare namespace og {
      */
     function dialogue(id: string, desc?: DialogueDesc): DialogueResult;
     /**
-     * A virtual joystick: a base and a knob that follows a press that started on it. og.Input carries one pointer, so a stick and a button are not held at once yet.
+     * A virtual joystick: a base and a knob that follows a press that started on it. It keeps the finger that grabbed it (any of og.Pointers), so another finger can hold an action button at the same time.
      *
      * @param id Its id.
      * @param desc Size and dead zone.

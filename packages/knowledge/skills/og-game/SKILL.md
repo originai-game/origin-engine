@@ -115,6 +115,50 @@ events) before using an asset, and spawn a loaded scene or model with
 `GameDesc.scene` is spawned for you when the world starts. The wiki's `load`
 page lists every loader and what each returns.
 
+## Input
+
+`world.resource(og.Input)` is the keyboard, the mouse and the first touch
+(`down("KeyW")`, `pressed`, `axis`, `buttonDown`). Two more resources carry
+what one pointer cannot: `og.Pointers` (pointer 0 is og.Input's, 1 to 4
+further touches: `down(id)`, `pressed(id)`, `position(id)`, `start(id)`)
+and `og.Gamepad` (up to four pads: `connected(pad)`, `down("a", pad)`,
+`pressed`, `released`, `axis("leftX", pad)`; sticks are y down). All three
+are world state, so playtests and replays reproduce them; script them with
+`touch:<id>:<down|move|up>:<x,y>` and `gamepad:<a+b|->[:lx,ly][:lt,rt]`.
+
+## Effects
+
+Every effect is off until the game turns it on, as data:
+
+- **Post** — the `og.PostEffects` resource: `ao`, `outline`,
+  `depthOfField`, `motionBlur`, `godRays`, `glow`, `lut` (a handle from
+  `og.load.lut(world, "luts/look.cube")`), `vignette`,
+  `chromaticAberration`, `filmGrain`, `flash`, and camera shake through
+  `shakeTrauma` (set it on a hit and let it decay). A game with fast motion
+  wants `render: { antialias: "taa" }` in `og.game`.
+- **Particles** — an emitter is an `.ogt` asset of `type particles`
+  (rate, bursts, lifetime, speed, curves, collision; cooked like any asset)
+  loaded with `og.load.emitter`; an entity with `og.ParticleSystem
+  { emitter, seed, startTick }` emits it at its transform. Particles are
+  drawn by the renderer from the tick, deterministic and never part of the
+  simulation.
+- **Trails and beams** — components `og.Trail` (follows the entity) and
+  `og.Beam` (between two points); `og.render.ribbon(world, desc)` draws a
+  polyline this tick.
+- **Decals** — `og.Decal` projects an atlas rectangle
+  (`og.RenderSettings.decalAtlas`) onto what its box covers.
+- **2D lighting** — `og.Lighting2D` (ambient, the lit layer range),
+  `og.Light2D` and `og.Occluder2D` components, `castShadow` on sprites;
+  sprites also take `flash`, `glow` and `blend`.
+- **Materials** — toon, rim, dissolve, hit flash and outline are
+  `og.render.standardMaterial` fields; animate them with
+  `og.render.updateMaterial(world, material, { dissolve: t })`.
+- **HUD** — `og.render.sprite` / `og.render.text` with `screen: true` draw
+  in CSS pixels from the top-left over the finished frame, untouched by
+  post effects, with an optional `clip`; `og.ui` uses the same layer.
+
+`templates/fx-showcase` shows every one of these on five stations.
+
 ## Where to look things up
 
 `reference/index.md` (the generated wiki shipped with this skill) maps every

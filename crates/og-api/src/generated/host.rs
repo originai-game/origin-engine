@@ -396,7 +396,7 @@ pub trait UiApi: Wire {
     fn og_ui_minimap(&self, id: String, desc: Option<String>);
     /// `og.ui.dialogue`: A dialogue box: a portrait slot, the speaker in amber ink and the line typed out by the tick. A press or Activate while typing shows the whole line; once shown it answers advanced. The line is `<id>/Body/Line` and the probe reads what is shown.
     fn og_ui_dialogue(&self, id: String, desc: Option<String>) -> String;
-    /// `og.ui.joystick`: A virtual joystick: a base and a knob that follows a press that started on it. og.Input carries one pointer, so a stick and a button are not held at once yet.
+    /// `og.ui.joystick`: A virtual joystick: a base and a knob that follows a press that started on it. It keeps the finger that grabbed it (any of og.Pointers), so another finger can hold an action button at the same time.
     fn og_ui_joystick(&self, id: String, desc: Option<String>) -> String;
     /// `og.ui.dpad`: A d-pad of four arms (`Up`, `Down`, `Left`, `Right`), each at least 44 CSS px.
     fn og_ui_dpad(&self, id: String, desc: Option<String>) -> String;

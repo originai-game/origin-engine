@@ -3401,7 +3401,7 @@
         },
         {
           "name": "joystick",
-          "doc": "A virtual joystick: a base and a knob that follows a press that started on it. og.Input carries one pointer, so a stick and a button are not held at once yet.",
+          "doc": "A virtual joystick: a base and a knob that follows a press that started on it. It keeps the finger that grabbed it (any of og.Pointers), so another finger can hold an action button at the same time.",
           "params": [
             {
               "name": "id",

@@ -2638,8 +2638,8 @@ impl Ui {
 
     /// A virtual joystick: a base disc and a knob that follows a press that
     /// started on it, clamped to the base. Answers the stick's -1..1 vector.
-    /// og.Input carries one pointer, so the stick and a button are not held
-    /// at once yet.
+    /// It keeps the finger that grabbed it (any of og.Pointers), so another
+    /// finger can hold a button at the same time.
     pub fn joystick(&mut self, id: impl Into<Id>, desc: JoystickDesc) -> JoystickResponse {
         let t = self.theme;
         let p = t.palette;

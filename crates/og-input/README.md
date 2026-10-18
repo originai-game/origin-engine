@@ -1,7 +1,8 @@
 # og-input
 
 Input as the game sees it (design §2.2, IDL `input` in
-`crates/og-api/api.ogt`): the engine-owned `og.Input` resource systems poll,
+`crates/og-api/api.ogt`): the engine-owned `og.Input`, `og.Pointers` and
+`og.Gamepad` resources systems poll,
 the six input events, the `InputSink` the probe and the command channel
 deliver through, and the decoder for the web shell's SharedArrayBuffer input
 ring. It depends on `og-core` and `og-ecs` only and reads no clock.
@@ -11,8 +12,10 @@ ring. It depends on `og-core` and `og-ecs` only and reads no clock.
 | Item | Entry points |
 |---|---|
 | `Input` (`og.Input`, version 2) | `down(code)`, `pressed`, `released`, `axis(neg, pos)`, `axis2`, `button_down(PointerButton)`, `button_pressed`, `button_released`, `contains(KeySet, i)`, `word(KeySet, w)`; `apply(&InjectedInput) -> Option<Vec<InputEvent>>`, `end_tick() -> Vec<InputEvent>` |
-| events | `KeyDown { key: Str64, repeat }`, `KeyUp { key }`, `PointerDown { x, y, button }`, `PointerUp { x, y, button }`, `PointerMove { x, y }`, `Wheel { deltaX, deltaY }` as `og.KeyDown` ... `og.Wheel`; `InputEvent` (one of them) `.send(world)`; `register(world)` |
-| injected input | `InjectedInput::{Key, Pointer, Wheel}` with `from_json`/`to_json` (protocol 5), `KeyAction`, `PointerAction`, `PointerButton` (`bit`, `index`, `name`, `from_index`, `from_name`), `Modifiers` |
+| `Pointers` (`og.Pointers`, version 1) | `position(id)`, `start(id)`, `down(id)`, `is_pressed(id)`, `is_released(id)`, `count()`; masks `held`, `pressed`, `released` (bit `id`); `apply`, `end_tick` |
+| `Gamepad` (`og.Gamepad`, version 1) | `masks(pad) -> (held, pressed, released)`, `is_connected(pad)`, `down(button, pad)`, `pressed`, `released`, `axis(GamepadAxis, pad)`; `GAMEPAD_BUTTONS` (17 standard-mapping names, bit order), `gamepad_button(name)`, `MAX_GAMEPADS = 4`, `MAX_POINTERS = 5` |
+| events | `KeyDown { key: Str64, repeat }`, `KeyUp { key }`, `PointerDown { x, y, button, id }`, `PointerUp { x, y, button, id }`, `PointerMove { x, y, id }`, `Wheel { deltaX, deltaY }` as `og.KeyDown` ... `og.Wheel`; `InputEvent` (one of them) `.send(world)`; `register(world)` |
+| injected input | `InjectedInput::{Key, Pointer { .., id }, Wheel, Gamepad(GamepadState { pad, connected, buttons, axes, triggers })}` with `from_json`/`to_json` (protocol 5), `KeyAction`, `PointerAction`, `PointerButton` (`bit`, `index`, `name`, `from_index`, `from_name`), `Modifiers` |
 | keys | `KEY_CODES` (106 `KeyboardEvent.code` names, the key-set bit order), `KEY_SET_BITS = 128`, `key_index`, `key_for_char` (US layout) |
 | sink | `InputSink { attach, inject, end_tick, accepted }`, `InputLayer` (alias `WorldInput`), `InputLayer::drain_ring(world, ring) -> RingReport` |
 | ring | `ring::{drain, drain_mut, decode_slot, encode_slot, write, new_ring}`, `HEADER_WORDS`, `SLOT_WORDS`, `SLOTS`, `KEY_BYTES`, `BYTE_LEN`, `KINDS`, `ACTIONS`, `BUTTONS` |
@@ -31,6 +34,30 @@ state the methods read, laid out for typed access from TypeScript:
 
 A TypeScript `Input.down("KeyW")` is `keys[i >> 5] >>> (i & 31) & 1` with
 `i = KEY_CODES.indexOf("KeyW")`. `KEY_CODES` only ever grows at the end.
+
+## Several pointers and gamepads
+
+`og.Pointers` holds every pointer on the play surface: pointer 0 is
+`og.Input`'s pointer (the mouse, the first touch, what protocol 5 means) and
+ids 1 to 4 are further touches, which never move `og.Input`'s pointer or
+its buttons. Each has a position, the position it went down at, and
+held/pressed/released bits with the same one-tick edges as `og.Input`; its
+events carry its `id`. The web shell gives each new touch the lowest free
+id; the probe's JSON takes an optional `"id"` (0 when absent), and an id
+of 5 or more is refused.
+
+`og.Gamepad` holds up to four pads: connected bits, held/pressed/released
+button masks over `GAMEPAD_BUTTONS` (A, B, X, Y, LB, RB, LT, RT, Back,
+Start, LS, RS, d-pad up/down/left/right, Home), both sticks (y down, as the
+Gamepad API reports) and both analog triggers. A pad's whole state arrives
+as one `InjectedInput::Gamepad` whenever the shell sees it change (protocol
+5 JSON `{ "kind": "gamepad", "pad", "connected", "buttons", "axes",
+"triggers" }`, the command channel's `gamepad:` action); edges are
+computed against the previous state, so a press and a release between two
+ticks leave both edges, and a disconnected pad holds nothing. Pad 4 or more
+is refused. Both resources are world state: snapshots carry them and replays
+are exact (`tests/pads.rs`). The web shell also keeps mapping pad buttons
+to keys (`gamepad.ts`), the fallback for games that read only `og.Input`.
 
 ## Semantics
 
@@ -59,9 +86,8 @@ A TypeScript `Input.down("KeyW")` is `keys[i >> 5] >>> (i & 31) & 1` with
   injected input is in snapshots and the world hash and replays exactly; the
   sink holds only the `accepted` count.
 
-`attach` registers, in this order, `og.Input`, `og.KeyDown`, `og.KeyUp`,
-`og.PointerDown`, `og.PointerUp`, `og.PointerMove`, `og.Wheel` and inserts
-the resource. The events' `key` is a `str64`, `button` an enum
+`attach` registers `og.Input`, the six events, `og.Pointers` and
+`og.Gamepad` and inserts the resources. The events' `key` is a `str64`, `button` an enum
 (`none left middle right`).
 
 ## The input ring
@@ -74,7 +100,8 @@ of little-endian 32-bit words:
 |---|---|
 | 0 | write index, monotonic (the writer publishes a slot with `Atomics.store`) |
 | 1 | read index, monotonic (the reader stores it back) |
-| 2 + 16·s | slot `s = index % 256`: `kind` (0 key, 1 pointer, 2 wheel), `action` (0 press, 1 down, 2 up, 3 click, 4 move), `button` (0 none, 1 left, 2 middle, 3 right), key length (≤ 32), `x`, `y`, `deltaX`, `deltaY` as f32 bits, then 32 bytes of key code (words 8–15) |
+| 2 + 16·s | slot `s = index % 256`: `kind` (0 key, 1 pointer, 2 wheel, 3 gamepad), `action` (0 press, 1 down, 2 up, 3 click, 4 move), `button` (0 none, 1 left, 2 middle, 3 right), key length (≤ 32), `x`, `y`, `deltaX`, `deltaY` as f32 bits, then 32 bytes of key code (words 8–15); a pointer slot has its id in word 8 |
+| gamepad slot | word 2 the pad, 3 connected, 4–7 the axes (f32), 8 the button mask, 9–10 the triggers (f32) |
 
 The writer drops an event when `write - read ≥ 256`, so the reader never
 sees an overwritten slot. Modifiers do not cross the ring. `ring::drain`
@@ -108,4 +135,10 @@ are unchanged.
   refuses, a bad slot is skipped with a reason; the layer drains a ring into
   the world. Regenerate the fixture with
   `node crates/og-input/tests/fixtures/make-ring.mjs` when `input.ts`
-  changes.
+  changes (it now has 11 events, a second touch and a pad among them).
+- `tests/pads.rs`: two touches and a pad over a seven-tick script (edges
+  for one tick, a sub-tick tap on B, ids on events, og.Input following only
+  pointer 0, a click on touch 3, pointer 5 and pad 4 refused, a disconnect
+  holding nothing), observed by a game system; writes
+  `$CARGO_TARGET_TMPDIR/input-pads-transcript.json`. A snapshot restored
+  mid-script replays the rest to the same hash.

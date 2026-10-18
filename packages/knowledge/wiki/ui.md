@@ -165,7 +165,7 @@ module ui {
 | [`og.ui.cooldown`](#fn-cooldown) | function | A cooldown: a disc whose amber ring fills clockwise from the top as it runs out, bright and full when ready, a label or icon in the middle. A press reports clicked (ready or not). |
 | [`og.ui.minimap`](#fn-minimap) | function | A mini-map frame: the map in a border-strong frame, markers as dots (the player amber and ringed), an N mark and a zone label. |
 | [`og.ui.dialogue`](#fn-dialogue) | function | A dialogue box: a portrait slot, the speaker in amber ink and the line typed out by the tick. A press or Activate while typing shows the whole line; once shown it answers advanced. The line is `<id>/Body/Line` and the probe reads what is shown. |
-| [`og.ui.joystick`](#fn-joystick) | function | A virtual joystick: a base and a knob that follows a press that started on it. og.Input carries one pointer, so a stick and a button are not held at once yet. |
+| [`og.ui.joystick`](#fn-joystick) | function | A virtual joystick: a base and a knob that follows a press that started on it. It keeps the finger that grabbed it (any of og.Pointers), so another finger can hold an action button at the same time. |
 | [`og.ui.dpad`](#fn-dpad) | function | A d-pad of four arms (`Up`, `Down`, `Left`, `Right`), each at least 44 CSS px. |
 | [`og.ui.actionButton`](#fn-actionButton) | function | A round touch action button: pressed while held (jump, fire), clicked on a tap; at least 44 CSS px. |
 | [`og.ui.toast`](#fn-toast) | function | Queue a toast: it stacks at UiDesc.toastAnchor, enters, stays its time and leaves; at most three are up (older ones leave first); a press dismisses it. Callable anywhere (systems, commands, start); it is world state, so snapshots carry it. |
@@ -2071,7 +2071,7 @@ fn dialogue {
 
 ### `og.ui.joystick`
 
-A virtual joystick: a base and a knob that follows a press that started on it. og.Input carries one pointer, so a stick and a button are not held at once yet.
+A virtual joystick: a base and a knob that follows a press that started on it. It keeps the finger that grabbed it (any of og.Pointers), so another finger can hold an action button at the same time.
 
 ```ts
 og.ui.joystick(id: string, desc?: JoystickDesc): JoystickResult
@@ -2088,7 +2088,7 @@ Binding symbol `og_ui_joystick` · publish builds: kept
 
 ```ogt
 fn joystick {
-  doc "A virtual joystick: a base and a knob that follows a press that started on it. og.Input carries one pointer, so a stick and a button are not held at once yet."
+  doc "A virtual joystick: a base and a knob that follows a press that started on it. It keeps the finger that grabbed it (any of og.Pointers), so another finger can hold an action button at the same time."
   param id String "Its id."
   param desc JoystickDesc "Size and dead zone."
   returns JoystickResult

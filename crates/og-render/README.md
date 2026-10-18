@@ -19,7 +19,7 @@ the world → scene extraction belongs to the layer above.
 | `Renderer` | `Renderer::new(&desc).await` (headless), `Renderer::with_surface(&desc, &instance, surface).await` (presents), `render(&scene, &target) -> Result<FrameStats>`, `resize`, `info`, `reset_history` (TAA, on a camera cut), `capture().await -> RgbaImage` and `poll()` on every host. Native only: `new_blocking`, `wait_idle`, `read_offscreen()` (= `capture` blocking). |
 | `render_to_rgba(&desc, &scene)` | Native, blocking: one frame headless → `RgbaImage` (RGBA8, rows top to bottom). |
 | `RenderTarget` | `Offscreen` (the renderer's own texture, readable), `Surface` (acquire, draw, present), `View(&TextureView)`. |
-| `RenderScene` | Resources with handles (`add_mesh`, `add_texture`, `add_material`, `add_font` → handles; `set_material` replaces one), and the per-frame public fields `instances`, `camera`, `light`, `lights`, `environment`, `post`, `sprites`, `texts`, `debug`. Resources are append-only; the renderer uploads what is new or changed. |
+| `RenderScene` | Resources with handles (`add_mesh`, `add_texture`, `add_material`, `add_font` → handles; `set_material` replaces one), and the per-frame public fields `instances`, `camera`, `light`, `lights`, `environment`, `post`, `sprites`, `texts`, `overlay`, `debug`. `mesh_handle(index)` turns a mesh index back into its handle (the runtime's skinned copies). Resources are append-only; the renderer uploads what is new or changed. |
 | `MeshData`, `Vertex`, `TextureData`, `Material` | As before: triangle lists; RGBA8 with `color_space` and `mips`; glTF metallic-roughness with `alpha_mode` (`Opaque`, `Mask`). |
 | `Instance` | `(mesh, material, transform)`, submitted one by one; batched by (mesh, material). |
 | `Camera` | `position`, `target`, `up`, `projection` (`Perspective { fov_y_degrees }`, `Orthographic { height }`), `near`, `far`, `exposure`. `Camera::orthographic_2d(center, height)` is the 2D camera (looking down −z at the z = 0 plane). |
@@ -27,10 +27,11 @@ the world → scene extraction belongs to the layer above.
 | `DirectionalLight` | `direction_to_light`, `color`, `intensity`, `cast_shadows`, `shadow_bounds` (`Auto`: the instances' bounds; `Sphere`), `max_shadow_distance` (default 200 m; shadows fade over its last tenth). Three cascades. |
 | `Light`, `LightKind` | Point and spot lights (`Point`; `Spot { direction, angle_degrees, penumbra }`) with `position`, `color`, `intensity` (radiance at 1 m), `range`, `cast_shadows`. `MAX_LIGHTS` = 8 per frame (the rest are counted in `FrameStats::lights_dropped`); the first `MAX_SHADOWED_LIGHTS` = 2 with `cast_shadows` get shadows. |
 | `PostEffects`, `Bloom`, `Tonemap` | `bloom: Option<Bloom { threshold, knee, intensity }>` (threshold in exposed units: 1.0 is display white), `tonemap: Aces` (default) or `None` (clamp: authored 2D colours come out exact). |
-| `Sprite` | A textured quad in the world xy plane facing +z: `texture` (`None` = solid), `position`, `size`, `anchor`, `rotation`, `color` (linear RGBA), `uv_rect` (v down), `layer`. Sorted by (layer, texture); within a layer and texture, submission order. |
-| `MsdfFont`, `Glyph`, `Text` | An MSDF atlas (`TextureHandle`, linear, no mips) plus `distance_range`, `line_height` and the glyph table (`advance`, `plane_bounds` in em y up, `atlas_bounds` in pixels y down: msdf-atlas-gen's layout). `Text { font, text, position, size, rotation, color, layer }` lays out left to right with `\n`; missing characters are counted in `FrameStats::missing_glyphs`. Text sorts with the sprites. |
+| `Sprite` | A textured quad in the world xy plane facing +z: `texture` (`None` = solid), `position`, `size`, `anchor`, `rotation`, `color` (linear RGBA), `uv_rect` (v down), `layer`, `clip` (an index into the overlay's clip rectangles; ignored in the world). Sorted by (layer, texture); within a layer and texture, submission order. |
+| `MsdfFont`, `Glyph`, `Text` | An MSDF atlas (`TextureHandle`, linear, no mips) plus `distance_range`, `line_height` and the glyph table (`advance`, `plane_bounds` in em y up, `atlas_bounds` in pixels y down: msdf-atlas-gen's layout). `Text { font, text, position, size, rotation, color, layer, clip }` lays out left to right with `\n`; missing characters are counted in `FrameStats::missing_glyphs`. Text sorts with the sprites. |
+| `Overlay` | The screen-space layer drawn last (`RenderScene::overlay: Option<Overlay>`): `sprites` and `texts` in CSS pixels, origin top left, y down; `width`, `height` (the CSS viewport) and `scale` (device pixels per CSS pixel; 0 fits the height); `clips` (`add_clip([x, y, w, h])` → the index a sprite or text names in `clip`). See [The overlay](#the-overlay). |
 | `DebugView` | `None`, `Cascades` (red/green/blue per cascade, black beyond). |
-| `FrameStats` | `draw_calls` (every pass), `batches`, `instances`, `culled`, `triangles` (main pass), `shadow_passes`, `shadow_casters`, `lights`, `lights_dropped`, `sprites`, `glyphs`, `sprite_draws`, `missing_glyphs`, `frame`. |
+| `FrameStats` | `draw_calls` (every pass), `batches`, `instances`, `culled`, `triangles` (main pass), `shadow_passes`, `shadow_casters`, `lights`, `lights_dropped`, `sprites`, `glyphs`, `sprite_draws`, `missing_glyphs` (overlay ones included), `overlay_sprites`, `overlay_glyphs`, `overlay_draws`, `frame`. |
 | `RenderInfo` | Adapter, backend, device type, `Tier` (`Full`, `NoCompute`), `antialias`, `backend_tier()`: the reference-frame directory name. |
 | `RenderError` | `NoAdapter`, `NoDevice`, `Surface`, `InvalidHandle`, `Readback`, `Unsupported`, `InvalidData`. |
 | `shapes` | `sphere`, `plane`, `cuboid(size)`, `checker`. |
@@ -100,6 +101,46 @@ object; see below). Passes whose feature is off are not recorded.
 9. **Tonemap**: exposure × (HDR + bloom × intensity) → ACES or clamp → the
    output. An sRGB output is encoded by the hardware; a non-sRGB one
    (WebGPU canvases are `Bgra8Unorm`) by the shader (`fs_srgb_encode`).
+10. **Overlay** (when `scene.overlay` is set; `overlay.rs`, `overlay.wgsl`):
+    after the graph, straight into the output (see below).
+
+## The overlay
+
+The screen-space layer for HUDs and og-ui. It is drawn after every post
+effect (tone mapping, the LUT, vignette, aberration, grain, bloom, TAA), so
+an authored colour comes out exactly (linear in, sRGB out, encoded by the
+shader on a non-sRGB output), with no depth test and straight alpha
+blending. Positions are CSS pixels from the top-left corner, scaled by
+`Overlay::scale` (0: the output's height over `Overlay::height`). Sprites and
+text are sorted by (layer, texture or font) into instanced runs (stable
+within a run); each instance carries an optional clip rectangle tested per
+pixel, so a scrolled list cuts a glyph in half instead of dropping it. Every
+tier runs it (render passes only); screenshots, `capture` and
+`read_offscreen` include it; `FrameStats` counts `overlay_sprites`,
+`overlay_glyphs` and `overlay_draws`. Tests: `tests/gfx.rs`
+`the_overlay_is_drawn_after_post_untonemapped_and_clipped`,
+`the_overlay_encodes_on_a_non_srgb_output`, and the `overlay` reference
+scene (the showcase under TAA with a HUD; `metal` and `vulkan-cpu`).
+
+## From TypeScript
+
+Every E1 effect is declared from a game through the IDL (`crates/og-api/api.ogt`,
+module `render`), on both hosts, off by default:
+
+| og-render | TypeScript |
+|---|---|
+| AO, outlines, depth of field, motion blur, god rays, glow, LUT grading, vignette, aberration, grain, flash, shake | resource `og.PostEffects` (zero = off; `lut` is a handle from `og.load.lut`) |
+| `Lighting2d`, `Light2d`, `Occluder2d` | resource `og.Lighting2D`; components `og.Light2D`, `og.Occluder2D`; `SpriteDesc.castShadow` |
+| `Decal` | component `og.Decal` with the atlas in `og.RenderSettings.decalAtlas` |
+| `ParticleSystem` | component `og.ParticleSystem` naming an emitter from `og.load.emitter` (`.ogt` of type `particles`, cooked by og-cook) |
+| `Trail`, `Beam`, `Ribbon` | components `og.Trail`, `og.Beam`; `og.render.ribbon(world, desc)` per tick |
+| `SpriteFx` | `SpriteDesc` `flash`, `flashColor`, `glow`, `blend` |
+| Toon, rim, dissolve, flash, outline per material | `StandardMaterialDesc` fields, set with `og.render.standardMaterial` / `updateMaterial` |
+| Skinning and blendshapes | `og.Skeleton` + `og.AnimationPlayer`, `og.Blendshapes` (the runtime keeps skinned copies of a model's meshes) |
+| `Overlay` | `SpriteDesc.screen` / `TextDesc.screen` with an optional `clip` `[x, y, w, h]`; og-ui draws into it |
+
+`templates/fx-showcase` shows each of them on five stations with references
+on `metal` and `vulkan-cpu` and a web frame (`tests/evidence/E2/`).
 
 **Capture** (`capture.rs`): the offscreen target copied to a buffer and
 mapped. One async function on both hosts: natively it polls the device; on
@@ -242,7 +283,15 @@ default records no pass and costs nothing (`effects_off_add_no_passes`).
 - **Skinning and blendshapes**: `SkinData` + `JointPalette` (storage buffer
   on the full tier, `Rgba32Float` vertex texture on WebGL2),
   `MorphTargets` weighted per instance; og-anim writes the palettes.
-- **Stylised**: toon ramp, rim light, dissolve per material.
+- **Stylised**: toon ramp, rim light, dissolve per material. Every
+  fragment entry point has one `discard` (`dissolve_at` returns a flag the
+  caller folds in): on Metal a second discard in an entry point did not take
+  effect, so dissolved pixels drew black
+  (`dissolved_pixels_leave_no_trace_in_the_prepass`).
+- **Graph declarations**: an effect pass declares every prepass texture it
+  binds (`lindepth`, `gbuffer`), not only its own input; with depth of
+  field, motion blur and TAA together the graph had aliased a target a pass
+  wrote with one it read (`every_effect_pass_together_under_taa`).
 
 References for every effect scene on `metal` and `vulkan-cpu`
 (`og-tests/references/*/{ao-gtao,ao-ssao,decals,dof-low,dof-high,fx-2d,
@@ -282,9 +331,7 @@ with their mips, chosen per tier and reported in
 - TAA: Catmull-Rom history sampling, a sharpening pass; FXAA on the GL tier
   as an MSAA alternative.
 - Post: AgX, temporal exposure adaptation (deterministic per tick), fog.
-- 2D: per-texture filtering (nearest for pixel art), screen-space UI
-  layering (sprites are world-space today; og-ui's README asks for an
-  overlay pass and a per-instance clip rectangle), billboards, kerning and
+- 2D: per-texture filtering (nearest for pixel art), billboards, kerning and
   RTL shaping (rustybuzz), CJK fallback atlases.
 - Instance upload is the whole buffer every frame; dirty tracking, GPU
   culling on the full tier. Resources cannot be removed. No anisotropy.

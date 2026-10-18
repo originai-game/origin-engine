@@ -53,6 +53,25 @@ Dependencies: M1 → M2 → everything TypeScript-facing; M0 → M3 (renderer
 work starts from the spike immediately); M4 needs M1's `.ogb`; M5 needs M2's
 hosts; M6 needs M3, M4, M5; M7 needs M6.
 
+### Status 2026-10-18, E2 round
+
+- **Render and Runtime** (96adafe..393c2d6): every E1 effect is declared
+  from TypeScript on both hosts (`og.PostEffects`, `og.Lighting2D`,
+  `og.Light2D`, `og.Occluder2D`, `og.Decal`, `og.ParticleSystem`,
+  `og.Trail`, `og.Beam`, `og.render.ribbon`, `og.load.lut`,
+  `og.load.emitter`, sprite and material effect fields; off by default);
+  og-render's screen-space overlay pass with per-pixel clips, which og-ui
+  now draws through (no camera plane, no CPU clipping, sharp under TAA);
+  `og.Pointers` (five pointers) and `og.Gamepad` (four pads) in og-input
+  through the input ring, read by og-ui's touch controls and focus
+  navigation; `templates/fx-showcase` with five stations and references on
+  `metal` and `vulkan-cpu`, and a WebGPU frame in Chrome. Fixed on the way:
+  immediate-mode sprites and text outliving their tick, effect passes that
+  aliased the prepass textures they bind, and dissolved pixels drawn black
+  on Metal. Evidence `tests/evidence/E2/`. Owed: `webgpu`/`webgl2`
+  reference tiers for the effect and overlay scenes, `vulkan-cpu`
+  references for og-ui and the UI kit, pads beyond the first in og-ui.
+
 ### Status 2026-10-18, E1 rounds
 
 After M7 (the platform cutover, `docs/m7-platform-notes.md`) the E1 rounds
@@ -69,10 +88,9 @@ M6: og-anim, og-ui, og-physics and the effects are the growth).
   and the toast service in `og.ui` (103 functions); the `templates/ui-kit`
   gallery with 42 metal references at desktop and phone sizes and a
   two-host hash match in Chrome (WebGPU); the `og-ui` skill. Evidence
-  `tests/evidence/E1/ui-*`. Owed: the og-render overlay pass with
-  per-instance clips (`crates/og-ui/README.md` §overlay ask; until then the
-  UI is a plane in front of the camera and TAA blurs it), a gamepad
-  resource and multi-touch in og-input.
+  `tests/evidence/E1/ui-*`. Owed then: the og-render overlay pass with
+  per-instance clips, a gamepad resource and multi-touch in og-input (all
+  delivered in E2, above).
 - **Render effects**: AO, outlines, depth of field, motion blur, god rays,
   LUT grading, vignette, aberration, grain, flash, camera shake, decals,
   deterministic GPU/CPU particles, trails, ribbons and beams, 2D lights
