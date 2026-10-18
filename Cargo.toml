@@ -39,6 +39,54 @@ opt-level = 3
 lto = "thin"
 codegen-units = 1
 
+# The wasm every web build ships and the size gate measures: release, with
+# the crates that run only while loading or when something changes (WGSL
+# translation for WebGL2, font shaping, the cooked bundle's decoding and
+# decompression, snapshots' bincode, navmesh triangulation, locale tables)
+# optimised for size. -85 KB brotli on the publish wasm (72.0 % to 70.0 % of
+# the budget) with Chrome's frame times, first frames and the physics step
+# unchanged; every per-tick and per-frame crate (physics, ECS, render, wgpu,
+# og-ui, og-runtime, og-nav, og-ai) stays at 3, z for all of them cost 25 %
+# of a frame (tests/evidence/E7/wasm-size.md). Native builds never use it.
+[profile.wasm]
+inherits = "release"
+[profile.wasm.package.naga]
+opt-level = "z"
+[profile.wasm.package.naga-types]
+opt-level = "z"
+[profile.wasm.package.wgpu-naga-bridge]
+opt-level = "z"
+[profile.wasm.package.codespan-reporting]
+opt-level = "z"
+[profile.wasm.package.rustybuzz]
+opt-level = "z"
+[profile.wasm.package.ttf-parser]
+opt-level = "z"
+[profile.wasm.package.unicode-bidi-mirroring]
+opt-level = "z"
+[profile.wasm.package.unicode-ccc]
+opt-level = "z"
+[profile.wasm.package.unicode-properties]
+opt-level = "z"
+[profile.wasm.package.unicode-script]
+opt-level = "z"
+[profile.wasm.package.unicode-width]
+opt-level = "z"
+[profile.wasm.package.bincode]
+opt-level = "z"
+[profile.wasm.package.og-cook]
+opt-level = "z"
+[profile.wasm.package.og-blob]
+opt-level = "z"
+[profile.wasm.package.miniz_oxide]
+opt-level = "z"
+[profile.wasm.package.spade]
+opt-level = "z"
+[profile.wasm.package.rstar]
+opt-level = "z"
+[profile.wasm.package.og-i18n]
+opt-level = "z"
+
 # The cook's encoders are unusable at -O0 (a debug cook takes a minute and
 # basisu writes different UASTC bytes than release); keep them optimised in dev.
 [profile.dev.package.basis-universal-sys]

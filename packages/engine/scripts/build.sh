@@ -83,10 +83,10 @@ if [ "${OG_GATE:-}" = 1 ] && [ -f "$gate_wasm/opt/og_host_web-publish.wasm" ] &&
   cp "$gate_wasm/bindgen/og_host_web/"* "$here/dist/web/"
   exit 0
 fi
-# From here on the wasm compiles in release: never beside a running gate.
+# From here on the wasm compiles (the wasm profile, release-based): never beside a running gate.
 og_lock_acquire "$target" "packages/engine/scripts/build.sh (wasm)"
-wasm="$target/wasm32-unknown-unknown/release/og_host_web.wasm"
-cargo build --release -q --target wasm32-unknown-unknown -p og-host-web --lib --features publish
+wasm="$target/wasm32-unknown-unknown/wasm/og_host_web.wasm"
+cargo build --profile wasm -q --target wasm32-unknown-unknown -p og-host-web --lib --features publish
 wasm-bindgen --target web --out-dir "$here/dist/web-publish" --out-name origin-engine "$wasm"
 # What ships is optimised for size (wasm-opt -Oz, as CI's size gate measures);
 # without wasm-opt on PATH the publish wasm stays as wasm-bindgen wrote it.
@@ -96,5 +96,5 @@ if command -v wasm-opt >/dev/null 2>&1; then
 else
   echo "build.sh: no wasm-opt; dist/web-publish is not size-optimised (scripts/install-tools.sh installs it)" >&2
 fi
-cargo build --release -q --target wasm32-unknown-unknown -p og-host-web --lib
+cargo build --profile wasm -q --target wasm32-unknown-unknown -p og-host-web --lib
 wasm-bindgen --target web --out-dir "$here/dist/web" --out-name origin-engine "$wasm"

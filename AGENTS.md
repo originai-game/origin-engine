@@ -77,8 +77,10 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
 - **One profile per lane.** Everything in the gate that runs native code
   (tests, `og` for drift, cook, the addon the bun tests load) is the `dev`
   profile, whose heavy dependencies are already optimised per package in
-  `Cargo.toml`. `release` (thin LTO, one codegen unit) is for what ships: the
-  wasm the size gate measures, `packages/engine` packs, the perf lane. A step
+  `Cargo.toml`. `release` (thin LTO, one codegen unit) is for what ships natively:
+  `packages/engine` packs, the perf lane; `wasm` (release with the
+  load-time crates at opt-level z) is every wasm build, the one the size
+  gate measures. A step
   that compiles the same crate in a second profile is a defect.
 - **Tests never run `cargo`.** A Rust test uses `env!("CARGO_BIN_EXE_og")`; a
   bun or browser test uses the `og` the gate's `build.sh` put in

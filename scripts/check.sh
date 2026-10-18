@@ -26,8 +26,8 @@
 # no engine package build: the loop while working and the PR signal).
 # wasm-opt reads what wasm-build produced, size-gate reads what wasm-opt
 # produced and bun-test's build.sh takes the gate's wasm (OG_GATE=1), so run
-# them together. Every native step is the dev profile; release is only the
-# wasm the size gate measures (AGENTS.md §Build and gate discipline).
+# them together. Every native step is the dev profile; the wasm steps are the
+# wasm profile (release-based), the wasm the size gate measures (AGENTS.md §Build and gate discipline).
 # Holds the gate lock (scripts/lock.sh, <target>/og-gate.lock) for its whole
 # run; a second gate on the same target directory waits for it.
 # Honours CARGO_TARGET_DIR. Each step prints PASS, FAIL or SKIPPED; the
@@ -166,7 +166,7 @@ wasm_build() {
   local args=() c f name dest
   for c in "$@"; do args+=(-p "$c"); done
   [ -z "$features" ] || args+=(--features "$features")
-  cargo build --release --target "$WASM_TRIPLE" "${args[@]}" --lib \
+  cargo build --profile wasm --target "$WASM_TRIPLE" "${args[@]}" --lib \
       --message-format=json-render-diagnostics > "$OG_WASM_OUT/cargo${variant:+-$variant}.json" || return 1
   mkdir -p "$OG_WASM_OUT/raw"
   for f in $(grep '"reason":"compiler-artifact"' "$OG_WASM_OUT/cargo${variant:+-$variant}.json" \
