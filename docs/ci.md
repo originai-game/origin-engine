@@ -50,7 +50,7 @@ step.
 | Lane | Steps | When | Warm, Apple M4 Pro, another agent on the machine |
 |---|---|---|---|
 | `scripts/check.sh quick` | fmt clippy test-quick drift bun-quick | the loop while working; CI job `quick` on every PR | 19–26 s (test-quick 16–20 s for 225 tests, 256 with og-ui's and og-render's GPU tests) |
-| `scripts/check.sh` (full) | fmt clippy wasm-build test wasm-opt size-gate drift bun-test determinism | before a change to rendering, animation, physics, the tick or the export is called done; CI job `gate` on every PR and push to main | `--all` 103 s (test 26 for 348 tests, wasm-opt 30, size-gate 16, bun-test 18); after an og-render change 196 s under load (wasm-build 42, test 46, wasm-opt 59); after a template-only change 41 s |
+| `scripts/check.sh` (full) | fmt clippy wasm-build test wasm-opt size-gate drift bun-test determinism | path-aware after each change during a round; `--all` once at the end of a round, before its final commit and report (§When to run what); CI job `gate` on every PR and push to main | `--all` 84–101 s, steps concurrent (test 54–69 for 437 tests beside wasm-opt 54–69, then size-gate 22–25 beside bun-test 14–18), 121–135 s at a load average of 24–32; with nothing changed 30 s |
 
 Both lanes are path-aware. A step that passes records the working tree it
 passed on in `<target>/og-gate/green/<step>`: a git tree of the whole
@@ -112,6 +112,14 @@ measurement):
   build takes about 70 s; parallel rounds reuse `scripts/worktree.sh`
   worktrees (AGENTS.md §Build and gate discipline).
 
+The 2026-10-19 gate-speed round (`tests/evidence/gate-speed/`) took the
+full lane with `--all` from 187–237 s to 84–101 s with every step and test
+kept: the steps run concurrently as their inputs allow (§Running the gate
+locally), and `packages/engine`'s bun test files run in parallel workers
+(`bun test --parallel`: 31 s to 12 s; og polish on the topdown playtests,
+7.5 s, is the longest file). One at a time (`OG_GATE_JOBS=1`) the same
+gate takes 129 s.
+
 `og-tests::wasm` (og-render must compile for wasm32) takes the full lane's
 `wasm-build` og-render artifact when it is newer than og-render's sources,
 so it needs no second wasm32 target directory.
@@ -131,11 +139,11 @@ had grown `target/` to 143 GB.
 | `test-quick` | `cargo nextest run --workspace --exclude og-tests` (`cargo test` without nextest); og-ui's and og-render's GPU tests left out when their inputs did not change (§Lanes) | quick | yes, on lavapipe | | |
 | `test` | `cargo nextest run --workspace && cargo test --workspace --doc` (`cargo test --workspace` without nextest); gfx tests in `og-tests`, left out with og-ui's and og-render's when their inputs did not change (§Lanes). Runs after `wasm-build`, whose og-render artifact `og-tests::wasm` takes when it is newer than og-render's sources (else that test runs `cargo check --target wasm32-unknown-unknown -p og-render` itself) | full | | yes, on lavapipe | |
 | `wasm-build` | `cargo build --profile wasm --target wasm32-unknown-unknown -p <crate> --lib` (`Cargo.toml`'s `[profile.wasm]`: release, the load-time crates at opt-level z) for `scripts/wasm-crates.txt`, plus the `publish` feature variant of crates marked `publish`; copies to `target/og-wasm/raw/` | full | | yes | |
-| `wasm-opt` | `wasm-bindgen --target web --out-name origin-engine` (when the module uses it) then `wasm-opt -Oz --enable-bulk-memory --enable-nontrapping-float-to-int --low-memory-unused` (rustc links wasm32 stack-first, so the low 1 KiB is only the bottom of an overflowing stack); `opt.txt` lists the shipping (publish) variants, `opt-all.txt` every one | full | | yes | |
+| `wasm-opt` | `wasm-bindgen --target web --out-name origin-engine` (when the module uses it) then `scripts/wasm-opt.sh`, the one wasm-opt invocation (`-Oz --enable-bulk-memory --enable-nontrapping-float-to-int --low-memory-unused`; rustc links wasm32 stack-first, so the low 1 KiB is only the bottom of an overflowing stack), which `packages/engine/scripts/build.sh` also ships with; `opt.txt` lists the shipping (publish) variants, `opt-all.txt` every one | full | | yes | |
 | `size-gate` | `scripts/size-gate.sh`: brotli `-q 11` sum of `opt.txt` ≤ `wasm_core_brotli_bytes` | full | | yes | |
 | `drift` | `og api check` (generated `.d.ts`, wiki, JSON schema, Rust glue vs `crates/og-api/api.ogt`), the dev `og` the test step built | both | yes | yes | |
 | `bun-quick` | `bun run test` in `packages/knowledge` and `packages/create` (no native build) | quick | yes | | |
-| `bun-test` | `bun run test` in each `packages/*` with a `test` script (the engine's `typecheck` also checks the six templates' `src/` against the generated declarations, `packages/engine/tsconfig.templates.json`; their playtests run under bun in `og test`); `OG_GATE=1` makes `packages/engine/scripts/build.sh` take the dev addon and `og` and the gate's wasm instead of compiling release and wasm again (below) | full | | yes | |
+| `bun-test` | `bun run test` in each `packages/*` with a `test` script (the engine's files in parallel workers, `bun test --parallel`; the engine's `typecheck` also checks the six templates' `src/` against the generated declarations, `packages/engine/tsconfig.templates.json`; their playtests run under bun in `og test`); `OG_GATE=1` makes `packages/engine/scripts/build.sh` take the dev addon and `og` and the gate's wasm instead of compiling release and wasm again (below) | full | | yes | |
 | `determinism` | `tools/wasm-determinism/run.sh`: the same math digest and world hash on the host and on wasm32 scalar and simd128 under node | full | | yes | needs node |
 | perf | `cargo test -p og-tests --release -- --ignored perf` | `make perf` | | | yes |
 | `web-reference` | `bun tests/web/reference.ts` and `--webgl` in `packages/engine`: templates/fx-showcase's five stations, then `bun tests/web/reference-e5.ts` and `--webgl` for its eight E5 stations (each a fresh run like its playtest), in headless Chrome, compared with `references/webgpu`/`webgl2` or else `metal` under og-tests' tolerance (below); path-aware (§Lanes) | `scripts/check.sh web-reference` (`make web-reference`), in no lane | | | |
@@ -169,9 +177,11 @@ are uploaded on every run as `size-gate-<run>`.
 ```
 scripts/install-tools.sh             # once; macOS uses Homebrew for brotli
 scripts/check.sh quick               # the quick lane (make quick)
-scripts/check.sh                     # the full lane, stops at the first FAIL
+scripts/check.sh                     # the full lane, path-aware; stops at the first FAIL
 scripts/check.sh --all               # the full lane with nothing skipped (what CI runs)
-scripts/check.sh clippy test         # selected steps, in the order given
+scripts/check.sh clippy test         # selected steps only
+scripts/check.sh --only bun-test     # a step and the steps it reads (here wasm-build, wasm-opt)
+OG_GATE_JOBS=1 scripts/check.sh      # one step at a time, in lane order
 scripts/check.sh wasm-build wasm-opt size-gate   # the size gate (make wasm)
 scripts/check.sh --list
 scripts/check.sh web-reference       # the browser tiers (make web-reference); needs Chrome
@@ -189,9 +199,31 @@ whole run (`scripts/lock.sh`: a mkdir lock with the holder's pid, taken over
 when that pid no longer runs a gate); a second one prints `another gate
 (pid N: …) is running on <target>, waiting` and starts when the first ends.
 
-Each step prints `==> [n/N] step`, its own output, then `PASS`, `FAIL` or
-`SKIPPED` with its duration; the script exits non-zero on the first `FAIL`
-and writes the per-step lines to `target/evidence/check-summary.txt`. The
+The steps run concurrently, each as soon as the steps whose outputs it
+reads have passed or been skipped (`step_needs` in the script): test and
+wasm-opt after wasm-build (og-tests::wasm takes wasm-build's og-render
+artifact), size-gate and bun-test after wasm-opt; fmt, clippy, drift,
+determinism and wasm-build start at once. Native cargo builds lock
+`target/debug` and the wasm32 ones `target/wasm` and
+`target/wasm32-unknown-unknown`, so the two chains overlap, and cargo's
+lock serialises what shares a directory (clippy, test, drift and the
+`cargo build` in bun-test's build.sh); determinism builds into
+`target/wasm-determinism`. bun-test does not wait for test. Twice in a row,
+and once beside an iOS simulator and another agent's build, every
+reference frame, the determinism digests and the size were as one at a
+time. `OG_GATE_JOBS=N` caps how many steps run at once; 1 is the serial
+order.
+
+Each step writes its output to `<target>/evidence/gate/<step>.log`. A step
+prints `--> [n/N] step started` when it starts; when it ends the gate
+prints `==> [n/N] step`, the whole log, then `PASS`, `FAIL` or `SKIPPED`
+with its duration, so the output never interleaves. The first `FAIL` stops
+the steps still running (each is reported as `CANCELLED step (Ns): stopped
+when 'x' failed; partial log …`), the gate prints `gate FAILED at 'x'` and
+exits non-zero; the gate lock is released only after those steps have
+stopped, and Ctrl-C stops them the same way. On success it prints `gate
+PASSED (n/N steps, Ns)`. Either way the per-step lines, in lane order,
+land in `target/evidence/check-summary.txt`. The
 script honours `CARGO_TARGET_DIR` for CI-style isolation, but agents working
 in parallel share `target/` (AGENTS.md §Build and gate discipline: private
 `target/agent-*` directories compile every dependency once per agent and are
@@ -220,6 +252,25 @@ Validate changes with `shellcheck -s bash .agents/{setup,resume,environment}`,
 run `time .agents/setup` twice, and check the tools from a new `bash -lc`
 shell. Setup changes reach future project orbs after landing on `main`.
 
+## When to run what
+
+The gate costs a round minutes only when it is run too often:
+
+- **After a change during a round**: `scripts/check.sh` (no flag), the
+  path-aware full lane. It reruns only what the change can reach and takes
+  about 30 s when nothing a step reads changed. `scripts/check.sh quick` is
+  the narrower loop.
+- **Once at the end of a round**: `scripts/check.sh --all`, before the
+  final commit, with its summary in the report. Never `--all` after every
+  edit; never touch files or delete `target/og-gate/` to force a step.
+- **After re-recording a reference frame**: rerun only that frame's lane
+  with `scripts/check.sh --only <step>`: `--only test` for og-tests' gfx
+  references (`OG_CAPTURE=1`, §Re-capturing gfx references; it adds
+  wasm-build), `--only bun-test` for a template's playtest frames (it adds
+  wasm-build and wasm-opt, skipped when `crates/` did not change),
+  `scripts/check.sh web-reference` for the browser tiers. Then `--all` once
+  at the end of the round as above.
+
 ## `packages/engine/scripts/build.sh` outside the gate
 
 Standalone (`bun run build`, `bun run test` in `packages/engine`), build.sh
@@ -228,6 +279,14 @@ directory (`<target>/og-wasm/opt-all.txt` and the dev addon and `og` exist):
 the dev addon and `og`, the gate's wasm, and one line saying so. It compiles
 release and its own wasm only with `OG_RELEASE=1`, with `--linux-x64`, or
 when the gate has not built here; a release build holds the gate lock.
+Its wasm-opt is `scripts/wasm-opt.sh`, the gate's own invocation, so the
+publish wasm that ships is the module the size gate measures. Before
+2026-10-19 build.sh left out `--low-memory-unused` and shipped 2,969,335 B
+brotli against the gate's 2,943,180 B; an `OG_RELEASE=1` build.sh now
+writes a `dist/web-publish/origin-engine_bg.wasm` byte-identical to the
+gate's `og_host_web-publish.wasm` (10,807,952 B, 2,943,180 B brotli;
+`tests/evidence/gate-speed/`).
+
 `native/build-profile` records `dev` or `release`, and `scripts/pack.sh`,
 which runs `OG_RELEASE=1 build.sh` with its own arguments first, packs only
 `release`: what ships is always release.

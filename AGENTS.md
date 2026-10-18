@@ -94,6 +94,22 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   suites, the wasm build, the size gate and determinism, and is what a
   commit to main must pass. Changes to rendering, animation, physics, the
   tick or the export run the full lane before they are called done.
+- **When to run the gate.** During a round, run the path-aware full lane
+  (`scripts/check.sh`, no flag) after a change; it reruns only what the
+  change reaches. Run `scripts/check.sh --all` once, at the end of the
+  round, before the final commit, and put its summary in the report. Never
+  run `--all` after every edit. When a reference frame changes, re-record
+  it and rerun only its lane: `scripts/check.sh --only test` (og-tests' gfx
+  references), `--only bun-test` (a template's playtest frames),
+  `scripts/check.sh web-reference` (the browser tiers); `--only` adds the
+  steps the named one reads (`docs/ci.md` §When to run what).
+- **Concurrent steps.** The gate runs its steps concurrently as their
+  inputs allow (test and wasm-opt after wasm-build, size-gate and bun-test
+  after wasm-opt), each with its log in `target/evidence/gate/<step>.log`,
+  printed whole when the step ends; the first FAIL stops the rest. A new
+  step that reads another's output declares it in `step_needs`
+  (`scripts/check.sh`), never by its position in the lane.
+  `OG_GATE_JOBS=1` runs one step at a time.
 - **Path-aware steps.** Both lanes skip what none of its inputs changed
   since it last passed (`docs/ci.md` §Lanes has the rules): the GPU
   reference tests, the wasm build, wasm-opt and size gate (their last
