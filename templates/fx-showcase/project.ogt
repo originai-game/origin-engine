@@ -1,0 +1,16 @@
+type project
+version 1
+---
+# The effects showcase: every og-render effect declared from TypeScript, on
+# five stations, with a screen-space HUD (see README.md).
+name "Effects showcase"
+id "fx-showcase"
+engine "0.0.1"
+entry "src/main.ts"
+profile "3d"
+tick 60
+seed 1
+publish {
+  probe player
+  out "dist"
+}

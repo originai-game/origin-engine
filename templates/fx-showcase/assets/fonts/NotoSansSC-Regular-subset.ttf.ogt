@@ -1,0 +1,12 @@
+type import
+version 1
+---
+# The atlas covers Latin-1, CJK punctuation and the strings the template shows.
+# `charset all` cooks every glyph of the platform subset (GB2312 + kana): see
+# crates/og-cook/README.md for its size and time.
+font {
+  charset latin cjk-punct
+  chars "开始游戏设置退出暂停继续分数最高关卡生命时间胜利失败加载中"
+  em_px 32
+  px_range 4
+}

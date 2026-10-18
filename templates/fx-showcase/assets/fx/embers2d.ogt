@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# 2D embers drawn as sprites on layer 5, glowing in the 2D glow buffer.
+maxParticles 200
+shape box 0.6 0.1 0
+rate 30
+lifetime 1.2 2
+speed 0.6 1.2
+size 0.12 0.22
+sizeOverLife 0 1 1 0
+colorOverLife {
+  key 0 1 0.6 0.2 0
+  key 0.1 1 0.6 0.2 1
+  key 1 1 0.2 0.05 0
+}
+gravity 0 0.5 0
+noise 0.8 0.6 0.5
+texture "textures/spark.png"
+blend additive
+render sprite 5
+glow 1.2
