@@ -18,6 +18,7 @@
 //! | scene (`og.Scene`) | [`SceneMeta`] | `entities` [`EntityRow`], `refs` [`RefRow`], `components` [`ComponentRow`], `strings`, per component `c.<Type>` rows and `s.<Type>` its schema JSON |
 //! | colour LUT (`og.Lut`, a `.cube`) | [`LutMeta`] | `rgba` (size³ RGBA8, red fastest) |
 //! | particle emitter (`og.ParticleEmitter`, an `.ogt` of `type particles`) | [`EmitterMeta`] | `text` (the validated emitter file) |
+//! | flipbook sheet (`og.Flipbook`, an `.ogt` of `type flipbook`) | [`FlipbookMeta`] | `text` (the canonical sheet: frames resolved from the grid and an Aseprite or TexturePacker atlas, clips with frame indices and durations, the texture's size) |
 //! | animation (`og.Animation`, a glTF's `#anim`) | [`AnimMeta`] | `nodes` [`NodeRow`], `skins` [`SkinRow`], `joints` (u32 node indices), `inverse_binds` (16 f32 per joint, column-major), `clips` [`ClipRow`], `channels` [`ChannelRow`], `samples` (f32), `events` [`EventRow`], `skin_streams` [`SkinStreamRow`], `skin_data` (meshopt streams), `morphs` [`MorphRow`], `targets` [`TargetRow`], `morph_data` (meshopt streams), `strings` |
 //! | tileset (`og.Tileset`, an `.ogt` of `type tileset`) | [`TilesetMeta`] | `text` (the canonical tileset text) |
 //! | tilemap (`og.Tilemap`, an `.ogt` of `type tilemap`, a Tiled `.tmj`, an LDtk `.ldtk`) | [`TilemapMeta`] | `layers` [`MapLayerRow`], `cells` (u32 per cell, layer after layer), `objects` [`MapObjectRow`], `props` [`MapPropRow`], `tilesets` [`MapTilesetRow`], `strings` |
@@ -245,6 +246,9 @@ pub mod kind {
     pub const LINEAR: u32 = 2;
     /// A distance-field atlas: RGBA8, linear, lossless.
     pub const MSDF: u32 = 3;
+    /// Pixel art (sprite sheets, tilesets): RGBA8, sRGB, lossless, no
+    /// mips, sampled nearest by the runtime.
+    pub const PIXEL: u32 = 4;
 }
 
 /// [`TextureMeta::codec`] values.
@@ -710,5 +714,25 @@ impl BlobKind for Tilemap {
             MapPropRow::schema(),
             MapTilesetRow::schema(),
         ]
+    }
+}
+
+// ── flipbooks ────────────────────────────────────────────────────────────
+
+row!(
+    /// The root of a flipbook sheet blob (an `.ogt` of `type flipbook`).
+    FlipbookMeta, "og.Flipbook", 1 {
+        /// Bytes of the canonical sheet text in `text`.
+        text_bytes: u32,
+    }
+);
+
+/// The flipbook sheet blob: `text` holds the canonical sheet
+/// (`og_anim::FlipbookSheet::to_text`), parsed again at load.
+pub struct Flipbook;
+impl BlobKind for Flipbook {
+    const NAME: &'static str = "og.Flipbook";
+    fn schemas() -> Vec<Schema> {
+        vec![FlipbookMeta::schema()]
     }
 }

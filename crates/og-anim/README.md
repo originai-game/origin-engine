@@ -249,3 +249,74 @@ The walker rig the tests use is `tests/support/` (procedural) and
   transition interruption rules, clip compression (samples are f32).
 - The IDL transcription and the runtime's `install` in og-api, og-render's
   skinned and morph vertex path (`PaletteSink`), widened culling bounds.
+
+## Flipbooks (sprite animation, E4)
+
+`install_flipbook(&mut World) -> FlipbookSystem` registers `og.Flipbook`
+and `og.FlipbookEvent` and schedules `og.flipbook` (with its state block)
+where it is called; the runtime puts it after the game's systems, beside
+`og.anim`. `FlipbookSystem::add_sheet(handle, FlipbookSheet)` registers a
+sheet (assets are not world state, like clips); `sheet(handle)` reads it
+back for drawing.
+
+### The sheet (`.ogt` of `type flipbook`)
+
+```text
+type flipbook
+version 1
+---
+texture "hero.png"        # relative to the sheet when that file exists, else an asset id
+size 64 32                # the texture in pixels (the cook fills it in)
+filter nearest            # nearest (default, pixel art) | linear
+pivot 0.5 0               # the frame point at the entity's position, from the bottom left
+margin 1                  # grid only
+spacing 0
+grid 16 16                # frames 0.. row-major, named by their index (columns, rows optional with size)
+frame slash 0 32 32 16 0.25 0.5   # a named frame: x y w h [pivot x y], after the grid's
+atlas "hero.json"         # Aseprite (frames with durations, frameTags as clips) or TexturePacker JSON
+clip walk {
+  frames 0 1 2 3          # frame names, or indices
+  fps 10                  # or `durations 0.1 0.1 0.2 0.1` seconds per frame
+  mode loop               # loop | pingPong | once
+  event 2 "step"          # entering clip frame 2 sends og.FlipbookEvent `step`
+}
+```
+
+The cook resolves the atlas into `frame` lines (Aseprite hashes in the
+natural order of their names; TexturePacker pivots from the top left
+turned to the bottom left) and tags into clips (`reverse` reversed,
+`pingpong` as `pingPong`, the frames' own durations), lets a clip the
+sheet declares win over a tag of the same name, and stores the canonical
+text (`FlipbookSheet::to_text`, which parses back equal).
+
+### `og.Flipbook` (component)
+
+| Field | Type | Default | Meaning |
+|---|---|---|---|
+| `sheet` | u64 | 0 | the sheet handle |
+| `clip` | u32 | 0 | an index into the sheet's clips; a change restarts at the first frame (or at `time` if the game wrote it in the same tick) |
+| `speed` | f32, 0…10, tunable | 1 | playback rate |
+| `playing` | bool | true | whether time advances |
+| `frame` | u32 | 0 | written: the clip frame shown |
+| `time` | f32 s | 0 | written, within one cycle; a different value written by the game is a seek (no events fire across it) |
+| `finished` | bool | false | written: a `once` clip holds its last frame |
+| `loops` | u32 | 0 | written: cycles completed |
+
+`og.FlipbookEvent { entity, clip, frame, name: str64 }`: one per frame
+entered with an `event` (at most 64 per entity per tick), the first frame
+of a clip started at 0 included. Time is the scaled tick (`og.TimeScale`):
+slow motion slows it, a hit stop holds the frame. The `og.flipbook` state
+block keeps, per entity, the clip and time it last wrote, the step (frames
+entered since the clip started) and the whole cycles taken off `time`, so a
+restored world sends the same events on the same ticks.
+
+Drawing is the runtime's: an entity with `og.Flipbook` and `og.Sprite` is
+drawn with the sheet's texture, the current frame's region and pivot; the
+sprite keeps its size, colour, flips and layer.
+
+Tests: `tests/flipbook.rs` (the sheet's grid and named frames, mistakes by
+line, the canonical round trip; a loop at 10 fps changing frame every six
+ticks and firing once per pass; ping-pong's turn, once's hold and finish;
+a clip change restarting, a silent seek, speed and pause; slow motion and
+hit stop; a snapshot mid-clip giving the same transcript and hash). The
+event transcript of a run is in `tests/evidence/E4/flipbook-events.json`.

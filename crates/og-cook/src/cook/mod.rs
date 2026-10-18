@@ -12,6 +12,7 @@
 
 mod anim;
 mod audio;
+mod flipbook;
 mod font;
 mod model;
 mod scene;
@@ -381,6 +382,7 @@ enum Kind {
     Emitter,
     Tileset,
     Tilemap,
+    Flipbook,
 }
 
 impl Kind {
@@ -395,6 +397,7 @@ impl Kind {
             Kind::Emitter => "emitter",
             Kind::Tileset => "tileset",
             Kind::Tilemap => "tilemap",
+            Kind::Flipbook => "flipbook",
         }
     }
 }
@@ -420,6 +423,7 @@ enum Work<'a> {
     Emitter(&'a Source),
     Tileset(&'a Source),
     Tilemap(&'a Source, tilemap::MapSettings),
+    Flipbook(&'a Source),
     Font(&'a Source, FontSettings),
     Scene(&'a Source),
 }
@@ -489,8 +493,9 @@ fn texture_kind(s: &Source) -> Result<u32, String> {
             "color" => Ok(format::kind::COLOR),
             "normal" => Ok(format::kind::NORMAL),
             "linear" => Ok(format::kind::LINEAR),
+            "pixel" => Ok(format::kind::PIXEL),
             w => Err(format!(
-                "line {}: texture kind '{w}' (expected color, normal or linear)",
+                "line {}: texture kind '{w}' (expected color, normal, linear or pixel)",
                 e.line
             )),
         },
@@ -614,6 +619,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     Ok(doc) if doc.ty == crate::fx::EMITTER_TYPE => Kind::Emitter,
                     Ok(doc) if doc.ty == "tileset" => Kind::Tileset,
                     Ok(doc) if doc.ty == "tilemap" => Kind::Tilemap,
+                    Ok(doc) if doc.ty == "flipbook" => Kind::Flipbook,
                     Ok(doc) => {
                         early_errors.push((
                             rel.clone(),
@@ -828,6 +834,11 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                 }
                 Err(e) => early_errors.push((s.rel.clone(), "tilemap", e)),
             },
+            Kind::Flipbook => {
+                let deps = flipbook::dependency_hashes(s);
+                let st = stamp(&[b"flipbook", &hash, deps.as_bytes()]);
+                outs.push((s.rel.clone(), format::Flipbook::NAME, st, Work::Flipbook(s)));
+            }
             Kind::Font => match font_settings(s, &options.font) {
                 Ok(f) => {
                     let st = stamp(&[b"font", f.describe().as_bytes(), &hash]);
@@ -1061,7 +1072,12 @@ fn run(
                 "{}x{} {}",
                 img.width,
                 img.height,
-                ["colour (ETC1S)", "normal (UASTC)", "linear (UASTC)"][*k as usize]
+                match *k {
+                    format::kind::NORMAL => "normal (UASTC)",
+                    format::kind::LINEAR => "linear (UASTC)",
+                    format::kind::PIXEL => "pixel art (RGBA8, no mips)",
+                    _ => "colour (ETC1S)",
+                }
             );
             texture::cook(&img, *k, &options.texture, p.stamp).map(|b| (b, vec![note]))
         }
@@ -1130,6 +1146,7 @@ fn run(
         Work::Tilemap(s, m) => {
             tilemap::cook_tilemap(&s.rel, &s.bytes, m, &|id| known.contains(id), p.stamp)
         }
+        Work::Flipbook(s) => flipbook::cook(s, p.stamp),
         Work::Font(s, f) => {
             font::cook(&s.bytes, f, threads, p.stamp).map(|(b, n)| (b, vec![n.note]))
         }

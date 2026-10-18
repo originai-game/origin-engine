@@ -979,6 +979,11 @@ pub struct CookedTexture {
 }
 
 impl CookedTexture {
+    /// A `kind pixel` texture: drawn without mips and sampled nearest.
+    pub fn is_pixel_art(&self) -> bool {
+        self.meta.kind == crate::format::kind::PIXEL
+    }
+
     /// Level 0 as RGBA8 for og-render (which uploads RGBA8 and builds its own
     /// mips today). RGBA8 textures decode everywhere; Basis Universal ones
     /// need the `transcode` feature (native) and are refused without it.
@@ -996,6 +1001,15 @@ impl CookedTexture {
             codec::RGBA8 => ktx2::decode_rgba8(&self.ktx2, 0).map_err(bad)?,
             _ => self.transcode_basis().map_err(bad)?,
         };
+        if self.is_pixel_art() {
+            return Ok(TextureData {
+                width,
+                height,
+                rgba,
+                color_space,
+                mips: Mips::None,
+            });
+        }
         Ok(TextureData {
             width,
             height,
@@ -1568,4 +1582,24 @@ fn decode_tilemap(blob: &Blob) -> Result<og_tilemap::TilemapAsset, LoadError> {
     }
     map.validate().map_err(|e| invalid(blob, e.to_string()))?;
     Ok(map)
+}
+
+impl Bundle {
+    /// Decodes a flipbook sheet blob (`og.Flipbook`) into its sheet.
+    pub fn flipbook(&self, id: &str, bytes: &[u8]) -> Result<og_anim::FlipbookSheet, LoadError> {
+        let blob = self.blob::<format::Flipbook>(id, bytes)?;
+        let meta = one::<format::FlipbookMeta>(&blob)?;
+        let text = blob.raw("text")?;
+        let text = text
+            .get(..meta.text_bytes as usize)
+            .and_then(|t| std::str::from_utf8(t).ok())
+            .ok_or_else(|| invalid(&blob, "the sheet text is cut short or not UTF-8"))?;
+        og_anim::FlipbookSheet::parse(text).map_err(|e| invalid(&blob, e.reason()))
+    }
+
+    /// Reads and decodes a flipbook sheet (native).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn load_flipbook(&self, id: &str) -> Result<og_anim::FlipbookSheet, LoadError> {
+        self.flipbook(id, &self.read(id)?)
+    }
 }
