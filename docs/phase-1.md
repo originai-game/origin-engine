@@ -7,7 +7,75 @@ the platform can run it in an `engine`-class sandbox. Spike findings
 (`docs/spike-results.md`) are the baseline; the spike crate is the seed
 of `og-render` and is deleted once its code has moved.
 
-## Owed
+## Status 2026-10-19, E7 round
+
+Phase 1 is closed by the E7 round (tag `phase1-e7`). Against
+`docs/design.md` §11 phase 1 it delivers the ECS with reflection, the fixed
+deterministic tick and snapshots, `.ogt`/`.ogb` and the cook (glTF,
+textures, scenes, fonts, sound, tilemaps, navmeshes), PBR with shadows and
+IBL, input, camera, audio, the command channel and the probe (protocol 5
+plus the wire), hot reload, `og`, the IDL pipeline (d.ts, wiki, schema, the
+hosts' glue), the project template and three archetype games (runner,
+match3, topdown) where two were asked, all proved by gfx references on
+metal, vulkan-cpu, WebGPU and WebGL2 and by playtests. It also brought
+forward much of phase 2: skeletal animation with blend trees and IK, rapier
+in 2D and 3D with character, platformer and vehicle controllers, joints,
+ropes, cloth, 2D fluids and ragdolls, navmeshes and og.ai, particles, the
+post stack, decals, atmosphere and water, material shaders, the og-ui
+toolkit on the platform's tokens with MSDF text and six style packs, Tune,
+i18n, og.platform over the Player protocol and `og polish`. Lighting is
+the one phase 1 line not met as written: forward lighting is an 8-light
+uniform loop, not Forward+ (row 30). Phase 2 starts with terrain (a
+clipmap), Forward+ clustered lighting, animation retargeting, and the L
+items of the owed table: planar water (24), 3D SPH (29), Forward+ (30) and
+og-ui's rich text, accessibility tree, glass and two-axis scrolling (33).
+
+### Gate
+
+`scripts/check.sh --all` on db65e5a (this commit adds documents only),
+2026-10-19, Apple M4 Pro with another agent's platform validation on the
+machine: **PASSED, 9 of 9 steps in 237 s**: fmt 1 s, clippy 4 s,
+wasm-build 44 s, test 42 s, wasm-opt 37 s, size-gate 21 s, drift 4 s,
+bun-test 83 s, determinism 1 s. Beside it: `og test` passes on all six
+templates (game 2 suites, ui-kit 25, fx-showcase 9, runner 8, match3 6,
+topdown 7; 160 s in all), and `make web-reference` (Chrome for Testing
+150) matches all 26 browser frames, fx-showcase's five and eight E5
+stations on WebGPU and WebGL2 (27 s). Every committed reference frame
+passes; the ones this round re-recorded say why with before and after
+images (ba1042a kinsoku, c6d5793 the ragdoll, 93d86e1 the lazy stations,
+706bee2 the other tiers). `tests/evidence/E7/break-and-restore.md` has how
+each change's test was broken once.
+
+### Wasm
+
+The publish wasm (`og_host_web-publish`, wasm-opt -Oz, brotli -q 11):
+**2,943,180 B brotli, 70.2 % of the 4,194,304 B budget** (3,021,619 B,
+72.0 %, before the round's `[profile.wasm]`, fcca471: the load-time crates
+at opt-level z; the per-tick crates at z cost a quarter of a frame or half
+the physics step again) (`tests/evidence/E7/wasm-size.md`: every experiment, its
+speed, and what going below 65 % takes).
+
+### Polish
+
+`og polish` on the six templates (`tests/evidence/E7/polish/`; taste n/a
+where the HUD is screen-space text rather than og.ui):
+
+| Template | Taste | Feel | Findings | Closed this round |
+|---|---|---|---|---|
+| game | 100 | 87 | 1 (idle frames: the guard playtest stages its scenario without pressing Start) | — |
+| ui-kit | 90 (73 before) | 62 | 111 (rows 41–43, 45; the rest read a catalogue as a game) | polish read dialogs, sheets and the cutscene as HUDs, dimmed text under scrims and touch controls (da05a4d) |
+| fx-showcase | 100 | 97 | 0 | the E5 stations built lazily (93d86e1) |
+| runner | n/a | 99 | 0 (row 46 below the threshold) | — |
+| match3 | n/a | 100 (88) | 0 | the dealing press heard (c49780a) |
+| topdown | n/a | 97 (86) | 0 | a hit taken holds the world; footsteps heard (62f52f3) |
+
+
+### Owed
+
+After E7: 14 rows done (1–13 and the platform asks, 37), row 14 partly (the
+wasm at 70.2 %, not under 65 %), and open 25 for the engine's phase 2
+(15–35, 41, 42, 45, 46), 3 for the platform (36, 38, 43) and 3 for the
+owner (39, 40, 44).
 
 Every item a round's status left owed or out, in one place; the round
 sections below point here instead of repeating them. Size: S a day or
@@ -18,20 +86,20 @@ resource only the owner can give.
 
 | # | Item | Round | Size | Owner | State |
 |---|---|---|---|---|---|
-| 1 | `og.ui.shake` for game code (only a refused press shakes today) | E3 | S | engine, E7 | open |
-| 2 | Nine-slice edges and centre tiled, not stretched, when the skin says so | E3 | S | engine, E7 | open |
-| 3 | Phone references for the six ui-kit skin packs (desktop only) | E3 | S | engine, E7 | open |
-| 4 | Camera zones that scroll between rooms instead of only clamping; topdown's door uses it | E4 | S | engine, E7 | open |
-| 5 | Core commands that read and set resources; game commands' usage text in `help` | E4 | S | engine, E7 | open |
-| 6 | `og.tilemap.getTile` on a terrain layer answers the resolved tile, not the terrain bit | E4 | S | engine, E7 | open |
-| 7 | Ragdoll bodies follow the animation at weight 0 (the runtime never called `set_ragdoll_targets`) | E5 | S | engine, E7 | open |
-| 8 | runner on the 2D platformer controller, topdown on the 2D character movement | E5 | S | engine, E7 | open |
-| 9 | Japanese line breaking with kinsoku rules in og-ui (CJK breaks between any two characters) | E6 | S | engine, E7 | open |
-| 10 | `og polish`'s text measures count icon names and disabled buttons | E6 | S | engine, E7 | open |
-| 11 | fx-showcase's E5 stations built lazily per station (its playtests and polish frame time dropped to 100/88) | E6 | S | engine, E7 | open |
-| 12 | `templates/fx-showcase/src/main.ts`'s type errors; templates are not typechecked in the gate | E6 | S | engine, E7 | open |
-| 13 | Native and Chrome world hashes of the three archetypes compared (match3 differed, not investigated) | E6 | S | engine, E7 | open |
-| 14 | The publish wasm under 65 % of the 4 MB brotli budget without removing features (71 % before E7) | E7 | M | engine, E7 | open |
+| 1 | `og.ui.shake` for game code (only a refused press shakes today) | E3 | S | engine, E7 | done, da47e5e |
+| 2 | Nine-slice edges and centre tiled, not stretched, when the skin says so | E3 | S | engine, E7 | done, 4a19260 |
+| 3 | Phone references for the six ui-kit skin packs (desktop only) | E3 | S | engine, E7 | done, d7c95b3 |
+| 4 | Camera zones that scroll between rooms instead of only clamping; topdown's door uses it | E4 | S | engine, E7 | done, 0c630ce |
+| 5 | Core commands that read and set resources; game commands' usage text in `help` | E4 | S | engine, E7 | done, cea6fab |
+| 6 | `og.tilemap.getTile` on a terrain layer answers the resolved tile, not the terrain bit | E4 | S | engine, E7 | done, 0006005, e7f4966 |
+| 7 | Ragdoll bodies follow the animation at weight 0 (the runtime never called `set_ragdoll_targets`) | E5 | S | engine, E7 | done, c6d5793 |
+| 8 | runner on the 2D platformer controller, topdown on the 2D character movement | E5 | S | engine, E7 | done, 142b9da, 497deee |
+| 9 | Japanese line breaking with kinsoku rules in og-ui (CJK breaks between any two characters) | E6 | S | engine, E7 | done, ba1042a |
+| 10 | `og polish`'s text measures count icon names and disabled buttons | E6 | S | engine, E7 | done, 891b4b6 |
+| 11 | fx-showcase's E5 stations built lazily per station (its playtests and polish frame time dropped to 100/88) | E6 | S | engine, E7 | done, 93d86e1 |
+| 12 | `templates/fx-showcase/src/main.ts`'s type errors; templates are not typechecked in the gate | E6 | S | engine, E7 | done, c5295be |
+| 13 | Native and Chrome world hashes of the three archetypes compared (match3 differed, not investigated) | E6 | S | engine, E7 | done, 85c2bd0 |
+| 14 | The publish wasm under 65 % of the 4 MB brotli budget without removing features (71 % before E7) | E7 | M | engine, E7 | partly: 72.0 % to 70.2 % (fcca471); under 65 % is row 44 |
 | 15 | UI sounds start one tick after the input (`og.ui.sound` runs after `og.audio`) | E3 | S | engine, phase 2 | open |
 | 16 | Springs for the skin's hover and press (eased curves today) | E3 | S | engine, phase 2 | open |
 | 17 | Per-glyph tracking from a skin's ramp (needs per-glyph spacing in og-render's text) | E3 | M | engine, phase 2 | open |
@@ -54,10 +122,16 @@ resource only the owner can give.
 | 34 | The M4 "glTF edit to reload in 300 ms" run and the M5 timed 8-frame `sweep`, filed as evidence (`og dev` prints the first) | M4, M5 | S | engine, phase 2 | open |
 | 35 | wgpu and naga 31 when published, kept only if every reference frame passes unchanged | Toolchain | S | engine, phase 2 | open |
 | 36 | `og polish` measures frame time on the tier it runs on (metal here), not on the executors' lavapipe | E6 | S | platform | open |
-| 37 | The eight platform asks (`docs/platform-asks.md`) | E6 | M | platform | open |
+| 37 | The eight platform asks (`docs/platform-asks.md`) | E6 | M | platform | done: landed on the platform 2026-10-19, the engine speaks it (96f4ebd) |
 | 38 | The platform side of the cutover: merge `origin-engine-cutover`, pin this revision | E1 | S | platform | open |
 | 39 | A third native tier beside `metal` and `vulkan-cpu` (the browser tiers stand in) | E4 | M | owner | open |
 | 40 | Mobile measurements: the iPhone first frame and frame times (Safari, WebGPU), the mid-range Android view benchmark | M6, E1 | S | owner (devices) | open |
+| 41 | og-ui plays no sound when keyboard or gamepad focus moves (ui-kit's sound on input 38 in og polish) | E7 | S | engine, phase 2 | open |
+| 42 | The kit's small type: the shop cards' item names (`caption`, 7 CSS px of ink), the idle HUD's generator names and the `meta` units, under og polish's 9 px | E7 | S | engine, phase 2 | open |
+| 43 | The default tokens' primary and danger button labels at 3.2:1 and 2.9:1 against their fill (og polish wants 4.5:1; WCAG's large text 3:1) | E7 | S | platform (the design tokens) | open |
+| 44 | A publish wasm per profile (measured 63.3 % 3D, 59.5 % 2D at opt-level 3): two shipping variants, `og build --publish` choosing by the game's profile, and the size budget read per download instead of as the sum of every wasm the gate builds | E7 | M | owner (the budget's meaning), then engine | open |
+| 45 | `og.ui.shake` shown in a template (ui-kit's shop refusing a purchase) | E7 | S | engine, phase 2 | open |
+| 46 | runner: a press during the game-over card's hold is silent (og polish: 1 of 3 inputs in `flow`) | E7 | S | engine, phase 2 | open |
 
 ## 0. Rules that shape the plan
 
