@@ -107,12 +107,18 @@ pub(crate) fn mount_front(
     let shared = ui.clone();
     world
         .add_system(
-            SystemDesc::new(UI_BEGIN).read::<og_probe::Input>(),
+            SystemDesc::new(UI_BEGIN)
+                .read::<og_probe::Input>()
+                .read::<og_input::Gamepad>()
+                .read::<og_input::Pointers>(),
             move |ctx| {
+                let pad = ctx.resource::<og_input::Gamepad>().ok().map(|g| *g);
+                let pointers = ctx.resource::<og_input::Pointers>().ok().map(|p| *p);
                 let input = ctx
                     .resource::<og_probe::Input>()
                     .map(|i| InputFrame::read(&*i))
-                    .unwrap_or_default();
+                    .unwrap_or_default()
+                    .with(pad.as_ref(), pointers.as_ref());
                 let viewport = viewport_of(engine_id);
                 shared.lock().begin(input, viewport);
                 BUILDING.with(|b| b.set(Some(engine_id)));

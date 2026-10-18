@@ -1049,6 +1049,104 @@ pub fn og_input_button_released(world: u32, b: String) -> bool {
     input(world, |i| i.button_released(button(&b)), false)
 }
 
+/// A copy of an input resource as of this tick (inside a system, through
+/// its context, which refuses it unless the system reads it).
+fn input_res<R: og_core::Reflect + Copy + Send + Sync + 'static, T>(
+    world: u32,
+    f: impl FnOnce(&R) -> T,
+    refused: T,
+) -> T {
+    if let Some(fr) = running(world) {
+        // SAFETY: the frame is published while its system runs.
+        return match unsafe { fr.ctx() }.resource::<R>() {
+            Ok(r) => f(&r),
+            Err(_) => refused,
+        };
+    }
+    match engine(world).and_then(|eng| eng.world()?.resource::<R>().map(|r| *r).map_err(err)) {
+        Ok(r) => f(&r),
+        Err(_) => refused,
+    }
+}
+
+fn vec2_json(v: og_core::glam::Vec2) -> String {
+    json!({ "x": f64::from(v.x), "y": f64::from(v.y) }).to_string()
+}
+
+pub fn og_pointers_down(world: u32, id: u32) -> bool {
+    input_res(world, |p: &og_input::Pointers| p.down(id), false)
+}
+pub fn og_pointers_pressed(world: u32, id: u32) -> bool {
+    input_res(world, |p: &og_input::Pointers| p.is_pressed(id), false)
+}
+pub fn og_pointers_released(world: u32, id: u32) -> bool {
+    input_res(world, |p: &og_input::Pointers| p.is_released(id), false)
+}
+pub fn og_pointers_position(world: u32, id: u32) -> String {
+    vec2_json(input_res(
+        world,
+        |p: &og_input::Pointers| p.position(id),
+        Default::default(),
+    ))
+}
+pub fn og_pointers_start(world: u32, id: u32) -> String {
+    vec2_json(input_res(
+        world,
+        |p: &og_input::Pointers| p.start(id),
+        Default::default(),
+    ))
+}
+pub fn og_pointers_count(world: u32) -> u32 {
+    input_res(world, |p: &og_input::Pointers| p.count(), 0)
+}
+pub fn og_gamepad_connected(world: u32, pad: Option<u32>) -> bool {
+    input_res(
+        world,
+        |g: &og_input::Gamepad| g.is_connected(pad.unwrap_or(0)),
+        false,
+    )
+}
+fn pad_button(button: &str) -> Option<usize> {
+    og_input::gamepad_button(button)
+}
+pub fn og_gamepad_down(world: u32, button: String, pad: Option<u32>) -> bool {
+    pad_button(&button).is_some_and(|b| {
+        input_res(
+            world,
+            |g: &og_input::Gamepad| g.down(b, pad.unwrap_or(0)),
+            false,
+        )
+    })
+}
+pub fn og_gamepad_pressed(world: u32, button: String, pad: Option<u32>) -> bool {
+    pad_button(&button).is_some_and(|b| {
+        input_res(
+            world,
+            |g: &og_input::Gamepad| g.pressed(b, pad.unwrap_or(0)),
+            false,
+        )
+    })
+}
+pub fn og_gamepad_released(world: u32, button: String, pad: Option<u32>) -> bool {
+    pad_button(&button).is_some_and(|b| {
+        input_res(
+            world,
+            |g: &og_input::Gamepad| g.released(b, pad.unwrap_or(0)),
+            false,
+        )
+    })
+}
+pub fn og_gamepad_axis(world: u32, axis: String, pad: Option<u32>) -> f64 {
+    match og_input::GamepadAxis::from_name(&axis) {
+        Some(a) => input_res(
+            world,
+            |g: &og_input::Gamepad| f64::from(g.axis(a, pad.unwrap_or(0))),
+            0.0,
+        ),
+        None => 0.0,
+    }
+}
+
 // ── camera ──────────────────────────────────────────────────────────────────
 
 /// The play surface in CSS pixels (the unit of og.Input and the probe).

@@ -30,6 +30,9 @@ const events = [
   { kind: "pointer", action: "up", x: 640, y: 480, button: "middle" },
   { kind: "key", key: "NumpadSubtract", action: "up" },
   { kind: "pointer", action: "move", x: 0.1, y: 0.2, button: "none" },
+  { kind: "pointer", action: "down", x: 900, y: 600, button: "left", id: 2 },
+  { kind: "gamepad", pad: 1, connected: true, buttons: ["a", "leftBumper", "up"], axes: [0.5, -1, 0, 0.25], triggers: [0, 0.75] },
+  { kind: "gamepad", pad: 1, connected: false, buttons: [], axes: [0, 0, 0, 0], triggers: [0, 0] },
 ];
 for (const e of events) if (!writeRing(ring, e)) throw new Error("full");
 const copy = new SharedArrayBuffer(ring.byteLength);

@@ -960,6 +960,46 @@ export interface Rng {
 // ── input ───────────────────────────────────────────────────────
 // Input as the game sees it: the Input resource for polling, events for edges.
 // The shell collects pointer, keyboard and wheel input on the main thread; the probe and the command channel inject through the same path.
+// Several pointers at once (multi-touch) are og.Pointers; the first four gamepads, in the W3C standard mapping, are og.Gamepad. Both are world state, as og.Input is, so they replay.
+
+/** The most pointers og.Pointers tracks at once: ids 0 (the primary pointer) to 4. */
+export declare const MAX_POINTERS: 5;
+
+/** The most gamepads og.Gamepad reads: pads 0 to 3. */
+export declare const MAX_GAMEPADS: 4;
+
+/**
+ * A gamepad button in the W3C standard mapping, in its index order (a is button 0).
+ * - `"a"`: The bottom face button (A, Cross).
+ * - `"b"`: The right face button (B, Circle).
+ * - `"x"`: The left face button (X, Square).
+ * - `"y"`: The top face button (Y, Triangle).
+ * - `"leftBumper"`: The left shoulder button.
+ * - `"rightBumper"`: The right shoulder button.
+ * - `"leftTrigger"`: The left trigger, as a button (its analog value is the leftTrigger axis).
+ * - `"rightTrigger"`: The right trigger, as a button.
+ * - `"back"`: Back, Select or View.
+ * - `"start"`: Start, Options or Menu.
+ * - `"leftStick"`: The left stick pressed in.
+ * - `"rightStick"`: The right stick pressed in.
+ * - `"up"`: The d-pad's up.
+ * - `"down"`: The d-pad's down.
+ * - `"left"`: The d-pad's left.
+ * - `"right"`: The d-pad's right.
+ * - `"home"`: The home or guide button.
+ */
+export type GamepadButton = "a" | "b" | "x" | "y" | "leftBumper" | "rightBumper" | "leftTrigger" | "rightTrigger" | "back" | "start" | "leftStick" | "rightStick" | "up" | "down" | "left" | "right" | "home";
+
+/**
+ * An analog input of a gamepad.
+ * - `"leftX"`: The left stick's x, -1 (left) to 1 (right).
+ * - `"leftY"`: The left stick's y, -1 (up) to 1 (down), as the Gamepad API reports it.
+ * - `"rightX"`: The right stick's x.
+ * - `"rightY"`: The right stick's y, down positive.
+ * - `"leftTrigger"`: The left trigger, 0 to 1.
+ * - `"rightTrigger"`: The right trigger, 0 to 1.
+ */
+export type GamepadAxis = "leftX" | "leftY" | "rightX" | "rightY" | "leftTrigger" | "rightTrigger";
 
 /**
  * What an injected key event does.
@@ -1029,6 +1069,32 @@ export interface PointerInput {
   readonly y: number;
   /** The button; `none` for a hover move. */
   readonly button: PointerButton;
+  /**
+   * Which pointer: 0 the primary one (the mouse, the first touch; what protocol 5 means), 1 to 4 further touches held at the same time (an engine extension). Omitted is 0.
+   *
+   * @range ..4
+   */
+  readonly id?: number;
+}
+
+/**
+ * A gamepad's whole state (an engine extension of protocol 5): the shell sends one whenever a pad changes, and a playtest can send its own.
+ */
+export interface GamepadInput {
+  /**
+   * Which pad, 0 to 3; omitted is 0.
+   *
+   * @range ..3
+   */
+  readonly pad?: number;
+  /** Whether the pad is connected (omitted is true); a disconnected pad holds nothing. */
+  readonly connected?: boolean;
+  /** The buttons held (omitted is none). */
+  readonly buttons?: readonly GamepadButton[];
+  /** Left stick x, y, right stick x, y; each -1 to 1, y down. Missing values are 0. */
+  readonly axes?: readonly number[];
+  /** The left and right analog triggers, 0 to 1. Missing values are 0. */
+  readonly triggers?: readonly number[];
 }
 
 /** A wheel or trackpad scroll at a point. */
@@ -1068,7 +1134,9 @@ export type InjectedInput =
   /** A pointer event. */
   | ({ readonly kind: "pointer" } & PointerInput)
   /** A wheel event. */
-  | ({ readonly kind: "wheel" } & WheelInput);
+  | ({ readonly kind: "wheel" } & WheelInput)
+  /** A gamepad's state. */
+  | ({ readonly kind: "gamepad" } & GamepadInput);
 
 /**
  * The input state at the start of this tick (og-input's og.Input, version 2). Edges (pressed, released) last exactly one tick; read the state through the methods.
@@ -1272,6 +1340,334 @@ export interface Input {
 }
 
 /**
+ * Every pointer on the play surface at once, at the start of this tick (og-input's og.Pointers): a touch stick and a touch button can be held together. Pointer 0 is og.Input's pointer; ids 1 to 4 are further touches, in the order they landed (the lowest free id).
+ * Edges last exactly one tick, as og.Input's do. Masks are bit `id`; read them through the methods.
+ *
+ * The `Pointers` resource (token `og.Pointers`).
+ */
+export interface Pointers {
+  /**
+   * Pointers held down, as a mask.
+   *
+   * @readonly written by the engine
+   */
+  readonly heldMask: number;
+  /**
+   * Pointers that went down this tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly pressedMask: number;
+  /**
+   * Pointers that went up this tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly releasedMask: number;
+  /**
+   * Pointers a click releases at the end of the next tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly releaseNextMask: number;
+  /**
+   * Where pointer 0 is.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   * @readonly written by the engine
+   */
+  readonly position0: Vector2;
+  /**
+   * Where pointer 1 is.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   * @readonly written by the engine
+   */
+  readonly position1: Vector2;
+  /**
+   * Where pointer 2 is.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   * @readonly written by the engine
+   */
+  readonly position2: Vector2;
+  /**
+   * Where pointer 3 is.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   * @readonly written by the engine
+   */
+  readonly position3: Vector2;
+  /**
+   * Where pointer 4 is.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   * @readonly written by the engine
+   */
+  readonly position4: Vector2;
+  /**
+   * Where pointer 0 went down.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   * @readonly written by the engine
+   */
+  readonly start0: Vector2;
+  /**
+   * Where pointer 1 went down.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   * @readonly written by the engine
+   */
+  readonly start1: Vector2;
+  /**
+   * Where pointer 2 went down.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   * @readonly written by the engine
+   */
+  readonly start2: Vector2;
+  /**
+   * Where pointer 3 went down.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   * @readonly written by the engine
+   */
+  readonly start3: Vector2;
+  /**
+   * Where pointer 4 went down.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   * @readonly written by the engine
+   */
+  readonly start4: Vector2;
+  /**
+   * Whether a pointer is held.
+   *
+   * @param id The pointer, 0 to 4.
+   */
+  down(id: number): boolean;
+  /**
+   * Whether a pointer went down this tick.
+   *
+   * @param id The pointer, 0 to 4.
+   */
+  pressed(id: number): boolean;
+  /**
+   * Whether a pointer went up this tick.
+   *
+   * @param id The pointer, 0 to 4.
+   */
+  released(id: number): boolean;
+  /**
+   * Where a pointer is, in CSS pixels.
+   *
+   * @param id The pointer, 0 to 4.
+   */
+  position(id: number): Vector2;
+  /**
+   * Where a pointer went down, in CSS pixels: a touch control claims the pointers that started on it.
+   *
+   * @param id The pointer, 0 to 4.
+   */
+  start(id: number): Vector2;
+  /** How many pointers are held. */
+  count(): number;
+}
+
+/**
+ * The first four gamepads in the W3C standard mapping, at the start of this tick (og-input's og.Gamepad). On the web the shell polls the pads each display frame and sends their state through the input ring, so a pad is world state and replays; it also maps pads to keys for games that only read keys.
+ * Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods.
+ *
+ * The `Gamepad` resource (token `og.Gamepad`).
+ */
+export interface Gamepad {
+  /**
+   * Connected pads: bit `pad`.
+   *
+   * @readonly written by the engine
+   */
+  readonly connectedMask: number;
+  /**
+   * Held buttons of pad 0.
+   *
+   * @readonly written by the engine
+   */
+  readonly buttons0: number;
+  /**
+   * Held buttons of pad 1.
+   *
+   * @readonly written by the engine
+   */
+  readonly buttons1: number;
+  /**
+   * Held buttons of pad 2.
+   *
+   * @readonly written by the engine
+   */
+  readonly buttons2: number;
+  /**
+   * Held buttons of pad 3.
+   *
+   * @readonly written by the engine
+   */
+  readonly buttons3: number;
+  /**
+   * Buttons of pad 0 that went down this tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly pressed0: number;
+  /**
+   * Buttons of pad 1 that went down this tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly pressed1: number;
+  /**
+   * Buttons of pad 2 that went down this tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly pressed2: number;
+  /**
+   * Buttons of pad 3 that went down this tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly pressed3: number;
+  /**
+   * Buttons of pad 0 that went up this tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly released0: number;
+  /**
+   * Buttons of pad 1 that went up this tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly released1: number;
+  /**
+   * Buttons of pad 2 that went up this tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly released2: number;
+  /**
+   * Buttons of pad 3 that went up this tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly released3: number;
+  /**
+   * The left stick of pad 0, -1 to 1, y down.
+   *
+   * @readonly written by the engine
+   */
+  readonly leftStick0: Vector2;
+  /**
+   * The left stick of pad 1, -1 to 1, y down.
+   *
+   * @readonly written by the engine
+   */
+  readonly leftStick1: Vector2;
+  /**
+   * The left stick of pad 2, -1 to 1, y down.
+   *
+   * @readonly written by the engine
+   */
+  readonly leftStick2: Vector2;
+  /**
+   * The left stick of pad 3, -1 to 1, y down.
+   *
+   * @readonly written by the engine
+   */
+  readonly leftStick3: Vector2;
+  /**
+   * The right stick of pad 0, -1 to 1, y down.
+   *
+   * @readonly written by the engine
+   */
+  readonly rightStick0: Vector2;
+  /**
+   * The right stick of pad 1, -1 to 1, y down.
+   *
+   * @readonly written by the engine
+   */
+  readonly rightStick1: Vector2;
+  /**
+   * The right stick of pad 2, -1 to 1, y down.
+   *
+   * @readonly written by the engine
+   */
+  readonly rightStick2: Vector2;
+  /**
+   * The right stick of pad 3, -1 to 1, y down.
+   *
+   * @readonly written by the engine
+   */
+  readonly rightStick3: Vector2;
+  /**
+   * The left (x) and right (y) triggers of pad 0, 0 to 1.
+   *
+   * @readonly written by the engine
+   */
+  readonly triggers0: Vector2;
+  /**
+   * The left (x) and right (y) triggers of pad 1, 0 to 1.
+   *
+   * @readonly written by the engine
+   */
+  readonly triggers1: Vector2;
+  /**
+   * The left (x) and right (y) triggers of pad 2, 0 to 1.
+   *
+   * @readonly written by the engine
+   */
+  readonly triggers2: Vector2;
+  /**
+   * The left (x) and right (y) triggers of pad 3, 0 to 1.
+   *
+   * @readonly written by the engine
+   */
+  readonly triggers3: Vector2;
+  /**
+   * Whether a pad is connected.
+   *
+   * @param pad The pad, 0 to 3; omitted is 0.
+   */
+  connected(pad?: number): boolean;
+  /**
+   * Whether a button is held.
+   *
+   * @param button The button.
+   * @param pad The pad, 0 to 3; omitted is 0.
+   */
+  down(button: GamepadButton, pad?: number): boolean;
+  /**
+   * Whether a button went down this tick.
+   *
+   * @param button The button.
+   * @param pad The pad, 0 to 3; omitted is 0.
+   */
+  pressed(button: GamepadButton, pad?: number): boolean;
+  /**
+   * Whether a button went up this tick.
+   *
+   * @param button The button.
+   * @param pad The pad, 0 to 3; omitted is 0.
+   */
+  released(button: GamepadButton, pad?: number): boolean;
+  /**
+   * An analog input: a stick's x or y (-1 to 1, y down) or a trigger (0 to 1). Dead zones are the game's.
+   *
+   * @param axis Which input.
+   * @param pad The pad, 0 to 3; omitted is 0.
+   */
+  axis(axis: GamepadAxis, pad?: number): number;
+}
+
+/**
  * A key went down (a down for a held key is a repeat and sets no edge). Input events are sent between ticks and read by the next tick's systems.
  *
  * The payload of the `KeyDown` event (token `og.KeyDown`).
@@ -1294,7 +1690,7 @@ export interface KeyUp {
 }
 
 /**
- * A pointer button went down.
+ * A pointer button went down (or a touch landed).
  *
  * The payload of the `PointerDown` event (token `og.PointerDown`).
  */
@@ -1305,10 +1701,12 @@ export interface PointerDown {
   readonly y: number;
   /** The button. */
   readonly button: PointerButton;
+  /** Which pointer: 0 the primary one, 1 to 4 further touches (og.Pointers). */
+  readonly id: number;
 }
 
 /**
- * A pointer button went up.
+ * A pointer button went up (or a touch lifted).
  *
  * The payload of the `PointerUp` event (token `og.PointerUp`).
  */
@@ -1319,10 +1717,12 @@ export interface PointerUp {
   readonly y: number;
   /** The button. */
   readonly button: PointerButton;
+  /** Which pointer: 0 the primary one, 1 to 4 further touches. */
+  readonly id: number;
 }
 
 /**
- * The pointer moved.
+ * A pointer moved.
  *
  * The payload of the `PointerMove` event (token `og.PointerMove`).
  */
@@ -1331,6 +1731,8 @@ export interface PointerMove {
   readonly x: number;
   /** Vertical position in CSS pixels. */
   readonly y: number;
+  /** Which pointer: 0 the primary one, 1 to 4 further touches. */
+  readonly id: number;
 }
 
 /**
@@ -7316,6 +7718,8 @@ export interface AlertDesc {
  * - `"touch_start"`: `touch_start`: press the pointer where it is.
  * - `"touch_end"`: `touch_end`: release the pointer.
  * - `"scroll"`: `scroll:dx,dy`: scroll at the pointer.
+ * - `"touch"`: `touch:<id>:<down|move|up>:<x,y | ui id>`: a further touch (pointer 1 to 4) held while the pointer is busy elsewhere.
+ * - `"gamepad"`: `gamepad:<a+b+...|->[:lx,ly[,rx,ry]][:lt,rt]`: set pad 0's whole state; `gamepad:off` disconnects it.
  * - `"key_down"`: `key_down:<Key>`: hold a key by its code.
  * - `"key_up"`: `key_up:<Key>`: release a key.
  * - `"type"`: `type:<text>`: type text, one key press per character.
@@ -7333,7 +7737,7 @@ export interface AlertDesc {
  * - `"quit"`: `quit`: exit.
  * - `"help"`: `help`: list every action the channel knows, core and registered.
  */
-export type CoreAction = "screenshot" | "touch_move_to" | "touch_move" | "touch_start" | "touch_end" | "scroll" | "key_down" | "key_up" | "type" | "move_to_text" | "teleport" | "frame_entity" | "dump_world" | "dump_entity" | "dump_ui" | "set" | "seed" | "pause" | "resume" | "advance" | "quit" | "help";
+export type CoreAction = "screenshot" | "touch_move_to" | "touch_move" | "touch_start" | "touch_end" | "scroll" | "touch" | "gamepad" | "key_down" | "key_up" | "type" | "move_to_text" | "teleport" | "frame_entity" | "dump_world" | "dump_entity" | "dump_ui" | "set" | "seed" | "pause" | "resume" | "advance" | "quit" | "help";
 
 /**
  * A registered action. It runs at the start of the tick it was scheduled for.
@@ -8030,16 +8434,26 @@ export declare namespace og {
    */
   const Input: ResourceType<{ readonly pointer: FieldSpec<"Vector2">; readonly pointerInside: FieldSpec<"bool">; readonly wheel: FieldSpec<"Vector2">; readonly buttons: FieldSpec<"u32">; readonly buttonsPressed: FieldSpec<"u32">; readonly buttonsReleased: FieldSpec<"u32">; readonly buttonsReleaseNext: FieldSpec<"u32">; readonly keys0: FieldSpec<"u32">; readonly keys1: FieldSpec<"u32">; readonly keys2: FieldSpec<"u32">; readonly keys3: FieldSpec<"u32">; readonly pressed0: FieldSpec<"u32">; readonly pressed1: FieldSpec<"u32">; readonly pressed2: FieldSpec<"u32">; readonly pressed3: FieldSpec<"u32">; readonly released0: FieldSpec<"u32">; readonly released1: FieldSpec<"u32">; readonly released2: FieldSpec<"u32">; readonly released3: FieldSpec<"u32">; readonly releaseNext0: FieldSpec<"u32">; readonly releaseNext1: FieldSpec<"u32">; readonly releaseNext2: FieldSpec<"u32">; readonly releaseNext3: FieldSpec<"u32"> }, Input>;
   /**
+   * Every pointer on the play surface at once, at the start of this tick (og-input's og.Pointers): a touch stick and a touch button can be held together. Pointer 0 is og.Input's pointer; ids 1 to 4 are further touches, in the order they landed (the lowest free id).
+   * Edges last exactly one tick, as og.Input's do. Masks are bit `id`; read them through the methods.
+   */
+  const Pointers: ResourceType<{ readonly heldMask: FieldSpec<"u32">; readonly pressedMask: FieldSpec<"u32">; readonly releasedMask: FieldSpec<"u32">; readonly releaseNextMask: FieldSpec<"u32">; readonly position0: FieldSpec<"Vector2">; readonly position1: FieldSpec<"Vector2">; readonly position2: FieldSpec<"Vector2">; readonly position3: FieldSpec<"Vector2">; readonly position4: FieldSpec<"Vector2">; readonly start0: FieldSpec<"Vector2">; readonly start1: FieldSpec<"Vector2">; readonly start2: FieldSpec<"Vector2">; readonly start3: FieldSpec<"Vector2">; readonly start4: FieldSpec<"Vector2"> }, Pointers>;
+  /**
+   * The first four gamepads in the W3C standard mapping, at the start of this tick (og-input's og.Gamepad). On the web the shell polls the pads each display frame and sends their state through the input ring, so a pad is world state and replays; it also maps pads to keys for games that only read keys.
+   * Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods.
+   */
+  const Gamepad: ResourceType<{ readonly connectedMask: FieldSpec<"u32">; readonly buttons0: FieldSpec<"u32">; readonly buttons1: FieldSpec<"u32">; readonly buttons2: FieldSpec<"u32">; readonly buttons3: FieldSpec<"u32">; readonly pressed0: FieldSpec<"u32">; readonly pressed1: FieldSpec<"u32">; readonly pressed2: FieldSpec<"u32">; readonly pressed3: FieldSpec<"u32">; readonly released0: FieldSpec<"u32">; readonly released1: FieldSpec<"u32">; readonly released2: FieldSpec<"u32">; readonly released3: FieldSpec<"u32">; readonly leftStick0: FieldSpec<"Vector2">; readonly leftStick1: FieldSpec<"Vector2">; readonly leftStick2: FieldSpec<"Vector2">; readonly leftStick3: FieldSpec<"Vector2">; readonly rightStick0: FieldSpec<"Vector2">; readonly rightStick1: FieldSpec<"Vector2">; readonly rightStick2: FieldSpec<"Vector2">; readonly rightStick3: FieldSpec<"Vector2">; readonly triggers0: FieldSpec<"Vector2">; readonly triggers1: FieldSpec<"Vector2">; readonly triggers2: FieldSpec<"Vector2">; readonly triggers3: FieldSpec<"Vector2"> }, Gamepad>;
+  /**
    * A key went down (a down for a held key is a repeat and sets no edge). Input events are sent between ticks and read by the next tick's systems.
    */
   const KeyDown: EventType<KeyDown>;
   /** A key went up. */
   const KeyUp: EventType<KeyUp>;
-  /** A pointer button went down. */
+  /** A pointer button went down (or a touch landed). */
   const PointerDown: EventType<PointerDown>;
-  /** A pointer button went up. */
+  /** A pointer button went up (or a touch lifted). */
   const PointerUp: EventType<PointerUp>;
-  /** The pointer moved. */
+  /** A pointer moved. */
   const PointerMove: EventType<PointerMove>;
   /** A wheel or trackpad scroll. */
   const Wheel: EventType<Wheel>;

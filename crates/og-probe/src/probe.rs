@@ -446,10 +446,12 @@ impl Probe {
         let accepted = self.input.inject(world, event);
         if accepted {
             match event {
-                InjectedInput::Pointer { x, y, .. } | InjectedInput::Wheel { x, y, .. } => {
+                InjectedInput::Pointer { x, y, id: 0, .. } | InjectedInput::Wheel { x, y, .. } => {
                     self.pointer = (*x, *y);
                 }
-                InjectedInput::Key { .. } => {}
+                InjectedInput::Pointer { .. }
+                | InjectedInput::Key { .. }
+                | InjectedInput::Gamepad(_) => {}
             }
         }
         accepted
@@ -467,6 +469,7 @@ impl Probe {
             x,
             y,
             button,
+            id: 0,
         };
         if self.deliver(world, &event) {
             Ok(())
@@ -614,6 +617,94 @@ impl Probe {
                     Ok(())
                 } else {
                     Err("the input layer refused the wheel event".into())
+                }
+            }
+            "touch" => {
+                let usage = "touch:<id>:<down|move|up>:<x,y | ui id>";
+                let id: u32 = arg(0, usage)?
+                    .parse()
+                    .ok()
+                    .filter(|id| (1..og_input::MAX_POINTERS as u32).contains(id))
+                    .ok_or("the touch id is 1 to 4 (0 is the pointer touch_start drives)")?;
+                let action = match arg(1, usage)? {
+                    "down" => PointerAction::Down,
+                    "move" => PointerAction::Move,
+                    "up" => PointerAction::Up,
+                    other => {
+                        return Err(format!(
+                            "'{other}' is not down, move or up; write `{usage}`"
+                        ))
+                    }
+                };
+                let target = step.args.get(2..).map(|a| a.join(":")).unwrap_or_default();
+                let (x, y) = match numbers(&target).ok().as_deref() {
+                    Some(&[x, y]) => (x, y),
+                    _ => {
+                        let elements = match &self.ui {
+                            Some(ui) => ui.elements(world),
+                            None => Vec::new(),
+                        };
+                        let element = find_by_id(&elements, &target).ok_or_else(|| {
+                            format!("touch target not found: '{target}' (x,y or a UI id)")
+                        })?;
+                        element.center()
+                    }
+                };
+                let event = InjectedInput::Pointer {
+                    action,
+                    x,
+                    y,
+                    button: if action == PointerAction::Move {
+                        PointerButton::None
+                    } else {
+                        PointerButton::Left
+                    },
+                    id,
+                };
+                if self.deliver(world, &event) {
+                    Ok(())
+                } else {
+                    Err(format!("the input layer refused touch {id}"))
+                }
+            }
+            "gamepad" => {
+                let usage = "gamepad:<a+b+...|->[:lx,ly[,rx,ry]][:lt,rt]";
+                let first = arg(0, usage)?;
+                let mut state = og_input::GamepadState {
+                    connected: first != "off",
+                    ..Default::default()
+                };
+                if state.connected && first != "-" {
+                    for name in first.split('+') {
+                        let b = og_input::gamepad_button(name).ok_or_else(|| {
+                            format!(
+                                "'{name}' is not a standard gamepad button ({})",
+                                og_input::GAMEPAD_BUTTONS.join(", ")
+                            )
+                        })?;
+                        state.buttons |= 1 << b;
+                    }
+                }
+                if let Some(axes) = step.args.get(1) {
+                    let v = numbers(axes)?;
+                    if v.len() != 2 && v.len() != 4 {
+                        return Err(format!(
+                            "the axes are lx,ly or lx,ly,rx,ry; write `{usage}`"
+                        ));
+                    }
+                    state.axes[..v.len()].copy_from_slice(&v);
+                }
+                if let Some(t) = step.args.get(2) {
+                    let v = numbers(t)?;
+                    let [lt, rt] = v[..] else {
+                        return Err(format!("the triggers are lt,rt; write `{usage}`"));
+                    };
+                    state.triggers = [lt, rt];
+                }
+                if self.deliver(world, &InjectedInput::Gamepad(state)) {
+                    Ok(())
+                } else {
+                    Err("the input layer refused the gamepad state".into())
                 }
             }
             "key_down" | "key_up" => {

@@ -2661,13 +2661,16 @@ impl Ui {
         let mut out = JoystickResponse::default();
         let radius = size / 2.0;
         let (mut kx, mut ky) = (0.0, 0.0);
-        if self.state.active == key && (self.input.down || self.input.pressed) {
+        // The primary pointer holding it, else a further touch that grabbed it.
+        let finger = if self.state.active == key && (self.input.down || self.input.pressed) {
+            Some(self.input.pointer)
+        } else {
+            self.touch(key, true).filter(|t| t.1).map(|t| t.0)
+        };
+        if let Some(finger) = finger {
             if let Some(h) = self.hit(key) {
                 let (cx, cy) = h.rect.center();
-                let (mut dx, mut dy) = (
-                    (self.input.pointer.x - cx) / radius,
-                    (self.input.pointer.y - cy) / radius,
-                );
+                let (mut dx, mut dy) = ((finger.x - cx) / radius, (finger.y - cy) / radius);
                 let len = (dx * dx + dy * dy).sqrt();
                 if len > 1.0 {
                     dx /= len;
@@ -2765,8 +2768,9 @@ impl Ui {
                             ..Element::default()
                         },
                     );
-                    let r = self.respond(self.nodes[i].key);
-                    let held = r.pressed;
+                    let key = self.nodes[i].key;
+                    let r = self.respond(key);
+                    let held = r.pressed || self.touch(key, false).is_some_and(|t| t.1);
                     match *name {
                         "Up" => out.up = held,
                         "Down" => out.down = held,
@@ -2822,7 +2826,14 @@ impl Ui {
                 ..Element::default()
             },
         );
-        let r = self.respond(self.nodes[i].key);
+        let key = self.nodes[i].key;
+        let mut r = self.respond(key);
+        // A further touch on the button: held while over it, a click when it
+        // lifts over it (with the primary pointer busy on a stick).
+        if let Some((_, held)) = self.touch(key, false) {
+            r.pressed |= held;
+            r.clicked |= !held;
+        }
         let (bg, ink) = if desc.primary {
             (
                 if r.pressed { p.accent_active } else { p.accent },

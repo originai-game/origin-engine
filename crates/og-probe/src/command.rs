@@ -182,6 +182,8 @@ pub const CORE_ACTIONS: &[(&str, &str, &str)] = &[
     ("touch_start", "touch_start", "Press the pointer (left button) where it is."),
     ("touch_end", "touch_end", "Release the pointer where it is."),
     ("scroll", "scroll:dx,dy", "Scroll at the pointer by CSS pixels."),
+    ("touch", "touch:<id>:<down|move|up>:<x,y | ui id>", "A further touch (pointer 1 to 4, og.Pointers) while the pointer is held elsewhere: press, move or lift it at CSS pixel coordinates or a UI element's centre."),
+    ("gamepad", "gamepad:<a+b+...|->[:lx,ly[,rx,ry]][:lt,rt]", "Set pad 0's whole state (og.Gamepad): the standard buttons held, joined by `+` (`-` none), the stick axes (y down) and the triggers; `gamepad:off` disconnects it."),
     ("key_down", "key_down:<Key>", "Hold a key by its KeyboardEvent.code, such as `KeyW` or `Space`."),
     ("key_up", "key_up:<Key>", "Release a key."),
     ("type", "type:<text>", "Type text, one key press per character (Shift for capitals and symbols)."),

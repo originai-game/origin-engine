@@ -154,7 +154,10 @@ fn every_member_answers_as_protocol_5_says() {
     let up = json!({"kind": "key", "key": "ArrowRight", "action": "up", "modifiers": {"alt": false, "control": false, "platform": false, "shift": true}});
     assert_eq!(t.ok("input", json!({"event": up})), json!(true));
     for refused in [
-        json!({"kind": "gamepad"}),
+        // An unknown kind (gamepad is an engine extension now; its pad 9 is
+        // past the four pads and refused by the input layer).
+        json!({"kind": "joystick"}),
+        json!({"kind": "gamepad", "pad": 9}),
         json!({"kind": "key", "key": "NotAKey", "action": "down"}),
         json!({"kind": "key", "key": "", "action": "down"}),
         json!({"kind": "key", "key": "KeyA", "action": "tap"}),
@@ -312,7 +315,7 @@ fn every_member_answers_as_protocol_5_says() {
             1,
         ),
         (json!([{"op": "teleport"}]), 0),
-        (json!([{"op": "input", "event": {"kind": "gamepad"}}]), 0),
+        (json!([{"op": "input", "event": {"kind": "joystick"}}]), 0),
         (json!([{"op": "pick", "x": 1}]), 0),
         (json!([{"op": "entity"}]), 0),
     ] {

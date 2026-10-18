@@ -7,7 +7,9 @@
 
 use og_ecs::{World, WorldDesc};
 use og_input::ring::{self, BYTE_LEN, SLOTS};
-use og_input::{InjectedInput, Input, InputLayer, InputSink, PointerAction, PointerButton};
+use og_input::{
+    Gamepad, InjectedInput, Input, InputLayer, InputSink, PointerAction, PointerButton, Pointers,
+};
 use serde_json::Value;
 
 fn fixture() -> (Vec<u8>, Value) {
@@ -30,7 +32,7 @@ fn the_decoder_reads_what_the_web_shell_wrote() {
         .iter()
         .map(|e| InjectedInput::from_json(e).unwrap())
         .collect();
-    assert_eq!(expected.len(), 8);
+    assert_eq!(expected.len(), 11);
     let read = json["read"].as_u64().unwrap() as usize;
     assert!(
         read % SLOTS + expected.len() > SLOTS,
@@ -43,7 +45,7 @@ fn the_decoder_reads_what_the_web_shell_wrote() {
     assert_eq!(drained.read as u64, json["write"].as_u64().unwrap());
 
     let mut owned = bin.clone();
-    assert_eq!(ring::drain_mut(&mut owned).events.len(), 8);
+    assert_eq!(ring::drain_mut(&mut owned).events.len(), 11);
     assert!(
         ring::drain(&owned).events.is_empty(),
         "the read index was stored"
@@ -59,7 +61,15 @@ fn the_writer_and_the_decoder_agree_and_a_full_ring_refuses() {
             x: 3.0,
             y: 4.0,
             button: PointerButton::Left,
+            id: 3,
         },
+        InjectedInput::Gamepad(og_input::GamepadState {
+            pad: 2,
+            connected: true,
+            buttons: 0b1_0000_0000_0001,
+            axes: [0.25, -0.5, 1.0, 0.0],
+            triggers: [0.5, 1.0],
+        }),
         InjectedInput::from_json(
             &serde_json::json!({"kind": "key", "key": "Space", "action": "press"}),
         )
@@ -81,6 +91,7 @@ fn the_writer_and_the_decoder_agree_and_a_full_ring_refuses() {
             x: i as f32,
             y: 0.0,
             button: PointerButton::None,
+            id: 0,
         };
         assert!(ring::write(&mut r, &e), "slot {i}");
     }
@@ -113,11 +124,22 @@ fn the_input_layer_drains_a_ring_into_the_world() {
     let mut layer = InputLayer::new();
     layer.attach(&mut w).unwrap();
     let report = layer.drain_ring(&mut w, &bin);
-    assert_eq!((report.accepted, report.refused), (8, 0));
-    assert_eq!(layer.accepted(), 8);
+    assert_eq!((report.accepted, report.refused), (11, 0));
+    assert_eq!(layer.accepted(), 11);
     let input = *w.resource::<Input>().unwrap();
     assert!(input.down("KeyW") && input.down("ArrowLeft") && !input.down("NumpadSubtract"));
     assert!(input.button_down(PointerButton::Left) && input.button_down(PointerButton::Right));
     assert_eq!(input.wheel.y, 120.0);
+    // The second touch (id 2) is og.Pointers' alone: og.Input's pointer stays.
     assert_eq!(input.pointer, og_core::glam::Vec2::new(0.1, 0.2));
+    let pointers = *w.resource::<Pointers>().unwrap();
+    assert!(pointers.down(2) && pointers.is_pressed(2));
+    assert_eq!(pointers.position(2), og_core::glam::Vec2::new(900.0, 600.0));
+    // Pad 1 connected with A, LB and up, then disconnected before the tick:
+    // both edges are set, nothing is held, the pad reads as gone.
+    let pad = *w.resource::<Gamepad>().unwrap();
+    let (held, pressed, released) = pad.masks(1);
+    let abu = 1 | 1 << 4 | 1 << 12;
+    assert_eq!((held, pressed, released), (0, abu, abu));
+    assert!(!pad.is_connected(1));
 }

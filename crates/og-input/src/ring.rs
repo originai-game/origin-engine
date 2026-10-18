@@ -12,11 +12,14 @@
 //! | 1 | read index: events ever drained (monotonic; the reader stores it back) |
 //! | 2 + 16·s … | slot `s = index % 256` |
 //!
-//! One slot is 16 words: `kind` (0 key, 1 pointer, 2 wheel), `action` (0
-//! press, 1 down, 2 up, 3 click, 4 move), `button` (0 none, 1 left, 2
-//! middle, 3 right), the key's UTF-8 length (≤ 32), then `x`, `y`,
+//! One slot is 16 words: `kind` (0 key, 1 pointer, 2 wheel, 3 gamepad),
+//! `action` (0 press, 1 down, 2 up, 3 click, 4 move), `button` (0 none, 1
+//! left, 2 middle, 3 right), the key's UTF-8 length (≤ 32), then `x`, `y`,
 //! `deltaX`, `deltaY` as f32 bits, then 32 bytes of the key code (words
-//! 8–15). Unused words are 0. The writer refuses an event when
+//! 8–15); a pointer slot carries its pointer id (0 to 4) in word 8 instead.
+//! A gamepad slot is the pad's whole state: word 2 the pad, word 3
+//! connected (0 or 1), words 4–7 the axes (left x, y, right x, y), word 8
+//! the button mask, words 9–10 the triggers. Unused words are 0. The writer refuses an event when
 //! `write - read ≥ 256` (the ring is full; the event is dropped), so a
 //! reader never sees an overwritten slot. Modifiers do not cross the ring.
 //!
@@ -24,7 +27,9 @@
 //! writer indexes slots with `%` on an `i32`, which stays correct for the
 //! first 2^31 events of a page.
 
-use crate::event::{InjectedInput, KeyAction, Modifiers, PointerAction, PointerButton};
+use crate::event::{
+    GamepadState, InjectedInput, KeyAction, Modifiers, PointerAction, PointerButton, MAX_GAMEPADS,
+};
 
 /// Header words (write index, read index).
 pub const HEADER_WORDS: usize = 2;
@@ -37,7 +42,7 @@ pub const KEY_BYTES: usize = 32;
 /// The ring's size in bytes.
 pub const BYTE_LEN: usize = (HEADER_WORDS + SLOTS * SLOT_WORDS) * 4;
 /// `kind` values, by index.
-pub const KINDS: [&str; 3] = ["key", "pointer", "wheel"];
+pub const KINDS: [&str; 4] = ["key", "pointer", "wheel", "gamepad"];
 /// `action` values, by index.
 pub const ACTIONS: [&str; 5] = ["press", "down", "up", "click", "move"];
 /// `button` values, by index.
@@ -116,6 +121,7 @@ pub fn decode_slot(slot: &[u8]) -> Result<InjectedInput, String> {
                 x,
                 y,
                 button,
+                id: w(8),
             })
         }
         2 => {
@@ -129,6 +135,27 @@ pub fn decode_slot(slot: &[u8]) -> Result<InjectedInput, String> {
                 delta_x,
                 delta_y,
             })
+        }
+        3 => {
+            let state = GamepadState {
+                pad: w(2),
+                connected: w(3) != 0,
+                buttons: w(8),
+                axes: [f(4), f(5), f(6), f(7)],
+                triggers: [f(9), f(10)],
+            };
+            if state.pad as usize >= MAX_GAMEPADS {
+                return Err(format!("pad {}", w(2) as i32));
+            }
+            if !state
+                .axes
+                .iter()
+                .chain(&state.triggers)
+                .all(|v| v.is_finite())
+            {
+                return Err("a non-finite gamepad value".into());
+            }
+            Ok(InjectedInput::Gamepad(state))
         }
         k => Err(format!("kind {}", k as i32)),
     }
@@ -157,7 +184,9 @@ pub fn encode_slot(event: &InjectedInput) -> [u8; SLOT_WORDS * 4] {
             x,
             y,
             button,
+            id,
         } => {
+            set_word(&mut slot, 8, *id);
             let a = match action {
                 PointerAction::Click => "click",
                 PointerAction::Move => "move",
@@ -172,6 +201,13 @@ pub fn encode_slot(event: &InjectedInput) -> [u8; SLOT_WORDS * 4] {
             delta_x,
             delta_y,
         } => (2, 0, 0, (*x, *y), (*delta_x, *delta_y)),
+        InjectedInput::Gamepad(g) => {
+            set_word(&mut slot, 3, g.connected as u32);
+            set_word(&mut slot, 8, g.buttons);
+            set_word(&mut slot, 9, g.triggers[0].to_bits());
+            set_word(&mut slot, 10, g.triggers[1].to_bits());
+            (3, 0, g.pad, (g.axes[0], g.axes[1]), (g.axes[2], g.axes[3]))
+        }
     };
     set_word(&mut slot, 0, kind);
     set_word(&mut slot, 1, action);

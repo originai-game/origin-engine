@@ -456,6 +456,25 @@ function liveResource(world: WorldImpl, token: Token, value: Record<string, unkn
       buttonReleased: (button: string) => abi().og_input_button_released(id, button),
     });
   }
+  if (token.name === "og.Pointers") {
+    Object.assign(out, {
+      down: (pointer: number) => abi().og_pointers_down(id, pointer),
+      pressed: (pointer: number) => abi().og_pointers_pressed(id, pointer),
+      released: (pointer: number) => abi().og_pointers_released(id, pointer),
+      position: (pointer: number) => parse(abi().og_pointers_position(id, pointer)),
+      start: (pointer: number) => parse(abi().og_pointers_start(id, pointer)),
+      count: () => abi().og_pointers_count(id),
+    });
+  }
+  if (token.name === "og.Gamepad") {
+    Object.assign(out, {
+      connected: (pad?: number) => abi().og_gamepad_connected(id, pad),
+      down: (button: string, pad?: number) => abi().og_gamepad_down(id, button, pad),
+      pressed: (button: string, pad?: number) => abi().og_gamepad_pressed(id, button, pad),
+      released: (button: string, pad?: number) => abi().og_gamepad_released(id, button, pad),
+      axis: (axis: string, pad?: number) => abi().og_gamepad_axis(id, axis, pad),
+    });
+  }
   if (token.name === "og.Camera") {
     Object.assign(out, {
       lookAt: (target: unknown) => abi().og_camera_look_at(id, JSON.stringify(target)),

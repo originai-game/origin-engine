@@ -5,11 +5,12 @@
 //
 // Input: keyboard (KeyboardEvent.code; the keys that would scroll or move
 // focus are kept from the page), pointer events of every type (mouse, pen,
-// touch). The engine's input layer has one pointer: the primary pointer of
-// each gesture drives it, other touches keep their ids in the ring
-// (`pointerId`, words 8–9 of a pointer slot) and are not delivered until
-// the IDL carries pointer ids. Gamepads are polled on the display frame
-// (gamepad.ts) and delivered as the keys of their standard mapping.
+// touch), up to five at once: each pressed pointer gets the lowest free
+// engine id (0, the primary pointer og.Input follows, while none is held;
+// then 1 to 4), which og.Pointers reports with its position and press
+// point, so a stick and a button can be held together. Gamepads are polled
+// on the display frame (gamepad.ts) and delivered both as og.Gamepad states
+// and, for games that only read keys, as the keys of their standard mapping.
 
 import { createRing, writeRing, type InjectedInput } from "./input.ts";
 import { createRpcRings, readFrames, waitForFrames, writeFrame, type RpcRings } from "./rpc-ring.ts";
@@ -91,8 +92,8 @@ export class Shell {
   #pumping = false;
   #ring: SharedArrayBuffer | undefined;
   #dprCap = 2;
-  /** The pointer that drives the engine's one pointer, while a gesture is down. */
-  #primary: number | null = null;
+  /** Engine pointer ids (0 to 4) of the page pointers held down, by PointerEvent.pointerId. */
+  #pointers = new Map<number, number>();
   #playing = false;
 
   private constructor(worker: Worker, ready: Ready, rpc: RpcRings | undefined) {
@@ -312,7 +313,7 @@ export class Shell {
       const r = canvas.getBoundingClientRect();
       return { x: e.clientX - r.left, y: e.clientY - r.top };
     };
-    const point = (e: PointerEvent, action: "move" | "down" | "up") => {
+    const point = (e: PointerEvent, action: "move" | "down" | "up", id: number) => {
       const p = at(e);
       this.#send(ring, {
         kind: "pointer",
@@ -320,30 +321,36 @@ export class Shell {
         x: p.x,
         y: p.y,
         button: action === "move" ? "none" : (BUTTONS[e.button] ?? "left"),
-        pointerId: e.pointerId,
-        pointerType: e.pointerType === "touch" || e.pointerType === "pen" ? e.pointerType : "mouse",
+        ...(id > 0 ? { id } : {}),
       });
     };
     listen(canvas, "pointerdown", (e) => {
-      if (this.#primary !== null && this.#primary !== e.pointerId) return;
-      this.#primary = e.pointerId;
+      let id = this.#pointers.get(e.pointerId);
+      if (id === undefined) {
+        const taken = new Set(this.#pointers.values());
+        id = [0, 1, 2, 3, 4].find((i) => !taken.has(i));
+        if (id === undefined) return; // a sixth finger: ignored
+        this.#pointers.set(e.pointerId, id);
+      }
       try {
         canvas.setPointerCapture(e.pointerId);
       } catch {
         /* a synthetic event has no active pointer */
       }
       if (e.pointerType !== "mouse") e.preventDefault();
-      point(e, "down");
+      point(e, "down", id);
     });
     listen(canvas, "pointermove", (e) => {
-      if (this.#primary !== null && this.#primary !== e.pointerId) return;
-      if (this.#primary === null && e.pointerType === "touch") return;
-      point(e, "move");
+      const id = this.#pointers.get(e.pointerId);
+      if (id !== undefined) point(e, "move", id);
+      // A hovering mouse moves the primary pointer while nothing is held.
+      else if (this.#pointers.size === 0 && e.pointerType === "mouse") point(e, "move", 0);
     });
     const end = (e: PointerEvent) => {
-      if (this.#primary !== e.pointerId) return;
-      this.#primary = null;
-      point(e, "up");
+      const id = this.#pointers.get(e.pointerId);
+      if (id === undefined) return;
+      this.#pointers.delete(e.pointerId);
+      point(e, "up", id);
     };
     listen(canvas, "pointerup", end);
     listen(canvas, "pointercancel", end);

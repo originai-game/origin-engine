@@ -3,7 +3,7 @@
 //! [`InputLayer`], the engine's sink over the `og.Input` resource.
 
 use crate::event::InjectedInput;
-use crate::resource::{register, Input};
+use crate::resource::{register, Gamepad, Input, Pointers};
 use crate::ring;
 use og_ecs::World;
 
@@ -85,16 +85,55 @@ impl InputSink for InputLayer {
         if !world.has_resource::<Input>() {
             world.insert_resource(Input::default())?;
         }
+        if !world.has_resource::<Pointers>() {
+            world.insert_resource(Pointers::default())?;
+        }
+        if !world.has_resource::<Gamepad>() {
+            world.insert_resource(Gamepad::default())?;
+        }
         Ok(())
     }
 
     fn inject(&mut self, world: &mut World, event: &InjectedInput) -> bool {
-        let Ok(input) = world.resource_mut::<Input>() else {
-            return false;
-        };
-        let Some(events) = input.apply(event) else {
-            return false;
-        };
+        let mut events = Vec::new();
+        match event {
+            InjectedInput::Gamepad(state) => {
+                let Ok(pad) = world.resource_mut::<Gamepad>() else {
+                    return false;
+                };
+                if !pad.apply(state) {
+                    return false;
+                }
+            }
+            InjectedInput::Pointer { id, .. } => {
+                let Ok(pointers) = world.resource_mut::<Pointers>() else {
+                    return false;
+                };
+                // Refused whole (nothing changes) for an id past MAX_POINTERS.
+                let Some(raised) = pointers.apply(event) else {
+                    return false;
+                };
+                events.extend(raised);
+                if *id == 0 {
+                    let Ok(input) = world.resource_mut::<Input>() else {
+                        return false;
+                    };
+                    match input.apply(event) {
+                        Some(raised) => events.extend(raised),
+                        None => return false,
+                    }
+                }
+            }
+            _ => {
+                let Ok(input) = world.resource_mut::<Input>() else {
+                    return false;
+                };
+                let Some(raised) = input.apply(event) else {
+                    return false;
+                };
+                events.extend(raised);
+            }
+        }
         for e in events {
             if e.send(world).is_err() {
                 return false;
@@ -105,10 +144,17 @@ impl InputSink for InputLayer {
     }
 
     fn end_tick(&mut self, world: &mut World) {
+        if let Ok(pad) = world.resource_mut::<Gamepad>() {
+            pad.end_tick();
+        }
+        let more = match world.resource_mut::<Pointers>() {
+            Ok(p) => p.end_tick(),
+            Err(_) => Vec::new(),
+        };
         let Ok(input) = world.resource_mut::<Input>() else {
             return;
         };
-        for e in input.end_tick() {
+        for e in input.end_tick().into_iter().chain(more) {
             // The event types are registered by attach; a world without them
             // has no input layer attached and nothing to tell.
             let _ = e.send(world);

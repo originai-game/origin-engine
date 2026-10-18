@@ -2,11 +2,12 @@
 // the engine Worker drains once per frame (docs/design.md §2.2). One slot is
 // 16 int32: kind, action, button, key length, x, y, deltaX, deltaY (as f32
 // bits), then up to 32 bytes of the key code; a pointer slot carries its
-// pointerId in word 8 and its type (0 mouse, 1 touch, 2 pen) in word 9
-// instead. Without cross-origin isolation the shell posts the same events as
-// messages instead. The engine's input layer reads one pointer and ignores
-// the id and type (crates/og-input/README.md); they ride along for the IDL
-// change that will take them.
+// engine pointer id (0 the primary, 1 to 4 further touches) in word 8
+// instead. A gamepad slot (kind 3) is a pad's whole state: word 2 the pad,
+// word 3 connected, words 4-7 the axes, word 8 the button mask, words 9-10
+// the triggers. Without cross-origin isolation the shell posts the same
+// events as messages instead. crates/og-input/src/ring.rs decodes the same
+// layout.
 
 /** An event as the probe's input() and the engine's input layer take it (IDL InjectedInput). */
 export type InjectedInput =
@@ -17,20 +18,37 @@ export type InjectedInput =
       x: number;
       y: number;
       button: "none" | "left" | "middle" | "right";
-      /** The page's PointerEvent.pointerId (multi-touch), when it came from the page. */
-      pointerId?: number;
-      pointerType?: "mouse" | "touch" | "pen";
+      /** Which pointer: 0 the primary (omitted), 1 to 4 further touches (multi-touch). */
+      id?: number;
     }
-  | { kind: "wheel"; x: number; y: number; deltaX: number; deltaY: number };
+  | { kind: "wheel"; x: number; y: number; deltaX: number; deltaY: number }
+  | {
+      kind: "gamepad";
+      pad: number;
+      connected: boolean;
+      /** Held standard-mapping buttons by name (GAMEPAD_BUTTONS). */
+      buttons: GamepadButtonName[];
+      /** Left x, y, right x, y; -1..1, y down. */
+      axes: number[];
+      /** Left and right analog triggers, 0..1. */
+      triggers: number[];
+    };
+
+export type GamepadButtonName = (typeof GAMEPAD_BUTTONS)[number];
+
+/** The W3C standard mapping's buttons, by index (og-input's GAMEPAD_BUTTONS). */
+export const GAMEPAD_BUTTONS = [
+  "a", "b", "x", "y", "leftBumper", "rightBumper", "leftTrigger", "rightTrigger",
+  "back", "start", "leftStick", "rightStick", "up", "down", "left", "right", "home",
+] as const;
 
 const SLOT = 16;
 const HEADER = 2; // write index, read index (monotonic)
 export const RING_SLOTS = 256;
 
-const KINDS = ["key", "pointer", "wheel"] as const;
+const KINDS = ["key", "pointer", "wheel", "gamepad"] as const;
 const ACTIONS = ["press", "down", "up", "click", "move"] as const;
 const BUTTONS = ["none", "left", "middle", "right"] as const;
-const POINTER_TYPES = ["mouse", "touch", "pen"] as const;
 
 export function createRing(): SharedArrayBuffer {
   return new SharedArrayBuffer((HEADER + RING_SLOTS * SLOT) * 4);
@@ -44,7 +62,18 @@ export function writeRing(buffer: SharedArrayBuffer, event: InjectedInput): bool
   const read = Atomics.load(ints, 1);
   if (write - read >= RING_SLOTS) return false;
   const at = HEADER + (write % RING_SLOTS) * SLOT;
+  new Int32Array(buffer, at * 4, SLOT).fill(0);
   ints[at] = KINDS.indexOf(event.kind);
+  if (event.kind === "gamepad") {
+    ints[at + 2] = event.pad;
+    ints[at + 3] = event.connected ? 1 : 0;
+    for (let i = 0; i < 4; i++) floats[at + 4 + i] = event.axes[i] ?? 0;
+    ints[at + 8] = event.buttons.reduce((m, b) => m | (1 << GAMEPAD_BUTTONS.indexOf(b)), 0);
+    floats[at + 9] = event.triggers[0] ?? 0;
+    floats[at + 10] = event.triggers[1] ?? 0;
+    Atomics.store(ints, 0, write + 1);
+    return true;
+  }
   ints[at + 1] = "action" in event ? ACTIONS.indexOf(event.action) : 0;
   ints[at + 2] = event.kind === "pointer" ? BUTTONS.indexOf(event.button) : 0;
   const key = event.kind === "key" ? new TextEncoder().encode(event.key).subarray(0, 32) : new Uint8Array(0);
@@ -54,10 +83,7 @@ export function writeRing(buffer: SharedArrayBuffer, event: InjectedInput): bool
   floats[at + 6] = event.kind === "wheel" ? event.deltaX : 0;
   floats[at + 7] = event.kind === "wheel" ? event.deltaY : 0;
   new Uint8Array(buffer, (at + 8) * 4, 32).fill(0).set(key);
-  if (event.kind === "pointer") {
-    ints[at + 8] = event.pointerId ?? -1;
-    ints[at + 9] = POINTER_TYPES.indexOf(event.pointerType ?? "mouse");
-  }
+  if (event.kind === "pointer") ints[at + 8] = event.id ?? 0;
   Atomics.store(ints, 0, write + 1);
   return true;
 }
@@ -72,6 +98,18 @@ export function drainRing(buffer: SharedArrayBuffer): InjectedInput[] {
   for (; read < write; read++) {
     const at = HEADER + (read % RING_SLOTS) * SLOT;
     const kind = KINDS[ints[at]!];
+    if (kind === "gamepad") {
+      const mask = ints[at + 8]!;
+      out.push({
+        kind,
+        pad: ints[at + 2]!,
+        connected: ints[at + 3]! !== 0,
+        buttons: GAMEPAD_BUTTONS.filter((_, i) => mask & (1 << i)),
+        axes: [floats[at + 4]!, floats[at + 5]!, floats[at + 6]!, floats[at + 7]!],
+        triggers: [floats[at + 9]!, floats[at + 10]!],
+      });
+      continue;
+    }
     const action = ACTIONS[ints[at + 1]!]!;
     const x = floats[at + 4]!;
     const y = floats[at + 5]!;
@@ -80,15 +118,13 @@ export function drainRing(buffer: SharedArrayBuffer): InjectedInput[] {
       out.push({ kind, key: new TextDecoder().decode(bytes), action: action as "press" | "down" | "up" });
     } else if (kind === "pointer") {
       const id = ints[at + 8]!;
-      const type = POINTER_TYPES[ints[at + 9]!];
       out.push({
         kind,
         action: action as "click" | "move" | "down" | "up",
         x,
         y,
         button: BUTTONS[ints[at + 2]!]!,
-        ...(id >= 0 ? { pointerId: id } : {}),
-        ...(id >= 0 && type ? { pointerType: type } : {}),
+        ...(id > 0 ? { id } : {}),
       });
     } else if (kind === "wheel") {
       out.push({ kind, x, y, deltaX: floats[at + 6]!, deltaY: floats[at + 7]! });

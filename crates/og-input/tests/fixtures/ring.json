@@ -1,5 +1,5 @@
 {
-  "write": 514,
+  "write": 517,
   "read": 506,
   "slots": 256,
   "bytes": 16392,
@@ -53,6 +53,50 @@
       "x": 0.10000000149011612,
       "y": 0.20000000298023224,
       "button": "none"
+    },
+    {
+      "kind": "pointer",
+      "action": "down",
+      "x": 900,
+      "y": 600,
+      "button": "left",
+      "id": 2
+    },
+    {
+      "kind": "gamepad",
+      "pad": 1,
+      "connected": true,
+      "buttons": [
+        "a",
+        "leftBumper",
+        "up"
+      ],
+      "axes": [
+        0.5,
+        -1,
+        0,
+        0.25
+      ],
+      "triggers": [
+        0,
+        0.75
+      ]
+    },
+    {
+      "kind": "gamepad",
+      "pad": 1,
+      "connected": false,
+      "buttons": [],
+      "axes": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "triggers": [
+        0,
+        0
+      ]
     }
   ]
 }

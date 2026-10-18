@@ -28,6 +28,7 @@ export interface DemoState {
   gen0: number;
   coins: number;
   hp: number;
+  stickX: number;
   difficulty: number;
   used: number;
 }

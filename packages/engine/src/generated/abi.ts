@@ -141,6 +141,28 @@ export interface HostAbi<A, V> {
   og_input_button_pressed(world: number, button: string): boolean;
   /** `Input.buttonReleased` */
   og_input_button_released(world: number, button: string): boolean;
+  /** `Pointers.down` */
+  og_pointers_down(world: number, id: number): boolean;
+  /** `Pointers.pressed` */
+  og_pointers_pressed(world: number, id: number): boolean;
+  /** `Pointers.released` */
+  og_pointers_released(world: number, id: number): boolean;
+  /** `Pointers.position` */
+  og_pointers_position(world: number, id: number): string;
+  /** `Pointers.start` */
+  og_pointers_start(world: number, id: number): string;
+  /** `Pointers.count` */
+  og_pointers_count(world: number): number;
+  /** `Gamepad.connected` */
+  og_gamepad_connected(world: number, pad: number | undefined): boolean;
+  /** `Gamepad.down` */
+  og_gamepad_down(world: number, button: string, pad: number | undefined): boolean;
+  /** `Gamepad.pressed` */
+  og_gamepad_pressed(world: number, button: string, pad: number | undefined): boolean;
+  /** `Gamepad.released` */
+  og_gamepad_released(world: number, button: string, pad: number | undefined): boolean;
+  /** `Gamepad.axis` */
+  og_gamepad_axis(world: number, axis: string, pad: number | undefined): number;
   /** `Camera.lookAt` */
   og_camera_look_at(world: number, target: string): void;
   /** `Camera.worldToScreen` */
@@ -437,6 +459,17 @@ export const SYMBOLS: readonly string[] = [
   "og_input_button_down",
   "og_input_button_pressed",
   "og_input_button_released",
+  "og_pointers_down",
+  "og_pointers_pressed",
+  "og_pointers_released",
+  "og_pointers_position",
+  "og_pointers_start",
+  "og_pointers_count",
+  "og_gamepad_connected",
+  "og_gamepad_down",
+  "og_gamepad_pressed",
+  "og_gamepad_released",
+  "og_gamepad_axis",
   "og_camera_look_at",
   "og_camera_world_to_screen",
   "og_camera_screen_to_ray",

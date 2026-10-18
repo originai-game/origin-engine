@@ -682,6 +682,28 @@ impl Ui {
         self.stack.push(0);
     }
 
+    /// A further touch (pointers 1 to 4, `og.Pointers`) on the touch control
+    /// `key`: the first pointer held, or released this tick, that started on
+    /// its last-frame rectangle (`by_start`, a stick that keeps the finger
+    /// that grabbed it) or is over it now (buttons, d-pad arms). Its
+    /// position, and whether it is still held.
+    pub(crate) fn touch(&self, key: u64, by_start: bool) -> Option<(Vec2, bool)> {
+        let rect = self.hit(key)?.rect;
+        let p = &self.input.pointers;
+        (1..og_input::MAX_POINTERS as u32).find_map(|id| {
+            let held = p.down(id);
+            if !held && !p.is_released(id) {
+                return None;
+            }
+            let at = if by_start {
+                p.start(id)
+            } else {
+                p.position(id)
+            };
+            rect.contains(at.x, at.y).then(|| (p.position(id), held))
+        })
+    }
+
     pub(crate) fn hit(&self, key: u64) -> Option<&Hit> {
         if key == 0 {
             return None;

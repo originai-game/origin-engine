@@ -75,6 +75,9 @@ impl Ui {
             };
             out.extend(nav);
         }
+        // A pad intent the shell also delivered as its mapped key this tick
+        // (the web's pad-to-keys fallback) counts once.
+        let from_keys = out.clone();
         let g = input.gamepad;
         for (bit, nav) in [
             (GamepadFrame::UP, Nav::Up),
@@ -84,7 +87,7 @@ impl Ui {
             (GamepadFrame::A, Nav::Activate),
             (GamepadFrame::B, Nav::Back),
         ] {
-            if g.pressed & bit != 0 {
+            if g.pressed & bit != 0 && !from_keys.contains(&nav) {
                 out.push(nav);
             }
         }
@@ -103,7 +106,7 @@ impl Ui {
             self.state.stick = (0, 0);
         } else if self.state.stick.0 != dir {
             self.state.stick = (dir, now);
-            out.extend(Nav::from_index(dir - 1));
+            out.extend(Nav::from_index(dir - 1).filter(|n| !from_keys.contains(n)));
         } else {
             let held = now - self.state.stick.1;
             let delay = u64::from(self.ticks_for(self.theme().durations_ms.slow));

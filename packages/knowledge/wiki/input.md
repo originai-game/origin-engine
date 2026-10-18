@@ -6,6 +6,8 @@ Input as the game sees it: the Input resource for polling, events for edges.
 
 The shell collects pointer, keyboard and wheel input on the main thread; the probe and the command channel inject through the same path.
 
+Several pointers at once (multi-touch) are og.Pointers; the first four gamepads, in the W3C standard mapping, are og.Gamepad. Both are world state, as og.Input is, so they replay.
+
 - **TypeScript**: functions are none at module level (its members live on the types below); components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
 - **Index**: [every module and name](index.md).
@@ -14,6 +16,7 @@ The shell collects pointer, keyboard and wheel input on the main thread; the pro
 module input {
   doc "Input as the game sees it: the Input resource for polling, events for edges."
   doc "The shell collects pointer, keyboard and wheel input on the main thread; the probe and the command channel inject through the same path."
+  doc "Several pointers at once (multi-touch) are og.Pointers; the first four gamepads, in the W3C standard mapping, are og.Gamepad. Both are world state, as og.Input is, so they replay."
   # declarations follow, each quoted below
 ```
 
@@ -23,20 +26,27 @@ module input {
 
 | Name | Kind | Summary |
 |---|---|---|
+| [`MAX_POINTERS`](#const-MAX_POINTERS) | constant | The most pointers og.Pointers tracks at once: ids 0 (the primary pointer) to 4. |
+| [`MAX_GAMEPADS`](#const-MAX_GAMEPADS) | constant | The most gamepads og.Gamepad reads: pads 0 to 3. |
+| [`GamepadButton`](#type-GamepadButton) | enum | A gamepad button in the W3C standard mapping, in its index order (a is button 0). |
+| [`GamepadAxis`](#type-GamepadAxis) | enum | An analog input of a gamepad. |
 | [`KeyAction`](#type-KeyAction) | enum | What an injected key event does. |
 | [`PointerAction`](#type-PointerAction) | enum | What an injected pointer event does. |
 | [`PointerButton`](#type-PointerButton) | enum | A physical pointer button; `none` is a hover move. |
 | [`Modifiers`](#type-Modifiers) | struct | Modifier keys held during a key event. |
 | [`KeyInput`](#type-KeyInput) | struct | A key event. `key` names the physical key as KeyboardEvent.code does: ArrowRight, Space, KeyA. |
 | [`PointerInput`](#type-PointerInput) | struct | A pointer event at a point in CSS pixels of the play surface. |
+| [`GamepadInput`](#type-GamepadInput) | struct | A gamepad's whole state (an engine extension of protocol 5): the shell sends one whenever a pad changes, and a playtest can send its own. |
 | [`WheelInput`](#type-WheelInput) | struct | A wheel or trackpad scroll at a point. |
 | [`InjectedInput`](#type-InjectedInput) | union | One input event in the game's own vocabulary, as the probe's input() and playtest scripts carry it. |
 | [`og.Input`](#record-Input) | resource | The input state at the start of this tick (og-input's og.Input, version 2). Edges (pressed, released) last exactly one tick; read the state through the methods. |
+| [`og.Pointers`](#record-Pointers) | resource | Every pointer on the play surface at once, at the start of this tick (og-input's og.Pointers): a touch stick and a touch button can be held together. Pointer 0 is og.Input's pointer; ids 1 to 4 are further touches, in the order they landed (the lowest free id). |
+| [`og.Gamepad`](#record-Gamepad) | resource | The first four gamepads in the W3C standard mapping, at the start of this tick (og-input's og.Gamepad). On the web the shell polls the pads each display frame and sends their state through the input ring, so a pad is world state and replays; it also maps pads to keys for games that only read keys. |
 | [`og.KeyDown`](#record-KeyDown) | event | A key went down (a down for a held key is a repeat and sets no edge). Input events are sent between ticks and read by the next tick's systems. |
 | [`og.KeyUp`](#record-KeyUp) | event | A key went up. |
-| [`og.PointerDown`](#record-PointerDown) | event | A pointer button went down. |
-| [`og.PointerUp`](#record-PointerUp) | event | A pointer button went up. |
-| [`og.PointerMove`](#record-PointerMove) | event | The pointer moved. |
+| [`og.PointerDown`](#record-PointerDown) | event | A pointer button went down (or a touch landed). |
+| [`og.PointerUp`](#record-PointerUp) | event | A pointer button went up (or a touch lifted). |
+| [`og.PointerMove`](#record-PointerMove) | event | A pointer moved. |
 | [`og.Wheel`](#record-Wheel) | event | A wheel or trackpad scroll. |
 
 ## Components, resources and events
@@ -199,7 +209,7 @@ resource Input {
 }
 ```
 
-<sub>`api.ogt` line 720</sub>
+<sub>`api.ogt` line 780</sub>
 
 <a id="member-Input-down"></a>
 
@@ -227,7 +237,7 @@ fn down {
 }
 ```
 
-<sub>`api.ogt` line 794</sub>
+<sub>`api.ogt` line 854</sub>
 
 <a id="member-Input-pressed"></a>
 
@@ -255,7 +265,7 @@ fn pressed {
 }
 ```
 
-<sub>`api.ogt` line 799</sub>
+<sub>`api.ogt` line 859</sub>
 
 <a id="member-Input-released"></a>
 
@@ -283,7 +293,7 @@ fn released {
 }
 ```
 
-<sub>`api.ogt` line 804</sub>
+<sub>`api.ogt` line 864</sub>
 
 <a id="member-Input-axis"></a>
 
@@ -313,7 +323,7 @@ fn axis {
 }
 ```
 
-<sub>`api.ogt` line 809</sub>
+<sub>`api.ogt` line 869</sub>
 
 <a id="member-Input-axis2"></a>
 
@@ -347,7 +357,7 @@ fn axis2 {
 }
 ```
 
-<sub>`api.ogt` line 815</sub>
+<sub>`api.ogt` line 875</sub>
 
 <a id="member-Input-buttonDown"></a>
 
@@ -375,7 +385,7 @@ fn buttonDown {
 }
 ```
 
-<sub>`api.ogt` line 823</sub>
+<sub>`api.ogt` line 883</sub>
 
 <a id="member-Input-buttonPressed"></a>
 
@@ -403,7 +413,7 @@ fn buttonPressed {
 }
 ```
 
-<sub>`api.ogt` line 828</sub>
+<sub>`api.ogt` line 888</sub>
 
 <a id="member-Input-buttonReleased"></a>
 
@@ -431,7 +441,606 @@ fn buttonReleased {
 }
 ```
 
-<sub>`api.ogt` line 833</sub>
+<sub>`api.ogt` line 893</sub>
+
+<a id="record-Pointers"></a>
+
+### `og.Pointers` (resource)
+
+Every pointer on the play surface at once, at the start of this tick (og-input's og.Pointers): a touch stick and a touch button can be held together. Pointer 0 is og.Input's pointer; ids 1 to 4 are further touches, in the order they landed (the lowest free id).
+
+Edges last exactly one tick, as og.Input's do. Masks are bit `id`; read them through the methods.
+
+Token `og.Pointers`, registered under the schema name `og.Pointers`; its value type is `Pointers`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `heldMask` | `number` | `0` | — | — | read only | Pointers held down, as a mask. |
+| `pressedMask` | `number` | `0` | — | — | read only | Pointers that went down this tick. |
+| `releasedMask` | `number` | `0` | — | — | read only | Pointers that went up this tick. |
+| `releaseNextMask` | `number` | `0` | — | — | read only | Pointers a click releases at the end of the next tick. |
+| `position0` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only | Where pointer 0 is. |
+| `position1` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only | Where pointer 1 is. |
+| `position2` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only | Where pointer 2 is. |
+| `position3` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only | Where pointer 3 is. |
+| `position4` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only | Where pointer 4 is. |
+| `start0` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only | Where pointer 0 went down. |
+| `start1` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only | Where pointer 1 went down. |
+| `start2` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only | Where pointer 2 went down. |
+| `start3` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only | Where pointer 3 went down. |
+| `start4` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only | Where pointer 4 went down. |
+
+```ogt
+resource Pointers {
+  doc "Every pointer on the play surface at once, at the start of this tick (og-input's og.Pointers): a touch stick and a touch button can be held together. Pointer 0 is og.Input's pointer; ids 1 to 4 are further touches, in the order they landed (the lowest free id)."
+  doc "Edges last exactly one tick, as og.Input's do. Masks are bit `id`; read them through the methods."
+  field heldMask u32 "Pointers held down, as a mask." {
+    readonly true
+  }
+  field pressedMask u32 "Pointers that went down this tick." {
+    readonly true
+  }
+  field releasedMask u32 "Pointers that went up this tick." {
+    readonly true
+  }
+  field releaseNextMask u32 "Pointers a click releases at the end of the next tick." {
+    readonly true
+  }
+  field position0 Vector2 "Where pointer 0 is." {
+    readonly true
+    unit cssPx
+  }
+  field position1 Vector2 "Where pointer 1 is." {
+    readonly true
+    unit cssPx
+  }
+  field position2 Vector2 "Where pointer 2 is." {
+    readonly true
+    unit cssPx
+  }
+  field position3 Vector2 "Where pointer 3 is." {
+    readonly true
+    unit cssPx
+  }
+  field position4 Vector2 "Where pointer 4 is." {
+    readonly true
+    unit cssPx
+  }
+  field start0 Vector2 "Where pointer 0 went down." {
+    readonly true
+    unit cssPx
+  }
+  field start1 Vector2 "Where pointer 1 went down." {
+    readonly true
+    unit cssPx
+  }
+  field start2 Vector2 "Where pointer 2 went down." {
+    readonly true
+    unit cssPx
+  }
+  field start3 Vector2 "Where pointer 3 went down." {
+    readonly true
+    unit cssPx
+  }
+  field start4 Vector2 "Where pointer 4 went down." {
+    readonly true
+    unit cssPx
+  }
+  fn down {
+    doc "Whether a pointer is held."
+    param id u32 "The pointer, 0 to 4."
+    returns bool
+  }
+  fn pressed {
+    doc "Whether a pointer went down this tick."
+    param id u32 "The pointer, 0 to 4."
+    returns bool
+  }
+  fn released {
+    doc "Whether a pointer went up this tick."
+    param id u32 "The pointer, 0 to 4."
+    returns bool
+  }
+  fn position {
+    doc "Where a pointer is, in CSS pixels."
+    param id u32 "The pointer, 0 to 4."
+    returns Vector2
+  }
+  fn start {
+    doc "Where a pointer went down, in CSS pixels: a touch control claims the pointers that started on it."
+    param id u32 "The pointer, 0 to 4."
+    returns Vector2
+  }
+  fn count {
+    doc "How many pointers are held."
+    returns u32
+  }
+}
+```
+
+<sub>`api.ogt` line 900</sub>
+
+<a id="member-Pointers-down"></a>
+
+#### `Pointers.down`
+
+Whether a pointer is held.
+
+```ts
+Pointers.down(id: number): boolean
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `number` | no | The pointer, 0 to 4. |
+
+**Returns** `boolean`.
+
+Binding symbol `og_pointers_down` · publish builds: kept
+
+```ogt
+fn down {
+  doc "Whether a pointer is held."
+  param id u32 "The pointer, 0 to 4."
+  returns bool
+}
+```
+
+<sub>`api.ogt` line 955</sub>
+
+<a id="member-Pointers-pressed"></a>
+
+#### `Pointers.pressed`
+
+Whether a pointer went down this tick.
+
+```ts
+Pointers.pressed(id: number): boolean
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `number` | no | The pointer, 0 to 4. |
+
+**Returns** `boolean`.
+
+Binding symbol `og_pointers_pressed` · publish builds: kept
+
+```ogt
+fn pressed {
+  doc "Whether a pointer went down this tick."
+  param id u32 "The pointer, 0 to 4."
+  returns bool
+}
+```
+
+<sub>`api.ogt` line 960</sub>
+
+<a id="member-Pointers-released"></a>
+
+#### `Pointers.released`
+
+Whether a pointer went up this tick.
+
+```ts
+Pointers.released(id: number): boolean
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `number` | no | The pointer, 0 to 4. |
+
+**Returns** `boolean`.
+
+Binding symbol `og_pointers_released` · publish builds: kept
+
+```ogt
+fn released {
+  doc "Whether a pointer went up this tick."
+  param id u32 "The pointer, 0 to 4."
+  returns bool
+}
+```
+
+<sub>`api.ogt` line 965</sub>
+
+<a id="member-Pointers-position"></a>
+
+#### `Pointers.position`
+
+Where a pointer is, in CSS pixels.
+
+```ts
+Pointers.position(id: number): Vector2
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `number` | no | The pointer, 0 to 4. |
+
+**Returns** `Vector2`.
+
+Binding symbol `og_pointers_position` · publish builds: kept
+
+```ogt
+fn position {
+  doc "Where a pointer is, in CSS pixels."
+  param id u32 "The pointer, 0 to 4."
+  returns Vector2
+}
+```
+
+<sub>`api.ogt` line 970</sub>
+
+<a id="member-Pointers-start"></a>
+
+#### `Pointers.start`
+
+Where a pointer went down, in CSS pixels: a touch control claims the pointers that started on it.
+
+```ts
+Pointers.start(id: number): Vector2
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `number` | no | The pointer, 0 to 4. |
+
+**Returns** `Vector2`.
+
+Binding symbol `og_pointers_start` · publish builds: kept
+
+```ogt
+fn start {
+  doc "Where a pointer went down, in CSS pixels: a touch control claims the pointers that started on it."
+  param id u32 "The pointer, 0 to 4."
+  returns Vector2
+}
+```
+
+<sub>`api.ogt` line 975</sub>
+
+<a id="member-Pointers-count"></a>
+
+#### `Pointers.count`
+
+How many pointers are held.
+
+```ts
+Pointers.count(): number
+```
+
+**Returns** `number`.
+
+Binding symbol `og_pointers_count` · publish builds: kept
+
+```ogt
+fn count {
+  doc "How many pointers are held."
+  returns u32
+}
+```
+
+<sub>`api.ogt` line 980</sub>
+
+<a id="record-Gamepad"></a>
+
+### `og.Gamepad` (resource)
+
+The first four gamepads in the W3C standard mapping, at the start of this tick (og-input's og.Gamepad). On the web the shell polls the pads each display frame and sends their state through the input ring, so a pad is world state and replays; it also maps pads to keys for games that only read keys.
+
+Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods.
+
+Token `og.Gamepad`, registered under the schema name `og.Gamepad`; its value type is `Gamepad`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `connectedMask` | `number` | `0` | — | — | read only | Connected pads: bit `pad`. |
+| `buttons0` | `number` | `0` | — | — | read only | Held buttons of pad 0. |
+| `buttons1` | `number` | `0` | — | — | read only | Held buttons of pad 1. |
+| `buttons2` | `number` | `0` | — | — | read only | Held buttons of pad 2. |
+| `buttons3` | `number` | `0` | — | — | read only | Held buttons of pad 3. |
+| `pressed0` | `number` | `0` | — | — | read only | Buttons of pad 0 that went down this tick. |
+| `pressed1` | `number` | `0` | — | — | read only | Buttons of pad 1 that went down this tick. |
+| `pressed2` | `number` | `0` | — | — | read only | Buttons of pad 2 that went down this tick. |
+| `pressed3` | `number` | `0` | — | — | read only | Buttons of pad 3 that went down this tick. |
+| `released0` | `number` | `0` | — | — | read only | Buttons of pad 0 that went up this tick. |
+| `released1` | `number` | `0` | — | — | read only | Buttons of pad 1 that went up this tick. |
+| `released2` | `number` | `0` | — | — | read only | Buttons of pad 2 that went up this tick. |
+| `released3` | `number` | `0` | — | — | read only | Buttons of pad 3 that went up this tick. |
+| `leftStick0` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | The left stick of pad 0, -1 to 1, y down. |
+| `leftStick1` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | The left stick of pad 1, -1 to 1, y down. |
+| `leftStick2` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | The left stick of pad 2, -1 to 1, y down. |
+| `leftStick3` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | The left stick of pad 3, -1 to 1, y down. |
+| `rightStick0` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | The right stick of pad 0, -1 to 1, y down. |
+| `rightStick1` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | The right stick of pad 1, -1 to 1, y down. |
+| `rightStick2` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | The right stick of pad 2, -1 to 1, y down. |
+| `rightStick3` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | The right stick of pad 3, -1 to 1, y down. |
+| `triggers0` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | The left (x) and right (y) triggers of pad 0, 0 to 1. |
+| `triggers1` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | The left (x) and right (y) triggers of pad 1, 0 to 1. |
+| `triggers2` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | The left (x) and right (y) triggers of pad 2, 0 to 1. |
+| `triggers3` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | The left (x) and right (y) triggers of pad 3, 0 to 1. |
+
+```ogt
+resource Gamepad {
+  doc "The first four gamepads in the W3C standard mapping, at the start of this tick (og-input's og.Gamepad). On the web the shell polls the pads each display frame and sends their state through the input ring, so a pad is world state and replays; it also maps pads to keys for games that only read keys."
+  doc "Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods."
+  field connectedMask u32 "Connected pads: bit `pad`." {
+    readonly true
+  }
+  field buttons0 u32 "Held buttons of pad 0." {
+    readonly true
+  }
+  field buttons1 u32 "Held buttons of pad 1." {
+    readonly true
+  }
+  field buttons2 u32 "Held buttons of pad 2." {
+    readonly true
+  }
+  field buttons3 u32 "Held buttons of pad 3." {
+    readonly true
+  }
+  field pressed0 u32 "Buttons of pad 0 that went down this tick." {
+    readonly true
+  }
+  field pressed1 u32 "Buttons of pad 1 that went down this tick." {
+    readonly true
+  }
+  field pressed2 u32 "Buttons of pad 2 that went down this tick." {
+    readonly true
+  }
+  field pressed3 u32 "Buttons of pad 3 that went down this tick." {
+    readonly true
+  }
+  field released0 u32 "Buttons of pad 0 that went up this tick." {
+    readonly true
+  }
+  field released1 u32 "Buttons of pad 1 that went up this tick." {
+    readonly true
+  }
+  field released2 u32 "Buttons of pad 2 that went up this tick." {
+    readonly true
+  }
+  field released3 u32 "Buttons of pad 3 that went up this tick." {
+    readonly true
+  }
+  field leftStick0 Vector2 "The left stick of pad 0, -1 to 1, y down." {
+    readonly true
+  }
+  field leftStick1 Vector2 "The left stick of pad 1, -1 to 1, y down." {
+    readonly true
+  }
+  field leftStick2 Vector2 "The left stick of pad 2, -1 to 1, y down." {
+    readonly true
+  }
+  field leftStick3 Vector2 "The left stick of pad 3, -1 to 1, y down." {
+    readonly true
+  }
+  field rightStick0 Vector2 "The right stick of pad 0, -1 to 1, y down." {
+    readonly true
+  }
+  field rightStick1 Vector2 "The right stick of pad 1, -1 to 1, y down." {
+    readonly true
+  }
+  field rightStick2 Vector2 "The right stick of pad 2, -1 to 1, y down." {
+    readonly true
+  }
+  field rightStick3 Vector2 "The right stick of pad 3, -1 to 1, y down." {
+    readonly true
+  }
+  field triggers0 Vector2 "The left (x) and right (y) triggers of pad 0, 0 to 1." {
+    readonly true
+  }
+  field triggers1 Vector2 "The left (x) and right (y) triggers of pad 1, 0 to 1." {
+    readonly true
+  }
+  field triggers2 Vector2 "The left (x) and right (y) triggers of pad 2, 0 to 1." {
+    readonly true
+  }
+  field triggers3 Vector2 "The left (x) and right (y) triggers of pad 3, 0 to 1." {
+    readonly true
+  }
+  fn connected {
+    doc "Whether a pad is connected."
+    param pad u32 "The pad, 0 to 3; omitted is 0." {
+      optional true
+    }
+    returns bool
+  }
+  fn down {
+    doc "Whether a button is held."
+    param button GamepadButton "The button."
+    param pad u32 "The pad, 0 to 3; omitted is 0." {
+      optional true
+    }
+    returns bool
+  }
+  fn pressed {
+    doc "Whether a button went down this tick."
+    param button GamepadButton "The button."
+    param pad u32 "The pad, 0 to 3; omitted is 0." {
+      optional true
+    }
+    returns bool
+  }
+  fn released {
+    doc "Whether a button went up this tick."
+    param button GamepadButton "The button."
+    param pad u32 "The pad, 0 to 3; omitted is 0." {
+      optional true
+    }
+    returns bool
+  }
+  fn axis {
+    doc "An analog input: a stick's x or y (-1 to 1, y down) or a trigger (0 to 1). Dead zones are the game's."
+    param axis GamepadAxis "Which input."
+    param pad u32 "The pad, 0 to 3; omitted is 0." {
+      optional true
+    }
+    returns f32
+  }
+}
+```
+
+<sub>`api.ogt` line 986</sub>
+
+<a id="member-Gamepad-connected"></a>
+
+#### `Gamepad.connected`
+
+Whether a pad is connected.
+
+```ts
+Gamepad.connected(pad?: number): boolean
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `pad` | `number` | yes | The pad, 0 to 3; omitted is 0. |
+
+**Returns** `boolean`.
+
+Binding symbol `og_gamepad_connected` · publish builds: kept
+
+```ogt
+fn connected {
+  doc "Whether a pad is connected."
+  param pad u32 "The pad, 0 to 3; omitted is 0." {
+    optional true
+  }
+  returns bool
+}
+```
+
+<sub>`api.ogt` line 1064</sub>
+
+<a id="member-Gamepad-down"></a>
+
+#### `Gamepad.down`
+
+Whether a button is held.
+
+```ts
+Gamepad.down(button: GamepadButton, pad?: number): boolean
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `button` | `GamepadButton` | no | The button. |
+| `pad` | `number` | yes | The pad, 0 to 3; omitted is 0. |
+
+**Returns** `boolean`.
+
+Binding symbol `og_gamepad_down` · publish builds: kept
+
+```ogt
+fn down {
+  doc "Whether a button is held."
+  param button GamepadButton "The button."
+  param pad u32 "The pad, 0 to 3; omitted is 0." {
+    optional true
+  }
+  returns bool
+}
+```
+
+<sub>`api.ogt` line 1071</sub>
+
+<a id="member-Gamepad-pressed"></a>
+
+#### `Gamepad.pressed`
+
+Whether a button went down this tick.
+
+```ts
+Gamepad.pressed(button: GamepadButton, pad?: number): boolean
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `button` | `GamepadButton` | no | The button. |
+| `pad` | `number` | yes | The pad, 0 to 3; omitted is 0. |
+
+**Returns** `boolean`.
+
+Binding symbol `og_gamepad_pressed` · publish builds: kept
+
+```ogt
+fn pressed {
+  doc "Whether a button went down this tick."
+  param button GamepadButton "The button."
+  param pad u32 "The pad, 0 to 3; omitted is 0." {
+    optional true
+  }
+  returns bool
+}
+```
+
+<sub>`api.ogt` line 1079</sub>
+
+<a id="member-Gamepad-released"></a>
+
+#### `Gamepad.released`
+
+Whether a button went up this tick.
+
+```ts
+Gamepad.released(button: GamepadButton, pad?: number): boolean
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `button` | `GamepadButton` | no | The button. |
+| `pad` | `number` | yes | The pad, 0 to 3; omitted is 0. |
+
+**Returns** `boolean`.
+
+Binding symbol `og_gamepad_released` · publish builds: kept
+
+```ogt
+fn released {
+  doc "Whether a button went up this tick."
+  param button GamepadButton "The button."
+  param pad u32 "The pad, 0 to 3; omitted is 0." {
+    optional true
+  }
+  returns bool
+}
+```
+
+<sub>`api.ogt` line 1087</sub>
+
+<a id="member-Gamepad-axis"></a>
+
+#### `Gamepad.axis`
+
+An analog input: a stick's x or y (-1 to 1, y down) or a trigger (0 to 1). Dead zones are the game's.
+
+```ts
+Gamepad.axis(axis: GamepadAxis, pad?: number): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `axis` | `GamepadAxis` | no | Which input. |
+| `pad` | `number` | yes | The pad, 0 to 3; omitted is 0. |
+
+**Returns** `number`.
+
+Binding symbol `og_gamepad_axis` · publish builds: kept
+
+```ogt
+fn axis {
+  doc "An analog input: a stick's x or y (-1 to 1, y down) or a trigger (0 to 1). Dead zones are the game's."
+  param axis GamepadAxis "Which input."
+  param pad u32 "The pad, 0 to 3; omitted is 0." {
+    optional true
+  }
+  returns f32
+}
+```
+
+<sub>`api.ogt` line 1095</sub>
 
 <a id="record-KeyDown"></a>
 
@@ -454,7 +1063,7 @@ event KeyDown {
 }
 ```
 
-<sub>`api.ogt` line 840</sub>
+<sub>`api.ogt` line 1105</sub>
 
 <a id="record-KeyUp"></a>
 
@@ -475,13 +1084,13 @@ event KeyUp {
 }
 ```
 
-<sub>`api.ogt` line 846</sub>
+<sub>`api.ogt` line 1111</sub>
 
 <a id="record-PointerDown"></a>
 
 ### `og.PointerDown` (event)
 
-A pointer button went down.
+A pointer button went down (or a touch landed).
 
 Token `og.PointerDown`, registered under the schema name `og.PointerDown`; its value type is `PointerDown`.
 
@@ -490,23 +1099,25 @@ Token `og.PointerDown`, registered under the schema name `og.PointerDown`; its v
 | `x` | `number` | `0` | — | — | — | Horizontal position in CSS pixels. |
 | `y` | `number` | `0` | — | — | — | Vertical position in CSS pixels. |
 | `button` | `PointerButton` | `"none"` | — | — | — | The button. |
+| `id` | `number` | `0` | — | — | — | Which pointer: 0 the primary one, 1 to 4 further touches (og.Pointers). |
 
 ```ogt
 event PointerDown {
-  doc "A pointer button went down."
+  doc "A pointer button went down (or a touch landed)."
   field x f32 "Horizontal position in CSS pixels."
   field y f32 "Vertical position in CSS pixels."
   field button PointerButton "The button."
+  field id u32 "Which pointer: 0 the primary one, 1 to 4 further touches (og.Pointers)."
 }
 ```
 
-<sub>`api.ogt` line 851</sub>
+<sub>`api.ogt` line 1116</sub>
 
 <a id="record-PointerUp"></a>
 
 ### `og.PointerUp` (event)
 
-A pointer button went up.
+A pointer button went up (or a touch lifted).
 
 Token `og.PointerUp`, registered under the schema name `og.PointerUp`; its value type is `PointerUp`.
 
@@ -515,23 +1126,25 @@ Token `og.PointerUp`, registered under the schema name `og.PointerUp`; its value
 | `x` | `number` | `0` | — | — | — | Horizontal position in CSS pixels. |
 | `y` | `number` | `0` | — | — | — | Vertical position in CSS pixels. |
 | `button` | `PointerButton` | `"none"` | — | — | — | The button. |
+| `id` | `number` | `0` | — | — | — | Which pointer: 0 the primary one, 1 to 4 further touches. |
 
 ```ogt
 event PointerUp {
-  doc "A pointer button went up."
+  doc "A pointer button went up (or a touch lifted)."
   field x f32 "Horizontal position in CSS pixels."
   field y f32 "Vertical position in CSS pixels."
   field button PointerButton "The button."
+  field id u32 "Which pointer: 0 the primary one, 1 to 4 further touches."
 }
 ```
 
-<sub>`api.ogt` line 858</sub>
+<sub>`api.ogt` line 1124</sub>
 
 <a id="record-PointerMove"></a>
 
 ### `og.PointerMove` (event)
 
-The pointer moved.
+A pointer moved.
 
 Token `og.PointerMove`, registered under the schema name `og.PointerMove`; its value type is `PointerMove`.
 
@@ -539,16 +1152,18 @@ Token `og.PointerMove`, registered under the schema name `og.PointerMove`; its v
 |---|---|---|---|---|---|---|
 | `x` | `number` | `0` | — | — | — | Horizontal position in CSS pixels. |
 | `y` | `number` | `0` | — | — | — | Vertical position in CSS pixels. |
+| `id` | `number` | `0` | — | — | — | Which pointer: 0 the primary one, 1 to 4 further touches. |
 
 ```ogt
 event PointerMove {
-  doc "The pointer moved."
+  doc "A pointer moved."
   field x f32 "Horizontal position in CSS pixels."
   field y f32 "Vertical position in CSS pixels."
+  field id u32 "Which pointer: 0 the primary one, 1 to 4 further touches."
 }
 ```
 
-<sub>`api.ogt` line 865</sub>
+<sub>`api.ogt` line 1132</sub>
 
 <a id="record-Wheel"></a>
 
@@ -571,9 +1186,93 @@ event Wheel {
 }
 ```
 
-<sub>`api.ogt` line 871</sub>
+<sub>`api.ogt` line 1139</sub>
 
 ## Types
+
+<a id="type-GamepadButton"></a>
+
+### `GamepadButton` (enum)
+
+A gamepad button in the W3C standard mapping, in its index order (a is button 0).
+
+A string: one of the variants below. The zero value is `"a"`.
+
+| Variant | Doc |
+|---|---|
+| `"a"` | The bottom face button (A, Cross). |
+| `"b"` | The right face button (B, Circle). |
+| `"x"` | The left face button (X, Square). |
+| `"y"` | The top face button (Y, Triangle). |
+| `"leftBumper"` | The left shoulder button. |
+| `"rightBumper"` | The right shoulder button. |
+| `"leftTrigger"` | The left trigger, as a button (its analog value is the leftTrigger axis). |
+| `"rightTrigger"` | The right trigger, as a button. |
+| `"back"` | Back, Select or View. |
+| `"start"` | Start, Options or Menu. |
+| `"leftStick"` | The left stick pressed in. |
+| `"rightStick"` | The right stick pressed in. |
+| `"up"` | The d-pad's up. |
+| `"down"` | The d-pad's down. |
+| `"left"` | The d-pad's left. |
+| `"right"` | The d-pad's right. |
+| `"home"` | The home or guide button. |
+
+```ogt
+enum GamepadButton {
+  doc "A gamepad button in the W3C standard mapping, in its index order (a is button 0)."
+  variant a "The bottom face button (A, Cross)."
+  variant b "The right face button (B, Circle)."
+  variant x "The left face button (X, Square)."
+  variant y "The top face button (Y, Triangle)."
+  variant leftBumper "The left shoulder button."
+  variant rightBumper "The right shoulder button."
+  variant leftTrigger "The left trigger, as a button (its analog value is the leftTrigger axis)."
+  variant rightTrigger "The right trigger, as a button."
+  variant back "Back, Select or View."
+  variant start "Start, Options or Menu."
+  variant leftStick "The left stick pressed in."
+  variant rightStick "The right stick pressed in."
+  variant up "The d-pad's up."
+  variant down "The d-pad's down."
+  variant left "The d-pad's left."
+  variant right "The d-pad's right."
+  variant home "The home or guide button."
+}
+```
+
+<sub>`api.ogt` line 648</sub>
+
+<a id="type-GamepadAxis"></a>
+
+### `GamepadAxis` (enum)
+
+An analog input of a gamepad.
+
+A string: one of the variants below. The zero value is `"leftX"`.
+
+| Variant | Doc |
+|---|---|
+| `"leftX"` | The left stick's x, -1 (left) to 1 (right). |
+| `"leftY"` | The left stick's y, -1 (up) to 1 (down), as the Gamepad API reports it. |
+| `"rightX"` | The right stick's x. |
+| `"rightY"` | The right stick's y, down positive. |
+| `"leftTrigger"` | The left trigger, 0 to 1. |
+| `"rightTrigger"` | The right trigger, 0 to 1. |
+
+```ogt
+enum GamepadAxis {
+  doc "An analog input of a gamepad."
+  variant leftX "The left stick's x, -1 (left) to 1 (right)."
+  variant leftY "The left stick's y, -1 (up) to 1 (down), as the Gamepad API reports it."
+  variant rightX "The right stick's x."
+  variant rightY "The right stick's y, down positive."
+  variant leftTrigger "The left trigger, 0 to 1."
+  variant rightTrigger "The right trigger, 0 to 1."
+}
+```
+
+<sub>`api.ogt` line 669</sub>
 
 <a id="type-KeyAction"></a>
 
@@ -598,7 +1297,7 @@ enum KeyAction {
 }
 ```
 
-<sub>`api.ogt` line 644</sub>
+<sub>`api.ogt` line 679</sub>
 
 <a id="type-PointerAction"></a>
 
@@ -625,7 +1324,7 @@ enum PointerAction {
 }
 ```
 
-<sub>`api.ogt` line 651</sub>
+<sub>`api.ogt` line 686</sub>
 
 <a id="type-PointerButton"></a>
 
@@ -652,7 +1351,7 @@ enum PointerButton {
 }
 ```
 
-<sub>`api.ogt` line 659</sub>
+<sub>`api.ogt` line 694</sub>
 
 <a id="type-Modifiers"></a>
 
@@ -677,7 +1376,7 @@ struct Modifiers {
 }
 ```
 
-<sub>`api.ogt` line 667</sub>
+<sub>`api.ogt` line 702</sub>
 
 <a id="type-KeyInput"></a>
 
@@ -702,7 +1401,7 @@ struct KeyInput {
 }
 ```
 
-<sub>`api.ogt` line 675</sub>
+<sub>`api.ogt` line 710</sub>
 
 <a id="type-PointerInput"></a>
 
@@ -716,6 +1415,7 @@ A pointer event at a point in CSS pixels of the play surface.
 | `x` | `number` | `0` | — | `cssPx` | — | Horizontal position. |
 | `y` | `number` | `0` | — | `cssPx` | — | Vertical position. |
 | `button` | `PointerButton` | `"none"` | — | — | — | The button; `none` for a hover move. |
+| `id` | `number` | `0` | ≤ 4 | — | optional | Which pointer: 0 the primary one (the mouse, the first touch; what protocol 5 means), 1 to 4 further touches held at the same time (an engine extension). Omitted is 0. |
 
 ```ogt
 struct PointerInput {
@@ -728,10 +1428,52 @@ struct PointerInput {
     unit cssPx
   }
   field button PointerButton "The button; `none` for a hover move."
+  field id u32 "Which pointer: 0 the primary one (the mouse, the first touch; what protocol 5 means), 1 to 4 further touches held at the same time (an engine extension). Omitted is 0." {
+    max 4
+    optional true
+  }
 }
 ```
 
-<sub>`api.ogt` line 684</sub>
+<sub>`api.ogt` line 719</sub>
+
+<a id="type-GamepadInput"></a>
+
+### `GamepadInput` (struct)
+
+A gamepad's whole state (an engine extension of protocol 5): the shell sends one whenever a pad changes, and a playtest can send its own.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `pad` | `number` | `0` | ≤ 3 | — | optional | Which pad, 0 to 3; omitted is 0. |
+| `connected` | `boolean` | `false` | — | — | optional | Whether the pad is connected (omitted is true); a disconnected pad holds nothing. |
+| `buttons` | `readonly GamepadButton[]` | `[]` | — | — | optional | The buttons held (omitted is none). |
+| `axes` | `readonly number[]` | `[]` | — | — | optional | Left stick x, y, right stick x, y; each -1 to 1, y down. Missing values are 0. |
+| `triggers` | `readonly number[]` | `[]` | — | — | optional | The left and right analog triggers, 0 to 1. Missing values are 0. |
+
+```ogt
+struct GamepadInput {
+  doc "A gamepad's whole state (an engine extension of protocol 5): the shell sends one whenever a pad changes, and a playtest can send its own."
+  field pad u32 "Which pad, 0 to 3; omitted is 0." {
+    max 3
+    optional true
+  }
+  field connected bool "Whether the pad is connected (omitted is true); a disconnected pad holds nothing." {
+    optional true
+  }
+  field buttons List.GamepadButton "The buttons held (omitted is none)." {
+    optional true
+  }
+  field axes List.f32 "Left stick x, y, right stick x, y; each -1 to 1, y down. Missing values are 0." {
+    optional true
+  }
+  field triggers List.f32 "The left and right analog triggers, 0 to 1. Missing values are 0." {
+    optional true
+  }
+}
+```
+
+<sub>`api.ogt` line 735</sub>
 
 <a id="type-WheelInput"></a>
 
@@ -764,7 +1506,7 @@ struct WheelInput {
 }
 ```
 
-<sub>`api.ogt` line 696</sub>
+<sub>`api.ogt` line 755</sub>
 
 <a id="type-InjectedInput"></a>
 
@@ -779,6 +1521,7 @@ Tagged by `kind`.
 | `kind: "key"` | [`KeyInput`](#type-KeyInput) | A key event. |
 | `kind: "pointer"` | [`PointerInput`](#type-PointerInput) | A pointer event. |
 | `kind: "wheel"` | [`WheelInput`](#type-WheelInput) | A wheel event. |
+| `kind: "gamepad"` | [`GamepadInput`](#type-GamepadInput) | A gamepad's state. |
 
 ```ogt
 union InjectedInput {
@@ -787,7 +1530,27 @@ union InjectedInput {
   case key KeyInput "A key event."
   case pointer PointerInput "A pointer event."
   case wheel WheelInput "A wheel event."
+  case gamepad GamepadInput "A gamepad's state."
 }
 ```
 
-<sub>`api.ogt` line 712</sub>
+<sub>`api.ogt` line 771</sub>
+
+## Constants
+
+| Constant | Type | Value | Doc |
+|---|---|---|---|
+| <a id="const-MAX_POINTERS"></a>`MAX_POINTERS` | `number` | `5` | The most pointers og.Pointers tracks at once: ids 0 (the primary pointer) to 4. |
+| <a id="const-MAX_GAMEPADS"></a>`MAX_GAMEPADS` | `number` | `4` | The most gamepads og.Gamepad reads: pads 0 to 3. |
+
+```ogt
+const MAX_POINTERS u32 5 "The most pointers og.Pointers tracks at once: ids 0 (the primary pointer) to 4."
+```
+
+<sub>`api.ogt` line 645</sub>
+
+```ogt
+const MAX_GAMEPADS u32 4 "The most gamepads og.Gamepad reads: pads 0 to 3."
+```
+
+<sub>`api.ogt` line 646</sub>

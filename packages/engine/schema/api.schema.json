@@ -950,19 +950,24 @@
     },
     {
       "name": "input",
-      "doc": "Input as the game sees it: the Input resource for polling, events for edges.\nThe shell collects pointer, keyboard and wheel input on the main thread; the probe and the command channel inject through the same path.",
+      "doc": "Input as the game sees it: the Input resource for polling, events for edges.\nThe shell collects pointer, keyboard and wheel input on the main thread; the probe and the command channel inject through the same path.\nSeveral pointers at once (multi-touch) are og.Pointers; the first four gamepads, in the W3C standard mapping, are og.Gamepad. Both are world state, as og.Input is, so they replay.",
       "place": "namespace",
       "publish": true,
       "types": [
+        "GamepadButton",
+        "GamepadAxis",
         "KeyAction",
         "PointerAction",
         "PointerButton",
         "Modifiers",
         "KeyInput",
         "PointerInput",
+        "GamepadInput",
         "WheelInput",
         "InjectedInput",
         "Input",
+        "Pointers",
+        "Gamepad",
         "KeyDown",
         "KeyUp",
         "PointerDown",
@@ -970,7 +975,20 @@
         "PointerMove",
         "Wheel"
       ],
-      "consts": [],
+      "consts": [
+        {
+          "name": "MAX_POINTERS",
+          "type": "u32",
+          "value": 5,
+          "doc": "The most pointers og.Pointers tracks at once: ids 0 (the primary pointer) to 4."
+        },
+        {
+          "name": "MAX_GAMEPADS",
+          "type": "u32",
+          "value": 4,
+          "doc": "The most gamepads og.Gamepad reads: pads 0 to 3."
+        }
+      ],
       "functions": [],
       "interfaces": [],
       "callbacks": []
@@ -5046,6 +5064,72 @@
       },
       "additionalProperties": false
     },
+    "GamepadButton": {
+      "x-og-kind": "enum",
+      "x-og-module": "input",
+      "description": "A gamepad button in the W3C standard mapping, in its index order (a is button 0).",
+      "type": "string",
+      "enum": [
+        "a",
+        "b",
+        "x",
+        "y",
+        "leftBumper",
+        "rightBumper",
+        "leftTrigger",
+        "rightTrigger",
+        "back",
+        "start",
+        "leftStick",
+        "rightStick",
+        "up",
+        "down",
+        "left",
+        "right",
+        "home"
+      ],
+      "x-og-variants": {
+        "a": "The bottom face button (A, Cross).",
+        "b": "The right face button (B, Circle).",
+        "x": "The left face button (X, Square).",
+        "y": "The top face button (Y, Triangle).",
+        "leftBumper": "The left shoulder button.",
+        "rightBumper": "The right shoulder button.",
+        "leftTrigger": "The left trigger, as a button (its analog value is the leftTrigger axis).",
+        "rightTrigger": "The right trigger, as a button.",
+        "back": "Back, Select or View.",
+        "start": "Start, Options or Menu.",
+        "leftStick": "The left stick pressed in.",
+        "rightStick": "The right stick pressed in.",
+        "up": "The d-pad's up.",
+        "down": "The d-pad's down.",
+        "left": "The d-pad's left.",
+        "right": "The d-pad's right.",
+        "home": "The home or guide button."
+      }
+    },
+    "GamepadAxis": {
+      "x-og-kind": "enum",
+      "x-og-module": "input",
+      "description": "An analog input of a gamepad.",
+      "type": "string",
+      "enum": [
+        "leftX",
+        "leftY",
+        "rightX",
+        "rightY",
+        "leftTrigger",
+        "rightTrigger"
+      ],
+      "x-og-variants": {
+        "leftX": "The left stick's x, -1 (left) to 1 (right).",
+        "leftY": "The left stick's y, -1 (up) to 1 (down), as the Gamepad API reports it.",
+        "rightX": "The right stick's x.",
+        "rightY": "The right stick's y, down positive.",
+        "leftTrigger": "The left trigger, 0 to 1.",
+        "rightTrigger": "The right trigger, 0 to 1."
+      }
+    },
     "KeyAction": {
       "x-og-kind": "enum",
       "x-og-module": "input",
@@ -5177,6 +5261,13 @@
         "button": {
           "$ref": "#/$defs/PointerButton",
           "description": "The button; `none` for a hover move."
+        },
+        "id": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Which pointer: 0 the primary one (the mouse, the first touch; what protocol 5 means), 1 to 4 further touches held at the same time (an engine extension). Omitted is 0.",
+          "maximum": 4
         }
       },
       "required": [
@@ -5185,6 +5276,47 @@
         "y",
         "button"
       ],
+      "additionalProperties": false
+    },
+    "GamepadInput": {
+      "x-og-kind": "struct",
+      "x-og-module": "input",
+      "description": "A gamepad's whole state (an engine extension of protocol 5): the shell sends one whenever a pad changes, and a playtest can send its own.",
+      "type": "object",
+      "properties": {
+        "pad": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Which pad, 0 to 3; omitted is 0.",
+          "maximum": 3
+        },
+        "connected": {
+          "type": "boolean",
+          "description": "Whether the pad is connected (omitted is true); a disconnected pad holds nothing."
+        },
+        "buttons": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GamepadButton"
+          },
+          "description": "The buttons held (omitted is none)."
+        },
+        "axes": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Left stick x, y, right stick x, y; each -1 to 1, y down. Missing values are 0."
+        },
+        "triggers": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "The left and right analog triggers, 0 to 1. Missing values are 0."
+        }
+      },
       "additionalProperties": false
     },
     "WheelInput": {
@@ -5280,6 +5412,13 @@
             "button": {
               "$ref": "#/$defs/PointerButton",
               "description": "The button; `none` for a hover move."
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295,
+              "description": "Which pointer: 0 the primary one (the mouse, the first touch; what protocol 5 means), 1 to 4 further touches held at the same time (an engine extension). Omitted is 0.",
+              "maximum": 4
             }
           },
           "required": [
@@ -5329,6 +5468,52 @@
           ],
           "additionalProperties": false,
           "x-og-payload": "WheelInput"
+        },
+        {
+          "description": "A gamepad's state.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "gamepad"
+            },
+            "pad": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295,
+              "description": "Which pad, 0 to 3; omitted is 0.",
+              "maximum": 3
+            },
+            "connected": {
+              "type": "boolean",
+              "description": "Whether the pad is connected (omitted is true); a disconnected pad holds nothing."
+            },
+            "buttons": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/GamepadButton"
+              },
+              "description": "The buttons held (omitted is none)."
+            },
+            "axes": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "description": "Left stick x, y, right stick x, y; each -1 to 1, y down. Missing values are 0."
+            },
+            "triggers": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "description": "The left and right analog triggers, 0 to 1. Missing values are 0."
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false,
+          "x-og-payload": "GamepadInput"
         }
       ]
     },
@@ -5527,6 +5712,368 @@
       },
       "additionalProperties": false
     },
+    "Pointers": {
+      "x-og-kind": "resource",
+      "x-og-module": "input",
+      "description": "Every pointer on the play surface at once, at the start of this tick (og-input's og.Pointers): a touch stick and a touch button can be held together. Pointer 0 is og.Input's pointer; ids 1 to 4 are further touches, in the order they landed (the lowest free id).\nEdges last exactly one tick, as og.Input's do. Masks are bit `id`; read them through the methods.",
+      "type": "object",
+      "properties": {
+        "heldMask": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Pointers held down, as a mask.",
+          "default": 0,
+          "readOnly": true
+        },
+        "pressedMask": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Pointers that went down this tick.",
+          "default": 0,
+          "readOnly": true
+        },
+        "releasedMask": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Pointers that went up this tick.",
+          "default": 0,
+          "readOnly": true
+        },
+        "releaseNextMask": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Pointers a click releases at the end of the next tick.",
+          "default": 0,
+          "readOnly": true
+        },
+        "position0": {
+          "$ref": "#/$defs/Vector2",
+          "description": "Where pointer 0 is.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "x-og-unit": "cssPx",
+          "readOnly": true
+        },
+        "position1": {
+          "$ref": "#/$defs/Vector2",
+          "description": "Where pointer 1 is.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "x-og-unit": "cssPx",
+          "readOnly": true
+        },
+        "position2": {
+          "$ref": "#/$defs/Vector2",
+          "description": "Where pointer 2 is.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "x-og-unit": "cssPx",
+          "readOnly": true
+        },
+        "position3": {
+          "$ref": "#/$defs/Vector2",
+          "description": "Where pointer 3 is.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "x-og-unit": "cssPx",
+          "readOnly": true
+        },
+        "position4": {
+          "$ref": "#/$defs/Vector2",
+          "description": "Where pointer 4 is.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "x-og-unit": "cssPx",
+          "readOnly": true
+        },
+        "start0": {
+          "$ref": "#/$defs/Vector2",
+          "description": "Where pointer 0 went down.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "x-og-unit": "cssPx",
+          "readOnly": true
+        },
+        "start1": {
+          "$ref": "#/$defs/Vector2",
+          "description": "Where pointer 1 went down.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "x-og-unit": "cssPx",
+          "readOnly": true
+        },
+        "start2": {
+          "$ref": "#/$defs/Vector2",
+          "description": "Where pointer 2 went down.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "x-og-unit": "cssPx",
+          "readOnly": true
+        },
+        "start3": {
+          "$ref": "#/$defs/Vector2",
+          "description": "Where pointer 3 went down.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "x-og-unit": "cssPx",
+          "readOnly": true
+        },
+        "start4": {
+          "$ref": "#/$defs/Vector2",
+          "description": "Where pointer 4 went down.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "x-og-unit": "cssPx",
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Gamepad": {
+      "x-og-kind": "resource",
+      "x-og-module": "input",
+      "description": "The first four gamepads in the W3C standard mapping, at the start of this tick (og-input's og.Gamepad). On the web the shell polls the pads each display frame and sends their state through the input ring, so a pad is world state and replays; it also maps pads to keys for games that only read keys.\nButton masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods.",
+      "type": "object",
+      "properties": {
+        "connectedMask": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Connected pads: bit `pad`.",
+          "default": 0,
+          "readOnly": true
+        },
+        "buttons0": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Held buttons of pad 0.",
+          "default": 0,
+          "readOnly": true
+        },
+        "buttons1": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Held buttons of pad 1.",
+          "default": 0,
+          "readOnly": true
+        },
+        "buttons2": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Held buttons of pad 2.",
+          "default": 0,
+          "readOnly": true
+        },
+        "buttons3": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Held buttons of pad 3.",
+          "default": 0,
+          "readOnly": true
+        },
+        "pressed0": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Buttons of pad 0 that went down this tick.",
+          "default": 0,
+          "readOnly": true
+        },
+        "pressed1": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Buttons of pad 1 that went down this tick.",
+          "default": 0,
+          "readOnly": true
+        },
+        "pressed2": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Buttons of pad 2 that went down this tick.",
+          "default": 0,
+          "readOnly": true
+        },
+        "pressed3": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Buttons of pad 3 that went down this tick.",
+          "default": 0,
+          "readOnly": true
+        },
+        "released0": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Buttons of pad 0 that went up this tick.",
+          "default": 0,
+          "readOnly": true
+        },
+        "released1": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Buttons of pad 1 that went up this tick.",
+          "default": 0,
+          "readOnly": true
+        },
+        "released2": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Buttons of pad 2 that went up this tick.",
+          "default": 0,
+          "readOnly": true
+        },
+        "released3": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Buttons of pad 3 that went up this tick.",
+          "default": 0,
+          "readOnly": true
+        },
+        "leftStick0": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The left stick of pad 0, -1 to 1, y down.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readOnly": true
+        },
+        "leftStick1": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The left stick of pad 1, -1 to 1, y down.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readOnly": true
+        },
+        "leftStick2": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The left stick of pad 2, -1 to 1, y down.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readOnly": true
+        },
+        "leftStick3": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The left stick of pad 3, -1 to 1, y down.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readOnly": true
+        },
+        "rightStick0": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The right stick of pad 0, -1 to 1, y down.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readOnly": true
+        },
+        "rightStick1": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The right stick of pad 1, -1 to 1, y down.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readOnly": true
+        },
+        "rightStick2": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The right stick of pad 2, -1 to 1, y down.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readOnly": true
+        },
+        "rightStick3": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The right stick of pad 3, -1 to 1, y down.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readOnly": true
+        },
+        "triggers0": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The left (x) and right (y) triggers of pad 0, 0 to 1.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readOnly": true
+        },
+        "triggers1": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The left (x) and right (y) triggers of pad 1, 0 to 1.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readOnly": true
+        },
+        "triggers2": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The left (x) and right (y) triggers of pad 2, 0 to 1.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readOnly": true
+        },
+        "triggers3": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The left (x) and right (y) triggers of pad 3, 0 to 1.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
     "KeyDown": {
       "x-og-kind": "event",
       "x-og-module": "input",
@@ -5567,7 +6114,7 @@
     "PointerDown": {
       "x-og-kind": "event",
       "x-og-module": "input",
-      "description": "A pointer button went down.",
+      "description": "A pointer button went down (or a touch landed).",
       "type": "object",
       "properties": {
         "x": {
@@ -5581,19 +6128,26 @@
         "button": {
           "$ref": "#/$defs/PointerButton",
           "description": "The button."
+        },
+        "id": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Which pointer: 0 the primary one, 1 to 4 further touches (og.Pointers)."
         }
       },
       "required": [
         "x",
         "y",
-        "button"
+        "button",
+        "id"
       ],
       "additionalProperties": false
     },
     "PointerUp": {
       "x-og-kind": "event",
       "x-og-module": "input",
-      "description": "A pointer button went up.",
+      "description": "A pointer button went up (or a touch lifted).",
       "type": "object",
       "properties": {
         "x": {
@@ -5607,19 +6161,26 @@
         "button": {
           "$ref": "#/$defs/PointerButton",
           "description": "The button."
+        },
+        "id": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Which pointer: 0 the primary one, 1 to 4 further touches."
         }
       },
       "required": [
         "x",
         "y",
-        "button"
+        "button",
+        "id"
       ],
       "additionalProperties": false
     },
     "PointerMove": {
       "x-og-kind": "event",
       "x-og-module": "input",
-      "description": "The pointer moved.",
+      "description": "A pointer moved.",
       "type": "object",
       "properties": {
         "x": {
@@ -5629,11 +6190,18 @@
         "y": {
           "type": "number",
           "description": "Vertical position in CSS pixels."
+        },
+        "id": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Which pointer: 0 the primary one, 1 to 4 further touches."
         }
       },
       "required": [
         "x",
-        "y"
+        "y",
+        "id"
       ],
       "additionalProperties": false
     },
@@ -13307,6 +13875,8 @@
         "touch_start",
         "touch_end",
         "scroll",
+        "touch",
+        "gamepad",
         "key_down",
         "key_up",
         "type",
@@ -13331,6 +13901,8 @@
         "touch_start": "`touch_start`: press the pointer where it is.",
         "touch_end": "`touch_end`: release the pointer.",
         "scroll": "`scroll:dx,dy`: scroll at the pointer.",
+        "touch": "`touch:<id>:<down|move|up>:<x,y | ui id>`: a further touch (pointer 1 to 4) held while the pointer is busy elsewhere.",
+        "gamepad": "`gamepad:<a+b+...|->[:lx,ly[,rx,ry]][:lt,rt]`: set pad 0's whole state; `gamepad:off` disconnects it.",
         "key_down": "`key_down:<Key>`: hold a key by its code.",
         "key_up": "`key_up:<Key>`: release a key.",
         "type": "`type:<text>`: type text, one key press per character.",

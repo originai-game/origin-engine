@@ -18,17 +18,19 @@ serde_json = { version = "1", features = ["float_roundtrip"], optional = true }
 og-physics = { path = "../og-physics", optional = true }
 og-audio = { path = "../og-audio", optional = true }
 og-ui = { path = "../og-ui", optional = true }
+og-input = { path = "../og-input", optional = true }
 og-anim = { path = "../og-anim", optional = true }
 
 [features]
 default = []
 # The host-neutral runtime og-host-web and og-host-node wrap (`og_api::runtime`).
-runtime = ["dep:og-ecs", "dep:og-render", "dep:og-probe", "dep:og-cook", "dep:miniz_oxide", "dep:glam", "dep:serde_json", "dep:og-physics", "dep:og-audio", "dep:og-ui", "dep:og-anim"]
+runtime = ["dep:og-ecs", "dep:og-render", "dep:og-probe", "dep:og-cook", "dep:miniz_oxide", "dep:glam", "dep:serde_json", "dep:og-physics", "dep:og-audio", "dep:og-ui", "dep:og-anim", "dep:og-input"]
 # A published game: the probe keeps only its player-facing members.
 publish = ["runtime", "og-probe/publish"]
 
 [dev-dependencies]
 og-anim = { path = "../og-anim" }
+og-input = { path = "../og-input" }
 og-physics = { path = "../og-physics" }
 og-audio = { path = "../og-audio" }
 serde_json = "1"

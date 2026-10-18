@@ -252,6 +252,39 @@ impl InputApi for NodeHost {
     fn og_input_button_released(&self, world: u32, button: String) -> bool {
         rt::og_input_button_released(world, button)
     }
+    fn og_pointers_down(&self, world: u32, id: u32) -> bool {
+        rt::og_pointers_down(world, id)
+    }
+    fn og_pointers_pressed(&self, world: u32, id: u32) -> bool {
+        rt::og_pointers_pressed(world, id)
+    }
+    fn og_pointers_released(&self, world: u32, id: u32) -> bool {
+        rt::og_pointers_released(world, id)
+    }
+    fn og_pointers_position(&self, world: u32, id: u32) -> String {
+        rt::og_pointers_position(world, id)
+    }
+    fn og_pointers_start(&self, world: u32, id: u32) -> String {
+        rt::og_pointers_start(world, id)
+    }
+    fn og_pointers_count(&self, world: u32) -> u32 {
+        rt::og_pointers_count(world)
+    }
+    fn og_gamepad_connected(&self, world: u32, pad: Option<u32>) -> bool {
+        rt::og_gamepad_connected(world, pad)
+    }
+    fn og_gamepad_down(&self, world: u32, button: String, pad: Option<u32>) -> bool {
+        rt::og_gamepad_down(world, button, pad)
+    }
+    fn og_gamepad_pressed(&self, world: u32, button: String, pad: Option<u32>) -> bool {
+        rt::og_gamepad_pressed(world, button, pad)
+    }
+    fn og_gamepad_released(&self, world: u32, button: String, pad: Option<u32>) -> bool {
+        rt::og_gamepad_released(world, button, pad)
+    }
+    fn og_gamepad_axis(&self, world: u32, axis: String, pad: Option<u32>) -> f64 {
+        rt::og_gamepad_axis(world, axis, pad)
+    }
 }
 
 impl CameraApi for NodeHost {

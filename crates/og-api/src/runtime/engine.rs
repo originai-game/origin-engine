@@ -569,6 +569,8 @@ const REGISTERED_BY_MODULES: &[&str] = &[
     "og.PointerUp",
     "og.PointerMove",
     "og.Wheel",
+    "og.Pointers",
+    "og.Gamepad",
 ];
 
 /// Builds a world from game `game` and every declaration so far: the
@@ -662,13 +664,21 @@ pub(crate) fn assemble(
     let probe = og_probe::Probe::new(&mut world)
         .map_err(|e| format!("the probe could not attach: {}", e.reason()))?;
     resources.push("og.Input".to_string());
-    // The input events are read through the layout og-input registered.
+    resources.push("og.Pointers".to_string());
+    resources.push("og.Gamepad".to_string());
+    // The input events and og-input's further resources are read through
+    // the layout og-input registered.
     for decl in crate::host::RECORDS {
-        if decl.kind != "event" || !REGISTERED_BY_MODULES.contains(&decl.schema) {
+        if !REGISTERED_BY_MODULES.contains(&decl.schema) || decl.schema == "og.Input" {
             continue;
         }
+        let kind = match decl.kind {
+            "event" => RecordKind::Event,
+            "resource" => RecordKind::Resource,
+            _ => continue,
+        };
         let id = world.id_by_name(decl.schema).map_err(err)?;
-        let layout = Layout::from_schema(world.schema(id).map_err(err)?, RecordKind::Event);
+        let layout = Layout::from_schema(world.schema(id).map_err(err)?, kind);
         layouts.insert(layout.schema.clone(), layout);
     }
 

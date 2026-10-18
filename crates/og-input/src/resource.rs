@@ -1,7 +1,10 @@
 //! The `og.Input` resource systems poll and the six input events, with the
 //! rules that turn [`InjectedInput`] into both.
 
-use crate::event::{InjectedInput, KeyAction, PointerAction, PointerButton};
+use crate::event::{
+    GamepadState, InjectedInput, KeyAction, PointerAction, PointerButton, MAX_GAMEPADS,
+    MAX_POINTERS,
+};
 use crate::keys::{key_index, KEY_CODES};
 use og_core::glam::Vec2;
 use og_core::{Reflect, Str64};
@@ -114,6 +117,8 @@ pub struct PointerDown {
     /// The button ([`PointerButton::index`]).
     #[reflect(variants = ["none", "left", "middle", "right"])]
     pub button: u32,
+    /// Which pointer ([`crate::Pointers`]): 0 the primary, 1 to 4 further touches.
+    pub id: u32,
 }
 
 /// A pointer button went up (IDL `input.PointerUp`).
@@ -129,6 +134,8 @@ pub struct PointerUp {
     /// The button ([`PointerButton::index`]).
     #[reflect(variants = ["none", "left", "middle", "right"])]
     pub button: u32,
+    /// Which pointer ([`crate::Pointers`]): 0 the primary, 1 to 4 further touches.
+    pub id: u32,
 }
 
 /// The pointer moved (IDL `input.PointerMove`).
@@ -141,6 +148,8 @@ pub struct PointerMove {
     /// Vertical position in CSS pixels.
     #[reflect(unit = "cssPx")]
     pub y: f32,
+    /// Which pointer: 0 the primary, 1 to 4 further touches.
+    pub id: u32,
 }
 
 /// A wheel or trackpad scroll (IDL `input.Wheel`).
@@ -193,9 +202,10 @@ impl InputEvent {
     }
 }
 
-/// Registers [`Input`] and the six events, in this order: `og.Input`,
-/// `og.KeyDown`, `og.KeyUp`, `og.PointerDown`, `og.PointerUp`,
-/// `og.PointerMove`, `og.Wheel`. Idempotent.
+/// Registers [`Input`] and the six events, then [`Pointers`] and
+/// [`Gamepad`], in this order: `og.Input`, `og.KeyDown`, `og.KeyUp`,
+/// `og.PointerDown`, `og.PointerUp`, `og.PointerMove`, `og.Wheel`,
+/// `og.Pointers`, `og.Gamepad`. Idempotent.
 pub fn register(world: &mut World) -> og_core::Result<()> {
     world.register::<Input>()?;
     world.register::<KeyDown>()?;
@@ -204,6 +214,8 @@ pub fn register(world: &mut World) -> og_core::Result<()> {
     world.register::<PointerUp>()?;
     world.register::<PointerMove>()?;
     world.register::<Wheel>()?;
+    world.register::<Pointers>()?;
+    world.register::<Gamepad>()?;
     Ok(())
 }
 
@@ -355,11 +367,15 @@ impl Input {
                     }
                 }
             }
+            // Further touches and pads have their own resources.
+            InjectedInput::Pointer { id, .. } if *id != 0 => {}
+            InjectedInput::Gamepad(_) => {}
             InjectedInput::Pointer {
                 action,
                 x,
                 y,
                 button,
+                ..
             } => {
                 self.move_to(*x, *y, *action == PointerAction::Move, &mut out);
                 let b = button.bit();
@@ -373,6 +389,7 @@ impl Input {
                                 x: *x,
                                 y: *y,
                                 button: button.index(),
+                                id: 0,
                             }));
                         }
                         self.buttons |= b;
@@ -389,6 +406,7 @@ impl Input {
                                 x: *x,
                                 y: *y,
                                 button: button.index(),
+                                id: 0,
                             }));
                         }
                         self.buttons &= !b;
@@ -416,7 +434,7 @@ impl Input {
     fn move_to(&mut self, x: f32, y: f32, always: bool, out: &mut Vec<InputEvent>) {
         let to = Vec2::new(x, y);
         if always || !self.pointer_inside || to != self.pointer {
-            out.push(InputEvent::PointerMove(PointerMove { x, y }));
+            out.push(InputEvent::PointerMove(PointerMove { x, y, id: 0 }));
         }
         self.pointer = to;
         self.pointer_inside = true;
@@ -460,10 +478,431 @@ impl Input {
                     x: self.pointer.x,
                     y: self.pointer.y,
                     button: button.index(),
+                    id: 0,
                 }));
             }
         }
         self.wheel = Vec2::ZERO;
         out
+    }
+}
+
+/// Every pointer on the play surface at once (multi-touch: a stick and a
+/// button held together), at the start of this tick (IDL `input.Pointers`).
+/// Pointer 0 is the primary one, the same pointer as [`Input`]'s; ids 1 to
+/// 4 are further touches. Masks: bit `id`. Edges last exactly one tick, as
+/// [`Input`]'s do; a click holds its pointer until the end of the next tick.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
+#[reflect(name = "og.Pointers", version = 1)]
+pub struct Pointers {
+    /// Pointers held down (a touch, or any button of pointer 0).
+    #[reflect(name = "heldMask")]
+    pub held: u32,
+    /// Pointers that went down this tick.
+    #[reflect(name = "pressedMask")]
+    pub pressed: u32,
+    /// Pointers that went up this tick.
+    #[reflect(name = "releasedMask")]
+    pub released: u32,
+    /// Pointers a click releases when this tick ends.
+    #[reflect(name = "releaseNextMask")]
+    pub release_next: u32,
+    /// Where each pointer is (its last event).
+    #[reflect(unit = "cssPx")]
+    pub position0: Vec2,
+    #[reflect(unit = "cssPx")]
+    pub position1: Vec2,
+    #[reflect(unit = "cssPx")]
+    pub position2: Vec2,
+    #[reflect(unit = "cssPx")]
+    pub position3: Vec2,
+    #[reflect(unit = "cssPx")]
+    pub position4: Vec2,
+    /// Where each pointer went down.
+    #[reflect(unit = "cssPx")]
+    pub start0: Vec2,
+    #[reflect(unit = "cssPx")]
+    pub start1: Vec2,
+    #[reflect(unit = "cssPx")]
+    pub start2: Vec2,
+    #[reflect(unit = "cssPx")]
+    pub start3: Vec2,
+    #[reflect(unit = "cssPx")]
+    pub start4: Vec2,
+}
+
+impl Pointers {
+    fn slot(&mut self, id: usize) -> (&mut Vec2, &mut Vec2) {
+        match id {
+            0 => (&mut self.position0, &mut self.start0),
+            1 => (&mut self.position1, &mut self.start1),
+            2 => (&mut self.position2, &mut self.start2),
+            3 => (&mut self.position3, &mut self.start3),
+            _ => (&mut self.position4, &mut self.start4),
+        }
+    }
+
+    /// Where pointer `id` is (`Vec2::ZERO` for an id past [`MAX_POINTERS`]).
+    pub fn position(&self, id: u32) -> Vec2 {
+        [
+            self.position0,
+            self.position1,
+            self.position2,
+            self.position3,
+            self.position4,
+        ]
+        .get(id as usize)
+        .copied()
+        .unwrap_or_default()
+    }
+
+    /// Where pointer `id` went down.
+    pub fn start(&self, id: u32) -> Vec2 {
+        [
+            self.start0,
+            self.start1,
+            self.start2,
+            self.start3,
+            self.start4,
+        ]
+        .get(id as usize)
+        .copied()
+        .unwrap_or_default()
+    }
+
+    fn bit(id: u32) -> u32 {
+        if (id as usize) < MAX_POINTERS {
+            1 << id
+        } else {
+            0
+        }
+    }
+
+    /// Whether pointer `id` is held.
+    pub fn down(&self, id: u32) -> bool {
+        self.held & Self::bit(id) != 0
+    }
+
+    /// Whether pointer `id` went down this tick.
+    pub fn is_pressed(&self, id: u32) -> bool {
+        self.pressed & Self::bit(id) != 0
+    }
+
+    /// Whether pointer `id` went up this tick.
+    pub fn is_released(&self, id: u32) -> bool {
+        self.released & Self::bit(id) != 0
+    }
+
+    /// How many pointers are held.
+    pub fn count(&self) -> u32 {
+        self.held.count_ones()
+    }
+
+    /// Applies a pointer event between ticks; returns the events it raises
+    /// for pointers 1 to 4 (pointer 0's are [`Input::apply`]'s), `None` for
+    /// an id past [`MAX_POINTERS`]. Down and click hold the pointer (button
+    /// `none` only moves it), up releases it; every event moves it.
+    pub fn apply(&mut self, event: &InjectedInput) -> Option<Vec<InputEvent>> {
+        let InjectedInput::Pointer {
+            action,
+            x,
+            y,
+            button,
+            id,
+        } = event
+        else {
+            return Some(Vec::new());
+        };
+        if *id as usize >= MAX_POINTERS {
+            return None;
+        }
+        let bit = 1 << id;
+        let at = Vec2::new(*x, *y);
+        let mut out = Vec::new();
+        let raise = *id != 0;
+        let (position, _) = self.slot(*id as usize);
+        let moved = *position != at;
+        *position = at;
+        if raise && (moved || *action == PointerAction::Move) {
+            out.push(InputEvent::PointerMove(PointerMove {
+                x: *x,
+                y: *y,
+                id: *id,
+            }));
+        }
+        let held = self.held & bit != 0;
+        match action {
+            PointerAction::Move => {}
+            PointerAction::Down | PointerAction::Click if *button != PointerButton::None => {
+                if !held {
+                    self.pressed |= bit;
+                    *self.slot(*id as usize).1 = at;
+                    if raise {
+                        out.push(InputEvent::PointerDown(PointerDown {
+                            x: *x,
+                            y: *y,
+                            button: button.index(),
+                            id: *id,
+                        }));
+                    }
+                }
+                self.held |= bit;
+                if *action == PointerAction::Click {
+                    self.release_next |= bit;
+                } else {
+                    self.release_next &= !bit;
+                }
+            }
+            PointerAction::Up if *button != PointerButton::None => {
+                if held {
+                    self.released |= bit;
+                    if raise {
+                        out.push(InputEvent::PointerUp(PointerUp {
+                            x: *x,
+                            y: *y,
+                            button: button.index(),
+                            id: *id,
+                        }));
+                    }
+                }
+                self.held &= !bit;
+                self.release_next &= !bit;
+            }
+            _ => {}
+        }
+        Some(out)
+    }
+
+    /// The end of a tick: edges expire, clicks release (raising `PointerUp`
+    /// for pointers 1 to 4, in id order).
+    pub fn end_tick(&mut self) -> Vec<InputEvent> {
+        let release = self.held & self.release_next;
+        self.pressed = 0;
+        self.released = release;
+        self.held &= !release;
+        self.release_next = 0;
+        (1..MAX_POINTERS as u32)
+            .filter(|id| release & (1 << id) != 0)
+            .map(|id| {
+                let p = self.position(id);
+                InputEvent::PointerUp(PointerUp {
+                    x: p.x,
+                    y: p.y,
+                    button: PointerButton::Left.index(),
+                    id,
+                })
+            })
+            .collect()
+    }
+}
+
+/// The first four gamepads in the W3C standard mapping, at the start of this
+/// tick (IDL `input.Gamepad`). Buttons are masks over
+/// [`crate::GAMEPAD_BUTTONS`] (bit 0 A ... bit 16 home), one word per pad;
+/// sticks are -1..1 with y down, triggers 0..1. Edges last exactly one tick;
+/// a press and a release between two ticks leave both edges set. A pad's
+/// state arrives whole ([`GamepadState`]) whenever the shell sees it change,
+/// through the same ring as keys, so it is world state and replays.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
+#[reflect(name = "og.Gamepad", version = 1)]
+pub struct Gamepad {
+    /// Connected pads: bit `pad`.
+    #[reflect(name = "connectedMask")]
+    pub connected: u32,
+    /// Held buttons of pads 0 to 3.
+    pub buttons0: u32,
+    pub buttons1: u32,
+    pub buttons2: u32,
+    pub buttons3: u32,
+    /// Buttons that went down this tick.
+    pub pressed0: u32,
+    pub pressed1: u32,
+    pub pressed2: u32,
+    pub pressed3: u32,
+    /// Buttons that went up this tick.
+    pub released0: u32,
+    pub released1: u32,
+    pub released2: u32,
+    pub released3: u32,
+    /// Left sticks.
+    #[reflect(name = "leftStick0")]
+    pub left_stick0: Vec2,
+    #[reflect(name = "leftStick1")]
+    pub left_stick1: Vec2,
+    #[reflect(name = "leftStick2")]
+    pub left_stick2: Vec2,
+    #[reflect(name = "leftStick3")]
+    pub left_stick3: Vec2,
+    /// Right sticks.
+    #[reflect(name = "rightStick0")]
+    pub right_stick0: Vec2,
+    #[reflect(name = "rightStick1")]
+    pub right_stick1: Vec2,
+    #[reflect(name = "rightStick2")]
+    pub right_stick2: Vec2,
+    #[reflect(name = "rightStick3")]
+    pub right_stick3: Vec2,
+    /// Left (x) and right (y) analog triggers.
+    pub triggers0: Vec2,
+    pub triggers1: Vec2,
+    pub triggers2: Vec2,
+    pub triggers3: Vec2,
+}
+
+/// What a pad reports for one of its analog inputs.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GamepadAxis {
+    LeftX,
+    LeftY,
+    RightX,
+    RightY,
+    LeftTrigger,
+    RightTrigger,
+}
+
+impl GamepadAxis {
+    pub const NAMES: [&'static str; 6] = [
+        "leftX",
+        "leftY",
+        "rightX",
+        "rightY",
+        "leftTrigger",
+        "rightTrigger",
+    ];
+
+    pub fn from_name(name: &str) -> Option<GamepadAxis> {
+        use GamepadAxis::*;
+        let all = [LeftX, LeftY, RightX, RightY, LeftTrigger, RightTrigger];
+        Self::NAMES.iter().position(|n| *n == name).map(|i| all[i])
+    }
+}
+
+impl Gamepad {
+    fn words(&mut self, pad: usize) -> (&mut u32, &mut u32, &mut u32) {
+        match pad {
+            0 => (&mut self.buttons0, &mut self.pressed0, &mut self.released0),
+            1 => (&mut self.buttons1, &mut self.pressed1, &mut self.released1),
+            2 => (&mut self.buttons2, &mut self.pressed2, &mut self.released2),
+            _ => (&mut self.buttons3, &mut self.pressed3, &mut self.released3),
+        }
+    }
+
+    fn analog(&mut self, pad: usize) -> (&mut Vec2, &mut Vec2, &mut Vec2) {
+        match pad {
+            0 => (
+                &mut self.left_stick0,
+                &mut self.right_stick0,
+                &mut self.triggers0,
+            ),
+            1 => (
+                &mut self.left_stick1,
+                &mut self.right_stick1,
+                &mut self.triggers1,
+            ),
+            2 => (
+                &mut self.left_stick2,
+                &mut self.right_stick2,
+                &mut self.triggers2,
+            ),
+            _ => (
+                &mut self.left_stick3,
+                &mut self.right_stick3,
+                &mut self.triggers3,
+            ),
+        }
+    }
+
+    /// Held buttons, pressed and released this tick of `pad` (zeros past 3).
+    pub fn masks(&self, pad: u32) -> (u32, u32, u32) {
+        match pad {
+            0 => (self.buttons0, self.pressed0, self.released0),
+            1 => (self.buttons1, self.pressed1, self.released1),
+            2 => (self.buttons2, self.pressed2, self.released2),
+            3 => (self.buttons3, self.pressed3, self.released3),
+            _ => (0, 0, 0),
+        }
+    }
+
+    /// Whether `pad` is connected.
+    pub fn is_connected(&self, pad: u32) -> bool {
+        (pad as usize) < MAX_GAMEPADS && self.connected & (1 << pad) != 0
+    }
+
+    /// Whether standard button `button` ([`crate::GAMEPAD_BUTTONS`] index) is held on `pad`.
+    pub fn down(&self, button: usize, pad: u32) -> bool {
+        button < 32 && self.masks(pad).0 & (1 << button) != 0
+    }
+
+    /// Whether it went down this tick.
+    pub fn pressed(&self, button: usize, pad: u32) -> bool {
+        button < 32 && self.masks(pad).1 & (1 << button) != 0
+    }
+
+    /// Whether it went up this tick.
+    pub fn released(&self, button: usize, pad: u32) -> bool {
+        button < 32 && self.masks(pad).2 & (1 << button) != 0
+    }
+
+    /// One analog input of `pad` (0 past pad 3).
+    pub fn axis(&self, axis: GamepadAxis, pad: u32) -> f32 {
+        let (l, r, t) = match pad {
+            0 => (self.left_stick0, self.right_stick0, self.triggers0),
+            1 => (self.left_stick1, self.right_stick1, self.triggers1),
+            2 => (self.left_stick2, self.right_stick2, self.triggers2),
+            3 => (self.left_stick3, self.right_stick3, self.triggers3),
+            _ => return 0.0,
+        };
+        match axis {
+            GamepadAxis::LeftX => l.x,
+            GamepadAxis::LeftY => l.y,
+            GamepadAxis::RightX => r.x,
+            GamepadAxis::RightY => r.y,
+            GamepadAxis::LeftTrigger => t.x,
+            GamepadAxis::RightTrigger => t.y,
+        }
+    }
+
+    /// Takes a pad's whole state between ticks: edges from the change in its
+    /// buttons (a disconnected pad holds nothing); `false` (no change) for a
+    /// pad past [`MAX_GAMEPADS`] or a non-finite value.
+    pub fn apply(&mut self, state: &GamepadState) -> bool {
+        let pad = state.pad as usize;
+        if pad >= MAX_GAMEPADS
+            || !state
+                .axes
+                .iter()
+                .chain(&state.triggers)
+                .all(|v| v.is_finite())
+        {
+            return false;
+        }
+        let next = if state.connected { state.buttons } else { 0 };
+        let (held, pressed, released) = self.words(pad);
+        *pressed |= next & !*held;
+        *released |= *held & !next;
+        *held = next;
+        let clamp = |v: f32, lo: f32| v.clamp(lo, 1.0);
+        let (l, r, t) = self.analog(pad);
+        if state.connected {
+            *l = Vec2::new(clamp(state.axes[0], -1.0), clamp(state.axes[1], -1.0));
+            *r = Vec2::new(clamp(state.axes[2], -1.0), clamp(state.axes[3], -1.0));
+            *t = Vec2::new(clamp(state.triggers[0], 0.0), clamp(state.triggers[1], 0.0));
+            self.connected |= 1 << pad;
+        } else {
+            *l = Vec2::ZERO;
+            *r = Vec2::ZERO;
+            *t = Vec2::ZERO;
+            self.connected &= !(1 << pad);
+        }
+        true
+    }
+
+    /// The end of a tick: this tick's edges expire.
+    pub fn end_tick(&mut self) {
+        for pad in 0..MAX_GAMEPADS {
+            let (_, pressed, released) = self.words(pad);
+            *pressed = 0;
+            *released = 0;
+        }
     }
 }

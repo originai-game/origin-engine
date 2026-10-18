@@ -344,6 +344,61 @@ pub fn og_input_button_released(world: u32, button: String) -> bool {
 }
 
 #[wasm_bindgen]
+pub fn og_pointers_down(world: u32, id: u32) -> bool {
+    <Host as InputApi>::og_pointers_down(&Host, world, id)
+}
+
+#[wasm_bindgen]
+pub fn og_pointers_pressed(world: u32, id: u32) -> bool {
+    <Host as InputApi>::og_pointers_pressed(&Host, world, id)
+}
+
+#[wasm_bindgen]
+pub fn og_pointers_released(world: u32, id: u32) -> bool {
+    <Host as InputApi>::og_pointers_released(&Host, world, id)
+}
+
+#[wasm_bindgen]
+pub fn og_pointers_position(world: u32, id: u32) -> String {
+    <Host as InputApi>::og_pointers_position(&Host, world, id)
+}
+
+#[wasm_bindgen]
+pub fn og_pointers_start(world: u32, id: u32) -> String {
+    <Host as InputApi>::og_pointers_start(&Host, world, id)
+}
+
+#[wasm_bindgen]
+pub fn og_pointers_count(world: u32) -> u32 {
+    <Host as InputApi>::og_pointers_count(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_gamepad_connected(world: u32, pad: Option<u32>) -> bool {
+    <Host as InputApi>::og_gamepad_connected(&Host, world, pad)
+}
+
+#[wasm_bindgen]
+pub fn og_gamepad_down(world: u32, button: String, pad: Option<u32>) -> bool {
+    <Host as InputApi>::og_gamepad_down(&Host, world, button, pad)
+}
+
+#[wasm_bindgen]
+pub fn og_gamepad_pressed(world: u32, button: String, pad: Option<u32>) -> bool {
+    <Host as InputApi>::og_gamepad_pressed(&Host, world, button, pad)
+}
+
+#[wasm_bindgen]
+pub fn og_gamepad_released(world: u32, button: String, pad: Option<u32>) -> bool {
+    <Host as InputApi>::og_gamepad_released(&Host, world, button, pad)
+}
+
+#[wasm_bindgen]
+pub fn og_gamepad_axis(world: u32, axis: String, pad: Option<u32>) -> f64 {
+    <Host as InputApi>::og_gamepad_axis(&Host, world, axis, pad)
+}
+
+#[wasm_bindgen]
 pub fn og_camera_look_at(world: u32, target: String) {
     <Host as CameraApi>::og_camera_look_at(&Host, world, target)
 }

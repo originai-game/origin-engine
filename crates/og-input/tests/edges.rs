@@ -26,6 +26,7 @@ fn pointer(action: PointerAction, x: f32, y: f32, button: PointerButton) -> Inje
         x,
         y,
         button,
+        id: 0,
     }
 }
 

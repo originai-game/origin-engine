@@ -1611,6 +1611,7 @@ dependencies = [
  "og-cook",
  "og-core",
  "og-ecs",
+ "og-input",
  "og-physics",
  "og-probe",
  "og-render",

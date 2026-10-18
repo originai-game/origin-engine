@@ -20,7 +20,7 @@ module anim {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 2023</sub>
+<sub>`api.ogt` line 2291</sub>
 
 ## Contents
 
@@ -81,7 +81,7 @@ fn graph {
 }
 ```
 
-<sub>`api.ogt` line 2332</sub>
+<sub>`api.ogt` line 2600</sub>
 
 ## Components, resources and events
 
@@ -118,7 +118,7 @@ component Skeleton {
 }
 ```
 
-<sub>`api.ogt` line 2106</sub>
+<sub>`api.ogt` line 2374</sub>
 
 <a id="record-AnimationPlayer"></a>
 
@@ -174,7 +174,7 @@ component AnimationPlayer {
 }
 ```
 
-<sub>`api.ogt` line 2121</sub>
+<sub>`api.ogt` line 2389</sub>
 
 <a id="record-AnimationGraph"></a>
 
@@ -250,7 +250,7 @@ component AnimationGraph {
 }
 ```
 
-<sub>`api.ogt` line 2155</sub>
+<sub>`api.ogt` line 2423</sub>
 
 <a id="record-Blendshapes"></a>
 
@@ -323,7 +323,7 @@ component Blendshapes {
 }
 ```
 
-<sub>`api.ogt` line 2203</sub>
+<sub>`api.ogt` line 2471</sub>
 
 <a id="record-IkChain"></a>
 
@@ -394,7 +394,7 @@ component IkChain {
 }
 ```
 
-<sub>`api.ogt` line 2251</sub>
+<sub>`api.ogt` line 2519</sub>
 
 <a id="record-AnimationEvent"></a>
 
@@ -425,7 +425,7 @@ event AnimationEvent {
 }
 ```
 
-<sub>`api.ogt` line 2295</sub>
+<sub>`api.ogt` line 2563</sub>
 
 ## Types
 
@@ -441,7 +441,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle SkeletonAsset "A rig: a glTF's nodes in topological order with their rest transforms, and its skins (joints and inverse bind matrices)."
 ```
 
-<sub>`api.ogt` line 2028</sub>
+<sub>`api.ogt` line 2296</sub>
 
 <a id="type-ClipAsset"></a>
 
@@ -455,7 +455,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle ClipAsset "An animation clip, resampled at the cook's rate, with its markers."
 ```
 
-<sub>`api.ogt` line 2029</sub>
+<sub>`api.ogt` line 2297</sub>
 
 <a id="type-GraphAsset"></a>
 
@@ -469,7 +469,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle GraphAsset "A blend-tree graph (`type animgraph`) whose clip references were resolved to clip handles."
 ```
 
-<sub>`api.ogt` line 2030</sub>
+<sub>`api.ogt` line 2298</sub>
 
 <a id="type-RootMotion"></a>
 
@@ -494,7 +494,7 @@ enum RootMotion {
 }
 ```
 
-<sub>`api.ogt` line 2053</sub>
+<sub>`api.ogt` line 2321</sub>
 
 <a id="type-BlendshapeSource"></a>
 
@@ -517,7 +517,7 @@ enum BlendshapeSource {
 }
 ```
 
-<sub>`api.ogt` line 2067</sub>
+<sub>`api.ogt` line 2335</sub>
 
 <a id="type-IkSolver"></a>
 
@@ -540,7 +540,7 @@ enum IkSolver {
 }
 ```
 
-<sub>`api.ogt` line 2080</sub>
+<sub>`api.ogt` line 2348</sub>
 
 <a id="type-IkSpace"></a>
 
@@ -563,7 +563,7 @@ enum IkSpace {
 }
 ```
 
-<sub>`api.ogt` line 2093</sub>
+<sub>`api.ogt` line 2361</sub>
 
 <a id="type-ClipInfo"></a>
 
@@ -590,7 +590,7 @@ struct ClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 2306</sub>
+<sub>`api.ogt` line 2574</sub>
 
 <a id="type-Animation"></a>
 
@@ -617,7 +617,7 @@ struct Animation {
 }
 ```
 
-<sub>`api.ogt` line 2316</sub>
+<sub>`api.ogt` line 2584</sub>
 
 <a id="type-GraphDesc"></a>
 
@@ -641,7 +641,7 @@ struct GraphDesc {
 }
 ```
 
-<sub>`api.ogt` line 2325</sub>
+<sub>`api.ogt` line 2593</sub>
 
 ## Column kinds
 
@@ -666,7 +666,7 @@ column SkeletonAsset {
 }
 ```
 
-<sub>`api.ogt` line 2032</sub>
+<sub>`api.ogt` line 2300</sub>
 
 ```ogt
 column ClipAsset {
@@ -677,7 +677,7 @@ column ClipAsset {
 }
 ```
 
-<sub>`api.ogt` line 2039</sub>
+<sub>`api.ogt` line 2307</sub>
 
 ```ogt
 column GraphAsset {
@@ -688,7 +688,7 @@ column GraphAsset {
 }
 ```
 
-<sub>`api.ogt` line 2046</sub>
+<sub>`api.ogt` line 2314</sub>
 
 ```ogt
 column RootMotion {
@@ -699,7 +699,7 @@ column RootMotion {
 }
 ```
 
-<sub>`api.ogt` line 2060</sub>
+<sub>`api.ogt` line 2328</sub>
 
 ```ogt
 column BlendshapeSource {
@@ -710,7 +710,7 @@ column BlendshapeSource {
 }
 ```
 
-<sub>`api.ogt` line 2073</sub>
+<sub>`api.ogt` line 2341</sub>
 
 ```ogt
 column IkSolver {
@@ -721,7 +721,7 @@ column IkSolver {
 }
 ```
 
-<sub>`api.ogt` line 2086</sub>
+<sub>`api.ogt` line 2354</sub>
 
 ```ogt
 column IkSpace {
@@ -732,4 +732,4 @@ column IkSpace {
 }
 ```
 
-<sub>`api.ogt` line 2099</sub>
+<sub>`api.ogt` line 2367</sub>

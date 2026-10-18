@@ -73,7 +73,7 @@ fn check<T: Reflect>(failures: &mut Vec<String>) {
 }
 
 #[test]
-fn physics_audio_and_animation_records_have_the_idl_layouts() {
+fn physics_audio_animation_and_input_records_have_the_idl_layouts() {
     let mut failures = Vec::new();
     check::<og_physics::Transform>(&mut failures);
     check::<og_physics::RigidBody>(&mut failures);
@@ -97,6 +97,11 @@ fn physics_audio_and_animation_records_have_the_idl_layouts() {
     check::<og_anim::Blendshapes>(&mut failures);
     check::<og_anim::IkChain>(&mut failures);
     check::<og_anim::AnimationEvent>(&mut failures);
+    check::<og_input::Pointers>(&mut failures);
+    check::<og_input::Gamepad>(&mut failures);
+    check::<og_input::PointerDown>(&mut failures);
+    check::<og_input::PointerUp>(&mut failures);
+    check::<og_input::PointerMove>(&mut failures);
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 

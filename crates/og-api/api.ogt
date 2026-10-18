@@ -640,6 +640,41 @@ module rng {
 module input {
   doc "Input as the game sees it: the Input resource for polling, events for edges."
   doc "The shell collects pointer, keyboard and wheel input on the main thread; the probe and the command channel inject through the same path."
+  doc "Several pointers at once (multi-touch) are og.Pointers; the first four gamepads, in the W3C standard mapping, are og.Gamepad. Both are world state, as og.Input is, so they replay."
+
+  const MAX_POINTERS u32 5 "The most pointers og.Pointers tracks at once: ids 0 (the primary pointer) to 4."
+  const MAX_GAMEPADS u32 4 "The most gamepads og.Gamepad reads: pads 0 to 3."
+
+  enum GamepadButton {
+    doc "A gamepad button in the W3C standard mapping, in its index order (a is button 0)."
+    variant a "The bottom face button (A, Cross)."
+    variant b "The right face button (B, Circle)."
+    variant x "The left face button (X, Square)."
+    variant y "The top face button (Y, Triangle)."
+    variant leftBumper "The left shoulder button."
+    variant rightBumper "The right shoulder button."
+    variant leftTrigger "The left trigger, as a button (its analog value is the leftTrigger axis)."
+    variant rightTrigger "The right trigger, as a button."
+    variant back "Back, Select or View."
+    variant start "Start, Options or Menu."
+    variant leftStick "The left stick pressed in."
+    variant rightStick "The right stick pressed in."
+    variant up "The d-pad's up."
+    variant down "The d-pad's down."
+    variant left "The d-pad's left."
+    variant right "The d-pad's right."
+    variant home "The home or guide button."
+  }
+
+  enum GamepadAxis {
+    doc "An analog input of a gamepad."
+    variant leftX "The left stick's x, -1 (left) to 1 (right)."
+    variant leftY "The left stick's y, -1 (up) to 1 (down), as the Gamepad API reports it."
+    variant rightX "The right stick's x."
+    variant rightY "The right stick's y, down positive."
+    variant leftTrigger "The left trigger, 0 to 1."
+    variant rightTrigger "The right trigger, 0 to 1."
+  }
 
   enum KeyAction {
     doc "What an injected key event does."
@@ -691,6 +726,30 @@ module input {
       unit cssPx
     }
     field button PointerButton "The button; `none` for a hover move."
+    field id u32 "Which pointer: 0 the primary one (the mouse, the first touch; what protocol 5 means), 1 to 4 further touches held at the same time (an engine extension). Omitted is 0." {
+      max 4
+      optional true
+    }
+  }
+
+  struct GamepadInput {
+    doc "A gamepad's whole state (an engine extension of protocol 5): the shell sends one whenever a pad changes, and a playtest can send its own."
+    field pad u32 "Which pad, 0 to 3; omitted is 0." {
+      max 3
+      optional true
+    }
+    field connected bool "Whether the pad is connected (omitted is true); a disconnected pad holds nothing." {
+      optional true
+    }
+    field buttons List.GamepadButton "The buttons held (omitted is none)." {
+      optional true
+    }
+    field axes List.f32 "Left stick x, y, right stick x, y; each -1 to 1, y down. Missing values are 0." {
+      optional true
+    }
+    field triggers List.f32 "The left and right analog triggers, 0 to 1. Missing values are 0." {
+      optional true
+    }
   }
 
   struct WheelInput {
@@ -715,6 +774,7 @@ module input {
     case key KeyInput "A key event."
     case pointer PointerInput "A pointer event."
     case wheel WheelInput "A wheel event."
+    case gamepad GamepadInput "A gamepad's state."
   }
 
   resource Input {
@@ -837,6 +897,211 @@ module input {
     }
   }
 
+  resource Pointers {
+    doc "Every pointer on the play surface at once, at the start of this tick (og-input's og.Pointers): a touch stick and a touch button can be held together. Pointer 0 is og.Input's pointer; ids 1 to 4 are further touches, in the order they landed (the lowest free id)."
+    doc "Edges last exactly one tick, as og.Input's do. Masks are bit `id`; read them through the methods."
+    field heldMask u32 "Pointers held down, as a mask." {
+      readonly true
+    }
+    field pressedMask u32 "Pointers that went down this tick." {
+      readonly true
+    }
+    field releasedMask u32 "Pointers that went up this tick." {
+      readonly true
+    }
+    field releaseNextMask u32 "Pointers a click releases at the end of the next tick." {
+      readonly true
+    }
+    field position0 Vector2 "Where pointer 0 is." {
+      readonly true
+      unit cssPx
+    }
+    field position1 Vector2 "Where pointer 1 is." {
+      readonly true
+      unit cssPx
+    }
+    field position2 Vector2 "Where pointer 2 is." {
+      readonly true
+      unit cssPx
+    }
+    field position3 Vector2 "Where pointer 3 is." {
+      readonly true
+      unit cssPx
+    }
+    field position4 Vector2 "Where pointer 4 is." {
+      readonly true
+      unit cssPx
+    }
+    field start0 Vector2 "Where pointer 0 went down." {
+      readonly true
+      unit cssPx
+    }
+    field start1 Vector2 "Where pointer 1 went down." {
+      readonly true
+      unit cssPx
+    }
+    field start2 Vector2 "Where pointer 2 went down." {
+      readonly true
+      unit cssPx
+    }
+    field start3 Vector2 "Where pointer 3 went down." {
+      readonly true
+      unit cssPx
+    }
+    field start4 Vector2 "Where pointer 4 went down." {
+      readonly true
+      unit cssPx
+    }
+    fn down {
+      doc "Whether a pointer is held."
+      param id u32 "The pointer, 0 to 4."
+      returns bool
+    }
+    fn pressed {
+      doc "Whether a pointer went down this tick."
+      param id u32 "The pointer, 0 to 4."
+      returns bool
+    }
+    fn released {
+      doc "Whether a pointer went up this tick."
+      param id u32 "The pointer, 0 to 4."
+      returns bool
+    }
+    fn position {
+      doc "Where a pointer is, in CSS pixels."
+      param id u32 "The pointer, 0 to 4."
+      returns Vector2
+    }
+    fn start {
+      doc "Where a pointer went down, in CSS pixels: a touch control claims the pointers that started on it."
+      param id u32 "The pointer, 0 to 4."
+      returns Vector2
+    }
+    fn count {
+      doc "How many pointers are held."
+      returns u32
+    }
+  }
+
+  resource Gamepad {
+    doc "The first four gamepads in the W3C standard mapping, at the start of this tick (og-input's og.Gamepad). On the web the shell polls the pads each display frame and sends their state through the input ring, so a pad is world state and replays; it also maps pads to keys for games that only read keys."
+    doc "Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods."
+    field connectedMask u32 "Connected pads: bit `pad`." {
+      readonly true
+    }
+    field buttons0 u32 "Held buttons of pad 0." {
+      readonly true
+    }
+    field buttons1 u32 "Held buttons of pad 1." {
+      readonly true
+    }
+    field buttons2 u32 "Held buttons of pad 2." {
+      readonly true
+    }
+    field buttons3 u32 "Held buttons of pad 3." {
+      readonly true
+    }
+    field pressed0 u32 "Buttons of pad 0 that went down this tick." {
+      readonly true
+    }
+    field pressed1 u32 "Buttons of pad 1 that went down this tick." {
+      readonly true
+    }
+    field pressed2 u32 "Buttons of pad 2 that went down this tick." {
+      readonly true
+    }
+    field pressed3 u32 "Buttons of pad 3 that went down this tick." {
+      readonly true
+    }
+    field released0 u32 "Buttons of pad 0 that went up this tick." {
+      readonly true
+    }
+    field released1 u32 "Buttons of pad 1 that went up this tick." {
+      readonly true
+    }
+    field released2 u32 "Buttons of pad 2 that went up this tick." {
+      readonly true
+    }
+    field released3 u32 "Buttons of pad 3 that went up this tick." {
+      readonly true
+    }
+    field leftStick0 Vector2 "The left stick of pad 0, -1 to 1, y down." {
+      readonly true
+    }
+    field leftStick1 Vector2 "The left stick of pad 1, -1 to 1, y down." {
+      readonly true
+    }
+    field leftStick2 Vector2 "The left stick of pad 2, -1 to 1, y down." {
+      readonly true
+    }
+    field leftStick3 Vector2 "The left stick of pad 3, -1 to 1, y down." {
+      readonly true
+    }
+    field rightStick0 Vector2 "The right stick of pad 0, -1 to 1, y down." {
+      readonly true
+    }
+    field rightStick1 Vector2 "The right stick of pad 1, -1 to 1, y down." {
+      readonly true
+    }
+    field rightStick2 Vector2 "The right stick of pad 2, -1 to 1, y down." {
+      readonly true
+    }
+    field rightStick3 Vector2 "The right stick of pad 3, -1 to 1, y down." {
+      readonly true
+    }
+    field triggers0 Vector2 "The left (x) and right (y) triggers of pad 0, 0 to 1." {
+      readonly true
+    }
+    field triggers1 Vector2 "The left (x) and right (y) triggers of pad 1, 0 to 1." {
+      readonly true
+    }
+    field triggers2 Vector2 "The left (x) and right (y) triggers of pad 2, 0 to 1." {
+      readonly true
+    }
+    field triggers3 Vector2 "The left (x) and right (y) triggers of pad 3, 0 to 1." {
+      readonly true
+    }
+    fn connected {
+      doc "Whether a pad is connected."
+      param pad u32 "The pad, 0 to 3; omitted is 0." {
+        optional true
+      }
+      returns bool
+    }
+    fn down {
+      doc "Whether a button is held."
+      param button GamepadButton "The button."
+      param pad u32 "The pad, 0 to 3; omitted is 0." {
+        optional true
+      }
+      returns bool
+    }
+    fn pressed {
+      doc "Whether a button went down this tick."
+      param button GamepadButton "The button."
+      param pad u32 "The pad, 0 to 3; omitted is 0." {
+        optional true
+      }
+      returns bool
+    }
+    fn released {
+      doc "Whether a button went up this tick."
+      param button GamepadButton "The button."
+      param pad u32 "The pad, 0 to 3; omitted is 0." {
+        optional true
+      }
+      returns bool
+    }
+    fn axis {
+      doc "An analog input: a stick's x or y (-1 to 1, y down) or a trigger (0 to 1). Dead zones are the game's."
+      param axis GamepadAxis "Which input."
+      param pad u32 "The pad, 0 to 3; omitted is 0." {
+        optional true
+      }
+      returns f32
+    }
+  }
+
   event KeyDown {
     doc "A key went down (a down for a held key is a repeat and sets no edge). Input events are sent between ticks and read by the next tick's systems."
     field key String "The physical key code."
@@ -849,23 +1114,26 @@ module input {
   }
 
   event PointerDown {
-    doc "A pointer button went down."
+    doc "A pointer button went down (or a touch landed)."
     field x f32 "Horizontal position in CSS pixels."
     field y f32 "Vertical position in CSS pixels."
     field button PointerButton "The button."
+    field id u32 "Which pointer: 0 the primary one, 1 to 4 further touches (og.Pointers)."
   }
 
   event PointerUp {
-    doc "A pointer button went up."
+    doc "A pointer button went up (or a touch lifted)."
     field x f32 "Horizontal position in CSS pixels."
     field y f32 "Vertical position in CSS pixels."
     field button PointerButton "The button."
+    field id u32 "Which pointer: 0 the primary one, 1 to 4 further touches."
   }
 
   event PointerMove {
-    doc "The pointer moved."
+    doc "A pointer moved."
     field x f32 "Horizontal position in CSS pixels."
     field y f32 "Vertical position in CSS pixels."
+    field id u32 "Which pointer: 0 the primary one, 1 to 4 further touches."
   }
 
   event Wheel {
@@ -4579,6 +4847,8 @@ module commands {
     variant touch_start "`touch_start`: press the pointer where it is."
     variant touch_end "`touch_end`: release the pointer."
     variant scroll "`scroll:dx,dy`: scroll at the pointer."
+    variant touch "`touch:<id>:<down|move|up>:<x,y | ui id>`: a further touch (pointer 1 to 4) held while the pointer is busy elsewhere."
+    variant gamepad "`gamepad:<a+b+...|->[:lx,ly[,rx,ry]][:lt,rt]`: set pad 0's whole state; `gamepad:off` disconnects it."
     variant key_down "`key_down:<Key>`: hold a key by its code."
     variant key_up "`key_up:<Key>`: release a key."
     variant type "`type:<text>`: type text, one key press per character."

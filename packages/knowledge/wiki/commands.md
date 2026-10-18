@@ -18,7 +18,7 @@ module commands {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 4569</sub>
+<sub>`api.ogt` line 4837</sub>
 
 ## Contents
 
@@ -67,7 +67,7 @@ fn register {
 }
 ```
 
-<sub>`api.ogt` line 4637</sub>
+<sub>`api.ogt` line 4907</sub>
 
 <a id="fn-parse"></a>
 
@@ -95,7 +95,7 @@ fn parse {
 }
 ```
 
-<sub>`api.ogt` line 4645</sub>
+<sub>`api.ogt` line 4915</sub>
 
 <a id="fn-help"></a>
 
@@ -123,7 +123,7 @@ fn help {
 }
 ```
 
-<sub>`api.ogt` line 4651</sub>
+<sub>`api.ogt` line 4921</sub>
 
 <a id="fn-schedule"></a>
 
@@ -153,7 +153,7 @@ fn schedule {
 }
 ```
 
-<sub>`api.ogt` line 4657</sub>
+<sub>`api.ogt` line 4927</sub>
 
 ## Types
 
@@ -173,6 +173,8 @@ A string: one of the variants below. The zero value is `"screenshot"`.
 | `"touch_start"` | `touch_start`: press the pointer where it is. |
 | `"touch_end"` | `touch_end`: release the pointer. |
 | `"scroll"` | `scroll:dx,dy`: scroll at the pointer. |
+| `"touch"` | `touch:<id>:<down\|move\|up>:<x,y \| ui id>`: a further touch (pointer 1 to 4) held while the pointer is busy elsewhere. |
+| `"gamepad"` | `gamepad:<a+b+...\|->[:lx,ly[,rx,ry]][:lt,rt]`: set pad 0's whole state; `gamepad:off` disconnects it. |
 | `"key_down"` | `key_down:<Key>`: hold a key by its code. |
 | `"key_up"` | `key_up:<Key>`: release a key. |
 | `"type"` | `type:<text>`: type text, one key press per character. |
@@ -199,6 +201,8 @@ enum CoreAction {
   variant touch_start "`touch_start`: press the pointer where it is."
   variant touch_end "`touch_end`: release the pointer."
   variant scroll "`scroll:dx,dy`: scroll at the pointer."
+  variant touch "`touch:<id>:<down|move|up>:<x,y | ui id>`: a further touch (pointer 1 to 4) held while the pointer is busy elsewhere."
+  variant gamepad "`gamepad:<a+b+...|->[:lx,ly[,rx,ry]][:lt,rt]`: set pad 0's whole state; `gamepad:off` disconnects it."
   variant key_down "`key_down:<Key>`: hold a key by its code."
   variant key_up "`key_up:<Key>`: release a key."
   variant type "`type:<text>`: type text, one key press per character."
@@ -218,7 +222,7 @@ enum CoreAction {
 }
 ```
 
-<sub>`api.ogt` line 4574</sub>
+<sub>`api.ogt` line 4842</sub>
 
 <a id="type-CommandHandler"></a>
 
@@ -245,7 +249,7 @@ callback CommandHandler {
 }
 ```
 
-<sub>`api.ogt` line 4600</sub>
+<sub>`api.ogt` line 4870</sub>
 
 <a id="type-CommandDesc"></a>
 
@@ -269,7 +273,7 @@ struct CommandDesc {
 }
 ```
 
-<sub>`api.ogt` line 4606</sub>
+<sub>`api.ogt` line 4876</sub>
 
 <a id="type-CommandStep"></a>
 
@@ -294,7 +298,7 @@ struct CommandStep {
 }
 ```
 
-<sub>`api.ogt` line 4613</sub>
+<sub>`api.ogt` line 4883</sub>
 
 <a id="type-CommandInfo"></a>
 
@@ -319,7 +323,7 @@ struct CommandInfo {
 }
 ```
 
-<sub>`api.ogt` line 4622</sub>
+<sub>`api.ogt` line 4892</sub>
 
 <a id="type-CommandsReport"></a>
 
@@ -342,4 +346,4 @@ struct CommandsReport {
 }
 ```
 
-<sub>`api.ogt` line 4630</sub>
+<sub>`api.ogt` line 4900</sub>

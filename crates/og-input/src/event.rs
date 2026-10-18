@@ -96,9 +96,54 @@ pub struct Modifiers {
     pub shift: bool,
 }
 
-/// One input event in the game's own vocabulary (protocol 5). Positions are
-/// CSS pixels of the play surface, the space `pick` reads; `key` is a
-/// `KeyboardEvent.code` name.
+/// The most pointers held at once ([`crate::Pointers`]): ids 0 to 4.
+pub const MAX_POINTERS: usize = 5;
+/// The most gamepads read at once ([`crate::Gamepad`]): pads 0 to 3.
+pub const MAX_GAMEPADS: usize = 4;
+/// Standard-mapping buttons (W3C Gamepad `standard` layout), by index.
+pub const GAMEPAD_BUTTONS: [&str; 17] = [
+    "a",
+    "b",
+    "x",
+    "y",
+    "leftBumper",
+    "rightBumper",
+    "leftTrigger",
+    "rightTrigger",
+    "back",
+    "start",
+    "leftStick",
+    "rightStick",
+    "up",
+    "down",
+    "left",
+    "right",
+    "home",
+];
+
+/// The index of a standard-mapping button name ([`GAMEPAD_BUTTONS`]).
+pub fn gamepad_button(name: &str) -> Option<usize> {
+    GAMEPAD_BUTTONS.iter().position(|n| *n == name)
+}
+
+/// One pad's whole state, as the shell polls it on the display frame.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct GamepadState {
+    /// Which pad (0 to [`MAX_GAMEPADS`] - 1).
+    pub pad: u32,
+    pub connected: bool,
+    /// Held buttons: bit `i` is [`GAMEPAD_BUTTONS`]`[i]`.
+    pub buttons: u32,
+    /// Left stick x, y, right stick x, y; each -1..1, y down (the Gamepad API's).
+    pub axes: [f32; 4],
+    /// The analog left and right triggers, 0..1.
+    pub triggers: [f32; 2],
+}
+
+/// One input event in the game's own vocabulary (protocol 5, plus two
+/// engine extensions: a pointer `id` for multi-touch and the `gamepad` kind).
+/// Positions are CSS pixels of the play surface, the space `pick` reads;
+/// `key` is a `KeyboardEvent.code` name.
 #[derive(Clone, Debug, PartialEq)]
 pub enum InjectedInput {
     Key {
@@ -111,6 +156,9 @@ pub enum InjectedInput {
         x: f32,
         y: f32,
         button: PointerButton,
+        /// Which pointer: 0 the primary (the mouse, the first touch, what
+        /// protocol 5 means), 1 to [`MAX_POINTERS`] - 1 further touches.
+        id: u32,
     },
     Wheel {
         x: f32,
@@ -118,6 +166,8 @@ pub enum InjectedInput {
         delta_x: f32,
         delta_y: f32,
     },
+    /// A pad's state, whole (the shell sends one when it changes).
+    Gamepad(GamepadState),
 }
 
 fn number(value: &Value, key: &str) -> Option<f32> {
@@ -167,7 +217,50 @@ impl InjectedInput {
                 x: number(value, "x")?,
                 y: number(value, "y")?,
                 button: PointerButton::from_name(value.get("button")?.as_str()?)?,
+                id: match value.get("id") {
+                    None | Some(Value::Null) => 0,
+                    Some(v) => u32::try_from(v.as_u64()?).ok()?,
+                },
             }),
+            "gamepad" => {
+                let mut state = GamepadState {
+                    pad: match value.get("pad") {
+                        None | Some(Value::Null) => 0,
+                        Some(v) => u32::try_from(v.as_u64()?).ok()?,
+                    },
+                    connected: match value.get("connected") {
+                        None | Some(Value::Null) => true,
+                        Some(v) => v.as_bool()?,
+                    },
+                    ..GamepadState::default()
+                };
+                for b in value
+                    .get("buttons")
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                {
+                    state.buttons |= 1 << gamepad_button(b.as_str()?)?;
+                }
+                let floats = |key: &str, out: &mut [f32]| -> Option<()> {
+                    if let Some(list) = value.get(key).and_then(Value::as_array) {
+                        if list.len() > out.len() {
+                            return None;
+                        }
+                        for (o, v) in out.iter_mut().zip(list) {
+                            let f = v.as_f64()?;
+                            if !f.is_finite() {
+                                return None;
+                            }
+                            *o = f as f32;
+                        }
+                    }
+                    Some(())
+                };
+                floats("axes", &mut state.axes)?;
+                floats("triggers", &mut state.triggers)?;
+                Some(InjectedInput::Gamepad(state))
+            }
             "wheel" => Some(InjectedInput::Wheel {
                 x: number(value, "x")?,
                 y: number(value, "y")?,
@@ -196,10 +289,25 @@ impl InjectedInput {
                 x,
                 y,
                 button,
-            } => json!({
-                "kind": "pointer",
-                "action": match action { PointerAction::Click => "click", PointerAction::Move => "move", PointerAction::Down => "down", PointerAction::Up => "up" },
-                "x": x, "y": y, "button": button.name(),
+                id,
+            } => {
+                let mut v = json!({
+                    "kind": "pointer",
+                    "action": match action { PointerAction::Click => "click", PointerAction::Move => "move", PointerAction::Down => "down", PointerAction::Up => "up" },
+                    "x": x, "y": y, "button": button.name(),
+                });
+                if *id != 0 {
+                    v["id"] = json!(id);
+                }
+                v
+            }
+            InjectedInput::Gamepad(g) => json!({
+                "kind": "gamepad",
+                "pad": g.pad,
+                "connected": g.connected,
+                "buttons": GAMEPAD_BUTTONS.iter().enumerate().filter(|(i, _)| g.buttons & (1 << i) != 0).map(|(_, n)| *n).collect::<Vec<_>>(),
+                "axes": g.axes,
+                "triggers": g.triggers,
             }),
             InjectedInput::Wheel {
                 x,

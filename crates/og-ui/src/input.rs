@@ -89,8 +89,8 @@ pub trait InputSource {
     fn shift(&self) -> bool {
         false
     }
-    /// The first gamepad (standard mapping). og.Input has no gamepad yet, so
-    /// the default is none; a source that has one reports it here.
+    /// The first gamepad (standard mapping); `og.Input` alone has none, and
+    /// [`InputFrame::from_world`] reads `og.Gamepad` for it.
     fn gamepad(&self) -> GamepadFrame {
         GamepadFrame::default()
     }
@@ -108,6 +108,17 @@ pub struct GamepadFrame {
 }
 
 impl GamepadFrame {
+    /// Pad 0 of the world's `og.Gamepad` (og-input's resource).
+    pub fn from_gamepad(pad: &og_input::Gamepad) -> GamepadFrame {
+        GamepadFrame {
+            pressed: pad.masks(0).1,
+            stick: Vec2::new(
+                pad.axis(og_input::GamepadAxis::LeftX, 0),
+                pad.axis(og_input::GamepadAxis::LeftY, 0),
+            ),
+        }
+    }
+
     pub const A: u32 = 1 << 0;
     pub const B: u32 = 1 << 1;
     pub const UP: u32 = 1 << 12;
@@ -221,6 +232,10 @@ pub struct InputFrame {
     pub shift: bool,
     /// The first gamepad.
     pub gamepad: GamepadFrame,
+    /// Every pointer at once (og-input's `og.Pointers`): touch controls
+    /// (joystick, d-pad, action buttons) also answer pointers 1 to 4, so a
+    /// stick and a button can be held together.
+    pub pointers: og_input::Pointers,
 }
 
 impl InputFrame {
@@ -241,15 +256,33 @@ impl InputFrame {
             text,
             shift: source.shift(),
             gamepad: source.gamepad(),
+            pointers: og_input::Pointers::default(),
         }
     }
 
-    /// The world's [`OgInput`], or `None` when it has none.
+    /// Adds the world's `og.Gamepad` (pad 0) and `og.Pointers` to a frame.
+    pub fn with(
+        mut self,
+        gamepad: Option<&og_input::Gamepad>,
+        pointers: Option<&og_input::Pointers>,
+    ) -> InputFrame {
+        if let Some(g) = gamepad {
+            self.gamepad = GamepadFrame::from_gamepad(g);
+        }
+        if let Some(p) = pointers {
+            self.pointers = *p;
+        }
+        self
+    }
+
+    /// The world's [`OgInput`] with its `og.Gamepad` and `og.Pointers`, or
+    /// `None` when it has no input.
     pub fn from_world(world: &World) -> Option<InputFrame> {
-        world
-            .resource::<OgInput>()
-            .ok()
-            .map(|input| InputFrame::read(&*input))
+        let input = world.resource::<OgInput>().ok()?;
+        let frame = InputFrame::read(&*input);
+        let pad = world.resource::<og_input::Gamepad>().ok().map(|g| *g);
+        let pointers = world.resource::<og_input::Pointers>().ok().map(|p| *p);
+        Some(frame.with(pad.as_ref(), pointers.as_ref()))
     }
 
     /// A pointer at a point with no buttons (for tools and tests).

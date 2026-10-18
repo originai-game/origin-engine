@@ -2,6 +2,8 @@
 // same decoder templates/ui-kit/tests/frames.ts uses for its references).
 import { inflateSync } from "node:zlib";
 
+declare function atob(data: string): string;
+
 export interface Image {
   width: number;
   height: number;
@@ -32,7 +34,9 @@ export function decodePng(bytes: Uint8Array): Image {
     else if (type === "IEND") break;
     at += 12 + len;
   }
-  const raw = inflateSync(Buffer.concat(idat));
+  const joined = new Uint8Array(idat.reduce((n, d) => n + d.length, 0));
+  idat.reduce((at, d) => (joined.set(d, at), at + d.length), 0);
+  const raw = inflateSync(joined);
   const stride = width * channels;
   const out = new Uint8Array(width * height * 4);
   const prev = new Uint8Array(stride);
@@ -73,5 +77,5 @@ export function pixel(img: Image, x: number, y: number): [number, number, number
 export function decodeCapture(frame: unknown): Image {
   const f = frame as { png?: string } | null;
   if (!f || typeof f.png !== "string") throw new Error(`no frame: ${JSON.stringify(frame)?.slice(0, 200)}`);
-  return decodePng(new Uint8Array(Buffer.from(f.png, "base64")));
+  return decodePng(Uint8Array.from(atob(f.png), (c) => c.charCodeAt(0)));
 }

@@ -29,6 +29,10 @@ declare module "node:fs" {
   export function watch(path: string, listener: (event: string, file: string | null) => void): { close(): void };
 }
 
+declare module "node:zlib" {
+  export function inflateSync(data: Uint8Array): Uint8Array;
+}
+
 declare module "bun:test" {
   type Body = () => unknown | Promise<unknown>;
   export function test(name: string, body: Body, timeout?: number): void;

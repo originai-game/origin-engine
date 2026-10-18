@@ -57,7 +57,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-532 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+550 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -163,6 +163,14 @@ Field units the docs and Tune use.
 | [`Game.systems`](game.md#member-Game-systems) | property | game | `og_game_get_systems` |
 | [`Game.tick`](game.md#member-Game-tick) | property | game | `og_game_get_tick` |
 | [`GameDesc`](game.md#type-GameDesc) | desc struct | game | — |
+| [`Gamepad.axis`](input.md#member-Gamepad-axis) | method | input | `og_gamepad_axis` |
+| [`Gamepad.connected`](input.md#member-Gamepad-connected) | method | input | `og_gamepad_connected` |
+| [`Gamepad.down`](input.md#member-Gamepad-down) | method | input | `og_gamepad_down` |
+| [`Gamepad.pressed`](input.md#member-Gamepad-pressed) | method | input | `og_gamepad_pressed` |
+| [`Gamepad.released`](input.md#member-Gamepad-released) | method | input | `og_gamepad_released` |
+| [`GamepadAxis`](input.md#type-GamepadAxis) | enum | input | — |
+| [`GamepadButton`](input.md#type-GamepadButton) | enum | input | — |
+| [`GamepadInput`](input.md#type-GamepadInput) | struct | input | — |
 | [`GameSettings`](ui.md#type-GameSettings) | desc struct | ui | — |
 | [`Generator`](ui.md#type-Generator) | desc struct | ui | — |
 | [`Geometry`](render.md#type-Geometry) | handle | render | — |
@@ -230,7 +238,9 @@ Field units the docs and Tune use.
 | [`Material()`](render.md#column-Material) | column kind | render | — |
 | [`Matrix4`](math.md#type-Matrix4) | struct | math | — |
 | [`Matrix4()`](reflect.md#column-Matrix4) | column kind | reflect | — |
+| [`MAX_GAMEPADS`](input.md#const-MAX_GAMEPADS) | constant | input | — |
 | [`MAX_LIGHTS`](render.md#const-MAX_LIGHTS) | constant | render | — |
+| [`MAX_POINTERS`](input.md#const-MAX_POINTERS) | constant | input | — |
 | [`MenuItem`](ui.md#type-MenuItem) | desc struct | ui | — |
 | [`MenuResult`](ui.md#type-MenuResult) | struct | ui | — |
 | [`MeshDesc`](physics.md#type-MeshDesc) | desc struct | physics | — |
@@ -264,6 +274,7 @@ Field units the docs and Tune use.
 | [`og.Follow2D`](camera.md#record-Follow2D) | component | camera | — |
 | [`og.FollowCamera`](camera.md#record-FollowCamera) | component | camera | — |
 | [`og.game`](game.md#fn-game) | function | game | `og_game_game` |
+| [`og.Gamepad`](input.md#record-Gamepad) | resource | input | — |
 | [`og.IkChain`](anim.md#record-IkChain) | component | anim | — |
 | [`og.Input`](input.md#record-Input) | resource | input | — |
 | [`og.KeyDown`](input.md#record-KeyDown) | event | input | — |
@@ -294,6 +305,7 @@ Field units the docs and Tune use.
 | [`og.physics.shapeCast`](physics.md#fn-shapeCast) | function | physics | `og_physics_shape_cast` |
 | [`og.PointerDown`](input.md#record-PointerDown) | event | input | — |
 | [`og.PointerMove`](input.md#record-PointerMove) | event | input | — |
+| [`og.Pointers`](input.md#record-Pointers) | resource | input | — |
 | [`og.PointerUp`](input.md#record-PointerUp) | event | input | — |
 | [`og.PointLight`](render.md#record-PointLight) | component | render | — |
 | [`og.render.boxGeometry`](render.md#fn-boxGeometry) | function | render | `og_render_box_geometry` |
@@ -426,6 +438,12 @@ Field units the docs and Tune use.
 | [`PointerAction`](input.md#type-PointerAction) | enum | input | — |
 | [`PointerButton`](input.md#type-PointerButton) | enum | input | — |
 | [`PointerInput`](input.md#type-PointerInput) | struct | input | — |
+| [`Pointers.count`](input.md#member-Pointers-count) | method | input | `og_pointers_count` |
+| [`Pointers.down`](input.md#member-Pointers-down) | method | input | `og_pointers_down` |
+| [`Pointers.position`](input.md#member-Pointers-position) | method | input | `og_pointers_position` |
+| [`Pointers.pressed`](input.md#member-Pointers-pressed) | method | input | `og_pointers_pressed` |
+| [`Pointers.released`](input.md#member-Pointers-released) | method | input | `og_pointers_released` |
+| [`Pointers.start`](input.md#member-Pointers-start) | method | input | `og_pointers_start` |
 | [`Presence`](ui.md#type-Presence) | struct | ui | — |
 | [`PROBE_GLOBAL`](probe.md#const-PROBE_GLOBAL) | constant | probe | — |
 | [`PROBE_PROGRAM_MAX_OPERATIONS`](probe.md#const-PROBE_PROGRAM_MAX_OPERATIONS) | constant | probe | — |

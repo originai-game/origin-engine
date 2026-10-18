@@ -411,6 +411,72 @@ pub fn og_input_button_released(env: Env, world: u32, button: String) -> bool {
     <Host as InputApi>::og_input_button_released(&Host, world, button)
 }
 
+#[napi(js_name = "og_pointers_down")]
+pub fn og_pointers_down(env: Env, world: u32, id: u32) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_pointers_down(&Host, world, id)
+}
+
+#[napi(js_name = "og_pointers_pressed")]
+pub fn og_pointers_pressed(env: Env, world: u32, id: u32) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_pointers_pressed(&Host, world, id)
+}
+
+#[napi(js_name = "og_pointers_released")]
+pub fn og_pointers_released(env: Env, world: u32, id: u32) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_pointers_released(&Host, world, id)
+}
+
+#[napi(js_name = "og_pointers_position")]
+pub fn og_pointers_position(env: Env, world: u32, id: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_pointers_position(&Host, world, id)
+}
+
+#[napi(js_name = "og_pointers_start")]
+pub fn og_pointers_start(env: Env, world: u32, id: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_pointers_start(&Host, world, id)
+}
+
+#[napi(js_name = "og_pointers_count")]
+pub fn og_pointers_count(env: Env, world: u32) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_pointers_count(&Host, world)
+}
+
+#[napi(js_name = "og_gamepad_connected")]
+pub fn og_gamepad_connected(env: Env, world: u32, pad: Option<u32>) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_gamepad_connected(&Host, world, pad)
+}
+
+#[napi(js_name = "og_gamepad_down")]
+pub fn og_gamepad_down(env: Env, world: u32, button: String, pad: Option<u32>) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_gamepad_down(&Host, world, button, pad)
+}
+
+#[napi(js_name = "og_gamepad_pressed")]
+pub fn og_gamepad_pressed(env: Env, world: u32, button: String, pad: Option<u32>) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_gamepad_pressed(&Host, world, button, pad)
+}
+
+#[napi(js_name = "og_gamepad_released")]
+pub fn og_gamepad_released(env: Env, world: u32, button: String, pad: Option<u32>) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_gamepad_released(&Host, world, button, pad)
+}
+
+#[napi(js_name = "og_gamepad_axis")]
+pub fn og_gamepad_axis(env: Env, world: u32, axis: String, pad: Option<u32>) -> f64 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_gamepad_axis(&Host, world, axis, pad)
+}
+
 #[napi(js_name = "og_camera_look_at")]
 pub fn og_camera_look_at(env: Env, world: u32, target: String) {
     let _env = crate::EnvScope::enter(&env);
