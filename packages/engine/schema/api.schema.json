@@ -2525,6 +2525,581 @@
       "callbacks": []
     },
     {
+      "name": "nav",
+      "doc": "Navigation: grids (A* and jump point search with eight-way moves that never cut a blocked corner, line-of-sight smoothing), flow fields for crowds, and navmeshes (baked at cook time from a level's static colliders and models, or built at runtime for a flat procedural level) with funnel paths and box obstacles that rebuild only the tiles they touch.\nAgents are entities with an og.NavAgent (and an og.Transform): the og.nav system, after the game's systems and before physics, plans their paths, follows them and adds the og.Steering behaviours; an entity with an og.Velocity (a physics body) gets its velocity written, any other its Transform moved. Everything is deterministic and in snapshots: paths, grid edits, obstacles and flow targets.\nAgents move on the profile's plane: x and y in 2D (a grid's rows run up), x and z in 3D (y kept on grids, from the surface on a navmesh).",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "Navigation",
+        "Navigation",
+        "NavAlgorithm",
+        "NavAgent",
+        "Steering",
+        "NavGridDesc",
+        "TilemapGridDesc",
+        "NavCell",
+        "PathDesc",
+        "NavPath",
+        "FlowDesc",
+        "NavBox",
+        "NavMeshDesc",
+        "NavMeshInfo",
+        "NavRebuild"
+      ],
+      "consts": [
+        {
+          "name": "NAV_IDLE",
+          "type": "u32",
+          "value": 0,
+          "doc": "NavAgent.status: not seeking."
+        },
+        {
+          "name": "NAV_MOVING",
+          "type": "u32",
+          "value": 1,
+          "doc": "NavAgent.status: following a path or a flow field."
+        },
+        {
+          "name": "NAV_ARRIVED",
+          "type": "u32",
+          "value": 2,
+          "doc": "NavAgent.status: within stopDistance of the target."
+        },
+        {
+          "name": "NAV_UNREACHABLE",
+          "type": "u32",
+          "value": 3,
+          "doc": "NavAgent.status: no path reaches the target, or the agent is off its grid or navmesh."
+        },
+        {
+          "name": "NAV_PARTIAL",
+          "type": "u32",
+          "value": 4,
+          "doc": "NavAgent.status: the target is cut off; moving to the reachable point nearest it."
+        }
+      ],
+      "functions": [
+        {
+          "name": "grid",
+          "doc": "A grid agents and path queries plan on. Runtime edits (og.nav.setCost) are world state.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "NavGridDesc",
+              "optional": true,
+              "doc": "Its size, cell size, origin and costs."
+            }
+          ],
+          "returns": "Result<Navigation>",
+          "returnsDoc": "Refused for costs of the wrong length.",
+          "publish": true
+        },
+        {
+          "name": "gridFromTilemap",
+          "doc": "A grid over a placed map: its cells, its world position (the map's top-left corner at the entity), blocked where the collision layers have solid tiles. Edits to the map later do not follow; build another.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "TilemapGridDesc",
+              "optional": true,
+              "doc": "The map's entity and the blocking layers."
+            }
+          ],
+          "returns": "Result<Navigation>",
+          "returnsDoc": "Refused for an entity without an og.Tilemap or a map not loaded.",
+          "publish": true
+        },
+        {
+          "name": "setCost",
+          "doc": "Change a grid cell's cost (0 blocks it): agents on the grid re-plan, flow fields over it rebuild.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "grid",
+              "type": "Navigation",
+              "optional": false,
+              "doc": "The grid."
+            },
+            {
+              "name": "x",
+              "type": "u32",
+              "optional": false,
+              "doc": "The column."
+            },
+            {
+              "name": "y",
+              "type": "u32",
+              "optional": false,
+              "doc": "The row (0 is the bottom)."
+            },
+            {
+              "name": "cost",
+              "type": "u32",
+              "optional": false,
+              "doc": "0 blocked, 1 normal, up to 255."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an unknown grid or a cell outside it.",
+          "publish": true
+        },
+        {
+          "name": "cellAt",
+          "doc": "The grid cell under a world point.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "grid",
+              "type": "Navigation",
+              "optional": false,
+              "doc": "The grid."
+            },
+            {
+              "name": "point",
+              "type": "Vector3",
+              "optional": false,
+              "doc": "A world point."
+            }
+          ],
+          "returns": "NavCell",
+          "publish": true
+        },
+        {
+          "name": "findPath",
+          "doc": "A path between two points on a grid or a navmesh, now: corners, length and whether it reaches the end.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "PathDesc",
+              "optional": true,
+              "doc": "The grid or navmesh and the two points."
+            }
+          ],
+          "returns": "Result<NavPath>",
+          "returnsDoc": "Refused for an unknown grid or navmesh, or when no path starts (an end off the grid or mesh).",
+          "publish": true
+        },
+        {
+          "name": "flowField",
+          "doc": "A flow field towards targets over a grid: one Dijkstra pass gives every cell a direction, so any number of agents (NavAgent.nav = the field) steer by a lookup. It rebuilds when the grid changes.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "FlowDesc",
+              "optional": true,
+              "doc": "The grid and the targets."
+            }
+          ],
+          "returns": "Result<Navigation>",
+          "returnsDoc": "Refused for an unknown grid.",
+          "publish": true
+        },
+        {
+          "name": "setFlowTargets",
+          "doc": "Move a flow field's targets (rebuilds it).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "field",
+              "type": "Navigation",
+              "optional": false,
+              "doc": "The flow field."
+            },
+            {
+              "name": "targets",
+              "type": "List<Vector3>",
+              "optional": false,
+              "doc": "The new targets."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an unknown flow field.",
+          "publish": true
+        },
+        {
+          "name": "flowAt",
+          "doc": "The direction a flow field gives at a point (unit length, or zero at a target or where nothing is reachable).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "field",
+              "type": "Navigation",
+              "optional": false,
+              "doc": "The flow field."
+            },
+            {
+              "name": "point",
+              "type": "Vector3",
+              "optional": false,
+              "doc": "A world point."
+            }
+          ],
+          "returns": "Vector3",
+          "publish": true
+        },
+        {
+          "name": "load",
+          "doc": "A cooked navmesh: an `.ogt` of `type navmesh` (a scene, the boxes and the agent) baked by og cook from the scene's static colliders and models.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The navmesh asset, such as `levels/arena.nav.ogt`."
+            }
+          ],
+          "returns": "Result<NavMeshInfo>",
+          "returnsDoc": "Refused for a path that is not a cooked navmesh.",
+          "publish": true
+        },
+        {
+          "name": "build",
+          "doc": "A navmesh over a flat floor with boxes carved out, built now: for procedural levels (a level with slopes and stairs is baked at cook time with og.nav.load).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "NavMeshDesc",
+              "optional": true,
+              "doc": "The floor, the boxes and the agent."
+            }
+          ],
+          "returns": "Result<NavMeshInfo>",
+          "returnsDoc": "Refused for an empty floor.",
+          "publish": true
+        },
+        {
+          "name": "setObstacle",
+          "doc": "Set, move or (with no box) remove an obstacle on a navmesh: the spans under the box (grown by the agent radius) are blocked and only the tiles it touches, and their neighbours, are rebuilt. Agents on the mesh re-plan. World state.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "mesh",
+              "type": "Navigation",
+              "optional": false,
+              "doc": "The navmesh."
+            },
+            {
+              "name": "id",
+              "type": "u32",
+              "optional": false,
+              "doc": "The obstacle's id, the game's own (a door's number)."
+            },
+            {
+              "name": "obstacle",
+              "type": "NavBox",
+              "optional": true,
+              "doc": "The box; omitted removes the obstacle."
+            }
+          ],
+          "returns": "Result<NavRebuild>",
+          "returnsDoc": "Refused for an unknown navmesh.",
+          "publish": true
+        },
+        {
+          "name": "nearest",
+          "doc": "The point on a navmesh nearest a world point, within `extent` (half sizes).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "mesh",
+              "type": "Navigation",
+              "optional": false,
+              "doc": "The navmesh."
+            },
+            {
+              "name": "point",
+              "type": "Vector3",
+              "optional": false,
+              "doc": "A world point."
+            },
+            {
+              "name": "extent",
+              "type": "Vector3",
+              "optional": true,
+              "doc": "The search box's half sizes; zero: 2 2 2."
+            }
+          ],
+          "returns": "Option<Vector3>",
+          "returnsDoc": "Null when no polygon is within the box.",
+          "publish": true
+        },
+        {
+          "name": "pathOf",
+          "doc": "The path an agent follows now (its corners from where it planned), for debugging and playtests; `dump_nav:<entity>` writes the same.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "An entity with an og.NavAgent."
+            }
+          ],
+          "returns": "Option<NavPath>",
+          "returnsDoc": "Null for an entity that has not planned.",
+          "publish": true
+        }
+      ],
+      "interfaces": [],
+      "callbacks": []
+    },
+    {
+      "name": "ai",
+      "doc": "Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (crates/og-ai/README.md has the grammar), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent.\nAn entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent (og.nav plans and walks after the game's systems) or runs one of the game's commands (GameDesc.commands, with the agent's entity handle as its first argument) before the next tick.\nConditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`). Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "Behaviour",
+        "Behaviour",
+        "AiAgent",
+        "Perception",
+        "Perceivable",
+        "AiChanged",
+        "BehaviourInfo",
+        "NoiseDesc",
+        "AiDescription"
+      ],
+      "consts": [
+        {
+          "name": "AI_RUNNING",
+          "type": "u32",
+          "value": 1,
+          "doc": "AiAgent.status: the tree or state is still running."
+        },
+        {
+          "name": "AI_SUCCESS",
+          "type": "u32",
+          "value": 2,
+          "doc": "AiAgent.status: the tree succeeded on the last think."
+        },
+        {
+          "name": "AI_FAILURE",
+          "type": "u32",
+          "value": 3,
+          "doc": "AiAgent.status: the tree failed on the last think."
+        }
+      ],
+      "functions": [
+        {
+          "name": "load",
+          "doc": "A cooked behaviour (an `.ogt` of `type behaviour`, validated by og cook).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The behaviour asset, such as `ai/slime.ogt`."
+            }
+          ],
+          "returns": "Result<BehaviourInfo>",
+          "returnsDoc": "Refused for a path that is not a cooked behaviour.",
+          "publish": true
+        },
+        {
+          "name": "parse",
+          "doc": "A behaviour from text, now (tests and generated behaviours; assets go through og cook).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "text",
+              "type": "String",
+              "optional": false,
+              "doc": "The behaviour's `.ogt` text."
+            }
+          ],
+          "returns": "Result<BehaviourInfo>",
+          "returnsDoc": "Refused with the first error's line and the fix.",
+          "publish": true
+        },
+        {
+          "name": "get",
+          "doc": "A blackboard value of an agent as of its last think.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The agent."
+            },
+            {
+              "name": "key",
+              "type": "String",
+              "optional": false,
+              "doc": "The key."
+            }
+          ],
+          "returns": "Json",
+          "returnsDoc": "A number, a boolean, a point `{x, y, z}`, an entity handle, or null for an unknown key or an agent that has not thought.",
+          "publish": true
+        },
+        {
+          "name": "set",
+          "doc": "Set a blackboard value of an agent: a number, a boolean, a point `{x, y, z}` or an entity handle `{entity}`.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The agent."
+            },
+            {
+              "name": "key",
+              "type": "String",
+              "optional": false,
+              "doc": "The key; built-in keys are refused."
+            },
+            {
+              "name": "value",
+              "type": "Json",
+              "optional": false,
+              "doc": "The value."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an agent that has not thought yet, a built-in key or another kind of value.",
+          "publish": true
+        },
+        {
+          "name": "noise",
+          "doc": "Make a noise agents may hear next tick (a gunshot, a door, a thrown stone).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "NoiseDesc",
+              "optional": true,
+              "doc": "Where and how loud."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for a world without og.ai.",
+          "publish": true
+        },
+        {
+          "name": "describe",
+          "doc": "What an agent is doing: its state, the node it runs and the path to it, its status, its blackboard and its target.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The agent."
+            }
+          ],
+          "returns": "Option<AiDescription>",
+          "returnsDoc": "Null for an entity that has not thought.",
+          "publish": true
+        }
+      ],
+      "interfaces": [],
+      "callbacks": []
+    },
+    {
       "name": "ui",
       "doc": "The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, themes it with the platform's design tokens, draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it.\nThe engine opens the frame before the game's systems (from og.Input and the play surface) and closes it after them, so calls belong inside systems; outside one they do nothing and log a warning. Interaction is decided against the previous tick's rectangles, which are also what the probe resolves, so a scripted touch_move_to and a click agree; response edges (clicked, changed, submitted) last one tick.\nLengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Ids: an element's id is unique among its siblings (`idi(\"Slot\", 3)` is `Slot#3`); a path `Inventory/Slot#3` names it after its nearest ancestors. The UI state (hover, press, focus, caret, scroll) is world state: snapshots and the world hash carry it.",
       "place": "namespace",
@@ -12578,6 +13153,1139 @@
         "sound",
         "voice",
         "reason"
+      ],
+      "additionalProperties": false
+    },
+    "Navigation": {
+      "x-og-kind": "handle",
+      "x-og-module": "nav",
+      "description": "A grid, a navmesh or a flow field agents plan on.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "NavAlgorithm": {
+      "x-og-kind": "enum",
+      "x-og-module": "nav",
+      "description": "The grid search a path query runs.",
+      "type": "string",
+      "enum": [
+        "jps",
+        "astar"
+      ],
+      "x-og-variants": {
+        "jps": "Jump point search: the same optimal paths as A* with fewer nodes; on a grid with weighted cells it runs A*.",
+        "astar": "A* over every cell."
+      }
+    },
+    "NavAgent": {
+      "x-og-kind": "component",
+      "x-og-module": "nav",
+      "description": "An entity that moves itself towards `target` while `seeking`, by a path over `nav` (a grid, navmesh or flow field; 0 goes straight). og.nav re-plans when the target moved more than repathDistance, every repathTicks, or when the grid or navmesh changed, at most 32 plans a tick across agents.",
+      "type": "object",
+      "properties": {
+        "nav": {
+          "$ref": "#/$defs/Navigation",
+          "description": "The grid, navmesh or flow field it plans on (og.nav.grid, og.nav.load, og.nav.flowField); 0 moves straight at the target.",
+          "default": 0
+        },
+        "target": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where it goes while seeking.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "seeking": {
+          "type": "boolean",
+          "description": "Moves towards the target while true.",
+          "default": false
+        },
+        "speed": {
+          "type": "number",
+          "description": "Top speed.",
+          "default": 3.5,
+          "minimum": 0,
+          "maximum": 100,
+          "x-og-unit": "mps",
+          "x-og-tunable": true
+        },
+        "acceleration": {
+          "type": "number",
+          "description": "How fast it changes velocity.",
+          "default": 20,
+          "minimum": 0,
+          "maximum": 1000,
+          "x-og-unit": "mps2",
+          "x-og-tunable": true
+        },
+        "radius": {
+          "type": "number",
+          "description": "Its radius: grid paths keep this clear of walls; separation uses it.",
+          "default": 0.4,
+          "minimum": 0,
+          "maximum": 10,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "stopDistance": {
+          "type": "number",
+          "description": "It has arrived within this distance of the target.",
+          "default": 0.1,
+          "minimum": 0,
+          "maximum": 10,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "slowRadius": {
+          "type": "number",
+          "description": "It slows down inside this distance of the target.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 20,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "repathTicks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Re-plans this often while seeking (0: only when the target moves).",
+          "default": 30,
+          "minimum": 0,
+          "maximum": 3600,
+          "x-og-unit": "ticks"
+        },
+        "repathDistance": {
+          "type": "number",
+          "description": "Re-plans when the target moved farther than this from the last plan.",
+          "default": 0.5,
+          "minimum": 0,
+          "maximum": 100,
+          "x-og-unit": "m"
+        },
+        "smooth": {
+          "type": "boolean",
+          "description": "Pulls grid paths straight where nothing is in the way.",
+          "default": true
+        },
+        "faceMovement": {
+          "type": "boolean",
+          "description": "Turns the entity to face where it moves (3D: about +Y, its +Z forward; 2D: about +Z, its +X forward).",
+          "default": false
+        },
+        "turnSpeed": {
+          "type": "number",
+          "description": "How fast it turns when facing its movement.",
+          "default": 10,
+          "minimum": 0,
+          "maximum": 100,
+          "x-og-unit": "radps"
+        },
+        "drive": {
+          "type": "boolean",
+          "description": "Moves the entity (its og.Velocity, or its og.Transform) while true; false keeps planning but leaves the motion to the game (a knock-back, a stun).",
+          "default": true
+        },
+        "status": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "NAV_IDLE, NAV_MOVING, NAV_ARRIVED, NAV_UNREACHABLE or NAV_PARTIAL (written by og.nav).",
+          "default": 0,
+          "readOnly": true
+        },
+        "velocity": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Its velocity (written by og.nav).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "mps",
+          "readOnly": true
+        },
+        "waypoint": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The path corner it heads for (written by og.nav).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m",
+          "readOnly": true
+        },
+        "remaining": {
+          "type": "number",
+          "description": "The path length left (written by og.nav).",
+          "default": 0,
+          "x-og-unit": "m",
+          "readOnly": true
+        },
+        "plans": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Paths planned so far (written by og.nav).",
+          "default": 0,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Steering": {
+      "x-og-kind": "component",
+      "x-og-module": "nav",
+      "description": "Steering behaviours an og.NavAgent adds to its path following, each by weight (0 is off): flee, wander, pursue, evade, separation from other agents and avoidance of colliders ahead (three physics rays).",
+      "type": "object",
+      "properties": {
+        "seek": {
+          "type": "number",
+          "description": "Weight of following the path to the target (seek, then arrive at the end).",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 10,
+          "x-og-tunable": true
+        },
+        "flee": {
+          "type": "number",
+          "description": "Weight of fleeing fleeFrom.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 10,
+          "x-og-tunable": true
+        },
+        "fleeFrom": {
+          "$ref": "#/$defs/Vector3",
+          "description": "What it flees.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "fleeRadius": {
+          "type": "number",
+          "description": "It flees (and evades) only inside this distance (0: always).",
+          "default": 6,
+          "minimum": 0,
+          "maximum": 100,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "wander": {
+          "type": "number",
+          "description": "Weight of wandering.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 10,
+          "x-og-tunable": true
+        },
+        "wanderRadius": {
+          "type": "number",
+          "description": "The wander circle's radius.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 20,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "wanderDistance": {
+          "type": "number",
+          "description": "How far ahead the wander circle is.",
+          "default": 2,
+          "minimum": 0,
+          "maximum": 20,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "wanderJitter": {
+          "type": "number",
+          "description": "How fast the wander point moves round the circle.",
+          "default": 3,
+          "minimum": 0,
+          "maximum": 50,
+          "x-og-unit": "radps",
+          "x-og-tunable": true
+        },
+        "pursue": {
+          "$ref": "#/$defs/Entity",
+          "description": "An entity to pursue (seek where it will be, from its NavAgent or og.Velocity); 0: none.",
+          "default": 0
+        },
+        "pursueWeight": {
+          "type": "number",
+          "description": "Weight of pursuing.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 10,
+          "x-og-tunable": true
+        },
+        "evade": {
+          "$ref": "#/$defs/Entity",
+          "description": "An entity to evade (flee where it will be); 0: none.",
+          "default": 0
+        },
+        "evadeWeight": {
+          "type": "number",
+          "description": "Weight of evading.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 10,
+          "x-og-tunable": true
+        },
+        "separation": {
+          "type": "number",
+          "description": "Weight of keeping apart from other agents.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 10,
+          "x-og-tunable": true
+        },
+        "separationRadius": {
+          "type": "number",
+          "description": "Other agents closer than this push it away.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 20,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "avoidance": {
+          "type": "number",
+          "description": "Weight of avoiding colliders ahead.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 10,
+          "x-og-tunable": true
+        },
+        "avoidDistance": {
+          "type": "number",
+          "description": "How far ahead the avoidance rays reach.",
+          "default": 2,
+          "minimum": 0,
+          "maximum": 50,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "avoidMask": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Collision layers the avoidance rays hit (0: every layer).",
+          "default": 0
+        },
+        "wanderAngle": {
+          "type": "number",
+          "description": "The wander angle (written by og.nav).",
+          "default": 0,
+          "x-og-unit": "rad",
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "NavGridDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "nav",
+      "description": "A grid of square cells over the plane: cell (0, 0)'s lower corner at `origin`, rows running up.",
+      "type": "object",
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Cells across.",
+          "default": 32,
+          "minimum": 1,
+          "maximum": 4096
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Cells up.",
+          "default": 32,
+          "minimum": 1,
+          "maximum": 4096
+        },
+        "cellSize": {
+          "type": "number",
+          "description": "A cell's side.",
+          "default": 1,
+          "minimum": 0.01,
+          "maximum": 100,
+          "x-og-unit": "m"
+        },
+        "origin": {
+          "$ref": "#/$defs/Vector2",
+          "description": "Where cell (0, 0)'s lower corner is (x, y in 2D; x, z in 3D).",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "x-og-unit": "m"
+        },
+        "costs": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "description": "Row-major cell costs from row 0 (0 blocked, 1 normal, up to 255 to avoid); empty: every cell 1.",
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "TilemapGridDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "nav",
+      "description": "A grid over a placed og.Tilemap: one cell per map cell, blocked where a collision layer has a solid tile.",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "The entity with the og.Tilemap.",
+          "default": 0
+        },
+        "layers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The layers whose solid tiles block; empty: every collision layer.",
+          "default": []
+        },
+        "inflate": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Also block this many cells around each blocked one (wide agents).",
+          "default": 0,
+          "maximum": 8
+        }
+      },
+      "additionalProperties": false
+    },
+    "NavCell": {
+      "x-og-kind": "struct",
+      "x-og-module": "nav",
+      "description": "A grid cell.",
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The column."
+        },
+        "y": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The row (0 is the bottom)."
+        },
+        "inside": {
+          "type": "boolean",
+          "description": "Whether the point was on the grid."
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "inside"
+      ],
+      "additionalProperties": false
+    },
+    "PathDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "nav",
+      "description": "A path query.",
+      "type": "object",
+      "properties": {
+        "nav": {
+          "$ref": "#/$defs/Navigation",
+          "description": "The grid or navmesh.",
+          "default": 0
+        },
+        "from": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The start.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "to": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The end.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "algorithm": {
+          "$ref": "#/$defs/NavAlgorithm",
+          "description": "The grid search.",
+          "default": "jps"
+        },
+        "smooth": {
+          "type": "boolean",
+          "description": "Pull a grid path straight where nothing is in the way.",
+          "default": true
+        },
+        "radius": {
+          "type": "number",
+          "description": "Keep this clear of grid walls when smoothing.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 10,
+          "x-og-unit": "m"
+        }
+      },
+      "additionalProperties": false
+    },
+    "NavPath": {
+      "x-og-kind": "struct",
+      "x-og-module": "nav",
+      "description": "A path.",
+      "type": "object",
+      "properties": {
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Vector3"
+          },
+          "description": "Its corners, start and end included."
+        },
+        "length": {
+          "type": "number",
+          "description": "Its length.",
+          "x-og-unit": "m"
+        },
+        "complete": {
+          "type": "boolean",
+          "description": "Whether it reaches the end (false: it stops at the reachable point nearest it)."
+        },
+        "expanded": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Cells or polygons the search took off its open list."
+        },
+        "algorithm": {
+          "type": "string",
+          "description": "What ran: jps, astar or navmesh."
+        }
+      },
+      "required": [
+        "points",
+        "length",
+        "complete",
+        "expanded",
+        "algorithm"
+      ],
+      "additionalProperties": false
+    },
+    "FlowDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "nav",
+      "description": "A flow field over a grid.",
+      "type": "object",
+      "properties": {
+        "grid": {
+          "$ref": "#/$defs/Navigation",
+          "description": "The grid.",
+          "default": 0
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Vector3"
+          },
+          "description": "Where agents go: each point's cell is a target.",
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "NavBox": {
+      "x-og-kind": "desc",
+      "x-og-module": "nav",
+      "description": "An axis-aligned box.",
+      "type": "object",
+      "properties": {
+        "min": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Its lowest corner.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "max": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Its highest corner.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        }
+      },
+      "additionalProperties": false
+    },
+    "NavMeshDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "nav",
+      "description": "A navmesh built at runtime over a flat floor (a procedural level): the floor box, the boxes it carves out, and the agent it is for.",
+      "type": "object",
+      "properties": {
+        "min": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The floor's lowest corner (its y is the floor's height).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "max": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The floor's highest corner.",
+          "default": {
+            "x": 16,
+            "y": 1,
+            "z": 16
+          },
+          "x-og-unit": "m"
+        },
+        "blocked": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/NavBox"
+          },
+          "description": "Boxes standing on the floor (walls, crates).",
+          "default": []
+        },
+        "cellSize": {
+          "type": "number",
+          "description": "The voxel width.",
+          "default": 0.25,
+          "minimum": 0.02,
+          "maximum": 4,
+          "x-og-unit": "m"
+        },
+        "agentRadius": {
+          "type": "number",
+          "description": "Walls are kept this far away.",
+          "default": 0.4,
+          "minimum": 0,
+          "maximum": 10,
+          "x-og-unit": "m"
+        },
+        "agentHeight": {
+          "type": "number",
+          "description": "The agent's height.",
+          "default": 1.8,
+          "minimum": 0.1,
+          "maximum": 20,
+          "x-og-unit": "m"
+        },
+        "tileSize": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Cells per tile side: an obstacle rebuilds the tiles it touches.",
+          "default": 32,
+          "minimum": 8,
+          "maximum": 256
+        }
+      },
+      "additionalProperties": false
+    },
+    "NavMeshInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "nav",
+      "description": "A navmesh's shape.",
+      "type": "object",
+      "properties": {
+        "mesh": {
+          "$ref": "#/$defs/Navigation",
+          "description": "What NavAgent.nav and the queries take."
+        },
+        "polygons": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its convex polygons."
+        },
+        "tiles": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its tiles."
+        },
+        "min": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Its bounds' lowest corner.",
+          "x-og-unit": "m"
+        },
+        "max": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Its bounds' highest corner.",
+          "x-og-unit": "m"
+        },
+        "cellSize": {
+          "type": "number",
+          "description": "Its voxel width.",
+          "x-og-unit": "m"
+        }
+      },
+      "required": [
+        "mesh",
+        "polygons",
+        "tiles",
+        "min",
+        "max",
+        "cellSize"
+      ],
+      "additionalProperties": false
+    },
+    "NavRebuild": {
+      "x-og-kind": "struct",
+      "x-og-module": "nav",
+      "description": "What an obstacle change rebuilt.",
+      "type": "object",
+      "properties": {
+        "tiles": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "description": "The tiles rebuilt, by index."
+        },
+        "polygons": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The navmesh's polygons now."
+        }
+      },
+      "required": [
+        "tiles",
+        "polygons"
+      ],
+      "additionalProperties": false
+    },
+    "Behaviour": {
+      "x-og-kind": "handle",
+      "x-og-module": "ai",
+      "description": "A loaded behaviour tree or state machine.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "AiAgent": {
+      "x-og-kind": "component",
+      "x-og-module": "ai",
+      "description": "An entity that thinks with a behaviour. Give it an og.NavAgent to move and an og.Perception to see and hear.",
+      "type": "object",
+      "properties": {
+        "behaviour": {
+          "$ref": "#/$defs/Behaviour",
+          "description": "The behaviour it runs (og.ai.load); 0 runs nothing.",
+          "default": 0
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Thinks while true.",
+          "default": true
+        },
+        "thinkEvery": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Thinks every this many ticks (1: every tick); agents are staggered by their order.",
+          "default": 1,
+          "minimum": 1,
+          "maximum": 600,
+          "x-og-unit": "ticks"
+        },
+        "status": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "AI_RUNNING, AI_SUCCESS or AI_FAILURE after the last think (0 before the first; written by og.ai).",
+          "default": 0,
+          "readOnly": true
+        },
+        "state": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The state machine's state, an index into BehaviourInfo.states (written by og.ai).",
+          "default": 0,
+          "readOnly": true
+        },
+        "node": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The node it ran last, an index into BehaviourInfo.nodes (written by og.ai).",
+          "default": 0,
+          "readOnly": true
+        },
+        "changes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Times the state or the running node changed (written by og.ai).",
+          "default": 0,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Perception": {
+      "x-og-kind": "component",
+      "x-og-module": "ai",
+      "description": "What an agent sees and hears. It sees the nearest og.Perceivable of another team within `sight`, inside the `fov` cone around `forward` (or the way it last moved), unless a collider is in the way; it hears a spatial sound that starts (og.SoundStarted) or a game noise (og.ai.noise) within `hearing` times its loudness.",
+      "type": "object",
+      "properties": {
+        "sight": {
+          "type": "number",
+          "description": "How far it sees.",
+          "default": 8,
+          "minimum": 0,
+          "maximum": 500,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "fov": {
+          "type": "number",
+          "description": "The width of its view cone (360: all round).",
+          "default": 120,
+          "minimum": 0,
+          "maximum": 360,
+          "x-og-unit": "deg",
+          "x-og-tunable": true
+        },
+        "eyeHeight": {
+          "type": "number",
+          "description": "Its eyes are this far above its position (+y).",
+          "default": 0,
+          "minimum": -10,
+          "maximum": 10,
+          "x-og-unit": "m"
+        },
+        "occlude": {
+          "type": "boolean",
+          "description": "Colliders hide what is behind them.",
+          "default": true
+        },
+        "occluders": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Collision layers that block sight (0: every layer).",
+          "default": 0
+        },
+        "hearing": {
+          "type": "number",
+          "description": "How far it hears a sound of loudness 1 (a source's volume).",
+          "default": 6,
+          "minimum": 0,
+          "maximum": 500,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "memory": {
+          "type": "number",
+          "description": "How long a lost target stays its target.",
+          "default": 3,
+          "minimum": 0,
+          "maximum": 600,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "team": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its team: it perceives og.Perceivable entities of other teams.",
+          "default": 0
+        },
+        "forward": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where it looks; zero: the way it last moved.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "target": {
+          "$ref": "#/$defs/Entity",
+          "description": "What it sees or remembers seeing (written by og.ai).",
+          "default": 0,
+          "readOnly": true
+        },
+        "sees": {
+          "type": "boolean",
+          "description": "It sees the target now (written by og.ai).",
+          "default": false,
+          "readOnly": true
+        },
+        "lastSeen": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where it last saw the target (written by og.ai).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m",
+          "readOnly": true
+        },
+        "sinceSeen": {
+          "type": "number",
+          "description": "Seconds since it last saw a target (written by og.ai; 1e6 before the first time).",
+          "default": 1000000,
+          "x-og-unit": "s",
+          "readOnly": true
+        },
+        "heard": {
+          "type": "boolean",
+          "description": "It heard something this tick (written by og.ai).",
+          "default": false,
+          "readOnly": true
+        },
+        "heardAt": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where it last heard something (written by og.ai).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m",
+          "readOnly": true
+        },
+        "sinceHeard": {
+          "type": "number",
+          "description": "Seconds since it last heard something (written by og.ai; 1e6 before the first time).",
+          "default": 1000000,
+          "x-og-unit": "s",
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Perceivable": {
+      "x-og-kind": "component",
+      "x-og-module": "ai",
+      "description": "Something agents of other teams can see.",
+      "type": "object",
+      "properties": {
+        "team": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its team (agents of the same team ignore it).",
+          "default": 1
+        },
+        "eyeHeight": {
+          "type": "number",
+          "description": "Agents look at a point this far above its position (+y).",
+          "default": 0,
+          "minimum": -10,
+          "maximum": 10,
+          "x-og-unit": "m"
+        }
+      },
+      "additionalProperties": false
+    },
+    "AiChanged": {
+      "x-og-kind": "event",
+      "x-og-module": "ai",
+      "description": "An agent's state or running node changed (systems read it the tick after).",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "The agent."
+        },
+        "state": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its state now."
+        },
+        "node": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The node it runs now."
+        },
+        "status": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "AI_RUNNING, AI_SUCCESS or AI_FAILURE."
+        }
+      },
+      "required": [
+        "entity",
+        "state",
+        "node",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "BehaviourInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "ai",
+      "description": "A loaded behaviour.",
+      "type": "object",
+      "properties": {
+        "behaviour": {
+          "$ref": "#/$defs/Behaviour",
+          "description": "What AiAgent.behaviour takes."
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name."
+        },
+        "kind": {
+          "type": "string",
+          "description": "tree or machine."
+        },
+        "states": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A machine's states, by index (AiAgent.state)."
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Its nodes' names, by index (AiAgent.node)."
+        },
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Its declared blackboard keys."
+        }
+      },
+      "required": [
+        "behaviour",
+        "name",
+        "kind",
+        "states",
+        "nodes",
+        "keys"
+      ],
+      "additionalProperties": false
+    },
+    "NoiseDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ai",
+      "description": "A noise agents may hear next tick.",
+      "type": "object",
+      "properties": {
+        "position": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where it is.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "loudness": {
+          "type": "number",
+          "description": "How loud: heard within Perception.hearing times this.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 100
+        }
+      },
+      "additionalProperties": false
+    },
+    "AiDescription": {
+      "x-og-kind": "struct",
+      "x-og-module": "ai",
+      "description": "What an agent is doing.",
+      "type": "object",
+      "properties": {
+        "behaviour": {
+          "type": "string",
+          "description": "Its behaviour's name."
+        },
+        "kind": {
+          "type": "string",
+          "description": "tree or machine."
+        },
+        "state": {
+          "type": "string",
+          "description": "A machine's state (empty for a tree)."
+        },
+        "node": {
+          "type": "string",
+          "description": "The node it ran last, such as `chase`."
+        },
+        "path": {
+          "type": "string",
+          "description": "The path to it from the root, such as `selector > sequence chase > chase`."
+        },
+        "status": {
+          "type": "string",
+          "description": "running, success or failure."
+        },
+        "blackboard": {
+          "description": "Its blackboard, keys to numbers, booleans, points and entity handles."
+        },
+        "sees": {
+          "type": "boolean",
+          "description": "It sees its target."
+        },
+        "target": {
+          "$ref": "#/$defs/Entity",
+          "description": "Its target (0: none)."
+        }
+      },
+      "required": [
+        "behaviour",
+        "kind",
+        "state",
+        "node",
+        "path",
+        "status",
+        "blackboard",
+        "sees",
+        "target"
       ],
       "additionalProperties": false
     },

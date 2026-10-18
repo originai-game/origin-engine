@@ -1622,3 +1622,105 @@ impl Bundle {
         self.flipbook(id, &self.read(id)?)
     }
 }
+
+// ── E6: behaviours and navmeshes ─────────────────────────────────────────
+
+impl Bundle {
+    /// The validated text of a behaviour blob (`og.Behaviour`); parse it
+    /// with og-ai's `Behaviour::parse`.
+    pub fn behaviour_text(&self, id: &str, bytes: &[u8]) -> Result<String, LoadError> {
+        let blob = self.blob::<format::Behaviour>(id, bytes)?;
+        let meta = one::<format::BehaviourMeta>(&blob)?;
+        let text = blob.raw("text")?;
+        text.get(..meta.text_bytes as usize)
+            .and_then(|t| std::str::from_utf8(t).ok())
+            .map(str::to_string)
+            .ok_or_else(|| invalid(&blob, "the behaviour text is cut short or not UTF-8"))
+    }
+
+    /// Decodes a navmesh blob (`og.NavMesh`): the heightfield and the tiles
+    /// the cook built (link them with `og_nav::NavMesh::from_tiles`).
+    pub fn navmesh(
+        &self,
+        id: &str,
+        bytes: &[u8],
+    ) -> Result<(og_nav::Heightfield, Vec<og_nav::Tile>), LoadError> {
+        let blob = self.blob::<format::NavMesh>(id, bytes)?;
+        let m = one::<format::NavMeshMeta>(&blob)?;
+        let columns = table::<format::NavColumnRow>(&blob, "columns")?;
+        let spans = table::<format::NavSpanRow>(&blob, "spans")?;
+        let tiles = table::<format::NavTileRow>(&blob, "tiles")?;
+        let verts = table::<format::NavVertRow>(&blob, "verts")?;
+        let polys = table::<format::NavPolyRow>(&blob, "polys")?;
+        let index_bytes = blob.raw("poly_verts")?;
+        let indices: Vec<u32> = index_bytes
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|c| u32::from_le_bytes(*c))
+            .collect();
+        if columns.len() != (m.width as usize) * (m.depth as usize) {
+            return Err(invalid(&blob, "the columns do not fit the grid"));
+        }
+        let params = og_nav::NavParams {
+            cell_size: m.cell_size,
+            cell_height: m.cell_height,
+            agent_height: m.agent_height,
+            agent_radius: m.agent_radius,
+            agent_climb: m.agent_climb,
+            max_slope: m.max_slope,
+            tile_size: m.tile_size,
+            max_error: m.max_error,
+        };
+        let field = og_nav::Heightfield {
+            params,
+            origin: glam::Vec3::new(m.origin_x, m.origin_y, m.origin_z),
+            width: m.width,
+            depth: m.depth,
+            columns: columns.iter().map(|c| [c.first, c.count]).collect(),
+            spans: spans
+                .iter()
+                .map(|s| og_nav::Span {
+                    floor: s.floor,
+                    clear: s.clear,
+                })
+                .collect(),
+        };
+        if field
+            .columns
+            .iter()
+            .any(|c| (c[0] + c[1]) as usize > field.spans.len())
+        {
+            return Err(invalid(&blob, "a column's spans are out of range"));
+        }
+        let mut out = Vec::with_capacity(tiles.len());
+        for t in &tiles {
+            let vs = verts
+                .get(t.vert_first as usize..(t.vert_first + t.vert_count) as usize)
+                .ok_or_else(|| invalid(&blob, "a tile's vertices are out of range"))?;
+            let ps = polys
+                .get(t.poly_first as usize..(t.poly_first + t.poly_count) as usize)
+                .ok_or_else(|| invalid(&blob, "a tile's polygons are out of range"))?;
+            let mut tile = og_nav::Tile {
+                verts: vs.iter().map(|v| glam::Vec3::new(v.x, v.y, v.z)).collect(),
+                lattice: vs.iter().map(|v| (v.lx, v.lz)).collect(),
+                polys: Vec::with_capacity(ps.len()),
+            };
+            for p in ps {
+                let idx = indices
+                    .get(p.index_first as usize..(p.index_first + p.index_count) as usize)
+                    .ok_or_else(|| invalid(&blob, "a polygon's vertices are out of range"))?;
+                if idx.len() < 3 || idx.iter().any(|&i| i as usize >= tile.verts.len()) {
+                    return Err(invalid(&blob, "a polygon names a vertex its tile lacks"));
+                }
+                tile.polys.push(og_nav::Poly {
+                    verts: idx.iter().map(|&i| i as u16).collect(),
+                    links: vec![og_nav::mesh::NONE; idx.len()],
+                    region: p.region,
+                });
+            }
+            out.push(tile);
+        }
+        Ok((field, out))
+    }
+}

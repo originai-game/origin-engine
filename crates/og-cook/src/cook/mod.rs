@@ -12,6 +12,7 @@
 
 mod anim;
 mod audio;
+mod e6;
 mod flipbook;
 mod font;
 mod model;
@@ -388,6 +389,8 @@ enum Kind {
     Tileset,
     Tilemap,
     Flipbook,
+    Behaviour,
+    NavMesh,
 }
 
 impl Kind {
@@ -404,6 +407,8 @@ impl Kind {
             Kind::Tileset => "tileset",
             Kind::Tilemap => "tilemap",
             Kind::Flipbook => "flipbook",
+            Kind::Behaviour => "behaviour",
+            Kind::NavMesh => "navmesh",
         }
     }
 }
@@ -431,6 +436,8 @@ enum Work<'a> {
     Tileset(&'a Source),
     Tilemap(&'a Source, tilemap::MapSettings),
     Flipbook(&'a Source),
+    Behaviour(&'a Source),
+    NavMesh(&'a Source),
     Font(&'a Source, FontSettings),
     Scene(&'a Source),
 }
@@ -628,12 +635,14 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     Ok(doc) if doc.ty == "tileset" => Kind::Tileset,
                     Ok(doc) if doc.ty == "tilemap" => Kind::Tilemap,
                     Ok(doc) if doc.ty == "flipbook" => Kind::Flipbook,
+                    Ok(doc) if doc.ty == e6::BEHAVIOUR_TYPE => Kind::Behaviour,
+                    Ok(doc) if doc.ty == e6::NAVMESH_TYPE => Kind::NavMesh,
                     Ok(doc) => {
                         early_errors.push((
                             rel.clone(),
                             "scene",
                             format!(
-                                "an .ogt of type '{}' is not a cookable asset (scene, particles, skin, tileset, tilemap, flipbook or import)",
+                                "an .ogt of type '{}' is not a cookable asset (scene, particles, skin, tileset, tilemap, flipbook, behaviour, navmesh or import)",
                                 doc.ty
                             ),
                         ));
@@ -857,6 +866,20 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                 let deps = flipbook::dependency_hashes(s);
                 let st = stamp(&[b"flipbook", &hash, deps.as_bytes()]);
                 outs.push((s.rel.clone(), format::Flipbook::NAME, st, Work::Flipbook(s)));
+            }
+            Kind::Behaviour => {
+                let st = stamp(&[b"behaviour", &hash]);
+                outs.push((
+                    s.rel.clone(),
+                    format::Behaviour::NAME,
+                    st,
+                    Work::Behaviour(s),
+                ));
+            }
+            Kind::NavMesh => {
+                let deps = e6::navmesh_dependencies(s);
+                let st = stamp(&[b"navmesh", &hash, deps.as_bytes()]);
+                outs.push((s.rel.clone(), format::NavMesh::NAME, st, Work::NavMesh(s)));
             }
             Kind::Font => match font_settings(s, &options.font) {
                 Ok(f) => {
@@ -1202,6 +1225,8 @@ fn run(
             tilemap::cook_tilemap(&s.rel, &s.bytes, m, &|id| known.contains(id), p.stamp)
         }
         Work::Flipbook(s) => flipbook::cook(s, p.stamp),
+        Work::Behaviour(s) => e6::cook_behaviour(s, p.stamp),
+        Work::NavMesh(s) => e6::cook_navmesh(s, p.stamp),
         Work::Font(s, f) => {
             font::cook(&s.bytes, f, threads, p.stamp).map(|(b, n)| (b, vec![n.note]))
         }

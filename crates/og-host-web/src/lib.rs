@@ -31,6 +31,7 @@
 pub mod glue;
 mod audio;
 mod host;
+mod host_e6;
 
 use og_runtime::{Dispatch, Fetch, Hooks};
 use std::cell::RefCell;

@@ -4116,6 +4116,687 @@ module audio {
   }
 }
 
+# ── nav ───────────────────────────────────────────────────────────────────
+
+module nav {
+  doc "Navigation: grids (A* and jump point search with eight-way moves that never cut a blocked corner, line-of-sight smoothing), flow fields for crowds, and navmeshes (baked at cook time from a level's static colliders and models, or built at runtime for a flat procedural level) with funnel paths and box obstacles that rebuild only the tiles they touch."
+  doc "Agents are entities with an og.NavAgent (and an og.Transform): the og.nav system, after the game's systems and before physics, plans their paths, follows them and adds the og.Steering behaviours; an entity with an og.Velocity (a physics body) gets its velocity written, any other its Transform moved. Everything is deterministic and in snapshots: paths, grid edits, obstacles and flow targets."
+  doc "Agents move on the profile's plane: x and y in 2D (a grid's rows run up), x and z in 3D (y kept on grids, from the surface on a navmesh)."
+
+  handle Navigation "A grid, a navmesh or a flow field agents plan on."
+
+  column Navigation {
+    doc "A Navigation handle field."
+    array Uint32Array
+    stride 2
+    value Navigation
+  }
+
+  const NAV_IDLE u32 0 "NavAgent.status: not seeking."
+  const NAV_MOVING u32 1 "NavAgent.status: following a path or a flow field."
+  const NAV_ARRIVED u32 2 "NavAgent.status: within stopDistance of the target."
+  const NAV_UNREACHABLE u32 3 "NavAgent.status: no path reaches the target, or the agent is off its grid or navmesh."
+  const NAV_PARTIAL u32 4 "NavAgent.status: the target is cut off; moving to the reachable point nearest it."
+
+  enum NavAlgorithm {
+    doc "The grid search a path query runs."
+    variant jps "Jump point search: the same optimal paths as A* with fewer nodes; on a grid with weighted cells it runs A*."
+    variant astar "A* over every cell."
+  }
+
+  component NavAgent {
+    doc "An entity that moves itself towards `target` while `seeking`, by a path over `nav` (a grid, navmesh or flow field; 0 goes straight). og.nav re-plans when the target moved more than repathDistance, every repathTicks, or when the grid or navmesh changed, at most 32 plans a tick across agents."
+    field nav Navigation "The grid, navmesh or flow field it plans on (og.nav.grid, og.nav.load, og.nav.flowField); 0 moves straight at the target."
+    field target Vector3 "Where it goes while seeking."
+    field seeking bool "Moves towards the target while true."
+    field speed f32 "Top speed." {
+      default 3.5
+      min 0
+      max 100
+      unit mps
+      tunable true
+    }
+    field acceleration f32 "How fast it changes velocity." {
+      default 20
+      min 0
+      max 1000
+      unit mps2
+      tunable true
+    }
+    field radius f32 "Its radius: grid paths keep this clear of walls; separation uses it." {
+      default 0.4
+      min 0
+      max 10
+      unit m
+      tunable true
+    }
+    field stopDistance f32 "It has arrived within this distance of the target." {
+      default 0.1
+      min 0
+      max 10
+      unit m
+      tunable true
+    }
+    field slowRadius f32 "It slows down inside this distance of the target." {
+      default 1
+      min 0
+      max 20
+      unit m
+      tunable true
+    }
+    field repathTicks u32 "Re-plans this often while seeking (0: only when the target moves)." {
+      default 30
+      min 0
+      max 3600
+      unit ticks
+    }
+    field repathDistance f32 "Re-plans when the target moved farther than this from the last plan." {
+      default 0.5
+      min 0
+      max 100
+      unit m
+    }
+    field smooth bool "Pulls grid paths straight where nothing is in the way." {
+      default true
+    }
+    field faceMovement bool "Turns the entity to face where it moves (3D: about +Y, its +Z forward; 2D: about +Z, its +X forward)."
+    field turnSpeed f32 "How fast it turns when facing its movement." {
+      default 10
+      min 0
+      max 100
+      unit radps
+    }
+    field drive bool "Moves the entity (its og.Velocity, or its og.Transform) while true; false keeps planning but leaves the motion to the game (a knock-back, a stun)." {
+      default true
+    }
+    field status u32 "NAV_IDLE, NAV_MOVING, NAV_ARRIVED, NAV_UNREACHABLE or NAV_PARTIAL (written by og.nav)." {
+      readonly true
+    }
+    field velocity Vector3 "Its velocity (written by og.nav)." {
+      unit mps
+      readonly true
+    }
+    field waypoint Vector3 "The path corner it heads for (written by og.nav)." {
+      unit m
+      readonly true
+    }
+    field remaining f32 "The path length left (written by og.nav)." {
+      unit m
+      readonly true
+    }
+    field plans u32 "Paths planned so far (written by og.nav)." {
+      readonly true
+    }
+  }
+
+  component Steering {
+    doc "Steering behaviours an og.NavAgent adds to its path following, each by weight (0 is off): flee, wander, pursue, evade, separation from other agents and avoidance of colliders ahead (three physics rays)."
+    field seek f32 "Weight of following the path to the target (seek, then arrive at the end)." {
+      default 1
+      min 0
+      max 10
+      tunable true
+    }
+    field flee f32 "Weight of fleeing fleeFrom." {
+      min 0
+      max 10
+      tunable true
+    }
+    field fleeFrom Vector3 "What it flees." {
+      unit m
+    }
+    field fleeRadius f32 "It flees (and evades) only inside this distance (0: always)." {
+      default 6
+      min 0
+      max 100
+      unit m
+      tunable true
+    }
+    field wander f32 "Weight of wandering." {
+      min 0
+      max 10
+      tunable true
+    }
+    field wanderRadius f32 "The wander circle's radius." {
+      default 1
+      min 0
+      max 20
+      unit m
+      tunable true
+    }
+    field wanderDistance f32 "How far ahead the wander circle is." {
+      default 2
+      min 0
+      max 20
+      unit m
+      tunable true
+    }
+    field wanderJitter f32 "How fast the wander point moves round the circle." {
+      default 3
+      min 0
+      max 50
+      unit radps
+      tunable true
+    }
+    field pursue Entity "An entity to pursue (seek where it will be, from its NavAgent or og.Velocity); 0: none."
+    field pursueWeight f32 "Weight of pursuing." {
+      default 1
+      min 0
+      max 10
+      tunable true
+    }
+    field evade Entity "An entity to evade (flee where it will be); 0: none."
+    field evadeWeight f32 "Weight of evading." {
+      default 1
+      min 0
+      max 10
+      tunable true
+    }
+    field separation f32 "Weight of keeping apart from other agents." {
+      min 0
+      max 10
+      tunable true
+    }
+    field separationRadius f32 "Other agents closer than this push it away." {
+      default 1
+      min 0
+      max 20
+      unit m
+      tunable true
+    }
+    field avoidance f32 "Weight of avoiding colliders ahead." {
+      min 0
+      max 10
+      tunable true
+    }
+    field avoidDistance f32 "How far ahead the avoidance rays reach." {
+      default 2
+      min 0
+      max 50
+      unit m
+      tunable true
+    }
+    field avoidMask u32 "Collision layers the avoidance rays hit (0: every layer)."
+    field wanderAngle f32 "The wander angle (written by og.nav)." {
+      unit rad
+      readonly true
+    }
+  }
+
+  struct NavGridDesc {
+    doc "A grid of square cells over the plane: cell (0, 0)'s lower corner at `origin`, rows running up."
+    desc true
+    field width u32 "Cells across." {
+      default 32
+      min 1
+      max 4096
+    }
+    field height u32 "Cells up." {
+      default 32
+      min 1
+      max 4096
+    }
+    field cellSize f32 "A cell's side." {
+      default 1
+      min 0.01
+      max 100
+      unit m
+    }
+    field origin Vector2 "Where cell (0, 0)'s lower corner is (x, y in 2D; x, z in 3D)." {
+      unit m
+    }
+    field costs List.u32 "Row-major cell costs from row 0 (0 blocked, 1 normal, up to 255 to avoid); empty: every cell 1."
+  }
+
+  struct TilemapGridDesc {
+    doc "A grid over a placed og.Tilemap: one cell per map cell, blocked where a collision layer has a solid tile."
+    desc true
+    field entity Entity "The entity with the og.Tilemap."
+    field layers List.String "The layers whose solid tiles block; empty: every collision layer."
+    field inflate u32 "Also block this many cells around each blocked one (wide agents)." {
+      max 8
+    }
+  }
+
+  struct NavCell {
+    doc "A grid cell."
+    field x u32 "The column."
+    field y u32 "The row (0 is the bottom)."
+    field inside bool "Whether the point was on the grid."
+  }
+
+  struct PathDesc {
+    doc "A path query."
+    desc true
+    field nav Navigation "The grid or navmesh."
+    field from Vector3 "The start." {
+      unit m
+    }
+    field to Vector3 "The end." {
+      unit m
+    }
+    field algorithm NavAlgorithm "The grid search."
+    field smooth bool "Pull a grid path straight where nothing is in the way." {
+      default true
+    }
+    field radius f32 "Keep this clear of grid walls when smoothing." {
+      min 0
+      max 10
+      unit m
+    }
+  }
+
+  struct NavPath {
+    doc "A path."
+    field points List.Vector3 "Its corners, start and end included."
+    field length f32 "Its length." {
+      unit m
+    }
+    field complete bool "Whether it reaches the end (false: it stops at the reachable point nearest it)."
+    field expanded u32 "Cells or polygons the search took off its open list."
+    field algorithm String "What ran: jps, astar or navmesh."
+  }
+
+  struct FlowDesc {
+    doc "A flow field over a grid."
+    desc true
+    field grid Navigation "The grid."
+    field targets List.Vector3 "Where agents go: each point's cell is a target."
+  }
+
+  struct NavBox {
+    doc "An axis-aligned box."
+    desc true
+    field min Vector3 "Its lowest corner." {
+      unit m
+    }
+    field max Vector3 "Its highest corner." {
+      unit m
+    }
+  }
+
+  struct NavMeshDesc {
+    doc "A navmesh built at runtime over a flat floor (a procedural level): the floor box, the boxes it carves out, and the agent it is for."
+    desc true
+    field min Vector3 "The floor's lowest corner (its y is the floor's height)." {
+      unit m
+    }
+    field max Vector3 "The floor's highest corner." {
+      default 16 1 16
+      unit m
+    }
+    field blocked List.NavBox "Boxes standing on the floor (walls, crates)."
+    field cellSize f32 "The voxel width." {
+      default 0.25
+      min 0.02
+      max 4
+      unit m
+    }
+    field agentRadius f32 "Walls are kept this far away." {
+      default 0.4
+      min 0
+      max 10
+      unit m
+    }
+    field agentHeight f32 "The agent's height." {
+      default 1.8
+      min 0.1
+      max 20
+      unit m
+    }
+    field tileSize u32 "Cells per tile side: an obstacle rebuilds the tiles it touches." {
+      default 32
+      min 8
+      max 256
+    }
+  }
+
+  struct NavMeshInfo {
+    doc "A navmesh's shape."
+    field mesh Navigation "What NavAgent.nav and the queries take."
+    field polygons u32 "Its convex polygons."
+    field tiles u32 "Its tiles."
+    field min Vector3 "Its bounds' lowest corner." {
+      unit m
+    }
+    field max Vector3 "Its bounds' highest corner." {
+      unit m
+    }
+    field cellSize f32 "Its voxel width." {
+      unit m
+    }
+  }
+
+  struct NavRebuild {
+    doc "What an obstacle change rebuilt."
+    field tiles List.u32 "The tiles rebuilt, by index."
+    field polygons u32 "The navmesh's polygons now."
+  }
+
+  fn grid {
+    doc "A grid agents and path queries plan on. Runtime edits (og.nav.setCost) are world state."
+    param world World "The world."
+    param desc NavGridDesc "Its size, cell size, origin and costs."
+    returns Result.Navigation "Refused for costs of the wrong length."
+  }
+
+  fn gridFromTilemap {
+    doc "A grid over a placed map: its cells, its world position (the map's top-left corner at the entity), blocked where the collision layers have solid tiles. Edits to the map later do not follow; build another."
+    param world World "The world."
+    param desc TilemapGridDesc "The map's entity and the blocking layers."
+    returns Result.Navigation "Refused for an entity without an og.Tilemap or a map not loaded."
+  }
+
+  fn setCost {
+    doc "Change a grid cell's cost (0 blocks it): agents on the grid re-plan, flow fields over it rebuild."
+    param world World "The world."
+    param grid Navigation "The grid."
+    param x u32 "The column."
+    param y u32 "The row (0 is the bottom)."
+    param cost u32 "0 blocked, 1 normal, up to 255."
+    returns Result.Void "Refused for an unknown grid or a cell outside it."
+  }
+
+  fn cellAt {
+    doc "The grid cell under a world point."
+    param world World "The world."
+    param grid Navigation "The grid."
+    param point Vector3 "A world point."
+    returns NavCell
+  }
+
+  fn findPath {
+    doc "A path between two points on a grid or a navmesh, now: corners, length and whether it reaches the end."
+    param world World "The world."
+    param desc PathDesc "The grid or navmesh and the two points."
+    returns Result.NavPath "Refused for an unknown grid or navmesh, or when no path starts (an end off the grid or mesh)."
+  }
+
+  fn flowField {
+    doc "A flow field towards targets over a grid: one Dijkstra pass gives every cell a direction, so any number of agents (NavAgent.nav = the field) steer by a lookup. It rebuilds when the grid changes."
+    param world World "The world."
+    param desc FlowDesc "The grid and the targets."
+    returns Result.Navigation "Refused for an unknown grid."
+  }
+
+  fn setFlowTargets {
+    doc "Move a flow field's targets (rebuilds it)."
+    param world World "The world."
+    param field Navigation "The flow field."
+    param targets List.Vector3 "The new targets."
+    returns Result.Void "Refused for an unknown flow field."
+  }
+
+  fn flowAt {
+    doc "The direction a flow field gives at a point (unit length, or zero at a target or where nothing is reachable)."
+    param world World "The world."
+    param field Navigation "The flow field."
+    param point Vector3 "A world point."
+    returns Vector3
+  }
+
+  fn load {
+    doc "A cooked navmesh: an `.ogt` of `type navmesh` (a scene, the boxes and the agent) baked by og cook from the scene's static colliders and models."
+    param world World "The world."
+    param path String "The navmesh asset, such as `levels/arena.nav.ogt`."
+    returns Result.NavMeshInfo "Refused for a path that is not a cooked navmesh."
+  }
+
+  fn build {
+    doc "A navmesh over a flat floor with boxes carved out, built now: for procedural levels (a level with slopes and stairs is baked at cook time with og.nav.load)."
+    param world World "The world."
+    param desc NavMeshDesc "The floor, the boxes and the agent."
+    returns Result.NavMeshInfo "Refused for an empty floor."
+  }
+
+  fn setObstacle {
+    doc "Set, move or (with no box) remove an obstacle on a navmesh: the spans under the box (grown by the agent radius) are blocked and only the tiles it touches, and their neighbours, are rebuilt. Agents on the mesh re-plan. World state."
+    param world World "The world."
+    param mesh Navigation "The navmesh."
+    param id u32 "The obstacle's id, the game's own (a door's number)."
+    param obstacle NavBox "The box; omitted removes the obstacle." {
+      optional true
+    }
+    returns Result.NavRebuild "Refused for an unknown navmesh."
+  }
+
+  fn nearest {
+    doc "The point on a navmesh nearest a world point, within `extent` (half sizes)."
+    param world World "The world."
+    param mesh Navigation "The navmesh."
+    param point Vector3 "A world point."
+    param extent Vector3 "The search box's half sizes; zero: 2 2 2." {
+      optional true
+    }
+    returns Option.Vector3 "Null when no polygon is within the box."
+  }
+
+  fn pathOf {
+    doc "The path an agent follows now (its corners from where it planned), for debugging and playtests; `dump_nav:<entity>` writes the same."
+    param world World "The world."
+    param entity Entity "An entity with an og.NavAgent."
+    returns Option.NavPath "Null for an entity that has not planned."
+  }
+}
+
+# ── ai ────────────────────────────────────────────────────────────────────
+
+module ai {
+  doc "Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (crates/og-ai/README.md has the grammar), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent."
+  doc "An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent (og.nav plans and walks after the game's systems) or runs one of the game's commands (GameDesc.commands, with the agent's entity handle as its first argument) before the next tick."
+  doc "Conditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`). Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard."
+
+  handle Behaviour "A loaded behaviour tree or state machine."
+
+  column Behaviour {
+    doc "A Behaviour handle field."
+    array Uint32Array
+    stride 2
+    value Behaviour
+  }
+
+  const AI_RUNNING u32 1 "AiAgent.status: the tree or state is still running."
+  const AI_SUCCESS u32 2 "AiAgent.status: the tree succeeded on the last think."
+  const AI_FAILURE u32 3 "AiAgent.status: the tree failed on the last think."
+
+  component AiAgent {
+    doc "An entity that thinks with a behaviour. Give it an og.NavAgent to move and an og.Perception to see and hear."
+    field behaviour Behaviour "The behaviour it runs (og.ai.load); 0 runs nothing."
+    field active bool "Thinks while true." {
+      default true
+    }
+    field thinkEvery u32 "Thinks every this many ticks (1: every tick); agents are staggered by their order." {
+      default 1
+      min 1
+      max 600
+      unit ticks
+    }
+    field status u32 "AI_RUNNING, AI_SUCCESS or AI_FAILURE after the last think (0 before the first; written by og.ai)." {
+      readonly true
+    }
+    field state u32 "The state machine's state, an index into BehaviourInfo.states (written by og.ai)." {
+      readonly true
+    }
+    field node u32 "The node it ran last, an index into BehaviourInfo.nodes (written by og.ai)." {
+      readonly true
+    }
+    field changes u32 "Times the state or the running node changed (written by og.ai)." {
+      readonly true
+    }
+  }
+
+  component Perception {
+    doc "What an agent sees and hears. It sees the nearest og.Perceivable of another team within `sight`, inside the `fov` cone around `forward` (or the way it last moved), unless a collider is in the way; it hears a spatial sound that starts (og.SoundStarted) or a game noise (og.ai.noise) within `hearing` times its loudness."
+    field sight f32 "How far it sees." {
+      default 8
+      min 0
+      max 500
+      unit m
+      tunable true
+    }
+    field fov f32 "The width of its view cone (360: all round)." {
+      default 120
+      min 0
+      max 360
+      unit deg
+      tunable true
+    }
+    field eyeHeight f32 "Its eyes are this far above its position (+y)." {
+      min -10
+      max 10
+      unit m
+    }
+    field occlude bool "Colliders hide what is behind them." {
+      default true
+    }
+    field occluders u32 "Collision layers that block sight (0: every layer)."
+    field hearing f32 "How far it hears a sound of loudness 1 (a source's volume)." {
+      default 6
+      min 0
+      max 500
+      unit m
+      tunable true
+    }
+    field memory f32 "How long a lost target stays its target." {
+      default 3
+      min 0
+      max 600
+      unit s
+      tunable true
+    }
+    field team u32 "Its team: it perceives og.Perceivable entities of other teams."
+    field forward Vector3 "Where it looks; zero: the way it last moved."
+    field target Entity "What it sees or remembers seeing (written by og.ai)." {
+      readonly true
+    }
+    field sees bool "It sees the target now (written by og.ai)." {
+      readonly true
+    }
+    field lastSeen Vector3 "Where it last saw the target (written by og.ai)." {
+      unit m
+      readonly true
+    }
+    field sinceSeen f32 "Seconds since it last saw a target (written by og.ai; 1e6 before the first time)." {
+      default 1000000
+      unit s
+      readonly true
+    }
+    field heard bool "It heard something this tick (written by og.ai)." {
+      readonly true
+    }
+    field heardAt Vector3 "Where it last heard something (written by og.ai)." {
+      unit m
+      readonly true
+    }
+    field sinceHeard f32 "Seconds since it last heard something (written by og.ai; 1e6 before the first time)." {
+      default 1000000
+      unit s
+      readonly true
+    }
+  }
+
+  component Perceivable {
+    doc "Something agents of other teams can see."
+    field team u32 "Its team (agents of the same team ignore it)." {
+      default 1
+    }
+    field eyeHeight f32 "Agents look at a point this far above its position (+y)." {
+      min -10
+      max 10
+      unit m
+    }
+  }
+
+  event AiChanged {
+    doc "An agent's state or running node changed (systems read it the tick after)."
+    field entity Entity "The agent."
+    field state u32 "Its state now."
+    field node u32 "The node it runs now."
+    field status u32 "AI_RUNNING, AI_SUCCESS or AI_FAILURE."
+  }
+
+  struct BehaviourInfo {
+    doc "A loaded behaviour."
+    field behaviour Behaviour "What AiAgent.behaviour takes."
+    field name String "Its name."
+    field kind String "tree or machine."
+    field states List.String "A machine's states, by index (AiAgent.state)."
+    field nodes List.String "Its nodes' names, by index (AiAgent.node)."
+    field keys List.String "Its declared blackboard keys."
+  }
+
+  struct NoiseDesc {
+    doc "A noise agents may hear next tick."
+    desc true
+    field position Vector3 "Where it is." {
+      unit m
+    }
+    field loudness f32 "How loud: heard within Perception.hearing times this." {
+      default 1
+      min 0
+      max 100
+    }
+  }
+
+  struct AiDescription {
+    doc "What an agent is doing."
+    field behaviour String "Its behaviour's name."
+    field kind String "tree or machine."
+    field state String "A machine's state (empty for a tree)."
+    field node String "The node it ran last, such as `chase`."
+    field path String "The path to it from the root, such as `selector > sequence chase > chase`."
+    field status String "running, success or failure."
+    field blackboard Json "Its blackboard, keys to numbers, booleans, points and entity handles."
+    field sees bool "It sees its target."
+    field target Entity "Its target (0: none)."
+  }
+
+  fn load {
+    doc "A cooked behaviour (an `.ogt` of `type behaviour`, validated by og cook)."
+    param world World "The world."
+    param path String "The behaviour asset, such as `ai/slime.ogt`."
+    returns Result.BehaviourInfo "Refused for a path that is not a cooked behaviour."
+  }
+
+  fn parse {
+    doc "A behaviour from text, now (tests and generated behaviours; assets go through og cook)."
+    param world World "The world."
+    param text String "The behaviour's `.ogt` text."
+    returns Result.BehaviourInfo "Refused with the first error's line and the fix."
+  }
+
+  fn get {
+    doc "A blackboard value of an agent as of its last think."
+    param world World "The world."
+    param entity Entity "The agent."
+    param key String "The key."
+    returns Json "A number, a boolean, a point `{x, y, z}`, an entity handle, or null for an unknown key or an agent that has not thought."
+  }
+
+  fn set {
+    doc "Set a blackboard value of an agent: a number, a boolean, a point `{x, y, z}` or an entity handle `{entity}`."
+    param world World "The world."
+    param entity Entity "The agent."
+    param key String "The key; built-in keys are refused."
+    param value Json "The value."
+    returns Result.Void "Refused for an agent that has not thought yet, a built-in key or another kind of value."
+  }
+
+  fn noise {
+    doc "Make a noise agents may hear next tick (a gunshot, a door, a thrown stone)."
+    param world World "The world."
+    param desc NoiseDesc "Where and how loud."
+    returns Result.Void "Refused for a world without og.ai."
+  }
+
+  fn describe {
+    doc "What an agent is doing: its state, the node it runs and the path to it, its status, its blackboard and its target."
+    param world World "The world."
+    param entity Entity "The agent."
+    returns Option.AiDescription "Null for an entity that has not thought."
+  }
+}
+
 # ── ui ────────────────────────────────────────────────────────────────────
 
 module ui {

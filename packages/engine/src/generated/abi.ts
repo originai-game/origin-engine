@@ -273,6 +273,44 @@ export interface HostAbi<A, V> {
   og_tilemap_cell_at(world: number, entity: number, point: string): string;
   /** `og.tilemap.cellCenter` */
   og_tilemap_cell_center(world: number, entity: number, x: number, y: number): string;
+  /** `og.nav.grid` */
+  og_nav_grid(world: number, desc: string | undefined): string;
+  /** `og.nav.gridFromTilemap` */
+  og_nav_grid_from_tilemap(world: number, desc: string | undefined): string;
+  /** `og.nav.setCost` */
+  og_nav_set_cost(world: number, grid: number, x: number, y: number, cost: number): string;
+  /** `og.nav.cellAt` */
+  og_nav_cell_at(world: number, grid: number, point: string): string;
+  /** `og.nav.findPath` */
+  og_nav_find_path(world: number, desc: string | undefined): string;
+  /** `og.nav.flowField` */
+  og_nav_flow_field(world: number, desc: string | undefined): string;
+  /** `og.nav.setFlowTargets` */
+  og_nav_set_flow_targets(world: number, field: number, targets: string): string;
+  /** `og.nav.flowAt` */
+  og_nav_flow_at(world: number, field: number, point: string): string;
+  /** `og.nav.load` */
+  og_nav_load(world: number, path: string): string;
+  /** `og.nav.build` */
+  og_nav_build(world: number, desc: string | undefined): string;
+  /** `og.nav.setObstacle` */
+  og_nav_set_obstacle(world: number, mesh: number, id: number, obstacle: string | undefined): string;
+  /** `og.nav.nearest` */
+  og_nav_nearest(world: number, mesh: number, point: string, extent: string | undefined): string;
+  /** `og.nav.pathOf` */
+  og_nav_path_of(world: number, entity: number): string;
+  /** `og.ai.load` */
+  og_ai_load(world: number, path: string): string;
+  /** `og.ai.parse` */
+  og_ai_parse(world: number, text: string): string;
+  /** `og.ai.get` */
+  og_ai_get(world: number, entity: number, key: string): string;
+  /** `og.ai.set` */
+  og_ai_set(world: number, entity: number, key: string, value: string): string;
+  /** `og.ai.noise` */
+  og_ai_noise(world: number, desc: string | undefined): string;
+  /** `og.ai.describe` */
+  og_ai_describe(world: number, entity: number): string;
   /** `og.ui.configure` */
   og_ui_configure(world: number, desc: string | undefined): string;
   /** `og.ui.viewport` */
@@ -579,6 +617,25 @@ export const SYMBOLS: readonly string[] = [
   "og_tilemap_get_tile",
   "og_tilemap_cell_at",
   "og_tilemap_cell_center",
+  "og_nav_grid",
+  "og_nav_grid_from_tilemap",
+  "og_nav_set_cost",
+  "og_nav_cell_at",
+  "og_nav_find_path",
+  "og_nav_flow_field",
+  "og_nav_set_flow_targets",
+  "og_nav_flow_at",
+  "og_nav_load",
+  "og_nav_build",
+  "og_nav_set_obstacle",
+  "og_nav_nearest",
+  "og_nav_path_of",
+  "og_ai_load",
+  "og_ai_parse",
+  "og_ai_get",
+  "og_ai_set",
+  "og_ai_noise",
+  "og_ai_describe",
   "og_ui_configure",
   "og_ui_viewport",
   "og_ui_theme",

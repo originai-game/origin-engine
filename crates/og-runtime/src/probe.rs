@@ -253,6 +253,7 @@ pub(crate) fn set_reloader(eng: &Rc<Engine>) {
 /// systems, commands, facts) when the probe swapped the world, and drops it
 /// when the probe kept the old bundle.
 pub(crate) fn after_reload(eng: &Engine, swapped: bool) {
+    super::e6::after_reload(eng.id, swapped);
     let Some(a) = eng.state.borrow_mut().reloaded.take() else {
         return;
     };

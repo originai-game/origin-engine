@@ -807,6 +807,120 @@ pub fn og_tilemap_cell_center(env: Env, world: u32, entity: f64, x: u32, y: u32)
     <Host as TilemapApi>::og_tilemap_cell_center(&Host, world, entity, x, y)
 }
 
+#[napi(js_name = "og_nav_grid")]
+pub fn og_nav_grid(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as NavApi>::og_nav_grid(&Host, world, desc)
+}
+
+#[napi(js_name = "og_nav_grid_from_tilemap")]
+pub fn og_nav_grid_from_tilemap(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as NavApi>::og_nav_grid_from_tilemap(&Host, world, desc)
+}
+
+#[napi(js_name = "og_nav_set_cost")]
+pub fn og_nav_set_cost(env: Env, world: u32, grid: f64, x: u32, y: u32, cost: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as NavApi>::og_nav_set_cost(&Host, world, grid, x, y, cost)
+}
+
+#[napi(js_name = "og_nav_cell_at")]
+pub fn og_nav_cell_at(env: Env, world: u32, grid: f64, point: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as NavApi>::og_nav_cell_at(&Host, world, grid, point)
+}
+
+#[napi(js_name = "og_nav_find_path")]
+pub fn og_nav_find_path(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as NavApi>::og_nav_find_path(&Host, world, desc)
+}
+
+#[napi(js_name = "og_nav_flow_field")]
+pub fn og_nav_flow_field(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as NavApi>::og_nav_flow_field(&Host, world, desc)
+}
+
+#[napi(js_name = "og_nav_set_flow_targets")]
+pub fn og_nav_set_flow_targets(env: Env, world: u32, field: f64, targets: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as NavApi>::og_nav_set_flow_targets(&Host, world, field, targets)
+}
+
+#[napi(js_name = "og_nav_flow_at")]
+pub fn og_nav_flow_at(env: Env, world: u32, field: f64, point: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as NavApi>::og_nav_flow_at(&Host, world, field, point)
+}
+
+#[napi(js_name = "og_nav_load")]
+pub fn og_nav_load(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as NavApi>::og_nav_load(&Host, world, path)
+}
+
+#[napi(js_name = "og_nav_build")]
+pub fn og_nav_build(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as NavApi>::og_nav_build(&Host, world, desc)
+}
+
+#[napi(js_name = "og_nav_set_obstacle")]
+pub fn og_nav_set_obstacle(env: Env, world: u32, mesh: f64, id: u32, obstacle: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as NavApi>::og_nav_set_obstacle(&Host, world, mesh, id, obstacle)
+}
+
+#[napi(js_name = "og_nav_nearest")]
+pub fn og_nav_nearest(env: Env, world: u32, mesh: f64, point: String, extent: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as NavApi>::og_nav_nearest(&Host, world, mesh, point, extent)
+}
+
+#[napi(js_name = "og_nav_path_of")]
+pub fn og_nav_path_of(env: Env, world: u32, entity: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as NavApi>::og_nav_path_of(&Host, world, entity)
+}
+
+#[napi(js_name = "og_ai_load")]
+pub fn og_ai_load(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as AiApi>::og_ai_load(&Host, world, path)
+}
+
+#[napi(js_name = "og_ai_parse")]
+pub fn og_ai_parse(env: Env, world: u32, text: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as AiApi>::og_ai_parse(&Host, world, text)
+}
+
+#[napi(js_name = "og_ai_get")]
+pub fn og_ai_get(env: Env, world: u32, entity: f64, key: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as AiApi>::og_ai_get(&Host, world, entity, key)
+}
+
+#[napi(js_name = "og_ai_set")]
+pub fn og_ai_set(env: Env, world: u32, entity: f64, key: String, value: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as AiApi>::og_ai_set(&Host, world, entity, key, value)
+}
+
+#[napi(js_name = "og_ai_noise")]
+pub fn og_ai_noise(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as AiApi>::og_ai_noise(&Host, world, desc)
+}
+
+#[napi(js_name = "og_ai_describe")]
+pub fn og_ai_describe(env: Env, world: u32, entity: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as AiApi>::og_ai_describe(&Host, world, entity)
+}
+
 #[napi(js_name = "og_ui_configure")]
 pub fn og_ui_configure(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);

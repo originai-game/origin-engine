@@ -755,3 +755,110 @@ impl BlobKind for Flipbook {
         vec![FlipbookMeta::schema()]
     }
 }
+
+// ── E6: behaviours and navmeshes ─────────────────────────────────────────
+
+row!(
+    /// The root of a behaviour blob (an `.ogt` of `type behaviour`).
+    BehaviourMeta, "og.Behaviour", 1 {
+        /// Bytes of the validated behaviour text in `text`.
+        text_bytes: u32,
+    }
+);
+
+/// The behaviour blob: `text` holds the behaviour file the cook validated
+/// (og-ai's `Behaviour::parse`), parsed again at load.
+pub struct Behaviour;
+impl BlobKind for Behaviour {
+    const NAME: &'static str = "og.Behaviour";
+    fn schemas() -> Vec<Schema> {
+        vec![BehaviourMeta::schema()]
+    }
+}
+
+row!(
+    /// The root of a navmesh blob (an `.ogt` of `type navmesh`): the
+    /// heightfield's grid and the agent it was baked for.
+    NavMeshMeta, "og.NavMesh", 1 {
+        cell_size: f32,
+        cell_height: f32,
+        agent_height: f32,
+        agent_radius: f32,
+        agent_climb: f32,
+        max_slope: f32,
+        tile_size: u32,
+        max_error: f32,
+        origin_x: f32,
+        origin_y: f32,
+        origin_z: f32,
+        width: u32,
+        depth: u32,
+        tiles: u32,
+    }
+);
+
+row!(
+    /// One column of the heightfield: its first span and span count.
+    NavColumnRow, "og.NavMesh.column", 1 {
+        first: u32,
+        count: u32,
+    }
+);
+
+row!(
+    /// One walkable floor: its height and the headroom above it, in cell heights.
+    NavSpanRow, "og.NavMesh.span", 1 {
+        floor: u32,
+        clear: u32,
+    }
+);
+
+row!(
+    /// One tile: its vertices and polygons, as ranges of `verts` and `polys`.
+    NavTileRow, "og.NavMesh.tile", 1 {
+        vert_first: u32,
+        vert_count: u32,
+        poly_first: u32,
+        poly_count: u32,
+    }
+);
+
+row!(
+    /// One tile vertex: world position and lattice coordinates.
+    NavVertRow, "og.NavMesh.vert", 1 {
+        x: f32,
+        y: f32,
+        z: f32,
+        lx: i32,
+        lz: i32,
+    }
+);
+
+row!(
+    /// One polygon: its vertex indices as a range of `poly_verts` (u32,
+    /// into its tile's vertices), and its region.
+    NavPolyRow, "og.NavMesh.poly", 1 {
+        index_first: u32,
+        index_count: u32,
+        region: u32,
+    }
+);
+
+/// The navmesh blob: `meta`, `columns` and `spans` (the walkable
+/// heightfield, so obstacles can rebuild tiles at runtime), and the tiles
+/// the cook built: `tiles`, `verts`, `polys`, `poly_verts` (u32). Links are
+/// made at load.
+pub struct NavMesh;
+impl BlobKind for NavMesh {
+    const NAME: &'static str = "og.NavMesh";
+    fn schemas() -> Vec<Schema> {
+        vec![
+            NavMeshMeta::schema(),
+            NavColumnRow::schema(),
+            NavSpanRow::schema(),
+            NavTileRow::schema(),
+            NavVertRow::schema(),
+            NavPolyRow::schema(),
+        ]
+    }
+}

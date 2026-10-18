@@ -674,6 +674,101 @@ pub fn og_tilemap_cell_center(world: u32, entity: f64, x: u32, y: u32) -> String
 }
 
 #[wasm_bindgen]
+pub fn og_nav_grid(world: u32, desc: Option<String>) -> String {
+    <Host as NavApi>::og_nav_grid(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_nav_grid_from_tilemap(world: u32, desc: Option<String>) -> String {
+    <Host as NavApi>::og_nav_grid_from_tilemap(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_nav_set_cost(world: u32, grid: f64, x: u32, y: u32, cost: u32) -> String {
+    <Host as NavApi>::og_nav_set_cost(&Host, world, grid, x, y, cost)
+}
+
+#[wasm_bindgen]
+pub fn og_nav_cell_at(world: u32, grid: f64, point: String) -> String {
+    <Host as NavApi>::og_nav_cell_at(&Host, world, grid, point)
+}
+
+#[wasm_bindgen]
+pub fn og_nav_find_path(world: u32, desc: Option<String>) -> String {
+    <Host as NavApi>::og_nav_find_path(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_nav_flow_field(world: u32, desc: Option<String>) -> String {
+    <Host as NavApi>::og_nav_flow_field(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_nav_set_flow_targets(world: u32, field: f64, targets: String) -> String {
+    <Host as NavApi>::og_nav_set_flow_targets(&Host, world, field, targets)
+}
+
+#[wasm_bindgen]
+pub fn og_nav_flow_at(world: u32, field: f64, point: String) -> String {
+    <Host as NavApi>::og_nav_flow_at(&Host, world, field, point)
+}
+
+#[wasm_bindgen]
+pub fn og_nav_load(world: u32, path: String) -> String {
+    <Host as NavApi>::og_nav_load(&Host, world, path)
+}
+
+#[wasm_bindgen]
+pub fn og_nav_build(world: u32, desc: Option<String>) -> String {
+    <Host as NavApi>::og_nav_build(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_nav_set_obstacle(world: u32, mesh: f64, id: u32, obstacle: Option<String>) -> String {
+    <Host as NavApi>::og_nav_set_obstacle(&Host, world, mesh, id, obstacle)
+}
+
+#[wasm_bindgen]
+pub fn og_nav_nearest(world: u32, mesh: f64, point: String, extent: Option<String>) -> String {
+    <Host as NavApi>::og_nav_nearest(&Host, world, mesh, point, extent)
+}
+
+#[wasm_bindgen]
+pub fn og_nav_path_of(world: u32, entity: f64) -> String {
+    <Host as NavApi>::og_nav_path_of(&Host, world, entity)
+}
+
+#[wasm_bindgen]
+pub fn og_ai_load(world: u32, path: String) -> String {
+    <Host as AiApi>::og_ai_load(&Host, world, path)
+}
+
+#[wasm_bindgen]
+pub fn og_ai_parse(world: u32, text: String) -> String {
+    <Host as AiApi>::og_ai_parse(&Host, world, text)
+}
+
+#[wasm_bindgen]
+pub fn og_ai_get(world: u32, entity: f64, key: String) -> String {
+    <Host as AiApi>::og_ai_get(&Host, world, entity, key)
+}
+
+#[wasm_bindgen]
+pub fn og_ai_set(world: u32, entity: f64, key: String, value: String) -> String {
+    <Host as AiApi>::og_ai_set(&Host, world, entity, key, value)
+}
+
+#[wasm_bindgen]
+pub fn og_ai_noise(world: u32, desc: Option<String>) -> String {
+    <Host as AiApi>::og_ai_noise(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ai_describe(world: u32, entity: f64) -> String {
+    <Host as AiApi>::og_ai_describe(&Host, world, entity)
+}
+
+#[wasm_bindgen]
 pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
     <Host as UiApi>::og_ui_configure(&Host, world, desc)
 }

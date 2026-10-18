@@ -148,6 +148,10 @@ export interface ColumnKinds {
   TilemapAsset: { readonly array: Uint32Array; readonly stride: 2; readonly value: TilemapAsset };
   /** An AudioBus field: the variant's index. */
   AudioBus: { readonly array: Uint32Array; readonly stride: 1; readonly value: AudioBus };
+  /** A Navigation handle field. */
+  Navigation: { readonly array: Uint32Array; readonly stride: 2; readonly value: Navigation };
+  /** A Behaviour handle field. */
+  Behaviour: { readonly array: Uint32Array; readonly stride: 2; readonly value: Behaviour };
 }
 
 // ── math ────────────────────────────────────────────────────────
@@ -6459,6 +6463,904 @@ export interface SoundEnded {
   readonly reason: number;
 }
 
+// ── nav ─────────────────────────────────────────────────────────
+// Navigation: grids (A* and jump point search with eight-way moves that never cut a blocked corner, line-of-sight smoothing), flow fields for crowds, and navmeshes (baked at cook time from a level's static colliders and models, or built at runtime for a flat procedural level) with funnel paths and box obstacles that rebuild only the tiles they touch.
+// Agents are entities with an og.NavAgent (and an og.Transform): the og.nav system, after the game's systems and before physics, plans their paths, follows them and adds the og.Steering behaviours; an entity with an og.Velocity (a physics body) gets its velocity written, any other its Transform moved. Everything is deterministic and in snapshots: paths, grid edits, obstacles and flow targets.
+// Agents move on the profile's plane: x and y in 2D (a grid's rows run up), x and z in 3D (y kept on grids, from the surface on a navmesh).
+
+/**
+ * A grid, a navmesh or a flow field agents plan on.
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type Navigation = number & { readonly [handleType]: "Navigation" };
+
+/**
+ * A Navigation handle field.
+ *
+ * A `Navigation` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function Navigation(value?: Navigation, options?: FieldOptions): FieldSpec<"Navigation">;
+
+/** NavAgent.status: not seeking. */
+export declare const NAV_IDLE: 0;
+
+/** NavAgent.status: following a path or a flow field. */
+export declare const NAV_MOVING: 1;
+
+/** NavAgent.status: within stopDistance of the target. */
+export declare const NAV_ARRIVED: 2;
+
+/** NavAgent.status: no path reaches the target, or the agent is off its grid or navmesh. */
+export declare const NAV_UNREACHABLE: 3;
+
+/** NavAgent.status: the target is cut off; moving to the reachable point nearest it. */
+export declare const NAV_PARTIAL: 4;
+
+/**
+ * The grid search a path query runs.
+ * - `"jps"`: Jump point search: the same optimal paths as A* with fewer nodes; on a grid with weighted cells it runs A*.
+ * - `"astar"`: A* over every cell.
+ */
+export type NavAlgorithm = "jps" | "astar";
+
+/**
+ * An entity that moves itself towards `target` while `seeking`, by a path over `nav` (a grid, navmesh or flow field; 0 goes straight). og.nav re-plans when the target moved more than repathDistance, every repathTicks, or when the grid or navmesh changed, at most 32 plans a tick across agents.
+ *
+ * The value of the `NavAgent` component (token `og.NavAgent`).
+ */
+export interface NavAgent {
+  /**
+   * The grid, navmesh or flow field it plans on (og.nav.grid, og.nav.load, og.nav.flowField); 0 moves straight at the target.
+   */
+  nav: Navigation;
+  /** Where it goes while seeking. */
+  target: Vector3;
+  /** Moves towards the target while true. */
+  seeking: boolean;
+  /**
+   * Top speed.
+   *
+   * @default 3.5
+   * @range 0..100
+   * @unit mps (metres per second)
+   * @tunable
+   */
+  speed: number;
+  /**
+   * How fast it changes velocity.
+   *
+   * @default 20
+   * @range 0..1000
+   * @unit mps2 (metres per second squared)
+   * @tunable
+   */
+  acceleration: number;
+  /**
+   * Its radius: grid paths keep this clear of walls; separation uses it.
+   *
+   * @default 0.4
+   * @range 0..10
+   * @unit m (metres)
+   * @tunable
+   */
+  radius: number;
+  /**
+   * It has arrived within this distance of the target.
+   *
+   * @default 0.1
+   * @range 0..10
+   * @unit m (metres)
+   * @tunable
+   */
+  stopDistance: number;
+  /**
+   * It slows down inside this distance of the target.
+   *
+   * @default 1
+   * @range 0..20
+   * @unit m (metres)
+   * @tunable
+   */
+  slowRadius: number;
+  /**
+   * Re-plans this often while seeking (0: only when the target moves).
+   *
+   * @default 30
+   * @range 0..3600
+   * @unit ticks (fixed simulation steps)
+   */
+  repathTicks: number;
+  /**
+   * Re-plans when the target moved farther than this from the last plan.
+   *
+   * @default 0.5
+   * @range 0..100
+   * @unit m (metres)
+   */
+  repathDistance: number;
+  /**
+   * Pulls grid paths straight where nothing is in the way.
+   *
+   * @default true
+   */
+  smooth: boolean;
+  /**
+   * Turns the entity to face where it moves (3D: about +Y, its +Z forward; 2D: about +Z, its +X forward).
+   */
+  faceMovement: boolean;
+  /**
+   * How fast it turns when facing its movement.
+   *
+   * @default 10
+   * @range 0..100
+   * @unit radps (radians per second)
+   */
+  turnSpeed: number;
+  /**
+   * Moves the entity (its og.Velocity, or its og.Transform) while true; false keeps planning but leaves the motion to the game (a knock-back, a stun).
+   *
+   * @default true
+   */
+  drive: boolean;
+  /**
+   * NAV_IDLE, NAV_MOVING, NAV_ARRIVED, NAV_UNREACHABLE or NAV_PARTIAL (written by og.nav).
+   *
+   * @readonly written by the engine
+   */
+  readonly status: number;
+  /**
+   * Its velocity (written by og.nav).
+   *
+   * @unit mps (metres per second)
+   * @readonly written by the engine
+   */
+  readonly velocity: Vector3;
+  /**
+   * The path corner it heads for (written by og.nav).
+   *
+   * @unit m (metres)
+   * @readonly written by the engine
+   */
+  readonly waypoint: Vector3;
+  /**
+   * The path length left (written by og.nav).
+   *
+   * @unit m (metres)
+   * @readonly written by the engine
+   */
+  readonly remaining: number;
+  /**
+   * Paths planned so far (written by og.nav).
+   *
+   * @readonly written by the engine
+   */
+  readonly plans: number;
+}
+
+/**
+ * Steering behaviours an og.NavAgent adds to its path following, each by weight (0 is off): flee, wander, pursue, evade, separation from other agents and avoidance of colliders ahead (three physics rays).
+ *
+ * The value of the `Steering` component (token `og.Steering`).
+ */
+export interface Steering {
+  /**
+   * Weight of following the path to the target (seek, then arrive at the end).
+   *
+   * @default 1
+   * @range 0..10
+   * @tunable
+   */
+  seek: number;
+  /**
+   * Weight of fleeing fleeFrom.
+   *
+   * @range 0..10
+   * @tunable
+   */
+  flee: number;
+  /**
+   * What it flees.
+   *
+   * @unit m (metres)
+   */
+  fleeFrom: Vector3;
+  /**
+   * It flees (and evades) only inside this distance (0: always).
+   *
+   * @default 6
+   * @range 0..100
+   * @unit m (metres)
+   * @tunable
+   */
+  fleeRadius: number;
+  /**
+   * Weight of wandering.
+   *
+   * @range 0..10
+   * @tunable
+   */
+  wander: number;
+  /**
+   * The wander circle's radius.
+   *
+   * @default 1
+   * @range 0..20
+   * @unit m (metres)
+   * @tunable
+   */
+  wanderRadius: number;
+  /**
+   * How far ahead the wander circle is.
+   *
+   * @default 2
+   * @range 0..20
+   * @unit m (metres)
+   * @tunable
+   */
+  wanderDistance: number;
+  /**
+   * How fast the wander point moves round the circle.
+   *
+   * @default 3
+   * @range 0..50
+   * @unit radps (radians per second)
+   * @tunable
+   */
+  wanderJitter: number;
+  /** An entity to pursue (seek where it will be, from its NavAgent or og.Velocity); 0: none. */
+  pursue: Entity;
+  /**
+   * Weight of pursuing.
+   *
+   * @default 1
+   * @range 0..10
+   * @tunable
+   */
+  pursueWeight: number;
+  /** An entity to evade (flee where it will be); 0: none. */
+  evade: Entity;
+  /**
+   * Weight of evading.
+   *
+   * @default 1
+   * @range 0..10
+   * @tunable
+   */
+  evadeWeight: number;
+  /**
+   * Weight of keeping apart from other agents.
+   *
+   * @range 0..10
+   * @tunable
+   */
+  separation: number;
+  /**
+   * Other agents closer than this push it away.
+   *
+   * @default 1
+   * @range 0..20
+   * @unit m (metres)
+   * @tunable
+   */
+  separationRadius: number;
+  /**
+   * Weight of avoiding colliders ahead.
+   *
+   * @range 0..10
+   * @tunable
+   */
+  avoidance: number;
+  /**
+   * How far ahead the avoidance rays reach.
+   *
+   * @default 2
+   * @range 0..50
+   * @unit m (metres)
+   * @tunable
+   */
+  avoidDistance: number;
+  /** Collision layers the avoidance rays hit (0: every layer). */
+  avoidMask: number;
+  /**
+   * The wander angle (written by og.nav).
+   *
+   * @unit rad (radians)
+   * @readonly written by the engine
+   */
+  readonly wanderAngle: number;
+}
+
+/**
+ * A grid of square cells over the plane: cell (0, 0)'s lower corner at `origin`, rows running up.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface NavGridDesc {
+  /**
+   * Cells across.
+   *
+   * @default 32
+   * @range 1..4096
+   */
+  readonly width?: number;
+  /**
+   * Cells up.
+   *
+   * @default 32
+   * @range 1..4096
+   */
+  readonly height?: number;
+  /**
+   * A cell's side.
+   *
+   * @default 1
+   * @range 0.01..100
+   * @unit m (metres)
+   */
+  readonly cellSize?: number;
+  /**
+   * Where cell (0, 0)'s lower corner is (x, y in 2D; x, z in 3D).
+   *
+   * @default { x: 0, y: 0 }
+   * @unit m (metres)
+   */
+  readonly origin?: Vector2;
+  /**
+   * Row-major cell costs from row 0 (0 blocked, 1 normal, up to 255 to avoid); empty: every cell 1.
+   *
+   * @default []
+   */
+  readonly costs?: readonly number[];
+}
+
+/**
+ * A grid over a placed og.Tilemap: one cell per map cell, blocked where a collision layer has a solid tile.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TilemapGridDesc {
+  /**
+   * The entity with the og.Tilemap.
+   *
+   * @default 0
+   */
+  readonly entity?: Entity;
+  /**
+   * The layers whose solid tiles block; empty: every collision layer.
+   *
+   * @default []
+   */
+  readonly layers?: readonly string[];
+  /**
+   * Also block this many cells around each blocked one (wide agents).
+   *
+   * @default 0
+   * @range ..8
+   */
+  readonly inflate?: number;
+}
+
+/** A grid cell. */
+export interface NavCell {
+  /** The column. */
+  readonly x: number;
+  /** The row (0 is the bottom). */
+  readonly y: number;
+  /** Whether the point was on the grid. */
+  readonly inside: boolean;
+}
+
+/**
+ * A path query.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PathDesc {
+  /**
+   * The grid or navmesh.
+   *
+   * @default 0
+   */
+  readonly nav?: Navigation;
+  /**
+   * The start.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly from?: Vector3;
+  /**
+   * The end.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly to?: Vector3;
+  /**
+   * The grid search.
+   *
+   * @default "jps"
+   */
+  readonly algorithm?: NavAlgorithm;
+  /**
+   * Pull a grid path straight where nothing is in the way.
+   *
+   * @default true
+   */
+  readonly smooth?: boolean;
+  /**
+   * Keep this clear of grid walls when smoothing.
+   *
+   * @default 0
+   * @range 0..10
+   * @unit m (metres)
+   */
+  readonly radius?: number;
+}
+
+/** A path. */
+export interface NavPath {
+  /** Its corners, start and end included. */
+  readonly points: readonly Vector3[];
+  /**
+   * Its length.
+   *
+   * @unit m (metres)
+   */
+  readonly length: number;
+  /** Whether it reaches the end (false: it stops at the reachable point nearest it). */
+  readonly complete: boolean;
+  /** Cells or polygons the search took off its open list. */
+  readonly expanded: number;
+  /** What ran: jps, astar or navmesh. */
+  readonly algorithm: string;
+}
+
+/**
+ * A flow field over a grid.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface FlowDesc {
+  /**
+   * The grid.
+   *
+   * @default 0
+   */
+  readonly grid?: Navigation;
+  /**
+   * Where agents go: each point's cell is a target.
+   *
+   * @default []
+   */
+  readonly targets?: readonly Vector3[];
+}
+
+/**
+ * An axis-aligned box.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface NavBox {
+  /**
+   * Its lowest corner.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly min?: Vector3;
+  /**
+   * Its highest corner.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly max?: Vector3;
+}
+
+/**
+ * A navmesh built at runtime over a flat floor (a procedural level): the floor box, the boxes it carves out, and the agent it is for.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface NavMeshDesc {
+  /**
+   * The floor's lowest corner (its y is the floor's height).
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly min?: Vector3;
+  /**
+   * The floor's highest corner.
+   *
+   * @default { x: 16, y: 1, z: 16 }
+   * @unit m (metres)
+   */
+  readonly max?: Vector3;
+  /**
+   * Boxes standing on the floor (walls, crates).
+   *
+   * @default []
+   */
+  readonly blocked?: readonly NavBox[];
+  /**
+   * The voxel width.
+   *
+   * @default 0.25
+   * @range 0.02..4
+   * @unit m (metres)
+   */
+  readonly cellSize?: number;
+  /**
+   * Walls are kept this far away.
+   *
+   * @default 0.4
+   * @range 0..10
+   * @unit m (metres)
+   */
+  readonly agentRadius?: number;
+  /**
+   * The agent's height.
+   *
+   * @default 1.8
+   * @range 0.1..20
+   * @unit m (metres)
+   */
+  readonly agentHeight?: number;
+  /**
+   * Cells per tile side: an obstacle rebuilds the tiles it touches.
+   *
+   * @default 32
+   * @range 8..256
+   */
+  readonly tileSize?: number;
+}
+
+/** A navmesh's shape. */
+export interface NavMeshInfo {
+  /** What NavAgent.nav and the queries take. */
+  readonly mesh: Navigation;
+  /** Its convex polygons. */
+  readonly polygons: number;
+  /** Its tiles. */
+  readonly tiles: number;
+  /**
+   * Its bounds' lowest corner.
+   *
+   * @unit m (metres)
+   */
+  readonly min: Vector3;
+  /**
+   * Its bounds' highest corner.
+   *
+   * @unit m (metres)
+   */
+  readonly max: Vector3;
+  /**
+   * Its voxel width.
+   *
+   * @unit m (metres)
+   */
+  readonly cellSize: number;
+}
+
+/** What an obstacle change rebuilt. */
+export interface NavRebuild {
+  /** The tiles rebuilt, by index. */
+  readonly tiles: readonly number[];
+  /** The navmesh's polygons now. */
+  readonly polygons: number;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ── ai ──────────────────────────────────────────────────────────
+// Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (crates/og-ai/README.md has the grammar), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent.
+// An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent (og.nav plans and walks after the game's systems) or runs one of the game's commands (GameDesc.commands, with the agent's entity handle as its first argument) before the next tick.
+// Conditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`). Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard.
+
+/**
+ * A loaded behaviour tree or state machine.
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type Behaviour = number & { readonly [handleType]: "Behaviour" };
+
+/**
+ * A Behaviour handle field.
+ *
+ * A `Behaviour` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function Behaviour(value?: Behaviour, options?: FieldOptions): FieldSpec<"Behaviour">;
+
+/** AiAgent.status: the tree or state is still running. */
+export declare const AI_RUNNING: 1;
+
+/** AiAgent.status: the tree succeeded on the last think. */
+export declare const AI_SUCCESS: 2;
+
+/** AiAgent.status: the tree failed on the last think. */
+export declare const AI_FAILURE: 3;
+
+/**
+ * An entity that thinks with a behaviour. Give it an og.NavAgent to move and an og.Perception to see and hear.
+ *
+ * The value of the `AiAgent` component (token `og.AiAgent`).
+ */
+export interface AiAgent {
+  /** The behaviour it runs (og.ai.load); 0 runs nothing. */
+  behaviour: Behaviour;
+  /**
+   * Thinks while true.
+   *
+   * @default true
+   */
+  active: boolean;
+  /**
+   * Thinks every this many ticks (1: every tick); agents are staggered by their order.
+   *
+   * @default 1
+   * @range 1..600
+   * @unit ticks (fixed simulation steps)
+   */
+  thinkEvery: number;
+  /**
+   * AI_RUNNING, AI_SUCCESS or AI_FAILURE after the last think (0 before the first; written by og.ai).
+   *
+   * @readonly written by the engine
+   */
+  readonly status: number;
+  /**
+   * The state machine's state, an index into BehaviourInfo.states (written by og.ai).
+   *
+   * @readonly written by the engine
+   */
+  readonly state: number;
+  /**
+   * The node it ran last, an index into BehaviourInfo.nodes (written by og.ai).
+   *
+   * @readonly written by the engine
+   */
+  readonly node: number;
+  /**
+   * Times the state or the running node changed (written by og.ai).
+   *
+   * @readonly written by the engine
+   */
+  readonly changes: number;
+}
+
+/**
+ * What an agent sees and hears. It sees the nearest og.Perceivable of another team within `sight`, inside the `fov` cone around `forward` (or the way it last moved), unless a collider is in the way; it hears a spatial sound that starts (og.SoundStarted) or a game noise (og.ai.noise) within `hearing` times its loudness.
+ *
+ * The value of the `Perception` component (token `og.Perception`).
+ */
+export interface Perception {
+  /**
+   * How far it sees.
+   *
+   * @default 8
+   * @range 0..500
+   * @unit m (metres)
+   * @tunable
+   */
+  sight: number;
+  /**
+   * The width of its view cone (360: all round).
+   *
+   * @default 120
+   * @range 0..360
+   * @unit deg (degrees)
+   * @tunable
+   */
+  fov: number;
+  /**
+   * Its eyes are this far above its position (+y).
+   *
+   * @range -10..10
+   * @unit m (metres)
+   */
+  eyeHeight: number;
+  /**
+   * Colliders hide what is behind them.
+   *
+   * @default true
+   */
+  occlude: boolean;
+  /** Collision layers that block sight (0: every layer). */
+  occluders: number;
+  /**
+   * How far it hears a sound of loudness 1 (a source's volume).
+   *
+   * @default 6
+   * @range 0..500
+   * @unit m (metres)
+   * @tunable
+   */
+  hearing: number;
+  /**
+   * How long a lost target stays its target.
+   *
+   * @default 3
+   * @range 0..600
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  memory: number;
+  /** Its team: it perceives og.Perceivable entities of other teams. */
+  team: number;
+  /** Where it looks; zero: the way it last moved. */
+  forward: Vector3;
+  /**
+   * What it sees or remembers seeing (written by og.ai).
+   *
+   * @readonly written by the engine
+   */
+  readonly target: Entity;
+  /**
+   * It sees the target now (written by og.ai).
+   *
+   * @readonly written by the engine
+   */
+  readonly sees: boolean;
+  /**
+   * Where it last saw the target (written by og.ai).
+   *
+   * @unit m (metres)
+   * @readonly written by the engine
+   */
+  readonly lastSeen: Vector3;
+  /**
+   * Seconds since it last saw a target (written by og.ai; 1e6 before the first time).
+   *
+   * @default 1000000
+   * @unit s (seconds of simulation time)
+   * @readonly written by the engine
+   */
+  readonly sinceSeen: number;
+  /**
+   * It heard something this tick (written by og.ai).
+   *
+   * @readonly written by the engine
+   */
+  readonly heard: boolean;
+  /**
+   * Where it last heard something (written by og.ai).
+   *
+   * @unit m (metres)
+   * @readonly written by the engine
+   */
+  readonly heardAt: Vector3;
+  /**
+   * Seconds since it last heard something (written by og.ai; 1e6 before the first time).
+   *
+   * @default 1000000
+   * @unit s (seconds of simulation time)
+   * @readonly written by the engine
+   */
+  readonly sinceHeard: number;
+}
+
+/**
+ * Something agents of other teams can see.
+ *
+ * The value of the `Perceivable` component (token `og.Perceivable`).
+ */
+export interface Perceivable {
+  /**
+   * Its team (agents of the same team ignore it).
+   *
+   * @default 1
+   */
+  team: number;
+  /**
+   * Agents look at a point this far above its position (+y).
+   *
+   * @range -10..10
+   * @unit m (metres)
+   */
+  eyeHeight: number;
+}
+
+/**
+ * An agent's state or running node changed (systems read it the tick after).
+ *
+ * The payload of the `AiChanged` event (token `og.AiChanged`).
+ */
+export interface AiChanged {
+  /** The agent. */
+  readonly entity: Entity;
+  /** Its state now. */
+  readonly state: number;
+  /** The node it runs now. */
+  readonly node: number;
+  /** AI_RUNNING, AI_SUCCESS or AI_FAILURE. */
+  readonly status: number;
+}
+
+/** A loaded behaviour. */
+export interface BehaviourInfo {
+  /** What AiAgent.behaviour takes. */
+  readonly behaviour: Behaviour;
+  /** Its name. */
+  readonly name: string;
+  /** tree or machine. */
+  readonly kind: string;
+  /** A machine's states, by index (AiAgent.state). */
+  readonly states: readonly string[];
+  /** Its nodes' names, by index (AiAgent.node). */
+  readonly nodes: readonly string[];
+  /** Its declared blackboard keys. */
+  readonly keys: readonly string[];
+}
+
+/**
+ * A noise agents may hear next tick.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface NoiseDesc {
+  /**
+   * Where it is.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly position?: Vector3;
+  /**
+   * How loud: heard within Perception.hearing times this.
+   *
+   * @default 1
+   * @range 0..100
+   */
+  readonly loudness?: number;
+}
+
+/** What an agent is doing. */
+export interface AiDescription {
+  /** Its behaviour's name. */
+  readonly behaviour: string;
+  /** tree or machine. */
+  readonly kind: string;
+  /** A machine's state (empty for a tree). */
+  readonly state: string;
+  /** The node it ran last, such as `chase`. */
+  readonly node: string;
+  /** The path to it from the root, such as `selector > sequence chase > chase`. */
+  readonly path: string;
+  /** running, success or failure. */
+  readonly status: string;
+  /** Its blackboard, keys to numbers, booleans, points and entity handles. */
+  readonly blackboard: unknown;
+  /** It sees its target. */
+  readonly sees: boolean;
+  /** Its target (0: none). */
+  readonly target: Entity;
+}
+
+
+
+
+
+
+
 // ── ui ──────────────────────────────────────────────────────────
 // The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, themes it with the platform's design tokens, draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it.
 // The engine opens the frame before the game's systems (from og.Input and the play surface) and closes it after them, so calls belong inside systems; outside one they do nothing and log a warning. Interaction is decided against the previous tick's rectangles, which are also what the probe resolves, so a scripted touch_move_to and a click agree; response edges (clicked, changed, submitted) last one tick.
@@ -11582,6 +12484,203 @@ export declare namespace og {
   const SoundStarted: EventType<SoundStarted>;
   /** A sound ended, sent in the tick it happens (systems read it the tick after). */
   const SoundEnded: EventType<SoundEnded>;
+  /**
+   * An entity that moves itself towards `target` while `seeking`, by a path over `nav` (a grid, navmesh or flow field; 0 goes straight). og.nav re-plans when the target moved more than repathDistance, every repathTicks, or when the grid or navmesh changed, at most 32 plans a tick across agents.
+   */
+  const NavAgent: ComponentType<{ readonly nav: FieldSpec<"Navigation">; readonly target: FieldSpec<"Vector3">; readonly seeking: FieldSpec<"bool">; readonly speed: FieldSpec<"f32">; readonly acceleration: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly stopDistance: FieldSpec<"f32">; readonly slowRadius: FieldSpec<"f32">; readonly repathTicks: FieldSpec<"u32">; readonly repathDistance: FieldSpec<"f32">; readonly smooth: FieldSpec<"bool">; readonly faceMovement: FieldSpec<"bool">; readonly turnSpeed: FieldSpec<"f32">; readonly drive: FieldSpec<"bool">; readonly status: FieldSpec<"u32">; readonly velocity: FieldSpec<"Vector3">; readonly waypoint: FieldSpec<"Vector3">; readonly remaining: FieldSpec<"f32">; readonly plans: FieldSpec<"u32"> }, NavAgent>;
+  /**
+   * Steering behaviours an og.NavAgent adds to its path following, each by weight (0 is off): flee, wander, pursue, evade, separation from other agents and avoidance of colliders ahead (three physics rays).
+   */
+  const Steering: ComponentType<{ readonly seek: FieldSpec<"f32">; readonly flee: FieldSpec<"f32">; readonly fleeFrom: FieldSpec<"Vector3">; readonly fleeRadius: FieldSpec<"f32">; readonly wander: FieldSpec<"f32">; readonly wanderRadius: FieldSpec<"f32">; readonly wanderDistance: FieldSpec<"f32">; readonly wanderJitter: FieldSpec<"f32">; readonly pursue: FieldSpec<"Entity">; readonly pursueWeight: FieldSpec<"f32">; readonly evade: FieldSpec<"Entity">; readonly evadeWeight: FieldSpec<"f32">; readonly separation: FieldSpec<"f32">; readonly separationRadius: FieldSpec<"f32">; readonly avoidance: FieldSpec<"f32">; readonly avoidDistance: FieldSpec<"f32">; readonly avoidMask: FieldSpec<"u32">; readonly wanderAngle: FieldSpec<"f32"> }, Steering>;
+  /**
+   * Navigation: grids (A* and jump point search with eight-way moves that never cut a blocked corner, line-of-sight smoothing), flow fields for crowds, and navmeshes (baked at cook time from a level's static colliders and models, or built at runtime for a flat procedural level) with funnel paths and box obstacles that rebuild only the tiles they touch.
+   * Agents are entities with an og.NavAgent (and an og.Transform): the og.nav system, after the game's systems and before physics, plans their paths, follows them and adds the og.Steering behaviours; an entity with an og.Velocity (a physics body) gets its velocity written, any other its Transform moved. Everything is deterministic and in snapshots: paths, grid edits, obstacles and flow targets.
+   * Agents move on the profile's plane: x and y in 2D (a grid's rows run up), x and z in 3D (y kept on grids, from the surface on a navmesh).
+   */
+  namespace nav {
+    /**
+     * A grid agents and path queries plan on. Runtime edits (og.nav.setCost) are world state.
+     *
+     * @param world The world.
+     * @param desc Its size, cell size, origin and costs.
+     * @returns Refused for costs of the wrong length.
+     */
+    function grid(world: World, desc?: NavGridDesc): Result<Navigation>;
+    /**
+     * A grid over a placed map: its cells, its world position (the map's top-left corner at the entity), blocked where the collision layers have solid tiles. Edits to the map later do not follow; build another.
+     *
+     * @param world The world.
+     * @param desc The map's entity and the blocking layers.
+     * @returns Refused for an entity without an og.Tilemap or a map not loaded.
+     */
+    function gridFromTilemap(world: World, desc?: TilemapGridDesc): Result<Navigation>;
+    /**
+     * Change a grid cell's cost (0 blocks it): agents on the grid re-plan, flow fields over it rebuild.
+     *
+     * @param world The world.
+     * @param grid The grid.
+     * @param x The column.
+     * @param y The row (0 is the bottom).
+     * @param cost 0 blocked, 1 normal, up to 255.
+     * @returns Refused for an unknown grid or a cell outside it.
+     */
+    function setCost(world: World, grid: Navigation, x: number, y: number, cost: number): Result<void>;
+    /**
+     * The grid cell under a world point.
+     *
+     * @param world The world.
+     * @param grid The grid.
+     * @param point A world point.
+     */
+    function cellAt(world: World, grid: Navigation, point: Vector3): NavCell;
+    /**
+     * A path between two points on a grid or a navmesh, now: corners, length and whether it reaches the end.
+     *
+     * @param world The world.
+     * @param desc The grid or navmesh and the two points.
+     * @returns Refused for an unknown grid or navmesh, or when no path starts (an end off the grid or mesh).
+     */
+    function findPath(world: World, desc?: PathDesc): Result<NavPath>;
+    /**
+     * A flow field towards targets over a grid: one Dijkstra pass gives every cell a direction, so any number of agents (NavAgent.nav = the field) steer by a lookup. It rebuilds when the grid changes.
+     *
+     * @param world The world.
+     * @param desc The grid and the targets.
+     * @returns Refused for an unknown grid.
+     */
+    function flowField(world: World, desc?: FlowDesc): Result<Navigation>;
+    /**
+     * Move a flow field's targets (rebuilds it).
+     *
+     * @param world The world.
+     * @param field The flow field.
+     * @param targets The new targets.
+     * @returns Refused for an unknown flow field.
+     */
+    function setFlowTargets(world: World, field: Navigation, targets: readonly Vector3[]): Result<void>;
+    /**
+     * The direction a flow field gives at a point (unit length, or zero at a target or where nothing is reachable).
+     *
+     * @param world The world.
+     * @param field The flow field.
+     * @param point A world point.
+     */
+    function flowAt(world: World, field: Navigation, point: Vector3): Vector3;
+    /**
+     * A cooked navmesh: an `.ogt` of `type navmesh` (a scene, the boxes and the agent) baked by og cook from the scene's static colliders and models.
+     *
+     * @param world The world.
+     * @param path The navmesh asset, such as `levels/arena.nav.ogt`.
+     * @returns Refused for a path that is not a cooked navmesh.
+     */
+    function load(world: World, path: string): Result<NavMeshInfo>;
+    /**
+     * A navmesh over a flat floor with boxes carved out, built now: for procedural levels (a level with slopes and stairs is baked at cook time with og.nav.load).
+     *
+     * @param world The world.
+     * @param desc The floor, the boxes and the agent.
+     * @returns Refused for an empty floor.
+     */
+    function build(world: World, desc?: NavMeshDesc): Result<NavMeshInfo>;
+    /**
+     * Set, move or (with no box) remove an obstacle on a navmesh: the spans under the box (grown by the agent radius) are blocked and only the tiles it touches, and their neighbours, are rebuilt. Agents on the mesh re-plan. World state.
+     *
+     * @param world The world.
+     * @param mesh The navmesh.
+     * @param id The obstacle's id, the game's own (a door's number).
+     * @param obstacle The box; omitted removes the obstacle.
+     * @returns Refused for an unknown navmesh.
+     */
+    function setObstacle(world: World, mesh: Navigation, id: number, obstacle?: NavBox): Result<NavRebuild>;
+    /**
+     * The point on a navmesh nearest a world point, within `extent` (half sizes).
+     *
+     * @param world The world.
+     * @param mesh The navmesh.
+     * @param point A world point.
+     * @param extent The search box's half sizes; zero: 2 2 2.
+     * @returns Null when no polygon is within the box.
+     */
+    function nearest(world: World, mesh: Navigation, point: Vector3, extent?: Vector3): Vector3 | null;
+    /**
+     * The path an agent follows now (its corners from where it planned), for debugging and playtests; `dump_nav:<entity>` writes the same.
+     *
+     * @param world The world.
+     * @param entity An entity with an og.NavAgent.
+     * @returns Null for an entity that has not planned.
+     */
+    function pathOf(world: World, entity: Entity): NavPath | null;
+  }
+  /**
+   * An entity that thinks with a behaviour. Give it an og.NavAgent to move and an og.Perception to see and hear.
+   */
+  const AiAgent: ComponentType<{ readonly behaviour: FieldSpec<"Behaviour">; readonly active: FieldSpec<"bool">; readonly thinkEvery: FieldSpec<"u32">; readonly status: FieldSpec<"u32">; readonly state: FieldSpec<"u32">; readonly node: FieldSpec<"u32">; readonly changes: FieldSpec<"u32"> }, AiAgent>;
+  /**
+   * What an agent sees and hears. It sees the nearest og.Perceivable of another team within `sight`, inside the `fov` cone around `forward` (or the way it last moved), unless a collider is in the way; it hears a spatial sound that starts (og.SoundStarted) or a game noise (og.ai.noise) within `hearing` times its loudness.
+   */
+  const Perception: ComponentType<{ readonly sight: FieldSpec<"f32">; readonly fov: FieldSpec<"f32">; readonly eyeHeight: FieldSpec<"f32">; readonly occlude: FieldSpec<"bool">; readonly occluders: FieldSpec<"u32">; readonly hearing: FieldSpec<"f32">; readonly memory: FieldSpec<"f32">; readonly team: FieldSpec<"u32">; readonly forward: FieldSpec<"Vector3">; readonly target: FieldSpec<"Entity">; readonly sees: FieldSpec<"bool">; readonly lastSeen: FieldSpec<"Vector3">; readonly sinceSeen: FieldSpec<"f32">; readonly heard: FieldSpec<"bool">; readonly heardAt: FieldSpec<"Vector3">; readonly sinceHeard: FieldSpec<"f32"> }, Perception>;
+  /** Something agents of other teams can see. */
+  const Perceivable: ComponentType<{ readonly team: FieldSpec<"u32">; readonly eyeHeight: FieldSpec<"f32"> }, Perceivable>;
+  /** An agent's state or running node changed (systems read it the tick after). */
+  const AiChanged: EventType<AiChanged>;
+  /**
+   * Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (crates/og-ai/README.md has the grammar), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent.
+   * An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent (og.nav plans and walks after the game's systems) or runs one of the game's commands (GameDesc.commands, with the agent's entity handle as its first argument) before the next tick.
+   * Conditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`). Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard.
+   */
+  namespace ai {
+    /**
+     * A cooked behaviour (an `.ogt` of `type behaviour`, validated by og cook).
+     *
+     * @param world The world.
+     * @param path The behaviour asset, such as `ai/slime.ogt`.
+     * @returns Refused for a path that is not a cooked behaviour.
+     */
+    function load(world: World, path: string): Result<BehaviourInfo>;
+    /**
+     * A behaviour from text, now (tests and generated behaviours; assets go through og cook).
+     *
+     * @param world The world.
+     * @param text The behaviour's `.ogt` text.
+     * @returns Refused with the first error's line and the fix.
+     */
+    function parse(world: World, text: string): Result<BehaviourInfo>;
+    /**
+     * A blackboard value of an agent as of its last think.
+     *
+     * @param world The world.
+     * @param entity The agent.
+     * @param key The key.
+     * @returns A number, a boolean, a point `{x, y, z}`, an entity handle, or null for an unknown key or an agent that has not thought.
+     */
+    function get(world: World, entity: Entity, key: string): unknown;
+    /**
+     * Set a blackboard value of an agent: a number, a boolean, a point `{x, y, z}` or an entity handle `{entity}`.
+     *
+     * @param world The world.
+     * @param entity The agent.
+     * @param key The key; built-in keys are refused.
+     * @param value The value.
+     * @returns Refused for an agent that has not thought yet, a built-in key or another kind of value.
+     */
+    function set(world: World, entity: Entity, key: string, value: unknown): Result<void>;
+    /**
+     * Make a noise agents may hear next tick (a gunshot, a door, a thrown stone).
+     *
+     * @param world The world.
+     * @param desc Where and how loud.
+     * @returns Refused for a world without og.ai.
+     */
+    function noise(world: World, desc?: NoiseDesc): Result<void>;
+    /**
+     * What an agent is doing: its state, the node it runs and the path to it, its status, its blackboard and its target.
+     *
+     * @param world The world.
+     * @param entity The agent.
+     * @returns Null for an entity that has not thought.
+     */
+    function describe(world: World, entity: Entity): AiDescription | null;
+  }
   /**
    * The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, themes it with the platform's design tokens, draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it.
    * The engine opens the frame before the game's systems (from og.Input and the play surface) and closes it after them, so calls belong inside systems; outside one they do nothing and log a warning. Interaction is decided against the previous tick's rectangles, which are also what the probe resolves, so a scripted touch_move_to and a click agree; response edges (clicked, changed, submitted) last one tick.

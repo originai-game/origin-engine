@@ -27,17 +27,21 @@
 //! Single-threaded by construction: every table is thread-local, and an
 //! engine never leaves the thread that created it.
 
+mod ai;
 mod anim;
 mod api;
 mod assets;
 mod codec;
+mod e6;
 mod engine;
 mod extract;
 mod feel;
 mod fx;
 mod modules;
+mod nav;
 mod probe;
 
+pub use ai::{og_ai_describe, og_ai_get, og_ai_load, og_ai_noise, og_ai_parse, og_ai_set};
 pub use anim::{og_anim_graph, og_load_animation};
 pub use api::*;
 pub use assets::Fetch;
@@ -68,6 +72,11 @@ pub use modules::{
     og_ui_seconds, og_ui_select, og_ui_set_navigation, og_ui_skeleton, og_ui_slider, og_ui_spacer,
     og_ui_spinner, og_ui_spotlight, og_ui_stepper, og_ui_tabs, og_ui_text_field, og_ui_theme,
     og_ui_tick, og_ui_toast, og_ui_toggle, og_ui_tooltip, og_ui_viewport, set_viewport,
+};
+pub use nav::{
+    og_nav_build, og_nav_cell_at, og_nav_find_path, og_nav_flow_at, og_nav_flow_field, og_nav_grid,
+    og_nav_grid_from_tilemap, og_nav_load, og_nav_nearest, og_nav_path_of, og_nav_set_cost,
+    og_nav_set_flow_targets, og_nav_set_obstacle,
 };
 pub use probe::png;
 

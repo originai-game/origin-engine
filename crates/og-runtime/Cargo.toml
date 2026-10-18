@@ -23,6 +23,8 @@ og-input = { path = "../og-input" }
 og-anim = { path = "../og-anim" }
 og-tween = { path = "../og-tween" }
 og-tilemap = { path = "../og-tilemap" }
+og-nav = { path = "../og-nav" }
+og-ai = { path = "../og-ai" }
 
 [features]
 default = []

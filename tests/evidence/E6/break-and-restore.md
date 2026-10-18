@@ -29,3 +29,14 @@ failed and the line it failed on (`cargo test`, 2026-10-19, Apple M4 Pro).
 | machine timers | `after` is ignored | `a_state_machine_moves_on_facts_and_timers_and_runs_enter_and_exit` (left alert at once) |
 | snapshots | memories dropped on restore | `two_runs_and_a_restored_snapshot_decide_the_same` |
 | hearing | the hearing radius is ignored | `walls_the_view_cone_and_range_hide_the_target_and_noises_are_heard_within_hearing` (heard 9 m away) |
+
+## og.nav and og.ai through the hosts (`packages/engine/tests/ai.test.ts`)
+
+Each break rebuilt the dev addon (`OG_GATE=1 sh packages/engine/scripts/build.sh`) before the run.
+
+| Broken | Edit | Failed |
+|---|---|---|
+| grid costs | `og.nav.grid` reads a 0 (blocked) cost as 1 | `og.nav: a grid agent routes round a wall …` (the path goes through the wall) and `og.nav: drive false …` (the remaining length) |
+| navmesh boxes | `og.nav.build` drops every box (`hi.y > min.y` inverted) | `og.nav: a navmesh built from a floor and a box …` (the path does not go round) |
+| `NavAgent.drive` | the drive check never skips the motion | `og.nav: drive false plans and reports but leaves the motion to the game` (the walker moved) |
+| a speed read from a field | `speed Pace.chase` falls back to the agent's base speed | `og.ai: a guard on a behaviour tree …` (NavAgent.speed 2, not 5) |
