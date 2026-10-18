@@ -186,7 +186,8 @@ pub struct Leaf {
     pub target: Target,
     /// The end value per lane (one value fills every lane).
     pub to: Vec<f32>,
-    /// The start value; `None` takes the field's value when the tween
+    /// The start value, written from the tick the tween is started and held
+    /// through its delay; `None` takes the field's value when the tween
     /// starts (after its delay).
     pub from: Option<Vec<f32>>,
     /// `to` is an offset from the start value.
@@ -501,7 +502,11 @@ impl TweenSystem {
 /// ended. Clears `alive` when its target is gone.
 fn step_leaf(ctx: &SystemContext<'_>, leaf: &mut Leaf, dt: f32, alive: &mut bool) -> Result<bool> {
     leaf.elapsed += f64::from(dt);
-    if leaf.elapsed + 1e-6 < f64::from(leaf.delay) {
+    // A tween with an explicit `from` holds it through its delay (a preset's
+    // impact shows on the tick it starts, even inside a hit stop); one
+    // without waits untouched, taking the field's value when it starts.
+    let waiting = leaf.elapsed + 1e-6 < f64::from(leaf.delay);
+    if waiting && leaf.from.is_none() {
         return Ok(false);
     }
     let e = Entity::from_bits(leaf.target.entity);
@@ -532,10 +537,14 @@ fn step_leaf(ctx: &SystemContext<'_>, leaf: &mut Leaf, dt: f32, alive: &mut bool
         };
         leaf.started = true;
     }
-    let value = leaf.value();
+    let value = if waiting {
+        leaf.start.clone()
+    } else {
+        leaf.value()
+    };
     leaf.target.write(&mut bytes, &value);
     ctx.set_bytes(e, id, &bytes)?;
-    Ok(leaf.at_end())
+    Ok(!waiting && leaf.at_end())
 }
 
 /// Advances a group; `Ok(true)` when its last run ended.

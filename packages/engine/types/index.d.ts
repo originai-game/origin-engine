@@ -5842,7 +5842,7 @@ export interface TweenDesc {
    */
   readonly to?: readonly number[];
   /**
-   * The start value; null takes the field's value when the tween starts (after its delay).
+   * The start value, written from the tick the tween is started and held through its delay; null takes the field's value when the tween starts (after its delay).
    *
    * @default null
    */

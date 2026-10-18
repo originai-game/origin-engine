@@ -1016,11 +1016,17 @@ pub fn og_render_floating_text(world: u32, desc: Option<String>) -> String {
 
 // ── loading ────────────────────────────────────────────────────────────────
 
-fn nearest(eng: &Engine, texture: usize) {
+/// The sampling a sheet or tileset states for its texture; it wins over the
+/// texture's own (`kind pixel` loads nearest, `filter linear` smooths it).
+fn set_filter(eng: &Engine, texture: usize, nearest: bool) {
     let mut rs = eng.render.borrow_mut();
     if let Some(&h) = rs.textures.get(texture) {
-        rs.scene
-            .set_texture_filter(h, og_render::TextureFilter::Nearest);
+        let filter = if nearest {
+            og_render::TextureFilter::Nearest
+        } else {
+            og_render::TextureFilter::Linear
+        };
+        rs.scene.set_texture_filter(h, filter);
     }
 }
 
@@ -1039,9 +1045,7 @@ fn load_flipbook(eng: &Engine, path: &str) -> Result<Value, String> {
     };
     let texture = super::assets::load_texture(eng, &sheet.texture)
         .map_err(|e| format!("{id}: texture {}: {e}", sheet.texture))?;
-    if sheet.filter == og_anim::SheetFilter::Nearest {
-        nearest(eng, texture);
-    }
+    set_filter(eng, texture, sheet.filter == og_anim::SheetFilter::Nearest);
     let feel = feel_of(eng)?;
     let mut st = eng.state.borrow_mut();
     let handle = st.feel_assets.mint();
@@ -1122,9 +1126,7 @@ fn load_tilemap(eng: &Engine, path: &str) -> Result<Value, String> {
         }
         let i = super::assets::load_texture(eng, &t.texture)
             .map_err(|e| format!("{id}: texture {}: {e}", t.texture))?;
-        if t.filter == og_tilemap::Filter::Nearest {
-            nearest(eng, i);
-        }
+        set_filter(eng, i, t.filter == og_tilemap::Filter::Nearest);
         textures.push(Some(i));
     }
     let tile = asset.tile_size();

@@ -11752,7 +11752,7 @@
               "type": "null"
             }
           ],
-          "description": "The start value; null takes the field's value when the tween starts (after its delay).",
+          "description": "The start value, written from the tick the tween is started and held through its delay; null takes the field's value when the tween starts (after its delay).",
           "default": null
         },
         "relative": {

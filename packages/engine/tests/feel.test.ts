@@ -238,3 +238,31 @@ test("og.tween.flash whitens an og.Sprite and fades back", () => {
   expect(refused.ok).toBeFalse();
   if (!refused.ok) expect(refused.reason).toContain("neither og.Sprite nor og.Mesh");
 });
+
+test("a squash and a flash started with a hit stop show their impact through the stop, then recover", () => {
+  const engine = start(og.game({
+    start: (w: World) => {
+      const e = must(w.spawn({ name: "hero", position: { x: 0, y: 0, z: 0 } }));
+      w.insert(e, og.Sprite, { width: 1, height: 1 });
+    },
+  }));
+  engine.advance(5);
+  const hero = engine.world.find("hero")!;
+  must(og.tween.squash(engine.world, { entity: hero, impact: { x: 1.3, y: 0.7 }, duration: 0.2 }));
+  must(og.tween.flash(engine.world, { entity: hero, color: red, duration: 0.2 }));
+  must(og.time.hitStop(engine.world, 6));
+  for (let i = 0; i < 6; i++) {
+    engine.advance(1);
+    const s = must(engine.world.get(hero, og.Transform)).scale;
+    const sprite = must(engine.world.get(hero, og.Sprite));
+    expect([s.x, s.y]).toEqual([Math.fround(1.3), Math.fround(0.7)]);
+    expect(sprite.flash).toBe(1);
+    expect(sprite.flashColor).toEqual(red);
+  }
+  engine.advance(3);
+  expect(must(engine.world.get(hero, og.Transform)).scale.x).toBeLessThan(1.3);
+  expect(must(engine.world.get(hero, og.Sprite)).flash).toBeLessThan(1);
+  engine.advance(20);
+  expect(must(engine.world.get(hero, og.Transform)).scale).toEqual({ x: 1, y: 1, z: 1 });
+  expect(must(engine.world.get(hero, og.Sprite)).flash).toBe(0);
+});
