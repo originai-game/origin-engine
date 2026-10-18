@@ -7,6 +7,7 @@ use super::{
     PROFILE_NAME, ShapeCastOptions, angvel, cache, flat, from_mesh, pose, primitive, rp, unangvel,
     unpose, unv, v,
 };
+use super::{VehicleState, ext};
 use crate::gather::{Body, Scene};
 use crate::schema::*;
 use crate::{OverlapDesc, ShapeDesc};
@@ -160,8 +161,8 @@ fn entity_of(c: &rp::Collider) -> Entity {
 /// values physics last read or wrote. A component that no longer equals
 /// these was changed by something else, and the rapier body follows it.
 #[derive(Clone, Serialize, Deserialize)]
-struct Tracked {
-    handle: rp::RigidBodyHandle,
+pub(crate) struct Tracked {
+    pub(crate) handle: rp::RigidBodyHandle,
     body: RigidBody,
     collider: Option<Collider>,
     scale: Vec3,
@@ -185,14 +186,52 @@ struct TrackedStatic {
 /// touched them. Saved whole in the world's `og.physics` state block.
 #[derive(Default, Serialize, Deserialize)]
 pub(crate) struct Sim {
-    world: rp::PhysicsWorld,
-    bodies: BTreeMap<u64, Tracked>,
+    pub(crate) world: rp::PhysicsWorld,
+    pub(crate) bodies: BTreeMap<u64, Tracked>,
     statics: BTreeMap<u64, TrackedStatic>,
+    /// The fixed body world-anchored joints attach to.
+    pub(crate) ground: Option<rp::RigidBodyHandle>,
+    pub(crate) joints: BTreeMap<u64, ext::TrackedJoint>,
+    pub(crate) vehicles: BTreeMap<u64, VehicleState>,
+    pub(crate) ropes: BTreeMap<u64, crate::verlet::RopeState>,
+    pub(crate) cloths: BTreeMap<u64, crate::verlet::ClothState>,
+    pub(crate) fluids: BTreeMap<u64, crate::fluid::FluidState>,
+    pub(crate) surfaces: BTreeMap<u64, crate::water::SurfaceState>,
+    pub(crate) lines: BTreeMap<u64, crate::water::LineState>,
+    pub(crate) ragdolls: BTreeMap<u64, super::RagdollState>,
+}
+
+/// Every body's pose at the start of the tick, by handle index (with the
+/// handle, so a slot reused by a rebuilt body is not mistaken for it): how
+/// far a platform moved this tick.
+#[derive(Default)]
+pub(crate) struct BodyPoses(Vec<Option<(rp::RigidBodyHandle, rp::Pose)>>);
+
+impl BodyPoses {
+    fn record(w: &rp::PhysicsWorld) -> BodyPoses {
+        let mut poses = Vec::new();
+        for (h, rb) in w.bodies.iter() {
+            let i = h.into_raw_parts().0 as usize;
+            if i >= poses.len() {
+                poses.resize(i + 1, None);
+            }
+            poses[i] = Some((h, *rb.position()));
+        }
+        BodyPoses(poses)
+    }
+
+    pub(crate) fn get(&self, h: rp::RigidBodyHandle) -> Option<&rp::Pose> {
+        match self.0.get(h.into_raw_parts().0 as usize)? {
+            Some((handle, pose)) if *handle == h => Some(pose),
+            _ => None,
+        }
+    }
 }
 
 fn body_kind(b: &Body) -> Result<rp::RigidBodyType> {
     let e = b.entity;
     let kind = match b.body.kind {
+        _ if b.control.is_some() => rp::RigidBodyType::KinematicPositionBased,
         BODY_DYNAMIC => rp::RigidBodyType::Dynamic,
         BODY_STATIC => rp::RigidBodyType::Fixed,
         BODY_KINEMATIC => rp::RigidBodyType::KinematicVelocityBased,
@@ -271,15 +310,69 @@ fn insert_body(
 pub(crate) fn step(
     settings: &Physics,
     dt: f32,
+    tick: u64,
     scene: &Scene,
     shared: &mut Shared,
     sim: &mut Sim,
 ) -> Result<StepOut> {
     let substeps = settings.substeps.clamp(1, 16);
+    let mut out = StepOut::default();
+    // Poses before this tick moved anything (game code teleporting
+    // kinematic platforms included): how far each body moved this tick.
+    let poses = BodyPoses::record(&sim.world);
+    let handles = sync(settings, dt, scene, shared, sim)?;
+    ext::sync_joints(scene, sim, &handles)?;
+    super::vehicles(scene, dt, sim, &handles, &mut out)?;
+    super::ragdolls(scene, dt, sim, shared, &mut out)?;
+    ext::water(scene, settings, dt, sim, &handles, &mut out)?;
+    let pre = rest_poses(scene, sim, &handles);
+
+    for _ in 0..substeps {
+        sim.world.step();
+    }
+
+    let (touching, moved) = after_step(settings, scene, sim, &handles, pre);
+    out.touching = touching;
+    out.moved = moved;
+    ext::characters(scene, settings, dt, sim, &poses, &mut out)?;
+    super::platformers(scene, settings, dt, sim, &poses, &mut out)?;
+    ext::soft(scene, settings, dt, tick, sim, &mut out)?;
+    ext::joint_values(sim, &mut out);
+    for (e, j) in &out.joints {
+        ext::joint_written(sim, *e, j);
+    }
+    Ok(out)
+}
+
+/// The dynamic bodies' poses before the step, for the rest rule.
+fn rest_poses(
+    scene: &Scene,
+    sim: &Sim,
+    handles: &BTreeMap<u64, rp::RigidBodyHandle>,
+) -> Vec<rp::Pose> {
+    scene
+        .bodies
+        .iter()
+        .filter(|b| b.body.kind == BODY_DYNAMIC && b.control.is_none())
+        .map(|b| *sim.world.bodies[handles[&b.entity.to_bits()]].position())
+        .collect()
+}
+
+/// Brings the persistent rapier world in line with `scene` (bodies and
+/// static colliders); returns each body's handle by entity.
+fn sync(
+    settings: &Physics,
+    dt: f32,
+    scene: &Scene,
+    shared: &mut Shared,
+    sim: &mut Sim,
+) -> Result<BTreeMap<u64, rp::RigidBodyHandle>> {
+    let substeps = settings.substeps.clamp(1, 16);
     let Sim {
         world: w,
         bodies: tracked,
         statics: tracked_statics,
+        ..
     } = sim;
     w.gravity = v(settings.gravity);
     w.integration_parameters.dt = dt / substeps as f32;
@@ -308,9 +401,7 @@ pub(crate) fn step(
     let stale_mesh =
         |c: &Collider| matches!(c.shape, SHAPE_CONVEX | SHAPE_TRIMESH) && stale.contains(&c.mesh);
 
-    // Pre-step poses of the dynamic bodies, for the rest rule.
-    let mut before = Vec::new();
-    let mut handles = Vec::with_capacity(scene.bodies.len());
+    let mut handles = BTreeMap::new();
     for b in &scene.bodies {
         let key = b.entity.to_bits();
         let h = match tracked.get(&key) {
@@ -322,13 +413,20 @@ pub(crate) fn step(
             {
                 let kind = b.body.kind;
                 let rb = &mut w.bodies[t.handle];
-                if kind == BODY_KINEMATIC
+                if b.control.is_some() {
+                    // A controller moved it after the last step: the step
+                    // takes it there, pushing what is in the way.
+                    rb.set_next_kinematic_position(pose(b.position, b.quaternion));
+                } else if kind == BODY_KINEMATIC
                     || t.position != b.position
                     || t.quaternion != b.quaternion
                 {
                     rb.set_position(pose(b.position, b.quaternion), true);
                 }
-                if kind == BODY_KINEMATIC || (kind == BODY_DYNAMIC && t.velocity != b.velocity) {
+                if b.control.is_none()
+                    && (kind == BODY_KINEMATIC
+                        || (kind == BODY_DYNAMIC && t.velocity != b.velocity))
+                {
                     let vel = unlocked(b.velocity.unwrap_or_default(), b.body.lock);
                     rb.set_linvel(v(flat(vel.linear)), true);
                     rb.set_angvel(angvel(vel.angular), true);
@@ -343,10 +441,7 @@ pub(crate) fn step(
                 insert_body(w, b, shared)?
             }
         };
-        if b.body.kind == BODY_DYNAMIC {
-            before.push(*w.bodies[h].position());
-        }
-        handles.push(h);
+        handles.insert(key, h);
     }
     for s in &scene.statics {
         let key = s.entity.to_bits();
@@ -381,10 +476,30 @@ pub(crate) fn step(
         }
     }
 
-    for _ in 0..substeps {
-        w.step();
-    }
+    // Bodies that are no longer bodies (now static colliders or gone) were
+    // removed above; a body re-made this tick keeps its joints out until
+    // they are rebuilt.
+    Ok(handles)
+}
 
+/// The touching pairs and the rest rule after the step: what each dynamic
+/// body's component values become.
+#[allow(clippy::type_complexity)]
+fn after_step(
+    settings: &Physics,
+    scene: &Scene,
+    sim: &mut Sim,
+    handles: &BTreeMap<u64, rp::RigidBodyHandle>,
+    before: Vec<rp::Pose>,
+) -> (
+    Vec<(Contact, Vec3, Vec3)>,
+    Vec<Option<(Vec3, Quat, Option<Velocity>)>>,
+) {
+    let Sim {
+        world: w,
+        bodies: tracked,
+        ..
+    } = sim;
     let mut touching = Vec::new();
     for pair in w.narrow_phase.contact_pairs() {
         if !pair.has_any_active_contact() {
@@ -454,8 +569,9 @@ pub(crate) fn step(
     let rest = settings.rest_speed;
     let mut before = before.into_iter();
     let mut moved = Vec::with_capacity(scene.bodies.len());
-    for (b, &h) in scene.bodies.iter().zip(&handles) {
-        let out = (b.body.kind == BODY_DYNAMIC).then(|| {
+    for b in &scene.bodies {
+        let h = handles[&b.entity.to_bits()];
+        let out = (b.body.kind == BODY_DYNAMIC && b.control.is_none()).then(|| {
             let pre = before.next().expect("one pre-step pose per dynamic body");
             let rb = &mut w.bodies[h];
             let velocity = unlocked(
@@ -478,13 +594,13 @@ pub(crate) fn step(
                 rb.set_position(pre, false);
                 rb.set_linvel(v(Vec3::ZERO), false);
                 rb.set_angvel(angvel(Vec3::ZERO), false);
-                return (b.position, b.quaternion, Velocity::default());
+                return (b.position, b.quaternion, Some(Velocity::default()));
             }
             let (position, quaternion) = unpose(rb.position(), b.position);
-            (position, quaternion, velocity)
+            (position, quaternion, Some(velocity))
         });
         let (position, quaternion, velocity) = match out {
-            Some((p, q, vel)) => (p, q, Some(vel)),
+            Some((p, q, vel)) => (p, q, vel),
             None => (b.position, b.quaternion, b.velocity),
         };
         tracked.insert(
@@ -501,7 +617,7 @@ pub(crate) fn step(
         );
         moved.push(out);
     }
-    Ok(StepOut { moved, touching })
+    (touching, moved)
 }
 
 /// The colliders of a scene, placed for queries (no bodies, no stepping).

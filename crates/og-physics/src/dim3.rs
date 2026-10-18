@@ -5,6 +5,7 @@ use crate::schema::*;
 use crate::{ShapeKey, Shared};
 use og_core::glam::{Quat, Vec3};
 use og_core::{Error, ErrorKind, Result};
+pub(crate) use rapier3d::control as ctl;
 use rapier3d::parry::query::ShapeCastOptions;
 use rapier3d::prelude as rp;
 use std::collections::BTreeMap;
@@ -88,7 +89,62 @@ pub(crate) fn from_mesh(shape: u32, mesh: &crate::MeshDesc, s: Vec3) -> Result<r
     }
 }
 
+/// The profile's dimensions.
+pub(crate) const DIM: usize = 3;
+
+/// The rotation of a joint's frame whose x is `axis` (the hinge or slide axis).
+pub(crate) fn joint_frame(axis: Vec3) -> rp::Rotation {
+    let q = crate::arc(Vec3::X, axis.normalize_or(Vec3::X));
+    rp::Rotation::from_xyzw(q.x, q.y, q.z, q.w)
+}
+
+/// The axes a ball joint locks.
+pub(crate) fn ball_axes() -> rp::JointAxesMask {
+    rp::JointAxesMask::LOCKED_SPHERICAL_AXES
+}
+
+/// A hinge's angle: the rotation of frame `f2` about frame `f1`'s x.
+pub(crate) fn hinge_angle(f1: &rp::Pose, f2: &rp::Pose) -> f32 {
+    let r = f1.rotation.inverse() * f2.rotation;
+    let (x, w) = if r.w < 0.0 { (-r.x, -r.w) } else { (r.x, r.w) };
+    2.0 * og_core::math::atan2(x, w)
+}
+
+/// The 2D platformer controller is 2D only.
+pub(crate) fn platformers(
+    _scene: &crate::gather::Scene,
+    _settings: &Physics,
+    _dt: f32,
+    _sim: &mut Sim,
+    _poses: &sim::BodyPoses,
+    _out: &mut crate::StepOut,
+) -> Result<()> {
+    Ok(())
+}
+
+pub(crate) fn ragdolls(
+    scene: &crate::gather::Scene,
+    dt: f32,
+    sim: &mut Sim,
+    shared: &Shared,
+    out: &mut crate::StepOut,
+) -> Result<()> {
+    ragdoll::ragdolls(scene, dt, sim, &shared.rigs, &shared.ragdoll_targets, out)
+}
+
 #[allow(clippy::duplicate_mod)]
 #[path = "sim.rs"]
 mod sim;
 pub(crate) use sim::{QueryWorld, Sim, step};
+
+#[allow(clippy::duplicate_mod)]
+#[path = "ext.rs"]
+mod ext;
+
+#[path = "vehicle3.rs"]
+mod vehicle;
+pub(crate) use vehicle::{VehicleState, vehicles, wheels};
+
+#[path = "ragdoll3.rs"]
+mod ragdoll;
+pub(crate) use ragdoll::{RagdollState, pose_of as ragdoll_pose};

@@ -6,6 +6,7 @@ use crate::schema::*;
 use crate::{ShapeKey, Shared};
 use og_core::glam::{Quat, Vec3};
 use og_core::{Error, ErrorKind, Result};
+pub(crate) use rapier2d::control as ctl;
 use rapier2d::parry::query::ShapeCastOptions;
 use rapier2d::prelude as rp;
 use std::collections::BTreeMap;
@@ -116,7 +117,57 @@ pub(crate) fn from_mesh(_shape: u32, mesh: &crate::MeshDesc, s: Vec3) -> Result<
     })
 }
 
+/// The profile's dimensions.
+pub(crate) const DIM: usize = 2;
+
+/// The rotation of a joint's frame whose x is `axis` in the xy plane.
+pub(crate) fn joint_frame(axis: Vec3) -> rp::Rotation {
+    let len = (axis.x * axis.x + axis.y * axis.y).sqrt();
+    if len > 1e-9 && len.is_finite() {
+        rp::Rotation::from_cos_sin_unchecked(axis.x / len, axis.y / len)
+    } else {
+        rp::Rotation::IDENTITY
+    }
+}
+
+/// A ball joint in the plane is a hinge.
+pub(crate) fn ball_axes() -> rp::JointAxesMask {
+    rp::JointAxesMask::LOCKED_REVOLUTE_AXES
+}
+
+/// A hinge's angle: frame `f2`'s rotation relative to `f1`'s.
+pub(crate) fn hinge_angle(f1: &rp::Pose, f2: &rp::Pose) -> f32 {
+    let r = f1.rotation.inverse() * f2.rotation;
+    og_core::math::atan2(r.im, r.re)
+}
+
+/// Ragdolls are 3D only: the 2D profile keeps nothing for them.
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+pub(crate) struct RagdollState;
+
+pub(crate) fn ragdolls(
+    _scene: &crate::gather::Scene,
+    _dt: f32,
+    _sim: &mut Sim,
+    _shared: &Shared,
+    _out: &mut crate::StepOut,
+) -> Result<()> {
+    Ok(())
+}
+
 #[allow(clippy::duplicate_mod)]
 #[path = "sim.rs"]
 mod sim;
 pub(crate) use sim::{QueryWorld, Sim, step};
+
+#[allow(clippy::duplicate_mod)]
+#[path = "ext.rs"]
+mod ext;
+
+#[path = "platformer.rs"]
+mod platformer;
+pub(crate) use platformer::platformers;
+
+#[path = "vehicle2.rs"]
+mod vehicle;
+pub(crate) use vehicle::{VehicleState, vehicles, wheels};
