@@ -101,7 +101,8 @@ eroded by the agent radius (a two-pass chamfer distance).
 `og.NavAgent` (component): `nav` (a grid, navmesh or flow field handle; 0
 moves straight), `target`, `seeking`, `speed`, `acceleration`, `radius`,
 `stopDistance`, `slowRadius`, `repathTicks`, `repathDistance`, `smooth`,
-`faceMovement`, `turnSpeed`; written by og.nav: `status` (`STATUS_IDLE`,
+`faceMovement`, `turnSpeed`, `drive` (false: keep planning and reporting but
+leave the motion to the game, for a knock-back or a stun); written by og.nav: `status` (`STATUS_IDLE`,
 `MOVING`, `ARRIVED`, `UNREACHABLE`, `PARTIAL`), `velocity`, `waypoint`,
 `remaining`, `plans`.
 
@@ -114,11 +115,14 @@ og.Velocity), `separation` (`separationRadius`) and `avoidance`
 `Raycaster`).
 
 Per tick, in query order: re-plan when the target moved more than
-`repathDistance`, every `repathTicks`, or when the grid or mesh changed (at
+`repathDistance`, every `repathTicks`, when the grid or mesh changed, or
+when the agent is farther than `OFF_PATH` (1.5 m, or four radii) from its
+path's current leg (a teleport, a knock-back) (at
 most `plans_per_tick` plans a tick across agents, the rest the next ticks);
 follow the corners (a corner is passed within reach, or once the agent is
 past it towards the next one), arriving at the last; add the steering
-behaviours by weight; turn the velocity towards the result by at most
+behaviours by weight; starting from the body's actual `og.Velocity` when it
+has one, turn the velocity towards the result by at most
 `acceleration · dt`, cap it at `speed`. An entity with an `og.Velocity`
 gets its velocity written (physics moves it, so walls hold it); any other
 moves its `og.Transform`, along the surface on a navmesh. The time is the
@@ -137,7 +141,7 @@ loaded grids and meshes are assets, not state.
 ## Costs
 
 `cargo run --release -p og-nav --example nav_costs` (Apple M4 Pro, one
-thread; `tests/evidence/E6/nav-costs.md` has the full table):
+thread; `tests/evidence/E6/nav-costs.json` has the full record):
 
 | | |
 |---|---|

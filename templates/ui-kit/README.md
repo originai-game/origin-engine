@@ -66,3 +66,22 @@ pack's directory into a game's `assets/skins/`, keep
 | `scifi` | HUD: hairline frames with cut corners, corner brackets, scanlines, cyan glow, Orbitron, Chakra Petch, JetBrains Mono numerals |
 | `paper` | minimal: off-white sheets, hand-drawn ink outlines, soft shadows, a vermilion accent, Newsreader and Instrument Sans |
 | `neon` | arcade: dark glass, glowing magenta and cyan tubes, italic Chakra Petch display, Orbitron numerals |
+
+## Locales
+
+The main menu, pause and confirm screens and the settings' language list
+read their text from `og.i18n` (`assets/strings/{en,zh-CN,ja,ko,ar}.ogt`,
+`type strings`): `og.i18n.t(world, "menu.play")`, with plurals and
+arguments in ICU form (`{n, plural, other {コイン#枚}}`). Each table names
+its font chain (`fonts "fonts/NotoSansJP-subset.otf"`); the active locale's
+fonts come first in og-ui's fallback chain. Arabic is shaped from the
+font's own tables (its import settings use the `arabic` charset, which
+cooks the joining forms and the outlines) and the layout mirrors right to
+left. The language setting calls `og.i18n.setLocale`; `og run --locale ja`
+and the browser's `navigator.language` pick the first locale. `og cook`
+warns about any key a table lacks.
+
+`tools/make-locale-fonts.py <NotoSansCJK-Regular.ttc> <NotoSansArabic.ttf>`
+subsets the Noto fonts to exactly the tables' characters (rerun it after
+changing a string). `tests/locales.og.ts` compares each of the three
+screens in each locale with `crates/og-ui/references/metal/kit-locale-*`.

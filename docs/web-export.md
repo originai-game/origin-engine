@@ -254,10 +254,15 @@ which lives in the Worker and answers asynchronously:
 - A dev (Stage) build serves every member; a publish build the 7 player
   members. `globalThis.__runtime_probe__` (`version: 5`, `substrate:
   "origin-engine"`, every member a Promise) stays for in-page callers.
+- `listen` (E6, dev builds): the last seconds (at most 2) of what the
+  engine Worker's mixer rendered, `{tick, rate, frames, peak, rms, wav}`
+  with a base64 16-bit stereo WAV; the command channel's
+  `listen[:path][:seconds]` writes the same as a `wav` output; before the
+  page's audio is attached it answers `null`.
 
 Proven in headless Chrome 150 by `bun run test:browser` in
 `packages/engine`: `tests/web/wire.ts` (dev and publish, isolated and not:
-120 checks), `tests/web/player.ts` (10) and `tests/web/export.ts` (40;
+120 checks), `tests/web/player.ts` (12, with og.platform's `save.get`) and `tests/web/export.ts` (40;
 transcripts in `tests/evidence/E1/web-*`). These need a Chrome and are not
 in the gate; `tests/web-export.test.ts` (layout, manifest, determinism,
 icons) is.

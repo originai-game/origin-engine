@@ -14,11 +14,11 @@ only: frames, the UI tree and bundle swaps come in through traits.
 |---|---|
 | `Probe` | `Probe::new(&mut world)` (registers `og.Input`), `with_input(world, sink)`; hooks `set_capture`, `set_ui`, `set_reloader`, `set_facts`, `set_timings`, `set_engine_version`; `names()` resolves ids over the world's names |
 | driving | `frame(world, due)`, `step(world)`, `pump(world)`, `paused()`, `quit_requested()`, `take_outputs()`, `take_log()` |
-| command channel | `schedule(world, script) -> CommandsReport`, `register_command(name, CommandDesc, handler)`, `help()`, `command::parse`, `command::CORE_ACTIONS` |
+| command channel | `schedule(world, script) -> CommandsReport`, `register_command(name, CommandDesc, handler)`, `register_dump(name, CommandDesc, path_arg, handler)` (a module's dump: its JSON becomes an output like `dump_entity`'s), `inbox()` (an `Inbox` modules push actions into from inside a tick; the next tick runs them before its scheduled steps), `help()`, `command::parse`, `command::CORE_ACTIONS` |
 | probe members | `hello`, `tick`, `state`, `advance`, `pause`, `resume`, `input`, `accepted`, `pick`, `entity`, `bounds`, `patch`, `run`, `capture`, `sweep`, `reload`, `snapshot`, `restore`, `dump`, `commands` as typed methods; `invoke(world, method, params)` by name |
 | JSON-RPC | `Probe::call(world, frame) -> frame`, `Probe::answer(world, &Call)`, `rpc::parse`, `rpc::{PARSE_ERROR, INVALID_REQUEST, METHOD_NOT_FOUND, INVALID_PARAMS, INTERNAL_ERROR}` |
 | WebSocket (feature `ws`, native) | `server::ProbeServer::start(port)` (`None` for 0), `bind(addr)`, `poll()`, `Probe::serve(world, &server)`, `DEFAULT_PORT = 47800`, `PATH = "/probe"` |
-| hooks | `Capture` (`tier`, `target_size`, `capture`, `pick`), `UiTree` (`elements`) + `StaticUi`, `Reloader` (`rebuild -> Rebuilt { world, ms }`), `InputSink` + `WorldInput` |
+| hooks | `Capture` (`tier`, `target_size`, `capture`, `pick`), `UiTree` (`elements`) + `StaticUi`, `Reloader` (`rebuild -> Rebuilt { world, ms }`), `InputSink` + `WorldInput`, `set_listen(seconds -> Heard)` (the last seconds of the mix: a WAV with its rate, frames, peak and RMS) |
 | ids | `Names`: an entity's probe id is its name, or `#<index>.<generation>` |
 
 ## What a host provides
@@ -35,7 +35,7 @@ only: frames, the UI tree and bundle swaps come in through traits.
    touch the world. Web: hand each request-ring frame to `probe.call(world,
    text)` and post the answer. Never call during a system.
 3. **Outputs.** The probe writes no files: `take_outputs()` yields
-   `Output { tick, action, path, payload }` (`Png`, `Json`, `Text`) with
+   `Output { tick, action, path, payload }` (`Png`, `Json`, `Text`, `Wav`) with
    `file_name()` (the script's path or `<action>-<tick:06>.<ext>`) and
    `bytes()`; `take_log()` yields warnings, each naming the fix.
 4. **Hooks, when it has them.** `Capture` over og-render (render the world
@@ -81,11 +81,16 @@ and when it runs still unknown, warns and the script continues. `type` and
 | `dump_world[:path]` / `dump_entity:<entity>[:path]` / `dump_ui[:path]` | JSON outputs, as `dump` returns them | `dump_ui` is empty |
 | `set:<entity>.<component>.<field>=<value>` | write any field through the schema (`1.5`, `1,2,3`); range-checked, never clamped | — |
 | `seed:<n>` / `pause` / `resume` / `advance:<ticks>` / `quit` | reseed the world's `Rng`, hold and release the clock, take ≤ 3600 ticks now, end the run | — |
+| `listen[:path][:seconds]` | a `Wav` output: the last seconds (default 1, at most 2) of what the mixer rendered | warns without a listen hook |
 | `help` | a `Text` output listing every action, core and registered | — |
 
 A target miss (`touch_move_to`, `move_to_text`) also cancels the bare
 `touch_start`/`touch_end` after it, so a missed button is not clicked
 somewhere else.
+
+The runtime registers more (`crates/og-runtime/src/e6.rs`): `dump_ai`,
+`dump_nav`, `dump_platform`, `locale:<tag>` and `dump_pulse` (one tick's
+feel sample for `og polish`: `crates/og-runtime/src/polish.rs`).
 
 **Registry.** `register_command(name, CommandDesc { usage, doc }, handler)`
 adds an action for a module (the UI, the renderer) or a game
@@ -121,6 +126,7 @@ unknown method, or a fault.
 | `restore` | `id` | `true` | `false` for an unknown or dropped id, or a world it no longer fits |
 | `dump` | `what`: `world`, `entity` (+ `id`), `ui` | `{kind: "world", tick, hash, entities, archetypes: [{components, count}], systems: [{name, matched, reads, writes, ms}], resources}` / `{kind: "entity", id, name, components}` / `{kind: "ui", tick, elements}` | `null` for an unknown entity |
 | `commands` | `script` | `{scheduled, untilTick, warnings}` | `null` for a malformed script (the parse error is logged) |
+| `listen` | `seconds` (0–2) | `{tick, rate, frames, peak, rms, wav}` (base64 16-bit stereo) | `null` without a listen hook or before anything rendered |
 
 Errors: `-32700` unparsable JSON; `-32600` a batch, no numeric or string id,
 `jsonrpc` not `"2.0"`, a non-string method, a binary frame; `-32602`

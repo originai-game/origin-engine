@@ -1,4 +1,4 @@
-//! The cost numbers of tests/evidence/E6/nav-costs.md: 200 agents on a
+//! The cost numbers of tests/evidence/E6/nav-costs.json: 200 agents on a
 //! 256 × 256 grid and on a baked navmesh, path queries, flow fields, the bake.
 //!
 //!     cargo run --release -p og-nav --example nav_costs > tests/evidence/E6/nav-costs.json
