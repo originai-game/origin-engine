@@ -1,0 +1,24 @@
+type strings
+version 1
+---
+# The UI kit's ko strings (og.i18n; templates/ui-kit/README.md §Locales).
+locale "ko"
+fonts "fonts/NotoSansKR-subset.otf"
+string "gallery.button" "갤러리"
+string "menu.title" "오리진 퀘스트"
+string "menu.subtitle" "작은 모험"
+string "menu.play" "플레이"
+string "menu.continue" "이어하기"
+string "menu.settings" "설정"
+string "menu.quit" "종료"
+string "menu.footer" "버전 {version}"
+string "pause.title" "일시정지"
+string "pause.resume" "계속하기"
+string "pause.settings" "설정"
+string "pause.quit" "메뉴로 나가기"
+string "hud.level" "1-2 오래된 방앗간"
+string "hud.coins" "{n, plural, other {코인 #개}}"
+string "confirm.title" "이 저장을 삭제할까요?"
+string "confirm.message" "슬롯 {slot}의 진행 상황이 사라집니다. 되돌릴 수 없습니다."
+string "confirm.delete" "삭제"
+string "confirm.cancel" "취소"

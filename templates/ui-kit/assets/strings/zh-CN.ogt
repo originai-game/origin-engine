@@ -1,0 +1,24 @@
+type strings
+version 1
+---
+# The UI kit's zh-CN strings (og.i18n; templates/ui-kit/README.md §Locales).
+locale "zh-CN"
+fonts "fonts/NotoSansSC-Regular-subset.ttf"
+string "gallery.button" "图库"
+string "menu.title" "原点探险"
+string "menu.subtitle" "一场小小的冒险"
+string "menu.play" "开始"
+string "menu.continue" "继续"
+string "menu.settings" "设置"
+string "menu.quit" "退出"
+string "menu.footer" "版本 {version}"
+string "pause.title" "已暂停"
+string "pause.resume" "继续游戏"
+string "pause.settings" "设置"
+string "pause.quit" "返回菜单"
+string "hud.level" "1-2 旧磨坊"
+string "hud.coins" "{n, plural, other {# 枚金币}}"
+string "confirm.title" "删除这个存档？"
+string "confirm.message" "存档槽 {slot} 中的进度将会丢失。此操作无法撤销。"
+string "confirm.delete" "删除"
+string "confirm.cancel" "取消"

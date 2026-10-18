@@ -1,0 +1,24 @@
+type strings
+version 1
+---
+# The UI kit's en strings (og.i18n; templates/ui-kit/README.md §Locales).
+locale "en"
+base true
+string "gallery.button" "Gallery"
+string "menu.title" "Origin Quest"
+string "menu.subtitle" "A small adventure"
+string "menu.play" "Play"
+string "menu.continue" "Continue"
+string "menu.settings" "Settings"
+string "menu.quit" "Quit"
+string "menu.footer" "v{version}"
+string "pause.title" "Paused"
+string "pause.resume" "Resume"
+string "pause.settings" "Settings"
+string "pause.quit" "Quit to menu"
+string "hud.level" "1-2 Old mill"
+string "hud.coins" "{n, plural, one {# coin} other {# coins}}"
+string "confirm.title" "Delete this save?"
+string "confirm.message" "Your progress in slot {slot} will be lost. This cannot be undone."
+string "confirm.delete" "Delete"
+string "confirm.cancel" "Cancel"

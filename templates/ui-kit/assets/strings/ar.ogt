@@ -1,0 +1,24 @@
+type strings
+version 1
+---
+# The UI kit's ar strings (og.i18n; templates/ui-kit/README.md §Locales).
+locale "ar"
+fonts "fonts/NotoSansArabic-subset.ttf"
+string "gallery.button" "المعرض"
+string "menu.title" "مغامرة الأصل"
+string "menu.subtitle" "مغامرة صغيرة"
+string "menu.play" "العب"
+string "menu.continue" "متابعة"
+string "menu.settings" "الإعدادات"
+string "menu.quit" "خروج"
+string "menu.footer" "الإصدار {version}"
+string "pause.title" "متوقف مؤقتًا"
+string "pause.resume" "استئناف"
+string "pause.settings" "الإعدادات"
+string "pause.quit" "العودة إلى القائمة"
+string "hud.level" "1-2 الطاحونة القديمة"
+string "hud.coins" "{n, plural, zero {لا عملات} one {عملة واحدة} two {عملتان} few {# عملات} many {# عملة} other {# عملة}}"
+string "confirm.title" "حذف هذا الحفظ؟"
+string "confirm.message" "سيضيع تقدمك في الخانة {slot}. لا يمكن التراجع عن ذلك."
+string "confirm.delete" "حذف"
+string "confirm.cancel" "إلغاء"

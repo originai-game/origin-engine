@@ -97,3 +97,25 @@ Each break rebuilt the dev addon (`OG_GATE=1 sh packages/engine/scripts/build.sh
 | store conflicts | a write at a stale revision lands | `og.platform: a game's calls are answered …` (no `conflict`) |
 | leaderboard around | the around query returns the top | the same test (ranks 1–3, not 12–14) |
 | the runner's best | the crash does not save a new best | `records` |
+
+## og-i18n (`crates/og-i18n/tests/i18n.rs`)
+
+| Broken | Edit | Failed |
+|---|---|---|
+| Arabic plurals | `few` tests the integer, not its last two digits | `plurals_pick_each_languages_case` (103 is other, not few) |
+| selects | no case matches its key | `messages_format_selects_numbers_quotes_and_missing_arguments` |
+| refusals | a plural without `other` parses | `malformed_messages_and_tables_are_refused_with_where` |
+| Chinese negotiation | every Chinese tag is Hans | `locales_negotiate_to_the_best_table` (zh-TW took zh-CN) |
+| the fallback chain | the base table is never consulted | `the_catalog_falls_back_and_the_check_names_every_gap` |
+| paragraph direction | no character is strong right to left | `directions_follow_the_first_strong_character_and_the_locale` |
+
+## Shaping and right to left (`crates/og-ui/tests/rtl.rs`, `crates/og-cook/tests/strings.rs`, `packages/engine/tests/i18n.test.ts`)
+
+| Broken | Edit | Failed |
+|---|---|---|
+| shaping | `Shaper::word` answers nothing | `arabic_words_are_shaped_into_joined_forms_in_visual_order` |
+| right-to-left order | an RTL paragraph keeps its logical word order | `paragraphs_order_their_words_by_direction` |
+| mirroring | right to left leaves the rectangles where they are | `a_right_to_left_ui_mirrors_its_layout` |
+| the cook's key check | no table is checked | `tables_are_validated_and_every_locale_is_checked_against_the_base` |
+| joined forms | the GSUB closure is the letters alone | `an_arabic_font_carries_its_joined_forms_and_its_file` |
+| the host's locale | og_engine_create ignores `locale` | `og.i18n: the host's locale picks the table …` |

@@ -138,9 +138,16 @@ const QUALITIES = ["low", "medium", "high"] as const;
 const LANGUAGES = [
   { code: "en", label: "English" },
   { code: "zh-CN", label: "简体中文" },
-  { code: "es", label: "Español" },
-  { code: "fr", label: "Français" },
+  { code: "ja", label: "日本語" },
+  { code: "ko", label: "한국어" },
+  { code: "ar", label: "العربية" },
 ];
+
+/** The string tables (assets/strings/*.ogt), one per locale; en is the base. */
+const LOCALES = ["en", "zh-CN", "ja", "ko", "ar"] as const;
+
+/** A key of the active locale's table, with its arguments (og.i18n). */
+const tr = (world: World, key: string, args?: Record<string, string | number>) => og.i18n.t(world, key, args);
 
 const SHOP = [
   { id: "sword", name: "Iron sword", price: 300, icon: "sword", category: "Gear", description: "A dependable blade. +4 attack." },
@@ -278,11 +285,11 @@ function gallery(d: DemoState): void {
 }
 
 /** The Gallery button over every screen. */
-function galleryButton(d: DemoState): void {
+function galleryButton(world: World, d: DemoState): void {
   const bp = og.ui.breakpoint();
   // On a phone the bottom corners belong to the touch controls.
   og.ui.anchor("Back", { anchor: bp === "phonePortrait" || bp === "phoneLandscape" ? "top" : "bottomLeft", offsetY: bp === "phonePortrait" ? 52 : 0 }, () => {
-    if (og.ui.button("Gallery", "Gallery", { variant: "secondary", size: "small" }).clicked) d.screen = 0;
+    if (og.ui.button("Gallery", tr(world, "gallery.button"), { variant: "secondary", size: "small" }).clicked) d.screen = 0;
   });
 }
 
@@ -392,7 +399,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
   // The game behind every screen but the gallery and the widget sheet: a dusk landscape.
   if (screen !== "gallery" && screen !== "widgets" && d.backdrop) og.render.sprite(world, { texture: d.backdrop as never, width: 640, height: 360, layer: -10 });
 
-  if (screen !== "gallery" && screen !== "loading") galleryButton(d);
+  if (screen !== "gallery" && screen !== "loading") galleryButton(world, d);
   let back = false;
   switch (screen) {
     case "gallery":
@@ -405,15 +412,15 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
     case "mainMenu":
     case "tutorial": {
       const r = og.ui.mainMenu("Menu", {
-        title: "Origin Quest",
-        subtitle: "A small adventure",
+        title: tr(world, "menu.title"),
+        subtitle: tr(world, "menu.subtitle"),
         items: [
-          { id: "play", label: "Play" },
-          { id: "continue", label: "Continue", disabled: true },
-          { id: "settings", label: "Settings" },
-          { id: "quit", label: "Quit" },
+          { id: "play", label: tr(world, "menu.play") },
+          { id: "continue", label: tr(world, "menu.continue"), disabled: true },
+          { id: "settings", label: tr(world, "menu.settings") },
+          { id: "quit", label: tr(world, "menu.quit") },
         ],
-        footer: "v0.1.0",
+        footer: tr(world, "menu.footer", { version: "0.1.0" }),
       });
       if (r.selected === "play") d.screen = screenIndex("platformer");
       if (r.selected === "settings") d.screen = screenIndex("settings");
@@ -433,10 +440,18 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
     case "pause":
     case "platformer": {
       if (screen === "platformer" && !d.paused) d.time = Math.max(0, d.time - dt);
-      const h = og.ui.platformerHud("Hud", { lives: d.lives, maxLives: 3, coins: d.coins, score: d.score, level: "1-2 Old mill", timeLeft: d.time, touch: true });
+      const h = og.ui.platformerHud("Hud", { lives: d.lives, maxLives: 3, coins: d.coins, score: d.score, level: tr(world, "hud.level"), timeLeft: d.time, touch: true });
       if (h.paused) d.paused = true;
       if (h.action === "jump") d.coins += 1;
-      const p = og.ui.pauseMenu("Pause", { open: screen === "pause" || d.paused });
+      const p = og.ui.pauseMenu("Pause", {
+        open: screen === "pause" || d.paused,
+        title: tr(world, "pause.title"),
+        items: [
+          { id: "resume", label: tr(world, "pause.resume") },
+          { id: "settings", label: tr(world, "pause.settings") },
+          { id: "quit", label: tr(world, "pause.quit") },
+        ],
+      });
       if (p.selected === "resume") {
         d.paused = false;
         if (screen === "pause") d.screen = screenIndex("platformer");
@@ -468,7 +483,9 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       d.vibration = s.vibration ?? d.vibration;
       d.invertY = s.invertY ?? d.invertY;
       d.sensitivity = s.sensitivity ?? d.sensitivity;
-      d.language = Math.max(0, LANGUAGES.findIndex((l) => l.code === s.language));
+      const language = Math.max(0, LANGUAGES.findIndex((l) => l.code === s.language));
+      if (language !== d.language) og.i18n.setLocale(world, LANGUAGES[language]!.code);
+      d.language = language;
       const theme = d.highContrast !== (s.highContrast ?? false) || d.reducedMotion !== (s.reducedMotion ?? false);
       d.highContrast = s.highContrast ?? d.highContrast;
       d.reducedMotion = s.reducedMotion ?? d.reducedMotion;
@@ -629,7 +646,14 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       break;
     }
     case "confirm": {
-      const r = og.ui.confirmDialog("Delete", { open: true, title: "Delete this save?", message: "Your progress in slot 2 will be lost. This cannot be undone.", confirmLabel: "Delete", danger: true });
+      const r = og.ui.confirmDialog("Delete", {
+        open: true,
+        title: tr(world, "confirm.title"),
+        message: tr(world, "confirm.message", { slot: 2 }),
+        confirmLabel: tr(world, "confirm.delete"),
+        cancelLabel: tr(world, "confirm.cancel"),
+        danger: true,
+      });
       if (r.confirmed) {
         d.confirmed += 1;
         og.ui.toast(world, "Save deleted", { tone: "danger" });
@@ -699,6 +723,11 @@ export default og.game({
     }
     const e = world.spawn({ name: "demo" });
     if (!e.ok) throw new Error(e.reason);
+    // Every locale's strings; the active one is the host's (the browser's language, og run --locale).
+    for (const l of LOCALES) {
+      const loaded = og.i18n.load(world, `strings/${l}.ogt`);
+      if (!loaded.ok) throw new Error(loaded.reason);
+    }
     const font = og.load.font(world, "fonts/NotoSansSC-Regular-subset.ttf");
     const icons = og.load.texture(world, "textures/icons.png");
     const backdrop = og.load.texture(world, "textures/backdrop.png");
