@@ -53,6 +53,68 @@ Dependencies: M1 → M2 → everything TypeScript-facing; M0 → M3 (renderer
 work starts from the spike immediately); M4 needs M1's `.ogb`; M5 needs M2's
 hosts; M6 needs M3, M4, M5; M7 needs M6.
 
+### Status 2026-10-19, E5 round
+
+- **Atmosphere, water, material shaders and physics beyond rigid bodies**
+  (db38b41..HEAD, branch `e5`):
+  - **og-physics** gains joints (fixed, hinge and slider with limits and
+    motors, spring, rope, ball) and the 3D kinematic character controller
+    (slopes, steps, ground snapping, moving platforms, pushing).
+  - It gains the 2D platformer controller (jump height and time to apex,
+    coyote time, jump buffer, apex hang, jump cut, air and wall jumps,
+    one-way platforms with drop-through, corner correction) with
+    `og.CharacterEvent`, and vehicles (rapier's raycast car in 3D, sprung
+    motorised wheel joints in 2D).
+  - Also new: Verlet ropes and cloth, a 2D particle fluid (double density
+    relaxation), height-field and 2D spring-line water with splashes and
+    buoyancy, and ragdolls built from an og-anim skeleton and blended from
+    the animation.
+  - All of it is inside the og.physics state block. A 3D and a 2D world
+    with every feature hash the same twice and after a restore mid-run, and
+    the hashes are bit-identical on aarch64 macOS and x86_64 Linux.
+  - **og-render** gains fog (distance and height, sun scattering),
+    procedural sky looks drawn per pixel, `day_night` and weather presets
+    (rain, snow, dust, mist).
+  - It gains planar water (depth colour, foam, refraction, screen-space
+    reflections on the full tier and the sky cubemap on WebGL2), 2D water
+    strips and metaball fluids in the sprite order.
+  - It gains material shader hooks (vertex offset, surface colour, normal,
+    emissive), which og-cook compiles with naga for every back end and
+    refuses with naga's message, and mesh replacement.
+  - All of it is off by default, and every earlier reference frame is
+    unchanged.
+  - **TypeScript** reaches it through the IDL's physics module, the new
+    atmosphere module (`og.Fog`, `og.Sky`, `og.DayNight`, `og.Weather`,
+    `og.Water`, `og.Water2D`, `timeOfDay`), `og.render.shaderMaterial` and
+    `setShaderParam`, and `og.load.shader`.
+  - **Tests and references**: `templates/fx-showcase` has eight new
+    stations, each with its playtest and references on `metal`,
+    `vulkan-cpu`, `webgpu` and `webgl2`. og-tests has nine new scenes with
+    `metal` and `vulkan-cpu` references and behaviour tests.
+  - **Knowledge**: og-game (atmosphere and water, material shaders, physics
+    beyond rigid bodies), og-feel §12 (controller tunables by genre) and
+    og-taste §8 (atmosphere by intent).
+  - **Cost** on the M4 Pro: water 0.66 ms per frame. The 2D fluid costs
+    1.15 ms per tick at 1,000 particles. Every other feature costs under
+    0.12 ms.
+  - **Wasm**: 2,664,999 bytes brotli, 63 % of the budget (60 % before),
+    with no feature behind a cargo flag.
+  - Evidence: `tests/evidence/E5/`.
+- **Owed**:
+  - The runtime never calls `set_ragdoll_targets`, so at weight 0 a
+    ragdoll's bodies hold the rig's rest pose, not the animation. The drawn
+    model blends from the animation, but going limp starts the bodies from
+    the rest pose.
+  - Shader hooks skip skinned meshes. Shadows and the depth prepass ignore
+    `vertex_offset`, so swaying grass casts still shadows.
+  - Water has no planar reflection (screen-space only, and the sky cubemap
+    on WebGL2). It is not shadowed and has no underwater view.
+  - At most four metaball fluids are drawn per frame, and fluids do not
+    interact with one another. Cloth has no self-collision. Ragdolls are
+    3D only, and the night sky has stars but no moon disc.
+  - 3D SPH was not attempted: 3D water is the height field.
+  - The runner and topdown archetypes do not yet use the new controllers.
+
 ### Status 2026-10-18, E3 round
 
 - **UI style** (d612bc3..24d3663): og-ui's skin layer: a `Skin` the theme

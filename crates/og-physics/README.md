@@ -120,10 +120,12 @@ its JSON report), and the E5 round's `joints.rs`, `controllers.rs`,
 
 ## Status 2026-10-18 (what phase 1 still owes)
 
-- **Reaching TypeScript**: at 49ed935 the records above are not in
-  `crates/og-api/api.ogt` and neither host links og-physics, so games
-  cannot use it yet; the IDL transcription and the runtime's `install` are
-  owed.
+- **Reaching TypeScript**: every record above is in the IDL's physics
+  module (`crates/og-api/api.ogt`, the E5 records since b8cdc04), and
+  og-runtime links og-physics for both hosts. The readouts (`ropePoints`,
+  `clothPoints`, `fluidParticles`, `waterHeight`, `vehicleWheels`,
+  `ragdollPose`) and the rig from an og-anim skeleton
+  (`ragdollRigFromSkeleton`, `setRagdollRig`) are `og.physics` functions.
 - **Character controller**: delivered in the E5 round (above), with the 2D
   platformer controller, joints, vehicles, soft bodies, fluids, water and
   ragdolls.

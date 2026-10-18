@@ -1,0 +1,23 @@
+  controller.png: 0.000 % outliers, RMSE 0.00000 against templates/fx-showcase/references/vulkan-cpu/controller.png
+PASS controller (7 checks, 67285 ms): the controller station matches its reference and behaves
+  fluid.png: 0.000 % outliers, RMSE 0.00000 against templates/fx-showcase/references/vulkan-cpu/fluid.png
+PASS fluid (7 checks, 21107 ms): the fluid station matches its reference and behaves
+  post.png: 0.000 % outliers, RMSE 0.00052 against templates/fx-showcase/references/vulkan-cpu/post.png
+  lens.png: 0.033 % outliers, RMSE 0.00377 against templates/fx-showcase/references/vulkan-cpu/lens.png
+  fx.png: 0.000 % outliers, RMSE 0.00008 against templates/fx-showcase/references/vulkan-cpu/fx.png
+  2d.png: 0.000 % outliers, RMSE 0.00000 against templates/fx-showcase/references/vulkan-cpu/2d.png
+  stylised.png: 0.034 % outliers, RMSE 0.00389 against templates/fx-showcase/references/vulkan-cpu/stylised.png
+PASS frames (19 checks, 107086 ms): every station matches its reference frame
+  joints.png: 0.000 % outliers, RMSE 0.00000 against templates/fx-showcase/references/vulkan-cpu/joints.png
+PASS joints (8 checks, 30638 ms): the joints station matches its reference and behaves
+  rope.png: 0.000 % outliers, RMSE 0.00000 against templates/fx-showcase/references/vulkan-cpu/rope.png
+PASS rope (6 checks, 25037 ms): the rope station matches its reference and behaves
+  shaders.png: 0.000 % outliers, RMSE 0.00000 against templates/fx-showcase/references/vulkan-cpu/shaders.png
+PASS shaders (6 checks, 30061 ms): the shaders station matches its reference and behaves
+  sky.png: 0.000 % outliers, RMSE 0.00000 against templates/fx-showcase/references/vulkan-cpu/sky.png
+PASS sky (7 checks, 23759 ms): the sky station matches its reference and behaves
+  water.png: 0.000 % outliers, RMSE 0.00000 against templates/fx-showcase/references/vulkan-cpu/water.png
+PASS water (6 checks, 51932 ms): the water station matches its reference and behaves
+  weather.png: 0.000 % outliers, RMSE 0.00000 against templates/fx-showcase/references/vulkan-cpu/weather.png
+PASS weather (6 checks, 44604 ms): the weather station matches its reference and behaves
+og test: 9 suite(s) passed
