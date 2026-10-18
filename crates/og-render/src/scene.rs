@@ -980,6 +980,12 @@ impl RenderScene {
         self.fonts.get(handle.index())
     }
 
+    /// The handle of the scene's `index`-th mesh (meshes are numbered in
+    /// the order they were added).
+    pub fn mesh_handle(&self, index: usize) -> Option<MeshHandle> {
+        (index < self.meshes.len()).then(|| MeshHandle::from_index(index))
+    }
+
     pub fn mesh(&self, handle: MeshHandle) -> Option<&MeshData> {
         self.meshes.get(handle.index())
     }

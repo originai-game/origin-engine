@@ -33,6 +33,7 @@ mod assets;
 mod codec;
 mod engine;
 mod extract;
+mod fx;
 mod modules;
 mod probe;
 

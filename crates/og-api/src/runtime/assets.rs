@@ -262,6 +262,16 @@ pub(crate) fn load_gltf(eng: &Engine, path: &str) -> Result<usize, String> {
         (model, textures)
     };
     let mut rs = eng.render.borrow_mut();
+    // The model's primitives become consecutive scene meshes from here.
+    let base = rs.scene.mesh_count();
+    let mut prim_mesh = vec![0u32; model.primitives.len()];
+    for (m, mesh) in model.meshes.iter().enumerate() {
+        for p in mesh.primitives.clone() {
+            if let Some(slot) = prim_mesh.get_mut(p) {
+                *slot = m as u32;
+            }
+        }
+    }
     let parts = model.add_to(&mut rs.scene, &textures);
     let mut geometries = Vec::new();
     let mut materials = Vec::new();
@@ -296,6 +306,14 @@ pub(crate) fn load_gltf(eng: &Engine, path: &str) -> Result<usize, String> {
         },
     );
     rs.models.insert(handle(index), parts.parts);
+    rs.fx.models.insert(
+        handle(index),
+        super::fx::ModelInfo {
+            id: id.clone(),
+            base,
+            prim_mesh,
+        },
+    );
     assets.by_path.insert(format!("gltf:{id}"), index);
     // Its geometries become physics meshes under their Geometry handles, for
     // convex and triangle-mesh colliders.

@@ -57,7 +57,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-550 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+575 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -70,6 +70,8 @@ Field units the docs and Tune use.
 | [`AnchorDesc`](ui.md#type-AnchorDesc) | desc struct | ui | — |
 | [`Animation`](anim.md#type-Animation) | struct | anim | — |
 | [`Antialias`](render.md#type-Antialias) | enum | render | — |
+| [`AoMethod`](render.md#type-AoMethod) | enum | render | — |
+| [`AoMethod()`](render.md#column-AoMethod) | column kind | render | — |
 | [`ArchetypeDump`](probe.md#type-ArchetypeDump) | struct | probe | — |
 | [`ArchetypeView`](world.md#type-ArchetypeView) | interface | world | — |
 | [`ArchetypeView.column`](world.md#member-ArchetypeView-column) | method | world | `og_archetype_view_column` |
@@ -130,6 +132,8 @@ Field units the docs and Tune use.
 | [`DialogueLine`](ui.md#type-DialogueLine) | desc struct | ui | — |
 | [`DialogueResult`](ui.md#type-DialogueResult) | struct | ui | — |
 | [`Direction`](ui.md#type-Direction) | enum | ui | — |
+| [`DofQuality`](render.md#type-DofQuality) | enum | render | — |
+| [`DofQuality()`](render.md#column-DofQuality) | column kind | render | — |
 | [`DpadDesc`](ui.md#type-DpadDesc) | desc struct | ui | — |
 | [`DpadResult`](ui.md#type-DpadResult) | struct | ui | — |
 | [`DumpDesc`](probe.md#type-DumpDesc) | desc struct | probe | — |
@@ -232,6 +236,8 @@ Field units the docs and Tune use.
 | [`LOCK_TRANSLATION_X`](physics.md#const-LOCK_TRANSLATION_X) | constant | physics | — |
 | [`LOCK_TRANSLATION_Y`](physics.md#const-LOCK_TRANSLATION_Y) | constant | physics | — |
 | [`LOCK_TRANSLATION_Z`](physics.md#const-LOCK_TRANSLATION_Z) | constant | physics | — |
+| [`Lut`](render.md#type-Lut) | handle | render | — |
+| [`Lut()`](render.md#column-Lut) | column kind | render | — |
 | [`MainMenuDesc`](ui.md#type-MainMenuDesc) | desc struct | ui | — |
 | [`MapMarker`](ui.md#type-MapMarker) | desc struct | ui | — |
 | [`Material`](render.md#type-Material) | handle | render | — |
@@ -260,6 +266,7 @@ Field units the docs and Tune use.
 | [`og.Audio`](audio.md#record-Audio) | resource | audio | — |
 | [`og.AudioListener`](audio.md#record-AudioListener) | component | audio | — |
 | [`og.AudioSource`](audio.md#record-AudioSource) | component | audio | — |
+| [`og.Beam`](render.md#record-Beam) | component | render | — |
 | [`og.Blendshapes`](anim.md#record-Blendshapes) | component | anim | — |
 | [`og.Camera`](camera.md#record-Camera) | resource | camera | — |
 | [`og.Collider`](physics.md#record-Collider) | component | physics | — |
@@ -270,6 +277,7 @@ Field units the docs and Tune use.
 | [`og.commands.register`](commands.md#fn-register) | function | commands | `og_commands_register` |
 | [`og.commands.schedule`](commands.md#fn-schedule) | function | commands | `og_commands_schedule` |
 | [`og.Contact`](physics.md#record-Contact) | event | physics | — |
+| [`og.Decal`](render.md#record-Decal) | component | render | — |
 | [`og.DirectionalLight`](render.md#record-DirectionalLight) | component | render | — |
 | [`og.Follow2D`](camera.md#record-Follow2D) | component | camera | — |
 | [`og.FollowCamera`](camera.md#record-FollowCamera) | component | camera | — |
@@ -279,15 +287,19 @@ Field units the docs and Tune use.
 | [`og.Input`](input.md#record-Input) | resource | input | — |
 | [`og.KeyDown`](input.md#record-KeyDown) | event | input | — |
 | [`og.KeyUp`](input.md#record-KeyUp) | event | input | — |
+| [`og.Light2D`](render.md#record-Light2D) | component | render | — |
+| [`og.Lighting2D`](render.md#record-Lighting2D) | resource | render | — |
 | [`og.load.animation`](load.md#fn-animation) | function | load | `og_load_animation` |
 | [`og.load.bundle`](load.md#fn-bundle) | function | load | `og_load_bundle` |
 | [`og.load.bundleInfo`](load.md#fn-bundleInfo) | function | load | `og_load_bundle_info` |
 | [`og.load.defaultBundle`](load.md#fn-defaultBundle) | function | load | `og_load_default_bundle` |
+| [`og.load.emitter`](load.md#fn-emitter) | function | load | `og_load_emitter` |
 | [`og.load.error`](load.md#fn-error) | function | load | `og_load_error` |
 | [`og.load.font`](load.md#fn-font) | function | load | `og_load_font` |
 | [`og.load.fontInfo`](load.md#fn-fontInfo) | function | load | `og_load_font_info` |
 | [`og.load.gltf`](load.md#fn-gltf) | function | load | `og_load_gltf` |
 | [`og.load.gltfInfo`](load.md#fn-gltfInfo) | function | load | `og_load_gltf_info` |
+| [`og.load.lut`](load.md#fn-lut) | function | load | `og_load_lut` |
 | [`og.load.scene`](load.md#fn-scene) | function | load | `og_load_scene` |
 | [`og.load.sound`](load.md#fn-sound) | function | load | `og_load_sound` |
 | [`og.load.soundInfo`](load.md#fn-soundInfo) | function | load | `og_load_sound_info` |
@@ -296,8 +308,10 @@ Field units the docs and Tune use.
 | [`og.MatrixWorld`](transform.md#record-MatrixWorld) | component | transform | — |
 | [`og.Mesh`](render.md#record-Mesh) | component | render | — |
 | [`og.Model`](load.md#record-Model) | component | load | — |
+| [`og.Occluder2D`](render.md#record-Occluder2D) | component | render | — |
 | [`og.OrbitCamera`](camera.md#record-OrbitCamera) | component | camera | — |
 | [`og.Parent`](transform.md#record-Parent) | component | transform | — |
+| [`og.ParticleSystem`](render.md#record-ParticleSystem) | component | render | — |
 | [`og.Physics`](physics.md#record-Physics) | resource | physics | — |
 | [`og.physics.overlap`](physics.md#fn-overlap) | function | physics | `og_physics_overlap` |
 | [`og.physics.raycast`](physics.md#fn-raycast) | function | physics | `og_physics_raycast` |
@@ -308,10 +322,12 @@ Field units the docs and Tune use.
 | [`og.Pointers`](input.md#record-Pointers) | resource | input | — |
 | [`og.PointerUp`](input.md#record-PointerUp) | event | input | — |
 | [`og.PointLight`](render.md#record-PointLight) | component | render | — |
+| [`og.PostEffects`](render.md#record-PostEffects) | resource | render | — |
 | [`og.render.boxGeometry`](render.md#fn-boxGeometry) | function | render | `og_render_box_geometry` |
 | [`og.render.capabilities`](render.md#fn-capabilities) | function | render | `og_render_capabilities` |
 | [`og.render.measureText`](render.md#fn-measureText) | function | render | `og_render_measure_text` |
 | [`og.render.planeGeometry`](render.md#fn-planeGeometry) | function | render | `og_render_plane_geometry` |
+| [`og.render.ribbon`](render.md#fn-ribbon) | function | render | `og_render_ribbon` |
 | [`og.render.sphereGeometry`](render.md#fn-sphereGeometry) | function | render | `og_render_sphere_geometry` |
 | [`og.render.sprite`](render.md#fn-sprite) | function | render | `og_render_sprite` |
 | [`og.render.standardMaterial`](render.md#fn-standardMaterial) | function | render | `og_render_standard_material` |
@@ -328,6 +344,7 @@ Field units the docs and Tune use.
 | [`og.SpotLight`](render.md#record-SpotLight) | component | render | — |
 | [`og.systems.cameras`](systems.md#value-cameras) | value | systems | — |
 | [`og.Time`](time.md#record-Time) | resource | time | — |
+| [`og.Trail`](render.md#record-Trail) | component | render | — |
 | [`og.Transform`](transform.md#record-Transform) | component | transform | — |
 | [`og.transform.compose`](transform.md#fn-compose) | function | transform | `og_transform_compose` |
 | [`og.transform.decompose`](transform.md#fn-decompose) | function | transform | `og_transform_decompose` |
@@ -428,6 +445,8 @@ Field units the docs and Tune use.
 | [`OverlapDesc`](physics.md#type-OverlapDesc) | desc struct | physics | — |
 | [`Paint`](ui.md#type-Paint) | desc struct | ui | — |
 | [`PanelDesc`](ui.md#type-PanelDesc) | desc struct | ui | — |
+| [`ParticleEmitter`](render.md#type-ParticleEmitter) | handle | render | — |
+| [`ParticleEmitter()`](render.md#column-ParticleEmitter) | column kind | render | — |
 | [`PauseMenuDesc`](ui.md#type-PauseMenuDesc) | desc struct | ui | — |
 | [`PercentSize`](ui.md#type-PercentSize) | struct | ui | — |
 | [`PickOperation`](probe.md#type-PickOperation) | struct | probe | — |
@@ -478,6 +497,8 @@ Field units the docs and Tune use.
 | [`REPLAY_SEED_PARAM`](probe.md#const-REPLAY_SEED_PARAM) | constant | probe | — |
 | [`Response`](ui.md#type-Response) | struct | ui | — |
 | [`ResultsDesc`](ui.md#type-ResultsDesc) | desc struct | ui | — |
+| [`RibbonDesc`](render.md#type-RibbonDesc) | desc struct | render | — |
+| [`RibbonPoint`](render.md#type-RibbonPoint) | desc struct | render | — |
 | [`Rng.chance`](rng.md#member-Rng-chance) | method | rng | `og_rng_chance` |
 | [`Rng.fork`](rng.md#member-Rng-fork) | method | rng | `og_rng_fork` |
 | [`Rng.integer`](rng.md#member-Rng-integer) | method | rng | `og_rng_integer` |
@@ -545,12 +566,15 @@ Field units the docs and Tune use.
 | [`SpawnDesc`](world.md#type-SpawnDesc) | desc struct | world | — |
 | [`SphereGeometryDesc`](render.md#type-SphereGeometryDesc) | desc struct | render | — |
 | [`SpotlightDesc`](ui.md#type-SpotlightDesc) | desc struct | ui | — |
+| [`SpriteBlend`](render.md#type-SpriteBlend) | enum | render | — |
 | [`SpriteDesc`](render.md#type-SpriteDesc) | desc struct | render | — |
 | [`StandardMaterialDesc`](render.md#type-StandardMaterialDesc) | desc struct | render | — |
 | [`StartFn`](game.md#type-StartFn) | callback | game | — |
 | [`StatRow`](ui.md#type-StatRow) | desc struct | ui | — |
 | [`StepperDesc`](ui.md#type-StepperDesc) | desc struct | ui | — |
 | [`StepperResult`](ui.md#type-StepperResult) | struct | ui | — |
+| [`StripBlend`](render.md#type-StripBlend) | enum | render | — |
+| [`StripBlend()`](render.md#column-StripBlend) | column kind | render | — |
 | [`SweepDesc`](probe.md#type-SweepDesc) | desc struct | probe | — |
 | [`SweepFrame`](probe.md#type-SweepFrame) | struct | probe | — |
 | [`SweepResult`](probe.md#type-SweepResult) | struct | probe | — |
@@ -567,6 +591,7 @@ Field units the docs and Tune use.
 | [`TextMeasureDesc`](render.md#type-TextMeasureDesc) | desc struct | render | — |
 | [`TextMetrics`](render.md#type-TextMetrics) | struct | render | — |
 | [`Texture`](render.md#type-Texture) | handle | render | — |
+| [`Texture()`](render.md#column-Texture) | column kind | render | — |
 | [`ThemeColor`](ui.md#type-ThemeColor) | enum | ui | — |
 | [`ToastDesc`](ui.md#type-ToastDesc) | desc struct | ui | — |
 | [`ToggleResult`](ui.md#type-ToggleResult) | struct | ui | — |

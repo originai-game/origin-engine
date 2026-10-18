@@ -376,6 +376,8 @@ enum Kind {
     Sound,
     Font,
     Scene,
+    Lut,
+    Emitter,
 }
 
 impl Kind {
@@ -386,6 +388,8 @@ impl Kind {
             Kind::Sound => "sound",
             Kind::Font => "font",
             Kind::Scene => "scene",
+            Kind::Lut => "lut",
+            Kind::Emitter => "emitter",
         }
     }
 }
@@ -407,6 +411,8 @@ enum Work<'a> {
     GltfTexture(&'a Source, usize, u32),
     Texture(&'a Source, u32),
     Sound(&'a Source),
+    Lut(&'a Source),
+    Emitter(&'a Source),
     Font(&'a Source, FontSettings),
     Scene(&'a Source),
 }
@@ -578,6 +584,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
             "png" | "jpg" | "jpeg" => Kind::Texture,
             "wav" => Kind::Sound,
             "ttf" | "otf" => Kind::Font,
+            "cube" => Kind::Lut,
             "ogt" => {
                 let text = std::fs::read_to_string(path)
                     .map_err(|e| CookError(format!("{}: {e}", path.display())))?;
@@ -596,12 +603,13 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                         continue;
                     }
                     Ok(doc) if doc.ty == "scene" => Kind::Scene,
+                    Ok(doc) if doc.ty == crate::fx::EMITTER_TYPE => Kind::Emitter,
                     Ok(doc) => {
                         early_errors.push((
                             rel.clone(),
                             "scene",
                             format!(
-                                "an .ogt of type '{}' is not a cookable asset (scene or import)",
+                                "an .ogt of type '{}' is not a cookable asset (scene, particles or import)",
                                 doc.ty
                             ),
                         ));
@@ -770,6 +778,19 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
             Kind::Sound => {
                 let st = stamp(&[b"sound", &hash]);
                 outs.push((s.rel.clone(), format::Sound::NAME, st, Work::Sound(s)));
+            }
+            Kind::Lut => {
+                let st = stamp(&[b"lut", &hash]);
+                outs.push((s.rel.clone(), format::Lut::NAME, st, Work::Lut(s)));
+            }
+            Kind::Emitter => {
+                let text = String::from_utf8_lossy(&s.bytes);
+                let refs: Vec<String> = crate::fx::emitter_references(&text)
+                    .into_iter()
+                    .map(|r| format!("{r}={}", known.contains(crate::runtime::asset_id(&r))))
+                    .collect();
+                let st = stamp(&[b"emitter", &hash, refs.join("\n").as_bytes()]);
+                outs.push((s.rel.clone(), format::Emitter::NAME, st, Work::Emitter(s)));
             }
             Kind::Font => match font_settings(s, &options.font) {
                 Ok(f) => {
@@ -1009,6 +1030,62 @@ fn run(
             texture::cook(&img, *k, &options.texture, p.stamp).map(|b| (b, vec![note]))
         }
         Work::Sound(s) => audio::cook(&s.bytes, p.stamp).map(|(b, n)| (b, vec![n])),
+        Work::Lut(s) => {
+            let text = std::str::from_utf8(&s.bytes)
+                .map_err(|_| CookError("a .cube LUT is text (UTF-8)".into()))?;
+            let lut = crate::fx::parse_cube(text).map_err(CookError)?;
+            let mut w = og_blob::BlobWriter::new(
+                format::Lut::type_hash(),
+                format::Lut::schema_version(),
+                p.stamp,
+            );
+            w.table(
+                "meta",
+                &[format::LutMeta { size: lut.size }],
+                format::row_hash::<format::LutMeta>(),
+            )
+            .raw("rgba", lut.rgba, 16);
+            Ok((w.finish(), vec![format!("{0}³ colour table", lut.size)]))
+        }
+        Work::Emitter(s) => {
+            let text = std::str::from_utf8(&s.bytes)
+                .map_err(|_| CookError("an emitter is text (UTF-8)".into()))?;
+            let mut missing = Vec::new();
+            let em = crate::fx::parse_emitter(text, &mut |id| {
+                if !known.contains(crate::runtime::asset_id(id)) {
+                    missing.push(id.to_string());
+                }
+                Ok(None)
+            })
+            .map_err(CookError)?;
+            if !missing.is_empty() {
+                return Err(CookError(format!(
+                    "the emitter names texture(s) not under assets/: {}",
+                    missing.join(", ")
+                )));
+            }
+            let mut w = og_blob::BlobWriter::new(
+                format::Emitter::type_hash(),
+                format::Emitter::schema_version(),
+                p.stamp,
+            );
+            w.table(
+                "meta",
+                &[format::EmitterMeta {
+                    text_bytes: text.len() as u32,
+                }],
+                format::row_hash::<format::EmitterMeta>(),
+            )
+            .raw("text", text.as_bytes().to_vec(), 16);
+            Ok((
+                w.finish(),
+                vec![format!(
+                    "{} particles, {} burst(s)",
+                    em.max_particles,
+                    em.bursts.len()
+                )],
+            ))
+        }
         Work::Font(s, f) => {
             font::cook(&s.bytes, f, threads, p.stamp).map(|(b, n)| (b, vec![n.note]))
         }

@@ -8,6 +8,7 @@
 //! | [`ktx2`] | `runtime` | KTX2 parsing, lossless RGBA8 textures; `.basis` ↔ KTX2 with `basis`/`transcode` |
 //! | [`meshopt_codec`] | `runtime` | pure-Rust meshoptimizer vertex and index decoders |
 //! | [`qoa`] | `runtime` | the QOA audio codec |
+//! | [`fx`] | `runtime` | particle emitter files (`.ogt` of `type particles`) and `.cube` colour tables |
 //! | [`cook`] | `cook` | [`cook::cook_project`], options, the report, the importers |
 //!
 //! `runtime` alone builds for `wasm32-unknown-unknown` (no C, no cook
@@ -15,6 +16,8 @@
 //! RGBA8; `cook` (the default) adds the importers and encoders.
 
 pub mod format;
+#[cfg(feature = "runtime")]
+pub mod fx;
 #[cfg(feature = "runtime")]
 pub mod ktx2;
 #[cfg(feature = "runtime")]

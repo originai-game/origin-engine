@@ -414,6 +414,11 @@ pub fn og_camera_screen_to_ray(world: u32, x: f64, y: f64) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_render_ribbon(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_ribbon(&Host, world, desc)
+}
+
+#[wasm_bindgen]
 pub fn og_render_sprite(world: u32, desc: Option<String>) -> String {
     <Host as RenderApi>::og_render_sprite(&Host, world, desc)
 }
@@ -496,6 +501,16 @@ pub fn og_load_font_info(world: u32, font: f64) -> String {
 #[wasm_bindgen]
 pub fn og_load_sound(world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_sound(&Host, world, path)
+}
+
+#[wasm_bindgen]
+pub fn og_load_lut(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_lut(&Host, world, path)
+}
+
+#[wasm_bindgen]
+pub fn og_load_emitter(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_emitter(&Host, world, path)
 }
 
 #[wasm_bindgen]

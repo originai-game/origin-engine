@@ -359,6 +359,41 @@ impl Bundle {
         })
     }
 
+    /// Decodes a colour LUT blob.
+    pub fn lut(&self, id: &str, bytes: &[u8]) -> Result<og_render::ColorLut, LoadError> {
+        let blob = self.blob::<format::Lut>(id, bytes)?;
+        let meta = one::<format::LutMeta>(&blob)?;
+        let rgba = blob.raw("rgba")?.to_vec();
+        let n = meta.size as usize;
+        if rgba.len() != n * n * n * 4 {
+            return Err(invalid(
+                &blob,
+                format!(
+                    "a {n}³ LUT holds {} bytes, not {}",
+                    n * n * n * 4,
+                    rgba.len()
+                ),
+            ));
+        }
+        Ok(og_render::ColorLut {
+            size: meta.size,
+            rgba,
+        })
+    }
+
+    /// The validated text of a particle emitter blob (parse it with
+    /// [`crate::fx::parse_emitter`] and the bundle's textures).
+    pub fn emitter_text(&self, id: &str, bytes: &[u8]) -> Result<String, LoadError> {
+        let blob = self.blob::<format::Emitter>(id, bytes)?;
+        let meta = one::<format::EmitterMeta>(&blob)?;
+        let text = blob.raw("text")?;
+        if text.len() < meta.text_bytes as usize {
+            return Err(invalid(&blob, "the emitter text is cut short"));
+        }
+        String::from_utf8(text[..meta.text_bytes as usize].to_vec())
+            .map_err(|_| invalid(&blob, "the emitter text is not UTF-8"))
+    }
+
     /// Decodes a sound blob (the QOA stays encoded until [`CookedSound::decode`]).
     pub fn sound(&self, id: &str, bytes: &[u8]) -> Result<CookedSound, LoadError> {
         let blob = self.blob::<format::Sound>(id, bytes)?;

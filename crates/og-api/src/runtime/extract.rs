@@ -67,6 +67,9 @@ pub(crate) struct QueuedText {
     pub rotation: f32,
     pub color: [f32; 4],
     pub layer: i32,
+    /// In the overlay (CSS pixels, y down), cut to this clip.
+    pub screen: bool,
+    pub clip: Option<[f32; 4]>,
 }
 
 /// One model's parts: per part the mesh, the material and the node's
@@ -88,8 +91,9 @@ pub(crate) struct RenderState {
     /// Text queued during the current tick, and that tick.
     pub texts: Vec<QueuedText>,
     pub texts_tick: u64,
-    /// Sprites queued during the current tick (`og.render.sprite`).
-    pub sprites: Vec<og_render::Sprite>,
+    /// The effects games declare as data (`super::fx`), with the sprites
+    /// and ribbons queued during the current tick.
+    pub fx: super::fx::FxState,
     /// Textures by Texture handle index (`og.load.texture`).
     pub textures: Vec<og_render::TextureHandle>,
     /// Layouts of the engine records extraction reads.
@@ -121,7 +125,7 @@ impl RenderState {
             fonts: Vec::new(),
             texts: Vec::new(),
             texts_tick: 0,
-            sprites: Vec::new(),
+            fx: super::fx::FxState::default(),
             textures: Vec::new(),
             camera: None,
             settings: None,
@@ -166,14 +170,14 @@ fn resource(world: &World, layout: Option<&Layout>) -> Option<Value> {
 
 /// Local transforms and parents of every entity with `og.Transform`, for
 /// composing world matrices.
-pub(crate) struct Hierarchy {
+pub struct Hierarchy {
     local: BTreeMap<u64, Mat4>,
     parent: BTreeMap<u64, u64>,
     world: BTreeMap<u64, Mat4>,
 }
 
 impl Hierarchy {
-    pub fn of(world: &World) -> Hierarchy {
+    pub(crate) fn of(world: &World) -> Hierarchy {
         let mut h = Hierarchy {
             local: BTreeMap::new(),
             parent: BTreeMap::new(),
@@ -228,7 +232,7 @@ impl Hierarchy {
     }
 
     /// The world matrix of an entity: its local transform after its parents'.
-    pub fn world_of(&mut self, e: u64) -> Mat4 {
+    pub(crate) fn world_of(&mut self, e: u64) -> Mat4 {
         if let Some(m) = self.world.get(&e) {
             return *m;
         }
@@ -284,6 +288,8 @@ pub(crate) struct DrawLayouts {
     pub directional: Option<Layout>,
     pub point: Option<Layout>,
     pub spot: Option<Layout>,
+    /// The effect records (`super::fx`).
+    pub fx: super::fx::FxLayouts,
 }
 
 /// Rebuild the per-frame part of `rs.scene` from the world as of its tick.
@@ -299,6 +305,11 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     scene.texts.clear();
     scene.sprites.clear();
     scene.overlay = None;
+    scene.joint_palettes.clear();
+    scene.skinned_instances.clear();
+    let time = world.time();
+    scene.tick = time.tick;
+    scene.tick_rate = if time.dt > 0.0 { 1.0 / time.dt } else { 60.0 };
     // og.render.sprite and og.render.text are immediate mode: what the last
     // tick submitted (or a command since it) is drawn, and a tick that
     // submitted nothing draws nothing. The queues are cleared lazily by the
@@ -369,21 +380,41 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         scene.camera.exposure = og_render::Exposure::linear(exposure);
     }
 
-    // Models.
-    if let Some(model) = &layouts.model {
-        for (e, v) in rows(world, model) {
+    // Models: posed by og-anim when the entity has a Skeleton.
+    let posed = super::fx::skeletons(world, rs);
+    let mut keys: Vec<(u64, u32)> = Vec::new();
+    let model_rows = layouts
+        .model
+        .as_ref()
+        .map(|m| rows(world, m))
+        .unwrap_or_default();
+    let model_parts: Vec<(u64, u64, Parts)> = model_rows
+        .into_iter()
+        .filter_map(|(e, v)| {
             let asset = v["asset"].as_f64().unwrap_or(0.0) as u64;
-            if let Some(parts) = models.get(&asset) {
-                let m = h.world_of(e);
-                for &(mesh, material, local) in parts {
-                    scene.add_instance(mesh, material, m * local);
-                }
-            }
+            models.get(&asset).map(|p| (e, asset, p.clone()))
+        })
+        .collect();
+    let mesh_rows = layouts
+        .mesh
+        .as_ref()
+        .map(|m| rows(world, m))
+        .unwrap_or_default();
+    let (geometries, materials) = (geometries.clone(), materials.clone());
+    for (e, asset, parts) in model_parts {
+        let m = h.world_of(e);
+        if posed.contains(&e) && super::fx::posed_model(rs, e, asset, m, &parts, &mut keys) {
+            continue;
+        }
+        for (k, &(mesh, material, local)) in parts.iter().enumerate() {
+            rs.scene.add_instance(mesh, material, m * local);
+            keys.push((e, k as u32));
         }
     }
+    let scene = &mut rs.scene;
     // Meshes.
-    if let Some(mesh) = &layouts.mesh {
-        for (e, v) in rows(world, mesh) {
+    {
+        for (e, v) in mesh_rows {
             if !on(&v, "visible", true) {
                 continue;
             }
@@ -396,11 +427,13 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             };
             let w = h.world_of(e);
             scene.add_instance(g, m, w);
+            keys.push((e, 0));
         }
     }
     // Lights: the first directional light, then point and spot lights in
     // entity order (deterministic), at most MAX_LIGHTS of them drawn.
     let forward = |m: Mat4| m.transform_vector3(Vec3::NEG_Z).normalize_or_zero();
+    let layouts = &rs.draw;
     if let Some(dl) = &layouts.directional {
         if let Some((e, v)) = rows(world, dl).into_iter().next() {
             let m = h.world_of(e);
@@ -454,14 +487,22 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     locals.sort_by_key(|(e, _)| Entity::from_bits(*e).index());
     scene.lights = locals.into_iter().map(|(_, l)| l).collect();
 
-    // Text, page by page.
+    // The effects games declare: the post stack, shake and 2D lighting,
+    // then the effect components.
+    let tick = time.tick;
+    super::fx::settings(world, rs);
+    super::fx::components(world, rs, &mut h, tick);
+    let vp = super::fx::viewport(rs);
+
+    // Text, page by page; screen text into the overlay.
     let queued_texts: &[QueuedText] = if fresh { &rs.texts } else { &[] };
     for t in queued_texts {
         let Some(font) = rs.fonts.get(t.font) else {
             continue;
         };
+        let scene = &mut rs.scene;
         for &page in &font.pages {
-            scene.texts.push(og_render::Text {
+            let text = og_render::Text {
                 font: page,
                 text: t.text.clone(),
                 position: t.position,
@@ -470,14 +511,22 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 color: t.color,
                 layer: t.layer,
                 clip: None,
-            });
+            };
+            if t.screen {
+                let o = scene
+                    .overlay
+                    .get_or_insert_with(|| og_render::Overlay::new(vp.0, vp.1, 0.0));
+                let clip = t.clip.map(|c| o.add_clip(c));
+                o.texts.push(og_render::Text { clip, ..text });
+            } else {
+                scene.texts.push(text);
+            }
         }
     }
 
-    // Sprites queued this tick.
-    if fresh {
-        rs.scene.sprites.extend(rs.sprites.iter().cloned());
-    }
+    // Sprites and ribbons queued this tick.
+    super::fx::queued(rs, fresh, vp);
+    super::fx::motion(rs, &keys, tick);
 
     // The UI, over everything else, in the overlay.
     super::modules::emit(rs);

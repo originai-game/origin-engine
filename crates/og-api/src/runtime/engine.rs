@@ -796,6 +796,7 @@ pub(crate) fn extract_layouts(eng: &Engine) -> (Option<Layout>, Option<Layout>, 
             directional: get("og.DirectionalLight"),
             point: get("og.PointLight"),
             spot: get("og.SpotLight"),
+            fx: super::fx::FxLayouts::from(get),
         },
     )
 }
@@ -865,6 +866,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         rs.camera = camera;
         rs.settings = settings;
         rs.draw = draw;
+        rs.fx.anim = Some(a.anim.clone());
     }
     rprobe::install(&engine, a.game.facts)?;
     ENGINES.with(|e| e.borrow_mut().push(Some(engine.clone())));

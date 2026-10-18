@@ -327,6 +327,9 @@ impl RenderApi for NodeHost {
     fn og_render_text(&self, world: u32, desc: Option<String>) -> String {
         rt::og_render_text(world, desc)
     }
+    fn og_render_ribbon(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_ribbon(world, desc)
+    }
 }
 
 impl LoadApi for NodeHost {
@@ -371,6 +374,12 @@ impl LoadApi for NodeHost {
     }
     fn og_load_error(&self, world: u32, asset: f64) -> String {
         rt::og_load_error(world, asset)
+    }
+    fn og_load_lut(&self, world: u32, path: String) -> String {
+        rt::og_load_lut(world, path)
+    }
+    fn og_load_emitter(&self, world: u32, path: String) -> String {
+        rt::og_load_emitter(world, path)
     }
 }
 

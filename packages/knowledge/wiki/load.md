@@ -20,7 +20,7 @@ module load {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1759</sub>
+<sub>`api.ogt` line 2304</sub>
 
 ## Contents
 
@@ -46,6 +46,8 @@ module load {
 | [`og.load.font`](#fn-font) | function | Load a cooked MSDF font for og.render.text. |
 | [`og.load.fontInfo`](#fn-fontInfo) | function | A loaded font's metrics. |
 | [`og.load.sound`](#fn-sound) | function | Load a cooked sound for the audio module. |
+| [`og.load.lut`](#fn-lut) | function | A colour lookup table for PostEffects.lut, from a cooked `.cube` file (Adobe/Resolve 3D LUT; other sizes are resampled to 32). Loaded once per path. |
+| [`og.load.emitter`](#fn-emitter) | function | A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the grammar is the `particles` page of the wiki's render module and og-cook's fx module): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. The textures it names are loaded with it. Loaded once per path. |
 | [`og.load.texture`](#fn-texture) | function | Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load. |
 | [`og.load.soundInfo`](#fn-soundInfo) | function | A loaded sound's format and length. |
 | [`og.load.status`](#fn-status) | function | Where a load is. |
@@ -85,7 +87,7 @@ fn bundle {
 }
 ```
 
-<sub>`api.ogt` line 1840</sub>
+<sub>`api.ogt` line 2385</sub>
 
 <a id="fn-bundleInfo"></a>
 
@@ -115,7 +117,7 @@ fn bundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 1847</sub>
+<sub>`api.ogt` line 2392</sub>
 
 <a id="fn-defaultBundle"></a>
 
@@ -143,7 +145,7 @@ fn defaultBundle {
 }
 ```
 
-<sub>`api.ogt` line 1854</sub>
+<sub>`api.ogt` line 2399</sub>
 
 <a id="fn-gltf"></a>
 
@@ -175,7 +177,7 @@ fn gltf {
 }
 ```
 
-<sub>`api.ogt` line 1860</sub>
+<sub>`api.ogt` line 2405</sub>
 
 <a id="fn-scene"></a>
 
@@ -205,7 +207,7 @@ fn scene {
 }
 ```
 
-<sub>`api.ogt` line 1868</sub>
+<sub>`api.ogt` line 2413</sub>
 
 <a id="fn-font"></a>
 
@@ -235,7 +237,7 @@ fn font {
 }
 ```
 
-<sub>`api.ogt` line 1875</sub>
+<sub>`api.ogt` line 2420</sub>
 
 <a id="fn-fontInfo"></a>
 
@@ -265,7 +267,7 @@ fn fontInfo {
 }
 ```
 
-<sub>`api.ogt` line 1882</sub>
+<sub>`api.ogt` line 2427</sub>
 
 <a id="fn-sound"></a>
 
@@ -295,7 +297,67 @@ fn sound {
 }
 ```
 
-<sub>`api.ogt` line 1889</sub>
+<sub>`api.ogt` line 2434</sub>
+
+<a id="fn-lut"></a>
+
+### `og.load.lut`
+
+A colour lookup table for PostEffects.lut, from a cooked `.cube` file (Adobe/Resolve 3D LUT; other sizes are resampled to 32). Loaded once per path.
+
+```ts
+og.load.lut(world: World, path: string): Result<Lut>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns it. |
+| `path` | `string` | no | The asset id, such as `luts/warm.cube`. |
+
+**Returns** `Result<Lut>`: Refused for a path not in the bundle (the reason says to run og cook).
+
+Binding symbol `og_load_lut` · publish builds: kept
+
+```ogt
+fn lut {
+  doc "A colour lookup table for PostEffects.lut, from a cooked `.cube` file (Adobe/Resolve 3D LUT; other sizes are resampled to 32). Loaded once per path."
+  param world World "The world whose renderer owns it."
+  param path String "The asset id, such as `luts/warm.cube`."
+  returns Result.Lut "Refused for a path not in the bundle (the reason says to run og cook)."
+}
+```
+
+<sub>`api.ogt` line 2441</sub>
+
+<a id="fn-emitter"></a>
+
+### `og.load.emitter`
+
+A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the grammar is the `particles` page of the wiki's render module and og-cook's fx module): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. The textures it names are loaded with it. Loaded once per path.
+
+```ts
+og.load.emitter(world: World, path: string): Result<ParticleEmitter>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns it. |
+| `path` | `string` | no | The asset id, such as `fx/sparks.ogt`. |
+
+**Returns** `Result<ParticleEmitter>`: Refused for a path not in the bundle or a texture it cannot load.
+
+Binding symbol `og_load_emitter` · publish builds: kept
+
+```ogt
+fn emitter {
+  doc "A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the grammar is the `particles` page of the wiki's render module and og-cook's fx module): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. The textures it names are loaded with it. Loaded once per path."
+  param world World "The world whose renderer owns it."
+  param path String "The asset id, such as `fx/sparks.ogt`."
+  returns Result.ParticleEmitter "Refused for a path not in the bundle or a texture it cannot load."
+}
+```
+
+<sub>`api.ogt` line 2448</sub>
 
 <a id="fn-texture"></a>
 
@@ -325,7 +387,7 @@ fn texture {
 }
 ```
 
-<sub>`api.ogt` line 1896</sub>
+<sub>`api.ogt` line 2455</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -355,7 +417,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 1903</sub>
+<sub>`api.ogt` line 2462</sub>
 
 <a id="fn-status"></a>
 
@@ -385,7 +447,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 1910</sub>
+<sub>`api.ogt` line 2469</sub>
 
 <a id="fn-error"></a>
 
@@ -415,7 +477,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 1917</sub>
+<sub>`api.ogt` line 2476</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -445,7 +507,7 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 1924</sub>
+<sub>`api.ogt` line 2483</sub>
 
 <a id="fn-animation"></a>
 
@@ -475,7 +537,7 @@ fn animation {
 }
 ```
 
-<sub>`api.ogt` line 1931</sub>
+<sub>`api.ogt` line 2490</sub>
 
 ## Components, resources and events
 
@@ -498,7 +560,7 @@ component Model {
 }
 ```
 
-<sub>`api.ogt` line 1835</sub>
+<sub>`api.ogt` line 2380</sub>
 
 <a id="record-AssetReady"></a>
 
@@ -521,7 +583,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 1938</sub>
+<sub>`api.ogt` line 2497</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -546,7 +608,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 1944</sub>
+<sub>`api.ogt` line 2503</sub>
 
 ## Types
 
@@ -562,7 +624,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Asset "A loaded bundle, scene or glTF asset."
 ```
 
-<sub>`api.ogt` line 1764</sub>
+<sub>`api.ogt` line 2309</sub>
 
 <a id="type-Font"></a>
 
@@ -576,7 +638,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Font "A cooked MSDF font: its glyph table and one or more atlas pages."
 ```
 
-<sub>`api.ogt` line 1765</sub>
+<sub>`api.ogt` line 2310</sub>
 
 <a id="type-Sound"></a>
 
@@ -590,7 +652,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Sound "A cooked sound: QOA-encoded PCM the audio module plays."
 ```
 
-<sub>`api.ogt` line 1766</sub>
+<sub>`api.ogt` line 2311</sub>
 
 <a id="type-LoadStatus"></a>
 
@@ -615,7 +677,7 @@ enum LoadStatus {
 }
 ```
 
-<sub>`api.ogt` line 1782</sub>
+<sub>`api.ogt` line 2327</sub>
 
 <a id="type-GltfDesc"></a>
 
@@ -641,7 +703,7 @@ struct GltfDesc {
 }
 ```
 
-<sub>`api.ogt` line 1789</sub>
+<sub>`api.ogt` line 2334</sub>
 
 <a id="type-GltfInfo"></a>
 
@@ -666,7 +728,7 @@ struct GltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 1797</sub>
+<sub>`api.ogt` line 2342</sub>
 
 <a id="type-BundleInfo"></a>
 
@@ -689,7 +751,7 @@ struct BundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 1805</sub>
+<sub>`api.ogt` line 2350</sub>
 
 <a id="type-FontInfo"></a>
 
@@ -720,7 +782,7 @@ struct FontInfo {
 }
 ```
 
-<sub>`api.ogt` line 1812</sub>
+<sub>`api.ogt` line 2357</sub>
 
 <a id="type-SoundInfo"></a>
 
@@ -749,7 +811,7 @@ struct SoundInfo {
 }
 ```
 
-<sub>`api.ogt` line 1823</sub>
+<sub>`api.ogt` line 2368</sub>
 
 ## Column kinds
 
@@ -769,7 +831,7 @@ column Asset {
 }
 ```
 
-<sub>`api.ogt` line 1768</sub>
+<sub>`api.ogt` line 2313</sub>
 
 ```ogt
 column Sound {
@@ -780,4 +842,4 @@ column Sound {
 }
 ```
 
-<sub>`api.ogt` line 1775</sub>
+<sub>`api.ogt` line 2320</sub>

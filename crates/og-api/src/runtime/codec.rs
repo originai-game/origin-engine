@@ -49,6 +49,8 @@ impl Kind {
             "Sound" => Kind::Sound,
             // The animation module's asset handles: u64 like every handle.
             "SkeletonAsset" | "ClipAsset" | "GraphAsset" => Kind::Asset,
+            // The effect assets and textures in records (Decal atlas, LUT, emitter).
+            "Texture" | "Lut" | "ParticleEmitter" => Kind::Asset,
             "String" => Kind::Str,
             _ => return None,
         })

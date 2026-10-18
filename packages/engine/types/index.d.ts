@@ -108,6 +108,18 @@ export interface ColumnKinds {
   Geometry: { readonly array: Uint32Array; readonly stride: 2; readonly value: Geometry };
   /** A Material handle field. */
   Material: { readonly array: Uint32Array; readonly stride: 2; readonly value: Material };
+  /** A Texture handle field (0 is none). */
+  Texture: { readonly array: Uint32Array; readonly stride: 2; readonly value: Texture };
+  /** A Lut handle field (0 is none). */
+  Lut: { readonly array: Uint32Array; readonly stride: 2; readonly value: Lut };
+  /** A ParticleEmitter handle field (0 is none). */
+  ParticleEmitter: { readonly array: Uint32Array; readonly stride: 2; readonly value: ParticleEmitter };
+  /** An AoMethod field: the variant's index. */
+  AoMethod: { readonly array: Uint32Array; readonly stride: 1; readonly value: AoMethod };
+  /** A DofQuality field: the variant's index. */
+  DofQuality: { readonly array: Uint32Array; readonly stride: 1; readonly value: DofQuality };
+  /** A StripBlend field: the variant's index. */
+  StripBlend: { readonly array: Uint32Array; readonly stride: 1; readonly value: StripBlend };
   /** An Asset handle field. */
   Asset: { readonly array: Uint32Array; readonly stride: 2; readonly value: Asset };
   /** A Sound handle field. */
@@ -2132,8 +2144,8 @@ export interface RenderOptions {
 
 /**
  * A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names.
- * Mapping to the renderer (og-render Material): color and opacity are the base colour and its alpha; map the base colour texture; metalness and roughness the factors; metalnessMap and roughnessMap are one glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; normalMap the normal texture; emissive times emissiveIntensity the emitted colour, emissiveMap its texture; alphaTest above 0 is alpha masking with that cutoff.
- * Accepted and kept but not drawn yet: aoMap, transparent (blending), side (meshes draw front faces), flatShading and envMapIntensity; the renderer's own phase-2 list owns them.
+ * It is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front.
+ * The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -2246,6 +2258,116 @@ export interface StandardMaterialDesc {
    * @range 0..
    */
   readonly envMapIntensity?: number;
+  /**
+   * How strongly the normal map bends the normal, per tangent axis.
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly normalScale?: Vector2;
+  /**
+   * How strongly aoMap darkens the ambient light.
+   *
+   * @default 1
+   * @range 0..
+   */
+  readonly aoMapIntensity?: number;
+  /**
+   * No lighting at all, as three.js MeshBasicMaterial: the colour (times map) plus emissive.
+   *
+   * @default false
+   */
+  readonly unlit?: boolean;
+  /**
+   * Cel shading, as three.js MeshToonMaterial: light is quantized by gradientMap (three built-in bands without one), highlights are hard.
+   *
+   * @default false
+   */
+  readonly toon?: boolean;
+  /**
+   * The toon ramp: a texture whose first row maps the light's angle (left dark, right lit) to the light received, read without filtering.
+   *
+   * @default null
+   */
+  readonly gradientMap?: Texture | null;
+  /**
+   * Rim (fresnel) light added at grazing angles, unshadowed (linear).
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  readonly rimColor?: Color;
+  /**
+   * The rim light's strength; 0 is none.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly rimIntensity?: number;
+  /**
+   * How tight the rim is (higher: thinner).
+   *
+   * @default 3
+   * @range 0.1..
+   */
+  readonly rimPower?: number;
+  /**
+   * The colour a hit flash mixes towards (linear, may exceed 1).
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  readonly flashColor?: Color;
+  /**
+   * How far the final colour is mixed towards flashColor (0 none, 1 flat): animate it per tick for a hit flash.
+   *
+   * @default 0
+   * @range 0..1
+   */
+  readonly flash?: number;
+  /**
+   * The dissolved fraction: 0 whole, 1 gone. Pixels whose noise is below it are discarded (shadows too); the band just above glows with dissolveEdgeColor.
+   *
+   * @default 0
+   * @range 0..1
+   */
+  readonly dissolve?: number;
+  /**
+   * The dissolve noise from the texture's red channel; without one, value noise over the object-space position.
+   *
+   * @default null
+   */
+  readonly dissolveMap?: Texture | null;
+  /**
+   * The glowing edge (linear, usually above 1 so it blooms).
+   *
+   * @default { r: 4, g: 1.5, b: 0.375 }
+   */
+  readonly dissolveEdgeColor?: Color;
+  /**
+   * The width of the glowing band in noise units.
+   *
+   * @default 0.0625
+   * @range 0..1
+   */
+  readonly dissolveEdgeWidth?: number;
+  /**
+   * The frequency of the built-in noise (cells per object-space unit).
+   *
+   * @default 4
+   * @range 0..
+   */
+  readonly dissolveScale?: number;
+  /**
+   * This material's outline colour (linear).
+   *
+   * @default { r: 0, g: 0, b: 0 }
+   */
+  readonly outlineColor?: Color;
+  /**
+   * This material's outline width in pixels; 0 is none (PostEffects.outline outlines everything).
+   *
+   * @default 0
+   * @range 0..31
+   */
+  readonly outlineWidth?: number;
 }
 
 /**
@@ -2442,7 +2564,795 @@ export interface RenderSettings {
    * @default true
    */
   toneMapped: boolean;
+  /**
+   * The texture Decal components take their uvMin to uvMax region from; 0 draws decals as solid colour.
+   */
+  decalAtlas: Texture;
 }
+
+/**
+ * A colour lookup table for PostEffects.lut, from og.load.lut (a `.cube` file).
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type Lut = number & { readonly [handleType]: "Lut" };
+
+/**
+ * A particle emitter asset for ParticleSystem.emitter, from og.load.emitter (an `.ogt` of `type particles`).
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type ParticleEmitter = number & { readonly [handleType]: "ParticleEmitter" };
+
+/**
+ * A Texture handle field (0 is none).
+ *
+ * A `Texture` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function Texture(value?: Texture, options?: FieldOptions): FieldSpec<"Texture">;
+
+/**
+ * A Lut handle field (0 is none).
+ *
+ * A `Lut` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function Lut(value?: Lut, options?: FieldOptions): FieldSpec<"Lut">;
+
+/**
+ * A ParticleEmitter handle field (0 is none).
+ *
+ * A `ParticleEmitter` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function ParticleEmitter(value?: ParticleEmitter, options?: FieldOptions): FieldSpec<"ParticleEmitter">;
+
+/**
+ * Which ambient occlusion algorithm runs.
+ * - `"auto"`: GTAO on the full tier, SSAO on WebGL2.
+ * - `"gtao"`: Ground-truth ambient occlusion (3 slices): the better looking one.
+ * - `"ssao"`: Hemisphere SSAO with 8 samples: the cheaper one.
+ */
+export type AoMethod = "auto" | "gtao" | "ssao";
+
+/**
+ * An AoMethod field: the variant's index.
+ *
+ * A `AoMethod` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function AoMethod(value?: AoMethod, options?: FieldOptions): FieldSpec<"AoMethod">;
+
+/**
+ * How many taps depth of field gathers per pixel.
+ * - `"low"`: 16 taps at half resolution.
+ * - `"high"`: 48 taps at half resolution: rounder, smoother bokeh.
+ */
+export type DofQuality = "low" | "high";
+
+/**
+ * A DofQuality field: the variant's index.
+ *
+ * A `DofQuality` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function DofQuality(value?: DofQuality, options?: FieldOptions): FieldSpec<"DofQuality">;
+
+/**
+ * How a sprite is blended over what is below it.
+ * - `"alpha"`: Ordinary alpha blending.
+ * - `"additive"`: Added (light, fire, magic): order-independent within a layer.
+ */
+export type SpriteBlend = "alpha" | "additive";
+
+/**
+ * How a trail, ribbon or beam is blended.
+ * - `"additive"`: Added: glowing streaks, lasers, magic.
+ * - `"alpha"`: Alpha blended: smoke trails, tyre marks.
+ */
+export type StripBlend = "additive" | "alpha";
+
+/**
+ * A StripBlend field: the variant's index.
+ *
+ * A `StripBlend` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function StripBlend(value?: StripBlend, options?: FieldOptions): FieldSpec<"StripBlend">;
+
+/**
+ * The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then costs nothing: no pass is recorded. Read after each tick; it never feeds back into the simulation.
+ * Screen-space ambient occlusion, outlines, depth of field, motion blur and god rays run a depth-normal prepass, turned on with them. Grading, vignette, aberration, grain and the flash apply to the display colour after tone mapping; the UI and screen-space sprites (the overlay) come after all of it.
+ *
+ * The `PostEffects` resource (token `og.PostEffects`).
+ */
+export interface PostEffects {
+  /** Screen-space ambient occlusion: darkens the ambient light in creases and contact areas. */
+  ao: boolean;
+  /**
+   * The world-space radius searched for occluders.
+   *
+   * @default 0.6
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  aoRadius: number;
+  /**
+   * 0 none, 1 full; above 1 exaggerates.
+   *
+   * @default 1
+   * @range 0..
+   * @tunable
+   */
+  aoIntensity: number;
+  /** The algorithm. */
+  aoMethod: AoMethod;
+  /**
+   * Outlines every opaque surface from depth and normal edges (materials with outlineWidth get theirs anyway).
+   */
+  outline: boolean;
+  /**
+   * The line colour, linear.
+   *
+   * @default { r: 0.02, g: 0.02, b: 0.03 }
+   */
+  outlineColor: Color;
+  /**
+   * Line width in pixels, drawn inside the silhouette.
+   *
+   * @default 2
+   * @range 0..31
+   * @tunable
+   */
+  outlineWidth: number;
+  /**
+   * The relative depth step that counts as a silhouette (0.04 is 4 %).
+   *
+   * @default 0.04
+   * @range 0..
+   */
+  outlineDepthThreshold: number;
+  /**
+   * The normal change that counts as a crease (1 - cos of the angle; 0.4 is about 53 degrees).
+   *
+   * @default 0.4
+   * @range 0..
+   */
+  outlineNormalThreshold: number;
+  /** Bokeh depth of field: pixels away from the focus distance blur into discs. */
+  depthOfField: boolean;
+  /**
+   * The distance from the camera that is sharp.
+   *
+   * @default 10
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  dofFocusDistance: number;
+  /**
+   * The half-width of the sharp band around it.
+   *
+   * @default 2
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  dofFocusRange: number;
+  /**
+   * The largest blur radius, as a fraction of the image height (0.012 is about 9 px at 720p).
+   *
+   * @default 0.012
+   * @range 0..0.1
+   */
+  dofMaxBlur: number;
+  /**
+   * How quickly blur grows outside the band: full blur focusRange times (1 + falloff) away.
+   *
+   * @default 4
+   * @range 0..
+   */
+  dofFalloff: number;
+  /** Taps per pixel. */
+  dofQuality: DofQuality;
+  /** Per-object and camera motion blur along the screen-space velocity. */
+  motionBlur: boolean;
+  /**
+   * The shutter as a fraction of the frame (0.5 is a 180 degree shutter).
+   *
+   * @default 0.5
+   * @range 0..2
+   * @tunable
+   */
+  motionBlurShutter: number;
+  /**
+   * Taps along the velocity.
+   *
+   * @default 12
+   * @range 4..32
+   */
+  motionBlurSamples: number;
+  /**
+   * The longest blur in pixels.
+   *
+   * @default 40
+   * @range 1..
+   */
+  motionBlurMaxPixels: number;
+  /**
+   * Screen-space light shafts from the DirectionalLight (the sun must be in front of the camera).
+   */
+  godRays: boolean;
+  /**
+   * How bright the shafts are.
+   *
+   * @default 0.5
+   * @range 0..
+   * @tunable
+   */
+  godRaysIntensity: number;
+  /**
+   * How fast the rays fade along their length.
+   *
+   * @default 0.965
+   * @range 0.5..1
+   */
+  godRaysDecay: number;
+  /**
+   * How far towards the sun each ray samples (a fraction of the distance).
+   *
+   * @default 1
+   * @range 0..
+   */
+  godRaysDensity: number;
+  /**
+   * A linear tint on the light the rays carry.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  godRaysTint: Color;
+  /**
+   * Taps per ray.
+   *
+   * @default 48
+   * @range 8..128
+   */
+  godRaysSamples: number;
+  /**
+   * Sky brightness (linear, before exposure) below which the sky carries no rays.
+   *
+   * @default 2
+   * @range 0..
+   */
+  godRaysThreshold: number;
+  /**
+   * Order-independent 2D glow: sprites with SpriteDesc.glow (and 2D particles with a glow) are blurred and added back, with or without bloom.
+   */
+  glow: boolean;
+  /**
+   * How much of the blurred glow is added back.
+   *
+   * @default 1
+   * @range 0..
+   * @tunable
+   */
+  glowIntensity: number;
+  /** Colour grading by a lookup table from og.load.lut; 0 is none. */
+  lut: Lut;
+  /**
+   * 0 leaves the image as tone mapped, 1 applies the table fully.
+   *
+   * @default 1
+   * @range 0..1
+   * @tunable
+   */
+  lutIntensity: number;
+  /** Darkened (or tinted) edges of the frame. */
+  vignette: boolean;
+  /**
+   * 0 none, 1 black corners.
+   *
+   * @default 0.35
+   * @range 0..1
+   * @tunable
+   */
+  vignetteIntensity: number;
+  /**
+   * Where darkening starts, as a fraction of the half-diagonal.
+   *
+   * @default 0.55
+   * @range 0..1
+   */
+  vignetteRadius: number;
+  /**
+   * The width of the fade.
+   *
+   * @default 0.45
+   * @range 0..1
+   */
+  vignetteSmoothness: number;
+  /** The linear colour the edges move towards. */
+  vignetteColor: Color;
+  /**
+   * Red and blue split towards the edges, in pixels at the corners at 720p; 0 is off.
+   *
+   * @range 0..20
+   * @tunable
+   */
+  chromaticAberration: number;
+  /**
+   * Luminance-weighted noise amplitude in display units, a new pattern every tick (0.04 is subtle); 0 is off.
+   *
+   * @range 0..1
+   * @tunable
+   */
+  filmGrain: number;
+  /**
+   * The grain size in pixels.
+   *
+   * @default 1.5
+   * @range 0.5..
+   */
+  filmGrainSize: number;
+  /**
+   * A full-screen flash: the display colour mixed towards flashColor by this much (animate it per tick); 0 is off.
+   *
+   * @range 0..1
+   * @tunable
+   */
+  flash: number;
+  /**
+   * The flash's linear display colour.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  flashColor: Color;
+  /**
+   * Camera shake: 0 none, 1 the most (the amplitude is trauma squared). The shake is smooth value noise by the tick, so a replay shakes the same; decay it in a system. Visual only.
+   *
+   * @range 0..1
+   * @tunable
+   */
+  shakeTrauma: number;
+  /**
+   * The largest offset at trauma 1, as a fraction of the view height.
+   *
+   * @default 0.05
+   * @range 0..
+   */
+  shakeMaxOffset: number;
+  /**
+   * The largest roll at trauma 1.
+   *
+   * @default 3
+   * @range 0..
+   * @unit deg (degrees)
+   */
+  shakeMaxRoll: number;
+  /**
+   * How fast the shake moves.
+   *
+   * @default 12
+   * @range 0..
+   * @unit hz (ticks or cycles per second)
+   */
+  shakeFrequency: number;
+  /** The shake's noise seed. */
+  shakeSeed: number;
+}
+
+/**
+ * 2D lighting of the sprite layers minLayer to maxLayer: their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default.
+ *
+ * The `Lighting2D` resource (token `og.Lighting2D`).
+ */
+export interface Lighting2D {
+  /** Light the layers. */
+  enabled: boolean;
+  /**
+   * Light everywhere (0 is darkness outside the lights).
+   *
+   * @default { r: 0.15, g: 0.15, b: 0.15 }
+   */
+  ambient: Color;
+  /**
+   * The lowest lit sprite layer.
+   *
+   * @default -1000000
+   */
+  minLayer: number;
+  /**
+   * The highest lit sprite layer (above it: UI and HUD layers stay unlit).
+   *
+   * @default 99
+   */
+  maxLayer: number;
+  /**
+   * The light map's resolution as a fraction of the target.
+   *
+   * @default 0.5
+   * @range 0.25..1
+   */
+  resolution: number;
+}
+
+/**
+ * A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff, shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn.
+ *
+ * The value of the `Light2D` component (token `og.Light2D`).
+ */
+export interface Light2D {
+  /**
+   * The light's linear colour.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  color: Color;
+  /**
+   * The brightness at the centre.
+   *
+   * @default 1
+   * @range 0..
+   * @tunable
+   */
+  intensity: number;
+  /**
+   * Where the light reaches zero, in world units.
+   *
+   * @default 5
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  radius: number;
+  /**
+   * The exponent of the fade.
+   *
+   * @default 2
+   * @range 0.1..
+   */
+  falloff: number;
+  /**
+   * The light's own size: larger gives softer shadows.
+   *
+   * @default 0.25
+   * @range 0..
+   * @unit m (metres)
+   */
+  sourceRadius: number;
+  /**
+   * Occluders between the light and a pixel shade it.
+   *
+   * @default true
+   */
+  castShadows: boolean;
+}
+
+/**
+ * A rectangle that blocks 2D light (walls, crates, characters), centred on the entity's position and turned with it about z. Pixels inside it are not shadowed by it. At most 128 are drawn.
+ *
+ * The value of the `Occluder2D` component (token `og.Occluder2D`).
+ */
+export interface Occluder2D {
+  /**
+   * Its width in world units.
+   *
+   * @default 1
+   * @range 0..
+   * @unit m (metres)
+   */
+  width: number;
+  /**
+   * Its height in world units.
+   *
+   * @default 1
+   * @range 0..
+   * @unit m (metres)
+   */
+  height: number;
+}
+
+/**
+ * A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one). At most 32 are drawn.
+ *
+ * The value of the `Decal` component (token `og.Decal`).
+ */
+export interface Decal {
+  /**
+   * A linear colour multiplied with the atlas.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  color: Color;
+  /**
+   * The decal's opacity.
+   *
+   * @default 1
+   * @range 0..1
+   * @tunable
+   */
+  opacity: number;
+  /** The atlas region's top-left corner, v down. */
+  uvMin: Vector2;
+  /**
+   * The atlas region's bottom-right corner, v down.
+   *
+   * @default { x: 1, y: 1 }
+   */
+  uvMax: Vector2;
+  /** Linear light added where the decal covers (glowing runes, lava). */
+  emissive: Color;
+  /**
+   * The surface roughness under the decal; -1 keeps the surface's.
+   *
+   * @default -1
+   * @range -1..1
+   */
+  roughness: number;
+  /**
+   * Surfaces turned further than this from the projection direction are not covered (the last 15 degrees fade).
+   *
+   * @default 75
+   * @range 0..90
+   * @unit deg (degrees)
+   */
+  angleFade: number;
+  /**
+   * Whether it is drawn.
+   *
+   * @default true
+   */
+  visible: boolean;
+}
+
+/**
+ * Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay, and never feed back into the simulation: compute on the full tier, the CPU on WebGL2, identical either way.
+ *
+ * The value of the `ParticleSystem` component (token `og.ParticleSystem`).
+ */
+export interface ParticleSystem {
+  /** The emitter asset; 0 draws nothing. */
+  emitter: ParticleEmitter;
+  /** The random seed: systems with different seeds differ. */
+  seed: number;
+  /** The tick emission started: write og.world tick when spawning a one-shot burst. */
+  startTick: number;
+  /**
+   * The tick emission stops (the particles live out); 0 keeps emitting while the emitter loops.
+   */
+  stopTick: number;
+  /**
+   * Whether it is drawn (a hidden system loses its particles).
+   *
+   * @default true
+   */
+  visible: boolean;
+}
+
+/**
+ * A streak behind the entity: its world positions over the last `lifetime` seconds as a camera-facing strip, from widthStart and color at the head to widthEnd and colorEnd at the tail.
+ *
+ * The value of the `Trail` component (token `og.Trail`).
+ */
+export interface Trail {
+  /**
+   * How long a position stays in the trail.
+   *
+   * @default 0.4
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  lifetime: number;
+  /**
+   * A new point is kept when the head has moved this far.
+   *
+   * @default 0.05
+   * @range 0..
+   * @unit m (metres)
+   */
+  minDistance: number;
+  /**
+   * The width at the head.
+   *
+   * @default 0.15
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  widthStart: number;
+  /**
+   * The width at the tail.
+   *
+   * @range 0..
+   * @unit m (metres)
+   */
+  widthEnd: number;
+  /**
+   * The linear colour at the head; above 1 blooms.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  color: Color;
+  /**
+   * The alpha at the head.
+   *
+   * @default 1
+   * @range 0..1
+   */
+  opacity: number;
+  /**
+   * The linear colour at the tail.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  colorEnd: Color;
+  /**
+   * The alpha at the tail.
+   *
+   * @range 0..1
+   */
+  opacityEnd: number;
+  /** A texture along the strip; 0 is solid. */
+  texture: Texture;
+  /**
+   * The texture repeats every this many world units; 0 stretches it once over the length.
+   *
+   * @range 0..
+   * @unit m (metres)
+   */
+  uvTile: number;
+  /** Additive or alpha blended. */
+  blend: StripBlend;
+}
+
+/**
+ * A strip from the entity's position to `end` whose texture scrolls with the tick: lasers, tethers, lightning (jitter).
+ *
+ * The value of the `Beam` component (token `og.Beam`).
+ */
+export interface Beam {
+  /**
+   * The far end, in world space.
+   *
+   * @unit m (metres)
+   */
+  end: Vector3;
+  /**
+   * The beam's width.
+   *
+   * @default 0.1
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  width: number;
+  /**
+   * The linear colour; above 1 blooms.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  color: Color;
+  /**
+   * The alpha.
+   *
+   * @default 1
+   * @range 0..1
+   */
+  opacity: number;
+  /** A texture along the beam; 0 is solid. */
+  texture: Texture;
+  /**
+   * Texture repeats per world unit along the beam.
+   *
+   * @default 1
+   * @range 0..
+   */
+  tile: number;
+  /**
+   * Texture scroll in repeats per second.
+   *
+   * @tunable
+   */
+  scroll: number;
+  /**
+   * Segments: 1 is straight, more let jitter bend it.
+   *
+   * @default 1
+   * @range 1..64
+   */
+  segments: number;
+  /**
+   * Sideways jitter in world units, new every tick (lightning).
+   *
+   * @range 0..
+   * @unit m (metres)
+   */
+  jitter: number;
+  /** The jitter's seed. */
+  seed: number;
+  /** Additive or alpha blended. */
+  blend: StripBlend;
+}
+
+/**
+ * One point of a ribbon.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RibbonPoint {
+  /**
+   * Where it is.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly position?: Vector3;
+  /**
+   * The width there.
+   *
+   * @default 0.1
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly width?: number;
+  /**
+   * The linear colour there.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  readonly color?: Color;
+  /**
+   * The alpha there.
+   *
+   * @default 1
+   * @range 0..1
+   */
+  readonly opacity?: number;
+}
+
+/**
+ * An explicit camera-facing strip through points, drawn this frame only (immediate mode, as og.render.sprite): submit it every tick it should show.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RibbonDesc {
+  /**
+   * The points, in order (at least two).
+   *
+   * @default []
+   */
+  readonly points?: readonly RibbonPoint[];
+  /**
+   * A texture along the strip; null is solid.
+   *
+   * @default null
+   */
+  readonly texture?: Texture | null;
+  /**
+   * The texture repeats every this many world units; 0 stretches it once.
+   *
+   * @default 0
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly uvTile?: number;
+  /**
+   * Additive or alpha blended.
+   *
+   * @default "additive"
+   */
+  readonly blend?: StripBlend;
+}
+
 
 /**
  * A line or block of MSDF text in the world's xy plane facing +z, drawn this frame only (immediate mode: submit it every tick it should show).
@@ -2508,6 +3418,18 @@ export interface TextDesc {
    * @default "start"
    */
   readonly align?: TextAlign;
+  /**
+   * Draw in screen space over the finished frame: position is the first baseline's origin in CSS pixels from the top left, y down, size in CSS pixels, rotation clockwise.
+   *
+   * @default false
+   */
+  readonly screen?: boolean;
+  /**
+   * Screen text: cut to [x, y, width, height] in CSS pixels, per pixel; null draws it whole.
+   *
+   * @default null
+   */
+  readonly clip?: [number, number, number, number] | null;
 }
 
 /**
@@ -2620,6 +3542,50 @@ export interface SpriteDesc {
    * @default 0
    */
   readonly layer?: number;
+  /**
+   * A hit flash: the colour mixed towards flashColor by this much, keeping the alpha.
+   *
+   * @default 0
+   * @range 0..1
+   */
+  readonly flash?: number;
+  /**
+   * The flash's linear colour.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  readonly flashColor?: Color;
+  /**
+   * Strength in the 2D glow buffer (PostEffects.glow); 0 none.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly glow?: number;
+  /**
+   * Alpha or additive.
+   *
+   * @default "alpha"
+   */
+  readonly blend?: SpriteBlend;
+  /**
+   * Block 2D light (Lighting2D) with the sprite's rectangle.
+   *
+   * @default false
+   */
+  readonly castShadow?: boolean;
+  /**
+   * Draw in screen space over the finished frame instead of the world: position x, y in CSS pixels from the top left with y down, width and height in CSS pixels, anchor from the top left, rotation clockwise; never tone mapped, blurred or depth tested (a HUD). flash, glow, blend and castShadow apply to world sprites only.
+   *
+   * @default false
+   */
+  readonly screen?: boolean;
+  /**
+   * Screen sprites: cut to [x, y, width, height] in CSS pixels; null draws it whole.
+   *
+   * @default null
+   */
+  readonly clip?: [number, number, number, number] | null;
 }
 
 
@@ -2889,6 +3855,8 @@ export interface Model {
   /** The glTF asset. */
   asset: Asset;
 }
+
+
 
 
 
@@ -8495,11 +9463,52 @@ export declare namespace og {
   /**
    * The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
    */
-  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly toneMapped: FieldSpec<"bool"> }, RenderSettings>;
+  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly toneMapped: FieldSpec<"bool">; readonly decalAtlas: FieldSpec<"Texture"> }, RenderSettings>;
+  /**
+   * The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then costs nothing: no pass is recorded. Read after each tick; it never feeds back into the simulation.
+   * Screen-space ambient occlusion, outlines, depth of field, motion blur and god rays run a depth-normal prepass, turned on with them. Grading, vignette, aberration, grain and the flash apply to the display colour after tone mapping; the UI and screen-space sprites (the overlay) come after all of it.
+   */
+  const PostEffects: ResourceType<{ readonly ao: FieldSpec<"bool">; readonly aoRadius: FieldSpec<"f32">; readonly aoIntensity: FieldSpec<"f32">; readonly aoMethod: FieldSpec<"AoMethod">; readonly outline: FieldSpec<"bool">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDepthThreshold: FieldSpec<"f32">; readonly outlineNormalThreshold: FieldSpec<"f32">; readonly depthOfField: FieldSpec<"bool">; readonly dofFocusDistance: FieldSpec<"f32">; readonly dofFocusRange: FieldSpec<"f32">; readonly dofMaxBlur: FieldSpec<"f32">; readonly dofFalloff: FieldSpec<"f32">; readonly dofQuality: FieldSpec<"DofQuality">; readonly motionBlur: FieldSpec<"bool">; readonly motionBlurShutter: FieldSpec<"f32">; readonly motionBlurSamples: FieldSpec<"u32">; readonly motionBlurMaxPixels: FieldSpec<"f32">; readonly godRays: FieldSpec<"bool">; readonly godRaysIntensity: FieldSpec<"f32">; readonly godRaysDecay: FieldSpec<"f32">; readonly godRaysDensity: FieldSpec<"f32">; readonly godRaysTint: FieldSpec<"Color">; readonly godRaysSamples: FieldSpec<"u32">; readonly godRaysThreshold: FieldSpec<"f32">; readonly glow: FieldSpec<"bool">; readonly glowIntensity: FieldSpec<"f32">; readonly lut: FieldSpec<"Lut">; readonly lutIntensity: FieldSpec<"f32">; readonly vignette: FieldSpec<"bool">; readonly vignetteIntensity: FieldSpec<"f32">; readonly vignetteRadius: FieldSpec<"f32">; readonly vignetteSmoothness: FieldSpec<"f32">; readonly vignetteColor: FieldSpec<"Color">; readonly chromaticAberration: FieldSpec<"f32">; readonly filmGrain: FieldSpec<"f32">; readonly filmGrainSize: FieldSpec<"f32">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly shakeTrauma: FieldSpec<"f32">; readonly shakeMaxOffset: FieldSpec<"f32">; readonly shakeMaxRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly shakeSeed: FieldSpec<"u32"> }, PostEffects>;
+  /**
+   * 2D lighting of the sprite layers minLayer to maxLayer: their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default.
+   */
+  const Lighting2D: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly ambient: FieldSpec<"Color">; readonly minLayer: FieldSpec<"i32">; readonly maxLayer: FieldSpec<"i32">; readonly resolution: FieldSpec<"f32"> }, Lighting2D>;
+  /**
+   * A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff, shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn.
+   */
+  const Light2D: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly falloff: FieldSpec<"f32">; readonly sourceRadius: FieldSpec<"f32">; readonly castShadows: FieldSpec<"bool"> }, Light2D>;
+  /**
+   * A rectangle that blocks 2D light (walls, crates, characters), centred on the entity's position and turned with it about z. Pixels inside it are not shadowed by it. At most 128 are drawn.
+   */
+  const Occluder2D: ComponentType<{ readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32"> }, Occluder2D>;
+  /**
+   * A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one). At most 32 are drawn.
+   */
+  const Decal: ComponentType<{ readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly uvMin: FieldSpec<"Vector2">; readonly uvMax: FieldSpec<"Vector2">; readonly emissive: FieldSpec<"Color">; readonly roughness: FieldSpec<"f32">; readonly angleFade: FieldSpec<"f32">; readonly visible: FieldSpec<"bool"> }, Decal>;
+  /**
+   * Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay, and never feed back into the simulation: compute on the full tier, the CPU on WebGL2, identical either way.
+   */
+  const ParticleSystem: ComponentType<{ readonly emitter: FieldSpec<"ParticleEmitter">; readonly seed: FieldSpec<"u32">; readonly startTick: FieldSpec<"u32">; readonly stopTick: FieldSpec<"u32">; readonly visible: FieldSpec<"bool"> }, ParticleSystem>;
+  /**
+   * A streak behind the entity: its world positions over the last `lifetime` seconds as a camera-facing strip, from widthStart and color at the head to widthEnd and colorEnd at the tail.
+   */
+  const Trail: ComponentType<{ readonly lifetime: FieldSpec<"f32">; readonly minDistance: FieldSpec<"f32">; readonly widthStart: FieldSpec<"f32">; readonly widthEnd: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly colorEnd: FieldSpec<"Color">; readonly opacityEnd: FieldSpec<"f32">; readonly texture: FieldSpec<"Texture">; readonly uvTile: FieldSpec<"f32">; readonly blend: FieldSpec<"StripBlend"> }, Trail>;
+  /**
+   * A strip from the entity's position to `end` whose texture scrolls with the tick: lasers, tethers, lightning (jitter).
+   */
+  const Beam: ComponentType<{ readonly end: FieldSpec<"Vector3">; readonly width: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly texture: FieldSpec<"Texture">; readonly tile: FieldSpec<"f32">; readonly scroll: FieldSpec<"f32">; readonly segments: FieldSpec<"u32">; readonly jitter: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly blend: FieldSpec<"StripBlend"> }, Beam>;
   /**
    * What is drawn: meshes with materials. Draws are instanced by (geometry, material) automatically; there is no per-object draw call.
    */
   namespace render {
+    /**
+     * Draw a ribbon this frame. Systems and commands may call it; the list is cleared at every tick.
+     *
+     * @param world The world whose renderer draws it.
+     * @param desc The points and the look.
+     * @returns Refused for a dead texture or fewer than two points.
+     */
+    function ribbon(world: World, desc?: RibbonDesc): Result<void>;
     /**
      * Draw a sprite this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the sprite should show.
      *
@@ -8643,6 +9652,22 @@ export declare namespace og {
      * @param path The sound's asset id, such as `audio/blip.wav`.
      */
     function sound(world: World, path: string): Result<Sound>;
+    /**
+     * A colour lookup table for PostEffects.lut, from a cooked `.cube` file (Adobe/Resolve 3D LUT; other sizes are resampled to 32). Loaded once per path.
+     *
+     * @param world The world whose renderer owns it.
+     * @param path The asset id, such as `luts/warm.cube`.
+     * @returns Refused for a path not in the bundle (the reason says to run og cook).
+     */
+    function lut(world: World, path: string): Result<Lut>;
+    /**
+     * A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the grammar is the `particles` page of the wiki's render module and og-cook's fx module): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. The textures it names are loaded with it. Loaded once per path.
+     *
+     * @param world The world whose renderer owns it.
+     * @param path The asset id, such as `fx/sparks.ogt`.
+     * @returns Refused for a path not in the bundle or a texture it cannot load.
+     */
+    function emitter(world: World, path: string): Result<ParticleEmitter>;
     /**
      * Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load.
      *

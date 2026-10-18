@@ -15,9 +15,11 @@
 //! system. A model loaded twice answers the same handles.
 //!
 //! The joint palettes and blendshape weights og-anim computes each tick are
-//! not handed to the renderer yet: og-render's skinned and morph vertex path
-//! (its `PaletteSink`) is not committed, so the sink stays unbound and a
-//! skinned model draws at its bind pose.
+//! drawn by extraction (`super::fx::posed_model`): an entity with og.Model
+//! and og.Skeleton draws its skinned primitives as og-render skinned
+//! instances under its palette, its morph targets with its og.Blendshapes
+//! weights; the skinned copies of the primitives are made from the
+//! `#anim` blob's streams the first time such an entity is drawn.
 
 use super::engine::{engine, Engine};
 use super::{ok, parse, refuse};
@@ -118,6 +120,19 @@ fn load_animation(eng: &Engine, path: &str) -> Result<Value, String> {
             .animation(&id, bytes.bytes())
             .map_err(|e| e.to_string())?
     };
+    // The skin and morph streams, for drawing the model posed (og-render's
+    // skinned path; the copies are made when an entity with og.Skeleton
+    // and og.Model of it is first drawn).
+    eng.render.borrow_mut().fx.skins.insert(
+        og_cook::runtime::asset_id(path)
+            .trim_end_matches("#anim")
+            .to_string(),
+        super::fx::SkinnedModel {
+            streams: cooked.skin_streams.clone(),
+            morphs: cooked.morphs.clone(),
+            meshes: None,
+        },
+    );
     let sys = system(eng)?;
     let mut st = eng.state.borrow_mut();
     let assets = &mut st.anim_assets;

@@ -58,13 +58,35 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
             _ => None,
         })
         .collect();
-    for name in ["Time", "Input", "Camera", "Rng"] {
+    for name in [
+        "Time",
+        "Input",
+        "Pointers",
+        "Gamepad",
+        "Camera",
+        "Rng",
+        "PostEffects",
+        "Lighting2D",
+    ] {
         assert!(
             records.contains(&(RecordKind::Resource, name)),
             "resource {name}"
         );
     }
-    assert!(records.contains(&(RecordKind::Component, "Transform")));
+    for name in [
+        "Transform",
+        "Decal",
+        "ParticleSystem",
+        "Trail",
+        "Beam",
+        "Light2D",
+        "Occluder2D",
+    ] {
+        assert!(
+            records.contains(&(RecordKind::Component, name)),
+            "component {name}"
+        );
+    }
 
     let fns = |module: &str| -> Vec<String> {
         let m = api.modules.iter().find(|m| m.name == module).unwrap();
@@ -87,6 +109,8 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
             "font",
             "fontInfo",
             "sound",
+            "lut",
+            "emitter",
             "texture",
             "soundInfo",
             "status",

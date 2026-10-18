@@ -495,6 +495,12 @@ pub fn og_camera_screen_to_ray(env: Env, world: u32, x: f64, y: f64) -> String {
     <Host as CameraApi>::og_camera_screen_to_ray(&Host, world, x, y)
 }
 
+#[napi(js_name = "og_render_ribbon")]
+pub fn og_render_ribbon(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_ribbon(&Host, world, desc)
+}
+
 #[napi(js_name = "og_render_sprite")]
 pub fn og_render_sprite(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -595,6 +601,18 @@ pub fn og_load_font_info(env: Env, world: u32, font: f64) -> String {
 pub fn og_load_sound(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as LoadApi>::og_load_sound(&Host, world, path)
+}
+
+#[napi(js_name = "og_load_lut")]
+pub fn og_load_lut(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_lut(&Host, world, path)
+}
+
+#[napi(js_name = "og_load_emitter")]
+pub fn og_load_emitter(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_emitter(&Host, world, path)
 }
 
 #[napi(js_name = "og_load_texture")]

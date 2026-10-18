@@ -1030,6 +1030,28 @@
         "PointLight",
         "SpotLight",
         "RenderSettings",
+        "Lut",
+        "ParticleEmitter",
+        "Texture",
+        "Lut",
+        "ParticleEmitter",
+        "AoMethod",
+        "AoMethod",
+        "DofQuality",
+        "DofQuality",
+        "SpriteBlend",
+        "StripBlend",
+        "StripBlend",
+        "PostEffects",
+        "Lighting2D",
+        "Light2D",
+        "Occluder2D",
+        "Decal",
+        "ParticleSystem",
+        "Trail",
+        "Beam",
+        "RibbonPoint",
+        "RibbonDesc",
         "TextDesc",
         "TextMeasureDesc",
         "TextMetrics",
@@ -1048,6 +1070,27 @@
         }
       ],
       "functions": [
+        {
+          "name": "ribbon",
+          "doc": "Draw a ribbon this frame. Systems and commands may call it; the list is cleared at every tick.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer draws it."
+            },
+            {
+              "name": "desc",
+              "type": "RibbonDesc",
+              "optional": true,
+              "doc": "The points and the look."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for a dead texture or fewer than two points.",
+          "publish": true
+        },
         {
           "name": "sprite",
           "doc": "Draw a sprite this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the sprite should show.",
@@ -1422,6 +1465,48 @@
             }
           ],
           "returns": "Result<Sound>",
+          "publish": true
+        },
+        {
+          "name": "lut",
+          "doc": "A colour lookup table for PostEffects.lut, from a cooked `.cube` file (Adobe/Resolve 3D LUT; other sizes are resampled to 32). Loaded once per path.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns it."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The asset id, such as `luts/warm.cube`."
+            }
+          ],
+          "returns": "Result<Lut>",
+          "returnsDoc": "Refused for a path not in the bundle (the reason says to run og cook).",
+          "publish": true
+        },
+        {
+          "name": "emitter",
+          "doc": "A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the grammar is the `particles` page of the wiki's render module and og-cook's fx module): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. The textures it names are loaded with it. Loaded once per path.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns it."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The asset id, such as `fx/sparks.ogt`."
+            }
+          ],
+          "returns": "Result<ParticleEmitter>",
+          "returnsDoc": "Refused for a path not in the bundle or a texture it cannot load.",
           "publish": true
         },
         {
@@ -6636,7 +6721,7 @@
     "StandardMaterialDesc": {
       "x-og-kind": "desc",
       "x-og-module": "render",
-      "description": "A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names.\nMapping to the renderer (og-render Material): color and opacity are the base colour and its alpha; map the base colour texture; metalness and roughness the factors; metalnessMap and roughnessMap are one glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; normalMap the normal texture; emissive times emissiveIntensity the emitted colour, emissiveMap its texture; alphaTest above 0 is alpha masking with that cutoff.\nAccepted and kept but not drawn yet: aoMap, transparent (blending), side (meshes draw front faces), flatShading and envMapIntensity; the renderer's own phase-2 list owns them.",
+      "description": "A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names.\nIt is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front.\nThe stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults.",
       "type": "object",
       "properties": {
         "color": {
@@ -6783,6 +6868,136 @@
           "description": "A multiplier on image-based lighting.",
           "default": 1,
           "minimum": 0
+        },
+        "normalScale": {
+          "$ref": "#/$defs/Vector2",
+          "description": "How strongly the normal map bends the normal, per tangent axis.",
+          "default": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "aoMapIntensity": {
+          "type": "number",
+          "description": "How strongly aoMap darkens the ambient light.",
+          "default": 1,
+          "minimum": 0
+        },
+        "unlit": {
+          "type": "boolean",
+          "description": "No lighting at all, as three.js MeshBasicMaterial: the colour (times map) plus emissive.",
+          "default": false
+        },
+        "toon": {
+          "type": "boolean",
+          "description": "Cel shading, as three.js MeshToonMaterial: light is quantized by gradientMap (three built-in bands without one), highlights are hard.",
+          "default": false
+        },
+        "gradientMap": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The toon ramp: a texture whose first row maps the light's angle (left dark, right lit) to the light received, read without filtering.",
+          "default": null
+        },
+        "rimColor": {
+          "$ref": "#/$defs/Color",
+          "description": "Rim (fresnel) light added at grazing angles, unshadowed (linear).",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "rimIntensity": {
+          "type": "number",
+          "description": "The rim light's strength; 0 is none.",
+          "default": 0,
+          "minimum": 0
+        },
+        "rimPower": {
+          "type": "number",
+          "description": "How tight the rim is (higher: thinner).",
+          "default": 3,
+          "minimum": 0.1
+        },
+        "flashColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The colour a hit flash mixes towards (linear, may exceed 1).",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "flash": {
+          "type": "number",
+          "description": "How far the final colour is mixed towards flashColor (0 none, 1 flat): animate it per tick for a hit flash.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "dissolve": {
+          "type": "number",
+          "description": "The dissolved fraction: 0 whole, 1 gone. Pixels whose noise is below it are discarded (shadows too); the band just above glows with dissolveEdgeColor.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "dissolveMap": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The dissolve noise from the texture's red channel; without one, value noise over the object-space position.",
+          "default": null
+        },
+        "dissolveEdgeColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The glowing edge (linear, usually above 1 so it blooms).",
+          "default": {
+            "r": 4,
+            "g": 1.5,
+            "b": 0.375
+          }
+        },
+        "dissolveEdgeWidth": {
+          "type": "number",
+          "description": "The width of the glowing band in noise units.",
+          "default": 0.0625,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "dissolveScale": {
+          "type": "number",
+          "description": "The frequency of the built-in noise (cells per object-space unit).",
+          "default": 4,
+          "minimum": 0
+        },
+        "outlineColor": {
+          "$ref": "#/$defs/Color",
+          "description": "This material's outline colour (linear).",
+          "default": {
+            "r": 0,
+            "g": 0,
+            "b": 0
+          }
+        },
+        "outlineWidth": {
+          "type": "number",
+          "description": "This material's outline width in pixels; 0 is none (PostEffects.outline outlines everything).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 31
         }
       },
       "additionalProperties": false
@@ -7003,6 +7218,890 @@
           "type": "boolean",
           "description": "ACES tone mapping; false clamps, so 2D colours come out exactly as authored at exposure 1.",
           "default": true
+        },
+        "decalAtlas": {
+          "$ref": "#/$defs/Texture",
+          "description": "The texture Decal components take their uvMin to uvMax region from; 0 draws decals as solid colour.",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "Lut": {
+      "x-og-kind": "handle",
+      "x-og-module": "render",
+      "description": "A colour lookup table for PostEffects.lut, from og.load.lut (a `.cube` file).",
+      "type": "integer",
+      "minimum": 0
+    },
+    "ParticleEmitter": {
+      "x-og-kind": "handle",
+      "x-og-module": "render",
+      "description": "A particle emitter asset for ParticleSystem.emitter, from og.load.emitter (an `.ogt` of `type particles`).",
+      "type": "integer",
+      "minimum": 0
+    },
+    "AoMethod": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "Which ambient occlusion algorithm runs.",
+      "type": "string",
+      "enum": [
+        "auto",
+        "gtao",
+        "ssao"
+      ],
+      "x-og-variants": {
+        "auto": "GTAO on the full tier, SSAO on WebGL2.",
+        "gtao": "Ground-truth ambient occlusion (3 slices): the better looking one.",
+        "ssao": "Hemisphere SSAO with 8 samples: the cheaper one."
+      }
+    },
+    "DofQuality": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "How many taps depth of field gathers per pixel.",
+      "type": "string",
+      "enum": [
+        "low",
+        "high"
+      ],
+      "x-og-variants": {
+        "low": "16 taps at half resolution.",
+        "high": "48 taps at half resolution: rounder, smoother bokeh."
+      }
+    },
+    "SpriteBlend": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "How a sprite is blended over what is below it.",
+      "type": "string",
+      "enum": [
+        "alpha",
+        "additive"
+      ],
+      "x-og-variants": {
+        "alpha": "Ordinary alpha blending.",
+        "additive": "Added (light, fire, magic): order-independent within a layer."
+      }
+    },
+    "StripBlend": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "How a trail, ribbon or beam is blended.",
+      "type": "string",
+      "enum": [
+        "additive",
+        "alpha"
+      ],
+      "x-og-variants": {
+        "additive": "Added: glowing streaks, lasers, magic.",
+        "alpha": "Alpha blended: smoke trails, tyre marks."
+      }
+    },
+    "PostEffects": {
+      "x-og-kind": "resource",
+      "x-og-module": "render",
+      "description": "The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then costs nothing: no pass is recorded. Read after each tick; it never feeds back into the simulation.\nScreen-space ambient occlusion, outlines, depth of field, motion blur and god rays run a depth-normal prepass, turned on with them. Grading, vignette, aberration, grain and the flash apply to the display colour after tone mapping; the UI and screen-space sprites (the overlay) come after all of it.",
+      "type": "object",
+      "properties": {
+        "ao": {
+          "type": "boolean",
+          "description": "Screen-space ambient occlusion: darkens the ambient light in creases and contact areas.",
+          "default": false
+        },
+        "aoRadius": {
+          "type": "number",
+          "description": "The world-space radius searched for occluders.",
+          "default": 0.6,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "aoIntensity": {
+          "type": "number",
+          "description": "0 none, 1 full; above 1 exaggerates.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "aoMethod": {
+          "$ref": "#/$defs/AoMethod",
+          "description": "The algorithm.",
+          "default": "auto"
+        },
+        "outline": {
+          "type": "boolean",
+          "description": "Outlines every opaque surface from depth and normal edges (materials with outlineWidth get theirs anyway).",
+          "default": false
+        },
+        "outlineColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The line colour, linear.",
+          "default": {
+            "r": 0.02,
+            "g": 0.02,
+            "b": 0.03
+          }
+        },
+        "outlineWidth": {
+          "type": "number",
+          "description": "Line width in pixels, drawn inside the silhouette.",
+          "default": 2,
+          "minimum": 0,
+          "maximum": 31,
+          "x-og-tunable": true
+        },
+        "outlineDepthThreshold": {
+          "type": "number",
+          "description": "The relative depth step that counts as a silhouette (0.04 is 4 %).",
+          "default": 0.04,
+          "minimum": 0
+        },
+        "outlineNormalThreshold": {
+          "type": "number",
+          "description": "The normal change that counts as a crease (1 - cos of the angle; 0.4 is about 53 degrees).",
+          "default": 0.4,
+          "minimum": 0
+        },
+        "depthOfField": {
+          "type": "boolean",
+          "description": "Bokeh depth of field: pixels away from the focus distance blur into discs.",
+          "default": false
+        },
+        "dofFocusDistance": {
+          "type": "number",
+          "description": "The distance from the camera that is sharp.",
+          "default": 10,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "dofFocusRange": {
+          "type": "number",
+          "description": "The half-width of the sharp band around it.",
+          "default": 2,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "dofMaxBlur": {
+          "type": "number",
+          "description": "The largest blur radius, as a fraction of the image height (0.012 is about 9 px at 720p).",
+          "default": 0.012,
+          "minimum": 0,
+          "maximum": 0.1
+        },
+        "dofFalloff": {
+          "type": "number",
+          "description": "How quickly blur grows outside the band: full blur focusRange times (1 + falloff) away.",
+          "default": 4,
+          "minimum": 0
+        },
+        "dofQuality": {
+          "$ref": "#/$defs/DofQuality",
+          "description": "Taps per pixel.",
+          "default": "low"
+        },
+        "motionBlur": {
+          "type": "boolean",
+          "description": "Per-object and camera motion blur along the screen-space velocity.",
+          "default": false
+        },
+        "motionBlurShutter": {
+          "type": "number",
+          "description": "The shutter as a fraction of the frame (0.5 is a 180 degree shutter).",
+          "default": 0.5,
+          "minimum": 0,
+          "maximum": 2,
+          "x-og-tunable": true
+        },
+        "motionBlurSamples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Taps along the velocity.",
+          "default": 12,
+          "minimum": 4,
+          "maximum": 32
+        },
+        "motionBlurMaxPixels": {
+          "type": "number",
+          "description": "The longest blur in pixels.",
+          "default": 40,
+          "minimum": 1
+        },
+        "godRays": {
+          "type": "boolean",
+          "description": "Screen-space light shafts from the DirectionalLight (the sun must be in front of the camera).",
+          "default": false
+        },
+        "godRaysIntensity": {
+          "type": "number",
+          "description": "How bright the shafts are.",
+          "default": 0.5,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "godRaysDecay": {
+          "type": "number",
+          "description": "How fast the rays fade along their length.",
+          "default": 0.965,
+          "minimum": 0.5,
+          "maximum": 1
+        },
+        "godRaysDensity": {
+          "type": "number",
+          "description": "How far towards the sun each ray samples (a fraction of the distance).",
+          "default": 1,
+          "minimum": 0
+        },
+        "godRaysTint": {
+          "$ref": "#/$defs/Color",
+          "description": "A linear tint on the light the rays carry.",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "godRaysSamples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Taps per ray.",
+          "default": 48,
+          "minimum": 8,
+          "maximum": 128
+        },
+        "godRaysThreshold": {
+          "type": "number",
+          "description": "Sky brightness (linear, before exposure) below which the sky carries no rays.",
+          "default": 2,
+          "minimum": 0
+        },
+        "glow": {
+          "type": "boolean",
+          "description": "Order-independent 2D glow: sprites with SpriteDesc.glow (and 2D particles with a glow) are blurred and added back, with or without bloom.",
+          "default": false
+        },
+        "glowIntensity": {
+          "type": "number",
+          "description": "How much of the blurred glow is added back.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "lut": {
+          "$ref": "#/$defs/Lut",
+          "description": "Colour grading by a lookup table from og.load.lut; 0 is none.",
+          "default": 0
+        },
+        "lutIntensity": {
+          "type": "number",
+          "description": "0 leaves the image as tone mapped, 1 applies the table fully.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "vignette": {
+          "type": "boolean",
+          "description": "Darkened (or tinted) edges of the frame.",
+          "default": false
+        },
+        "vignetteIntensity": {
+          "type": "number",
+          "description": "0 none, 1 black corners.",
+          "default": 0.35,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "vignetteRadius": {
+          "type": "number",
+          "description": "Where darkening starts, as a fraction of the half-diagonal.",
+          "default": 0.55,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "vignetteSmoothness": {
+          "type": "number",
+          "description": "The width of the fade.",
+          "default": 0.45,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "vignetteColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The linear colour the edges move towards.",
+          "default": {
+            "r": 0,
+            "g": 0,
+            "b": 0
+          }
+        },
+        "chromaticAberration": {
+          "type": "number",
+          "description": "Red and blue split towards the edges, in pixels at the corners at 720p; 0 is off.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 20,
+          "x-og-tunable": true
+        },
+        "filmGrain": {
+          "type": "number",
+          "description": "Luminance-weighted noise amplitude in display units, a new pattern every tick (0.04 is subtle); 0 is off.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "filmGrainSize": {
+          "type": "number",
+          "description": "The grain size in pixels.",
+          "default": 1.5,
+          "minimum": 0.5
+        },
+        "flash": {
+          "type": "number",
+          "description": "A full-screen flash: the display colour mixed towards flashColor by this much (animate it per tick); 0 is off.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "flashColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The flash's linear display colour.",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "shakeTrauma": {
+          "type": "number",
+          "description": "Camera shake: 0 none, 1 the most (the amplitude is trauma squared). The shake is smooth value noise by the tick, so a replay shakes the same; decay it in a system. Visual only.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "shakeMaxOffset": {
+          "type": "number",
+          "description": "The largest offset at trauma 1, as a fraction of the view height.",
+          "default": 0.05,
+          "minimum": 0
+        },
+        "shakeMaxRoll": {
+          "type": "number",
+          "description": "The largest roll at trauma 1.",
+          "default": 3,
+          "minimum": 0,
+          "x-og-unit": "deg"
+        },
+        "shakeFrequency": {
+          "type": "number",
+          "description": "How fast the shake moves.",
+          "default": 12,
+          "minimum": 0,
+          "x-og-unit": "hz"
+        },
+        "shakeSeed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The shake's noise seed.",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "Lighting2D": {
+      "x-og-kind": "resource",
+      "x-og-module": "render",
+      "description": "2D lighting of the sprite layers minLayer to maxLayer: their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Light the layers.",
+          "default": false
+        },
+        "ambient": {
+          "$ref": "#/$defs/Color",
+          "description": "Light everywhere (0 is darkness outside the lights).",
+          "default": {
+            "r": 0.15,
+            "g": 0.15,
+            "b": 0.15
+          }
+        },
+        "minLayer": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "The lowest lit sprite layer.",
+          "default": -1000000
+        },
+        "maxLayer": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "The highest lit sprite layer (above it: UI and HUD layers stay unlit).",
+          "default": 99
+        },
+        "resolution": {
+          "type": "number",
+          "description": "The light map's resolution as a fraction of the target.",
+          "default": 0.5,
+          "minimum": 0.25,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "Light2D": {
+      "x-og-kind": "component",
+      "x-og-module": "render",
+      "description": "A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff, shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn.",
+      "type": "object",
+      "properties": {
+        "color": {
+          "$ref": "#/$defs/Color",
+          "description": "The light's linear colour.",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "intensity": {
+          "type": "number",
+          "description": "The brightness at the centre.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "radius": {
+          "type": "number",
+          "description": "Where the light reaches zero, in world units.",
+          "default": 5,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "falloff": {
+          "type": "number",
+          "description": "The exponent of the fade.",
+          "default": 2,
+          "minimum": 0.1
+        },
+        "sourceRadius": {
+          "type": "number",
+          "description": "The light's own size: larger gives softer shadows.",
+          "default": 0.25,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "castShadows": {
+          "type": "boolean",
+          "description": "Occluders between the light and a pixel shade it.",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Occluder2D": {
+      "x-og-kind": "component",
+      "x-og-module": "render",
+      "description": "A rectangle that blocks 2D light (walls, crates, characters), centred on the entity's position and turned with it about z. Pixels inside it are not shadowed by it. At most 128 are drawn.",
+      "type": "object",
+      "properties": {
+        "width": {
+          "type": "number",
+          "description": "Its width in world units.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "height": {
+          "type": "number",
+          "description": "Its height in world units.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-unit": "m"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Decal": {
+      "x-og-kind": "component",
+      "x-og-module": "render",
+      "description": "A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one). At most 32 are drawn.",
+      "type": "object",
+      "properties": {
+        "color": {
+          "$ref": "#/$defs/Color",
+          "description": "A linear colour multiplied with the atlas.",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "opacity": {
+          "type": "number",
+          "description": "The decal's opacity.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "uvMin": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The atlas region's top-left corner, v down.",
+          "default": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        "uvMax": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The atlas region's bottom-right corner, v down.",
+          "default": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "emissive": {
+          "$ref": "#/$defs/Color",
+          "description": "Linear light added where the decal covers (glowing runes, lava).",
+          "default": {
+            "r": 0,
+            "g": 0,
+            "b": 0
+          }
+        },
+        "roughness": {
+          "type": "number",
+          "description": "The surface roughness under the decal; -1 keeps the surface's.",
+          "default": -1,
+          "minimum": -1,
+          "maximum": 1
+        },
+        "angleFade": {
+          "type": "number",
+          "description": "Surfaces turned further than this from the projection direction are not covered (the last 15 degrees fade).",
+          "default": 75,
+          "minimum": 0,
+          "maximum": 90,
+          "x-og-unit": "deg"
+        },
+        "visible": {
+          "type": "boolean",
+          "description": "Whether it is drawn.",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "ParticleSystem": {
+      "x-og-kind": "component",
+      "x-og-module": "render",
+      "description": "Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay, and never feed back into the simulation: compute on the full tier, the CPU on WebGL2, identical either way.",
+      "type": "object",
+      "properties": {
+        "emitter": {
+          "$ref": "#/$defs/ParticleEmitter",
+          "description": "The emitter asset; 0 draws nothing.",
+          "default": 0
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The random seed: systems with different seeds differ.",
+          "default": 0
+        },
+        "startTick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick emission started: write og.world tick when spawning a one-shot burst.",
+          "default": 0
+        },
+        "stopTick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick emission stops (the particles live out); 0 keeps emitting while the emitter loops.",
+          "default": 0
+        },
+        "visible": {
+          "type": "boolean",
+          "description": "Whether it is drawn (a hidden system loses its particles).",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Trail": {
+      "x-og-kind": "component",
+      "x-og-module": "render",
+      "description": "A streak behind the entity: its world positions over the last `lifetime` seconds as a camera-facing strip, from widthStart and color at the head to widthEnd and colorEnd at the tail.",
+      "type": "object",
+      "properties": {
+        "lifetime": {
+          "type": "number",
+          "description": "How long a position stays in the trail.",
+          "default": 0.4,
+          "minimum": 0,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "minDistance": {
+          "type": "number",
+          "description": "A new point is kept when the head has moved this far.",
+          "default": 0.05,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "widthStart": {
+          "type": "number",
+          "description": "The width at the head.",
+          "default": 0.15,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "widthEnd": {
+          "type": "number",
+          "description": "The width at the tail.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "color": {
+          "$ref": "#/$defs/Color",
+          "description": "The linear colour at the head; above 1 blooms.",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "opacity": {
+          "type": "number",
+          "description": "The alpha at the head.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "colorEnd": {
+          "$ref": "#/$defs/Color",
+          "description": "The linear colour at the tail.",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "opacityEnd": {
+          "type": "number",
+          "description": "The alpha at the tail.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "texture": {
+          "$ref": "#/$defs/Texture",
+          "description": "A texture along the strip; 0 is solid.",
+          "default": 0
+        },
+        "uvTile": {
+          "type": "number",
+          "description": "The texture repeats every this many world units; 0 stretches it once over the length.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "blend": {
+          "$ref": "#/$defs/StripBlend",
+          "description": "Additive or alpha blended.",
+          "default": "additive"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Beam": {
+      "x-og-kind": "component",
+      "x-og-module": "render",
+      "description": "A strip from the entity's position to `end` whose texture scrolls with the tick: lasers, tethers, lightning (jitter).",
+      "type": "object",
+      "properties": {
+        "end": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The far end, in world space.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "width": {
+          "type": "number",
+          "description": "The beam's width.",
+          "default": 0.1,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "color": {
+          "$ref": "#/$defs/Color",
+          "description": "The linear colour; above 1 blooms.",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "opacity": {
+          "type": "number",
+          "description": "The alpha.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "texture": {
+          "$ref": "#/$defs/Texture",
+          "description": "A texture along the beam; 0 is solid.",
+          "default": 0
+        },
+        "tile": {
+          "type": "number",
+          "description": "Texture repeats per world unit along the beam.",
+          "default": 1,
+          "minimum": 0
+        },
+        "scroll": {
+          "type": "number",
+          "description": "Texture scroll in repeats per second.",
+          "default": 0,
+          "x-og-tunable": true
+        },
+        "segments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Segments: 1 is straight, more let jitter bend it.",
+          "default": 1,
+          "minimum": 1,
+          "maximum": 64
+        },
+        "jitter": {
+          "type": "number",
+          "description": "Sideways jitter in world units, new every tick (lightning).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The jitter's seed.",
+          "default": 0
+        },
+        "blend": {
+          "$ref": "#/$defs/StripBlend",
+          "description": "Additive or alpha blended.",
+          "default": "additive"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RibbonPoint": {
+      "x-og-kind": "desc",
+      "x-og-module": "render",
+      "description": "One point of a ribbon.",
+      "type": "object",
+      "properties": {
+        "position": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where it is.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "width": {
+          "type": "number",
+          "description": "The width there.",
+          "default": 0.1,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "color": {
+          "$ref": "#/$defs/Color",
+          "description": "The linear colour there.",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "opacity": {
+          "type": "number",
+          "description": "The alpha there.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "RibbonDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "render",
+      "description": "An explicit camera-facing strip through points, drawn this frame only (immediate mode, as og.render.sprite): submit it every tick it should show.",
+      "type": "object",
+      "properties": {
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RibbonPoint"
+          },
+          "description": "The points, in order (at least two).",
+          "default": []
+        },
+        "texture": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A texture along the strip; null is solid.",
+          "default": null
+        },
+        "uvTile": {
+          "type": "number",
+          "description": "The texture repeats every this many world units; 0 stretches it once.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "blend": {
+          "$ref": "#/$defs/StripBlend",
+          "description": "Additive or alpha blended.",
+          "default": "additive"
         }
       },
       "additionalProperties": false
@@ -7079,6 +8178,28 @@
           "$ref": "#/$defs/TextAlign",
           "description": "How each line sits on `position`: start puts its left end there, center its middle, end its right end.",
           "default": "start"
+        },
+        "screen": {
+          "type": "boolean",
+          "description": "Draw in screen space over the finished frame: position is the first baseline's origin in CSS pixels from the top left, y down, size in CSS pixels, rotation clockwise.",
+          "default": false
+        },
+        "clip": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 4,
+              "maxItems": 4
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Screen text: cut to [x, y, width, height] in CSS pixels, per pixel; null draws it whole.",
+          "default": null
         }
       },
       "additionalProperties": false
@@ -7238,6 +8359,60 @@
           "maximum": 2147483647,
           "description": "Draw order among sprites and text; higher draws on top.",
           "default": 0
+        },
+        "flash": {
+          "type": "number",
+          "description": "A hit flash: the colour mixed towards flashColor by this much, keeping the alpha.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "flashColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The flash's linear colour.",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "glow": {
+          "type": "number",
+          "description": "Strength in the 2D glow buffer (PostEffects.glow); 0 none.",
+          "default": 0,
+          "minimum": 0
+        },
+        "blend": {
+          "$ref": "#/$defs/SpriteBlend",
+          "description": "Alpha or additive.",
+          "default": "alpha"
+        },
+        "castShadow": {
+          "type": "boolean",
+          "description": "Block 2D light (Lighting2D) with the sprite's rectangle.",
+          "default": false
+        },
+        "screen": {
+          "type": "boolean",
+          "description": "Draw in screen space over the finished frame instead of the world: position x, y in CSS pixels from the top left with y down, width and height in CSS pixels, anchor from the top left, rotation clockwise; never tone mapped, blurred or depth tested (a HUD). flash, glow, blend and castShadow apply to world sprites only.",
+          "default": false
+        },
+        "clip": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 4,
+              "maxItems": 4
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Screen sprites: cut to [x, y, width, height] in CSS pixels; null draws it whole.",
+          "default": null
         }
       },
       "additionalProperties": false

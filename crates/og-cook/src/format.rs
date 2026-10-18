@@ -16,6 +16,8 @@
 //! | sound (`og.Sound`) | [`SoundMeta`] | `qoa` (a QOA file) |
 //! | font (`og.Font`) | [`FontMeta`] | `glyphs` [`GlyphRow`], `atlas.<n>` (KTX2 RGBA8, zlib) |
 //! | scene (`og.Scene`) | [`SceneMeta`] | `entities` [`EntityRow`], `refs` [`RefRow`], `components` [`ComponentRow`], `strings`, per component `c.<Type>` rows and `s.<Type>` its schema JSON |
+//! | colour LUT (`og.Lut`, a `.cube`) | [`LutMeta`] | `rgba` (size³ RGBA8, red fastest) |
+//! | particle emitter (`og.ParticleEmitter`, an `.ogt` of `type particles`) | [`EmitterMeta`] | `text` (the validated emitter file) |
 //! | animation (`og.Animation`, a glTF's `#anim`) | [`AnimMeta`] | `nodes` [`NodeRow`], `skins` [`SkinRow`], `joints` (u32 node indices), `inverse_binds` (16 f32 per joint, column-major), `clips` [`ClipRow`], `channels` [`ChannelRow`], `samples` (f32), `events` [`EventRow`], `skin_streams` [`SkinStreamRow`], `skin_data` (meshopt streams), `morphs` [`MorphRow`], `targets` [`TargetRow`], `morph_data` (meshopt streams), `strings` |
 
 use og_core::hash::StableHasher;
@@ -549,5 +551,42 @@ impl BlobKind for Animation {
             MorphRow::schema(),
             TargetRow::schema(),
         ]
+    }
+}
+
+// ── effects ──────────────────────────────────────────────────────────────
+
+row!(
+    /// The root of a colour lookup table blob (a `.cube` file).
+    LutMeta, "og.Lut", 1 {
+        /// The table's side (og-render's LUT_SIZE, 32).
+        size: u32,
+    }
+);
+
+/// The colour LUT blob: `rgba` holds size³ RGBA8 texels, red fastest.
+pub struct Lut;
+impl BlobKind for Lut {
+    const NAME: &'static str = "og.Lut";
+    fn schemas() -> Vec<Schema> {
+        vec![LutMeta::schema()]
+    }
+}
+
+row!(
+    /// The root of a particle emitter blob (an `.ogt` of `type particles`).
+    EmitterMeta, "og.ParticleEmitter", 1 {
+        /// Bytes of the validated emitter text in `text`.
+        text_bytes: u32,
+    }
+);
+
+/// The particle emitter blob: `text` holds the emitter file the cook
+/// validated (`crate::fx`), parsed again at load with the bundle's textures.
+pub struct Emitter;
+impl BlobKind for Emitter {
+    const NAME: &'static str = "og.ParticleEmitter";
+    fn schemas() -> Vec<Schema> {
+        vec![EmitterMeta::schema()]
     }
 }

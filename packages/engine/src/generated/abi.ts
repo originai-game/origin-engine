@@ -169,6 +169,8 @@ export interface HostAbi<A, V> {
   og_camera_world_to_screen(world: number, point: string): string;
   /** `Camera.screenToRay` */
   og_camera_screen_to_ray(world: number, x: number, y: number): string;
+  /** `og.render.ribbon` */
+  og_render_ribbon(world: number, desc: string | undefined): string;
   /** `og.render.sprite` */
   og_render_sprite(world: number, desc: string | undefined): string;
   /** `og.render.measureText` */
@@ -203,6 +205,10 @@ export interface HostAbi<A, V> {
   og_load_font_info(world: number, font: number): string;
   /** `og.load.sound` */
   og_load_sound(world: number, path: string): string;
+  /** `og.load.lut` */
+  og_load_lut(world: number, path: string): string;
+  /** `og.load.emitter` */
+  og_load_emitter(world: number, path: string): string;
   /** `og.load.texture` */
   og_load_texture(world: number, path: string): string;
   /** `og.load.soundInfo` */
@@ -473,6 +479,7 @@ export const SYMBOLS: readonly string[] = [
   "og_camera_look_at",
   "og_camera_world_to_screen",
   "og_camera_screen_to_ray",
+  "og_render_ribbon",
   "og_render_sprite",
   "og_render_measure_text",
   "og_render_box_geometry",
@@ -490,6 +497,8 @@ export const SYMBOLS: readonly string[] = [
   "og_load_font",
   "og_load_font_info",
   "og_load_sound",
+  "og_load_lut",
+  "og_load_emitter",
   "og_load_texture",
   "og_load_sound_info",
   "og_load_status",

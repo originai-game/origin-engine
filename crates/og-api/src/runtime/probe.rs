@@ -300,6 +300,7 @@ pub(crate) fn after_reload(eng: &Engine, swapped: bool) {
     rs.camera = camera;
     rs.settings = settings;
     rs.draw = draw;
+    rs.fx.anim = Some(a.anim.clone());
 }
 
 /// One JSON-RPC call through the probe, with the runtime's additions to

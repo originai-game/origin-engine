@@ -1242,39 +1242,95 @@ pub fn og_camera_screen_to_ray(world: u32, x: f64, y: f64) -> String {
 
 // ── render ──────────────────────────────────────────────────────────────────
 
-fn material(base: og_render::Material, desc: &Value) -> og_render::Material {
+/// A StandardMaterialDesc applied over `base` (fields the desc omits keep
+/// their values): og-render's StandardMaterial carries every field under
+/// the same name; texture fields are Texture handles (null clears them).
+fn material(
+    base: og_render::StandardMaterial,
+    desc: &Value,
+    textures: &[og_render::TextureHandle],
+) -> Result<og_render::StandardMaterial, String> {
     let mut m = base;
-    let color = &desc["color"];
-    if color.is_object() {
-        let opacity = m.base_color[3];
-        m.base_color = [
-            color["r"].as_f64().unwrap_or(1.0) as f32,
-            color["g"].as_f64().unwrap_or(1.0) as f32,
-            color["b"].as_f64().unwrap_or(1.0) as f32,
-            opacity,
-        ];
+    let num = |k: &str| desc[k].as_f64().map(|v| v as f32);
+    let flag = |k: &str| desc[k].as_bool().map(u32::from);
+    let rgb = |k: &str| {
+        let c = &desc[k];
+        c.is_object().then(|| {
+            glam::Vec3::new(
+                c["r"].as_f64().unwrap_or(0.0) as f32,
+                c["g"].as_f64().unwrap_or(0.0) as f32,
+                c["b"].as_f64().unwrap_or(0.0) as f32,
+            )
+        })
+    };
+    let tex = |k: &str| -> Result<Option<u32>, String> {
+        match desc.get(k) {
+            None => Ok(None),
+            Some(Value::Null) => Ok(Some(0)),
+            Some(v) => {
+                let t = v.as_f64().unwrap_or(-1.0);
+                index_of(t)
+                    .and_then(|i| textures.get(i))
+                    .map(|h| Some(h.slot()))
+                    .ok_or_else(|| format!("{k}: texture {t} is not alive"))
+            }
+        }
+    };
+    macro_rules! set {
+        ($field:ident, $v:expr) => {
+            if let Some(v) = $v {
+                m.$field = v;
+            }
+        };
     }
-    if let Some(o) = desc["opacity"].as_f64() {
-        m.base_color[3] = o as f32;
+    set!(color, rgb("color"));
+    set!(map, tex("map")?);
+    set!(metalness, num("metalness"));
+    set!(metalnessMap, tex("metalnessMap")?);
+    set!(roughness, num("roughness"));
+    set!(roughnessMap, tex("roughnessMap")?);
+    set!(normalMap, tex("normalMap")?);
+    set!(aoMap, tex("aoMap")?);
+    set!(emissive, rgb("emissive"));
+    set!(emissiveIntensity, num("emissiveIntensity"));
+    set!(emissiveMap, tex("emissiveMap")?);
+    set!(opacity, num("opacity"));
+    set!(transparent, flag("transparent"));
+    set!(alphaTest, num("alphaTest"));
+    set!(
+        side,
+        desc["side"].as_str().map(|s| match s {
+            "back" => 1,
+            "double" => 2,
+            _ => 0,
+        })
+    );
+    set!(flatShading, flag("flatShading"));
+    set!(envMapIntensity, num("envMapIntensity"));
+    let ns = &desc["normalScale"];
+    if ns.is_object() {
+        m.normalScale = glam::Vec2::new(
+            ns["x"].as_f64().unwrap_or(1.0) as f32,
+            ns["y"].as_f64().unwrap_or(1.0) as f32,
+        );
     }
-    if let Some(v) = desc["metalness"].as_f64() {
-        m.metallic = v as f32;
-    }
-    if let Some(v) = desc["roughness"].as_f64() {
-        m.roughness = v as f32;
-    }
-    let e = &desc["emissive"];
-    if e.is_object() {
-        m.emissive = [
-            e["r"].as_f64().unwrap_or(0.0) as f32,
-            e["g"].as_f64().unwrap_or(0.0) as f32,
-            e["b"].as_f64().unwrap_or(0.0) as f32,
-        ];
-    }
-    if let Some(t) = desc["alphaTest"].as_f64().filter(|t| *t > 0.0) {
-        m.alpha_mode = og_render::AlphaMode::Mask { cutoff: t as f32 };
-    }
-    m
+    set!(aoMapIntensity, num("aoMapIntensity"));
+    set!(unlit, flag("unlit"));
+    set!(toon, flag("toon"));
+    set!(gradientMap, tex("gradientMap")?);
+    set!(rimColor, rgb("rimColor"));
+    set!(rimIntensity, num("rimIntensity"));
+    set!(rimPower, num("rimPower"));
+    set!(flashColor, rgb("flashColor"));
+    set!(flash, num("flash"));
+    set!(dissolve, num("dissolve"));
+    set!(dissolveMap, tex("dissolveMap")?);
+    set!(dissolveEdgeColor, rgb("dissolveEdgeColor"));
+    set!(dissolveEdgeWidth, num("dissolveEdgeWidth"));
+    set!(dissolveScale, num("dissolveScale"));
+    set!(outlineColor, rgb("outlineColor"));
+    set!(outlineWidth, num("outlineWidth"));
+    Ok(m)
 }
 
 /// Material handles are the render state's material index with generation 1.
@@ -1287,12 +1343,9 @@ pub fn og_render_standard_material(world: u32, desc: Option<String>) -> String {
         let eng = engine(world)?;
         let desc = parse(desc.as_deref())?;
         // three.js MeshStandardMaterial defaults: white, metalness 0, roughness 1.
-        let base = og_render::Material {
-            roughness: 1.0,
-            ..og_render::Material::default()
-        };
         let mut rs = eng.render.borrow_mut();
-        let handle = rs.scene.add_material(material(base, &desc));
+        let m = material(og_render::StandardMaterial::default(), &desc, &rs.textures)?;
+        let handle = rs.scene.add_standard_material(m);
         rs.materials.push(handle);
         Ok(json!(material_handle(rs.materials.len() - 1)))
     })())
@@ -1306,12 +1359,12 @@ pub fn og_render_update_material(world: u32, handle: f64, desc: Option<String>) 
         let h = index_of(handle)
             .and_then(|i| rs.materials.get(i).copied())
             .ok_or_else(|| format!("material {handle} is not alive"))?;
-        let current = rs
+        let current = *rs
             .scene
-            .material(h)
-            .cloned()
+            .standard_material(h)
             .ok_or("material is not alive")?;
-        rs.scene.set_material(h, material(current, &desc));
+        let m = material(current, &desc, &rs.textures)?;
+        rs.scene.set_standard_material(h, m);
         Ok(())
     })())
 }
@@ -1367,6 +1420,8 @@ pub fn og_render_text(world: u32, desc: Option<String>) -> String {
             num(&d, "opacity", 1.0),
         ];
         let layer = d["layer"].as_i64().unwrap_or(0) as i32;
+        let screen = d["screen"].as_bool().unwrap_or(false);
+        let clip = clip_of(&d["clip"]);
         let shift = match d["align"].as_str() {
             Some("center") => 0.5,
             Some("end") => 1.0,
@@ -1381,6 +1436,8 @@ pub fn og_render_text(world: u32, desc: Option<String>) -> String {
                 rotation,
                 color,
                 layer,
+                screen,
+                clip,
             });
             return Ok(());
         }
@@ -1389,7 +1446,13 @@ pub fn og_render_text(world: u32, desc: Option<String>) -> String {
         let (metrics, line_height) = font_metrics(&rs, render)?;
         let (sin, cos) = og_core::math::sin_cos(rotation);
         let along = glam::Vec3::new(cos, sin, 0.0);
-        let down = glam::Vec3::new(sin, -cos, 0.0);
+        // The next line is below: -y in the world, +y on screen (y down,
+        // rotation clockwise).
+        let down = if screen {
+            glam::Vec3::new(-sin, cos, 0.0)
+        } else {
+            glam::Vec3::new(sin, -cos, 0.0)
+        };
         for (i, line) in text.split('\n').enumerate() {
             let w = metrics.measure(line, size);
             rs.texts.push(super::extract::QueuedText {
@@ -1400,6 +1463,8 @@ pub fn og_render_text(world: u32, desc: Option<String>) -> String {
                 rotation,
                 color,
                 layer,
+                screen,
+                clip,
             });
         }
         Ok(())
@@ -1488,9 +1553,17 @@ pub fn og_render_sphere_geometry(world: u32, desc: Option<String>) -> String {
 fn new_frame(rs: &mut super::extract::RenderState, tick: u64) {
     if rs.texts_tick != tick {
         rs.texts.clear();
-        rs.sprites.clear();
+        rs.fx.sprites.clear();
+        rs.fx.ribbons.clear();
         rs.texts_tick = tick;
     }
+}
+
+/// A `clip` field: `[x, y, width, height]`, or none.
+fn clip_of(v: &Value) -> Option<[f32; 4]> {
+    let a = v.as_array().filter(|a| a.len() == 4)?;
+    let n = |i: usize| a[i].as_f64().unwrap_or(0.0) as f32;
+    Some([n(0), n(1), n(2), n(3)])
 }
 
 /// A loaded font's layout metrics (its first page carries every advance)
@@ -1537,7 +1610,26 @@ pub fn og_render_sprite(world: u32, desc: Option<String>) -> String {
         let c = &d["color"];
         let anchor = &d["anchor"];
         new_frame(&mut rs, tick);
-        rs.sprites.push(og_render::Sprite {
+        let fc = &d["flashColor"];
+        let flash = [
+            if fc.is_object() {
+                num(fc, "r", 1.0)
+            } else {
+                1.0
+            },
+            if fc.is_object() {
+                num(fc, "g", 1.0)
+            } else {
+                1.0
+            },
+            if fc.is_object() {
+                num(fc, "b", 1.0)
+            } else {
+                1.0
+            },
+            num(&d, "flash", 0.0).clamp(0.0, 1.0),
+        ];
+        let sprite = og_render::Sprite {
             texture,
             position: vec3(&d["position"]),
             size: glam::Vec2::new(num(&d, "width", 1.0), num(&d, "height", 1.0)),
@@ -1552,6 +1644,72 @@ pub fn og_render_sprite(world: u32, desc: Option<String>) -> String {
             uv_rect: uv,
             layer: d["layer"].as_i64().unwrap_or(0) as i32,
             clip: None,
+        };
+        rs.fx.sprites.push(super::fx::QueuedSprite {
+            sprite,
+            flash,
+            glow: num(&d, "glow", 0.0).max(0.0),
+            additive: d["blend"].as_str() == Some("additive"),
+            cast_shadow: d["castShadow"].as_bool().unwrap_or(false),
+            screen: d["screen"].as_bool().unwrap_or(false),
+            clip: clip_of(&d["clip"]),
+        });
+        Ok(())
+    })())
+}
+
+pub fn og_render_ribbon(world: u32, desc: Option<String>) -> String {
+    result_void((|| {
+        let eng = engine(world)?;
+        let d = parse(desc.as_deref())?;
+        let num = |v: &Value, k: &str, def: f64| v[k].as_f64().unwrap_or(def) as f32;
+        let points: Vec<og_render::RibbonPoint> = d["points"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .map(|p| {
+                        let c = &p["color"];
+                        let rgb = |k: &str| if c.is_object() { num(c, k, 1.0) } else { 1.0 };
+                        og_render::RibbonPoint {
+                            position: vec3(&p["position"]),
+                            width: num(p, "width", 0.1),
+                            color: [rgb("r"), rgb("g"), rgb("b"), num(p, "opacity", 1.0)],
+                        }
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        if points.len() < 2 {
+            return Err(format!(
+                "a ribbon needs at least two points, got {}",
+                points.len()
+            ));
+        }
+        let tick = og_world_get_tick(world) as u64;
+        let mut rs = eng.render.borrow_mut();
+        let texture = match d["texture"].as_f64() {
+            None => None,
+            Some(t) => Some(
+                index_of(t)
+                    .and_then(|i| rs.textures.get(i).copied())
+                    .ok_or_else(|| format!("texture {t} is not alive"))?,
+            ),
+        };
+        let tile = num(&d, "uvTile", 0.0);
+        new_frame(&mut rs, tick);
+        rs.fx.ribbons.push(og_render::Ribbon {
+            points,
+            texture,
+            uv: if tile > 0.0 {
+                og_render::RibbonUv::Tile { length: tile }
+            } else {
+                og_render::RibbonUv::Stretch
+            },
+            blend: if d["blend"].as_str() == Some("alpha") {
+                og_render::ParticleBlend::Alpha
+            } else {
+                og_render::ParticleBlend::Additive
+            },
         });
         Ok(())
     })())
@@ -1644,6 +1802,14 @@ pub fn og_load_gltf(world: u32, path: String, _desc: Option<String>) -> String {
 
 pub fn og_load_scene(world: u32, path: String) -> String {
     result(engine(world).and_then(|eng| assets::load_scene(&eng, &path).map(asset_value)))
+}
+
+pub fn og_load_lut(world: u32, path: String) -> String {
+    result(engine(world).and_then(|eng| super::fx::load_lut(&eng, &path).map(asset_value)))
+}
+
+pub fn og_load_emitter(world: u32, path: String) -> String {
+    result(engine(world).and_then(|eng| super::fx::load_emitter(&eng, &path).map(asset_value)))
 }
 
 pub fn og_load_font(world: u32, path: String) -> String {

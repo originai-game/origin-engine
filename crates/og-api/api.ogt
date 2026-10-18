@@ -1387,8 +1387,8 @@ module render {
 
   struct StandardMaterialDesc {
     doc "A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names."
-    doc "Mapping to the renderer (og-render Material): color and opacity are the base colour and its alpha; map the base colour texture; metalness and roughness the factors; metalnessMap and roughnessMap are one glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; normalMap the normal texture; emissive times emissiveIntensity the emitted colour, emissiveMap its texture; alphaTest above 0 is alpha masking with that cutoff."
-    doc "Accepted and kept but not drawn yet: aoMap, transparent (blending), side (meshes draw front faces), flatShading and envMapIntensity; the renderer's own phase-2 list owns them."
+    doc "It is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front."
+    doc "The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults."
     desc true
     field color Color "The base colour." {
       default 1 1 1
@@ -1428,6 +1428,55 @@ module render {
     field envMapIntensity f32 "A multiplier on image-based lighting." {
       default 1
       min 0
+    }
+    field normalScale Vector2 "How strongly the normal map bends the normal, per tangent axis." {
+      default 1 1
+    }
+    field aoMapIntensity f32 "How strongly aoMap darkens the ambient light." {
+      default 1
+      min 0
+    }
+    field unlit bool "No lighting at all, as three.js MeshBasicMaterial: the colour (times map) plus emissive."
+    field toon bool "Cel shading, as three.js MeshToonMaterial: light is quantized by gradientMap (three built-in bands without one), highlights are hard."
+    field gradientMap Option.Texture "The toon ramp: a texture whose first row maps the light's angle (left dark, right lit) to the light received, read without filtering."
+    field rimColor Color "Rim (fresnel) light added at grazing angles, unshadowed (linear)." {
+      default 1 1 1
+    }
+    field rimIntensity f32 "The rim light's strength; 0 is none." {
+      min 0
+    }
+    field rimPower f32 "How tight the rim is (higher: thinner)." {
+      default 3
+      min 0.1
+    }
+    field flashColor Color "The colour a hit flash mixes towards (linear, may exceed 1)." {
+      default 1 1 1
+    }
+    field flash f32 "How far the final colour is mixed towards flashColor (0 none, 1 flat): animate it per tick for a hit flash." {
+      min 0
+      max 1
+    }
+    field dissolve f32 "The dissolved fraction: 0 whole, 1 gone. Pixels whose noise is below it are discarded (shadows too); the band just above glows with dissolveEdgeColor." {
+      min 0
+      max 1
+    }
+    field dissolveMap Option.Texture "The dissolve noise from the texture's red channel; without one, value noise over the object-space position."
+    field dissolveEdgeColor Color "The glowing edge (linear, usually above 1 so it blooms)." {
+      default 4 1.5 0.375
+    }
+    field dissolveEdgeWidth f32 "The width of the glowing band in noise units." {
+      default 0.0625
+      min 0
+      max 1
+    }
+    field dissolveScale f32 "The frequency of the built-in noise (cells per object-space unit)." {
+      default 4
+      min 0
+    }
+    field outlineColor Color "This material's outline colour (linear)."
+    field outlineWidth f32 "This material's outline width in pixels; 0 is none (PostEffects.outline outlines everything)." {
+      min 0
+      max 31
     }
   }
 
@@ -1542,6 +1591,486 @@ module render {
     field toneMapped bool "ACES tone mapping; false clamps, so 2D colours come out exactly as authored at exposure 1." {
       default true
     }
+    field decalAtlas Texture "The texture Decal components take their uvMin to uvMax region from; 0 draws decals as solid colour."
+  }
+
+  # ── effects (og-render's E1 effects, declared as data) ────────────────
+
+  handle Lut "A colour lookup table for PostEffects.lut, from og.load.lut (a `.cube` file)."
+  handle ParticleEmitter "A particle emitter asset for ParticleSystem.emitter, from og.load.emitter (an `.ogt` of `type particles`)."
+
+  column Texture {
+    doc "A Texture handle field (0 is none)."
+    array Uint32Array
+    stride 2
+    value Texture
+  }
+
+  column Lut {
+    doc "A Lut handle field (0 is none)."
+    array Uint32Array
+    stride 2
+    value Lut
+  }
+
+  column ParticleEmitter {
+    doc "A ParticleEmitter handle field (0 is none)."
+    array Uint32Array
+    stride 2
+    value ParticleEmitter
+  }
+
+  enum AoMethod {
+    doc "Which ambient occlusion algorithm runs."
+    variant auto "GTAO on the full tier, SSAO on WebGL2."
+    variant gtao "Ground-truth ambient occlusion (3 slices): the better looking one."
+    variant ssao "Hemisphere SSAO with 8 samples: the cheaper one."
+  }
+
+  column AoMethod {
+    doc "An AoMethod field: the variant's index."
+    array Uint32Array
+    stride 1
+    value AoMethod
+  }
+
+  enum DofQuality {
+    doc "How many taps depth of field gathers per pixel."
+    variant low "16 taps at half resolution."
+    variant high "48 taps at half resolution: rounder, smoother bokeh."
+  }
+
+  column DofQuality {
+    doc "A DofQuality field: the variant's index."
+    array Uint32Array
+    stride 1
+    value DofQuality
+  }
+
+  enum SpriteBlend {
+    doc "How a sprite is blended over what is below it."
+    variant alpha "Ordinary alpha blending."
+    variant additive "Added (light, fire, magic): order-independent within a layer."
+  }
+
+  enum StripBlend {
+    doc "How a trail, ribbon or beam is blended."
+    variant additive "Added: glowing streaks, lasers, magic."
+    variant alpha "Alpha blended: smoke trails, tyre marks."
+  }
+
+  column StripBlend {
+    doc "A StripBlend field: the variant's index."
+    array Uint32Array
+    stride 1
+    value StripBlend
+  }
+
+  resource PostEffects {
+    doc "The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then costs nothing: no pass is recorded. Read after each tick; it never feeds back into the simulation."
+    doc "Screen-space ambient occlusion, outlines, depth of field, motion blur and god rays run a depth-normal prepass, turned on with them. Grading, vignette, aberration, grain and the flash apply to the display colour after tone mapping; the UI and screen-space sprites (the overlay) come after all of it."
+    field ao bool "Screen-space ambient occlusion: darkens the ambient light in creases and contact areas."
+    field aoRadius f32 "The world-space radius searched for occluders." {
+      default 0.6
+      min 0
+      unit m
+      tunable true
+    }
+    field aoIntensity f32 "0 none, 1 full; above 1 exaggerates." {
+      default 1
+      min 0
+      tunable true
+    }
+    field aoMethod AoMethod "The algorithm."
+    field outline bool "Outlines every opaque surface from depth and normal edges (materials with outlineWidth get theirs anyway)."
+    field outlineColor Color "The line colour, linear." {
+      default 0.02 0.02 0.03
+    }
+    field outlineWidth f32 "Line width in pixels, drawn inside the silhouette." {
+      default 2
+      min 0
+      max 31
+      tunable true
+    }
+    field outlineDepthThreshold f32 "The relative depth step that counts as a silhouette (0.04 is 4 %)." {
+      default 0.04
+      min 0
+    }
+    field outlineNormalThreshold f32 "The normal change that counts as a crease (1 - cos of the angle; 0.4 is about 53 degrees)." {
+      default 0.4
+      min 0
+    }
+    field depthOfField bool "Bokeh depth of field: pixels away from the focus distance blur into discs."
+    field dofFocusDistance f32 "The distance from the camera that is sharp." {
+      default 10
+      min 0
+      unit m
+      tunable true
+    }
+    field dofFocusRange f32 "The half-width of the sharp band around it." {
+      default 2
+      min 0
+      unit m
+      tunable true
+    }
+    field dofMaxBlur f32 "The largest blur radius, as a fraction of the image height (0.012 is about 9 px at 720p)." {
+      default 0.012
+      min 0
+      max 0.1
+    }
+    field dofFalloff f32 "How quickly blur grows outside the band: full blur focusRange times (1 + falloff) away." {
+      default 4
+      min 0
+    }
+    field dofQuality DofQuality "Taps per pixel."
+    field motionBlur bool "Per-object and camera motion blur along the screen-space velocity."
+    field motionBlurShutter f32 "The shutter as a fraction of the frame (0.5 is a 180 degree shutter)." {
+      default 0.5
+      min 0
+      max 2
+      tunable true
+    }
+    field motionBlurSamples u32 "Taps along the velocity." {
+      default 12
+      min 4
+      max 32
+    }
+    field motionBlurMaxPixels f32 "The longest blur in pixels." {
+      default 40
+      min 1
+    }
+    field godRays bool "Screen-space light shafts from the DirectionalLight (the sun must be in front of the camera)."
+    field godRaysIntensity f32 "How bright the shafts are." {
+      default 0.5
+      min 0
+      tunable true
+    }
+    field godRaysDecay f32 "How fast the rays fade along their length." {
+      default 0.965
+      min 0.5
+      max 1
+    }
+    field godRaysDensity f32 "How far towards the sun each ray samples (a fraction of the distance)." {
+      default 1
+      min 0
+    }
+    field godRaysTint Color "A linear tint on the light the rays carry." {
+      default 1 1 1
+    }
+    field godRaysSamples u32 "Taps per ray." {
+      default 48
+      min 8
+      max 128
+    }
+    field godRaysThreshold f32 "Sky brightness (linear, before exposure) below which the sky carries no rays." {
+      default 2
+      min 0
+    }
+    field glow bool "Order-independent 2D glow: sprites with SpriteDesc.glow (and 2D particles with a glow) are blurred and added back, with or without bloom."
+    field glowIntensity f32 "How much of the blurred glow is added back." {
+      default 1
+      min 0
+      tunable true
+    }
+    field lut Lut "Colour grading by a lookup table from og.load.lut; 0 is none."
+    field lutIntensity f32 "0 leaves the image as tone mapped, 1 applies the table fully." {
+      default 1
+      min 0
+      max 1
+      tunable true
+    }
+    field vignette bool "Darkened (or tinted) edges of the frame."
+    field vignetteIntensity f32 "0 none, 1 black corners." {
+      default 0.35
+      min 0
+      max 1
+      tunable true
+    }
+    field vignetteRadius f32 "Where darkening starts, as a fraction of the half-diagonal." {
+      default 0.55
+      min 0
+      max 1
+    }
+    field vignetteSmoothness f32 "The width of the fade." {
+      default 0.45
+      min 0
+      max 1
+    }
+    field vignetteColor Color "The linear colour the edges move towards."
+    field chromaticAberration f32 "Red and blue split towards the edges, in pixels at the corners at 720p; 0 is off." {
+      min 0
+      max 20
+      tunable true
+    }
+    field filmGrain f32 "Luminance-weighted noise amplitude in display units, a new pattern every tick (0.04 is subtle); 0 is off." {
+      min 0
+      max 1
+      tunable true
+    }
+    field filmGrainSize f32 "The grain size in pixels." {
+      default 1.5
+      min 0.5
+    }
+    field flash f32 "A full-screen flash: the display colour mixed towards flashColor by this much (animate it per tick); 0 is off." {
+      min 0
+      max 1
+      tunable true
+    }
+    field flashColor Color "The flash's linear display colour." {
+      default 1 1 1
+    }
+    field shakeTrauma f32 "Camera shake: 0 none, 1 the most (the amplitude is trauma squared). The shake is smooth value noise by the tick, so a replay shakes the same; decay it in a system. Visual only." {
+      min 0
+      max 1
+      tunable true
+    }
+    field shakeMaxOffset f32 "The largest offset at trauma 1, as a fraction of the view height." {
+      default 0.05
+      min 0
+    }
+    field shakeMaxRoll f32 "The largest roll at trauma 1." {
+      default 3
+      min 0
+      unit deg
+    }
+    field shakeFrequency f32 "How fast the shake moves." {
+      default 12
+      min 0
+      unit hz
+    }
+    field shakeSeed u32 "The shake's noise seed."
+  }
+
+  resource Lighting2D {
+    doc "2D lighting of the sprite layers minLayer to maxLayer: their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default."
+    field enabled bool "Light the layers."
+    field ambient Color "Light everywhere (0 is darkness outside the lights)." {
+      default 0.15 0.15 0.15
+    }
+    field minLayer i32 "The lowest lit sprite layer." {
+      default -1000000
+    }
+    field maxLayer i32 "The highest lit sprite layer (above it: UI and HUD layers stay unlit)." {
+      default 99
+    }
+    field resolution f32 "The light map's resolution as a fraction of the target." {
+      default 0.5
+      min 0.25
+      max 1
+    }
+  }
+
+  component Light2D {
+    doc "A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff, shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn."
+    field color Color "The light's linear colour." {
+      default 1 1 1
+    }
+    field intensity f32 "The brightness at the centre." {
+      default 1
+      min 0
+      tunable true
+    }
+    field radius f32 "Where the light reaches zero, in world units." {
+      default 5
+      min 0
+      unit m
+      tunable true
+    }
+    field falloff f32 "The exponent of the fade." {
+      default 2
+      min 0.1
+    }
+    field sourceRadius f32 "The light's own size: larger gives softer shadows." {
+      default 0.25
+      min 0
+      unit m
+    }
+    field castShadows bool "Occluders between the light and a pixel shade it." {
+      default true
+    }
+  }
+
+  component Occluder2D {
+    doc "A rectangle that blocks 2D light (walls, crates, characters), centred on the entity's position and turned with it about z. Pixels inside it are not shadowed by it. At most 128 are drawn."
+    field width f32 "Its width in world units." {
+      default 1
+      min 0
+      unit m
+    }
+    field height f32 "Its height in world units." {
+      default 1
+      min 0
+      unit m
+    }
+  }
+
+  component Decal {
+    doc "A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one). At most 32 are drawn."
+    field color Color "A linear colour multiplied with the atlas." {
+      default 1 1 1
+    }
+    field opacity f32 "The decal's opacity." {
+      default 1
+      min 0
+      max 1
+      tunable true
+    }
+    field uvMin Vector2 "The atlas region's top-left corner, v down."
+    field uvMax Vector2 "The atlas region's bottom-right corner, v down." {
+      default 1 1
+    }
+    field emissive Color "Linear light added where the decal covers (glowing runes, lava)."
+    field roughness f32 "The surface roughness under the decal; -1 keeps the surface's." {
+      default -1
+      min -1
+      max 1
+    }
+    field angleFade f32 "Surfaces turned further than this from the projection direction are not covered (the last 15 degrees fade)." {
+      default 75
+      min 0
+      max 90
+      unit deg
+    }
+    field visible bool "Whether it is drawn." {
+      default true
+    }
+  }
+
+  component ParticleSystem {
+    doc "Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay, and never feed back into the simulation: compute on the full tier, the CPU on WebGL2, identical either way."
+    field emitter ParticleEmitter "The emitter asset; 0 draws nothing."
+    field seed u32 "The random seed: systems with different seeds differ."
+    field startTick u32 "The tick emission started: write og.world tick when spawning a one-shot burst."
+    field stopTick u32 "The tick emission stops (the particles live out); 0 keeps emitting while the emitter loops."
+    field visible bool "Whether it is drawn (a hidden system loses its particles)." {
+      default true
+    }
+  }
+
+  component Trail {
+    doc "A streak behind the entity: its world positions over the last `lifetime` seconds as a camera-facing strip, from widthStart and color at the head to widthEnd and colorEnd at the tail."
+    field lifetime f32 "How long a position stays in the trail." {
+      default 0.4
+      min 0
+      unit s
+      tunable true
+    }
+    field minDistance f32 "A new point is kept when the head has moved this far." {
+      default 0.05
+      min 0
+      unit m
+    }
+    field widthStart f32 "The width at the head." {
+      default 0.15
+      min 0
+      unit m
+      tunable true
+    }
+    field widthEnd f32 "The width at the tail." {
+      min 0
+      unit m
+    }
+    field color Color "The linear colour at the head; above 1 blooms." {
+      default 1 1 1
+    }
+    field opacity f32 "The alpha at the head." {
+      default 1
+      min 0
+      max 1
+    }
+    field colorEnd Color "The linear colour at the tail." {
+      default 1 1 1
+    }
+    field opacityEnd f32 "The alpha at the tail." {
+      min 0
+      max 1
+    }
+    field texture Texture "A texture along the strip; 0 is solid."
+    field uvTile f32 "The texture repeats every this many world units; 0 stretches it once over the length." {
+      min 0
+      unit m
+    }
+    field blend StripBlend "Additive or alpha blended."
+  }
+
+  component Beam {
+    doc "A strip from the entity's position to `end` whose texture scrolls with the tick: lasers, tethers, lightning (jitter)."
+    field end Vector3 "The far end, in world space." {
+      unit m
+    }
+    field width f32 "The beam's width." {
+      default 0.1
+      min 0
+      unit m
+      tunable true
+    }
+    field color Color "The linear colour; above 1 blooms." {
+      default 1 1 1
+    }
+    field opacity f32 "The alpha." {
+      default 1
+      min 0
+      max 1
+    }
+    field texture Texture "A texture along the beam; 0 is solid."
+    field tile f32 "Texture repeats per world unit along the beam." {
+      default 1
+      min 0
+    }
+    field scroll f32 "Texture scroll in repeats per second." {
+      tunable true
+    }
+    field segments u32 "Segments: 1 is straight, more let jitter bend it." {
+      default 1
+      min 1
+      max 64
+    }
+    field jitter f32 "Sideways jitter in world units, new every tick (lightning)." {
+      min 0
+      unit m
+    }
+    field seed u32 "The jitter's seed."
+    field blend StripBlend "Additive or alpha blended."
+  }
+
+  struct RibbonPoint {
+    doc "One point of a ribbon."
+    desc true
+    field position Vector3 "Where it is." {
+      unit m
+    }
+    field width f32 "The width there." {
+      default 0.1
+      min 0
+      unit m
+    }
+    field color Color "The linear colour there." {
+      default 1 1 1
+    }
+    field opacity f32 "The alpha there." {
+      default 1
+      min 0
+      max 1
+    }
+  }
+
+  struct RibbonDesc {
+    doc "An explicit camera-facing strip through points, drawn this frame only (immediate mode, as og.render.sprite): submit it every tick it should show."
+    desc true
+    field points List.RibbonPoint "The points, in order (at least two)."
+    field texture Option.Texture "A texture along the strip; null is solid."
+    field uvTile f32 "The texture repeats every this many world units; 0 stretches it once." {
+      min 0
+      unit m
+    }
+    field blend StripBlend "Additive or alpha blended."
+  }
+
+  fn ribbon {
+    doc "Draw a ribbon this frame. Systems and commands may call it; the list is cleared at every tick."
+    param world World "The world whose renderer draws it."
+    param desc RibbonDesc "The points and the look."
+    returns Result.Void "Refused for a dead texture or fewer than two points."
   }
 
   struct TextDesc {
@@ -1569,6 +2098,8 @@ module render {
     }
     field layer i32 "Draw order among sprites and text; higher draws on top."
     field align TextAlign "How each line sits on `position`: start puts its left end there, center its middle, end its right end."
+    field screen bool "Draw in screen space over the finished frame: position is the first baseline's origin in CSS pixels from the top left, y down, size in CSS pixels, rotation clockwise."
+    field clip Option.Array.f32.4 "Screen text: cut to [x, y, width, height] in CSS pixels, per pixel; null draws it whole."
   }
 
   struct TextMeasureDesc {
@@ -1622,6 +2153,20 @@ module render {
     }
     field uv Option.Array.f32.4 "The texture region drawn, [u0, v0, u1, v1] with v down; null is the whole texture (a sheet's frame for animation)."
     field layer i32 "Draw order among sprites and text; higher draws on top."
+    field flash f32 "A hit flash: the colour mixed towards flashColor by this much, keeping the alpha." {
+      min 0
+      max 1
+    }
+    field flashColor Color "The flash's linear colour." {
+      default 1 1 1
+    }
+    field glow f32 "Strength in the 2D glow buffer (PostEffects.glow); 0 none." {
+      min 0
+    }
+    field blend SpriteBlend "Alpha or additive."
+    field castShadow bool "Block 2D light (Lighting2D) with the sprite's rectangle."
+    field screen bool "Draw in screen space over the finished frame instead of the world: position x, y in CSS pixels from the top left with y down, width and height in CSS pixels, anchor from the top left, rotation clockwise; never tone mapped, blurred or depth tested (a HUD). flash, glow, blend and castShadow apply to world sprites only."
+    field clip Option.Array.f32.4 "Screen sprites: cut to [x, y, width, height] in CSS pixels; null draws it whole."
   }
 
   fn sprite {
@@ -1891,6 +2436,20 @@ module load {
     param world World "The world that owns the sound."
     param path String "The sound's asset id, such as `audio/blip.wav`."
     returns Result.Sound
+  }
+
+  fn lut {
+    doc "A colour lookup table for PostEffects.lut, from a cooked `.cube` file (Adobe/Resolve 3D LUT; other sizes are resampled to 32). Loaded once per path."
+    param world World "The world whose renderer owns it."
+    param path String "The asset id, such as `luts/warm.cube`."
+    returns Result.Lut "Refused for a path not in the bundle (the reason says to run og cook)."
+  }
+
+  fn emitter {
+    doc "A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the grammar is the `particles` page of the wiki's render module and og-cook's fx module): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. The textures it names are loaded with it. Loaded once per path."
+    param world World "The world whose renderer owns it."
+    param path String "The asset id, such as `fx/sparks.ogt`."
+    returns Result.ParticleEmitter "Refused for a path not in the bundle or a texture it cannot load."
   }
 
   fn texture {

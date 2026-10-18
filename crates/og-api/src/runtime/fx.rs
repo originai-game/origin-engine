@@ -1,0 +1,725 @@
+//! The effects a game declares as data, extracted into og-render's scene
+//! (the IDL's `PostEffects`, `Lighting2D`, `Light2D`, `Occluder2D`, `Decal`,
+//! `ParticleSystem`, `Trail`, `Beam`, `og.render.ribbon`, the sprite effect
+//! and screen fields, and skinned models posed by og-anim), and the loads of
+//! their assets (`og.load.lut`, `og.load.emitter`). Like the rest of
+//! extraction it reads the world and never writes it.
+
+use super::codec::Layout;
+use super::extract::{Hierarchy, RenderState};
+use glam::{Mat4, Vec2, Vec3};
+use og_ecs::{Entity, QueryDesc, World};
+use og_render::{
+    AmbientOcclusion, AoMethod, Beam, CameraShake, ChromaticAberration, ColorCurve, ColorGrading,
+    Curve, Decal, DepthOfField, DofQuality, FilmGrain, Glow, GodRays, JointPalette, Light2d,
+    Lighting2d, MeshHandle, MorphTargets, MotionBlur, Occluder2d, Outline, ParticleBlend,
+    ParticleSystem, RibbonUv, ScreenFlash, SkinData, SkinnedInstance, Trail, TrailStyle,
+    TrailStyleHandle, Vignette,
+};
+use serde_json::Value;
+use std::collections::BTreeMap;
+
+/// The layouts of the effect records the engine registered.
+#[derive(Default)]
+pub(crate) struct FxLayouts {
+    pub post: Option<Layout>,
+    pub lighting_2d: Option<Layout>,
+    pub light_2d: Option<Layout>,
+    pub occluder_2d: Option<Layout>,
+    pub decal: Option<Layout>,
+    pub particles: Option<Layout>,
+    pub trail: Option<Layout>,
+    pub beam: Option<Layout>,
+    pub skeleton: Option<Layout>,
+}
+
+impl FxLayouts {
+    pub fn from(get: impl Fn(&str) -> Option<Layout>) -> FxLayouts {
+        FxLayouts {
+            post: get("og.PostEffects"),
+            lighting_2d: get("og.Lighting2D"),
+            light_2d: get("og.Light2D"),
+            occluder_2d: get("og.Occluder2D"),
+            decal: get("og.Decal"),
+            particles: get("og.ParticleSystem"),
+            trail: get("og.Trail"),
+            beam: get("og.Beam"),
+            skeleton: get("og.Skeleton"),
+        }
+    }
+}
+
+/// A sprite queued by `og.render.sprite` with its effect and screen fields.
+#[derive(Clone, Debug)]
+pub(crate) struct QueuedSprite {
+    pub sprite: og_render::Sprite,
+    /// Flash colour and amount, glow, additive.
+    pub flash: [f32; 4],
+    pub glow: f32,
+    pub additive: bool,
+    pub cast_shadow: bool,
+    /// Drawn in the overlay (CSS pixels, y down) with this clip.
+    pub screen: bool,
+    pub clip: Option<[f32; 4]>,
+}
+
+/// One loaded model's primitives, for skinning: the scene mesh of its first
+/// primitive (they are consecutive) and the glTF mesh of each primitive.
+#[derive(Clone, Debug)]
+pub(crate) struct ModelInfo {
+    pub id: String,
+    pub base: usize,
+    pub prim_mesh: Vec<u32>,
+}
+
+/// A model's skin and morph data from its `#anim` blob, and the skinned
+/// copies of its primitives once made (by primitive; `None`: not skinned).
+#[derive(Clone, Debug, Default)]
+pub(crate) struct SkinnedModel {
+    pub streams: Vec<og_cook::runtime::SkinStream>,
+    pub morphs: Vec<og_cook::runtime::MorphTargets>,
+    pub meshes: Option<Vec<Option<MeshHandle>>>,
+}
+
+/// The effect side of a render state.
+#[derive(Default)]
+pub(crate) struct FxState {
+    /// `og.load.lut` and `og.load.emitter` handles by load index.
+    pub luts: Vec<og_render::LutHandle>,
+    pub emitters: Vec<og_render::EmitterHandle>,
+    pub by_path: BTreeMap<String, usize>,
+    /// Trail styles made from Trail components, by their fields' bits.
+    pub trail_styles: BTreeMap<Vec<u32>, TrailStyleHandle>,
+    /// Ribbons and sprites queued this tick (`og.render.ribbon`, `.sprite`).
+    pub ribbons: Vec<og_render::Ribbon>,
+    pub sprites: Vec<QueuedSprite>,
+    /// Loaded models by asset handle bits, and skin data by model id.
+    pub models: BTreeMap<u64, ModelInfo>,
+    pub skins: BTreeMap<String, SkinnedModel>,
+    /// og-anim on this world (its palettes and blendshape weights).
+    pub anim: Option<og_anim::AnimationSystem>,
+    /// Instance transforms by (entity, part) of the last two ticks, for
+    /// per-object motion blur.
+    pub tick: u64,
+    pub current: BTreeMap<(u64, u32), Mat4>,
+    pub previous: BTreeMap<(u64, u32), Mat4>,
+}
+
+fn f(v: &Value, key: &str, default: f32) -> f32 {
+    v[key].as_f64().map_or(default, |x| x as f32)
+}
+
+fn u(v: &Value, key: &str, default: u32) -> u32 {
+    v[key].as_f64().map_or(default, |x| x as u32)
+}
+
+fn on(v: &Value, key: &str, default: bool) -> bool {
+    match &v[key] {
+        Value::Bool(b) => *b,
+        Value::Number(n) => n.as_f64().is_some_and(|x| x != 0.0),
+        _ => default,
+    }
+}
+
+fn color(v: &Value, default: Vec3) -> Vec3 {
+    if !v.is_object() {
+        return default;
+    }
+    Vec3::new(
+        f(v, "r", default.x),
+        f(v, "g", default.y),
+        f(v, "b", default.z),
+    )
+}
+
+fn vec2(v: &Value, default: Vec2) -> Vec2 {
+    Vec2::new(f(v, "x", default.x), f(v, "y", default.y))
+}
+
+fn vec3(v: &Value) -> Vec3 {
+    Vec3::new(f(v, "x", 0.0), f(v, "y", 0.0), f(v, "z", 0.0))
+}
+
+/// The load index of a handle field (`0` is none).
+pub(crate) fn handle_index(v: &Value) -> Option<usize> {
+    super::assets::index_of(v.as_f64()?)
+}
+
+fn variant(v: &Value, names: &[&str]) -> usize {
+    match v {
+        Value::String(s) => names.iter().position(|n| n == s).unwrap_or(0),
+        Value::Number(n) => n.as_u64().unwrap_or(0) as usize,
+        _ => 0,
+    }
+}
+
+fn resource(world: &World, layout: Option<&Layout>) -> Option<Value> {
+    let layout = layout?;
+    let id = world.id_by_name(&layout.schema).ok()?;
+    Some(layout.decode(&world.resource_bytes(id).ok()?))
+}
+
+/// Decoded rows of one component in entity order: `(entity bits, value)`.
+fn rows(world: &World, layout: Option<&Layout>) -> Vec<(u64, Value)> {
+    let Some(layout) = layout else {
+        return Vec::new();
+    };
+    let Ok(id) = world.id_by_name(&layout.schema) else {
+        return Vec::new();
+    };
+    let q = QueryDesc {
+        read: vec![layout.schema.clone()],
+        ..QueryDesc::default()
+    };
+    let Ok(all) = world.query(&q) else {
+        return Vec::new();
+    };
+    let mut entities: Vec<Entity> = all.flat_map(|a| a.entities().to_vec()).collect();
+    entities.sort_by_key(|e| e.index());
+    entities
+        .into_iter()
+        .filter_map(|e| Some((e.to_bits(), layout.decode(&world.get_bytes(e, id).ok()?))))
+        .collect()
+}
+
+/// `PostEffects` and `Lighting2D` into the scene's post stack, shake and 2D lighting.
+pub(crate) fn settings(world: &World, rs: &mut RenderState) {
+    let RenderState {
+        fx,
+        scene,
+        draw,
+        settings: render_settings,
+        textures,
+        ..
+    } = rs;
+    let layouts = &draw.fx;
+    // RenderSettings.decalAtlas: the texture Decal components sample.
+    scene.decal_atlas = resource(world, render_settings.as_ref())
+        .and_then(|s| handle_index(&s["decalAtlas"]))
+        .and_then(|i| textures.get(i).copied());
+    let post = &mut scene.post;
+    post.ao = None;
+    post.outline = None;
+    post.depth_of_field = None;
+    post.motion_blur = None;
+    post.god_rays = None;
+    post.glow = None;
+    post.color_grading = None;
+    post.vignette = None;
+    post.chromatic_aberration = None;
+    post.film_grain = None;
+    post.flash = None;
+    scene.shake = CameraShake::default();
+    scene.lighting_2d = None;
+    if let Some(p) = resource(world, layouts.post.as_ref()) {
+        if on(&p, "ao", false) {
+            post.ao = Some(AmbientOcclusion {
+                radius: f(&p, "aoRadius", 0.6),
+                intensity: f(&p, "aoIntensity", 1.0),
+                method: [AoMethod::Auto, AoMethod::Gtao, AoMethod::Ssao]
+                    [variant(&p["aoMethod"], &["auto", "gtao", "ssao"]).min(2)],
+            });
+        }
+        if on(&p, "outline", false) {
+            let c = color(&p["outlineColor"], Vec3::new(0.02, 0.02, 0.03));
+            post.outline = Some(Outline {
+                color: [c.x, c.y, c.z, 1.0],
+                width: f(&p, "outlineWidth", 2.0),
+                depth_threshold: f(&p, "outlineDepthThreshold", 0.04),
+                normal_threshold: f(&p, "outlineNormalThreshold", 0.4),
+            });
+        }
+        if on(&p, "depthOfField", false) {
+            post.depth_of_field = Some(DepthOfField {
+                focus_distance: f(&p, "dofFocusDistance", 10.0),
+                focus_range: f(&p, "dofFocusRange", 2.0),
+                max_blur: f(&p, "dofMaxBlur", 0.012),
+                falloff: f(&p, "dofFalloff", 4.0),
+                quality: if variant(&p["dofQuality"], &["low", "high"]) == 1 {
+                    DofQuality::High
+                } else {
+                    DofQuality::Low
+                },
+            });
+        }
+        if on(&p, "motionBlur", false) {
+            post.motion_blur = Some(MotionBlur {
+                shutter: f(&p, "motionBlurShutter", 0.5),
+                samples: u(&p, "motionBlurSamples", 12),
+                max_pixels: f(&p, "motionBlurMaxPixels", 40.0),
+            });
+        }
+        if on(&p, "godRays", false) {
+            post.god_rays = Some(GodRays {
+                intensity: f(&p, "godRaysIntensity", 0.5),
+                decay: f(&p, "godRaysDecay", 0.965),
+                density: f(&p, "godRaysDensity", 1.0),
+                tint: color(&p["godRaysTint"], Vec3::ONE),
+                samples: u(&p, "godRaysSamples", 48),
+                threshold: f(&p, "godRaysThreshold", 2.0),
+            });
+        }
+        if on(&p, "glow", false) {
+            post.glow = Some(Glow {
+                intensity: f(&p, "glowIntensity", 1.0),
+            });
+        }
+        if let Some(&lut) = handle_index(&p["lut"]).and_then(|i| fx.luts.get(i)) {
+            post.color_grading = Some(ColorGrading {
+                lut,
+                intensity: f(&p, "lutIntensity", 1.0),
+            });
+        }
+        if on(&p, "vignette", false) {
+            post.vignette = Some(Vignette {
+                intensity: f(&p, "vignetteIntensity", 0.35),
+                radius: f(&p, "vignetteRadius", 0.55),
+                smoothness: f(&p, "vignetteSmoothness", 0.45),
+                color: color(&p["vignetteColor"], Vec3::ZERO),
+            });
+        }
+        let aberration = f(&p, "chromaticAberration", 0.0);
+        if aberration > 0.0 {
+            post.chromatic_aberration = Some(ChromaticAberration {
+                intensity: aberration,
+            });
+        }
+        let grain = f(&p, "filmGrain", 0.0);
+        if grain > 0.0 {
+            post.film_grain = Some(FilmGrain {
+                intensity: grain,
+                size: f(&p, "filmGrainSize", 1.5),
+            });
+        }
+        let flash = f(&p, "flash", 0.0);
+        if flash > 0.0 {
+            post.flash = Some(ScreenFlash {
+                color: color(&p["flashColor"], Vec3::ONE),
+                amount: flash,
+            });
+        }
+        let trauma = f(&p, "shakeTrauma", 0.0);
+        if trauma > 0.0 {
+            scene.shake = CameraShake::trauma(
+                trauma,
+                scene.tick,
+                scene.tick_rate,
+                u64::from(u(&p, "shakeSeed", 0)),
+                f(&p, "shakeMaxOffset", 0.05),
+                f(&p, "shakeMaxRoll", 3.0),
+                f(&p, "shakeFrequency", 12.0),
+            );
+        }
+    }
+    if let Some(l) = resource(world, layouts.lighting_2d.as_ref()) {
+        if on(&l, "enabled", false) {
+            scene.lighting_2d = Some(Lighting2d {
+                ambient: color(&l["ambient"], Vec3::splat(0.15)),
+                min_layer: l["minLayer"].as_i64().unwrap_or(-1_000_000) as i32,
+                max_layer: l["maxLayer"].as_i64().unwrap_or(99) as i32,
+                resolution: f(&l, "resolution", 0.5),
+            });
+        }
+    }
+}
+
+/// The world's translation, rotation about z (2D) and scale of a matrix.
+fn planar(m: Mat4) -> (Vec2, f32, Vec2) {
+    let (scale, rot, pos) = m.to_scale_rotation_translation();
+    let (axis, angle) = rot.to_axis_angle();
+    let about_z = if axis.z < 0.0 { -angle } else { angle };
+    (pos.truncate(), about_z, scale.truncate())
+}
+
+/// The effect components: 2D lights and occluders, decals, particle
+/// systems, trails and beams; and the queued ribbons.
+pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy, tick: u64) {
+    let RenderState {
+        scene,
+        fx,
+        textures,
+        draw,
+        ..
+    } = rs;
+    let layouts = &draw.fx;
+    scene.lights_2d.clear();
+    scene.occluders_2d.clear();
+    scene.decals.clear();
+    scene.particles.clear();
+    scene.trails.clear();
+    scene.beams.clear();
+    scene.ribbons.clear();
+    let texture = |v: &Value| handle_index(v).and_then(|i| textures.get(i).copied());
+    for (e, v) in rows(world, layouts.light_2d.as_ref()) {
+        let (pos, _, _) = planar(h.world_of(e));
+        scene.lights_2d.push(Light2d {
+            position: pos,
+            color: color(&v["color"], Vec3::ONE),
+            intensity: f(&v, "intensity", 1.0),
+            radius: f(&v, "radius", 5.0),
+            falloff: f(&v, "falloff", 2.0),
+            source_radius: f(&v, "sourceRadius", 0.25),
+            cast_shadows: on(&v, "castShadows", true),
+        });
+    }
+    for (e, v) in rows(world, layouts.occluder_2d.as_ref()) {
+        let (pos, rot, scale) = planar(h.world_of(e));
+        scene.occluders_2d.push(Occluder2d {
+            center: pos,
+            half_size: Vec2::new(f(&v, "width", 1.0), f(&v, "height", 1.0)) * scale * 0.5,
+            rotation: rot,
+        });
+    }
+    for (e, v) in rows(world, layouts.decal.as_ref()) {
+        if !on(&v, "visible", true) {
+            continue;
+        }
+        let c = color(&v["color"], Vec3::ONE);
+        let (lo, hi) = (vec2(&v["uvMin"], Vec2::ZERO), vec2(&v["uvMax"], Vec2::ONE));
+        scene.decals.push(Decal {
+            transform: h.world_of(e),
+            uv_rect: [lo.x, lo.y, hi.x, hi.y],
+            color: [c.x, c.y, c.z, f(&v, "opacity", 1.0)],
+            emissive: color(&v["emissive"], Vec3::ZERO),
+            roughness: f(&v, "roughness", -1.0),
+            angle_fade_degrees: f(&v, "angleFade", 75.0),
+        });
+    }
+    for (e, v) in rows(world, layouts.particles.as_ref()) {
+        if !on(&v, "visible", true) {
+            continue;
+        }
+        let Some(&emitter) = handle_index(&v["emitter"]).and_then(|i| fx.emitters.get(i)) else {
+            continue;
+        };
+        let stop = u(&v, "stopTick", 0);
+        scene.particles.push(ParticleSystem {
+            id: e,
+            emitter,
+            transform: h.world_of(e),
+            seed: u64::from(u(&v, "seed", 0)),
+            start_tick: u64::from(u(&v, "startTick", 0)),
+            stop_tick: (stop > 0).then_some(u64::from(stop)),
+            tick,
+        });
+    }
+    for (e, v) in rows(world, layouts.trail.as_ref()) {
+        let c0 = color(&v["color"], Vec3::ONE);
+        let c1 = color(&v["colorEnd"], Vec3::ONE);
+        let tile = f(&v, "uvTile", 0.0);
+        let additive = variant(&v["blend"], &["additive", "alpha"]) == 0;
+        let style = TrailStyle {
+            lifetime: f(&v, "lifetime", 0.4),
+            min_distance: f(&v, "minDistance", 0.05),
+            width: Curve::linear(f(&v, "widthStart", 0.15), f(&v, "widthEnd", 0.0)),
+            color: ColorCurve::new(&[
+                (0.0, [c0.x, c0.y, c0.z, f(&v, "opacity", 1.0)]),
+                (1.0, [c1.x, c1.y, c1.z, f(&v, "opacityEnd", 0.0)]),
+            ]),
+            texture: texture(&v["texture"]),
+            uv: if tile > 0.0 {
+                RibbonUv::Tile { length: tile }
+            } else {
+                RibbonUv::Stretch
+            },
+            blend: if additive {
+                ParticleBlend::Additive
+            } else {
+                ParticleBlend::Alpha
+            },
+        };
+        let key = style_key(&style);
+        let handle = match fx.trail_styles.get(&key) {
+            Some(h) => *h,
+            None => {
+                let h = scene.add_trail_style(style);
+                fx.trail_styles.insert(key, h);
+                h
+            }
+        };
+        scene.trails.push(Trail {
+            id: e,
+            style: handle,
+            position: h.world_of(e).w_axis.truncate(),
+            tick,
+        });
+    }
+    for (e, v) in rows(world, layouts.beam.as_ref()) {
+        let c = color(&v["color"], Vec3::ONE);
+        scene.beams.push(Beam {
+            start: h.world_of(e).w_axis.truncate(),
+            end: vec3(&v["end"]),
+            width: f(&v, "width", 0.1),
+            color: [c.x, c.y, c.z, f(&v, "opacity", 1.0)],
+            texture: texture(&v["texture"]),
+            tile: f(&v, "tile", 1.0),
+            scroll: f(&v, "scroll", 0.0),
+            segments: u(&v, "segments", 1).max(1),
+            jitter: f(&v, "jitter", 0.0),
+            seed: u64::from(u(&v, "seed", 0)),
+            blend: if variant(&v["blend"], &["additive", "alpha"]) == 0 {
+                ParticleBlend::Additive
+            } else {
+                ParticleBlend::Alpha
+            },
+        });
+    }
+}
+
+/// A trail style's identity: the bits of its fields.
+fn style_key(s: &TrailStyle) -> Vec<u32> {
+    let mut k = vec![s.lifetime.to_bits(), s.min_distance.to_bits()];
+    k.extend(
+        s.width
+            .keys
+            .iter()
+            .flat_map(|(t, v)| [t.to_bits(), v.to_bits()]),
+    );
+    k.extend(
+        s.color
+            .keys
+            .iter()
+            .flat_map(|(t, c)| std::iter::once(t.to_bits()).chain(c.iter().map(|x| x.to_bits()))),
+    );
+    k.push(s.texture.map_or(u32::MAX, |t| t.index() as u32));
+    k.push(match s.uv {
+        RibbonUv::Stretch => 0,
+        RibbonUv::Tile { length } => length.to_bits(),
+    });
+    k.push(s.blend as u32);
+    k
+}
+
+/// Queued sprites and ribbons into the scene (world sprites with their
+/// effects, screen sprites into the overlay).
+pub(crate) fn queued(rs: &mut RenderState, fresh: bool, viewport: (f32, f32)) {
+    let RenderState { scene, fx, .. } = rs;
+    scene.sprite_fx.clear();
+    if !fresh {
+        return;
+    }
+    scene.ribbons.extend(fx.ribbons.iter().cloned());
+    for q in &fx.sprites {
+        if q.screen {
+            let o = scene
+                .overlay
+                .get_or_insert_with(|| og_render::Overlay::new(viewport.0, viewport.1, 0.0));
+            let clip = q.clip.map(|c| o.add_clip(c));
+            o.sprites.push(og_render::Sprite { clip, ..q.sprite });
+            continue;
+        }
+        let index = scene.sprites.len() as u32;
+        scene.sprites.push(q.sprite);
+        if q.cast_shadow {
+            scene
+                .occluders_2d
+                .push(og_render::Occluder2d::from_sprite(&q.sprite, 0.0));
+        }
+        if q.flash[3] > 0.0 || q.glow > 0.0 || q.additive {
+            scene.sprite_fx.push(og_render::SpriteFx {
+                sprite: index,
+                flash: q.flash,
+                glow: q.glow,
+                blend: if q.additive {
+                    og_render::SpriteBlend::Additive
+                } else {
+                    og_render::SpriteBlend::Alpha
+                },
+            });
+        }
+    }
+}
+
+/// Makes the skinned copies of a model's primitives the first time it is
+/// drawn posed (both og.load.gltf and og.load.animation of it are needed).
+fn skinned_meshes(
+    scene: &mut og_render::RenderScene,
+    info: &ModelInfo,
+    skin: &mut SkinnedModel,
+    prims: usize,
+) -> Vec<Option<MeshHandle>> {
+    if let Some(m) = &skin.meshes {
+        return m.clone();
+    }
+    let mut out = vec![None; prims];
+    for (p, slot) in out.iter_mut().enumerate() {
+        let stream = skin.streams.iter().find(|s| s.primitive == p);
+        let morph = skin.morphs.iter().find(|m| m.primitive == p);
+        if stream.is_none() && morph.is_none() {
+            continue;
+        }
+        let Some(mesh) = scene
+            .mesh_handle(info.base + p)
+            .and_then(|h| scene.mesh(h))
+            .cloned()
+        else {
+            continue;
+        };
+        let n = mesh.vertices.len();
+        let data = match stream {
+            Some(s) if s.joints.len() == n => SkinData {
+                joints: s.joints.clone(),
+                weights: s.weights.clone(),
+            },
+            // Morph targets alone: every vertex on joint 0 with full weight
+            // (an identity palette keeps the bind pose).
+            _ => SkinData {
+                joints: vec![[0; 4]; n],
+                weights: vec![[1.0, 0.0, 0.0, 0.0]; n],
+            },
+        };
+        let h = scene.add_skinned_mesh(mesh, data);
+        if let Some(m) = morph {
+            let take = m.positions.len().min(og_render::MAX_MORPH_TARGETS);
+            scene.set_morph_targets(
+                h,
+                MorphTargets {
+                    positions: m.positions[..take].to_vec(),
+                    normals: m.normals.as_ref().map(|n| n[..take].to_vec()),
+                },
+            );
+        }
+        *slot = Some(h);
+    }
+    skin.meshes = Some(out.clone());
+    out
+}
+
+/// The entities with og.Skeleton (to draw their models posed).
+pub(crate) fn skeletons(world: &World, rs: &RenderState) -> std::collections::BTreeSet<u64> {
+    rows(world, rs.draw.fx.skeleton.as_ref())
+        .into_iter()
+        .map(|(e, _)| e)
+        .collect()
+}
+
+/// Draws a model posed by og-anim: its skinned primitives as skinned
+/// instances under the entity's palette (and blendshape weights), the rest
+/// as instances. `false` when it cannot (no palette yet, no skin data):
+/// the caller draws it at its bind pose.
+pub(crate) fn posed_model(
+    rs: &mut RenderState,
+    entity: u64,
+    asset: u64,
+    world_matrix: Mat4,
+    parts: &[(MeshHandle, og_render::MaterialHandle, Mat4)],
+    keys: &mut Vec<(u64, u32)>,
+) -> bool {
+    let RenderState { scene, fx, .. } = rs;
+    let Some(anim) = fx.anim.as_ref() else {
+        return false;
+    };
+    let Some(out) = anim.output(Entity::from_bits(entity)) else {
+        return false;
+    };
+    let Some(info) = fx.models.get(&asset).cloned() else {
+        return false;
+    };
+    let Some(skin) = fx.skins.get_mut(&info.id) else {
+        return false;
+    };
+    let meshes = skinned_meshes(scene, &info, skin, info.prim_mesh.len());
+    let palette = scene.joint_palettes.len() as u32;
+    scene.joint_palettes.push(JointPalette {
+        matrices: out.palette.clone(),
+    });
+    for (k, &(mesh, material, local)) in parts.iter().enumerate() {
+        let p = mesh.index().wrapping_sub(info.base);
+        match meshes.get(p).copied().flatten() {
+            Some(skinned) => {
+                let mut inst = SkinnedInstance::new(skinned, material, world_matrix, palette);
+                if info.prim_mesh.get(p).copied() == Some(out.mesh) {
+                    let n = inst.morph_weights.len().min(out.weights.len());
+                    inst.morph_weights[..n].copy_from_slice(&out.weights[..n]);
+                }
+                scene.skinned_instances.push(inst);
+            }
+            None => {
+                scene.add_instance(mesh, material, world_matrix * local);
+                keys.push((entity, k as u32));
+            }
+        }
+    }
+    true
+}
+
+/// Per-object motion: this tick's instance transforms, keyed, and last
+/// tick's for `previous_transforms` (same order as the instances).
+pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64) {
+    let RenderState { scene, fx, .. } = rs;
+    if fx.tick != tick {
+        fx.previous = std::mem::take(&mut fx.current);
+        fx.tick = tick;
+    }
+    fx.current = keys
+        .iter()
+        .zip(&scene.instances)
+        .map(|(k, i)| (*k, i.transform))
+        .collect();
+    scene.previous_transforms.clear();
+    if scene.post.motion_blur.is_some() && keys.len() == scene.instances.len() {
+        scene.previous_transforms = keys
+            .iter()
+            .zip(&scene.instances)
+            .map(|(k, i)| fx.previous.get(k).copied().unwrap_or(i.transform))
+            .collect();
+    }
+}
+
+/// The overlay's size in CSS pixels: the host's viewport, else the target.
+pub(crate) fn viewport(rs: &RenderState) -> (f32, f32) {
+    if let Some(v) = rs.viewport {
+        return (v.width.max(1.0), v.height.max(1.0));
+    }
+    match rs.backend.as_ref().map(|b| b.size()) {
+        Some((w, h)) if w > 0 && h > 0 => (w as f32, h as f32),
+        _ => (1280.0, 720.0),
+    }
+}
+
+/// `og.load.lut`: a cooked `.cube` table added to the renderer once.
+pub(crate) fn load_lut(eng: &super::engine::Engine, path: &str) -> Result<usize, String> {
+    let id = og_cook::runtime::asset_id(path).to_string();
+    let key = format!("lut:{id}");
+    if let Some(&i) = eng.render.borrow().fx.by_path.get(&key) {
+        return Ok(i);
+    }
+    let lut = {
+        let assets = eng.assets.borrow();
+        let (bytes, bundle) = assets.blob(&id)?;
+        bundle.lut(&id, bytes.bytes()).map_err(|e| e.to_string())?
+    };
+    let mut rs = eng.render.borrow_mut();
+    let h = rs.scene.add_lut(lut);
+    rs.fx.luts.push(h);
+    let i = rs.fx.luts.len() - 1;
+    rs.fx.by_path.insert(key, i);
+    Ok(i)
+}
+
+/// `og.load.emitter`: a cooked emitter, its textures loaded with it.
+pub(crate) fn load_emitter(eng: &super::engine::Engine, path: &str) -> Result<usize, String> {
+    let id = og_cook::runtime::asset_id(path).to_string();
+    let key = format!("emitter:{id}");
+    if let Some(&i) = eng.render.borrow().fx.by_path.get(&key) {
+        return Ok(i);
+    }
+    let text = {
+        let assets = eng.assets.borrow();
+        let (bytes, bundle) = assets.blob(&id)?;
+        bundle
+            .emitter_text(&id, bytes.bytes())
+            .map_err(|e| e.to_string())?
+    };
+    let emitter = og_cook::fx::parse_emitter(&text, &mut |tex| {
+        let i = super::assets::load_texture(eng, tex)?;
+        Ok(eng.render.borrow().textures.get(i).copied())
+    })
+    .map_err(|e| format!("{id}: {e}"))?;
+    let mut rs = eng.render.borrow_mut();
+    let h = rs.scene.add_emitter(emitter);
+    rs.fx.emitters.push(h);
+    let i = rs.fx.emitters.len() - 1;
+    rs.fx.by_path.insert(key, i);
+    Ok(i)
+}
