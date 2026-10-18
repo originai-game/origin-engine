@@ -14,6 +14,8 @@
 // blur and particles see every frame the native references saw. The
 // stations are the playtest's (tests/frames.og.ts): the same `station:`
 // commands at the same seconds, each frame captured at its screenshot's tick.
+// First the Worker gets `call("probe", "commands", {…})` with an object and
+// must answer the probe's refusal (it once trapped the wasm), then runs them.
 //
 //   bun tests/web/reference.ts [--webgl] [--record] [--out <dir>] [--chrome <path>]
 //   make web-reference                        both tiers
@@ -21,8 +23,9 @@
 // --record writes the frames as references/<tier>/ instead of comparing.
 // Writes <out>/<tier>/<station>.png, <station>.diff.rgba on a mismatch (raw
 // RGBA, differences x4, outliers red) and reference-<tier>.json (default
-// dist/test-reference/out). Exits 1 when a station does not match or the
-// engine does not start. Needs Chrome (cdp.ts: a missing one is an error).
+// dist/test-reference/out; on an error, with the engine's last log lines).
+// Exits 1 when a station does not match, the engine does not start or the
+// probe does not refuse. Needs Chrome (cdp.ts: a missing one is an error).
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -112,8 +115,9 @@ const against = record ? own : existsSync(join(own, "post.png")) ? own : join(pr
 const result: Record<string, unknown> = { tier, against: against.slice(repo.length + 1), tolerance: TOLERANCE, stations: {} as Record<string, unknown> };
 let failures = 0;
 const t0 = performance.now();
+let tab: Awaited<ReturnType<typeof browser.open>> | undefined;
 try {
-  const tab = await browser.open("about:blank", log);
+  tab = await browser.open("about:blank", log);
   await tab.send("Emulation.setDeviceMetricsOverride", { width: WIDTH, height: HEIGHT, deviceScaleFactor: 1, mobile: false });
   const profile = settingsOf(project).profile;
   await tab.send("Page.navigate", { url: `http://127.0.0.1:${server.port}/reference.html?profile=${profile}${webgl ? "&webgl=1" : ""}` });
@@ -121,6 +125,11 @@ try {
   const failed = await tab.eval<string | undefined>("globalThis.__og_shell_error__");
   if (failed) throw new Error(`the engine did not start: ${failed}\n${(await tab.eval<string[]>("globalThis.__og_log__ ?? []")).slice(-20).join("\n")}`);
   result["renderer"] = await tab.eval<string>("__og_shell__.tier");
+  // A wrong argument through the Worker's call is answered with the probe's
+  // error (it used to trap the wasm), and the same Worker runs the stations.
+  const refused = await tab.eval<string>(`__og_shell__.call("probe", "commands", { script: ${JSON.stringify(SCRIPT)} }).then((v) => "answered " + JSON.stringify(v), (e) => String(e && e.message || e))`);
+  if (refused !== "probe.commands: script must be a string, not object") throw new Error(`commands with an object: ${refused}`);
+  result["refused"] = refused;
   const scheduled = await tab.eval<{ scheduled?: number } | null>(`__og_shell__.call("probe", "commands", ${JSON.stringify(SCRIPT)})`);
   if (!scheduled?.scheduled) throw new Error(`the station script was not scheduled: ${JSON.stringify(scheduled)}`);
   // One tick and one rendered frame per call, as og run does natively, so
@@ -176,7 +185,9 @@ try {
   }
 } catch (e) {
   failures++;
-  result["error"] = String(e instanceof Error ? e.stack : e);
+  // The engine's own log says why a started engine stopped answering.
+  const engine = await tab?.eval<string[]>("globalThis.__og_log__ ?? []").catch(() => []) ?? [];
+  result["error"] = [String(e instanceof Error ? e.stack : e), ...engine.slice(-20)].join("\n");
   console.log(`FAIL ${result["error"]}`);
 } finally {
   await browser.close();
