@@ -1,0 +1,196 @@
+[
+  {
+    "downs": [
+      0
+    ],
+    "held": 1,
+    "lx": 0.0,
+    "p1": [
+      0.0,
+      0.0
+    ],
+    "padConnected": true,
+    "padHeld": 1,
+    "padPressed": 1,
+    "padReleased": 0,
+    "pointer": [
+      100.0,
+      600.0
+    ],
+    "pressed": 1,
+    "primaryHeld": true,
+    "released": 0,
+    "rt": 0.0,
+    "start1": [
+      0.0,
+      0.0
+    ],
+    "ups": []
+  },
+  {
+    "downs": [
+      1
+    ],
+    "held": 3,
+    "lx": 0.800000011920929,
+    "p1": [
+      1100.0,
+      620.0
+    ],
+    "padConnected": true,
+    "padHeld": 1,
+    "padPressed": 0,
+    "padReleased": 0,
+    "pointer": [
+      130.0,
+      590.0
+    ],
+    "pressed": 2,
+    "primaryHeld": true,
+    "released": 0,
+    "rt": 0.5,
+    "start1": [
+      1100.0,
+      620.0
+    ],
+    "ups": []
+  },
+  {
+    "downs": [],
+    "held": 3,
+    "lx": 0.800000011920929,
+    "p1": [
+      1110.0,
+      625.0
+    ],
+    "padConnected": true,
+    "padHeld": 1,
+    "padPressed": 0,
+    "padReleased": 0,
+    "pointer": [
+      130.0,
+      590.0
+    ],
+    "pressed": 0,
+    "primaryHeld": true,
+    "released": 0,
+    "rt": 0.5,
+    "start1": [
+      1100.0,
+      620.0
+    ],
+    "ups": []
+  },
+  {
+    "downs": [],
+    "held": 1,
+    "lx": 0.0,
+    "p1": [
+      1110.0,
+      625.0
+    ],
+    "padConnected": true,
+    "padHeld": 0,
+    "padPressed": 2,
+    "padReleased": 3,
+    "pointer": [
+      130.0,
+      590.0
+    ],
+    "pressed": 0,
+    "primaryHeld": true,
+    "released": 2,
+    "rt": 0.0,
+    "start1": [
+      1100.0,
+      620.0
+    ],
+    "ups": [
+      1
+    ]
+  },
+  {
+    "downs": [
+      3
+    ],
+    "held": 9,
+    "lx": 0.0,
+    "p1": [
+      1110.0,
+      625.0
+    ],
+    "padConnected": true,
+    "padHeld": 0,
+    "padPressed": 0,
+    "padReleased": 0,
+    "pointer": [
+      130.0,
+      590.0
+    ],
+    "pressed": 8,
+    "primaryHeld": true,
+    "released": 0,
+    "rt": 0.0,
+    "start1": [
+      1100.0,
+      620.0
+    ],
+    "ups": []
+  },
+  {
+    "downs": [],
+    "held": 1,
+    "lx": 0.0,
+    "p1": [
+      1110.0,
+      625.0
+    ],
+    "padConnected": false,
+    "padHeld": 0,
+    "padPressed": 0,
+    "padReleased": 0,
+    "pointer": [
+      130.0,
+      590.0
+    ],
+    "pressed": 0,
+    "primaryHeld": true,
+    "released": 8,
+    "rt": 0.0,
+    "start1": [
+      1100.0,
+      620.0
+    ],
+    "ups": [
+      3
+    ]
+  },
+  {
+    "downs": [],
+    "held": 0,
+    "lx": 0.0,
+    "p1": [
+      1110.0,
+      625.0
+    ],
+    "padConnected": false,
+    "padHeld": 0,
+    "padPressed": 0,
+    "padReleased": 0,
+    "pointer": [
+      130.0,
+      590.0
+    ],
+    "pressed": 0,
+    "primaryHeld": false,
+    "released": 1,
+    "rt": 0.0,
+    "start1": [
+      1100.0,
+      620.0
+    ],
+    "ups": [
+      0
+    ]
+  }
+]
