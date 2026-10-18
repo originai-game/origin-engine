@@ -2,7 +2,8 @@
 // with references/<tier>/ under og-tests' tolerance (a channel off by more
 // than 32/255 is an outlier; fail above 0.5 % outliers or an RGB RMSE above
 // 0.01). A tier without its own references compares with `metal` and says
-// so. `OG_FX_CAPTURE=1 og test .` records this tier's references instead.
+// so. `OG_FX_CAPTURE=1 og test .` records this tier's references instead;
+// `OG_FX_CAPTURE=sky.png,water.png` records only those.
 // (The decoder is the UI kit's, copied so the showcase stands alone.)
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
@@ -106,13 +107,15 @@ export function checkFrames(run: PlaytestRun, t: PlaytestChecks, files: readonly
   const refs = referencesDir();
   t.ok(existsSync(refs) || process.env.OG_FX_CAPTURE !== undefined, `the references directory exists at ${refs}`);
   const own = join(refs, run.tier);
-  const capture = process.env.OG_FX_CAPTURE !== undefined;
+  const asked = process.env.OG_FX_CAPTURE;
+  const records = (f: string) => asked !== undefined && (asked === "1" || asked.split(",").includes(prefix + f));
+  const capture = files.some(records);
   const dir = capture || existsSync(join(own, prefix + files[0]!)) ? own : join(refs, "metal");
   if (dir !== own) process.stdout.write(`  note: no ${run.tier} references; comparing with metal\n`);
   for (const f of files) {
     const actual = join(outDir(), f);
     const ref = join(dir, prefix + f);
-    if (capture) {
+    if (records(f)) {
       mkdirSync(dir, { recursive: true });
       copyFileSync(actual, ref);
       t.ok(true, `recorded ${ref}`);

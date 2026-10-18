@@ -6,7 +6,9 @@ Every og-render effect a game declares from TypeScript (the IDL's
 `og.render.ribbon`, the sprite and material effect fields, screen-space
 sprites and text, `og.load.lut`, `og.load.emitter`, a skinned model posed
 by `og.anim`), on five stations, with a screen-space HUD and an `og.ui`
-badge over every frame.
+badge over every frame. The E5 round adds eight stations (`src/e5.ts`):
+atmosphere, weather, water, material shaders and the physics beyond rigid
+bodies, each with its own playtest.
 
 ```sh
 og run templates/fx-showcase                        # the window
@@ -22,6 +24,14 @@ python3 templates/fx-showcase/tools/make-assets.py templates/fx-showcase/assets 
 | `fx` | a campfire: `fx/fire.ogt` (a flickering flame sheet), `fx/smoke.ogt` (alpha, noise), `fx/sparks.ogt` (bursts, velocity-stretched, bouncing off the depth buffer); decals from `textures/decals.png` (scorch, an emissive rune, an arrow, a splat); a trail behind an orbiting wisp; a jittering, scrolling beam between two pylons; a rainbow ribbon submitted every tick |
 | `2d` | an orthographic camera over lit tiles: two `Light2D`s (one orbiting), crates that cast shadows (`castShadow`), an `Occluder2D` wall, a crate with a hit flash, an additive glowing orb (`glow`, `PostEffects.glow`), `fx/embers2d.ogt` drawn as 2D sprites |
 | `stylised` | toon (with `textures/toon.png` as the ramp) and an outline, rim light, dissolve with a glowing edge, a hit flash pulse, screen flash and camera shake on the same beat, the skinned `walker.glb` walking with its first blendshape breathing |
+| `sky` | dusk from `og.DayNight` (the sun, sky, light and ambient from the clock, the image-based light regenerated every 5 game minutes) over a colonnade, `og.Fog` distance and height fog tinted to the horizon |
+| `weather` | `og.Weather` rain over a yard: streaks falling with the wind, the preset's fog and dimmed light, under an overcast `og.Sky` |
+| `water` | `og.Water` over an `og.WaterSurface`: colour by depth over a sloping bed, foam at the posts and the buoy, screen-space reflections (the sky's cubemap on WebGL2), a crate dropped in at 0.33 s that splashes and floats |
+| `shaders` | `og.load.shader` materials (`shaders/dissolve.ogt`, `shaders/grass.ogt`, WGSL hooks compiled by the cook for every back end): a sphere dissolving by noise as `og.render.setShaderParam` sweeps its amount, a cut cube, 600 wind-swayed grass blades |
+| `controller` | `og.CharacterController` up three steps and a slope, a jump, then off the landing onto a lift (a kinematic body) that carries it |
+| `joints` | `og.Joint`: a motorised hinge, a chain of ball joints, a spring; the walker as an `og.Ragdoll` (rig from its skeleton) going limp from its walk at 0.67 s |
+| `rope` | `og.Rope` drawn to a ball on a rope joint, a slack rope in the wind, two `og.Cloth` flags in gusts (pinned on the top edge and at the top corners) |
+| `fluid` | an orthographic view of `og.Fluid2D` water and a viscous orange fluid drawn as metaballs in a basin, and an `og.WaterLine` pond drawn by `og.Water2D` where a dropped crate floats |
 
 `tests/frames.og.ts` shows each station, waits for its effects (TAA,
 particles) to settle, takes its frame at 1280×720 and compares it with
@@ -33,3 +43,11 @@ on Mesa lavapipe (CI's tier), in the platform's E2B sandbox or a local linux/amd
 
 `dump_entity:stage` reads the `Stage` component (the station and how many
 ticks it has been shown).
+
+Each E5 station has its playtest, `tests/<station>.og.ts` (`tests/station.ts`):
+the station shown at 0.5 s in a fresh run, its frame taken after it has run
+(and one half a second earlier), compared with `references/<tier>/<station>.png`,
+and checks of what it shows from dumped entities and the two frames (the
+crate floats, the character rides the lift, the hinge turned and the ragdoll
+blended to its bones, the ball stays within its rope's reach, rain and
+flags move). `OG_FX_CAPTURE=water.png og test .` records named frames only.

@@ -1,0 +1,11 @@
+type shader
+version 1
+---
+# Dissolve by noise: the hooks in dissolve.wgsl cut the surface where its
+# noise is below `amount` (the material's alphaTest discards alpha 0) and
+# light a band of edgeColor along the cut.
+source "shaders/dissolve.wgsl"
+param amount float 0
+param scale float 3
+param edgeWidth float 0.08
+param edgeColor color 4 1.6 0.4

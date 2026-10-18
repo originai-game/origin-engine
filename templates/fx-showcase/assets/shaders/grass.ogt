@@ -1,0 +1,13 @@
+type shader
+version 1
+---
+# Wind-swayed grass: grass.wgsl bends each blade along `wind` (metres at the
+# tip) more towards its tip (local y from `base` to `base + height`), with gusts travelling across the field, and
+# tints the tips.
+source "shaders/grass.wgsl"
+param wind vec2 0.22 0.08
+param speed float 2.2
+param waveScale float 0.9
+param height float 0.7
+param base float 0
+param tip color 0.75 0.85 0.35
