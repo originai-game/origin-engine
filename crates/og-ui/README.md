@@ -180,7 +180,7 @@ comment; og-cook validates it and cooks it as an `og.UiSkin` blob,
 |---|---|
 | `base`, `palette`, `radius`, `ramp`, `durations` | the token scheme it starts from and the ThemeColor, radius, TypeStepName and duration values it changes: these go into the `Theme` itself, so every widget follows |
 | `atlas "<id>" <w> <h>`, `scale` | the texture every frame, ornament and tile is cut from |
-| `slice <part> x y w h <inset…> [tint\|authored]` | a nine-slice frame per element class (`SkinPart`): `panel` (dialogs, anchored screen panels), `card` (`Ui::panel`), `button`, `buttonHover`, `buttonPressed`, `buttonDisabled`, `field`, `slot` (grid cells), `tooltip`, `capsule` (HUD capsules, toasts), `track` and `fill` (progress). `tint` frames are white art multiplied by the element's colour (so primary and secondary buttons keep their palette); `authored` ones keep their own colours |
+| `slice <part> x y w h <inset…> [tint\|authored] [stretch\|repeat\|round]` | a nine-slice frame per element class (`SkinPart`): `panel` (dialogs, anchored screen panels), `card` (`Ui::panel`), `button`, `buttonHover`, `buttonPressed`, `buttonDisabled`, `field`, `slot` (grid cells), `tooltip`, `capsule` (HUD capsules, toasts), `track` and `fill` (progress). `tint` frames are white art multiplied by the element's colour (so primary and secondary buttons keep their palette); `authored` ones keep their own colours. Edges and centre `stretch` (the default), `repeat` (tiled at the art's own size from the corner, the last tile cut) or `round` (a whole number of tiles resized to fit, CSS `round`): patterned borders tile, plain ones stretch |
 | `soft` | a blurred white rectangle: soft shadows and glows |
 | `corner` + `corners <parts>`, `divider`, `flourish` | ornaments: four mirrored corners on the named parts, an ornament over `Ui::divider`, a flourish beside a heading (`LabelDesc::heading`; both sides when centred). Ink `authored`, `accent`, `fg`, `muted`, `border` or `focus` |
 | `tile x y w h <tw> <th> <alpha> [inset] <parts>` | a texture tiled over the parts' fill (parchment, scanlines, grain) |
@@ -482,10 +482,8 @@ font is og-tests' committed MSDF atlas (Noto Sans SC subset, OFL).
   multi-line text areas; IME composition.
 - **Animations**: springs (`SPRING_DEFAULT`) for the skin's hover and press
   (eased curves today); momentum scrolling on `SPRING_MOMENTUM`; caret blink.
-- **Skins**: phone references for the packs (`kit-skin-*` are desktop
-  only); per-glyph tracking from a skin's ramp; text glows are four offset
-  copies (a real blur needs an MSDF outline in og-render); nine-slices
-  stretch rather than tile their edges.
+- **Skins**: per-glyph tracking from a skin's ramp; text glows are four
+  offset copies (a real blur needs an MSDF outline in og-render).
   (Overlay entry and exit, toasts, meters and typing run on the token
   easings by the tick since the kit round.)
 - **Accessibility**: an accessibility tree mirrored to the shell (roles,

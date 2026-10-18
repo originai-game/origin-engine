@@ -447,3 +447,102 @@ fn game_code_shakes_an_element_once_and_it_comes_to_rest_by_itself() {
             .any(|w| w.contains("shake with no element before it"))
     );
 }
+
+/// The atlas pieces a 100×60 panel draws in a skin whose panel slice
+/// fills its edges with `fill` (a 32×32 region with 8 px corners: a 16 px
+/// middle), as (rect, uv), only those inside the panel.
+fn panel_pieces(fill: &str) -> (Rect, Vec<(Rect, [f32; 4])>) {
+    let text = format!(
+        "type skin\nversion 1\n---\nname \"tiles\"\nbase dark\natlas \"a.png\" 128 64\nslice panel 0 0 32 32 8 tint {fill}\nslice card 0 0 32 32 8 {fill}\n"
+    );
+    let file = parse_skin(&text).expect("the skin parses");
+    let tex = atlas();
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.set_theme(file.theme(Some(tex), [0; 6]));
+    ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
+    ui.panel(
+        "Box",
+        PanelDesc {
+            width: Size::Fixed(100.0),
+            height: Size::Fixed(60.0),
+            ..PanelDesc::default()
+        },
+        |_| {},
+    );
+    ui.end();
+    let b = ui.frame().element("Box").expect("the panel").clone();
+    let r = Rect::new(b.x, b.y, b.width, b.height);
+    let pieces = ui
+        .frame()
+        .items
+        .iter()
+        .filter_map(|i| match &i.cmd {
+            DrawCmd::Image {
+                rect,
+                uv,
+                texture: Some(t),
+                ..
+            } if *t == tex => Some((*rect, *uv)),
+            _ => None,
+        })
+        .filter(|(p, _)| {
+            p.x >= r.x - 0.01
+                && p.y >= r.y - 0.01
+                && p.right() <= r.right() + 0.01
+                && p.bottom() <= r.bottom() + 0.01
+        })
+        .collect();
+    (r, pieces)
+}
+
+#[test]
+fn a_slice_tiles_its_edges_and_centre_when_the_skin_says_repeat_or_round() {
+    let texel = 1.0 / 128.0;
+    for fill in ["stretch", "repeat", "round"] {
+        let (r, pieces) = panel_pieces(fill);
+        let area: f32 = pieces.iter().map(|(p, _)| p.width * p.height).sum();
+        assert!(
+            (area - r.width * r.height).abs() < 0.5,
+            "{fill}: the pieces cover the panel once ({area} of {})",
+            r.width * r.height
+        );
+        // The top edge: between the corners, 8 px tall at the top.
+        let mut top: Vec<&(Rect, [f32; 4])> = pieces
+            .iter()
+            .filter(|(p, _)| {
+                (p.y - r.y).abs() < 0.01 && p.x > r.x + 7.99 && p.right() < r.right() - 7.99
+            })
+            .collect();
+        top.sort_by(|a, b| a.0.x.total_cmp(&b.0.x));
+        let widths: Vec<f32> = top.iter().map(|(p, _)| p.width).collect();
+        let uvw: Vec<f32> = top.iter().map(|(_, uv)| (uv[2] - uv[0]) / texel).collect();
+        match fill {
+            "stretch" => assert_eq!((pieces.len(), widths.clone()), (9, vec![84.0]), "{fill}"),
+            "repeat" => {
+                // 84 px of edge in 16 px tiles: five whole, then 4 px showing a quarter of the art.
+                assert_eq!(widths, vec![16.0, 16.0, 16.0, 16.0, 16.0, 4.0], "{fill}");
+                assert!(
+                    uvw.iter().zip(&widths).all(|(u, w)| (u - w).abs() < 1e-3),
+                    "{fill}: each tile shows the art at its own size: {uvw:?}"
+                );
+            }
+            _ => {
+                // round(84 / 16) = 5 whole tiles of 16.8 px.
+                assert_eq!(widths.len(), 5, "{fill}: {widths:?}");
+                assert!(
+                    widths.iter().all(|w| (w - 16.8).abs() < 1e-3)
+                        && uvw.iter().all(|u| (u - 16.0).abs() < 1e-3),
+                    "{fill}: {widths:?} {uvw:?}"
+                );
+            }
+        }
+    }
+    assert!(
+        parse_skin(
+            "type skin\nversion 1\n---\natlas \"a.png\" 128 64\nslice panel 0 0 16 16 8 repeat\n"
+        )
+        .unwrap_err()
+        .contains("no middle"),
+        "a slice that is all corners cannot tile"
+    );
+}

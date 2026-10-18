@@ -8,7 +8,7 @@ use crate::layout::{
     Node, Rect, Shape, Size, TextAlign, TextContent, Widget, layout, preorder,
 };
 use crate::motion::Fx;
-use crate::skin::{Ink, Ornament, SkinPart, Slice};
+use crate::skin::{Ink, Ornament, SkinPart, Slice, SliceFill};
 use crate::style::{Breakpoint, Density, Srgba, Theme, TypeStep};
 use crate::text::{FontMetrics, UiFont};
 use og_core::glam::Vec2;
@@ -2704,7 +2704,8 @@ fn scaled_xy(r: Rect, sx: f32, sy: f32) -> Rect {
 }
 
 /// The nine pieces of a slice over `rect` (corners keep their size, shrunk
-/// together when the rectangle is smaller than two of them).
+/// together when the rectangle is smaller than two of them); a tiling
+/// slice cuts its edges and centre into tiles of the art's middle.
 fn nine(
     atlas: TextureHandle,
     s: Slice,
@@ -2746,13 +2747,55 @@ fn nine(
             if piece.width <= 0.0 || piece.height <= 0.0 {
                 continue;
             }
-            cmds.push(DrawCmd::Image {
-                rect: piece,
-                texture: Some(atlas),
-                uv: [us[col], vs[row], us[col + 1], vs[row + 1]],
-                color,
-                clip,
-            });
+            let uv = [us[col], vs[row], us[col + 1], vs[row + 1]];
+            // Corners never tile; an edge tiles along its length, the centre both ways.
+            let along_x = col == 1 && s.fill != SliceFill::Stretch;
+            let along_y = row == 1 && s.fill != SliceFill::Stretch;
+            let cols = tiles(piece.x, piece.width, s.middle[0], s.fill, along_x);
+            let rows = tiles(piece.y, piece.height, s.middle[1], s.fill, along_y);
+            for &(y, h, fv) in &rows {
+                for &(x, w, fu) in &cols {
+                    cmds.push(DrawCmd::Image {
+                        rect: Rect::new(x, y, w, h),
+                        texture: Some(atlas),
+                        uv: [
+                            uv[0],
+                            uv[1],
+                            uv[0] + (uv[2] - uv[0]) * fu,
+                            uv[1] + (uv[3] - uv[1]) * fv,
+                        ],
+                        color,
+                        clip,
+                    });
+                }
+            }
+        }
+    }
+}
+
+/// The tiles along one axis of a piece starting at `at`, `len` long: each
+/// `(start, length, the share of the art's middle it shows)`. Not tiling:
+/// one piece showing all of it.
+fn tiles(at: f32, len: f32, tile: f32, fill: SliceFill, tiled: bool) -> Vec<(f32, f32, f32)> {
+    if !tiled || tile <= 0.0 {
+        return vec![(at, len, 1.0)];
+    }
+    match fill {
+        SliceFill::Stretch => vec![(at, len, 1.0)],
+        SliceFill::Round => {
+            let n = (len / tile).round().max(1.0).min(4096.0) as usize;
+            let w = len / n as f32;
+            (0..n).map(|i| (at + i as f32 * w, w, 1.0)).collect()
+        }
+        SliceFill::Repeat => {
+            let n = (len / tile).ceil().clamp(1.0, 4096.0) as usize;
+            (0..n)
+                .map(|i| {
+                    let x = i as f32 * tile;
+                    let w = (len - x).min(tile);
+                    (at + x, w, w / tile)
+                })
+                .collect()
         }
     }
 }

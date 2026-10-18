@@ -107,8 +107,21 @@ impl SkinPart {
     }
 }
 
+/// How a nine-slice fills its edges and centre.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum SliceFill {
+    /// Stretched along the edge (the default).
+    #[default]
+    Stretch,
+    /// Tiled at the art's own size from the corner, the last tile cut.
+    Repeat,
+    /// Tiled a whole number of times, each tile resized to fit (CSS `round`).
+    Round,
+}
+
 /// A nine-slice frame: a region of the atlas whose corners keep their size,
-/// whose edges stretch along one axis and whose centre stretches both ways.
+/// whose edges stretch (or tile) along one axis and whose centre stretches
+/// (or tiles) both ways.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Slice {
     /// The region `[u0, v0, u1, v1]` (0–1, v down).
@@ -120,6 +133,11 @@ pub struct Slice {
     /// Multiply the art by the element's fill colour (white art takes the
     /// palette); false draws the art as authored.
     pub tint: bool,
+    /// How the edges and the centre fill their length.
+    pub fill: SliceFill,
+    /// The middle of the region on screen (its width and height between
+    /// the corners), CSS px: one tile when `fill` tiles.
+    pub middle: [f32; 2],
 }
 
 /// Which ink an ornament takes.
@@ -632,7 +650,8 @@ fn role_index(p: &P, w: &str) -> Result<usize, String> {
 /// icons "skins/fantasy/icons.png" 8 4 {
 ///   names "heart" "star"
 /// }
-/// slice panel 0 0 64 64 20 [20 20 20] [tint|authored]   # region, then corner insets in texels
+/// slice panel 0 0 64 64 20 [20 20 20] [tint|authored] [stretch|repeat|round]
+///                                             # region, corner insets in texels; how edges fill
 /// soft 192 0 32 32 12                         # a blurred white rect: soft shadows and glows
 /// scale 1                                     # CSS px per atlas texel for slice corners
 /// corner 64 0 24 24 24 24 accent [offset]    # region, size on screen, ink
@@ -816,16 +835,35 @@ pub fn parse_skin(text: &str) -> Result<SkinFile, String> {
                 if b[0] + b[2] > px[2] || b[1] + b[3] > px[3] || b.iter().any(|v| *v < 0.0) {
                     return Err(p.err("has corner insets larger than its region"));
                 }
-                let tint = match e.values.get(at + 4 + numbers).and_then(Value::as_word) {
-                    None | Some("tint") => true,
-                    Some("authored") => false,
-                    Some(w) => return Err(p.err(&format!("ends with tint or authored, not '{w}'"))),
-                };
+                let (mut tint, mut fill) = (true, SliceFill::Stretch);
+                for v in &e.values[at + 4 + numbers..] {
+                    match v.as_word() {
+                        Some("tint") => tint = true,
+                        Some("authored") => tint = false,
+                        Some("stretch") => fill = SliceFill::Stretch,
+                        Some("repeat") => fill = SliceFill::Repeat,
+                        Some("round") => fill = SliceFill::Round,
+                        _ => {
+                            return Err(p.err(&format!(
+                                "ends with tint or authored and stretch, repeat or round, not '{}'",
+                                v.as_word().unwrap_or("a number")
+                            )));
+                        }
+                    }
+                }
+                let middle = [(px[2] - b[0] - b[2]) * scale, (px[3] - b[1] - b[3]) * scale];
+                if fill != SliceFill::Stretch && (middle[0] < 1.0 || middle[1] < 1.0) {
+                    return Err(
+                        p.err("tiles its edges but leaves no middle between the corners to tile")
+                    );
+                }
                 let s = Slice {
                     uv,
                     border_uv: [b[0] / size.0, b[1] / size.1, b[2] / size.0, b[3] / size.1],
                     border: [b[0] * scale, b[1] * scale, b[2] * scale, b[3] * scale],
                     tint,
+                    fill,
+                    middle,
                 };
                 match part {
                     Some(part) => theme.skin.slices[part.index()] = Some(s),

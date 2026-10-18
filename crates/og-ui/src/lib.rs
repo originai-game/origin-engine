@@ -49,7 +49,7 @@ pub use layout::{
 };
 pub use motion::{TransitionKind, cubic_bezier, ease_exit, ease_out};
 pub use probe::{SharedUi, UiProbe};
-pub use skin::{Skin, SkinFile, SkinPart, UiSound, parse_skin};
+pub use skin::{Skin, SkinFile, SkinPart, Slice, SliceFill, UiSound, parse_skin};
 pub use style::{
     Breakpoint, Contrast, Density, DensityMode, Durations, HueName, Hues, Palette, Radius, Scheme,
     Space, Spring, Srgba, Theme, TypeRamp, TypeStep,
