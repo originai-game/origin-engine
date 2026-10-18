@@ -1,0 +1,101 @@
+---
+name: og-audio
+description: Sound on Origin Engine — one-shot voices for game events, the procedural sound presets og cook synthesises (coin, jump, hit, click and more), UI sounds, the four buses and their effects (filters, reverb send, compressor or limiter, ducking), music with stems, bar-aligned starts, crossfades and stingers on og.Music's clock, spatial sources with occlusion and distance dulling, voice priority and the cap, and proving it all headless with listen and og run --audio. Use when a game is silent, when adding any sound or music, or when the mix is muddy, clipping or wrong.
+---
+
+Audio on Origin Engine is world state: an entity with `og.AudioSource`
+plays while `playing` is true, the tick sends commands to the mixer, and
+the same script renders the same samples on every host. The API is in
+`reference/audio.md`; this skill is how much of each to use.
+
+## 1. Every event sounds
+
+A game with no sound feels broken, whatever it shows. Before anything else,
+give each of these a sound: the player's actions (jump, attack, dash), hits
+given and taken, pickups, a door, a death, a win and a loss, every UI press.
+
+- One voice entity per sound, spawned in `start` with `playing: false`, and
+  a `Voices` system that plays each requested one: systems set bits of a
+  game resource (`Sounds.sfx |= Sound.Jump`), Voices sets `playing` on the
+  matching voice (a voice already playing is stopped this tick and
+  restarted the next). `templates/archetypes/runner`, `match3` and
+  `topdown` all do this; copy their `Voices`.
+- Vary repeated sounds: `pitch` 0.92–1.08 from the world's `og.Rng` for
+  footsteps, hits and coins, so a stream of them does not machine-gun.
+- A hit's sound starts on the hit's tick, with its hit stop and flash
+  (og-feel §3): the three together sell the contact.
+
+## 2. Presets: sounds without files
+
+`og sfx` lists the procedural presets (`coin`, `pickup`, `powerup`, `jump`,
+`land`, `footstep`, `hit`, `hurt`, `explosion`, `laser`, `whoosh`, `door`,
+`death`, `click`, `select`, `back`, `error`, `levelup`). `og sfx jump --out
+assets/audio/jump.ogt` writes an asset `og cook` synthesises into a normal
+sound; `og.load.sound(world, "audio/jump.ogt")` plays it like a WAV. Tune
+`seed` (another take), `pitch`, `length` and `volume` in the file; `og sfx
+jump --out jump.wav` renders it to listen to. `og sfx library <dir>` writes
+all of them. Replace a preset with a recorded or generated sound when the
+game's style needs it; presets are a floor, not a style.
+
+## 3. UI sounds
+
+`og.ui.configure(world, { sounds: { hover, press, open, close, success, error } })`
+(or the skin's `sound` lines) plays them on the `ui` bus: `click` for
+press, `select` for success, `back` for close, `error` for a refused press.
+Hover sounds only on desktop menus, and quiet (volume ≤ 0.3).
+
+## 4. Buses and the mix
+
+Four buses: `master`, `music`, `sfx`, `ui`. Set levels with the sources'
+`volume` and each bus's `og.AudioBusFx` (one entity per bus):
+
+| Need | AudioBusFx |
+|---|---|
+| Music under effects | on music: `duck: true`, `duckBus` sfx, `duckDepth` 8–12 (dB), `duckRelease` 0.3–0.6 (s) |
+| Dialogue or a stinger above everything | duck music and sfx by the ui or a dialogue bus |
+| Muffled (underwater, pause menu) | `lowpass` 600–1200 Hz on sfx and music |
+| Thin radio or phone | `highpass` 400 Hz plus `lowpass` 3 kHz |
+| Space and room | `reverb` 0.1–0.3 on sfx (og.Audio `reverbRoom`, `reverbDamping`); keep music dry |
+| Even out loud and quiet effects | compressor: `threshold` −18 (dB), `ratio` 3–4, `attack` 0.005 and `release` 0.15 (s), `makeup` 3 (dB) |
+| Never clip | a limiter on master: `threshold` −1, `ratio` 20, `attack` 0.001 |
+
+`og polish` reports clipped samples in the run's mix; a peak at 1.0 is a
+mix bug, not loudness.
+
+## 5. Music
+
+- Loop a track with `looping: true` on the music bus.
+- Stems: start every layer at the same `startAt` (world seconds) and bring
+  layers in and out with `volume` and `fade` (0.5–2 s), never by starting
+  them late: they stay sample-aligned.
+- `og.Music` (`bpm`, `beatsPerBar`, `start`) is the clock: `nextBar` and
+  `nextBeat` are world times, so `startAt: music.nextBar` starts a stinger
+  or the next section on the bar line, sample-accurately, and `og.MusicBeat`
+  events drive beat-synced visuals.
+- A crossfade: the new track `startAt: nextBar` with `fade: 2`, the old one
+  `playing: false` with the same `fade`.
+
+## 6. Space, occlusion, priority
+
+- `spatial: true` sources pan and attenuate by their Transform against the
+  `og.AudioListener` (on the camera or the player); `refDistance` 1–3,
+  `maxDistance` 20–50.
+- `distanceCutoff` (e.g. 2000 Hz) dulls far sounds; `occlude: true` plays a
+  source behind a collider at og.Audio's `occlusionGain` through
+  `occlusionCutoff`: enemies behind walls sound behind walls.
+- `og.Audio.maxVoices` (32) caps voices; past it the lowest `priority`,
+  then the quietest, then the oldest is culled (`SOUND_CULLED`). Give the
+  player's own sounds and the music a high priority (200+), ambient props a
+  low one.
+
+## 7. Prove it
+
+- `listen[:file][:seconds]` in a command script writes the last seconds of
+  the mix as a WAV; a playtest reads it with `run.wav(file)` (`peak`,
+  `rms`): silence where it should be silent, sound after the event.
+- `og run --audio out.wav --json` captures the whole run and prints its
+  SHA-256: two runs of the same script give the same hash.
+- `dump_entity:<voice>` shows `og.AudioPlayback` while it plays; a counter
+  on the voice (`Sfx.plays`) proves a short sound played at all.
+- `og polish` scores inputs answered by a sound, UI presses with a ui-bus
+  sound and hits with a sound.

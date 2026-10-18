@@ -180,3 +180,26 @@ Run each item; each is checkable from a scripted run.
 11. **CJK**: switch the language to Chinese in settings and capture: no
     missing-glyph boxes (the skin's fallback font covers it).
 12. **None of section 8** is visible in any capture.
+
+## 10. Polish, measured: `og polish`
+
+`og polish .` plays every playtest headless and scores what can be
+measured of this checklist from the frames, the UI trees and the run's
+audio; `og-out/polish/report.md` has the scores, the frames and, for each
+finding, the section of this skill (or og-feel, og-audio, og-i18n) that
+fixes it. It refuses a project without playtests: write them first
+(og-build §Tests), with a `screenshot` on every screen that matters.
+
+| Measure | From | Passes at |
+|---|---|---|
+| Contrast | each text element's rectangle in a shot: the ground (its median) against its ink (the 1 % farthest pixels) | 4.5:1 (§3) |
+| Text size | the tallest run of ink rows in each text element, CSS px | 9 px, a 13 px face's capitals (§4, §9.6) |
+| HUD occupancy | the union of leaf elements on gameplay shots (a shot with three text elements in the central third counts as a menu) | at most 15 % of the surface and 5 % of the central third (§2) |
+| Screen transitions | a change of three or more elements with UI motion or a tween in the 20 ticks around it | every change (§5) |
+| UI sounds | a press that changed the UI and started a voice on the ui bus within 8 ticks | every press (§6) |
+| Locale keys | `og cook`'s warnings | none (og-i18n) |
+
+The numbers cannot judge a style. A disabled button's low contrast and an
+icon's small "ink" are expected; read the frames before changing anything,
+and fix the cause in the skin or the template, never per call. Run it
+again after the fix: the report is the evidence.

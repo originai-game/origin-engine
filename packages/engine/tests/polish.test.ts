@@ -71,3 +71,21 @@ test("og polish refuses a project without playtests", () => {
   expect(r.out).toContain("has no playtests");
   expect(existsSync(join(bare, "og-out", "polish", "report.md"))).toBeFalse();
 });
+
+test("og polish reports the string tables' missing keys as a finding for og-i18n", () => {
+  const p = join(evidence, "locales");
+  rmSync(p, { recursive: true, force: true });
+  for (const d of ["src", "tests", "assets/strings"]) mkdirSync(join(p, d), { recursive: true });
+  writeFileSync(join(p, "project.ogt"), 'type project\nversion 1\n---\nname "Locales"\nid "locales"\nengine "0.0.1"\nentry "src/main.ts"\n');
+  writeFileSync(join(p, "src", "main.ts"), 'import { og } from "@origingame/engine";\nexport default og.game({ tick: 60, start: (world) => { og.i18n.load(world, "strings/en.ogt"); og.i18n.load(world, "strings/ja.ogt"); } });\n');
+  writeFileSync(join(p, "assets", "strings", "en.ogt"), 'type strings\nversion 1\n---\nlocale "en"\nstring "menu.play" "Play"\nstring "menu.quit" "Quit"\n');
+  writeFileSync(join(p, "assets", "strings", "ja.ogt"), 'type strings\nversion 1\n---\nlocale "ja"\nstring "menu.play" "プレイ"\n');
+  writeFileSync(join(p, "tests", "idle.og.ts"), 'import { playtest } from "@origingame/engine/playtest";\nexport default playtest({ name: "idle", commands: "0.2:quit", check(run, t) { t.ok(run.quit, "quit"); } });\n');
+  const r = run([ogBin(), "polish", p]);
+  if (r.code !== 0) throw new Error(r.out);
+  const out = JSON.parse(readFileSync(join(p, "og-out", "polish", "polish.json"), "utf8")) as Polish & { warnings: string[] };
+  expect(out.warnings).toEqual(["assets/strings/ja.ogt: missing key 'menu.quit' (en has it)"]);
+  expect(out.scores["locale"]).toBeLessThan(100);
+  const f = out.findings.find((x) => x.measure === "locale keys");
+  expect(f?.fix ?? "").toContain("og-i18n");
+}, 300_000);

@@ -618,7 +618,7 @@ function measure(rec: RunRecord, frameDir: string, frames: number, relTo: string
     else if (median(lat) > 1) findings.push({ measure: "input latency", where: rec.playtest, detail: `the median input is answered ${median(lat)} ticks after the tick it landed (0 is the same tick)`, fix: "og-feel §1: read input and act in the same tick; buffer, do not queue" });
   }
   if (screenChanges > 0 && withMotion < screenChanges) findings.push({ measure: "screen transitions", where: rec.playtest, detail: `${screenChanges - withMotion} of ${screenChanges} screen changes had no motion in the 20 ticks around them`, fix: "og-taste §5 (screens change through a transition): og.ui.screenTransition, one kind per game" });
-  if (presses > 0 && pressesWithSound < presses) findings.push({ measure: "UI sounds", where: rec.playtest, detail: `${presses - pressesWithSound} of ${presses} UI presses played no sound on the ui bus`, fix: "og-taste §6 (feedback) and og-audio §UI: give the skin or og.ui.configure its press and open sounds" });
+  if (presses > 0 && pressesWithSound < presses) findings.push({ measure: "UI sounds", where: rec.playtest, detail: `${presses - pressesWithSound} of ${presses} UI presses played no sound on the ui bus`, fix: "og-taste §6 (feedback) and og-audio §3: give the skin or og.ui.configure its press and open sounds" });
 
   // Damage facts and their feedback.
   const moments: number[] = [];
@@ -651,7 +651,7 @@ function measure(rec: RunRecord, frameDir: string, frames: number, relTo: string
     if (w.some((x) => x.particles)) dmg.particles++;
   }
   if (dmg.moments > 0) {
-    const missing = [["hit stop", dmg.hitStop, "og-feel §3 (hit stop by impact weight)"], ["shake", dmg.shake, "og-feel §4 (trauma, not offsets)"], ["floating text", dmg.floating, "og-feel §7 (floating text)"], ["a sound", dmg.sound, "og-audio (one sound per hit, varied by pitch)"]] as const;
+    const missing = [["hit stop", dmg.hitStop, "og-feel §3 (hit stop by impact weight)"], ["shake", dmg.shake, "og-feel §4 (trauma, not offsets)"], ["floating text", dmg.floating, "og-feel §7 (floating text)"], ["a sound", dmg.sound, "og-audio §1 (every event sounds; a hit's sound on its tick)"]] as const;
     for (const [what, n, fix] of missing) if (n < dmg.moments) findings.push({ measure: "hit feedback", where: rec.playtest, detail: `${dmg.moments - n} of ${dmg.moments} damage moments (${dmg.facts.join(", ")}) had no ${what} within 8 ticks`, fix });
   }
 
@@ -670,9 +670,9 @@ function measure(rec: RunRecord, frameDir: string, frames: number, relTo: string
   }
   const step = s.slice(5).map((p) => p.stepMs), render = s.slice(5).map((p) => p.renderMs), total = s.slice(5).map((p) => p.stepMs + p.renderMs);
   const frame = { tier: rec.tier, stepMedianMs: r2(median(step)), stepP95Ms: r2(pct(step, 0.95)), renderMedianMs: r2(median(render)), renderP95Ms: r2(pct(render, 0.95)), frameP95Ms: r2(pct(total, 0.95)), frameMaxMs: r2(Math.max(0, ...total)) };
-  if (frame.frameP95Ms > 16.7) findings.push({ measure: "frame time", where: rec.playtest, detail: `p95 step + render ${frame.frameP95Ms} ms on ${rec.tier} (the frame is 16.7 ms)`, fix: "og-game §performance and og-build: fewer draws and particles, cheaper systems; measure with og run --json" });
+  if (frame.frameP95Ms > 16.7) findings.push({ measure: "frame time", where: rec.playtest, detail: `p95 step + render ${frame.frameP95Ms} ms on ${rec.tier} (the frame is 16.7 ms)`, fix: "og-game §Performance: fewer draws and particles, cheaper systems; og run --json measures" });
   const audio = audioStats(rec.wav, rec.rate);
-  if (audio.clipped > 0) findings.push({ measure: "audio clipping", where: rec.playtest, detail: `${audio.clipped} samples at full scale (peak ${audio.peak})`, fix: "og-audio §mix: lower the sfx bus or add og.AudioBusFx's limiter" });
+  if (audio.clipped > 0) findings.push({ measure: "audio clipping", where: rec.playtest, detail: `${audio.clipped} samples at full scale (peak ${audio.peak})`, fix: "og-audio §4 (the mix): lower the loud sources or put a limiter on master" });
 
   return {
     m: {
@@ -813,7 +813,7 @@ async function main(): Promise<void> {
   if (!entry || !root || !out) fail("usage: bun src/node/polish.ts --entry <bundle> --root <project> --out <dir> [--warnings <file>] [--frames N] [--json] <tests/x.og.ts>...");
   if (one) return runOne(resolve(one), resolve(entry!), resolve(root!), resolve(out!));
   const files = positional.map((f) => resolve(f));
-  if (files.length === 0) fail(`${root} has no playtests: og polish measures what playtests play; add tests/*.og.ts (og-game §playtests)`);
+  if (files.length === 0) fail(`${root} has no playtests: og polish measures what playtests play; add tests/*.og.ts (og-build §Tests)`);
   const outDir = resolve(out!);
   mkdirSync(outDir, { recursive: true });
   const runs = join(outDir, ".runs");
@@ -841,7 +841,8 @@ async function main(): Promise<void> {
     findings.push(...got.findings);
     process.stdout.write(`og polish: ${name} (${rec.samples.length} ticks, ${(performance.now() - t0).toFixed(0)} ms)\n`);
   }
-  const missing = warnings.filter((w) => /lacks|missing/i.test(w)).length;
+  const missing = warnings.filter((w) => /key '/.test(w)).length;
+  if (missing > 0) findings.push({ measure: "locale keys", where: "assets/strings", detail: `og cook warns about ${missing} key(s) a table lacks or formats differently`, fix: "og-i18n §1: every locale has every key, with the same arguments" });
   const hasLocales = existsSync(join(root!, "assets", "strings")) || warnings.length > 0;
   const sc = scores(ms, missing, hasLocales);
   const date = new Date().toISOString().slice(0, 10);

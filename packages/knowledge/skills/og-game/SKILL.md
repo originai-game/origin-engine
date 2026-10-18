@@ -1,6 +1,6 @@
 ---
 name: og-game
-description: Building a game on Origin Engine — the project layout, components and systems on the ECS, the game entry, scenes as .ogt text, assets cooked from assets/ to cooked/, and the og.load loaders. Use when creating, structuring or extending a TypeScript Origin Engine game (a project with a project.ogt; not a Godot project.godot).
+description: Building a game on Origin Engine — the project layout, components and systems on the ECS, the game entry, scenes as .ogt text, assets cooked from assets/ to cooked/, the og.load loaders, which skill covers enemies, sound, platform services and languages, and the performance budget. Use when creating, structuring or extending a TypeScript Origin Engine game (a project with a project.ogt; not a Godot project.godot).
 ---
 
 An Origin Engine project is plain files: TypeScript in `src/`, source assets
@@ -210,6 +210,27 @@ Every effect is off until the game turns it on, as data:
 `templates/fx-showcase` shows every one of these on five stations. Camera
 shake for gameplay is `og.camera.shake` (it decays by itself);
 `PostEffects.shakeTrauma` holds a fixed shake.
+
+## Enemies, sound, platform, languages, polish
+
+| Need | Skill |
+|---|---|
+| Enemies and NPCs: navigation (`og.nav`) and minds as data (`og.ai`) | og-ai |
+| Sound effects, presets, UI sounds, the mix, music | og-audio |
+| Saves, settings, leaderboards, telemetry (`og.platform`) | og-platform-sdk |
+| Text in several languages (`og.i18n`), fonts, right to left | og-i18n |
+| Scoring a build against og-taste and og-feel | `og polish .` (og-taste §10, og-feel §13) |
+
+## Performance
+
+A frame is 16.7 ms at 60 Hz; keep step + render under half of it on a
+desktop so phones have room. `og run --json` prints `advanceMs`, and `og
+polish` the p95 step and render time of every playtest. The usual costs:
+draws (share geometry and one material per look), particle systems (cap
+`maxParticles` in the emitter's .ogt, despawn emitters that are done),
+per-tick TypeScript over many entities (iterate archetype columns, never
+`world.get` per entity; spread expensive work over ticks, as og.ai's
+`thinkEvery` does), and loads in the middle of play (load in `start`).
 
 ## Where to look things up
 

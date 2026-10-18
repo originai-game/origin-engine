@@ -6,7 +6,7 @@ knowledge packs (`packages/game-knowledge/production` of OriginGame):
 | Part | Path | Mounted at (`knowledge.json`) |
 |---|---|---|
 | API wiki, one page per IDL module plus `index.md` | `wiki/` (generated: `og api gen --wiki`; `og api check` fails on drift) | `game/skills/og-game/reference/` |
-| Skills `og-core` (engine rules), `og-build` (the `og` loop and the evidence discipline), `og-game` (ECS, scenes, assets, loading), `og-ui` (screens, HUDs, skins, motion), `og-taste` (art direction and the done checklist), `og-feel` (game feel: time scale, hit stop, tweens, camera, juice amounts) | `skills/<name>/SKILL.md` | `game/skills/<name>/` |
+| Skills `og-core` (engine rules), `og-build` (the `og` loop and the evidence discipline), `og-game` (ECS, scenes, assets, loading, performance), `og-ui` (screens, HUDs, skins, motion), `og-taste` (art direction, the done checklist and `og polish`'s taste measures), `og-feel` (game feel: time scale, hit stop, tweens, camera, juice amounts, and `og polish`'s feel measures), `og-ai` (navigation and enemy minds as data), `og-audio` (events, presets, the mix, music), `og-i18n` (string tables, fonts, right to left), `og-platform-sdk` (`og.platform`: saves, settings, leaderboards, telemetry, and how to ask for what is missing; the platform's own `og-platform` covers the Player) | `skills/<name>/SKILL.md` | `game/skills/<name>/` |
 | Scaffold: the project template, its engine pin and binary digests | `scaffold/` and the engine repository's `templates/game` | `game-scaffold/origin-engine-ts/` |
 
 `bun run test` validates the package against the platform's rules
