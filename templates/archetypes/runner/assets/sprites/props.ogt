@@ -1,0 +1,21 @@
+type flipbook
+version 1
+---
+# Props (tools/make-assets.py): one frame each, 2 texels apart.
+texture "props.png"
+frame crate 0 0 16 16
+frame fence 18 0 16 32
+frame moon 36 0 32 32
+frame cloud 0 36 64 24
+clip crate {
+  frames crate
+}
+clip fence {
+  frames fence
+}
+clip moon {
+  frames moon
+}
+clip cloud {
+  frames cloud
+}

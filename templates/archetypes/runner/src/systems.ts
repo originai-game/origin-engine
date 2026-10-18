@@ -1,21 +1,24 @@
 // The runner's systems, in tick order: Director (phases and pace), Jump (the
 // runner's body), Scroll (the world moves left past a runner who stays put),
 // Spawn (obstacle and coin patterns from the dice), Collide (coins and
-// crashes), Animate (which sprite each row shows) and Hud (text).
+// crashes, with their feel), Dust (puffs on the run clip's footfalls),
+// Animate (the courier's clip and afterimage) and Hud (text).
 //
 // Each system sees the actor rows through its typed views. The runner row
 // (Actor.kind === Kind.Runner) carries the run's state and tuning for every
-// system (src/components.ts says why).
+// system (src/components.ts says why). Motion uses Time.scaledDt, so a hit
+// stop freezes the world while the camera still shakes.
 
 import { og, defineSystem } from "@origingame/engine";
-import type { ArchetypeView, Query } from "@origingame/engine";
+import type { ArchetypeView, Entity, Query, World } from "@origingame/engine";
+import { COURIER } from "./art.ts";
 import { Actor, Hud, Kind, Phase, Run, Tuning } from "./components.ts";
 
 /** The ground's top: the runner's feet rest here. */
 export const GROUND_Y = 0;
 /** Where the runner stands; the world scrolls past this x. */
 export const RUNNER_X = -5;
-/** The runner sprite's size; its feet are at the bottom edge. */
+/** The runner sprite's size. Its position is its feet; its hit box is centred RUNNER_SIZE.y / 2 above them. */
 export const RUNNER_SIZE = { x: 1.3, y: 1.625 } as const;
 /** Ticks an early press waits for the landing. */
 const JUMP_BUFFER = 6;
@@ -23,7 +26,7 @@ const JUMP_BUFFER = 6;
 const MIN_HOLD = 6;
 /** Ticks the game-over card holds before a press restarts. */
 const OVER_HOLD = 30;
-/** Where a pooled row waits while inactive. */
+/** Where a pooled row waits while parked. */
 const PARKED_X = -1000;
 /**
  * Patterns spawn at SPAWN_X and pooled rows retire past RETIRE_X: fixed
@@ -32,8 +35,24 @@ const PARKED_X = -1000;
  */
 export const SPAWN_X = 13;
 export const RETIRE_X = -13;
-/** Scenery wraps over this span: wider than the widest view plus a piece. */
+/** Clouds wrap over this span: wider than the widest view plus a piece. */
 export const SCENERY_SPAN = 30;
+
+/** The feel: tuned by eye, not by the tests (except that they never change the rules). */
+const FEEL = {
+  /** The take-off stretch and the landing squash (x, y factors at the impact). */
+  takeOff: { x: 0.78, y: 1.28 },
+  landing: { x: 1.3, y: 0.72 },
+  /** A crash: ticks of hit stop, screen shake trauma, how far the courier is knocked back and up. */
+  hitStop: 8,
+  shake: 0.5,
+  knockBack: 0.9,
+  knockUp: 6,
+  /** The red flash of a crash. */
+  crashFlash: { r: 1, g: 0.12, b: 0.08 },
+  /** The afterimage shows within this much of the top speed. */
+  afterimageBelowMax: 0.75,
+} as const;
 
 interface Row {
   readonly a: ArchetypeView;
@@ -57,25 +76,19 @@ function held(i: { down(k: string): boolean; buttonDown(b: "left"): boolean }): 
   return i.down("Space") || i.down("ArrowUp") || i.down("KeyW") || i.buttonDown("left");
 }
 
-/** Copy a Material handle (two u32 lanes) from one column to another. */
-function copyHandle(from: Uint32Array, fi: number, to: Uint32Array, ti: number): void {
-  to[ti * 2] = from[fi * 2]!;
-  to[ti * 2 + 1] = from[fi * 2 + 1]!;
+function pooled(kind: number | undefined): boolean {
+  return kind === Kind.Crate || kind === Kind.Fence || kind === Kind.Coin || kind === Kind.Dust;
 }
 
-/** Retire every pooled row: inactive, hidden, parked. */
+/** Retire every pooled row: inactive and parked. */
 function retirePools(q: Query): void {
   for (const a of q.archetypes()) {
     const actor = a.column(Actor);
-    const mesh = a.column(og.Mesh);
     const p = a.column(og.Transform).position;
     for (let i = 0; i < a.count; i++) {
-      const k = actor.kind[i];
-      if (k === Kind.Crate || k === Kind.Fence || k === Kind.Coin) {
-        actor.active[i] = 0;
-        mesh.visible[i] = 0;
-        p[i * 3] = PARKED_X;
-      }
+      if (!pooled(actor.kind[i])) continue;
+      actor.active[i] = 0;
+      p[i * 3] = PARKED_X;
     }
   }
 }
@@ -83,7 +96,7 @@ function retirePools(q: Query): void {
 /** Phases and pace: a press starts a round from the title or after a crash; the speed ramps while running. */
 export const Director = defineSystem(
   "Director",
-  { reads: [og.Input, Tuning], writes: [Run, Actor, og.Transform, og.Mesh] },
+  { reads: [og.Input, Tuning], writes: [Run, Actor, og.Transform, og.Sprite] },
   (q, time, world) => {
     const r = runnerRow(q);
     const input = world.resource(og.Input);
@@ -95,8 +108,8 @@ export const Director = defineSystem(
     const phase = run.phase[i];
     const go = pressed(input.value);
     if (phase === Phase.Running) {
-      run.speed[i] = Math.min(tune.speedMax[i]!, run.speed[i]! + tune.speedRamp[i]! * time.dt);
-      run.distance[i] = run.distance[i]! + run.speed[i]! * time.dt;
+      run.speed[i] = Math.min(tune.speedMax[i]!, run.speed[i]! + tune.speedRamp[i]! * time.scaledDt);
+      run.distance[i] = run.distance[i]! + run.speed[i]! * time.scaledDt;
       run.score[i] = Math.floor(run.distance[i]!) + run.coins[i]! * tune.coinValue[i]!;
       return;
     }
@@ -116,12 +129,19 @@ export const Director = defineSystem(
     run.hold[i] = 0;
     run.rising[i] = 0;
     r.a.column(Actor).vy[i] = 0;
-    r.a.column(og.Transform).position[i * 3 + 1] = GROUND_Y + RUNNER_SIZE.y / 2;
+    // The crash's knock-back, squash and flash end before the card's hold; stop them anyway and stand the courier up.
+    og.tween.cancelEntity(world, r.a.entity(i));
+    const t = r.a.column(og.Transform);
+    t.position[i * 3] = RUNNER_X;
+    t.position[i * 3 + 1] = GROUND_Y;
+    t.scale[i * 3] = 1;
+    t.scale[i * 3 + 1] = 1;
+    r.a.column(og.Sprite).flash[i] = 0;
     retirePools(q);
   },
 );
 
-/** The runner's body: a buffered press takes off, holding keeps the rise, releasing early cuts it; gravity brings it down. */
+/** The runner's body: a buffered press takes off, holding keeps the rise, releasing early cuts it; gravity brings it down. Take-off stretches, landing squashes. */
 export const Jump = defineSystem(
   "Jump",
   { reads: [og.Input, Tuning], writes: [Run, Actor, og.Transform], after: ["Director"] },
@@ -144,6 +164,7 @@ export const Jump = defineSystem(
         run.rising[i] = 1;
         run.hold[i] = 0;
         run.buffer[i] = 0;
+        og.tween.squash(world, { entity: a.entity(i), impact: FEEL.takeOff, duration: 0.22 });
       } else if (run.buffer[i]! > 0) {
         run.buffer[i] = run.buffer[i]! - 1;
       }
@@ -158,16 +179,19 @@ export const Jump = defineSystem(
       }
     }
     if (run.grounded[i]) return;
+    const dt = time.scaledDt;
+    if (dt === 0) return;
     // After a crash the runner still falls back to the roof.
-    actor.vy[i] = actor.vy[i]! - tune.gravity[i]! * time.dt;
-    const feet = p[i * 3 + 1]! - RUNNER_SIZE.y / 2 + actor.vy[i]! * time.dt;
+    actor.vy[i] = actor.vy[i]! - tune.gravity[i]! * dt;
+    const feet = p[i * 3 + 1]! + actor.vy[i]! * dt;
     if (feet <= GROUND_Y) {
-      p[i * 3 + 1] = GROUND_Y + RUNNER_SIZE.y / 2;
+      p[i * 3 + 1] = GROUND_Y;
       actor.vy[i] = 0;
       run.grounded[i] = 1;
       run.rising[i] = 0;
+      og.tween.squash(world, { entity: a.entity(i), impact: FEEL.landing, duration: 0.2 });
     } else {
-      p[i * 3 + 1] = feet + RUNNER_SIZE.y / 2;
+      p[i * 3 + 1] = feet;
     }
   },
 );
@@ -175,32 +199,31 @@ export const Jump = defineSystem(
 /** The world scrolls left at the run speed times each row's parallax; scenery wraps, pooled rows retire behind the left edge. */
 export const Scroll = defineSystem(
   "Scroll",
-  { reads: [Run], writes: [Actor, og.Transform, og.Mesh], after: ["Jump"] },
+  { reads: [Run], writes: [Actor, og.Transform], after: ["Jump"] },
   (q, time) => {
     const r = runnerRow(q);
     if (r === null) return;
-    const speed = r.a.column(Run).speed[r.i]!;
-    if (speed === 0) return;
+    const step = r.a.column(Run).speed[r.i]! * time.scaledDt;
+    if (step === 0) return;
     for (const a of q.archetypes()) {
       const actor = a.column(Actor);
-      const mesh = a.column(og.Transform).position;
-      const visible = a.column(og.Mesh).visible;
+      const p = a.column(og.Transform).position;
       for (let i = 0; i < a.count; i++) {
         const k = actor.kind[i];
         if (k === Kind.Runner || actor.parallax[i] === 0) continue;
         const wrap = actor.wrap[i]!;
         if (wrap > 0) {
-          let x = mesh[i * 3]! - speed * actor.parallax[i]! * time.dt;
+          let x = p[i * 3]! - step * actor.parallax[i]!;
           if (x < -wrap / 2) x += wrap;
-          mesh[i * 3] = x;
-        } else if (actor.active[i]) {
-          const x = mesh[i * 3]! - speed * time.dt;
+          p[i * 3] = x;
+        } else if (p[i * 3]! > PARKED_X / 2) {
+          // In play, or a collected coin or a dust puff finishing its tween: carried along until it retires.
+          const x = p[i * 3]! - step;
           if (x < RETIRE_X) {
             actor.active[i] = 0;
-            visible[i] = 0;
-            mesh[i * 3] = PARKED_X;
+            p[i * 3] = PARKED_X;
           } else {
-            mesh[i * 3] = x;
+            p[i * 3] = x;
           }
         }
       }
@@ -208,17 +231,20 @@ export const Scroll = defineSystem(
   },
 );
 
-/** Takes an inactive pooled row of a kind and puts it in play at (x, y); false when the pool is spent. */
-function place(q: Query, kind: number, x: number, y: number): boolean {
+/** Takes an inactive pooled row of a kind and puts it in play at (x, y), whole and opaque; false when the pool is spent. */
+function place(q: Query, world: World, kind: number, x: number, y: number): boolean {
   for (const a of q.archetypes()) {
     const actor = a.column(Actor);
     for (let i = 0; i < a.count; i++) {
       if (actor.kind[i] !== kind || actor.active[i]) continue;
+      og.tween.cancelEntity(world, a.entity(i));
       actor.active[i] = 1;
-      a.column(og.Mesh).visible[i] = 1;
-      const p = a.column(og.Transform).position;
-      p[i * 3] = x;
-      p[i * 3 + 1] = y;
+      const t = a.column(og.Transform);
+      t.position[i * 3] = x;
+      t.position[i * 3 + 1] = y;
+      t.scale[i * 3] = 1;
+      t.scale[i * 3 + 1] = 1;
+      a.column(og.Sprite).opacity[i] = 1;
       return true;
     }
   }
@@ -232,14 +258,15 @@ export const REST_Y: Readonly<Record<number, number>> = { [Kind.Crate]: 0.4, [Ki
  * A pattern of obstacles and coins, placed from x0 rightwards; returns its length in metres.
  * 0 crate, 1 crate under a coin arc, 2 a line of coins, 3 a fence, 4 a fence under a high coin, 5 two crates.
  */
-export function placePattern(q: Query, pattern: number, x0: number): number {
-  const coin = (dx: number, y: number) => place(q, Kind.Coin, x0 + dx, y);
+export function placePattern(q: Query, world: World, pattern: number, x0: number): number {
+  const at = (kind: number, dx: number, y: number) => place(q, world, kind, x0 + dx, y);
+  const coin = (dx: number, y: number) => at(Kind.Coin, dx, y);
   switch (pattern) {
     case 0:
-      place(q, Kind.Crate, x0, REST_Y[Kind.Crate]!);
+      at(Kind.Crate, 0, REST_Y[Kind.Crate]!);
       return 1;
     case 1:
-      place(q, Kind.Crate, x0, REST_Y[Kind.Crate]!);
+      at(Kind.Crate, 0, REST_Y[Kind.Crate]!);
       coin(-0.9, 1.7);
       coin(0, 2.2);
       coin(0.9, 1.7);
@@ -248,15 +275,15 @@ export function placePattern(q: Query, pattern: number, x0: number): number {
       for (let k = 0; k < 4; k++) coin(k * 0.9, REST_Y[Kind.Coin]!);
       return 3;
     case 3:
-      place(q, Kind.Fence, x0, REST_Y[Kind.Fence]!);
+      at(Kind.Fence, 0, REST_Y[Kind.Fence]!);
       return 1;
     case 4:
-      place(q, Kind.Fence, x0, REST_Y[Kind.Fence]!);
+      at(Kind.Fence, 0, REST_Y[Kind.Fence]!);
       coin(0, 2.9);
       return 1;
     default:
-      place(q, Kind.Crate, x0, REST_Y[Kind.Crate]!);
-      place(q, Kind.Crate, x0 + 4.2, REST_Y[Kind.Crate]!);
+      at(Kind.Crate, 0, REST_Y[Kind.Crate]!);
+      at(Kind.Crate, 4.2, REST_Y[Kind.Crate]!);
       return 5;
   }
 }
@@ -264,7 +291,7 @@ export function placePattern(q: Query, pattern: number, x0: number): number {
 /** Obstacle and coin patterns from the dice, one every Tuning.spawnInterval seconds (×0.85–1.25); fences after 60 m, double crates after 150 m. */
 export const Spawn = defineSystem(
   "Spawn",
-  { reads: [Tuning], writes: [og.Rng, Run, Actor, og.Transform, og.Mesh], after: ["Scroll"] },
+  { reads: [Tuning], writes: [og.Rng, Run, Actor, og.Transform, og.Sprite], after: ["Scroll"] },
   (q, time, world) => {
     const r = runnerRow(q);
     const rng = world.resource(og.Rng);
@@ -272,23 +299,45 @@ export const Spawn = defineSystem(
     const run = r.a.column(Run);
     const i = r.i;
     if (run.phase[i] !== Phase.Running) return;
-    run.spawnIn[i] = run.spawnIn[i]! - time.dt;
+    run.spawnIn[i] = run.spawnIn[i]! - time.scaledDt;
     if (run.spawnIn[i]! > 0) return;
     const distance = run.distance[i]!;
     const top = distance < 60 ? 2 : distance < 150 ? 4 : 5;
     const pattern = rng.value.integer(0, top);
-    const length = placePattern(q, pattern, SPAWN_X);
+    const length = placePattern(q, world, pattern, SPAWN_X);
     // Read the tuning after placing: the views stay valid within the call.
     const interval = r.a.column(Tuning).spawnInterval[i]!;
     run.spawnIn[i] = interval * rng.value.range(0.85, 1.25) + length / Math.max(1, run.speed[i]!);
   },
 );
 
+const GOLD = { r: 1, g: 0.66, b: 0.05 };
+
+/** A collected coin: "+10" rises from it while it pops (grows, lifts and fades). */
+function coinPop(world: World, coin: Entity, x: number, y: number, value: number): void {
+  og.render.floatingText(world, { text: `+${value}`, position: { x, y: y + 0.35, z: 5 }, size: 0.5, color: GOLD, rise: 1.1, spread: 0.15, lifetime: 0.7, pop: 0.6 });
+  og.tween.parallel(world, [
+    { entity: coin, field: "scale", to: [1.8, 1.8, 1], duration: 0.22, ease: "quadOut" },
+    { entity: coin, field: "position.y", to: [0.5], relative: true, duration: 0.22, ease: "quadOut" },
+    { entity: coin, component: og.Sprite, field: "opacity", to: [0], duration: 0.22, ease: "quadIn" },
+  ]);
+}
+
+/** A crash: hit stop, a shake and a kick, the courier knocked back and up, flashing red. */
+function crashFeel(world: World, runner: Entity): void {
+  og.time.hitStop(world, FEEL.hitStop);
+  og.camera.shake(world, FEEL.shake);
+  og.camera.kick(world, { x: -1, y: 0, z: 0 }, 0.3);
+  og.tween.to(world, { entity: runner, field: "position.x", to: [-FEEL.knockBack], relative: true, duration: 0.3, ease: "quartOut" });
+  // The red holds through the hit stop, then fades.
+  og.tween.flash(world, { entity: runner, color: FEEL.crashFlash, amount: 0.85, duration: 0.4 });
+}
+
 /** Overlap tests against the runner's hit box: a coin is collected, a crate or a fence ends the round. */
 export const Collide = defineSystem(
   "Collide",
-  { reads: [og.Transform, Tuning], writes: [Run, Actor, og.Mesh], after: ["Spawn"] },
-  (q) => {
+  { reads: [og.Transform, Tuning], writes: [Run, Actor], after: ["Spawn"] },
+  (q, _time, world) => {
     const r = runnerRow(q);
     if (r === null) return;
     const run = r.a.column(Run);
@@ -296,7 +345,8 @@ export const Collide = defineSystem(
     if (run.phase[ri] !== Phase.Running) return;
     const rp = r.a.column(og.Transform).position;
     const ra = r.a.column(Actor);
-    const rx = rp[ri * 3]!, ry = rp[ri * 3 + 1]!, rw = ra.w[ri]! / 2, rh = ra.h[ri]! / 2;
+    const value = r.a.column(Tuning).coinValue[ri]!;
+    const rx = rp[ri * 3]!, ry = rp[ri * 3 + 1]! + RUNNER_SIZE.y / 2, rw = ra.w[ri]! / 2, rh = ra.h[ri]! / 2;
     let crashed = false;
     for (const a of q.archetypes()) {
       const actor = a.column(Actor);
@@ -310,49 +360,93 @@ export const Collide = defineSystem(
         if (!overlap) continue;
         if (k === Kind.Coin) {
           actor.active[i] = 0;
-          a.column(og.Mesh).visible[i] = 0;
           run.coins[ri] = run.coins[ri]! + 1;
+          coinPop(world, a.entity(i), p[i * 3]!, p[i * 3 + 1]!, value);
         } else {
           crashed = true;
         }
       }
     }
-    run.score[ri] = Math.floor(run.distance[ri]!) + run.coins[ri]! * r.a.column(Tuning).coinValue[ri]!;
+    run.score[ri] = Math.floor(run.distance[ri]!) + run.coins[ri]! * value;
     if (crashed) {
       run.phase[ri] = Phase.Over;
       run.phaseTicks[ri] = 0;
       run.best[ri] = Math.max(run.best[ri]!, run.score[ri]!);
+      run.grounded[ri] = 0;
+      run.rising[ri] = 0;
+      ra.vy[ri] = FEEL.knockUp;
+      crashFeel(world, r.a.entity(ri));
     }
   },
 );
 
-/** Which look each row shows: the runner's pose from the phase and its stride; coins turn. */
-export const Animate = defineSystem(
-  "Animate",
-  { reads: [Run, Actor], writes: [og.Mesh, og.Transform], after: ["Collide"] },
-  (q, time) => {
+/** On each footfall of the run clip (its "step" events) a dust puff leaves the courier's feet. */
+export const Dust = defineSystem(
+  "Dust",
+  { reads: [og.FlipbookEvent, Run], writes: [Actor, og.Transform], after: ["Collide"] },
+  (q, _time, world) => {
     const r = runnerRow(q);
     if (r === null) return;
     const run = r.a.column(Run);
-    const ri = r.i;
-    const actor = r.a.column(Actor);
-    let look = 0;
-    if (run.phase[ri] === Phase.Over) look = 4;
-    else if (run.phase[ri] === Phase.Running) look = run.grounded[ri] ? 1 + (Math.floor(run.distance[ri]! / 0.9) % 2) : 3;
-    const looks = [actor.look0, actor.look1, actor.look2, actor.look3, actor.look4][look]!;
-    copyHandle(looks, ri, r.a.column(og.Mesh).material, ri);
-    // Coins turn: a triangle wave on their width (tick arithmetic only, so every host agrees).
-    const phase = (time.tick % 40) / 40;
-    const turn = 0.25 + 1.5 * Math.abs(phase - 0.5);
-    for (const a of q.archetypes()) {
-      const kind = a.column(Actor).kind;
-      const s = a.column(og.Transform).scale;
-      for (let i = 0; i < a.count; i++) if (kind[i] === Kind.Coin) s[i * 3] = 0.7 * turn;
+    if (run.phase[r.i] !== Phase.Running || !run.grounded[r.i]) return;
+    const runner = r.a.entity(r.i);
+    const rx = r.a.column(og.Transform).position[r.i * 3]!;
+    for (const e of world.events(og.FlipbookEvent)) {
+      if (e.entity !== runner || e.name !== "step") continue;
+      // The oldest puff (the leftmost; parked ones first) is reused.
+      let best: Row | null = null;
+      let bestX = Infinity;
+      for (const a of q.archetypes()) {
+        const actor = a.column(Actor);
+        const p = a.column(og.Transform).position;
+        for (let i = 0; i < a.count; i++) {
+          if (actor.kind[i] === Kind.Dust && p[i * 3]! < bestX) {
+            best = { a, i };
+            bestX = p[i * 3]!;
+          }
+        }
+      }
+      if (best === null) return;
+      const puff = best.a.entity(best.i);
+      og.tween.cancelEntity(world, puff);
+      const t = best.a.column(og.Transform);
+      t.position[best.i * 3] = rx - 0.25;
+      t.position[best.i * 3 + 1] = GROUND_Y + 0.08;
+      og.tween.parallel(world, [
+        { entity: puff, field: "scale", from: [1, 1, 1], to: [0.2, 0.2, 1], duration: 0.3, ease: "quadIn" },
+        { entity: puff, field: "position.y", to: [0.3], relative: true, duration: 0.3, ease: "quadOut" },
+        { entity: puff, component: og.Sprite, field: "opacity", from: [0.7], to: [0], duration: 0.3, ease: "linear" },
+      ]);
     }
   },
 );
 
-/** A rough advance for centring: Latin at 0.55 em, CJK at 1 em (the API has no text measure yet). */
+/** The courier's clip from the phase and the body (idle, run, jump, fall, crash), the run clip's pace from the speed, and the afterimage near top speed. */
+export const Animate = defineSystem(
+  "Animate",
+  { reads: [Run, Actor, Tuning], writes: [og.Flipbook, og.Afterimage], after: ["Dust"] },
+  (q) => {
+    for (const a of q.archetypes()) {
+      const run = a.column(Run);
+      const actor = a.column(Actor);
+      const flip = a.column(og.Flipbook);
+      const ghost = a.column(og.Afterimage);
+      const speedMax = a.column(Tuning).speedMax;
+      for (let i = 0; i < a.count; i++) {
+        if (actor.kind[i] !== Kind.Runner) continue;
+        const phase = run.phase[i];
+        let clip: number = COURIER.idle;
+        if (phase === Phase.Over) clip = COURIER.crash;
+        else if (phase === Phase.Running) clip = run.grounded[i] ? COURIER.run : actor.vy[i]! > 0 ? COURIER.jump : COURIER.fall;
+        flip.clip[i] = clip;
+        flip.speed[i] = clip === COURIER.run ? Math.min(1.6, Math.max(0.8, run.speed[i]! / 7)) : 1;
+        ghost.active[i] = phase === Phase.Running && run.speed[i]! >= speedMax[i]! - FEEL.afterimageBelowMax ? 1 : 0;
+      }
+    }
+  },
+);
+
+/** A rough advance for centring: Latin at 0.56 em, CJK at 1 em (the API has no text measure yet). */
 function width(text: string, size: number): number {
   let w = 0;
   for (const c of text) w += c.charCodeAt(0) > 0x2e80 ? 1 : c === " " ? 0.3 : 0.56;
@@ -397,6 +491,5 @@ export const HudText = defineSystem("Hud", { reads: [Run, Hud, Tuning], after: [
 });
 
 const WHITE = { r: 1, g: 1, b: 1 };
-const GOLD = { r: 1, g: 0.66, b: 0.05 };
 const MINT = { r: 0.3, g: 0.85, b: 0.75 };
 const CORAL = { r: 1, g: 0.25, b: 0.18 };

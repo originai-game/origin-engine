@@ -1,6 +1,7 @@
 // The round's whole loop through real input: the title waits for a press,
 // the run starts and speeds up, an untouched crate ends it on the game-over
 // card, and a press after the card's hold starts round two from zero.
+// Every system sees the rows it needs.
 import { playtest } from "@origingame/engine/playtest";
 import { OVER, RUNNING, TITLE, runOf, tap } from "./lib.ts";
 
@@ -54,10 +55,12 @@ export default playtest({
     t.equal(again.best, over.best, "the best score survives the restart");
 
     const world = run.json<{ systems: Array<{ name: string; matched: number | null }> }>("world.json");
-    for (const s of ["Director", "Jump", "Scroll", "Spawn", "Collide", "Animate"]) {
+    // 36 actor rows: sky, moon, 3 clouds, 3 city maps, 27 pooled rows and the runner; 33 of them draw an og.Sprite.
+    for (const [s, rows] of [["Director", 33], ["Jump", 36], ["Scroll", 36], ["Spawn", 33], ["Collide", 36], ["Dust", 36]] as const) {
       const sys = world.systems.find((x) => x.name === s);
-      t.ok(sys !== undefined && (sys.matched ?? 0) >= 40, `${s} sees every actor row (${sys?.matched})`);
+      t.equal(sys?.matched, rows, `${s} sees its ${rows} actor rows`);
     }
+    t.equal(world.systems.find((x) => x.name === "Animate")?.matched, 1, "Animate sees the runner row only");
     t.equal(world.systems.find((x) => x.name === "Hud")?.matched, 1, "Hud sees the runner row only");
   },
 });

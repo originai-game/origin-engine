@@ -1,0 +1,7 @@
+type import
+version 1
+---
+# Written by tools/make-assets.py: pixel art, lossless, sampled nearest.
+texture {
+  kind pixel
+}
