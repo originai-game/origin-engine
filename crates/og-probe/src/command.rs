@@ -156,6 +156,34 @@ pub struct CommandDesc {
 /// script continues.
 pub type CommandHandler = Rc<dyn Fn(&mut World, &[String]) -> Result<(), String>>;
 
+/// A registered dump: it answers JSON for the world as of its tick, which
+/// the probe writes as an output like `dump_entity`'s (see
+/// [`crate::Probe::register_dump`]).
+pub type DumpHandler = Rc<dyn Fn(&World, &[String]) -> Result<serde_json::Value, String>>;
+
+/// Actions an engine module asks for from inside a tick (an AI's game
+/// command), run at the start of the next tick before its scheduled steps.
+/// Cloning shares it.
+#[derive(Clone, Debug, Default)]
+pub struct Inbox(std::sync::Arc<std::sync::Mutex<Vec<Queued>>>);
+
+/// An action and its arguments, waiting in an [`Inbox`].
+type Queued = (String, Vec<String>);
+
+impl Inbox {
+    /// Queues `action` with `args` for the next tick's start.
+    pub fn push(&self, action: impl Into<String>, args: Vec<String>) {
+        self.0
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .push((action.into(), args));
+    }
+
+    pub(crate) fn take(&self) -> Vec<Queued> {
+        std::mem::take(&mut *self.0.lock().unwrap_or_else(|e| e.into_inner()))
+    }
+}
+
 /// One action as `help` lists it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CommandInfo {

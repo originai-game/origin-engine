@@ -30,7 +30,8 @@ pub mod server;
 mod value;
 
 pub use command::{
-    CommandDesc, CommandInfo, CommandStep, CommandsReport, LogLine, Output, ParseError, Payload,
+    CommandDesc, CommandInfo, CommandStep, CommandsReport, DumpHandler, Inbox, LogLine, Output,
+    ParseError, Payload,
 };
 pub use hooks::{Capture, Frame, Pick, Rebuilt, Reloader, StaticUi, UiElement, UiTree};
 pub use input::{InjectedInput, Input, InputSink, WorldInput};

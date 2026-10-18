@@ -4,7 +4,7 @@
 use crate::base64;
 use crate::command::{
     self, CORE_ACTIONS, CommandDesc, CommandHandler, CommandInfo, CommandStep, CommandsReport,
-    LogLine, Output, ParseError, Payload,
+    DumpHandler, Inbox, LogLine, Output, ParseError, Payload,
 };
 use crate::hooks::{Capture, Reloader, UiTree, find_by_id, find_by_text};
 use crate::input::{
@@ -105,7 +105,14 @@ enum Queued {
 
 struct Registered {
     desc: CommandDesc,
-    handler: CommandHandler,
+    handler: Handler,
+}
+
+#[derive(Clone)]
+enum Handler {
+    Act(CommandHandler),
+    /// A dump and the index of its optional path argument.
+    Dump(DumpHandler, usize),
 }
 
 type FactsFn = Box<dyn Fn(&World) -> Value>;
@@ -142,6 +149,7 @@ pub struct Probe {
     log: Vec<LogLine>,
     pointer: (f32, f32),
     target_missed: bool,
+    inbox: Inbox,
 }
 
 fn fault(context: &str, err: Error) -> Error {
@@ -225,6 +233,7 @@ impl Probe {
             log: Vec::new(),
             pointer: (0.0, 0.0),
             target_missed: false,
+            inbox: Inbox::default(),
         })
     }
 
@@ -334,10 +343,34 @@ impl Probe {
             name.to_owned(),
             Registered {
                 desc,
-                handler: Rc::new(handler),
+                handler: Handler::Act(Rc::new(handler)),
             },
         );
         Ok(())
+    }
+
+    /// Register a dump action: `handler` answers JSON for the world as of
+    /// the tick it runs (with the arguments before `path_arg`), written as
+    /// an output at `args[path_arg]` or `<name>-<tick>.json`. Refused as
+    /// [`Self::register_command`] refuses.
+    pub fn register_dump(
+        &mut self,
+        name: &str,
+        desc: CommandDesc,
+        path_arg: usize,
+        handler: impl Fn(&World, &[String]) -> Result<Value, String> + 'static,
+    ) -> og_core::Result<()> {
+        self.register_command(name, desc, |_, _| Ok(()))?;
+        if let Some(r) = self.commands.get_mut(name) {
+            r.handler = Handler::Dump(Rc::new(handler), path_arg);
+        }
+        Ok(())
+    }
+
+    /// The queue engine modules push actions into from inside a tick; they
+    /// run at the start of the next tick (before its scheduled steps).
+    pub fn inbox(&self) -> Inbox {
+        self.inbox.clone()
     }
 
     /// Every action the channel knows: core actions, then registered ones by name.
@@ -395,6 +428,19 @@ impl Probe {
 
     /// Run the steps due at the current tick (and earlier), in order.
     pub fn pump(&mut self, world: &mut World) {
+        for (action, args) in self.inbox.take() {
+            if self.quit {
+                break;
+            }
+            self.execute(
+                world,
+                CommandStep {
+                    at: 0.0,
+                    action,
+                    args,
+                },
+            );
+        }
         while !self.quit {
             let now = world.time().tick;
             let Some((&key, _)) = self.queue.first_key_value() else {
@@ -925,8 +971,27 @@ impl Probe {
                         "unknown action '{name}', skipped; `help` lists the actions"
                     ));
                 };
-                let handler = registered.handler.clone();
-                handler(world, args)
+                match registered.handler.clone() {
+                    Handler::Act(handler) => handler(world, args),
+                    Handler::Dump(handler, path_arg) => {
+                        let (head, path) = if args.len() > path_arg {
+                            (
+                                &args[..path_arg],
+                                args.get(path_arg).filter(|p| !p.is_empty()).cloned(),
+                            )
+                        } else {
+                            (&args[..], None)
+                        };
+                        let value = handler(world, head)?;
+                        self.outputs.push(Output {
+                            tick,
+                            action: name.to_owned(),
+                            path,
+                            payload: Payload::Json(value),
+                        });
+                        Ok(())
+                    }
+                }
             }
         }
     }
