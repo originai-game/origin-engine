@@ -78,6 +78,8 @@ pub(crate) struct Assets {
     /// Each sound's handle in the engine's audio bank, by `sounds` index:
     /// what og.load.sound answers and AudioSource.sound names.
     pub sound_handles: Vec<u64>,
+    /// og.load.skin's skins, by handle index.
+    pub skins: Vec<super::modules::LoadedSkin>,
     pub warnings: Vec<String>,
 }
 

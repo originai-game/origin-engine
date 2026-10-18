@@ -20,7 +20,7 @@ module audio {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 3169</sub>
+<sub>`api.ogt` line 3177</sub>
 
 ## Contents
 
@@ -124,7 +124,7 @@ component AudioSource {
 }
 ```
 
-<sub>`api.ogt` line 3194</sub>
+<sub>`api.ogt` line 3202</sub>
 
 <a id="record-AudioListener"></a>
 
@@ -150,7 +150,7 @@ component AudioListener {
 }
 ```
 
-<sub>`api.ogt` line 3250</sub>
+<sub>`api.ogt` line 3258</sub>
 
 <a id="record-Audio"></a>
 
@@ -197,7 +197,7 @@ resource Audio {
 }
 ```
 
-<sub>`api.ogt` line 3260</sub>
+<sub>`api.ogt` line 3268</sub>
 
 <a id="record-SoundStarted"></a>
 
@@ -222,7 +222,7 @@ event SoundStarted {
 }
 ```
 
-<sub>`api.ogt` line 3288</sub>
+<sub>`api.ogt` line 3296</sub>
 
 <a id="record-SoundEnded"></a>
 
@@ -249,7 +249,7 @@ event SoundEnded {
 }
 ```
 
-<sub>`api.ogt` line 3295</sub>
+<sub>`api.ogt` line 3303</sub>
 
 ## Types
 
@@ -278,7 +278,7 @@ enum AudioBus {
 }
 ```
 
-<sub>`api.ogt` line 3179</sub>
+<sub>`api.ogt` line 3187</sub>
 
 ## Column kinds
 
@@ -297,7 +297,7 @@ column AudioBus {
 }
 ```
 
-<sub>`api.ogt` line 3187</sub>
+<sub>`api.ogt` line 3195</sub>
 
 ## Constants
 
@@ -312,22 +312,22 @@ column AudioBus {
 const SOUND_FINISHED u32 0 "SoundEnded.reason: a one-shot played to its end."
 ```
 
-<sub>`api.ogt` line 3174</sub>
+<sub>`api.ogt` line 3182</sub>
 
 ```ogt
 const SOUND_STOPPED u32 1 "SoundEnded.reason: `playing` was set to false."
 ```
 
-<sub>`api.ogt` line 3175</sub>
+<sub>`api.ogt` line 3183</sub>
 
 ```ogt
 const SOUND_REMOVED u32 2 "SoundEnded.reason: the AudioSource was removed from a living entity."
 ```
 
-<sub>`api.ogt` line 3176</sub>
+<sub>`api.ogt` line 3184</sub>
 
 ```ogt
 const SOUND_REPLACED u32 3 "SoundEnded.reason: `sound` changed while it played."
 ```
 
-<sub>`api.ogt` line 3177</sub>
+<sub>`api.ogt` line 3185</sub>

@@ -621,6 +621,12 @@ pub fn og_load_texture(env: Env, world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_texture(&Host, world, path)
 }
 
+#[napi(js_name = "og_load_skin")]
+pub fn og_load_skin(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_skin(&Host, world, path)
+}
+
 #[napi(js_name = "og_load_sound_info")]
 pub fn og_load_sound_info(env: Env, world: u32, sound: f64) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -1045,6 +1051,24 @@ pub fn og_ui_remember(env: Env, id: String, value: f64) {
 pub fn og_ui_tick(env: Env) -> u32 {
     let _env = crate::EnvScope::enter(&env);
     <Host as UiApi>::og_ui_tick(&Host)
+}
+
+#[napi(js_name = "og_ui_counter")]
+pub fn og_ui_counter(env: Env, id: String, value: f64, desc: Option<String>) -> f64 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_counter(&Host, id, value, desc)
+}
+
+#[napi(js_name = "og_ui_burst")]
+pub fn og_ui_burst(env: Env, desc: Option<String>) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_burst(&Host, desc)
+}
+
+#[napi(js_name = "og_ui_screen_transition")]
+pub fn og_ui_screen_transition(env: Env, id: String, screen: String, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_screen_transition(&Host, id, screen, desc)
 }
 
 #[napi(js_name = "og_ui_preview_viewport")]

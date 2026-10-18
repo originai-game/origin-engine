@@ -57,7 +57,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-575 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+588 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -94,6 +94,7 @@ Field units the docs and Tune use.
 | [`Breakpoint`](ui.md#type-Breakpoint) | enum | ui | — |
 | [`BuildProfile`](probe.md#type-BuildProfile) | enum | probe | — |
 | [`BundleInfo`](load.md#type-BundleInfo) | struct | load | — |
+| [`BurstDesc`](ui.md#type-BurstDesc) | desc struct | ui | — |
 | [`ButtonDesc`](ui.md#type-ButtonDesc) | desc struct | ui | — |
 | [`ButtonVariant`](ui.md#type-ButtonVariant) | enum | ui | — |
 | [`Camera.lookAt`](camera.md#member-Camera-lookAt) | method | camera | `og_camera_look_at` |
@@ -120,6 +121,7 @@ Field units the docs and Tune use.
 | [`ControlSizes`](ui.md#type-ControlSizes) | struct | ui | — |
 | [`CooldownDesc`](ui.md#type-CooldownDesc) | desc struct | ui | — |
 | [`CoreAction`](commands.md#type-CoreAction) | enum | commands | — |
+| [`CounterDesc`](ui.md#type-CounterDesc) | desc struct | ui | — |
 | [`Cross`](ui.md#type-Cross) | enum | ui | — |
 | [`Currency`](ui.md#type-Currency) | desc struct | ui | — |
 | [`CutsceneDesc`](ui.md#type-CutsceneDesc) | desc struct | ui | — |
@@ -301,6 +303,7 @@ Field units the docs and Tune use.
 | [`og.load.gltfInfo`](load.md#fn-gltfInfo) | function | load | `og_load_gltf_info` |
 | [`og.load.lut`](load.md#fn-lut) | function | load | `og_load_lut` |
 | [`og.load.scene`](load.md#fn-scene) | function | load | `og_load_scene` |
+| [`og.load.skin`](load.md#fn-skin) | function | load | `og_load_skin` |
 | [`og.load.sound`](load.md#fn-sound) | function | load | `og_load_sound` |
 | [`og.load.soundInfo`](load.md#fn-soundInfo) | function | load | `og_load_sound_info` |
 | [`og.load.status`](load.md#fn-status) | function | load | `og_load_status` |
@@ -357,6 +360,7 @@ Field units the docs and Tune use.
 | [`og.ui.badge`](ui.md#fn-badge) | function | ui | `og_ui_badge` |
 | [`og.ui.bounds`](ui.md#fn-bounds) | function | ui | `og_ui_bounds` |
 | [`og.ui.breakpoint`](ui.md#fn-breakpoint) | function | ui | `og_ui_breakpoint` |
+| [`og.ui.burst`](ui.md#fn-burst) | function | ui | `og_ui_burst` |
 | [`og.ui.button`](ui.md#fn-button) | function | ui | `og_ui_button` |
 | [`og.ui.checkbox`](ui.md#fn-checkbox) | function | ui | `og_ui_checkbox` |
 | [`og.ui.checkboxList`](ui.md#fn-checkboxList) | function | ui | `og_ui_checkbox_list` |
@@ -368,6 +372,7 @@ Field units the docs and Tune use.
 | [`og.ui.configure`](ui.md#fn-configure) | function | ui | `og_ui_configure` |
 | [`og.ui.confirmDialog`](ui.md#fn-confirmDialog) | function | ui | — |
 | [`og.ui.cooldown`](ui.md#fn-cooldown) | function | ui | `og_ui_cooldown` |
+| [`og.ui.counter`](ui.md#fn-counter) | function | ui | `og_ui_counter` |
 | [`og.ui.cutscene`](ui.md#fn-cutscene) | function | ui | — |
 | [`og.ui.dialogue`](ui.md#fn-dialogue) | function | ui | `og_ui_dialogue` |
 | [`og.ui.dismissToast`](ui.md#fn-dismissToast) | function | ui | `og_ui_dismiss_toast` |
@@ -417,6 +422,7 @@ Field units the docs and Tune use.
 | [`og.ui.remember`](ui.md#fn-remember) | function | ui | `og_ui_remember` |
 | [`og.ui.resultsScreen`](ui.md#fn-resultsScreen) | function | ui | — |
 | [`og.ui.row`](ui.md#fn-row) | function | ui | — |
+| [`og.ui.screenTransition`](ui.md#fn-screenTransition) | function | ui | `og_ui_screen_transition` |
 | [`og.ui.scroll`](ui.md#fn-scroll) | function | ui | — |
 | [`og.ui.seconds`](ui.md#fn-seconds) | function | ui | `og_ui_seconds` |
 | [`og.ui.select`](ui.md#fn-select) | function | ui | `og_ui_select` |
@@ -528,6 +534,9 @@ Field units the docs and Tune use.
 | [`RuntimeProbe.tick`](probe.md#member-RuntimeProbe-tick) | method | probe | `og_runtime_probe_tick` |
 | [`RuntimeProbe.version`](probe.md#member-RuntimeProbe-version) | property | probe | `og_runtime_probe_get_version` |
 | [`Scheme`](ui.md#type-Scheme) | enum | ui | — |
+| [`ScreenTransitionDesc`](ui.md#type-ScreenTransitionDesc) | desc struct | ui | — |
+| [`ScreenTransitionResult`](ui.md#type-ScreenTransitionResult) | struct | ui | — |
+| [`ScreenWipe`](ui.md#type-ScreenWipe) | enum | ui | — |
 | [`ScrollDesc`](ui.md#type-ScrollDesc) | desc struct | ui | — |
 | [`SelectDesc`](ui.md#type-SelectDesc) | desc struct | ui | — |
 | [`SettingsChanged`](ui.md#type-SettingsChanged) | callback | ui | — |
@@ -552,6 +561,8 @@ Field units the docs and Tune use.
 | [`SkeletonAsset`](anim.md#type-SkeletonAsset) | handle | anim | — |
 | [`SkeletonAsset()`](anim.md#column-SkeletonAsset) | column kind | anim | — |
 | [`SkeletonDesc`](ui.md#type-SkeletonDesc) | desc struct | ui | — |
+| [`Skin`](load.md#type-Skin) | handle | load | — |
+| [`SkinPart`](ui.md#type-SkinPart) | enum | ui | — |
 | [`SliderDesc`](ui.md#type-SliderDesc) | desc struct | ui | — |
 | [`SliderResult`](ui.md#type-SliderResult) | struct | ui | — |
 | [`SlotMove`](ui.md#type-SlotMove) | struct | ui | — |
@@ -611,6 +622,7 @@ Field units the docs and Tune use.
 | [`UiElement`](probe.md#type-UiElement) | struct | probe | — |
 | [`UiItemBuild`](ui.md#type-UiItemBuild) | callback | ui | — |
 | [`UiRect`](ui.md#type-UiRect) | struct | ui | — |
+| [`UiSounds`](ui.md#type-UiSounds) | desc struct | ui | — |
 | [`UiTheme`](ui.md#type-UiTheme) | struct | ui | — |
 | [`Vector2`](math.md#type-Vector2) | struct | math | — |
 | [`Vector2()`](reflect.md#column-Vector2) | column kind | reflect | — |
@@ -618,6 +630,7 @@ Field units the docs and Tune use.
 | [`Vector3()`](reflect.md#column-Vector3) | column kind | reflect | — |
 | [`Viewport`](ui.md#type-Viewport) | struct | ui | — |
 | [`WheelInput`](input.md#type-WheelInput) | struct | input | — |
+| [`WipeSide`](ui.md#type-WipeSide) | enum | ui | — |
 | [`World`](world.md#type-World) | interface | world | — |
 | [`World.alive`](world.md#member-World-alive) | method | world | `og_world_alive` |
 | [`World.despawn`](world.md#member-World-despawn) | method | world | `og_world_despawn` |

@@ -853,6 +853,7 @@ export const load = Object.freeze({
   texture: (world: WorldImpl, path: string) => parse(abi().og_load_texture(world.id, path)),
   lut: (world: WorldImpl, path: string) => parse(abi().og_load_lut(world.id, path)),
   emitter: (world: WorldImpl, path: string) => parse(abi().og_load_emitter(world.id, path)),
+  skin: (world: WorldImpl, path: string) => parse(abi().og_load_skin(world.id, path)),
   soundInfo: (world: WorldImpl, sound: number) => parse(abi().og_load_sound_info(world.id, sound)),
   status: (world: WorldImpl, asset: number) => abi().og_load_status(world.id, asset),
   error: (world: WorldImpl, asset: number) => parse(abi().og_load_error(world.id, asset)),

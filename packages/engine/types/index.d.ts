@@ -3733,6 +3733,13 @@ export type Font = number & { readonly [handleType]: "Font" };
 export type Sound = number & { readonly [handleType]: "Sound" };
 
 /**
+ * A cooked UI skin: its atlas, fonts, icons and sounds loaded with it, for og.ui.configure.
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type Skin = number & { readonly [handleType]: "Skin" };
+
+/**
  * An Asset handle field.
  *
  * A `Asset` field: stored in a `Uint32Array` with stride 2.
@@ -3855,6 +3862,7 @@ export interface Model {
   /** The glTF asset. */
   asset: Asset;
 }
+
 
 
 
@@ -5562,6 +5570,12 @@ export interface ElementDesc {
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
    */
   readonly radius?: number;
+  /**
+   * The skin frame its background takes (a HUD capsule, a card); null is a plain fill. Without a skin the fill is drawn either way.
+   *
+   * @default null
+   */
+  readonly frame?: SkinPart | null;
 }
 
 /**
@@ -5606,6 +5620,12 @@ export interface LabelDesc {
    * @default "body"
    */
   readonly font?: FontRole;
+  /**
+   * A heading: a skin with a flourish frames it.
+   *
+   * @default false
+   */
+  readonly heading?: boolean;
 }
 
 /**
@@ -5977,7 +5997,7 @@ export interface UiDesc {
    */
   readonly reducedMotion?: boolean;
   /**
-   * The icon atlas og.ui.icon draws from.
+   * The icon atlas og.ui.icon draws from; null takes the skin's.
    *
    * @default null
    */
@@ -5988,7 +6008,76 @@ export interface UiDesc {
    * @default null
    */
   readonly toastAnchor?: Anchor | null;
+  /**
+   * A skin from og.load.skin: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the token look (fonts, icons and an accent given here still win); null is the platform tokens.
+   *
+   * @default null
+   */
+  readonly skin?: Skin | null;
+  /**
+   * Sounds for UI events (they win over the skin's).
+   *
+   * @default null
+   */
+  readonly sounds?: UiSounds | null;
 }
+
+/**
+ * Sounds the UI plays through og-audio (the ui bus) on its events; null is silent.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface UiSounds {
+  /**
+   * The pointer reaches a control.
+   *
+   * @default null
+   */
+  readonly hover?: Sound | null;
+  /**
+   * A control is pressed.
+   *
+   * @default null
+   */
+  readonly press?: Sound | null;
+  /**
+   * A dialog opens.
+   *
+   * @default null
+   */
+  readonly open?: Sound | null;
+  /**
+   * A dialog closes.
+   *
+   * @default null
+   */
+  readonly close?: Sound | null;
+  /**
+   * A success toast.
+   *
+   * @default null
+   */
+  readonly success?: Sound | null;
+  /**
+   * A refused press or a danger toast.
+   *
+   * @default null
+   */
+  readonly error?: Sound | null;
+}
+
+/**
+ * An element class a skin dresses with a nine-slice frame.
+ * - `"panel"`: Dialogs and screen panels.
+ * - `"card"`: Cards.
+ * - `"button"`: Buttons (with hover, pressed and disabled states).
+ * - `"field"`: Text fields.
+ * - `"slot"`: Inventory and grid cells.
+ * - `"tooltip"`: Tooltips.
+ * - `"capsule"`: HUD capsules and toasts.
+ * - `"track"`: A progress bar's track.
+ */
+export type SkinPart = "panel" | "card" | "button" | "field" | "slot" | "tooltip" | "capsule" | "track";
 
 /** One step of the type ramp. */
 export interface TypeStep {
@@ -6080,6 +6169,8 @@ export interface UiTheme {
    * The motion durations by name (instant, fast, base, slow, spring, bounce), in milliseconds.
    */
   readonly durationsMs: Readonly<Record<string, number>>;
+  /** The configured skin's name; empty for the platform tokens. */
+  readonly skin: string;
 }
 
 /** Builds a container's children: ui calls made inside it nest under the container. */
@@ -6127,8 +6218,9 @@ export type Anchor = "topLeft" | "top" | "topRight" | "left" | "center" | "right
  * - `"slideLeft"`: Enters from the right.
  * - `"slideRight"`: Enters from the left.
  * - `"scale"`: Grows from slightly smaller around its centre.
+ * - `"pop"`: Springs up from smaller around its centre, overshoots and settles.
  */
-export type TransitionKind = "fade" | "slideUp" | "slideDown" | "slideLeft" | "slideRight" | "scale";
+export type TransitionKind = "fade" | "slideUp" | "slideDown" | "slideLeft" | "slideRight" | "scale" | "pop";
 
 /**
  * A status tone, as the design language's badges and toasts.
@@ -6353,6 +6445,12 @@ export interface AnchorDesc {
    * @default false
    */
   readonly over?: boolean;
+  /**
+   * The skin frame its background takes; null is the panel's.
+   *
+   * @default null
+   */
+  readonly frame?: SkinPart | null;
 }
 
 /**
@@ -7185,6 +7283,198 @@ export type UiItemBuild = (index: number) => void;
 
 
 
+
+
+/**
+ * A number that counts to its value.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CounterDesc {
+  /**
+   * The type step; null is body.
+   *
+   * @default null
+   */
+  readonly step?: TypeStepName | null;
+  /**
+   * Which font: mono (the numeric role) for counts in a row, display for a big score.
+   *
+   * @default "body"
+   */
+  readonly font?: FontRole;
+  /**
+   * The ink; null is fg.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+  /**
+   * How it aligns in its width.
+   *
+   * @default "start"
+   */
+  readonly align?: TextAlign;
+  /**
+   * Its width; null fits the text.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * How long a change takes to count; 0 is 900 ms.
+   *
+   * @default 0
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly durationMs?: number;
+  /**
+   * Where the first count starts; null starts at the value (no count).
+   *
+   * @default null
+   */
+  readonly from?: number | null;
+  /**
+   * Digits after the point.
+   *
+   * @default 0
+   */
+  readonly decimals?: number;
+  /**
+   * Text before the number.
+   *
+   * @default ""
+   */
+  readonly prefix?: string;
+  /**
+   * Text after the number.
+   *
+   * @default ""
+   */
+  readonly suffix?: string;
+}
+
+
+/**
+ * Rays and sparks thrown from an element.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface BurstDesc {
+  /**
+   * Rays; 0 is 8.
+   *
+   * @default 0
+   */
+  readonly count?: number;
+  /**
+   * Their ink; null is the accent.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+  /**
+   * How far they fly from the element's centre; 0 is 1.4 times its size.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly radius?: number;
+  /**
+   * How long they fly; 0 is motion.duration.slow plus base.
+   *
+   * @default 0
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly durationMs?: number;
+  /**
+   * Wait this long after the element first appears.
+   *
+   * @default 0
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly delayMs?: number;
+}
+
+
+/**
+ * How a screen transition covers the old screen and reveals the new one.
+ * - `"fade"`: The cover fades in and out.
+ * - `"wipe"`: An edge sweeps across.
+ * - `"iris"`: A circle closes on the centre and opens again.
+ * - `"dissolve"`: Cells appear in a fixed scattered order.
+ * - `"slide"`: A sheet slides over and away.
+ */
+export type ScreenWipe = "fade" | "wipe" | "iris" | "dissolve" | "slide";
+
+/**
+ * Where a wipe or a slide comes from.
+ * - `"left"`: From the left.
+ * - `"right"`: From the right.
+ * - `"top"`: From the top.
+ * - `"bottom"`: From the bottom.
+ */
+export type WipeSide = "left" | "right" | "top" | "bottom";
+
+/**
+ * How a screen transition looks.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ScreenTransitionDesc {
+  /**
+   * The movement.
+   *
+   * @default "fade"
+   */
+  readonly kind?: ScreenWipe;
+  /**
+   * Cover and reveal together; 0 is twice motion.duration.slow.
+   *
+   * @default 0
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly durationMs?: number;
+  /**
+   * The cover's colour (the texture's tint); null is bg.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+  /**
+   * A texture stretched over the surface as the cover; null is the flat colour.
+   *
+   * @default null
+   */
+  readonly texture?: Texture | null;
+  /**
+   * Where a wipe or a slide comes from.
+   *
+   * @default "left"
+   */
+  readonly from?: WipeSide;
+}
+
+/** Where a screen transition is this tick. */
+export interface ScreenTransitionResult {
+  /** The screen to build this tick: the old one until the cover closes, then the new one. */
+  readonly shown: string;
+  /** The cover is closing over the old screen. */
+  readonly covering: boolean;
+  /** The cover is opening on the new screen. */
+  readonly revealing: boolean;
+  /**
+   * How much of the surface is covered, 0 to 1.
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly cover: number;
+}
 
 
 
@@ -9676,6 +9966,14 @@ export declare namespace og {
      */
     function texture(world: World, path: string): Result<Texture>;
     /**
+     * Load a cooked UI skin (an `.ogt` of `type skin`: the atlas and its nine-slice frames, ornaments, palette, radii, type ramp, fonts, icons, motion and sounds; the grammar is og-ui's `skin` module) for UiDesc.skin. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path.
+     *
+     * @param world The world whose UI uses it.
+     * @param path The asset id, such as `skins/pixel/skin.ogt`.
+     * @returns Refused for a path not in the bundle, a skin that does not parse (the reason names the line) or an asset it names that cannot load.
+     */
+    function skin(world: World, path: string): Result<Skin>;
+    /**
      * A loaded sound's format and length.
      *
      * @param world The world that owns the sound.
@@ -10345,6 +10643,29 @@ export declare namespace og {
     function remember(id: string, value: number): void;
     /** Frames the UI has built: its clock, for animations by the tick. */
     function tick(): number;
+    /**
+     * A number label that counts (ease-out cubic, by the tick) from where it was to the value each time the value changes, grouped with commas; a skin with motion.pop bumps it when it lands. Scores, currency, rewards.
+     *
+     * @param id Its id.
+     * @param value The value to count to.
+     * @param desc Look, duration, start and format.
+     * @returns The number shown this tick.
+     */
+    function counter(id: string, value: number, desc?: CounterDesc): number;
+    /**
+     * Throw rays and sparks from the element built just before (a star landing, a reward), once, from when it first appears. Off under reduced motion.
+     *
+     * @param desc Count, ink, reach and timing.
+     */
+    function burst(desc?: BurstDesc): void;
+    /**
+     * A transition between game screens drawn over the whole frame (through the overlay, over every other UI layer). Pass the screen the game wants every tick and build the one it answers: when the wanted screen changes the cover closes over the old screen for half the duration, the answer switches, and the cover opens on the new one. Deterministic by the tick; snapshots carry it; under reduced motion every kind is a fade.
+     *
+     * @param id Its id.
+     * @param screen The screen the game wants now.
+     * @param desc Kind, duration, colour or texture, side.
+     */
+    function screenTransition(id: string, screen: string, desc?: ScreenTransitionDesc): ScreenTransitionResult;
     /**
      * Lay the UI out for another play surface (a phone in portrait at 3x, a notch) until cleared with null: for headless previews and playtests of responsive layouts. Render at width x dpr by height x dpr (`og run --size`).
      *

@@ -20,7 +20,7 @@ module ui {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 3306</sub>
+<sub>`api.ogt` line 3314</sub>
 
 ## Contents
 
@@ -58,6 +58,8 @@ module ui {
 | [`FieldResult`](#type-FieldResult) | struct | A text field's response and its text after this tick's input. |
 | [`Viewport`](#type-Viewport) | struct | The play surface the UI lays out in. |
 | [`UiDesc`](#type-UiDesc) | desc struct | How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion and the icon atlas. |
+| [`UiSounds`](#type-UiSounds) | desc struct | Sounds the UI plays through og-audio (the ui bus) on its events; null is silent. |
+| [`SkinPart`](#type-SkinPart) | enum | An element class a skin dresses with a nine-slice frame. |
 | [`TypeStep`](#type-TypeStep) | struct | One step of the type ramp. |
 | [`ControlSizes`](#type-ControlSizes) | struct | The control, row and header heights and the gutter of the density in effect. |
 | [`UiTheme`](#type-UiTheme) | struct | The design tokens the UI draws with, read-only. |
@@ -176,6 +178,15 @@ module ui {
 | [`og.ui.memory`](#fn-memory) | function | A number the UI keeps for an id under the open element (a template's tab, a count-up's start tick), in snapshots like the rest of the UI state. Read it every tick it is used: an unused memory is dropped. |
 | [`og.ui.remember`](#fn-remember) | function | Set a number memory (see memory). |
 | [`og.ui.tick`](#fn-tick) | function | Frames the UI has built: its clock, for animations by the tick. |
+| [`CounterDesc`](#type-CounterDesc) | desc struct | A number that counts to its value. |
+| [`og.ui.counter`](#fn-counter) | function | A number label that counts (ease-out cubic, by the tick) from where it was to the value each time the value changes, grouped with commas; a skin with motion.pop bumps it when it lands. Scores, currency, rewards. |
+| [`BurstDesc`](#type-BurstDesc) | desc struct | Rays and sparks thrown from an element. |
+| [`og.ui.burst`](#fn-burst) | function | Throw rays and sparks from the element built just before (a star landing, a reward), once, from when it first appears. Off under reduced motion. |
+| [`ScreenWipe`](#type-ScreenWipe) | enum | How a screen transition covers the old screen and reveals the new one. |
+| [`WipeSide`](#type-WipeSide) | enum | Where a wipe or a slide comes from. |
+| [`ScreenTransitionDesc`](#type-ScreenTransitionDesc) | desc struct | How a screen transition looks. |
+| [`ScreenTransitionResult`](#type-ScreenTransitionResult) | struct | Where a screen transition is this tick. |
+| [`og.ui.screenTransition`](#fn-screenTransition) | function | A transition between game screens drawn over the whole frame (through the overlay, over every other UI layer). Pass the screen the game wants every tick and build the one it answers: when the wanted screen changes the cover closes over the old screen for half the duration, the answer switches, and the cover opens on the new one. Deterministic by the tick; snapshots carry it; under reduced motion every kind is a fade. |
 | [`og.ui.previewViewport`](#fn-previewViewport) | function | Lay the UI out for another play surface (a phone in portrait at 3x, a notch) until cleared with null: for headless previews and playtests of responsive layouts. Render at width x dpr by height x dpr (`og run --size`). |
 | [`GraphicsQuality`](#type-GraphicsQuality) | enum | A graphics quality preset. |
 | [`UiAction`](#type-UiAction) | callback | A template's action, by its id (a menu item, `buy:<item>`, `share`). |
@@ -272,7 +283,7 @@ fn configure {
 }
 ```
 
-<sub>`api.ogt` line 3728</sub>
+<sub>`api.ogt` line 3764</sub>
 
 <a id="fn-viewport"></a>
 
@@ -300,7 +311,7 @@ fn viewport {
 }
 ```
 
-<sub>`api.ogt` line 3735</sub>
+<sub>`api.ogt` line 3771</sub>
 
 <a id="fn-theme"></a>
 
@@ -328,7 +339,7 @@ fn theme {
 }
 ```
 
-<sub>`api.ogt` line 3741</sub>
+<sub>`api.ogt` line 3777</sub>
 
 <a id="fn-open"></a>
 
@@ -358,7 +369,7 @@ fn open {
 }
 ```
 
-<sub>`api.ogt` line 3747</sub>
+<sub>`api.ogt` line 3783</sub>
 
 <a id="fn-openPanel"></a>
 
@@ -388,7 +399,7 @@ fn openPanel {
 }
 ```
 
-<sub>`api.ogt` line 3754</sub>
+<sub>`api.ogt` line 3790</sub>
 
 <a id="fn-openScroll"></a>
 
@@ -418,7 +429,7 @@ fn openScroll {
 }
 ```
 
-<sub>`api.ogt` line 3761</sub>
+<sub>`api.ogt` line 3797</sub>
 
 <a id="fn-close"></a>
 
@@ -441,7 +452,7 @@ fn close {
 }
 ```
 
-<sub>`api.ogt` line 3768</sub>
+<sub>`api.ogt` line 3804</sub>
 
 <a id="fn-row"></a>
 
@@ -474,7 +485,7 @@ fn row {
 }
 ```
 
-<sub>`api.ogt` line 3773</sub>
+<sub>`api.ogt` line 3809</sub>
 
 <a id="fn-column"></a>
 
@@ -507,7 +518,7 @@ fn column {
 }
 ```
 
-<sub>`api.ogt` line 3782</sub>
+<sub>`api.ogt` line 3818</sub>
 
 <a id="fn-panel"></a>
 
@@ -540,7 +551,7 @@ fn panel {
 }
 ```
 
-<sub>`api.ogt` line 3791</sub>
+<sub>`api.ogt` line 3827</sub>
 
 <a id="fn-scroll"></a>
 
@@ -573,7 +584,7 @@ fn scroll {
 }
 ```
 
-<sub>`api.ogt` line 3800</sub>
+<sub>`api.ogt` line 3836</sub>
 
 <a id="fn-label"></a>
 
@@ -605,7 +616,7 @@ fn label {
 }
 ```
 
-<sub>`api.ogt` line 3809</sub>
+<sub>`api.ogt` line 3845</sub>
 
 <a id="fn-button"></a>
 
@@ -637,7 +648,7 @@ fn button {
 }
 ```
 
-<sub>`api.ogt` line 3817</sub>
+<sub>`api.ogt` line 3853</sub>
 
 <a id="fn-image"></a>
 
@@ -667,7 +678,7 @@ fn image {
 }
 ```
 
-<sub>`api.ogt` line 3825</sub>
+<sub>`api.ogt` line 3861</sub>
 
 <a id="fn-progress"></a>
 
@@ -699,7 +710,7 @@ fn progress {
 }
 ```
 
-<sub>`api.ogt` line 3832</sub>
+<sub>`api.ogt` line 3868</sub>
 
 <a id="fn-slider"></a>
 
@@ -731,7 +742,7 @@ fn slider {
 }
 ```
 
-<sub>`api.ogt` line 3840</sub>
+<sub>`api.ogt` line 3876</sub>
 
 <a id="fn-toggle"></a>
 
@@ -763,7 +774,7 @@ fn toggle {
 }
 ```
 
-<sub>`api.ogt` line 3848</sub>
+<sub>`api.ogt` line 3884</sub>
 
 <a id="fn-textField"></a>
 
@@ -795,7 +806,7 @@ fn textField {
 }
 ```
 
-<sub>`api.ogt` line 3856</sub>
+<sub>`api.ogt` line 3892</sub>
 
 <a id="fn-tooltip"></a>
 
@@ -823,7 +834,7 @@ fn tooltip {
 }
 ```
 
-<sub>`api.ogt` line 3864</sub>
+<sub>`api.ogt` line 3900</sub>
 
 <a id="fn-idi"></a>
 
@@ -854,7 +865,7 @@ fn idi {
 }
 ```
 
-<sub>`api.ogt` line 3870</sub>
+<sub>`api.ogt` line 3906</sub>
 
 <a id="fn-breakpoint"></a>
 
@@ -877,7 +888,7 @@ fn breakpoint {
 }
 ```
 
-<sub>`api.ogt` line 4343</sub>
+<sub>`api.ogt` line 4381</sub>
 
 <a id="fn-frameViewport"></a>
 
@@ -900,7 +911,7 @@ fn frameViewport {
 }
 ```
 
-<sub>`api.ogt` line 4348</sub>
+<sub>`api.ogt` line 4386</sub>
 
 <a id="fn-hasIcon"></a>
 
@@ -928,7 +939,7 @@ fn hasIcon {
 }
 ```
 
-<sub>`api.ogt` line 4353</sub>
+<sub>`api.ogt` line 4391</sub>
 
 <a id="fn-seconds"></a>
 
@@ -951,7 +962,7 @@ fn seconds {
 }
 ```
 
-<sub>`api.ogt` line 4359</sub>
+<sub>`api.ogt` line 4397</sub>
 
 <a id="fn-frameTheme"></a>
 
@@ -974,7 +985,7 @@ fn frameTheme {
 }
 ```
 
-<sub>`api.ogt` line 4364</sub>
+<sub>`api.ogt` line 4402</sub>
 
 <a id="fn-openAnchor"></a>
 
@@ -1004,7 +1015,7 @@ fn openAnchor {
 }
 ```
 
-<sub>`api.ogt` line 4369</sub>
+<sub>`api.ogt` line 4407</sub>
 
 <a id="fn-anchor"></a>
 
@@ -1037,7 +1048,7 @@ fn anchor {
 }
 ```
 
-<sub>`api.ogt` line 4376</sub>
+<sub>`api.ogt` line 4414</sub>
 
 <a id="fn-openTransition"></a>
 
@@ -1069,7 +1080,7 @@ fn openTransition {
 }
 ```
 
-<sub>`api.ogt` line 4385</sub>
+<sub>`api.ogt` line 4423</sub>
 
 <a id="fn-transition"></a>
 
@@ -1104,7 +1115,7 @@ fn transition {
 }
 ```
 
-<sub>`api.ogt` line 4393</sub>
+<sub>`api.ogt` line 4431</sub>
 
 <a id="fn-openModal"></a>
 
@@ -1136,7 +1147,7 @@ fn openModal {
 }
 ```
 
-<sub>`api.ogt` line 4403</sub>
+<sub>`api.ogt` line 4441</sub>
 
 <a id="fn-closeModal"></a>
 
@@ -1159,7 +1170,7 @@ fn closeModal {
 }
 ```
 
-<sub>`api.ogt` line 4411</sub>
+<sub>`api.ogt` line 4449</sub>
 
 <a id="fn-modal"></a>
 
@@ -1194,7 +1205,7 @@ fn modal {
 }
 ```
 
-<sub>`api.ogt` line 4416</sub>
+<sub>`api.ogt` line 4454</sub>
 
 <a id="fn-spotlight"></a>
 
@@ -1226,7 +1237,7 @@ fn spotlight {
 }
 ```
 
-<sub>`api.ogt` line 4426</sub>
+<sub>`api.ogt` line 4464</sub>
 
 <a id="fn-bounds"></a>
 
@@ -1254,7 +1265,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 4434</sub>
+<sub>`api.ogt` line 4472</sub>
 
 <a id="fn-openList"></a>
 
@@ -1284,7 +1295,7 @@ fn openList {
 }
 ```
 
-<sub>`api.ogt` line 4440</sub>
+<sub>`api.ogt` line 4478</sub>
 
 <a id="fn-openGrid"></a>
 
@@ -1314,7 +1325,7 @@ fn openGrid {
 }
 ```
 
-<sub>`api.ogt` line 4447</sub>
+<sub>`api.ogt` line 4485</sub>
 
 <a id="fn-listItem"></a>
 
@@ -1344,7 +1355,7 @@ fn listItem {
 }
 ```
 
-<sub>`api.ogt` line 4454</sub>
+<sub>`api.ogt` line 4492</sub>
 
 <a id="fn-gridItem"></a>
 
@@ -1374,7 +1385,7 @@ fn gridItem {
 }
 ```
 
-<sub>`api.ogt` line 4461</sub>
+<sub>`api.ogt` line 4499</sub>
 
 <a id="fn-closeList"></a>
 
@@ -1397,7 +1408,7 @@ fn closeList {
 }
 ```
 
-<sub>`api.ogt` line 4468</sub>
+<sub>`api.ogt` line 4506</sub>
 
 <a id="fn-dragging"></a>
 
@@ -1425,7 +1436,7 @@ fn dragging {
 }
 ```
 
-<sub>`api.ogt` line 4473</sub>
+<sub>`api.ogt` line 4511</sub>
 
 <a id="fn-list"></a>
 
@@ -1458,7 +1469,7 @@ fn list {
 }
 ```
 
-<sub>`api.ogt` line 4479</sub>
+<sub>`api.ogt` line 4517</sub>
 
 <a id="fn-grid"></a>
 
@@ -1491,7 +1502,7 @@ fn grid {
 }
 ```
 
-<sub>`api.ogt` line 4488</sub>
+<sub>`api.ogt` line 4526</sub>
 
 <a id="fn-tabs"></a>
 
@@ -1525,7 +1536,7 @@ fn tabs {
 }
 ```
 
-<sub>`api.ogt` line 4497</sub>
+<sub>`api.ogt` line 4535</sub>
 
 <a id="fn-select"></a>
 
@@ -1559,7 +1570,7 @@ fn select {
 }
 ```
 
-<sub>`api.ogt` line 4506</sub>
+<sub>`api.ogt` line 4544</sub>
 
 <a id="fn-stepper"></a>
 
@@ -1591,7 +1602,7 @@ fn stepper {
 }
 ```
 
-<sub>`api.ogt` line 4515</sub>
+<sub>`api.ogt` line 4553</sub>
 
 <a id="fn-radio"></a>
 
@@ -1625,7 +1636,7 @@ fn radio {
 }
 ```
 
-<sub>`api.ogt` line 4523</sub>
+<sub>`api.ogt` line 4561</sub>
 
 <a id="fn-checkbox"></a>
 
@@ -1657,7 +1668,7 @@ fn checkbox {
 }
 ```
 
-<sub>`api.ogt` line 4532</sub>
+<sub>`api.ogt` line 4570</sub>
 
 <a id="fn-checkboxList"></a>
 
@@ -1689,7 +1700,7 @@ fn checkboxList {
 }
 ```
 
-<sub>`api.ogt` line 4540</sub>
+<sub>`api.ogt` line 4578</sub>
 
 <a id="fn-chip"></a>
 
@@ -1721,7 +1732,7 @@ fn chip {
 }
 ```
 
-<sub>`api.ogt` line 4548</sub>
+<sub>`api.ogt` line 4586</sub>
 
 <a id="fn-badge"></a>
 
@@ -1753,7 +1764,7 @@ fn badge {
 }
 ```
 
-<sub>`api.ogt` line 4556</sub>
+<sub>`api.ogt` line 4594</sub>
 
 <a id="fn-divider"></a>
 
@@ -1783,7 +1794,7 @@ fn divider {
 }
 ```
 
-<sub>`api.ogt` line 4564</sub>
+<sub>`api.ogt` line 4602</sub>
 
 <a id="fn-spacer"></a>
 
@@ -1813,7 +1824,7 @@ fn spacer {
 }
 ```
 
-<sub>`api.ogt` line 4571</sub>
+<sub>`api.ogt` line 4609</sub>
 
 <a id="fn-keyValue"></a>
 
@@ -1847,7 +1858,7 @@ fn keyValue {
 }
 ```
 
-<sub>`api.ogt` line 4578</sub>
+<sub>`api.ogt` line 4616</sub>
 
 <a id="fn-skeleton"></a>
 
@@ -1877,7 +1888,7 @@ fn skeleton {
 }
 ```
 
-<sub>`api.ogt` line 4587</sub>
+<sub>`api.ogt` line 4625</sub>
 
 <a id="fn-spinner"></a>
 
@@ -1907,7 +1918,7 @@ fn spinner {
 }
 ```
 
-<sub>`api.ogt` line 4594</sub>
+<sub>`api.ogt` line 4632</sub>
 
 <a id="fn-icon"></a>
 
@@ -1939,7 +1950,7 @@ fn icon {
 }
 ```
 
-<sub>`api.ogt` line 4601</sub>
+<sub>`api.ogt` line 4639</sub>
 
 <a id="fn-meter"></a>
 
@@ -1973,7 +1984,7 @@ fn meter {
 }
 ```
 
-<sub>`api.ogt` line 4609</sub>
+<sub>`api.ogt` line 4647</sub>
 
 <a id="fn-cooldown"></a>
 
@@ -2005,7 +2016,7 @@ fn cooldown {
 }
 ```
 
-<sub>`api.ogt` line 4618</sub>
+<sub>`api.ogt` line 4656</sub>
 
 <a id="fn-minimap"></a>
 
@@ -2035,7 +2046,7 @@ fn minimap {
 }
 ```
 
-<sub>`api.ogt` line 4626</sub>
+<sub>`api.ogt` line 4664</sub>
 
 <a id="fn-dialogue"></a>
 
@@ -2065,7 +2076,7 @@ fn dialogue {
 }
 ```
 
-<sub>`api.ogt` line 4633</sub>
+<sub>`api.ogt` line 4671</sub>
 
 <a id="fn-joystick"></a>
 
@@ -2095,7 +2106,7 @@ fn joystick {
 }
 ```
 
-<sub>`api.ogt` line 4640</sub>
+<sub>`api.ogt` line 4678</sub>
 
 <a id="fn-dpad"></a>
 
@@ -2125,7 +2136,7 @@ fn dpad {
 }
 ```
 
-<sub>`api.ogt` line 4647</sub>
+<sub>`api.ogt` line 4685</sub>
 
 <a id="fn-actionButton"></a>
 
@@ -2157,7 +2168,7 @@ fn actionButton {
 }
 ```
 
-<sub>`api.ogt` line 4654</sub>
+<sub>`api.ogt` line 4692</sub>
 
 <a id="fn-toast"></a>
 
@@ -2189,7 +2200,7 @@ fn toast {
 }
 ```
 
-<sub>`api.ogt` line 4662</sub>
+<sub>`api.ogt` line 4700</sub>
 
 <a id="fn-dismissToast"></a>
 
@@ -2219,7 +2230,7 @@ fn dismissToast {
 }
 ```
 
-<sub>`api.ogt` line 4670</sub>
+<sub>`api.ogt` line 4708</sub>
 
 <a id="fn-navigate"></a>
 
@@ -2249,7 +2260,7 @@ fn navigate {
 }
 ```
 
-<sub>`api.ogt` line 4677</sub>
+<sub>`api.ogt` line 4715</sub>
 
 <a id="fn-back"></a>
 
@@ -2272,7 +2283,7 @@ fn back {
 }
 ```
 
-<sub>`api.ogt` line 4684</sub>
+<sub>`api.ogt` line 4722</sub>
 
 <a id="fn-setNavigation"></a>
 
@@ -2300,7 +2311,7 @@ fn setNavigation {
 }
 ```
 
-<sub>`api.ogt` line 4689</sub>
+<sub>`api.ogt` line 4727</sub>
 
 <a id="fn-memory"></a>
 
@@ -2330,7 +2341,7 @@ fn memory {
 }
 ```
 
-<sub>`api.ogt` line 4695</sub>
+<sub>`api.ogt` line 4733</sub>
 
 <a id="fn-remember"></a>
 
@@ -2360,7 +2371,7 @@ fn remember {
 }
 ```
 
-<sub>`api.ogt` line 4702</sub>
+<sub>`api.ogt` line 4740</sub>
 
 <a id="fn-tick"></a>
 
@@ -2383,7 +2394,99 @@ fn tick {
 }
 ```
 
-<sub>`api.ogt` line 4709</sub>
+<sub>`api.ogt` line 4747</sub>
+
+<a id="fn-counter"></a>
+
+### `og.ui.counter`
+
+A number label that counts (ease-out cubic, by the tick) from where it was to the value each time the value changes, grouped with commas; a skin with motion.pop bumps it when it lands. Scores, currency, rewards.
+
+```ts
+og.ui.counter(id: string, value: number, desc?: CounterDesc): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `value` | `number` | no | The value to count to. |
+| `desc` | `CounterDesc` | yes | Look, duration, start and format. |
+
+**Returns** `number`: The number shown this tick.
+
+Binding symbol `og_ui_counter` · publish builds: kept
+
+```ogt
+fn counter {
+  doc "A number label that counts (ease-out cubic, by the tick) from where it was to the value each time the value changes, grouped with commas; a skin with motion.pop bumps it when it lands. Scores, currency, rewards."
+  param id String "Its id."
+  param value f64 "The value to count to."
+  param desc CounterDesc "Look, duration, start and format."
+  returns f64 "The number shown this tick."
+}
+```
+
+<sub>`api.ogt` line 4770</sub>
+
+<a id="fn-burst"></a>
+
+### `og.ui.burst`
+
+Throw rays and sparks from the element built just before (a star landing, a reward), once, from when it first appears. Off under reduced motion.
+
+```ts
+og.ui.burst(desc?: BurstDesc): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `desc` | `BurstDesc` | yes | Count, ink, reach and timing. |
+
+**Returns** `void`.
+
+Binding symbol `og_ui_burst` · publish builds: kept
+
+```ogt
+fn burst {
+  doc "Throw rays and sparks from the element built just before (a star landing, a reward), once, from when it first appears. Off under reduced motion."
+  param desc BurstDesc "Count, ink, reach and timing."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 4797</sub>
+
+<a id="fn-screenTransition"></a>
+
+### `og.ui.screenTransition`
+
+A transition between game screens drawn over the whole frame (through the overlay, over every other UI layer). Pass the screen the game wants every tick and build the one it answers: when the wanted screen changes the cover closes over the old screen for half the duration, the answer switches, and the cover opens on the new one. Deterministic by the tick; snapshots carry it; under reduced motion every kind is a fade.
+
+```ts
+og.ui.screenTransition(id: string, screen: string, desc?: ScreenTransitionDesc): ScreenTransitionResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `screen` | `string` | no | The screen the game wants now. |
+| `desc` | `ScreenTransitionDesc` | yes | Kind, duration, colour or texture, side. |
+
+**Returns** `ScreenTransitionResult`.
+
+Binding symbol `og_ui_screen_transition` · publish builds: kept
+
+```ogt
+fn screenTransition {
+  doc "A transition between game screens drawn over the whole frame (through the overlay, over every other UI layer). Pass the screen the game wants every tick and build the one it answers: when the wanted screen changes the cover closes over the old screen for half the duration, the answer switches, and the cover opens on the new one. Deterministic by the tick; snapshots carry it; under reduced motion every kind is a fade."
+  param id String "Its id."
+  param screen String "The screen the game wants now."
+  param desc ScreenTransitionDesc "Kind, duration, colour or texture, side."
+  returns ScreenTransitionResult
+}
+```
+
+<sub>`api.ogt` line 4843</sub>
 
 <a id="fn-previewViewport"></a>
 
@@ -2413,7 +2516,7 @@ fn previewViewport {
 }
 ```
 
-<sub>`api.ogt` line 4714</sub>
+<sub>`api.ogt` line 4851</sub>
 
 <a id="fn-mainMenu"></a>
 
@@ -2444,7 +2547,7 @@ fn mainMenu {
 }
 ```
 
-<sub>`api.ogt` line 5241</sub>
+<sub>`api.ogt` line 5378</sub>
 
 <a id="fn-pauseMenu"></a>
 
@@ -2475,7 +2578,7 @@ fn pauseMenu {
 }
 ```
 
-<sub>`api.ogt` line 5249</sub>
+<sub>`api.ogt` line 5386</sub>
 
 <a id="fn-settingsScreen"></a>
 
@@ -2506,7 +2609,7 @@ fn settingsScreen {
 }
 ```
 
-<sub>`api.ogt` line 5257</sub>
+<sub>`api.ogt` line 5394</sub>
 
 <a id="fn-platformerHud"></a>
 
@@ -2537,7 +2640,7 @@ fn platformerHud {
 }
 ```
 
-<sub>`api.ogt` line 5265</sub>
+<sub>`api.ogt` line 5402</sub>
 
 <a id="fn-shooterHud"></a>
 
@@ -2568,7 +2671,7 @@ fn shooterHud {
 }
 ```
 
-<sub>`api.ogt` line 5273</sub>
+<sub>`api.ogt` line 5410</sub>
 
 <a id="fn-puzzleHud"></a>
 
@@ -2599,7 +2702,7 @@ fn puzzleHud {
 }
 ```
 
-<sub>`api.ogt` line 5281</sub>
+<sub>`api.ogt` line 5418</sub>
 
 <a id="fn-idleHud"></a>
 
@@ -2630,7 +2733,7 @@ fn idleHud {
 }
 ```
 
-<sub>`api.ogt` line 5289</sub>
+<sub>`api.ogt` line 5426</sub>
 
 <a id="fn-racingHud"></a>
 
@@ -2661,7 +2764,7 @@ fn racingHud {
 }
 ```
 
-<sub>`api.ogt` line 5297</sub>
+<sub>`api.ogt` line 5434</sub>
 
 <a id="fn-cutscene"></a>
 
@@ -2692,7 +2795,7 @@ fn cutscene {
 }
 ```
 
-<sub>`api.ogt` line 5305</sub>
+<sub>`api.ogt` line 5442</sub>
 
 <a id="fn-shopScreen"></a>
 
@@ -2723,7 +2826,7 @@ fn shopScreen {
 }
 ```
 
-<sub>`api.ogt` line 5313</sub>
+<sub>`api.ogt` line 5450</sub>
 
 <a id="fn-inventoryScreen"></a>
 
@@ -2754,7 +2857,7 @@ fn inventoryScreen {
 }
 ```
 
-<sub>`api.ogt` line 5321</sub>
+<sub>`api.ogt` line 5458</sub>
 
 <a id="fn-levelSelect"></a>
 
@@ -2785,7 +2888,7 @@ fn levelSelect {
 }
 ```
 
-<sub>`api.ogt` line 5329</sub>
+<sub>`api.ogt` line 5466</sub>
 
 <a id="fn-resultsScreen"></a>
 
@@ -2816,7 +2919,7 @@ fn resultsScreen {
 }
 ```
 
-<sub>`api.ogt` line 5337</sub>
+<sub>`api.ogt` line 5474</sub>
 
 <a id="fn-leaderboardScreen"></a>
 
@@ -2847,7 +2950,7 @@ fn leaderboardScreen {
 }
 ```
 
-<sub>`api.ogt` line 5345</sub>
+<sub>`api.ogt` line 5482</sub>
 
 <a id="fn-tutorialOverlay"></a>
 
@@ -2878,7 +2981,7 @@ fn tutorialOverlay {
 }
 ```
 
-<sub>`api.ogt` line 5353</sub>
+<sub>`api.ogt` line 5490</sub>
 
 <a id="fn-loadingScreen"></a>
 
@@ -2909,7 +3012,7 @@ fn loadingScreen {
 }
 ```
 
-<sub>`api.ogt` line 5361</sub>
+<sub>`api.ogt` line 5498</sub>
 
 <a id="fn-confirmDialog"></a>
 
@@ -2940,7 +3043,7 @@ fn confirmDialog {
 }
 ```
 
-<sub>`api.ogt` line 5369</sub>
+<sub>`api.ogt` line 5506</sub>
 
 <a id="fn-alertDialog"></a>
 
@@ -2971,7 +3074,7 @@ fn alertDialog {
 }
 ```
 
-<sub>`api.ogt` line 5377</sub>
+<sub>`api.ogt` line 5514</sub>
 
 ## Types
 
@@ -2996,7 +3099,7 @@ enum Direction {
 }
 ```
 
-<sub>`api.ogt` line 3311</sub>
+<sub>`api.ogt` line 3319</sub>
 
 <a id="type-Align"></a>
 
@@ -3023,7 +3126,7 @@ enum Align {
 }
 ```
 
-<sub>`api.ogt` line 3317</sub>
+<sub>`api.ogt` line 3325</sub>
 
 <a id="type-Cross"></a>
 
@@ -3050,7 +3153,7 @@ enum Cross {
 }
 ```
 
-<sub>`api.ogt` line 3325</sub>
+<sub>`api.ogt` line 3333</sub>
 
 <a id="type-TextAlign"></a>
 
@@ -3075,7 +3178,7 @@ enum TextAlign {
 }
 ```
 
-<sub>`api.ogt` line 3333</sub>
+<sub>`api.ogt` line 3341</sub>
 
 <a id="type-FontRole"></a>
 
@@ -3100,7 +3203,7 @@ enum FontRole {
 }
 ```
 
-<sub>`api.ogt` line 3340</sub>
+<sub>`api.ogt` line 3348</sub>
 
 <a id="type-ButtonVariant"></a>
 
@@ -3127,7 +3230,7 @@ enum ButtonVariant {
 }
 ```
 
-<sub>`api.ogt` line 3347</sub>
+<sub>`api.ogt` line 3355</sub>
 
 <a id="type-ControlSize"></a>
 
@@ -3152,7 +3255,7 @@ enum ControlSize {
 }
 ```
 
-<sub>`api.ogt` line 3355</sub>
+<sub>`api.ogt` line 3363</sub>
 
 <a id="type-Scheme"></a>
 
@@ -3175,7 +3278,7 @@ enum Scheme {
 }
 ```
 
-<sub>`api.ogt` line 3362</sub>
+<sub>`api.ogt` line 3370</sub>
 
 <a id="type-DensityMode"></a>
 
@@ -3202,7 +3305,7 @@ enum DensityMode {
 }
 ```
 
-<sub>`api.ogt` line 3368</sub>
+<sub>`api.ogt` line 3376</sub>
 
 <a id="type-ThemeColor"></a>
 
@@ -3311,7 +3414,7 @@ enum ThemeColor {
 }
 ```
 
-<sub>`api.ogt` line 3376</sub>
+<sub>`api.ogt` line 3384</sub>
 
 <a id="type-TypeStepName"></a>
 
@@ -3372,7 +3475,7 @@ enum TypeStepName {
 }
 ```
 
-<sub>`api.ogt` line 3425</sub>
+<sub>`api.ogt` line 3433</sub>
 
 <a id="type-SizeRange"></a>
 
@@ -3399,7 +3502,7 @@ struct SizeRange {
 }
 ```
 
-<sub>`api.ogt` line 3450</sub>
+<sub>`api.ogt` line 3458</sub>
 
 <a id="type-FixedSize"></a>
 
@@ -3420,7 +3523,7 @@ struct FixedSize {
 }
 ```
 
-<sub>`api.ogt` line 3462</sub>
+<sub>`api.ogt` line 3470</sub>
 
 <a id="type-PercentSize"></a>
 
@@ -3441,7 +3544,7 @@ struct PercentSize {
 }
 ```
 
-<sub>`api.ogt` line 3469</sub>
+<sub>`api.ogt` line 3477</sub>
 
 <a id="type-Size"></a>
 
@@ -3469,7 +3572,7 @@ union Size {
 }
 ```
 
-<sub>`api.ogt` line 3476</sub>
+<sub>`api.ogt` line 3484</sub>
 
 <a id="type-Insets"></a>
 
@@ -3502,7 +3605,7 @@ struct Insets {
 }
 ```
 
-<sub>`api.ogt` line 3485</sub>
+<sub>`api.ogt` line 3493</sub>
 
 <a id="type-Paint"></a>
 
@@ -3532,7 +3635,7 @@ struct Paint {
 }
 ```
 
-<sub>`api.ogt` line 3501</sub>
+<sub>`api.ogt` line 3509</sub>
 
 <a id="type-ElementDesc"></a>
 
@@ -3556,6 +3659,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `interactive` | `boolean` | `false` | — | — | — | Report a Response from close(), as a button does. |
 | `background` | `Paint \| null` | `null` | — | — | — | Its fill; null draws none. |
 | `radius` | `number` | `0` | — | `cssPx` | — | Corner radius. |
+| `frame` | `SkinPart \| null` | `null` | — | — | — | The skin frame its background takes (a HUD capsule, a card); null is a plain fill. Without a skin the fill is drawn either way. |
 
 ```ogt
 struct ElementDesc {
@@ -3577,10 +3681,11 @@ struct ElementDesc {
   field radius f32 "Corner radius." {
     unit cssPx
   }
+  field frame Option.SkinPart "The skin frame its background takes (a HUD capsule, a card); null is a plain fill. Without a skin the fill is drawn either way."
 }
 ```
 
-<sub>`api.ogt` line 3513</sub>
+<sub>`api.ogt` line 3521</sub>
 
 <a id="type-LabelDesc"></a>
 
@@ -3598,6 +3703,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `nowrap` | `boolean` | `false` | — | — | — | Keep to one line (breaking only at `\n`). |
 | `width` | `Size \| null` | `null` | — | — | — | Its width; null fits the text. |
 | `font` | `FontRole` | `"body"` | — | — | — | Which font. |
+| `heading` | `boolean` | `false` | — | — | — | A heading: a skin with a flourish frames it. |
 
 ```ogt
 struct LabelDesc {
@@ -3609,10 +3715,11 @@ struct LabelDesc {
   field nowrap bool "Keep to one line (breaking only at `\\n`)."
   field width Option.Size "Its width; null fits the text."
   field font FontRole "Which font."
+  field heading bool "A heading: a skin with a flourish frames it."
 }
 ```
 
-<sub>`api.ogt` line 3534</sub>
+<sub>`api.ogt` line 3543</sub>
 
 <a id="type-ButtonDesc"></a>
 
@@ -3640,7 +3747,7 @@ struct ButtonDesc {
 }
 ```
 
-<sub>`api.ogt` line 3545</sub>
+<sub>`api.ogt` line 3555</sub>
 
 <a id="type-PanelDesc"></a>
 
@@ -3676,7 +3783,7 @@ struct PanelDesc {
 }
 ```
 
-<sub>`api.ogt` line 3554</sub>
+<sub>`api.ogt` line 3564</sub>
 
 <a id="type-ScrollDesc"></a>
 
@@ -3706,7 +3813,7 @@ struct ScrollDesc {
 }
 ```
 
-<sub>`api.ogt` line 3567</sub>
+<sub>`api.ogt` line 3577</sub>
 
 <a id="type-ImageDesc"></a>
 
@@ -3736,7 +3843,7 @@ struct ImageDesc {
 }
 ```
 
-<sub>`api.ogt` line 3578</sub>
+<sub>`api.ogt` line 3588</sub>
 
 <a id="type-ProgressDesc"></a>
 
@@ -3758,7 +3865,7 @@ struct ProgressDesc {
 }
 ```
 
-<sub>`api.ogt` line 3588</sub>
+<sub>`api.ogt` line 3598</sub>
 
 <a id="type-SliderDesc"></a>
 
@@ -3788,7 +3895,7 @@ struct SliderDesc {
 }
 ```
 
-<sub>`api.ogt` line 3594</sub>
+<sub>`api.ogt` line 3604</sub>
 
 <a id="type-FieldDesc"></a>
 
@@ -3814,7 +3921,7 @@ struct FieldDesc {
 }
 ```
 
-<sub>`api.ogt` line 3605</sub>
+<sub>`api.ogt` line 3615</sub>
 
 <a id="type-Response"></a>
 
@@ -3845,7 +3952,7 @@ struct Response {
 }
 ```
 
-<sub>`api.ogt` line 3613</sub>
+<sub>`api.ogt` line 3623</sub>
 
 <a id="type-SliderResult"></a>
 
@@ -3866,7 +3973,7 @@ struct SliderResult {
 }
 ```
 
-<sub>`api.ogt` line 3624</sub>
+<sub>`api.ogt` line 3634</sub>
 
 <a id="type-ToggleResult"></a>
 
@@ -3887,7 +3994,7 @@ struct ToggleResult {
 }
 ```
 
-<sub>`api.ogt` line 3630</sub>
+<sub>`api.ogt` line 3640</sub>
 
 <a id="type-FieldResult"></a>
 
@@ -3908,7 +4015,7 @@ struct FieldResult {
 }
 ```
 
-<sub>`api.ogt` line 3636</sub>
+<sub>`api.ogt` line 3646</sub>
 
 <a id="type-Viewport"></a>
 
@@ -3943,7 +4050,7 @@ struct Viewport {
 }
 ```
 
-<sub>`api.ogt` line 3642</sub>
+<sub>`api.ogt` line 3652</sub>
 
 <a id="type-UiDesc"></a>
 
@@ -3964,8 +4071,10 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `accentHue` | `HueName \| null` | `null` | — | — | — | A token hue as the game's accent (its hover, active, ink and focus tones derived as the tokens derive amber's); null keeps amber. |
 | `accentColor` | `Color \| null` | `null` | — | — | — | An sRGB colour as the game's accent, when no hue is given. |
 | `reducedMotion` | `boolean` | `false` | — | — | — | Transitions only fade; sheens stop (prefers-reduced-motion). |
-| `icons` | `IconAtlasDesc \| null` | `null` | — | — | — | The icon atlas og.ui.icon draws from. |
+| `icons` | `IconAtlasDesc \| null` | `null` | — | — | — | The icon atlas og.ui.icon draws from; null takes the skin's. |
 | `toastAnchor` | `Anchor \| null` | `null` | — | — | — | Where toasts stack; null is the bottom centre. |
+| `skin` | `Skin \| null` | `null` | — | — | — | A skin from og.load.skin: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the token look (fonts, icons and an accent given here still win); null is the platform tokens. |
+| `sounds` | `UiSounds \| null` | `null` | — | — | — | Sounds for UI events (they win over the skin's). |
 
 ```ogt
 struct UiDesc {
@@ -3980,12 +4089,81 @@ struct UiDesc {
   field accentHue Option.HueName "A token hue as the game's accent (its hover, active, ink and focus tones derived as the tokens derive amber's); null keeps amber."
   field accentColor Option.Color "An sRGB colour as the game's accent, when no hue is given."
   field reducedMotion bool "Transitions only fade; sheens stop (prefers-reduced-motion)."
-  field icons Option.IconAtlasDesc "The icon atlas og.ui.icon draws from."
+  field icons Option.IconAtlasDesc "The icon atlas og.ui.icon draws from; null takes the skin's."
   field toastAnchor Option.Anchor "Where toasts stack; null is the bottom centre."
+  field skin Option.Skin "A skin from og.load.skin: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the token look (fonts, icons and an accent given here still win); null is the platform tokens."
+  field sounds Option.UiSounds "Sounds for UI events (they win over the skin's)."
 }
 ```
 
-<sub>`api.ogt` line 3658</sub>
+<sub>`api.ogt` line 3668</sub>
+
+<a id="type-UiSounds"></a>
+
+### `UiSounds` (desc struct)
+
+Sounds the UI plays through og-audio (the ui bus) on its events; null is silent.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `hover` | `Sound \| null` | `null` | — | — | — | The pointer reaches a control. |
+| `press` | `Sound \| null` | `null` | — | — | — | A control is pressed. |
+| `open` | `Sound \| null` | `null` | — | — | — | A dialog opens. |
+| `close` | `Sound \| null` | `null` | — | — | — | A dialog closes. |
+| `success` | `Sound \| null` | `null` | — | — | — | A success toast. |
+| `error` | `Sound \| null` | `null` | — | — | — | A refused press or a danger toast. |
+
+```ogt
+struct UiSounds {
+  doc "Sounds the UI plays through og-audio (the ui bus) on its events; null is silent."
+  desc true
+  field hover Option.Sound "The pointer reaches a control."
+  field press Option.Sound "A control is pressed."
+  field open Option.Sound "A dialog opens."
+  field close Option.Sound "A dialog closes."
+  field success Option.Sound "A success toast."
+  field error Option.Sound "A refused press or a danger toast."
+}
+```
+
+<sub>`api.ogt` line 3686</sub>
+
+<a id="type-SkinPart"></a>
+
+### `SkinPart` (enum)
+
+An element class a skin dresses with a nine-slice frame.
+
+A string: one of the variants below. The zero value is `"panel"`.
+
+| Variant | Doc |
+|---|---|
+| `"panel"` | Dialogs and screen panels. |
+| `"card"` | Cards. |
+| `"button"` | Buttons (with hover, pressed and disabled states). |
+| `"field"` | Text fields. |
+| `"slot"` | Inventory and grid cells. |
+| `"tooltip"` | Tooltips. |
+| `"capsule"` | HUD capsules and toasts. |
+| `"track"` | A progress bar's track. |
+
+```ogt
+enum SkinPart {
+  doc "An element class a skin dresses with a nine-slice frame."
+  variant panel "Dialogs and screen panels."
+  variant card "Cards."
+  variant button "Buttons (with hover, pressed and disabled states)."
+  variant field "Text fields."
+  variant slot "Inventory and grid cells."
+  variant tooltip "Tooltips."
+  variant capsule "HUD capsules and toasts."
+  variant track "A progress bar's track."
+}
+```
+
+<sub>`api.ogt` line 3697</sub>
 
 <a id="type-TypeStep"></a>
 
@@ -4016,7 +4194,7 @@ struct TypeStep {
 }
 ```
 
-<sub>`api.ogt` line 3674</sub>
+<sub>`api.ogt` line 3709</sub>
 
 <a id="type-ControlSizes"></a>
 
@@ -4061,7 +4239,7 @@ struct ControlSizes {
 }
 ```
 
-<sub>`api.ogt` line 3688</sub>
+<sub>`api.ogt` line 3723</sub>
 
 <a id="type-UiTheme"></a>
 
@@ -4078,6 +4256,7 @@ The design tokens the UI draws with, read-only.
 | `typeRamp` | `Readonly<Record<string, TypeStep>>` | `{}` | — | — | — | Each TypeStepName's step. |
 | `sizes` | `ControlSizes` | `{ controlSm: 0, controlMd: 0, controlLg: 0, gutter: 0, header: 0, row: 0, section: 0 }` | — | — | — | The control sizes of the density in effect. |
 | `durationsMs` | `Readonly<Record<string, number>>` | `{}` | — | — | — | The motion durations by name (instant, fast, base, slow, spring, bounce), in milliseconds. |
+| `skin` | `string` | `""` | — | — | — | The configured skin's name; empty for the platform tokens. |
 
 ```ogt
 struct UiTheme {
@@ -4089,10 +4268,11 @@ struct UiTheme {
   field typeRamp Map.TypeStep "Each TypeStepName's step."
   field sizes ControlSizes "The control sizes of the density in effect."
   field durationsMs Map.f32 "The motion durations by name (instant, fast, base, slow, spring, bounce), in milliseconds."
+  field skin String "The configured skin's name; empty for the platform tokens."
 }
 ```
 
-<sub>`api.ogt` line 3713</sub>
+<sub>`api.ogt` line 3748</sub>
 
 <a id="type-UiBuild"></a>
 
@@ -4112,7 +4292,7 @@ callback UiBuild {
 }
 ```
 
-<sub>`api.ogt` line 3724</sub>
+<sub>`api.ogt` line 3760</sub>
 
 <a id="type-Anchor"></a>
 
@@ -4149,7 +4329,7 @@ enum Anchor {
 }
 ```
 
-<sub>`api.ogt` line 3880</sub>
+<sub>`api.ogt` line 3916</sub>
 
 <a id="type-TransitionKind"></a>
 
@@ -4167,6 +4347,7 @@ A string: one of the variants below. The zero value is `"fade"`.
 | `"slideLeft"` | Enters from the right. |
 | `"slideRight"` | Enters from the left. |
 | `"scale"` | Grows from slightly smaller around its centre. |
+| `"pop"` | Springs up from smaller around its centre, overshoots and settles. |
 
 ```ogt
 enum TransitionKind {
@@ -4177,10 +4358,11 @@ enum TransitionKind {
   variant slideLeft "Enters from the right."
   variant slideRight "Enters from the left."
   variant scale "Grows from slightly smaller around its centre."
+  variant pop "Springs up from smaller around its centre, overshoots and settles."
 }
 ```
 
-<sub>`api.ogt` line 3893</sub>
+<sub>`api.ogt` line 3929</sub>
 
 <a id="type-Tone"></a>
 
@@ -4213,7 +4395,7 @@ enum Tone {
 }
 ```
 
-<sub>`api.ogt` line 3903</sub>
+<sub>`api.ogt` line 3940</sub>
 
 <a id="type-MeterKind"></a>
 
@@ -4240,7 +4422,7 @@ enum MeterKind {
 }
 ```
 
-<sub>`api.ogt` line 3914</sub>
+<sub>`api.ogt` line 3951</sub>
 
 <a id="type-Breakpoint"></a>
 
@@ -4267,7 +4449,7 @@ enum Breakpoint {
 }
 ```
 
-<sub>`api.ogt` line 3922</sub>
+<sub>`api.ogt` line 3959</sub>
 
 <a id="type-Contrast"></a>
 
@@ -4290,7 +4472,7 @@ enum Contrast {
 }
 ```
 
-<sub>`api.ogt` line 3930</sub>
+<sub>`api.ogt` line 3967</sub>
 
 <a id="type-HueName"></a>
 
@@ -4333,7 +4515,7 @@ enum HueName {
 }
 ```
 
-<sub>`api.ogt` line 3936</sub>
+<sub>`api.ogt` line 3973</sub>
 
 <a id="type-NavIntent"></a>
 
@@ -4368,7 +4550,7 @@ enum NavIntent {
 }
 ```
 
-<sub>`api.ogt` line 3952</sub>
+<sub>`api.ogt` line 3989</sub>
 
 <a id="type-UiRect"></a>
 
@@ -4401,7 +4583,7 @@ struct UiRect {
 }
 ```
 
-<sub>`api.ogt` line 3964</sub>
+<sub>`api.ogt` line 4001</sub>
 
 <a id="type-IconAtlasDesc"></a>
 
@@ -4435,7 +4617,7 @@ struct IconAtlasDesc {
 }
 ```
 
-<sub>`api.ogt` line 3980</sub>
+<sub>`api.ogt` line 4017</sub>
 
 <a id="type-AnchorDesc"></a>
 
@@ -4461,6 +4643,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `width` | `Size \| null` | `null` | — | — | — | Its width; null fits the content. |
 | `height` | `Size \| null` | `null` | — | — | — | Its height; null fits the content. |
 | `over` | `boolean` | `false` | — | — | — | Draw over dialogs and spotlights (a tutorial callout, a dragged item); the default draws under them. |
+| `frame` | `SkinPart \| null` | `null` | — | — | — | The skin frame its background takes; null is the panel's. |
 
 ```ogt
 struct AnchorDesc {
@@ -4488,10 +4671,11 @@ struct AnchorDesc {
   field width Option.Size "Its width; null fits the content."
   field height Option.Size "Its height; null fits the content."
   field over bool "Draw over dialogs and spotlights (a tutorial callout, a dragged item); the default draws under them."
+  field frame Option.SkinPart "The skin frame its background takes; null is the panel's."
 }
 ```
 
-<sub>`api.ogt` line 3995</sub>
+<sub>`api.ogt` line 4032</sub>
 
 <a id="type-TransitionDesc"></a>
 
@@ -4525,7 +4709,7 @@ struct TransitionDesc {
 }
 ```
 
-<sub>`api.ogt` line 4022</sub>
+<sub>`api.ogt` line 4060</sub>
 
 <a id="type-Presence"></a>
 
@@ -4552,7 +4736,7 @@ struct Presence {
 }
 ```
 
-<sub>`api.ogt` line 4037</sub>
+<sub>`api.ogt` line 4075</sub>
 
 <a id="type-ModalDesc"></a>
 
@@ -4586,7 +4770,7 @@ struct ModalDesc {
 }
 ```
 
-<sub>`api.ogt` line 4047</sub>
+<sub>`api.ogt` line 4085</sub>
 
 <a id="type-ModalResult"></a>
 
@@ -4607,7 +4791,7 @@ struct ModalResult {
 }
 ```
 
-<sub>`api.ogt` line 4059</sub>
+<sub>`api.ogt` line 4097</sub>
 
 <a id="type-SpotlightDesc"></a>
 
@@ -4632,7 +4816,7 @@ struct SpotlightDesc {
 }
 ```
 
-<sub>`api.ogt` line 4065</sub>
+<sub>`api.ogt` line 4103</sub>
 
 <a id="type-ListDesc"></a>
 
@@ -4671,7 +4855,7 @@ struct ListDesc {
 }
 ```
 
-<sub>`api.ogt` line 4074</sub>
+<sub>`api.ogt` line 4112</sub>
 
 <a id="type-ListRange"></a>
 
@@ -4692,7 +4876,7 @@ struct ListRange {
 }
 ```
 
-<sub>`api.ogt` line 4091</sub>
+<sub>`api.ogt` line 4129</sub>
 
 <a id="type-ListResult"></a>
 
@@ -4715,7 +4899,7 @@ struct ListResult {
 }
 ```
 
-<sub>`api.ogt` line 4097</sub>
+<sub>`api.ogt` line 4135</sub>
 
 <a id="type-GridDesc"></a>
 
@@ -4762,7 +4946,7 @@ struct GridDesc {
 }
 ```
 
-<sub>`api.ogt` line 4104</sub>
+<sub>`api.ogt` line 4142</sub>
 
 <a id="type-TabsDesc"></a>
 
@@ -4786,7 +4970,7 @@ struct TabsDesc {
 }
 ```
 
-<sub>`api.ogt` line 4127</sub>
+<sub>`api.ogt` line 4165</sub>
 
 <a id="type-ChoiceResult"></a>
 
@@ -4807,7 +4991,7 @@ struct ChoiceResult {
 }
 ```
 
-<sub>`api.ogt` line 4134</sub>
+<sub>`api.ogt` line 4172</sub>
 
 <a id="type-SelectDesc"></a>
 
@@ -4833,7 +5017,7 @@ struct SelectDesc {
 }
 ```
 
-<sub>`api.ogt` line 4140</sub>
+<sub>`api.ogt` line 4178</sub>
 
 <a id="type-StepperDesc"></a>
 
@@ -4865,7 +5049,7 @@ struct StepperDesc {
 }
 ```
 
-<sub>`api.ogt` line 4148</sub>
+<sub>`api.ogt` line 4186</sub>
 
 <a id="type-StepperResult"></a>
 
@@ -4886,7 +5070,7 @@ struct StepperResult {
 }
 ```
 
-<sub>`api.ogt` line 4161</sub>
+<sub>`api.ogt` line 4199</sub>
 
 <a id="type-RadioDesc"></a>
 
@@ -4908,7 +5092,7 @@ struct RadioDesc {
 }
 ```
 
-<sub>`api.ogt` line 4167</sub>
+<sub>`api.ogt` line 4205</sub>
 
 <a id="type-CheckListResult"></a>
 
@@ -4929,7 +5113,7 @@ struct CheckListResult {
 }
 ```
 
-<sub>`api.ogt` line 4173</sub>
+<sub>`api.ogt` line 4211</sub>
 
 <a id="type-ToastDesc"></a>
 
@@ -4956,7 +5140,7 @@ struct ToastDesc {
 }
 ```
 
-<sub>`api.ogt` line 4179</sub>
+<sub>`api.ogt` line 4217</sub>
 
 <a id="type-ChipDesc"></a>
 
@@ -4980,7 +5164,7 @@ struct ChipDesc {
 }
 ```
 
-<sub>`api.ogt` line 4189</sub>
+<sub>`api.ogt` line 4227</sub>
 
 <a id="type-MeterDesc"></a>
 
@@ -5015,7 +5199,7 @@ struct MeterDesc {
 }
 ```
 
-<sub>`api.ogt` line 4196</sub>
+<sub>`api.ogt` line 4234</sub>
 
 <a id="type-CooldownDesc"></a>
 
@@ -5044,7 +5228,7 @@ struct CooldownDesc {
 }
 ```
 
-<sub>`api.ogt` line 4210</sub>
+<sub>`api.ogt` line 4248</sub>
 
 <a id="type-IconDesc"></a>
 
@@ -5071,7 +5255,7 @@ struct IconDesc {
 }
 ```
 
-<sub>`api.ogt` line 4221</sub>
+<sub>`api.ogt` line 4259</sub>
 
 <a id="type-MapMarker"></a>
 
@@ -5103,7 +5287,7 @@ struct MapMarker {
 }
 ```
 
-<sub>`api.ogt` line 4231</sub>
+<sub>`api.ogt` line 4269</sub>
 
 <a id="type-MinimapDesc"></a>
 
@@ -5136,7 +5320,7 @@ struct MinimapDesc {
 }
 ```
 
-<sub>`api.ogt` line 4244</sub>
+<sub>`api.ogt` line 4282</sub>
 
 <a id="type-DialogueDesc"></a>
 
@@ -5172,7 +5356,7 @@ struct DialogueDesc {
 }
 ```
 
-<sub>`api.ogt` line 4257</sub>
+<sub>`api.ogt` line 4295</sub>
 
 <a id="type-DialogueResult"></a>
 
@@ -5195,7 +5379,7 @@ struct DialogueResult {
 }
 ```
 
-<sub>`api.ogt` line 4271</sub>
+<sub>`api.ogt` line 4309</sub>
 
 <a id="type-JoystickDesc"></a>
 
@@ -5226,7 +5410,7 @@ struct JoystickDesc {
 }
 ```
 
-<sub>`api.ogt` line 4278</sub>
+<sub>`api.ogt` line 4316</sub>
 
 <a id="type-JoystickResult"></a>
 
@@ -5249,7 +5433,7 @@ struct JoystickResult {
 }
 ```
 
-<sub>`api.ogt` line 4292</sub>
+<sub>`api.ogt` line 4330</sub>
 
 <a id="type-DpadDesc"></a>
 
@@ -5274,7 +5458,7 @@ struct DpadDesc {
 }
 ```
 
-<sub>`api.ogt` line 4299</sub>
+<sub>`api.ogt` line 4337</sub>
 
 <a id="type-DpadResult"></a>
 
@@ -5299,7 +5483,7 @@ struct DpadResult {
 }
 ```
 
-<sub>`api.ogt` line 4308</sub>
+<sub>`api.ogt` line 4346</sub>
 
 <a id="type-ActionButtonDesc"></a>
 
@@ -5328,7 +5512,7 @@ struct ActionButtonDesc {
 }
 ```
 
-<sub>`api.ogt` line 4316</sub>
+<sub>`api.ogt` line 4354</sub>
 
 <a id="type-SkeletonDesc"></a>
 
@@ -5357,7 +5541,7 @@ struct SkeletonDesc {
 }
 ```
 
-<sub>`api.ogt` line 4327</sub>
+<sub>`api.ogt` line 4365</sub>
 
 <a id="type-UiItemBuild"></a>
 
@@ -5382,7 +5566,205 @@ callback UiItemBuild {
 }
 ```
 
-<sub>`api.ogt` line 4338</sub>
+<sub>`api.ogt` line 4376</sub>
+
+<a id="type-CounterDesc"></a>
+
+### `CounterDesc` (desc struct)
+
+A number that counts to its value.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `step` | `TypeStepName \| null` | `null` | — | — | — | The type step; null is body. |
+| `font` | `FontRole` | `"body"` | — | — | — | Which font: mono (the numeric role) for counts in a row, display for a big score. |
+| `color` | `Paint \| null` | `null` | — | — | — | The ink; null is fg. |
+| `align` | `TextAlign` | `"start"` | — | — | — | How it aligns in its width. |
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null fits the text. |
+| `durationMs` | `number` | `0` | ≥ 0 | `ms` | — | How long a change takes to count; 0 is 900 ms. |
+| `from` | `number \| null` | `null` | — | — | — | Where the first count starts; null starts at the value (no count). |
+| `decimals` | `number` | `0` | — | — | — | Digits after the point. |
+| `prefix` | `string` | `""` | — | — | — | Text before the number. |
+| `suffix` | `string` | `""` | — | — | — | Text after the number. |
+
+```ogt
+struct CounterDesc {
+  doc "A number that counts to its value."
+  desc true
+  field step Option.TypeStepName "The type step; null is body."
+  field font FontRole "Which font: mono (the numeric role) for counts in a row, display for a big score."
+  field color Option.Paint "The ink; null is fg."
+  field align TextAlign "How it aligns in its width."
+  field width Option.Size "Its width; null fits the text."
+  field durationMs f32 "How long a change takes to count; 0 is 900 ms." {
+    unit ms
+    min 0
+  }
+  field from Option.f64 "Where the first count starts; null starts at the value (no count)."
+  field decimals u32 "Digits after the point."
+  field prefix String "Text before the number."
+  field suffix String "Text after the number."
+}
+```
+
+<sub>`api.ogt` line 4752</sub>
+
+<a id="type-BurstDesc"></a>
+
+### `BurstDesc` (desc struct)
+
+Rays and sparks thrown from an element.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `count` | `number` | `0` | — | — | — | Rays; 0 is 8. |
+| `color` | `Paint \| null` | `null` | — | — | — | Their ink; null is the accent. |
+| `radius` | `number` | `0` | ≥ 0 | `cssPx` | — | How far they fly from the element's centre; 0 is 1.4 times its size. |
+| `durationMs` | `number` | `0` | ≥ 0 | `ms` | — | How long they fly; 0 is motion.duration.slow plus base. |
+| `delayMs` | `number` | `0` | ≥ 0 | `ms` | — | Wait this long after the element first appears. |
+
+```ogt
+struct BurstDesc {
+  doc "Rays and sparks thrown from an element."
+  desc true
+  field count u32 "Rays; 0 is 8."
+  field color Option.Paint "Their ink; null is the accent."
+  field radius f32 "How far they fly from the element's centre; 0 is 1.4 times its size." {
+    unit cssPx
+    min 0
+  }
+  field durationMs f32 "How long they fly; 0 is motion.duration.slow plus base." {
+    unit ms
+    min 0
+  }
+  field delayMs f32 "Wait this long after the element first appears." {
+    unit ms
+    min 0
+  }
+}
+```
+
+<sub>`api.ogt` line 4778</sub>
+
+<a id="type-ScreenWipe"></a>
+
+### `ScreenWipe` (enum)
+
+How a screen transition covers the old screen and reveals the new one.
+
+A string: one of the variants below. The zero value is `"fade"`.
+
+| Variant | Doc |
+|---|---|
+| `"fade"` | The cover fades in and out. |
+| `"wipe"` | An edge sweeps across. |
+| `"iris"` | A circle closes on the centre and opens again. |
+| `"dissolve"` | Cells appear in a fixed scattered order. |
+| `"slide"` | A sheet slides over and away. |
+
+```ogt
+enum ScreenWipe {
+  doc "How a screen transition covers the old screen and reveals the new one."
+  variant fade "The cover fades in and out."
+  variant wipe "An edge sweeps across."
+  variant iris "A circle closes on the centre and opens again."
+  variant dissolve "Cells appear in a fixed scattered order."
+  variant slide "A sheet slides over and away."
+}
+```
+
+<sub>`api.ogt` line 4803</sub>
+
+<a id="type-WipeSide"></a>
+
+### `WipeSide` (enum)
+
+Where a wipe or a slide comes from.
+
+A string: one of the variants below. The zero value is `"left"`.
+
+| Variant | Doc |
+|---|---|
+| `"left"` | From the left. |
+| `"right"` | From the right. |
+| `"top"` | From the top. |
+| `"bottom"` | From the bottom. |
+
+```ogt
+enum WipeSide {
+  doc "Where a wipe or a slide comes from."
+  variant left "From the left."
+  variant right "From the right."
+  variant top "From the top."
+  variant bottom "From the bottom."
+}
+```
+
+<sub>`api.ogt` line 4812</sub>
+
+<a id="type-ScreenTransitionDesc"></a>
+
+### `ScreenTransitionDesc` (desc struct)
+
+How a screen transition looks.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `kind` | `ScreenWipe` | `"fade"` | — | — | — | The movement. |
+| `durationMs` | `number` | `0` | ≥ 0 | `ms` | — | Cover and reveal together; 0 is twice motion.duration.slow. |
+| `color` | `Paint \| null` | `null` | — | — | — | The cover's colour (the texture's tint); null is bg. |
+| `texture` | `Texture \| null` | `null` | — | — | — | A texture stretched over the surface as the cover; null is the flat colour. |
+| `from` | `WipeSide` | `"left"` | — | — | — | Where a wipe or a slide comes from. |
+
+```ogt
+struct ScreenTransitionDesc {
+  doc "How a screen transition looks."
+  desc true
+  field kind ScreenWipe "The movement."
+  field durationMs f32 "Cover and reveal together; 0 is twice motion.duration.slow." {
+    unit ms
+    min 0
+  }
+  field color Option.Paint "The cover's colour (the texture's tint); null is bg."
+  field texture Option.Texture "A texture stretched over the surface as the cover; null is the flat colour."
+  field from WipeSide "Where a wipe or a slide comes from."
+}
+```
+
+<sub>`api.ogt` line 4820</sub>
+
+<a id="type-ScreenTransitionResult"></a>
+
+### `ScreenTransitionResult` (struct)
+
+Where a screen transition is this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `shown` | `string` | `""` | — | — | — | The screen to build this tick: the old one until the cover closes, then the new one. |
+| `covering` | `boolean` | `false` | — | — | — | The cover is closing over the old screen. |
+| `revealing` | `boolean` | `false` | — | — | — | The cover is opening on the new screen. |
+| `cover` | `number` | `0` | — | `ratio` | — | How much of the surface is covered, 0 to 1. |
+
+```ogt
+struct ScreenTransitionResult {
+  doc "Where a screen transition is this tick."
+  field shown String "The screen to build this tick: the old one until the cover closes, then the new one."
+  field covering bool "The cover is closing over the old screen."
+  field revealing bool "The cover is opening on the new screen."
+  field cover f32 "How much of the surface is covered, 0 to 1." {
+    unit ratio
+  }
+}
+```
+
+<sub>`api.ogt` line 4833</sub>
 
 <a id="type-GraphicsQuality"></a>
 
@@ -5407,7 +5789,7 @@ enum GraphicsQuality {
 }
 ```
 
-<sub>`api.ogt` line 4723</sub>
+<sub>`api.ogt` line 4860</sub>
 
 <a id="type-UiAction"></a>
 
@@ -5432,7 +5814,7 @@ callback UiAction {
 }
 ```
 
-<sub>`api.ogt` line 4730</sub>
+<sub>`api.ogt` line 4867</sub>
 
 <a id="type-SettingsChanged"></a>
 
@@ -5457,7 +5839,7 @@ callback SettingsChanged {
 }
 ```
 
-<sub>`api.ogt` line 4735</sub>
+<sub>`api.ogt` line 4872</sub>
 
 <a id="type-MenuItem"></a>
 
@@ -5485,7 +5867,7 @@ struct MenuItem {
 }
 ```
 
-<sub>`api.ogt` line 4740</sub>
+<sub>`api.ogt` line 4877</sub>
 
 <a id="type-MenuResult"></a>
 
@@ -5504,7 +5886,7 @@ struct MenuResult {
 }
 ```
 
-<sub>`api.ogt` line 4749</sub>
+<sub>`api.ogt` line 4886</sub>
 
 <a id="type-MainMenuDesc"></a>
 
@@ -5534,7 +5916,7 @@ struct MainMenuDesc {
 }
 ```
 
-<sub>`api.ogt` line 4754</sub>
+<sub>`api.ogt` line 4891</sub>
 
 <a id="type-PauseMenuDesc"></a>
 
@@ -5564,7 +5946,7 @@ struct PauseMenuDesc {
 }
 ```
 
-<sub>`api.ogt` line 4764</sub>
+<sub>`api.ogt` line 4901</sub>
 
 <a id="type-KeyBinding"></a>
 
@@ -5590,7 +5972,7 @@ struct KeyBinding {
 }
 ```
 
-<sub>`api.ogt` line 4775</sub>
+<sub>`api.ogt` line 4912</sub>
 
 <a id="type-LanguageOption"></a>
 
@@ -5614,7 +5996,7 @@ struct LanguageOption {
 }
 ```
 
-<sub>`api.ogt` line 4783</sub>
+<sub>`api.ogt` line 4920</sub>
 
 <a id="type-GameSettings"></a>
 
@@ -5683,7 +6065,7 @@ struct GameSettings {
 }
 ```
 
-<sub>`api.ogt` line 4790</sub>
+<sub>`api.ogt` line 4927</sub>
 
 <a id="type-SettingsDesc"></a>
 
@@ -5713,7 +6095,7 @@ struct SettingsDesc {
 }
 ```
 
-<sub>`api.ogt` line 4831</sub>
+<sub>`api.ogt` line 4968</sub>
 
 <a id="type-SettingsResult"></a>
 
@@ -5736,7 +6118,7 @@ struct SettingsResult {
 }
 ```
 
-<sub>`api.ogt` line 4841</sub>
+<sub>`api.ogt` line 4978</sub>
 
 <a id="type-Ability"></a>
 
@@ -5766,7 +6148,7 @@ struct Ability {
 }
 ```
 
-<sub>`api.ogt` line 4848</sub>
+<sub>`api.ogt` line 4985</sub>
 
 <a id="type-PlatformerHudDesc"></a>
 
@@ -5804,7 +6186,7 @@ struct PlatformerHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 4859</sub>
+<sub>`api.ogt` line 4996</sub>
 
 <a id="type-HudResult"></a>
 
@@ -5831,7 +6213,7 @@ struct HudResult {
 }
 ```
 
-<sub>`api.ogt` line 4874</sub>
+<sub>`api.ogt` line 5011</sub>
 
 <a id="type-ShooterHudDesc"></a>
 
@@ -5881,7 +6263,7 @@ struct ShooterHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 4883</sub>
+<sub>`api.ogt` line 5020</sub>
 
 <a id="type-PuzzleHudDesc"></a>
 
@@ -5915,7 +6297,7 @@ struct PuzzleHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 4905</sub>
+<sub>`api.ogt` line 5042</sub>
 
 <a id="type-Currency"></a>
 
@@ -5945,7 +6327,7 @@ struct Currency {
 }
 ```
 
-<sub>`api.ogt` line 4918</sub>
+<sub>`api.ogt` line 5055</sub>
 
 <a id="type-Generator"></a>
 
@@ -5981,7 +6363,7 @@ struct Generator {
 }
 ```
 
-<sub>`api.ogt` line 4928</sub>
+<sub>`api.ogt` line 5065</sub>
 
 <a id="type-IdleHudDesc"></a>
 
@@ -6009,7 +6391,7 @@ struct IdleHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 4942</sub>
+<sub>`api.ogt` line 5079</sub>
 
 <a id="type-RacingHudDesc"></a>
 
@@ -6069,7 +6451,7 @@ struct RacingHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 4952</sub>
+<sub>`api.ogt` line 5089</sub>
 
 <a id="type-DialogueLine"></a>
 
@@ -6095,7 +6477,7 @@ struct DialogueLine {
 }
 ```
 
-<sub>`api.ogt` line 4984</sub>
+<sub>`api.ogt` line 5121</sub>
 
 <a id="type-CutsceneDesc"></a>
 
@@ -6129,7 +6511,7 @@ struct CutsceneDesc {
 }
 ```
 
-<sub>`api.ogt` line 4992</sub>
+<sub>`api.ogt` line 5129</sub>
 
 <a id="type-CutsceneResult"></a>
 
@@ -6152,7 +6534,7 @@ struct CutsceneResult {
 }
 ```
 
-<sub>`api.ogt` line 5006</sub>
+<sub>`api.ogt` line 5143</sub>
 
 <a id="type-ShopItem"></a>
 
@@ -6186,7 +6568,7 @@ struct ShopItem {
 }
 ```
 
-<sub>`api.ogt` line 5013</sub>
+<sub>`api.ogt` line 5150</sub>
 
 <a id="type-ShopDesc"></a>
 
@@ -6224,7 +6606,7 @@ struct ShopDesc {
 }
 ```
 
-<sub>`api.ogt` line 5025</sub>
+<sub>`api.ogt` line 5162</sub>
 
 <a id="type-ShopResult"></a>
 
@@ -6245,7 +6627,7 @@ struct ShopResult {
 }
 ```
 
-<sub>`api.ogt` line 5041</sub>
+<sub>`api.ogt` line 5178</sub>
 
 <a id="type-InventoryItem"></a>
 
@@ -6277,7 +6659,7 @@ struct InventoryItem {
 }
 ```
 
-<sub>`api.ogt` line 5047</sub>
+<sub>`api.ogt` line 5184</sub>
 
 <a id="type-InventoryDesc"></a>
 
@@ -6313,7 +6695,7 @@ struct InventoryDesc {
 }
 ```
 
-<sub>`api.ogt` line 5058</sub>
+<sub>`api.ogt` line 5195</sub>
 
 <a id="type-SlotMove"></a>
 
@@ -6334,7 +6716,7 @@ struct SlotMove {
 }
 ```
 
-<sub>`api.ogt` line 5074</sub>
+<sub>`api.ogt` line 5211</sub>
 
 <a id="type-InventoryResult"></a>
 
@@ -6359,7 +6741,7 @@ struct InventoryResult {
 }
 ```
 
-<sub>`api.ogt` line 5080</sub>
+<sub>`api.ogt` line 5217</sub>
 
 <a id="type-LevelInfo"></a>
 
@@ -6387,7 +6769,7 @@ struct LevelInfo {
 }
 ```
 
-<sub>`api.ogt` line 5088</sub>
+<sub>`api.ogt` line 5225</sub>
 
 <a id="type-LevelSelectDesc"></a>
 
@@ -6415,7 +6797,7 @@ struct LevelSelectDesc {
 }
 ```
 
-<sub>`api.ogt` line 5097</sub>
+<sub>`api.ogt` line 5234</sub>
 
 <a id="type-LevelSelectResult"></a>
 
@@ -6436,7 +6818,7 @@ struct LevelSelectResult {
 }
 ```
 
-<sub>`api.ogt` line 5107</sub>
+<sub>`api.ogt` line 5244</sub>
 
 <a id="type-StatRow"></a>
 
@@ -6460,7 +6842,7 @@ struct StatRow {
 }
 ```
 
-<sub>`api.ogt` line 5113</sub>
+<sub>`api.ogt` line 5250</sub>
 
 <a id="type-ResultsDesc"></a>
 
@@ -6506,7 +6888,7 @@ struct ResultsDesc {
 }
 ```
 
-<sub>`api.ogt` line 5120</sub>
+<sub>`api.ogt` line 5257</sub>
 
 <a id="type-LeaderboardEntry"></a>
 
@@ -6534,7 +6916,7 @@ struct LeaderboardEntry {
 }
 ```
 
-<sub>`api.ogt` line 5140</sub>
+<sub>`api.ogt` line 5277</sub>
 
 <a id="type-LeaderboardDesc"></a>
 
@@ -6570,7 +6952,7 @@ struct LeaderboardDesc {
 }
 ```
 
-<sub>`api.ogt` line 5149</sub>
+<sub>`api.ogt` line 5286</sub>
 
 <a id="type-LeaderboardResult"></a>
 
@@ -6595,7 +6977,7 @@ struct LeaderboardResult {
 }
 ```
 
-<sub>`api.ogt` line 5164</sub>
+<sub>`api.ogt` line 5301</sub>
 
 <a id="type-TutorialStep"></a>
 
@@ -6621,7 +7003,7 @@ struct TutorialStep {
 }
 ```
 
-<sub>`api.ogt` line 5172</sub>
+<sub>`api.ogt` line 5309</sub>
 
 <a id="type-TutorialDesc"></a>
 
@@ -6647,7 +7029,7 @@ struct TutorialDesc {
 }
 ```
 
-<sub>`api.ogt` line 5180</sub>
+<sub>`api.ogt` line 5317</sub>
 
 <a id="type-TutorialResult"></a>
 
@@ -6670,7 +7052,7 @@ struct TutorialResult {
 }
 ```
 
-<sub>`api.ogt` line 5188</sub>
+<sub>`api.ogt` line 5325</sub>
 
 <a id="type-LoadingDesc"></a>
 
@@ -6703,7 +7085,7 @@ struct LoadingDesc {
 }
 ```
 
-<sub>`api.ogt` line 5195</sub>
+<sub>`api.ogt` line 5332</sub>
 
 <a id="type-ConfirmDesc"></a>
 
@@ -6739,7 +7121,7 @@ struct ConfirmDesc {
 }
 ```
 
-<sub>`api.ogt` line 5209</sub>
+<sub>`api.ogt` line 5346</sub>
 
 <a id="type-ConfirmResult"></a>
 
@@ -6760,7 +7142,7 @@ struct ConfirmResult {
 }
 ```
 
-<sub>`api.ogt` line 5224</sub>
+<sub>`api.ogt` line 5361</sub>
 
 <a id="type-AlertDesc"></a>
 
@@ -6790,4 +7172,4 @@ struct AlertDesc {
 }
 ```
 
-<sub>`api.ogt` line 5230</sub>
+<sub>`api.ogt` line 5367</sub>

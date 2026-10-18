@@ -1288,6 +1288,7 @@
         "Asset",
         "Font",
         "Sound",
+        "Skin",
         "Asset",
         "Sound",
         "LoadStatus",
@@ -1527,6 +1528,27 @@
             }
           ],
           "returns": "Result<Texture>",
+          "publish": true
+        },
+        {
+          "name": "skin",
+          "doc": "Load a cooked UI skin (an `.ogt` of `type skin`: the atlas and its nine-slice frames, ornaments, palette, radii, type ramp, fonts, icons, motion and sounds; the grammar is og-ui's `skin` module) for UiDesc.skin. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose UI uses it."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The asset id, such as `skins/pixel/skin.ogt`."
+            }
+          ],
+          "returns": "Result<Skin>",
+          "returnsDoc": "Refused for a path not in the bundle, a skin that does not parse (the reason names the line) or an asset it names that cannot load.",
           "publish": true
         },
         {
@@ -1998,6 +2020,8 @@
         "FieldResult",
         "Viewport",
         "UiDesc",
+        "UiSounds",
+        "SkinPart",
         "TypeStep",
         "ControlSizes",
         "UiTheme",
@@ -2043,6 +2067,12 @@
         "DpadResult",
         "ActionButtonDesc",
         "SkeletonDesc",
+        "CounterDesc",
+        "BurstDesc",
+        "ScreenWipe",
+        "WipeSide",
+        "ScreenTransitionDesc",
+        "ScreenTransitionResult",
         "GraphicsQuality",
         "MenuItem",
         "MenuResult",
@@ -3598,6 +3628,73 @@
           "doc": "Frames the UI has built: its clock, for animations by the tick.",
           "params": [],
           "returns": "u32",
+          "publish": true
+        },
+        {
+          "name": "counter",
+          "doc": "A number label that counts (ease-out cubic, by the tick) from where it was to the value each time the value changes, grouped with commas; a skin with motion.pop bumps it when it lands. Scores, currency, rewards.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "value",
+              "type": "f64",
+              "optional": false,
+              "doc": "The value to count to."
+            },
+            {
+              "name": "desc",
+              "type": "CounterDesc",
+              "optional": true,
+              "doc": "Look, duration, start and format."
+            }
+          ],
+          "returns": "f64",
+          "returnsDoc": "The number shown this tick.",
+          "publish": true
+        },
+        {
+          "name": "burst",
+          "doc": "Throw rays and sparks from the element built just before (a star landing, a reward), once, from when it first appears. Off under reduced motion.",
+          "params": [
+            {
+              "name": "desc",
+              "type": "BurstDesc",
+              "optional": true,
+              "doc": "Count, ink, reach and timing."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "screenTransition",
+          "doc": "A transition between game screens drawn over the whole frame (through the overlay, over every other UI layer). Pass the screen the game wants every tick and build the one it answers: when the wanted screen changes the cover closes over the old screen for half the duration, the answer switches, and the cover opens on the new one. Deterministic by the tick; snapshots carry it; under reduced motion every kind is a fade.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "screen",
+              "type": "String",
+              "optional": false,
+              "doc": "The screen the game wants now."
+            },
+            {
+              "name": "desc",
+              "type": "ScreenTransitionDesc",
+              "optional": true,
+              "doc": "Kind, duration, colour or texture, side."
+            }
+          ],
+          "returns": "ScreenTransitionResult",
           "publish": true
         },
         {
@@ -8577,6 +8674,13 @@
       "type": "integer",
       "minimum": 0
     },
+    "Skin": {
+      "x-og-kind": "handle",
+      "x-og-module": "load",
+      "description": "A cooked UI skin: its atlas, fonts, icons and sounds loaded with it, for og.ui.configure.",
+      "type": "integer",
+      "minimum": 0
+    },
     "LoadStatus": {
       "x-og-kind": "enum",
       "x-og-module": "load",
@@ -10999,6 +11103,18 @@
           "description": "Corner radius.",
           "default": 0,
           "x-og-unit": "cssPx"
+        },
+        "frame": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SkinPart"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The skin frame its background takes (a HUD capsule, a card); null is a plain fill. Without a skin the fill is drawn either way.",
+          "default": null
         }
       },
       "additionalProperties": false
@@ -11059,6 +11175,11 @@
           "$ref": "#/$defs/FontRole",
           "description": "Which font.",
           "default": "body"
+        },
+        "heading": {
+          "type": "boolean",
+          "description": "A heading: a skin with a flourish frames it.",
+          "default": false
         }
       },
       "additionalProperties": false
@@ -11654,7 +11775,7 @@
               "type": "null"
             }
           ],
-          "description": "The icon atlas og.ui.icon draws from.",
+          "description": "The icon atlas og.ui.icon draws from; null takes the skin's.",
           "default": null
         },
         "toastAnchor": {
@@ -11668,9 +11789,140 @@
           ],
           "description": "Where toasts stack; null is the bottom centre.",
           "default": null
+        },
+        "skin": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Skin"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A skin from og.load.skin: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the token look (fonts, icons and an accent given here still win); null is the platform tokens.",
+          "default": null
+        },
+        "sounds": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UiSounds"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Sounds for UI events (they win over the skin's).",
+          "default": null
         }
       },
       "additionalProperties": false
+    },
+    "UiSounds": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "Sounds the UI plays through og-audio (the ui bus) on its events; null is silent.",
+      "type": "object",
+      "properties": {
+        "hover": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sound"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The pointer reaches a control.",
+          "default": null
+        },
+        "press": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sound"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A control is pressed.",
+          "default": null
+        },
+        "open": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sound"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A dialog opens.",
+          "default": null
+        },
+        "close": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sound"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A dialog closes.",
+          "default": null
+        },
+        "success": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sound"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A success toast.",
+          "default": null
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sound"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A refused press or a danger toast.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "SkinPart": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "An element class a skin dresses with a nine-slice frame.",
+      "type": "string",
+      "enum": [
+        "panel",
+        "card",
+        "button",
+        "field",
+        "slot",
+        "tooltip",
+        "capsule",
+        "track"
+      ],
+      "x-og-variants": {
+        "panel": "Dialogs and screen panels.",
+        "card": "Cards.",
+        "button": "Buttons (with hover, pressed and disabled states).",
+        "field": "Text fields.",
+        "slot": "Inventory and grid cells.",
+        "tooltip": "Tooltips.",
+        "capsule": "HUD capsules and toasts.",
+        "track": "A progress bar's track."
+      }
     },
     "TypeStep": {
       "x-og-kind": "struct",
@@ -11807,6 +12059,10 @@
             "type": "number"
           },
           "description": "The motion durations by name (instant, fast, base, slow, spring, bounce), in milliseconds."
+        },
+        "skin": {
+          "type": "string",
+          "description": "The configured skin's name; empty for the platform tokens."
         }
       },
       "required": [
@@ -11816,7 +12072,8 @@
         "radius",
         "typeRamp",
         "sizes",
-        "durationsMs"
+        "durationsMs",
+        "skin"
       ],
       "additionalProperties": false
     },
@@ -11859,7 +12116,8 @@
         "slideDown",
         "slideLeft",
         "slideRight",
-        "scale"
+        "scale",
+        "pop"
       ],
       "x-og-variants": {
         "fade": "Opacity only.",
@@ -11867,7 +12125,8 @@
         "slideDown": "Drops into place from above.",
         "slideLeft": "Enters from the right.",
         "slideRight": "Enters from the left.",
-        "scale": "Grows from slightly smaller around its centre."
+        "scale": "Grows from slightly smaller around its centre.",
+        "pop": "Springs up from smaller around its centre, overshoots and settles."
       }
     },
     "Tone": {
@@ -12196,6 +12455,18 @@
           "type": "boolean",
           "description": "Draw over dialogs and spotlights (a tutorial callout, a dragged item); the default draws under them.",
           "default": false
+        },
+        "frame": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SkinPart"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The skin frame its background takes; null is the panel's.",
+          "default": null
         }
       },
       "additionalProperties": false
@@ -13274,6 +13545,266 @@
           "default": 0
         }
       },
+      "additionalProperties": false
+    },
+    "CounterDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A number that counts to its value.",
+      "type": "object",
+      "properties": {
+        "step": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TypeStepName"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The type step; null is body.",
+          "default": null
+        },
+        "font": {
+          "$ref": "#/$defs/FontRole",
+          "description": "Which font: mono (the numeric role) for counts in a row, display for a big score.",
+          "default": "body"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The ink; null is fg.",
+          "default": null
+        },
+        "align": {
+          "$ref": "#/$defs/TextAlign",
+          "description": "How it aligns in its width.",
+          "default": "start"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null fits the text.",
+          "default": null
+        },
+        "durationMs": {
+          "type": "number",
+          "description": "How long a change takes to count; 0 is 900 ms.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "ms"
+        },
+        "from": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Where the first count starts; null starts at the value (no count).",
+          "default": null
+        },
+        "decimals": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Digits after the point.",
+          "default": 0
+        },
+        "prefix": {
+          "type": "string",
+          "description": "Text before the number.",
+          "default": ""
+        },
+        "suffix": {
+          "type": "string",
+          "description": "Text after the number.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "BurstDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "Rays and sparks thrown from an element.",
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Rays; 0 is 8.",
+          "default": 0
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Their ink; null is the accent.",
+          "default": null
+        },
+        "radius": {
+          "type": "number",
+          "description": "How far they fly from the element's centre; 0 is 1.4 times its size.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "durationMs": {
+          "type": "number",
+          "description": "How long they fly; 0 is motion.duration.slow plus base.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "ms"
+        },
+        "delayMs": {
+          "type": "number",
+          "description": "Wait this long after the element first appears.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "ms"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ScreenWipe": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "How a screen transition covers the old screen and reveals the new one.",
+      "type": "string",
+      "enum": [
+        "fade",
+        "wipe",
+        "iris",
+        "dissolve",
+        "slide"
+      ],
+      "x-og-variants": {
+        "fade": "The cover fades in and out.",
+        "wipe": "An edge sweeps across.",
+        "iris": "A circle closes on the centre and opens again.",
+        "dissolve": "Cells appear in a fixed scattered order.",
+        "slide": "A sheet slides over and away."
+      }
+    },
+    "WipeSide": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "Where a wipe or a slide comes from.",
+      "type": "string",
+      "enum": [
+        "left",
+        "right",
+        "top",
+        "bottom"
+      ],
+      "x-og-variants": {
+        "left": "From the left.",
+        "right": "From the right.",
+        "top": "From the top.",
+        "bottom": "From the bottom."
+      }
+    },
+    "ScreenTransitionDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "How a screen transition looks.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/ScreenWipe",
+          "description": "The movement.",
+          "default": "fade"
+        },
+        "durationMs": {
+          "type": "number",
+          "description": "Cover and reveal together; 0 is twice motion.duration.slow.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "ms"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The cover's colour (the texture's tint); null is bg.",
+          "default": null
+        },
+        "texture": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A texture stretched over the surface as the cover; null is the flat colour.",
+          "default": null
+        },
+        "from": {
+          "$ref": "#/$defs/WipeSide",
+          "description": "Where a wipe or a slide comes from.",
+          "default": "left"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ScreenTransitionResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "Where a screen transition is this tick.",
+      "type": "object",
+      "properties": {
+        "shown": {
+          "type": "string",
+          "description": "The screen to build this tick: the old one until the cover closes, then the new one."
+        },
+        "covering": {
+          "type": "boolean",
+          "description": "The cover is closing over the old screen."
+        },
+        "revealing": {
+          "type": "boolean",
+          "description": "The cover is opening on the new screen."
+        },
+        "cover": {
+          "type": "number",
+          "description": "How much of the surface is covered, 0 to 1.",
+          "x-og-unit": "ratio"
+        }
+      },
+      "required": [
+        "shown",
+        "covering",
+        "revealing",
+        "cover"
+      ],
       "additionalProperties": false
     },
     "GraphicsQuality": {

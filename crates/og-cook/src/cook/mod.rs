@@ -378,6 +378,7 @@ enum Kind {
     Scene,
     Lut,
     Emitter,
+    Skin,
 }
 
 impl Kind {
@@ -390,6 +391,7 @@ impl Kind {
             Kind::Scene => "scene",
             Kind::Lut => "lut",
             Kind::Emitter => "emitter",
+            Kind::Skin => "skin",
         }
     }
 }
@@ -413,6 +415,7 @@ enum Work<'a> {
     Sound(&'a Source),
     Lut(&'a Source),
     Emitter(&'a Source),
+    Skin(&'a Source),
     Font(&'a Source, FontSettings),
     Scene(&'a Source),
 }
@@ -604,12 +607,13 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     }
                     Ok(doc) if doc.ty == "scene" => Kind::Scene,
                     Ok(doc) if doc.ty == crate::fx::EMITTER_TYPE => Kind::Emitter,
+                    Ok(doc) if doc.ty == og_ui::skin::SKIN_TYPE => Kind::Skin,
                     Ok(doc) => {
                         early_errors.push((
                             rel.clone(),
                             "scene",
                             format!(
-                                "an .ogt of type '{}' is not a cookable asset (scene, particles or import)",
+                                "an .ogt of type '{}' is not a cookable asset (scene, particles, skin or import)",
                                 doc.ty
                             ),
                         ));
@@ -791,6 +795,17 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     .collect();
                 let st = stamp(&[b"emitter", &hash, refs.join("\n").as_bytes()]);
                 outs.push((s.rel.clone(), format::Emitter::NAME, st, Work::Emitter(s)));
+            }
+            Kind::Skin => {
+                let text = String::from_utf8_lossy(&s.bytes);
+                let refs: Vec<String> = og_ui::parse_skin(&text)
+                    .map(|f| f.references())
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|r| format!("{r}={}", known.contains(crate::runtime::asset_id(&r))))
+                    .collect();
+                let st = stamp(&[b"skin", &hash, refs.join("\n").as_bytes()]);
+                outs.push((s.rel.clone(), format::Skin::NAME, st, Work::Skin(s)));
             }
             Kind::Font => match font_settings(s, &options.font) {
                 Ok(f) => {
@@ -1084,6 +1099,40 @@ fn run(
                     em.max_particles,
                     em.bursts.len()
                 )],
+            ))
+        }
+        Work::Skin(s) => {
+            let text = std::str::from_utf8(&s.bytes)
+                .map_err(|_| CookError("a skin is text (UTF-8)".into()))?;
+            let file = og_ui::parse_skin(text).map_err(CookError)?;
+            let missing: Vec<String> = file
+                .references()
+                .into_iter()
+                .filter(|r| !known.contains(crate::runtime::asset_id(r)))
+                .collect();
+            if !missing.is_empty() {
+                return Err(CookError(format!(
+                    "the skin names asset(s) not under assets/: {}",
+                    missing.join(", ")
+                )));
+            }
+            let mut w = og_blob::BlobWriter::new(
+                format::Skin::type_hash(),
+                format::Skin::schema_version(),
+                p.stamp,
+            );
+            w.table(
+                "meta",
+                &[format::SkinMeta {
+                    text_bytes: text.len() as u32,
+                }],
+                format::row_hash::<format::SkinMeta>(),
+            )
+            .raw("text", text.as_bytes().to_vec(), 16);
+            let parts = file.theme.skin.slices.iter().flatten().count();
+            Ok((
+                w.finish(),
+                vec![format!("skin '{}', {parts} frame(s)", file.name)],
             ))
         }
         Work::Font(s, f) => {

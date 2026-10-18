@@ -1668,6 +1668,7 @@ dependencies = [
  "og-ecs",
  "og-render",
  "og-tests",
+ "og-ui",
  "ruzstd",
  "serde_json",
  "ttf-parser",

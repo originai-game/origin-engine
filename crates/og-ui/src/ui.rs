@@ -448,6 +448,8 @@ pub struct Ui {
     pub(crate) sounds: Vec<crate::skin::UiSound>,
     /// This frame's screen-transition cover.
     pub(crate) cover: Option<crate::juice::Cover>,
+    /// The configured skin's name (empty: the tokens).
+    pub(crate) skin_name: String,
 }
 
 impl Default for Ui {
@@ -488,6 +490,7 @@ impl Ui {
             toast_anchor: Anchor::Bottom,
             sounds: Vec::new(),
             cover: None,
+            skin_name: String::new(),
         }
     }
 
@@ -586,6 +589,15 @@ impl Ui {
 
     pub fn set_theme(&mut self, theme: Theme) {
         self.theme = theme;
+    }
+
+    /// The configured skin's name, for the theme the host reports (empty: the tokens).
+    pub fn skin_name(&self) -> &str {
+        &self.skin_name
+    }
+
+    pub fn set_skin_name(&mut self, name: &str) {
+        self.skin_name = name.to_owned();
     }
 
     pub fn fonts(&self) -> &Fonts {

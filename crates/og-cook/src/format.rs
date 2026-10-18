@@ -18,6 +18,7 @@
 //! | scene (`og.Scene`) | [`SceneMeta`] | `entities` [`EntityRow`], `refs` [`RefRow`], `components` [`ComponentRow`], `strings`, per component `c.<Type>` rows and `s.<Type>` its schema JSON |
 //! | colour LUT (`og.Lut`, a `.cube`) | [`LutMeta`] | `rgba` (size³ RGBA8, red fastest) |
 //! | particle emitter (`og.ParticleEmitter`, an `.ogt` of `type particles`) | [`EmitterMeta`] | `text` (the validated emitter file) |
+//! | UI skin (`og.UiSkin`, an `.ogt` of `type skin`) | [`SkinMeta`] | `text` (the validated skin file) |
 //! | animation (`og.Animation`, a glTF's `#anim`) | [`AnimMeta`] | `nodes` [`NodeRow`], `skins` [`SkinRow`], `joints` (u32 node indices), `inverse_binds` (16 f32 per joint, column-major), `clips` [`ClipRow`], `channels` [`ChannelRow`], `samples` (f32), `events` [`EventRow`], `skin_streams` [`SkinStreamRow`], `skin_data` (meshopt streams), `morphs` [`MorphRow`], `targets` [`TargetRow`], `morph_data` (meshopt streams), `strings` |
 
 use og_core::hash::StableHasher;
@@ -580,6 +581,24 @@ row!(
         text_bytes: u32,
     }
 );
+
+row!(
+    /// The root of a UI skin blob (an `.ogt` of `type skin`).
+    SkinMeta, "og.UiSkin", 1 {
+        /// Bytes of the validated skin text in `text`.
+        text_bytes: u32,
+    }
+);
+
+/// The UI skin blob: `text` holds the skin file the cook validated
+/// (og-ui's `parse_skin`), parsed again at load with the bundle's assets.
+pub struct Skin;
+impl BlobKind for Skin {
+    const NAME: &'static str = "og.UiSkin";
+    fn schemas() -> Vec<Schema> {
+        vec![SkinMeta::schema()]
+    }
+}
 
 /// The particle emitter blob: `text` holds the emitter file the cook
 /// validated (`crate::fx`), parsed again at load with the bundle's textures.

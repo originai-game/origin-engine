@@ -381,6 +381,9 @@ impl LoadApi for NodeHost {
     fn og_load_emitter(&self, world: u32, path: String) -> String {
         rt::og_load_emitter(world, path)
     }
+    fn og_load_skin(&self, world: u32, path: String) -> String {
+        rt::og_load_skin(world, path)
+    }
 }
 
 impl AnimApi for NodeHost {
@@ -464,6 +467,15 @@ impl UiApi for NodeHost {
     }
     fn og_ui_seconds(&self) -> f64 {
         rt::og_ui_seconds()
+    }
+    fn og_ui_counter(&self, id: String, value: f64, desc: Option<String>) -> f64 {
+        rt::og_ui_counter(id, value, desc)
+    }
+    fn og_ui_burst(&self, desc: Option<String>) {
+        rt::og_ui_burst(desc)
+    }
+    fn og_ui_screen_transition(&self, id: String, screen: String, desc: Option<String>) -> String {
+        rt::og_ui_screen_transition(id, screen, desc)
     }
     fn og_ui_open_anchor(&self, id: String, desc: Option<String>) {
         rt::og_ui_open_anchor(id, desc)

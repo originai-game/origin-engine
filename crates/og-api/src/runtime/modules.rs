@@ -32,9 +32,9 @@ use og_ui::{
     FontRole, Fonts, GridDesc, HueName, IconAtlas, IconDesc, ImageDesc, InputFrame, Insets,
     JoystickDesc, LabelDesc, ListDesc, ListRange, MapMarker, MeterDesc, MeterKind, MinimapDesc,
     ModalDesc, Nav, PanelDesc, Presence, ProgressDesc, RadioDesc, Response, Scheme, ScrollDesc,
-    SelectDesc, SharedUi, Size, SkeletonDesc, SliderDesc, SpotlightDesc, Srgba, StepperDesc,
-    TabsDesc, TextAlign, Theme, ToastDesc, Tone, TransitionDesc, TransitionKind, TypeStep, Ui,
-    UiDesc, UiFont, Viewport,
+    SelectDesc, SharedUi, Size, SkeletonDesc, SkinPart, SliderDesc, SpotlightDesc, Srgba,
+    StepperDesc, TabsDesc, TextAlign, Theme, ToastDesc, Tone, TransitionDesc, TransitionKind,
+    TypeStep, Ui, UiDesc, UiFont, Viewport,
 };
 use serde_json::{json, Map, Value};
 use std::any::Any;
@@ -46,6 +46,8 @@ pub const UI_BEGIN: &str = "og.ui.begin";
 pub const UI_END: &str = "og.ui.end";
 /// The state block that carries the UI's interaction state.
 pub const UI_STATE: &str = "og.ui";
+/// The system that plays the UI's event sounds (after og.audio).
+pub const UI_SOUND: &str = "og.ui.sound";
 /// The sprite layer the UI's painter level 0 draws on: above game sprites.
 pub const UI_LAYER: i32 = 1 << 20;
 
@@ -70,12 +72,22 @@ pub(crate) struct Mounted {
 
 /// A UI with the theme and fonts of `previous` (a hot reload keeps them).
 pub(crate) fn new_ui(tick: u32, previous: Option<&SharedUi>) -> SharedUi {
-    let (theme, fonts, icons) = match previous {
+    let (theme, fonts, icons, skin) = match previous {
         Some(p) => {
             let ui = p.lock();
-            (*ui.theme(), ui.fonts().clone(), ui.icons().clone())
+            (
+                *ui.theme(),
+                ui.fonts().clone(),
+                ui.icons().clone(),
+                ui.skin_name().to_string(),
+            )
         }
-        None => (Theme::default(), Fonts::default(), IconAtlas::default()),
+        None => (
+            Theme::default(),
+            Fonts::default(),
+            IconAtlas::default(),
+            String::new(),
+        ),
     };
     let mut ui = Ui::new(UiDesc {
         theme,
@@ -83,6 +95,7 @@ pub(crate) fn new_ui(tick: u32, previous: Option<&SharedUi>) -> SharedUi {
         fonts,
     });
     ui.set_icons(icons);
+    ui.set_skin_name(&skin);
     SharedUi::new(ui)
 }
 
@@ -159,6 +172,37 @@ pub(crate) fn mount_back(
         },
     )
     .map_err(err)?;
+    // UI sounds: the events og.ui.end queued, played on the ui bus. A
+    // voice per event (its entity kept in the UI state) restarts on a
+    // repeat; the sources start in og.audio's next pass, one tick on.
+    let shared = ui.clone();
+    world
+        .add_system(
+            SystemDesc::new(UI_SOUND).write::<og_audio::AudioSource>(),
+            move |ctx| {
+                let events = shared.lock().take_sounds();
+                if events.is_empty() {
+                    return Ok(());
+                }
+                for (event, sound) in events {
+                    let slot = event as usize;
+                    let old = shared.lock().voices_mut()[slot];
+                    if old != 0 {
+                        let e = Entity::from_bits(old);
+                        if ctx.is_alive(e) {
+                            ctx.despawn(e)?;
+                        }
+                    }
+                    let e = ctx.spawn((og_audio::AudioSource {
+                        bus: og_audio::Bus::Ui as u32,
+                        ..og_audio::AudioSource::new(sound)
+                    },))?;
+                    shared.lock().voices_mut()[slot] = e.to_bits();
+                }
+                Ok(())
+            },
+        )
+        .map_err(err)?;
     world
         .add_state_block(UI_STATE, Box::new(UiState(ui.clone())))
         .map_err(err)?;
@@ -674,7 +718,12 @@ fn element(theme: &Theme, d: &Value) -> Element {
         interactive: d["interactive"].as_bool().unwrap_or(false),
         background: paint(theme, &d["background"]),
         radius: f(d, "radius", 0.0),
+        skin: skin_part(&d["frame"]),
     }
+}
+
+fn skin_part(v: &Value) -> Option<SkinPart> {
+    SkinPart::from_name(v.as_str()?)
 }
 
 fn align(v: &Value) -> Align {
@@ -730,15 +779,30 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
     let answer = (|| -> Result<_, String> {
         let eng = engine(world)?;
         let d = parse(desc.as_deref())?;
+        let skin = match d["skin"].as_f64() {
+            Some(h) => {
+                let i =
+                    super::assets::index_of(h).ok_or_else(|| format!("skin: {h} is not a skin"))?;
+                let a = eng.assets.borrow();
+                let s = a
+                    .skins
+                    .get(i)
+                    .ok_or_else(|| format!("skin: skin {h} is not alive"))?;
+                Some((s.file.clone(), s.atlas, s.fonts, s.icons, s.sounds))
+            }
+            None => None,
+        };
         let scheme = match d["scheme"].as_str() {
             Some("light") => Scheme::Light,
             _ => Scheme::Dark,
         };
-        let mut theme = if d["contrast"].as_str() == Some("high") {
-            Theme::high_contrast(scheme)
-        } else {
-            Theme::new(scheme)
+        let mut theme = match &skin {
+            Some((file, atlas, _, _, sounds)) => file.theme(*atlas, *sounds),
+            None => Theme::new(scheme),
         };
+        if d["contrast"].as_str() == Some("high") {
+            theme = theme.to_high_contrast();
+        }
         if let Some(h) = d["accentHue"].as_str().and_then(HueName::from_name) {
             theme = theme.with_hue(h);
         } else if d["accentColor"].is_object() {
@@ -753,17 +817,41 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
             Some("touch") => DensityMode::Touch,
             _ => DensityMode::Auto,
         };
+        let sounds = &d["sounds"];
+        if sounds.is_object() {
+            for e in og_ui::UiSound::ALL {
+                if let Some(h) = sounds[e.name()].as_f64() {
+                    theme.skin.sounds[e as usize] = h as u64;
+                }
+            }
+        }
         let font = |key: &str| -> Result<Option<UiFont>, String> {
             match d[key].as_f64() {
                 None => Ok(None),
                 Some(h) => ui_font(&eng, h).map(Some),
             }
         };
-        let body = font("font")?;
+        let skin_font = |i: usize| -> Result<Option<UiFont>, String> {
+            match skin.as_ref().and_then(|s| s.2[i]) {
+                None => Ok(None),
+                Some(h) => ui_font(&eng, h).map(Some),
+            }
+        };
+        let body = match font("font")? {
+            Some(f) => Some(f),
+            None => skin_font(0)?,
+        };
         let fonts = Fonts {
             body: body.unwrap_or_default(),
-            display: font("displayFont")?,
-            mono: font("monoFont")?,
+            display: match font("displayFont")? {
+                Some(f) => Some(f),
+                None => skin_font(1)?,
+            },
+            mono: match font("monoFont")? {
+                Some(f) => Some(f),
+                None => skin_font(2)?,
+            },
+            fallback: skin_font(3)?,
         };
         let ui = eng
             .state
@@ -799,6 +887,14 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
                     })
                     .unwrap_or_default(),
             }
+        } else if let Some((file, _, _, Some(texture), _)) = &skin {
+            let (_, columns, rows, names) = file.icons.clone().unwrap_or_default();
+            IconAtlas {
+                texture: Some(*texture),
+                columns,
+                rows,
+                names,
+            }
         } else {
             IconAtlas::default()
         };
@@ -806,11 +902,81 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
         ui.set_theme(theme);
         ui.set_fonts(fonts);
         ui.set_icons(atlas);
+        ui.set_skin_name(skin.as_ref().map_or("", |s| s.0.name.as_str()));
         ui.set_toast_anchor(anchor_of(&d["toastAnchor"]).unwrap_or(Anchor::Bottom));
         Ok(())
     })();
     match answer {
         Ok(()) => ok_void(),
+        Err(e) => refuse(e),
+    }
+}
+
+/// A loaded skin: its file and the handles of the assets it names.
+pub(crate) struct LoadedSkin {
+    pub id: String,
+    pub file: og_ui::SkinFile,
+    pub atlas: Option<og_render::TextureHandle>,
+    /// Font asset handles: body, display, numeric, fallback.
+    pub fonts: [Option<f64>; 4],
+    pub icons: Option<og_render::TextureHandle>,
+    pub sounds: [u64; 6],
+}
+
+/// `og.load.skin`: a cooked skin, its atlas, fonts, icons and sounds loaded with it.
+pub fn og_load_skin(world: u32, path: String) -> String {
+    let answer = (|| -> Result<usize, String> {
+        let eng = engine(world)?;
+        let id = og_cook::runtime::asset_id(&path).to_string();
+        if let Some(i) = eng.assets.borrow().skins.iter().position(|s| s.id == id) {
+            return Ok(i);
+        }
+        let text = {
+            let assets = eng.assets.borrow();
+            let (bytes, bundle) = assets.blob(&id)?;
+            bundle
+                .skin_text(&id, bytes.bytes())
+                .map_err(|e| e.to_string())?
+        };
+        let file = og_ui::parse_skin(&text).map_err(|e| format!("{id}: {e}"))?;
+        let texture = |p: &str| -> Result<og_render::TextureHandle, String> {
+            let i = super::assets::load_texture(&eng, p)?;
+            eng.render
+                .borrow()
+                .textures
+                .get(i)
+                .copied()
+                .ok_or_else(|| format!("{id}: the texture {p} did not load"))
+        };
+        let atlas = file.atlas.as_deref().map(texture).transpose()?;
+        let icons = file.icons.as_ref().map(|i| texture(&i.0)).transpose()?;
+        let mut fonts = [None; 4];
+        for (k, p) in file.fonts.iter().enumerate() {
+            if let Some(p) = p {
+                let i = super::assets::load_font(&eng, p)?;
+                fonts[k] = Some(super::assets::handle(i) as f64);
+            }
+        }
+        let mut sounds = [0u64; 6];
+        for (k, p) in file.sounds.iter().enumerate() {
+            if let Some(p) = p {
+                let i = super::assets::load_sound(&eng, p)?;
+                sounds[k] = eng.assets.borrow().sound_handles[i];
+            }
+        }
+        let mut a = eng.assets.borrow_mut();
+        a.skins.push(LoadedSkin {
+            id,
+            file,
+            atlas,
+            fonts,
+            icons,
+            sounds,
+        });
+        Ok(a.skins.len() - 1)
+    })();
+    match answer {
+        Ok(i) => ok(json!(super::assets::handle(i) as f64)),
         Err(e) => refuse(e),
     }
 }
@@ -848,19 +1014,19 @@ pub fn og_ui_viewport(world: u32) -> String {
 }
 
 pub fn og_ui_theme(world: u32) -> String {
-    let (theme, sizes) = engine(world)
+    let (theme, sizes, skin) = engine(world)
         .ok()
         .and_then(|e| e.state.borrow().ui.clone())
         .map(|ui| {
             let ui = ui.lock();
-            (*ui.theme(), ui.sizes())
+            (*ui.theme(), ui.sizes(), ui.skin_name().to_string())
         })
         .unwrap_or_else(|| {
             let t = Theme::default();
             let s = t.sizes(&Viewport::default());
-            (t, s)
+            (t, s, String::new())
         });
-    theme_json(theme, sizes)
+    theme_json(theme, sizes, &skin)
 }
 
 pub fn og_ui_frame_viewport() -> String {
@@ -877,16 +1043,18 @@ pub fn og_ui_seconds() -> f64 {
 }
 
 pub fn og_ui_frame_theme() -> String {
-    let (theme, sizes) = with_ui("og.ui.frameTheme", |ui| (*ui.theme(), ui.sizes()))
-        .unwrap_or_else(|| {
-            let t = Theme::default();
-            let s = t.sizes(&Viewport::default());
-            (t, s)
-        });
-    theme_json(theme, sizes)
+    let (theme, sizes, skin) = with_ui("og.ui.frameTheme", |ui| {
+        (*ui.theme(), ui.sizes(), ui.skin_name().to_string())
+    })
+    .unwrap_or_else(|| {
+        let t = Theme::default();
+        let s = t.sizes(&Viewport::default());
+        (t, s, String::new())
+    });
+    theme_json(theme, sizes, &skin)
 }
 
-fn theme_json(theme: Theme, sizes: og_ui::Density) -> String {
+fn theme_json(theme: Theme, sizes: og_ui::Density, skin: &str) -> String {
     let hex = |c: Srgba| {
         let [r, g, b] = c.rgb;
         if c.alpha >= 1.0 {
@@ -924,6 +1092,7 @@ fn theme_json(theme: Theme, sizes: og_ui::Density) -> String {
         "typeRamp": ramp,
         "sizes": { "controlSm": sizes.control_sm, "controlMd": sizes.control_md, "controlLg": sizes.control_lg, "gutter": sizes.gutter, "header": sizes.header, "row": sizes.row, "section": sizes.section },
         "durationsMs": { "instant": d.instant, "fast": d.fast, "base": d.base, "slow": d.slow, "spring": d.spring, "bounce": d.bounce },
+        "skin": skin,
     })
     .to_string()
 }
@@ -994,6 +1163,7 @@ pub fn og_ui_label(id: String, text: String, desc: Option<String>) {
                 Some("mono") => FontRole::Mono,
                 _ => FontRole::Body,
             },
+            heading: d["heading"].as_bool().unwrap_or(false),
         };
         ui.label(id.as_str(), &text, l)
     });
@@ -1100,6 +1270,88 @@ pub fn og_ui_text_field(id: String, value: String, desc: Option<String>) -> Stri
     json!({ "response": response(r.unwrap_or_default()), "value": text }).to_string()
 }
 
+pub fn og_ui_counter(id: String, value: f64, desc: Option<String>) -> f64 {
+    let d = desc_of(desc);
+    with_ui("og.ui.counter", |ui| {
+        let t = *ui.theme();
+        let c = og_ui::CounterDesc {
+            step: d["step"].as_str().and_then(|s| step(&t, s)),
+            font: match d["font"].as_str() {
+                Some("display") => FontRole::Display,
+                Some("mono") => FontRole::Mono,
+                _ => FontRole::Body,
+            },
+            color: paint(&t, &d["color"]),
+            align: match d["align"].as_str() {
+                Some("center") => TextAlign::Center,
+                Some("end") => TextAlign::End,
+                _ => TextAlign::Start,
+            },
+            width: size_or(&d["width"], Size::fit()),
+            duration_ms: f(&d, "durationMs", 0.0),
+            from: d["from"].as_f64(),
+            decimals: d["decimals"].as_u64().unwrap_or(0).min(9) as u32,
+            prefix: d["prefix"].as_str().unwrap_or_default().to_string(),
+            suffix: d["suffix"].as_str().unwrap_or_default().to_string(),
+        };
+        ui.counter(id.as_str(), value, &c)
+    })
+    .unwrap_or(value)
+}
+
+pub fn og_ui_burst(desc: Option<String>) {
+    let d = desc_of(desc);
+    with_ui("og.ui.burst", |ui| {
+        let t = *ui.theme();
+        ui.burst(og_ui::BurstDesc {
+            count: d["count"].as_u64().unwrap_or(0).min(64) as u32,
+            color: paint(&t, &d["color"]),
+            radius: f(&d, "radius", 0.0),
+            duration_ms: f(&d, "durationMs", 0.0),
+            delay_ms: f(&d, "delayMs", 0.0),
+        })
+    });
+}
+
+pub fn og_ui_screen_transition(id: String, screen: String, desc: Option<String>) -> String {
+    let d = desc_of(desc);
+    let texture = d["texture"].as_f64().and_then(|h| {
+        let i = super::assets::index_of(h)?;
+        let target = BUILDING.with(Cell::get)?;
+        let eng = engine(target).ok()?;
+        let t = eng.render.borrow().textures.get(i).copied();
+        t
+    });
+    let r = with_ui("og.ui.screenTransition", |ui| {
+        let t = *ui.theme();
+        let desc = og_ui::ScreenTransitionDesc {
+            kind: match d["kind"].as_str() {
+                Some("wipe") => og_ui::ScreenWipe::Wipe,
+                Some("iris") => og_ui::ScreenWipe::Iris,
+                Some("dissolve") => og_ui::ScreenWipe::Dissolve,
+                Some("slide") => og_ui::ScreenWipe::Slide,
+                _ => og_ui::ScreenWipe::Fade,
+            },
+            duration_ms: f(&d, "durationMs", 0.0),
+            color: paint(&t, &d["color"]),
+            texture: texture.map(|t| (t, [0.0, 0.0, 1.0, 1.0])),
+            from: match d["from"].as_str() {
+                Some("right") => og_ui::Side::Right,
+                Some("top") => og_ui::Side::Top,
+                Some("bottom") => og_ui::Side::Bottom,
+                _ => og_ui::Side::Left,
+            },
+        };
+        ui.screen_transition(id.as_str(), &screen, &desc)
+    })
+    .unwrap_or(og_ui::ScreenTransition {
+        shown: screen.clone(),
+        ..Default::default()
+    });
+    json!({ "shown": r.shown, "covering": r.covering, "revealing": r.revealing, "cover": r.cover })
+        .to_string()
+}
+
 pub fn og_ui_tooltip(text: String) {
     with_ui("og.ui.tooltip", |ui| ui.tooltip(&text));
 }
@@ -1197,6 +1449,7 @@ fn transition_kind(v: &Value) -> Option<TransitionKind> {
         "slideLeft" => TransitionKind::SlideLeft,
         "slideRight" => TransitionKind::SlideRight,
         "scale" => TransitionKind::Scale,
+        "pop" => TransitionKind::Pop,
         _ => return None,
     })
 }
@@ -1257,6 +1510,7 @@ pub fn og_ui_open_anchor(id: String, desc: Option<String>) {
             width: size_or(&d["width"], Size::fit()),
             height: size_or(&d["height"], Size::fit()),
             over: d["over"].as_bool().unwrap_or(false),
+            skin: skin_part(&d["frame"]),
         };
         ui.open_anchor(id.as_str(), a)
     });

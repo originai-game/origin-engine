@@ -264,6 +264,8 @@ pub trait LoadApi: Wire {
     fn og_load_emitter(&self, world: u32, path: String) -> String;
     /// `og.load.texture`: Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load.
     fn og_load_texture(&self, world: u32, path: String) -> String;
+    /// `og.load.skin`: Load a cooked UI skin (an `.ogt` of `type skin`: the atlas and its nine-slice frames, ornaments, palette, radii, type ramp, fonts, icons, motion and sounds; the grammar is og-ui's `skin` module) for UiDesc.skin. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path.
+    fn og_load_skin(&self, world: u32, path: String) -> String;
     /// `og.load.soundInfo`: A loaded sound's format and length.
     fn og_load_sound_info(&self, world: u32, sound: f64) -> String;
     /// `og.load.status`: Where a load is.
@@ -418,6 +420,12 @@ pub trait UiApi: Wire {
     fn og_ui_remember(&self, id: String, value: f64);
     /// `og.ui.tick`: Frames the UI has built: its clock, for animations by the tick.
     fn og_ui_tick(&self) -> u32;
+    /// `og.ui.counter`: A number label that counts (ease-out cubic, by the tick) from where it was to the value each time the value changes, grouped with commas; a skin with motion.pop bumps it when it lands. Scores, currency, rewards.
+    fn og_ui_counter(&self, id: String, value: f64, desc: Option<String>) -> f64;
+    /// `og.ui.burst`: Throw rays and sparks from the element built just before (a star landing, a reward), once, from when it first appears. Off under reduced motion.
+    fn og_ui_burst(&self, desc: Option<String>);
+    /// `og.ui.screenTransition`: A transition between game screens drawn over the whole frame (through the overlay, over every other UI layer). Pass the screen the game wants every tick and build the one it answers: when the wanted screen changes the cover closes over the old screen for half the duration, the answer switches, and the cover opens on the new one. Deterministic by the tick; snapshots carry it; under reduced motion every kind is a fade.
+    fn og_ui_screen_transition(&self, id: String, screen: String, desc: Option<String>) -> String;
     /// `og.ui.previewViewport`: Lay the UI out for another play surface (a phone in portrait at 3x, a notch) until cleared with null: for headless previews and playtests of responsive layouts. Render at width x dpr by height x dpr (`og run --size`).
     fn og_ui_preview_viewport(&self, world: u32, viewport: String);
 }
@@ -578,6 +586,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_load_lut",
     "og_load_emitter",
     "og_load_texture",
+    "og_load_skin",
     "og_load_sound_info",
     "og_load_status",
     "og_load_error",
@@ -649,6 +658,9 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_memory",
     "og_ui_remember",
     "og_ui_tick",
+    "og_ui_counter",
+    "og_ui_burst",
+    "og_ui_screen_transition",
     "og_ui_preview_viewport",
     "og_commands_register",
     "og_commands_parse",

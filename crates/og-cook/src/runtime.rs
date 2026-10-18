@@ -394,6 +394,19 @@ impl Bundle {
             .map_err(|_| invalid(&blob, "the emitter text is not UTF-8"))
     }
 
+    /// The validated text of a UI skin blob (parse it with og-ui's
+    /// `parse_skin` and load the assets it names from the bundle).
+    pub fn skin_text(&self, id: &str, bytes: &[u8]) -> Result<String, LoadError> {
+        let blob = self.blob::<format::Skin>(id, bytes)?;
+        let meta = one::<format::SkinMeta>(&blob)?;
+        let text = blob.raw("text")?;
+        if text.len() < meta.text_bytes as usize {
+            return Err(invalid(&blob, "the skin text is cut short"));
+        }
+        String::from_utf8(text[..meta.text_bytes as usize].to_vec())
+            .map_err(|_| invalid(&blob, "the skin text is not UTF-8"))
+    }
+
     /// Decodes a sound blob (the QOA stays encoded until [`CookedSound::decode`]).
     pub fn sound(&self, id: &str, bytes: &[u8]) -> Result<CookedSound, LoadError> {
         let blob = self.blob::<format::Sound>(id, bytes)?;

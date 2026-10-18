@@ -9,6 +9,7 @@
 //! | [`meshopt_codec`] | `runtime` | pure-Rust meshoptimizer vertex and index decoders |
 //! | [`qoa`] | `runtime` | the QOA audio codec |
 //! | [`fx`] | `runtime` | particle emitter files (`.ogt` of `type particles`) and `.cube` colour tables |
+//! | `cook` (skins) | `cook` | UI skins (`.ogt` of `type skin`), validated with og-ui's parser |
 //! | [`cook`] | `cook` | [`cook::cook_project`], options, the report, the importers |
 //!
 //! `runtime` alone builds for `wasm32-unknown-unknown` (no C, no cook

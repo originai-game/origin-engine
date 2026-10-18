@@ -519,6 +519,11 @@ pub fn og_load_texture(world: u32, path: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_load_skin(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_skin(&Host, world, path)
+}
+
+#[wasm_bindgen]
 pub fn og_load_sound_info(world: u32, sound: f64) -> String {
     <Host as LoadApi>::og_load_sound_info(&Host, world, sound)
 }
@@ -871,6 +876,21 @@ pub fn og_ui_remember(id: String, value: f64) {
 #[wasm_bindgen]
 pub fn og_ui_tick() -> u32 {
     <Host as UiApi>::og_ui_tick(&Host)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_counter(id: String, value: f64, desc: Option<String>) -> f64 {
+    <Host as UiApi>::og_ui_counter(&Host, id, value, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_burst(desc: Option<String>) {
+    <Host as UiApi>::og_ui_burst(&Host, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_screen_transition(id: String, screen: String, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_screen_transition(&Host, id, screen, desc)
 }
 
 #[wasm_bindgen]

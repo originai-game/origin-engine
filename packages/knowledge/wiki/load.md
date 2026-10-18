@@ -29,6 +29,7 @@ module load {
 | [`Asset`](#type-Asset) | handle | A loaded bundle, scene or glTF asset. |
 | [`Font`](#type-Font) | handle | A cooked MSDF font: its glyph table and one or more atlas pages. |
 | [`Sound`](#type-Sound) | handle | A cooked sound: QOA-encoded PCM the audio module plays. |
+| [`Skin`](#type-Skin) | handle | A cooked UI skin: its atlas, fonts, icons and sounds loaded with it, for og.ui.configure. |
 | [`Asset()`](#column-Asset) | column kind | An Asset handle field. |
 | [`Sound()`](#column-Sound) | column kind | A Sound handle field. |
 | [`LoadStatus`](#type-LoadStatus) | enum | Where a load is. |
@@ -49,6 +50,7 @@ module load {
 | [`og.load.lut`](#fn-lut) | function | A colour lookup table for PostEffects.lut, from a cooked `.cube` file (Adobe/Resolve 3D LUT; other sizes are resampled to 32). Loaded once per path. |
 | [`og.load.emitter`](#fn-emitter) | function | A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the grammar is the `particles` page of the wiki's render module and og-cook's fx module): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. The textures it names are loaded with it. Loaded once per path. |
 | [`og.load.texture`](#fn-texture) | function | Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load. |
+| [`og.load.skin`](#fn-skin) | function | Load a cooked UI skin (an `.ogt` of `type skin`: the atlas and its nine-slice frames, ornaments, palette, radii, type ramp, fonts, icons, motion and sounds; the grammar is og-ui's `skin` module) for UiDesc.skin. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. |
 | [`og.load.soundInfo`](#fn-soundInfo) | function | A loaded sound's format and length. |
 | [`og.load.status`](#fn-status) | function | Where a load is. |
 | [`og.load.error`](#fn-error) | function | Why a load failed. |
@@ -87,7 +89,7 @@ fn bundle {
 }
 ```
 
-<sub>`api.ogt` line 2385</sub>
+<sub>`api.ogt` line 2386</sub>
 
 <a id="fn-bundleInfo"></a>
 
@@ -117,7 +119,7 @@ fn bundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 2392</sub>
+<sub>`api.ogt` line 2393</sub>
 
 <a id="fn-defaultBundle"></a>
 
@@ -145,7 +147,7 @@ fn defaultBundle {
 }
 ```
 
-<sub>`api.ogt` line 2399</sub>
+<sub>`api.ogt` line 2400</sub>
 
 <a id="fn-gltf"></a>
 
@@ -177,7 +179,7 @@ fn gltf {
 }
 ```
 
-<sub>`api.ogt` line 2405</sub>
+<sub>`api.ogt` line 2406</sub>
 
 <a id="fn-scene"></a>
 
@@ -207,7 +209,7 @@ fn scene {
 }
 ```
 
-<sub>`api.ogt` line 2413</sub>
+<sub>`api.ogt` line 2414</sub>
 
 <a id="fn-font"></a>
 
@@ -237,7 +239,7 @@ fn font {
 }
 ```
 
-<sub>`api.ogt` line 2420</sub>
+<sub>`api.ogt` line 2421</sub>
 
 <a id="fn-fontInfo"></a>
 
@@ -267,7 +269,7 @@ fn fontInfo {
 }
 ```
 
-<sub>`api.ogt` line 2427</sub>
+<sub>`api.ogt` line 2428</sub>
 
 <a id="fn-sound"></a>
 
@@ -297,7 +299,7 @@ fn sound {
 }
 ```
 
-<sub>`api.ogt` line 2434</sub>
+<sub>`api.ogt` line 2435</sub>
 
 <a id="fn-lut"></a>
 
@@ -327,7 +329,7 @@ fn lut {
 }
 ```
 
-<sub>`api.ogt` line 2441</sub>
+<sub>`api.ogt` line 2442</sub>
 
 <a id="fn-emitter"></a>
 
@@ -357,7 +359,7 @@ fn emitter {
 }
 ```
 
-<sub>`api.ogt` line 2448</sub>
+<sub>`api.ogt` line 2449</sub>
 
 <a id="fn-texture"></a>
 
@@ -387,7 +389,37 @@ fn texture {
 }
 ```
 
-<sub>`api.ogt` line 2455</sub>
+<sub>`api.ogt` line 2456</sub>
+
+<a id="fn-skin"></a>
+
+### `og.load.skin`
+
+Load a cooked UI skin (an `.ogt` of `type skin`: the atlas and its nine-slice frames, ornaments, palette, radii, type ramp, fonts, icons, motion and sounds; the grammar is og-ui's `skin` module) for UiDesc.skin. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path.
+
+```ts
+og.load.skin(world: World, path: string): Result<Skin>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose UI uses it. |
+| `path` | `string` | no | The asset id, such as `skins/pixel/skin.ogt`. |
+
+**Returns** `Result<Skin>`: Refused for a path not in the bundle, a skin that does not parse (the reason names the line) or an asset it names that cannot load.
+
+Binding symbol `og_load_skin` · publish builds: kept
+
+```ogt
+fn skin {
+  doc "Load a cooked UI skin (an `.ogt` of `type skin`: the atlas and its nine-slice frames, ornaments, palette, radii, type ramp, fonts, icons, motion and sounds; the grammar is og-ui's `skin` module) for UiDesc.skin. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path."
+  param world World "The world whose UI uses it."
+  param path String "The asset id, such as `skins/pixel/skin.ogt`."
+  returns Result.Skin "Refused for a path not in the bundle, a skin that does not parse (the reason names the line) or an asset it names that cannot load."
+}
+```
+
+<sub>`api.ogt` line 2463</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -417,7 +449,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 2462</sub>
+<sub>`api.ogt` line 2470</sub>
 
 <a id="fn-status"></a>
 
@@ -447,7 +479,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 2469</sub>
+<sub>`api.ogt` line 2477</sub>
 
 <a id="fn-error"></a>
 
@@ -477,7 +509,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 2476</sub>
+<sub>`api.ogt` line 2484</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -507,7 +539,7 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 2483</sub>
+<sub>`api.ogt` line 2491</sub>
 
 <a id="fn-animation"></a>
 
@@ -537,7 +569,7 @@ fn animation {
 }
 ```
 
-<sub>`api.ogt` line 2490</sub>
+<sub>`api.ogt` line 2498</sub>
 
 ## Components, resources and events
 
@@ -560,7 +592,7 @@ component Model {
 }
 ```
 
-<sub>`api.ogt` line 2380</sub>
+<sub>`api.ogt` line 2381</sub>
 
 <a id="record-AssetReady"></a>
 
@@ -583,7 +615,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 2497</sub>
+<sub>`api.ogt` line 2505</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -608,7 +640,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 2503</sub>
+<sub>`api.ogt` line 2511</sub>
 
 ## Types
 
@@ -654,6 +686,20 @@ handle Sound "A cooked sound: QOA-encoded PCM the audio module plays."
 
 <sub>`api.ogt` line 2311</sub>
 
+<a id="type-Skin"></a>
+
+### `Skin` (handle)
+
+A cooked UI skin: its atlas, fonts, icons and sounds loaded with it, for og.ui.configure.
+
+A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+
+```ogt
+handle Skin "A cooked UI skin: its atlas, fonts, icons and sounds loaded with it, for og.ui.configure."
+```
+
+<sub>`api.ogt` line 2312</sub>
+
 <a id="type-LoadStatus"></a>
 
 ### `LoadStatus` (enum)
@@ -677,7 +723,7 @@ enum LoadStatus {
 }
 ```
 
-<sub>`api.ogt` line 2327</sub>
+<sub>`api.ogt` line 2328</sub>
 
 <a id="type-GltfDesc"></a>
 
@@ -703,7 +749,7 @@ struct GltfDesc {
 }
 ```
 
-<sub>`api.ogt` line 2334</sub>
+<sub>`api.ogt` line 2335</sub>
 
 <a id="type-GltfInfo"></a>
 
@@ -728,7 +774,7 @@ struct GltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 2342</sub>
+<sub>`api.ogt` line 2343</sub>
 
 <a id="type-BundleInfo"></a>
 
@@ -751,7 +797,7 @@ struct BundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 2350</sub>
+<sub>`api.ogt` line 2351</sub>
 
 <a id="type-FontInfo"></a>
 
@@ -782,7 +828,7 @@ struct FontInfo {
 }
 ```
 
-<sub>`api.ogt` line 2357</sub>
+<sub>`api.ogt` line 2358</sub>
 
 <a id="type-SoundInfo"></a>
 
@@ -811,7 +857,7 @@ struct SoundInfo {
 }
 ```
 
-<sub>`api.ogt` line 2368</sub>
+<sub>`api.ogt` line 2369</sub>
 
 ## Column kinds
 
@@ -831,7 +877,7 @@ column Asset {
 }
 ```
 
-<sub>`api.ogt` line 2313</sub>
+<sub>`api.ogt` line 2314</sub>
 
 ```ogt
 column Sound {
@@ -842,4 +888,4 @@ column Sound {
 }
 ```
 
-<sub>`api.ogt` line 2320</sub>
+<sub>`api.ogt` line 2321</sub>

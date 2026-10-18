@@ -96,6 +96,10 @@ export const widgets = {
   memory: (id: string, initial: number): number => abi().og_ui_memory(id, initial),
   remember: (id: string, value: number): void => abi().og_ui_remember(id, value),
   tick: (): number => abi().og_ui_tick(),
+  counter: (id: string, value: number, desc?: Api.CounterDesc): number => abi().og_ui_counter(id, value, json(desc)),
+  burst: (desc?: Api.BurstDesc): void => abi().og_ui_burst(json(desc)),
+  screenTransition: (id: string, screen: string, desc?: Api.ScreenTransitionDesc): Api.ScreenTransitionResult =>
+    parse(abi().og_ui_screen_transition(id, screen, json(desc))),
   previewViewport: (world: Api.World, viewport: Api.Viewport | null): void =>
     abi().og_ui_preview_viewport(worldId(world), JSON.stringify(viewport ?? null)),
 };

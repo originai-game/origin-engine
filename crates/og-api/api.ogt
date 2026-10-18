@@ -2309,6 +2309,7 @@ module load {
   handle Asset "A loaded bundle, scene or glTF asset."
   handle Font "A cooked MSDF font: its glyph table and one or more atlas pages."
   handle Sound "A cooked sound: QOA-encoded PCM the audio module plays."
+  handle Skin "A cooked UI skin: its atlas, fonts, icons and sounds loaded with it, for og.ui.configure."
 
   column Asset {
     doc "An Asset handle field."
@@ -2457,6 +2458,13 @@ module load {
     param world World "The world whose renderer owns the texture."
     param path String "The texture's asset id, such as `textures/stone.png`."
     returns Result.Texture
+  }
+
+  fn skin {
+    doc "Load a cooked UI skin (an `.ogt` of `type skin`: the atlas and its nine-slice frames, ornaments, palette, radii, type ramp, fonts, icons, motion and sounds; the grammar is og-ui's `skin` module) for UiDesc.skin. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path."
+    param world World "The world whose UI uses it."
+    param path String "The asset id, such as `skins/pixel/skin.ogt`."
+    returns Result.Skin "Refused for a path not in the bundle, a skin that does not parse (the reason names the line) or an asset it names that cannot load."
   }
 
   fn soundInfo {
@@ -3529,6 +3537,7 @@ module ui {
     field radius f32 "Corner radius." {
       unit cssPx
     }
+    field frame Option.SkinPart "The skin frame its background takes (a HUD capsule, a card); null is a plain fill. Without a skin the fill is drawn either way."
   }
 
   struct LabelDesc {
@@ -3540,6 +3549,7 @@ module ui {
     field nowrap bool "Keep to one line (breaking only at `\\n`)."
     field width Option.Size "Its width; null fits the text."
     field font FontRole "Which font."
+    field heading bool "A heading: a skin with a flourish frames it."
   }
 
   struct ButtonDesc {
@@ -3667,8 +3677,33 @@ module ui {
     field accentHue Option.HueName "A token hue as the game's accent (its hover, active, ink and focus tones derived as the tokens derive amber's); null keeps amber."
     field accentColor Option.Color "An sRGB colour as the game's accent, when no hue is given."
     field reducedMotion bool "Transitions only fade; sheens stop (prefers-reduced-motion)."
-    field icons Option.IconAtlasDesc "The icon atlas og.ui.icon draws from."
+    field icons Option.IconAtlasDesc "The icon atlas og.ui.icon draws from; null takes the skin's."
     field toastAnchor Option.Anchor "Where toasts stack; null is the bottom centre."
+    field skin Option.Skin "A skin from og.load.skin: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the token look (fonts, icons and an accent given here still win); null is the platform tokens."
+    field sounds Option.UiSounds "Sounds for UI events (they win over the skin's)."
+  }
+
+  struct UiSounds {
+    doc "Sounds the UI plays through og-audio (the ui bus) on its events; null is silent."
+    desc true
+    field hover Option.Sound "The pointer reaches a control."
+    field press Option.Sound "A control is pressed."
+    field open Option.Sound "A dialog opens."
+    field close Option.Sound "A dialog closes."
+    field success Option.Sound "A success toast."
+    field error Option.Sound "A refused press or a danger toast."
+  }
+
+  enum SkinPart {
+    doc "An element class a skin dresses with a nine-slice frame."
+    variant panel "Dialogs and screen panels."
+    variant card "Cards."
+    variant button "Buttons (with hover, pressed and disabled states)."
+    variant field "Text fields."
+    variant slot "Inventory and grid cells."
+    variant tooltip "Tooltips."
+    variant capsule "HUD capsules and toasts."
+    variant track "A progress bar's track."
   }
 
   struct TypeStep {
@@ -3719,6 +3754,7 @@ module ui {
     field typeRamp Map.TypeStep "Each TypeStepName's step."
     field sizes ControlSizes "The control sizes of the density in effect."
     field durationsMs Map.f32 "The motion durations by name (instant, fast, base, slow, spring, bounce), in milliseconds."
+    field skin String "The configured skin's name; empty for the platform tokens."
   }
 
   callback UiBuild {
@@ -3898,6 +3934,7 @@ module ui {
     variant slideLeft "Enters from the right."
     variant slideRight "Enters from the left."
     variant scale "Grows from slightly smaller around its centre."
+    variant pop "Springs up from smaller around its centre, overshoots and settles."
   }
 
   enum Tone {
@@ -4017,6 +4054,7 @@ module ui {
     field width Option.Size "Its width; null fits the content."
     field height Option.Size "Its height; null fits the content."
     field over bool "Draw over dialogs and spotlights (a tutorial callout, a dragged item); the default draws under them."
+    field frame Option.SkinPart "The skin frame its background takes; null is the panel's."
   }
 
   struct TransitionDesc {
@@ -4709,6 +4747,105 @@ module ui {
   fn tick {
     doc "Frames the UI has built: its clock, for animations by the tick."
     returns u32
+  }
+
+  struct CounterDesc {
+    doc "A number that counts to its value."
+    desc true
+    field step Option.TypeStepName "The type step; null is body."
+    field font FontRole "Which font: mono (the numeric role) for counts in a row, display for a big score."
+    field color Option.Paint "The ink; null is fg."
+    field align TextAlign "How it aligns in its width."
+    field width Option.Size "Its width; null fits the text."
+    field durationMs f32 "How long a change takes to count; 0 is 900 ms." {
+      unit ms
+      min 0
+    }
+    field from Option.f64 "Where the first count starts; null starts at the value (no count)."
+    field decimals u32 "Digits after the point."
+    field prefix String "Text before the number."
+    field suffix String "Text after the number."
+  }
+
+  fn counter {
+    doc "A number label that counts (ease-out cubic, by the tick) from where it was to the value each time the value changes, grouped with commas; a skin with motion.pop bumps it when it lands. Scores, currency, rewards."
+    param id String "Its id."
+    param value f64 "The value to count to."
+    param desc CounterDesc "Look, duration, start and format."
+    returns f64 "The number shown this tick."
+  }
+
+  struct BurstDesc {
+    doc "Rays and sparks thrown from an element."
+    desc true
+    field count u32 "Rays; 0 is 8."
+    field color Option.Paint "Their ink; null is the accent."
+    field radius f32 "How far they fly from the element's centre; 0 is 1.4 times its size." {
+      unit cssPx
+      min 0
+    }
+    field durationMs f32 "How long they fly; 0 is motion.duration.slow plus base." {
+      unit ms
+      min 0
+    }
+    field delayMs f32 "Wait this long after the element first appears." {
+      unit ms
+      min 0
+    }
+  }
+
+  fn burst {
+    doc "Throw rays and sparks from the element built just before (a star landing, a reward), once, from when it first appears. Off under reduced motion."
+    param desc BurstDesc "Count, ink, reach and timing."
+    returns Void
+  }
+
+  enum ScreenWipe {
+    doc "How a screen transition covers the old screen and reveals the new one."
+    variant fade "The cover fades in and out."
+    variant wipe "An edge sweeps across."
+    variant iris "A circle closes on the centre and opens again."
+    variant dissolve "Cells appear in a fixed scattered order."
+    variant slide "A sheet slides over and away."
+  }
+
+  enum WipeSide {
+    doc "Where a wipe or a slide comes from."
+    variant left "From the left."
+    variant right "From the right."
+    variant top "From the top."
+    variant bottom "From the bottom."
+  }
+
+  struct ScreenTransitionDesc {
+    doc "How a screen transition looks."
+    desc true
+    field kind ScreenWipe "The movement."
+    field durationMs f32 "Cover and reveal together; 0 is twice motion.duration.slow." {
+      unit ms
+      min 0
+    }
+    field color Option.Paint "The cover's colour (the texture's tint); null is bg."
+    field texture Option.Texture "A texture stretched over the surface as the cover; null is the flat colour."
+    field from WipeSide "Where a wipe or a slide comes from."
+  }
+
+  struct ScreenTransitionResult {
+    doc "Where a screen transition is this tick."
+    field shown String "The screen to build this tick: the old one until the cover closes, then the new one."
+    field covering bool "The cover is closing over the old screen."
+    field revealing bool "The cover is opening on the new screen."
+    field cover f32 "How much of the surface is covered, 0 to 1." {
+      unit ratio
+    }
+  }
+
+  fn screenTransition {
+    doc "A transition between game screens drawn over the whole frame (through the overlay, over every other UI layer). Pass the screen the game wants every tick and build the one it answers: when the wanted screen changes the cover closes over the old screen for half the duration, the answer switches, and the cover opens on the new one. Deterministic by the tick; snapshots carry it; under reduced motion every kind is a fade."
+    param id String "Its id."
+    param screen String "The screen the game wants now."
+    param desc ScreenTransitionDesc "Kind, duration, colour or texture, side."
+    returns ScreenTransitionResult
   }
 
   fn previewViewport {

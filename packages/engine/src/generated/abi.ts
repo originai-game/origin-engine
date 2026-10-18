@@ -211,6 +211,8 @@ export interface HostAbi<A, V> {
   og_load_emitter(world: number, path: string): string;
   /** `og.load.texture` */
   og_load_texture(world: number, path: string): string;
+  /** `og.load.skin` */
+  og_load_skin(world: number, path: string): string;
   /** `og.load.soundInfo` */
   og_load_sound_info(world: number, sound: number): string;
   /** `og.load.status` */
@@ -353,6 +355,12 @@ export interface HostAbi<A, V> {
   og_ui_remember(id: string, value: number): void;
   /** `og.ui.tick` */
   og_ui_tick(): number;
+  /** `og.ui.counter` */
+  og_ui_counter(id: string, value: number, desc: string | undefined): number;
+  /** `og.ui.burst` */
+  og_ui_burst(desc: string | undefined): void;
+  /** `og.ui.screenTransition` */
+  og_ui_screen_transition(id: string, screen: string, desc: string | undefined): string;
   /** `og.ui.previewViewport` */
   og_ui_preview_viewport(world: number, viewport: string): void;
   /** `og.commands.register` */
@@ -500,6 +508,7 @@ export const SYMBOLS: readonly string[] = [
   "og_load_lut",
   "og_load_emitter",
   "og_load_texture",
+  "og_load_skin",
   "og_load_sound_info",
   "og_load_status",
   "og_load_error",
@@ -571,6 +580,9 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_memory",
   "og_ui_remember",
   "og_ui_tick",
+  "og_ui_counter",
+  "og_ui_burst",
+  "og_ui_screen_transition",
   "og_ui_preview_viewport",
   "og_commands_register",
   "og_commands_parse",
