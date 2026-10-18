@@ -94,8 +94,10 @@ fn hours(d: &Value, tick: u64, dt: f32) -> f32 {
 }
 
 /// og.Fog, og.Sky, og.DayNight, og.Weather, og.Water, og.Water2D,
-/// og.Fluid2D, og.Rope and og.Cloth into `rs.scene`.
-pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
+/// og.Fluid2D, og.Rope and og.Cloth into `rs.scene`. Returns the keys of
+/// the instances it added (cloth), for per-object motion.
+pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) -> Vec<(u64, u32)> {
+    let mut keys = Vec::new();
     let RenderState {
         scene, draw, atmo, ..
     } = rs;
@@ -333,7 +335,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         });
     }
     let Some(physics) = physics else {
-        return;
+        return keys;
     };
     // Fluids as metaballs.
     for (e, v) in rows(world, layouts.fluid.as_ref()) {
@@ -426,7 +428,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                 })
             });
         scene.add_instance(handle, material, Mat4::IDENTITY);
+        keys.push((e, u32::MAX));
     }
+    keys
 }
 
 /// The mesh of a `columns` x `rows` grid of world points: smooth normals

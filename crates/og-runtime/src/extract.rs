@@ -522,7 +522,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let tick = time.tick;
     super::fx::settings(world, rs);
     super::fx::components(world, rs, &mut h, tick);
-    super::atmosphere::extract(world, rs, &mut h);
+    // Cloth meshes are instances too: keyed for per-object motion.
+    keys.extend(super::atmosphere::extract(world, rs, &mut h));
     let vp = super::fx::viewport(rs);
     // The camera's shake, punch, kick and zones (on the frame only), then
     // og.Sprite rows, floating texts and tile layers.
