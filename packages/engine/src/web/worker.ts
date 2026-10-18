@@ -450,7 +450,11 @@ export function startWorker(game: GameToken): void {
     command: (e, [action, args]) => e.command(String(action), (args as string[]) ?? []),
     hash: (e) => e.hash(),
     frame: (e, [ms]) => e.frame(Number(ms)),
-    probe: (e, [member, ...rest]) => (e.probe as unknown as Record<string, (...a: unknown[]) => unknown>)[String(member)]!(...rest),
+    probe: (e, [member, ...rest]) => {
+      const f = (e.probe as unknown as Record<string, unknown>)[String(member)];
+      if (typeof f !== "function") throw new TypeError(`probe has no member '${String(member)}'`);
+      return (f as (...a: unknown[]) => unknown)(...rest);
+    },
   };
 
   self.onmessage = async ({ data }) => {
