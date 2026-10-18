@@ -106,8 +106,8 @@ hosts; M6 needs M3, M4, M5; M7 needs M6.
   noted in og-taste §10); og-ui breaks CJK lines between any two
   characters (ja's title wraps a word); the platform asks; the
   archetypes' native and Chrome world hashes were not compared this round
-  (`tests/web/template.ts` and `og run` already disagree on match3 before
-  E6's changes, at another viewport; not investigated).
+  (`tests/web/template.ts` and `og run` disagree on match3 with or without
+  this round's sound change, at another viewport; not investigated).
 
 ### Status 2026-10-18, E3 round
 
