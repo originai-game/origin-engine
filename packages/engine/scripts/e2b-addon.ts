@@ -35,7 +35,7 @@ if (!existsSync(e2b)) throw new Error(`no e2b SDK at ${e2b}: run bun install in 
 const { Sandbox } = (await import(e2b)) as { Sandbox: { create(t: string, o: Record<string, unknown>): Promise<any> } };
 const version = (JSON.parse(readFileSync(join(pkg, "package.json"), "utf8")) as { version: string }).version;
 const tarballs = [`origingame-engine-${version}.tgz`, `origingame-engine-linux-x64-${version}.tgz`].map((t) => join(pkg, "dist", "pack", t));
-for (const t of tarballs) if (!existsSync(t)) throw new Error(`${t} is missing: sh scripts/build.sh --linux-x64 && sh scripts/pack.sh`);
+for (const t of tarballs) if (!existsSync(t)) throw new Error(`${t} is missing: sh scripts/pack.sh --linux-x64`);
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((n) => {

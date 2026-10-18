@@ -200,8 +200,7 @@ isolated and not: 120 checks), `tests/web/player.ts` and
 
 ```sh
 cd packages/engine
-sh scripts/build.sh --linux-x64   # this machine's addon and og, the Linux x64 addon and og (cargo zigbuild, glibc 2.31), both web hosts
-sh scripts/pack.sh                # dist/pack/*.tgz with sizes and sha256
+sh scripts/pack.sh --linux-x64    # OG_RELEASE=1 scripts/build.sh --linux-x64 (this machine's addon and og, the Linux x64 addon and og through cargo zigbuild against glibc 2.31, both web hosts), then dist/pack/*.tgz with sizes and sha256
 bun scripts/e2b-addon.ts          # optional, billable: install the tarballs in the platform's E2B probe sandbox and og run the runner there
 ```
 
@@ -215,6 +214,7 @@ bun scripts/e2b-addon.ts          # optional, billable: install the tarballs in 
   `native/`, then the platform package.
 - Publishing (not done yet): bump the version in `package.json` (the
   optional dependencies follow it in `pack.sh`'s platform manifests and must
-  be bumped with it), build on macOS arm64 with `--linux-x64`, pack, then
+  be bumped with it), `sh scripts/pack.sh --linux-x64` on macOS arm64 (a
+  release build: `pack.sh` refuses a dev `native/`), then
   `npm publish` each platform tarball before the main one, with access
   public under the `@origingame` scope.

@@ -33,7 +33,7 @@ had grown `target/` to 143 GB.
 | `size-gate` | `scripts/size-gate.sh`: brotli `-q 11` sum of `opt.txt` ≤ `wasm_core_brotli_bytes` | full | | yes | |
 | `drift` | `og api check` (generated `.d.ts`, wiki, JSON schema, Rust glue vs `crates/og-api/api.ogt`), the dev `og` the test step built | both | yes | yes | |
 | `bun-quick` | `bun run test` in `packages/knowledge` and `packages/create` (no native build) | quick | yes | | |
-| `bun-test` | `bun run test` in each `packages/*` with a `test` script; `OG_GATE=1` makes `packages/engine/scripts/build.sh` take the dev addon and `og` and the gate's wasm instead of compiling release and wasm again | full | | yes | |
+| `bun-test` | `bun run test` in each `packages/*` with a `test` script; `OG_GATE=1` makes `packages/engine/scripts/build.sh` take the dev addon and `og` and the gate's wasm instead of compiling release and wasm again (below) | full | | yes | |
 | `determinism` | `tools/wasm-determinism/run.sh`: the same math digest and world hash on the host and on wasm32 scalar and simd128 under node | full | | yes | needs node |
 | perf | `cargo test -p og-tests --release -- --ignored perf` | `make perf` | | | yes |
 
@@ -83,6 +83,18 @@ in parallel share `target/` (AGENTS.md §Build and gate discipline: private
 `target/agent-*` directories compile every dependency once per agent and are
 not used). It exports `OG_EVIDENCE_DIR` (default `<target>/evidence`) and
 `OG_WASM_OUT` (`<target>/og-wasm`) for test harnesses and `build.sh`.
+
+## `packages/engine/scripts/build.sh` outside the gate
+
+Standalone (`bun run build`, `bun run test` in `packages/engine`), build.sh
+does what it does under the gate whenever the gate has built in this target
+directory (`<target>/og-wasm/opt-all.txt` and the dev addon and `og` exist):
+the dev addon and `og`, the gate's wasm, and one line saying so. It compiles
+release and its own wasm only with `OG_RELEASE=1`, with `--linux-x64`, or
+when the gate has not built here; a release build holds the gate lock.
+`native/build-profile` records `dev` or `release`, and `scripts/pack.sh`,
+which runs `OG_RELEASE=1 build.sh` with its own arguments first, packs only
+`release`: what ships is always release.
 
 ## Switches in `scripts/budgets.txt` and `scripts/wasm-crates.txt`
 

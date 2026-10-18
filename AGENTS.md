@@ -87,9 +87,11 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   installed; test binaries that write a shared directory (a cook in place)
   are serialised through `.config/nextest.toml` test groups, never by
   sleeping or retrying.
-- **No cold rebuilds for size.** `build.sh` under the gate (`OG_GATE=1`)
-  takes the wasm the wasm-build and wasm-opt steps already produced; only a
-  standalone `bun run build` compiles it itself.
+- **No cold rebuilds for size.** `build.sh` under the gate (`OG_GATE=1`),
+  and standalone wherever the gate has built, takes the dev addon and `og`
+  and the wasm the wasm-build and wasm-opt steps already produced; only
+  `OG_RELEASE=1` (what `pack.sh` and every shipping build set) compiles
+  release and the wasm itself.
 
 ## Validation
 
