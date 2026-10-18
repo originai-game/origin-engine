@@ -56,7 +56,7 @@ export const Control = defineSystem(
   "Control",
   {
     reads: [og.Input, Tuning, og.FlipbookEvent],
-    writes: [Game, Hero, og.Transform, og.Velocity, og.Flipbook, og.Sprite, og.Afterimage],
+    writes: [Game, Hero, og.Transform, og.CharacterController, og.Flipbook, og.Sprite, og.Afterimage],
   },
   (q, time, world) => {
     const game = world.resource(Game);
@@ -70,7 +70,7 @@ export const Control = defineSystem(
     for (const a of q.archetypes()) {
       const hero = a.column(Hero);
       const p = a.column(og.Transform).position;
-      const v = a.column(og.Velocity).linear;
+      const v = a.column(og.CharacterController).move;
       const fb = a.column(og.Flipbook);
       const sprite = a.column(og.Sprite);
       const ghost = a.column(og.Afterimage);

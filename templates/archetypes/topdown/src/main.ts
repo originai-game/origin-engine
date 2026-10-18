@@ -147,7 +147,9 @@ function start(world: World): void {
 
   // The hero: the sprite, the walk, the body, the dash's ghosts and the camera.
   const hero = actor(world, "hero", spawn.x, spawn.y, sheets.hero, heroClip(HeroClip.Idle, Facing.Down), 0.35);
-  body(world, hero, 0.6, 0.35, HERO);
+  // The hero walks as og.CharacterController in its top-down mode (gravityScale 0): a kinematic box that slides along the walls.
+  must(world.insert(hero, og.Collider, { shape: SHAPE_BOX, size: { x: 0.6, y: 0.35, z: 1 }, offset: { x: 0, y: 0.35 / 2, z: 0 }, friction: 0, layers: HERO, mask: WALLS }));
+  must(world.insert(hero, og.CharacterController, { gravityScale: 0, snapDistance: 0, stepHeight: 0, pushBodies: false }));
   must(world.insert(hero, Hero));
   must(world.insert(hero, Report));
   must(world.insert(hero, og.Perceivable, { team: 1, eyeHeight: 0 }));
@@ -195,7 +197,7 @@ function place(world: World, args: readonly string[]): void {
   const x = num(args[0], "x");
   const y = num(args[1], "y");
   must(world.set(hero, og.Transform, { position: { x, y, z: 0 } }));
-  must(world.set(hero, og.Velocity, { linear: { x: 0, y: 0, z: 0 } }));
+  must(world.set(hero, og.CharacterController, { move: { x: 0, y: 0, z: 0 } }));
   const g = must(world.resource(Game));
   g.heroX = x;
   g.heroY = y;

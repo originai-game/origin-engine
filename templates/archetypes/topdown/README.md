@@ -29,7 +29,10 @@ og build .                   # dist/: the play page for the browser
 - **Moving.** WASD or the arrows move the hero at `Tuning.speed` on the
   tick the keys are read; a diagonal is normalised. The hero faces the
   stronger axis (a diagonal keeps the old facing when it is one of its keys).
-  Walls stop the body; the slime and the hero pass through each other.
+  The hero's body is `og.CharacterController` in its top-down mode
+  (`gravityScale` 0): a kinematic box the engine slides along the walls,
+  moved by `move` each tick (walk, dash and knockback summed). The slime
+  and the hero pass through each other.
 - **The sword.** Space (or J) swings in the facing direction. The hero is
   rooted for the swing's 15 ticks. Damage lands on the attack clip's strike
   frame (its `"hit"` event), within `Tuning.reach` of a point one reach
@@ -119,7 +122,7 @@ fields through the crossing with `get:og.Camera`).
 
 | System | Reads | Writes | Job |
 |---|---|---|---|
-| `Control` | `og.Input`, `Tuning`, `og.FlipbookEvent` | `Game`, `Hero`, `og.Transform`, `og.Velocity`, `og.Flipbook`, `og.Sprite`, `og.Afterimage` | footsteps and strikes from the hero's frame events; walk, swing, dash, knockback, blinking, falling; the clip and flip |
+| `Control` | `og.Input`, `Tuning`, `og.FlipbookEvent` | `Game`, `Hero`, `og.Transform`, `og.CharacterController`, `og.Flipbook`, `og.Sprite`, `og.Afterimage` | footsteps and strikes from the hero's frame events; walk, swing, dash, knockback, blinking, falling; the clip and flip |
 | `Slimes` | `Tuning` | `Game`, `Slime`, `og.Transform`, `og.Velocity`, `og.Flipbook`, `og.Sprite`, `og.NavAgent`, `og.AiAgent`, `og.Perception` | take strikes (all five effects), knockback and stun (`NavAgent.drive` off meanwhile), death (the AI stops), sight from `Tuning.slimeSight` |
 | `Pickups` | — | `Game`, `Pickup`, `og.Transform`, `og.Sprite` | hover, take by overlap, pop and fade |
 | `Door` | — | `Game` | the room, "locked", opening the doorway |
