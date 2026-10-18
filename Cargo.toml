@@ -83,3 +83,50 @@ opt-level = 3
 opt-level = 3
 [profile.dev.package.naga]
 opt-level = 3
+
+# The workspace crates in 16 codegen units instead of incremental's 256:
+# an edit recompiles and links fewer, larger units (an og-core edit's test
+# build 10.4 s to 6.6 s, og-render's 7.5 s to 4.3 s under another agent's
+# load; tests/evidence/build-speed-2026-10.md). Incremental stays on; off
+# was slower (og-render 7.5 s to 9.5 s). og-physics keeps the default with
+# its opt-level 3 above.
+[profile.dev.package.og-core]
+codegen-units = 16
+[profile.dev.package.og-core-derive]
+codegen-units = 16
+[profile.dev.package.og-ecs]
+codegen-units = 16
+[profile.dev.package.og-render]
+codegen-units = 16
+[profile.dev.package.og-runtime]
+codegen-units = 16
+[profile.dev.package.og-cook]
+codegen-units = 16
+[profile.dev.package.og-ui]
+codegen-units = 16
+[profile.dev.package.og-api]
+codegen-units = 16
+[profile.dev.package.og-idl]
+codegen-units = 16
+[profile.dev.package.og-probe]
+codegen-units = 16
+[profile.dev.package.og-anim]
+codegen-units = 16
+[profile.dev.package.og-audio]
+codegen-units = 16
+[profile.dev.package.og-input]
+codegen-units = 16
+[profile.dev.package.og-tween]
+codegen-units = 16
+[profile.dev.package.og-tilemap]
+codegen-units = 16
+[profile.dev.package.og-blob]
+codegen-units = 16
+[profile.dev.package.og-host-web]
+codegen-units = 16
+[profile.dev.package.og-host-node]
+codegen-units = 16
+[profile.dev.package.og-cli]
+codegen-units = 16
+[profile.dev.package.og-tests]
+codegen-units = 16

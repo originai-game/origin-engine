@@ -6,6 +6,8 @@
 #   wasm-opt          binaryen, pinned by BINARYEN_VERSION
 #   brotli            the size gate's compressor
 #   bun               the TypeScript packages' test runner, pinned by BUN_VERSION
+#   sccache           the compiler cache .cargo/config.toml names, pinned by
+#                     SCCACHE_VERSION (first: the cargo installs below go through it)
 #
 # Each tool is skipped when the right version is already on PATH. Linux x86_64
 # and aarch64 download release binaries into OG_TOOLS_BIN (default
@@ -18,6 +20,7 @@ set -eu -o pipefail
 
 BINARYEN_VERSION="${BINARYEN_VERSION:-133}"
 BUN_VERSION="${BUN_VERSION:-1.4.2}"
+SCCACHE_VERSION="${SCCACHE_VERSION:-0.14.0}"
 BIN="${OG_TOOLS_BIN:-$HOME/.local/bin}"
 mkdir -p "$BIN"
 export PATH="$BIN:$PATH"
@@ -28,6 +31,30 @@ case "$arch" in arm64) arch=aarch64 ;; esac
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 
 fetch() { curl -fsSL --retry 3 -o "$2" "$1"; }
+
+# sccache, before anything cargo builds here: .cargo/config.toml makes it
+# the rustc wrapper (RUSTC_WRAPPER= turns it off, as CI does).
+if command -v sccache >/dev/null; then
+  og_say "sccache: present ($(sccache --version))"
+else
+  og_say "sccache $SCCACHE_VERSION: installing"
+  case "$os-$arch" in
+    Linux-x86_64)   triple=x86_64-unknown-linux-musl ;;
+    Linux-aarch64)  triple=aarch64-unknown-linux-musl ;;
+    Darwin-x86_64)  triple=x86_64-apple-darwin ;;
+    Darwin-aarch64) triple=aarch64-apple-darwin ;;
+    *) triple="" ;;
+  esac
+  url="https://github.com/mozilla/sccache/releases/download/v$SCCACHE_VERSION/sccache-v$SCCACHE_VERSION-$triple.tar.gz"
+  if [ -n "$triple" ] && fetch "$url" "$tmp/sccache.tgz" && tar -xzf "$tmp/sccache.tgz" -C "$tmp"; then
+    cp "$tmp/sccache-v$SCCACHE_VERSION-$triple/sccache" "$BIN/"
+  else
+    og_say "sccache: no release binary for $os-$arch; cargo install"
+    RUSTC_WRAPPER="" cargo install --locked --version "$SCCACHE_VERSION" sccache --root "$tmp/cargo"
+    cp "$tmp/cargo/bin/sccache" "$BIN/"
+  fi
+  sccache --version
+fi
 
 # wasm-bindgen-cli
 wb="$(og_lock_version wasm-bindgen)"

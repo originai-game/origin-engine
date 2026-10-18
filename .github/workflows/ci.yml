@@ -24,6 +24,9 @@ env:
   # Line numbers in CI backtraces; the dev profile has no debuginfo because
   # macOS keeps it in object files (Cargo.toml [profile.dev]).
   CARGO_PROFILE_DEV_DEBUG: line-tables-only
+  # .cargo/config.toml's sccache is for the shared local machine; CI caches
+  # target/ instead, and an empty RUSTC_WRAPPER turns the wrapper off.
+  RUSTC_WRAPPER: ""
   OG_EVIDENCE_DIR: ${{ github.workspace }}/target/evidence
 
 jobs:

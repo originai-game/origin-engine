@@ -1,0 +1,10 @@
+# Every build here goes through sccache, so a fresh worktree (scripts/worktree.sh)
+# takes its dependencies from the cache the main checkout filled instead of
+# compiling them again (docs/ci.md §Lanes: a fresh worktree's test build in
+# about a minute). sccache caches only non-incremental units: dependencies,
+# release, wasm32; the workspace's own dev crates are incremental and compile.
+# scripts/install-tools.sh installs it. To build without it, for one command
+# or a shell: RUSTC_WRAPPER= cargo build ... (an empty value turns the wrapper
+# off); CI does that, caching target/ instead.
+[build]
+rustc-wrapper = "sccache"
