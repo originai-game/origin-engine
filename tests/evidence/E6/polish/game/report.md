@@ -42,7 +42,7 @@ the guard patrols, sees inside its cone and not through the wall, chases, search
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 49.72 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 0.47 ms median, 0.7 p95; render 3.4 median, 3.66 p95; frame p95 4.29, max 6.07 |
+| Frame (metal) | step 0.48 ms median, 0.68 p95; render 3.4 median, 3.65 p95; frame p95 4.29, max 5.56 |
 | Audio | 6.1 s, peak 0, RMS 0, 0 clipped, 100 % silent ticks |
 
 ### smoke
@@ -60,7 +60,7 @@ A tap on Start spins the trickster and drops the crate; the run writes its frame
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 21.43 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 0.53 ms median, 0.7 p95; render 3.35 median, 3.56 p95; frame p95 4.21, max 125.82 |
+| Frame (metal) | step 0.59 ms median, 0.79 p95; render 3.4 median, 3.73 p95; frame p95 4.45, max 128.2 |
 | Audio | 2.5 s, peak 0.34, RMS 0.0152, 0 clipped, 78.67 % silent ticks |
 
 ![smoke smoke](frames/smoke-smoke.png) 

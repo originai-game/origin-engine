@@ -167,12 +167,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 0.71,
-    "stepP95Ms": 1.9,
-    "renderMedianMs": 4.46,
-    "renderP95Ms": 4.96,
-    "frameP95Ms": 6.12,
-    "frameMaxMs": 917.6
+    "stepMedianMs": 0.73,
+    "stepP95Ms": 1.86,
+    "renderMedianMs": 4.48,
+    "renderP95Ms": 5.01,
+    "frameP95Ms": 6.14,
+    "frameMaxMs": 923.64
    },
    "audio": {
     "seconds": 7.2,

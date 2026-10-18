@@ -74,11 +74,11 @@
    "frame": {
     "tier": "metal",
     "stepMedianMs": 1.1,
-    "stepP95Ms": 1.61,
+    "stepP95Ms": 1.77,
     "renderMedianMs": 1.37,
-    "renderP95Ms": 1.7,
-    "frameP95Ms": 3.21,
-    "frameMaxMs": 4.56
+    "renderP95Ms": 1.74,
+    "frameP95Ms": 3.37,
+    "frameMaxMs": 5.43
    },
    "audio": {
     "seconds": 3,
@@ -178,12 +178,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 1.1,
-    "stepP95Ms": 1.48,
-    "renderMedianMs": 1.39,
-    "renderP95Ms": 1.69,
-    "frameP95Ms": 3.13,
-    "frameMaxMs": 85.69
+    "stepMedianMs": 1.08,
+    "stepP95Ms": 1.54,
+    "renderMedianMs": 1.38,
+    "renderP95Ms": 1.71,
+    "frameP95Ms": 3.15,
+    "frameMaxMs": 82.18
    },
    "audio": {
     "seconds": 5.1,
@@ -283,12 +283,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 1.15,
-    "stepP95Ms": 1.56,
-    "renderMedianMs": 1.41,
-    "renderP95Ms": 1.69,
-    "frameP95Ms": 3.33,
-    "frameMaxMs": 83.34
+    "stepMedianMs": 1.1,
+    "stepP95Ms": 1.66,
+    "renderMedianMs": 1.39,
+    "renderP95Ms": 1.72,
+    "frameP95Ms": 3.35,
+    "frameMaxMs": 81.31
    },
    "audio": {
     "seconds": 3,
@@ -366,12 +366,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 1.07,
-    "stepP95Ms": 1.47,
-    "renderMedianMs": 1.37,
-    "renderP95Ms": 1.71,
-    "frameP95Ms": 3.12,
-    "frameMaxMs": 77.66
+    "stepMedianMs": 1.08,
+    "stepP95Ms": 1.51,
+    "renderMedianMs": 1.38,
+    "renderP95Ms": 1.73,
+    "frameP95Ms": 3.18,
+    "frameMaxMs": 75.27
    },
    "audio": {
     "seconds": 8.7,
@@ -437,12 +437,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 1.07,
-    "stepP95Ms": 1.47,
-    "renderMedianMs": 1.37,
-    "renderP95Ms": 1.74,
-    "frameP95Ms": 3.12,
-    "frameMaxMs": 3.98
+    "stepMedianMs": 1.08,
+    "stepP95Ms": 1.48,
+    "renderMedianMs": 1.38,
+    "renderP95Ms": 1.72,
+    "frameP95Ms": 3.15,
+    "frameMaxMs": 4.01
    },
    "audio": {
     "seconds": 3.8,
@@ -508,12 +508,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 1.08,
-    "stepP95Ms": 1.42,
-    "renderMedianMs": 1.38,
+    "stepMedianMs": 1.06,
+    "stepP95Ms": 1.45,
+    "renderMedianMs": 1.35,
     "renderP95Ms": 1.69,
-    "frameP95Ms": 3.06,
-    "frameMaxMs": 4.9
+    "frameP95Ms": 3.1,
+    "frameMaxMs": 6.73
    },
    "audio": {
     "seconds": 9.1,
@@ -579,12 +579,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 1.09,
-    "stepP95Ms": 1.53,
-    "renderMedianMs": 1.38,
-    "renderP95Ms": 1.68,
-    "frameP95Ms": 3.14,
-    "frameMaxMs": 4.04
+    "stepMedianMs": 1.14,
+    "stepP95Ms": 1.65,
+    "renderMedianMs": 1.42,
+    "renderP95Ms": 1.74,
+    "frameP95Ms": 3.31,
+    "frameMaxMs": 4.54
    },
    "audio": {
     "seconds": 3,
@@ -650,12 +650,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 1.08,
-    "stepP95Ms": 1.5,
+    "stepMedianMs": 1.1,
+    "stepP95Ms": 1.57,
     "renderMedianMs": 1.38,
-    "renderP95Ms": 1.71,
-    "frameP95Ms": 3.12,
-    "frameMaxMs": 4.38
+    "renderP95Ms": 1.73,
+    "frameP95Ms": 3.18,
+    "frameMaxMs": 4.57
    },
    "audio": {
     "seconds": 2.5,

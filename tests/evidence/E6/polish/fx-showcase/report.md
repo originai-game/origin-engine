@@ -41,7 +41,7 @@ every station matches its reference frame (432 ticks)
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 4 system(s), 0 burst(s) |
-| Frame (metal) | step 0.71 ms median, 1.9 p95; render 4.46 median, 4.96 p95; frame p95 6.12, max 917.6 |
+| Frame (metal) | step 0.73 ms median, 1.86 p95; render 4.48 median, 5.01 p95; frame p95 6.14, max 923.64 |
 | Audio | 7.2 s, peak 0, RMS 0, 0 clipped, 100 % silent ticks |
 
 ![frames post](frames/frames-post.png) 

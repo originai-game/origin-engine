@@ -165,7 +165,7 @@
    "measure": "UI sounds",
    "where": "multitouch",
    "detail": "2 of 2 UI presses played no sound on the ui bus",
-   "fix": "og-taste §6 (feedback) and og-audio §UI: give the skin or og.ui.configure its press and open sounds"
+   "fix": "og-taste §6 (feedback) and og-audio §3: give the skin or og.ui.configure its press and open sounds"
   },
   {
    "measure": "hit feedback",
@@ -189,13 +189,13 @@
    "measure": "hit feedback",
    "where": "multitouch",
    "detail": "1 of 1 damage moments (hp) had no a sound within 8 ticks",
-   "fix": "og-audio (one sound per hit, varied by pitch)"
+   "fix": "og-audio §1 (every event sounds; a hit's sound on its tick)"
   },
   {
    "measure": "UI sounds",
    "where": "phone",
    "detail": "1 of 1 UI presses played no sound on the ui bus",
-   "fix": "og-taste §6 (feedback) and og-audio §UI: give the skin or og.ui.configure its press and open sounds"
+   "fix": "og-taste §6 (feedback) and og-audio §3: give the skin or og.ui.configure its press and open sounds"
   },
   {
    "measure": "idle frames",
@@ -441,19 +441,19 @@
    "measure": "UI sounds",
    "where": "sounds",
    "detail": "1 of 2 UI presses played no sound on the ui bus",
-   "fix": "og-taste §6 (feedback) and og-audio §UI: give the skin or og.ui.configure its press and open sounds"
+   "fix": "og-taste §6 (feedback) and og-audio §3: give the skin or og.ui.configure its press and open sounds"
   },
   {
    "measure": "UI sounds",
    "where": "touch",
    "detail": "3 of 9 UI presses played no sound on the ui bus",
-   "fix": "og-taste §6 (feedback) and og-audio §UI: give the skin or og.ui.configure its press and open sounds"
+   "fix": "og-taste §6 (feedback) and og-audio §3: give the skin or og.ui.configure its press and open sounds"
   },
   {
    "measure": "UI sounds",
    "where": "tutorial",
    "detail": "1 of 4 UI presses played no sound on the ui bus",
-   "fix": "og-taste §6 (feedback) and og-audio §UI: give the skin or og.ui.configure its press and open sounds"
+   "fix": "og-taste §6 (feedback) and og-audio §3: give the skin or og.ui.configure its press and open sounds"
   }
  ],
  "playtests": [
@@ -512,12 +512,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 1.02,
-    "stepP95Ms": 1.44,
-    "renderMedianMs": 0.77,
-    "renderP95Ms": 1.03,
-    "frameP95Ms": 2.45,
-    "frameMaxMs": 3.82
+    "stepMedianMs": 1.05,
+    "stepP95Ms": 1.43,
+    "renderMedianMs": 0.78,
+    "renderP95Ms": 1.02,
+    "frameP95Ms": 2.36,
+    "frameMaxMs": 3.87
    },
    "audio": {
     "seconds": 1.8,
@@ -853,12 +853,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 0.85,
-    "stepP95Ms": 1.77,
+    "stepMedianMs": 0.84,
+    "stepP95Ms": 1.73,
     "renderMedianMs": 0.7,
-    "renderP95Ms": 0.91,
+    "renderP95Ms": 0.94,
     "frameP95Ms": 2.54,
-    "frameMaxMs": 88.22
+    "frameMaxMs": 89.8
    },
    "audio": {
     "seconds": 17.4,
@@ -1194,12 +1194,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 0.87,
-    "stepP95Ms": 1.78,
+    "stepMedianMs": 0.88,
+    "stepP95Ms": 1.76,
     "renderMedianMs": 0.72,
-    "renderP95Ms": 0.96,
-    "frameP95Ms": 2.67,
-    "frameMaxMs": 274.45
+    "renderP95Ms": 0.97,
+    "frameP95Ms": 2.61,
+    "frameMaxMs": 279.81
    },
    "audio": {
     "seconds": 17.4,
@@ -1265,12 +1265,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 1.26,
+    "stepMedianMs": 1.22,
     "stepP95Ms": 1.56,
-    "renderMedianMs": 0.69,
-    "renderP95Ms": 0.89,
-    "frameP95Ms": 2.45,
-    "frameMaxMs": 3.06
+    "renderMedianMs": 0.67,
+    "renderP95Ms": 0.91,
+    "frameP95Ms": 2.46,
+    "frameMaxMs": 2.75
    },
    "audio": {
     "seconds": 2.8,
@@ -1419,12 +1419,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 0.91,
-    "stepP95Ms": 2.88,
-    "renderMedianMs": 0.85,
-    "renderP95Ms": 1.15,
-    "frameP95Ms": 4.06,
-    "frameMaxMs": 95.89
+    "stepMedianMs": 0.97,
+    "stepP95Ms": 2.93,
+    "renderMedianMs": 0.88,
+    "renderP95Ms": 1.16,
+    "frameP95Ms": 3.91,
+    "frameMaxMs": 95.82
    },
    "audio": {
     "seconds": 3.5,
@@ -1490,12 +1490,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 1.03,
-    "stepP95Ms": 1.54,
-    "renderMedianMs": 0.69,
-    "renderP95Ms": 0.96,
-    "frameP95Ms": 2.4,
-    "frameMaxMs": 5.07
+    "stepMedianMs": 1.05,
+    "stepP95Ms": 1.55,
+    "renderMedianMs": 0.7,
+    "renderP95Ms": 0.95,
+    "frameP95Ms": 2.43,
+    "frameMaxMs": 3.86
    },
    "audio": {
     "seconds": 3.4,
@@ -1766,11 +1766,11 @@
    "frame": {
     "tier": "metal",
     "stepMedianMs": 0.83,
-    "stepP95Ms": 1.27,
-    "renderMedianMs": 0.69,
-    "renderP95Ms": 0.9,
-    "frameP95Ms": 2.13,
-    "frameMaxMs": 79.38
+    "stepP95Ms": 1.31,
+    "renderMedianMs": 0.7,
+    "renderP95Ms": 0.94,
+    "frameP95Ms": 2.25,
+    "frameMaxMs": 83.45
    },
    "audio": {
     "seconds": 12.8,
@@ -1838,12 +1838,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 1.18,
-    "stepP95Ms": 1.5,
-    "renderMedianMs": 0.72,
-    "renderP95Ms": 0.96,
-    "frameP95Ms": 2.45,
-    "frameMaxMs": 2.55
+    "stepMedianMs": 1.25,
+    "stepP95Ms": 1.56,
+    "renderMedianMs": 0.75,
+    "renderP95Ms": 0.95,
+    "frameP95Ms": 2.47,
+    "frameMaxMs": 2.83
    },
    "audio": {
     "seconds": 1.2,
@@ -1910,11 +1910,11 @@
    "frame": {
     "tier": "metal",
     "stepMedianMs": 1.23,
-    "stepP95Ms": 1.52,
-    "renderMedianMs": 0.7,
-    "renderP95Ms": 0.92,
-    "frameP95Ms": 2.37,
-    "frameMaxMs": 3.44
+    "stepP95Ms": 1.56,
+    "renderMedianMs": 0.72,
+    "renderP95Ms": 0.98,
+    "frameP95Ms": 2.43,
+    "frameMaxMs": 4.61
    },
    "audio": {
     "seconds": 3.6,
@@ -1980,12 +1980,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 0.89,
-    "stepP95Ms": 1.22,
+    "stepMedianMs": 0.93,
+    "stepP95Ms": 1.39,
     "renderMedianMs": 0.75,
-    "renderP95Ms": 0.94,
-    "frameP95Ms": 2.2,
-    "frameMaxMs": 3.69
+    "renderP95Ms": 1,
+    "frameP95Ms": 2.37,
+    "frameMaxMs": 3.77
    },
    "audio": {
     "seconds": 1.1,
@@ -2322,11 +2322,11 @@
    "frame": {
     "tier": "metal",
     "stepMedianMs": 0.89,
-    "stepP95Ms": 1.79,
-    "renderMedianMs": 0.82,
-    "renderP95Ms": 1.09,
-    "frameP95Ms": 2.68,
-    "frameMaxMs": 94.08
+    "stepP95Ms": 1.8,
+    "renderMedianMs": 0.83,
+    "renderP95Ms": 1.1,
+    "frameP95Ms": 2.86,
+    "frameMaxMs": 97.88
    },
    "audio": {
     "seconds": 17.4,
@@ -2663,11 +2663,11 @@
    "frame": {
     "tier": "metal",
     "stepMedianMs": 0.95,
-    "stepP95Ms": 1.95,
-    "renderMedianMs": 0.78,
-    "renderP95Ms": 1.03,
-    "frameP95Ms": 2.88,
-    "frameMaxMs": 130.54
+    "stepP95Ms": 1.93,
+    "renderMedianMs": 0.77,
+    "renderP95Ms": 1.05,
+    "frameP95Ms": 2.87,
+    "frameMaxMs": 132.05
    },
    "audio": {
     "seconds": 17.4,
@@ -3004,11 +3004,11 @@
    "frame": {
     "tier": "metal",
     "stepMedianMs": 0.97,
-    "stepP95Ms": 2.13,
+    "stepP95Ms": 2.2,
     "renderMedianMs": 0.82,
-    "renderP95Ms": 1.11,
-    "frameP95Ms": 3.15,
-    "frameMaxMs": 109.96
+    "renderP95Ms": 1.1,
+    "frameP95Ms": 3.2,
+    "frameMaxMs": 110.99
    },
    "audio": {
     "seconds": 17.4,
@@ -3344,12 +3344,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 0.94,
-    "stepP95Ms": 1.88,
-    "renderMedianMs": 0.78,
+    "stepMedianMs": 0.97,
+    "stepP95Ms": 1.97,
+    "renderMedianMs": 0.79,
     "renderP95Ms": 1.05,
-    "frameP95Ms": 2.83,
-    "frameMaxMs": 125.56
+    "frameP95Ms": 2.89,
+    "frameMaxMs": 126.95
    },
    "audio": {
     "seconds": 17.4,
@@ -3685,12 +3685,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 1.88,
-    "stepP95Ms": 6.56,
-    "renderMedianMs": 0.94,
-    "renderP95Ms": 1.29,
-    "frameP95Ms": 7.76,
-    "frameMaxMs": 92.76
+    "stepMedianMs": 1.86,
+    "stepP95Ms": 6.63,
+    "renderMedianMs": 0.95,
+    "renderP95Ms": 1.31,
+    "frameP95Ms": 7.93,
+    "frameMaxMs": 92.07
    },
    "audio": {
     "seconds": 17.4,
@@ -4026,12 +4026,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 0.94,
-    "stepP95Ms": 1.94,
-    "renderMedianMs": 0.78,
-    "renderP95Ms": 1.04,
-    "frameP95Ms": 2.88,
-    "frameMaxMs": 92.89
+    "stepMedianMs": 0.95,
+    "stepP95Ms": 1.99,
+    "renderMedianMs": 0.79,
+    "renderP95Ms": 1.06,
+    "frameP95Ms": 2.93,
+    "frameMaxMs": 93.47
    },
    "audio": {
     "seconds": 17.4,
@@ -4097,12 +4097,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 1.36,
-    "stepP95Ms": 1.77,
-    "renderMedianMs": 0.7,
-    "renderP95Ms": 0.96,
-    "frameP95Ms": 2.67,
-    "frameMaxMs": 3.89
+    "stepMedianMs": 1.35,
+    "stepP95Ms": 1.69,
+    "renderMedianMs": 0.73,
+    "renderP95Ms": 1.02,
+    "frameP95Ms": 2.64,
+    "frameMaxMs": 4.15
    },
    "audio": {
     "seconds": 1.5,
@@ -4169,11 +4169,11 @@
    "frame": {
     "tier": "metal",
     "stepMedianMs": 0.92,
-    "stepP95Ms": 1.55,
+    "stepP95Ms": 1.49,
     "renderMedianMs": 0.71,
-    "renderP95Ms": 0.94,
-    "frameP95Ms": 2.34,
-    "frameMaxMs": 3.81
+    "renderP95Ms": 0.98,
+    "frameP95Ms": 2.29,
+    "frameMaxMs": 4.82
    },
    "audio": {
     "seconds": 7.5,
@@ -4239,12 +4239,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 1.13,
-    "stepP95Ms": 1.46,
-    "renderMedianMs": 0.72,
-    "renderP95Ms": 0.94,
-    "frameP95Ms": 2.33,
-    "frameMaxMs": 6.07
+    "stepMedianMs": 1.14,
+    "stepP95Ms": 1.48,
+    "renderMedianMs": 0.71,
+    "renderP95Ms": 0.95,
+    "frameP95Ms": 2.37,
+    "frameMaxMs": 3.59
    },
    "audio": {
     "seconds": 2.5,

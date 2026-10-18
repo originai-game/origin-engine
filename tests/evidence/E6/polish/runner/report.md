@@ -39,7 +39,7 @@ a coin in reach is collected and scores; one out of reach is not (180 ticks)
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 1.1 ms median, 1.61 p95; render 1.37 median, 1.7 p95; frame p95 3.21, max 4.56 |
+| Frame (metal) | step 1.1 ms median, 1.77 p95; render 1.37 median, 1.74 p95; frame p95 3.37, max 5.43 |
 | Audio | 3 s, peak 0.14, RMS 0.0171, 0 clipped, 77.78 % silent ticks |
 
 ### flow
@@ -55,7 +55,7 @@ title, run, crash on a crate, game over, run again (306 ticks)
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 9.8 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 1.1 ms median, 1.48 p95; render 1.39 median, 1.69 p95; frame p95 3.13, max 85.69 |
+| Frame (metal) | step 1.08 ms median, 1.54 p95; render 1.38 median, 1.71 p95; frame p95 3.15, max 82.18 |
 | Audio | 5.1 s, peak 0.43, RMS 0.0269, 0 clipped, 76.14 % silent ticks |
 
 ![flow title](frames/flow-title.png) 
@@ -75,7 +75,7 @@ reference frames: title, a coin's pickup, the crash (180 ticks)
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 1.15 ms median, 1.56 p95; render 1.41 median, 1.69 p95; frame p95 3.33, max 83.34 |
+| Frame (metal) | step 1.1 ms median, 1.66 p95; render 1.39 median, 1.72 p95; frame p95 3.35, max 81.31 |
 | Audio | 3 s, peak 0.43, RMS 0.03, 0 clipped, 73.33 % silent ticks |
 
 ![frames title](frames/frames-title.png) 
@@ -95,7 +95,7 @@ a full jump clears a crate and a fence; a hop clears a crate, not a fence (522 t
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 1.07 ms median, 1.47 p95; render 1.37 median, 1.71 p95; frame p95 3.12, max 77.66 |
+| Frame (metal) | step 1.08 ms median, 1.51 p95; render 1.38 median, 1.73 p95; frame p95 3.18, max 75.27 |
 | Audio | 8.7 s, peak 0.43, RMS 0.0197, 0 clipped, 81.99 % silent ticks |
 
 ![jump jump](frames/jump-jump.png) 
@@ -115,7 +115,7 @@ the best score is read from the store, and a crash submits the score and saves t
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 1.07 ms median, 1.47 p95; render 1.37 median, 1.74 p95; frame p95 3.12, max 3.98 |
+| Frame (metal) | step 1.08 ms median, 1.48 p95; render 1.38 median, 1.72 p95; frame p95 3.15, max 4.01 |
 | Audio | 3.8 s, peak 0.43, RMS 0.0278, 0 clipped, 78.95 % silent ticks |
 
 ### replay
@@ -131,7 +131,7 @@ replay: two runs of jumps, coins and a crash end on one hash (546 ticks)
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 2.99 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 1.08 ms median, 1.42 p95; render 1.38 median, 1.69 p95; frame p95 3.06, max 4.9 |
+| Frame (metal) | step 1.06 ms median, 1.45 p95; render 1.35 median, 1.69 p95; frame p95 3.1, max 6.73 |
 | Audio | 9.1 s, peak 0.43, RMS 0.0213, 0 clipped, 77.47 % silent ticks |
 
 ### sounds
@@ -147,7 +147,7 @@ a round's start, a jump, a coin and a crash each play their sound (180 ticks)
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 1.09 ms median, 1.53 p95; render 1.38 median, 1.68 p95; frame p95 3.14, max 4.04 |
+| Frame (metal) | step 1.14 ms median, 1.65 p95; render 1.42 median, 1.74 p95; frame p95 3.31, max 4.54 |
 | Audio | 3 s, peak 0.43, RMS 0.0326, 0 clipped, 58.33 % silent ticks |
 
 ### tune
@@ -163,6 +163,6 @@ set writes Tuning: start speed and gravity change the run (150 ticks)
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 1.08 ms median, 1.5 p95; render 1.38 median, 1.71 p95; frame p95 3.12, max 4.38 |
+| Frame (metal) | step 1.1 ms median, 1.57 p95; render 1.38 median, 1.73 p95; frame p95 3.18, max 4.57 |
 | Audio | 2.5 s, peak 0.14, RMS 0.0184, 0 clipped, 77.33 % silent ticks |
 

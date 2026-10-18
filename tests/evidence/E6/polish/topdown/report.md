@@ -42,7 +42,7 @@ the slime patrols its beat, chases the hero on sight and bites in reach (336 tic
 | Damage | 2 moment(s) from `hp`: hit stop 0, shake 2, floating text 2, sound 2, tween 2, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 1.22 ms median, 1.6 p95; render 0.98 median, 1.24 p95; frame p95 2.82, max 6.42 |
+| Frame (metal) | step 1.25 ms median, 1.64 p95; render 1 median, 1.24 p95; frame p95 2.87, max 6.63 |
 | Audio | 5.6 s, peak 0.08, RMS 0.0091, 0 clipped, 93.15 % silent ticks |
 
 ### combat
@@ -58,7 +58,7 @@ a bite hurts the hero; three sword hits kill the slime with hit stop, flash and 
 | Damage | 4 moment(s) from `hp`, `hits`: hit stop 3, shake 4, floating text 4, sound 4, tween 4, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 1.28 ms median, 1.63 p95; render 1.02 median, 1.28 p95; frame p95 2.85, max 4.89 |
+| Frame (metal) | step 1.27 ms median, 1.74 p95; render 1.02 median, 1.3 p95; frame p95 2.95, max 5.32 |
 | Audio | 3.1 s, peak 0.26, RMS 0.0192, 0 clipped, 79.03 % silent ticks |
 
 ### door
@@ -74,7 +74,7 @@ the doorway blocks until the key, then opens and leads into room 2 (204 ticks)
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 1.23 ms median, 1.72 p95; render 1 median, 1.26 p95; frame p95 3.18, max 73.4 |
+| Frame (metal) | step 1.26 ms median, 1.84 p95; render 1.03 median, 1.31 p95; frame p95 3.08, max 74.35 |
 | Audio | 3.4 s, peak 0.32, RMS 0.0263, 0 clipped, 77.45 % silent ticks |
 
 ![door door](frames/door-door.png) 
@@ -94,7 +94,7 @@ the pillar hides the hero from the slime, and a hurt slime flees (138 ticks)
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 1.25 ms median, 1.68 p95; render 0.99 median, 1.25 p95; frame p95 2.89, max 4.79 |
+| Frame (metal) | step 1.22 ms median, 1.7 p95; render 0.99 median, 1.31 p95; frame p95 2.85, max 4.74 |
 | Audio | 2.3 s, peak 0, RMS 0, 0 clipped, 100 % silent ticks |
 
 ### frames
@@ -110,7 +110,7 @@ the rooms, a crit's freeze frame and a dash match their reference frames (222 ti
 | Damage | 3 moment(s) from `hits`: hit stop 3, shake 3, floating text 3, sound 3, tween 3, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 1.27 ms median, 1.72 p95; render 1.03 median, 1.27 p95; frame p95 2.91, max 80.94 |
+| Frame (metal) | step 1.2 ms median, 1.73 p95; render 1 median, 1.3 p95; frame p95 3.04, max 82.86 |
 | Audio | 3.7 s, peak 0.32, RMS 0.0271, 0 clipped, 78.38 % silent ticks |
 
 ![frames start](frames/frames-start.png) 
@@ -130,7 +130,7 @@ a whole visit replays to the same hash (456 ticks)
 | Damage | 1 moment(s) from `hits`: hit stop 1, shake 1, floating text 1, sound 1, tween 1, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 1.24 ms median, 1.57 p95; render 1 median, 1.24 p95; frame p95 2.82, max 6.58 |
+| Frame (metal) | step 1.22 ms median, 1.67 p95; render 1 median, 1.27 p95; frame p95 2.88, max 6.38 |
 | Audio | 7.6 s, peak 0.32, RMS 0.0193, 0 clipped, 85.09 % silent ticks |
 
 ### walk
@@ -146,7 +146,7 @@ the hero walks at its speed, steps on the walk frames and stops at walls (336 ti
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 1.24 ms median, 1.63 p95; render 1 median, 1.27 p95; frame p95 2.86, max 76.21 |
+| Frame (metal) | step 1.26 ms median, 1.64 p95; render 1 median, 1.27 p95; frame p95 2.86, max 76.8 |
 | Audio | 5.6 s, peak 0, RMS 0, 0 clipped, 100 % silent ticks |
 
 ![walk walk](frames/walk-walk.png) 

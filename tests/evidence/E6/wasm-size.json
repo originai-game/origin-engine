@@ -1,0 +1,47 @@
+{
+ "about": "The publish wasm (og_host_web-publish) after E6, 2026-10-19. brotli is scripts/check.sh size-gate's (-q 11 after wasm-opt -Oz); the shares are of the raw wasm's function bodies by the crate in each function's mangled name (generic code instantiated for a crate counts for it), so they apportion code, not compressed bytes.",
+ "brotli": 2862533,
+ "budget": 4194304,
+ "share": 68.2,
+ "atE6Start": {
+  "note": "60 % of the budget when E6 began; 2,631,104 B (62 %) after og-nav and og-ai (249c76c); 2,859,083 B (68 %) after audio, platform and i18n; 2,862,533 B (68 %) at the end"
+ },
+ "rawCodeBytes": 11386682,
+ "crates": {
+  "og-i18n": {
+   "rawCodeBytes": 69289,
+   "shareOfCode": 0.61,
+   "brotliEstimate": 17419
+  },
+  "rustybuzz + ttf-parser (shaping)": {
+   "rawCodeBytes": 470306,
+   "shareOfCode": 4.13,
+   "brotliEstimate": 118232
+  },
+  "og-nav": {
+   "rawCodeBytes": 250484,
+   "shareOfCode": 2.2,
+   "brotliEstimate": 62970
+  },
+  "og-ai": {
+   "rawCodeBytes": 177847,
+   "shareOfCode": 1.56,
+   "brotliEstimate": 44710
+  },
+  "og-runtime E6 glue (nav, ai, platform, i18n, e6, polish)": {
+   "rawCodeBytes": 119973,
+   "shareOfCode": 1.05,
+   "brotliEstimate": 30160
+  },
+  "og-ui shaping (shape.rs)": {
+   "rawCodeBytes": 7979,
+   "shareOfCode": 0.07,
+   "brotliEstimate": 2006
+  },
+  "og-audio (the whole crate; E6 added dsp, music, listen and the mixer's buses)": {
+   "rawCodeBytes": 177269,
+   "shareOfCode": 1.56,
+   "brotliEstimate": 44564
+  }
+ }
+}

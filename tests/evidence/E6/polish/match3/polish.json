@@ -73,12 +73,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 1,
-    "stepP95Ms": 1.41,
-    "renderMedianMs": 1.68,
+    "stepMedianMs": 1.01,
+    "stepP95Ms": 1.6,
+    "renderMedianMs": 1.65,
     "renderP95Ms": 2,
-    "frameP95Ms": 3.35,
-    "frameMaxMs": 5.14
+    "frameP95Ms": 3.4,
+    "frameMaxMs": 5.52
    },
    "audio": {
     "seconds": 3.1,
@@ -167,12 +167,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 0.99,
+    "stepMedianMs": 1.01,
     "stepP95Ms": 1.45,
     "renderMedianMs": 1.66,
-    "renderP95Ms": 2,
-    "frameP95Ms": 3.43,
-    "frameMaxMs": 131.54
+    "renderP95Ms": 2.01,
+    "frameP95Ms": 3.35,
+    "frameMaxMs": 131.79
    },
    "audio": {
     "seconds": 5.8,
@@ -273,11 +273,11 @@
    "frame": {
     "tier": "metal",
     "stepMedianMs": 1,
-    "stepP95Ms": 2.28,
-    "renderMedianMs": 1.67,
-    "renderP95Ms": 2.03,
-    "frameP95Ms": 4.21,
-    "frameMaxMs": 151.5
+    "stepP95Ms": 2.22,
+    "renderMedianMs": 1.66,
+    "renderP95Ms": 2.01,
+    "frameP95Ms": 3.95,
+    "frameMaxMs": 150.93
    },
    "audio": {
     "seconds": 2.2,
@@ -343,12 +343,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 1,
-    "stepP95Ms": 1.64,
-    "renderMedianMs": 1.66,
-    "renderP95Ms": 1.97,
-    "frameP95Ms": 3.89,
-    "frameMaxMs": 5.35
+    "stepMedianMs": 1.03,
+    "stepP95Ms": 1.69,
+    "renderMedianMs": 1.68,
+    "renderP95Ms": 1.99,
+    "frameP95Ms": 3.53,
+    "frameMaxMs": 5.09
    },
    "audio": {
     "seconds": 2.75,
@@ -414,12 +414,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 1,
-    "stepP95Ms": 1.51,
-    "renderMedianMs": 1.65,
-    "renderP95Ms": 2.01,
-    "frameP95Ms": 3.38,
-    "frameMaxMs": 5.31
+    "stepMedianMs": 0.99,
+    "stepP95Ms": 1.5,
+    "renderMedianMs": 1.66,
+    "renderP95Ms": 1.98,
+    "frameP95Ms": 3.39,
+    "frameMaxMs": 7.05
    },
    "audio": {
     "seconds": 7.3,
@@ -530,12 +530,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 0.98,
-    "stepP95Ms": 1.75,
-    "renderMedianMs": 1.67,
-    "renderP95Ms": 1.98,
-    "frameP95Ms": 3.69,
-    "frameMaxMs": 144.84
+    "stepMedianMs": 0.99,
+    "stepP95Ms": 1.95,
+    "renderMedianMs": 1.66,
+    "renderP95Ms": 2.04,
+    "frameP95Ms": 3.96,
+    "frameMaxMs": 147.56
    },
    "audio": {
     "seconds": 4.1,

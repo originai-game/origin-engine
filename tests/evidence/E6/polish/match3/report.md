@@ -39,7 +39,7 @@ a drag onto a neighbour swaps like two taps (186 ticks)
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 1 ms median, 1.41 p95; render 1.68 median, 2 p95; frame p95 3.35, max 5.14 |
+| Frame (metal) | step 1.01 ms median, 1.6 p95; render 1.65 median, 2 p95; frame p95 3.4, max 5.52 |
 | Audio | 3.1 s, peak 0.19, RMS 0.021, 0 clipped, 72.58 % silent ticks |
 
 ### endings
@@ -55,7 +55,7 @@ reaching the target wins, running out of moves loses, a press deals again (348 t
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 0.99 ms median, 1.45 p95; render 1.66 median, 2 p95; frame p95 3.43, max 131.54 |
+| Frame (metal) | step 1.01 ms median, 1.45 p95; render 1.66 median, 2.01 p95; frame p95 3.35, max 131.79 |
 | Audio | 5.8 s, peak 0.19, RMS 0.0312, 0 clipped, 55.75 % silent ticks |
 
 ![endings won](frames/endings-won.png) 
@@ -75,7 +75,7 @@ the dealt board, a clear and a cascade match their reference frames (132 ticks)
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 1 ms median, 2.28 p95; render 1.67 median, 2.03 p95; frame p95 4.21, max 151.5 |
+| Frame (metal) | step 1 ms median, 2.22 p95; render 1.66 median, 2.01 p95; frame p95 3.95, max 150.93 |
 | Audio | 2.2 s, peak 0.19, RMS 0.0219, 0 clipped, 74.24 % silent ticks |
 
 ![frames dealt](frames/frames-dealt.png) 
@@ -95,7 +95,7 @@ a replay of swaps, clears and a cascade lands on the same world hash (165 ticks)
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 1 ms median, 1.64 p95; render 1.66 median, 1.97 p95; frame p95 3.89, max 5.35 |
+| Frame (metal) | step 1.03 ms median, 1.69 p95; render 1.68 median, 1.99 p95; frame p95 3.53, max 5.09 |
 | Audio | 2.75 s, peak 0.19, RMS 0.0226, 0 clipped, 64.85 % silent ticks |
 
 ### sounds
@@ -111,7 +111,7 @@ selections, swaps, clears, a cascade, the win and the loss each play their sound
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 1 ms median, 1.51 p95; render 1.65 median, 2.01 p95; frame p95 3.38, max 5.31 |
+| Frame (metal) | step 0.99 ms median, 1.5 p95; render 1.66 median, 1.98 p95; frame p95 3.39, max 7.05 |
 | Audio | 7.3 s, peak 0.19, RMS 0.0283, 0 clipped, 59.82 % silent ticks |
 
 ### swap
@@ -127,7 +127,7 @@ a swap that makes a line clears, scores and cascades; one that makes nothing is 
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 0.98 ms median, 1.75 p95; render 1.67 median, 1.98 p95; frame p95 3.69, max 144.84 |
+| Frame (metal) | step 0.99 ms median, 1.95 p95; render 1.66 median, 2.04 p95; frame p95 3.96, max 147.56 |
 | Audio | 4.1 s, peak 0.19, RMS 0.0192, 0 clipped, 72.36 % silent ticks |
 
 ![swap title](frames/swap-title.png) 

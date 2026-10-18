@@ -48,12 +48,12 @@
 | contrast | locales mainMenu-ar: `play` "العب" | 2.52:1 between ink and ground (body text wants 4.5:1) | og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call |
 | screen transitions | locales | 4 of 15 screen changes had no motion in the 20 ticks around them | og-taste §5 (screens change through a transition): og.ui.screenTransition, one kind per game |
 | idle frames | locales | 57.12 % of ticks show and play nothing new (nothing moves or animates, no UI motion, no sound, no tween, text or particle) | og-feel §9 (idle loops: breathing, a pickup's spin) and og-taste §5 (motion): something alive on every screen |
-| UI sounds | multitouch | 2 of 2 UI presses played no sound on the ui bus | og-taste §6 (feedback) and og-audio §UI: give the skin or og.ui.configure its press and open sounds |
+| UI sounds | multitouch | 2 of 2 UI presses played no sound on the ui bus | og-taste §6 (feedback) and og-audio §3: give the skin or og.ui.configure its press and open sounds |
 | hit feedback | multitouch | 1 of 1 damage moments (hp) had no hit stop within 8 ticks | og-feel §3 (hit stop by impact weight) |
 | hit feedback | multitouch | 1 of 1 damage moments (hp) had no shake within 8 ticks | og-feel §4 (trauma, not offsets) |
 | hit feedback | multitouch | 1 of 1 damage moments (hp) had no floating text within 8 ticks | og-feel §7 (floating text) |
-| hit feedback | multitouch | 1 of 1 damage moments (hp) had no a sound within 8 ticks | og-audio (one sound per hit, varied by pitch) |
-| UI sounds | phone | 1 of 1 UI presses played no sound on the ui bus | og-taste §6 (feedback) and og-audio §UI: give the skin or og.ui.configure its press and open sounds |
+| hit feedback | multitouch | 1 of 1 damage moments (hp) had no a sound within 8 ticks | og-audio §1 (every event sounds; a hit's sound on its tick) |
+| UI sounds | phone | 1 of 1 UI presses played no sound on the ui bus | og-taste §6 (feedback) and og-audio §3: give the skin or og.ui.configure its press and open sounds |
 | idle frames | phone | 96.43 % of ticks show and play nothing new (nothing moves or animates, no UI motion, no sound, no tween, text or particle) | og-feel §9 (idle loops: breathing, a pickup's spin) and og-taste §5 (motion): something alive on every screen |
 | contrast | skin-cartoon pause: `Level` "1-2 Old mill" | 1.22:1 between ink and ground (body text wants 4.5:1) | og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call |
 | contrast | skin-cartoon shooter: `Zone` "Sector 4" | 1.62:1 between ink and ground (body text wants 4.5:1) | og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call |
@@ -94,9 +94,9 @@
 | text size | skin-scifi shop: `Name` "Iron sword" | ink lines 6 CSS px tall (a 13 px face's capitals and digits are about 9) | og-taste §4 and §9.6: use the ramp's body step or larger for anything read on a phone |
 | text size | skin-scifi idle: `Name` "Farm" | ink lines 7 CSS px tall (a 13 px face's capitals and digits are about 9) | og-taste §4 and §9.6: use the ramp's body step or larger for anything read on a phone |
 | HUD occupancy | skin-scifi | the HUD covers up to 23.06 % of the surface and 22.64 % of the central third | og-taste §2 (the play surface is the hero; HUD weight): capsules in the corners, the centre third free |
-| UI sounds | sounds | 1 of 2 UI presses played no sound on the ui bus | og-taste §6 (feedback) and og-audio §UI: give the skin or og.ui.configure its press and open sounds |
-| UI sounds | touch | 3 of 9 UI presses played no sound on the ui bus | og-taste §6 (feedback) and og-audio §UI: give the skin or og.ui.configure its press and open sounds |
-| UI sounds | tutorial | 1 of 4 UI presses played no sound on the ui bus | og-taste §6 (feedback) and og-audio §UI: give the skin or og.ui.configure its press and open sounds |
+| UI sounds | sounds | 1 of 2 UI presses played no sound on the ui bus | og-taste §6 (feedback) and og-audio §3: give the skin or og.ui.configure its press and open sounds |
+| UI sounds | touch | 3 of 9 UI presses played no sound on the ui bus | og-taste §6 (feedback) and og-audio §3: give the skin or og.ui.configure its press and open sounds |
+| UI sounds | tutorial | 1 of 4 UI presses played no sound on the ui bus | og-taste §6 (feedback) and og-audio §3: give the skin or og.ui.configure its press and open sounds |
 
 ## Playtests
 
@@ -113,7 +113,7 @@ a drag from one inventory slot to another moves the item (108 ticks)
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 1.02 ms median, 1.44 p95; render 0.77 median, 1.03 p95; frame p95 2.45, max 3.82 |
+| Frame (metal) | step 1.05 ms median, 1.43 p95; render 0.78 median, 1.02 p95; frame p95 2.36, max 3.87 |
 | Audio | 1.8 s, peak 0.21, RMS 0.0243, 0 clipped, 77.78 % silent ticks |
 
 ### frames-desktop
@@ -131,7 +131,7 @@ every screen at desktop size matches its reference frame (1044 ticks)
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 27.08 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 0.85 ms median, 1.77 p95; render 0.7 median, 0.91 p95; frame p95 2.54, max 88.22 |
+| Frame (metal) | step 0.84 ms median, 1.73 p95; render 0.7 median, 0.94 p95; frame p95 2.54, max 89.8 |
 | Audio | 17.4 s, peak 0.16, RMS 0.0156, 0 clipped, 90.42 % silent ticks |
 
 ![frames-desktop gallery](frames/frames-desktop-gallery.png) 
@@ -153,7 +153,7 @@ every screen on a phone in portrait matches its reference frame (1044 ticks)
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 31.04 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 0.87 ms median, 1.78 p95; render 0.72 median, 0.96 p95; frame p95 2.67, max 274.45 |
+| Frame (metal) | step 0.88 ms median, 1.76 p95; render 0.72 median, 0.97 p95; frame p95 2.61, max 279.81 |
 | Audio | 17.4 s, peak 0.16, RMS 0.0156, 0 clipped, 90.42 % silent ticks |
 
 ![frames-phone gallery](frames/frames-phone-gallery.png) 
@@ -173,7 +173,7 @@ a gamepad's d-pad, stick, A and B drive the gallery through og.Gamepad (168 tick
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 21.52 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 1.26 ms median, 1.56 p95; render 0.69 median, 0.89 p95; frame p95 2.45, max 3.06 |
+| Frame (metal) | step 1.22 ms median, 1.56 p95; render 0.67 median, 0.91 p95; frame p95 2.46, max 2.75 |
 | Audio | 2.8 s, peak 0.16, RMS 0.0123, 0 clipped, 94.05 % silent ticks |
 
 ### juice
@@ -191,7 +191,7 @@ an iris transition switches screens at full cover, the score counts up, UI event
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 11.5 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 0.91 ms median, 2.88 p95; render 0.85 median, 1.15 p95; frame p95 4.06, max 95.89 |
+| Frame (metal) | step 0.97 ms median, 2.93 p95; render 0.88 median, 1.16 p95; frame p95 3.91, max 95.82 |
 | Audio | 3.5 s, peak 0.21, RMS 0.0182, 0 clipped, 87.62 % silent ticks |
 
 ![juice iris-closing](frames/juice-iris-closing.png) 
@@ -211,7 +211,7 @@ keyboard focus opens a screen, steps a slider and closes the settings with a sav
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 14.43 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 1.03 ms median, 1.54 p95; render 0.69 median, 0.96 p95; frame p95 2.4, max 5.07 |
+| Frame (metal) | step 1.05 ms median, 1.55 p95; render 0.7 median, 0.95 p95; frame p95 2.43, max 3.86 |
 | Audio | 3.4 s, peak 0.16, RMS 0.0193, 0 clipped, 85.78 % silent ticks |
 
 ### locales
@@ -229,7 +229,7 @@ the menu, pause and confirm screens in en, zh-CN, ja, ko and ar match their refe
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 57.12 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 0.83 ms median, 1.27 p95; render 0.69 median, 0.9 p95; frame p95 2.13, max 79.38 |
+| Frame (metal) | step 0.83 ms median, 1.31 p95; render 0.7 median, 0.94 p95; frame p95 2.25, max 83.45 |
 | Audio | 12.8 s, peak 0.16, RMS 0.0182, 0 clipped, 86.98 % silent ticks |
 
 ![locales mainMenu-en](frames/locales-mainMenu-en.png) 
@@ -249,7 +249,7 @@ a stick held by one touch and a button tapped by another work together (72 ticks
 | Damage | 1 moment(s) from `hp`: hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 1.18 ms median, 1.5 p95; render 0.72 median, 0.96 p95; frame p95 2.45, max 2.55 |
+| Frame (metal) | step 1.25 ms median, 1.56 p95; render 0.75 median, 0.95 p95; frame p95 2.47, max 2.83 |
 | Audio | 1.2 s, peak 0, RMS 0, 0 clipped, 100 % silent ticks |
 
 ### pad
@@ -265,7 +265,7 @@ gamepad navigation moves through the gallery, opens a screen and backs out (216 
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 1.23 ms median, 1.52 p95; render 0.7 median, 0.92 p95; frame p95 2.37, max 3.44 |
+| Frame (metal) | step 1.23 ms median, 1.56 p95; render 0.72 median, 0.98 p95; frame p95 2.43, max 4.61 |
 | Audio | 3.6 s, peak 0.16, RMS 0.0108, 0 clipped, 95.37 % silent ticks |
 
 ### phone
@@ -281,7 +281,7 @@ on a phone the HUD keeps to the safe area and its touch controls to 44 px (66 ti
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 96.43 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 0.89 ms median, 1.22 p95; render 0.75 median, 0.94 p95; frame p95 2.2, max 3.69 |
+| Frame (metal) | step 0.93 ms median, 1.39 p95; render 0.75 median, 1 p95; frame p95 2.37, max 3.77 |
 | Audio | 1.1 s, peak 0, RMS 0, 0 clipped, 100 % silent ticks |
 
 ### skin-cartoon
@@ -299,7 +299,7 @@ every screen in the cartoon style pack matches its cell of kit-skin-cartoon.png 
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 22.15 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 0.89 ms median, 1.79 p95; render 0.82 median, 1.09 p95; frame p95 2.68, max 94.08 |
+| Frame (metal) | step 0.89 ms median, 1.8 p95; render 0.83 median, 1.1 p95; frame p95 2.86, max 97.88 |
 | Audio | 17.4 s, peak 0.16, RMS 0.0156, 0 clipped, 90.42 % silent ticks |
 
 ![skin-cartoon gallery](frames/skin-cartoon-gallery.png) 
@@ -321,7 +321,7 @@ every screen in the fantasy style pack matches its cell of kit-skin-fantasy.png 
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 22.24 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 0.95 ms median, 1.95 p95; render 0.78 median, 1.03 p95; frame p95 2.88, max 130.54 |
+| Frame (metal) | step 0.95 ms median, 1.93 p95; render 0.77 median, 1.05 p95; frame p95 2.87, max 132.05 |
 | Audio | 17.4 s, peak 0.16, RMS 0.0156, 0 clipped, 90.42 % silent ticks |
 
 ![skin-fantasy gallery](frames/skin-fantasy-gallery.png) 
@@ -343,7 +343,7 @@ every screen in the neon style pack matches its cell of kit-skin-neon.png (1044 
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 23.21 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 0.97 ms median, 2.13 p95; render 0.82 median, 1.11 p95; frame p95 3.15, max 109.96 |
+| Frame (metal) | step 0.97 ms median, 2.2 p95; render 0.82 median, 1.1 p95; frame p95 3.2, max 110.99 |
 | Audio | 17.4 s, peak 0.16, RMS 0.0156, 0 clipped, 90.42 % silent ticks |
 
 ### skin-paper
@@ -361,7 +361,7 @@ every screen in the paper style pack matches its cell of kit-skin-paper.png (104
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 23.02 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 0.94 ms median, 1.88 p95; render 0.78 median, 1.05 p95; frame p95 2.83, max 125.56 |
+| Frame (metal) | step 0.97 ms median, 1.97 p95; render 0.79 median, 1.05 p95; frame p95 2.89, max 126.95 |
 | Audio | 17.4 s, peak 0.16, RMS 0.0156, 0 clipped, 90.42 % silent ticks |
 
 ### skin-pixel
@@ -379,7 +379,7 @@ every screen in the pixel style pack matches its cell of kit-skin-pixel.png (104
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 26.5 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 1.88 ms median, 6.56 p95; render 0.94 median, 1.29 p95; frame p95 7.76, max 92.76 |
+| Frame (metal) | step 1.86 ms median, 6.63 p95; render 0.95 median, 1.31 p95; frame p95 7.93, max 92.07 |
 | Audio | 17.4 s, peak 0.16, RMS 0.0156, 0 clipped, 90.42 % silent ticks |
 
 ### skin-scifi
@@ -397,7 +397,7 @@ every screen in the scifi style pack matches its cell of kit-skin-scifi.png (104
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 23.98 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 0.94 ms median, 1.94 p95; render 0.78 median, 1.04 p95; frame p95 2.88, max 92.89 |
+| Frame (metal) | step 0.95 ms median, 1.99 p95; render 0.79 median, 1.06 p95; frame p95 2.93, max 93.47 |
 | Audio | 17.4 s, peak 0.16, RMS 0.0156, 0 clipped, 90.42 % silent ticks |
 
 ### sounds
@@ -413,7 +413,7 @@ a press sounds on the ui bus by default, and not after sounds:off (90 ticks)
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 1.36 ms median, 1.77 p95; render 0.7 median, 0.96 p95; frame p95 2.67, max 3.89 |
+| Frame (metal) | step 1.35 ms median, 1.69 p95; render 0.73 median, 1.02 p95; frame p95 2.64, max 4.15 |
 | Audio | 1.5 s, peak 0.21, RMS 0.0229, 0 clipped, 75.56 % silent ticks |
 
 ### touch
@@ -429,7 +429,7 @@ touch_move_to and move_to_text drive the gallery, the shop, results, idle and th
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 6.59 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 0.92 ms median, 1.55 p95; render 0.71 median, 0.94 p95; frame p95 2.34, max 3.81 |
+| Frame (metal) | step 0.92 ms median, 1.49 p95; render 0.71 median, 0.98 p95; frame p95 2.29, max 4.82 |
 | Audio | 7.5 s, peak 0.21, RMS 0.0219, 0 clipped, 82.22 % silent ticks |
 
 ### tutorial
@@ -445,6 +445,6 @@ the tutorial spotlights each target and Next walks to the end (150 ticks)
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 0 system(s), 0 burst(s) |
-| Frame (metal) | step 1.13 ms median, 1.46 p95; render 0.72 median, 0.94 p95; frame p95 2.33, max 6.07 |
+| Frame (metal) | step 1.14 ms median, 1.48 p95; render 0.71 median, 0.95 p95; frame p95 2.37, max 3.59 |
 | Audio | 2.5 s, peak 0.21, RMS 0.0193, 0 clipped, 88 % silent ticks |
 
