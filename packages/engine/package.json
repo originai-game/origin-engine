@@ -53,6 +53,7 @@
     "typecheck": "bun x --package typescript@5.9.3 tsc --noEmit -p tsconfig.json & p=$!; bun x --package typescript@5.9.3 tsc --noEmit -p tsconfig.runtime.json; r=$?; wait $p && [ $r -eq 0 ]",
     "test": "bun run typecheck && sh scripts/build.sh && bun test tests/",
     "pack": "sh scripts/pack.sh",
-    "test:browser": "bun tests/web/wire.ts && bun tests/web/player.ts && bun tests/web/export.ts"
+    "test:browser": "bun tests/web/wire.ts && bun tests/web/player.ts && bun tests/web/export.ts",
+    "test:reference": "bun tests/web/reference.ts && bun tests/web/reference.ts --webgl"
   }
 }

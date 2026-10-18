@@ -36,6 +36,7 @@ had grown `target/` to 143 GB.
 | `bun-test` | `bun run test` in each `packages/*` with a `test` script; `OG_GATE=1` makes `packages/engine/scripts/build.sh` take the dev addon and `og` and the gate's wasm instead of compiling release and wasm again (below) | full | | yes | |
 | `determinism` | `tools/wasm-determinism/run.sh`: the same math digest and world hash on the host and on wasm32 scalar and simd128 under node | full | | yes | needs node |
 | perf | `cargo test -p og-tests --release -- --ignored perf` | `make perf` | | | yes |
+| web-reference | `bun tests/web/reference.ts` and `--webgl` in `packages/engine`: templates/fx-showcase's five stations in headless Chrome, compared with `references/webgpu`/`webgl2` or else `metal` under og-tests' tolerance (below) | `make web-reference` | | | |
 
 `cargo nextest` runs test binaries in parallel, one process per test;
 `.config/nextest.toml` serialises the one binary whose tests share a fixture
@@ -110,6 +111,45 @@ which runs `OG_RELEASE=1 build.sh` with its own arguments first, packs only
   `og --help` lists an `api` subcommand. While it is not, the step prints
   `SKIPPED: og api check not available yet`; with `required` the same
   situation fails the gate. Flip it in the commit that lands `og api check`.
+
+## Browser reference tiers
+
+gfx references cover `metal` and `vulkan-cpu`; the browser tiers come from
+`packages/engine/tests/web/reference.ts` (`make web-reference`): the dev
+export of `templates/fx-showcase` on a 1280×720 canvas at DPR 1 in headless
+Chrome for Testing, driven one tick and one render per `frame` call as
+`og run --commands` drives the native host, each station captured at its
+playtest screenshot's tick and compared with
+`templates/fx-showcase/references/<webgpu|webgl2>/` when committed, else
+with `metal`, at og-tests' default tolerance (32/255 per channel, 0.5 %
+outliers, RMSE 0.01). `--record` writes the tier's references. It takes
+about 2 s a tier after the export (Apple M4 Pro, Chrome 150), but it is not
+in the gate: CI's machine has no Chrome for Testing (a missing Chrome is an
+error, never a skip), and it does not pass yet.
+
+Measured at 35cffd7 (2026-10-18), against `metal`:
+
+| Station | webgpu outliers | webgpu RMSE | outside the HUD and badge |
+|---|---|---|---|
+| post | 2.079 % | 0.02093 | 0.000 %, 0.00110 |
+| lens | 2.299 % | 0.02226 | 0.007 %, 0.00193 |
+| fx | 0.152 % | 0.00697 (passes) | 0.000 %, 0.00177 |
+| 2d | 0.135 % | 0.00865 (passes) | 0.000 %, 0.00234 |
+| stylised | 2.297 % | 0.02418 | 0.023 %, 0.00370 |
+
+Every effect matches Metal on WebGPU; what fails is the overlay. Its
+translucent fills come out darker in the browser (the HUD panel at
+(150, 40) is sRGB 87,89,99 on webgpu, 123,128,135 on metal and
+vulkan-cpu; opaque overlay colours are exact): on a non-sRGB output (the
+WebGPU canvas's `Bgra8Unorm`) `overlay.wgsl` encodes sRGB in the shader
+and the hardware then blends encoded values, where the native tiers blend
+in linear. `webgl2` does not reach a frame: fx-showcase's engine panics
+creating the `taa` pipeline (`textureLoad` from a depth texture is not
+supported in GLSL). The og-tests `overlay` gfx scene has no browser run:
+og-tests' scenes load their assets from disk and read back synchronously,
+so they would need a wasm harness of their own; fx-showcase's HUD and
+badge go through the same overlay pass. No webgpu or webgl2 references
+are committed until both defects are fixed.
 
 ## Updating a budget
 

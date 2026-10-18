@@ -1,5 +1,5 @@
 # Thin wrapper over scripts/; the scripts are the source of truth (docs/ci.md).
-.PHONY: check quick fmt clippy test test-quick wasm size drift bun-test bun-quick determinism tools perf list
+.PHONY: check quick fmt clippy test test-quick wasm size drift bun-test bun-quick determinism tools perf web-reference list
 
 check:      ; scripts/check.sh
 quick:      ; scripts/check.sh quick
@@ -15,4 +15,6 @@ bun-quick:  ; scripts/check.sh bun-quick
 determinism: ; scripts/check.sh determinism
 tools:      ; scripts/install-tools.sh
 perf:       ; cargo test -p og-tests --release -- --ignored perf
+# The webgpu and webgl2 tiers of templates/fx-showcase in headless Chrome (docs/ci.md); needs Chrome.
+web-reference: ; cd packages/engine && bun tests/web/reference.ts; a=$$?; bun tests/web/reference.ts --webgl; b=$$?; exit $$((a | b))
 list:       ; scripts/check.sh --list

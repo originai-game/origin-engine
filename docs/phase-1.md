@@ -69,7 +69,10 @@ hosts; M6 needs M3, M4, M5; M7 needs M6.
   immediate-mode sprites and text outliving their tick, effect passes that
   aliased the prepass textures they bind, and dissolved pixels drawn black
   on Metal. Evidence `tests/evidence/E2/`. Owed: `webgpu`/`webgl2`
-  reference tiers for the effect and overlay scenes, `vulkan-cpu`
+  reference tiers for the effect and overlay scenes (the runner exists,
+  `make web-reference`; it found the overlay's translucent fills blended
+  in sRGB on the WebGPU canvas and fx-showcase panicking on WebGL2 in the
+  `taa` pipeline, docs/ci.md §Browser reference tiers), `vulkan-cpu`
   references for og-ui and the UI kit, pads beyond the first in og-ui.
 
 ### Status 2026-10-18, E1 rounds
