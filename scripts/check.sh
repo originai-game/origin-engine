@@ -6,7 +6,9 @@
 #   scripts/check.sh STEP...    only the named steps, in the order given
 #   scripts/check.sh --list     the step names
 #
-# Full lane: fmt clippy test wasm-build wasm-opt size-gate drift bun-test determinism.
+# Full lane: fmt clippy wasm-build test wasm-opt size-gate drift bun-test determinism.
+# wasm-build comes before test: og-tests' wasm test takes its og-render
+# build instead of compiling og-render for wasm32 a second time.
 # Quick lane: fmt clippy test-quick drift bun-quick (no og-tests, no wasm,
 # no engine package build: the loop while working and the PR signal).
 # wasm-opt reads what wasm-build produced, size-gate reads what wasm-opt
@@ -22,7 +24,7 @@ set -u -o pipefail
 . "$(dirname "$0")/lib.sh"
 cd "$OG_ROOT" || exit 1
 
-STEPS_FULL="fmt clippy test wasm-build wasm-opt size-gate drift bun-test determinism"
+STEPS_FULL="fmt clippy wasm-build test wasm-opt size-gate drift bun-test determinism"
 STEPS_QUICK="fmt clippy test-quick drift bun-quick"
 STEPS="$STEPS_FULL test-quick bun-quick"
 BUN_QUICK_PACKAGES="packages/knowledge packages/create"   # no native build needed
