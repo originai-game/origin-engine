@@ -189,13 +189,15 @@ with `metal` and says so).
 
 `tools/make-assets.py` regenerates every asset byte for byte (sheets,
 tileset, maps, sounds, the font subset); `LICENSES.md` lists them. The
-sounds are cooked but not played yet: wiring them to `og.AudioSource` is
-the next step for this archetype.
+sounds play through one `og.AudioSource` voice each: Director (a round
+starts), Jump and Collide (a coin, a crash) set bits of the `Sounds`
+resource and Voices plays each once (`og polish` found the archetype
+silent, no input answered by a sound; tests/sounds.og.ts holds it).
 
 ## Known limits
 
-- Systems cannot read other entities or game resources (hence `Run` and
-  `Tuning` on every row) and cannot spawn (hence the pools, the dust's
+- Systems cannot read other entities (hence `Run` and `Tuning` on every
+  row; a game resource they declare, `Sounds`, they can) and cannot spawn (hence the pools, the dust's
   included); the camera stays still and the world scrolls.
 - The view's size is read once in `start`; on the web the renderer is not
   attached yet then, so the layout assumes 16:9 and a portrait phone sees a
