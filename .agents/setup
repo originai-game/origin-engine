@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+step() {
+  local start=$SECONDS
+  printf '\n==> %s\n' "$*"
+  "$@"
+  printf '==> done (%ss)\n' "$((SECONDS - start))"
+}
+
+# Cache prerequisites, not a full engine build, in the project snapshot.
+packages=(build-essential pkg-config libasound2-dev mesa-vulkan-drivers brotli shellcheck curl ca-certificates unzip xz-utils)
+missing=()
+for package in "${packages[@]}"; do
+  if [[ $(dpkg-query -W -f='${Status}' "$package" 2>/dev/null || true) != 'install ok installed' ]]; then
+    missing+=("$package")
+  fi
+done
+if ((${#missing[@]})); then
+  step sudo apt-get update -qq
+  step sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${missing[@]}"
+fi
+
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+mkdir -p "$HOME/.local/bin"
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+if ! command -v rustup >/dev/null; then
+  step curl -fsSL --retry 3 https://sh.rustup.rs -o "$tmp/rustup.sh"
+  step sh "$tmp/rustup.sh" -y --profile minimal --default-toolchain none --no-modify-path
+fi
+# rustup reads the version, components and targets from rust-toolchain.toml.
+step rustup show active-toolchain
+
+# Avoid compiling nextest from source during setup. The repository leaves its
+# version unpinned, as does CI; an installed version is retained on warm runs.
+if ! command -v cargo-nextest >/dev/null; then
+  step curl -fsSL --retry 3 https://get.nexte.st/latest/linux -o "$tmp/nextest.tar.gz"
+  step tar -xzf "$tmp/nextest.tar.gz" -C "$HOME/.local/bin" cargo-nextest
+fi
+step scripts/install-tools.sh
+step cargo fetch --locked
+step cargo fetch --locked --manifest-path tools/wasm-determinism/Cargo.toml
+step bun install --cwd tools/bench --frozen-lockfile
+# Cache the same TypeScript executable the engine's typecheck script uses.
+typescript=$(sed -n 's/.*typescript@\([0-9.]*\).*/\1/p' packages/engine/package.json)
+test -n "$typescript"
+step bun x --package "typescript@$typescript" tsc --version
+
+# Amp and supervised services start separate login shells. Keep the hook
+# repository-scoped and read the checked-out environment on every activation.
+marker="# Origin Engine orb environment"
+if ! grep -Fqx "$marker" "$HOME/.bash_profile" 2>/dev/null; then
+  cat >> "$HOME/.bash_profile" <<EOF
+
+$marker
+case "\$PWD/" in
+  "$PWD/"*) source "$PWD/.agents/environment" ;;
+esac
+EOF
+fi
+# shellcheck disable=SC2016 # Expand CHROME in the new login shell, not setup.
+step bash -lc 'command -v cargo bun sccache wasm-bindgen wasm-opt node; test -x "$CHROME"'

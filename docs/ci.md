@@ -198,6 +198,28 @@ in parallel share `target/` (AGENTS.md §Build and gate discipline: private
 not used). It exports `OG_EVIDENCE_DIR` (default `<target>/evidence`) and
 `OG_WASM_OUT` (`<target>/og-wasm`) for test harnesses and `build.sh`.
 
+## Amp orbs
+
+`.agents/setup` installs the Linux build prerequisites, activates
+`rust-toolchain.toml`, and reuses `scripts/install-tools.sh` for the pinned
+tools. It downloads a nextest binary instead of compiling the runner, fetches
+both locked Cargo dependency graphs, installs `tools/bench` from its Bun
+lockfile, and caches the engine's pinned TypeScript executable. It does not
+compile the engine or run the gate during startup. Amp snapshots these tools
+and caches; a stale snapshot reruns the idempotent setup using what is already
+installed. Build outputs still use the checkout's shared `target/`.
+
+A repository-scoped login-shell hook loads `.agents/environment` so later
+agent commands and supervised services find the tools. It also sets `CHROME`
+to the orb's preinstalled agent-browser Chrome unless explicitly overridden.
+That browser may be newer than the reference-capture version above; setup
+does not claim pixel equivalence. No database, credentials or dev server are
+needed, so `.agents/resume` does no installation or authentication.
+
+Validate changes with `shellcheck -s bash .agents/{setup,resume,environment}`,
+run `time .agents/setup` twice, and check the tools from a new `bash -lc`
+shell. Setup changes reach future project orbs after landing on `main`.
+
 ## `packages/engine/scripts/build.sh` outside the gate
 
 Standalone (`bun run build`, `bun run test` in `packages/engine`), build.sh
