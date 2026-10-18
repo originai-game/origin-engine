@@ -1753,6 +1753,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "og-nav"
+version = "0.0.1"
+dependencies = [
+ "og-core",
+ "og-ecs",
+ "og-nav",
+]
+
+[[package]]
 name = "og-physics"
 version = "0.0.1"
 dependencies = [
