@@ -536,6 +536,11 @@
           "name": "priority",
           "column": "i32",
           "default": 0
+        },
+        {
+          "name": "scrollTime",
+          "column": "f32",
+          "default": 0
         }
       ]
     },
@@ -4486,6 +4491,58 @@
           "column": "f32",
           "default": 12,
           "tunable": true
+        },
+        {
+          "name": "zoneActive",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "zoneMin",
+          "column": "Vector2",
+          "default": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "name": "zoneMax",
+          "column": "Vector2",
+          "default": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "name": "zoneFromActive",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "zoneFromMin",
+          "column": "Vector2",
+          "default": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "name": "zoneFromMax",
+          "column": "Vector2",
+          "default": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "name": "zoneScroll",
+          "column": "f32",
+          "default": 1
+        },
+        {
+          "name": "zoneScrollTime",
+          "column": "f32",
+          "default": 0
         }
       ]
     },

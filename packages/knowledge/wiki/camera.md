@@ -27,7 +27,7 @@ module camera {
 | [`og.OrbitCamera`](#record-OrbitCamera) | component | Orbits og.Camera around the entity carrying it, as three.js OrbitControls: a left-button drag on the play surface turns it, the wheel zooms, autoRotate turns it on its own. |
 | [`og.FollowCamera`](#record-FollowCamera) | component | Chases the entity carrying it with og.Camera: a third-person 3D view that eases towards a point offset from the entity and looks at it. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera. |
 | [`og.Follow2D`](#record-Follow2D) | component | Keeps og.Camera on the entity carrying it in the xy plane, for 2D games: the camera moves only when the entity leaves the dead zone, eases by smoothTime (smoothTimeY for y when set) and, with clamp, stays inside the bounds; lookAhead leads it in the direction the entity moves. The camera keeps its z, rotation and projection. Driven by og.systems.cameras; og.CameraZone entities then keep the view inside the zone the entity is in. |
-| [`og.CameraZone`](#record-CameraZone) | component | A rectangle of the xy plane (min to max, world units, not moved by the entity's Transform) that keeps a 2D view inside it while the entity followed by og.Follow2D is in it: rooms, arenas, a level's bounds. Of overlapping zones the highest priority wins, then the first in query order. Applied by the engine's og.camera system after the game's systems; a zone smaller than the view centres it. |
+| [`og.CameraZone`](#record-CameraZone) | component | A rectangle of the xy plane (min to max, world units, not moved by the entity's Transform) that keeps a 2D view inside it while the entity followed by og.Follow2D is in it: rooms, arenas, a level's bounds. Of overlapping zones the highest priority wins, then the first in query order. The engine's og.camera system picks the zone after the game's systems (into og.Camera's zone fields); entering another zone scrolls the view across over the new zone's scrollTime, or jumps when it is 0. A zone smaller than the view centres it. |
 | [`og.CameraRail`](#record-CameraRail) | component | Moves og.Camera along a spline through p0 to p(points - 1) (Catmull-Rom, through every point) to the point nearest the entity carrying it, easing by smoothTime: a corridor, a side-scroller's track, a 3D chase on rails. A perspective camera looks at the entity; an orthographic one keeps its z and rotation. Applied by the engine's og.camera system after the game's systems. |
 | [`og.camera.shake`](#fn-shake) | function | Add screen shake: trauma, clamped to 1, which og.Camera decays by traumaDecay. The shake grows with trauma squared, so 0.2 is a nudge, 0.5 a heavy hit, 1 an explosion. Visual only. Systems may call it; it takes effect at the engine's og.camera system this tick. |
 | [`og.camera.punch`](#fn-punch) | function | A zoom punch: the view narrows by `amount` (0.05 is a tap, 0.15 a slam) and springs back by Camera.punchDecay. Visual only. |
@@ -63,7 +63,7 @@ fn shake {
 }
 ```
 
-<sub>`api.ogt` line 1491</sub>
+<sub>`api.ogt` line 1518</sub>
 
 <a id="fn-punch"></a>
 
@@ -93,7 +93,7 @@ fn punch {
 }
 ```
 
-<sub>`api.ogt` line 1498</sub>
+<sub>`api.ogt` line 1525</sub>
 
 <a id="fn-kick"></a>
 
@@ -125,7 +125,7 @@ fn kick {
 }
 ```
 
-<sub>`api.ogt` line 1505</sub>
+<sub>`api.ogt` line 1532</sub>
 
 ## Components, resources and events
 
@@ -158,6 +158,14 @@ Token `og.Camera`, registered under the schema name `og.Camera`; its value type 
 | `punchDecay` | `number` | `8` | ≥ 0 | `perSecond` | tunable | How fast a punch springs back (exponential, per second). |
 | `kick` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | A kick in progress (og.camera.kick): the view is offset by this, decaying by kickDecay. Visual only. |
 | `kickDecay` | `number` | `12` | ≥ 0 | `perSecond` | tunable | How fast a kick returns (exponential, per second). |
+| `zoneActive` | `boolean` | `false` | — | — | — | The followed entity is in an og.CameraZone: the view keeps inside zoneMin to zoneMax. Written by the og.camera system. |
+| `zoneMin` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | — | The zone the view keeps inside: its bottom-left corner. |
+| `zoneMax` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | — | Its top-right corner. |
+| `zoneFromActive` | `boolean` | `false` | — | — | — | A room transition is in progress from the zone zoneFromMin to zoneFromMax: the view scrolls from where that zone kept it to where the new one does. |
+| `zoneFromMin` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | — | The zone being left: its bottom-left corner. |
+| `zoneFromMax` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | — | Its top-right corner. |
+| `zoneScroll` | `number` | `1` | 0 … 1 | — | — | How far the transition has come, 0 to 1 (eased; 1 is settled). |
+| `zoneScrollTime` | `number` | `0` | ≥ 0 | `s` | — | How long the transition takes: the entered zone's scrollTime. |
 
 ```ogt
 resource Camera {
@@ -250,6 +258,29 @@ resource Camera {
     unit perSecond
     tunable true
   }
+  field zoneActive bool "The followed entity is in an og.CameraZone: the view keeps inside zoneMin to zoneMax. Written by the og.camera system."
+  field zoneMin Vector2 "The zone the view keeps inside: its bottom-left corner." {
+    unit m
+  }
+  field zoneMax Vector2 "Its top-right corner." {
+    unit m
+  }
+  field zoneFromActive bool "A room transition is in progress from the zone zoneFromMin to zoneFromMax: the view scrolls from where that zone kept it to where the new one does."
+  field zoneFromMin Vector2 "The zone being left: its bottom-left corner." {
+    unit m
+  }
+  field zoneFromMax Vector2 "Its top-right corner." {
+    unit m
+  }
+  field zoneScroll f32 "How far the transition has come, 0 to 1 (eased; 1 is settled)." {
+    default 1
+    min 0
+    max 1
+  }
+  field zoneScrollTime f32 "How long the transition takes: the entered zone's scrollTime." {
+    unit s
+    min 0
+  }
   fn lookAt {
     doc "Rotate the camera to look at a point, as three.js Camera.lookAt."
     param target Vector3 "The point to look at."
@@ -295,7 +326,7 @@ fn lookAt {
 }
 ```
 
-<sub>`api.ogt` line 1277</sub>
+<sub>`api.ogt` line 1300</sub>
 
 <a id="member-Camera-worldToScreen"></a>
 
@@ -323,7 +354,7 @@ fn worldToScreen {
 }
 ```
 
-<sub>`api.ogt` line 1281</sub>
+<sub>`api.ogt` line 1304</sub>
 
 <a id="member-Camera-screenToRay"></a>
 
@@ -353,7 +384,7 @@ fn screenToRay {
 }
 ```
 
-<sub>`api.ogt` line 1286</sub>
+<sub>`api.ogt` line 1309</sub>
 
 <a id="record-OrbitCamera"></a>
 
@@ -461,7 +492,7 @@ component OrbitCamera {
 }
 ```
 
-<sub>`api.ogt` line 1294</sub>
+<sub>`api.ogt` line 1317</sub>
 
 <a id="record-FollowCamera"></a>
 
@@ -499,7 +530,7 @@ component FollowCamera {
 }
 ```
 
-<sub>`api.ogt` line 1368</sub>
+<sub>`api.ogt` line 1391</sub>
 
 <a id="record-Follow2D"></a>
 
@@ -578,13 +609,13 @@ component Follow2D {
 }
 ```
 
-<sub>`api.ogt` line 1387</sub>
+<sub>`api.ogt` line 1410</sub>
 
 <a id="record-CameraZone"></a>
 
 ### `og.CameraZone` (component)
 
-A rectangle of the xy plane (min to max, world units, not moved by the entity's Transform) that keeps a 2D view inside it while the entity followed by og.Follow2D is in it: rooms, arenas, a level's bounds. Of overlapping zones the highest priority wins, then the first in query order. Applied by the engine's og.camera system after the game's systems; a zone smaller than the view centres it.
+A rectangle of the xy plane (min to max, world units, not moved by the entity's Transform) that keeps a 2D view inside it while the entity followed by og.Follow2D is in it: rooms, arenas, a level's bounds. Of overlapping zones the highest priority wins, then the first in query order. The engine's og.camera system picks the zone after the game's systems (into og.Camera's zone fields); entering another zone scrolls the view across over the new zone's scrollTime, or jumps when it is 0. A zone smaller than the view centres it.
 
 Token `og.CameraZone`, registered under the schema name `og.CameraZone`; its value type is `CameraZone`.
 
@@ -593,10 +624,11 @@ Token `og.CameraZone`, registered under the schema name `og.CameraZone`; its val
 | `min` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | — | The bottom-left corner. |
 | `max` | `Vector2` | `{ x: 10, y: 10 }` | — | `m` | — | The top-right corner. |
 | `priority` | `number` | `0` | — | — | — | Higher wins where zones overlap. |
+| `scrollTime` | `number` | `0` | ≥ 0 | `s` | — | Seconds the view takes to scroll from the zone the entity left into this one (a room transition, eased in and out); 0 jumps at once. Visual only: the camera resource records the transition, so replays scroll the same. |
 
 ```ogt
 component CameraZone {
-  doc "A rectangle of the xy plane (min to max, world units, not moved by the entity's Transform) that keeps a 2D view inside it while the entity followed by og.Follow2D is in it: rooms, arenas, a level's bounds. Of overlapping zones the highest priority wins, then the first in query order. Applied by the engine's og.camera system after the game's systems; a zone smaller than the view centres it."
+  doc "A rectangle of the xy plane (min to max, world units, not moved by the entity's Transform) that keeps a 2D view inside it while the entity followed by og.Follow2D is in it: rooms, arenas, a level's bounds. Of overlapping zones the highest priority wins, then the first in query order. The engine's og.camera system picks the zone after the game's systems (into og.Camera's zone fields); entering another zone scrolls the view across over the new zone's scrollTime, or jumps when it is 0. A zone smaller than the view centres it."
   field min Vector2 "The bottom-left corner." {
     unit m
   }
@@ -605,10 +637,14 @@ component CameraZone {
     unit m
   }
   field priority i32 "Higher wins where zones overlap."
+  field scrollTime f32 "Seconds the view takes to scroll from the zone the entity left into this one (a room transition, eased in and out); 0 jumps at once. Visual only: the camera resource records the transition, so replays scroll the same." {
+    unit s
+    min 0
+  }
 }
 ```
 
-<sub>`api.ogt` line 1439</sub>
+<sub>`api.ogt` line 1462</sub>
 
 <a id="record-CameraRail"></a>
 
@@ -673,4 +709,4 @@ component CameraRail {
 }
 ```
 
-<sub>`api.ogt` line 1451</sub>
+<sub>`api.ogt` line 1478</sub>

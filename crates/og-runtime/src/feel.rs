@@ -243,6 +243,8 @@ pub(crate) struct Records {
     pub sprite: (SchemaId, Layout),
     pub flipbook: (SchemaId, Layout),
     pub afterimage: (SchemaId, Layout),
+    pub zone: (SchemaId, Layout),
+    pub follow: (SchemaId, Layout),
 }
 
 impl Records {
@@ -267,6 +269,8 @@ impl Records {
             sprite: get("og.Sprite")?,
             flipbook: get("og.Flipbook")?,
             afterimage: get("og.Afterimage")?,
+            zone: get("og.CameraZone")?,
+            follow: get("og.Follow2D")?,
         })
     }
 }
@@ -300,12 +304,22 @@ pub(crate) fn install_middle(world: &mut World, feel: &Feel, r: &Records) -> Res
         .add_system(
             SystemDesc {
                 name: CAMERA_SYSTEM.into(),
-                reads: names(&[&r.rail, &r.transform]),
+                reads: names(&[&r.rail, &r.transform, &r.zone, &r.follow]),
                 writes: names(&[&r.camera]),
-                queries: vec![QueryDesc {
-                    read: names(&[&r.rail, &r.transform]),
-                    ..QueryDesc::default()
-                }],
+                queries: vec![
+                    QueryDesc {
+                        read: names(&[&r.rail, &r.transform]),
+                        ..QueryDesc::default()
+                    },
+                    QueryDesc {
+                        read: names(&[&r.zone]),
+                        ..QueryDesc::default()
+                    },
+                    QueryDesc {
+                        read: names(&[&r.follow, &r.transform]),
+                        ..QueryDesc::default()
+                    },
+                ],
             },
             move |ctx| camera_system(ctx, &shared, &rec),
         )
@@ -473,6 +487,7 @@ fn camera_system(
     cam["trauma"] = json!(trauma);
     cam["punch"] = json!(punch);
     cam["kick"] = json!({ "x": kick.x, "y": kick.y, "z": kick.z });
+    camera_zone(ctx, r, &mut cam, dt)?;
     // A rail: the camera eases to the rail point nearest the entity.
     let mut rail: Option<(Entity, Value, Vec3)> = None;
     for a in ctx.query(0)? {
@@ -511,6 +526,82 @@ fn camera_system(
         .encode(Some(&bytes), Some(&cam))
         .map_err(|e| Error::new(ErrorKind::Invalid, e))?;
     ctx.set_resource_bytes(*cid, &out)
+}
+
+/// The og.CameraZone the entity followed by og.Follow2D is in (the highest
+/// priority, then the first in query order), into og.Camera's zone fields;
+/// entering another one starts a scroll over its scrollTime.
+fn camera_zone(
+    ctx: &mut SystemContext<'_>,
+    r: &Records,
+    cam: &mut Value,
+    dt: f32,
+) -> og_core::Result<()> {
+    let mut target: Option<Vec2> = None;
+    for a in ctx.query(2)? {
+        if let Some(&e) = a.entities().first() {
+            let t = r.transform.1.decode(&ctx.get_bytes(e, r.transform.0)?);
+            target = Some(v3(&t["position"], Vec3::ZERO).truncate());
+            break;
+        }
+    }
+    let mut best: Option<(i64, Vec2, Vec2, f32)> = None;
+    if let Some(p) = target {
+        for a in ctx.query(1)? {
+            for &e in a.entities() {
+                let z = r.zone.1.decode(&ctx.get_bytes(e, r.zone.0)?);
+                let (lo, hi) = (v2(&z["min"], Vec2::ZERO), v2(&z["max"], Vec2::splat(10.0)));
+                if p.x < lo.x || p.x > hi.x || p.y < lo.y || p.y > hi.y {
+                    continue;
+                }
+                let pr = z["priority"].as_i64().unwrap_or(0);
+                if best.is_none_or(|b| pr > b.0) {
+                    best = Some((pr, lo, hi, f(&z, "scrollTime", 0.0).max(0.0)));
+                }
+            }
+        }
+    }
+    let active = on(cam, "zoneActive", false);
+    let (lo0, hi0) = (
+        v2(&cam["zoneMin"], Vec2::ZERO),
+        v2(&cam["zoneMax"], Vec2::ZERO),
+    );
+    let mut scroll = f(cam, "zoneScroll", 1.0).clamp(0.0, 1.0);
+    let mut time = f(cam, "zoneScrollTime", 0.0).max(0.0);
+    let xy = |v: Vec2| json!({ "x": v.x, "y": v.y });
+    match best {
+        Some((_, lo, hi, t)) if !active || lo != lo0 || hi != hi0 => {
+            let scrolls = active && t > 0.0;
+            cam["zoneFromActive"] = json!(scrolls);
+            cam["zoneFromMin"] = xy(if scrolls { lo0 } else { Vec2::ZERO });
+            cam["zoneFromMax"] = xy(if scrolls { hi0 } else { Vec2::ZERO });
+            cam["zoneActive"] = json!(true);
+            cam["zoneMin"] = xy(lo);
+            cam["zoneMax"] = xy(hi);
+            scroll = if scrolls { 0.0 } else { 1.0 };
+            time = t;
+        }
+        Some(_) => {
+            if scroll < 1.0 {
+                scroll = if time > 0.0 {
+                    (scroll + dt / time).min(1.0)
+                } else {
+                    1.0
+                };
+            }
+        }
+        None => {
+            cam["zoneActive"] = json!(false);
+            cam["zoneFromActive"] = json!(false);
+            scroll = 1.0;
+        }
+    }
+    if scroll >= 1.0 && on(cam, "zoneFromActive", false) {
+        cam["zoneFromActive"] = json!(false);
+    }
+    cam["zoneScroll"] = json!(scroll);
+    cam["zoneScrollTime"] = json!(time);
+    Ok(())
 }
 
 /// The rotation that points -Z from `eye` towards `target`, +Y up.
@@ -2176,7 +2267,7 @@ fn tile_layers(
 
 /// The camera feel on the frame only: trauma shake, punch, kick, and the
 /// zone the followed entity is in (visual: the world's camera is untouched).
-pub(crate) fn camera_frame(world: &World, rs: &mut RenderState, h: &mut Hierarchy, aspect: f32) {
+pub(crate) fn camera_frame(world: &World, rs: &mut RenderState, aspect: f32) {
     let Some((_, r)) = rs.feel.feel.clone() else {
         return;
     };
@@ -2214,52 +2305,40 @@ pub(crate) fn camera_frame(world: &World, rs: &mut RenderState, h: &mut Hierarch
         };
     }
     let mut shift = v3(&cam["kick"], Vec3::ZERO);
-    // Zones: the highest priority one holding the followed entity.
-    if let og_render::Projection::Orthographic { height } = scene.camera.projection {
-        let zones = world.id_by_name("og.CameraZone").ok().and_then(|id| {
-            let layout =
-                Layout::from_schema(world.schema(id).ok()?, super::codec::RecordKind::Component);
-            Some(decoded_rows(world, id, &layout))
-        });
-        let follower = world.id_by_name("og.Follow2D").ok().and_then(|id| {
-            let q = QueryDesc {
-                read: vec!["og.Follow2D".into()],
-                ..QueryDesc::default()
-            };
-            let mut all = world.query(&q).ok()?;
-            all.find_map(|a| a.entities().first().copied())
-                .map(|e| (id, e))
-        });
-        if let (Some(zones), Some((_, fe))) = (zones, follower) {
-            let target = h.world_of(fe.to_bits()).w_axis.truncate();
-            let mut best: Option<(i64, Vec2, Vec2)> = None;
-            for (_, z) in &zones {
-                let (lo, hi) = (v2(&z["min"], Vec2::ZERO), v2(&z["max"], Vec2::splat(10.0)));
-                if target.x < lo.x || target.x > hi.x || target.y < lo.y || target.y > hi.y {
-                    continue;
-                }
-                let p = z["priority"].as_i64().unwrap_or(0);
-                if best.is_none_or(|b| p > b.0) {
-                    best = Some((p, lo, hi));
-                }
+    // The zone og.camera picked (and the one a room transition leaves).
+    if let og_render::Projection::Orthographic { height } = scene.camera.projection
+        && on(&cam, "zoneActive", false)
+    {
+        let half = Vec2::new(height * 0.5 * aspect, height * 0.5);
+        let c = scene.camera.position.truncate() + shift.truncate();
+        let clamp = |v: f32, a: f32, b: f32, hf: f32| {
+            if b - a <= 2.0 * hf {
+                (a + b) * 0.5
+            } else {
+                v.clamp(a + hf, b - hf)
             }
-            if let Some((_, lo, hi)) = best {
-                let half = Vec2::new(height * 0.5 * aspect, height * 0.5);
-                let c = scene.camera.position.truncate() + shift.truncate();
-                let clamp = |v: f32, a: f32, b: f32, hf: f32| {
-                    if b - a <= 2.0 * hf {
-                        (a + b) * 0.5
-                    } else {
-                        v.clamp(a + hf, b - hf)
-                    }
-                };
-                let n = Vec2::new(
-                    clamp(c.x, lo.x, hi.x, half.x),
-                    clamp(c.y, lo.y, hi.y, half.y),
-                );
-                shift += (n - c).extend(0.0);
-            }
+        };
+        let inside = |lo: Vec2, hi: Vec2| {
+            Vec2::new(
+                clamp(c.x, lo.x, hi.x, half.x),
+                clamp(c.y, lo.y, hi.y, half.y),
+            )
+        };
+        let mut n = inside(
+            v2(&cam["zoneMin"], Vec2::ZERO),
+            v2(&cam["zoneMax"], Vec2::ZERO),
+        );
+        let k = f(&cam, "zoneScroll", 1.0).clamp(0.0, 1.0);
+        if k < 1.0 && on(&cam, "zoneFromActive", false) {
+            let from = inside(
+                v2(&cam["zoneFromMin"], Vec2::ZERO),
+                v2(&cam["zoneFromMax"], Vec2::ZERO),
+            );
+            // Eased in and out over the scroll.
+            let e = k * k * (3.0 - 2.0 * k);
+            n = from + (n - from) * e;
         }
+        shift += (n - c).extend(0.0);
     }
     if shift != Vec3::ZERO {
         scene.camera.position += shift;

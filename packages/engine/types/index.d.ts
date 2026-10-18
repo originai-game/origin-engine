@@ -1955,6 +1955,52 @@ export interface Camera {
    */
   kickDecay: number;
   /**
+   * The followed entity is in an og.CameraZone: the view keeps inside zoneMin to zoneMax. Written by the og.camera system.
+   */
+  zoneActive: boolean;
+  /**
+   * The zone the view keeps inside: its bottom-left corner.
+   *
+   * @unit m (metres)
+   */
+  zoneMin: Vector2;
+  /**
+   * Its top-right corner.
+   *
+   * @unit m (metres)
+   */
+  zoneMax: Vector2;
+  /**
+   * A room transition is in progress from the zone zoneFromMin to zoneFromMax: the view scrolls from where that zone kept it to where the new one does.
+   */
+  zoneFromActive: boolean;
+  /**
+   * The zone being left: its bottom-left corner.
+   *
+   * @unit m (metres)
+   */
+  zoneFromMin: Vector2;
+  /**
+   * Its top-right corner.
+   *
+   * @unit m (metres)
+   */
+  zoneFromMax: Vector2;
+  /**
+   * How far the transition has come, 0 to 1 (eased; 1 is settled).
+   *
+   * @default 1
+   * @range 0..1
+   */
+  zoneScroll: number;
+  /**
+   * How long the transition takes: the entered zone's scrollTime.
+   *
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  zoneScrollTime: number;
+  /**
    * Rotate the camera to look at a point, as three.js Camera.lookAt.
    *
    * @param target The point to look at.
@@ -2220,7 +2266,7 @@ export interface Follow2D {
 }
 
 /**
- * A rectangle of the xy plane (min to max, world units, not moved by the entity's Transform) that keeps a 2D view inside it while the entity followed by og.Follow2D is in it: rooms, arenas, a level's bounds. Of overlapping zones the highest priority wins, then the first in query order. Applied by the engine's og.camera system after the game's systems; a zone smaller than the view centres it.
+ * A rectangle of the xy plane (min to max, world units, not moved by the entity's Transform) that keeps a 2D view inside it while the entity followed by og.Follow2D is in it: rooms, arenas, a level's bounds. Of overlapping zones the highest priority wins, then the first in query order. The engine's og.camera system picks the zone after the game's systems (into og.Camera's zone fields); entering another zone scrolls the view across over the new zone's scrollTime, or jumps when it is 0. A zone smaller than the view centres it.
  *
  * The value of the `CameraZone` component (token `og.CameraZone`).
  */
@@ -2240,6 +2286,13 @@ export interface CameraZone {
   max: Vector2;
   /** Higher wins where zones overlap. */
   priority: number;
+  /**
+   * Seconds the view takes to scroll from the zone the entity left into this one (a room transition, eased in and out); 0 jumps at once. Visual only: the camera resource records the transition, so replays scroll the same.
+   *
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  scrollTime: number;
 }
 
 /**
@@ -14431,7 +14484,7 @@ export declare namespace og {
   /**
    * The camera the frame is rendered from. Rendering reads it after the tick; it never feeds back into the simulation.
    */
-  const Camera: ResourceType<{ readonly position: FieldSpec<"Vector3">; readonly quaternion: FieldSpec<"Quaternion">; readonly fov: FieldSpec<"f32">; readonly near: FieldSpec<"f32">; readonly far: FieldSpec<"f32">; readonly zoom: FieldSpec<"f32">; readonly orthographic: FieldSpec<"bool">; readonly height: FieldSpec<"f32">; readonly background: FieldSpec<"Color">; readonly exposure: FieldSpec<"f32">; readonly trauma: FieldSpec<"f32">; readonly traumaDecay: FieldSpec<"f32">; readonly shakeOffset: FieldSpec<"f32">; readonly shakeRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly punch: FieldSpec<"f32">; readonly punchDecay: FieldSpec<"f32">; readonly kick: FieldSpec<"Vector3">; readonly kickDecay: FieldSpec<"f32"> }, Camera>;
+  const Camera: ResourceType<{ readonly position: FieldSpec<"Vector3">; readonly quaternion: FieldSpec<"Quaternion">; readonly fov: FieldSpec<"f32">; readonly near: FieldSpec<"f32">; readonly far: FieldSpec<"f32">; readonly zoom: FieldSpec<"f32">; readonly orthographic: FieldSpec<"bool">; readonly height: FieldSpec<"f32">; readonly background: FieldSpec<"Color">; readonly exposure: FieldSpec<"f32">; readonly trauma: FieldSpec<"f32">; readonly traumaDecay: FieldSpec<"f32">; readonly shakeOffset: FieldSpec<"f32">; readonly shakeRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly punch: FieldSpec<"f32">; readonly punchDecay: FieldSpec<"f32">; readonly kick: FieldSpec<"Vector3">; readonly kickDecay: FieldSpec<"f32">; readonly zoneActive: FieldSpec<"bool">; readonly zoneMin: FieldSpec<"Vector2">; readonly zoneMax: FieldSpec<"Vector2">; readonly zoneFromActive: FieldSpec<"bool">; readonly zoneFromMin: FieldSpec<"Vector2">; readonly zoneFromMax: FieldSpec<"Vector2">; readonly zoneScroll: FieldSpec<"f32">; readonly zoneScrollTime: FieldSpec<"f32"> }, Camera>;
   /**
    * Orbits og.Camera around the entity carrying it, as three.js OrbitControls: a left-button drag on the play surface turns it, the wheel zooms, autoRotate turns it on its own.
    * Camera controllers are game-level systems the engine ships in TypeScript (og.systems.cameras); list them in GameDesc.systems: `systems: [...og.systems.cameras, ...yours]`. The first entity carrying one, in query order, drives the camera.
@@ -14447,9 +14500,9 @@ export declare namespace og {
    */
   const Follow2D: ComponentType<{ readonly offset: FieldSpec<"Vector2">; readonly deadZone: FieldSpec<"Vector2">; readonly smoothTime: FieldSpec<"f32">; readonly smoothTimeY: FieldSpec<"f32">; readonly lookAhead: FieldSpec<"f32">; readonly lookAheadMax: FieldSpec<"Vector2">; readonly lookAheadSmoothing: FieldSpec<"f32">; readonly lead: FieldSpec<"Vector2">; readonly last: FieldSpec<"Vector2">; readonly clamp: FieldSpec<"bool">; readonly boundsMin: FieldSpec<"Vector2">; readonly boundsMax: FieldSpec<"Vector2"> }, Follow2D>;
   /**
-   * A rectangle of the xy plane (min to max, world units, not moved by the entity's Transform) that keeps a 2D view inside it while the entity followed by og.Follow2D is in it: rooms, arenas, a level's bounds. Of overlapping zones the highest priority wins, then the first in query order. Applied by the engine's og.camera system after the game's systems; a zone smaller than the view centres it.
+   * A rectangle of the xy plane (min to max, world units, not moved by the entity's Transform) that keeps a 2D view inside it while the entity followed by og.Follow2D is in it: rooms, arenas, a level's bounds. Of overlapping zones the highest priority wins, then the first in query order. The engine's og.camera system picks the zone after the game's systems (into og.Camera's zone fields); entering another zone scrolls the view across over the new zone's scrollTime, or jumps when it is 0. A zone smaller than the view centres it.
    */
-  const CameraZone: ComponentType<{ readonly min: FieldSpec<"Vector2">; readonly max: FieldSpec<"Vector2">; readonly priority: FieldSpec<"i32"> }, CameraZone>;
+  const CameraZone: ComponentType<{ readonly min: FieldSpec<"Vector2">; readonly max: FieldSpec<"Vector2">; readonly priority: FieldSpec<"i32">; readonly scrollTime: FieldSpec<"f32"> }, CameraZone>;
   /**
    * Moves og.Camera along a spline through p0 to p(points - 1) (Catmull-Rom, through every point) to the point nearest the entity carrying it, easing by smoothTime: a corridor, a side-scroller's track, a 3D chase on rails. A perspective camera looks at the entity; an orthographic one keeps its z and rotation. Applied by the engine's og.camera system after the game's systems.
    */

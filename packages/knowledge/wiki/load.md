@@ -20,7 +20,7 @@ module load {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 2701</sub>
+<sub>`api.ogt` line 2728</sub>
 
 ## Contents
 
@@ -92,7 +92,7 @@ fn bundle {
 }
 ```
 
-<sub>`api.ogt` line 2783</sub>
+<sub>`api.ogt` line 2810</sub>
 
 <a id="fn-bundleInfo"></a>
 
@@ -122,7 +122,7 @@ fn bundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 2790</sub>
+<sub>`api.ogt` line 2817</sub>
 
 <a id="fn-defaultBundle"></a>
 
@@ -150,7 +150,7 @@ fn defaultBundle {
 }
 ```
 
-<sub>`api.ogt` line 2797</sub>
+<sub>`api.ogt` line 2824</sub>
 
 <a id="fn-gltf"></a>
 
@@ -182,7 +182,7 @@ fn gltf {
 }
 ```
 
-<sub>`api.ogt` line 2803</sub>
+<sub>`api.ogt` line 2830</sub>
 
 <a id="fn-scene"></a>
 
@@ -212,7 +212,7 @@ fn scene {
 }
 ```
 
-<sub>`api.ogt` line 2811</sub>
+<sub>`api.ogt` line 2838</sub>
 
 <a id="fn-font"></a>
 
@@ -242,7 +242,7 @@ fn font {
 }
 ```
 
-<sub>`api.ogt` line 2818</sub>
+<sub>`api.ogt` line 2845</sub>
 
 <a id="fn-fontInfo"></a>
 
@@ -272,7 +272,7 @@ fn fontInfo {
 }
 ```
 
-<sub>`api.ogt` line 2825</sub>
+<sub>`api.ogt` line 2852</sub>
 
 <a id="fn-sound"></a>
 
@@ -302,7 +302,7 @@ fn sound {
 }
 ```
 
-<sub>`api.ogt` line 2832</sub>
+<sub>`api.ogt` line 2859</sub>
 
 <a id="fn-lut"></a>
 
@@ -332,7 +332,7 @@ fn lut {
 }
 ```
 
-<sub>`api.ogt` line 2839</sub>
+<sub>`api.ogt` line 2866</sub>
 
 <a id="fn-emitter"></a>
 
@@ -362,7 +362,7 @@ fn emitter {
 }
 ```
 
-<sub>`api.ogt` line 2846</sub>
+<sub>`api.ogt` line 2873</sub>
 
 <a id="fn-shader"></a>
 
@@ -392,7 +392,7 @@ fn shader {
 }
 ```
 
-<sub>`api.ogt` line 2853</sub>
+<sub>`api.ogt` line 2880</sub>
 
 <a id="fn-texture"></a>
 
@@ -422,7 +422,7 @@ fn texture {
 }
 ```
 
-<sub>`api.ogt` line 2860</sub>
+<sub>`api.ogt` line 2887</sub>
 
 <a id="fn-skin"></a>
 
@@ -452,7 +452,7 @@ fn skin {
 }
 ```
 
-<sub>`api.ogt` line 2867</sub>
+<sub>`api.ogt` line 2894</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -482,7 +482,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 2874</sub>
+<sub>`api.ogt` line 2901</sub>
 
 <a id="fn-status"></a>
 
@@ -512,7 +512,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 2881</sub>
+<sub>`api.ogt` line 2908</sub>
 
 <a id="fn-error"></a>
 
@@ -542,7 +542,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 2888</sub>
+<sub>`api.ogt` line 2915</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -572,7 +572,7 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 2895</sub>
+<sub>`api.ogt` line 2922</sub>
 
 <a id="fn-animation"></a>
 
@@ -602,7 +602,7 @@ fn animation {
 }
 ```
 
-<sub>`api.ogt` line 2902</sub>
+<sub>`api.ogt` line 2929</sub>
 
 <a id="fn-flipbook"></a>
 
@@ -632,7 +632,7 @@ fn flipbook {
 }
 ```
 
-<sub>`api.ogt` line 2909</sub>
+<sub>`api.ogt` line 2936</sub>
 
 <a id="fn-tilemap"></a>
 
@@ -662,7 +662,7 @@ fn tilemap {
 }
 ```
 
-<sub>`api.ogt` line 2916</sub>
+<sub>`api.ogt` line 2943</sub>
 
 ## Components, resources and events
 
@@ -685,7 +685,7 @@ component Model {
 }
 ```
 
-<sub>`api.ogt` line 2778</sub>
+<sub>`api.ogt` line 2805</sub>
 
 <a id="record-AssetReady"></a>
 
@@ -708,7 +708,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 2923</sub>
+<sub>`api.ogt` line 2950</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -733,7 +733,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 2929</sub>
+<sub>`api.ogt` line 2956</sub>
 
 ## Types
 
@@ -749,7 +749,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Asset "A loaded bundle, scene or glTF asset."
 ```
 
-<sub>`api.ogt` line 2706</sub>
+<sub>`api.ogt` line 2733</sub>
 
 <a id="type-Font"></a>
 
@@ -763,7 +763,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Font "A cooked MSDF font: its glyph table and one or more atlas pages."
 ```
 
-<sub>`api.ogt` line 2707</sub>
+<sub>`api.ogt` line 2734</sub>
 
 <a id="type-Sound"></a>
 
@@ -777,7 +777,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Sound "A cooked sound: QOA-encoded PCM the audio module plays."
 ```
 
-<sub>`api.ogt` line 2708</sub>
+<sub>`api.ogt` line 2735</sub>
 
 <a id="type-Skin"></a>
 
@@ -791,7 +791,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Skin "A cooked UI skin: its atlas, fonts, icons and sounds loaded with it, for og.ui.configure."
 ```
 
-<sub>`api.ogt` line 2709</sub>
+<sub>`api.ogt` line 2736</sub>
 
 <a id="type-LoadStatus"></a>
 
@@ -816,7 +816,7 @@ enum LoadStatus {
 }
 ```
 
-<sub>`api.ogt` line 2725</sub>
+<sub>`api.ogt` line 2752</sub>
 
 <a id="type-GltfDesc"></a>
 
@@ -842,7 +842,7 @@ struct GltfDesc {
 }
 ```
 
-<sub>`api.ogt` line 2732</sub>
+<sub>`api.ogt` line 2759</sub>
 
 <a id="type-GltfInfo"></a>
 
@@ -867,7 +867,7 @@ struct GltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 2740</sub>
+<sub>`api.ogt` line 2767</sub>
 
 <a id="type-BundleInfo"></a>
 
@@ -890,7 +890,7 @@ struct BundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 2748</sub>
+<sub>`api.ogt` line 2775</sub>
 
 <a id="type-FontInfo"></a>
 
@@ -921,7 +921,7 @@ struct FontInfo {
 }
 ```
 
-<sub>`api.ogt` line 2755</sub>
+<sub>`api.ogt` line 2782</sub>
 
 <a id="type-SoundInfo"></a>
 
@@ -950,7 +950,7 @@ struct SoundInfo {
 }
 ```
 
-<sub>`api.ogt` line 2766</sub>
+<sub>`api.ogt` line 2793</sub>
 
 ## Column kinds
 
@@ -970,7 +970,7 @@ column Asset {
 }
 ```
 
-<sub>`api.ogt` line 2711</sub>
+<sub>`api.ogt` line 2738</sub>
 
 ```ogt
 column Sound {
@@ -981,4 +981,4 @@ column Sound {
 }
 ```
 
-<sub>`api.ogt` line 2718</sub>
+<sub>`api.ogt` line 2745</sub>

@@ -98,8 +98,10 @@ world unit; the map's bottom-left corner is the world origin, y up.
 the door's rectangle gives the cells to clear, and each room's rectangle
 becomes an `og.CameraZone`. The hero carries `og.Follow2D` (a small dead
 zone, `smoothTime` 0.12, `lookAhead` 0.15), and the orthographic view is
-12 cells tall: a whole room, as in the old top-down adventures, with the
-camera cutting to room 2 when the hero crosses into it.
+12 cells tall: a whole room, as in the old top-down adventures, and the
+view scrolls across to room 2 over the zones' `scrollTime` (0.45 s) when
+the hero crosses the doorway (`tests/door.og.ts` samples og.Camera's zone
+fields through the crossing with `get:og.Camera`).
 
 ## State
 
@@ -208,9 +210,7 @@ font subset. `LICENSES.md` lists them.
 
 ## Known limits (engine gaps, not design)
 
-- The command channel dumps entities, not resources, so the playtests read
-  the run through the hero's `Report` copy, and `set:` cannot reach
-  `Tuning` (a resource): its fields are tuned in `src/components.ts`.
-- `og.CameraZone` clamps the frame only, so crossing into room 2 cuts the
-  view rather than scrolling it.
+- The playtests read most of the run through the hero's `Report` copy,
+  which predates `get:` on resources (E7); `set:Tuning.<field>=<value>`
+  now tunes the resource from the command channel.
 - The blob shadows (0.35) barely show on the dark floor.

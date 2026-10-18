@@ -1274,6 +1274,29 @@ module camera {
       unit perSecond
       tunable true
     }
+    field zoneActive bool "The followed entity is in an og.CameraZone: the view keeps inside zoneMin to zoneMax. Written by the og.camera system."
+    field zoneMin Vector2 "The zone the view keeps inside: its bottom-left corner." {
+      unit m
+    }
+    field zoneMax Vector2 "Its top-right corner." {
+      unit m
+    }
+    field zoneFromActive bool "A room transition is in progress from the zone zoneFromMin to zoneFromMax: the view scrolls from where that zone kept it to where the new one does."
+    field zoneFromMin Vector2 "The zone being left: its bottom-left corner." {
+      unit m
+    }
+    field zoneFromMax Vector2 "Its top-right corner." {
+      unit m
+    }
+    field zoneScroll f32 "How far the transition has come, 0 to 1 (eased; 1 is settled)." {
+      default 1
+      min 0
+      max 1
+    }
+    field zoneScrollTime f32 "How long the transition takes: the entered zone's scrollTime." {
+      unit s
+      min 0
+    }
     fn lookAt {
       doc "Rotate the camera to look at a point, as three.js Camera.lookAt."
       param target Vector3 "The point to look at."
@@ -1437,7 +1460,7 @@ module camera {
   }
 
   component CameraZone {
-    doc "A rectangle of the xy plane (min to max, world units, not moved by the entity's Transform) that keeps a 2D view inside it while the entity followed by og.Follow2D is in it: rooms, arenas, a level's bounds. Of overlapping zones the highest priority wins, then the first in query order. Applied by the engine's og.camera system after the game's systems; a zone smaller than the view centres it."
+    doc "A rectangle of the xy plane (min to max, world units, not moved by the entity's Transform) that keeps a 2D view inside it while the entity followed by og.Follow2D is in it: rooms, arenas, a level's bounds. Of overlapping zones the highest priority wins, then the first in query order. The engine's og.camera system picks the zone after the game's systems (into og.Camera's zone fields); entering another zone scrolls the view across over the new zone's scrollTime, or jumps when it is 0. A zone smaller than the view centres it."
     field min Vector2 "The bottom-left corner." {
       unit m
     }
@@ -1446,6 +1469,10 @@ module camera {
       unit m
     }
     field priority i32 "Higher wins where zones overlap."
+    field scrollTime f32 "Seconds the view takes to scroll from the zone the entity left into this one (a room transition, eased in and out); 0 jumps at once. Visual only: the camera resource records the transition, so replays scroll the same." {
+      unit s
+      min 0
+    }
   }
 
   component CameraRail {

@@ -129,9 +129,10 @@ function start(world: World): void {
         game.doorCellsH = Math.round(o.size.y / tilemap.tileHeight);
         break;
       case "room": {
-        // A camera zone per room: the view stays inside the room the hero stands in.
+        // A camera zone per room: the view stays inside the room the hero
+        // stands in, and scrolls across to the next one through the doorway.
         const z = must(world.spawn({ name: o.name }));
-        must(world.insert(z, og.CameraZone, { min: { x, y: yTop - o.size.y }, max: { x: x + o.size.x, y: yTop } }));
+        must(world.insert(z, og.CameraZone, { min: { x, y: yTop - o.size.y }, max: { x: x + o.size.x, y: yTop }, scrollTime: 0.45 }));
         if (x > 0) split = Math.min(split, x);
         break;
       }

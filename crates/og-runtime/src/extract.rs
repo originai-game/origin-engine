@@ -532,7 +532,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         _ if vp.1 > 0.0 => vp.0 / vp.1,
         _ => 16.0 / 9.0,
     };
-    super::feel::camera_frame(world, rs, &mut h, aspect);
+    super::feel::camera_frame(world, rs, aspect);
     super::feel::extract(world, rs, &mut h);
 
     // Text, page by page; screen text into the overlay.
