@@ -7,7 +7,7 @@ OG_TARGET_DIR="${CARGO_TARGET_DIR:-$OG_ROOT/target}"
 case "$OG_TARGET_DIR" in /*) ;; *) OG_TARGET_DIR="$OG_ROOT/$OG_TARGET_DIR" ;; esac
 # Test harnesses (gfx diffs, perf reports) write here; CI uploads it on failure.
 export OG_EVIDENCE_DIR="${OG_EVIDENCE_DIR:-$OG_TARGET_DIR/evidence}"
-OG_WASM_OUT="$OG_TARGET_DIR/og-wasm"
+export OG_WASM_OUT="$OG_TARGET_DIR/og-wasm"
 
 og_say() { printf '%s\n' "$*"; }
 og_err() { printf '%s\n' "$*" >&2; }
@@ -30,6 +30,11 @@ og_budget() {
 # og_wasm_crates STATUS: crate names from scripts/wasm-crates.txt with that status.
 og_wasm_crates() {
   awk -v s="$1" '{ sub(/#.*/, "") } NF >= 2 && $2 == s { print $1 }' "$OG_ROOT/scripts/wasm-crates.txt"
+}
+
+# og_wasm_publish_crates: crates whose line in scripts/wasm-crates.txt says `publish`.
+og_wasm_publish_crates() {
+  awk '{ sub(/#.*/, "") } NF >= 3 && $3 == "publish" { print $1 }' "$OG_ROOT/scripts/wasm-crates.txt"
 }
 
 # og_lock_version PACKAGE: the version Cargo.lock pins for a crates.io package.

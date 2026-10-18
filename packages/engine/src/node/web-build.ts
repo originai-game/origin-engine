@@ -179,16 +179,63 @@ function sha256(data: Uint8Array | string): string {
   return h.digest("hex");
 }
 
-function compressedSize(bytes: Uint8Array): { size: number; codec: SizeRow["codec"] } {
-  if (Bun.which("brotli")) {
-    const r = Bun.spawnSync(["brotli", "-q", "11", "-c"], { stdin: bytes, stdout: "pipe", stderr: "pipe" });
-    if (r.exitCode === 0) return { size: r.stdout.length, codec: "brotli-11" };
+// Facts that depend only on a file's bytes and are slow to recompute (brotli
+// -q 11 of the 8 MB wasm is about 12 s; the host's hello needs a bun process
+// that loads it) are kept by sha256 in dist/.build-cache.json across builds,
+// so a test that builds four times or a `og build` after an edit to game code
+// pays for the engine once. The cache keeps its newest 2000 entries.
+const CACHE_FILE = join(here, "..", "..", "dist", ".build-cache.json");
+let cache: Record<string, unknown> | null = null;
+function cacheGet(key: string): unknown {
+  if (!cache) {
+    try {
+      cache = JSON.parse(readFileSync(CACHE_FILE, "utf8")) as Record<string, unknown>;
+    } catch {
+      cache = {};
+    }
   }
-  return { size: Bun.gzipSync(bytes, { level: 9 }).length, codec: "gzip-9" };
+  return cache[key];
+}
+function cachePut(key: string, value: unknown): void {
+  cache ??= {};
+  delete cache[key];
+  cache[key] = value;
+  const keys = Object.keys(cache);
+  for (const k of keys.slice(0, Math.max(0, keys.length - 2000))) delete cache[k];
+  try {
+    mkdirSync(dirname(CACHE_FILE), { recursive: true });
+    writeFileSync(CACHE_FILE, JSON.stringify(cache));
+  } catch {
+    // A read-only checkout still builds; it only recomputes.
+  }
+}
+
+function compressedSize(bytes: Uint8Array): { size: number; codec: SizeRow["codec"] } {
+  const brotli = Boolean(Bun.which("brotli"));
+  const key = `size:${brotli ? "brotli-11" : "gzip-9"}:${sha256(bytes)}`;
+  const hit = cacheGet(key) as { size: number; codec: SizeRow["codec"] } | undefined;
+  if (hit) return hit;
+  let out: { size: number; codec: SizeRow["codec"] } | null = null;
+  if (brotli) {
+    const r = Bun.spawnSync(["brotli", "-q", "11", "-c"], { stdin: bytes, stdout: "pipe", stderr: "pipe" });
+    if (r.exitCode === 0) out = { size: r.stdout.length, codec: "brotli-11" };
+  }
+  out ??= { size: Bun.gzipSync(bytes, { level: 9 }).length, codec: "gzip-9" };
+  cachePut(key, out);
+  return out;
 }
 
 /** The probe build and members the copied web host serves: its own hello, under bun. */
 async function probeOf(glue: string, wasm: string): Promise<{ build: string; members: string[] } | null> {
+  const key = `probe:${sha256(new Uint8Array(readFileSync(glue)))}:${sha256(new Uint8Array(readFileSync(wasm)))}`;
+  const hit = cacheGet(key) as { build: string; members: string[] } | undefined;
+  if (hit) return hit;
+  const probe = await probeOfUncached(glue, wasm);
+  if (probe) cachePut(key, probe);
+  return probe;
+}
+
+async function probeOfUncached(glue: string, wasm: string): Promise<{ build: string; members: string[] } | null> {
   const script = `
     const glue = await import(${JSON.stringify(pathToFileURL(glue).href)});
     const { loadWebHost } = await import(${JSON.stringify(pathToFileURL(join(here, "..", "web", "host.ts")).href)});

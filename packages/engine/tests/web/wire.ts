@@ -27,6 +27,7 @@ import { fileURLToPath } from "node:url";
 import { webBuild, settingsOf } from "../../src/node/web-build.ts";
 import { Browser, chromePath, type Page } from "./cdp.ts";
 import { serve } from "./serve.ts";
+import { ogBin } from "../support/og-bin.ts";
 
 declare const Bun: {
   spawnSync(cmd: string[], o?: { cwd?: string; stdout?: string; stderr?: string }): { exitCode: number; stderr: Uint8Array };
@@ -62,7 +63,7 @@ const pngSize = (b64: string) => {
 
 // ── the builds ─────────────────────────────────────────────────────────
 if (!existsSync(join(project, "cooked", ".cook.ogt"))) {
-  const r = Bun.spawnSync(["cargo", "run", "--release", "-q", "-p", "og-cli", "--", "cook", project], { cwd: repo, stdout: "ignore", stderr: "pipe" });
+  const r = Bun.spawnSync([ogBin(), "cook", project], { cwd: repo, stdout: "ignore", stderr: "pipe" });
   if (r.exitCode !== 0) throw new Error(`cooking ${project}: ${new TextDecoder().decode(r.stderr)}`);
 }
 const dists: Record<string, string> = {};

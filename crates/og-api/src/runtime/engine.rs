@@ -93,7 +93,14 @@ thread_local! {
     pub(crate) static HANDLES: RefCell<Handles> = RefCell::new(Handles::default());
     pub(crate) static HOOKS: RefCell<Option<Rc<dyn Hooks>>> = RefCell::new(None);
     pub(crate) static DECL: RefCell<Declarations> = RefCell::new(Declarations::default());
-    static ENGINES: RefCell<Vec<Option<Rc<Engine>>>> = const { RefCell::new(Vec::new()) };
+    // Never dropped by the thread-local destructor: at process exit that
+    // destructor would tear down every engine's renderer, and wgpu's buffer
+    // drop reads another thread-local (its lock trace under debug
+    // assertions) that is already gone, which aborts the process. The
+    // process is ending, so the engines are leaked on purpose; an explicit
+    // destroy still drops them.
+    static ENGINES: std::mem::ManuallyDrop<RefCell<Vec<Option<Rc<Engine>>>>> =
+        const { std::mem::ManuallyDrop::new(RefCell::new(Vec::new())) };
     static FRAME: Cell<*const Frame> = const { Cell::new(std::ptr::null()) };
     static QUEUED: Cell<bool> = const { Cell::new(false) };
 }

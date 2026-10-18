@@ -1,20 +1,29 @@
 #!/usr/bin/env bash
-# Origin Engine local gate; CI runs exactly this (docs/ci.md).
+# Origin Engine gate; CI runs exactly this (docs/ci.md).
 #
-#   scripts/check.sh            every step, in order, stopping at the first FAIL
+#   scripts/check.sh            the full lane, every step in order, stopping at the first FAIL
+#   scripts/check.sh quick      the quick lane: fmt clippy test-quick drift bun-quick
 #   scripts/check.sh STEP...    only the named steps, in the order given
 #   scripts/check.sh --list     the step names
 #
-# Steps: fmt clippy test wasm-build wasm-opt size-gate drift bun-test.
-# wasm-opt reads what wasm-build produced and size-gate reads what wasm-opt
-# produced, so run them together. Honours CARGO_TARGET_DIR. Each step prints
-# PASS, FAIL or SKIPPED; the summary lands in $OG_EVIDENCE_DIR/check-summary.txt.
+# Full lane: fmt clippy test wasm-build wasm-opt size-gate drift bun-test determinism.
+# Quick lane: fmt clippy test-quick drift bun-quick (no og-tests, no wasm,
+# no engine package build: the loop while working and the PR signal).
+# wasm-opt reads what wasm-build produced, size-gate reads what wasm-opt
+# produced and bun-test's build.sh takes the gate's wasm (OG_GATE=1), so run
+# them together. Every native step is the dev profile; release is only the
+# wasm the size gate measures (AGENTS.md §Build and gate discipline).
+# Honours CARGO_TARGET_DIR. Each step prints PASS, FAIL or SKIPPED; the
+# summary lands in $OG_EVIDENCE_DIR/check-summary.txt.
 set -u -o pipefail
 # shellcheck source-path=SCRIPTDIR
 . "$(dirname "$0")/lib.sh"
 cd "$OG_ROOT" || exit 1
 
-STEPS="fmt clippy test wasm-build wasm-opt size-gate drift bun-test determinism"
+STEPS_FULL="fmt clippy test wasm-build wasm-opt size-gate drift bun-test determinism"
+STEPS_QUICK="fmt clippy test-quick drift bun-quick"
+STEPS="$STEPS_FULL test-quick bun-quick"
+BUN_QUICK_PACKAGES="packages/knowledge packages/create"   # no native build needed
 WASM_TRIPLE=wasm32-unknown-unknown
 SKIP=3   # a step returns this to report SKIPPED instead of PASS
 
@@ -51,18 +60,47 @@ step_clippy() {
   cargo clippy --workspace $ex --all-targets -- -D warnings
 }
 
-step_test() { cargo test --workspace; }
+# cargo nextest runs the test binaries in parallel (.config/nextest.toml);
+# without it, cargo test. Doctests are cargo test's (nextest runs none), so
+# the full lane adds them.
+step_test() {
+  if command -v cargo-nextest >/dev/null 2>&1; then
+    cargo nextest run --workspace && cargo test --workspace --doc
+  else
+    cargo test --workspace
+  fi
+}
 
-# Builds scripts/wasm-crates.txt and records each produced .wasm in
-# target/og-wasm/built.txt. Artifacts are taken from cargo's JSON messages, so
-# a fresh (not relinked) cdylib still counts and a stale file never does.
-wasm_build() {  # wasm_build CRATE... -> appends .wasm paths to built.txt
-  local args=() c
+# Every crate's tests but og-tests (gfx, walks, perf-shaped suites).
+step_test_quick() {
+  if command -v cargo-nextest >/dev/null 2>&1; then
+    cargo nextest run --workspace --exclude og-tests
+  else
+    cargo test --workspace --exclude og-tests
+  fi
+}
+
+# wasm_build VARIANT FEATURES CRATE...: builds scripts/wasm-crates.txt crates
+# for wasm32 and copies each produced .wasm to $OG_WASM_OUT/raw/<name>[-VARIANT].wasm,
+# listed in built.txt (cargo keeps one uplifted file per crate, so a second
+# feature variant would overwrite the first). Artifacts come from cargo's
+# JSON messages, so a fresh (not relinked) cdylib still counts and a stale
+# file never does.
+wasm_build() {
+  local variant="$1" features="$2"; shift 2
+  local args=() c f name dest
   for c in "$@"; do args+=(-p "$c"); done
+  [ -z "$features" ] || args+=(--features "$features")
   cargo build --release --target "$WASM_TRIPLE" "${args[@]}" --lib \
-      --message-format=json-render-diagnostics > "$OG_WASM_OUT/cargo.json" || return 1
-  grep '"reason":"compiler-artifact"' "$OG_WASM_OUT/cargo.json" \
-    | grep -o '"[^"]*\.wasm"' | tr -d '"' >> "$OG_WASM_OUT/built.txt"
+      --message-format=json-render-diagnostics > "$OG_WASM_OUT/cargo${variant:+-$variant}.json" || return 1
+  mkdir -p "$OG_WASM_OUT/raw"
+  for f in $(grep '"reason":"compiler-artifact"' "$OG_WASM_OUT/cargo${variant:+-$variant}.json" \
+      | grep -o '"[^"]*\.wasm"' | tr -d '"'); do
+    name="$(basename "$f" .wasm)"
+    dest="$OG_WASM_OUT/raw/$name${variant:+-$variant}.wasm"
+    cp "$f" "$dest" || return 1
+    printf '%s\n' "$dest" >> "$OG_WASM_OUT/built.txt"
+  done
   return 0
 }
 
@@ -82,11 +120,15 @@ step_wasm_build() {
   if [ -n "$required" ]; then
     og_say "required: $(printf '%s\n' "$required" | og_words)"
     # shellcheck disable=SC2086
-    wasm_build $required || return 1
+    wasm_build "" "" $required || return 1
   fi
+  for c in $(og_wasm_publish_crates); do
+    og_say "publish variant: $c (--features $c/publish)"
+    wasm_build publish "$c/publish" "$c" || return 1
+  done
   for c in $pending; do
     og_say "pending: $c"
-    if wasm_build "$c"; then
+    if wasm_build "" "" "$c"; then
       og_say "NOTE: $c now builds for $WASM_TRIPLE; mark it 'required' in scripts/wasm-crates.txt"
     else
       og_say "WARN: $c does not build for $WASM_TRIPLE yet (pending in scripts/wasm-crates.txt); tolerated"
@@ -100,36 +142,59 @@ step_wasm_build() {
   fi
 }
 
-# wasm-bindgen (when the module uses it, at the Cargo.lock version) then
-# wasm-opt -Oz; writes target/og-wasm/opt/<name>.wasm and lists them in opt.txt.
+# wasm-bindgen (when the module uses it, at the Cargo.lock version, out-name
+# origin-engine as packages/engine ships it) then wasm-opt -Oz; writes
+# target/og-wasm/opt/<name>.wasm for every variant (opt-all.txt) and lists
+# the shipping ones in opt.txt: the -publish variants when any were built,
+# else all. size-gate reads opt.txt; build.sh under OG_GATE=1 reads both.
+# wasm_opt_one RAW NAME: wasm-bindgen (when the module uses it) then wasm-opt
+# into $OG_WASM_OUT/opt/NAME.wasm.
+wasm_opt_one() {
+  local raw="$1" name="$2" input="$1" lock have
+  if grep -q '__wbindgen_placeholder__' "$raw"; then
+    og_need wasm-bindgen || return 1
+    lock="$(og_lock_version wasm-bindgen)"
+    have="$(wasm-bindgen --version | awk '{print $2}')"
+    if [ "$lock" != "$have" ]; then
+      og_err "wasm-bindgen $have does not match Cargo.lock $lock (run scripts/install-tools.sh)"
+      return 1
+    fi
+    rm -rf "$OG_WASM_OUT/bindgen/$name"
+    wasm-bindgen --target web --out-dir "$OG_WASM_OUT/bindgen/$name" --out-name origin-engine "$raw" || return 1
+    input="$OG_WASM_OUT/bindgen/$name/origin-engine_bg.wasm"
+  fi
+  wasm-opt -Oz --enable-bulk-memory --enable-nontrapping-float-to-int \
+    "$input" -o "$OG_WASM_OUT/opt/$name.wasm" || return 1
+  og_say "$name: $(og_bytes "$raw") B raw -> $(og_bytes "$input") B bindgen -> $(og_bytes "$OG_WASM_OUT/opt/$name.wasm") B wasm-opt -Oz"
+}
+
 step_wasm_opt() {
   local built="$OG_WASM_OUT/built.txt" raw name input lock have
   if [ ! -f "$built" ]; then og_err "no $built: run the wasm-build step first"; return 1; fi
-  mkdir -p "$OG_WASM_OUT/opt"; : > "$OG_WASM_OUT/opt.txt"
+  mkdir -p "$OG_WASM_OUT/opt"; : > "$OG_WASM_OUT/opt.txt"; : > "$OG_WASM_OUT/opt-all.txt"
   if [ ! -s "$built" ]; then
     og_say "no wasm artifact to optimize"
     return 0
   fi
   og_need wasm-opt || return 1
+  # Each variant is bindgen'd and optimised in its own background job (the
+  # two take the same ~14 s; serial they would add up).
+  local pids=() rc=0
   while IFS= read -r raw; do
     name="$(basename "$raw" .wasm)"
-    input="$raw"
-    if grep -q '__wbindgen_placeholder__' "$raw"; then
-      og_need wasm-bindgen || return 1
-      lock="$(og_lock_version wasm-bindgen)"
-      have="$(wasm-bindgen --version | awk '{print $2}')"
-      if [ "$lock" != "$have" ]; then
-        og_err "wasm-bindgen $have does not match Cargo.lock $lock (run scripts/install-tools.sh)"
-        return 1
-      fi
-      wasm-bindgen --target web --out-dir "$OG_WASM_OUT/bindgen/$name" "$raw" || return 1
-      input="$OG_WASM_OUT/bindgen/$name/${name}_bg.wasm"
-    fi
-    wasm-opt -Oz --enable-bulk-memory --enable-nontrapping-float-to-int \
-      "$input" -o "$OG_WASM_OUT/opt/$name.wasm" || return 1
-    og_say "$name: $(og_bytes "$raw") B raw -> $(og_bytes "$input") B bindgen -> $(og_bytes "$OG_WASM_OUT/opt/$name.wasm") B wasm-opt -Oz"
-    printf '%s\n' "$OG_WASM_OUT/opt/$name.wasm" >> "$OG_WASM_OUT/opt.txt"
+    printf '%s\n' "$OG_WASM_OUT/opt/$name.wasm" >> "$OG_WASM_OUT/opt-all.txt"
+    wasm_opt_one "$raw" "$name" > "$OG_WASM_OUT/opt/$name.log" 2>&1 &
+    pids+=($!)
   done < "$built"
+  for pid in "${pids[@]}"; do wait "$pid" || rc=1; done
+  cat "$OG_WASM_OUT"/opt/*.log
+  [ "$rc" -eq 0 ] || return 1
+  if grep -q -- '-publish\.wasm$' "$OG_WASM_OUT/opt-all.txt"; then
+    grep -- '-publish\.wasm$' "$OG_WASM_OUT/opt-all.txt" > "$OG_WASM_OUT/opt.txt"
+    og_say "size-gate measures the publish variant(s): $(og_words < "$OG_WASM_OUT/opt.txt")"
+  else
+    cp "$OG_WASM_OUT/opt-all.txt" "$OG_WASM_OUT/opt.txt"
+  fi
 }
 
 step_size_gate() { "$OG_ROOT/scripts/size-gate.sh"; }
@@ -160,9 +225,11 @@ step_determinism() {
   "$OG_ROOT/tools/wasm-determinism/run.sh"
 }
 
-step_bun_test() {
+# bun_test_packages DIR...: `bun run test` in each package that has a test
+# script, installing its dependencies first when node_modules is missing.
+bun_test_packages() {
   local pkg ran=0
-  for pkg in packages/*/; do
+  for pkg in "$@"; do
     [ -f "$pkg/package.json" ] || continue
     og_need bun || return 1
     if ! (cd "$pkg" && bun -e 'process.exit(require("./package.json").scripts?.test ? 0 : 1)'); then
@@ -183,12 +250,33 @@ step_bun_test() {
   [ "$ran" -gt 0 ] || og_say "no package under packages/ has a test script yet"
 }
 
+# Every package. OG_GATE=1 makes packages/engine's build.sh take the dev
+# addon and `og` the test step built and the wasm wasm-opt produced
+# instead of compiling release and wasm again.
+step_bun_test() {
+  if [ ! -s "$OG_WASM_OUT/opt-all.txt" ]; then
+    og_err "no $OG_WASM_OUT/opt-all.txt: run wasm-build and wasm-opt before bun-test (or 'bun run test' in packages/engine standalone)"
+    return 1
+  fi
+  OG_GATE=1 bun_test_packages packages/*/
+}
+
+# The packages that need no native build.
+step_bun_quick() {
+  # shellcheck disable=SC2086
+  bun_test_packages $BUN_QUICK_PACKAGES
+}
+
 case "${1:-}" in
   --list) for s in $STEPS; do echo "$s"; done; exit 0 ;;
   -h|--help) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
 esac
 
-selected="${*:-$STEPS}"
+case "${1:-}" in
+  "") selected="$STEPS_FULL" ;;
+  quick) shift; selected="$STEPS_QUICK${*:+ $*}" ;;
+  *) selected="$*" ;;
+esac
 for s in $selected; do
   case " $STEPS " in *" $s "*) ;; *) og_err "unknown step '$s' (scripts/check.sh --list)"; exit 2 ;; esac
 done

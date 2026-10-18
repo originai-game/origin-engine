@@ -1,23 +1,47 @@
 # CI and the local gate
 
-The gate is one script, `scripts/check.sh`. CI runs it unchanged, so a green
-local run predicts a green CI run on the same revision. The workflow
-(`.github/workflows/ci.yml`) only provisions the machine.
+The gate is one script, `scripts/check.sh`, with two lanes. CI runs it
+unchanged, so a green local run predicts a green CI run on the same
+revision. The workflow (`.github/workflows/ci.yml`) only provisions the
+machine. The rules the lanes rest on are AGENTS.md §Build and gate
+discipline: one target directory, the dev profile for every native step,
+tests that never run `cargo`.
+
+## Lanes
+
+| Lane | Steps | When | Warm, Apple M4 Pro |
+|---|---|---|---|
+| `scripts/check.sh quick` | fmt clippy test-quick drift bun-quick | the loop while working; CI job `quick` on every PR | 83 s (test-quick 61 s for 203 tests) |
+| `scripts/check.sh` (full) | fmt clippy test wasm-build wasm-opt size-gate drift bun-test determinism | before a change to rendering, animation, physics, the tick or the export is called done; CI job `gate` on every PR and push to main | 145 s (test 80 s under nextest, wasm-opt 23 s, size-gate 16 s, bun-test 17 s) |
+
+Before the lanes (2026-10-18, E1 tree) the single gate took 310 s warm:
+`cargo test` serial 111 s, `packages/engine`'s `bun run test` 156 s of which
+a release build of `og`, the addon and two wasm variants was most. Four
+agents building the same crates into private `target/agent-*` directories
+had grown `target/` to 143 GB.
 
 ## What runs where
 
-| Step | Command | Local | CI `gate` (push to main, PR) | CI `perf-nightly` (03:17 UTC, manual) |
-|---|---|---|---|---|
-| `fmt` | `cargo fmt --all --check` | yes | yes | |
-| `clippy` | `cargo clippy --workspace --all-targets -- -D warnings` | yes | yes | |
-| `test` | `cargo test --workspace` (logic and gfx tests in `og-tests`) | yes | yes, on lavapipe | |
-| `wasm-build` | `cargo build --release --target wasm32-unknown-unknown -p <crate> --lib` for `scripts/wasm-crates.txt` | yes | yes | |
-| `wasm-opt` | `wasm-bindgen --target web` (when the module uses it) then `wasm-opt -Oz --enable-bulk-memory --enable-nontrapping-float-to-int` | yes | yes | |
-| `size-gate` | `scripts/size-gate.sh`: brotli `-q 11` sum ≤ `wasm_core_brotli_bytes` | yes | yes | |
-| `drift` | `og api check` (generated `.d.ts`, wiki, JSON schema, Rust glue vs `crates/og-api/api.ogt`) | yes | yes | |
-| `bun-test` | `bun run test` in each `packages/*` with a `test` script | yes | yes | |
-| `determinism` | `tools/wasm-determinism/run.sh`: the same math digest and world hash on the host and on wasm32 scalar and simd128 under node | yes | yes | needs node |
-| perf | `cargo test -p og-tests --release -- --ignored perf` | `make perf` | | yes |
+| Step | Command | Lane | CI `quick` (PR) | CI `gate` (push to main, PR) | CI `perf-nightly` (03:17 UTC, manual) |
+|---|---|---|---|---|---|
+| `fmt` | `cargo fmt --all --check` | both | yes | yes | |
+| `clippy` | `cargo clippy --workspace --all-targets -- -D warnings` | both | yes | yes | |
+| `test-quick` | `cargo nextest run --workspace --exclude og-tests` (`cargo test` without nextest) | quick | yes, on lavapipe | | |
+| `test` | `cargo nextest run --workspace && cargo test --workspace --doc` (`cargo test --workspace` without nextest); gfx tests in `og-tests` | full | | yes, on lavapipe | |
+| `wasm-build` | `cargo build --release --target wasm32-unknown-unknown -p <crate> --lib` for `scripts/wasm-crates.txt`, plus the `publish` feature variant of crates marked `publish`; copies to `target/og-wasm/raw/` | full | | yes | |
+| `wasm-opt` | `wasm-bindgen --target web --out-name origin-engine` (when the module uses it) then `wasm-opt -Oz --enable-bulk-memory --enable-nontrapping-float-to-int`; `opt.txt` lists the shipping (publish) variants, `opt-all.txt` every one | full | | yes | |
+| `size-gate` | `scripts/size-gate.sh`: brotli `-q 11` sum of `opt.txt` ≤ `wasm_core_brotli_bytes` | full | | yes | |
+| `drift` | `og api check` (generated `.d.ts`, wiki, JSON schema, Rust glue vs `crates/og-api/api.ogt`), the dev `og` the test step built | both | yes | yes | |
+| `bun-quick` | `bun run test` in `packages/knowledge` and `packages/create` (no native build) | quick | yes | | |
+| `bun-test` | `bun run test` in each `packages/*` with a `test` script; `OG_GATE=1` makes `packages/engine/scripts/build.sh` take the dev addon and `og` and the gate's wasm instead of compiling release and wasm again | full | | yes | |
+| `determinism` | `tools/wasm-determinism/run.sh`: the same math digest and world hash on the host and on wasm32 scalar and simd128 under node | full | | yes | needs node |
+| perf | `cargo test -p og-tests --release -- --ignored perf` | `make perf` | | | yes |
+
+`cargo nextest` runs test binaries in parallel, one process per test;
+`.config/nextest.toml` serialises the one binary whose tests share a fixture
+directory (`og-cook::template`) and gives every slot to the tests that
+assert a wall-clock bound. `scripts/install-tools.sh` installs it; without
+it the steps fall back to `cargo test`.
 
 CI runs on `ubuntu-latest`. The Rust toolchain comes from
 `rust-toolchain.toml` (channel, rustfmt, clippy, the wasm target) through
@@ -37,7 +61,8 @@ are uploaded on every run as `size-gate-<run>`.
 
 ```
 scripts/install-tools.sh             # once; macOS uses Homebrew for binaryen and brotli
-scripts/check.sh                     # everything, stops at the first FAIL
+scripts/check.sh quick               # the quick lane (make quick)
+scripts/check.sh                     # the full lane, stops at the first FAIL
 scripts/check.sh clippy test         # selected steps, in the order given
 scripts/check.sh wasm-build wasm-opt size-gate   # the size gate (make wasm)
 scripts/check.sh --list
@@ -47,9 +72,11 @@ make check                           # the same through the Makefile
 Each step prints `==> [n/N] step`, its own output, then `PASS`, `FAIL` or
 `SKIPPED` with its duration; the script exits non-zero on the first `FAIL`
 and writes the per-step lines to `target/evidence/check-summary.txt`. The
-script honours `CARGO_TARGET_DIR` (agents working in parallel use their own,
-e.g. `CARGO_TARGET_DIR=target/agent-<name>`) and exports `OG_EVIDENCE_DIR`
-(default `<target>/evidence`) for test harnesses.
+script honours `CARGO_TARGET_DIR` for CI-style isolation, but agents working
+in parallel share `target/` (AGENTS.md §Build and gate discipline: private
+`target/agent-*` directories compile every dependency once per agent and are
+not used). It exports `OG_EVIDENCE_DIR` (default `<target>/evidence`) and
+`OG_WASM_OUT` (`<target>/og-wasm`) for test harnesses and `build.sh`.
 
 ## Switches in `scripts/budgets.txt` and `scripts/wasm-crates.txt`
 

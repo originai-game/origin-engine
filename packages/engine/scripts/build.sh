@@ -16,20 +16,30 @@ root="$(cd "$here/../.." && pwd)"
 target="${CARGO_TARGET_DIR:-$root/target}"
 case "$target" in /*) ;; *) target="$root/$target" ;; esac
 cd "$root"
-cargo build --release -q -p og-host-node -p og-cli
+# Under the gate (OG_GATE=1, scripts/check.sh) the addon and og are the dev
+# profile the test step already built, and the wasm is what the wasm-build
+# and wasm-opt steps produced; standalone, this script builds release and
+# the wasm itself (AGENTS.md §Build and gate discipline).
+if [ "${OG_GATE:-}" = 1 ]; then
+  cargo build -q -p og-host-node -p og-cli
+  bindir="$target/debug"
+else
+  cargo build --release -q -p og-host-node -p og-cli
+  bindir="$target/release"
+fi
 platform="$(node -p 'process.platform + "-" + process.arch' 2>/dev/null || bun -e 'console.log(process.platform + "-" + process.arch)')"
 mkdir -p "$here/native" "$here/dist/web" "$here/dist/web-publish"
 addon="$here/native/origin-engine.$platform.node"
-if [ -f "$target/release/libog_host_node.dylib" ]; then
-  cp "$target/release/libog_host_node.dylib" "$addon"
+if [ -f "$bindir/libog_host_node.dylib" ]; then
+  cp "$bindir/libog_host_node.dylib" "$addon"
   # ld-27037 can leave the string table off 8-byte alignment, which dyld refuses.
   codesign --remove-signature "$addon"
   bun "$here/scripts/align-macho.ts" "$addon"
   codesign -s - "$addon"
-elif [ -f "$target/release/libog_host_node.so" ]; then
-  cp "$target/release/libog_host_node.so" "$addon"
+elif [ -f "$bindir/libog_host_node.so" ]; then
+  cp "$bindir/libog_host_node.so" "$addon"
 fi
-cp "$target/release/og" "$here/native/og.$platform"
+cp "$bindir/og" "$here/native/og.$platform"
 if [ "${1:-}" = --linux-x64 ]; then
   triple=x86_64-unknown-linux-gnu
   cargo zigbuild --release -q -p og-host-node -p og-cli --target "$triple.2.31"
@@ -39,6 +49,14 @@ fi
 # The web host twice: every member (dist/web), then a publish build that keeps
 # only the player-facing probe members (dist/web-publish, `og build --publish`).
 # Both builds write the same og_host_web.wasm, so each is bound before the next.
+gate_wasm="${OG_WASM_OUT:-$target/og-wasm}"
+if [ "${OG_GATE:-}" = 1 ] && [ -f "$gate_wasm/opt/og_host_web-publish.wasm" ] && [ -f "$gate_wasm/bindgen/og_host_web/origin-engine_bg.wasm" ]; then
+  rm -rf "$here/dist/web-publish"/* "$here/dist/web"/*
+  cp "$gate_wasm/bindgen/og_host_web-publish/"* "$here/dist/web-publish/"
+  cp "$gate_wasm/opt/og_host_web-publish.wasm" "$here/dist/web-publish/origin-engine_bg.wasm"
+  cp "$gate_wasm/bindgen/og_host_web/"* "$here/dist/web/"
+  exit 0
+fi
 wasm="$target/wasm32-unknown-unknown/release/og_host_web.wasm"
 cargo build --release -q --target wasm32-unknown-unknown -p og-host-web --lib --features publish
 wasm-bindgen --target web --out-dir "$here/dist/web-publish" --out-name origin-engine "$wasm"

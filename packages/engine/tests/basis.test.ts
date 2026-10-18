@@ -5,7 +5,7 @@
 // checked for their exact size per level.
 import { expect, test } from "bun:test";
 import { createRequire } from "node:module";
-import { existsSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -18,6 +18,7 @@ import {
   wgpuFormatName,
   type BasisTranscoder,
 } from "../src/web/basis.ts";
+import { ogBin } from "./support/og-bin.ts";
 
 const require = createRequire(import.meta.url);
 const { cpSync, mkdirSync, mkdtempSync } = require("node:fs") as {
@@ -125,8 +126,12 @@ const basis: BasisTranscoder = await (async () => {
   const project = mkdtempSync(join(tmpdir(), "og-basis-"));
   try {
     mkdirSync(join(project, "assets", "textures"), { recursive: true });
+    // `og cook` cooks a project, so the scratch directory is one.
+    mkdirSync(join(project, "src"), { recursive: true });
+    writeFileSync(join(project, "src", "main.ts"), "export default {};\n");
+    writeFileSync(join(project, "project.ogt"), 'type project\nversion 1\n---\nname "basis"\nentry "src/main.ts"\n');
     for (const f of ["stone.png", "stone_n.png", "stone_n.png.ogt"]) cpSync(join(textures, f), join(project, "assets", "textures", f));
-    const cmd = process.env.OG_COOK ? [process.env.OG_COOK, project] : ["cargo", "run", "-q", "-p", "og-cook", "--bin", "og-cook", "--", project];
+    const cmd = [ogBin(), "cook", project];
     const r = Bun.spawnSync(cmd, { cwd: repo, env: process.env });
     if (r.exitCode !== 0) throw new Error(`og-cook failed: ${new TextDecoder().decode(r.stderr)}${new TextDecoder().decode(r.stdout)}`);
     for (const f of ["stone.png", "stone_n.png"]) ktx2[f] = section(new Uint8Array(readFileSync(join(project, "cooked", "textures", `${f}.ogb`))), "ktx2").slice();

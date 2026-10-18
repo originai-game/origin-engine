@@ -24,6 +24,31 @@ env:
   OG_EVIDENCE_DIR: ${{ github.workspace }}/target/evidence
 
 jobs:
+  # The quick lane (docs/ci.md §Lanes): the PR signal in a few minutes.
+  quick:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          cache: true
+          cache-on-failure: true
+          rustflags: ""
+      - uses: taiki-e/install-action@nextest
+      - name: System packages
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq mesa-vulkan-drivers
+      - name: Cache tools
+        uses: actions/cache@v4
+        with:
+          path: ~/.local
+          key: og-tools-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'scripts/install-tools.sh') }}
+      - name: Tools (wasm-bindgen-cli, wasm-opt, brotli, bun)
+        run: scripts/install-tools.sh
+      - name: Quick lane
+        run: scripts/check.sh quick
+
   gate:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
@@ -38,6 +63,7 @@ jobs:
           cache: true
           cache-on-failure: true
           rustflags: ""
+      - uses: taiki-e/install-action@nextest
 
       # Lavapipe gives wgpu a Vulkan adapter for headless gfx tests.
       - name: System packages

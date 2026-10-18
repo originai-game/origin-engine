@@ -3,6 +3,7 @@
 import { fileURLToPath } from "node:url";
 import { expect, test } from "bun:test";
 import { dirname, join } from "node:path";
+import { ogBin } from "./support/og-bin.ts";
 
 declare const Bun: { spawnSync(cmd: string[], o: { cwd: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array } };
 
@@ -18,7 +19,7 @@ const run = (cmd: string[], cwd: string) => {
 
 test("og run --headless prints the hello world's hash after 600 ticks", () => {
   const og = run(
-    ["cargo", "run", "-q", "-p", "og-cli", "--", "run", "--headless", "packages/engine/examples/hello.ts", "--ticks", "600", "--setup", "spawn_wave:10000", "--json"],
+    [ogBin(), "run", "--headless", "packages/engine/examples/hello.ts", "--ticks", "600", "--setup", "spawn_wave:10000", "--json"],
     repo,
   );
   const web = run(["bun", "tests/support/hello-hash.ts", "--host", "web"], pkg);

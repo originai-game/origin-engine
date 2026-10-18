@@ -91,3 +91,12 @@ else
   cp "$tmp/bun/bin/bun" "$BIN/bun"
   bun --version
 fi
+
+# cargo-nextest: the gate's parallel test runner (optional; check.sh falls
+# back to cargo test without it)
+if command -v cargo-nextest >/dev/null; then
+  og_say "cargo-nextest: present ($(cargo nextest --version | head -1))"
+else
+  og_say "cargo-nextest: installing (cargo install --locked)"
+  cargo install --locked cargo-nextest >/dev/null
+fi

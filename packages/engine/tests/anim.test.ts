@@ -7,6 +7,7 @@ import { expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { ogBin } from "./support/og-bin.ts";
 
 declare const Bun: { spawnSync(cmd: string[], o: { cwd: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array } };
 
@@ -23,7 +24,7 @@ function run(host: string, ...extra: string[]) {
 
 test("og.anim poses the walker the same way on both hosts", () => {
   if (!existsSync(join(project, "cooked", ".cook.ogt"))) {
-    const c = Bun.spawnSync(["cargo", "run", "-q", "-p", "og-cli", "--", "cook", project], { cwd: repo });
+    const c = Bun.spawnSync([ogBin(), "cook", project], { cwd: repo });
     if (c.exitCode !== 0) throw new Error(new TextDecoder().decode(c.stderr));
   }
   const node = run("node");

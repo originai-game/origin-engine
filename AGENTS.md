@@ -52,9 +52,47 @@ and the player shell). The execution package during the build-out is
   use `packages/brand` of the platform (`genesis`, `progress` motions) and the
   design tokens; the engine never introduces a second palette or mark.
 
+## Build and gate discipline
+
+The gate was measured at seven minutes warm with four agents compiling the
+same crates into private target directories (143 GB of `target/`), so these
+rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
+
+- **One target directory.** Everyone, agents included, builds into `target/`
+  and lets cargo's lock serialise; nobody sets `CARGO_TARGET_DIR=target/agent-*`
+  or copies the tree to build "in isolation". Isolation of changes is a Git
+  worktree with its own `target/`, used only when two streams must build
+  incompatible trees at once, and deleted with the worktree.
+- **One profile per lane.** Everything in the gate that runs native code
+  (tests, `og` for drift, cook, the addon the bun tests load) is the `dev`
+  profile, whose heavy dependencies are already optimised per package in
+  `Cargo.toml`. `release` (thin LTO, one codegen unit) is for what ships: the
+  wasm the size gate measures, `packages/engine` packs, the perf lane. A step
+  that compiles the same crate in a second profile is a defect.
+- **Tests never run `cargo`.** A Rust test uses `env!("CARGO_BIN_EXE_og")`; a
+  bun or browser test uses the `og` the gate's `build.sh` put in
+  `packages/engine/native/` (`tests/support/og-bin.ts`); a cook made once per
+  project is reused by every test that needs it. A test that shells out to
+  `cargo run` is waiting behind the build lock and may rebuild the world.
+- **Two lanes.** `scripts/check.sh quick` (fmt, clippy, drift, the logic
+  tests of every crate but og-tests, the knowledge and create packages) is
+  the loop while working and the PR signal, under a minute warm.
+  `scripts/check.sh` (full) adds the gfx, perf-shaped and browser-shaped
+  suites, the wasm build, the size gate and determinism, and is what a
+  commit to main must pass. Changes to rendering, animation, physics, the
+  tick or the export run the full lane before they are called done.
+- **Parallel test binaries.** The test steps use `cargo nextest` when it is
+  installed; test binaries that write a shared directory (a cook in place)
+  are serialised through `.config/nextest.toml` test groups, never by
+  sleeping or retrying.
+- **No cold rebuilds for size.** `build.sh` under the gate (`OG_GATE=1`)
+  takes the wasm the wasm-build and wasm-opt steps already produced; only a
+  standalone `bun run build` compiles it itself.
+
 ## Validation
 
-- Rust: `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test`.
+- Rust: `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test`
+  (or `scripts/check.sh quick`, which runs the same with nextest).
 - Engine tests: `og test` in `tests/` (logic, multicore, gfx against committed
   reference frames, perf against baselines). A gfx test compares pixels; a
   perf test compares against a baseline with a tolerance. A test that ran no

@@ -6,5 +6,8 @@
 #             (use while a crate is being ported; flip to required once it builds)
 # A crate without a cdylib crate-type builds but yields no .wasm; that is
 # reported, not failed, until budgets.txt says `wasm_artifacts required`.
+# A third word `publish` builds the crate a second time with its `publish`
+# feature (the shipping variant: what the size gate measures and what
+# build.sh puts in dist/web-publish).
 og-render   required
-og-host-web required
+og-host-web required publish

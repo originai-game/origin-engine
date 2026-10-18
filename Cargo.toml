@@ -16,6 +16,16 @@ bytemuck = { version = "1.25.2", features = ["derive"] }
 pollster = "1.0.1"
 log = "0.4"
 
+# Workspace crates keep line tables for backtraces; dependencies carry no
+# debuginfo (smaller objects, shorter links). The gate runs every native
+# step in this profile (AGENTS.md §Build and gate discipline).
+[profile.dev]
+debug = "line-tables-only"
+[profile.dev.package."*"]
+debug = false
+
+# What ships: the wasm the size gate measures, packages/engine packs, the
+# perf lane. Never used for tests, drift or the gate's addon.
 [profile.release]
 opt-level = 3
 lto = "thin"

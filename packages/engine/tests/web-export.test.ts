@@ -8,6 +8,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } fr
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEFAULT_PUBLISH, settingsOf, webBuild, type ProjectSettings } from "../src/node/web-build.ts";
+import { ogBin } from "./support/og-bin.ts";
 
 declare module "node:fs" {
   export function cpSync(from: string, to: string, options?: { recursive?: boolean }): void;
@@ -31,10 +32,10 @@ beforeAll(() => {
 });
 
 test("the same inputs give the same bytes, wherever they are written", async () => {
-  // The project's cooked bundle, when no earlier run left one (the gate's
-  // dev og-cli is already built; a hook's 5 s would not cover a cook).
+  // The project's cooked bundle, when no earlier run left one (a hook's
+  // 5 s would not cover a cook).
   if (!existsSync(join(project, "cooked", ".cook.ogt"))) {
-    const r = Bun.spawnSync(["cargo", "run", "-q", "-p", "og-cli", "--", "cook", project], { cwd: repo });
+    const r = Bun.spawnSync([ogBin(), "cook", project], { cwd: repo });
     if (r.exitCode !== 0) throw new Error(new TextDecoder().decode(r.stderr));
   }
   const a = await webBuild(project, entry, join(work, "a"), true, settings());

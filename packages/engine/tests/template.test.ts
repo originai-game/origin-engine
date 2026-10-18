@@ -6,6 +6,7 @@ import { expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { ogBin } from "./support/og-bin.ts";
 
 declare const Bun: {
   spawnSync(
@@ -32,7 +33,7 @@ test("a scaffolded game cooks, passes its playtest and leaves the frame and dump
   expect(created.code).toBe(0);
   expect(existsSync(join(game, "og-out"))).toBeFalse();
 
-  const tested = run(["cargo", "run", "-q", "-p", "og-cli", "--", "test", game]);
+  const tested = run([ogBin(), "test", game]);
   if (tested.code !== 0) throw new Error(tested.out);
   expect(tested.out).toMatch(/PASS smoke \(8 checks/);
   expect(tested.out).toContain("1 suite(s) passed");
