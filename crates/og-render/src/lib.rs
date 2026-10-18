@@ -36,6 +36,7 @@ mod ibl;
 mod light2d;
 mod material;
 mod mips;
+mod overlay;
 pub mod particles;
 mod particles_gpu;
 mod post;
@@ -341,8 +342,13 @@ pub struct FrameStats {
     pub sprites: u32,
     pub glyphs: u32,
     pub sprite_draws: u32,
-    /// Characters of [`RenderScene::texts`] missing from their font.
+    /// Characters of [`RenderScene::texts`] (and the overlay's) missing from their font.
     pub missing_glyphs: u32,
+    /// The overlay's share of `sprites`, `glyphs` and `sprite_draws`
+    /// ([`RenderScene::overlay`]).
+    pub overlay_sprites: u32,
+    pub overlay_glyphs: u32,
+    pub overlay_draws: u32,
     /// Transparent instances drawn (sorted back to front), and their draws.
     pub transparent: u32,
     pub transparent_draws: u32,
@@ -622,6 +628,7 @@ pub struct Renderer {
     white_sprite_group: wgpu::BindGroup,
     instance_buffer: wgpu::Buffer,
     sprite_buffer: wgpu::Buffer,
+    overlay: overlay::OverlayRenderer,
     cache: SceneCache,
     /// Frames rendered so far.
     frame_index: u64,
@@ -1493,6 +1500,7 @@ impl Renderer {
             [0.0; 4],
         );
         let persistent = post::Persistent::new(&device, width, height, output_format, antialias);
+        let overlay = overlay::OverlayRenderer::new(&device, output_format, &sprite_layout);
 
         Ok(Renderer {
             device,
@@ -1552,6 +1560,7 @@ impl Renderer {
             white_sprite_group,
             instance_buffer,
             sprite_buffer,
+            overlay,
             cache: SceneCache::default(),
             frame_index: 0,
             desc_particles: desc.particles,
@@ -2463,6 +2472,21 @@ impl Renderer {
         for s in &particle_frame.systems {
             self.sprite_group(s.texture);
         }
+        let fonts = &self.cache.fonts;
+        let overlay_frame = match &scene.overlay {
+            Some(o) => Some(overlay::build(
+                o,
+                |i| fonts.get(i).map(|f| &f.layout),
+                self.cache.textures.len(),
+            )?),
+            None => None,
+        };
+        if let Some(of) = &overlay_frame {
+            let textures: Vec<_> = overlay::run_textures(of).collect();
+            for t in textures {
+                self.sprite_group(t);
+            }
+        }
         let ribbon_frame = self
             .trails
             .build(
@@ -2645,6 +2669,23 @@ impl Renderer {
             "sprites",
             bytemuck::cast_slice(&sprite_frame.instances),
         );
+        if let (Some(of), Some(o)) = (&overlay_frame, &scene.overlay) {
+            grow_and_write(
+                &self.device,
+                &self.queue,
+                &mut self.overlay.buffer,
+                "overlay instances",
+                bytemuck::cast_slice(&of.instances),
+            );
+            let u = overlay::OverlayRenderer::uniform(
+                self.width,
+                self.height,
+                o,
+                !self.output_format.is_srgb(),
+            );
+            self.queue
+                .write_buffer(&self.overlay.uniform, 0, bytemuck::cast_slice(&u));
+        }
         let (lights_2d, occluders_2d) = match scene.lighting_2d {
             Some(_) => self.lights_2d.write(
                 &self.queue,
@@ -2986,6 +3027,15 @@ impl Renderer {
             joints: joint_matrices.len() as u32,
             ..Default::default()
         };
+        if let Some(of) = &overlay_frame {
+            stats.overlay_sprites = of.sprites;
+            stats.overlay_glyphs = of.glyphs;
+            stats.overlay_draws = of.runs.len() as u32;
+            stats.sprites += of.sprites;
+            stats.glyphs += of.glyphs;
+            stats.sprite_draws += of.runs.len() as u32;
+            stats.missing_glyphs += of.missing_glyphs;
+        }
         for b in &skinned_visible {
             stats.triangles += (self.cache.meshes[b.mesh].index_count / 3) as u64 * b.count as u64;
         }
@@ -3533,6 +3583,57 @@ impl Renderer {
                         gtao,
                     );
                 }
+            }
+        }
+        // The overlay: over the finished frame, in the output itself.
+        if let Some(of) = overlay_frame.as_ref().filter(|f| !f.runs.is_empty()) {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("overlay"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: output,
+                    depth_slice: None,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
+            pass.set_bind_group(0, &self.overlay.group, &[]);
+            let mut msdf_bound: Option<bool> = None;
+            for run in &of.runs {
+                let (msdf, group) = match run.source {
+                    RunSource::Sprite(_, None) => (false, &self.white_sprite_group),
+                    RunSource::Sprite(_, Some(t)) => (
+                        false,
+                        self.cache.sprite_groups[t.index()]
+                            .as_ref()
+                            .expect("made before the pass"),
+                    ),
+                    RunSource::Font(f) => (true, &self.cache.fonts[f.index()].bind_group),
+                };
+                if msdf_bound != Some(msdf) {
+                    pass.set_pipeline(if msdf {
+                        &self.overlay.msdf
+                    } else {
+                        &self.overlay.sprite
+                    });
+                    msdf_bound = Some(msdf);
+                }
+                pass.set_bind_group(1, group, &[]);
+                let start = run.first as u64 * overlay::OVERLAY_STRIDE;
+                pass.set_vertex_buffer(
+                    0,
+                    self.overlay
+                        .buffer
+                        .slice(start..start + run.count as u64 * overlay::OVERLAY_STRIDE),
+                );
+                pass.draw(0..6, 0..run.count);
+                stats.draw_calls += 1;
             }
         }
         self.queue.submit(Some(encoder.finish()));

@@ -850,6 +850,7 @@ fn push_sprites(
                     (row + 1) as f32 * dv,
                 ],
                 layer,
+                clip: None,
             },
             blend,
             e.glow,

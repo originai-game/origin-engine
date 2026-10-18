@@ -13,7 +13,7 @@ use crate::text::{FontMetrics, UiFont};
 use og_core::glam::Vec2;
 use og_probe::hooks::{find_by_id, find_by_text};
 use og_probe::UiElement;
-use og_render::{Sprite, Text, TextureHandle};
+use og_render::{Overlay, TextureHandle};
 use std::collections::BTreeMap;
 
 /// The play surface the UI lays out in, in CSS pixels.
@@ -274,9 +274,11 @@ impl UiFrame {
         self.items.iter().map(|i| i.level + 1).max().unwrap_or(0)
     }
 
-    /// Appends the frame's sprites and text to a render scene's lists.
-    pub fn emit(&self, desc: &EmitDesc, sprites: &mut Vec<Sprite>, texts: &mut Vec<Text>) {
-        emit(&self.items, desc, sprites, texts);
+    /// Appends the frame's sprites, text and clip rectangles to an overlay
+    /// (`RenderScene::overlay`), in CSS pixels: make it with the viewport's
+    /// size and `dpr` (`og_render::Overlay::new(vp.width, vp.height, vp.dpr)`).
+    pub fn emit(&self, desc: &EmitDesc, overlay: &mut Overlay) {
+        emit(&self.items, desc, overlay);
     }
 }
 
@@ -1912,7 +1914,6 @@ impl Ui {
                             font: handle,
                             bounds: Rect::new(x, ly, line.width * sk, lh),
                             clip: text_clip,
-                            advances: line.text.chars().map(|c| m.advance(c) * size).collect(),
                         });
                     }
                     if let Widget::Field { caret: Some(c), .. } = n.widget {
@@ -2058,7 +2059,6 @@ impl Ui {
                         font: handle,
                         bounds: Rect::new(x, ly, w, lh),
                         clip,
-                        advances: text.chars().map(|c| m.advance(c) * size).collect(),
                     });
                 }
             }

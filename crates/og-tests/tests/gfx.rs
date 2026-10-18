@@ -455,6 +455,147 @@ fn showcase_matches_its_reference() {
     assert!(s.prepass_draws > 0, "ambient occlusion runs the prepass");
 }
 
+#[test]
+fn overlay_matches_its_reference() {
+    let report = check("overlay");
+    let s = report.stats;
+    // 1 panel, 2 bar, 1 marker, 1 list back, 5 rows, 2 crosshair sprites.
+    assert_eq!(s.overlay_sprites, 12);
+    assert!(s.overlay_glyphs > 20, "{} overlay glyphs", s.overlay_glyphs);
+    assert!(s.overlay_draws <= 6, "{} overlay draws", s.overlay_draws);
+    assert_eq!(s.sprites, 40 + 12, "the totals count the overlay too");
+}
+
+fn overlay_px(img: &RgbaImage, x: u32, y: u32) -> [u8; 3] {
+    let i = ((y * img.width + x) * 4) as usize;
+    [img.pixels[i], img.pixels[i + 1], img.pixels[i + 2]]
+}
+
+fn srgb8(linear: f32) -> f32 {
+    if linear <= 0.0031308 {
+        linear * 12.92 * 255.0
+    } else {
+        (1.055 * linear.powf(1.0 / 2.4) - 0.055) * 255.0
+    }
+}
+
+fn near(p: [u8; 3], linear: [f32; 3], within: f32) -> bool {
+    p.iter()
+        .zip(linear)
+        .all(|(&a, e)| (a as f32 - srgb8(e)).abs() <= within)
+}
+
+/// The overlay is drawn over the finished frame: after TAA, bloom, metered
+/// exposure and ACES, an opaque overlay colour comes out exactly as authored
+/// (sRGB-encoded), its edges are sharp on every TAA frame, it covers the
+/// scene without a depth test, and its clip cuts rows at the clip's edge.
+#[test]
+fn the_overlay_is_drawn_after_post_untonemapped_and_clipped() {
+    let g = built("overlay");
+    let mut renderer = Renderer::new_blocking(&g.desc).expect("renderer");
+    let mut scene = g.scene;
+    let mut frames = Vec::new();
+    for f in 0..g.frames {
+        if let Some(update) = g.update {
+            update(&mut scene, f);
+        }
+        renderer
+            .render(&scene, &RenderTarget::Offscreen)
+            .expect("render");
+        if f + 2 >= g.frames {
+            frames.push(renderer.read_offscreen().expect("capture"));
+        }
+    }
+    let img = frames.last().expect("a frame");
+    assert_eq!((img.width, img.height), (1280, 720));
+    // The health bar's fill and its track, one pixel either side of the
+    // fill's end: exact colours, no TAA smear, no tone mapping.
+    let fill = [0.9, 0.18, 0.05];
+    let track = [0.1, 0.1, 0.1];
+    for img in &frames {
+        assert!(
+            near(overlay_px(img, 100, 102), fill, 1.5),
+            "fill {:?}",
+            overlay_px(img, 100, 102)
+        );
+        assert!(
+            near(overlay_px(img, 239, 102), fill, 1.5),
+            "fill edge {:?}",
+            overlay_px(img, 239, 102)
+        );
+        assert!(
+            near(overlay_px(img, 240, 102), track, 1.5),
+            "track edge {:?}",
+            overlay_px(img, 240, 102)
+        );
+    }
+    // The crosshair over the scene: white, whatever the scene's depth.
+    assert!(near(overlay_px(img, 639, 352), [1.0, 1.0, 1.0], 12.0));
+    // The list: the first row is cut at the clip's top (y 300), not dropped;
+    // above the clip nothing of it shows.
+    let row = [0.2, 0.22, 0.26];
+    assert!(
+        near(overlay_px(img, 1100, 302), row, 1.5),
+        "the cut row at the clip's top {:?}",
+        overlay_px(img, 1100, 302)
+    );
+    let without = {
+        let g = built("overlay");
+        let mut bare = g.scene;
+        let o = bare.overlay.as_mut().expect("overlay");
+        o.sprites.retain(|s| s.clip.is_none());
+        o.texts.retain(|t| t.clip.is_none());
+        let mut r = Renderer::new_blocking(&g.desc).expect("renderer");
+        for f in 0..g.frames {
+            if let Some(update) = g.update {
+                update(&mut bare, f);
+            }
+            r.render(&bare, &RenderTarget::Offscreen).expect("render");
+        }
+        r.read_offscreen().expect("capture")
+    };
+    for x in (990..1230).step_by(7) {
+        for y in [282u32, 290, 298, 452, 460, 470] {
+            assert_eq!(
+                overlay_px(img, x, y),
+                overlay_px(&without, x, y),
+                "a clipped row shows at ({x}, {y}), outside its clip"
+            );
+        }
+    }
+}
+
+/// On a non-sRGB output (a WebGPU canvas's Bgra8Unorm) the overlay shader
+/// encodes sRGB itself: the same opaque overlay pixels as on the sRGB
+/// output (translucent ones blend in encoded space there, so they differ).
+#[test]
+fn the_overlay_encodes_on_a_non_srgb_output() {
+    let mut scene = RenderScene::new();
+    scene.environment.background = Background::Color(Vec3::new(0.05, 0.05, 0.05));
+    og_tests::fx_scenes::overlay_hud(&mut scene).expect("hud");
+    let desc = RenderDesc {
+        width: 1280,
+        height: 720,
+        ..RenderDesc::default()
+    };
+    let (rgba, _) = frame(&desc, &scene, 1);
+    let bgra_desc = RenderDesc {
+        output_format: Some(og_render::wgpu::TextureFormat::Bgra8Unorm),
+        ..desc
+    };
+    let (bgra, _) = frame(&bgra_desc, &scene, 1);
+    for (x, y) in [(100, 102), (240, 102), (1100, 302), (1180, 90)] {
+        let (a, b) = (overlay_px(&rgba, x, y), overlay_px(&bgra, x, y));
+        assert!(
+            a.iter()
+                .zip(b)
+                .all(|(p, q)| (*p as i32 - q as i32).abs() <= 2),
+            "({x}, {y}): {a:?} on sRGB, {b:?} on BGRA"
+        );
+    }
+    assert!(near(overlay_px(&bgra, 100, 102), [0.9, 0.18, 0.05], 1.5));
+}
+
 /// Capture of a BGRA, non-sRGB output (a WebGPU canvas's format) encodes
 /// sRGB in the shader and swizzles on readback: the same picture as the
 /// default sRGB RGBA output.

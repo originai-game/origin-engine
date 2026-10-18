@@ -1,7 +1,7 @@
 //! Origin Engine UI (`docs/design.md` §2.7): an immediate-mode toolkit whose
 //! tree is declared every tick, laid out Clay-style in one pass, themed by the
-//! platform's design tokens, drawn through og-render's sprite and MSDF text
-//! batches, and addressable by the probe through stable string ids.
+//! platform's design tokens, drawn through og-render's screen-space overlay
+//! (sprites and MSDF text over the finished frame), and addressable by the probe through stable string ids.
 //!
 //! ```ignore
 //! ui.begin(InputFrame::from_world(&world).unwrap_or_default(), viewport);
@@ -12,7 +12,8 @@
 //!     }
 //! });
 //! let frame = ui.end();
-//! frame.emit(&EmitDesc { atlas, layer: 1000, z: 0.0 }, &mut scene.sprites, &mut scene.texts);
+//! let overlay = scene.overlay.get_or_insert_with(|| Overlay::new(vp.width, vp.height, vp.dpr));
+//! frame.emit(&EmitDesc { atlas, layer: 1000 }, overlay);
 //! ```
 //!
 //! Everything is in CSS pixels of the play surface (origin top left, y down),
@@ -33,7 +34,7 @@ pub mod theme;
 mod ui;
 mod widgets;
 
-pub use draw::{atlas_texture, camera, DrawCmd, DrawItem, EmitDesc};
+pub use draw::{atlas_texture, DrawCmd, DrawItem, EmitDesc};
 pub use id::{ui_id, ui_idi, Id};
 pub use input::{GamepadFrame, InputFrame, InputSource, Nav, OgInput, UiKey};
 pub use layout::{

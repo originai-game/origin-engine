@@ -92,16 +92,9 @@ fn sample_screen_matches_its_reference_frame() {
         "the tooltip shows after the pointer rests on Buy"
     );
 
-    frame.emit(
-        &EmitDesc {
-            atlas,
-            layer: 0,
-            z: 0.0,
-        },
-        &mut scene.sprites,
-        &mut scene.texts,
-    );
-    scene.camera = camera(&vp);
+    let mut overlay = og_render::Overlay::new(vp.width, vp.height, vp.dpr);
+    frame.emit(&EmitDesc { atlas, layer: 0 }, &mut overlay);
+    scene.overlay = Some(overlay);
     let bg = ui.theme().palette.bg.linear();
     scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
     scene.post.tonemap = Tonemap::None;
@@ -180,8 +173,9 @@ fn sample_screen_matches_its_reference_frame() {
     }
 }
 
-/// What a scroll container draws stays inside it: quads are cut at its edge
-/// (their UVs following), text lines that do not fit whole are dropped.
+/// What a scroll container draws stays inside it, per pixel: the rows it
+/// scrolled half out are cut exactly at its edge (quads and text alike), and
+/// nothing it holds shows outside its rectangle.
 #[test]
 fn a_scroll_container_clips_everything_it_draws() {
     let mut scene = RenderScene::new();
@@ -189,6 +183,7 @@ fn a_scroll_container_clips_everything_it_draws() {
     let atlas = scene.add_texture(atlas_texture());
     let mut ui = ui_with_font(font);
     let vp = Viewport::new(300.0, 200.0);
+    let red = Srgba::rgb(230, 26, 26);
     let build = |ui: &mut Ui, input: InputFrame| {
         let t = *ui.theme();
         ui.begin(input, vp);
@@ -207,8 +202,8 @@ fn a_scroll_container_clips_everything_it_draws() {
                         Element {
                             width: Size::grow(),
                             padding: Insets::all(t.space.sm),
-                            background: Some(t.palette.fill),
-                            radius: t.radius.block,
+                            background: Some(red),
+                            radius: 0.0,
                             ..Element::default()
                         },
                         |ui| ui.label("Name", &format!("Item {n}"), LabelDesc::default()),
@@ -227,52 +222,52 @@ fn a_scroll_container_clips_everything_it_draws() {
             ..InputFrame::hover(50.0, 50.0)
         },
     );
-    let (mut sprites, mut texts) = (Vec::new(), Vec::new());
-    ui.frame().emit(
-        &EmitDesc {
-            atlas,
-            layer: 0,
-            z: 0.0,
-        },
-        &mut sprites,
-        &mut texts,
-    );
-    let eps = 1e-3;
+    let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
+    ui.frame().emit(&EmitDesc { atlas, layer: 0 }, &mut overlay);
+    // Rows reach past the list's edges before the clip: the cut is the GPU's.
     let (top, bottom) = (list.y, list.y + list.height);
-    let mut cut = 0;
-    for s in &sprites {
-        // World y is up: the sprite spans -(y + h) .. -y in CSS pixels.
-        let (y0, y1) = (-(s.position.y + s.size.y), -s.position.y);
-        assert!(
-            y0 >= top - eps && y1 <= bottom + eps,
-            "a sprite at {y0}..{y1} escapes the list {top}..{bottom}"
-        );
-        // A piece cut at an edge samples part of its slice: v is neither 0, 0.5 nor 1.
-        let partial =
-            |v: f32| (v - 0.0).abs() > eps && (v - 0.5).abs() > eps && (v - 1.0).abs() > eps;
-        if (y0 - top).abs() < eps && partial(s.uv_rect[1])
-            || (y1 - bottom).abs() < eps && partial(s.uv_rect[3])
-        {
-            cut += 1;
+    let beyond = overlay
+        .sprites
+        .iter()
+        .filter(|s| s.position.y < top - 0.5 || s.position.y + s.size.y > bottom + 0.5)
+        .count();
+    assert!(beyond > 0, "no row reaches past the list, nothing to clip");
+    assert!(
+        overlay.sprites.iter().all(|s| s.clip.is_some()),
+        "every sprite carries a clip"
+    );
+    scene.overlay = Some(overlay);
+    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.post.tonemap = Tonemap::None;
+    let desc = RenderDesc {
+        width: vp.width as u32,
+        height: vp.height as u32,
+        ..RenderDesc::default()
+    };
+    let mut renderer = Renderer::new_blocking(&desc).expect("a headless adapter");
+    renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("render");
+    let image = renderer.read_offscreen().expect("read back");
+    let px = |x: u32, y: u32| {
+        let i = ((y * image.width + x) * 4) as usize;
+        [image.pixels[i], image.pixels[i + 1], image.pixels[i + 2]]
+    };
+    let reddish = |p: [u8; 3]| p[0] > 120 && p[1] < 80;
+    let (x0, x1) = (list.x.ceil() as u32 + 4, (list.x + list.width) as u32 - 4);
+    // Outside the list, above and below it: background only.
+    for y in (0..top.floor() as u32).chain(bottom.ceil() as u32..image.height) {
+        for x in (x0..x1).step_by(3) {
+            assert!(
+                !reddish(px(x, y)),
+                "row colour at ({x}, {y}), outside the list {top}..{bottom}"
+            );
         }
     }
-    assert!(cut > 0, "the list cut no sprite at its edges");
-    let rows_on_screen = ui
-        .frame()
-        .elements
-        .iter()
-        .filter(|e| e.id.starts_with("Row#"))
-        .count();
+    // Inside it, at the first and last pixel rows, the cut rows show.
+    let row_at = |y: u32| (x0..x1).any(|x| reddish(px(x, y)));
     assert!(
-        !texts.is_empty() && texts.len() < rows_on_screen,
-        "{} lines for {rows_on_screen} rows",
-        texts.len()
+        row_at(top.ceil() as u32) && row_at(bottom.floor() as u32 - 1),
+        "the half-scrolled rows are cut at the list's edges, not dropped"
     );
-    for t in &texts {
-        let baseline = -t.position.y;
-        assert!(
-            baseline > top && baseline < bottom,
-            "a line at {baseline} escapes {top}..{bottom}"
-        );
-    }
 }

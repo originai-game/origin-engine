@@ -1453,6 +1453,7 @@ pub fn og_render_sprite(world: u32, desc: Option<String>) -> String {
             ],
             uv_rect: uv,
             layer: d["layer"].as_i64().unwrap_or(0) as i32,
+            clip: None,
         });
         Ok(())
     })())

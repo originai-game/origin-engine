@@ -1100,79 +1100,48 @@ pub fn og_ui_tooltip(text: String) {
 
 // ── ui: drawing over the frame ──────────────────────────────────────────────
 
-/// Appends the UI's last frame to the render scene, placed in front of the
-/// scene's camera so its CSS pixels land where the probe and the pointer
-/// see them. og-render has no screen-space overlay yet (og-ui README
-/// §Drawing), so the quads lie on a plane `depth` in front of the camera,
-/// which works for a camera looking down -Z (any roll; a 2D game's
-/// orthographic camera, or a 3D camera without pitch or yaw). For any other
-/// camera the UI is not drawn and `false` says so; it still answers the
-/// probe and the pointer.
-pub(crate) fn emit(rs: &mut super::extract::RenderState) -> bool {
+/// Hands the UI's last frame to the render scene's overlay: screen-space
+/// sprites and text in CSS pixels over the finished frame (after every post
+/// effect, never tone mapped or blurred), at any camera.
+pub(crate) fn emit(rs: &mut super::extract::RenderState) {
     let Some(ui) = rs.ui.clone() else {
-        return true;
+        return;
     };
     let ui = ui.lock();
     let frame = ui.frame();
     if frame.items.is_empty() {
-        return true;
+        return;
     }
     let atlas = *rs
         .ui_atlas
         .get_or_insert_with(|| rs.scene.add_texture(og_ui::atlas_texture()));
-    let cam = rs.scene.camera;
-    let forward = (cam.target - cam.position).normalize_or_zero();
-    if (forward - Vec3::NEG_Z).length() > 1e-3 {
-        return false;
-    }
     let vp = frame.viewport;
-    let (w, h) = (vp.width.max(1.0), vp.height.max(1.0));
-    let depth = (cam.near * 1.5).max(1e-3);
-    let half_h = match cam.projection {
-        og_render::Projection::Perspective { fov_y_degrees } => {
-            depth * (fov_y_degrees.to_radians() / 2.0).tan()
-        }
-        og_render::Projection::Orthographic { height } => height / 2.0,
-    };
-    let k = 2.0 * half_h / h;
-    let up = Vec3::new(cam.up.x, cam.up.y, 0.0).normalize_or(Vec3::Y);
-    let right = Vec3::new(up.y, -up.x, 0.0);
-    let roll = (-up.x).atan2(up.y);
-    let origin = cam.position + Vec3::NEG_Z * depth;
-    // UI world space: CSS (x, y) is (x, -y), so (ux - w/2, uy + h/2) is the
-    // offset from the surface's centre, y up.
-    let place = |p: Vec3| origin + right * ((p.x - w / 2.0) * k) + up * ((p.y + h / 2.0) * k);
-    let mut sprites = Vec::new();
-    let mut texts = Vec::new();
+    // Scale 0 fits the viewport's height to the target (as a capture at
+    // another size needs).
+    let overlay = rs
+        .scene
+        .overlay
+        .get_or_insert_with(|| og_render::Overlay::new(vp.width.max(1.0), vp.height.max(1.0), 0.0));
+    let first_text = overlay.texts.len();
     frame.emit(
         &og_ui::EmitDesc {
             atlas,
             layer: UI_LAYER,
-            z: 0.0,
         },
-        &mut sprites,
-        &mut texts,
+        overlay,
     );
-    for mut s in sprites {
-        s.position = place(s.position);
-        s.size *= k;
-        s.rotation += roll;
-        rs.scene.sprites.push(s);
-    }
-    for mut t in texts {
-        t.position = place(t.position);
-        t.size *= k;
-        t.rotation += roll;
+    // A multi-page font draws once per page with one layout.
+    let mut more = Vec::new();
+    for t in &overlay.texts[first_text..] {
         let pages = rs.ui_pages.get(&t.font).cloned().unwrap_or_default();
         for page in pages.iter().skip(1) {
-            rs.scene.texts.push(og_render::Text {
+            more.push(og_render::Text {
                 font: *page,
                 ..t.clone()
             });
         }
-        rs.scene.texts.push(t);
     }
-    true
+    overlay.texts.extend(more);
 }
 
 // ── ui: the game widget set ─────────────────────────────────────────────────

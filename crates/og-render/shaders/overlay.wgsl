@@ -1,0 +1,95 @@
+// The overlay: sprites and MSDF text in screen space (CSS pixels, origin top
+// left, y down), drawn after every post effect straight into the output with
+// no depth test, alpha blended over the finished frame. Colours are linear;
+// an sRGB output encodes them in hardware, any other output (a WebGPU
+// canvas's Bgra8Unorm) here. Each instance carries its clip rectangle
+// (overlay space, x0 y0 x1 y1); fragments outside it are discarded.
+
+struct OverlayFrame {
+  // x, y: the output in device pixels; z: device pixels per CSS pixel;
+  // w: 1 when the shader encodes sRGB (a non-sRGB output).
+  output: vec4<f32>,
+};
+@group(0) @binding(0) var<uniform> overlay: OverlayFrame;
+
+struct SpriteParams {
+  // x: MSDF distance range in atlas pixels (0: a plain sprite), yz: atlas size in pixels.
+  msdf: vec4<f32>,
+};
+@group(1) @binding(0) var sprite_tex: texture_2d<f32>;
+@group(1) @binding(1) var sprite_sampler: sampler;
+@group(1) @binding(2) var<uniform> sprite_params: SpriteParams;
+
+struct OverlayIn {
+  @location(0) position_rotation: vec4<f32>,  // xy: anchor position (CSS px), w: rotation, clockwise
+  @location(1) size_anchor: vec4<f32>,        // xy: size, zw: anchor (fraction from the top left)
+  @location(2) uv_rect: vec4<f32>,            // u0, v0, u1, v1 (v down)
+  @location(3) color: vec4<f32>,
+  @location(4) clip: vec4<f32>,               // x0, y0, x1, y1 in CSS px
+};
+
+struct OverlayOut {
+  @builtin(position) position: vec4<f32>,
+  @location(0) uv: vec2<f32>,
+  @location(1) color: vec4<f32>,
+  @location(2) clip: vec4<f32>,
+};
+
+@vertex
+fn vs(@builtin(vertex_index) vi: u32, s: OverlayIn) -> OverlayOut {
+  var corners = array<vec2<f32>, 6>(
+    vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 0.0), vec2<f32>(1.0, 1.0),
+    vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 1.0), vec2<f32>(0.0, 1.0));
+  let c = corners[vi];
+  let local = (c - s.size_anchor.zw) * s.size_anchor.xy;
+  let cs = cos(s.position_rotation.w);
+  let sn = sin(s.position_rotation.w);
+  // y grows downwards, so this turns clockwise on screen.
+  let rotated = vec2<f32>(local.x * cs - local.y * sn, local.x * sn + local.y * cs);
+  let device = (s.position_rotation.xy + rotated) * overlay.output.z;
+  var o: OverlayOut;
+  o.position = vec4<f32>(device.x / overlay.output.x * 2.0 - 1.0, 1.0 - device.y / overlay.output.y * 2.0, 0.0, 1.0);
+  // The top of the quad (c.y = 0) samples the top of the region.
+  o.uv = vec2<f32>(mix(s.uv_rect.x, s.uv_rect.z, c.x), mix(s.uv_rect.y, s.uv_rect.w, c.y));
+  o.color = s.color;
+  o.clip = s.clip * overlay.output.z;
+  return o;
+}
+
+fn encode(c: vec3<f32>) -> vec3<f32> {
+  let x = clamp(c, vec3<f32>(0.0), vec3<f32>(1.0));
+  let lo = x * 12.92;
+  let hi = 1.055 * pow(x, vec3<f32>(1.0 / 2.4)) - 0.055;
+  return select(hi, lo, x <= vec3<f32>(0.0031308));
+}
+
+fn finish(rgb: vec3<f32>, a: f32, at: vec2<f32>, clip: vec4<f32>) -> vec4<f32> {
+  if (at.x < clip.x || at.y < clip.y || at.x >= clip.z || at.y >= clip.w || a <= 0.0) {
+    discard;
+  }
+  if (overlay.output.w > 0.5) {
+    return vec4<f32>(encode(rgb), a);
+  }
+  return vec4<f32>(rgb, a);
+}
+
+@fragment
+fn fs(in: OverlayOut) -> @location(0) vec4<f32> {
+  let c = textureSample(sprite_tex, sprite_sampler, in.uv) * in.color;
+  return finish(c.rgb, c.a, in.position.xy, in.clip);
+}
+
+fn median(r: f32, g: f32, b: f32) -> f32 {
+  return max(min(r, g), min(max(r, g), b));
+}
+
+@fragment
+fn fs_msdf(in: OverlayOut) -> @location(0) vec4<f32> {
+  let m = textureSample(sprite_tex, sprite_sampler, in.uv).rgb;
+  let unit_range = vec2<f32>(sprite_params.msdf.x) / sprite_params.msdf.yz;
+  let screen_tex_size = vec2<f32>(1.0) / fwidth(in.uv);
+  let screen_px_range = max(0.5 * dot(unit_range, screen_tex_size), 1.0);
+  let distance = screen_px_range * (median(m.r, m.g, m.b) - 0.5);
+  let opacity = clamp(distance + 0.5, 0.0, 1.0) * in.color.a;
+  return finish(in.color.rgb, opacity, in.position.xy, in.clip);
+}

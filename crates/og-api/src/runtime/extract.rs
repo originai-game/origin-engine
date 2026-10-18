@@ -298,6 +298,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     scene.lights.clear();
     scene.texts.clear();
     scene.sprites.clear();
+    scene.overlay = None;
 
     // Camera.
     let mut exposure = 1.0f32;
@@ -461,6 +462,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 rotation: t.rotation,
                 color: t.color,
                 layer: t.layer,
+                clip: None,
             });
         }
     }
@@ -468,10 +470,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     // Sprites queued this tick.
     rs.scene.sprites.extend(rs.sprites.iter().cloned());
 
-    // The UI, over everything else.
-    if !super::modules::emit(rs) {
-        rs.notes.push("og.ui: the UI is not drawn while og.Camera turns away from -Z: og-render has no screen-space overlay yet, so the UI lies on a plane in front of the camera; it still answers the pointer and the probe".into());
-    }
+    // The UI, over everything else, in the overlay.
+    super::modules::emit(rs);
 }
 
 /// A cooked font as one `MsdfFont` per atlas page (Render's question 1: the

@@ -1793,3 +1793,91 @@ pub fn showcase_update(scene: &mut RenderScene, frame: u32) {
         t.position = showcase_wisp(i, tick);
     }
 }
+
+/// A HUD in the screen-space overlay over a 3D scene (the `overlay` scene):
+/// a panel with a title and a health bar, a rotated marker, a list scrolled
+/// half out of its clip rectangle (rows and their text cut at the edge), and
+/// a crosshair; 1280×720 CSS pixels at `scale` 0 (fit to the output).
+pub fn overlay_hud(scene: &mut RenderScene) -> Result<(), String> {
+    let font = crate::scenes::load_font(scene)?;
+    let mut o = og_render::Overlay::new(1280.0, 720.0, 0.0);
+    let solid = |x: f32, y: f32, w: f32, h: f32, color: [f32; 4], layer: i32| Sprite {
+        texture: None,
+        position: Vec3::new(x, y, 0.0),
+        size: Vec2::new(w, h),
+        anchor: Vec2::ZERO,
+        color,
+        layer,
+        ..Default::default()
+    };
+    let text = |s: &str, x: f32, y: f32, size: f32, color: [f32; 4], layer: i32| Text {
+        position: Vec3::new(x, y, 0.0),
+        size,
+        color,
+        layer,
+        ..Text::new(font, s)
+    };
+    // The panel, the title and the health bar (exact token-like colours).
+    o.sprites.push(solid(
+        24.0,
+        24.0,
+        320.0,
+        120.0,
+        [0.02, 0.02, 0.025, 0.85],
+        0,
+    ));
+    o.texts.push(text(
+        "Origin 原点",
+        44.0,
+        64.0,
+        30.0,
+        [1.0, 1.0, 1.0, 1.0],
+        1,
+    ));
+    o.sprites
+        .push(solid(44.0, 92.0, 280.0, 20.0, [0.1, 0.1, 0.1, 1.0], 1));
+    o.sprites
+        .push(solid(44.0, 92.0, 196.0, 20.0, [0.9, 0.18, 0.05, 1.0], 2));
+    o.texts.push(text(
+        "HP 70/100",
+        48.0,
+        132.0,
+        16.0,
+        [0.8, 0.8, 0.8, 1.0],
+        1,
+    ));
+    // A marker turned 30° clockwise about its centre.
+    o.sprites.push(Sprite {
+        anchor: Vec2::splat(0.5),
+        rotation: 30f32.to_radians(),
+        ..solid(1180.0, 90.0, 60.0, 60.0, [1.0, 0.73, 0.0, 1.0], 0)
+    });
+    // A list in a 260×150 clip, scrolled 23 px: its first and last rows cut.
+    let clip = o.add_clip([980.0, 300.0, 260.0, 150.0]);
+    o.sprites.push(solid(
+        980.0,
+        300.0,
+        260.0,
+        150.0,
+        [0.02, 0.02, 0.025, 0.85],
+        0,
+    ));
+    for row in 0..5 {
+        let y = 300.0 - 23.0 + row as f32 * 44.0;
+        o.sprites.push(Sprite {
+            clip: Some(clip),
+            ..solid(988.0, y, 244.0, 38.0, [0.2, 0.22, 0.26, 1.0], 1)
+        });
+        o.texts.push(Text {
+            clip: Some(clip),
+            ..text(&format!("Item {row}"), 1000.0, y + 27.0, 20.0, [1.0; 4], 2)
+        });
+    }
+    // A crosshair at the centre.
+    o.sprites
+        .push(solid(638.0, 348.0, 4.0, 24.0, [1.0, 1.0, 1.0, 0.9], 0));
+    o.sprites
+        .push(solid(628.0, 358.0, 24.0, 4.0, [1.0, 1.0, 1.0, 0.9], 0));
+    scene.overlay = Some(o);
+    Ok(())
+}

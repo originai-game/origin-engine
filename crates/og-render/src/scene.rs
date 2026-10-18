@@ -550,6 +550,10 @@ pub struct Sprite {
     /// Draw order: higher layers draw over lower ones. Within a layer, sprites
     /// are grouped by texture, then drawn in submission order.
     pub layer: i32,
+    /// In [`Overlay::sprites`]: the index of the clip rectangle in
+    /// [`Overlay::clips`] the sprite is cut to (`None`: the whole output).
+    /// Ignored for world sprites.
+    pub clip: Option<u32>,
 }
 
 impl Default for Sprite {
@@ -563,6 +567,7 @@ impl Default for Sprite {
             color: [1.0; 4],
             uv_rect: [0.0, 0.0, 1.0, 1.0],
             layer: 0,
+            clip: None,
         }
     }
 }
@@ -611,6 +616,10 @@ pub struct Text {
     pub color: [f32; 4],
     /// Sorted together with sprites: higher layers draw over lower ones.
     pub layer: i32,
+    /// In [`Overlay::texts`]: the index of the clip rectangle in
+    /// [`Overlay::clips`] the text is cut to, per pixel (`None`: the whole
+    /// output). Ignored for world text.
+    pub clip: Option<u32>,
 }
 
 impl Text {
@@ -624,7 +633,59 @@ impl Text {
             rotation: 0.0,
             color: [1.0; 4],
             layer: 0,
+            clip: None,
         }
+    }
+}
+
+/// Sprites and text drawn over the finished frame in screen space: after
+/// every post effect (exposure, bloom, tone mapping, TAA, grading), so they
+/// are never tone mapped, exposed, jittered, blurred or depth tested. The
+/// space is CSS pixels with the origin at the top left and y down: a
+/// sprite's `position` is its anchor point, its `anchor` a fraction of its
+/// size from the top-left corner, `rotation` clockwise on screen; a text's
+/// `position` is the baseline origin of its first line, lines go down.
+/// Colours are linear and alpha blended straight over the frame (an sRGB
+/// output encodes them in hardware, any other output in the shader).
+/// Sorted and batched as the world's sprites and text are: by (layer, kind,
+/// texture or font), submission order within a run, the same textures and
+/// MSDF fonts. Drawn on every tier; included in [`crate::Renderer::capture`]
+/// and counted in [`crate::FrameStats`].
+#[derive(Clone, Debug, PartialEq)]
+pub struct Overlay {
+    pub sprites: Vec<Sprite>,
+    pub texts: Vec<Text>,
+    /// The overlay's size in CSS pixels; with `scale` (device pixels per CSS
+    /// pixel), CSS (0, 0)-(width, height) maps onto the output's (0, 0)-
+    /// (width·scale, height·scale). A `scale` of 0 fits the height to the
+    /// output (scale = output height / `height`), whatever size the frame is
+    /// rendered or captured at.
+    pub width: f32,
+    pub height: f32,
+    pub scale: f32,
+    /// Clip rectangles `[x, y, width, height]` in overlay space, indexed by
+    /// [`Sprite::clip`] and [`Text::clip`]; pixels outside are discarded.
+    pub clips: Vec<[f32; 4]>,
+}
+
+impl Overlay {
+    /// An empty overlay of `width`×`height` CSS pixels at `scale` device
+    /// pixels per CSS pixel.
+    pub fn new(width: f32, height: f32, scale: f32) -> Overlay {
+        Overlay {
+            sprites: Vec::new(),
+            texts: Vec::new(),
+            width,
+            height,
+            scale,
+            clips: Vec::new(),
+        }
+    }
+
+    /// Adds a clip rectangle `[x, y, width, height]` and returns its index.
+    pub fn add_clip(&mut self, rect: [f32; 4]) -> u32 {
+        self.clips.push(rect);
+        (self.clips.len() - 1) as u32
     }
 }
 
@@ -691,6 +752,8 @@ pub struct RenderScene {
     /// This frame's joint palettes ([`SkinnedInstance::palette`] indexes them).
     pub joint_palettes: Vec<JointPalette>,
     pub skinned_instances: Vec<SkinnedInstance>,
+    /// Screen-space sprites and text over the finished frame (`None`: none).
+    pub overlay: Option<Overlay>,
 }
 
 impl Default for RenderScene {
@@ -739,6 +802,7 @@ impl RenderScene {
             previous_transforms: Vec::new(),
             joint_palettes: Vec::new(),
             skinned_instances: Vec::new(),
+            overlay: None,
         }
     }
 

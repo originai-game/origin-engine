@@ -1,4 +1,4 @@
-//! From a laid-out frame to og-render's sprite and text batches.
+//! From a laid-out frame to og-render's overlay ([`og_render::Overlay`]).
 //!
 //! Every rectangle (solid, rounded, a texture-less image) is a 9-slice of one
 //! small atlas texture (a white disc, [`atlas_texture`]), so all of them
@@ -10,17 +10,14 @@
 //! batches on one level never overlap, so the sort cannot reorder anything
 //! visible, and a typical screen is two to four draws.
 //!
-//! **Clipping is on the CPU** (og-render exposes neither scissor nor
-//! stencil): quads and images are cut to the clip rectangle with their UVs
-//! adjusted; text is clipped by whole lines vertically and whole glyphs
-//! horizontally.
+//! **Clipping is per pixel**: every sprite and text carries the index of its
+//! clip rectangle in [`og_render::Overlay::clips`], and the overlay pass
+//! discards what falls outside it, so a scrolled row, a rotated chevron or a
+//! half-visible line of text is cut exactly at the container's edge.
 
 use crate::layout::Rect;
-use crate::Viewport;
 use og_core::glam::{Vec2, Vec3};
-use og_render::{
-    Camera, ColorSpace, Exposure, FontHandle, Mips, Sprite, Text, TextureData, TextureHandle,
-};
+use og_render::{ColorSpace, FontHandle, Mips, Overlay, Sprite, Text, TextureData, TextureHandle};
 
 /// One thing to draw, in CSS pixels.
 #[derive(Clone, Debug, PartialEq)]
@@ -70,11 +67,9 @@ pub enum DrawCmd {
         text: String,
         color: [f32; 4],
         font: FontHandle,
-        /// The line box, for clipping and overlap.
+        /// The line box, for overlap.
         bounds: Rect,
         clip: Rect,
-        /// Per-character advances in CSS pixels, for horizontal clipping.
-        advances: Vec<f32>,
     },
 }
 
@@ -132,32 +127,6 @@ impl DrawCmd {
             .intersect(clip),
         }
     }
-
-    /// Whether a rotated shape lies wholly inside its clip (it cannot be cut).
-    fn inside_clip(&self) -> bool {
-        let full = match self {
-            DrawCmd::Bar { center, w, h, .. } => {
-                let d = (w * w + h * h).sqrt();
-                Rect::new(center.0 - d / 2.0, center.1 - d / 2.0, d, d)
-            }
-            DrawCmd::Half { center, radius, .. } => Rect::new(
-                center.0 - radius,
-                center.1 - radius,
-                2.0 * radius,
-                2.0 * radius,
-            ),
-            _ => return true,
-        };
-        let clip = match self {
-            DrawCmd::Bar { clip, .. } | DrawCmd::Half { clip, .. } => clip,
-            _ => return true,
-        };
-        let e = 0.5;
-        full.x >= clip.x - e
-            && full.y >= clip.y - e
-            && full.right() <= clip.right() + e
-            && full.bottom() <= clip.bottom() + e
-    }
 }
 
 /// Assigns painter levels in submission order.
@@ -166,7 +135,7 @@ pub(crate) fn assign_levels(cmds: Vec<DrawCmd>) -> Vec<DrawItem> {
     let mut placed: Vec<(Rect, Batch, i32)> = Vec::with_capacity(cmds.len());
     for cmd in cmds {
         let bounds = cmd.bounds();
-        if bounds.is_empty() || !cmd.inside_clip() {
+        if bounds.is_empty() {
             continue;
         }
         let batch = cmd.batch();
@@ -187,11 +156,9 @@ pub(crate) fn assign_levels(cmds: Vec<DrawCmd>) -> Vec<DrawItem> {
 pub struct EmitDesc {
     /// The scene's handle of [`atlas_texture`].
     pub atlas: TextureHandle,
-    /// The layer of painter level 0; level n draws on `layer + n`. Put the UI
-    /// above a game's own sprites with a high base.
+    /// The overlay layer of painter level 0; level n draws on `layer + n`.
+    /// Put the UI above other overlay sprites with a high base.
     pub layer: i32,
-    /// The world z of the UI plane.
-    pub z: f32,
 }
 
 /// The atlas: a 64×64 white disc (alpha is coverage, 8×8 supersampled),
@@ -226,55 +193,24 @@ pub fn atlas_texture() -> TextureData {
     }
 }
 
-/// The orthographic camera that maps the viewport's CSS pixels onto the
-/// render target: CSS (x, y) is world (x, -y) on the z = 0 plane.
-pub fn camera(viewport: &Viewport) -> Camera {
-    Camera {
-        exposure: Exposure::Manual { ev: 0.0 },
-        ..Camera::orthographic_2d(
-            Vec2::new(viewport.width / 2.0, -viewport.height / 2.0),
-            viewport.height,
-        )
-    }
-}
-
-/// A piece of a quad cut to the clip, its UVs following.
-fn clip_piece(rect: Rect, uv: [f32; 4], clip: &Rect) -> Option<(Rect, [f32; 4])> {
-    let c = rect.intersect(clip);
-    if c.is_empty() || rect.is_empty() {
-        return None;
-    }
-    let fx = |x: f32| (x - rect.x) / rect.width;
-    let fy = |y: f32| (y - rect.y) / rect.height;
-    let lerp = |a: f32, b: f32, t: f32| a + (b - a) * t;
-    Some((
-        c,
-        [
-            lerp(uv[0], uv[2], fx(c.x)),
-            lerp(uv[1], uv[3], fy(c.y)),
-            lerp(uv[0], uv[2], fx(c.right())),
-            lerp(uv[1], uv[3], fy(c.bottom())),
-        ],
-    ))
-}
-
 fn sprite(
     rect: Rect,
     uv: [f32; 4],
     texture: TextureHandle,
     color: [f32; 4],
     layer: i32,
-    z: f32,
+    clip: u32,
 ) -> Sprite {
     Sprite {
         texture: Some(texture),
-        position: Vec3::new(rect.x, -rect.bottom(), z),
+        position: Vec3::new(rect.x, rect.y, 0.0),
         size: Vec2::new(rect.width, rect.height),
         anchor: Vec2::ZERO,
         rotation: 0.0,
         color,
         uv_rect: uv,
         layer,
+        clip: Some(clip),
     }
 }
 
@@ -301,13 +237,18 @@ fn nine_slice(rect: Rect, radius: f32) -> Vec<(Rect, [f32; 4])> {
     ]
 }
 
-pub(crate) fn emit(
-    items: &[DrawItem],
-    desc: &EmitDesc,
-    sprites: &mut Vec<Sprite>,
-    texts: &mut Vec<Text>,
-) {
-    let z = desc.z;
+/// The overlay clip index of a rectangle, adding it the first time.
+fn clip_index(overlay: &mut Overlay, known: &mut Vec<(Rect, u32)>, clip: &Rect) -> u32 {
+    if let Some((_, i)) = known.iter().rev().find(|(r, _)| r == clip) {
+        return *i;
+    }
+    let i = overlay.add_clip([clip.x, clip.y, clip.width, clip.height]);
+    known.push((*clip, i));
+    i
+}
+
+pub(crate) fn emit(items: &[DrawItem], desc: &EmitDesc, overlay: &mut Overlay) {
+    let mut known: Vec<(Rect, u32)> = Vec::new();
     for item in items {
         let layer = desc.layer + item.level;
         match &item.cmd {
@@ -317,9 +258,12 @@ pub(crate) fn emit(
                 color,
                 clip,
             } => {
+                let c = clip_index(overlay, &mut known, clip);
                 for (piece, uv) in nine_slice(*rect, *radius) {
-                    if let Some((r, uv)) = clip_piece(piece, uv, clip) {
-                        sprites.push(sprite(r, uv, desc.atlas, *color, layer, z));
+                    if !piece.is_empty() {
+                        overlay
+                            .sprites
+                            .push(sprite(piece, uv, desc.atlas, *color, layer, c));
                     }
                 }
             }
@@ -334,9 +278,10 @@ pub(crate) fn emit(
                     Some(t) => (*t, *uv),
                     None => (desc.atlas, [0.5, 0.5, 0.5, 0.5]),
                 };
-                if let Some((r, uv)) = clip_piece(*rect, uv, clip) {
-                    sprites.push(sprite(r, uv, tex, *color, layer, z));
-                }
+                let c = clip_index(overlay, &mut known, clip);
+                overlay
+                    .sprites
+                    .push(sprite(*rect, uv, tex, *color, layer, c));
             }
             DrawCmd::Bar {
                 center,
@@ -344,33 +289,41 @@ pub(crate) fn emit(
                 h,
                 angle,
                 color,
-                ..
-            } => sprites.push(Sprite {
-                texture: Some(desc.atlas),
-                position: Vec3::new(center.0, -center.1, z),
-                size: Vec2::new(*w, *h),
-                anchor: Vec2::new(0.5, 0.5),
-                rotation: -angle,
-                color: *color,
-                uv_rect: [0.5, 0.5, 0.5, 0.5],
-                layer,
-            }),
+                clip,
+            } => {
+                let c = clip_index(overlay, &mut known, clip);
+                overlay.sprites.push(Sprite {
+                    texture: Some(desc.atlas),
+                    position: Vec3::new(center.0, center.1, 0.0),
+                    size: Vec2::new(*w, *h),
+                    anchor: Vec2::new(0.5, 0.5),
+                    rotation: *angle,
+                    color: *color,
+                    uv_rect: [0.5, 0.5, 0.5, 0.5],
+                    layer,
+                    clip: Some(c),
+                })
+            }
             DrawCmd::Half {
                 center,
                 radius,
                 angle,
                 color,
-                ..
-            } => sprites.push(Sprite {
-                texture: Some(desc.atlas),
-                position: Vec3::new(center.0, -center.1, z),
-                size: Vec2::new(*radius, 2.0 * radius),
-                anchor: Vec2::new(0.0, 0.5),
-                rotation: -angle,
-                color: *color,
-                uv_rect: [0.5, 0.0, 1.0, 1.0],
-                layer,
-            }),
+                clip,
+            } => {
+                let c = clip_index(overlay, &mut known, clip);
+                overlay.sprites.push(Sprite {
+                    texture: Some(desc.atlas),
+                    position: Vec3::new(center.0, center.1, 0.0),
+                    size: Vec2::new(*radius, 2.0 * radius),
+                    anchor: Vec2::new(0.0, 0.5),
+                    rotation: *angle,
+                    color: *color,
+                    uv_rect: [0.5, 0.0, 1.0, 1.0],
+                    layer,
+                    clip: Some(c),
+                })
+            }
             DrawCmd::Text {
                 x,
                 baseline,
@@ -378,40 +331,19 @@ pub(crate) fn emit(
                 text,
                 color,
                 font,
-                bounds,
                 clip,
-                advances,
+                ..
             } => {
-                // Whole lines vertically (a half-visible line is hidden).
-                let eps = 0.01;
-                if bounds.y < clip.y - eps || bounds.bottom() > clip.bottom() + eps {
-                    continue;
-                }
-                // Whole glyphs horizontally.
-                let mut pen = *x;
-                let mut start_x = None;
-                let mut visible = String::new();
-                for (ch, adv) in text.chars().zip(advances) {
-                    let inside = pen >= clip.x - eps && pen + adv <= clip.right() + eps;
-                    if inside {
-                        if start_x.is_none() {
-                            start_x = Some(pen);
-                        }
-                        visible.push(ch);
-                    } else if start_x.is_some() {
-                        break;
-                    }
-                    pen += adv;
-                }
-                let Some(sx) = start_x else { continue };
-                texts.push(Text {
+                let c = clip_index(overlay, &mut known, clip);
+                overlay.texts.push(Text {
                     font: *font,
-                    text: visible,
-                    position: Vec3::new(sx, -baseline, z),
+                    text: text.clone(),
+                    position: Vec3::new(*x, *baseline, 0.0),
                     size: *size,
                     rotation: 0.0,
                     color: *color,
                     layer,
+                    clip: Some(c),
                 });
             }
         }

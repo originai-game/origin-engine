@@ -294,16 +294,9 @@ fn the_widget_set_matches_its_reference_frame() {
         "half-disc angles {angles:?}, expected {expected:?}"
     );
 
-    frame.emit(
-        &EmitDesc {
-            atlas,
-            layer: 0,
-            z: 0.0,
-        },
-        &mut scene.sprites,
-        &mut scene.texts,
-    );
-    scene.camera = camera(&vp);
+    let mut overlay = og_render::Overlay::new(vp.width, vp.height, vp.dpr);
+    frame.emit(&EmitDesc { atlas, layer: 0 }, &mut overlay);
+    scene.overlay = Some(overlay);
     let bg = ui.theme().palette.bg.linear();
     scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
     scene.post.tonemap = Tonemap::None;

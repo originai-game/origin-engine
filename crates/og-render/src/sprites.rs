@@ -48,9 +48,9 @@ pub(crate) struct SpriteRun {
 
 /// The glyph table of one font, by codepoint.
 pub(crate) struct FontLayout {
-    glyphs: HashMap<char, Glyph>,
-    line_height: f32,
-    atlas_size: Vec2,
+    pub glyphs: HashMap<char, Glyph>,
+    pub line_height: f32,
+    pub atlas_size: Vec2,
 }
 
 impl FontLayout {

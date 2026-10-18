@@ -28,6 +28,7 @@ pub const SCENES: &[&str] = &[
     "text-msdf",
     "sky-only",
     "showcase",
+    "overlay",
     "particles",
     "particles-cpu",
     "fx-2d",
@@ -160,6 +161,16 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "showcase" => {
             g.scene = showcase()?;
             crate::fx_scenes::showcase_effects(&mut g.scene);
+            g.desc.antialias = Antialias::Tier;
+            g.frames = 16;
+            g.update = Some(crate::fx_scenes::showcase_update);
+        }
+        // The showcase under a screen-space HUD in the overlay: after TAA,
+        // bloom, auto exposure and ACES, never tone mapped or blurred.
+        "overlay" => {
+            g.scene = showcase()?;
+            crate::fx_scenes::showcase_effects(&mut g.scene);
+            crate::fx_scenes::overlay_hud(&mut g.scene)?;
             g.desc.antialias = Antialias::Tier;
             g.frames = 16;
             g.update = Some(crate::fx_scenes::showcase_update);
