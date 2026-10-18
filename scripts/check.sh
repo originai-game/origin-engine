@@ -1,12 +1,22 @@
 #!/usr/bin/env bash
 # Origin Engine gate; CI runs exactly this (docs/ci.md).
 #
-#   scripts/check.sh            the full lane, every step in order, stopping at the first FAIL
+#   scripts/check.sh            the path-aware full lane: during a round, after a change
 #   scripts/check.sh quick      the quick lane: fmt clippy test-quick drift bun-quick
-#   scripts/check.sh STEP...    only the named steps, in the order given
+#   scripts/check.sh STEP...    only the named steps
+#   scripts/check.sh --only STEP...
+#                               the named steps and the steps whose outputs they read
+#                               (test: wasm-build; bun-test: wasm-build wasm-opt), e.g.
+#                               after re-recording a reference frame
 #   scripts/check.sh --all ...  any of the above with every step and test run and
-#                               nothing reused from target/og-wasm-cache (CI always is)
+#                               nothing reused from target/og-wasm-cache (CI always is):
+#                               once at the end of a round, never after every edit
 #   scripts/check.sh --list     the step names
+#
+# Steps run concurrently as their inputs allow (step_needs below), each
+# with its log in $OG_EVIDENCE_DIR/gate/<step>.log, printed whole when the
+# step ends; the first FAIL stops the others and the gate.
+# OG_GATE_JOBS=N runs at most N steps at once (1: one at a time, in order).
 #
 # Path-aware (docs/ci.md §Lanes): a step that passes records the working
 # tree it passed on (<target>/og-gate/green/), and a later run skips what
@@ -20,18 +30,21 @@
 # everything.
 #
 # Full lane: fmt clippy wasm-build test wasm-opt size-gate drift bun-test determinism.
-# wasm-build comes before test: og-tests' wasm test takes its og-render
+# test starts after wasm-build: og-tests' wasm test takes its og-render
 # build instead of compiling og-render for wasm32 a second time.
 # Quick lane: fmt clippy test-quick drift bun-quick (no og-tests, no wasm,
 # no engine package build: the loop while working and the PR signal).
 # wasm-opt reads what wasm-build produced, size-gate reads what wasm-opt
-# produced and bun-test's build.sh takes the gate's wasm (OG_GATE=1), so run
-# them together. Every native step is the dev profile; the wasm steps are the
-# wasm profile (release-based), the wasm the size gate measures (AGENTS.md §Build and gate discipline).
+# produced and bun-test's build.sh takes the gate's wasm (OG_GATE=1), so
+# each starts after the step it reads (--only adds that step). Every native
+# step is the dev profile; the wasm steps are the wasm profile
+# (release-based), the wasm the size gate measures (AGENTS.md §Build and
+# gate discipline).
 # Holds the gate lock (scripts/lock.sh, <target>/og-gate.lock) for its whole
 # run; a second gate on the same target directory waits for it.
-# Honours CARGO_TARGET_DIR. Each step prints PASS, FAIL or SKIPPED; the
-# summary lands in $OG_EVIDENCE_DIR/check-summary.txt.
+# Honours CARGO_TARGET_DIR. Each step prints PASS, FAIL or SKIPPED (a step
+# a FAIL stopped, CANCELLED); the summary, in lane order, lands in
+# $OG_EVIDENCE_DIR/check-summary.txt.
 set -u -o pipefail
 # shellcheck source-path=SCRIPTDIR
 . "$(dirname "$0")/lib.sh"
@@ -406,17 +419,139 @@ step_web_reference() {
   return $((a | b | c | d))
 }
 
+# --- Scheduling ---------------------------------------------------------------
+# The steps run concurrently, each as soon as what it reads is there
+# (docs/ci.md §Running the gate locally): native cargo builds (target/debug)
+# and the wasm32 ones (target/wasm, target/wasm32-unknown-unknown) take
+# different cargo locks, so the Rust and the wasm chains overlap, and cargo
+# serialises what shares a directory. Each step writes its own log
+# ($OG_EVIDENCE_DIR/gate/<step>.log), printed whole when it ends.
+
+# step_needs STEP: the steps whose outputs STEP reads. A selected STEP starts
+# after those of them that are selected; --only STEP adds them.
+# test needs wasm-build for og-tests::wasm's proof (its og-render artifact).
+# bun-test does not wait for test: build.sh builds the dev addon and og
+# itself (cargo's lock on target/debug serialises it with the test build),
+# and beside test it measured stable (tests/evidence/gate-speed/).
+step_needs() {
+  case "$1" in
+    test) echo wasm-build ;;
+    wasm-opt) echo wasm-build ;;
+    size-gate) echo wasm-opt ;;
+    bun-test) echo wasm-opt ;;
+  esac
+}
+
+# Per-step state in G_<field>_<step> variables (bash 3.2 has no associative arrays).
+gate_key() { printf '%s' "$1" | tr '-' '_'; }
+gate_set() { printf -v "G_$1_$(gate_key "$2")" '%s' "$3"; }
+gate_get() { local n; n="G_$1_$(gate_key "$2")"; printf '%s' "${!n:-}"; }
+
+# kill_tree PID: PID and everything under it (stopped first, so it forks no more).
+kill_tree() {
+  local c
+  kill -STOP "$1" 2>/dev/null
+  for c in $(pgrep -P "$1" 2>/dev/null); do kill_tree "$c"; done
+  kill -TERM "$1" 2>/dev/null
+  kill -CONT "$1" 2>/dev/null
+}
+
+# gate_launch STEP: runs STEP in the background with its output in its log;
+# the log's .rc file appears last, when the step has ended.
+gate_launch() {
+  local s="$1" fn
+  fn="step_$(gate_key "$s")"
+  rm -f "$GATE_LOGS/$s".*
+  (
+    trap - EXIT INT TERM
+    SKIP_NOTE="" PASS_NOTE="" OG_GREEN=""
+    t0="$(date +%s)"
+    "$fn" < /dev/null > "$GATE_LOGS/$s.log" 2>&1; rc=$?
+    printf '%s\n' "$(( $(date +%s) - t0 ))" > "$GATE_LOGS/$s.time"
+    printf '%s' "$SKIP_NOTE" > "$GATE_LOGS/$s.skip"
+    printf '%s' "$PASS_NOTE" > "$GATE_LOGS/$s.pass"
+    printf '%s\n' "$rc" > "$GATE_LOGS/$s.rc"
+    exit "$rc"
+  ) &
+  gate_set pid "$s" "$!"
+  gate_set start "$s" "$(date +%s)"
+  gate_set state "$s" running
+  og_say "--> [$(gate_get idx "$s")/$total] $s started (+$(( $(date +%s) - started ))s; log ${GATE_LOGS#"$OG_ROOT"/}/$s.log)"
+}
+
+# gate_finish STEP RC: prints STEP's log and its PASS, SKIPPED or FAIL line.
+gate_finish() {
+  local s="$1" rc="$2" dt line note
+  dt="$(cat "$GATE_LOGS/$s.time" 2>/dev/null || echo 0)"
+  og_say ""
+  og_say "==> [$(gate_get idx "$s")/$total] $s"
+  cat "$GATE_LOGS/$s.log"
+  if [ "$rc" -eq 0 ]; then
+    note="$(cat "$GATE_LOGS/$s.pass" 2>/dev/null)"
+    line="PASS $s (${dt}s)${note:+: $note}"
+    RAN="$RAN$s "
+    og_green_set "$s"
+    gate_set state "$s" ok
+  elif [ "$rc" -eq "$SKIP" ]; then
+    note="$(cat "$GATE_LOGS/$s.skip" 2>/dev/null)"
+    line="SKIPPED $s (${dt}s)${note:+: $note}"
+    gate_set state "$s" ok
+  else
+    line="FAIL $s (exit $rc, ${dt}s)"
+    RAN="$RAN$s "
+    # A failed step leaves no earlier pass to be skipped on.
+    og_green_clear "$s"
+    gate_set state "$s" failed
+    [ -n "$FAILED" ] || FAILED="$s"
+  fi
+  gate_set line "$s" "$line"
+  og_say "$line"
+}
+
+# gate_ready STEP: every step STEP waits for that is selected has passed or been skipped.
+gate_ready() {
+  local d
+  for d in $(step_needs "$1"); do
+    case " $selected " in *" $d "*) [ "$(gate_get state "$d")" = ok ] || return 1 ;; esac
+  done
+  return 0
+}
+
+# gate_cancel [REASON]: stops every running step; with REASON, records it.
+gate_cancel() {
+  local s pid
+  for s in $selected; do
+    [ "$(gate_get state "$s")" = running ] || continue
+    pid="$(gate_get pid "$s")"
+    kill_tree "$pid"
+    wait "$pid" 2>/dev/null
+    gate_set state "$s" cancelled
+    if [ -n "${1:-}" ]; then
+      gate_set line "$s" "CANCELLED $s ($(( $(date +%s) - $(gate_get start "$s") ))s): $1; partial log ${GATE_LOGS#"$OG_ROOT"/}/$s.log"
+    fi
+  done
+}
+
 case "${1:-}" in
   --list) for s in $STEPS; do echo "$s"; done; exit 0 ;;
-  -h|--help) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  -h|--help) sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
 esac
 args=()
+ONLY=0
 for a in "$@"; do
-  if [ "$a" = --all ]; then FORCE_ALL=1; else args+=("$a"); fi
+  case "$a" in
+    --all) FORCE_ALL=1 ;;
+    --only) ONLY=1 ;;
+    *) args+=("$a") ;;
+  esac
 done
 set -- ${args[@]+"${args[@]}"}
 [ -z "${CI:-}" ] || FORCE_ALL=1
 
+if [ "$ONLY" = 1 ]; then
+  [ "$#" -gt 0 ] || { og_err "--only needs at least one step (scripts/check.sh --list)"; exit 2; }
+  case "$1" in quick) og_err "--only takes steps, not a lane"; exit 2 ;; esac
+fi
 case "${1:-}" in
   "") selected="$STEPS_FULL" ;;
   quick) shift; selected="$STEPS_QUICK${*:+ $*}" ;;
@@ -425,15 +560,41 @@ esac
 for s in $selected; do
   case " $STEPS " in *" $s "*) ;; *) og_err "unknown step '$s' (scripts/check.sh --list)"; exit 2 ;; esac
 done
+if [ "$ONLY" = 1 ]; then
+  # The named steps and, transitively, the steps whose outputs they read,
+  # in lane order; each prerequisite stays path-aware.
+  want=" $selected "
+  grew=1
+  while [ "$grew" = 1 ]; do
+    grew=0
+    for s in $want; do
+      for d in $(step_needs "$s"); do
+        case "$want" in *" $d "*) ;; *) want="$want$d "; grew=1 ;; esac
+      done
+    done
+  done
+  selected=""
+  for s in $STEPS; do case "$want" in *" $s "*) selected="$selected${selected:+ }$s" ;; esac; done
+fi
+GATE_JOBS="${OG_GATE_JOBS:-0}"   # steps at once; 0: as many as their inputs allow
+case "$GATE_JOBS" in ''|*[!0-9]*) og_err "OG_GATE_JOBS must be a number (0: no cap)"; exit 2 ;; esac
 
 # One gate (or release build.sh) per target directory: a second one waits
 # here instead of thrashing beside the first (scripts/lock.sh).
 og_lock_acquire "$OG_TARGET_DIR" "scripts/check.sh ${selected}" || exit 1
-mkdir -p "$OG_EVIDENCE_DIR"
+# Running steps stop with the gate (Ctrl-C, a FAIL, a kill), then the lock goes.
+trap 'gate_cancel; og_lock_release' EXIT
+GATE_LOGS="$OG_EVIDENCE_DIR/gate"
+mkdir -p "$GATE_LOGS"
 summary="$OG_EVIDENCE_DIR/check-summary.txt"
 : > "$summary"
 total="$(printf '%s\n' "$selected" | wc -w | tr -d ' ')"
 n=0
+for s in $selected; do
+  n=$((n + 1))
+  gate_set idx "$s" "$n"
+  gate_set state "$s" pending
+done
 started="$(date +%s)"
 og_say "Origin Engine gate: $(git rev-parse --short HEAD 2>/dev/null || echo no-git) $(rustc --version 2>/dev/null) target=$OG_TARGET_DIR"
 OG_GATE_TREE="$(og_worktree_tree)" || OG_GATE_TREE=""
@@ -444,35 +605,53 @@ elif [ -z "$OG_GATE_TREE" ]; then
 else
   og_say "path-aware: working tree ${OG_GATE_TREE:0:12}; a step none of whose inputs changed since it last passed is skipped (--all runs everything)"
 fi
-for s in $selected; do
-  n=$((n + 1))
-  og_say ""
-  og_say "==> [$n/$total] $s"
-  t0="$(date +%s)"
-  fn="step_$(echo "$s" | tr '-' '_')"
-  SKIP_NOTE=""
-  PASS_NOTE=""
-  OG_GREEN=""
-  "$fn"; rc=$?
-  dt=$(( $(date +%s) - t0 ))
-  if [ "$rc" -eq 0 ]; then
-    line="PASS $s (${dt}s)${PASS_NOTE:+: $PASS_NOTE}"
-    RAN="$RAN$s "
-    og_green_set "$s"
-  elif [ "$rc" -eq "$SKIP" ]; then
-    line="SKIPPED $s (${dt}s)${SKIP_NOTE:+: $SKIP_NOTE}"
-  else
-    line="FAIL $s (exit $rc, ${dt}s)"
-    RAN="$RAN$s "
-    # A failed step leaves no earlier pass to be skipped on.
-    og_green_clear "$s"
+if [ "$GATE_JOBS" = 0 ]; then
+  og_say "steps run concurrently as their inputs allow; logs in ${GATE_LOGS#"$OG_ROOT"/}/ (OG_GATE_JOBS=1 runs one at a time)"
+else
+  og_say "at most $GATE_JOBS step(s) at once (OG_GATE_JOBS); logs in ${GATE_LOGS#"$OG_ROOT"/}/"
+fi
+
+FAILED=""
+running=0
+done_n=0
+while :; do
+  for s in $selected; do
+    [ "$(gate_get state "$s")" = running ] && [ -f "$GATE_LOGS/$s.rc" ] || continue
+    wait "$(gate_get pid "$s")"; rc=$?
+    running=$((running - 1))
+    done_n=$((done_n + 1))
+    gate_finish "$s" "$rc"
+  done
+  [ -z "$FAILED" ] || break
+  [ "$done_n" -lt "$total" ] || break
+  for s in $selected; do
+    [ "$GATE_JOBS" = 0 ] || [ "$running" -lt "$GATE_JOBS" ] || break
+    if [ "$(gate_get state "$s")" = pending ] && gate_ready "$s"; then
+      gate_launch "$s"
+      running=$((running + 1))
+    fi
+  done
+  if [ "$running" -eq 0 ]; then
+    og_err "gate: no step can start (scripts/check.sh step_needs)"; FAILED="${FAILED:-scheduler}"; break
   fi
-  og_say "$line"; echo "$line" >> "$summary"
-  if [ "$rc" -ne 0 ] && [ "$rc" -ne "$SKIP" ]; then
-    og_say ""; og_say "gate FAILED at '$s'; summary in $summary"
-    exit 1
-  fi
+  sleep 0.2
 done
+
+write_summary() {
+  local s line
+  for s in $selected; do
+    line="$(gate_get line "$s")"
+    [ -z "$line" ] || printf '%s\n' "$line"
+  done > "$summary"
+}
 og_say ""
-og_say "gate PASSED ($n/$total steps, $(( $(date +%s) - started ))s)"
+if [ -n "$FAILED" ]; then
+  gate_cancel "stopped when '$FAILED' failed"
+  write_summary
+  og_say "gate FAILED at '$FAILED'; summary in $summary"
+  cat "$summary"
+  exit 1
+fi
+write_summary
+og_say "gate PASSED ($done_n/$total steps, $(( $(date +%s) - started ))s)"
 cat "$summary"
