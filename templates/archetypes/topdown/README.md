@@ -24,6 +24,22 @@ og test .                    # tests/*.og.ts through og run --headless --command
 og build .                   # dist/: the play page for the browser
 ```
 
+## What it demonstrates, and the skills it exercises
+
+The 2D modules together: a Tiled map with an auto-tiled, colliding wall
+terrain the door opens through `og.tilemap.setTile` and reads back with
+`getTile` (og-game §8), a four-direction flipbook hero on
+og.CharacterController in its top-down mode whose walk steps are heard
+(og-game §13; og-feel §9, §12; og-audio §1), a slime that patrols, chases,
+bites and flees as og.ai data on an og.nav grid from the map (og-ai §1–§5),
+hits felt five ways (hit stop, flash and squash, knockback, shake and kick,
+floating damage and a crit) both ways (og-feel §3–§7), a dash with
+afterimages, sorting by feet (og-feel §10), and a camera that follows with a
+dead zone and scrolls between the rooms by og.CameraZone's scrollTime
+(og-feel §8). `og polish .` (2026-10-19): feel 97 (taste n/a: the HUD is
+screen-space text).
+
+
 ## Rules
 
 - **Moving.** WASD or the arrows move the hero at `Tuning.speed` on the

@@ -1,0 +1,6534 @@
+{
+ "project": "ui-kit",
+ "date": "2026-10-18",
+ "scores": {
+  "contrast": 85,
+  "textSize": 97,
+  "hud": 100,
+  "transitions": 96,
+  "uiSounds": 62,
+  "latency": 99,
+  "hitFeedback": 0,
+  "idle": 73,
+  "frameTime": 100,
+  "inputSound": 38,
+  "locale": 100,
+  "taste": 90,
+  "feel": 62
+ },
+ "findings": [
+  {
+   "measure": "contrast",
+   "where": "frames-desktop confirm: `Confirm` \"Delete\"",
+   "detail": "2.91:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "frames-desktop mainMenu: `play` \"Play\"",
+   "detail": "3.16:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "frames-desktop tutorial: `play` \"Play\"",
+   "detail": "3.16:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "text size",
+   "where": "frames-desktop shop: `Name` \"Iron sword\"",
+   "detail": "ink lines 7 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "text size",
+   "where": "frames-desktop idle: `Name` \"Farm\"",
+   "detail": "ink lines 8 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "idle frames",
+   "where": "frames-desktop",
+   "detail": "27.08 % of ticks show and play nothing new (nothing moves or animates, no UI motion, no sound, no tween, text or particle)",
+   "fix": "og-feel §9 (idle loops: breathing, a pickup's spin) and og-taste §5 (motion): something alive on every screen"
+  },
+  {
+   "measure": "contrast",
+   "where": "frames-phone widgets: `Gallery` \"Gallery\"",
+   "detail": "1.46:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "frames-phone confirm: `Confirm` \"Delete\"",
+   "detail": "2.96:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "frames-phone shop: `Price` \"2,400\"",
+   "detail": "3.17:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "text size",
+   "where": "frames-phone shop: `Unit` \"coins\"",
+   "detail": "ink lines 7.67 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "text size",
+   "where": "frames-phone shop: `Name` \"Iron sword\"",
+   "detail": "ink lines 7.67 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "text size",
+   "where": "frames-phone idle: `Name` \"Farm\"",
+   "detail": "ink lines 8.33 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "screen transitions",
+   "where": "frames-phone",
+   "detail": "2 of 24 screen changes had no motion in the 20 ticks around them",
+   "fix": "og-taste §5 (screens change through a transition): og.ui.screenTransition, one kind per game"
+  },
+  {
+   "measure": "idle frames",
+   "where": "frames-phone",
+   "detail": "31.04 % of ticks show and play nothing new (nothing moves or animates, no UI motion, no sound, no tween, text or particle)",
+   "fix": "og-feel §9 (idle loops: breathing, a pickup's spin) and og-taste §5 (motion): something alive on every screen"
+  },
+  {
+   "measure": "input response",
+   "where": "gamepad",
+   "detail": "1 of 18 inputs changed nothing seen or heard within 30 ticks",
+   "fix": "og-feel §1 (answer on the same tick) and og-taste §6: every press shows an answer, a refused one too"
+  },
+  {
+   "measure": "contrast",
+   "where": "juice iris-opening: `Best` \"Best 12,840\"",
+   "detail": "2.52:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "juice landed: `NewBest` \"New best\"",
+   "detail": "4.17:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "locales mainMenu-ar: `play` \"العب\"",
+   "detail": "2.52:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "locales mainMenu-ja: `play` \"プレイ\"",
+   "detail": "2.67:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "locales confirm-ja: `Confirm` \"削除\"",
+   "detail": "2.75:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "screen transitions",
+   "where": "locales",
+   "detail": "4 of 15 screen changes had no motion in the 20 ticks around them",
+   "fix": "og-taste §5 (screens change through a transition): og.ui.screenTransition, one kind per game"
+  },
+  {
+   "measure": "idle frames",
+   "where": "locales",
+   "detail": "57.12 % of ticks show and play nothing new (nothing moves or animates, no UI motion, no sound, no tween, text or particle)",
+   "fix": "og-feel §9 (idle loops: breathing, a pickup's spin) and og-taste §5 (motion): something alive on every screen"
+  },
+  {
+   "measure": "UI sounds",
+   "where": "multitouch",
+   "detail": "2 of 2 UI presses played no sound on the ui bus",
+   "fix": "og-taste §6 (feedback) and og-audio §3: give the skin or og.ui.configure its press and open sounds"
+  },
+  {
+   "measure": "hit feedback",
+   "where": "multitouch",
+   "detail": "1 of 1 damage moments (hp) had no hit stop within 8 ticks",
+   "fix": "og-feel §3 (hit stop by impact weight)"
+  },
+  {
+   "measure": "hit feedback",
+   "where": "multitouch",
+   "detail": "1 of 1 damage moments (hp) had no shake within 8 ticks",
+   "fix": "og-feel §4 (trauma, not offsets)"
+  },
+  {
+   "measure": "hit feedback",
+   "where": "multitouch",
+   "detail": "1 of 1 damage moments (hp) had no floating text within 8 ticks",
+   "fix": "og-feel §7 (floating text)"
+  },
+  {
+   "measure": "hit feedback",
+   "where": "multitouch",
+   "detail": "1 of 1 damage moments (hp) had no a sound within 8 ticks",
+   "fix": "og-audio §1 (every event sounds; a hit's sound on its tick)"
+  },
+  {
+   "measure": "UI sounds",
+   "where": "phone",
+   "detail": "1 of 1 UI presses played no sound on the ui bus",
+   "fix": "og-taste §6 (feedback) and og-audio §3: give the skin or og.ui.configure its press and open sounds"
+  },
+  {
+   "measure": "idle frames",
+   "where": "phone",
+   "detail": "96.43 % of ticks show and play nothing new (nothing moves or animates, no UI motion, no sound, no tween, text or particle)",
+   "fix": "og-feel §9 (idle loops: breathing, a pickup's spin) and og-taste §5 (motion): something alive on every screen"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-cartoon-phone widgets: `Gallery` \"Gallery\"",
+   "detail": "1.13:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-cartoon-phone racing: `Value` \"234\"",
+   "detail": "1.16:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-cartoon-phone shooter: `Weapon` \"Carbine\"",
+   "detail": "1.75:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-cartoon-phone shop: `Unit` \"coins\"",
+   "detail": "ink lines 7 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-cartoon-phone shop: `Name` \"Iron sword\"",
+   "detail": "ink lines 7 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-cartoon-phone widgets: `New` \"New\"",
+   "detail": "ink lines 8.67 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "screen transitions",
+   "where": "skin-cartoon-phone",
+   "detail": "2 of 24 screen changes had no motion in the 20 ticks around them",
+   "fix": "og-taste §5 (screens change through a transition): og.ui.screenTransition, one kind per game"
+  },
+  {
+   "measure": "idle frames",
+   "where": "skin-cartoon-phone",
+   "detail": "26.11 % of ticks show and play nothing new (nothing moves or animates, no UI motion, no sound, no tween, text or particle)",
+   "fix": "og-feel §9 (idle loops: breathing, a pickup's spin) and og-taste §5 (motion): something alive on every screen"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-cartoon shooter: `Zone` \"Sector 4\"",
+   "detail": "1.62:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-cartoon loading: `Percent` \"100%\"",
+   "detail": "1.67:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-cartoon leaderboard: `Rank` \"1\"",
+   "detail": "1.79:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-cartoon shooter: `Gallery` \"Gallery\"",
+   "detail": "ink lines 6 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-cartoon shop: `Name` \"Iron sword\"",
+   "detail": "ink lines 7 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-cartoon idle: `Name` \"Farm\"",
+   "detail": "ink lines 8 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-fantasy-phone cutscene: `Skip` \"Skip\"",
+   "detail": "1.2:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-fantasy-phone racing: `Value` \"234\"",
+   "detail": "1.25:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-fantasy-phone widgets: `Gallery` \"Gallery\"",
+   "detail": "1.34:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-fantasy-phone shop: `Unit` \"coins\"",
+   "detail": "ink lines 6.33 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-fantasy-phone shop: `Name` \"Iron sword\"",
+   "detail": "ink lines 6.33 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-fantasy-phone gallery: `Name` \"cutscene\"",
+   "detail": "ink lines 8.33 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "screen transitions",
+   "where": "skin-fantasy-phone",
+   "detail": "2 of 25 screen changes had no motion in the 20 ticks around them",
+   "fix": "og-taste §5 (screens change through a transition): og.ui.screenTransition, one kind per game"
+  },
+  {
+   "measure": "idle frames",
+   "where": "skin-fantasy-phone",
+   "detail": "26.21 % of ticks show and play nothing new (nothing moves or animates, no UI motion, no sound, no tween, text or particle)",
+   "fix": "og-feel §9 (idle loops: breathing, a pickup's spin) and og-taste §5 (motion): something alive on every screen"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-fantasy cutscene: `Gallery` \"Gallery\"",
+   "detail": "1.23:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-fantasy shooter: `Zone` \"Sector 4\"",
+   "detail": "1.36:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-fantasy puzzle: `Caption` \"moves left\"",
+   "detail": "1.65:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-fantasy shop: `Name` \"Iron sword\"",
+   "detail": "ink lines 6 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-fantasy widgets: `New` \"New\"",
+   "detail": "ink lines 8 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-neon-phone shop: `Price` \"2,400\"",
+   "detail": "1.88:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-neon-phone shooter: `Armor` \"35\"",
+   "detail": "2.05:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-neon-phone widgets: `Tab#1` \"Stats\"",
+   "detail": "2.27:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-neon-phone shop: `Unit` \"coins\"",
+   "detail": "ink lines 6.67 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-neon-phone shop: `Name` \"Iron sword\"",
+   "detail": "ink lines 6.67 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-neon-phone widgets: `New` \"New\"",
+   "detail": "ink lines 7.67 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "screen transitions",
+   "where": "skin-neon-phone",
+   "detail": "2 of 25 screen changes had no motion in the 20 ticks around them",
+   "fix": "og-taste §5 (screens change through a transition): og.ui.screenTransition, one kind per game"
+  },
+  {
+   "measure": "idle frames",
+   "where": "skin-neon-phone",
+   "detail": "27.18 % of ticks show and play nothing new (nothing moves or animates, no UI motion, no sound, no tween, text or particle)",
+   "fix": "og-feel §9 (idle loops: breathing, a pickup's spin) and og-taste §5 (motion): something alive on every screen"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-neon cutscene: `Gallery` \"Gallery\"",
+   "detail": "1.65:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-neon confirm: `Confirm` \"Delete\"",
+   "detail": "1.99:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-neon shooter: `Armor` \"35\"",
+   "detail": "2.05:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-neon shop: `Name` \"Iron sword\"",
+   "detail": "ink lines 7 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-neon widgets: `New` \"New\"",
+   "detail": "ink lines 8 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-neon widgets: `Sale` \"-20%\"",
+   "detail": "ink lines 8 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-paper-phone widgets: `Gallery` \"Gallery\"",
+   "detail": "1.12:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-paper-phone shooter: `Ammo` \"18\"",
+   "detail": "1.2:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-paper-phone cutscene: `Skip` \"Skip\"",
+   "detail": "1.25:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-paper-phone shop: `Unit` \"coins\"",
+   "detail": "ink lines 7.33 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-paper-phone shop: `Name` \"Iron sword\"",
+   "detail": "ink lines 7.33 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-paper-phone idle: `Name` \"Farm\"",
+   "detail": "ink lines 8.33 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "screen transitions",
+   "where": "skin-paper-phone",
+   "detail": "2 of 25 screen changes had no motion in the 20 ticks around them",
+   "fix": "og-taste §5 (screens change through a transition): og.ui.screenTransition, one kind per game"
+  },
+  {
+   "measure": "idle frames",
+   "where": "skin-paper-phone",
+   "detail": "26.98 % of ticks show and play nothing new (nothing moves or animates, no UI motion, no sound, no tween, text or particle)",
+   "fix": "og-feel §9 (idle loops: breathing, a pickup's spin) and og-taste §5 (motion): something alive on every screen"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-paper cutscene: `Gallery` \"Gallery\"",
+   "detail": "1.47:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-paper shooter: `Zone` \"Sector 4\"",
+   "detail": "1.63:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-paper idle: `Tap` \"Tap\"",
+   "detail": "1.75:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-paper shop: `Name` \"Iron sword\"",
+   "detail": "ink lines 7 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-paper idle: `Name` \"Farm\"",
+   "detail": "ink lines 8 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-pixel-phone widgets: `Health` \"72 / 100\"",
+   "detail": "1.66:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-pixel-phone racing: `Boost` \"Boost\"",
+   "detail": "1.74:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-pixel-phone widgets: `Gallery` \"Gallery\"",
+   "detail": "2.17:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-pixel-phone shop: `Unit` \"coins\"",
+   "detail": "ink lines 7.33 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-pixel-phone shop: `Name` \"Iron sword\"",
+   "detail": "ink lines 7.33 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "screen transitions",
+   "where": "skin-pixel-phone",
+   "detail": "2 of 24 screen changes had no motion in the 20 ticks around them",
+   "fix": "og-taste §5 (screens change through a transition): og.ui.screenTransition, one kind per game"
+  },
+  {
+   "measure": "idle frames",
+   "where": "skin-pixel-phone",
+   "detail": "30.46 % of ticks show and play nothing new (nothing moves or animates, no UI motion, no sound, no tween, text or particle)",
+   "fix": "og-feel §9 (idle loops: breathing, a pickup's spin) and og-taste §5 (motion): something alive on every screen"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-pixel shop: `Price` \"2,400\"",
+   "detail": "2.05:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-pixel inventory: `Count` \"20\"",
+   "detail": "2.2:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-pixel inventory: `Count` \"2\"",
+   "detail": "2.21:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-pixel shop: `Name` \"Iron sword\"",
+   "detail": "ink lines 8 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "idle frames",
+   "where": "skin-pixel",
+   "detail": "26.5 % of ticks show and play nothing new (nothing moves or animates, no UI motion, no sound, no tween, text or particle)",
+   "fix": "og-feel §9 (idle loops: breathing, a pickup's spin) and og-taste §5 (motion): something alive on every screen"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-scifi-phone shooter: `Armor` \"35\"",
+   "detail": "1.59:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-scifi-phone widgets: `Health` \"72 / 100\"",
+   "detail": "1.9:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-scifi-phone shooter: `Health` \"72\"",
+   "detail": "1.9:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-scifi-phone shop: `Unit` \"coins\"",
+   "detail": "ink lines 6 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-scifi-phone shop: `Name` \"Iron sword\"",
+   "detail": "ink lines 6 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-scifi-phone idle: `Name` \"Farm\"",
+   "detail": "ink lines 7 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "screen transitions",
+   "where": "skin-scifi-phone",
+   "detail": "2 of 25 screen changes had no motion in the 20 ticks around them",
+   "fix": "og-taste §5 (screens change through a transition): og.ui.screenTransition, one kind per game"
+  },
+  {
+   "measure": "idle frames",
+   "where": "skin-scifi-phone",
+   "detail": "27.95 % of ticks show and play nothing new (nothing moves or animates, no UI motion, no sound, no tween, text or particle)",
+   "fix": "og-feel §9 (idle loops: breathing, a pickup's spin) and og-taste §5 (motion): something alive on every screen"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-scifi shooter: `Armor` \"35\"",
+   "detail": "1.59:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-scifi cutscene: `Gallery` \"Gallery\"",
+   "detail": "1.76:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "skin-scifi widgets: `Health` \"72 / 100\"",
+   "detail": "1.9:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-scifi shop: `Name` \"Iron sword\"",
+   "detail": "ink lines 6 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "text size",
+   "where": "skin-scifi idle: `Name` \"Farm\"",
+   "detail": "ink lines 7 CSS px tall (a 13 px face's capitals and digits are about 9)",
+   "fix": "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone"
+  },
+  {
+   "measure": "UI sounds",
+   "where": "sounds",
+   "detail": "1 of 2 UI presses played no sound on the ui bus",
+   "fix": "og-taste §6 (feedback) and og-audio §3: give the skin or og.ui.configure its press and open sounds"
+  },
+  {
+   "measure": "UI sounds",
+   "where": "touch",
+   "detail": "3 of 9 UI presses played no sound on the ui bus",
+   "fix": "og-taste §6 (feedback) and og-audio §3: give the skin or og.ui.configure its press and open sounds"
+  },
+  {
+   "measure": "UI sounds",
+   "where": "tutorial",
+   "detail": "1 of 4 UI presses played no sound on the ui bus",
+   "fix": "og-taste §6 (feedback) and og-audio §3: give the skin or og.ui.configure its press and open sounds"
+  }
+ ],
+ "playtests": [
+  {
+   "playtest": "drag",
+   "title": "a drag from one inventory slot to another moves the item",
+   "tier": "metal",
+   "ticks": 108,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 3,
+    "withMotion": 3,
+    "presses": 2,
+    "pressesWithSound": 2,
+    "motionTicks": 107
+   },
+   "latency": {
+    "inputs": 2,
+    "answered": 2,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 2
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.05,
+    "stepP95Ms": 1.37,
+    "renderMedianMs": 0.83,
+    "renderP95Ms": 1.08,
+    "frameP95Ms": 2.45,
+    "frameMaxMs": 4.07
+   },
+   "audio": {
+    "seconds": 1.8,
+    "peak": 0.21,
+    "rms": 0.0243,
+    "clipped": 0,
+    "silentShare": 77.78
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "frames-desktop",
+   "title": "every screen at desktop size matches its reference frame",
+   "tier": "metal",
+   "ticks": 1044,
+   "shots": [
+    {
+     "name": "gallery",
+     "tick": 66,
+     "frame": "frames/frames-desktop-gallery.png",
+     "menu": true,
+     "hud": 8.56,
+     "centre": 19.31,
+     "texts": 19,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "widgets",
+     "tick": 108,
+     "frame": null,
+     "menu": true,
+     "hud": 16.4,
+     "centre": 10.38,
+     "texts": 29,
+     "lowContrast": 6,
+     "small": 0
+    },
+    {
+     "name": "mainMenu",
+     "tick": 150,
+     "frame": null,
+     "menu": true,
+     "hud": 10.17,
+     "centre": 71.32,
+     "texts": 7,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "pause",
+     "tick": 192,
+     "frame": null,
+     "menu": true,
+     "hud": 5.94,
+     "centre": 43.77,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "settings",
+     "tick": 234,
+     "frame": null,
+     "menu": true,
+     "hud": 9.34,
+     "centre": 44.84,
+     "texts": 13,
+     "lowContrast": 3,
+     "small": 0
+    },
+    {
+     "name": "platformer",
+     "tick": 276,
+     "frame": null,
+     "menu": false,
+     "hud": 1.1,
+     "centre": 0,
+     "texts": 6,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "shooter",
+     "tick": 318,
+     "frame": null,
+     "menu": false,
+     "hud": 3.13,
+     "centre": 0.75,
+     "texts": 11,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "puzzle",
+     "tick": 360,
+     "frame": null,
+     "menu": false,
+     "hud": 2.54,
+     "centre": 0,
+     "texts": 8,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "idle",
+     "tick": 402,
+     "frame": null,
+     "menu": false,
+     "hud": 4.24,
+     "centre": 0,
+     "texts": 13,
+     "lowContrast": 3,
+     "small": 1
+    },
+    {
+     "name": "racing",
+     "tick": 444,
+     "frame": null,
+     "menu": false,
+     "hud": 2.78,
+     "centre": 0,
+     "texts": 12,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "cutscene",
+     "tick": 558,
+     "frame": null,
+     "menu": true,
+     "hud": 23.08,
+     "centre": 0,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "shop",
+     "tick": 600,
+     "frame": null,
+     "menu": true,
+     "hud": 5.13,
+     "centre": 15.85,
+     "texts": 17,
+     "lowContrast": 5,
+     "small": 1
+    },
+    {
+     "name": "inventory",
+     "tick": 642,
+     "frame": null,
+     "menu": true,
+     "hud": 13.43,
+     "centre": 56.16,
+     "texts": 7,
+     "lowContrast": 5,
+     "small": 0
+    },
+    {
+     "name": "levels",
+     "tick": 684,
+     "frame": null,
+     "menu": true,
+     "hud": 3.24,
+     "centre": 15.6,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "results",
+     "tick": 786,
+     "frame": null,
+     "menu": true,
+     "hud": 8.29,
+     "centre": 46.23,
+     "texts": 14,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "leaderboard",
+     "tick": 828,
+     "frame": null,
+     "menu": true,
+     "hud": 15.8,
+     "centre": 75.6,
+     "texts": 34,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "tutorial",
+     "tick": 870,
+     "frame": null,
+     "menu": true,
+     "hud": 100,
+     "centre": 100,
+     "texts": 6,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "loading",
+     "tick": 912,
+     "frame": null,
+     "menu": true,
+     "hud": 3.35,
+     "centre": 30.38,
+     "texts": 3,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "confirm",
+     "tick": 954,
+     "frame": null,
+     "menu": true,
+     "hud": 3.86,
+     "centre": 32.7,
+     "texts": 4,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "alert",
+     "tick": 996,
+     "frame": null,
+     "menu": true,
+     "hud": 3.42,
+     "centre": 28.68,
+     "texts": 3,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "toasts",
+     "tick": 1038,
+     "frame": null,
+     "menu": true,
+     "hud": 7.22,
+     "centre": 55.97,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 236,
+    "passing": 206,
+    "worst": [
+     {
+      "shot": "confirm",
+      "id": "Confirm",
+      "text": "Delete",
+      "ratio": 2.91
+     },
+     {
+      "shot": "mainMenu",
+      "id": "play",
+      "text": "Play",
+      "ratio": 3.16
+     },
+     {
+      "shot": "tutorial",
+      "id": "play",
+      "text": "Play",
+      "ratio": 3.16
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 236,
+    "passing": 234,
+    "smallest": [
+     {
+      "shot": "shop",
+      "id": "Name",
+      "text": "Iron sword",
+      "ink": 7
+     },
+     {
+      "shot": "idle",
+      "id": "Name",
+      "text": "Farm",
+      "ink": 8
+     },
+     {
+      "shot": "widgets",
+      "id": "New",
+      "text": "New",
+      "ink": 9
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 5,
+    "worstShare": 4.24,
+    "worstCentre": 0.75
+   },
+   "ui": {
+    "screenChanges": 24,
+    "withMotion": 24,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 701
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 72.15,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 27.08
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.89,
+    "stepP95Ms": 1.87,
+    "renderMedianMs": 0.76,
+    "renderP95Ms": 1.02,
+    "frameP95Ms": 2.75,
+    "frameMaxMs": 91.75
+   },
+   "audio": {
+    "seconds": 17.4,
+    "peak": 0.16,
+    "rms": 0.0156,
+    "clipped": 0,
+    "silentShare": 90.42
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "frames-phone",
+   "title": "every screen on a phone in portrait matches its reference frame",
+   "tier": "metal",
+   "ticks": 1044,
+   "shots": [
+    {
+     "name": "gallery",
+     "tick": 66,
+     "frame": "frames/frames-phone-gallery.png",
+     "menu": true,
+     "hud": 28.01,
+     "centre": 41.61,
+     "texts": 23,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "widgets",
+     "tick": 108,
+     "frame": null,
+     "menu": true,
+     "hud": 29.28,
+     "centre": 47.32,
+     "texts": 18,
+     "lowContrast": 4,
+     "small": 0
+    },
+    {
+     "name": "mainMenu",
+     "tick": 150,
+     "frame": null,
+     "menu": true,
+     "hud": 28.67,
+     "centre": 40,
+     "texts": 7,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "pause",
+     "tick": 192,
+     "frame": null,
+     "menu": true,
+     "hud": 18.64,
+     "centre": 60,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "settings",
+     "tick": 234,
+     "frame": null,
+     "menu": true,
+     "hud": 21.43,
+     "centre": 64.64,
+     "texts": 10,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "platformer",
+     "tick": 276,
+     "frame": null,
+     "menu": false,
+     "hud": 2.98,
+     "centre": 0,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "shooter",
+     "tick": 318,
+     "frame": null,
+     "menu": false,
+     "hud": 10.76,
+     "centre": 1.43,
+     "texts": 11,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "puzzle",
+     "tick": 360,
+     "frame": null,
+     "menu": false,
+     "hud": 7.34,
+     "centre": 0,
+     "texts": 8,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "idle",
+     "tick": 402,
+     "frame": null,
+     "menu": false,
+     "hud": 12.73,
+     "centre": 0,
+     "texts": 13,
+     "lowContrast": 0,
+     "small": 1
+    },
+    {
+     "name": "racing",
+     "tick": 444,
+     "frame": null,
+     "menu": false,
+     "hud": 9.61,
+     "centre": 0,
+     "texts": 16,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "cutscene",
+     "tick": 558,
+     "frame": null,
+     "menu": true,
+     "hud": 26.51,
+     "centre": 0,
+     "texts": 5,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "shop",
+     "tick": 600,
+     "frame": null,
+     "menu": true,
+     "hud": 18.94,
+     "centre": 40.71,
+     "texts": 17,
+     "lowContrast": 4,
+     "small": 2
+    },
+    {
+     "name": "inventory",
+     "tick": 642,
+     "frame": null,
+     "menu": true,
+     "hud": 22.01,
+     "centre": 61.96,
+     "texts": 7,
+     "lowContrast": 5,
+     "small": 0
+    },
+    {
+     "name": "levels",
+     "tick": 684,
+     "frame": null,
+     "menu": true,
+     "hud": 9.34,
+     "centre": 24.64,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "results",
+     "tick": 786,
+     "frame": null,
+     "menu": true,
+     "hud": 24.36,
+     "centre": 57.14,
+     "texts": 14,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "leaderboard",
+     "tick": 828,
+     "frame": null,
+     "menu": true,
+     "hud": 29.88,
+     "centre": 68.57,
+     "texts": 28,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "tutorial",
+     "tick": 870,
+     "frame": null,
+     "menu": true,
+     "hud": 100,
+     "centre": 100,
+     "texts": 6,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "loading",
+     "tick": 912,
+     "frame": null,
+     "menu": true,
+     "hud": 9.63,
+     "centre": 31.43,
+     "texts": 3,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "confirm",
+     "tick": 954,
+     "frame": null,
+     "menu": true,
+     "hud": 10.67,
+     "centre": 38.21,
+     "texts": 4,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "alert",
+     "tick": 996,
+     "frame": null,
+     "menu": true,
+     "hud": 8.7,
+     "centre": 25,
+     "texts": 3,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "toasts",
+     "tick": 1038,
+     "frame": null,
+     "menu": true,
+     "hud": 25.55,
+     "centre": 88.57,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 230,
+    "passing": 210,
+    "worst": [
+     {
+      "shot": "widgets",
+      "id": "Gallery",
+      "text": "Gallery",
+      "ratio": 1.46
+     },
+     {
+      "shot": "confirm",
+      "id": "Confirm",
+      "text": "Delete",
+      "ratio": 2.96
+     },
+     {
+      "shot": "shop",
+      "id": "Price",
+      "text": "2,400",
+      "ratio": 3.17
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 230,
+    "passing": 227,
+    "smallest": [
+     {
+      "shot": "shop",
+      "id": "Unit",
+      "text": "coins",
+      "ink": 7.67
+     },
+     {
+      "shot": "shop",
+      "id": "Name",
+      "text": "Iron sword",
+      "ink": 7.67
+     },
+     {
+      "shot": "idle",
+      "id": "Name",
+      "text": "Farm",
+      "ink": 8.33
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 5,
+    "worstShare": 12.73,
+    "worstCentre": 1.43
+   },
+   "ui": {
+    "screenChanges": 24,
+    "withMotion": 22,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 661
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 68.18,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 31.04
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.95,
+    "stepP95Ms": 1.89,
+    "renderMedianMs": 0.78,
+    "renderP95Ms": 1.05,
+    "frameP95Ms": 2.87,
+    "frameMaxMs": 281.58
+   },
+   "audio": {
+    "seconds": 17.4,
+    "peak": 0.16,
+    "rms": 0.0156,
+    "clipped": 0,
+    "silentShare": 90.42
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "gamepad",
+   "title": "a gamepad's d-pad, stick, A and B drive the gallery through og.Gamepad",
+   "tier": "metal",
+   "ticks": 168,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 3,
+    "withMotion": 3,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 133
+   },
+   "latency": {
+    "inputs": 18,
+    "answered": 17,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 87.5,
+    "sound": 2
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 21.52
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.33,
+    "stepP95Ms": 1.64,
+    "renderMedianMs": 0.76,
+    "renderP95Ms": 1.01,
+    "frameP95Ms": 2.58,
+    "frameMaxMs": 3.68
+   },
+   "audio": {
+    "seconds": 2.8,
+    "peak": 0.16,
+    "rms": 0.0123,
+    "clipped": 0,
+    "silentShare": 94.05
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "juice",
+   "title": "an iris transition switches screens at full cover, the score counts up, UI events sound",
+   "tier": "metal",
+   "ticks": 210,
+   "shots": [
+    {
+     "name": "iris-closing",
+     "tick": 27,
+     "frame": null,
+     "menu": true,
+     "hud": 8.06,
+     "centre": 17.36,
+     "texts": 19,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "iris-opening",
+     "tick": 45,
+     "frame": null,
+     "menu": true,
+     "hud": 9.65,
+     "centre": 49.31,
+     "texts": 5,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "count-up",
+     "tick": 60,
+     "frame": null,
+     "menu": true,
+     "hud": 8.37,
+     "centre": 44.59,
+     "texts": 13,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "landed",
+     "tick": 144,
+     "frame": null,
+     "menu": true,
+     "hud": 9.15,
+     "centre": 49.12,
+     "texts": 14,
+     "lowContrast": 1,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 51,
+    "passing": 49,
+    "worst": [
+     {
+      "shot": "iris-opening",
+      "id": "Best",
+      "text": "Best 12,840",
+      "ratio": 2.52
+     },
+     {
+      "shot": "landed",
+      "id": "NewBest",
+      "text": "New best",
+      "ratio": 4.17
+     },
+     {
+      "shot": "count-up",
+      "id": "retry",
+      "text": "Retry",
+      "ratio": 4.79
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 51,
+    "passing": 51,
+    "smallest": [
+     {
+      "shot": "iris-closing",
+      "id": "Blurb",
+      "text": "Pause over a HUD",
+      "ink": 9
+     },
+     {
+      "shot": "landed",
+      "id": "NewBest",
+      "text": "New best",
+      "ink": 9
+     },
+     {
+      "shot": "iris-closing",
+      "id": "Blurb",
+      "text": "Title screen",
+      "ink": 10
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 5,
+    "withMotion": 5,
+    "presses": 1,
+    "pressesWithSound": 1,
+    "motionTicks": 185
+   },
+   "latency": {
+    "inputs": 1,
+    "answered": 1,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 87.5,
+    "sound": 1
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 11.5
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.02,
+    "stepP95Ms": 2.95,
+    "renderMedianMs": 0.97,
+    "renderP95Ms": 1.3,
+    "frameP95Ms": 4.21,
+    "frameMaxMs": 95.85
+   },
+   "audio": {
+    "seconds": 3.5,
+    "peak": 0.21,
+    "rms": 0.0182,
+    "clipped": 0,
+    "silentShare": 87.62
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "keys",
+   "title": "keyboard focus opens a screen, steps a slider and closes the settings with a save",
+   "tier": "metal",
+   "ticks": 204,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 4,
+    "withMotion": 4,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 175
+   },
+   "latency": {
+    "inputs": 7,
+    "answered": 7,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 1
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 14.43
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.08,
+    "stepP95Ms": 1.63,
+    "renderMedianMs": 0.76,
+    "renderP95Ms": 1.02,
+    "frameP95Ms": 2.57,
+    "frameMaxMs": 3.5
+   },
+   "audio": {
+    "seconds": 3.4,
+    "peak": 0.16,
+    "rms": 0.0193,
+    "clipped": 0,
+    "silentShare": 85.78
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "locales",
+   "title": "the menu, pause and confirm screens in en, zh-CN, ja, ko and ar match their reference frames",
+   "tier": "metal",
+   "ticks": 768,
+   "shots": [
+    {
+     "name": "mainMenu-en",
+     "tick": 60,
+     "frame": null,
+     "menu": true,
+     "hud": 10.17,
+     "centre": 71.32,
+     "texts": 7,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "pause-en",
+     "tick": 108,
+     "frame": null,
+     "menu": true,
+     "hud": 5.94,
+     "centre": 43.77,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "confirm-en",
+     "tick": 156,
+     "frame": null,
+     "menu": true,
+     "hud": 3.86,
+     "centre": 32.7,
+     "texts": 4,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "mainMenu-zh-CN",
+     "tick": 210,
+     "frame": null,
+     "menu": true,
+     "hud": 9.82,
+     "centre": 66.04,
+     "texts": 7,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "pause-zh-CN",
+     "tick": 258,
+     "frame": null,
+     "menu": true,
+     "hud": 5.83,
+     "centre": 43.46,
+     "texts": 4,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "confirm-zh-CN",
+     "tick": 306,
+     "frame": null,
+     "menu": true,
+     "hud": 2.78,
+     "centre": 23.4,
+     "texts": 4,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "mainMenu-ja",
+     "tick": 360,
+     "frame": null,
+     "menu": true,
+     "hud": 12.58,
+     "centre": 73.96,
+     "texts": 7,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "pause-ja",
+     "tick": 408,
+     "frame": null,
+     "menu": true,
+     "hud": 6.24,
+     "centre": 45.03,
+     "texts": 4,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "confirm-ja",
+     "tick": 456,
+     "frame": null,
+     "menu": true,
+     "hud": 4.38,
+     "centre": 36.6,
+     "texts": 4,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "mainMenu-ko",
+     "tick": 510,
+     "frame": null,
+     "menu": true,
+     "hud": 9.85,
+     "centre": 66.04,
+     "texts": 7,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "pause-ko",
+     "tick": 558,
+     "frame": null,
+     "menu": true,
+     "hud": 5.99,
+     "centre": 43.77,
+     "texts": 4,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "confirm-ko",
+     "tick": 606,
+     "frame": null,
+     "menu": true,
+     "hud": 2.94,
+     "centre": 24.65,
+     "texts": 4,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "mainMenu-ar",
+     "tick": 660,
+     "frame": null,
+     "menu": true,
+     "hud": 10.17,
+     "centre": 71.32,
+     "texts": 7,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "pause-ar",
+     "tick": 708,
+     "frame": null,
+     "menu": true,
+     "hud": 6.18,
+     "centre": 45.03,
+     "texts": 4,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "confirm-ar",
+     "tick": 756,
+     "frame": null,
+     "menu": true,
+     "hud": 2.8,
+     "centre": 23.08,
+     "texts": 4,
+     "lowContrast": 1,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 75,
+    "passing": 61,
+    "worst": [
+     {
+      "shot": "mainMenu-ar",
+      "id": "play",
+      "text": "العب",
+      "ratio": 2.52
+     },
+     {
+      "shot": "mainMenu-ja",
+      "id": "play",
+      "text": "プレイ",
+      "ratio": 2.67
+     },
+     {
+      "shot": "confirm-ja",
+      "id": "Confirm",
+      "text": "削除",
+      "ratio": 2.75
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 75,
+    "passing": 75,
+    "smallest": [
+     {
+      "shot": "mainMenu-en",
+      "id": "Footer",
+      "text": "v0.1.0",
+      "ink": 10
+     },
+     {
+      "shot": "mainMenu-en",
+      "id": "Subtitle",
+      "text": "A small adventure",
+      "ink": 11
+     },
+     {
+      "shot": "pause-en",
+      "id": "resume",
+      "text": "Resume",
+      "ink": 11
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 15,
+    "withMotion": 11,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 334
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 42.88,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 57.12
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.89,
+    "stepP95Ms": 1.35,
+    "renderMedianMs": 0.75,
+    "renderP95Ms": 0.99,
+    "frameP95Ms": 2.3,
+    "frameMaxMs": 83.37
+   },
+   "audio": {
+    "seconds": 12.8,
+    "peak": 0.16,
+    "rms": 0.0182,
+    "clipped": 0,
+    "silentShare": 86.98
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "multitouch",
+   "title": "a stick held by one touch and a button tapped by another work together",
+   "tier": "metal",
+   "ticks": 72,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 2,
+    "pressesWithSound": 0,
+    "motionTicks": 71
+   },
+   "latency": {
+    "inputs": 2,
+    "answered": 2,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 1,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": [
+     "hp"
+    ]
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.26,
+    "stepP95Ms": 1.6,
+    "renderMedianMs": 0.82,
+    "renderP95Ms": 1.09,
+    "frameP95Ms": 2.57,
+    "frameMaxMs": 2.91
+   },
+   "audio": {
+    "seconds": 1.2,
+    "peak": 0,
+    "rms": 0,
+    "clipped": 0,
+    "silentShare": 100
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "pad",
+   "title": "gamepad navigation moves through the gallery, opens a screen and backs out",
+   "tier": "metal",
+   "ticks": 216,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 3,
+    "withMotion": 3,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 215
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.34,
+    "stepP95Ms": 1.68,
+    "renderMedianMs": 0.79,
+    "renderP95Ms": 1.08,
+    "frameP95Ms": 2.76,
+    "frameMaxMs": 5.81
+   },
+   "audio": {
+    "seconds": 3.6,
+    "peak": 0.16,
+    "rms": 0.0108,
+    "clipped": 0,
+    "silentShare": 95.37
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "phone",
+   "title": "on a phone the HUD keeps to the safe area and its touch controls to 44 px",
+   "tier": "metal",
+   "ticks": 66,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 1,
+    "withMotion": 1,
+    "presses": 1,
+    "pressesWithSound": 0,
+    "motionTicks": 6
+   },
+   "latency": {
+    "inputs": 1,
+    "answered": 1,
+    "medianTicks": 1,
+    "maxTicks": 1,
+    "baselineShare": 0,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 96.43
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.05,
+    "stepP95Ms": 1.47,
+    "renderMedianMs": 0.85,
+    "renderP95Ms": 1.21,
+    "frameP95Ms": 2.59,
+    "frameMaxMs": 3.05
+   },
+   "audio": {
+    "seconds": 1.1,
+    "peak": 0,
+    "rms": 0,
+    "clipped": 0,
+    "silentShare": 100
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "skin-cartoon-phone",
+   "title": "every screen in the cartoon style pack on a phone matches its cell of kit-skin-cartoon-phone.png",
+   "tier": "metal",
+   "ticks": 1044,
+   "shots": [
+    {
+     "name": "gallery",
+     "tick": 66,
+     "frame": null,
+     "menu": true,
+     "hud": 26.3,
+     "centre": 35.89,
+     "texts": 23,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "widgets",
+     "tick": 108,
+     "frame": null,
+     "menu": true,
+     "hud": 29.42,
+     "centre": 47.32,
+     "texts": 18,
+     "lowContrast": 3,
+     "small": 1
+    },
+    {
+     "name": "mainMenu",
+     "tick": 150,
+     "frame": null,
+     "menu": true,
+     "hud": 29.69,
+     "centre": 42.86,
+     "texts": 7,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "pause",
+     "tick": 192,
+     "frame": null,
+     "menu": true,
+     "hud": 18.94,
+     "centre": 60,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "settings",
+     "tick": 234,
+     "frame": null,
+     "menu": true,
+     "hud": 21.87,
+     "centre": 65.89,
+     "texts": 10,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "platformer",
+     "tick": 276,
+     "frame": null,
+     "menu": false,
+     "hud": 3.22,
+     "centre": 0,
+     "texts": 11,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "shooter",
+     "tick": 318,
+     "frame": null,
+     "menu": false,
+     "hud": 10.9,
+     "centre": 1.43,
+     "texts": 10,
+     "lowContrast": 3,
+     "small": 0
+    },
+    {
+     "name": "puzzle",
+     "tick": 360,
+     "frame": null,
+     "menu": false,
+     "hud": 7.93,
+     "centre": 0,
+     "texts": 7,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "idle",
+     "tick": 402,
+     "frame": null,
+     "menu": false,
+     "hud": 13.03,
+     "centre": 0,
+     "texts": 13,
+     "lowContrast": 2,
+     "small": 3
+    },
+    {
+     "name": "racing",
+     "tick": 444,
+     "frame": null,
+     "menu": false,
+     "hud": 10.05,
+     "centre": 0,
+     "texts": 13,
+     "lowContrast": 7,
+     "small": 0
+    },
+    {
+     "name": "cutscene",
+     "tick": 558,
+     "frame": null,
+     "menu": true,
+     "hud": 26.67,
+     "centre": 0,
+     "texts": 4,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "shop",
+     "tick": 600,
+     "frame": null,
+     "menu": true,
+     "hud": 19.2,
+     "centre": 41.07,
+     "texts": 17,
+     "lowContrast": 3,
+     "small": 2
+    },
+    {
+     "name": "inventory",
+     "tick": 642,
+     "frame": null,
+     "menu": true,
+     "hud": 22.31,
+     "centre": 61.96,
+     "texts": 7,
+     "lowContrast": 0,
+     "small": 3
+    },
+    {
+     "name": "levels",
+     "tick": 684,
+     "frame": null,
+     "menu": true,
+     "hud": 9.11,
+     "centre": 22.5,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "results",
+     "tick": 786,
+     "frame": null,
+     "menu": true,
+     "hud": 22.91,
+     "centre": 51.43,
+     "texts": 14,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "leaderboard",
+     "tick": 828,
+     "frame": null,
+     "menu": true,
+     "hud": 30.21,
+     "centre": 68.57,
+     "texts": 28,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "tutorial",
+     "tick": 870,
+     "frame": null,
+     "menu": true,
+     "hud": 100,
+     "centre": 100,
+     "texts": 6,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "loading",
+     "tick": 912,
+     "frame": null,
+     "menu": true,
+     "hud": 9.63,
+     "centre": 31.43,
+     "texts": 2,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "confirm",
+     "tick": 954,
+     "frame": null,
+     "menu": true,
+     "hud": 11.05,
+     "centre": 39.64,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "alert",
+     "tick": 996,
+     "frame": null,
+     "menu": true,
+     "hud": 9.01,
+     "centre": 25.71,
+     "texts": 3,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "toasts",
+     "tick": 1038,
+     "frame": null,
+     "menu": true,
+     "hud": 26.05,
+     "centre": 88.57,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 223,
+    "passing": 192,
+    "worst": [
+     {
+      "shot": "widgets",
+      "id": "Gallery",
+      "text": "Gallery",
+      "ratio": 1.13
+     },
+     {
+      "shot": "racing",
+      "id": "Value",
+      "text": "234",
+      "ratio": 1.16
+     },
+     {
+      "shot": "shooter",
+      "id": "Weapon",
+      "text": "Carbine",
+      "ratio": 1.75
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 223,
+    "passing": 214,
+    "smallest": [
+     {
+      "shot": "shop",
+      "id": "Unit",
+      "text": "coins",
+      "ink": 7
+     },
+     {
+      "shot": "shop",
+      "id": "Name",
+      "text": "Iron sword",
+      "ink": 7
+     },
+     {
+      "shot": "widgets",
+      "id": "New",
+      "text": "New",
+      "ink": 8.67
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 5,
+    "worstShare": 13.03,
+    "worstCentre": 1.43
+   },
+   "ui": {
+    "screenChanges": 24,
+    "withMotion": 22,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 730
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 73.89,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 26.11
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.99,
+    "stepP95Ms": 2.01,
+    "renderMedianMs": 0.91,
+    "renderP95Ms": 1.2,
+    "frameP95Ms": 3.09,
+    "frameMaxMs": 307.41
+   },
+   "audio": {
+    "seconds": 17.4,
+    "peak": 0.16,
+    "rms": 0.0156,
+    "clipped": 0,
+    "silentShare": 90.42
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "skin-cartoon",
+   "title": "every screen in the cartoon style pack matches its cell of kit-skin-cartoon.png",
+   "tier": "metal",
+   "ticks": 1044,
+   "shots": [
+    {
+     "name": "gallery",
+     "tick": 66,
+     "frame": null,
+     "menu": true,
+     "hud": 8.06,
+     "centre": 17.36,
+     "texts": 19,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "widgets",
+     "tick": 108,
+     "frame": null,
+     "menu": true,
+     "hud": 16.58,
+     "centre": 10.38,
+     "texts": 29,
+     "lowContrast": 3,
+     "small": 0
+    },
+    {
+     "name": "mainMenu",
+     "tick": 150,
+     "frame": null,
+     "menu": true,
+     "hud": 10.78,
+     "centre": 73.96,
+     "texts": 7,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "pause",
+     "tick": 192,
+     "frame": null,
+     "menu": true,
+     "hud": 5.93,
+     "centre": 43.77,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "settings",
+     "tick": 234,
+     "frame": null,
+     "menu": true,
+     "hud": 9.44,
+     "centre": 45.16,
+     "texts": 13,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "platformer",
+     "tick": 276,
+     "frame": null,
+     "menu": false,
+     "hud": 1.15,
+     "centre": 0,
+     "texts": 6,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "shooter",
+     "tick": 318,
+     "frame": null,
+     "menu": false,
+     "hud": 3.13,
+     "centre": 0.75,
+     "texts": 10,
+     "lowContrast": 5,
+     "small": 1
+    },
+    {
+     "name": "puzzle",
+     "tick": 360,
+     "frame": null,
+     "menu": false,
+     "hud": 2.83,
+     "centre": 0,
+     "texts": 6,
+     "lowContrast": 3,
+     "small": 0
+    },
+    {
+     "name": "idle",
+     "tick": 402,
+     "frame": null,
+     "menu": false,
+     "hud": 4.28,
+     "centre": 0,
+     "texts": 13,
+     "lowContrast": 3,
+     "small": 1
+    },
+    {
+     "name": "racing",
+     "tick": 444,
+     "frame": null,
+     "menu": false,
+     "hud": 2.98,
+     "centre": 0,
+     "texts": 8,
+     "lowContrast": 6,
+     "small": 0
+    },
+    {
+     "name": "cutscene",
+     "tick": 558,
+     "frame": null,
+     "menu": true,
+     "hud": 23.08,
+     "centre": 0,
+     "texts": 3,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "shop",
+     "tick": 600,
+     "frame": null,
+     "menu": true,
+     "hud": 5.18,
+     "centre": 15.85,
+     "texts": 17,
+     "lowContrast": 3,
+     "small": 1
+    },
+    {
+     "name": "inventory",
+     "tick": 642,
+     "frame": null,
+     "menu": true,
+     "hud": 13.49,
+     "centre": 56.16,
+     "texts": 7,
+     "lowContrast": 3,
+     "small": 0
+    },
+    {
+     "name": "levels",
+     "tick": 684,
+     "frame": null,
+     "menu": true,
+     "hud": 3.3,
+     "centre": 15.6,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "results",
+     "tick": 786,
+     "frame": null,
+     "menu": true,
+     "hud": 9.15,
+     "centre": 49.12,
+     "texts": 14,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "leaderboard",
+     "tick": 828,
+     "frame": null,
+     "menu": true,
+     "hud": 15.81,
+     "centre": 75.41,
+     "texts": 34,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "tutorial",
+     "tick": 870,
+     "frame": null,
+     "menu": true,
+     "hud": 100,
+     "centre": 100,
+     "texts": 6,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "loading",
+     "tick": 912,
+     "frame": null,
+     "menu": true,
+     "hud": 3.37,
+     "centre": 30.5,
+     "texts": 2,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "confirm",
+     "tick": 954,
+     "frame": null,
+     "menu": true,
+     "hud": 3.99,
+     "centre": 33.58,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "alert",
+     "tick": 996,
+     "frame": null,
+     "menu": true,
+     "hud": 3.47,
+     "centre": 28.93,
+     "texts": 3,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "toasts",
+     "tick": 1038,
+     "frame": null,
+     "menu": true,
+     "hud": 7.28,
+     "centre": 56.29,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 227,
+    "passing": 192,
+    "worst": [
+     {
+      "shot": "shooter",
+      "id": "Zone",
+      "text": "Sector 4",
+      "ratio": 1.62
+     },
+     {
+      "shot": "loading",
+      "id": "Percent",
+      "text": "100%",
+      "ratio": 1.67
+     },
+     {
+      "shot": "leaderboard",
+      "id": "Rank",
+      "text": "1",
+      "ratio": 1.79
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 227,
+    "passing": 224,
+    "smallest": [
+     {
+      "shot": "shooter",
+      "id": "Gallery",
+      "text": "Gallery",
+      "ink": 6
+     },
+     {
+      "shot": "shop",
+      "id": "Name",
+      "text": "Iron sword",
+      "ink": 7
+     },
+     {
+      "shot": "idle",
+      "id": "Name",
+      "text": "Farm",
+      "ink": 8
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 5,
+    "worstShare": 4.28,
+    "worstCentre": 0.75
+   },
+   "ui": {
+    "screenChanges": 29,
+    "withMotion": 29,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 770
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 77.85,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 22.15
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.96,
+    "stepP95Ms": 1.87,
+    "renderMedianMs": 0.89,
+    "renderP95Ms": 1.19,
+    "frameP95Ms": 2.91,
+    "frameMaxMs": 95.43
+   },
+   "audio": {
+    "seconds": 17.4,
+    "peak": 0.16,
+    "rms": 0.0156,
+    "clipped": 0,
+    "silentShare": 90.42
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "skin-fantasy-phone",
+   "title": "every screen in the fantasy style pack on a phone matches its cell of kit-skin-fantasy-phone.png",
+   "tier": "metal",
+   "ticks": 1044,
+   "shots": [
+    {
+     "name": "gallery",
+     "tick": 66,
+     "frame": null,
+     "menu": true,
+     "hud": 28.28,
+     "centre": 40.18,
+     "texts": 23,
+     "lowContrast": 0,
+     "small": 1
+    },
+    {
+     "name": "widgets",
+     "tick": 108,
+     "frame": null,
+     "menu": true,
+     "hud": 29.42,
+     "centre": 47.32,
+     "texts": 18,
+     "lowContrast": 3,
+     "small": 2
+    },
+    {
+     "name": "mainMenu",
+     "tick": 150,
+     "frame": null,
+     "menu": true,
+     "hud": 29.57,
+     "centre": 42.86,
+     "texts": 7,
+     "lowContrast": 3,
+     "small": 0
+    },
+    {
+     "name": "pause",
+     "tick": 192,
+     "frame": null,
+     "menu": true,
+     "hud": 18.75,
+     "centre": 60,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "settings",
+     "tick": 234,
+     "frame": null,
+     "menu": true,
+     "hud": 21.54,
+     "centre": 64.64,
+     "texts": 10,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "platformer",
+     "tick": 276,
+     "frame": null,
+     "menu": false,
+     "hud": 3.1,
+     "centre": 0,
+     "texts": 11,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "shooter",
+     "tick": 318,
+     "frame": null,
+     "menu": false,
+     "hud": 10.78,
+     "centre": 1.43,
+     "texts": 10,
+     "lowContrast": 4,
+     "small": 0
+    },
+    {
+     "name": "puzzle",
+     "tick": 360,
+     "frame": null,
+     "menu": false,
+     "hud": 7.68,
+     "centre": 0,
+     "texts": 7,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "idle",
+     "tick": 402,
+     "frame": null,
+     "menu": false,
+     "hud": 12.96,
+     "centre": 0,
+     "texts": 13,
+     "lowContrast": 1,
+     "small": 3
+    },
+    {
+     "name": "racing",
+     "tick": 444,
+     "frame": null,
+     "menu": false,
+     "hud": 10.07,
+     "centre": 0,
+     "texts": 13,
+     "lowContrast": 7,
+     "small": 0
+    },
+    {
+     "name": "cutscene",
+     "tick": 558,
+     "frame": null,
+     "menu": true,
+     "hud": 26.59,
+     "centre": 0,
+     "texts": 5,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "shop",
+     "tick": 600,
+     "frame": null,
+     "menu": true,
+     "hud": 19.29,
+     "centre": 40.71,
+     "texts": 17,
+     "lowContrast": 4,
+     "small": 2
+    },
+    {
+     "name": "inventory",
+     "tick": 642,
+     "frame": null,
+     "menu": true,
+     "hud": 22.2,
+     "centre": 61.96,
+     "texts": 7,
+     "lowContrast": 0,
+     "small": 3
+    },
+    {
+     "name": "levels",
+     "tick": 684,
+     "frame": null,
+     "menu": true,
+     "hud": 8.41,
+     "centre": 21.07,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "results",
+     "tick": 786,
+     "frame": null,
+     "menu": true,
+     "hud": 24.87,
+     "centre": 57.14,
+     "texts": 14,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "leaderboard",
+     "tick": 828,
+     "frame": null,
+     "menu": true,
+     "hud": 29.92,
+     "centre": 68.57,
+     "texts": 28,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "tutorial",
+     "tick": 870,
+     "frame": null,
+     "menu": true,
+     "hud": 100,
+     "centre": 100,
+     "texts": 6,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "loading",
+     "tick": 912,
+     "frame": null,
+     "menu": true,
+     "hud": 9.63,
+     "centre": 31.43,
+     "texts": 3,
+     "lowContrast": 3,
+     "small": 0
+    },
+    {
+     "name": "confirm",
+     "tick": 954,
+     "frame": null,
+     "menu": true,
+     "hud": 10.78,
+     "centre": 38.21,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "alert",
+     "tick": 996,
+     "frame": null,
+     "menu": true,
+     "hud": 8.95,
+     "centre": 25,
+     "texts": 3,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "toasts",
+     "tick": 1038,
+     "frame": null,
+     "menu": true,
+     "hud": 26.36,
+     "centre": 88.57,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 225,
+    "passing": 192,
+    "worst": [
+     {
+      "shot": "cutscene",
+      "id": "Skip",
+      "text": "Skip",
+      "ratio": 1.2
+     },
+     {
+      "shot": "racing",
+      "id": "Value",
+      "text": "234",
+      "ratio": 1.25
+     },
+     {
+      "shot": "widgets",
+      "id": "Gallery",
+      "text": "Gallery",
+      "ratio": 1.34
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 225,
+    "passing": 214,
+    "smallest": [
+     {
+      "shot": "shop",
+      "id": "Unit",
+      "text": "coins",
+      "ink": 6.33
+     },
+     {
+      "shot": "shop",
+      "id": "Name",
+      "text": "Iron sword",
+      "ink": 6.33
+     },
+     {
+      "shot": "gallery",
+      "id": "Name",
+      "text": "cutscene",
+      "ink": 8.33
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 5,
+    "worstShare": 12.96,
+    "worstCentre": 1.43
+   },
+   "ui": {
+    "screenChanges": 25,
+    "withMotion": 23,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 730
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 73.79,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 26.21
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.07,
+    "stepP95Ms": 2.05,
+    "renderMedianMs": 0.87,
+    "renderP95Ms": 1.12,
+    "frameP95Ms": 3.12,
+    "frameMaxMs": 848.09
+   },
+   "audio": {
+    "seconds": 17.4,
+    "peak": 0.16,
+    "rms": 0.0156,
+    "clipped": 0,
+    "silentShare": 90.42
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "skin-fantasy",
+   "title": "every screen in the fantasy style pack matches its cell of kit-skin-fantasy.png",
+   "tier": "metal",
+   "ticks": 1044,
+   "shots": [
+    {
+     "name": "gallery",
+     "tick": 66,
+     "frame": null,
+     "menu": true,
+     "hud": 8.49,
+     "centre": 16.86,
+     "texts": 19,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "widgets",
+     "tick": 108,
+     "frame": null,
+     "menu": true,
+     "hud": 16.61,
+     "centre": 10.38,
+     "texts": 29,
+     "lowContrast": 6,
+     "small": 1
+    },
+    {
+     "name": "mainMenu",
+     "tick": 150,
+     "frame": null,
+     "menu": true,
+     "hud": 9.88,
+     "centre": 66.04,
+     "texts": 7,
+     "lowContrast": 4,
+     "small": 0
+    },
+    {
+     "name": "pause",
+     "tick": 192,
+     "frame": null,
+     "menu": true,
+     "hud": 5.92,
+     "centre": 43.77,
+     "texts": 4,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "settings",
+     "tick": 234,
+     "frame": null,
+     "menu": true,
+     "hud": 9.41,
+     "centre": 45.16,
+     "texts": 13,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "platformer",
+     "tick": 276,
+     "frame": null,
+     "menu": false,
+     "hud": 1.14,
+     "centre": 0,
+     "texts": 6,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "shooter",
+     "tick": 318,
+     "frame": null,
+     "menu": false,
+     "hud": 3.1,
+     "centre": 0.75,
+     "texts": 10,
+     "lowContrast": 6,
+     "small": 0
+    },
+    {
+     "name": "puzzle",
+     "tick": 360,
+     "frame": null,
+     "menu": false,
+     "hud": 2.81,
+     "centre": 0,
+     "texts": 6,
+     "lowContrast": 3,
+     "small": 0
+    },
+    {
+     "name": "idle",
+     "tick": 402,
+     "frame": null,
+     "menu": false,
+     "hud": 4.27,
+     "centre": 0,
+     "texts": 13,
+     "lowContrast": 4,
+     "small": 0
+    },
+    {
+     "name": "racing",
+     "tick": 444,
+     "frame": null,
+     "menu": false,
+     "hud": 3,
+     "centre": 0,
+     "texts": 8,
+     "lowContrast": 6,
+     "small": 0
+    },
+    {
+     "name": "cutscene",
+     "tick": 558,
+     "frame": null,
+     "menu": true,
+     "hud": 23.08,
+     "centre": 0,
+     "texts": 4,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "shop",
+     "tick": 600,
+     "frame": null,
+     "menu": true,
+     "hud": 5.19,
+     "centre": 15.85,
+     "texts": 17,
+     "lowContrast": 4,
+     "small": 1
+    },
+    {
+     "name": "inventory",
+     "tick": 642,
+     "frame": null,
+     "menu": true,
+     "hud": 13.46,
+     "centre": 56.16,
+     "texts": 7,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "levels",
+     "tick": 684,
+     "frame": null,
+     "menu": true,
+     "hud": 3.35,
+     "centre": 15.6,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "results",
+     "tick": 786,
+     "frame": null,
+     "menu": true,
+     "hud": 8.47,
+     "centre": 45.97,
+     "texts": 14,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "leaderboard",
+     "tick": 828,
+     "frame": null,
+     "menu": true,
+     "hud": 15.74,
+     "centre": 75.35,
+     "texts": 34,
+     "lowContrast": 4,
+     "small": 0
+    },
+    {
+     "name": "tutorial",
+     "tick": 870,
+     "frame": null,
+     "menu": true,
+     "hud": 100,
+     "centre": 100,
+     "texts": 6,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "loading",
+     "tick": 912,
+     "frame": null,
+     "menu": true,
+     "hud": 3.37,
+     "centre": 30.5,
+     "texts": 3,
+     "lowContrast": 3,
+     "small": 0
+    },
+    {
+     "name": "confirm",
+     "tick": 954,
+     "frame": null,
+     "menu": true,
+     "hud": 3.86,
+     "centre": 32.7,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "alert",
+     "tick": 996,
+     "frame": null,
+     "menu": true,
+     "hud": 3.42,
+     "centre": 28.68,
+     "texts": 3,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "toasts",
+     "tick": 1038,
+     "frame": null,
+     "menu": true,
+     "hud": 7.52,
+     "centre": 56.29,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 229,
+    "passing": 182,
+    "worst": [
+     {
+      "shot": "cutscene",
+      "id": "Gallery",
+      "text": "Gallery",
+      "ratio": 1.23
+     },
+     {
+      "shot": "shooter",
+      "id": "Zone",
+      "text": "Sector 4",
+      "ratio": 1.36
+     },
+     {
+      "shot": "puzzle",
+      "id": "Caption",
+      "text": "moves left",
+      "ratio": 1.65
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 229,
+    "passing": 227,
+    "smallest": [
+     {
+      "shot": "shop",
+      "id": "Name",
+      "text": "Iron sword",
+      "ink": 6
+     },
+     {
+      "shot": "widgets",
+      "id": "New",
+      "text": "New",
+      "ink": 8
+     },
+     {
+      "shot": "gallery",
+      "id": "Blurb",
+      "text": "Title screen",
+      "ink": 9
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 5,
+    "worstShare": 4.27,
+    "worstCentre": 0.75
+   },
+   "ui": {
+    "screenChanges": 27,
+    "withMotion": 27,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 771
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 77.76,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 22.24
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.02,
+    "stepP95Ms": 1.93,
+    "renderMedianMs": 0.84,
+    "renderP95Ms": 1.12,
+    "frameP95Ms": 2.93,
+    "frameMaxMs": 133.08
+   },
+   "audio": {
+    "seconds": 17.4,
+    "peak": 0.16,
+    "rms": 0.0156,
+    "clipped": 0,
+    "silentShare": 90.42
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "skin-neon-phone",
+   "title": "every screen in the neon style pack on a phone matches its cell of kit-skin-neon-phone.png",
+   "tier": "metal",
+   "ticks": 1044,
+   "shots": [
+    {
+     "name": "gallery",
+     "tick": 66,
+     "frame": null,
+     "menu": true,
+     "hud": 24.82,
+     "centre": 32.68,
+     "texts": 23,
+     "lowContrast": 0,
+     "small": 1
+    },
+    {
+     "name": "widgets",
+     "tick": 108,
+     "frame": null,
+     "menu": true,
+     "hud": 28.96,
+     "centre": 45.36,
+     "texts": 19,
+     "lowContrast": 10,
+     "small": 4
+    },
+    {
+     "name": "mainMenu",
+     "tick": 150,
+     "frame": null,
+     "menu": true,
+     "hud": 29.46,
+     "centre": 42.86,
+     "texts": 7,
+     "lowContrast": 0,
+     "small": 1
+    },
+    {
+     "name": "pause",
+     "tick": 192,
+     "frame": null,
+     "menu": true,
+     "hud": 18.73,
+     "centre": 60,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "settings",
+     "tick": 234,
+     "frame": null,
+     "menu": true,
+     "hud": 21.29,
+     "centre": 63.39,
+     "texts": 10,
+     "lowContrast": 4,
+     "small": 0
+    },
+    {
+     "name": "platformer",
+     "tick": 276,
+     "frame": null,
+     "menu": false,
+     "hud": 3.06,
+     "centre": 0,
+     "texts": 11,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "shooter",
+     "tick": 318,
+     "frame": null,
+     "menu": false,
+     "hud": 10.97,
+     "centre": 1.43,
+     "texts": 11,
+     "lowContrast": 4,
+     "small": 0
+    },
+    {
+     "name": "puzzle",
+     "tick": 360,
+     "frame": null,
+     "menu": false,
+     "hud": 7.78,
+     "centre": 0,
+     "texts": 8,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "idle",
+     "tick": 402,
+     "frame": null,
+     "menu": false,
+     "hud": 12.96,
+     "centre": 0,
+     "texts": 13,
+     "lowContrast": 3,
+     "small": 4
+    },
+    {
+     "name": "racing",
+     "tick": 444,
+     "frame": null,
+     "menu": false,
+     "hud": 10.45,
+     "centre": 0,
+     "texts": 16,
+     "lowContrast": 5,
+     "small": 0
+    },
+    {
+     "name": "cutscene",
+     "tick": 558,
+     "frame": null,
+     "menu": true,
+     "hud": 26.47,
+     "centre": 0,
+     "texts": 5,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "shop",
+     "tick": 600,
+     "frame": null,
+     "menu": true,
+     "hud": 19.35,
+     "centre": 43.75,
+     "texts": 17,
+     "lowContrast": 5,
+     "small": 3
+    },
+    {
+     "name": "inventory",
+     "tick": 642,
+     "frame": null,
+     "menu": true,
+     "hud": 22.01,
+     "centre": 62.32,
+     "texts": 7,
+     "lowContrast": 5,
+     "small": 5
+    },
+    {
+     "name": "levels",
+     "tick": 684,
+     "frame": null,
+     "menu": true,
+     "hud": 8.86,
+     "centre": 22.5,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "results",
+     "tick": 786,
+     "frame": null,
+     "menu": true,
+     "hud": 22.55,
+     "centre": 51.43,
+     "texts": 14,
+     "lowContrast": 1,
+     "small": 1
+    },
+    {
+     "name": "leaderboard",
+     "tick": 828,
+     "frame": null,
+     "menu": true,
+     "hud": 29.78,
+     "centre": 68.57,
+     "texts": 28,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "tutorial",
+     "tick": 870,
+     "frame": null,
+     "menu": true,
+     "hud": 100,
+     "centre": 100,
+     "texts": 6,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "loading",
+     "tick": 912,
+     "frame": null,
+     "menu": true,
+     "hud": 9.65,
+     "centre": 31.43,
+     "texts": 3,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "confirm",
+     "tick": 954,
+     "frame": null,
+     "menu": true,
+     "hud": 10.53,
+     "centre": 36.96,
+     "texts": 4,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "alert",
+     "tick": 996,
+     "frame": null,
+     "menu": true,
+     "hud": 8.63,
+     "centre": 24.29,
+     "texts": 3,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "toasts",
+     "tick": 1038,
+     "frame": null,
+     "menu": true,
+     "hud": 25.49,
+     "centre": 88.57,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 231,
+    "passing": 189,
+    "worst": [
+     {
+      "shot": "shop",
+      "id": "Price",
+      "text": "2,400",
+      "ratio": 1.88
+     },
+     {
+      "shot": "shooter",
+      "id": "Armor",
+      "text": "35",
+      "ratio": 2.05
+     },
+     {
+      "shot": "widgets",
+      "id": "Tab#1",
+      "text": "Stats",
+      "ratio": 2.27
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 231,
+    "passing": 212,
+    "smallest": [
+     {
+      "shot": "shop",
+      "id": "Unit",
+      "text": "coins",
+      "ink": 6.67
+     },
+     {
+      "shot": "shop",
+      "id": "Name",
+      "text": "Iron sword",
+      "ink": 6.67
+     },
+     {
+      "shot": "widgets",
+      "id": "New",
+      "text": "New",
+      "ink": 7.67
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 5,
+    "worstShare": 12.96,
+    "worstCentre": 1.43
+   },
+   "ui": {
+    "screenChanges": 25,
+    "withMotion": 23,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 718
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 72.82,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 27.18
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.1,
+    "stepP95Ms": 2.08,
+    "renderMedianMs": 0.9,
+    "renderP95Ms": 1.2,
+    "frameP95Ms": 3.17,
+    "frameMaxMs": 354.97
+   },
+   "audio": {
+    "seconds": 17.4,
+    "peak": 0.16,
+    "rms": 0.0156,
+    "clipped": 0,
+    "silentShare": 90.42
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "skin-neon",
+   "title": "every screen in the neon style pack matches its cell of kit-skin-neon.png",
+   "tier": "metal",
+   "ticks": 1044,
+   "shots": [
+    {
+     "name": "gallery",
+     "tick": 66,
+     "frame": null,
+     "menu": true,
+     "hud": 7.53,
+     "centre": 15.16,
+     "texts": 19,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "widgets",
+     "tick": 108,
+     "frame": null,
+     "menu": true,
+     "hud": 16.37,
+     "centre": 10.38,
+     "texts": 29,
+     "lowContrast": 9,
+     "small": 3
+    },
+    {
+     "name": "mainMenu",
+     "tick": 150,
+     "frame": null,
+     "menu": true,
+     "hud": 10.75,
+     "centre": 73.96,
+     "texts": 7,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "pause",
+     "tick": 192,
+     "frame": null,
+     "menu": true,
+     "hud": 5.98,
+     "centre": 43.77,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "settings",
+     "tick": 234,
+     "frame": null,
+     "menu": true,
+     "hud": 9.34,
+     "centre": 44.84,
+     "texts": 13,
+     "lowContrast": 6,
+     "small": 0
+    },
+    {
+     "name": "platformer",
+     "tick": 276,
+     "frame": null,
+     "menu": false,
+     "hud": 1.15,
+     "centre": 0,
+     "texts": 6,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "shooter",
+     "tick": 318,
+     "frame": null,
+     "menu": false,
+     "hud": 3.16,
+     "centre": 0.75,
+     "texts": 11,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "puzzle",
+     "tick": 360,
+     "frame": null,
+     "menu": false,
+     "hud": 2.83,
+     "centre": 0,
+     "texts": 8,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "idle",
+     "tick": 402,
+     "frame": null,
+     "menu": false,
+     "hud": 4.23,
+     "centre": 0,
+     "texts": 13,
+     "lowContrast": 4,
+     "small": 4
+    },
+    {
+     "name": "racing",
+     "tick": 444,
+     "frame": null,
+     "menu": false,
+     "hud": 3.17,
+     "centre": 0,
+     "texts": 12,
+     "lowContrast": 4,
+     "small": 0
+    },
+    {
+     "name": "cutscene",
+     "tick": 558,
+     "frame": null,
+     "menu": true,
+     "hud": 23.08,
+     "centre": 0,
+     "texts": 5,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "shop",
+     "tick": 600,
+     "frame": null,
+     "menu": true,
+     "hud": 5.15,
+     "centre": 15.22,
+     "texts": 17,
+     "lowContrast": 5,
+     "small": 1
+    },
+    {
+     "name": "inventory",
+     "tick": 642,
+     "frame": null,
+     "menu": true,
+     "hud": 13.46,
+     "centre": 56.42,
+     "texts": 7,
+     "lowContrast": 5,
+     "small": 0
+    },
+    {
+     "name": "levels",
+     "tick": 684,
+     "frame": null,
+     "menu": true,
+     "hud": 3.26,
+     "centre": 15.6,
+     "texts": 11,
+     "lowContrast": 4,
+     "small": 0
+    },
+    {
+     "name": "results",
+     "tick": 786,
+     "frame": null,
+     "menu": true,
+     "hud": 8.48,
+     "centre": 46.35,
+     "texts": 14,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "leaderboard",
+     "tick": 828,
+     "frame": null,
+     "menu": true,
+     "hud": 15.7,
+     "centre": 75.22,
+     "texts": 34,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "tutorial",
+     "tick": 870,
+     "frame": null,
+     "menu": true,
+     "hud": 100,
+     "centre": 100,
+     "texts": 6,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "loading",
+     "tick": 912,
+     "frame": null,
+     "menu": true,
+     "hud": 3.38,
+     "centre": 30.57,
+     "texts": 3,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "confirm",
+     "tick": 954,
+     "frame": null,
+     "menu": true,
+     "hud": 2.97,
+     "centre": 24.65,
+     "texts": 4,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "alert",
+     "tick": 996,
+     "frame": null,
+     "menu": true,
+     "hud": 3.35,
+     "centre": 28.11,
+     "texts": 3,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "toasts",
+     "tick": 1038,
+     "frame": null,
+     "menu": true,
+     "hud": 7.14,
+     "centre": 55.97,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 237,
+    "passing": 190,
+    "worst": [
+     {
+      "shot": "cutscene",
+      "id": "Gallery",
+      "text": "Gallery",
+      "ratio": 1.65
+     },
+     {
+      "shot": "confirm",
+      "id": "Confirm",
+      "text": "Delete",
+      "ratio": 1.99
+     },
+     {
+      "shot": "shooter",
+      "id": "Armor",
+      "text": "35",
+      "ratio": 2.05
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 237,
+    "passing": 229,
+    "smallest": [
+     {
+      "shot": "shop",
+      "id": "Name",
+      "text": "Iron sword",
+      "ink": 7
+     },
+     {
+      "shot": "widgets",
+      "id": "New",
+      "text": "New",
+      "ink": 8
+     },
+     {
+      "shot": "widgets",
+      "id": "Sale",
+      "text": "-20%",
+      "ink": 8
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 5,
+    "worstShare": 4.23,
+    "worstCentre": 0.75
+   },
+   "ui": {
+    "screenChanges": 28,
+    "withMotion": 28,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 757
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 76.79,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 23.21
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.05,
+    "stepP95Ms": 2.18,
+    "renderMedianMs": 0.9,
+    "renderP95Ms": 1.17,
+    "frameP95Ms": 3.28,
+    "frameMaxMs": 118.17
+   },
+   "audio": {
+    "seconds": 17.4,
+    "peak": 0.16,
+    "rms": 0.0156,
+    "clipped": 0,
+    "silentShare": 90.42
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "skin-paper-phone",
+   "title": "every screen in the paper style pack on a phone matches its cell of kit-skin-paper-phone.png",
+   "tier": "metal",
+   "ticks": 1044,
+   "shots": [
+    {
+     "name": "gallery",
+     "tick": 66,
+     "frame": null,
+     "menu": true,
+     "hud": 27.97,
+     "centre": 35.89,
+     "texts": 23,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "widgets",
+     "tick": 108,
+     "frame": null,
+     "menu": true,
+     "hud": 29.63,
+     "centre": 48.04,
+     "texts": 18,
+     "lowContrast": 3,
+     "small": 0
+    },
+    {
+     "name": "mainMenu",
+     "tick": 150,
+     "frame": null,
+     "menu": true,
+     "hud": 29.57,
+     "centre": 42.86,
+     "texts": 7,
+     "lowContrast": 3,
+     "small": 0
+    },
+    {
+     "name": "pause",
+     "tick": 192,
+     "frame": null,
+     "menu": true,
+     "hud": 19.12,
+     "centre": 60,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "settings",
+     "tick": 234,
+     "frame": null,
+     "menu": true,
+     "hud": 22.12,
+     "centre": 65.89,
+     "texts": 10,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "platformer",
+     "tick": 276,
+     "frame": null,
+     "menu": false,
+     "hud": 3.2,
+     "centre": 0,
+     "texts": 11,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "shooter",
+     "tick": 318,
+     "frame": null,
+     "menu": false,
+     "hud": 11.15,
+     "centre": 1.43,
+     "texts": 11,
+     "lowContrast": 5,
+     "small": 0
+    },
+    {
+     "name": "puzzle",
+     "tick": 360,
+     "frame": null,
+     "menu": false,
+     "hud": 7.99,
+     "centre": 0,
+     "texts": 7,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "idle",
+     "tick": 402,
+     "frame": null,
+     "menu": false,
+     "hud": 13.03,
+     "centre": 0,
+     "texts": 13,
+     "lowContrast": 2,
+     "small": 2
+    },
+    {
+     "name": "racing",
+     "tick": 444,
+     "frame": null,
+     "menu": false,
+     "hud": 10.59,
+     "centre": 0,
+     "texts": 13,
+     "lowContrast": 7,
+     "small": 0
+    },
+    {
+     "name": "cutscene",
+     "tick": 558,
+     "frame": null,
+     "menu": true,
+     "hud": 26.59,
+     "centre": 0,
+     "texts": 5,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "shop",
+     "tick": 600,
+     "frame": null,
+     "menu": true,
+     "hud": 19.35,
+     "centre": 41.07,
+     "texts": 17,
+     "lowContrast": 3,
+     "small": 2
+    },
+    {
+     "name": "inventory",
+     "tick": 642,
+     "frame": null,
+     "menu": true,
+     "hud": 23.07,
+     "centre": 61.96,
+     "texts": 7,
+     "lowContrast": 0,
+     "small": 4
+    },
+    {
+     "name": "levels",
+     "tick": 684,
+     "frame": null,
+     "menu": true,
+     "hud": 10.09,
+     "centre": 26.07,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "results",
+     "tick": 786,
+     "frame": null,
+     "menu": true,
+     "hud": 23.41,
+     "centre": 51.43,
+     "texts": 14,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "leaderboard",
+     "tick": 828,
+     "frame": null,
+     "menu": true,
+     "hud": 30.09,
+     "centre": 68.57,
+     "texts": 28,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "tutorial",
+     "tick": 870,
+     "frame": null,
+     "menu": true,
+     "hud": 100,
+     "centre": 100,
+     "texts": 6,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "loading",
+     "tick": 912,
+     "frame": null,
+     "menu": true,
+     "hud": 9.63,
+     "centre": 31.43,
+     "texts": 3,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "confirm",
+     "tick": 954,
+     "frame": null,
+     "menu": true,
+     "hud": 11.22,
+     "centre": 41.43,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "alert",
+     "tick": 996,
+     "frame": null,
+     "menu": true,
+     "hud": 9.51,
+     "centre": 28.04,
+     "texts": 3,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "toasts",
+     "tick": 1038,
+     "frame": null,
+     "menu": true,
+     "hud": 26.76,
+     "centre": 88.57,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 226,
+    "passing": 197,
+    "worst": [
+     {
+      "shot": "widgets",
+      "id": "Gallery",
+      "text": "Gallery",
+      "ratio": 1.12
+     },
+     {
+      "shot": "shooter",
+      "id": "Ammo",
+      "text": "18",
+      "ratio": 1.2
+     },
+     {
+      "shot": "cutscene",
+      "id": "Skip",
+      "text": "Skip",
+      "ratio": 1.25
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 226,
+    "passing": 218,
+    "smallest": [
+     {
+      "shot": "shop",
+      "id": "Unit",
+      "text": "coins",
+      "ink": 7.33
+     },
+     {
+      "shot": "shop",
+      "id": "Name",
+      "text": "Iron sword",
+      "ink": 7.33
+     },
+     {
+      "shot": "idle",
+      "id": "Name",
+      "text": "Farm",
+      "ink": 8.33
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 5,
+    "worstShare": 13.03,
+    "worstCentre": 1.43
+   },
+   "ui": {
+    "screenChanges": 25,
+    "withMotion": 23,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 720
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 73.02,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 26.98
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.07,
+    "stepP95Ms": 2.06,
+    "renderMedianMs": 0.88,
+    "renderP95Ms": 1.16,
+    "frameP95Ms": 3.1,
+    "frameMaxMs": 719.2
+   },
+   "audio": {
+    "seconds": 17.4,
+    "peak": 0.16,
+    "rms": 0.0156,
+    "clipped": 0,
+    "silentShare": 90.42
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "skin-paper",
+   "title": "every screen in the paper style pack matches its cell of kit-skin-paper.png",
+   "tier": "metal",
+   "ticks": 1044,
+   "shots": [
+    {
+     "name": "gallery",
+     "tick": 66,
+     "frame": null,
+     "menu": true,
+     "hud": 8.97,
+     "centre": 19.94,
+     "texts": 19,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "widgets",
+     "tick": 108,
+     "frame": null,
+     "menu": true,
+     "hud": 16.71,
+     "centre": 10.38,
+     "texts": 29,
+     "lowContrast": 6,
+     "small": 0
+    },
+    {
+     "name": "mainMenu",
+     "tick": 150,
+     "frame": null,
+     "menu": true,
+     "hud": 10.78,
+     "centre": 73.96,
+     "texts": 7,
+     "lowContrast": 3,
+     "small": 0
+    },
+    {
+     "name": "pause",
+     "tick": 192,
+     "frame": null,
+     "menu": true,
+     "hud": 6.09,
+     "centre": 44.09,
+     "texts": 4,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "settings",
+     "tick": 234,
+     "frame": null,
+     "menu": true,
+     "hud": 9.51,
+     "centre": 45.16,
+     "texts": 13,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "platformer",
+     "tick": 276,
+     "frame": null,
+     "menu": false,
+     "hud": 1.22,
+     "centre": 0,
+     "texts": 6,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "shooter",
+     "tick": 318,
+     "frame": null,
+     "menu": false,
+     "hud": 3.22,
+     "centre": 0.75,
+     "texts": 10,
+     "lowContrast": 5,
+     "small": 0
+    },
+    {
+     "name": "puzzle",
+     "tick": 360,
+     "frame": null,
+     "menu": false,
+     "hud": 2.96,
+     "centre": 0,
+     "texts": 6,
+     "lowContrast": 3,
+     "small": 0
+    },
+    {
+     "name": "idle",
+     "tick": 402,
+     "frame": null,
+     "menu": false,
+     "hud": 4.25,
+     "centre": 0,
+     "texts": 13,
+     "lowContrast": 5,
+     "small": 1
+    },
+    {
+     "name": "racing",
+     "tick": 444,
+     "frame": null,
+     "menu": false,
+     "hud": 3.29,
+     "centre": 0,
+     "texts": 8,
+     "lowContrast": 5,
+     "small": 0
+    },
+    {
+     "name": "cutscene",
+     "tick": 558,
+     "frame": null,
+     "menu": true,
+     "hud": 23.08,
+     "centre": 0,
+     "texts": 4,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "shop",
+     "tick": 600,
+     "frame": null,
+     "menu": true,
+     "hud": 5.33,
+     "centre": 16.1,
+     "texts": 17,
+     "lowContrast": 4,
+     "small": 1
+    },
+    {
+     "name": "inventory",
+     "tick": 642,
+     "frame": null,
+     "menu": true,
+     "hud": 13.74,
+     "centre": 57.55,
+     "texts": 7,
+     "lowContrast": 4,
+     "small": 0
+    },
+    {
+     "name": "levels",
+     "tick": 684,
+     "frame": null,
+     "menu": true,
+     "hud": 3.05,
+     "centre": 13.46,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "results",
+     "tick": 786,
+     "frame": null,
+     "menu": true,
+     "hud": 8.83,
+     "centre": 47.17,
+     "texts": 14,
+     "lowContrast": 3,
+     "small": 0
+    },
+    {
+     "name": "leaderboard",
+     "tick": 828,
+     "frame": null,
+     "menu": true,
+     "hud": 16.24,
+     "centre": 75.41,
+     "texts": 34,
+     "lowContrast": 6,
+     "small": 0
+    },
+    {
+     "name": "tutorial",
+     "tick": 870,
+     "frame": null,
+     "menu": true,
+     "hud": 100,
+     "centre": 100,
+     "texts": 6,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "loading",
+     "tick": 912,
+     "frame": null,
+     "menu": true,
+     "hud": 3.37,
+     "centre": 30.5,
+     "texts": 3,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "confirm",
+     "tick": 954,
+     "frame": null,
+     "menu": true,
+     "hud": 3.86,
+     "centre": 32.45,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "alert",
+     "tick": 996,
+     "frame": null,
+     "menu": true,
+     "hud": 3.42,
+     "centre": 28.43,
+     "texts": 3,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "toasts",
+     "tick": 1038,
+     "frame": null,
+     "menu": true,
+     "hud": 7.55,
+     "centre": 56.29,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 229,
+    "passing": 178,
+    "worst": [
+     {
+      "shot": "cutscene",
+      "id": "Gallery",
+      "text": "Gallery",
+      "ratio": 1.47
+     },
+     {
+      "shot": "shooter",
+      "id": "Zone",
+      "text": "Sector 4",
+      "ratio": 1.63
+     },
+     {
+      "shot": "idle",
+      "id": "Tap",
+      "text": "Tap",
+      "ratio": 1.75
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 229,
+    "passing": 227,
+    "smallest": [
+     {
+      "shot": "shop",
+      "id": "Name",
+      "text": "Iron sword",
+      "ink": 7
+     },
+     {
+      "shot": "idle",
+      "id": "Name",
+      "text": "Farm",
+      "ink": 8
+     },
+     {
+      "shot": "widgets",
+      "id": "New",
+      "text": "New",
+      "ink": 9
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 5,
+    "worstShare": 4.25,
+    "worstCentre": 0.75
+   },
+   "ui": {
+    "screenChanges": 29,
+    "withMotion": 29,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 761
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 76.98,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 23.02
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.02,
+    "stepP95Ms": 1.94,
+    "renderMedianMs": 0.85,
+    "renderP95Ms": 1.11,
+    "frameP95Ms": 2.97,
+    "frameMaxMs": 125.81
+   },
+   "audio": {
+    "seconds": 17.4,
+    "peak": 0.16,
+    "rms": 0.0156,
+    "clipped": 0,
+    "silentShare": 90.42
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "skin-pixel-phone",
+   "title": "every screen in the pixel style pack on a phone matches its cell of kit-skin-pixel-phone.png",
+   "tier": "metal",
+   "ticks": 1044,
+   "shots": [
+    {
+     "name": "gallery",
+     "tick": 66,
+     "frame": null,
+     "menu": true,
+     "hud": 29.11,
+     "centre": 35.89,
+     "texts": 23,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "widgets",
+     "tick": 108,
+     "frame": null,
+     "menu": true,
+     "hud": 28.96,
+     "centre": 45.54,
+     "texts": 19,
+     "lowContrast": 7,
+     "small": 0
+    },
+    {
+     "name": "mainMenu",
+     "tick": 150,
+     "frame": null,
+     "menu": true,
+     "hud": 28.9,
+     "centre": 40,
+     "texts": 7,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "pause",
+     "tick": 192,
+     "frame": null,
+     "menu": true,
+     "hud": 18.93,
+     "centre": 60,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "settings",
+     "tick": 234,
+     "frame": null,
+     "menu": true,
+     "hud": 22.01,
+     "centre": 67.14,
+     "texts": 10,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "platformer",
+     "tick": 276,
+     "frame": null,
+     "menu": false,
+     "hud": 3.27,
+     "centre": 0,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "shooter",
+     "tick": 318,
+     "frame": null,
+     "menu": false,
+     "hud": 10.95,
+     "centre": 1.43,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "puzzle",
+     "tick": 360,
+     "frame": null,
+     "menu": false,
+     "hud": 7.87,
+     "centre": 0,
+     "texts": 8,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "idle",
+     "tick": 402,
+     "frame": null,
+     "menu": false,
+     "hud": 13.03,
+     "centre": 0,
+     "texts": 13,
+     "lowContrast": 3,
+     "small": 0
+    },
+    {
+     "name": "racing",
+     "tick": 444,
+     "frame": null,
+     "menu": false,
+     "hud": 9.51,
+     "centre": 0,
+     "texts": 16,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "cutscene",
+     "tick": 558,
+     "frame": null,
+     "menu": true,
+     "hud": 26.78,
+     "centre": 0,
+     "texts": 5,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "shop",
+     "tick": 600,
+     "frame": null,
+     "menu": true,
+     "hud": 19.93,
+     "centre": 45,
+     "texts": 17,
+     "lowContrast": 5,
+     "small": 2
+    },
+    {
+     "name": "inventory",
+     "tick": 642,
+     "frame": null,
+     "menu": true,
+     "hud": 23.82,
+     "centre": 63.57,
+     "texts": 7,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "levels",
+     "tick": 684,
+     "frame": null,
+     "menu": true,
+     "hud": 9.74,
+     "centre": 24.64,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "results",
+     "tick": 786,
+     "frame": null,
+     "menu": true,
+     "hud": 24.89,
+     "centre": 57.14,
+     "texts": 14,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "leaderboard",
+     "tick": 828,
+     "frame": null,
+     "menu": true,
+     "hud": 30.11,
+     "centre": 68.57,
+     "texts": 28,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "tutorial",
+     "tick": 870,
+     "frame": null,
+     "menu": true,
+     "hud": 100,
+     "centre": 100,
+     "texts": 6,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "loading",
+     "tick": 912,
+     "frame": null,
+     "menu": true,
+     "hud": 9.65,
+     "centre": 31.43,
+     "texts": 3,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "confirm",
+     "tick": 954,
+     "frame": null,
+     "menu": true,
+     "hud": 10.17,
+     "centre": 37.5,
+     "texts": 4,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "alert",
+     "tick": 996,
+     "frame": null,
+     "menu": true,
+     "hud": 11.74,
+     "centre": 36.61,
+     "texts": 3,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "toasts",
+     "tick": 1038,
+     "frame": null,
+     "menu": true,
+     "hud": 26.01,
+     "centre": 88.57,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 231,
+    "passing": 208,
+    "worst": [
+     {
+      "shot": "widgets",
+      "id": "Health",
+      "text": "72 / 100",
+      "ratio": 1.66
+     },
+     {
+      "shot": "racing",
+      "id": "Boost",
+      "text": "Boost",
+      "ratio": 1.74
+     },
+     {
+      "shot": "widgets",
+      "id": "Gallery",
+      "text": "Gallery",
+      "ratio": 2.17
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 231,
+    "passing": 229,
+    "smallest": [
+     {
+      "shot": "shop",
+      "id": "Unit",
+      "text": "coins",
+      "ink": 7.33
+     },
+     {
+      "shot": "shop",
+      "id": "Name",
+      "text": "Iron sword",
+      "ink": 7.33
+     },
+     {
+      "shot": "platformer",
+      "id": "Up",
+      "text": "Up",
+      "ink": 9.33
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 5,
+    "worstShare": 13.03,
+    "worstCentre": 1.43
+   },
+   "ui": {
+    "screenChanges": 24,
+    "withMotion": 22,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 668
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 68.38,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 30.46
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.83,
+    "stepP95Ms": 4.75,
+    "renderMedianMs": 1.01,
+    "renderP95Ms": 1.35,
+    "frameP95Ms": 6.05,
+    "frameMaxMs": 343.04
+   },
+   "audio": {
+    "seconds": 17.4,
+    "peak": 0.16,
+    "rms": 0.0156,
+    "clipped": 0,
+    "silentShare": 90.42
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "skin-pixel",
+   "title": "every screen in the pixel style pack matches its cell of kit-skin-pixel.png",
+   "tier": "metal",
+   "ticks": 1044,
+   "shots": [
+    {
+     "name": "gallery",
+     "tick": 66,
+     "frame": null,
+     "menu": true,
+     "hud": 10.02,
+     "centre": 17.8,
+     "texts": 19,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "widgets",
+     "tick": 108,
+     "frame": null,
+     "menu": true,
+     "hud": 16.29,
+     "centre": 10.38,
+     "texts": 29,
+     "lowContrast": 8,
+     "small": 0
+    },
+    {
+     "name": "mainMenu",
+     "tick": 150,
+     "frame": null,
+     "menu": true,
+     "hud": 10.78,
+     "centre": 71.32,
+     "texts": 7,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "pause",
+     "tick": 192,
+     "frame": null,
+     "menu": true,
+     "hud": 5.93,
+     "centre": 43.46,
+     "texts": 4,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "settings",
+     "tick": 234,
+     "frame": null,
+     "menu": true,
+     "hud": 9.51,
+     "centre": 45.47,
+     "texts": 13,
+     "lowContrast": 4,
+     "small": 0
+    },
+    {
+     "name": "platformer",
+     "tick": 276,
+     "frame": null,
+     "menu": false,
+     "hud": 1.13,
+     "centre": 0,
+     "texts": 6,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "shooter",
+     "tick": 318,
+     "frame": null,
+     "menu": false,
+     "hud": 3.13,
+     "centre": 0.75,
+     "texts": 11,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "puzzle",
+     "tick": 360,
+     "frame": null,
+     "menu": false,
+     "hud": 2.87,
+     "centre": 0,
+     "texts": 8,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "idle",
+     "tick": 402,
+     "frame": null,
+     "menu": false,
+     "hud": 4.23,
+     "centre": 0,
+     "texts": 13,
+     "lowContrast": 3,
+     "small": 0
+    },
+    {
+     "name": "racing",
+     "tick": 444,
+     "frame": null,
+     "menu": false,
+     "hud": 2.81,
+     "centre": 0,
+     "texts": 12,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "cutscene",
+     "tick": 558,
+     "frame": null,
+     "menu": true,
+     "hud": 22.52,
+     "centre": 0,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "shop",
+     "tick": 600,
+     "frame": null,
+     "menu": true,
+     "hud": 5.17,
+     "centre": 16.1,
+     "texts": 17,
+     "lowContrast": 6,
+     "small": 1
+    },
+    {
+     "name": "inventory",
+     "tick": 642,
+     "frame": null,
+     "menu": true,
+     "hud": 13.49,
+     "centre": 56.16,
+     "texts": 7,
+     "lowContrast": 5,
+     "small": 0
+    },
+    {
+     "name": "levels",
+     "tick": 684,
+     "frame": null,
+     "menu": true,
+     "hud": 3.32,
+     "centre": 15.6,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "results",
+     "tick": 786,
+     "frame": null,
+     "menu": true,
+     "hud": 8.45,
+     "centre": 45.35,
+     "texts": 14,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "leaderboard",
+     "tick": 828,
+     "frame": null,
+     "menu": true,
+     "hud": 15.51,
+     "centre": 73.77,
+     "texts": 34,
+     "lowContrast": 3,
+     "small": 0
+    },
+    {
+     "name": "tutorial",
+     "tick": 870,
+     "frame": null,
+     "menu": true,
+     "hud": 100,
+     "centre": 100,
+     "texts": 6,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "loading",
+     "tick": 912,
+     "frame": null,
+     "menu": true,
+     "hud": 3.01,
+     "centre": 27.3,
+     "texts": 3,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "confirm",
+     "tick": 954,
+     "frame": null,
+     "menu": true,
+     "hud": 3.74,
+     "centre": 31.32,
+     "texts": 4,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "alert",
+     "tick": 996,
+     "frame": null,
+     "menu": true,
+     "hud": 3.13,
+     "centre": 25.85,
+     "texts": 3,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "toasts",
+     "tick": 1038,
+     "frame": null,
+     "menu": true,
+     "hud": 7.28,
+     "centre": 56.29,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 236,
+    "passing": 196,
+    "worst": [
+     {
+      "shot": "shop",
+      "id": "Price",
+      "text": "2,400",
+      "ratio": 2.05
+     },
+     {
+      "shot": "inventory",
+      "id": "Count",
+      "text": "20",
+      "ratio": 2.2
+     },
+     {
+      "shot": "inventory",
+      "id": "Count",
+      "text": "2",
+      "ratio": 2.21
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 236,
+    "passing": 235,
+    "smallest": [
+     {
+      "shot": "shop",
+      "id": "Name",
+      "text": "Iron sword",
+      "ink": 8
+     },
+     {
+      "shot": "widgets",
+      "id": "Up",
+      "text": "Up",
+      "ink": 9
+     },
+     {
+      "shot": "widgets",
+      "id": "Down",
+      "text": "Down",
+      "ink": 9
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 5,
+    "worstShare": 4.23,
+    "worstCentre": 0.75
+   },
+   "ui": {
+    "screenChanges": 24,
+    "withMotion": 24,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 708
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 72.34,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 26.5
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.94,
+    "stepP95Ms": 6.63,
+    "renderMedianMs": 1.01,
+    "renderP95Ms": 1.37,
+    "frameP95Ms": 7.93,
+    "frameMaxMs": 93.86
+   },
+   "audio": {
+    "seconds": 17.4,
+    "peak": 0.16,
+    "rms": 0.0156,
+    "clipped": 0,
+    "silentShare": 90.42
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "skin-scifi-phone",
+   "title": "every screen in the scifi style pack on a phone matches its cell of kit-skin-scifi-phone.png",
+   "tier": "metal",
+   "ticks": 1044,
+   "shots": [
+    {
+     "name": "gallery",
+     "tick": 66,
+     "frame": null,
+     "menu": true,
+     "hud": 24.57,
+     "centre": 33.75,
+     "texts": 23,
+     "lowContrast": 0,
+     "small": 2
+    },
+    {
+     "name": "widgets",
+     "tick": 108,
+     "frame": null,
+     "menu": true,
+     "hud": 29.5,
+     "centre": 47.14,
+     "texts": 18,
+     "lowContrast": 8,
+     "small": 3
+    },
+    {
+     "name": "mainMenu",
+     "tick": 150,
+     "frame": null,
+     "menu": true,
+     "hud": 32.61,
+     "centre": 42.86,
+     "texts": 7,
+     "lowContrast": 0,
+     "small": 1
+    },
+    {
+     "name": "pause",
+     "tick": 192,
+     "frame": null,
+     "menu": true,
+     "hud": 18.66,
+     "centre": 60,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "settings",
+     "tick": 234,
+     "frame": null,
+     "menu": true,
+     "hud": 21.43,
+     "centre": 64.64,
+     "texts": 10,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "platformer",
+     "tick": 276,
+     "frame": null,
+     "menu": false,
+     "hud": 3,
+     "centre": 0,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 1
+    },
+    {
+     "name": "shooter",
+     "tick": 318,
+     "frame": null,
+     "menu": false,
+     "hud": 10.22,
+     "centre": 1.43,
+     "texts": 11,
+     "lowContrast": 2,
+     "small": 2
+    },
+    {
+     "name": "puzzle",
+     "tick": 360,
+     "frame": null,
+     "menu": false,
+     "hud": 7.18,
+     "centre": 0,
+     "texts": 8,
+     "lowContrast": 0,
+     "small": 2
+    },
+    {
+     "name": "idle",
+     "tick": 402,
+     "frame": null,
+     "menu": false,
+     "hud": 12.84,
+     "centre": 0,
+     "texts": 13,
+     "lowContrast": 3,
+     "small": 5
+    },
+    {
+     "name": "racing",
+     "tick": 444,
+     "frame": null,
+     "menu": false,
+     "hud": 10.44,
+     "centre": 0,
+     "texts": 16,
+     "lowContrast": 1,
+     "small": 1
+    },
+    {
+     "name": "cutscene",
+     "tick": 558,
+     "frame": null,
+     "menu": true,
+     "hud": 26.47,
+     "centre": 0,
+     "texts": 5,
+     "lowContrast": 0,
+     "small": 1
+    },
+    {
+     "name": "shop",
+     "tick": 600,
+     "frame": null,
+     "menu": true,
+     "hud": 19.35,
+     "centre": 43.57,
+     "texts": 17,
+     "lowContrast": 2,
+     "small": 4
+    },
+    {
+     "name": "inventory",
+     "tick": 642,
+     "frame": null,
+     "menu": true,
+     "hud": 21.93,
+     "centre": 61.96,
+     "texts": 7,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "levels",
+     "tick": 684,
+     "frame": null,
+     "menu": true,
+     "hud": 8.84,
+     "centre": 27.14,
+     "texts": 11,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "results",
+     "tick": 786,
+     "frame": null,
+     "menu": true,
+     "hud": 23.87,
+     "centre": 55.89,
+     "texts": 14,
+     "lowContrast": 1,
+     "small": 1
+    },
+    {
+     "name": "leaderboard",
+     "tick": 828,
+     "frame": null,
+     "menu": true,
+     "hud": 24.43,
+     "centre": 51.43,
+     "texts": 28,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "tutorial",
+     "tick": 870,
+     "frame": null,
+     "menu": true,
+     "hud": 100,
+     "centre": 100,
+     "texts": 6,
+     "lowContrast": 0,
+     "small": 1
+    },
+    {
+     "name": "loading",
+     "tick": 912,
+     "frame": null,
+     "menu": true,
+     "hud": 9.57,
+     "centre": 31.43,
+     "texts": 3,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "confirm",
+     "tick": 954,
+     "frame": null,
+     "menu": true,
+     "hud": 10.07,
+     "centre": 34.64,
+     "texts": 4,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "alert",
+     "tick": 996,
+     "frame": null,
+     "menu": true,
+     "hud": 8.49,
+     "centre": 24.29,
+     "texts": 3,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "toasts",
+     "tick": 1038,
+     "frame": null,
+     "menu": true,
+     "hud": 26.05,
+     "centre": 91.43,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 230,
+    "passing": 208,
+    "worst": [
+     {
+      "shot": "shooter",
+      "id": "Armor",
+      "text": "35",
+      "ratio": 1.59
+     },
+     {
+      "shot": "widgets",
+      "id": "Health",
+      "text": "72 / 100",
+      "ratio": 1.9
+     },
+     {
+      "shot": "shooter",
+      "id": "Health",
+      "text": "72",
+      "ratio": 1.9
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 230,
+    "passing": 206,
+    "smallest": [
+     {
+      "shot": "shop",
+      "id": "Unit",
+      "text": "coins",
+      "ink": 6
+     },
+     {
+      "shot": "shop",
+      "id": "Name",
+      "text": "Iron sword",
+      "ink": 6
+     },
+     {
+      "shot": "idle",
+      "id": "Name",
+      "text": "Farm",
+      "ink": 7
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 5,
+    "worstShare": 12.84,
+    "worstCentre": 1.43
+   },
+   "ui": {
+    "screenChanges": 25,
+    "withMotion": 23,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 703
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 72.05,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 27.95
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.07,
+    "stepP95Ms": 2.06,
+    "renderMedianMs": 0.87,
+    "renderP95Ms": 1.15,
+    "frameP95Ms": 3.1,
+    "frameMaxMs": 334.15
+   },
+   "audio": {
+    "seconds": 17.4,
+    "peak": 0.16,
+    "rms": 0.0156,
+    "clipped": 0,
+    "silentShare": 90.42
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "skin-scifi",
+   "title": "every screen in the scifi style pack matches its cell of kit-skin-scifi.png",
+   "tier": "metal",
+   "ticks": 1044,
+   "shots": [
+    {
+     "name": "gallery",
+     "tick": 66,
+     "frame": null,
+     "menu": true,
+     "hud": 8.15,
+     "centre": 17.3,
+     "texts": 20,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "widgets",
+     "tick": 108,
+     "frame": null,
+     "menu": true,
+     "hud": 14.9,
+     "centre": 7.55,
+     "texts": 29,
+     "lowContrast": 9,
+     "small": 0
+    },
+    {
+     "name": "mainMenu",
+     "tick": 150,
+     "frame": null,
+     "menu": true,
+     "hud": 10.17,
+     "centre": 71.32,
+     "texts": 7,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "pause",
+     "tick": 192,
+     "frame": null,
+     "menu": true,
+     "hud": 5.85,
+     "centre": 43.46,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "settings",
+     "tick": 234,
+     "frame": null,
+     "menu": true,
+     "hud": 9.83,
+     "centre": 44.84,
+     "texts": 13,
+     "lowContrast": 3,
+     "small": 0
+    },
+    {
+     "name": "platformer",
+     "tick": 276,
+     "frame": null,
+     "menu": false,
+     "hud": 1.05,
+     "centre": 0,
+     "texts": 6,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "shooter",
+     "tick": 318,
+     "frame": null,
+     "menu": false,
+     "hud": 2.97,
+     "centre": 0.75,
+     "texts": 11,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "puzzle",
+     "tick": 360,
+     "frame": null,
+     "menu": false,
+     "hud": 2.53,
+     "centre": 0,
+     "texts": 8,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "idle",
+     "tick": 402,
+     "frame": null,
+     "menu": false,
+     "hud": 4.17,
+     "centre": 0,
+     "texts": 13,
+     "lowContrast": 3,
+     "small": 1
+    },
+    {
+     "name": "racing",
+     "tick": 444,
+     "frame": null,
+     "menu": false,
+     "hud": 3.26,
+     "centre": 0,
+     "texts": 12,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "cutscene",
+     "tick": 558,
+     "frame": null,
+     "menu": true,
+     "hud": 23.06,
+     "centre": 0,
+     "texts": 5,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "shop",
+     "tick": 600,
+     "frame": null,
+     "menu": true,
+     "hud": 5.23,
+     "centre": 16.16,
+     "texts": 17,
+     "lowContrast": 2,
+     "small": 1
+    },
+    {
+     "name": "inventory",
+     "tick": 642,
+     "frame": null,
+     "menu": true,
+     "hud": 13.4,
+     "centre": 56.16,
+     "texts": 7,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "levels",
+     "tick": 684,
+     "frame": null,
+     "menu": true,
+     "hud": 3.32,
+     "centre": 15.6,
+     "texts": 11,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "results",
+     "tick": 786,
+     "frame": null,
+     "menu": true,
+     "hud": 8.13,
+     "centre": 46.23,
+     "texts": 14,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "leaderboard",
+     "tick": 828,
+     "frame": null,
+     "menu": true,
+     "hud": 15.74,
+     "centre": 75.41,
+     "texts": 34,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "tutorial",
+     "tick": 870,
+     "frame": null,
+     "menu": true,
+     "hud": 100,
+     "centre": 100,
+     "texts": 6,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "loading",
+     "tick": 912,
+     "frame": null,
+     "menu": true,
+     "hud": 3.35,
+     "centre": 30.31,
+     "texts": 3,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "confirm",
+     "tick": 954,
+     "frame": null,
+     "menu": true,
+     "hud": 3.83,
+     "centre": 32.45,
+     "texts": 4,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "alert",
+     "tick": 996,
+     "frame": null,
+     "menu": true,
+     "hud": 3.33,
+     "centre": 27.86,
+     "texts": 3,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "toasts",
+     "tick": 1038,
+     "frame": null,
+     "menu": true,
+     "hud": 7.22,
+     "centre": 55.97,
+     "texts": 11,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 238,
+    "passing": 211,
+    "worst": [
+     {
+      "shot": "shooter",
+      "id": "Armor",
+      "text": "35",
+      "ratio": 1.59
+     },
+     {
+      "shot": "cutscene",
+      "id": "Gallery",
+      "text": "Gallery",
+      "ratio": 1.76
+     },
+     {
+      "shot": "widgets",
+      "id": "Health",
+      "text": "72 / 100",
+      "ratio": 1.9
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 238,
+    "passing": 236,
+    "smallest": [
+     {
+      "shot": "shop",
+      "id": "Name",
+      "text": "Iron sword",
+      "ink": 6
+     },
+     {
+      "shot": "idle",
+      "id": "Name",
+      "text": "Farm",
+      "ink": 7
+     },
+     {
+      "shot": "gallery",
+      "id": "Blurb",
+      "text": "Title screen",
+      "ink": 9
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 5,
+    "worstShare": 4.17,
+    "worstCentre": 0.75
+   },
+   "ui": {
+    "screenChanges": 28,
+    "withMotion": 28,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 743
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 76.02,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 23.98
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.02,
+    "stepP95Ms": 1.95,
+    "renderMedianMs": 0.85,
+    "renderP95Ms": 1.13,
+    "frameP95Ms": 2.98,
+    "frameMaxMs": 96.82
+   },
+   "audio": {
+    "seconds": 17.4,
+    "peak": 0.16,
+    "rms": 0.0156,
+    "clipped": 0,
+    "silentShare": 90.42
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "sounds",
+   "title": "a press sounds on the ui bus by default, and not after sounds:off",
+   "tier": "metal",
+   "ticks": 90,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 5,
+    "withMotion": 5,
+    "presses": 2,
+    "pressesWithSound": 1,
+    "motionTicks": 89
+   },
+   "latency": {
+    "inputs": 4,
+    "answered": 4,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 2
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.4,
+    "stepP95Ms": 1.73,
+    "renderMedianMs": 0.79,
+    "renderP95Ms": 1.04,
+    "frameP95Ms": 2.66,
+    "frameMaxMs": 3.79
+   },
+   "audio": {
+    "seconds": 1.5,
+    "peak": 0.21,
+    "rms": 0.0229,
+    "clipped": 0,
+    "silentShare": 75.56
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "touch",
+   "title": "touch_move_to and move_to_text drive the gallery, the shop, results, idle and the cutscene",
+   "tier": "metal",
+   "ticks": 450,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 8,
+    "withMotion": 8,
+    "presses": 9,
+    "pressesWithSound": 6,
+    "motionTicks": 384
+   },
+   "latency": {
+    "inputs": 11,
+    "answered": 11,
+    "medianTicks": 0,
+    "maxTicks": 1,
+    "baselineShare": 98.85,
+    "sound": 8
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 6.59
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.99,
+    "stepP95Ms": 1.67,
+    "renderMedianMs": 0.79,
+    "renderP95Ms": 1.06,
+    "frameP95Ms": 2.64,
+    "frameMaxMs": 14.53
+   },
+   "audio": {
+    "seconds": 7.5,
+    "peak": 0.21,
+    "rms": 0.0219,
+    "clipped": 0,
+    "silentShare": 82.22
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "tutorial",
+   "title": "the tutorial spotlights each target and Next walks to the end",
+   "tier": "metal",
+   "ticks": 150,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 3,
+    "withMotion": 3,
+    "presses": 4,
+    "pressesWithSound": 3,
+    "motionTicks": 149
+   },
+   "latency": {
+    "inputs": 4,
+    "answered": 4,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 3
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.19,
+    "stepP95Ms": 1.6,
+    "renderMedianMs": 0.78,
+    "renderP95Ms": 1.03,
+    "frameP95Ms": 2.6,
+    "frameMaxMs": 3.98
+   },
+   "audio": {
+    "seconds": 2.5,
+    "peak": 0.21,
+    "rms": 0.0193,
+    "clipped": 0,
+    "silentShare": 88
+   },
+   "warnings": []
+  }
+ ],
+ "warnings": []
+}

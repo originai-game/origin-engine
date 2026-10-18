@@ -1,0 +1,1148 @@
+{
+ "project": "fx-showcase",
+ "date": "2026-10-18",
+ "scores": {
+  "contrast": 100,
+  "textSize": 100,
+  "hud": 100,
+  "transitions": null,
+  "uiSounds": null,
+  "latency": null,
+  "hitFeedback": null,
+  "idle": 100,
+  "frameTime": 93,
+  "inputSound": null,
+  "locale": null,
+  "taste": 100,
+  "feel": 97
+ },
+ "findings": [],
+ "playtests": [
+  {
+   "playtest": "controller",
+   "title": "the controller station matches its reference and behaves",
+   "tier": "metal",
+   "ticks": 342,
+   "shots": [
+    {
+     "name": "controller-before",
+     "tick": 300,
+     "frame": "frames/controller-controller-before.png",
+     "menu": false,
+     "hud": 0.35,
+     "centre": 0,
+     "texts": 1,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "controller",
+     "tick": 330,
+     "frame": null,
+     "menu": false,
+     "hud": 0.35,
+     "centre": 0,
+     "texts": 1,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 2,
+    "passing": 2,
+    "worst": [
+     {
+      "shot": "controller-before",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ratio": 15.41
+     },
+     {
+      "shot": "controller",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ratio": 15.41
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 2,
+    "passing": 2,
+    "smallest": [
+     {
+      "shot": "controller-before",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ink": 16
+     },
+     {
+      "shot": "controller",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ink": 16
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 2,
+    "worstShare": 0.35,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 4,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.9,
+    "stepP95Ms": 1.18,
+    "renderMedianMs": 4.44,
+    "renderP95Ms": 4.97,
+    "frameP95Ms": 6.13,
+    "frameMaxMs": 126.57
+   },
+   "audio": {
+    "seconds": 5.7,
+    "peak": 0,
+    "rms": 0,
+    "clipped": 0,
+    "silentShare": 100
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "fluid",
+   "title": "the fluid station matches its reference and behaves",
+   "tier": "metal",
+   "ticks": 222,
+   "shots": [
+    {
+     "name": "fluid-before",
+     "tick": 180,
+     "frame": "frames/fluid-fluid-before.png",
+     "menu": false,
+     "hud": 0.35,
+     "centre": 0,
+     "texts": 1,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "fluid",
+     "tick": 210,
+     "frame": null,
+     "menu": false,
+     "hud": 0.35,
+     "centre": 0,
+     "texts": 1,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 2,
+    "passing": 2,
+    "worst": [
+     {
+      "shot": "fluid-before",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ratio": 15.41
+     },
+     {
+      "shot": "fluid",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ratio": 15.41
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 2,
+    "passing": 2,
+    "smallest": [
+     {
+      "shot": "fluid-before",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ink": 16
+     },
+     {
+      "shot": "fluid",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ink": 16
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 2,
+    "worstShare": 0.35,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 4,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.98,
+    "stepP95Ms": 2.3,
+    "renderMedianMs": 3.51,
+    "renderP95Ms": 4.92,
+    "frameP95Ms": 6.22,
+    "frameMaxMs": 113.27
+   },
+   "audio": {
+    "seconds": 3.7,
+    "peak": 0,
+    "rms": 0,
+    "clipped": 0,
+    "silentShare": 100
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "frames",
+   "title": "every station matches its reference frame",
+   "tier": "metal",
+   "ticks": 432,
+   "shots": [
+    {
+     "name": "post",
+     "tick": 60,
+     "frame": null,
+     "menu": false,
+     "hud": 0.35,
+     "centre": 0,
+     "texts": 1,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "lens",
+     "tick": 120,
+     "frame": null,
+     "menu": false,
+     "hud": 0.35,
+     "centre": 0,
+     "texts": 1,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "fx",
+     "tick": 240,
+     "frame": null,
+     "menu": false,
+     "hud": 0.35,
+     "centre": 0,
+     "texts": 1,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "2d",
+     "tick": 300,
+     "frame": null,
+     "menu": false,
+     "hud": 0.35,
+     "centre": 0,
+     "texts": 1,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "stylised",
+     "tick": 420,
+     "frame": null,
+     "menu": false,
+     "hud": 0.35,
+     "centre": 0,
+     "texts": 1,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 5,
+    "passing": 5,
+    "worst": [
+     {
+      "shot": "post",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ratio": 15.41
+     },
+     {
+      "shot": "lens",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ratio": 15.41
+     },
+     {
+      "shot": "fx",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ratio": 15.41
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 5,
+    "passing": 5,
+    "smallest": [
+     {
+      "shot": "post",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ink": 16
+     },
+     {
+      "shot": "lens",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ink": 16
+     },
+     {
+      "shot": "fx",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ink": 16
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 5,
+    "worstShare": 0.35,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 4,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.86,
+    "stepP95Ms": 2.04,
+    "renderMedianMs": 4.59,
+    "renderP95Ms": 5.14,
+    "frameP95Ms": 6.48,
+    "frameMaxMs": 922.06
+   },
+   "audio": {
+    "seconds": 7.2,
+    "peak": 0,
+    "rms": 0,
+    "clipped": 0,
+    "silentShare": 100
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "joints",
+   "title": "the joints station matches its reference and behaves",
+   "tier": "metal",
+   "ticks": 222,
+   "shots": [
+    {
+     "name": "joints-before",
+     "tick": 180,
+     "frame": null,
+     "menu": false,
+     "hud": 0.35,
+     "centre": 0,
+     "texts": 1,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "joints",
+     "tick": 210,
+     "frame": null,
+     "menu": false,
+     "hud": 0.35,
+     "centre": 0,
+     "texts": 1,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 2,
+    "passing": 2,
+    "worst": [
+     {
+      "shot": "joints-before",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ratio": 15.41
+     },
+     {
+      "shot": "joints",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ratio": 15.41
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 2,
+    "passing": 2,
+    "smallest": [
+     {
+      "shot": "joints-before",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ink": 16
+     },
+     {
+      "shot": "joints",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ink": 16
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 2,
+    "worstShare": 0.35,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 4,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.94,
+    "stepP95Ms": 1.23,
+    "renderMedianMs": 4.6,
+    "renderP95Ms": 5.1,
+    "frameP95Ms": 6.38,
+    "frameMaxMs": 129.8
+   },
+   "audio": {
+    "seconds": 3.7,
+    "peak": 0,
+    "rms": 0,
+    "clipped": 0,
+    "silentShare": 100
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "rope",
+   "title": "the rope station matches its reference and behaves",
+   "tier": "metal",
+   "ticks": 192,
+   "shots": [
+    {
+     "name": "rope-before",
+     "tick": 150,
+     "frame": null,
+     "menu": false,
+     "hud": 0.35,
+     "centre": 0,
+     "texts": 1,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "rope",
+     "tick": 180,
+     "frame": null,
+     "menu": false,
+     "hud": 0.35,
+     "centre": 0,
+     "texts": 1,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 2,
+    "passing": 2,
+    "worst": [
+     {
+      "shot": "rope-before",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ratio": 15.41
+     },
+     {
+      "shot": "rope",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ratio": 15.41
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 2,
+    "passing": 2,
+    "smallest": [
+     {
+      "shot": "rope-before",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ink": 16
+     },
+     {
+      "shot": "rope",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ink": 16
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 2,
+    "worstShare": 0.35,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 4,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.91,
+    "stepP95Ms": 1.18,
+    "renderMedianMs": 4.88,
+    "renderP95Ms": 5.25,
+    "frameP95Ms": 6.35,
+    "frameMaxMs": 143.44
+   },
+   "audio": {
+    "seconds": 3.2,
+    "peak": 0,
+    "rms": 0,
+    "clipped": 0,
+    "silentShare": 100
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "shaders",
+   "title": "the shaders station matches its reference and behaves",
+   "tier": "metal",
+   "ticks": 132,
+   "shots": [
+    {
+     "name": "shaders-before",
+     "tick": 90,
+     "frame": null,
+     "menu": false,
+     "hud": 0.35,
+     "centre": 0,
+     "texts": 1,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "shaders",
+     "tick": 120,
+     "frame": null,
+     "menu": false,
+     "hud": 0.35,
+     "centre": 0,
+     "texts": 1,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 2,
+    "passing": 2,
+    "worst": [
+     {
+      "shot": "shaders-before",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ratio": 15.41
+     },
+     {
+      "shot": "shaders",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ratio": 15.41
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 2,
+    "passing": 2,
+    "smallest": [
+     {
+      "shot": "shaders-before",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ink": 16
+     },
+     {
+      "shot": "shaders",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ink": 16
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 2,
+    "worstShare": 0.35,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 4,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.67,
+    "stepP95Ms": 2.08,
+    "renderMedianMs": 7.69,
+    "renderP95Ms": 8.11,
+    "frameP95Ms": 10.03,
+    "frameMaxMs": 415.72
+   },
+   "audio": {
+    "seconds": 2.2,
+    "peak": 0,
+    "rms": 0,
+    "clipped": 0,
+    "silentShare": 100
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "sky",
+   "title": "the sky station matches its reference and behaves",
+   "tier": "metal",
+   "ticks": 132,
+   "shots": [
+    {
+     "name": "sky-before",
+     "tick": 90,
+     "frame": null,
+     "menu": false,
+     "hud": 0.35,
+     "centre": 0,
+     "texts": 1,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "sky",
+     "tick": 120,
+     "frame": null,
+     "menu": false,
+     "hud": 0.35,
+     "centre": 0,
+     "texts": 1,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 2,
+    "passing": 2,
+    "worst": [
+     {
+      "shot": "sky-before",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ratio": 15.41
+     },
+     {
+      "shot": "sky",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ratio": 15.41
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 2,
+    "passing": 2,
+    "smallest": [
+     {
+      "shot": "sky-before",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ink": 16
+     },
+     {
+      "shot": "sky",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ink": 16
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 2,
+    "worstShare": 0.35,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 4,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.84,
+    "stepP95Ms": 1.07,
+    "renderMedianMs": 6.01,
+    "renderP95Ms": 6.38,
+    "frameP95Ms": 7.69,
+    "frameMaxMs": 333.3
+   },
+   "audio": {
+    "seconds": 2.2,
+    "peak": 0,
+    "rms": 0,
+    "clipped": 0,
+    "silentShare": 100
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "water",
+   "title": "the water station matches its reference and behaves",
+   "tier": "metal",
+   "ticks": 222,
+   "shots": [
+    {
+     "name": "water-before",
+     "tick": 180,
+     "frame": null,
+     "menu": false,
+     "hud": 0.35,
+     "centre": 0,
+     "texts": 1,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "water",
+     "tick": 210,
+     "frame": null,
+     "menu": false,
+     "hud": 0.35,
+     "centre": 0,
+     "texts": 1,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 2,
+    "passing": 2,
+    "worst": [
+     {
+      "shot": "water-before",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ratio": 15.41
+     },
+     {
+      "shot": "water",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ratio": 15.41
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 2,
+    "passing": 2,
+    "smallest": [
+     {
+      "shot": "water-before",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ink": 16
+     },
+     {
+      "shot": "water",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ink": 16
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 2,
+    "worstShare": 0.35,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 4,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.85,
+    "stepP95Ms": 1.08,
+    "renderMedianMs": 4.64,
+    "renderP95Ms": 5.03,
+    "frameP95Ms": 6.09,
+    "frameMaxMs": 548.71
+   },
+   "audio": {
+    "seconds": 3.7,
+    "peak": 0,
+    "rms": 0,
+    "clipped": 0,
+    "silentShare": 100
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "weather",
+   "title": "the weather station matches its reference and behaves",
+   "tier": "metal",
+   "ticks": 312,
+   "shots": [
+    {
+     "name": "weather-before",
+     "tick": 270,
+     "frame": null,
+     "menu": false,
+     "hud": 0.35,
+     "centre": 0,
+     "texts": 1,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "weather",
+     "tick": 300,
+     "frame": null,
+     "menu": false,
+     "hud": 0.35,
+     "centre": 0,
+     "texts": 1,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 2,
+    "passing": 2,
+    "worst": [
+     {
+      "shot": "weather-before",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ratio": 15.41
+     },
+     {
+      "shot": "weather",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ratio": 15.41
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 2,
+    "passing": 2,
+    "smallest": [
+     {
+      "shot": "weather-before",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ink": 16
+     },
+     {
+      "shot": "weather",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ink": 16
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 2,
+    "worstShare": 0.35,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 5,
+    "bursts": 1
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.75,
+    "stepP95Ms": 0.99,
+    "renderMedianMs": 4.35,
+    "renderP95Ms": 4.82,
+    "frameP95Ms": 5.79,
+    "frameMaxMs": 193.91
+   },
+   "audio": {
+    "seconds": 5.2,
+    "peak": 0,
+    "rms": 0,
+    "clipped": 0,
+    "silentShare": 100
+   },
+   "warnings": []
+  }
+ ],
+ "warnings": []
+}

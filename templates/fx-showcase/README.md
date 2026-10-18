@@ -19,6 +19,19 @@ OG_FX_CAPTURE=1 og test templates/fx-showcase       # re-record this tier's refe
 python3 templates/fx-showcase/tools/make-assets.py templates/fx-showcase/assets   # regenerate textures and the LUT
 ```
 
+## What it demonstrates, and the skills it exercises
+
+Every effect, the atmosphere and water, material shaders, skeletal animation
+and the physics beyond rigid bodies, each declared from TypeScript as data
+and proved by a reference frame on four tiers: og-game §9 (the walker's
+clip, blendshapes, the ragdoll that follows its walk), §10 (post, particles,
+trails and beams, decals, 2D lighting, materials, the HUD layer), §11 (fog,
+sky, day and night, weather, water), §12 (a dissolve and wind-swayed grass in
+WGSL) and §13 (joints, a character controller, a vehicle, ropes, cloth, a 2D
+fluid, a ragdoll); og-taste §8 for the looks; og-build §3, §4 for the frames
+as evidence. `og polish .` (2026-10-19): taste 100, feel 97.
+
+
 | Station (`station:<name>`) | What it shows |
 |---|---|
 | `post` | ambient occlusion (GTAO), outlines, god rays from a low sun, bloom on an emissive ball, the `luts/teal-orange.cube` grading, vignette, chromatic aberration, film grain |

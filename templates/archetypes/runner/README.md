@@ -20,6 +20,20 @@ og test .                    # tests/*.og.ts through og run --headless --command
 og build .                   # dist/: the play page for the browser
 ```
 
+## What it demonstrates, and the skills it exercises
+
+A one-button 2D game end to end: og.PlatformerController with its designer
+units in a `Tuning` resource and its CharacterEvents driving the take-off
+stretch and landing squash (og-game §13; og-feel §5, §12), a scrolling world
+of flipbooks and parallax tile layers (og-game §8; og-feel §9–§11), coins
+with floating text, hit stop, shake and kick on a crash (og-feel §3, §4,
+§7), every action heard through one `Voices` system (og-audio §1), the best
+score and a leaderboard through og.platform's requests answered later
+(og-platform-sdk §1–§4), and playtests for jumps, tuning, records and a
+replay to one hash (og-build §1, §3). `og polish .` (2026-10-19): feel 99
+(taste n/a: the HUD is screen-space text, not og.ui).
+
+
 ## Rules
 
 - **Title.** The city scrolls slowly; the first press (Space, ArrowUp, W, a

@@ -29,6 +29,22 @@ puzzle, idle, racing, cutscene, shop, inventory, levels, results,
 leaderboard, tutorial, loading, confirm, alert, toasts. `screens/<screen>.png`
 shows each at desktop (left) and on a phone in portrait (right).
 
+## What it demonstrates, and the skills it exercises
+
+The engine's UI as a catalogue rather than a game: every screen template and
+widget (og-ui §2, §3), focus by keyboard, gamepad and several fingers at once
+(og-ui §4), phones, tablets and the safe area with every screen captured on a
+390×844@3 phone (og-ui §5), the six style packs with their tiled nine-slices,
+count-ups, bursts, screen transitions and UI sounds (og-ui §6; og-taste
+§1–§7; og-audio §3), string tables in English, Chinese, Japanese (kinsoku line
+breaking) and Arabic (right to left) (og-i18n §1–§4, §6), and how to prove UI
+from a script with `move_to_text`, `dump_ui` and reference frames (og-ui §7;
+og-build §1, §3). `og polish .` (2026-10-19): taste 90; feel 62, which reads
+a catalogue as a game: its playtests press through screens and capture them
+still, its `hp` fact is the meter demo's number, not damage, and keyboard and
+gamepad focus moves make no sound (og-ui plays none for a focus move yet).
+
+
 ## The reference source
 
 The demo is where `crates/og-ui/references/<tier>/kit-desktop-<screen>.png`
