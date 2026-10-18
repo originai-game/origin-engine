@@ -53,6 +53,10 @@ platform="$(node -p 'process.platform + "-" + process.arch' 2>/dev/null || bun -
 mkdir -p "$here/native" "$here/dist/web" "$here/dist/web-publish"
 echo "$profile" > "$here/native/build-profile"
 addon="$here/native/origin-engine.$platform.node"
+# Remove before copying: macOS keeps a signed binary's code signature by
+# inode, and an executable rewritten in place by cp is then killed on start
+# (SIGKILL, exit 137, nothing printed) once its new bytes no longer match.
+rm -f "$addon" "$here/native/og.$platform"
 if [ -f "$bindir/libog_host_node.dylib" ]; then
   cp "$bindir/libog_host_node.dylib" "$addon"
   # ld-27037 can leave the string table off 8-byte alignment, which dyld refuses.
