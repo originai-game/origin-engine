@@ -64,8 +64,8 @@ export const Tuning = defineResource("Tuning", {
   reach: f32(0.75, { min: 0.2, max: 2, step: 0.05, unit: "m", tunable: true, label: "Sword reach", doc: "The strike's radius around a point one reach ahead of the hero's chest." }),
   hitStop: u32(4, { min: 0, max: 12, step: 1, unit: "ticks", tunable: true, label: "Hit stop" }),
   shake: f32(0.25, { min: 0, max: 1, step: 0.05, tunable: true, label: "Hit shake", doc: "Camera trauma per hit." }),
-  slimeSpeed: f32(1.6, { min: 0, max: 6, step: 0.1, unit: "m/s", tunable: true, label: "Slime speed" }),
-  slimeSight: f32(5, { min: 0, max: 12, step: 0.5, unit: "m", tunable: true, label: "Slime sight", doc: "The slime chases a hero closer than this, and wanders otherwise." }),
+  slimeSpeed: f32(1.6, { min: 0, max: 6, step: 0.1, unit: "m/s", tunable: true, label: "Slime speed", doc: "The chase (assets/ai/slime.ogt reads it as `speed Tuning.slimeSpeed`)." }),
+  slimeSight: f32(5, { min: 0, max: 12, step: 0.5, unit: "m", tunable: true, label: "Slime sight", doc: "How far the slime sees (its og.Perception.sight); walls hide the hero." }),
   knockback: f32(9, { min: 0, max: 20, step: 0.5, unit: "m/s", tunable: true, label: "Knockback" }),
   iframes: u32(50, { min: 0, max: 180, step: 5, unit: "ticks", tunable: true, label: "Invulnerable ticks" }),
 });
@@ -81,15 +81,13 @@ export const Hero = defineComponent("Hero", {
   moving: bool(false, { doc: "Walk input was held this tick." }),
 });
 
-/** A slime: health, its own knockback, the wander and the death. */
+/** A slime: health, its own knockback and the death. What it does is assets/ai/slime.ogt (og.ai) moving it on the map's grid (og.nav). */
 export const Slime = defineComponent("Slime", {
-  hp: u32(50, { doc: "Health; the sword deals 12, 12, then a 26 crit." }),
+  hp: u32(50, { doc: "Health; the sword deals 12, 12, then a 26 crit. Below 30 the behaviour flees." }),
   knockX: f32(0, { unit: "m/s" }),
   knockY: f32(0, { unit: "m/s" }),
-  stun: u32(0, { unit: "ticks", doc: "Ticks it neither moves nor hurts after a hit." }),
-  wanderX: f32(0, { doc: "The current wander direction." }),
-  wanderY: f32(0),
-  wanderFor: u32(0, { unit: "ticks" }),
+  stun: u32(0, { unit: "ticks", doc: "Ticks it neither moves nor bites after a hit or a bite." }),
+  bites: u32(0, { doc: "Bites that hurt the hero." }),
   dead: bool(false),
   deadTicks: u32(0, { unit: "ticks", doc: "Ticks since it died; it hides once the death tween is over." }),
   bob: i32(0, { doc: "The bob clip's index (src/art.ts)." }),

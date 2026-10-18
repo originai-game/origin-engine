@@ -13,7 +13,9 @@ the 2D modules working together: a Tiled map with an auto-tiled, colliding
 wall terrain; flipbook sprites with frame events; y-sorted sprites with
 blob shadows; tweens, hit stop, camera trauma and kick, floating damage
 numbers and afterimages; a 2D follow camera held inside each room by a
-camera zone.
+camera zone; and an enemy whose mind is data: a behaviour tree
+(`assets/ai/slime.ogt`, og.ai) walking a grid made from the map's wall
+collision (og.nav).
 
 ```sh
 og cook .                    # assets/ into cooked/ (og run and og build cook too)
@@ -36,10 +38,17 @@ og build .                   # dist/: the play page for the browser
 - **The dash.** Shift (or K) dashes `Tuning.dashTicks` ticks at
   `Tuning.dashSpeed` along the keys (or the facing), leaving afterimages;
   then `Tuning.dashCooldown` ticks before the next.
-- **The slime.** It wanders (eight directions or a pause, from a hash of the
-  tick) and chases a hero closer than `Tuning.slimeSight`. Touching the hero
-  costs a heart, knocks the hero away and makes it blink for
-  `Tuning.iframes` ticks; the slime bounces back off the bite.
+- **The slime.** Its behaviour tree, `assets/ai/slime.ogt`, is re-checked
+  every tick, first branch first: under 30 hp, and having seen the hero in
+  the last 3 s, it **flees** to 5 m away; seeing the hero within 0.8 m it
+  **bites** (the game's `bite` command, every 0.5 s at most); seeing the
+  hero it **chases** at `Tuning.slimeSpeed`; having lost the hero in the
+  last 2 s it **searches** where it last saw it; otherwise it **patrols**
+  its beat (four points round the key's corner, 0.6 s at each). It sees all
+  round within `Tuning.slimeSight`, but not through walls (the pillar hides
+  the hero). og.nav walks it on the map's grid around the walls, writing its
+  velocity. A bite costs a heart, knocks the hero away and makes it blink
+  for `Tuning.iframes` ticks; the slime bounces back off the bite.
 - **Pickups.** Coins and the key are taken when the hero's chest touches
   them. The key is spent opening the door.
 - **The door.** Without the key, walking up to it says "locked". With it,
@@ -50,7 +59,7 @@ og build .                   # dist/: the play page for the browser
   are.
 
 Everything is deterministic from the project seed: the clock is the fixed
-tick, the wander comes from a hash of the tick, the hovering is a triangle
+tick, og.ai and og.nav are deterministic and in snapshots, the hovering is a triangle
 wave, and `tests/replay.og.ts` replays a whole visit to the same hash.
 
 ## How a hit feels
@@ -99,7 +108,7 @@ camera cutting to room 2 when the hero crosses into it.
 | `Game` | resource | hearts, coins, the key, the door, the room, the slime's hp and hits, the hero's position and facing for the other systems, the strike of this tick, footsteps, invulnerability, knockback, the spawn, the door's cells, sound requests, the font |
 | `Tuning` | resource | the knobs below |
 | `Hero` | the hero | the swing and dash timers, the dash direction, dashes so far |
-| `Slime` | the slime | hp, knockback, stun, the wander, death, its clip indices |
+| `Slime` | the slime | hp, knockback, stun, bites, death, its clip indices (it also has `og.NavAgent`, `og.AiAgent` and `og.Perception`; the hero has `og.Perceivable`) |
 | `Pickup` | coins and the key | kind, taken, the resting height |
 | `Sfx` | one entity per sound | its `Sound.*` bit (the entity also has `og.AudioSource`) |
 | `Report` | the hero | the run's facts, copied from `Game` each tick so `dump_entity:hero` shows them |
@@ -109,14 +118,15 @@ camera cutting to room 2 when the hero crosses into it.
 | System | Reads | Writes | Job |
 |---|---|---|---|
 | `Control` | `og.Input`, `Tuning`, `og.FlipbookEvent` | `Game`, `Hero`, `og.Transform`, `og.Velocity`, `og.Flipbook`, `og.Sprite`, `og.Afterimage` | footsteps and strikes from the hero's frame events; walk, swing, dash, knockback, blinking, falling; the clip and flip |
-| `Slimes` | `Tuning` | `Game`, `Slime`, `og.Transform`, `og.Velocity`, `og.Flipbook`, `og.Sprite` | take strikes (all five effects), death, wander, chase, bite |
+| `Slimes` | `Tuning` | `Game`, `Slime`, `og.Transform`, `og.Velocity`, `og.Flipbook`, `og.Sprite`, `og.NavAgent`, `og.AiAgent`, `og.Perception` | take strikes (all five effects), knockback and stun (`NavAgent.drive` off meanwhile), death (the AI stops), sight from `Tuning.slimeSight` |
 | `Pickups` | — | `Game`, `Pickup`, `og.Transform`, `og.Sprite` | hover, take by overlap, pop and fade |
 | `Door` | — | `Game` | the room, "locked", opening the doorway |
 | `Voices` | `Sfx` | `Game`, `og.AudioSource` | plays each requested sound once |
 | `Hud` | `Game` | `Report` | screen text: hearts, coins, the key, the room, the controls for 5 s; the hero's `Report` |
 
-During a hit stop the systems still tick but hold their timers, as physics,
-flipbooks and tweens do.
+og.ai runs before these systems (the slime's decision for the tick) and
+og.nav after them (moving it). During a hit stop the systems still tick but
+hold their timers, as physics, flipbooks and tweens do.
 
 ## Tunables (`Tuning`)
 
@@ -129,8 +139,8 @@ flipbooks and tweens do.
 | `reach` | 0.75 | 0.2–2 | m | the sword's reach |
 | `hitStop` | 4 | 0–12 | ticks | the freeze per hit (the crit adds 3) |
 | `shake` | 0.25 | 0–1 | trauma | camera shake per hit |
-| `slimeSpeed` | 1.6 | 0–6 | m/s | the slime's chase (it wanders at half) |
-| `slimeSight` | 5 | 0–12 | m | how close the hero must be to be chased |
+| `slimeSpeed` | 1.6 | 0–6 | m/s | the slime's chase and search (the behaviour reads it; it patrols at 0.8) |
+| `slimeSight` | 5 | 0–12 | m | how far the slime sees |
 | `knockback` | 9 | 0–20 | m/s | both ways: the struck slime and the bitten hero |
 | `iframes` | 50 | 0–180 | ticks | the hero's blinking after a bite |
 
@@ -146,6 +156,10 @@ They are the field defaults in `src/components.ts`.
    wall cells. Or change `map_layout` in `tools/make-assets.py`.
 3. **Enemies**: another `enemy` object needs its own name (the `slime`
    command addresses `slime`); `Slimes` already loops over every slime.
+   What a slime does is `assets/ai/slime.ogt`: reorder the branches, change
+   the numbers, add a `wander` or a state machine (the nodes are listed in
+   the og-ai skill). `dump_ai:slime` shows the running node, the path to it,
+   the blackboard and what it sees; `dump_nav:slime` its path.
 4. **Look**: the tiles and sprites are drawn in `tools/make-assets.py`;
    run `python3 tools/make-assets.py && og cook .`. The hero's clip order is
    fixed (`src/art.ts` checks it).
@@ -160,6 +174,8 @@ They are the field defaults in `src/components.ts`.
 | `slime:<x>:<y>` | moves the slime |
 | `give:<key\|coin\|door>` | the key, a coin, or the doorway opened |
 | `face:<down\|up\|left\|right>` | turns the hero |
+| `bite:<slime>` | the behaviour's attack (og.ai queues it with the slime's handle): hurts a hero within 0.85 m |
+| `dump_ai:slime[:file]`, `dump_nav:slime[:file]` | the slime's behaviour, running node, blackboard and perception; its path |
 | core actions | `key_down:KeyD`/`key_up:KeyD` walk, `Space` swings, `ShiftLeft` dashes; `dump_entity:hero` shows `Report` |
 
 `facts` (the probe's `state()`) reports `room`, `hp`, `coins`, `hasKey`,
@@ -171,6 +187,8 @@ They are the field defaults in `src/components.ts`.
 | File | Proves |
 |---|---|
 | `tests/walk.og.ts` | one second of D walks 4.5 m; footsteps come from the walk clip's events; up and left stop at the wall terrain's colliders; facing, the side clip and its flip |
+| `tests/ai.og.ts` | out of sight the slime patrols its beat on og.nav's path; the hero 3 m off is seen three ticks later and the patrol gives way to the chase at about 1.6 m/s; the bite lands through the `bite` command |
+| `tests/flee.og.ts` | the pillar hides the hero 4.5 m away; below the pillar it is seen and chased; under 30 hp the slime flees and keeps over 3.5 m away |
 | `tests/combat.og.ts` | a bite costs a heart and knocks the hero back; the hit stop holds the slime still, white and squashed; 12, 12, 26 kill it; it ends hidden and squashed to nothing |
 | `tests/door.og.ts` | the doorway blocks without the key; walking over the key takes it; the door opens (the wall cell cleared), the key is spent, the hero reaches room 2 |
 | `tests/frames.og.ts` | four frames match `references/<tier>/`: the west room at rest, the crit's freeze frame, a dash, the east room through the open doorway (`OG_FX_CAPTURE=1 og test .` records them) |
@@ -178,7 +196,9 @@ They are the field defaults in `src/components.ts`.
 
 Each one fails when the behaviour it names is broken (checked by halving
 the walk speed, dropping the hit's flash, leaving the doorway's walls in
-place, drawing the map over the actors, and wandering by `Math.random`).
+place, drawing the map over the actors, and wandering by `Math.random`;
+the AI ones by sight through walls, a bite that never lands and a flee
+threshold of 0; `tests/evidence/E6/break-and-restore.md`).
 
 ## Assets
 
