@@ -21,6 +21,9 @@ env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: "0"
   RUST_BACKTRACE: "1"
+  # Line numbers in CI backtraces; the dev profile has no debuginfo because
+  # macOS keeps it in object files (Cargo.toml [profile.dev]).
+  CARGO_PROFILE_DEV_DEBUG: line-tables-only
   OG_EVIDENCE_DIR: ${{ github.workspace }}/target/evidence
 
 jobs:

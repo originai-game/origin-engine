@@ -16,12 +16,16 @@ bytemuck = { version = "1.25.2", features = ["derive"] }
 pollster = "1.0.1"
 log = "0.4"
 
-# Workspace crates keep line tables for backtraces; dependencies carry no
-# debuginfo (smaller objects, shorter links). The gate runs every native
-# step in this profile (AGENTS.md §Build and gate discipline).
+# No debuginfo in dev. On macOS, debuginfo stays in the object files
+# (split-debuginfo unpacked) and rustc never removes an incremental unit's
+# old objects, so target/debug/deps had grown to 252,881 .o files; every
+# process that opens a Metal device reads its executable's directory
+# (CFBundle), which cost each GPU test 1.4 s of its 1.7 s
+# (tests/evidence/build-speed-2026-10.md). Panics still name file and line;
+# for line numbers in a backtrace, CARGO_PROFILE_DEV_DEBUG=line-tables-only
+# (CI sets it: on Linux debuginfo lives in the executable). The gate runs
+# every native step in this profile (AGENTS.md §Build and gate discipline).
 [profile.dev]
-debug = "line-tables-only"
-[profile.dev.package."*"]
 debug = false
 
 # What ships: the wasm the size gate measures, packages/engine packs, the
