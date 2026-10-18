@@ -13105,7 +13105,7 @@ export declare namespace og {
      */
     function updateMaterial(world: World, material: Material, desc?: StandardMaterialDesc): Result<void>;
     /**
-     * Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; see the `shader` page of the wiki's render module), its parameters at their defaults. Skinned meshes draw it without the hooks; shadows and the depth prepass use the undisplaced mesh.
+     * Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. Skinned meshes draw it without the hooks; shadows and the depth prepass use the undisplaced mesh.
      *
      * @param world The world whose renderer owns the material.
      * @param shader The shader.

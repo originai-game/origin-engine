@@ -1,6 +1,6 @@
 ---
 name: og-feel
-description: Game feel for an AI making a game on Origin Engine — input that answers on the same tick, anticipation and recovery, hit stop by impact weight, screen shake trauma and when not to shake, squash and stretch amounts, easing by intent, floating text, camera look-ahead, dead zones and zones, 2D frame counts and rates by action, sprite sorting, parallax ratios, and a checklist proved with og run --commands captures and world dumps. Use when a game works but feels flat, when adding hits, jumps, pickups or a camera, or before calling a 2D game done.
+description: Game feel for an AI making a game on Origin Engine — input that answers on the same tick, anticipation and recovery, hit stop by impact weight, screen shake trauma and when not to shake, squash and stretch amounts, easing by intent, floating text, camera look-ahead, dead zones and zones, 2D frame counts and rates by action, sprite sorting, parallax ratios, platformer and character controller tunables by genre, and a checklist proved with og run --commands captures and world dumps. Use when a game works but feels flat, when adding hits, jumps, pickups or a camera, or before calling a 2D game done.
 ---
 
 A game feels right when every input shows an answer at once, every impact
@@ -211,7 +211,43 @@ camera); repeat far layers along x (`repeat x`).
 Keep parallax backgrounds darker and less saturated than the play layer,
 and never put gameplay on a layer whose parallax is not 1.
 
-## 12. The checklist, proved
+## 12. Controllers by genre
+
+Use `og.PlatformerController` (2D) and `og.CharacterController` (3D)
+instead of moving bodies by hand: they already have coyote time, a jump
+buffer, variable jump height and moving platforms. Tune by feel, starting
+from these (the defaults are the first column):
+
+| `og.PlatformerController` | precise (Celeste-like) | floaty (kid-friendly) | heavy (Castlevania-like) |
+|---|---|---|---|
+| `maxSpeed` (m/s) | 8 | 6 | 5 |
+| `acceleration` / `deceleration` | 70 / 80 | 30 / 25 | 120 / 160 (snappy, committed) |
+| `airAcceleration` / `airDeceleration` | 45 / 25 | 20 / 10 | 15 / 5 |
+| `jumpHeight` (m) / `timeToApex` (s) | 3.2 / 0.4 | 3.5 / 0.55 | 2.4 / 0.35 |
+| `fallGravity` (× rising) | 1.8 | 1.2 | 2.4 |
+| `jumpCut` (× gravity after release) | 2.5 | 1.5 | 1 (no cut: a fixed arc) |
+| `apexGravity` / `apexThreshold` | 0.6 / 1.5 | 0.4 / 2 | 1 / 0 |
+| `coyoteTime` / `jumpBuffer` (s) | 0.1 / 0.12 | 0.15 / 0.2 | 0.05 / 0.08 |
+| `airJumps`, `wallJumps` | 0, 1 | 1, 0 | 0, 0 |
+
+- Size the jump to the level: `jumpHeight` 0.5 m above the highest ledge a
+  player must reach, so a perfect press is not required.
+- `cornerCorrection` (0.15 m) forgives head bumps; keep it under a third of
+  the character's width.
+- 3D characters: `maxSlope` 45° (55° for arcade), `stepHeight` a third of
+  the capsule's height, `snapDistance` 0.2–0.3 m so stairs down do not
+  bounce, `jumpSpeed` from the height you want: `sqrt(2 × 9.81 × h)`.
+- Read `og.CharacterEvent` for juice: `CHARACTER_LANDED` with its `speed`
+  scales the landing squash and dust; `CHARACTER_JUMPED` plays the jump
+  stretch (§5) and sound on the same tick.
+- Ragdolls: `blendTime` 0.15–0.3 s from the animation to the bones; set
+  `weight` 1 on the killing blow's tick, with its hit stop, so the fall
+  starts from the hit pose.
+- Prove it: `0.5:key_down:Space;0.9:dump_entity:hero:apex.json` — the dump
+  shows `og.PlatformerController.jumping` and a height within 10 % of
+  `jumpHeight` at `timeToApex`.
+
+## 13. The checklist, proved
 
 Make each a playtest (`tests/*.og.ts`) or at least a scripted run whose
 outputs you read:

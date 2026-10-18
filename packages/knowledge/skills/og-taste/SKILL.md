@@ -1,6 +1,6 @@
 ---
 name: og-taste
-description: Art direction for a game on Origin Engine — choosing a style from the premise (genre, mood, era, audience) and mapping it to a UI skin, a palette and a type ramp; composition and hierarchy on the play surface, colour, typography, motion, feedback and consistency; the anti-patterns that make a game look like a web form; and the checklist to run (with og run captures and dump_ui) before calling a game done. Use when starting a game's look, building or reviewing any screen or HUD, or when a game "works but looks generic".
+description: Art direction for a game on Origin Engine — choosing a style from the premise (genre, mood, era, audience) and mapping it to a UI skin, a palette and a type ramp; composition and hierarchy on the play surface, colour, typography, motion, feedback and consistency; atmosphere (fog, sky, time of day, weather, water); the anti-patterns that make a game look like a web form; and the checklist to run (with og run captures and dump_ui) before calling a game done. Use when starting a game's look, building or reviewing any screen or HUD, or when a game "works but looks generic".
 ---
 
 A game is judged in its first second, before anyone reads a word. The
@@ -130,7 +130,33 @@ or the skin's `sound` lines. Results land with a count-up, stars with a
 - **One icon set**: the skin's `icons`; do not mix icon styles.
 - **One transition kind** for screen changes, one entrance for dialogs.
 
-## 8. Anti-patterns: "it looks like a web form"
+## 8. Atmosphere
+
+Fog, sky, time of day and weather set the mood of a 3D (and 2D) scene more
+cheaply than any model; use them on purpose, one look per area.
+
+- **Fog is depth**: distance fog with `density` 0.005–0.02 per metre makes
+  the far plane recede; keep the nearest 10 m clear (`start` 6–10). Height
+  fog (`heightDensity` 0.03–0.1 below the ground's height) fills valleys and
+  swamps. Match the fog's `color` to the sky's horizon or the scene floats.
+- **One sky per area**: a clear noon (`og.Sky` zenith deep blue, horizon
+  pale), an overcast grey (low contrast, `sunSize` 0), a warm dusk
+  (`og.DayNight` at 17–18 h). A day-night cycle wants `speed` slow enough
+  that a player notices it over minutes (0.02–0.05 game hours per second),
+  never per encounter.
+- **Weather is a beat, not wallpaper**: rain or snow for a level's mood or a
+  story moment; `intensity` 0.5–1; dust for deserts; mist for mornings and
+  graveyards. Keep the play area readable: if enemies vanish in the fog,
+  lower the density.
+- **Water reads by its edges**: foam where it meets rocks and posts
+  (`foamWidth` 0.2–0.5), a shallow colour close to the bed's and a deep one
+  dark and saturated; `waveStrength` 0.2–0.5 for ponds, 0.6–1 for seas.
+- **2D**: a `Water2D` lip a shade lighter than the surface; metaball fluids
+  in one bright colour with a lighter `rim`, drawn under the foreground.
+- Prove it: captures at the area's time of day; the far third of the frame
+  lower in contrast than the near third, and the HUD unchanged by the fog.
+
+## 9. Anti-patterns: "it looks like a web form"
 
 Each of these is a defect, not a style choice:
 
@@ -146,7 +172,7 @@ Each of these is a defect, not a style choice:
 - every colour saturated, or every button in the accent;
 - a settings-page layout (left-aligned form rows) for a title screen.
 
-## 9. The checklist before a game is done
+## 10. The checklist before a game is done
 
 Run each item; each is checkable from a scripted run.
 
@@ -179,4 +205,4 @@ Run each item; each is checkable from a scripted run.
     only, and nothing is missing.
 11. **CJK**: switch the language to Chinese in settings and capture: no
     missing-glyph boxes (the skin's fallback font covers it).
-12. **None of section 8** is visible in any capture.
+12. **None of section 9** is visible in any capture.

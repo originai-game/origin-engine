@@ -2663,7 +2663,7 @@ module render {
   handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read."
 
   fn shaderMaterial {
-    doc "Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; see the `shader` page of the wiki's render module), its parameters at their defaults. Skinned meshes draw it without the hooks; shadows and the depth prepass use the undisplaced mesh."
+    doc "Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. Skinned meshes draw it without the hooks; shadows and the depth prepass use the undisplaced mesh."
     param world World "The world whose renderer owns the material."
     param shader Shader "The shader."
     param desc StandardMaterialDesc "The base material; omitted parameters take three.js defaults. A dissolve sets alphaTest so that alpha below it is cut."

@@ -120,3 +120,10 @@ test("non-UTF-8 and symbolic-link skill files are refused", () => {
   expect(p.find((x) => x.startsWith("game/skills/og-game/link.md:"))).toContain("a symbolic link");
   expect(p).toContain("game/skills/og-game/notes.md: not UTF-8 text; the platform payload is text only (packages/game-knowledge/scripts/production-bundle.mjs)");
 });
+
+test("a skill that names a reference page the generated wiki does not have is refused", () => {
+  const p = added((r) => edit(join(r.pkg, "skills/og-taste/SKILL.md"), (s) => `${s}\nThe fog's fields are in \`reference/weather.md\`.\n`));
+  expect(p).toEqual([
+    "game/skills/og-taste/SKILL.md: names reference/weather.md, which the generated wiki does not have (the wiki's pages: reference/index.md lists them; a module's page is reference/<module>.md)",
+  ]);
+});

@@ -129,6 +129,9 @@ function namedTools(text: string, rules: Rules): string[] {
 
 function skills(rules: Rules, files: readonly PayloadFile[], problems: string[]): void {
   const pattern = new RegExp(rules.skills.namePattern);
+  const pages = new Set(
+    files.map((f) => /^game\/skills\/og-game\/reference\/([^/]+)$/.exec(f.path)?.[1]).filter((n): n is string => n !== undefined),
+  );
   const found = new Set<string>();
   for (const f of files) {
     const m = /^game\/skills\/([^/]+)\/(.+)$/.exec(f.path);
@@ -147,6 +150,13 @@ function skills(rules: Rules, files: readonly PayloadFile[], problems: string[])
     if (!fm.description) problems.push(`${f.path}: no description; the runner lists skills by it`);
     if (rules.skills.existing.includes(dir)) problems.push(`${f.path}: the platform already has a skill named ${dir}; installing this one would replace it`);
     for (const t of namedTools(text, rules)) problems.push(`${f.path}: names \`${t}\`, which is no tool a Session can be offered; rename it or put it in a code block if it is not a tool`);
+    // reference/ is the generated wiki, mounted under og-game: a page a
+    // skill names must be one the IDL generates.
+    for (const page of new Set([...text.matchAll(/\breference\/([a-z0-9-]+\.md)\b/g)].map((m) => m[1]!))) {
+      if (!pages.has(page)) {
+        problems.push(`${f.path}: names reference/${page}, which the generated wiki does not have (the wiki's pages: reference/index.md lists them; a module's page is reference/<module>.md)`);
+      }
+    }
   }
   for (const s of SKILLS) if (!found.has(s)) problems.push(`skills/${s}/SKILL.md: missing`);
 }

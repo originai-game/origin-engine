@@ -1,6 +1,6 @@
 ---
 name: og-game
-description: Building a game on Origin Engine — the project layout, components and systems on the ECS, the game entry, scenes as .ogt text, assets cooked from assets/ to cooked/, and the og.load loaders. Use when creating, structuring or extending a TypeScript Origin Engine game (a project with a project.ogt; not a Godot project.godot).
+description: Building a game on Origin Engine — the project layout, components and systems on the ECS, the game entry, scenes as .ogt text, assets cooked from assets/ to cooked/, the og.load loaders, effects, fog, sky, day and night, weather and water, material shaders in WGSL, and physics beyond rigid bodies (joints, character and platformer controllers, vehicles, ropes, cloth, 2D fluids, ragdolls). Use when creating, structuring or extending a TypeScript Origin Engine game (a project with a project.ogt; not a Godot project.godot).
 ---
 
 An Origin Engine project is plain files: TypeScript in `src/`, source assets
@@ -207,9 +207,102 @@ Every effect is off until the game turns it on, as data:
   in CSS pixels from the top-left over the finished frame, untouched by
   post effects, with an optional `clip`; `og.ui` uses the same layer.
 
-`templates/fx-showcase` shows every one of these on five stations. Camera
+`templates/fx-showcase` shows every one of these on its first five stations. Camera
 shake for gameplay is `og.camera.shake` (it decays by itself);
 `PostEffects.shakeTrauma` holds a fixed shake.
+
+## Atmosphere and water
+
+`og.atmosphere` is data too, and off until set (`reference/atmosphere.md`):
+
+- **Fog** — the `og.Fog` resource: `enabled`, distance fog (`density` per
+  metre from `start`, or a linear ramp to `end`), height fog
+  (`heightDensity` below `height`, thinning by `falloff`), `sunColor` for
+  the glow looking into the sun, `sky` for how much of the sky it covers.
+- **Sky** — `og.Sky { enabled, zenith, horizon, ground, sunDirection,
+  sunColor, sunSize, glow, stars }` draws the sky per pixel and lights the
+  scene by it.
+- **Day and night** — `og.DayNight { enabled, start, speed, tilt, azimuth }`:
+  the clock is `start + seconds × speed` hours from the tick, so it replays;
+  it drives the first `og.DirectionalLight` (the sun by day, a dim moon by
+  night), the sky, the ambient light and the fog's tint. Read the clock with
+  `og.atmosphere.timeOfDay(world)` (declare `og.DayNight` among the system's
+  reads) to light lamps at dusk.
+- **Weather** — `og.Weather { kind: WEATHER_RAIN | WEATHER_SNOW |
+  WEATHER_DUST | WEATHER_MIST, intensity, wind, radius }`: particles around
+  the camera, the preset's fog (an enabled `og.Fog` wins) and dimmed light.
+  With an orthographic camera the particles are 2D sprites on `layer`.
+- **Water** — `og.Water` on an entity draws a surface on its xz plane
+  (`size`, `shallow`/`deep` colours over `depthFade`, `foamWidth` where it
+  meets geometry, `waveStrength`, `reflectivity`); with an
+  `og.WaterSurface` on the same entity its waves move the surface and bodies
+  splash it (`og.Splash` events) and float. In 2D, `og.WaterLine` with
+  `og.Water2D` is a side-on pool drawn in the sprite order.
+
+## Material shaders
+
+A material can run your own WGSL in four hooks of the lit shader. Write the
+hooks in a `.wgsl` file and declare it in an `.ogt` of `type shader`:
+
+```text
+type shader
+version 1
+---
+source "shaders/dissolve.wgsl"
+param amount float 0
+param edgeColor color 4 1.6 0.4
+```
+
+```wgsl
+// Any of the four; the others stay the identity.
+fn vertex_offset(h: Hook, p: Params) -> vec3<f32>                  // world-space offset
+fn surface_color(h: Hook, p: Params, c: vec4<f32>) -> vec4<f32>    // base colour and alpha
+fn surface_normal(h: Hook, p: Params, n: vec3<f32>) -> vec3<f32>   // world normal, unit length
+fn surface_emissive(h: Hook, p: Params, e: vec3<f32>) -> vec3<f32> // emitted light
+// h: world, local (object-space) position, normal, uv, color, time (s).
+// p: the declared parameters by name (p.amount). value_noise3(p, seed) is
+// the engine's 3D value noise (0..1).
+```
+
+The cook compiles every shader for every back end (WebGPU, Metal, Vulkan,
+and GLSL ES for WebGL2) and refuses one that does not compile with naga's
+message, its lines counted in your hooks. In the game:
+`og.render.shaderMaterial(world, must(og.load.shader(world,
+"shaders/dissolve.ogt")), { color, alphaTest: 0.5 })` makes the material,
+`og.render.setShaderParam(world, material, "amount", [0.4])` sets a
+parameter. Alpha below `alphaTest` discards the fragment (a dissolve);
+shadows and the depth prepass use the mesh undisplaced; skinned meshes draw
+without the hooks. `templates/fx-showcase/assets/shaders/` has a dissolve
+and wind-swayed grass.
+
+## Physics beyond rigid bodies
+
+All are components over the same simulation, deterministic and part of
+snapshots (`reference/physics.md`):
+
+- `og.Joint` — fixed, hinge (`JOINT_REVOLUTE`, limits, a velocity or
+  position motor), slider, spring, rope, ball; to another body (`other`) or
+  a world point (`otherAnchor`); `value` reads the angle or slide.
+- `og.CharacterController` (3D or top-down) — set `move` every tick and
+  `jump` to jump; it climbs `maxSlope` and `stepHeight`, snaps to the
+  ground, rides moving platforms, pushes bodies; read `grounded`,
+  `velocity`, `ground`.
+- `og.PlatformerController` (2D) — `moveX`, `jump`, `down` in; jump height
+  and time to apex, coyote time, jump buffer, wall jumps, one-way layers,
+  corner correction as tunables (og-feel §12 has values by genre);
+  `og.CharacterEvent` reports jumps and landings for dust and sounds.
+- `og.Vehicle` — a raycast car (3D, `throttle`, `steer`, `brake`; wheels
+  from `og.physics.vehicleWheels`) or a car on wheel joints (2D).
+- `og.Rope` and `og.Cloth` — Verlet, drawn by the engine when `visible`;
+  `og.Fluid2D` — a particle fluid drawn as metaballs on a sprite layer.
+- `og.Ragdoll` — give the entity a rig
+  (`og.physics.setRagdollRig(world, e, must(og.physics.ragdollRigFromSkeleton(world, anim.skeleton)))`),
+  then set `weight` 1 to go limp; its model is drawn blended from the
+  animation to the bones over `blendTime`.
+
+Readouts (`ropePoints`, `clothPoints`, `fluidParticles`, `waterHeight`,
+`vehicleWheels`, `ragdollPose`) show the last step. `templates/fx-showcase`
+has a station for each.
 
 ## Where to look things up
 

@@ -80,7 +80,7 @@ module render {
 | [`og.render.standardMaterial`](#fn-standardMaterial) | function | Create a standard material. |
 | [`og.render.updateMaterial`](#fn-updateMaterial) | function | Change some parameters of a standard material. |
 | [`Shader`](#type-Shader) | handle | A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read. |
-| [`og.render.shaderMaterial`](#fn-shaderMaterial) | function | Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; see the `shader` page of the wiki's render module), its parameters at their defaults. Skinned meshes draw it without the hooks; shadows and the depth prepass use the undisplaced mesh. |
+| [`og.render.shaderMaterial`](#fn-shaderMaterial) | function | Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. Skinned meshes draw it without the hooks; shadows and the depth prepass use the undisplaced mesh. |
 | [`og.render.setShaderParam`](#fn-setShaderParam) | function | Set a parameter of a shader material, by the name its shader declares: a number for float, two to four for vec2, vec3, vec4 and color. |
 | [`og.render.capabilities`](#fn-capabilities) | function | The renderer's tier and limits on this device. |
 | [`og.render.text`](#fn-text) | function | Draw text this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the text should show. Multi-page fonts are drawn page by page with one layout. |
@@ -363,7 +363,7 @@ fn updateMaterial {
 
 ### `og.render.shaderMaterial`
 
-Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; see the `shader` page of the wiki's render module), its parameters at their defaults. Skinned meshes draw it without the hooks; shadows and the depth prepass use the undisplaced mesh.
+Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. Skinned meshes draw it without the hooks; shadows and the depth prepass use the undisplaced mesh.
 
 ```ts
 og.render.shaderMaterial(world: World, shader: Shader, desc?: StandardMaterialDesc): Result<Material>
@@ -381,7 +381,7 @@ Binding symbol `og_render_shader_material` · publish builds: kept
 
 ```ogt
 fn shaderMaterial {
-  doc "Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; see the `shader` page of the wiki's render module), its parameters at their defaults. Skinned meshes draw it without the hooks; shadows and the depth prepass use the undisplaced mesh."
+  doc "Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. Skinned meshes draw it without the hooks; shadows and the depth prepass use the undisplaced mesh."
   param world World "The world whose renderer owns the material."
   param shader Shader "The shader."
   param desc StandardMaterialDesc "The base material; omitted parameters take three.js defaults. A dissolve sets alphaTest so that alpha below it is cut."
