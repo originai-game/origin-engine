@@ -1,0 +1,11 @@
+[package]
+name = "og-tween"
+version = "0.0.1"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Origin Engine tweens: eased, delayed, looping and grouped animation of any reflected numeric component field, as one deterministic ECS system with a state block"
+
+[dependencies]
+og-core = { path = "../og-core" }
+og-ecs = { path = "../og-ecs" }
