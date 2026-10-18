@@ -580,7 +580,7 @@ pub fn tick_update(scene: &mut RenderScene, frame: u32) {
 // a sprite hit flash.
 // ---------------------------------------------------------------------------
 
-fn tile_texture(scene: &mut RenderScene) -> TextureHandle {
+pub(crate) fn tile_texture(scene: &mut RenderScene) -> TextureHandle {
     scene.add_texture(texture(64, ColorSpace::Srgb, |u, v| {
         let edge = (u.min(1.0 - u).min(v).min(1.0 - v) * 16.0).min(1.0);
         let n = fbm(u * 5.0, v * 5.0, 2);
@@ -589,7 +589,7 @@ fn tile_texture(scene: &mut RenderScene) -> TextureHandle {
     }))
 }
 
-fn crate_texture(scene: &mut RenderScene) -> TextureHandle {
+pub(crate) fn crate_texture(scene: &mut RenderScene) -> TextureHandle {
     scene.add_texture(texture(64, ColorSpace::Srgb, |u, v| {
         let border = u.min(1.0 - u).min(v).min(1.0 - v) < 0.1;
         let diag = ((u - v).abs() < 0.08) || ((u + v - 1.0).abs() < 0.08);

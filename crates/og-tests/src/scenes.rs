@@ -43,6 +43,13 @@ pub const SCENES: &[&str] = &[
     "motion-blur",
     "stylised",
     "skinning",
+    "atmosphere-fog",
+    "atmosphere-dusk",
+    "atmosphere-night",
+    "water-3d",
+    "water-2d",
+    "fluid-2d",
+    "shader-hooks",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -230,6 +237,16 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         }
         "stylised" => g.scene = fx::stylised_scene()?,
         "skinning" => g.scene = fx::skinning_scene(),
+        // E5: fog over the colonnade by day, the day-night look at dusk
+        // and at night (stars, moonlight), planar water.
+        "atmosphere-fog" => g.scene = crate::atmo_scenes::fog_scene(),
+        "atmosphere-dusk" => g.scene = crate::atmo_scenes::day_night_scene(18.2, true),
+        "atmosphere-night" => g.scene = crate::atmo_scenes::day_night_scene(23.0, false),
+        "water-3d" => g.scene = crate::atmo_scenes::water_scene(),
+        "water-2d" => g.scene = crate::atmo_scenes::water_2d_scene(),
+        "fluid-2d" => g.scene = crate::atmo_scenes::fluid_2d_scene(),
+        // Material shader hooks: dissolve by noise, wind-swayed grass.
+        "shader-hooks" => g.scene = crate::atmo_scenes::hooks_scene(45),
         other => {
             return Err(format!(
                 "unknown gfx scene '{other}' (known: {})",
