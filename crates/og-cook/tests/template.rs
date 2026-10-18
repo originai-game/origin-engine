@@ -33,6 +33,8 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
+mod support;
+
 fn repo() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
@@ -105,19 +107,14 @@ fn tree_hash(files: &BTreeMap<String, Vec<u8>>) -> u64 {
     h.finish()
 }
 
-struct Cooked {
-    root: PathBuf,
-    report: og_cook::Report,
-}
-
-/// The template cooked once (all cores) and shared by the tests.
-fn cooked() -> &'static Cooked {
-    static COOKED: OnceLock<Cooked> = OnceLock::new();
+/// The template cooked once (all cores) and shared by the tests, across
+/// their processes (`support::shared`).
+fn cooked() -> &'static support::SharedCook {
+    static COOKED: OnceLock<support::SharedCook> = OnceLock::new();
     COOKED.get_or_init(|| {
-        let root = fresh_project("shared");
-        let report = cook_project(&root, &CookOptions::default()).expect("the cook runs");
-        assert!(report.ok(), "cook errors: {:?}", report.errors());
-        Cooked { root, report }
+        support::shared("template", &[template_assets()], |root| {
+            copy_dir(&template_assets(), &root.join("assets"))
+        })
     })
 }
 
@@ -150,11 +147,10 @@ fn cooking_twice_gives_identical_bytes() {
         "every output but the manifest"
     );
 
-    let r = &first.report;
-    let ratio = r.cooked_bytes() as f64 / r.source_bytes() as f64;
+    let ratio = first.cooked_bytes as f64 / first.source_bytes as f64;
     let ev = evidence_dir();
-    std::fs::write(ev.join("cook-report.md"), r.to_markdown()).unwrap();
-    std::fs::write(ev.join("cook-report.json"), r.to_json()).unwrap();
+    std::fs::write(ev.join("cook-report.md"), &first.report_markdown).unwrap();
+    std::fs::write(ev.join("cook-report.json"), &first.report_json).unwrap();
     let per_file: Vec<String> = a
         .iter()
         .map(|(k, v)| format!("    \"{k}\": \"{:016x}\"", og_core::hash::hash_bytes(v)))
@@ -164,9 +160,9 @@ fn cooking_twice_gives_identical_bytes() {
         format!(
             "{{\n  \"what\": \"FNV-1a 64 over every (path, bytes) of cooked/, two cooks of templates/game/assets in fresh directories\",\n  \"cook_all_cores\": \"{ha:016x}\",\n  \"cook_one_thread\": \"{hb:016x}\",\n  \"files\": {},\n  \"source_bytes\": {},\n  \"cooked_bytes\": {},\n  \"ratio\": {ratio:.4},\n  \"cook_ms_all_cores\": {:.0},\n  \"cook_ms_one_thread\": {:.0},\n  \"per_file\": {{\n{}\n  }}\n}}\n",
             a.len(),
-            r.source_bytes(),
-            r.cooked_bytes(),
-            r.elapsed_ms,
+            first.source_bytes,
+            first.cooked_bytes,
+            first.elapsed_ms,
             second.elapsed_ms,
             per_file.join(",\n")
         ),

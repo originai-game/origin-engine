@@ -1,21 +1,16 @@
 # cargo-nextest settings for the gate (AGENTS.md §Build and gate discipline).
-# Test binaries run in parallel, one process per test. Two shapes need care,
-# and both are declared here rather than with sleeps or retries:
-# - a binary whose tests share one fixture directory built on first use
-#   (og-cook's template tests cook templates/game once into target/tmp) runs
-#   its tests one at a time;
+# Test binaries run in parallel, one process per test. Shapes that need care
+# are declared here rather than with sleeps or retries:
+# - a fixture several tests read is made once across their processes under
+#   a file lock (og-cook's tests/support: the template and the two rigged
+#   models are cooked once per test build), so those tests run in parallel;
 # - a test that asserts a wall-clock bound takes every slot, so it never
 #   measures while other binaries compile shaders or cook textures.
 
 [test-groups]
-cook-shared = { max-threads = 1 }
 # GPU-bound binaries: beyond a few at once they only share one adapter and
 # compile the same shaders in parallel; the other slots stay for CPU tests.
 gpu = { max-threads = 4 }
-
-[[profile.default.overrides]]
-filter = 'binary_id(og-cook::template)'
-test-group = 'cook-shared'
 
 [[profile.default.overrides]]
 filter = 'package(og-tests) | package(og-ui) | package(og-render)'

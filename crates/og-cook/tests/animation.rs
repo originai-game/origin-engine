@@ -19,6 +19,8 @@ use og_cook::cook::{CookOptions, cook_project};
 use og_cook::runtime::{Bundle, CookedAnimation};
 use std::path::PathBuf;
 
+mod support;
+
 fn repo() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
@@ -48,6 +50,20 @@ fn cooked(name: &str, settings: Option<&str>) -> (PathBuf, Bundle) {
     assert!(report.ok(), "{:?}", report.errors());
     let b = Bundle::open(&root.join("cooked")).unwrap();
     (root, b)
+}
+
+/// The two models cooked with no import settings, once for every test
+/// process that only reads them (`support::shared`).
+fn cooked_default() -> Bundle {
+    let models = repo().join("templates/game/assets/models");
+    let sources = [models.join("walker.glb"), models.join("trickster.glb")];
+    let cook = support::shared("anim-default", &sources, |root| {
+        std::fs::create_dir_all(root.join("assets/models")).unwrap();
+        for m in ["walker.glb", "trickster.glb"] {
+            std::fs::copy(models.join(m), root.join("assets/models").join(m)).unwrap();
+        }
+    });
+    Bundle::open(&cook.root.join("cooked")).unwrap()
 }
 
 fn source(name: &str) -> (gltf::Document, Vec<gltf::buffer::Data>) {
@@ -224,7 +240,7 @@ fn check(b: &Bundle, models: &[&str], tag: &str, report: &mut Vec<String>) {
 
 #[test]
 fn cooked_clips_resample_to_the_gltf_sampler_within_1e_5() {
-    let (_, b) = cooked("resample", None);
+    let b = cooked_default();
     let mut report = Vec::new();
     check(
         &b,
@@ -272,9 +288,65 @@ fn cooked_clips_resample_to_the_gltf_sampler_within_1e_5() {
     .unwrap();
 }
 
+/// The source vertices bucketed by position, so the vertex a cooked vertex
+/// came from is found among its neighbours instead of among all of them.
+/// The match minimises `|source - p| - 1e-3 * (source normal . n)`, so it
+/// lies within `nearest + 2e-3` of `p`: [`SourceGrid::near`] returns every
+/// vertex in the 27 cells around `p` (cells of `CELL`), all vertices within
+/// `CELL` of it, when the nearest is within `CELL - 2.5e-3` (a margin over
+/// 2e-3 for rounding), and otherwise every
+/// vertex. Candidates come in index order, so ties resolve as a full scan
+/// would.
+struct SourceGrid {
+    cells: std::collections::HashMap<[i32; 3], Vec<usize>>,
+    positions: Vec<og_core::glam::Vec3>,
+}
+
+const CELL: f32 = 4e-3;
+
+impl SourceGrid {
+    fn new(pos: &[[f32; 3]]) -> Self {
+        let positions: Vec<og_core::glam::Vec3> =
+            pos.iter().map(|&p| og_core::glam::Vec3::from(p)).collect();
+        let mut cells = std::collections::HashMap::<[i32; 3], Vec<usize>>::new();
+        for (i, p) in positions.iter().enumerate() {
+            cells.entry(Self::cell(*p)).or_default().push(i);
+        }
+        SourceGrid { cells, positions }
+    }
+
+    fn cell(p: og_core::glam::Vec3) -> [i32; 3] {
+        let c = (p / CELL).floor();
+        [c.x as i32, c.y as i32, c.z as i32]
+    }
+
+    fn near(&self, p: og_core::glam::Vec3) -> Vec<usize> {
+        let [x, y, z] = Self::cell(p);
+        let mut out = Vec::new();
+        for dx in -1..=1 {
+            for dy in -1..=1 {
+                for dz in -1..=1 {
+                    if let Some(v) = self.cells.get(&[x + dx, y + dy, z + dz]) {
+                        out.extend_from_slice(v);
+                    }
+                }
+            }
+        }
+        let nearest = out
+            .iter()
+            .map(|&i| (self.positions[i] - p).length())
+            .fold(f32::INFINITY, f32::min);
+        if nearest > CELL - 2.5e-3 {
+            return (0..self.positions.len()).collect();
+        }
+        out.sort_unstable();
+        out
+    }
+}
+
 #[test]
 fn skins_and_morphs_follow_the_cooked_vertices() {
-    let (_, b) = cooked("vertices", None);
+    let b = cooked_default();
     for model in ["walker.glb", "trickster.glb"] {
         let id = format!("models/{model}");
         let a = anim(&b, &id);
@@ -325,17 +397,18 @@ fn skins_and_morphs_follow_the_cooked_vertices() {
         let cooked = &m.primitives[stream.primitive];
         assert_eq!(stream.joints.len(), cooked.vertices.len());
         let extent = (cooked.max - cooked.min).max_element();
+        let grid = SourceGrid::new(&pos);
         for (v, vert) in cooked.vertices.iter().enumerate() {
             let p = og_core::glam::Vec3::from(vert.position);
             let n = og_core::glam::Vec3::from(vert.normal);
-            let s = (0..pos.len())
-                .min_by(|&x, &y| {
-                    let d = |i: usize| {
-                        (og_core::glam::Vec3::from(pos[i]) - p).length()
-                            - 1e-3 * og_core::glam::Vec3::from(nrm[i]).dot(n)
-                    };
-                    d(x).total_cmp(&d(y))
-                })
+            let d = |i: usize| {
+                (og_core::glam::Vec3::from(pos[i]) - p).length()
+                    - 1e-3 * og_core::glam::Vec3::from(nrm[i]).dot(n)
+            };
+            let s = grid
+                .near(p)
+                .into_iter()
+                .min_by(|&x, &y| d(x).total_cmp(&d(y)))
                 .unwrap();
             assert!((og_core::glam::Vec3::from(pos[s]) - p).length() < extent * 1e-4);
             let sum: f32 = stream.weights[v].iter().sum();
@@ -403,7 +476,7 @@ fn markers_come_from_extras_and_import_settings() {
 #[test]
 fn a_cooked_walker_plays_in_og_anim() {
     use og_anim::*;
-    let (_, b) = cooked("play", None);
+    let b = cooked_default();
     let a = anim(&b, "models/walker.glb");
     let mut world = og_ecs::World::new(&og_ecs::WorldDesc {
         tick_rate: 60,
