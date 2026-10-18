@@ -167,7 +167,12 @@ wasm_opt_one() {
     wasm-bindgen --target web --out-dir "$OG_WASM_OUT/bindgen/$name" --out-name origin-engine "$raw" || return 1
     input="$OG_WASM_OUT/bindgen/$name/origin-engine_bg.wasm"
   fi
-  wasm-opt -Oz --enable-bulk-memory --enable-nontrapping-float-to-int \
+  # --low-memory-unused: rustc links wasm32 stack-first (the stack is
+  # [0, 1 MiB), data from 1 MiB), so the low 1 KiB is only ever the bottom of
+  # a stack about to overflow; it lets wasm-opt fold constant offsets into
+  # loads and stores (binaryen 133: -100 KB, -23.7 KB brotli on the publish
+  # variant). --converge, a second -Oz and the strip flags gained nothing.
+  wasm-opt -Oz --enable-bulk-memory --enable-nontrapping-float-to-int --low-memory-unused \
     "$input" -o "$OG_WASM_OUT/opt/$name.wasm" || return 1
   og_say "$name: $(og_bytes "$raw") B raw -> $(og_bytes "$input") B bindgen -> $(og_bytes "$OG_WASM_OUT/opt/$name.wasm") B wasm-opt -Oz"
 }
