@@ -26,6 +26,7 @@ og-blob = { path = "../og-blob" }
 og-core = { path = "../og-core" }
 og-render = { path = "../og-render" }
 og-anim = { path = "../og-anim" }
+og-tilemap = { path = "../og-tilemap" }
 glam = { workspace = true }
 bytemuck = { workspace = true }
 miniz_oxide = "0.8"

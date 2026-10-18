@@ -1,0 +1,11 @@
+[package]
+name = "og-tilemap"
+version = "0.0.1"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Origin Engine tilemaps: tilesets with collision, animated tiles and auto-tiling rules, layered maps, deterministic runtime edits, merged collision runs and chunked sprite batches"
+
+[dependencies]
+og-core = { path = "../og-core" }
+glam = { workspace = true }

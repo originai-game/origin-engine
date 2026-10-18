@@ -19,6 +19,8 @@
 //! | colour LUT (`og.Lut`, a `.cube`) | [`LutMeta`] | `rgba` (size³ RGBA8, red fastest) |
 //! | particle emitter (`og.ParticleEmitter`, an `.ogt` of `type particles`) | [`EmitterMeta`] | `text` (the validated emitter file) |
 //! | animation (`og.Animation`, a glTF's `#anim`) | [`AnimMeta`] | `nodes` [`NodeRow`], `skins` [`SkinRow`], `joints` (u32 node indices), `inverse_binds` (16 f32 per joint, column-major), `clips` [`ClipRow`], `channels` [`ChannelRow`], `samples` (f32), `events` [`EventRow`], `skin_streams` [`SkinStreamRow`], `skin_data` (meshopt streams), `morphs` [`MorphRow`], `targets` [`TargetRow`], `morph_data` (meshopt streams), `strings` |
+//! | tileset (`og.Tileset`, an `.ogt` of `type tileset`) | [`TilesetMeta`] | `text` (the canonical tileset text) |
+//! | tilemap (`og.Tilemap`, an `.ogt` of `type tilemap`, a Tiled `.tmj`, an LDtk `.ldtk`) | [`TilemapMeta`] | `layers` [`MapLayerRow`], `cells` (u32 per cell, layer after layer), `objects` [`MapObjectRow`], `props` [`MapPropRow`], `tilesets` [`MapTilesetRow`], `strings` |
 
 use og_core::hash::StableHasher;
 use og_core::{Reflect, Schema};
@@ -588,5 +590,125 @@ impl BlobKind for Emitter {
     const NAME: &'static str = "og.ParticleEmitter";
     fn schemas() -> Vec<Schema> {
         vec![EmitterMeta::schema()]
+    }
+}
+
+// ── tilemaps ─────────────────────────────────────────────────────────────
+
+row!(
+    /// The root of a tileset blob (an `.ogt` of `type tileset`).
+    TilesetMeta, "og.Tileset", 1 {
+        /// Bytes of the canonical tileset text in `text`.
+        text_bytes: u32,
+    }
+);
+
+/// The tileset blob: `text` holds the canonical tileset text
+/// (`og_tilemap::Tileset::to_text`), parsed again at load.
+pub struct Tileset;
+impl BlobKind for Tileset {
+    const NAME: &'static str = "og.Tileset";
+    fn schemas() -> Vec<Schema> {
+        vec![TilesetMeta::schema()]
+    }
+}
+
+row!(
+    /// The root of a tilemap blob (an `.ogt` of `type tilemap`, a Tiled
+    /// `.tmj` or an LDtk `.ldtk`).
+    TilemapMeta, "og.Tilemap", 1 {
+        width: u32,
+        height: u32,
+        tile_width_px: u32,
+        tile_height_px: u32,
+        /// World units per tile width.
+        unit: f32,
+        layer_count: u32,
+        object_count: u32,
+        tileset_count: u32,
+        prop_count: u32,
+    }
+);
+
+/// [`MapLayerRow::flags`] bits.
+pub mod layer_flag {
+    pub const VISIBLE: u32 = 1;
+    pub const COLLISION: u32 = 2;
+    pub const REPEAT_X: u32 = 4;
+    pub const REPEAT_Y: u32 = 8;
+    /// A terrain layer: `terrain_*` names its terrain.
+    pub const TERRAIN: u32 = 16;
+}
+
+row!(
+    /// One layer: its `width × height` cells start at `cell_offset` (in
+    /// cells) of the `cells` section (u32 little-endian per cell, the
+    /// `og_tilemap::Layer::cells` encoding).
+    MapLayerRow, "og.TilemapLayer", 1 {
+        name_offset: u32,
+        name_len: u32,
+        tileset: u32,
+        terrain_offset: u32,
+        terrain_len: u32,
+        parallax_x: f32,
+        parallax_y: f32,
+        offset_x: f32,
+        offset_y: f32,
+        opacity: f32,
+        flags: u32,
+        z: i32,
+        cell_offset: u32,
+    }
+);
+
+row!(
+    /// A map object in map-local world units (top-left corner, y up), with
+    /// `prop_count` rows of `props` from `prop_first`.
+    MapObjectRow, "og.TilemapObject", 1 {
+        name_offset: u32,
+        name_len: u32,
+        kind_offset: u32,
+        kind_len: u32,
+        x: f32,
+        y: f32,
+        width: f32,
+        height: f32,
+        prop_first: u32,
+        prop_count: u32,
+    }
+);
+
+row!(
+    /// A key and value of an object's properties.
+    MapPropRow, "og.TilemapProp", 1 {
+        key_offset: u32,
+        key_len: u32,
+        value_offset: u32,
+        value_len: u32,
+    }
+);
+
+row!(
+    /// A map's tileset: `embedded` 0, the asset id of a tileset blob in
+    /// `strings`; 1, the canonical text of a tileset an importer made.
+    MapTilesetRow, "og.TilemapTileset", 1 {
+        embedded: u32,
+        offset: u32,
+        len: u32,
+    }
+);
+
+/// The tilemap blob.
+pub struct Tilemap;
+impl BlobKind for Tilemap {
+    const NAME: &'static str = "og.Tilemap";
+    fn schemas() -> Vec<Schema> {
+        vec![
+            TilemapMeta::schema(),
+            MapLayerRow::schema(),
+            MapObjectRow::schema(),
+            MapPropRow::schema(),
+            MapTilesetRow::schema(),
+        ]
     }
 }

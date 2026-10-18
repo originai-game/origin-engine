@@ -16,6 +16,7 @@ mod font;
 mod model;
 mod scene;
 mod texture;
+pub mod tilemap;
 
 use crate::format::{self, BlobKind, COOKER_VERSION};
 use crate::runtime::{Manifest, ManifestAsset, ManifestOutput, MANIFEST};
@@ -378,6 +379,8 @@ enum Kind {
     Scene,
     Lut,
     Emitter,
+    Tileset,
+    Tilemap,
 }
 
 impl Kind {
@@ -390,6 +393,8 @@ impl Kind {
             Kind::Scene => "scene",
             Kind::Lut => "lut",
             Kind::Emitter => "emitter",
+            Kind::Tileset => "tileset",
+            Kind::Tilemap => "tilemap",
         }
     }
 }
@@ -413,6 +418,8 @@ enum Work<'a> {
     Sound(&'a Source),
     Lut(&'a Source),
     Emitter(&'a Source),
+    Tileset(&'a Source),
+    Tilemap(&'a Source, tilemap::MapSettings),
     Font(&'a Source, FontSettings),
     Scene(&'a Source),
 }
@@ -585,6 +592,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
             "wav" => Kind::Sound,
             "ttf" | "otf" => Kind::Font,
             "cube" => Kind::Lut,
+            "tmj" | "ldtk" => Kind::Tilemap,
             "ogt" => {
                 let text = std::fs::read_to_string(path)
                     .map_err(|e| CookError(format!("{}: {e}", path.display())))?;
@@ -604,12 +612,14 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     }
                     Ok(doc) if doc.ty == "scene" => Kind::Scene,
                     Ok(doc) if doc.ty == crate::fx::EMITTER_TYPE => Kind::Emitter,
+                    Ok(doc) if doc.ty == "tileset" => Kind::Tileset,
+                    Ok(doc) if doc.ty == "tilemap" => Kind::Tilemap,
                     Ok(doc) => {
                         early_errors.push((
                             rel.clone(),
                             "scene",
                             format!(
-                                "an .ogt of type '{}' is not a cookable asset (scene, particles or import)",
+                                "an .ogt of type '{}' is not a cookable asset (scene, particles, tileset, tilemap or import)",
                                 doc.ty
                             ),
                         ));
@@ -792,6 +802,32 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                 let st = stamp(&[b"emitter", &hash, refs.join("\n").as_bytes()]);
                 outs.push((s.rel.clone(), format::Emitter::NAME, st, Work::Emitter(s)));
             }
+            Kind::Tileset => {
+                let st = stamp(&[
+                    b"tileset",
+                    &hash,
+                    tilemap::references_of_tileset(&s.bytes, &|id| known.contains(id)).as_bytes(),
+                ]);
+                outs.push((s.rel.clone(), format::Tileset::NAME, st, Work::Tileset(s)));
+            }
+            Kind::Tilemap => match tilemap::MapSettings::parse(settings_block(s, "tilemap")) {
+                Ok(m) => {
+                    let refs = tilemap::references(&s.rel, &s.bytes, &m, &|id| known.contains(id));
+                    let st = stamp(&[
+                        b"tilemap",
+                        &hash,
+                        m.describe().as_bytes(),
+                        refs.join("\n").as_bytes(),
+                    ]);
+                    outs.push((
+                        s.rel.clone(),
+                        format::Tilemap::NAME,
+                        st,
+                        Work::Tilemap(s, m),
+                    ));
+                }
+                Err(e) => early_errors.push((s.rel.clone(), "tilemap", e)),
+            },
             Kind::Font => match font_settings(s, &options.font) {
                 Ok(f) => {
                     let st = stamp(&[b"font", f.describe().as_bytes(), &hash]);
@@ -1085,6 +1121,14 @@ fn run(
                     em.bursts.len()
                 )],
             ))
+        }
+        Work::Tileset(s) => {
+            let text = std::str::from_utf8(&s.bytes)
+                .map_err(|_| CookError("a tileset is text (UTF-8)".into()))?;
+            tilemap::cook_tileset(text, &|id| known.contains(id), p.stamp)
+        }
+        Work::Tilemap(s, m) => {
+            tilemap::cook_tilemap(&s.rel, &s.bytes, m, &|id| known.contains(id), p.stamp)
         }
         Work::Font(s, f) => {
             font::cook(&s.bytes, f, threads, p.stamp).map(|(b, n)| (b, vec![n.note]))

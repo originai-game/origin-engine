@@ -1445,3 +1445,127 @@ impl CookedAnimation {
         })
     }
 }
+
+// ── tilemaps ─────────────────────────────────────────────────────────────
+
+impl Bundle {
+    /// Decodes a tileset blob (`og.Tileset`).
+    pub fn tileset(&self, id: &str, bytes: &[u8]) -> Result<og_tilemap::Tileset, LoadError> {
+        let blob = self.blob::<format::Tileset>(id, bytes)?;
+        decode_tileset(&blob)
+    }
+
+    /// Decodes a tilemap blob (`og.Tilemap`). Its tilesets are asset ids of
+    /// tileset blobs ([`Bundle::tileset`]) or embedded in it.
+    pub fn tilemap(&self, id: &str, bytes: &[u8]) -> Result<og_tilemap::TilemapAsset, LoadError> {
+        let blob = self.blob::<format::Tilemap>(id, bytes)?;
+        decode_tilemap(&blob)
+    }
+
+    /// Reads and decodes a tileset (native).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn load_tileset(&self, id: &str) -> Result<og_tilemap::Tileset, LoadError> {
+        self.tileset(id, &self.read(id)?)
+    }
+
+    /// Reads and decodes a tilemap (native).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn load_tilemap(&self, id: &str) -> Result<og_tilemap::TilemapAsset, LoadError> {
+        self.tilemap(id, &self.read(id)?)
+    }
+}
+
+fn decode_tileset(blob: &Blob) -> Result<og_tilemap::Tileset, LoadError> {
+    let meta = one::<format::TilesetMeta>(blob)?;
+    let text = blob.raw("text")?;
+    let text = text
+        .get(..meta.text_bytes as usize)
+        .ok_or_else(|| invalid(blob, "the tileset text is cut short"))?;
+    let text =
+        std::str::from_utf8(text).map_err(|_| invalid(blob, "the tileset text is not UTF-8"))?;
+    og_tilemap::Tileset::parse(text).map_err(|e| invalid(blob, e.to_string()))
+}
+
+fn decode_tilemap(blob: &Blob) -> Result<og_tilemap::TilemapAsset, LoadError> {
+    use format::layer_flag as fl;
+    let meta = one::<format::TilemapMeta>(blob)?;
+    let layers = table::<format::MapLayerRow>(blob, "layers")?;
+    let objects = table::<format::MapObjectRow>(blob, "objects")?;
+    let props = table::<format::MapPropRow>(blob, "props")?;
+    let tilesets = table::<format::MapTilesetRow>(blob, "tilesets")?;
+    let strings = blob.raw("strings")?;
+    let cells = blob.raw("cells")?;
+    let s = |o: u32, l: u32| -> Result<String, LoadError> {
+        pool_str(strings, o, l)
+            .map(str::to_string)
+            .ok_or_else(|| invalid(blob, "a string is out of range"))
+    };
+    let n = (meta.width as usize) * (meta.height as usize);
+    let mut map = og_tilemap::TilemapAsset {
+        width: meta.width,
+        height: meta.height,
+        tile_width_px: meta.tile_width_px,
+        tile_height_px: meta.tile_height_px,
+        unit: meta.unit,
+        tilesets: Vec::new(),
+        layers: Vec::new(),
+        objects: Vec::new(),
+    };
+    for t in &tilesets {
+        let text = s(t.offset, t.len)?;
+        map.tilesets.push(if t.embedded == 1 {
+            og_tilemap::TilesetRef::Embedded(
+                og_tilemap::Tileset::parse(&text).map_err(|e| invalid(blob, e.to_string()))?,
+            )
+        } else {
+            og_tilemap::TilesetRef::Asset(text)
+        });
+    }
+    for l in &layers {
+        let first = l.cell_offset as usize * 4;
+        let bytes = cells
+            .get(first..first + n * 4)
+            .ok_or_else(|| invalid(blob, "a layer's cells are out of range"))?;
+        map.layers.push(og_tilemap::Layer {
+            name: s(l.name_offset, l.name_len)?,
+            tileset: l.tileset,
+            cells: bytes
+                .chunks_exact(4)
+                .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+                .collect(),
+            terrain: if l.flags & fl::TERRAIN != 0 {
+                Some(s(l.terrain_offset, l.terrain_len)?)
+            } else {
+                None
+            },
+            parallax: glam::Vec2::new(l.parallax_x, l.parallax_y),
+            offset: glam::Vec2::new(l.offset_x, l.offset_y),
+            opacity: l.opacity,
+            visible: l.flags & fl::VISIBLE != 0,
+            collision: l.flags & fl::COLLISION != 0,
+            repeat_x: l.flags & fl::REPEAT_X != 0,
+            repeat_y: l.flags & fl::REPEAT_Y != 0,
+            z: l.z,
+        });
+    }
+    for o in &objects {
+        let range = o.prop_first as usize..(o.prop_first + o.prop_count) as usize;
+        let rows = props
+            .get(range)
+            .ok_or_else(|| invalid(blob, "an object's properties are out of range"))?;
+        map.objects.push(og_tilemap::MapObject {
+            name: s(o.name_offset, o.name_len)?,
+            kind: s(o.kind_offset, o.kind_len)?,
+            x: o.x,
+            y: o.y,
+            width: o.width,
+            height: o.height,
+            properties: rows
+                .iter()
+                .map(|p| Ok((s(p.key_offset, p.key_len)?, s(p.value_offset, p.value_len)?)))
+                .collect::<Result<_, LoadError>>()?,
+        });
+    }
+    map.validate().map_err(|e| invalid(blob, e.to_string()))?;
+    Ok(map)
+}
