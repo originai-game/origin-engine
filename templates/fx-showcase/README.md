@@ -51,3 +51,8 @@ and checks of what it shows from dumped entities and the two frames (the
 crate floats, the character rides the lift, the hinge turned and the ragdoll
 blended to its bones, the ball stays within its rope's reach, rain and
 flags move). `OG_FX_CAPTURE=water.png og test .` records named frames only.
+The E5 stations have references on all four tiers: `metal`, `vulkan-cpu`
+(lavapipe in the og-lavapipe container, reproduced at RMSE 0) and the browser
+tiers `webgpu` and `webgl2`, which come from
+`packages/engine/tests/web/reference-e5.ts` (`docs/ci.md` §Browser reference
+tiers).

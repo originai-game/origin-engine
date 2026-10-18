@@ -400,7 +400,10 @@ step_web_reference() {
   og_need bun || return 1
   (cd packages/engine && bun tests/web/reference.ts); a=$?
   (cd packages/engine && bun tests/web/reference.ts --webgl); b=$?
-  return $((a | b))
+  # The E5 stations, each a fresh run like its playtest.
+  (cd packages/engine && bun tests/web/reference-e5.ts); c=$?
+  (cd packages/engine && bun tests/web/reference-e5.ts --webgl); d=$?
+  return $((a | b | c | d))
 }
 
 case "${1:-}" in

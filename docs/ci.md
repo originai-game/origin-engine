@@ -138,7 +138,7 @@ had grown `target/` to 143 GB.
 | `bun-test` | `bun run test` in each `packages/*` with a `test` script; `OG_GATE=1` makes `packages/engine/scripts/build.sh` take the dev addon and `og` and the gate's wasm instead of compiling release and wasm again (below) | full | | yes | |
 | `determinism` | `tools/wasm-determinism/run.sh`: the same math digest and world hash on the host and on wasm32 scalar and simd128 under node | full | | yes | needs node |
 | perf | `cargo test -p og-tests --release -- --ignored perf` | `make perf` | | | yes |
-| `web-reference` | `bun tests/web/reference.ts` and `--webgl` in `packages/engine`: templates/fx-showcase's five stations in headless Chrome, compared with `references/webgpu`/`webgl2` or else `metal` under og-tests' tolerance (below); path-aware (§Lanes) | `scripts/check.sh web-reference` (`make web-reference`), in no lane | | | |
+| `web-reference` | `bun tests/web/reference.ts` and `--webgl` in `packages/engine`: templates/fx-showcase's five stations, then `bun tests/web/reference-e5.ts` and `--webgl` for its eight E5 stations (each a fresh run like its playtest), in headless Chrome, compared with `references/webgpu`/`webgl2` or else `metal` under og-tests' tolerance (below); path-aware (§Lanes) | `scripts/check.sh web-reference` (`make web-reference`), in no lane | | | |
 
 `cargo nextest` runs test binaries in parallel, one process per test.
 Fixtures several tests read are made once across their processes under a
@@ -261,6 +261,17 @@ clean runs). Against `metal`, measured at the commit that recorded them
 | fx | 0.000 % | 0.00173 | 0.013 % | 0.00272 |
 | 2d | 0.000 % | 0.00228 | 0.000 % | 0.00231 |
 | stylised | 0.022 % | 0.00360 | 0.022 % | 0.00360 |
+
+The E5 stations (sky, weather, water, shaders, controller, joints, rope,
+fluid) each have a playtest of their own, so `tests/web/reference-e5.ts`
+reads each playtest's station and wait from `tests/<station>.og.ts`. It runs
+reference.ts once per station with `--script 0.5:station:<name> --shots
+<name>@<tick>`, so the browser run is the same fresh run. Against their own
+references both tiers reproduce exactly. Against `metal` (2026-10-19), every
+station is within RMSE 0.0010 on WebGPU and 0.0027 on WebGL2, except water
+on WebGL2 at RMSE 0.0216 (0.93 % outliers). That is expected: WebGL2 has no
+depth-prepass reflection march, so its water reflects the prefiltered sky
+cubemap (`crates/og-render/README.md` §E5).
 
 The runner found four defects, all fixed in og-render before the tiers
 were recorded (`crates/og-render/README.md` §The overlay and §Backend
