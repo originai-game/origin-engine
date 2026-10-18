@@ -127,6 +127,9 @@ fn run(
     if std::env::var_os("OG_GFX_DEBUG_CASCADES").is_some() {
         built.scene.debug = og_render::DebugView::Cascades;
     }
+    if std::env::var_os("OG_GFX_DEBUG_AO").is_some() {
+        built.scene.debug = og_render::DebugView::AmbientOcclusion;
+    }
     let t0 = Instant::now();
     let mut renderer = Renderer::new_blocking(&built.desc).map_err(|e| e.to_string())?;
     let mut stats = FrameStats::default();
@@ -228,6 +231,67 @@ const VARIANTS: &[Variant] = &[
     }),
     ("4 point/spot lights", |g| local_lights(g, false)),
     ("4 lights, 2 shadowed", |g| local_lights(g, true)),
+    ("E1: AO (GTAO)", |g| {
+        g.scene.post.ao = Some(og_render::AmbientOcclusion {
+            method: og_render::AoMethod::Gtao,
+            ..Default::default()
+        })
+    }),
+    ("E1: AO (SSAO)", |g| {
+        g.scene.post.ao = Some(og_render::AmbientOcclusion {
+            method: og_render::AoMethod::Ssao,
+            ..Default::default()
+        })
+    }),
+    ("E1: outline (scene-wide)", |g| {
+        g.scene.post.outline = Some(og_render::Outline::default())
+    }),
+    ("E1: depth of field (low)", |g| {
+        g.scene.post.depth_of_field = Some(og_render::DepthOfField::default())
+    }),
+    ("E1: depth of field (high)", |g| {
+        g.scene.post.depth_of_field = Some(og_render::DepthOfField {
+            quality: og_render::DofQuality::High,
+            ..Default::default()
+        })
+    }),
+    ("E1: motion blur", |g| {
+        g.scene.post.motion_blur = Some(og_render::MotionBlur::default())
+    }),
+    ("E1: god rays", |g| {
+        g.scene.post.god_rays = Some(og_render::GodRays::default())
+    }),
+    ("E1: grading (LUT, vignette, aberration, grain)", |g| {
+        og_tests::fx_scenes::grade(&mut g.scene)
+    }),
+    ("E1: 8 decals", |g| {
+        let c = g.scene.camera.target;
+        for i in 0..8 {
+            let p = c + glam::Vec3::new(i as f32 - 4.0, 0.0, (i % 3) as f32 - 1.0);
+            g.scene.decals.push(og_render::Decal::on_surface(
+                p,
+                glam::Vec3::Y,
+                glam::Vec2::splat(2.0),
+                1.0,
+                i as f32,
+            ));
+        }
+    }),
+    ("E1: toon + rim on every material", |g| {
+        let handles: Vec<_> = g.scene.material_handles().collect();
+        for h in handles {
+            if let Some(m) = g.scene.standard_material(h).copied() {
+                g.scene.set_standard_material(
+                    h,
+                    og_render::StandardMaterial {
+                        toon: 1,
+                        rimIntensity: 0.5,
+                        ..m
+                    },
+                );
+            }
+        }
+    }),
     (
         "all (TAA, bloom, auto exposure, 4 lights / 2 shadowed)",
         |g| {
@@ -314,6 +378,62 @@ fn cost_table(frames: u32) -> Result<String, String> {
         "\n`sprites-20k` (20,000 sprites moved and resubmitted every frame, orthographic): {ms:.3} ms per frame, {} draws ({} sprite draws).",
         stats.draw_calls, stats.sprite_draws
     );
+    let _ = writeln!(
+        table,
+        "\nE1 effect scenes (each against itself with the effect removed):\n"
+    );
+    let _ = writeln!(table, "| Scene | ms | without the effect | Δ | draws |");
+    let _ = writeln!(table, "|---|---|---|---|---|");
+    type Strip = fn(&mut GfxScene);
+    let effect_rows: &[(&str, &str, Strip)] = &[
+        ("particles", "particles (GPU, 6 systems)", |g| {
+            g.scene.particles.clear()
+        }),
+        ("particles-cpu", "particles (CPU path, 6 systems)", |g| {
+            g.scene.particles.clear()
+        }),
+        ("fx-2d", "2D lights + soft shadows", |g| {
+            g.scene.lighting_2d = None;
+        }),
+        ("fx-2d", "2D glow buffer", |g| g.scene.post.glow = None),
+        ("trails-beams", "trails, ribbon, beams", |g| {
+            g.scene.trails.clear();
+            g.scene.ribbons.clear();
+            g.scene.beams.clear();
+        }),
+        ("decals", "5 decals", |g| g.scene.decals.clear()),
+        ("stylised", "outlines (prepass + pass)", |g| {
+            g.scene.post.outline = None;
+            let handles: Vec<_> = g.scene.material_handles().collect();
+            for h in handles {
+                if let Some(m) = g.scene.standard_material(h).copied() {
+                    g.scene.set_standard_material(
+                        h,
+                        og_render::StandardMaterial {
+                            outlineWidth: 0.0,
+                            ..m
+                        },
+                    );
+                }
+            }
+        }),
+        ("skinning", "5 skinned instances (vs none)", |g| {
+            g.scene.skinned_instances.clear()
+        }),
+    ];
+    for (scene, label, strip) in effect_rows {
+        let mut with = scenes::build(scene)?;
+        let (ms, stats) = best_ms(&mut with, frames)?;
+        let mut without = scenes::build(scene)?;
+        strip(&mut without);
+        let (ms0, _) = best_ms(&mut without, frames)?;
+        let _ = writeln!(
+            table,
+            "| `{scene}`: {label} | {ms:.3} | {ms0:.3} | {:+.3} | {} |",
+            ms - ms0,
+            stats.draw_calls
+        );
+    }
     let mut text = scenes::build("text-msdf")?;
     let (ms, stats) = best_ms(&mut text, frames)?;
     let _ = writeln!(

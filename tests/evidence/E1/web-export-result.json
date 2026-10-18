@@ -1,0 +1,818 @@
+{
+ "chrome": "/Users/fan/.agent-browser/browsers/chrome-150.0.7871.115/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+ "failures": 0,
+ "checks": [
+  {
+   "check": "runner: og-build.json lists every file with its bytes and sha256",
+   "ok": true,
+   "detail": []
+  },
+  {
+   "check": "runner: a publish build with the 7 player probe members",
+   "ok": true,
+   "detail": {
+    "protocol": 5,
+    "wire": 1,
+    "build": "publish",
+    "members": [
+     "hello",
+     "tick",
+     "state",
+     "pick",
+     "entity",
+     "input",
+     "capture"
+    ]
+   }
+  },
+  {
+   "check": "match3: og-build.json lists every file with its bytes and sha256",
+   "ok": true,
+   "detail": []
+  },
+  {
+   "check": "match3: a publish build with the 7 player probe members",
+   "ok": true,
+   "detail": {
+    "protocol": 5,
+    "wire": 1,
+    "build": "publish",
+    "members": [
+     "hello",
+     "tick",
+     "state",
+     "pick",
+     "entity",
+     "input",
+     "capture"
+    ]
+   }
+  },
+  {
+   "check": "runner webgpu: the engine reports tier webgpu",
+   "ok": true,
+   "detail": {
+    "firstFrame": 246,
+    "ready": 196,
+    "tier": "webgpu"
+   }
+  },
+  {
+   "check": "runner webgpu: first frame at 246 ms after navigation",
+   "ok": true,
+   "detail": {
+    "firstFrame": 246,
+    "ready": 196,
+    "tier": "webgpu"
+   }
+  },
+  {
+   "check": "runner webgpu: the play gate is up after the first frame",
+   "ok": true
+  },
+  {
+   "check": "runner webgpu: behind the gate the game took its first tick (its first screen, UI included)",
+   "ok": true,
+   "detail": 1
+  },
+  {
+   "check": "runner webgpu: a tap on the gate starts the clock",
+   "ok": true,
+   "detail": {
+    "before": 1,
+    "after": 90
+   }
+  },
+  {
+   "check": "runner webgpu: no console errors",
+   "ok": true,
+   "detail": []
+  },
+  {
+   "check": "runner webgl2: the engine reports tier webgl2",
+   "ok": true,
+   "detail": {
+    "firstFrame": 2038,
+    "ready": 1816,
+    "tier": "webgl2"
+   }
+  },
+  {
+   "check": "runner webgl2: first frame at 2038 ms after navigation",
+   "ok": true,
+   "detail": {
+    "firstFrame": 2038,
+    "ready": 1816,
+    "tier": "webgl2"
+   }
+  },
+  {
+   "check": "runner webgl2: the play gate is up after the first frame",
+   "ok": true
+  },
+  {
+   "check": "runner webgl2: behind the gate the game took its first tick (its first screen, UI included)",
+   "ok": true,
+   "detail": 1
+  },
+  {
+   "check": "runner webgl2: a tap on the gate starts the clock",
+   "ok": true,
+   "detail": {
+    "before": 1,
+    "after": 91
+   }
+  },
+  {
+   "check": "runner webgl2: no console errors",
+   "ok": true,
+   "detail": []
+  },
+  {
+   "check": "match3 webgpu: the engine reports tier webgpu",
+   "ok": true,
+   "detail": {
+    "firstFrame": 159,
+    "ready": 113,
+    "tier": "webgpu"
+   }
+  },
+  {
+   "check": "match3 webgpu: first frame at 159 ms after navigation",
+   "ok": true,
+   "detail": {
+    "firstFrame": 159,
+    "ready": 113,
+    "tier": "webgpu"
+   }
+  },
+  {
+   "check": "match3 webgpu: the play gate is up after the first frame",
+   "ok": true
+  },
+  {
+   "check": "match3 webgpu: behind the gate the game took its first tick (its first screen, UI included)",
+   "ok": true,
+   "detail": 1
+  },
+  {
+   "check": "match3 webgpu: a tap on the gate starts the clock",
+   "ok": true,
+   "detail": {
+    "before": 1,
+    "after": 90
+   }
+  },
+  {
+   "check": "match3 webgpu: no console errors",
+   "ok": true,
+   "detail": []
+  },
+  {
+   "check": "match3 webgl2: the engine reports tier webgl2",
+   "ok": true,
+   "detail": {
+    "firstFrame": 296,
+    "ready": 223,
+    "tier": "webgl2"
+   }
+  },
+  {
+   "check": "match3 webgl2: first frame at 296 ms after navigation",
+   "ok": true,
+   "detail": {
+    "firstFrame": 296,
+    "ready": 223,
+    "tier": "webgl2"
+   }
+  },
+  {
+   "check": "match3 webgl2: the play gate is up after the first frame",
+   "ok": true
+  },
+  {
+   "check": "match3 webgl2: behind the gate the game took its first tick (its first screen, UI included)",
+   "ok": true,
+   "detail": 1
+  },
+  {
+   "check": "match3 webgl2: a tap on the gate starts the clock",
+   "ok": true,
+   "detail": {
+    "before": 1,
+    "after": 90
+   }
+  },
+  {
+   "check": "match3 webgl2: no console errors",
+   "ok": true,
+   "detail": []
+  },
+  {
+   "check": "boot: the splash plays genesis",
+   "ok": true,
+   "detail": "genesis"
+  },
+  {
+   "check": "boot: progress shows the real value (wipe = 100 − percent)",
+   "ok": true,
+   "detail": {
+    "motion": "progress",
+    "label": "Loading 20%",
+    "offset": "80",
+    "now": "20"
+   }
+  },
+  {
+   "check": "the shell shows Made with Origin Engine",
+   "ok": true,
+   "detail": {
+    "hidden": false,
+    "text": "Made with Origin Engine"
+   }
+  },
+  {
+   "check": "index.html carries <meta name=og-engine>",
+   "ok": true,
+   "detail": "0.0.1"
+  },
+  {
+   "check": "the web manifest is standalone with a 512 px icon",
+   "ok": true,
+   "detail": {
+    "id": "./",
+    "name": "Runner",
+    "short_name": "Runner",
+    "start_url": "./",
+    "scope": "./",
+    "display": "standalone",
+    "orientation": "any",
+    "background_color": "#14161b",
+    "theme_color": "#14161b",
+    "icons": [
+     {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+     },
+     {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+     }
+    ]
+   }
+  },
+  {
+   "check": "the manifest's icons are served",
+   "ok": true,
+   "detail": [
+    200,
+    200
+   ]
+  },
+  {
+   "check": "the service worker precached the build",
+   "ok": true,
+   "detail": {
+    "sw": "activating",
+    "cached": 35
+   }
+  },
+  {
+   "check": "offline: the game starts from the service worker's cache",
+   "ok": true,
+   "detail": {
+    "firstFrame": 157,
+    "ready": 119,
+    "tier": "webgpu"
+   }
+  },
+  {
+   "check": "phone: the canvas fills 390×844",
+   "ok": true,
+   "detail": {
+    "cssW": 390,
+    "cssH": 844,
+    "w": 780,
+    "h": 1688,
+    "iso": false,
+    "button": "Tap to play"
+   }
+  },
+  {
+   "check": "phone: drawn at the DPR cap of 2 (780×1688), not 3",
+   "ok": true,
+   "detail": {
+    "cssW": 390,
+    "cssH": 844,
+    "w": 780,
+    "h": 1688,
+    "iso": false,
+    "button": "Tap to play"
+   }
+  },
+  {
+   "check": "phone: without isolation, a touch gate",
+   "ok": true,
+   "detail": {
+    "cssW": 390,
+    "cssH": 844,
+    "w": 780,
+    "h": 1688,
+    "iso": false,
+    "button": "Tap to play"
+   }
+  },
+  {
+   "check": "phone: no install hint where the criteria do not hold (Chrome made no install prompt; not iOS Safari)",
+   "ok": true,
+   "detail": true
+  }
+ ],
+ "results": {
+  "runner webgpu": {
+   "firstFrame": 246,
+   "ready": 196,
+   "tier": "webgpu",
+   "isolated": true,
+   "ticksAfterTap": 89,
+   "gate": "runner-webgpu-gate.png",
+   "play": "runner-webgpu-play.png"
+  },
+  "runner webgl2": {
+   "firstFrame": 2038,
+   "ready": 1816,
+   "tier": "webgl2",
+   "isolated": true,
+   "ticksAfterTap": 90,
+   "gate": "runner-webgl2-gate.png",
+   "play": "runner-webgl2-play.png"
+  },
+  "match3 webgpu": {
+   "firstFrame": 159,
+   "ready": 113,
+   "tier": "webgpu",
+   "isolated": true,
+   "ticksAfterTap": 89,
+   "gate": "match3-webgpu-gate.png",
+   "play": "match3-webgpu-play.png"
+  },
+  "match3 webgl2": {
+   "firstFrame": 296,
+   "ready": 223,
+   "tier": "webgl2",
+   "isolated": true,
+   "ticksAfterTap": 89,
+   "gate": "match3-webgl2-gate.png",
+   "play": "match3-webgl2-play.png"
+  },
+  "runner boot": {
+   "splash": "runner-boot-splash.png",
+   "genesis": "runner-boot-genesis.png",
+   "progress": "runner-boot-progress.png",
+   "progressValue": {
+    "motion": "progress",
+    "label": "Loading 20%",
+    "offset": "80",
+    "now": "20"
+   },
+   "offline": {
+    "firstFrame": 157,
+    "ready": 119,
+    "tier": "webgpu",
+    "shot": "runner-offline.png"
+   }
+  },
+  "match3 phone": {
+   "cssW": 390,
+   "cssH": 844,
+   "w": 780,
+   "h": 1688,
+   "iso": false,
+   "button": "Tap to play",
+   "gate": "match3-phone-gate.png",
+   "play": "match3-phone-play.png"
+  }
+ },
+ "sizes": {
+  "runner": {
+   "total": {
+    "bytes": 10310483,
+    "compressed": 3205186
+   },
+   "files": [
+    {
+     "path": "_headers",
+     "bytes": 414,
+     "brotli": 164
+    },
+    {
+     "path": "audio-worklet.js",
+     "bytes": 1969,
+     "brotli": 875
+    },
+    {
+     "path": "basis/LICENSE",
+     "bytes": 11347,
+     "brotli": 3061
+    },
+    {
+     "path": "basis/NOTICE",
+     "bytes": 998,
+     "brotli": 408
+    },
+    {
+     "path": "basis/README.md",
+     "bytes": 999,
+     "brotli": 529
+    },
+    {
+     "path": "basis/basis_transcoder.js",
+     "bytes": 57529,
+     "brotli": 13699
+    },
+    {
+     "path": "basis/basis_transcoder.wasm",
+     "bytes": 527333,
+     "brotli": 203605
+    },
+    {
+     "path": "cooked/.cook.ogt",
+     "bytes": 4577,
+     "brotli": 1108
+    },
+    {
+     "path": "cooked/audio/coin.wav.ogb",
+     "bytes": 2720,
+     "brotli": 1836
+    },
+    {
+     "path": "cooked/audio/crash.wav.ogb",
+     "bytes": 4224,
+     "brotli": 4157
+    },
+    {
+     "path": "cooked/audio/jump.wav.ogb",
+     "bytes": 1816,
+     "brotli": 1242
+    },
+    {
+     "path": "cooked/audio/start.wav.ogb",
+     "bytes": 3600,
+     "brotli": 3180
+    },
+    {
+     "path": "cooked/fonts/ui.ttf.ogb",
+     "bytes": 465879,
+     "brotli": 452877
+    },
+    {
+     "path": "cooked/models/sprites.glb.ogb",
+     "bytes": 6683,
+     "brotli": 1064
+    },
+    {
+     "path": "cooked/models/sprites.glb.tex0.ogb",
+     "bytes": 1062,
+     "brotli": 558
+    },
+    {
+     "path": "cooked/models/sprites.glb.tex1.ogb",
+     "bytes": 3257,
+     "brotli": 2810
+    },
+    {
+     "path": "cooked/models/sprites.glb.tex10.ogb",
+     "bytes": 4874,
+     "brotli": 4441
+    },
+    {
+     "path": "cooked/models/sprites.glb.tex11.ogb",
+     "bytes": 5542,
+     "brotli": 5108
+    },
+    {
+     "path": "cooked/models/sprites.glb.tex12.ogb",
+     "bytes": 5334,
+     "brotli": 4908
+    },
+    {
+     "path": "cooked/models/sprites.glb.tex13.ogb",
+     "bytes": 5469,
+     "brotli": 5035
+    },
+    {
+     "path": "cooked/models/sprites.glb.tex14.ogb",
+     "bytes": 5543,
+     "brotli": 5098
+    },
+    {
+     "path": "cooked/models/sprites.glb.tex2.ogb",
+     "bytes": 3425,
+     "brotli": 2936
+    },
+    {
+     "path": "cooked/models/sprites.glb.tex3.ogb",
+     "bytes": 4059,
+     "brotli": 3390
+    },
+    {
+     "path": "cooked/models/sprites.glb.tex4.ogb",
+     "bytes": 4252,
+     "brotli": 3663
+    },
+    {
+     "path": "cooked/models/sprites.glb.tex5.ogb",
+     "bytes": 3959,
+     "brotli": 3281
+    },
+    {
+     "path": "cooked/models/sprites.glb.tex6.ogb",
+     "bytes": 1419,
+     "brotli": 950
+    },
+    {
+     "path": "cooked/models/sprites.glb.tex7.ogb",
+     "bytes": 2780,
+     "brotli": 2340
+    },
+    {
+     "path": "cooked/models/sprites.glb.tex8.ogb",
+     "bytes": 4777,
+     "brotli": 4300
+    },
+    {
+     "path": "cooked/models/sprites.glb.tex9.ogb",
+     "bytes": 2945,
+     "brotli": 2528
+    },
+    {
+     "path": "cooked/scenes/main.ogt.ogb",
+     "bytes": 2375,
+     "brotli": 594
+    },
+    {
+     "path": "game.js",
+     "bytes": 142976,
+     "brotli": 33995
+    },
+    {
+     "path": "icons/icon-192.png",
+     "bytes": 7992,
+     "brotli": 7892
+    },
+    {
+     "path": "icons/icon-512.png",
+     "bytes": 23824,
+     "brotli": 22813
+    },
+    {
+     "path": "index.html",
+     "bytes": 12531,
+     "brotli": 3325
+    },
+    {
+     "path": "manifest.webmanifest",
+     "bytes": 478,
+     "brotli": 176
+    },
+    {
+     "path": "og-build.json",
+     "bytes": 7595,
+     "brotli": 2276
+    },
+    {
+     "path": "origin-engine.js",
+     "bytes": 210869,
+     "brotli": 21523
+    },
+    {
+     "path": "origin-engine_bg.wasm",
+     "bytes": 8720396,
+     "brotli": 2361858
+    },
+    {
+     "path": "origingame.runtime.json",
+     "bytes": 41,
+     "brotli": 45
+    },
+    {
+     "path": "play.js",
+     "bytes": 30707,
+     "brotli": 10893
+    },
+    {
+     "path": "sw.js",
+     "bytes": 1914,
+     "brotli": 645
+    }
+   ]
+  },
+  "match3": {
+   "total": {
+    "bytes": 10382733,
+    "compressed": 3277166
+   },
+   "files": [
+    {
+     "path": "_headers",
+     "bytes": 414,
+     "brotli": 164
+    },
+    {
+     "path": "audio-worklet.js",
+     "bytes": 1969,
+     "brotli": 875
+    },
+    {
+     "path": "basis/LICENSE",
+     "bytes": 11347,
+     "brotli": 3061
+    },
+    {
+     "path": "basis/NOTICE",
+     "bytes": 998,
+     "brotli": 408
+    },
+    {
+     "path": "basis/README.md",
+     "bytes": 999,
+     "brotli": 529
+    },
+    {
+     "path": "basis/basis_transcoder.js",
+     "bytes": 57529,
+     "brotli": 13699
+    },
+    {
+     "path": "basis/basis_transcoder.wasm",
+     "bytes": 527333,
+     "brotli": 203605
+    },
+    {
+     "path": "cooked/.cook.ogt",
+     "bytes": 4424,
+     "brotli": 1118
+    },
+    {
+     "path": "cooked/audio/cascade.wav.ogb",
+     "bytes": 3072,
+     "brotli": 2847
+    },
+    {
+     "path": "cooked/audio/clear.wav.ogb",
+     "bytes": 2896,
+     "brotli": 2406
+    },
+    {
+     "path": "cooked/audio/lost.wav.ogb",
+     "bytes": 5040,
+     "brotli": 4178
+    },
+    {
+     "path": "cooked/audio/refused.wav.ogb",
+     "bytes": 1992,
+     "brotli": 1501
+    },
+    {
+     "path": "cooked/audio/select.wav.ogb",
+     "bytes": 936,
+     "brotli": 807
+    },
+    {
+     "path": "cooked/audio/swap.wav.ogb",
+     "bytes": 1464,
+     "brotli": 1237
+    },
+    {
+     "path": "cooked/audio/won.wav.ogb",
+     "bytes": 4512,
+     "brotli": 4023
+    },
+    {
+     "path": "cooked/fonts/ui.ttf.ogb",
+     "bytes": 564184,
+     "brotli": 548288
+    },
+    {
+     "path": "cooked/models/sprites.glb.ogb",
+     "bytes": 4743,
+     "brotli": 898
+    },
+    {
+     "path": "cooked/models/sprites.glb.tex0.ogb",
+     "bytes": 1064,
+     "brotli": 555
+    },
+    {
+     "path": "cooked/models/sprites.glb.tex1.ogb",
+     "bytes": 2196,
+     "brotli": 1467
+    },
+    {
+     "path": "cooked/models/sprites.glb.tex2.ogb",
+     "bytes": 1178,
+     "brotli": 731
+    },
+    {
+     "path": "cooked/models/sprites.glb.tex3.ogb",
+     "bytes": 3310,
+     "brotli": 2838
+    },
+    {
+     "path": "cooked/models/sprites.glb.tex4.ogb",
+     "bytes": 3020,
+     "brotli": 2521
+    },
+    {
+     "path": "cooked/models/sprites.glb.tex5.ogb",
+     "bytes": 3118,
+     "brotli": 2631
+    },
+    {
+     "path": "cooked/models/sprites.glb.tex6.ogb",
+     "bytes": 3102,
+     "brotli": 2593
+    },
+    {
+     "path": "cooked/models/sprites.glb.tex7.ogb",
+     "bytes": 3198,
+     "brotli": 2751
+    },
+    {
+     "path": "cooked/models/sprites.glb.tex8.ogb",
+     "bytes": 3136,
+     "brotli": 2645
+    },
+    {
+     "path": "cooked/models/sprites.glb.tex9.ogb",
+     "bytes": 2636,
+     "brotli": 2153
+    },
+    {
+     "path": "cooked/scenes/main.ogt.ogb",
+     "bytes": 1740,
+     "brotli": 475
+    },
+    {
+     "path": "game.js",
+     "bytes": 145280,
+     "brotli": 34763
+    },
+    {
+     "path": "icons/icon-192.png",
+     "bytes": 7992,
+     "brotli": 7892
+    },
+    {
+     "path": "icons/icon-512.png",
+     "bytes": 23824,
+     "brotli": 22813
+    },
+    {
+     "path": "index.html",
+     "bytes": 12543,
+     "brotli": 3333
+    },
+    {
+     "path": "manifest.webmanifest",
+     "bytes": 484,
+     "brotli": 183
+    },
+    {
+     "path": "og-build.json",
+     "bytes": 7233,
+     "brotli": 2213
+    },
+    {
+     "path": "origin-engine.js",
+     "bytes": 210869,
+     "brotli": 21523
+    },
+    {
+     "path": "origin-engine_bg.wasm",
+     "bytes": 8720396,
+     "brotli": 2361858
+    },
+    {
+     "path": "origingame.runtime.json",
+     "bytes": 41,
+     "brotli": 45
+    },
+    {
+     "path": "play.js",
+     "bytes": 30707,
+     "brotli": 10893
+    },
+    {
+     "path": "sw.js",
+     "bytes": 1814,
+     "brotli": 646
+    }
+   ]
+  }
+ }
+}

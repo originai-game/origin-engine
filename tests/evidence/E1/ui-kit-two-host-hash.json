@@ -1,0 +1,12 @@
+{
+  "script": "0.5:show:settings;1.2:key_down:ArrowDown;1.25:key_up:ArrowDown;1.4:key_down:ArrowLeft;1.45:key_up:ArrowLeft;2.0:show:shop;3.0:touch_move_to:Detail/Buy;3.05:touch_start;3.1:touch_end",
+  "tick": 600,
+  "native": "4413227e518de273",
+  "web": "4413227e518de273",
+  "webFacts": {
+    "balance": 950,
+    "hp": 72,
+    "saves": 0,
+    "screen": "shop"
+  }
+}

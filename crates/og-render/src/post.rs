@@ -1,5 +1,8 @@
-//! After the main pass: TAA, auto-exposure metering, bloom and the tonemap,
-//! and the size-dependent targets they and the main pass draw into.
+//! After the main pass: outlines, TAA, depth of field, motion blur, god
+//! rays, auto-exposure metering, bloom (and the 2D glow), the tonemap with
+//! grading, vignette, chromatic aberration, grain and flash; before it, the
+//! ambient occlusion over the depth-normal prepass. Also the size-dependent
+//! targets they and the main pass draw into, as render graph targets.
 
 use crate::graph::{GraphError, GraphPlan, RenderGraph, TargetDesc};
 use crate::scene::{Exposure, PostEffects, Tonemap};
@@ -10,6 +13,15 @@ const FULLSCREEN_WGSL: &str = include_str!("../shaders/fullscreen.wgsl");
 const POST_WGSL: &str = include_str!("../shaders/post.wgsl");
 const TAA_WGSL: &str = include_str!("../shaders/taa.wgsl");
 const LUMINANCE_WGSL: &str = include_str!("../shaders/luminance.wgsl");
+const FXPOST_WGSL: &str = include_str!("../shaders/fxpost.wgsl");
+
+/// The prepass targets: world normal and velocity, view depth, outline ids.
+pub(crate) const GBUFFER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+pub(crate) const LINDEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
+pub(crate) const OUTLINE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+pub(crate) const AO_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
+/// The view depth the prepass clears to (sky).
+pub(crate) const FAR_DEPTH: f32 = 1.0e9;
 
 /// The metering grid of auto exposure (reduced to 1x1 by 8x8 averages).
 const METER_SIZE: u32 = 64;
@@ -25,6 +37,31 @@ struct PostUniform {
     exposure: [f32; 4],
     bloom: [f32; 4],
     mode: [f32; 4],
+    grade: [f32; 4],
+    vignette: [f32; 4],
+    grain: [f32; 4],
+    flash: [f32; 4],
+    extra: [f32; 4],
+}
+
+/// `struct FxPost` in fxpost.wgsl.
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+pub(crate) struct FxPostUniform {
+    pub proj: [[f32; 4]; 4],
+    pub inv_proj: [[f32; 4]; 4],
+    pub view: [[f32; 4]; 4],
+    pub screen: [f32; 4],
+    pub cam: [f32; 4],
+    pub ao: [f32; 4],
+    pub outline_color: [f32; 4],
+    pub outline: [f32; 4],
+    pub dof: [f32; 4],
+    pub dof2: [f32; 4],
+    pub mb: [f32; 4],
+    pub god: [f32; 4],
+    pub god2: [f32; 4],
+    pub god_tint: [f32; 4],
 }
 
 #[repr(C)]
@@ -140,9 +177,91 @@ pub(crate) struct PostPasses {
     taa: Option<wgpu::RenderPipeline>,
     sampler: wgpu::Sampler,
     black: wgpu::TextureView,
+    /// The identity 32³ grading LUT (bound when no grading is set).
+    pub identity_lut: wgpu::TextureView,
+    /// 1x1 placeholders: view depth at [`FAR_DEPTH`], white AO.
+    pub far_depth: wgpu::TextureView,
+    pub white: wgpu::TextureView,
     post_buffer: wgpu::Buffer,
     pub taa_buffer: wgpu::Buffer,
+    fx_layout: wgpu::BindGroupLayout,
+    pub fx_buffer: wgpu::Buffer,
+    fx: HashMap<&'static str, wgpu::RenderPipeline>,
 }
+
+/// A 3D RGBA8 LUT texture from a 32³ table.
+pub(crate) fn lut_texture(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    lut: &crate::ColorLut,
+) -> wgpu::TextureView {
+    use wgpu::util::DeviceExt;
+    device
+        .create_texture_with_data(
+            queue,
+            &wgpu::TextureDescriptor {
+                label: Some("grading lut"),
+                size: wgpu::Extent3d {
+                    width: lut.size,
+                    height: lut.size,
+                    depth_or_array_layers: lut.size,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D3,
+                format: wgpu::TextureFormat::Rgba8Unorm,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                view_formats: &[],
+            },
+            wgpu::util::TextureDataOrder::LayerMajor,
+            &lut.rgba,
+        )
+        .create_view(&Default::default())
+}
+
+fn one_texel(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    format: wgpu::TextureFormat,
+    bytes: &[u8],
+) -> wgpu::TextureView {
+    use wgpu::util::DeviceExt;
+    device
+        .create_texture_with_data(
+            queue,
+            &wgpu::TextureDescriptor {
+                label: Some("placeholder"),
+                size: wgpu::Extent3d {
+                    width: 1,
+                    height: 1,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                view_formats: &[],
+            },
+            wgpu::util::TextureDataOrder::LayerMajor,
+            bytes,
+        )
+        .create_view(&Default::default())
+}
+
+/// The fullscreen effect passes of fxpost.wgsl: (entry point, target format).
+const FX_PASSES: &[(&str, wgpu::TextureFormat)] = &[
+    ("fs_gtao", AO_FORMAT),
+    ("fs_ssao", AO_FORMAT),
+    ("fs_ao_blur", AO_FORMAT),
+    ("fs_outline", HDR_FORMAT),
+    ("fs_dof_coc", HDR_FORMAT),
+    ("fs_dof_blur", HDR_FORMAT),
+    ("fs_dof_composite", HDR_FORMAT),
+    ("fs_motion_blur", HDR_FORMAT),
+    ("fs_godrays_mask", HDR_FORMAT),
+    ("fs_godrays_blur", HDR_FORMAT),
+];
 
 impl PostPasses {
     pub fn new(
@@ -167,6 +286,26 @@ impl PostPasses {
                 layout_entry(2, UNIFORM),
                 layout_entry(3, float_texture(false)),
                 layout_entry(4, float_texture(true)),
+                layout_entry(
+                    5,
+                    wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D3,
+                        multisampled: false,
+                    },
+                ),
+                layout_entry(6, float_texture(true)),
+            ],
+        });
+        let fx_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("fx post"),
+            entries: &[
+                layout_entry(0, UNIFORM),
+                layout_entry(1, sampler_ty),
+                layout_entry(2, float_texture(true)),
+                layout_entry(3, float_texture(false)),
+                layout_entry(4, float_texture(false)),
+                layout_entry(5, float_texture(true)),
             ],
         });
         let taa_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -321,7 +460,32 @@ impl PostPasses {
                 mapped_at_creation: false,
             })
         };
+        let fx_shader = module("fx post", FXPOST_WGSL);
+        let fx_pl = pipeline_layout("fx post", &fx_layout);
+        let fx = FX_PASSES
+            .iter()
+            .map(|&(entry, format)| {
+                (
+                    entry,
+                    fullscreen_pipeline(device, entry, &fx_shader, entry, &fx_pl, format, None),
+                )
+            })
+            .collect();
+        let identity_lut = lut_texture(device, queue, &crate::ColorLut::identity());
+        let far_depth = one_texel(
+            device,
+            queue,
+            LINDEPTH_FORMAT,
+            bytemuck::bytes_of(&FAR_DEPTH),
+        );
+        let white = one_texel(device, queue, AO_FORMAT, &[255]);
         PostPasses {
+            identity_lut,
+            far_depth,
+            white,
+            fx_layout,
+            fx_buffer: uniform("fx post", std::mem::size_of::<FxPostUniform>()),
+            fx,
             source_layout,
             post_layout,
             taa_layout,
@@ -339,7 +503,17 @@ impl PostPasses {
         }
     }
 
-    pub fn write_uniform(&self, queue: &wgpu::Queue, exposure: Exposure, post: &PostEffects) {
+    /// Writes the post uniform. `glow`: the glow buffer feeds the bloom
+    /// chain; `god_rays`: their texture is added; `tick` seeds the grain.
+    pub fn write_uniform(
+        &self,
+        queue: &wgpu::Queue,
+        exposure: Exposure,
+        post: &PostEffects,
+        glow: bool,
+        god_rays: bool,
+        tick: u64,
+    ) {
         let (exposure, compensation) = match exposure {
             Exposure::Manual { ev } => ([ev, 0.0, 0.0, 0.0], 0.0),
             Exposure::Auto {
@@ -348,18 +522,50 @@ impl PostPasses {
                 max_ev,
             } => ([0.0, 1.0, min_ev, max_ev.max(min_ev)], compensation),
         };
-        let bloom = match post.bloom {
-            Some(b) => [b.threshold, b.knee, b.intensity, compensation],
-            None => [1.0, 0.5, 0.0, compensation],
+        let lit_bloom = post.bloom.filter(|b| b.intensity > 0.0);
+        let bloom = match (lit_bloom, post.glow.filter(|_| glow)) {
+            (Some(b), _) => [b.threshold, b.knee, b.intensity, compensation],
+            (None, Some(g)) => [1.0, 0.5, g.intensity.max(0.0), compensation],
+            (None, None) => [1.0, 0.5, 0.0, compensation],
         };
         let tonemap = match post.tonemap {
             Tonemap::Aces => 0.0,
             Tonemap::None => 1.0,
         };
+        let v = post.vignette.unwrap_or(crate::Vignette {
+            intensity: 0.0,
+            ..Default::default()
+        });
+        let ca = post
+            .chromatic_aberration
+            .map_or(0.0, |c| (c.intensity.max(0.0) * 2.0 / 720.0).min(0.1));
+        let grain = post.film_grain.map_or([0.0; 4], |g| {
+            let seed = crate::particles::hash_unit(tick as u32 ^ (tick >> 32) as u32);
+            [g.intensity.max(0.0), g.size.max(1.0), seed, 0.0]
+        });
+        let flash = post.flash.map_or([0.0; 4], |f| {
+            f.color.extend(f.amount.clamp(0.0, 1.0)).to_array()
+        });
         let uniform = PostUniform {
             exposure,
             bloom,
-            mode: [tonemap, 1.0, 0.0, 0.0],
+            mode: [
+                tonemap,
+                1.0,
+                lit_bloom.is_some() as u32 as f32,
+                glow as u32 as f32,
+            ],
+            grade: [
+                post.color_grading
+                    .map_or(0.0, |g| g.intensity.clamp(0.0, 1.0)),
+                v.intensity.clamp(0.0, 1.0),
+                v.radius,
+                v.smoothness,
+            ],
+            vignette: v.color.extend(ca).to_array(),
+            grain,
+            flash,
+            extra: [god_rays as u32 as f32, 0.0, 0.0, 0.0],
         };
         queue.write_buffer(&self.post_buffer, 0, bytemuck::bytes_of(&uniform));
     }
@@ -441,9 +647,28 @@ pub(crate) enum FramePass {
     Cascade(u32),
     /// Local light shadow layer (6 per point light, 1 per spot).
     LocalFace(u32),
-    /// Opaque meshes, sky, transparent meshes, sprites and text into the HDR target.
+    /// The depth-normal prepass (normal, velocity, view depth, outline ids).
+    Prepass,
+    /// Ambient occlusion (GTAO or SSAO), then its blur.
+    Ao,
+    AoBlur,
+    /// The particle simulation (compute).
+    Particles,
+    /// The 2D light map.
+    Light2d,
+    /// Opaque meshes, sky, transparent meshes, particles, strips, sprites
+    /// and text into the HDR target.
     Main,
+    /// Glowing sprites into the glow buffer.
+    Glow,
+    Outline,
     Taa,
+    DofCoc,
+    DofBlur,
+    DofComposite,
+    MotionBlur,
+    GodRaysMask,
+    GodRaysBlur,
     Meter,
     /// Metering level `i` into `i + 1`.
     Reduce(u32),
@@ -460,8 +685,21 @@ impl FramePass {
         match self {
             FramePass::Cascade(i) => format!("cascade.{i}"),
             FramePass::LocalFace(i) => format!("local-shadow.{i}"),
+            FramePass::Prepass => "prepass".into(),
+            FramePass::Ao => "ao".into(),
+            FramePass::AoBlur => "ao-blur".into(),
+            FramePass::Particles => "particles".into(),
+            FramePass::Light2d => "lights-2d".into(),
             FramePass::Main => "main".into(),
+            FramePass::Glow => "glow".into(),
+            FramePass::Outline => "outline".into(),
             FramePass::Taa => "taa".into(),
+            FramePass::DofCoc => "dof-coc".into(),
+            FramePass::DofBlur => "dof-blur".into(),
+            FramePass::DofComposite => "dof-composite".into(),
+            FramePass::MotionBlur => "motion-blur".into(),
+            FramePass::GodRaysMask => "god-rays-mask".into(),
+            FramePass::GodRaysBlur => "god-rays-blur".into(),
             FramePass::Meter => "meter".into(),
             FramePass::Reduce(i) => format!("meter-reduce.{i}"),
             FramePass::BloomPrefilter => "bloom-prefilter".into(),
@@ -479,6 +717,10 @@ pub(crate) struct GraphConfig {
     pub height: u32,
     pub samples: u32,
     pub taa: bool,
+    /// The 2D light map's size.
+    pub lightmap: (u32, u32),
+    /// GTAO (or SSAO).
+    pub gtao: bool,
 }
 
 fn luminance_name(i: u32) -> String {
@@ -487,6 +729,43 @@ fn luminance_name(i: u32) -> String {
 
 fn bloom_name(i: u32) -> String {
     format!("bloom.{i}")
+}
+
+/// The names of the lit image as the effects hand it on: after the main
+/// pass (and outlines), after TAA (`None`: the history), after depth of
+/// field and motion blur.
+struct LitNames {
+    main: &'static str,
+    /// `None` when TAA writes the history.
+    aa: Option<&'static str>,
+    after_dof: Option<&'static str>,
+    last: Option<&'static str>,
+}
+
+fn lit_names(passes: &[FramePass]) -> LitNames {
+    let has = |p| passes.contains(&p);
+    let main = if has(FramePass::Outline) {
+        "hdr.outline"
+    } else {
+        "hdr"
+    };
+    let aa = (!has(FramePass::Taa)).then_some(main);
+    let after_dof = if has(FramePass::DofComposite) {
+        Some("hdr.dof")
+    } else {
+        aa
+    };
+    let last = if has(FramePass::MotionBlur) {
+        Some("hdr.mb")
+    } else {
+        after_dof
+    };
+    LitNames {
+        main,
+        aa,
+        after_dof,
+        last,
+    }
 }
 
 /// The render graph of a frame made of `passes` (in recording order).
@@ -500,10 +779,12 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
         usage,
     };
     let (w, h) = (cfg.width, cfg.height);
+    let (hw, hh) = ((w / 2).max(1), (h / 2).max(1));
     let mut g = RenderGraph::new();
     g.import("cascades")
         .import("local-shadows")
         .import("output")
+        .import("particles")
         .transient("hdr", desc(w, h, HDR_FORMAT, 1, attach_bind));
     let msaa = cfg.samples > 1;
     if msaa {
@@ -527,6 +808,50 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
     if cfg.taa {
         g.import("history-read").import("history-write");
     }
+    let has = |p| passes.contains(&p);
+    if has(FramePass::Prepass) {
+        g.transient(
+            "pre-depth",
+            desc(
+                w,
+                h,
+                DEPTH_FORMAT,
+                1,
+                wgpu::TextureUsages::RENDER_ATTACHMENT,
+            ),
+        )
+        .transient("gbuffer", desc(w, h, GBUFFER_FORMAT, 1, attach_bind))
+        .transient("lindepth", desc(w, h, LINDEPTH_FORMAT, 1, attach_bind))
+        .transient("outline-id", desc(w, h, OUTLINE_FORMAT, 1, attach_bind));
+    }
+    if has(FramePass::Ao) {
+        g.transient("ao.raw", desc(w, h, AO_FORMAT, 1, attach_bind))
+            .transient("ao", desc(w, h, AO_FORMAT, 1, attach_bind));
+    }
+    if has(FramePass::Light2d) {
+        let (lw, lh) = cfg.lightmap;
+        g.transient("lightmap", desc(lw, lh, HDR_FORMAT, 1, attach_bind));
+    }
+    if has(FramePass::Glow) {
+        g.transient("glow", desc(hw, hh, HDR_FORMAT, 1, attach_bind));
+    }
+    for (pass, name) in [
+        (FramePass::Outline, "hdr.outline"),
+        (FramePass::DofComposite, "hdr.dof"),
+        (FramePass::MotionBlur, "hdr.mb"),
+    ] {
+        if has(pass) {
+            g.transient(name, desc(w, h, HDR_FORMAT, 1, attach_bind));
+        }
+    }
+    if has(FramePass::DofCoc) {
+        g.transient("dof.coc", desc(hw, hh, HDR_FORMAT, 1, attach_bind))
+            .transient("dof.blur", desc(hw, hh, HDR_FORMAT, 1, attach_bind));
+    }
+    if has(FramePass::GodRaysMask) {
+        g.transient("god.mask", desc(hw, hh, HDR_FORMAT, 1, attach_bind))
+            .transient("god.blur", desc(hw, hh, HDR_FORMAT, 1, attach_bind));
+    }
     let mut size = METER_SIZE;
     for i in 0..meter_levels() {
         g.transient(
@@ -535,40 +860,93 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
         );
         size /= 8;
     }
-    let (bw, bh) = ((w / 2).max(1), (h / 2).max(1));
     for i in 0..bloom_levels(w, h) {
         g.transient(
             bloom_name(i),
             desc(
-                (bw >> i).max(1),
-                (bh >> i).max(1),
+                (hw >> i).max(1),
+                (hh >> i).max(1),
                 HDR_FORMAT,
                 1,
                 attach_bind,
             ),
         );
     }
-    let taa = passes.contains(&FramePass::Taa);
-    let auto = passes.contains(&FramePass::Meter);
-    let bloom = passes.contains(&FramePass::BloomPrefilter);
-    let lit = if taa { "history-write" } else { "hdr" };
+    let names = lit_names(passes);
+    let aa = names.aa.unwrap_or("history-write");
+    let after_dof = names.after_dof.unwrap_or("history-write");
+    let lit = names.last.unwrap_or("history-write");
+    let auto = has(FramePass::Meter);
+    let bloom = has(FramePass::BloomPrefilter);
     let lum = luminance_name(meter_levels() - 1);
+    let prepass = has(FramePass::Prepass);
     for &p in passes {
         let name = p.name();
         match p {
             FramePass::Cascade(_) => g.pass(name, &[], &["cascades"]),
             FramePass::LocalFace(_) => g.pass(name, &[], &["local-shadows"]),
-            FramePass::Main if msaa => g.pass(
+            FramePass::Prepass => g.pass(
                 name,
-                &["cascades", "local-shadows"],
-                &["hdr-msaa", "hdr", "depth"],
+                &[],
+                &["pre-depth", "gbuffer", "lindepth", "outline-id"],
             ),
-            FramePass::Main => g.pass(name, &["cascades", "local-shadows"], &["hdr", "depth"]),
-            FramePass::Taa => g.pass(name, &["hdr", "depth", "history-read"], &["history-write"]),
+            FramePass::Ao => g.pass(name, &["lindepth", "gbuffer"], &["ao.raw"]),
+            FramePass::AoBlur => g.pass(name, &["ao.raw", "lindepth"], &["ao"]),
+            FramePass::Particles if prepass => {
+                g.pass(name, &["lindepth", "gbuffer"], &["particles"])
+            }
+            FramePass::Particles => g.pass(name, &[], &["particles"]),
+            FramePass::Light2d => g.pass(name, &[], &["lightmap"]),
+            FramePass::Main => {
+                let mut reads = vec!["cascades", "local-shadows"];
+                if has(FramePass::AoBlur) {
+                    reads.push("ao");
+                }
+                if prepass {
+                    reads.push("lindepth");
+                }
+                if has(FramePass::Particles) {
+                    reads.push("particles");
+                }
+                if has(FramePass::Light2d) {
+                    reads.push("lightmap");
+                }
+                let writes: &[&str] = if msaa {
+                    &["hdr-msaa", "hdr", "depth"]
+                } else {
+                    &["hdr", "depth"]
+                };
+                g.pass(name, &reads, writes)
+            }
+            FramePass::Glow => g.pass(name, &[], &["glow"]),
+            FramePass::Outline => g.pass(
+                name,
+                &["hdr", "gbuffer", "lindepth", "outline-id"],
+                &["hdr.outline"],
+            ),
+            FramePass::Taa => g.pass(
+                name,
+                &[names.main, "depth", "history-read"],
+                &["history-write"],
+            ),
+            FramePass::DofCoc => g.pass(name, &[aa, "lindepth"], &["dof.coc"]),
+            FramePass::DofBlur => g.pass(name, &["dof.coc"], &["dof.blur"]),
+            FramePass::DofComposite => g.pass(name, &[aa, "dof.blur"], &["hdr.dof"]),
+            FramePass::MotionBlur => g.pass(name, &[after_dof, "gbuffer", "lindepth"], &["hdr.mb"]),
+            FramePass::GodRaysMask => g.pass(name, &[lit, "lindepth"], &["god.mask"]),
+            FramePass::GodRaysBlur => g.pass(name, &["god.mask"], &["god.blur"]),
             FramePass::Meter => g.pass(name, &[lit], &["luminance.0"]),
             FramePass::Reduce(i) => g.pass(name, &[&luminance_name(i)], &[&luminance_name(i + 1)]),
-            FramePass::BloomPrefilter if auto => g.pass(name, &[lit, &lum], &["bloom.0"]),
-            FramePass::BloomPrefilter => g.pass(name, &[lit], &["bloom.0"]),
+            FramePass::BloomPrefilter => {
+                let mut reads = vec![lit];
+                if auto {
+                    reads.push(&lum);
+                }
+                if has(FramePass::Glow) {
+                    reads.push("glow");
+                }
+                g.pass(name, &reads, &["bloom.0"])
+            }
             FramePass::BloomDown(i) => g.pass(name, &[&bloom_name(i)], &[&bloom_name(i + 1)]),
             FramePass::BloomUp(i) => g.pass(name, &[&bloom_name(i + 1)], &[&bloom_name(i)]),
             FramePass::Tonemap => {
@@ -579,6 +957,9 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 if bloom {
                     reads.push("bloom.0");
                 }
+                if has(FramePass::GodRaysBlur) {
+                    reads.push("god.blur");
+                }
                 g.pass(name, &reads, &["output"])
             }
         };
@@ -586,7 +967,8 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
     g
 }
 
-/// The post passes' bind groups for one realization of the graph.
+/// The post passes' bind groups for one realization of the graph. Groups
+/// in pairs are per TAA history slot.
 struct Bindings {
     taa: Option<[wgpu::BindGroup; 2]>,
     meter: Option<[wgpu::BindGroup; 2]>,
@@ -595,6 +977,7 @@ struct Bindings {
     down: Vec<wgpu::BindGroup>,
     up: Vec<wgpu::BindGroup>,
     post: [wgpu::BindGroup; 2],
+    fx: HashMap<FramePass, [wgpu::BindGroup; 2]>,
 }
 
 /// The frame's render graph: the compiled plan for the current pass list,
@@ -603,17 +986,24 @@ struct Bindings {
 #[derive(Default)]
 pub(crate) struct FrameGraph {
     passes: Vec<FramePass>,
+    cfg: Option<GraphConfig>,
+    /// Identifies the grading LUT the bindings were made with.
+    lut_key: Option<(u64, usize)>,
     order: Vec<FramePass>,
     plan: Option<GraphPlan>,
     pool: Vec<(TargetDesc, wgpu::TextureView)>,
     views: HashMap<String, wgpu::TextureView>,
     bindings: Option<Bindings>,
+    /// Bumped whenever the targets are realized anew (views change).
+    pub generation: u64,
 }
 
 impl FrameGraph {
     /// Forgets everything size-dependent (on resize).
     pub fn invalidate(&mut self) {
+        let generation = self.generation + 1;
         *self = FrameGraph::default();
+        self.generation = generation;
     }
 
     /// The plan the last [`FrameGraph::prepare`] compiled.
@@ -637,8 +1027,14 @@ impl FrameGraph {
             .unwrap_or_else(|| panic!("render graph target '{name}' is not realized"))
     }
 
+    /// The view of `name` when the current graph has it.
+    pub fn try_view(&self, name: &str) -> Option<&wgpu::TextureView> {
+        self.views.get(name)
+    }
+
     /// Compiles the graph for `passes` and realizes its transient targets,
-    /// unless the previous frame had the same passes.
+    /// unless the previous frame had the same passes, configuration and LUT.
+    #[allow(clippy::too_many_arguments)]
     pub fn prepare(
         &mut self,
         device: &wgpu::Device,
@@ -646,8 +1042,13 @@ impl FrameGraph {
         cfg: &GraphConfig,
         post: &PostPasses,
         persistent: &Persistent,
+        lut: (Option<(u64, usize)>, &wgpu::TextureView),
     ) -> Result<(), GraphError> {
-        if self.plan.is_some() && passes == self.passes {
+        if self.plan.is_some()
+            && passes == self.passes
+            && self.cfg.as_ref() == Some(cfg)
+            && self.lut_key == lut.0
+        {
             return Ok(());
         }
         let plan = build_graph(&passes, cfg).compile()?;
@@ -690,8 +1091,11 @@ impl FrameGraph {
                 self.views.insert(name, slot_views[slot].clone());
             }
         }
-        self.bindings = Some(self.bind(device, post, persistent, &passes));
+        self.bindings = Some(self.bind(device, post, persistent, &passes, cfg, lut.1));
+        self.generation += 1;
         self.passes = passes;
+        self.cfg = Some(*cfg);
+        self.lut_key = lut.0;
         self.plan = Some(plan);
         Ok(())
     }
@@ -702,6 +1106,8 @@ impl FrameGraph {
         passes: &PostPasses,
         persistent: &Persistent,
         frame: &[FramePass],
+        cfg: &GraphConfig,
+        lut: &wgpu::TextureView,
     ) -> Bindings {
         fn tex(v: &wgpu::TextureView) -> wgpu::BindingResource<'_> {
             wgpu::BindingResource::TextureView(v)
@@ -723,21 +1129,24 @@ impl FrameGraph {
             })
         };
         let has = |p: FramePass| frame.contains(&p);
-        let hdr = self.view("hdr");
+        let names = lit_names(frame);
         let taa = has(FramePass::Taa);
         let history = persistent.history.as_ref().filter(|_| taa);
-        // The lit image post reads in frame slot `i`.
-        let source = |slot: usize| match history {
-            Some(h) => &h[slot],
-            None => hdr,
+        // The lit image in frame slot `i` at each stage.
+        let stage = |name: Option<&'static str>, slot: usize| -> &wgpu::TextureView {
+            match name {
+                Some(n) => self.view(n),
+                None => &history.expect("TAA history")[slot],
+            }
         };
+        let source = |slot: usize| stage(names.last, slot);
         let taa_groups = history.map(|h| {
             [0usize, 1].map(|slot| {
                 group(
                     "taa",
                     &passes.taa_layout,
                     &[
-                        tex(hdr),
+                        tex(self.view(names.main)),
                         tex(&h[1 - slot]),
                         tex(self.view("depth")),
                         sampler.clone(),
@@ -775,6 +1184,11 @@ impl FrameGraph {
         } else {
             Vec::new()
         };
+        let god = if has(FramePass::GodRaysBlur) {
+            self.view("god.blur")
+        } else {
+            &passes.black
+        };
         let post_group = |label: &str, src: &wgpu::TextureView, bloom: &wgpu::TextureView| {
             group(
                 label,
@@ -785,6 +1199,8 @@ impl FrameGraph {
                     passes.post_buffer.as_entire_binding(),
                     tex(lum),
                     tex(bloom),
+                    tex(lut),
+                    tex(god),
                 ],
             )
         };
@@ -794,8 +1210,13 @@ impl FrameGraph {
             .filter(|p| matches!(p, FramePass::BloomDown(_)))
             .count() as u32
             + 1;
-        let prefilter = bloom
-            .then(|| [0, 1].map(|slot| post_group("bloom prefilter", source(slot), &passes.black)));
+        let glow = if has(FramePass::Glow) {
+            self.view("glow")
+        } else {
+            &passes.black
+        };
+        let prefilter =
+            bloom.then(|| [0, 1].map(|slot| post_group("bloom prefilter", source(slot), glow)));
         let (down, up) = if bloom {
             (
                 (0..bloom_count - 1)
@@ -814,6 +1235,49 @@ impl FrameGraph {
             &passes.black
         };
         let post = [0, 1].map(|slot| post_group("post", source(slot), bloom_top));
+
+        // The effect passes: (a, depth, gbuffer, b) per slot.
+        let depth = self.try_view("lindepth").unwrap_or(&passes.far_depth);
+        let gbuffer = self.try_view("gbuffer").unwrap_or(&passes.black);
+        let fx_group = |a: &wgpu::TextureView, b: &wgpu::TextureView| {
+            group(
+                "fx post",
+                &passes.fx_layout,
+                &[
+                    passes.fx_buffer.as_entire_binding(),
+                    sampler.clone(),
+                    tex(a),
+                    tex(depth),
+                    tex(gbuffer),
+                    tex(b),
+                ],
+            )
+        };
+        let black = &passes.black;
+        let mut fx = HashMap::new();
+        for &p in frame {
+            let pair = |f: &dyn Fn(usize) -> wgpu::BindGroup| [f(0), f(1)];
+            let groups = match p {
+                FramePass::Ao => pair(&|_| fx_group(black, black)),
+                FramePass::AoBlur => pair(&|_| fx_group(black, self.view("ao.raw"))),
+                FramePass::Outline => {
+                    pair(&|_| fx_group(self.view("hdr"), self.view("outline-id")))
+                }
+                FramePass::DofCoc => pair(&|slot| fx_group(stage(names.aa, slot), black)),
+                FramePass::DofBlur => pair(&|_| fx_group(self.view("dof.coc"), black)),
+                FramePass::DofComposite => {
+                    pair(&|slot| fx_group(stage(names.aa, slot), self.view("dof.blur")))
+                }
+                FramePass::MotionBlur => {
+                    pair(&|slot| fx_group(stage(names.after_dof, slot), black))
+                }
+                FramePass::GodRaysMask => pair(&|slot| fx_group(source(slot), black)),
+                FramePass::GodRaysBlur => pair(&|_| fx_group(black, self.view("god.mask"))),
+                _ => continue,
+            };
+            fx.insert(p, groups);
+        }
+        let _ = cfg;
         Bindings {
             taa: taa_groups,
             meter,
@@ -822,10 +1286,12 @@ impl FrameGraph {
             down,
             up,
             post,
+            fx,
         }
     }
 
-    /// Records one post pass (TAA, metering, bloom, tonemap); returns its draws.
+    /// Records one post or effect pass; returns its draws.
+    #[allow(clippy::too_many_arguments)]
     pub fn encode_post(
         &self,
         encoder: &mut wgpu::CommandEncoder,
@@ -834,9 +1300,33 @@ impl FrameGraph {
         pass: FramePass,
         slot: usize,
         output: &wgpu::TextureView,
+        gtao: bool,
     ) -> u32 {
         let b = self.bindings.as_ref().expect("prepared");
         let clear = wgpu::LoadOp::Clear(wgpu::Color::BLACK);
+        let effect = match pass {
+            FramePass::Ao => Some((if gtao { "fs_gtao" } else { "fs_ssao" }, "ao.raw")),
+            FramePass::AoBlur => Some(("fs_ao_blur", "ao")),
+            FramePass::Outline => Some(("fs_outline", "hdr.outline")),
+            FramePass::DofCoc => Some(("fs_dof_coc", "dof.coc")),
+            FramePass::DofBlur => Some(("fs_dof_blur", "dof.blur")),
+            FramePass::DofComposite => Some(("fs_dof_composite", "hdr.dof")),
+            FramePass::MotionBlur => Some(("fs_motion_blur", "hdr.mb")),
+            FramePass::GodRaysMask => Some(("fs_godrays_mask", "god.mask")),
+            FramePass::GodRaysBlur => Some(("fs_godrays_blur", "god.blur")),
+            _ => None,
+        };
+        if let Some((entry, target)) = effect {
+            fullscreen_pass(
+                encoder,
+                entry,
+                self.view(target),
+                clear,
+                &passes.fx[entry],
+                &b.fx[&pass][slot],
+            );
+            return 1;
+        }
         match pass {
             FramePass::Taa => {
                 if let (Some(pipeline), Some(history), Some(groups)) =
@@ -922,14 +1412,51 @@ impl FrameGraph {
                 );
                 1
             }
-            FramePass::Cascade(_) | FramePass::LocalFace(_) | FramePass::Main => 0,
+            FramePass::Ao
+            | FramePass::AoBlur
+            | FramePass::Outline
+            | FramePass::DofCoc
+            | FramePass::DofBlur
+            | FramePass::DofComposite
+            | FramePass::MotionBlur
+            | FramePass::GodRaysMask
+            | FramePass::GodRaysBlur
+            | FramePass::Cascade(_)
+            | FramePass::LocalFace(_)
+            | FramePass::Prepass
+            | FramePass::Particles
+            | FramePass::Light2d
+            | FramePass::Main
+            | FramePass::Glow => 0,
         }
     }
 }
 
 /// Every transient target name a graph for `cfg` can declare.
 fn transient_names(cfg: &GraphConfig) -> Vec<String> {
-    let mut names = vec!["hdr".to_string(), "hdr-msaa".into(), "depth".into()];
+    let mut names: Vec<String> = [
+        "hdr",
+        "hdr-msaa",
+        "depth",
+        "pre-depth",
+        "gbuffer",
+        "lindepth",
+        "outline-id",
+        "ao.raw",
+        "ao",
+        "lightmap",
+        "glow",
+        "hdr.outline",
+        "hdr.dof",
+        "hdr.mb",
+        "dof.coc",
+        "dof.blur",
+        "god.mask",
+        "god.blur",
+    ]
+    .iter()
+    .map(|s| s.to_string())
+    .collect();
     names.extend((0..meter_levels()).map(luminance_name));
     names.extend((0..bloom_levels(cfg.width, cfg.height)).map(bloom_name));
     names

@@ -244,6 +244,8 @@ pub trait LoadApi: Wire {
     fn og_load_error(&self, world: u32, asset: f64) -> String;
     /// `og.load.gltfInfo`: What a ready glTF holds.
     fn og_load_gltf_info(&self, world: u32, asset: f64) -> String;
+    /// `og.load.animation`: Load a cooked glTF's animation (its `<model>#anim` blob: the rig, the clips, the skin and morph streams) and register its skeleton and clips with og.anim. Loading the same model again answers the same handles.
+    fn og_load_animation(&self, world: u32, path: String) -> String;
 }
 
 /// `physics`: Rigid bodies over rapier (rapier3d in the 3D profile, rapier2d in 2D, both with enhanced determinism): game code owns the components, the engine's og.physics system steps them after the game's systems and writes the dynamic bodies back.
@@ -256,6 +258,12 @@ pub trait PhysicsApi: Wire {
     fn og_physics_overlap(&self, world: u32, desc: Option<String>) -> String;
     /// `og.physics.setMesh`: Register (or replace) the geometry a convex or triangle-mesh Collider names by its mesh handle. Loaded glTF geometries are registered under their own handles already; meshes are assets, not world state.
     fn og_physics_set_mesh(&self, world: u32, mesh: f64, desc: Option<String>) -> String;
+}
+
+/// `anim`: Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics.
+pub trait AnimApi: Wire {
+    /// `og.anim.graph`: Register a blend-tree graph for AnimationGraph.asset. Its `clip` lines are resolved by name against `clips`.
+    fn og_anim_graph(&self, world: u32, desc: Option<String>) -> String;
 }
 
 /// `ui`: The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, themes it with the platform's design tokens, draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it.
@@ -290,6 +298,100 @@ pub trait UiApi: Wire {
     fn og_ui_text_field(&self, id: String, value: String, desc: Option<String>) -> String;
     /// `og.ui.tooltip`: A tooltip for the element just built: shown below it (above without room) once the pointer has rested on it for the slow motion duration, drawn over everything. The probe reads its text.
     fn og_ui_tooltip(&self, text: String);
+    /// `og.ui.breakpoint`: The size class of the play surface of the frame being built (desktop outside a frame).
+    fn og_ui_breakpoint(&self) -> String;
+    /// `og.ui.frameViewport`: The play surface of the frame being built: og.ui.viewport without the world, for code that only builds UI.
+    fn og_ui_frame_viewport(&self) -> String;
+    /// `og.ui.hasIcon`: Whether the icon atlas has an icon of this name (templates draw a fallback otherwise).
+    fn og_ui_has_icon(&self, name: String) -> bool;
+    /// `og.ui.seconds`: The UI's clock in seconds: frames built over the tick rate (simulation time, never the wall clock).
+    fn og_ui_seconds(&self) -> f64;
+    /// `og.ui.frameTheme`: The design tokens of the frame being built: og.ui.theme without the world, for code that only builds UI (the templates).
+    fn og_ui_frame_theme(&self) -> String;
+    /// `og.ui.openAnchor`: Open an anchored group, closed by close(): og.ui.anchor without the callback.
+    fn og_ui_open_anchor(&self, id: String, desc: Option<String>);
+    /// `og.ui.openTransition`: Open a transition container (a column), closed by close(); build its children only while the answer is visible: it stays visible while it leaves. Its content takes no input while it moves.
+    fn og_ui_open_transition(&self, id: String, show: bool, desc: Option<String>) -> String;
+    /// `og.ui.openModal`: Open a dialog, closed by closeModal(); build its content only while the answer is visible. The probe sees the backdrop as `<id>` and the panel as `<id>/Panel`.
+    fn og_ui_open_modal(&self, id: String, open: bool, desc: Option<String>) -> String;
+    /// `og.ui.closeModal`: Close a dialog opened with openModal (its panel and backdrop).
+    fn og_ui_close_modal(&self);
+    /// `og.ui.spotlight`: A spotlight over everything (a tutorial step): the scrim on four sides of the hole, an amber edge around it. Presses on the dimmed parts stop there (clicked); presses in the hole reach what is under it. Shades are `<id>/Top`, `Left`, `Right`, `Bottom`; the hole is `<id>/Hole`.
+    fn og_ui_spotlight(&self, id: String, hole: String, desc: Option<String>) -> String;
+    /// `og.ui.bounds`: Where an element was in the last frame, by id or `Parent/Child` path (topmost first), as touch_move_to resolves it.
+    fn og_ui_bounds(&self, path: String) -> String;
+    /// `og.ui.openList`: Open a virtualised list (a scroll column) and learn which rows to build: listItem(i) and close() for each, then closeList().
+    fn og_ui_open_list(&self, id: String, desc: Option<String>) -> String;
+    /// `og.ui.openGrid`: Open a virtualised grid and learn which cells to build: gridItem(i) and close() for each, then closeList().
+    fn og_ui_open_grid(&self, id: String, desc: Option<String>) -> String;
+    /// `og.ui.listItem`: Open row `index` of the open list (`Row#index`): selectable and focusable; its content follows until close(). A press that started on one row and is released on this one answers `dropped`.
+    fn og_ui_list_item(&self, index: u32, selected: bool) -> String;
+    /// `og.ui.gridItem`: Open cell `index` of the open grid (`Cell#index`): a slot on fill, focusable; its content follows until close(). Drops answer `dropped` as listItem's.
+    fn og_ui_grid_item(&self, index: u32, selected: bool) -> String;
+    /// `og.ui.closeList`: Close a list or grid opened with openList or openGrid.
+    fn og_ui_close_list(&self) -> String;
+    /// `og.ui.dragging`: The row or cell a held press started on in the list or grid of this id (built under the same parent): a drag in progress, to draw what is dragged under the pointer.
+    fn og_ui_dragging(&self, id: String) -> String;
+    /// `og.ui.tabs`: A segmented control: a neutral track, the chosen tab on the thumb. Tabs are `Tab#i` and the probe reads their labels.
+    fn og_ui_tabs(&self, id: String, items: String, selected: u32, desc: Option<String>) -> String;
+    /// `og.ui.select`: A select: a field-like trigger with the chosen label and a chevron; a press or Activate opens its menu `<id>.menu` (options `Option#i`) under it, a focus scope; choosing closes it with changed. Back or a press outside closes it.
+    fn og_ui_select(&self, id: String, options: String, selected: u32, desc: Option<String>) -> String;
+    /// `og.ui.stepper`: A number stepper: `Dec`, `Value`, `Inc`. The buttons step within the range; Left and Right step it while a button is focused.
+    fn og_ui_stepper(&self, id: String, value: f64, desc: Option<String>) -> String;
+    /// `og.ui.radio`: A radio group of `Option#i` rows: a ring, filled amber when chosen, and a label.
+    fn og_ui_radio(&self, id: String, options: String, selected: u32, desc: Option<String>) -> String;
+    /// `og.ui.checkbox`: A checkbox with a label; a press flips it.
+    fn og_ui_checkbox(&self, id: String, on: bool, label: String) -> String;
+    /// `og.ui.checkboxList`: Checkboxes in a column (`Option#i`).
+    fn og_ui_checkbox_list(&self, id: String, labels: String, values: String) -> String;
+    /// `og.ui.chip`: A chip: a capsule on fill; selected inverts to fg. For filters and tags.
+    fn og_ui_chip(&self, id: String, text: String, desc: Option<String>) -> String;
+    /// `og.ui.badge`: A badge: a small status capsule in its tone.
+    fn og_ui_badge(&self, id: String, text: String, tone: String);
+    /// `og.ui.divider`: A hairline in the border colour across its parent.
+    fn og_ui_divider(&self, id: String, vertical: bool);
+    /// `og.ui.spacer`: Empty space.
+    fn og_ui_spacer(&self, id: String, size: String);
+    /// `og.ui.keyValue`: A key (fg-muted) and its value (fg, at the end) on one row: stats, settings summaries, receipts.
+    fn og_ui_key_value(&self, id: String, key: String, value: String, mono: bool);
+    /// `og.ui.skeleton`: A skeleton: the neutral fill standing in for content that is loading, with a sheen that passes every 1.6 s (still under reduced motion).
+    fn og_ui_skeleton(&self, id: String, desc: Option<String>);
+    /// `og.ui.spinner`: A loading spinner: eight dots around a circle, the bright one turning by the tick.
+    fn og_ui_spinner(&self, id: String, size: f64);
+    /// `og.ui.icon`: An icon of the atlas (UiDesc.icons) by name; an unknown name draws an empty slot and warns. The probe reads the name.
+    fn og_ui_icon(&self, id: String, name: String, desc: Option<String>);
+    /// `og.ui.meter`: A health, mana or xp bar. A drop shows at once and leaves a pale trail that follows after a beat; a rise grows into place with a ghost of the target; both by the tick.
+    fn og_ui_meter(&self, id: String, value: f64, max: f64, desc: Option<String>);
+    /// `og.ui.cooldown`: A cooldown: a disc whose amber ring fills clockwise from the top as it runs out, bright and full when ready, a label or icon in the middle. A press reports clicked (ready or not).
+    fn og_ui_cooldown(&self, id: String, remaining: f64, desc: Option<String>) -> String;
+    /// `og.ui.minimap`: A mini-map frame: the map in a border-strong frame, markers as dots (the player amber and ringed), an N mark and a zone label.
+    fn og_ui_minimap(&self, id: String, desc: Option<String>);
+    /// `og.ui.dialogue`: A dialogue box: a portrait slot, the speaker in amber ink and the line typed out by the tick. A press or Activate while typing shows the whole line; once shown it answers advanced. The line is `<id>/Body/Line` and the probe reads what is shown.
+    fn og_ui_dialogue(&self, id: String, desc: Option<String>) -> String;
+    /// `og.ui.joystick`: A virtual joystick: a base and a knob that follows a press that started on it. og.Input carries one pointer, so a stick and a button are not held at once yet.
+    fn og_ui_joystick(&self, id: String, desc: Option<String>) -> String;
+    /// `og.ui.dpad`: A d-pad of four arms (`Up`, `Down`, `Left`, `Right`), each at least 44 CSS px.
+    fn og_ui_dpad(&self, id: String, desc: Option<String>) -> String;
+    /// `og.ui.actionButton`: A round touch action button: pressed while held (jump, fire), clicked on a tap; at least 44 CSS px.
+    fn og_ui_action_button(&self, id: String, text: String, desc: Option<String>) -> String;
+    /// `og.ui.toast`: Queue a toast: it stacks at UiDesc.toastAnchor, enters, stays its time and leaves; at most three are up (older ones leave first); a press dismisses it. Callable anywhere (systems, commands, start); it is world state, so snapshots carry it.
+    fn og_ui_toast(&self, world: u32, text: String, desc: Option<String>) -> u32;
+    /// `og.ui.dismissToast`: Start a toast's exit.
+    fn og_ui_dismiss_toast(&self, world: u32, toast_id: u32);
+    /// `og.ui.navigate`: Queue a navigation intent for the next tick: a gamepad og.Input does not read yet, a custom binding, a command.
+    fn og_ui_navigate(&self, world: u32, intent: String);
+    /// `og.ui.back`: Escape or gamepad B this tick, not taken by a dialog or menu: true once, then taken. A pause screen closes on it.
+    fn og_ui_back(&self) -> bool;
+    /// `og.ui.setNavigation`: Whether keyboard and gamepad navigation moves focus on this screen (on by default). A gameplay HUD whose keys move the player turns it off; an open dialog or menu turns it back on while it is open. Takes effect from the next tick.
+    fn og_ui_set_navigation(&self, on: bool);
+    /// `og.ui.memory`: A number the UI keeps for an id under the open element (a template's tab, a count-up's start tick), in snapshots like the rest of the UI state. Read it every tick it is used: an unused memory is dropped.
+    fn og_ui_memory(&self, id: String, initial: f64) -> f64;
+    /// `og.ui.remember`: Set a number memory (see memory).
+    fn og_ui_remember(&self, id: String, value: f64);
+    /// `og.ui.tick`: Frames the UI has built: its clock, for animations by the tick.
+    fn og_ui_tick(&self) -> u32;
+    /// `og.ui.previewViewport`: Lay the UI out for another play surface (a phone in portrait at 3x, a notch) until cleared with null: for headless previews and playtests of responsive layouts. Render at width x dpr by height x dpr (`og run --size`).
+    fn og_ui_preview_viewport(&self, world: u32, viewport: String);
 }
 
 /// `commands`: The command channel: actions scheduled on simulation time, from `og run --commands "t:action[:args];..."` or the probe's commands().
@@ -351,9 +453,9 @@ pub trait ProbeApi: Wire {
 }
 
 /// Every trait: a host is a type that implements all of them.
-pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + UiApi + CommandsApi + ProbeApi {}
+pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AnimApi + UiApi + CommandsApi + ProbeApi {}
 
-impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + UiApi + CommandsApi + ProbeApi> Host for T {}
+impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AnimApi + UiApi + CommandsApi + ProbeApi> Host for T {}
 
 /// Every binding symbol, in binding-table order (`bindings.json` ids).
 pub const SYMBOLS: &[&str] = &[
@@ -438,10 +540,12 @@ pub const SYMBOLS: &[&str] = &[
     "og_load_status",
     "og_load_error",
     "og_load_gltf_info",
+    "og_load_animation",
     "og_physics_raycast",
     "og_physics_shape_cast",
     "og_physics_overlap",
     "og_physics_set_mesh",
+    "og_anim_graph",
     "og_ui_configure",
     "og_ui_viewport",
     "og_ui_theme",
@@ -457,6 +561,53 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_toggle",
     "og_ui_text_field",
     "og_ui_tooltip",
+    "og_ui_breakpoint",
+    "og_ui_frame_viewport",
+    "og_ui_has_icon",
+    "og_ui_seconds",
+    "og_ui_frame_theme",
+    "og_ui_open_anchor",
+    "og_ui_open_transition",
+    "og_ui_open_modal",
+    "og_ui_close_modal",
+    "og_ui_spotlight",
+    "og_ui_bounds",
+    "og_ui_open_list",
+    "og_ui_open_grid",
+    "og_ui_list_item",
+    "og_ui_grid_item",
+    "og_ui_close_list",
+    "og_ui_dragging",
+    "og_ui_tabs",
+    "og_ui_select",
+    "og_ui_stepper",
+    "og_ui_radio",
+    "og_ui_checkbox",
+    "og_ui_checkbox_list",
+    "og_ui_chip",
+    "og_ui_badge",
+    "og_ui_divider",
+    "og_ui_spacer",
+    "og_ui_key_value",
+    "og_ui_skeleton",
+    "og_ui_spinner",
+    "og_ui_icon",
+    "og_ui_meter",
+    "og_ui_cooldown",
+    "og_ui_minimap",
+    "og_ui_dialogue",
+    "og_ui_joystick",
+    "og_ui_dpad",
+    "og_ui_action_button",
+    "og_ui_toast",
+    "og_ui_dismiss_toast",
+    "og_ui_navigate",
+    "og_ui_back",
+    "og_ui_set_navigation",
+    "og_ui_memory",
+    "og_ui_remember",
+    "og_ui_tick",
+    "og_ui_preview_viewport",
     "og_commands_register",
     "og_commands_parse",
     "og_commands_help",
@@ -2919,6 +3070,776 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 label: "",
                 doc: "0 for two solids; an overlap with a sensor otherwise: 1 a is the sensor, 2 b is, 3 both are.",
+                variants: &[],
+            },
+        ],
+    },
+    RecordDecl {
+        kind: "component",
+        name: "Skeleton",
+        schema: "og.Skeleton",
+        fields: &[
+            FieldDecl {
+                name: "asset",
+                column: "SkeletonAsset",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The skeleton asset (og.load.animation's `skeleton`); 0 is none.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "skin",
+                column: "u32",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: Some(0.0),
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Which of the asset's skins the joint palette is for (glTF skin index).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "rootMotion",
+                column: "RootMotion",
+                default: "\"off\"",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Root motion extraction: off (animate in place), planar (xz travel and yaw move og.Transform) or full.",
+                variants: &["off", "planar", "full"],
+            },
+            FieldDecl {
+                name: "rootJoint",
+                column: "u32",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: Some(0.0),
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The joint whose motion is extracted (an index into the skin's joints; 0 is its first joint, usually the hips).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "jointCount",
+                column: "u32",
+                default: "0",
+                readonly: true,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Written: the number of joints in the palette (0 until the first tick).",
+                variants: &[],
+            },
+        ],
+    },
+    RecordDecl {
+        kind: "component",
+        name: "AnimationPlayer",
+        schema: "og.AnimationPlayer",
+        fields: &[
+            FieldDecl {
+                name: "clip",
+                column: "ClipAsset",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The clip asset; 0 plays nothing.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "time",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: Some(0.0),
+                max: None,
+                step: None,
+                unit: "s",
+                label: "",
+                doc: "The playback position; written every tick, set it to seek (no markers fire across a seek).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "speed",
+                column: "f32",
+                default: "1",
+                readonly: false,
+                tunable: true,
+                min: Some(-10.0),
+                max: Some(10.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Playback rate (1 = as authored, negative plays backwards).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "loop",
+                column: "bool",
+                default: "true",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Wrap at the end of the clip; otherwise hold the last frame and set `finished`.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "weight",
+                column: "f32",
+                default: "1",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(1.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "How much of the pose this player decides (0 = none, 1 = all).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "fade",
+                column: "f32",
+                default: "0.2",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(10.0),
+                step: None,
+                unit: "s",
+                label: "",
+                doc: "Cross-fade duration when `clip` changes.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "finished",
+                column: "bool",
+                default: "false",
+                readonly: true,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Written: a non-looping clip reached its end.",
+                variants: &[],
+            },
+        ],
+    },
+    RecordDecl {
+        kind: "component",
+        name: "AnimationGraph",
+        schema: "og.AnimationGraph",
+        fields: &[
+            FieldDecl {
+                name: "asset",
+                column: "GraphAsset",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The graph asset; 0 is none.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "weight",
+                column: "f32",
+                default: "1",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(1.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "How much of the pose the graph decides over the rest pose.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "speed",
+                column: "f32",
+                default: "1",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(10.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "A playback-rate multiplier for every layer.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "p0",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Parameter 0 (the graph's first `param`).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "p1",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Parameter 1.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "p2",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Parameter 2.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "p3",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Parameter 3.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "p4",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Parameter 4.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "p5",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Parameter 5.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "p6",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Parameter 6.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "p7",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Parameter 7.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "state",
+                column: "u32",
+                default: "0",
+                readonly: true,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Written: the base layer's current state (its index in the graph file).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "stateTime",
+                column: "f32",
+                default: "0",
+                readonly: true,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "s",
+                label: "",
+                doc: "Written: seconds since the base layer entered `state`.",
+                variants: &[],
+            },
+        ],
+    },
+    RecordDecl {
+        kind: "component",
+        name: "Blendshapes",
+        schema: "og.Blendshapes",
+        fields: &[
+            FieldDecl {
+                name: "source",
+                column: "BlendshapeSource",
+                default: "\"component\"",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Who decides the weights: component (game code writes w0...w7) or clips (the animation writes them).",
+                variants: &["component", "clips"],
+            },
+            FieldDecl {
+                name: "mesh",
+                column: "u32",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: Some(0.0),
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The glTF mesh index whose targets the weights drive (0 is the first mesh).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "w0",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: Some(-1.0),
+                max: Some(2.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Weight of target 0.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "w1",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: Some(-1.0),
+                max: Some(2.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Weight of target 1.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "w2",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: Some(-1.0),
+                max: Some(2.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Weight of target 2.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "w3",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: Some(-1.0),
+                max: Some(2.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Weight of target 3.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "w4",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: Some(-1.0),
+                max: Some(2.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Weight of target 4.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "w5",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: Some(-1.0),
+                max: Some(2.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Weight of target 5.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "w6",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: Some(-1.0),
+                max: Some(2.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Weight of target 6.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "w7",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: Some(-1.0),
+                max: Some(2.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Weight of target 7.",
+                variants: &[],
+            },
+        ],
+    },
+    RecordDecl {
+        kind: "component",
+        name: "IkChain",
+        schema: "og.IkChain",
+        fields: &[
+            FieldDecl {
+                name: "skeleton",
+                column: "Entity",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The entity with the og.Skeleton this chain bends.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "tip",
+                column: "u32",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: Some(0.0),
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The end joint (an index into the skin's joints): the foot or the hand.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "bones",
+                column: "u32",
+                default: "2",
+                readonly: false,
+                tunable: false,
+                min: Some(1.0),
+                max: Some(32.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "How many bones above the tip turn (two-bone always uses 2).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "solver",
+                column: "IkSolver",
+                default: "\"twoBone\"",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "twoBone (analytic, with a pole) or fabrik (iterative, any length).",
+                variants: &["twoBone", "fabrik"],
+            },
+            FieldDecl {
+                name: "target",
+                column: "Vector3",
+                default: "{\"x\":0,\"y\":0,\"z\":0}",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "m",
+                label: "",
+                doc: "Where the tip should be.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "pole",
+                column: "Vector3",
+                default: "{\"x\":0,\"y\":0,\"z\":0}",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "m",
+                label: "",
+                doc: "A point the middle joint bends towards (two-bone); the zero vector keeps the animated bend.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "space",
+                column: "IkSpace",
+                default: "\"world\"",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "What `target` and `pole` are relative to: world (the skeleton entity's og.Transform applies) or model.",
+                variants: &["world", "model"],
+            },
+            FieldDecl {
+                name: "weight",
+                column: "f32",
+                default: "1",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(1.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "How much of the solved rotation is applied (0 = the animated pose, 1 = fully solved).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "iterations",
+                column: "u32",
+                default: "10",
+                readonly: false,
+                tunable: false,
+                min: Some(1.0),
+                max: Some(64.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "FABRIK iterations at most.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "tolerance",
+                column: "f32",
+                default: "0.001",
+                readonly: false,
+                tunable: false,
+                min: Some(0.0),
+                max: None,
+                step: None,
+                unit: "m",
+                label: "",
+                doc: "The tip distance (model units) at which the target counts as reached.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "reached",
+                column: "bool",
+                default: "false",
+                readonly: true,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Written: the tip is within `tolerance` of the target after solving.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "error",
+                column: "f32",
+                default: "0",
+                readonly: true,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "m",
+                label: "",
+                doc: "Written: the tip's distance from the target after solving, in model units.",
+                variants: &[],
+            },
+        ],
+    },
+    RecordDecl {
+        kind: "event",
+        name: "AnimationEvent",
+        schema: "og.AnimationEvent",
+        fields: &[
+            FieldDecl {
+                name: "entity",
+                column: "Entity",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The skeleton entity.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "clip",
+                column: "ClipAsset",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The clip asset the marker belongs to.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "name",
+                column: "String",
+                default: "\"\"",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The marker's name (at most 63 bytes).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "time",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "s",
+                label: "",
+                doc: "The marker's time in the clip.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "weight",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The clip's blend weight when it fired.",
                 variants: &[],
             },
         ],

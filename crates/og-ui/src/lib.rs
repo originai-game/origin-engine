@@ -23,26 +23,39 @@ mod draw;
 mod id;
 mod input;
 mod layout;
+mod motion;
+mod nav;
 mod probe;
 mod style;
 mod text;
 #[rustfmt::skip]
 pub mod theme;
 mod ui;
+mod widgets;
 
 pub use draw::{atlas_texture, camera, DrawCmd, DrawItem, EmitDesc};
 pub use id::{ui_id, ui_idi, Id};
-pub use input::{InputFrame, InputSource, OgInput, UiKey};
-pub use layout::{Align, Cross, Direction, Element, FontRole, Insets, Rect, Size, TextAlign};
+pub use input::{GamepadFrame, InputFrame, InputSource, Nav, OgInput, UiKey};
+pub use layout::{
+    Align, Anchor, Cross, Direction, Element, FontRole, Insets, Rect, Size, TextAlign,
+};
+pub use motion::{cubic_bezier, ease_exit, ease_out, TransitionKind};
 pub use probe::{SharedUi, UiProbe};
 pub use style::{
-    Density, DensityMode, Durations, Hues, Palette, Radius, Scheme, Space, Spring, Srgba, Theme,
-    TypeRamp, TypeStep,
+    Breakpoint, Contrast, Density, DensityMode, Durations, HueName, Hues, Palette, Radius, Scheme,
+    Space, Spring, Srgba, Theme, TypeRamp, TypeStep,
 };
 pub use text::{FontMetrics, UiFont};
 pub use ui::{
-    ButtonDesc, ButtonVariant, ControlSize, FieldDesc, Fonts, ImageDesc, LabelDesc, PanelDesc,
-    ProgressDesc, Response, ScrollDesc, SliderDesc, Ui, UiDesc, UiFrame, Viewport,
+    ButtonDesc, ButtonVariant, ControlSize, FieldDesc, Fonts, IconAtlas, ImageDesc, LabelDesc,
+    PanelDesc, ProgressDesc, Response, ScrollDesc, SliderDesc, Ui, UiDesc, UiFrame, Viewport,
+};
+pub use widgets::{
+    ActionButtonDesc, AnchorDesc, ChipDesc, CooldownDesc, DialogueDesc, DialogueResponse, DpadDesc,
+    DpadResponse, GridDesc, IconDesc, JoystickDesc, JoystickResponse, ListDesc, ListRange,
+    MapMarker, MeterDesc, MeterKind, MinimapDesc, ModalDesc, ModalResponse, Presence, RadioDesc,
+    SelectDesc, SkeletonDesc, SpotlightDesc, StepperDesc, TabsDesc, ToastDesc, Tone,
+    TransitionDesc,
 };
 
 /// The probe's element type: what `dump_ui` lists and the id and text lookups search.

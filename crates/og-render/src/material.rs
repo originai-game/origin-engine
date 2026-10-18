@@ -40,7 +40,7 @@ impl Side {
 /// metalness 0, roughness 1, opaque, front side.
 #[allow(non_snake_case)]
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.StandardMaterial", version = 1)]
+#[reflect(name = "og.StandardMaterial", version = 2)]
 pub struct StandardMaterial {
     /// The base colour (linear RGB), multiplied with `map` and vertex colours.
     #[reflect(default = [1.0, 1.0, 1.0], min = 0.0, tunable)]
@@ -99,6 +99,52 @@ pub struct StandardMaterial {
     /// `map` and vertex colours) plus the emissive term.
     #[reflect(min = 0.0, max = 1.0, default = 0.0)]
     pub unlit: u32,
+    /// 1: cel shading (three.js `MeshToonMaterial`): light is quantized by
+    /// `gradientMap` (or three built-in bands without one), highlights are hard.
+    #[reflect(min = 0.0, max = 1.0, default = 0.0)]
+    pub toon: u32,
+    /// The toon ramp: a texture whose first row maps N·L (left dark, right
+    /// lit) to the light received, read without filtering (hard bands).
+    pub gradientMap: u32,
+    /// Rim (fresnel) light added at grazing angles, unshadowed (linear RGB).
+    #[reflect(min = 0.0, default = [1.0, 1.0, 1.0], tunable)]
+    pub rimColor: Vec3,
+    /// 0: no rim light.
+    #[reflect(min = 0.0, default = 0.0, tunable)]
+    pub rimIntensity: f32,
+    /// How tight the rim is (higher: thinner).
+    #[reflect(min = 0.1, default = 3.0, tunable)]
+    pub rimPower: f32,
+    /// The colour a hit flash mixes towards (linear RGB, may exceed 1).
+    #[reflect(min = 0.0, default = [1.0, 1.0, 1.0], tunable)]
+    pub flashColor: Vec3,
+    /// How far the final colour is mixed towards `flashColor` (0 none, 1 flat).
+    #[reflect(min = 0.0, max = 1.0, default = 0.0, tunable)]
+    pub flash: f32,
+    /// The dissolved fraction: 0 whole, 1 gone. Pixels whose noise is below
+    /// it are discarded (also from shadows and the prepass); the band just
+    /// above glows with `dissolveEdgeColor`.
+    #[reflect(min = 0.0, max = 1.0, default = 0.0, tunable)]
+    pub dissolve: f32,
+    /// The dissolve noise from the texture's red channel (by UV); without
+    /// one, value noise over the object-space position.
+    pub dissolveMap: u32,
+    /// The glowing edge (linear RGB, usually above 1 so it blooms).
+    #[reflect(min = 0.0, default = [4.0, 1.5, 0.375], tunable)]
+    pub dissolveEdgeColor: Vec3,
+    /// Width of the glowing band in noise units.
+    #[reflect(min = 0.0, max = 1.0, default = 0.0625, tunable)]
+    pub dissolveEdgeWidth: f32,
+    /// Frequency of the built-in noise (cells per object-space unit).
+    #[reflect(min = 0.0, default = 4.0, tunable)]
+    pub dissolveScale: f32,
+    /// This object's outline colour (linear RGB) in the outline pass.
+    #[reflect(min = 0.0, max = 1.0, default = [0.0, 0.0, 0.0], tunable)]
+    pub outlineColor: Vec3,
+    /// This object's outline width in pixels (0: the scene's
+    /// `PostEffects::outline`, if any). Turns the outline pass on.
+    #[reflect(min = 0.0, max = 31.0, default = 0.0, tunable)]
+    pub outlineWidth: f32,
 }
 
 impl Default for StandardMaterial {
@@ -124,6 +170,20 @@ impl Default for StandardMaterial {
             flatShading: 0,
             envMapIntensity: 1.0,
             unlit: 0,
+            toon: 0,
+            gradientMap: 0,
+            rimColor: Vec3::ONE,
+            rimIntensity: 0.0,
+            rimPower: 3.0,
+            flashColor: Vec3::ONE,
+            flash: 0.0,
+            dissolve: 0.0,
+            dissolveMap: 0,
+            dissolveEdgeColor: Vec3::new(4.0, 1.5, 0.375),
+            dissolveEdgeWidth: 0.0625,
+            dissolveScale: 4.0,
+            outlineColor: Vec3::ZERO,
+            outlineWidth: 0.0,
         }
     }
 }
@@ -146,9 +206,15 @@ impl StandardMaterial {
         self.transparent != 0
     }
 
+    /// Whether the dissolve discards pixels (shadows and the prepass must
+    /// draw it with the material's shader too).
+    pub fn dissolves(&self) -> bool {
+        self.dissolve > 0.0
+    }
+
     /// The texture slots in binding order (map, metalness, roughness,
-    /// normal, emissive, ao), as handles.
-    pub(crate) fn textures(&self) -> [Option<TextureHandle>; 6] {
+    /// normal, emissive, ao, gradient, dissolve), as handles.
+    pub(crate) fn textures(&self) -> [Option<TextureHandle>; 8] {
         [
             self.map,
             self.metalnessMap,
@@ -156,6 +222,8 @@ impl StandardMaterial {
             self.normalMap,
             self.emissiveMap,
             self.aoMap,
+            self.gradientMap,
+            self.dissolveMap,
         ]
         .map(TextureHandle::from_slot)
     }
@@ -193,6 +261,7 @@ impl From<&Material> for StandardMaterial {
             flatShading: 0,
             envMapIntensity: 1.0,
             unlit: 0,
+            ..StandardMaterial::default()
         }
     }
 }
@@ -216,6 +285,17 @@ pub(crate) struct MaterialUniform {
     /// x: normal map (0 none, 1 RGB, 2 two-channel), y: ao intensity (< 0: no
     /// map), z: environment intensity, w: mode bits (1 flat, 2 unlit, 4 blended).
     pub flags: [f32; 4],
+    /// x: toon (0 off, 1 gradient map, 2 built-in bands), y: rim intensity,
+    /// z: rim power, w: flash amount.
+    pub toon: [f32; 4],
+    /// rgb: rim colour, w: dissolve amount.
+    pub rim: [f32; 4],
+    /// rgb: flash colour, w: dissolve edge width.
+    pub flash: [f32; 4],
+    /// rgb: dissolve edge colour, w: noise scale (negative: the dissolve map).
+    pub dissolve: [f32; 4],
+    /// rgb: outline colour, w: outline width in pixels.
+    pub outline: [f32; 4],
 }
 
 /// The uniform for `m`; `two_channel_normal` when its normal map is BC5/EAC.
@@ -244,6 +324,44 @@ pub(crate) fn uniform(m: &StandardMaterial, two_channel_normal: bool) -> Materia
             if m.aoMap != 0 { m.aoMapIntensity } else { -1.0 },
             m.envMapIntensity,
             mode as f32,
+        ],
+        toon: [
+            match (m.toon != 0, m.gradientMap != 0) {
+                (false, _) => 0.0,
+                (true, true) => 1.0,
+                (true, false) => 2.0,
+            },
+            m.rimIntensity,
+            m.rimPower.max(0.1),
+            m.flash.clamp(0.0, 1.0),
+        ],
+        rim: [
+            m.rimColor.x,
+            m.rimColor.y,
+            m.rimColor.z,
+            m.dissolve.clamp(0.0, 1.0),
+        ],
+        flash: [
+            m.flashColor.x,
+            m.flashColor.y,
+            m.flashColor.z,
+            m.dissolveEdgeWidth.max(0.0),
+        ],
+        dissolve: [
+            m.dissolveEdgeColor.x,
+            m.dissolveEdgeColor.y,
+            m.dissolveEdgeColor.z,
+            if m.dissolveMap != 0 {
+                -1.0
+            } else {
+                m.dissolveScale.max(1e-3)
+            },
+        ],
+        outline: [
+            m.outlineColor.x,
+            m.outlineColor.y,
+            m.outlineColor.z,
+            m.outlineWidth.clamp(0.0, 31.0),
         ],
     }
 }

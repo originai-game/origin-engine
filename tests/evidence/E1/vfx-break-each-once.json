@@ -1,0 +1,156 @@
+{
+ "what": "each effect broken once in its source, its test run, the file restored (scratch breaks.py over cargo test --release -p og-tests --test effects)",
+ "rev": "3db4319+E1 tree, 2026-10-18",
+ "rows": [
+  {
+   "break": "particle replay window",
+   "test": "a_600_tick_cpu",
+   "result": "FAILS (as it must)",
+   "detail": "thread 'a_600_tick_cpu_particle_run_is_deterministic' (22780266) panicked at crates/og-tests/tests/effects.rs:152:5:; test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 24 filtered out; f"
+  },
+  {
+   "break": "GPU spawn stream",
+   "test": "gpu_and_cpu_paths",
+   "result": "FAILS (as it must)",
+   "detail": "thread 'gpu_and_cpu_paths_simulate_the_same_particles' (22781796) panicked at crates/og-tests/tests/effects.rs:216:5:; test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 24 filtered out; "
+  },
+  {
+   "break": "continuous spawn count",
+   "test": "spawn_counts",
+   "result": "STILL PASSES",
+   "detail": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 24 filtered out; finished in 0.09s"
+  },
+  {
+   "break": "soft particle fade",
+   "test": "soft_particles",
+   "result": "FAILS (as it must)",
+   "detail": "thread 'soft_particles_fade_against_the_scene' (22784788) panicked at crates/og-tests/tests/effects.rs:315:5:; test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 24 filtered out; finished"
+  },
+  {
+   "break": "depth collision",
+   "test": "particles_bounce",
+   "result": "FAILS (as it must)",
+   "detail": "thread 'particles_bounce_off_the_depth_buffer' (22786352) panicked at crates/og-tests/tests/effects.rs:341:5:; test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 24 filtered out; finished"
+  },
+  {
+   "break": "2D emitters",
+   "test": "two_d_emitters",
+   "result": "FAILS (as it must)",
+   "detail": "thread 'two_d_emitters_draw_as_sprites' (22788368) panicked at crates/og-tests/tests/effects.rs:392:5:; test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 24 filtered out; finished in 0.1"
+  },
+  {
+   "break": "trail expiry",
+   "test": "trails_remember",
+   "result": "FAILS (as it must)",
+   "detail": "thread 'trails_remember_the_path_for_their_lifetime' (22789756) panicked at crates/og-tests/tests/effects.rs:435:5:; test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 24 filtered out; fi"
+  },
+  {
+   "break": "beam scroll",
+   "test": "beams_scroll",
+   "result": "FAILS (as it must)",
+   "detail": "thread 'beams_scroll_with_the_tick' (22791985) panicked at crates/og-tests/tests/effects.rs:465:5:; test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 24 filtered out; finished in 0.12s"
+  },
+  {
+   "break": "2D shadow coverage",
+   "test": "cast_soft_shadows",
+   "result": "FAILS (as it must)",
+   "detail": "thread 'two_d_lights_cast_soft_shadows_from_occluders' (22794175) panicked at crates/og-tests/tests/effects.rs:530:5:; test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 24 filtered out; "
+  },
+  {
+   "break": "lit layer range",
+   "test": "leaves_ui_layers",
+   "result": "FAILS (as it must)",
+   "detail": "thread 'two_d_lighting_leaves_ui_layers_alone' (22796308) panicked at crates/og-tests/tests/effects.rs:562:5:; test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 24 filtered out; finished"
+  },
+  {
+   "break": "glow into bloom",
+   "test": "glow_is_order",
+   "result": "FAILS (as it must)",
+   "detail": "thread 'glow_is_order_independent_and_flash_tints' (22798127) panicked at crates/og-tests/tests/effects.rs:621:5:; test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 24 filtered out; fini"
+  },
+  {
+   "break": "decal projection",
+   "test": "decals_project",
+   "result": "FAILS (as it must)",
+   "detail": "thread 'decals_project_onto_surfaces_and_are_capped' (22799980) panicked at crates/og-tests/tests/effects.rs:650:5:; test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 24 filtered out; fi"
+  },
+  {
+   "break": "LUT axes",
+   "test": "colour_grading",
+   "result": "FAILS (as it must)",
+   "detail": "thread 'colour_grading_reads_the_lut' (22801981) panicked at crates/og-tests/tests/effects.rs:704:5:; test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 24 filtered out; finished in 0.36s"
+  },
+  {
+   "break": "grain seed by tick",
+   "test": "vignette_aberration",
+   "result": "FAILS (as it must)",
+   "detail": "thread 'vignette_aberration_grain_and_flash' (22803726) panicked at crates/og-tests/tests/effects.rs:781:5:; test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 24 filtered out; finished i"
+  },
+  {
+   "break": "camera shake",
+   "test": "camera_shake",
+   "result": "FAILS (as it must)",
+   "detail": "thread 'camera_shake_moves_the_view' (22805457) panicked at crates/og-tests/tests/effects.rs:826:5:; test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 24 filtered out; finished in 0.15s"
+  },
+  {
+   "break": "AO on ambient",
+   "test": "ambient_occlusion",
+   "result": "FAILS (as it must)",
+   "detail": "thread 'ambient_occlusion_darkens_contacts' (22807176) panicked at crates/og-tests/tests/effects.rs:869:9:; test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 24 filtered out; finished in"
+  },
+  {
+   "break": "DOF composite",
+   "test": "depth_of_field",
+   "result": "FAILS (as it must)",
+   "detail": "thread 'depth_of_field_blurs_outside_the_focus_band' (22808413) panicked at crates/og-tests/tests/effects.rs:906:5:; test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 24 filtered out; fi"
+  },
+  {
+   "break": "motion blur taps",
+   "test": "motion_blur",
+   "result": "FAILS (as it must)",
+   "detail": "thread 'motion_blur_follows_object_and_camera_motion' (22810450) panicked at crates/og-tests/tests/effects.rs:950:5:; test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 24 filtered out; f"
+  },
+  {
+   "break": "god rays added",
+   "test": "god_rays",
+   "result": "FAILS (as it must)",
+   "detail": "thread 'god_rays_shine_between_the_columns' (22812272) panicked at crates/og-tests/tests/effects.rs:965:5:; test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 24 filtered out; finished in"
+  },
+  {
+   "break": "outline edges",
+   "test": "outlines",
+   "result": "FAILS (as it must)",
+   "detail": "thread 'outlines_follow_silhouettes' (22814289) panicked at crates/og-tests/tests/effects.rs:1026:5:; test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 24 filtered out; finished in 0.27s"
+  },
+  {
+   "break": "toon ramp",
+   "test": "toon_rim",
+   "result": "FAILS (as it must)",
+   "detail": "thread 'toon_rim_flash_and_dissolve' (22816205) panicked at crates/og-tests/tests/effects.rs:1065:5:; test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 24 filtered out; finished in 0.69s"
+  },
+  {
+   "break": "skin blend",
+   "test": "skinned_cylinder",
+   "result": "FAILS (as it must)",
+   "detail": "thread 'skinned_cylinder_bends_with_its_palette' (22818074) panicked at crates/og-tests/tests/effects.rs:1159:5:; test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 24 filtered out; finis"
+  },
+  {
+   "break": "morph deltas",
+   "test": "blendshapes",
+   "result": "FAILS (as it must)",
+   "detail": "thread 'blendshapes_move_vertices_by_their_weights' (22819972) panicked at crates/og-tests/tests/effects.rs:1235:5:; test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 24 filtered out; fi"
+  },
+  {
+   "break": "passes when off",
+   "test": "effects_off",
+   "result": "FAILS (as it must)",
+   "detail": "thread 'effects_off_add_no_passes' (22821915) panicked at crates/og-render/src/lib.rs:3298:67:; test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 24 filtered out; finished in 0.09s"
+  },
+  {
+   "break": "continuous spawn count (second run after the test gained a 45/s emitter)",
+   "test": "spawn_counts",
+   "result": "FAILS (as it must)",
+   "detail": "left: 93, right: 92"
+  }
+ ]
+}

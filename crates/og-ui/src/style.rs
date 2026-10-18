@@ -37,7 +37,39 @@ impl Srgba {
         }
     }
 
+    /// This colour composited over an opaque `below` (straight alpha), opaque.
+    pub fn over(self, below: Srgba) -> Srgba {
+        let a = self.alpha.clamp(0.0, 1.0);
+        let mix = |t: u8, b: u8| (f32::from(t) * a + f32::from(b) * (1.0 - a)).round() as u8;
+        Srgba::rgb(
+            mix(self.rgb[0], below.rgb[0]),
+            mix(self.rgb[1], below.rgb[1]),
+            mix(self.rgb[2], below.rgb[2]),
+        )
+    }
+
+    /// Mixed towards `to` by `t` (0–1), keeping this colour's alpha.
+    pub fn mix(self, to: Srgba, t: f32) -> Srgba {
+        let t = t.clamp(0.0, 1.0);
+        let m = |a: u8, b: u8| (f32::from(a) + (f32::from(b) - f32::from(a)) * t).round() as u8;
+        Srgba {
+            rgb: [
+                m(self.rgb[0], to.rgb[0]),
+                m(self.rgb[1], to.rgb[1]),
+                m(self.rgb[2], to.rgb[2]),
+            ],
+            alpha: self.alpha,
+        }
+    }
+
+    /// WCAG relative luminance (0 black – 1 white).
+    pub fn luminance(self) -> f32 {
+        let c = self.linear();
+        0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+    }
+
     pub const WHITE: Srgba = Srgba::rgb(255, 255, 255);
+    pub const BLACK: Srgba = Srgba::rgb(0, 0, 0);
     pub const TRANSPARENT: Srgba = Srgba {
         rgb: [0, 0, 0],
         alpha: 0.0,
@@ -64,6 +96,133 @@ pub enum DensityMode {
     Touch,
 }
 
+/// A theme variant beyond the scheme (`prefers-contrast: more`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Contrast {
+    #[default]
+    Standard,
+    /// Stronger inks, fills and edges, every control outlined in
+    /// `border-strong`: the token palette remapped, no new colour.
+    High,
+}
+
+/// A named category hue of the tokens (`hue.*`), for a game's accent.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HueName {
+    Red,
+    Orange,
+    Yellow,
+    Green,
+    Mint,
+    Teal,
+    Cyan,
+    Blue,
+    Indigo,
+    Purple,
+    Pink,
+    Brown,
+}
+
+impl HueName {
+    pub const ALL: [HueName; 12] = [
+        HueName::Red,
+        HueName::Orange,
+        HueName::Yellow,
+        HueName::Green,
+        HueName::Mint,
+        HueName::Teal,
+        HueName::Cyan,
+        HueName::Blue,
+        HueName::Indigo,
+        HueName::Purple,
+        HueName::Pink,
+        HueName::Brown,
+    ];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            HueName::Red => "red",
+            HueName::Orange => "orange",
+            HueName::Yellow => "yellow",
+            HueName::Green => "green",
+            HueName::Mint => "mint",
+            HueName::Teal => "teal",
+            HueName::Cyan => "cyan",
+            HueName::Blue => "blue",
+            HueName::Indigo => "indigo",
+            HueName::Purple => "purple",
+            HueName::Pink => "pink",
+            HueName::Brown => "brown",
+        }
+    }
+
+    pub fn from_name(name: &str) -> Option<HueName> {
+        HueName::ALL.into_iter().find(|h| h.name() == name)
+    }
+
+    pub fn of(self, hues: &Hues) -> Srgba {
+        match self {
+            HueName::Red => hues.red,
+            HueName::Orange => hues.orange,
+            HueName::Yellow => hues.yellow,
+            HueName::Green => hues.green,
+            HueName::Mint => hues.mint,
+            HueName::Teal => hues.teal,
+            HueName::Cyan => hues.cyan,
+            HueName::Blue => hues.blue,
+            HueName::Indigo => hues.indigo,
+            HueName::Purple => hues.purple,
+            HueName::Pink => hues.pink,
+            HueName::Brown => hues.brown,
+        }
+    }
+}
+
+/// The play surface's size class, for layouts that change shape.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Breakpoint {
+    /// The shorter side under 600 CSS px, taller than wide.
+    PhonePortrait,
+    /// The shorter side under 600 CSS px, wider than tall.
+    PhoneLandscape,
+    /// The shorter side 600 or more, under 1024 wide.
+    Tablet,
+    /// 1024 wide or more (with the shorter side 600 or more).
+    #[default]
+    Desktop,
+}
+
+impl Breakpoint {
+    pub fn of(width: f32, height: f32) -> Breakpoint {
+        let short = width.min(height);
+        if short < 600.0 {
+            if height >= width {
+                Breakpoint::PhonePortrait
+            } else {
+                Breakpoint::PhoneLandscape
+            }
+        } else if width < 1024.0 {
+            Breakpoint::Tablet
+        } else {
+            Breakpoint::Desktop
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Breakpoint::PhonePortrait => "phonePortrait",
+            Breakpoint::PhoneLandscape => "phoneLandscape",
+            Breakpoint::Tablet => "tablet",
+            Breakpoint::Desktop => "desktop",
+        }
+    }
+
+    /// A phone in either orientation.
+    pub fn is_phone(self) -> bool {
+        matches!(self, Breakpoint::PhonePortrait | Breakpoint::PhoneLandscape)
+    }
+}
+
 /// Everything a widget reads its look from.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Theme {
@@ -77,6 +236,12 @@ pub struct Theme {
     pub durations_ms: Durations,
     /// How far a pressed control shrinks (`vars.press-scale`).
     pub press_scale: f32,
+    /// Standard or high contrast.
+    pub contrast: Contrast,
+    /// Controls draw a `border-strong` edge (high contrast).
+    pub outline: bool,
+    /// `prefers-reduced-motion`: transitions keep opacity and drop movement and scale; skeleton sheens stop.
+    pub reduced_motion: bool,
 }
 
 impl Default for Theme {
@@ -109,7 +274,103 @@ impl Theme {
             density: DensityMode::Auto,
             durations_ms: tokens::DURATIONS_MS,
             press_scale: tokens::PRESS_SCALE,
+            contrast: Contrast::Standard,
+            outline: false,
+            reduced_motion: false,
         }
+    }
+
+    /// The high-contrast variant of a scheme: `fg-muted` inks take `fg`,
+    /// `fg-subtle` takes `fg-muted`, fills step up to `fill-strong` and
+    /// `border-strong`, borders to `border-strong`, and controls are
+    /// outlined. Only token values are used.
+    pub fn high_contrast(scheme: Scheme) -> Theme {
+        let mut t = Theme::new(scheme);
+        let p = t.palette;
+        t.palette.fg_muted = p.fg;
+        t.palette.fg_subtle = p.fg_muted;
+        t.palette.fill = p.fill_strong;
+        t.palette.fill_strong = p.border_strong;
+        t.palette.border = p.border_strong;
+        t.palette.scrim = p.scrim.fade(1.5);
+        t.contrast = Contrast::High;
+        t.outline = true;
+        t
+    }
+
+    /// This theme with a game's own accent. The hover, active, ink, soft and
+    /// focus tones are derived from `accent` the way the tokens derive them
+    /// from amber (the same mix towards white or black, the same alpha), and
+    /// the ink on the accent is the token `accent-fg` or the light `fg`,
+    /// whichever reads better.
+    pub fn with_accent(mut self, accent: Srgba) -> Theme {
+        let base = match self.scheme {
+            Scheme::Light => tokens::LIGHT,
+            Scheme::Dark => tokens::DARK,
+        };
+        let amber = base.accent;
+        if accent.rgb == amber.rgb {
+            // The tokens' own accent keeps the tokens' own tones.
+            self.palette.accent = base.accent;
+            self.palette.accent_hover = base.accent_hover;
+            self.palette.accent_active = base.accent_active;
+            self.palette.accent_ink = base.accent_ink;
+            self.palette.accent_soft = base.accent_soft;
+            self.palette.accent_fg = base.accent_fg;
+            self.palette.focus = base.focus;
+            return self;
+        }
+        let derive = |token: Srgba| -> Srgba {
+            let sum = |c: Srgba| c.rgb.iter().map(|&v| f32::from(v)).sum::<f32>();
+            let (s0, s1) = (sum(amber), sum(token));
+            let toward = if s1 >= s0 { Srgba::WHITE } else { Srgba::BLACK };
+            let span = sum(toward) - s0;
+            let t = if span.abs() < 1.0 {
+                0.0
+            } else {
+                (s1 - s0) / span
+            };
+            Srgba {
+                alpha: token.alpha,
+                ..accent.mix(toward, t)
+            }
+        };
+        let a = Srgba {
+            alpha: 1.0,
+            ..accent
+        };
+        self.palette.accent = a;
+        self.palette.accent_hover = derive(base.accent_hover);
+        self.palette.accent_active = derive(base.accent_active);
+        self.palette.accent_ink = derive(base.accent_ink);
+        self.palette.focus = derive(base.focus);
+        self.palette.accent_soft = Srgba {
+            alpha: base.accent_soft.alpha,
+            ..a
+        };
+        let dark_ink = base.accent_fg;
+        let light_ink = tokens::DARK.fg;
+        let contrast = |x: Srgba, y: Srgba| {
+            let (l1, l2) = (x.luminance(), y.luminance());
+            (l1.max(l2) + 0.05) / (l1.min(l2) + 0.05)
+        };
+        self.palette.accent_fg = if contrast(a, dark_ink) >= contrast(a, light_ink) {
+            dark_ink
+        } else {
+            light_ink
+        };
+        self
+    }
+
+    /// This theme with one of the token hues as its accent.
+    pub fn with_hue(self, hue: HueName) -> Theme {
+        let c = hue.of(&self.hues);
+        self.with_accent(c)
+    }
+
+    /// Frames a duration in milliseconds takes at `ticks_per_second` (at least 1).
+    pub fn ticks(ms: f32, ticks_per_second: u32) -> u32 {
+        ((ms * ticks_per_second as f32 / 1000.0).ceil() as u32).max(1)
     }
 
     /// The control sizes for a viewport.

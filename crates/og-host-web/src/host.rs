@@ -331,6 +331,9 @@ impl LoadApi for WebHost {
     fn og_load_font_info(&self, world: u32, font: f64) -> String {
         rt::og_load_font_info(world, font)
     }
+    fn og_load_animation(&self, world: u32, path: String) -> String {
+        rt::og_load_animation(world, path)
+    }
     fn og_load_sound(&self, world: u32, path: String) -> String {
         rt::og_load_sound(world, path)
     }
@@ -339,6 +342,12 @@ impl LoadApi for WebHost {
     }
     fn og_load_error(&self, world: u32, asset: f64) -> String {
         rt::og_load_error(world, asset)
+    }
+}
+
+impl AnimApi for WebHost {
+    fn og_anim_graph(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_anim_graph(world, desc)
     }
 }
 
@@ -402,6 +411,159 @@ impl UiApi for WebHost {
     }
     fn og_ui_tooltip(&self, text: String) {
         rt::og_ui_tooltip(text)
+    }
+    fn og_ui_breakpoint(&self) -> String {
+        rt::og_ui_breakpoint()
+    }
+    fn og_ui_frame_theme(&self) -> String {
+        rt::og_ui_frame_theme()
+    }
+    fn og_ui_frame_viewport(&self) -> String {
+        rt::og_ui_frame_viewport()
+    }
+    fn og_ui_has_icon(&self, name: String) -> bool {
+        rt::og_ui_has_icon(name)
+    }
+    fn og_ui_seconds(&self) -> f64 {
+        rt::og_ui_seconds()
+    }
+    fn og_ui_open_anchor(&self, id: String, desc: Option<String>) {
+        rt::og_ui_open_anchor(id, desc)
+    }
+    fn og_ui_open_transition(&self, id: String, show: bool, desc: Option<String>) -> String {
+        rt::og_ui_open_transition(id, show, desc)
+    }
+    fn og_ui_open_modal(&self, id: String, open: bool, desc: Option<String>) -> String {
+        rt::og_ui_open_modal(id, open, desc)
+    }
+    fn og_ui_close_modal(&self) {
+        rt::og_ui_close_modal()
+    }
+    fn og_ui_spotlight(&self, id: String, hole: String, desc: Option<String>) -> String {
+        rt::og_ui_spotlight(id, hole, desc)
+    }
+    fn og_ui_bounds(&self, path: String) -> String {
+        rt::og_ui_bounds(path)
+    }
+    fn og_ui_open_list(&self, id: String, desc: Option<String>) -> String {
+        rt::og_ui_open_list(id, desc)
+    }
+    fn og_ui_open_grid(&self, id: String, desc: Option<String>) -> String {
+        rt::og_ui_open_grid(id, desc)
+    }
+    fn og_ui_list_item(&self, index: u32, selected: bool) -> String {
+        rt::og_ui_list_item(index, selected)
+    }
+    fn og_ui_grid_item(&self, index: u32, selected: bool) -> String {
+        rt::og_ui_grid_item(index, selected)
+    }
+    fn og_ui_close_list(&self) -> String {
+        rt::og_ui_close_list()
+    }
+    fn og_ui_dragging(&self, id: String) -> String {
+        rt::og_ui_dragging(id)
+    }
+    fn og_ui_tabs(&self, id: String, items: String, selected: u32, desc: Option<String>) -> String {
+        rt::og_ui_tabs(id, items, selected, desc)
+    }
+    fn og_ui_select(
+        &self,
+        id: String,
+        options: String,
+        selected: u32,
+        desc: Option<String>,
+    ) -> String {
+        rt::og_ui_select(id, options, selected, desc)
+    }
+    fn og_ui_stepper(&self, id: String, value: f64, desc: Option<String>) -> String {
+        rt::og_ui_stepper(id, value, desc)
+    }
+    fn og_ui_radio(
+        &self,
+        id: String,
+        options: String,
+        selected: u32,
+        desc: Option<String>,
+    ) -> String {
+        rt::og_ui_radio(id, options, selected, desc)
+    }
+    fn og_ui_checkbox(&self, id: String, on: bool, label: String) -> String {
+        rt::og_ui_checkbox(id, on, label)
+    }
+    fn og_ui_checkbox_list(&self, id: String, labels: String, values: String) -> String {
+        rt::og_ui_checkbox_list(id, labels, values)
+    }
+    fn og_ui_chip(&self, id: String, text: String, desc: Option<String>) -> String {
+        rt::og_ui_chip(id, text, desc)
+    }
+    fn og_ui_badge(&self, id: String, text: String, tone: String) {
+        rt::og_ui_badge(id, text, tone)
+    }
+    fn og_ui_divider(&self, id: String, vertical: bool) {
+        rt::og_ui_divider(id, vertical)
+    }
+    fn og_ui_spacer(&self, id: String, size: String) {
+        rt::og_ui_spacer(id, size)
+    }
+    fn og_ui_key_value(&self, id: String, key: String, value: String, mono: bool) {
+        rt::og_ui_key_value(id, key, value, mono)
+    }
+    fn og_ui_skeleton(&self, id: String, desc: Option<String>) {
+        rt::og_ui_skeleton(id, desc)
+    }
+    fn og_ui_spinner(&self, id: String, size: f64) {
+        rt::og_ui_spinner(id, size)
+    }
+    fn og_ui_icon(&self, id: String, name: String, desc: Option<String>) {
+        rt::og_ui_icon(id, name, desc)
+    }
+    fn og_ui_meter(&self, id: String, value: f64, max: f64, desc: Option<String>) {
+        rt::og_ui_meter(id, value, max, desc)
+    }
+    fn og_ui_cooldown(&self, id: String, remaining: f64, desc: Option<String>) -> String {
+        rt::og_ui_cooldown(id, remaining, desc)
+    }
+    fn og_ui_minimap(&self, id: String, desc: Option<String>) {
+        rt::og_ui_minimap(id, desc)
+    }
+    fn og_ui_dialogue(&self, id: String, desc: Option<String>) -> String {
+        rt::og_ui_dialogue(id, desc)
+    }
+    fn og_ui_joystick(&self, id: String, desc: Option<String>) -> String {
+        rt::og_ui_joystick(id, desc)
+    }
+    fn og_ui_dpad(&self, id: String, desc: Option<String>) -> String {
+        rt::og_ui_dpad(id, desc)
+    }
+    fn og_ui_action_button(&self, id: String, text: String, desc: Option<String>) -> String {
+        rt::og_ui_action_button(id, text, desc)
+    }
+    fn og_ui_toast(&self, world: u32, text: String, desc: Option<String>) -> u32 {
+        rt::og_ui_toast(world, text, desc)
+    }
+    fn og_ui_dismiss_toast(&self, world: u32, toast_id: u32) {
+        rt::og_ui_dismiss_toast(world, toast_id)
+    }
+    fn og_ui_navigate(&self, world: u32, intent: String) {
+        rt::og_ui_navigate(world, intent)
+    }
+    fn og_ui_back(&self) -> bool {
+        rt::og_ui_back()
+    }
+    fn og_ui_set_navigation(&self, on: bool) {
+        rt::og_ui_set_navigation(on)
+    }
+    fn og_ui_memory(&self, id: String, initial: f64) -> f64 {
+        rt::og_ui_memory(id, initial)
+    }
+    fn og_ui_remember(&self, id: String, value: f64) {
+        rt::og_ui_remember(id, value)
+    }
+    fn og_ui_tick(&self) -> u32 {
+        rt::og_ui_tick()
+    }
+    fn og_ui_preview_viewport(&self, world: u32, viewport: String) {
+        rt::og_ui_preview_viewport(world, viewport)
     }
 }
 

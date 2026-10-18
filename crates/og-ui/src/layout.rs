@@ -16,6 +16,7 @@
 //! 5. **Positions**: main-axis `Align`, cross-axis `Cross`, scroll offsets,
 //!    clip rectangles; rectangles snap to device pixels (`Viewport::dpr`).
 
+use crate::motion::Fx;
 use crate::style::{Srgba, TypeStep};
 use crate::text::{break_lines, is_cjk, longest_word, widest_line, Line};
 use crate::FontMetrics;
@@ -274,6 +275,176 @@ impl Element {
     }
 }
 
+/// Where an anchored layer sits in the safe area of the play surface.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Anchor {
+    #[default]
+    TopLeft,
+    Top,
+    TopRight,
+    Left,
+    Center,
+    Right,
+    BottomLeft,
+    Bottom,
+    BottomRight,
+}
+
+impl Anchor {
+    /// The anchor's point as fractions of the area (0 start, 0.5 centre, 1 end).
+    pub fn fractions(self) -> (f32, f32) {
+        match self {
+            Anchor::TopLeft => (0.0, 0.0),
+            Anchor::Top => (0.5, 0.0),
+            Anchor::TopRight => (1.0, 0.0),
+            Anchor::Left => (0.0, 0.5),
+            Anchor::Center => (0.5, 0.5),
+            Anchor::Right => (1.0, 0.5),
+            Anchor::BottomLeft => (0.0, 1.0),
+            Anchor::Bottom => (0.5, 1.0),
+            Anchor::BottomRight => (1.0, 1.0),
+        }
+    }
+}
+
+/// How a layer outside the tree is placed, and its drawing rank.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum Float {
+    /// In the tree.
+    None,
+    /// At an anchor of the safe area, inset by `margin`, moved by `offset`.
+    Anchored {
+        anchor: Anchor,
+        margin: f32,
+        dx: f32,
+        dy: f32,
+        /// Over dialogs and spotlights (a tutorial callout, a dragged item).
+        over: bool,
+    },
+    /// A full-surface backdrop over the tree; its child is the dialog.
+    Modal,
+    /// Under (or over) its anchor node, at least as wide.
+    Popover,
+    /// The toast stack, at an anchor.
+    Toasts { anchor: Anchor, margin: f32 },
+    /// Under (or over) its anchor node.
+    Tooltip,
+}
+
+impl Float {
+    /// Layers draw in rank order, then in the order they were built.
+    pub fn rank(&self) -> u8 {
+        match self {
+            Float::None => 0,
+            Float::Anchored { over: false, .. } => 1,
+            Float::Anchored { over: true, .. } => 3,
+            Float::Modal => 2,
+            Float::Popover => 3,
+            Float::Toasts { .. } => 4,
+            Float::Tooltip => 5,
+        }
+    }
+}
+
+/// A rectangle relative to an element: `f*` are fractions of its size, the
+/// rest CSS px added to them (x, y from its top left).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub(crate) struct Frame {
+    pub fx: f32,
+    pub fy: f32,
+    pub fw: f32,
+    pub fh: f32,
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
+}
+
+impl Frame {
+    /// The whole element.
+    pub const FULL: Frame = Frame {
+        fx: 0.0,
+        fy: 0.0,
+        fw: 1.0,
+        fh: 1.0,
+        x: 0.0,
+        y: 0.0,
+        w: 0.0,
+        h: 0.0,
+    };
+
+    /// A `w`×`h` box whose centre is the element's centre moved by (dx, dy).
+    pub fn centered(dx: f32, dy: f32, w: f32, h: f32) -> Frame {
+        Frame {
+            fx: 0.5,
+            fy: 0.5,
+            x: dx - w / 2.0,
+            y: dy - h / 2.0,
+            w,
+            h,
+            ..Frame::default()
+        }
+    }
+
+    /// A fraction of the element's width from its left, full height.
+    pub fn left(from: f32, to: f32) -> Frame {
+        Frame {
+            fx: from,
+            fw: (to - from).max(0.0),
+            fh: 1.0,
+            ..Frame::default()
+        }
+    }
+
+    pub fn resolve(&self, r: &Rect) -> Rect {
+        Rect::new(
+            r.x + self.fx * r.width + self.x,
+            r.y + self.fy * r.height + self.y,
+            self.fw * r.width + self.w,
+            self.fh * r.height + self.h,
+        )
+    }
+}
+
+/// Extra drawing of a widget, in its own frame, after its background.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum Shape {
+    /// A rounded rectangle (`radius` ≥ half the short side: a capsule or disc).
+    Rect {
+        frame: Frame,
+        radius: f32,
+        color: Srgba,
+    },
+    /// A solid bar rotated by `angle` (radians, clockwise on screen) about its centre.
+    Bar {
+        frame: Frame,
+        angle: f32,
+        color: Srgba,
+    },
+    /// The half of a disc on the side `angle` points to (0: the right half,
+    /// clockwise on screen).
+    Half {
+        frame: Frame,
+        angle: f32,
+        color: Srgba,
+    },
+    /// A texture region.
+    Image {
+        frame: Frame,
+        texture: TextureHandle,
+        uv: [f32; 4],
+        color: Srgba,
+    },
+    /// One line of text centred in the frame.
+    Text {
+        frame: Frame,
+        text: String,
+        step: TypeStep,
+        color: Srgba,
+        font: FontRole,
+    },
+}
+
 /// Which font a text uses.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum FontRole {
@@ -320,12 +491,26 @@ pub(crate) enum Content {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Widget {
     None,
-    Button { pressed: bool },
-    Progress { value: f32 },
-    Slider { t: f32, active: bool },
-    Toggle { on: bool },
-    Field { focused: bool, caret: Option<usize> },
+    Button {
+        pressed: bool,
+    },
+    Progress {
+        value: f32,
+    },
+    Slider {
+        t: f32,
+        active: bool,
+    },
+    Toggle {
+        on: bool,
+    },
+    Field {
+        focused: bool,
+        caret: Option<usize>,
+    },
     Tooltip,
+    /// A virtualised list or grid's filler: no drawing.
+    Spacer,
 }
 
 pub(crate) const NONE: usize = usize::MAX;
@@ -344,6 +529,32 @@ pub(crate) struct Node {
     pub focusable: bool,
     /// For a floating element: the node it is placed against.
     pub anchor: usize,
+    /// How it is placed when it is a layer of its own.
+    pub float: Float,
+    /// A transition's effect on its subtree.
+    pub fx: Option<Fx>,
+    /// Keyboard and gamepad focus can land on it.
+    pub nav: bool,
+    /// Left and right adjust it when focused (slider, stepper).
+    pub adjust: bool,
+    /// Draw the focus ring (focused by keyboard or gamepad).
+    pub ring: bool,
+    /// Built but not shown (a closed dialog's slot): no layout, drawing or input.
+    pub hidden: bool,
+    /// A modal backdrop: takes the pointer, never focus.
+    pub backdrop: bool,
+    /// A focus scope (dialog, open menu): focus stays inside while it is the topmost.
+    pub scope: bool,
+    /// Drawn after the background.
+    pub shapes: Vec<Shape>,
+    /// Widget data its children read (a list's row height, a grid's cell size).
+    pub aux: [f32; 3],
+    // Computed by the frame.
+    pub alpha: f32,
+    pub scale: f32,
+    pub inert: bool,
+    /// The scroll container whose clip applies (NONE: the screen).
+    pub clip_src: usize,
     // Computed.
     pub pref_w: f32,
     pub min_w: f32,
@@ -374,6 +585,20 @@ impl Node {
             probe_text: String::new(),
             focusable: false,
             anchor: NONE,
+            float: Float::None,
+            fx: None,
+            nav: false,
+            adjust: false,
+            ring: false,
+            hidden: false,
+            backdrop: false,
+            scope: false,
+            shapes: Vec::new(),
+            aux: [0.0; 3],
+            alpha: 1.0,
+            scale: 1.0,
+            inert: false,
+            clip_src: NONE,
             pref_w: 0.0,
             min_w: 0.0,
             pref_h: 0.0,
@@ -927,17 +1152,18 @@ pub(crate) fn layout(
     for &i in &order {
         let n = &nodes[i];
         let rect = Rect::new(n.x, n.y, n.w, n.h);
-        let parent_clip = if n.parent == NONE {
-            clip
+        let (parent_clip, src) = if n.parent == NONE || i == root {
+            (clip, NONE)
         } else {
             let p = &nodes[n.parent];
             if p.el.scroll {
-                p.clip.intersect(&p.rect)
+                (p.clip.intersect(&p.rect), n.parent)
             } else {
-                p.clip
+                (p.clip, p.clip_src)
             }
         };
         nodes[i].clip = parent_clip;
+        nodes[i].clip_src = src;
         nodes[i].rect = rect.snapped(dpr);
     }
 }

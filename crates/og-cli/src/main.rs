@@ -12,6 +12,7 @@ mod dev;
 mod doctor;
 mod probe;
 mod project;
+mod publish;
 mod run;
 mod test;
 
@@ -38,8 +39,9 @@ commands:
   test [project] [--json]
                       the project's bun tests, then each tests/*.og.ts playtest headless
   build [project] [--publish] [--out DIR] [--json]
-                      cook and write the play page (game.js, the web host, cooked/) to dist/;
-                      --publish keeps only the player-facing probe members
+                      cook and export the game to dist/ (or publish.out): the player shell,
+                      game.js, the web host, cooked/, og-build.json, _headers; --publish keeps
+                      only the player-facing probe members and adds the PWA (sw.js, manifest)
   cook [project] [--threads N] [--report out.md] [--json]
                       assets/ into cooked/, incrementally
   doctor              check bun, the engine package, the native addon, the wasm, a headless

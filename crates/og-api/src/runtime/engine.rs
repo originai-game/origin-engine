@@ -265,6 +265,9 @@ pub(crate) struct State {
     pub physics_meshes: BTreeMap<u64, og_physics::MeshDesc>,
     /// UI warnings already logged, so a repeated one is logged once.
     pub ui_warned: BTreeSet<String>,
+    /// og-anim on this world, and its assets (replayed into a reload's world).
+    pub anim: Option<og_anim::AnimationSystem>,
+    pub anim_assets: super::anim::AnimAssets,
 }
 
 pub(crate) struct Engine {
@@ -546,6 +549,8 @@ pub(crate) struct Assembled {
     pub game: GameDecl,
     /// Physics, the UI and the audio link of the new world.
     pub mounted: super::modules::Mounted,
+    /// og-anim on the new world.
+    pub anim: og_anim::AnimationSystem,
 }
 
 /// Engine-owned records og-probe or og-input register themselves.
@@ -603,6 +608,7 @@ pub(crate) fn assemble(
         if decl.schema == Time::NAME
             || decl.schema == Rng::NAME
             || REGISTERED_BY_MODULES.contains(&decl.schema)
+            || super::anim::REGISTERED_BY_ANIM.contains(&decl.schema)
         {
             continue;
         }
@@ -621,6 +627,10 @@ pub(crate) fn assemble(
             }
             Err(e) => warnings.push(format!("{} not registered: {e}", decl.schema)),
         }
+    }
+    // og-anim's event (its name is a str64), before any system can read it.
+    for layout in super::anim::register_records(&mut world)? {
+        layouts.insert(layout.schema.clone(), layout);
     }
     // The game's own records, in declaration order; its resources start at
     // their defaults.
@@ -735,6 +745,9 @@ pub(crate) fn assemble(
             },
         );
     }
+    // og-anim after the game's systems (they set players, parameters and IK
+    // targets), before the UI's end and physics (root motion moves Transforms).
+    let anim = super::anim::install(&mut world)?;
     let mounted =
         super::modules::mount_back(&mut world, engine_id, physics, ui, previous.map(|p| p.1))?;
     let names_by_id = world.schemas().into_iter().map(|s| s.name).collect();
@@ -749,6 +762,7 @@ pub(crate) fn assemble(
         warnings,
         game,
         mounted,
+        anim,
     })
 }
 
@@ -810,6 +824,8 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         ui: Some(a.mounted.ui.clone()),
         physics_meshes: BTreeMap::new(),
         ui_warned: BTreeSet::new(),
+        anim: Some(a.anim.clone()),
+        anim_assets: Default::default(),
     };
     og_audio::publish_link(engine_id, a.mounted.audio.clone());
     let render = Rc::new(RefCell::new(RenderState::new(a.game.render.clone())));

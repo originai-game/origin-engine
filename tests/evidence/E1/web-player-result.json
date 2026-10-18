@@ -1,0 +1,170 @@
+{
+ "failures": 0,
+ "checks": [
+  {
+   "check": "hello first, with substrate origin-engine",
+   "ok": true
+  },
+  {
+   "check": "loading values grow and stay in [0, 1]",
+   "ok": true
+  },
+  {
+   "check": "ready after the last loading",
+   "ok": true
+  },
+  {
+   "check": "no fail, no crash",
+   "ok": true
+  },
+  {
+   "check": "under a Player the shell draws no gate of its own",
+   "ok": true
+  },
+  {
+   "check": "before start the clock holds",
+   "ok": true
+  },
+  {
+   "check": "start plays",
+   "ok": true
+  },
+  {
+   "check": "pause holds the clock",
+   "ok": true
+  },
+  {
+   "check": "resume plays again",
+   "ok": true
+  },
+  {
+   "check": "a sample with the first-frame time and the renderer",
+   "ok": true
+  }
+ ],
+ "messages": [
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "hello",
+   "substrate": "origin-engine",
+   "at": 66
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.226,
+   "at": 81
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.453,
+   "at": 82
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.679,
+   "at": 83
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.905,
+   "at": 85
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.941,
+   "at": 87
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.942,
+   "at": 96
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.993,
+   "at": 96
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.994,
+   "at": 97
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.995,
+   "at": 97
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.996,
+   "at": 97
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.997,
+   "at": 98
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.998,
+   "at": 98
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.999,
+   "at": 98
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 1,
+   "at": 98
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "ready",
+   "at": 195
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "sample",
+   "substrate": "origin-engine",
+   "renderer": "webgpu",
+   "timings": {
+    "firstFrame": 177,
+    "boot": 157
+   },
+   "at": 195
+  }
+ ]
+}

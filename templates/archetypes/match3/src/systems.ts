@@ -390,7 +390,9 @@ export const HudText = defineSystem("Hud", { reads: [Match, Hud, Tuning], after:
         centred("三消", top - 2.4, 0.6, WHITE);
         if (Math.floor(m.phaseTicks[i]! / 30) % 2 === 0) centred("Tap to start · 点击开始游戏", BOARD_TOP - 3.2, 0.42, MINT);
         centred(`Reach ${tune.target[i]} in ${tune.moves[i]} moves`, BOARD_TOP - 4.1, 0.38, MUTED);
-        centred("Tap two neighbours, or drag · 点击或拖动交换相邻方块", BOARD_TOP - 4.7, 0.34, MUTED);
+        // Two lines: on a portrait phone the view is narrower than the pair.
+        centred("Tap two neighbours, or drag", BOARD_TOP - 4.5, 0.34, MUTED);
+        centred("点击或拖动交换相邻方块", BOARD_TOP - 5.05, 0.34, MUTED);
         continue;
       }
       const half = 3.5 * PITCH;

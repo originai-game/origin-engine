@@ -1,0 +1,256 @@
+// HUDs: platformer, shooter, puzzle, idle/incremental and racing, each a
+// set of anchored groups over the game in the safe area, plus the touch
+// controls they show on phones and tablets. HUDs turn keyboard and gamepad
+// navigation off (the keys move the player); Back still answers `paused`.
+
+import type * as Api from "@origingame/engine";
+import { kit } from "./bind.ts";
+import { all, capsule, clock, fit, fmt, frame, grow, iconOr, px, token } from "./util.ts";
+
+type Hud = { paused: boolean; action: string | null; moveX: number; moveY: number; held: string[] };
+
+function hud(): Hud {
+  kit.setNavigation(false);
+  return { paused: kit.back(), action: null, moveX: 0, moveY: 0, held: [] };
+}
+
+function pauseButton(out: Hud): void {
+  const r = kit.actionButton("Pause", "Pause", { size: 44, icon: "pause" });
+  if (r.clicked) out.paused = true;
+}
+
+/** A big number with a small caption under it. */
+function stat(id: string, value: string, caption: string, step: Api.TypeStepName = "xl3", align: Api.TextAlign = "start"): void {
+  kit.column(id, { gap: 0, cross: align === "end" ? "end" : align === "center" ? "center" : "start" }, () => {
+    kit.label("Value", value, { step, font: "mono", nowrap: true, align });
+    kit.label("Caption", caption, { step: "meta", color: token("fgMuted"), nowrap: true, align });
+  });
+}
+
+/** Touch controls: a d-pad or a stick bottom left, action buttons bottom right. */
+function touchControls(out: Hud, desc: { dpad?: boolean; buttons: ReadonlyArray<{ id: string; label: string; primary?: boolean; icon?: string }> }): void {
+  const { t } = frame();
+  kit.anchor("TouchMove", { anchor: "bottomLeft" }, () => {
+    if (desc.dpad) {
+      const d = kit.dpad("Dpad", {});
+      out.moveX = (d.right ? 1 : 0) - (d.left ? 1 : 0);
+      out.moveY = (d.down ? 1 : 0) - (d.up ? 1 : 0);
+    } else {
+      const j = kit.joystick("Stick", {});
+      out.moveX = j.x;
+      out.moveY = j.y;
+    }
+  });
+  kit.anchor("TouchActions", { anchor: "bottomRight", gap: t.md, cross: "end" }, () => {
+    for (const b of desc.buttons) {
+      const r = kit.actionButton(b.id, b.label, { primary: b.primary ?? false, icon: b.icon ?? "", size: b.primary ? 76 : 60 });
+      if (r.pressed) out.held.push(b.id);
+      if (r.clicked) out.action = b.id;
+    }
+  });
+}
+
+export function platformerHud(id: string, desc: Api.PlatformerHudDesc = {}): Api.HudResult {
+  const { t, touch } = frame();
+  const out = hud();
+  kit.anchor(`${id}.left`, { anchor: "topLeft", direction: "column", gap: t.sm }, () => {
+    capsule("Lives", () => {
+      if (desc.health !== null && desc.health !== undefined) {
+        kit.meter("Health", desc.health, 1, { width: px(120) });
+      } else {
+        const max = desc.maxLives ?? 3;
+        for (let i = 0; i < max; i++) iconOr(kit.idi("Life", i), "heart", 20, token(i < (desc.lives ?? 0) ? "danger" : "fillStrong"));
+      }
+    });
+    if (desc.level) kit.label("Level", desc.level, { step: "meta", color: token("fgMuted"), nowrap: true });
+  });
+  if (desc.timeLeft !== null && desc.timeLeft !== undefined) {
+    const low = desc.timeLeft <= 10;
+    kit.anchor(`${id}.top`, { anchor: "top" }, () => {
+      capsule("Timer", () => kit.label("Time", clock(desc.timeLeft!), { step: "lg", font: "mono", color: token(low ? "danger" : "fg"), nowrap: true }));
+    });
+  }
+  kit.anchor(`${id}.right`, { anchor: "topRight", gap: t.sm, cross: "center" }, () => {
+    capsule("Coins", () => {
+      iconOr("Coin", "coin", 20, token("accent"));
+      kit.label("Count", fmt(desc.coins ?? 0), { font: "mono", nowrap: true });
+    });
+    capsule("Score", () => kit.label("Points", fmt(desc.score ?? 0), { font: "mono", nowrap: true }));
+    pauseButton(out);
+  });
+  if ((desc.touch ?? false) && touch) touchControls(out, { dpad: true, buttons: [{ id: "jump", label: "Jump", primary: true }] });
+  return out;
+}
+
+/** A crosshair at the centre: four short strokes and a gap. */
+function crosshair(): void {
+  const ink = token("fg", 0.9);
+  const bar = (id: string, w: number, h: number): void => kit.image(id, { tint: ink, width: px(w), height: px(h) });
+  kit.anchor("Crosshair", { anchor: "center", direction: "column", cross: "center", gap: 6 }, () => {
+    bar("N", 2, 8);
+    kit.row("Mid", { gap: 14, cross: "center" }, () => {
+      bar("W", 8, 2);
+      bar("E", 8, 2);
+    });
+    bar("S", 2, 8);
+  });
+}
+
+export function shooterHud(id: string, desc: Api.ShooterHudDesc = {}): Api.HudResult {
+  const { t, touch } = frame();
+  const out = hud();
+  const showTouch = (desc.touch ?? false) && touch;
+  const maxHealth = desc.maxHealth ?? 100;
+  const health = desc.health ?? 0;
+  // Vitals sit bottom left, or top left when the stick takes that corner.
+  kit.anchor(`${id}.vitals`, { anchor: showTouch ? "topLeft" : "bottomLeft", direction: "column", gap: t.xs, width: px(240) }, () => {
+    kit.meter("Health", health, maxHealth, { kind: "health", label: `${Math.ceil(health)}`, width: grow() });
+    if ((desc.maxArmor ?? 0) > 0) kit.meter("Armor", desc.armor ?? 0, desc.maxArmor!, { color: token("info"), label: `${Math.ceil(desc.armor ?? 0)}`, width: grow() });
+  });
+  if (desc.map && !showTouch) kit.anchor(`${id}.map`, { anchor: "topLeft" }, () => kit.minimap("Map", desc.map!));
+  kit.anchor(`${id}.top`, { anchor: "topRight", gap: t.sm, cross: "center" }, () => {
+    capsule("Kills", () => {
+      kit.label("Count", fmt(desc.kills ?? 0), { font: "mono", nowrap: true });
+      kit.label("Unit", "kills", { step: "meta", color: token("fgMuted"), nowrap: true });
+    });
+    pauseButton(out);
+  });
+ kit.anchor(`${id}.ammo`, { anchor: showTouch ? "topRight" : "bottomRight", offsetY: showTouch ? 56 : 0, direction: "column", cross: "end", gap: t.xs }, () => {
+    const mag = desc.magazine ?? 0;
+    const ammo = desc.ammo ?? 0;
+    kit.row("Rounds", { gap: t.xs, cross: "end" }, () => {
+      kit.label("Ammo", `${ammo}`, { step: "xl5", font: "mono", color: token(mag > 0 && ammo <= Math.floor(mag / 4) ? "warn" : "fg"), nowrap: true });
+      kit.label("Reserve", `/ ${desc.reserve ?? 0}`, { step: "lg", font: "mono", color: token("fgMuted"), nowrap: true });
+    });
+    if (desc.weapon) kit.label("Weapon", desc.weapon, { step: "meta", color: token("fgMuted"), nowrap: true });
+  });
+  const abilities = desc.abilities ?? [];
+  if (abilities.length > 0) {
+    // Above the touch controls when they show, else along the bottom edge.
+    kit.anchor(`${id}.abilities`, showTouch ? { anchor: "right", direction: "column", gap: t.md, offsetY: 120 } : { anchor: "bottom", gap: t.md }, () => {
+      abilities.forEach((a, i) => {
+        const r = kit.cooldown(a.id ?? kit.idi("Ability", i), a.remaining ?? 0, { label: a.key ?? "", icon: a.icon ?? "", size: 56 });
+        if (r.clicked) out.action = a.id ?? `ability${i}`;
+      });
+    });
+  }
+  if (desc.crosshair ?? true) crosshair();
+  if (showTouch) touchControls(out, { buttons: [{ id: "fire", label: "Fire", primary: true }] });
+  return out;
+}
+
+export function puzzleHud(id: string, desc: Api.PuzzleHudDesc = {}): Api.HudResult {
+  const { t } = frame();
+  const out = hud();
+  const target = Math.max(1, desc.target ?? 1000);
+  const score = desc.score ?? 0;
+  const marks = desc.stars && desc.stars.length > 0 ? desc.stars : [Math.round(target / 3), Math.round((2 * target) / 3), target];
+  kit.anchor(`${id}.left`, { anchor: "topLeft", direction: "column", gap: t.xs }, () => {
+    if (desc.level) kit.label("Level", desc.level, { step: "meta", color: token("fgMuted"), nowrap: true });
+    if (desc.moves !== null && desc.moves !== undefined) stat("Moves", `${desc.moves}`, "moves left", "xl3");
+  });
+  kit.anchor(`${id}.score`, { anchor: "top", direction: "column", cross: "center", gap: t.xs, width: px(260) }, () => {
+    kit.label("Score", fmt(score), { step: "displaySm", font: "display", align: "center", width: grow() });
+    kit.meter("Progress", score, target, { kind: "accent", width: grow(), segments: 3 });
+    kit.row("Stars", { gap: t.sm, cross: "center" }, () => {
+      marks.slice(0, 3).forEach((m, i) => iconOr(kit.idi("Star", i), "star", 20, token(score >= m ? "accent" : "fillStrong")));
+      kit.label("Target", `Target ${fmt(target)}`, { step: "meta", color: token("fgMuted"), nowrap: true });
+    });
+  });
+  kit.anchor(`${id}.right`, { anchor: "topRight", gap: t.sm, cross: "center" }, () => {
+    if (desc.timeLeft !== null && desc.timeLeft !== undefined) {
+      capsule("Timer", () => kit.label("Time", clock(desc.timeLeft!), { font: "mono", color: token(desc.timeLeft! <= 10 ? "danger" : "fg"), nowrap: true }));
+    }
+    pauseButton(out);
+  });
+  return out;
+}
+
+export function idleHud(id: string, desc: Api.IdleHudDesc = {}): Api.HudResult {
+  const { t, phone } = frame();
+  const out = hud();
+  const currencies = desc.currencies ?? [];
+  const generators = desc.generators ?? [];
+  kit.anchor(`${id}.wallet`, { anchor: "top", gap: t.sm, cross: "center" }, () => {
+    currencies.forEach((c, i) => {
+      capsule(c.id ?? kit.idi("Currency", i), () => {
+        if (c.icon) iconOr("Icon", c.icon, 20, token("accent"));
+        kit.label("Amount", fmt(c.amount ?? 0), { step: i === 0 ? "lg" : "body", font: "mono", nowrap: true });
+        if ((c.perSecond ?? 0) !== 0) kit.label("Rate", `+${fmt(c.perSecond ?? 0)}/s`, { step: "meta", color: token("success"), nowrap: true });
+      }, { height: i === 0 ? t.controlLg : t.controlMd });
+    });
+    pauseButton(out);
+  });
+  if (desc.tapLabel !== "") {
+    kit.anchor(`${id}.tap`, { anchor: phone ? "top" : "center", offsetY: phone ? 96 : 0, offsetX: phone ? 0 : -150 }, () => {
+      const r = kit.actionButton("Tap", desc.tapLabel ?? "Tap", { primary: true, size: phone ? 120 : 160 });
+      if (r.clicked) out.action = "tap";
+    });
+  }
+  const listHeight = phone ? Math.min(320, frame().viewport.height * 0.45) : Math.min(420, frame().viewport.height - 160);
+  kit.anchor(`${id}.shop`, { anchor: phone ? "bottom" : "right", width: phone ? grow() : px(340) }, () => {
+    kit.panel("Generators", { width: grow(), padding: all(t.sm), gap: t.xs }, () => {
+      kit.list("List", { count: generators.length, rowHeight: 64, gap: t.xs, height: fit(0, listHeight), width: grow() }, (i) => {
+        const g = generators[i]!;
+        if (g.icon) iconOr("Icon", g.icon, 32, token("fg"));
+        kit.column("Text", { width: grow(), gap: t.xxs }, () => {
+          kit.row("Head", { gap: t.sm, cross: "center", width: grow() }, () => {
+            kit.label("Name", g.name ?? g.id ?? "", { nowrap: true, width: grow() });
+            kit.badge("Level", `Lv ${g.level ?? 0}`, "neutral");
+          });
+          kit.meter("Cycle", g.progress ?? 0, 1, { kind: "accent", height: 4, width: grow() });
+        });
+        const buy = kit.button("Buy", fmt(g.cost ?? 0), { size: "small", variant: g.affordable ? "primary" : "secondary", disabled: !g.affordable }) as Api.Response;
+        if (buy.clicked) out.action = `buy:${g.id ?? i}`;
+      });
+    });
+  });
+  return out;
+}
+
+export function racingHud(id: string, desc: Api.RacingHudDesc = {}): Api.HudResult {
+  const { t, touch, phone } = frame();
+  const out = hud();
+  const showTouch = (desc.touch ?? false) && touch;
+  kit.anchor(`${id}.place`, { anchor: "topLeft", gap: t.lg }, () => {
+    kit.row("Position", { gap: t.xxs, cross: "end" }, () => {
+      kit.label("Place", `${desc.position ?? 1}`, { step: "displayXl", font: "display", nowrap: true });
+      kit.label("Of", `/${desc.racers ?? 8}`, { step: "xl", font: "mono", color: token("fgMuted"), nowrap: true });
+    });
+    stat("Lap", `${Math.min(desc.lap ?? 1, desc.laps ?? 3)}/${desc.laps ?? 3}`, "lap", "xl3");
+  });
+  kit.anchor(`${id}.times`, { anchor: "topRight", direction: "column", cross: "end", gap: t.xxs }, () => {
+    kit.row("Top", { gap: t.sm, cross: "center" }, () => {
+      kit.label("Time", clock(desc.time ?? 0, true), { step: "xl", font: "mono", nowrap: true });
+      pauseButton(out);
+    });
+    if (desc.best !== null && desc.best !== undefined) kit.label("Best", `Best ${clock(desc.best, true)}`, { step: "meta", font: "mono", color: token("fgMuted"), nowrap: true });
+    if (desc.map) kit.minimap("Map", { ...desc.map, size: phone ? 112 : (desc.map.size ?? 140) });
+  });
+  kit.anchor(`${id}.dash`, { anchor: showTouch ? "bottom" : "bottomRight", offsetY: showTouch ? -120 : 0, direction: "column", cross: "end", gap: t.xs, width: px(220) }, () => {
+    kit.row("Speed", { gap: t.sm, cross: "end", width: grow(), align: "end" }, () => {
+      kit.label("Value", `${Math.round(desc.speed ?? 0)}`, { step: "displayXl2", font: "display", nowrap: true });
+      kit.column("Side", { cross: "end" }, () => {
+        kit.label("Gear", desc.gear ?? "N", { step: "xl", font: "mono", color: token("accentInk"), nowrap: true });
+        kit.label("Unit", desc.unit ?? "km/h", { step: "meta", color: token("fgMuted"), nowrap: true });
+      });
+    });
+    kit.meter("Rev", desc.speed ?? 0, desc.maxSpeed ?? 300, { kind: "accent", width: grow(), height: 6 });
+    kit.meter("Boost", desc.boost ?? 0, 1, { color: token("info"), label: "Boost", width: grow(), segments: 4 });
+  });
+  if (showTouch) {
+    kit.anchor("Steer", { anchor: "bottomLeft", gap: t.md }, () => {
+      const l = kit.actionButton("left", "Left", { size: 72 });
+      const r = kit.actionButton("right", "Right", { size: 72 });
+      out.moveX = (r.pressed ? 1 : 0) - (l.pressed ? 1 : 0);
+    });
+    kit.anchor("Pedals", { anchor: "bottomRight", gap: t.md, cross: "end" }, () => {
+      for (const b of [{ id: "brake", label: "Brake", primary: false }, { id: "boost", label: "Boost", primary: true }]) {
+        const r = kit.actionButton(b.id, b.label, { primary: b.primary, size: b.primary ? 84 : 64 });
+        if (r.pressed) out.held.push(b.id);
+        if (r.clicked) out.action = b.id;
+      }
+    });
+  }
+  return out;
+}

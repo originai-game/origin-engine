@@ -469,6 +469,11 @@ pub fn og_load_gltf_info(world: u32, asset: f64) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_load_animation(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_animation(&Host, world, path)
+}
+
+#[wasm_bindgen]
 pub fn og_physics_raycast(world: u32, desc: Option<String>) -> String {
     <Host as PhysicsApi>::og_physics_raycast(&Host, world, desc)
 }
@@ -486,6 +491,11 @@ pub fn og_physics_overlap(world: u32, desc: Option<String>) -> String {
 #[wasm_bindgen]
 pub fn og_physics_set_mesh(world: u32, mesh: f64, desc: Option<String>) -> String {
     <Host as PhysicsApi>::og_physics_set_mesh(&Host, world, mesh, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_anim_graph(world: u32, desc: Option<String>) -> String {
+    <Host as AnimApi>::og_anim_graph(&Host, world, desc)
 }
 
 #[wasm_bindgen]
@@ -561,6 +571,241 @@ pub fn og_ui_text_field(id: String, value: String, desc: Option<String>) -> Stri
 #[wasm_bindgen]
 pub fn og_ui_tooltip(text: String) {
     <Host as UiApi>::og_ui_tooltip(&Host, text)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_breakpoint() -> String {
+    <Host as UiApi>::og_ui_breakpoint(&Host)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_frame_viewport() -> String {
+    <Host as UiApi>::og_ui_frame_viewport(&Host)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_has_icon(name: String) -> bool {
+    <Host as UiApi>::og_ui_has_icon(&Host, name)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_seconds() -> f64 {
+    <Host as UiApi>::og_ui_seconds(&Host)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_frame_theme() -> String {
+    <Host as UiApi>::og_ui_frame_theme(&Host)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_open_anchor(id: String, desc: Option<String>) {
+    <Host as UiApi>::og_ui_open_anchor(&Host, id, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_open_transition(id: String, show: bool, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_open_transition(&Host, id, show, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_open_modal(id: String, open: bool, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_open_modal(&Host, id, open, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_close_modal() {
+    <Host as UiApi>::og_ui_close_modal(&Host)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_spotlight(id: String, hole: String, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_spotlight(&Host, id, hole, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_bounds(path: String) -> String {
+    <Host as UiApi>::og_ui_bounds(&Host, path)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_open_list(id: String, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_open_list(&Host, id, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_open_grid(id: String, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_open_grid(&Host, id, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_list_item(index: u32, selected: bool) -> String {
+    <Host as UiApi>::og_ui_list_item(&Host, index, selected)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_grid_item(index: u32, selected: bool) -> String {
+    <Host as UiApi>::og_ui_grid_item(&Host, index, selected)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_close_list() -> String {
+    <Host as UiApi>::og_ui_close_list(&Host)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_dragging(id: String) -> String {
+    <Host as UiApi>::og_ui_dragging(&Host, id)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_tabs(id: String, items: String, selected: u32, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_tabs(&Host, id, items, selected, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_select(id: String, options: String, selected: u32, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_select(&Host, id, options, selected, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_stepper(id: String, value: f64, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_stepper(&Host, id, value, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_radio(id: String, options: String, selected: u32, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_radio(&Host, id, options, selected, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_checkbox(id: String, on: bool, label: String) -> String {
+    <Host as UiApi>::og_ui_checkbox(&Host, id, on, label)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_checkbox_list(id: String, labels: String, values: String) -> String {
+    <Host as UiApi>::og_ui_checkbox_list(&Host, id, labels, values)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_chip(id: String, text: String, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_chip(&Host, id, text, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_badge(id: String, text: String, tone: String) {
+    <Host as UiApi>::og_ui_badge(&Host, id, text, tone)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_divider(id: String, vertical: bool) {
+    <Host as UiApi>::og_ui_divider(&Host, id, vertical)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_spacer(id: String, size: String) {
+    <Host as UiApi>::og_ui_spacer(&Host, id, size)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_key_value(id: String, key: String, value: String, mono: bool) {
+    <Host as UiApi>::og_ui_key_value(&Host, id, key, value, mono)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_skeleton(id: String, desc: Option<String>) {
+    <Host as UiApi>::og_ui_skeleton(&Host, id, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_spinner(id: String, size: f64) {
+    <Host as UiApi>::og_ui_spinner(&Host, id, size)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_icon(id: String, name: String, desc: Option<String>) {
+    <Host as UiApi>::og_ui_icon(&Host, id, name, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_meter(id: String, value: f64, max: f64, desc: Option<String>) {
+    <Host as UiApi>::og_ui_meter(&Host, id, value, max, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_cooldown(id: String, remaining: f64, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_cooldown(&Host, id, remaining, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_minimap(id: String, desc: Option<String>) {
+    <Host as UiApi>::og_ui_minimap(&Host, id, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_dialogue(id: String, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_dialogue(&Host, id, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_joystick(id: String, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_joystick(&Host, id, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_dpad(id: String, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_dpad(&Host, id, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_action_button(id: String, text: String, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_action_button(&Host, id, text, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_toast(world: u32, text: String, desc: Option<String>) -> u32 {
+    <Host as UiApi>::og_ui_toast(&Host, world, text, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_dismiss_toast(world: u32, toast_id: u32) {
+    <Host as UiApi>::og_ui_dismiss_toast(&Host, world, toast_id)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_navigate(world: u32, intent: String) {
+    <Host as UiApi>::og_ui_navigate(&Host, world, intent)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_back() -> bool {
+    <Host as UiApi>::og_ui_back(&Host)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_set_navigation(on: bool) {
+    <Host as UiApi>::og_ui_set_navigation(&Host, on)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_memory(id: String, initial: f64) -> f64 {
+    <Host as UiApi>::og_ui_memory(&Host, id, initial)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_remember(id: String, value: f64) {
+    <Host as UiApi>::og_ui_remember(&Host, id, value)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_tick() -> u32 {
+    <Host as UiApi>::og_ui_tick(&Host)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_preview_viewport(world: u32, viewport: String) {
+    <Host as UiApi>::og_ui_preview_viewport(&Host, world, viewport)
 }
 
 #[cfg(not(feature = "publish"))]

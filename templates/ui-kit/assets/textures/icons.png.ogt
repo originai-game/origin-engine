@@ -1,0 +1,7 @@
+type import
+version 1
+---
+# White glyphs whose alpha is coverage: UASTC (sharp edges), linear (white is white either way).
+texture {
+  kind linear
+}

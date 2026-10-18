@@ -1,0 +1,16 @@
+type project
+version 1
+---
+# The UI kit demo: every og.ui template and widget on one gallery, and the
+# reference source of crates/og-ui/references (see README.md).
+name "UI kit"
+id "ui-kit"
+engine "0.0.1"
+entry "src/main.ts"
+profile "2d"
+tick 60
+seed 1
+publish {
+  probe player
+  out "dist"
+}

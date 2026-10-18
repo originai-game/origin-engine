@@ -1,0 +1,10 @@
+type import
+version 1
+---
+# Latin-1, CJK punctuation and the Chinese the demo shows (the language list).
+font {
+  charset latin cjk-punct
+  chars "简体中文原点引擎设置"
+  em_px 32
+  px_range 4
+}

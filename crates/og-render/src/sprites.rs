@@ -2,7 +2,8 @@
 //! (layer, kind, texture) so each run of one texture (or one font) in one
 //! layer is a single instanced draw.
 
-use crate::scene::{FontHandle, Glyph, RenderScene, TextureHandle};
+use crate::effects::SpriteBlend;
+use crate::scene::{FontHandle, Glyph, RenderScene, Sprite, TextureHandle};
 use crate::RenderError;
 use glam::Vec2;
 use std::collections::HashMap;
@@ -15,6 +16,11 @@ pub(crate) struct SpriteInstance {
     size_anchor: [f32; 4],
     uv_rect: [f32; 4],
     color: [f32; 4],
+    /// rgb: the flash colour, a: how far the sprite mixes towards it.
+    flash: [u8; 4],
+    /// x: glow strength, y: 1 when 2D lighting applies, z: 1 for a soft dot
+    /// (untextured particles).
+    fx: [f32; 3],
 }
 
 pub(crate) const SPRITE_STRIDE: u64 = std::mem::size_of::<SpriteInstance>() as u64;
@@ -22,14 +28,14 @@ pub(crate) const SPRITE_STRIDE: u64 = std::mem::size_of::<SpriteInstance>() as u
 pub(crate) const SPRITE_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
     array_stride: SPRITE_STRIDE,
     step_mode: wgpu::VertexStepMode::Instance,
-    attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x4, 3 => Float32x4],
+    attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x4, 3 => Float32x4, 4 => Unorm8x4, 5 => Float32x3],
 };
 
 /// What one run draws with.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) enum RunSource {
-    /// A sprite texture (`None`: solid white).
-    Sprite(Option<TextureHandle>),
+    /// A sprite texture (`None`: solid white) and its blend.
+    Sprite(SpriteBlend, Option<TextureHandle>),
     Font(FontHandle),
 }
 
@@ -61,20 +67,64 @@ impl FontLayout {
 pub(crate) struct SpriteFrame {
     pub instances: Vec<SpriteInstance>,
     pub runs: Vec<SpriteRun>,
+    /// Glowing sprites again, after `instances` in the buffer, by texture.
+    pub glow_runs: Vec<SpriteRun>,
     pub sprites: u32,
     pub glyphs: u32,
     pub missing_glyphs: u32,
 }
 
-/// Sorts the scene's sprites and texts into runs. `font(i)` is the layout of
-/// the scene's font `i`.
+/// A sprite's instance with its effects.
+const NO_FLASH: [u8; 4] = [255, 255, 255, 0];
+
+fn sprite_instance(
+    s: &Sprite,
+    flash: [f32; 4],
+    glow: f32,
+    lit: bool,
+    soft: bool,
+) -> SpriteInstance {
+    let unorm = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
+    SpriteInstance {
+        position_rotation: s.position.extend(s.rotation).to_array(),
+        size_anchor: [s.size.x, s.size.y, s.anchor.x, s.anchor.y],
+        uv_rect: s.uv_rect,
+        color: s.color,
+        flash: if flash[3] > 0.0 {
+            flash.map(unorm)
+        } else {
+            NO_FLASH
+        },
+        fx: [glow, lit as u32 as f32, soft as u32 as f32],
+    }
+}
+
+/// Sorts the scene's sprites, the frame's 2D particles (`extra`: sprite,
+/// blend, glow) and texts into runs. `font(i)` is the layout of the
+/// scene's font `i`; `lit` says which layers 2D lighting applies to.
 pub(crate) fn build<'a>(
     scene: &RenderScene,
     font: impl Fn(usize) -> Option<&'a FontLayout>,
     texture_count: usize,
+    extra: &[(Sprite, SpriteBlend, f32)],
+    lit: impl Fn(i32) -> bool,
 ) -> Result<SpriteFrame, RenderError> {
+    // Per-sprite effects by index (the last entry for an index wins).
+    let mut fx: HashMap<u32, &crate::SpriteFx> = HashMap::new();
+    for f in &scene.sprite_fx {
+        if f.sprite as usize >= scene.sprites.len() {
+            return Err(RenderError::InvalidHandle(format!(
+                "sprite_fx: sprite {} of {}",
+                f.sprite,
+                scene.sprites.len()
+            )));
+        }
+        fx.insert(f.sprite, f);
+    }
     // (layer, source, instance), in submission order.
-    let mut keyed: Vec<(i32, RunSource, SpriteInstance)> = Vec::with_capacity(scene.sprites.len());
+    let mut keyed: Vec<(i32, RunSource, SpriteInstance)> =
+        Vec::with_capacity(scene.sprites.len() + extra.len());
+    let mut glowing: Vec<(Option<TextureHandle>, SpriteInstance)> = Vec::new();
     for (i, s) in scene.sprites.iter().enumerate() {
         if let Some(t) = s.texture {
             if t.index() >= texture_count {
@@ -84,16 +134,28 @@ pub(crate) fn build<'a>(
                 )));
             }
         }
-        keyed.push((
-            s.layer,
-            RunSource::Sprite(s.texture),
-            SpriteInstance {
-                position_rotation: s.position.extend(s.rotation).to_array(),
-                size_anchor: [s.size.x, s.size.y, s.anchor.x, s.anchor.y],
-                uv_rect: s.uv_rect,
-                color: s.color,
-            },
-        ));
+        let found = if fx.is_empty() {
+            None
+        } else {
+            fx.get(&(i as u32))
+        };
+        let (flash, glow, blend) = match found {
+            Some(f) => (f.flash, f.glow.max(0.0), f.blend),
+            None => ([1.0, 1.0, 1.0, 0.0], 0.0, SpriteBlend::Alpha),
+        };
+        let inst = sprite_instance(s, flash, glow, lit(s.layer), false);
+        if glow > 0.0 {
+            glowing.push((s.texture, inst));
+        }
+        keyed.push((s.layer, RunSource::Sprite(blend, s.texture), inst));
+    }
+    for (s, blend, glow) in extra {
+        let soft = s.texture.is_none();
+        let inst = sprite_instance(s, [1.0, 1.0, 1.0, 0.0], *glow, lit(s.layer), soft);
+        if *glow > 0.0 {
+            glowing.push((s.texture, inst));
+        }
+        keyed.push((s.layer, RunSource::Sprite(*blend, s.texture), inst));
     }
     let sprites = keyed.len() as u32;
     let mut missing_glyphs = 0;
@@ -138,6 +200,8 @@ pub(crate) fn build<'a>(
                             ab / font.atlas_size.y,
                         ],
                         color: text.color,
+                        flash: [255, 255, 255, 0],
+                        fx: [0.0, 0.0, 0.0],
                     },
                 ));
             }
@@ -162,9 +226,27 @@ pub(crate) fn build<'a>(
         }
         instances.push(inst);
     }
+    // The glow pass: by texture (additive, so order does not matter).
+    glowing.sort_by_key(|(t, _)| *t);
+    let mut glow_runs: Vec<SpriteRun> = Vec::new();
+    for (t, inst) in glowing {
+        let index = instances.len() as u32;
+        match glow_runs.last_mut() {
+            Some(run) if run.source == RunSource::Sprite(SpriteBlend::Additive, t) => {
+                run.count += 1
+            }
+            _ => glow_runs.push(SpriteRun {
+                source: RunSource::Sprite(SpriteBlend::Additive, t),
+                first: index,
+                count: 1,
+            }),
+        }
+        instances.push(inst);
+    }
     Ok(SpriteFrame {
         instances,
         runs,
+        glow_runs,
         sprites,
         glyphs,
         missing_glyphs,

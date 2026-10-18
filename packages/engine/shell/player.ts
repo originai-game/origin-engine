@@ -1,0 +1,145 @@
+// The Player wire, protocol 2 (origingame/docs/player-protocol.md; types in
+// origin/packages/contracts/src/player-wire.ts), game side: the shell says
+// `hello` at startup and owns its readiness: `loading` with the real bytes
+// received, `ready` at the first rendered frame, `fail` before ready,
+// `crash` after it (an error name and a fingerprint only), one `sample`
+// with the startup milestones and the renderer. It hears `hello`, `start`,
+// `gesture`, `pause` and `resume` from the Player.
+//
+// Rules: post only to `window.parent`, naming this page's own origin (the
+// Player and its releases share the play origin); accept only messages from
+// `window.parent` at this origin with `og: "player", protocol: 2`. Without
+// a frame nothing is sent and nothing is heard.
+
+export const PLAYER_WIRE = "player";
+export const PLAYER_WIRE_PROTOCOL = 2;
+
+export interface PlayerEvents {
+  /** The Player answered hello (`started`: play began already; `paused`: it covers the game). */
+  hello?(m: { started: boolean; paused: boolean; capabilities: readonly string[] }): void;
+  start?(): void;
+  gesture?(): void;
+  pause?(): void;
+  resume?(): void;
+}
+
+/** A short fingerprint of an error message: `[a-z0-9-]{1,64}` (FNV-1a of the first line, hex). */
+export function fingerprint(message: string): string {
+  const line = (message.split("\n")[0] ?? "").replace(/\d+/g, "#");
+  let h = 0x811c9dc5;
+  for (let i = 0; i < line.length; i++) {
+    h ^= line.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return `oe-${h.toString(16).padStart(8, "0")}`;
+}
+
+export function connectPlayer(events: PlayerEvents) {
+  const w = globalThis as unknown as Window;
+  const framed = (() => {
+    try {
+      return w.parent !== w;
+    } catch {
+      return true;
+    }
+  })();
+  const origin = w.location.origin;
+  let lastValue = -1;
+  let readySent = false;
+  let heard = false;
+  let started = false;
+  let paused = false;
+
+  const post = (kind: string, fields: Record<string, unknown> = {}) => {
+    if (!framed || !origin || origin === "null") return;
+    try {
+      w.parent.postMessage({ og: PLAYER_WIRE, protocol: PLAYER_WIRE_PROTOCOL, kind, ...fields }, origin);
+    } catch {
+      /* a cross-origin parent is not our Player */
+    }
+  };
+
+  const onMessage = (e: MessageEvent) => {
+    if (!framed || e.source !== w.parent || e.origin !== origin) return;
+    const m = e.data as Record<string, unknown> | null;
+    if (!m || typeof m !== "object" || m["og"] !== PLAYER_WIRE || m["protocol"] !== PLAYER_WIRE_PROTOCOL) return;
+    switch (m["kind"]) {
+      case "hello":
+        heard = true;
+        if (m["started"] === true) started = true;
+        paused = m["paused"] === true;
+        events.hello?.({
+          started: m["started"] === true,
+          paused,
+          capabilities: Array.isArray(m["capabilities"]) ? (m["capabilities"] as unknown[]).filter((c): c is string => typeof c === "string") : [],
+        });
+        break;
+      case "start":
+        heard = true;
+        started = true;
+        events.start?.();
+        break;
+      case "gesture":
+        events.gesture?.();
+        break;
+      case "pause":
+        paused = true;
+        events.pause?.();
+        break;
+      case "resume":
+        paused = false;
+        events.resume?.();
+        break;
+    }
+  };
+  if (framed) addEventListener("message", onMessage);
+  post("hello", { substrate: "origin-engine" });
+
+  return {
+    /** Whether the page is framed (a Player may be listening). */
+    framed,
+    /** Whether a Player answered hello (or sent start). */
+    get hosted(): boolean {
+      return heard;
+    },
+    /** Whether the Player said play began. */
+    get started(): boolean {
+      return started;
+    },
+    /** Whether the Player covers the game now. */
+    get paused(): boolean {
+      return paused;
+    },
+    loading(value: number | null, label?: string) {
+      if (readySent) return;
+      if (value !== null) {
+        const v = Math.round(Math.min(1, Math.max(0, value)) * 1000) / 1000;
+        if (v <= lastValue) return;
+        lastValue = v;
+        post("loading", { value: v, ...(label ? { label } : {}) });
+      } else post("loading", { value: null });
+    },
+    ready() {
+      if (readySent) return;
+      readySent = true;
+      post("ready");
+    },
+    fail(code: string, message: string, retryable: boolean) {
+      if (readySent) return;
+      post("fail", { code, message: message.slice(0, 400), retryable });
+      lastValue = -1;
+    },
+    crash(name: string, message: string) {
+      post("crash", { name: /^[A-Za-z][A-Za-z0-9_.-]{0,63}$/.test(name) ? name : "Error", fingerprint: fingerprint(message) });
+    },
+    sample(fields: { renderer?: string; timings?: Record<string, number> }) {
+      post("sample", { substrate: "origin-engine", ...fields });
+    },
+    event(name: string, attrs?: Record<string, string | number | boolean | null>) {
+      post("event", { name, ...(attrs ? { attrs } : {}) });
+    },
+    call(method: string, args?: Record<string, unknown>) {
+      post("call", { id: `oe-${Math.random().toString(36).slice(2, 10)}`, method, ...(args ? { args } : {}) });
+    },
+  };
+}

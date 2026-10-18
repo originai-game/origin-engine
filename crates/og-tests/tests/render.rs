@@ -225,7 +225,27 @@ fn the_material_schema_matches_the_idl() {
     println!("og.StandardMaterial fields the IDL does not have yet: {extra:?}");
     for n in &extra {
         assert!(
-            ["normalScale", "aoMapIntensity", "unlit"].contains(n),
+            [
+                "normalScale",
+                "aoMapIntensity",
+                "unlit",
+                // The E1 effects round (crates/og-render/README.md §IDL additions).
+                "toon",
+                "gradientMap",
+                "rimColor",
+                "rimIntensity",
+                "rimPower",
+                "flashColor",
+                "flash",
+                "dissolve",
+                "dissolveMap",
+                "dissolveEdgeColor",
+                "dissolveEdgeWidth",
+                "dissolveScale",
+                "outlineColor",
+                "outlineWidth",
+            ]
+            .contains(n),
             "{n} is in neither the IDL nor the list of fields awaiting it"
         );
     }

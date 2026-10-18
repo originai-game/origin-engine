@@ -265,6 +265,124 @@ fn doctor_names_a_fix_for_every_missing_tool() {
     assert!(t.contains("5 problem(s)"), "{t}");
 }
 
+/// When the game process dies, `og run` says so at once with its exit
+/// status (or signal) and its last stderr lines, and exits with that code,
+/// so a supervisor waiting for the probe stops waiting.
+#[test]
+fn run_reports_a_dead_game_process_at_once() {
+    let dir = scratch_root();
+    std::fs::remove_dir_all(dir.join("crates")).unwrap();
+    let engine = dir.join("engine");
+    std::fs::create_dir_all(engine.join("src/node")).unwrap();
+    // A stand-in engine package: the bundle step writes the bundle, the run
+    // step prints and is killed by a signal.
+    std::fs::write(
+        engine.join("src/node/build.ts"),
+        "const i = process.argv.indexOf('--out'); await Bun.write(process.argv[i + 1], 'export default 0;');\n",
+    )
+    .unwrap();
+    std::fs::write(
+        engine.join("src/node/run.ts"),
+        "console.error('probe: listening'); console.error('the addon faulted here'); process.kill(process.pid, 'SIGKILL');\n",
+    )
+    .unwrap();
+    std::fs::write(dir.join("game.ts"), "export default 0;\n").unwrap();
+    let t0 = std::time::Instant::now();
+    let out = og()
+        .args(["run", "--headless", "--port", "47999"])
+        .arg(dir.join("game.ts"))
+        .env("OG_ENGINE_PACKAGE", &engine)
+        .output()
+        .unwrap();
+    let t = text(&out);
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(t0.elapsed() < std::time::Duration::from_secs(20), "{t}");
+    assert_eq!(out.status.code(), Some(137), "{t}");
+    assert!(t.contains("the game process was killed by signal 9"), "{t}");
+    assert!(t.contains("  | the addon faulted here"), "{t}");
+}
+
+/// project.ogt's publish block is checked before anything is built: a bad
+/// value names its line and the values it takes.
+#[test]
+fn build_refuses_a_bad_publish_setting_by_line() {
+    let dir = scratch_root();
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(dir.join("src/main.ts"), "export default 0;\n").unwrap();
+    let manifest = |publish: &str| {
+        format!("type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\npublish {{\n{publish}\n}}\n")
+    };
+    for (publish, expect) in [
+        (
+            "  fit stretch",
+            "project.ogt:7: publish.fit is `stretch`; use one of fill, letterbox",
+        ),
+        (
+            "  dpr_cap 9",
+            "publish.dpr_cap is 9; use a number from 0.5 to 4",
+        ),
+        ("  aspect \"wide\"", "write width:height, such as \"16:9\""),
+        ("  fit letterbox", "add `aspect \"16:9\"`"),
+        ("  color red", "publish has no `color`"),
+    ] {
+        std::fs::write(dir.join("project.ogt"), manifest(publish)).unwrap();
+        let out = og().arg("build").arg(&dir).output().unwrap();
+        assert_eq!(out.status.code(), Some(1), "{publish}: {}", text(&out));
+        assert!(text(&out).contains(expect), "{publish}: {}", text(&out));
+        assert!(!dir.join("dist").exists());
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// An executor (outside the repository, bun but no node, no Rust): the
+/// build toolchain is skipped and node is optional, so neither is a problem.
+#[test]
+fn doctor_outside_the_repository_needs_only_bun_and_the_engine() {
+    let Some(bun) = std::env::var_os("PATH").and_then(|p| {
+        std::env::split_paths(&p)
+            .map(|d| d.join("bun"))
+            .find(|b| b.is_file())
+    }) else {
+        panic!("this test needs bun on PATH");
+    };
+    let dir = scratch_root();
+    std::fs::remove_dir_all(dir.join("crates")).unwrap();
+    let bin = dir.join("bin");
+    std::fs::create_dir_all(&bin).unwrap();
+    std::os::unix::fs::symlink(&bun, bin.join("bun")).unwrap();
+    let out = og()
+        .arg("doctor")
+        .current_dir(&dir)
+        .env("PATH", &bin)
+        .env("OG_ENGINE_PACKAGE", repo().join("packages/engine"))
+        .output()
+        .unwrap();
+    let t = text(&out);
+    let _ = std::fs::remove_dir_all(&dir);
+    let line = |tool: &str| {
+        t.lines()
+            .find(|l| l.split_whitespace().nth(1) == Some(tool))
+            .unwrap_or_else(|| panic!("no line for {tool}:\n{t}"))
+            .to_string()
+    };
+    for tool in ["rustc", "cargo", "wasm-bindgen"] {
+        assert!(line(tool).starts_with("skipped"), "{t}");
+    }
+    assert!(line("node").starts_with("optional"), "{t}");
+    assert!(line("bun").starts_with("ok"), "{t}");
+    // Whatever else fails (an unbuilt addon in a fresh checkout) is engine
+    // lines only: every counted problem has a `missing`/`broken` line.
+    let counted = t
+        .lines()
+        .filter(|l| l.starts_with("missing") || l.starts_with("broken") || l.starts_with("differs"))
+        .count();
+    if counted == 0 {
+        assert_eq!(out.status.code(), Some(0), "{t}");
+    } else {
+        assert!(t.contains(&format!("{counted} problem(s)")), "{t}");
+    }
+}
+
 /// `og api gen --wiki` writes the wiki pages alone, one per module plus the
 /// index, and removes a page whose module the IDL no longer declares.
 #[test]

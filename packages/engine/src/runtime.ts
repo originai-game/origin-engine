@@ -787,6 +787,11 @@ export const load = Object.freeze({
   status: (world: WorldImpl, asset: number) => abi().og_load_status(world.id, asset),
   error: (world: WorldImpl, asset: number) => parse(abi().og_load_error(world.id, asset)),
   gltfInfo: (world: WorldImpl, asset: number) => parse(abi().og_load_gltf_info(world.id, asset)),
+  animation: (world: WorldImpl, path: string) => parse(abi().og_load_animation(world.id, path)),
+});
+
+export const anim = Object.freeze({
+  graph: (world: WorldImpl, desc?: unknown) => parse(abi().og_anim_graph(world.id, json(desc))),
 });
 
 export const commands = Object.freeze({

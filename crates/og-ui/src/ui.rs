@@ -2,12 +2,13 @@
 
 use crate::draw::{assign_levels, emit, DrawCmd, DrawItem, EmitDesc};
 use crate::id::{child_key, Id};
-use crate::input::{InputFrame, UiKey};
+use crate::input::{InputFrame, Nav, UiKey};
 use crate::layout::{
-    layout, preorder, Align, Content, Cross, Direction, Element, FontRole, Insets, Metrics, Node,
-    Rect, Size, TextAlign, TextContent, Widget, NONE,
+    layout, preorder, Align, Anchor, Content, Cross, Direction, Element, Float, FontRole, Insets,
+    Metrics, Node, Rect, Shape, Size, TextAlign, TextContent, Widget, NONE,
 };
-use crate::style::{Density, Srgba, Theme, TypeStep};
+use crate::motion::Fx;
+use crate::style::{Breakpoint, Density, Srgba, Theme, TypeStep};
 use crate::text::{FontMetrics, UiFont};
 use og_core::glam::Vec2;
 use og_probe::hooks::{find_by_id, find_by_text};
@@ -49,7 +50,12 @@ impl Viewport {
         }
     }
 
-    fn dpr(&self) -> f32 {
+    /// The size class of this surface.
+    pub fn breakpoint(&self) -> Breakpoint {
+        Breakpoint::of(self.width, self.height)
+    }
+
+    pub(crate) fn dpr(&self) -> f32 {
         if self.dpr.is_finite() && self.dpr > 0.0 {
             self.dpr
         } else {
@@ -104,34 +110,140 @@ pub struct Response {
     pub clicked: bool,
     /// Its value changed (slider, toggle, text field).
     pub changed: bool,
-    /// It has keyboard focus (text field).
+    /// It has focus: a text field being edited, or the control keyboard
+    /// and gamepad navigation landed on.
     pub focused: bool,
     /// Enter was pressed in it (text field).
     pub submitted: bool,
+    /// A list row or grid cell a press started on was released over this
+    /// one: the index of that row or cell (drag and drop).
+    pub dropped: Option<u32>,
 }
 
+pub(crate) const HIT_SCROLL: u8 = 1;
+/// A press focuses it with a caret (text field).
+pub(crate) const HIT_TEXT: u8 = 2;
+/// Keyboard and gamepad focus can land on it.
+pub(crate) const HIT_NAV: u8 = 4;
+/// Left and right adjust it when focused.
+pub(crate) const HIT_ADJUST: u8 = 8;
+/// Outside its scroll container's view: navigation only, never the pointer.
+pub(crate) const HIT_OFFSCREEN: u8 = 16;
+/// Pointer-interactive (buttons, backdrops, controls).
+pub(crate) const HIT_POINTER: u8 = 32;
+/// A focus scope (dialog backdrop, open menu).
+pub(crate) const HIT_SCOPE: u8 = 64;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
-struct Hit {
-    key: u64,
-    rect: Rect,
-    scroll: bool,
-    focusable: bool,
+pub(crate) struct Hit {
+    pub key: u64,
+    /// What is on screen (cut to the clip).
+    pub rect: Rect,
+    /// The whole element, for navigation and scrolling into view.
+    pub full: Rect,
+    pub flags: u8,
+    /// The nearest focus scope around it (0: none).
+    pub scope: u64,
+    /// The scroll container it sits in (0: none).
+    pub scroller: u64,
+}
+
+impl Hit {
+    pub fn has(&self, flag: u8) -> bool {
+        self.flags & flag != 0
+    }
+}
+
+/// Per-widget memory between ticks: what each widget's animation or open
+/// state needs (`a`, `b` values, `t` a tick, `h` a hash or flags).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub(crate) struct Anim {
+    pub a: f32,
+    pub b: f32,
+    pub t: u64,
+    pub h: u64,
+}
+
+/// A queued notification.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct Toast {
+    pub id: u32,
+    pub text: String,
+    pub tone: u8,
+    /// The tick it was queued on.
+    pub born: u64,
+    /// Ticks it stays before leaving.
+    pub ticks: u32,
+    /// The tick it started leaving (0: not leaving).
+    pub leaving: u64,
 }
 
 /// What persists between ticks (and in [`Ui::save_state`]).
 #[derive(Clone, Debug, Default, PartialEq)]
-struct State {
-    hot: u64,
-    active: u64,
-    focus: u64,
-    caret: usize,
-    hover_ticks: u32,
-    pointer: Vec2,
+pub(crate) struct State {
+    pub hot: u64,
+    pub active: u64,
+    pub focus: u64,
+    pub caret: usize,
+    pub hover_ticks: u32,
+    pub pointer: Vec2,
     /// The press that focused a field: where it landed, to place the caret.
-    focus_click: Option<f32>,
-    scroll: BTreeMap<u64, f32>,
+    pub focus_click: Option<f32>,
+    pub scroll: BTreeMap<u64, f32>,
     /// Last frame's interactive rectangles in draw order, for hit testing.
-    hits: Vec<Hit>,
+    pub hits: Vec<Hit>,
+    /// Frames begun: the clock of every animation.
+    pub tick: u64,
+    /// Focus moved by keyboard or gamepad: the ring shows.
+    pub focus_visible: bool,
+    /// The topmost focus scope of the last frame (0: none).
+    pub scope: u64,
+    /// Where focus returns when that scope closes.
+    pub focus_return: u64,
+    /// Keyboard and gamepad navigation as the last frame declared it.
+    pub nav_off: bool,
+    /// The stick's held direction (0 none, 1 + Nav index) and since which tick.
+    pub stick: (u8, u64),
+    /// Intents queued by `Ui::navigate` for the next frame.
+    pub pending: Vec<Nav>,
+    pub anims: BTreeMap<u64, Anim>,
+    pub toasts: Vec<Toast>,
+    pub next_toast: u32,
+}
+
+/// What navigation decided at the start of this frame.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub(crate) struct NavFrame {
+    /// The control pressed by Enter, Space or gamepad A.
+    pub activate: u64,
+    /// Escape or gamepad B, not yet taken.
+    pub back: bool,
+    /// Left (-1) and right (+1) on an adjustable control.
+    pub adjust: i32,
+}
+
+/// The icon atlas `Ui::icon` draws from: a grid of equal cells.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct IconAtlas {
+    pub texture: Option<TextureHandle>,
+    pub columns: u32,
+    pub rows: u32,
+    /// Optional names, one per cell in reading order, for `icon_named`.
+    pub names: Vec<String>,
+}
+
+impl IconAtlas {
+    /// The UV rectangle of cell `index`.
+    pub fn uv(&self, index: u32) -> [f32; 4] {
+        let (c, r) = (self.columns.max(1), self.rows.max(1));
+        let (x, y) = ((index % c) as f32, ((index / c) % r) as f32);
+        let (w, h) = (1.0 / c as f32, 1.0 / r as f32);
+        [x * w, y * h, (x + 1.0) * w, (y + 1.0) * h]
+    }
+
+    pub fn index_of(&self, name: &str) -> Option<u32> {
+        self.names.iter().position(|n| n == name).map(|i| i as u32)
+    }
 }
 
 /// One laid-out frame: what the probe reads and what the renderer draws.
@@ -279,20 +391,31 @@ pub struct FieldDesc {
 /// The immediate-mode UI. Call [`Ui::begin`], build, [`Ui::end`] once per tick.
 #[derive(Clone, Debug)]
 pub struct Ui {
-    theme: Theme,
-    fonts: Fonts,
-    ticks_per_second: u32,
-    viewport: Viewport,
-    input: InputFrame,
-    nodes: Vec<Node>,
-    kinds: Vec<(&'static str, bool)>,
-    stack: Vec<usize>,
-    floating: Vec<usize>,
-    last_closed: usize,
-    warnings: Vec<String>,
-    building: bool,
-    state: State,
-    frame: UiFrame,
+    pub(crate) theme: Theme,
+    pub(crate) fonts: Fonts,
+    pub(crate) ticks_per_second: u32,
+    pub(crate) viewport: Viewport,
+    pub(crate) input: InputFrame,
+    pub(crate) nodes: Vec<Node>,
+    pub(crate) kinds: Vec<(&'static str, bool)>,
+    pub(crate) stack: Vec<usize>,
+    pub(crate) floating: Vec<usize>,
+    pub(crate) last_closed: usize,
+    pub(crate) warnings: Vec<String>,
+    pub(crate) building: bool,
+    pub(crate) state: State,
+    pub(crate) frame: UiFrame,
+    pub(crate) nav: NavFrame,
+    /// Widget memories used this frame (others are dropped at `end`).
+    pub(crate) touched: std::collections::BTreeSet<u64>,
+    /// Navigation declared for this frame (`set_navigation`).
+    pub(crate) nav_on: bool,
+    /// The control a widget asked to focus this frame.
+    pub(crate) request_focus: u64,
+    /// Open focus scopes this frame, in build order.
+    pub(crate) scopes: Vec<usize>,
+    pub(crate) icons: IconAtlas,
+    pub(crate) toast_anchor: Anchor,
 }
 
 impl Default for Ui {
@@ -301,7 +424,7 @@ impl Default for Ui {
     }
 }
 
-const STATE_VERSION: u32 = 1;
+const STATE_VERSION: u32 = 2;
 
 impl Ui {
     pub fn new(desc: UiDesc) -> Ui {
@@ -324,7 +447,103 @@ impl Ui {
             building: false,
             state: State::default(),
             frame: UiFrame::default(),
+            nav: NavFrame::default(),
+            touched: Default::default(),
+            nav_on: true,
+            request_focus: 0,
+            scopes: Vec::new(),
+            icons: IconAtlas::default(),
+            toast_anchor: Anchor::Bottom,
         }
+    }
+
+    /// The icon atlas `icon` draws from.
+    pub fn set_icons(&mut self, icons: IconAtlas) {
+        self.icons = icons;
+    }
+
+    pub fn icons(&self) -> &IconAtlas {
+        &self.icons
+    }
+
+    /// Where toasts stack (default: bottom centre of the safe area).
+    pub fn set_toast_anchor(&mut self, anchor: Anchor) {
+        self.toast_anchor = anchor;
+    }
+
+    /// The size class of the current play surface.
+    pub fn breakpoint(&self) -> Breakpoint {
+        self.viewport.breakpoint()
+    }
+
+    /// The play surface of the frame being built.
+    pub fn viewport(&self) -> Viewport {
+        self.viewport
+    }
+
+    /// Frames begun so far: the UI's clock.
+    pub fn tick(&self) -> u64 {
+        self.state.tick
+    }
+
+    /// The UI's clock in seconds (frames over the tick rate).
+    pub fn seconds(&self) -> f64 {
+        self.state.tick as f64 / f64::from(self.ticks_per_second)
+    }
+
+    pub fn ticks_per_second(&self) -> u32 {
+        self.ticks_per_second
+    }
+
+    /// Ticks a duration in milliseconds takes (at least 1).
+    pub fn ticks_for(&self, ms: f32) -> u32 {
+        Theme::ticks(ms, self.ticks_per_second)
+    }
+
+    /// Whether keyboard and gamepad navigation moves focus on this screen.
+    /// On by default; a gameplay HUD whose keys move the player turns it off
+    /// (an open dialog or menu turns it on while it is open). Takes effect
+    /// from the next tick.
+    pub fn set_navigation(&mut self, on: bool) {
+        self.nav_on = on;
+    }
+
+    /// Queues a navigation intent for the next tick (a gamepad the input
+    /// layer does not read yet, a custom binding, a test).
+    pub fn navigate(&mut self, nav: Nav) {
+        self.state.pending.push(nav);
+    }
+
+    /// The key of the focused control (0: none).
+    pub fn focused_key(&self) -> u64 {
+        self.state.focus
+    }
+
+    /// Escape or gamepad B this tick, not taken by a dialog or menu: true
+    /// once, then taken. A pause screen closes on it.
+    pub fn back(&mut self) -> bool {
+        std::mem::take(&mut self.nav.back)
+    }
+
+    /// The widget memory of `key`, marked as used this frame.
+    pub(crate) fn anim(&mut self, key: u64) -> Anim {
+        self.touched.insert(key);
+        self.state.anims.get(&key).copied().unwrap_or_default()
+    }
+
+    pub(crate) fn has_anim(&self, key: u64) -> bool {
+        self.state.anims.contains_key(&key)
+    }
+
+    pub(crate) fn set_anim(&mut self, key: u64, a: Anim) {
+        self.touched.insert(key);
+        self.state.anims.insert(key, a);
+    }
+
+    /// The key the next element with this id would get under the open element.
+    pub(crate) fn key_for(&self, id: &str) -> u64 {
+        let parent = self.nodes.get(self.parent()).map_or(1, |n| n.key);
+        child_key(parent, id)
     }
 
     pub fn theme(&self) -> &Theme {
@@ -381,6 +600,13 @@ impl Ui {
         self.last_closed = NONE;
         self.building = true;
 
+        self.state.tick += 1;
+        self.nav = NavFrame::default();
+        self.touched.clear();
+        self.request_focus = 0;
+        self.scopes.clear();
+        self.nav_on = true;
+
         // Hit test against last frame's rectangles, topmost first.
         let p = input.pointer;
         let hot = if input.pointer_inside {
@@ -388,7 +614,11 @@ impl Ui {
                 .hits
                 .iter()
                 .rev()
-                .find(|h| h.rect.contains(p.x, p.y))
+                .find(|h| {
+                    !h.has(HIT_OFFSCREEN)
+                        && h.has(HIT_POINTER | HIT_SCROLL | HIT_TEXT)
+                        && h.rect.contains(p.x, p.y)
+                })
                 .map_or(0, |h| h.key)
         } else {
             0
@@ -402,15 +632,17 @@ impl Ui {
         self.state.focus_click = None;
         if input.pressed {
             self.state.active = hot;
-            let focusable = self.hit(hot).is_some_and(|h| h.focusable);
-            if focusable {
-                if self.state.focus != hot {
-                    self.state.focus = hot;
-                }
+            let text = self.hit(hot).is_some_and(|h| h.has(HIT_TEXT));
+            if text {
+                self.state.focus = hot;
                 self.state.focus_click = Some(p.x);
+            } else if self.hit(hot).is_some_and(|h| h.has(HIT_NAV)) {
+                // A pressed control takes focus without the ring (as :focus-visible).
+                self.state.focus = hot;
             } else {
                 self.state.focus = 0;
             }
+            self.state.focus_visible = false;
         }
         // Wheel over a scroll container; drag on one that holds the press.
         if input.wheel.y != 0.0 {
@@ -419,15 +651,22 @@ impl Ui {
                 .hits
                 .iter()
                 .rev()
-                .find(|h| h.scroll && h.rect.contains(p.x, p.y))
+                .find(|h| h.has(HIT_SCROLL) && h.rect.contains(p.x, p.y))
             {
                 *self.state.scroll.entry(h.key).or_insert(0.0) += input.wheel.y;
             }
         }
-        if input.down && !input.pressed && self.hit(self.state.active).is_some_and(|h| h.scroll) {
+        if input.down
+            && !input.pressed
+            && self
+                .hit(self.state.active)
+                .is_some_and(|h| h.has(HIT_SCROLL))
+        {
             let dy = self.state.pointer.y - p.y;
             *self.state.scroll.entry(self.state.active).or_insert(0.0) += dy;
         }
+        let intents = self.intents(&input);
+        self.apply_nav(&intents);
         self.state.pointer = p;
         self.input = input;
 
@@ -441,19 +680,19 @@ impl Ui {
         self.stack.push(0);
     }
 
-    fn hit(&self, key: u64) -> Option<&Hit> {
+    pub(crate) fn hit(&self, key: u64) -> Option<&Hit> {
         if key == 0 {
             return None;
         }
         self.state.hits.iter().find(|h| h.key == key)
     }
 
-    fn parent(&self) -> usize {
+    pub(crate) fn parent(&self) -> usize {
         self.stack.last().copied().unwrap_or(0)
     }
 
     /// Adds a node under the open element and returns its index.
-    fn push(&mut self, kind: &'static str, id: Id, el: Element) -> usize {
+    pub(crate) fn push(&mut self, kind: &'static str, id: Id, el: Element) -> usize {
         if !self.building {
             self.warnings
                 .push("an element was added outside begin/end; call ui.begin() first".into());
@@ -508,7 +747,7 @@ impl Ui {
         index
     }
 
-    fn path_of(&self, mut i: usize) -> String {
+    pub(crate) fn path_of(&self, mut i: usize) -> String {
         let mut parts = Vec::new();
         while i != NONE && i != 0 {
             parts.push(self.nodes[i].id.clone());
@@ -521,16 +760,28 @@ impl Ui {
         parts.join("/")
     }
 
-    fn respond(&self, key: u64) -> Response {
+    pub(crate) fn respond(&self, key: u64) -> Response {
         let s = &self.state;
         let hovered = s.hot == key && (s.active == 0 || s.active == key);
         Response {
             hovered,
             pressed: s.active == key && self.input.down,
-            clicked: s.active == key && self.input.released && s.hot == key,
+            clicked: (s.active == key && self.input.released && s.hot == key)
+                || (self.nav.activate == key && key != 0),
             focused: s.focus == key,
             ..Response::default()
         }
+    }
+
+    /// Marks node `i` as a keyboard/gamepad focus target and returns its
+    /// response; the ring shows while navigation put focus on it.
+    pub(crate) fn nav_target(&mut self, i: usize, adjust: bool) -> Response {
+        let key = self.nodes[i].key;
+        let n = &mut self.nodes[i];
+        n.nav = true;
+        n.adjust = adjust;
+        n.ring = self.state.focus == key && self.state.focus_visible;
+        self.respond(key)
     }
 
     /// Opens a container; children follow until [`Ui::close`].
@@ -653,13 +904,13 @@ impl Ui {
         );
     }
 
-    fn leaf(&mut self, kind: &'static str, id: Id, el: Element) -> usize {
+    pub(crate) fn leaf(&mut self, kind: &'static str, id: Id, el: Element) -> usize {
         let i = self.push(kind, id, el);
         self.last_closed = i;
         i
     }
 
-    fn text_content(&self, text: &str, step: TypeStep, color: Srgba) -> TextContent {
+    pub(crate) fn text_content(&self, text: &str, step: TypeStep, color: Srgba) -> TextContent {
         TextContent {
             text: text.to_owned(),
             step,
@@ -719,11 +970,10 @@ impl Ui {
                 ..Element::default()
             },
         );
-        let key = self.nodes[i].key;
         let r = if desc.disabled {
             Response::default()
         } else {
-            self.respond(key)
+            self.nav_target(i, false)
         };
         let p = &t.palette;
         let (bg, fg) = if desc.disabled {
@@ -822,12 +1072,25 @@ impl Ui {
             },
         );
         let key = self.nodes[i].key;
-        let mut r = self.respond(key);
+        let mut r = self.nav_target(i, true);
         let (lo, hi) = if desc.min == desc.max {
             (0.0, 1.0)
         } else {
             (desc.min, desc.max)
         };
+        if r.focused && self.nav.adjust != 0 {
+            // Left and right step by `step`, or a twentieth of the range.
+            let unit = if desc.step > 0.0 {
+                desc.step
+            } else {
+                (hi - lo) / 20.0
+            };
+            let v = (*value + unit * self.nav.adjust as f32).clamp(lo.min(hi), lo.max(hi));
+            if v != *value {
+                *value = v;
+                r.changed = true;
+            }
+        }
         let thumb = self.thumb();
         if self.state.active == key && (self.input.down || self.input.pressed) {
             if let Some(h) = self.hit(key) {
@@ -856,11 +1119,11 @@ impl Ui {
         r
     }
 
-    fn thumb(&self) -> f32 {
+    pub(crate) fn thumb(&self) -> f32 {
         self.sizes().control_sm - 2.0 * self.theme.space.xs
     }
 
-    fn switch_size(&self) -> (f32, f32) {
+    pub(crate) fn switch_size(&self) -> (f32, f32) {
         let h = self.sizes().control_sm - self.theme.space.xs;
         // The switch's 51:31 proportion (geometry, not a design value).
         (h * 51.0 / 31.0, h)
@@ -884,8 +1147,7 @@ impl Ui {
                 ..Element::default()
             },
         );
-        let key = self.nodes[i].key;
-        let mut r = self.respond(key);
+        let mut r = self.nav_target(i, false);
         if r.clicked {
             *on = !*on;
             r.changed = true;
@@ -923,6 +1185,7 @@ impl Ui {
             },
         );
         self.nodes[i].focusable = true;
+        self.nodes[i].nav = true;
         let key = self.nodes[i].key;
         let mut r = self.respond(key);
         let len = value.chars().count();
@@ -1041,10 +1304,56 @@ impl Ui {
         node.widget = Widget::Tooltip;
         node.probe_text = text.to_owned();
         node.anchor = anchor;
+        node.float = Float::Tooltip;
         let index = self.nodes.len();
         self.nodes.push(node);
         self.kinds.push(("tooltip", false));
         self.floating.push(index);
+    }
+
+    /// Opens a layer outside the tree (an anchored HUD group, a dialog's
+    /// backdrop, a menu, the toast stack): it lays out and draws over the
+    /// tree in its rank, and its children follow until [`Ui::close`]. Its
+    /// path is its own id; `anchor` is the node it is placed against.
+    pub(crate) fn open_layer(
+        &mut self,
+        kind: &'static str,
+        id: Id,
+        el: Element,
+        float: Float,
+        anchor: usize,
+    ) -> usize {
+        if !self.building {
+            self.warnings
+                .push("an element was added outside begin/end; call ui.begin() first".into());
+            self.begin(InputFrame::default(), self.viewport);
+        }
+        let mut local = id.as_str().replace('/', "_");
+        if local.is_empty() {
+            local = format!("{kind}#{}", self.floating.len());
+        }
+        let taken = |s: &Ui, l: &str| s.floating.iter().any(|&f| s.nodes[f].id == l);
+        if taken(self, &local) {
+            let mut n = 1;
+            while taken(self, &format!("{local}~{n}")) {
+                n += 1;
+            }
+            let renamed = format!("{local}~{n}");
+            self.warnings.push(format!(
+                "duplicate layer id '{local}'; this one is '{renamed}': give each anchored group, dialog and menu its own id"
+            ));
+            local = renamed;
+        }
+        let key = child_key(self.nodes[0].key, &local);
+        let mut node = Node::new(key, local, NONE, el);
+        node.float = float;
+        node.anchor = anchor;
+        let index = self.nodes.len();
+        self.nodes.push(node);
+        self.kinds.push((kind, false));
+        self.floating.push(index);
+        self.stack.push(index);
+        index
     }
 
     /// Lays out the frame, updates the interaction state and returns the frame.
@@ -1061,7 +1370,29 @@ impl Ui {
                 self.path_of(i)
             ));
         }
+        self.build_toasts();
         self.building = false;
+        // Hidden slots (a closed dialog, a finished transition) take no room.
+        for i in 0..self.nodes.len() {
+            if self.nodes[i].hidden {
+                continue;
+            }
+            let kids = std::mem::take(&mut self.nodes[i].children);
+            let kept: Vec<usize> = kids
+                .into_iter()
+                .filter(|&c| !self.nodes[c].hidden)
+                .collect();
+            self.nodes[i].children = kept;
+        }
+        let mut floating: Vec<usize> = self
+            .floating
+            .iter()
+            .copied()
+            .filter(|&f| !self.nodes[f].hidden)
+            .collect();
+        floating.sort_by_key(|&f| self.nodes[f].float.rank());
+        self.floating = floating;
+
         let vp = self.viewport;
         let dpr = vp.dpr();
         let screen = Rect::new(0.0, 0.0, vp.width, vp.height);
@@ -1083,35 +1414,90 @@ impl Ui {
             vp.height - vp.safe_area.vertical(),
         );
         for &f in &self.floating.clone() {
+            let float = self.nodes[f].float;
+            if float == Float::Modal {
+                // The backdrop covers the surface; the safe area pads its content.
+                self.nodes[f].el.width = Size::Fixed(vp.width);
+                self.nodes[f].el.height = Size::Fixed(vp.height);
+                if self.nodes[f].backdrop {
+                    self.nodes[f].el.padding = self.nodes[f].el.padding.add(&vp.safe_area);
+                }
+                layout(
+                    &mut self.nodes,
+                    f,
+                    screen,
+                    &self.fonts,
+                    &offset,
+                    dpr,
+                    screen,
+                );
+                continue;
+            }
+            let area = match float {
+                Float::Anchored { margin, .. } | Float::Toasts { margin, .. } => Rect::new(
+                    safe.x + margin,
+                    safe.y + margin,
+                    (safe.width - 2.0 * margin).max(0.0),
+                    (safe.height - 2.0 * margin).max(0.0),
+                ),
+                _ => safe,
+            };
+            layout(&mut self.nodes, f, area, &self.fonts, &offset, dpr, screen);
+            let (w, h) = (self.nodes[f].w, self.nodes[f].h);
+            let gap = self.theme.space.xs;
+            let (x, y) = match float {
+                Float::Anchored { anchor, dx, dy, .. } => {
+                    let (ax, ay) = anchor.fractions();
+                    (
+                        area.x + (area.width - w) * ax + dx,
+                        area.y + (area.height - h) * ay + dy,
+                    )
+                }
+                Float::Toasts { anchor, .. } => {
+                    let (ax, ay) = anchor.fractions();
+                    (
+                        area.x + (area.width - w) * ax,
+                        area.y + (area.height - h) * ay,
+                    )
+                }
+                _ => {
+                    let a = self
+                        .nodes
+                        .get(self.nodes[f].anchor)
+                        .map_or(safe, |n| n.rect);
+                    let x = if float == Float::Popover {
+                        a.x.min(safe.right() - w).max(safe.x)
+                    } else {
+                        (a.x + a.width / 2.0 - w / 2.0)
+                            .min(safe.right() - w)
+                            .max(safe.x)
+                    };
+                    let mut y = a.bottom() + gap;
+                    if y + h > safe.bottom() {
+                        y = (a.y - gap - h).max(safe.y);
+                    }
+                    (x, y)
+                }
+            };
+            let placed = Rect::new(x, y, w, h);
+            self.nodes[f].el.width = Size::Fixed(w);
+            self.nodes[f].el.height = Size::Fixed(h);
             layout(
                 &mut self.nodes,
                 f,
-                screen,
+                placed,
                 &self.fonts,
                 &offset,
                 dpr,
                 screen,
             );
-            let a = self.nodes[self.nodes[f].anchor].rect;
-            let (w, h) = (self.nodes[f].w, self.nodes[f].h);
-            let gap = self.theme.space.xs;
-            let x = (a.x + a.width / 2.0 - w / 2.0)
-                .min(safe.right() - w)
-                .max(safe.x);
-            let mut y = a.bottom() + gap;
-            if y + h > safe.bottom() {
-                y = a.y - gap - h;
-            }
-            let area = Rect::new(x, y, w, h);
-            self.nodes[f].el.width = Size::Fixed(w);
-            self.nodes[f].el.height = Size::Fixed(h);
-            layout(&mut self.nodes, f, area, &self.fonts, &offset, dpr, screen);
         }
 
         let mut order = preorder(&self.nodes, 0);
         for &f in &self.floating {
             order.extend(preorder(&self.nodes, f));
         }
+        self.apply_fx(&order);
 
         // Interaction state for the next tick.
         let present: BTreeMap<u64, usize> = order.iter().map(|&i| (self.nodes[i].key, i)).collect();
@@ -1121,32 +1507,81 @@ impl Ui {
         for (k, v) in self.state.scroll.iter_mut() {
             *v = v.clamp(0.0, self.nodes[present[k]].max_scroll());
         }
-        if !present.contains_key(&self.state.focus) {
-            self.state.focus = 0;
-        }
         if !self.input.down || !present.contains_key(&self.state.active) {
             self.state.active = 0;
         }
+        let touched = std::mem::take(&mut self.touched);
+        self.state.anims.retain(|k, _| touched.contains(k));
+        self.touched = touched;
+
+        // Scopes: the nearest scope around each node, by walking the order.
+        let mut scope_of = vec![0u64; self.nodes.len()];
+        let mut scroller_of = vec![0u64; self.nodes.len()];
+        for &i in &order {
+            let n = &self.nodes[i];
+            let up = if n.parent == NONE { NONE } else { n.parent };
+            let (ps, pr) = if up == NONE {
+                (0, 0)
+            } else {
+                (scope_of[up], scroller_of[up])
+            };
+            scope_of[i] = if n.scope { n.key } else { ps };
+            scroller_of[i] = if up != NONE && self.nodes[up].el.scroll {
+                self.nodes[up].key
+            } else {
+                pr
+            };
+        }
         let mut hits = Vec::new();
         let mut elements = Vec::new();
+        let mut top_scope = 0u64;
         for &i in &order[1..] {
             let n = &self.nodes[i];
+            if n.scope && !n.inert {
+                top_scope = n.key;
+            }
             let visible = n.rect.intersect(&n.clip);
             // Scrolled or clipped out of view: not on screen, not listed. A
             // zero-size element (an empty spacer) is listed where it sits.
             let (r, c) = (&n.rect, &n.clip);
             let outside =
                 r.x > c.right() || r.right() < c.x || r.y > c.bottom() || r.bottom() < c.y;
+            let mut flags = 0u8;
+            if n.el.scroll && !n.el.interactive {
+                flags |= HIT_SCROLL;
+            }
+            if n.el.interactive || n.backdrop {
+                flags |= HIT_POINTER;
+            }
+            if n.focusable {
+                flags |= HIT_TEXT;
+            }
+            if n.nav {
+                flags |= HIT_NAV;
+            }
+            if n.adjust {
+                flags |= HIT_ADJUST;
+            }
+            if n.scope {
+                flags |= HIT_SCOPE;
+            }
+            let hit = |rect: Rect, flags: u8| Hit {
+                key: n.key,
+                rect,
+                full: *r,
+                flags,
+                scope: scope_of[i],
+                scroller: scroller_of[i],
+            };
             if outside || (visible.is_empty() && !r.is_empty()) {
+                // Navigation can still reach a control just out of a list's view.
+                if n.nav && !n.inert && scroller_of[i] != 0 {
+                    hits.push(hit(*r, (flags & (HIT_NAV | HIT_ADJUST)) | HIT_OFFSCREEN));
+                }
                 continue;
             }
-            if !visible.is_empty() && (n.el.interactive || n.el.scroll || n.focusable) {
-                hits.push(Hit {
-                    key: n.key,
-                    rect: visible,
-                    scroll: n.el.scroll && !n.el.interactive,
-                    focusable: n.focusable,
-                });
+            if !visible.is_empty() && flags != 0 && !n.inert {
+                hits.push(hit(visible, flags));
             }
             let parent = if n.parent == NONE {
                 self.nodes
@@ -1167,6 +1602,48 @@ impl Ui {
                 height: visible.height,
             });
         }
+        // Focus: kept while its control is on screen (or reachable); a scope
+        // that opened takes it (its first control, or the one a widget asked
+        // for); a scope that closed gives it back.
+        let alive = |k: u64| hits.iter().any(|h: &Hit| h.key == k);
+        let first_in = |scope: u64| {
+            hits.iter()
+                .find(|h| h.scope == scope && h.has(HIT_NAV) && !h.has(HIT_OFFSCREEN))
+                .map_or(0, |h| h.key)
+        };
+        if self.request_focus != 0 && alive(self.request_focus) {
+            self.state.focus = self.request_focus;
+        }
+        if top_scope != self.state.scope {
+            if top_scope != 0 {
+                let inside = hits
+                    .iter()
+                    .any(|h| h.key == self.state.focus && h.scope == top_scope);
+                if !inside {
+                    if self.state.scope == 0 {
+                        self.state.focus_return = self.state.focus;
+                    }
+                    let req = self.request_focus;
+                    self.state.focus =
+                        if req != 0 && hits.iter().any(|h| h.key == req && h.scope == top_scope) {
+                            req
+                        } else {
+                            first_in(top_scope)
+                        };
+                }
+            } else {
+                if !alive(self.state.focus) || self.state.focus == 0 {
+                    let back = self.state.focus_return;
+                    self.state.focus = if alive(back) { back } else { 0 };
+                }
+                self.state.focus_return = 0;
+            }
+        }
+        if !alive(self.state.focus) {
+            self.state.focus = 0;
+        }
+        self.state.scope = top_scope;
+        self.state.nav_off = !self.nav_on;
         self.state.hits = hits;
 
         let cmds = self.commands(&order);
@@ -1177,6 +1654,63 @@ impl Ui {
             warnings: std::mem::take(&mut self.warnings),
         };
         &self.frame
+    }
+
+    /// Applies each transition to its subtree: moves and scales the
+    /// rectangles (and the clips its own scroll containers make), multiplies
+    /// opacity, and makes the subtree inert while it moves.
+    fn apply_fx(&mut self, order: &[usize]) {
+        let pos: BTreeMap<usize, usize> = order.iter().enumerate().map(|(k, &i)| (i, k)).collect();
+        for k in 0..order.len() {
+            let i = order[k];
+            let parent = self.nodes[i].parent;
+            let (alpha, scale, inert) = if parent == NONE {
+                (1.0, 1.0, false)
+            } else {
+                let p = &self.nodes[parent];
+                (p.alpha, p.scale, p.inert)
+            };
+            let n = &mut self.nodes[i];
+            n.alpha = alpha;
+            n.scale = scale;
+            n.inert = inert;
+            let Some(fx) = n.fx else { continue };
+            n.alpha *= fx.alpha;
+            n.scale *= fx.scale;
+            n.inert |= fx.inert;
+            if fx == Fx::default() {
+                continue;
+            }
+            // The subtree is the contiguous run of the preorder after i.
+            let (px, py) = n.rect.center();
+            let mut end = k + 1;
+            let last = {
+                let mut j = i;
+                while let Some(&c) = self.nodes[j].children.last() {
+                    j = c;
+                }
+                j
+            };
+            if last != i {
+                end = pos[&last] + 1;
+            }
+            let tf = |r: Rect| {
+                Rect::new(
+                    px + (r.x - px) * fx.scale + fx.dx,
+                    py + (r.y - py) * fx.scale + fx.dy,
+                    r.width * fx.scale,
+                    r.height * fx.scale,
+                )
+            };
+            let inside: std::collections::BTreeSet<usize> = order[k..end].iter().copied().collect();
+            for &j in &order[k..end] {
+                let n = &mut self.nodes[j];
+                n.rect = tf(n.rect);
+                if n.clip_src != NONE && inside.contains(&n.clip_src) {
+                    n.clip = tf(n.clip);
+                }
+            }
+        }
     }
 
     fn commands(&self, order: &[usize]) -> Vec<DrawCmd> {
@@ -1242,15 +1776,37 @@ impl Ui {
         let rect = n.rect;
         let clip = n.clip;
         let dpr = self.viewport.dpr();
+        let alpha = n.alpha;
         let quad = |rect: Rect, radius: f32, color: Srgba| DrawCmd::Quad {
             rect,
             radius,
-            color: color.linear(),
+            color: color.fade(alpha).linear(),
             clip,
         };
-        if let Widget::Field { focused: true, .. } = n.widget {
-            let ring = t.space.xxs;
-            cmds.push(quad(rect.outset(ring), n.el.radius + ring, p.focus));
+        let field_ring = matches!(n.widget, Widget::Field { focused: true, .. });
+        let outline = t.outline && (n.nav || n.focusable) && n.el.background.is_some();
+        if field_ring || n.ring || outline {
+            // A ring, a gap of what is behind, then the control.
+            let behind = self.behind(i);
+            let w = if field_ring || n.ring {
+                t.space.xxs
+            } else {
+                1.0
+            };
+            let color = if field_ring || n.ring {
+                p.focus
+            } else {
+                p.border_strong
+            };
+            let gap = if field_ring || !n.ring {
+                0.0
+            } else {
+                t.space.xxs
+            };
+            cmds.push(quad(rect.outset(w + gap), n.el.radius + w + gap, color));
+            if gap > 0.0 || (outline && !field_ring) {
+                cmds.push(quad(rect.outset(gap), n.el.radius + gap, behind));
+            }
         }
         if let Some(bg) = n.el.background {
             let r = match n.widget {
@@ -1318,13 +1874,15 @@ impl Ui {
                 let font = self.fonts.get(tc.font);
                 if let Some(handle) = font.handle {
                     let m = &font.metrics;
-                    let size = tc.step.size;
-                    let lh = tc.line_height();
+                    let sk = n.scale;
+                    let size = tc.step.size * sk;
+                    let lh = tc.line_height() * sk;
+                    let pad = n.el.padding;
                     let inner = Rect::new(
-                        rect.x + n.el.padding.left,
-                        rect.y + n.el.padding.top,
-                        rect.width - n.el.padding.horizontal(),
-                        rect.height - n.el.padding.vertical(),
+                        rect.x + pad.left * sk,
+                        rect.y + pad.top * sk,
+                        rect.width - pad.horizontal() * sk,
+                        rect.height - pad.vertical() * sk,
                     );
                     let block = lh * n.lines.len() as f32;
                     let top = inner.y + ((inner.height - block) / 2.0).max(0.0);
@@ -1336,7 +1894,7 @@ impl Ui {
                     };
                     for (k, line) in n.lines.iter().enumerate() {
                         let ly = top + k as f32 * lh;
-                        let free = inner.width - line.width;
+                        let free = inner.width - line.width * sk;
                         let x = inner.x
                             + match tc.align {
                                 TextAlign::Start => 0.0,
@@ -1350,9 +1908,9 @@ impl Ui {
                             baseline: snap(baseline),
                             size,
                             text: line.text.clone(),
-                            color: tc.color.linear(),
+                            color: tc.color.fade(alpha).linear(),
                             font: handle,
-                            bounds: Rect::new(x, ly, line.width, lh),
+                            bounds: Rect::new(x, ly, line.width * sk, lh),
                             clip: text_clip,
                             advances: line.text.chars().map(|c| m.advance(c) * size).collect(),
                         });
@@ -1370,7 +1928,7 @@ impl Ui {
                             rect: Rect::new(cx, rect.y + (rect.height - ch) / 2.0, caret_w, ch)
                                 .snapped(dpr),
                             radius: 0.0,
-                            color: p.accent.linear(),
+                            color: p.accent.fade(alpha).linear(),
                             clip: text_clip,
                         });
                     }
@@ -1380,22 +1938,148 @@ impl Ui {
                 rect,
                 texture: *texture,
                 uv: *uv,
-                color: tint.linear(),
+                color: tint.fade(alpha).linear(),
                 clip,
             }),
             Content::None => {}
         }
+        self.shape_commands(n, cmds);
     }
 
-    /// The interaction state (hover, press, focus, caret, scroll offsets and
-    /// last frame's hit rectangles) as bytes, for the host's world snapshot:
-    /// restoring it with the world replays the UI exactly.
+    /// What is behind node `i`: its nearest ancestor's fill over the theme's
+    /// ground, opaque (a focus ring's gap).
+    pub(crate) fn behind(&self, i: usize) -> Srgba {
+        let mut fills = Vec::new();
+        let mut j = self.nodes[i].parent;
+        while j != NONE {
+            if let Some(bg) = self.nodes[j].el.background {
+                fills.push(bg);
+                if bg.alpha >= 1.0 {
+                    break;
+                }
+            }
+            j = self.nodes[j].parent;
+        }
+        let mut c = self.theme.palette.bg;
+        for f in fills.iter().rev() {
+            c = f.over(c);
+        }
+        c
+    }
+
+    fn shape_commands(&self, n: &Node, cmds: &mut Vec<DrawCmd>) {
+        let clip = n.clip;
+        let alpha = n.alpha;
+        let dpr = self.viewport.dpr();
+        for shape in &n.shapes {
+            match shape {
+                Shape::Rect {
+                    frame,
+                    radius,
+                    color,
+                } => {
+                    let r = frame.resolve(&n.rect);
+                    if r.is_empty() {
+                        continue;
+                    }
+                    cmds.push(DrawCmd::Quad {
+                        rect: r.snapped(dpr),
+                        radius: radius.min(r.width / 2.0).min(r.height / 2.0) * 1.0,
+                        color: color.fade(alpha).linear(),
+                        clip,
+                    });
+                }
+                Shape::Bar {
+                    frame,
+                    angle,
+                    color,
+                } => {
+                    let r = frame.resolve(&n.rect);
+                    cmds.push(DrawCmd::Bar {
+                        center: r.center(),
+                        w: r.width,
+                        h: r.height,
+                        angle: *angle,
+                        color: color.fade(alpha).linear(),
+                        clip,
+                    });
+                }
+                Shape::Half {
+                    frame,
+                    angle,
+                    color,
+                } => {
+                    let r = frame.resolve(&n.rect);
+                    cmds.push(DrawCmd::Half {
+                        center: r.center(),
+                        radius: r.width.min(r.height) / 2.0,
+                        angle: *angle,
+                        color: color.fade(alpha).linear(),
+                        clip,
+                    });
+                }
+                Shape::Image {
+                    frame,
+                    texture,
+                    uv,
+                    color,
+                } => cmds.push(DrawCmd::Image {
+                    rect: frame.resolve(&n.rect),
+                    texture: Some(*texture),
+                    uv: *uv,
+                    color: color.fade(alpha).linear(),
+                    clip,
+                }),
+                Shape::Text {
+                    frame,
+                    text,
+                    step,
+                    color,
+                    font,
+                } => {
+                    let f = self.fonts.get(*font);
+                    let Some(handle) = f.handle else { continue };
+                    let m = &f.metrics;
+                    let r = frame.resolve(&n.rect);
+                    let size = step.size * n.scale;
+                    let w = m.measure(text, size);
+                    let lh = step.line_height * n.scale;
+                    let x = r.x + (r.width - w) / 2.0;
+                    let ly = r.y + (r.height - lh) / 2.0;
+                    let baseline =
+                        ly + (lh - (m.ascender - m.descender) * size) / 2.0 + m.ascender * size;
+                    let snap = |v: f32| (v * dpr).round() / dpr;
+                    cmds.push(DrawCmd::Text {
+                        x: snap(x),
+                        baseline: snap(baseline),
+                        size,
+                        text: text.clone(),
+                        color: color.fade(alpha).linear(),
+                        font: handle,
+                        bounds: Rect::new(x, ly, w, lh),
+                        clip,
+                        advances: text.chars().map(|c| m.advance(c) * size).collect(),
+                    });
+                }
+            }
+        }
+    }
+
+    /// The interaction state (hover, press, focus, caret, scroll offsets,
+    /// last frame's hit rectangles, the UI clock, widget memories, toasts and
+    /// queued navigation) as bytes, for the host's world snapshot: restoring
+    /// it with the world replays the UI exactly.
     pub fn save_state(&self) -> Vec<u8> {
         let s = &self.state;
         let mut b = Vec::new();
         let u32_ = |b: &mut Vec<u8>, v: u32| b.extend_from_slice(&v.to_le_bytes());
         let u64_ = |b: &mut Vec<u8>, v: u64| b.extend_from_slice(&v.to_le_bytes());
         let f32_ = |b: &mut Vec<u8>, v: f32| b.extend_from_slice(&v.to_le_bytes());
+        let rect = |b: &mut Vec<u8>, r: &Rect| {
+            for v in [r.x, r.y, r.width, r.height] {
+                b.extend_from_slice(&v.to_le_bytes());
+            }
+        };
         u32_(&mut b, STATE_VERSION);
         u64_(&mut b, s.hot);
         u64_(&mut b, s.active);
@@ -1412,11 +2096,41 @@ impl Ui {
         u32_(&mut b, s.hits.len() as u32);
         for h in &s.hits {
             u64_(&mut b, h.key);
-            for v in [h.rect.x, h.rect.y, h.rect.width, h.rect.height] {
-                f32_(&mut b, v);
-            }
-            b.push(u8::from(h.scroll) | u8::from(h.focusable) << 1);
+            rect(&mut b, &h.rect);
+            rect(&mut b, &h.full);
+            b.push(h.flags);
+            u64_(&mut b, h.scope);
+            u64_(&mut b, h.scroller);
         }
+        u64_(&mut b, s.tick);
+        b.push(u8::from(s.focus_visible) | u8::from(s.nav_off) << 1);
+        u64_(&mut b, s.scope);
+        u64_(&mut b, s.focus_return);
+        b.push(s.stick.0);
+        u64_(&mut b, s.stick.1);
+        u32_(&mut b, s.pending.len() as u32);
+        for n in &s.pending {
+            b.push(n.index());
+        }
+        u32_(&mut b, s.anims.len() as u32);
+        for (k, a) in &s.anims {
+            u64_(&mut b, *k);
+            f32_(&mut b, a.a);
+            f32_(&mut b, a.b);
+            u64_(&mut b, a.t);
+            u64_(&mut b, a.h);
+        }
+        u32_(&mut b, s.toasts.len() as u32);
+        for t in &s.toasts {
+            u32_(&mut b, t.id);
+            u32_(&mut b, t.text.len() as u32);
+            b.extend_from_slice(t.text.as_bytes());
+            b.push(t.tone);
+            u64_(&mut b, t.born);
+            u32_(&mut b, t.ticks);
+            u64_(&mut b, t.leaving);
+        }
+        u32_(&mut b, s.next_toast);
         b
     }
 
@@ -1430,11 +2144,13 @@ impl Ui {
             )
         };
         let mut r = Reader { bytes, at: 0 };
-        let s = r.state().ok_or_else(|| bad("truncated".into()))?;
-        let (version, s) = s;
+        let version = r.u32().ok_or_else(|| bad("truncated".into()))?;
         if version != STATE_VERSION {
             return Err(bad(format!("version {version}, expected {STATE_VERSION}")));
         }
+        let s = r
+            .state()
+            .ok_or_else(|| bad("truncated or malformed".into()))?;
         if r.at != bytes.len() {
             return Err(bad("trailing bytes".into()));
         }
@@ -1467,8 +2183,16 @@ impl Reader<'_> {
         self.take().map(f32::from_le_bytes)
     }
 
-    fn state(&mut self) -> Option<(u32, State)> {
-        let version = self.u32()?;
+    fn rect(&mut self) -> Option<Rect> {
+        Some(Rect::new(
+            self.f32()?,
+            self.f32()?,
+            self.f32()?,
+            self.f32()?,
+        ))
+    }
+
+    fn state(&mut self) -> Option<State> {
         let mut s = State {
             hot: self.u64()?,
             active: self.u64()?,
@@ -1483,16 +2207,51 @@ impl Reader<'_> {
             s.scroll.insert(k, self.f32()?);
         }
         for _ in 0..self.u32()? {
-            let key = self.u64()?;
-            let rect = Rect::new(self.f32()?, self.f32()?, self.f32()?, self.f32()?);
-            let flags = self.u8()?;
             s.hits.push(Hit {
-                key,
-                rect,
-                scroll: flags & 1 != 0,
-                focusable: flags & 2 != 0,
+                key: self.u64()?,
+                rect: self.rect()?,
+                full: self.rect()?,
+                flags: self.u8()?,
+                scope: self.u64()?,
+                scroller: self.u64()?,
             });
         }
-        Some((version, s))
+        s.tick = self.u64()?;
+        let flags = self.u8()?;
+        s.focus_visible = flags & 1 != 0;
+        s.nav_off = flags & 2 != 0;
+        s.scope = self.u64()?;
+        s.focus_return = self.u64()?;
+        s.stick = (self.u8()?, self.u64()?);
+        for _ in 0..self.u32()? {
+            s.pending.push(Nav::from_index(self.u8()?)?);
+        }
+        for _ in 0..self.u32()? {
+            let k = self.u64()?;
+            let a = Anim {
+                a: self.f32()?,
+                b: self.f32()?,
+                t: self.u64()?,
+                h: self.u64()?,
+            };
+            s.anims.insert(k, a);
+        }
+        for _ in 0..self.u32()? {
+            let id = self.u32()?;
+            let len = self.u32()? as usize;
+            let raw = self.bytes.get(self.at..self.at + len)?;
+            self.at += len;
+            let text = String::from_utf8(raw.to_vec()).ok()?;
+            s.toasts.push(Toast {
+                id,
+                text,
+                tone: self.u8()?,
+                born: self.u64()?,
+                ticks: self.u32()?,
+                leaving: self.u64()?,
+            });
+        }
+        s.next_toast = self.u32()?;
+        Some(s)
     }
 }

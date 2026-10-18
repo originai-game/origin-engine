@@ -210,6 +210,47 @@ is 2 ms). Per-feature costs are in `tests/evidence/M3/feature-costs.md`
 (`og-gfx --costs`); perf baselines are in `crates/og-tests/perf/` per tier
 and adapter, compared with 15 % tolerance.
 
+## E1 effects
+
+Everything a game declares on `RenderScene` as data (`src/effects.rs`,
+`particles.rs`, `ribbons.rs`, `light2d.rs`, `skin.rs`); a field left at its
+default records no pass and costs nothing (`effects_off_add_no_passes`).
+
+- **Post stack**: ambient occlusion (`AoMethod::Gtao` / `Ssao`, applied to
+  the ambient term), outlines (depth and normal edges, per-scene or
+  per-instance colour), depth of field (`DofQuality::Low` / `High`), motion
+  blur from per-object and camera motion vectors (`fx.rs` carries the
+  previous view-projection), god rays, colour grading by `ColorLut`,
+  vignette, chromatic aberration, film grain seeded by the tick, screen
+  flash and camera shake (a deterministic offset of the camera, not a
+  post pass).
+- **Decals**: up to 8 projected boxes per frame, read by the lit shader
+  (`fx-decals`); each is capped to its box.
+- **Particles**: `ParticleEmitter` assets and `ParticleSystem`s with
+  curves, bursts, noise, sprite sheets, collision against the depth buffer,
+  soft fade against the scene, local or world space, 2D emitters drawn as
+  sprites. Simulated by compute on the full tier and on the CPU elsewhere;
+  both paths give the same particles (`gpu_and_cpu_paths_simulate_the_same_particles`)
+  and a 600-tick run is deterministic on either.
+- **Trails, ribbons and beams**: `Trail` keeps a per-id history for its
+  `TrailStyle`'s lifetime; `Ribbon` is an explicit polyline; `Beam` joins
+  two points and scrolls with the tick.
+- **2D lighting**: `Lighting2d` with `Light2d`s shadowed by `Occluder2d`s
+  (soft penumbrae) and an order-independent glow buffer; only the lit
+  sprite layer range is affected; `SpriteFx` adds flash, glow, lit and soft
+  per sprite.
+- **Skinning and blendshapes**: `SkinData` + `JointPalette` (storage buffer
+  on the full tier, `Rgba32Float` vertex texture on WebGL2),
+  `MorphTargets` weighted per instance; og-anim writes the palettes.
+- **Stylised**: toon ramp, rim light, dissolve per material.
+
+References for every effect scene on `metal` and `vulkan-cpu`
+(`og-tests/references/*/{ao-gtao,ao-ssao,decals,dof-low,dof-high,fx-2d,
+god-rays,motion-blur,particles,particles-cpu,post-grade,skinning,stylised,
+trails-beams}.png`); features-off references are byte-identical to the
+pre-E1 ones. Costs: `tests/evidence/E1/vfx-feature-costs.md` (`og-gfx
+--costs`).
+
 ## What phase 2 owes
 
 Delivered since M3 (8d160fe, M6): the render graph object (`src/graph.rs`:
@@ -238,11 +279,9 @@ with their mips, chosen per tier and reported in
 - Shadows: cascade blending at split boundaries, PCSS/soft shadows, point
   shadows by tier (dual-paraboloid on WebGL2 if cube faces cost too much),
   more than two shadowed local lights.
-- TAA: per-object motion vectors (moving objects rely on the clamp today),
-  Catmull-Rom history sampling, a sharpening pass; FXAA on the GL tier as an
-  MSAA alternative.
-- Post: AgX, a grading LUT, temporal exposure adaptation (deterministic per
-  tick), SSAO/GTAO, fog.
+- TAA: Catmull-Rom history sampling, a sharpening pass; FXAA on the GL tier
+  as an MSAA alternative.
+- Post: AgX, temporal exposure adaptation (deterministic per tick), fog.
 - 2D: per-texture filtering (nearest for pixel art), screen-space UI
   layering (sprites are world-space today; og-ui's README asks for an
   overlay pass and a per-instance clip rectangle), billboards, kerning and

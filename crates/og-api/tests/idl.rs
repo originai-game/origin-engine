@@ -41,6 +41,7 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
         "systems",
         "commands",
         "probe",
+        "anim",
     ] {
         assert!(
             modules.contains(&want),
@@ -90,9 +91,11 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
             "soundInfo",
             "status",
             "error",
-            "gltfInfo"
+            "gltfInfo",
+            "animation"
         ]
     );
+    assert_eq!(fns("anim"), ["graph"]);
     assert_eq!(fns("reflect"), ["defineComponent", "defineResource"]);
     assert_eq!(fns("system"), ["defineSystem"]);
     assert_eq!(fns("game"), ["game"]);

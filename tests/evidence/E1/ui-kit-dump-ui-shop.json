@@ -1,0 +1,348 @@
+{
+  "elements": [
+    {
+      "height": 28.0,
+      "id": "Back",
+      "parent": "",
+      "text": "",
+      "width": 70.0,
+      "x": 16.0,
+      "y": 676.0
+    },
+    {
+      "height": 28.0,
+      "id": "Gallery",
+      "parent": "Back",
+      "text": "Gallery",
+      "width": 70.0,
+      "x": 16.0,
+      "y": 676.0
+    },
+    {
+      "height": 720.0,
+      "id": "Shop",
+      "parent": "",
+      "text": "",
+      "width": 1280.0,
+      "x": 0.0,
+      "y": 0.0
+    },
+    {
+      "height": 259.0,
+      "id": "Panel",
+      "parent": "Shop",
+      "text": "",
+      "width": 760.0,
+      "x": 260.0,
+      "y": 231.0
+    },
+    {
+      "height": 28.0,
+      "id": "Title",
+      "parent": "Panel",
+      "text": "Shop",
+      "width": 49.0,
+      "x": 284.0,
+      "y": 255.0
+    },
+    {
+      "height": 32.0,
+      "id": "Bar",
+      "parent": "Panel",
+      "text": "",
+      "width": 712.0,
+      "x": 284.0,
+      "y": 295.0
+    },
+    {
+      "height": 32.0,
+      "id": "Categories",
+      "parent": "Bar",
+      "text": "",
+      "width": 201.0,
+      "x": 284.0,
+      "y": 295.0
+    },
+    {
+      "height": 28.0,
+      "id": "Tab#0",
+      "parent": "Categories",
+      "text": "Gear",
+      "width": 55.0,
+      "x": 286.0,
+      "y": 297.0
+    },
+    {
+      "height": 28.0,
+      "id": "Tab#1",
+      "parent": "Categories",
+      "text": "Items",
+      "width": 60.0,
+      "x": 343.0,
+      "y": 297.0
+    },
+    {
+      "height": 28.0,
+      "id": "Tab#2",
+      "parent": "Categories",
+      "text": "Bundles",
+      "width": 78.0,
+      "x": 405.0,
+      "y": 297.0
+    },
+    {
+      "height": 32.0,
+      "id": "Balance",
+      "parent": "Bar",
+      "text": "",
+      "width": 113.0,
+      "x": 883.0,
+      "y": 295.0
+    },
+    {
+      "height": 18.0,
+      "id": "Icon",
+      "parent": "Balance",
+      "text": "coin",
+      "width": 18.0,
+      "x": 895.0,
+      "y": 302.0
+    },
+    {
+      "height": 20.0,
+      "id": "Amount",
+      "parent": "Balance",
+      "text": "950",
+      "width": 23.0,
+      "x": 921.0,
+      "y": 301.0
+    },
+    {
+      "height": 18.0,
+      "id": "Unit",
+      "parent": "Balance",
+      "text": "coins",
+      "width": 32.0,
+      "x": 952.0,
+      "y": 302.0
+    },
+    {
+      "height": 127.0,
+      "id": "Body",
+      "parent": "Panel",
+      "text": "",
+      "width": 712.0,
+      "x": 284.0,
+      "y": 339.0
+    },
+    {
+      "height": 124.0,
+      "id": "Items",
+      "parent": "Body",
+      "text": "",
+      "width": 476.0,
+      "x": 284.0,
+      "y": 339.0
+    },
+    {
+      "height": 124.0,
+      "id": "Cell#0",
+      "parent": "Items",
+      "text": "",
+      "width": 112.0,
+      "x": 284.0,
+      "y": 339.0
+    },
+    {
+      "height": 36.0,
+      "id": "Picture",
+      "parent": "Cell#0",
+      "text": "sword",
+      "width": 36.0,
+      "x": 322.0,
+      "y": 364.0
+    },
+    {
+      "height": 18.0,
+      "id": "Name",
+      "parent": "Cell#0",
+      "text": "Iron sword",
+      "width": 66.0,
+      "x": 307.0,
+      "y": 400.0
+    },
+    {
+      "height": 20.0,
+      "id": "Owned",
+      "parent": "Cell#0",
+      "text": "Owned",
+      "width": 56.0,
+      "x": 312.0,
+      "y": 418.0
+    },
+    {
+      "height": 124.0,
+      "id": "Cell#1",
+      "parent": "Items",
+      "text": "",
+      "width": 112.0,
+      "x": 404.0,
+      "y": 339.0
+    },
+    {
+      "height": 36.0,
+      "id": "Picture",
+      "parent": "Cell#1",
+      "text": "shield",
+      "width": 36.0,
+      "x": 442.0,
+      "y": 365.0
+    },
+    {
+      "height": 18.0,
+      "id": "Name",
+      "parent": "Cell#1",
+      "text": "Oak shield",
+      "width": 64.0,
+      "x": 428.0,
+      "y": 401.0
+    },
+    {
+      "height": 18.0,
+      "id": "Price",
+      "parent": "Cell#1",
+      "text": "220",
+      "width": 22.0,
+      "x": 449.0,
+      "y": 419.0
+    },
+    {
+      "height": 124.0,
+      "id": "Cell#2",
+      "parent": "Items",
+      "text": "",
+      "width": 112.0,
+      "x": 524.0,
+      "y": 339.0
+    },
+    {
+      "height": 36.0,
+      "id": "Picture",
+      "parent": "Cell#2",
+      "text": "crown",
+      "width": 36.0,
+      "x": 562.0,
+      "y": 365.0
+    },
+    {
+      "height": 18.0,
+      "id": "Name",
+      "parent": "Cell#2",
+      "text": "Crown",
+      "width": 40.0,
+      "x": 560.0,
+      "y": 401.0
+    },
+    {
+      "height": 18.0,
+      "id": "Price",
+      "parent": "Cell#2",
+      "text": "2,400",
+      "width": 32.0,
+      "x": 564.0,
+      "y": 419.0
+    },
+    {
+      "height": 127.0,
+      "id": "Detail",
+      "parent": "Body",
+      "text": "",
+      "width": 220.0,
+      "x": 776.0,
+      "y": 339.0
+    },
+    {
+      "height": 26.0,
+      "id": "Name",
+      "parent": "Detail",
+      "text": "Iron sword",
+      "width": 220.0,
+      "x": 776.0,
+      "y": 339.0
+    },
+    {
+      "height": 18.0,
+      "id": "Description",
+      "parent": "Detail",
+      "text": "A dependable blade. +4 attack.",
+      "width": 220.0,
+      "x": 776.0,
+      "y": 373.0
+    },
+    {
+      "height": 27.0,
+      "id": "Price",
+      "parent": "Detail",
+      "text": "",
+      "width": 220.0,
+      "x": 776.0,
+      "y": 399.0
+    },
+    {
+      "height": 20.0,
+      "id": "Key",
+      "parent": "Price",
+      "text": "Price",
+      "width": 33.0,
+      "x": 776.0,
+      "y": 402.0
+    },
+    {
+      "height": 20.0,
+      "id": "Value",
+      "parent": "Price",
+      "text": "300 coins",
+      "width": 61.0,
+      "x": 935.0,
+      "y": 402.0
+    },
+    {
+      "height": 32.0,
+      "id": "Buy",
+      "parent": "Detail",
+      "text": "Owned",
+      "width": 220.0,
+      "x": 776.0,
+      "y": 434.0
+    },
+    {
+      "height": 36.0,
+      "id": "Toasts",
+      "parent": "",
+      "text": "",
+      "width": 170.0,
+      "x": 555.0,
+      "y": 668.0
+    },
+    {
+      "height": 36.0,
+      "id": "Toast#1",
+      "parent": "Toasts",
+      "text": "Bought Iron sword",
+      "width": 170.0,
+      "x": 555.0,
+      "y": 668.0199584960938
+    },
+    {
+      "height": 20.0,
+      "id": "Text",
+      "parent": "Toast#1",
+      "text": "Bought Iron sword",
+      "width": 122.0,
+      "x": 587.0,
+      "y": 676.0199584960938
+    }
+  ],
+  "kind": "ui",
+  "tick": 96
+}

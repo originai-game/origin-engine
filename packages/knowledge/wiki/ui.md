@@ -20,7 +20,7 @@ module ui {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 2153</sub>
+<sub>`api.ogt` line 2479</sub>
 
 ## Contents
 
@@ -57,7 +57,7 @@ module ui {
 | [`ToggleResult`](#type-ToggleResult) | struct | A toggle's response and its state after this tick's input. |
 | [`FieldResult`](#type-FieldResult) | struct | A text field's response and its text after this tick's input. |
 | [`Viewport`](#type-Viewport) | struct | The play surface the UI lays out in. |
-| [`UiDesc`](#type-UiDesc) | desc struct | How the UI looks: the scheme, the density and its fonts. |
+| [`UiDesc`](#type-UiDesc) | desc struct | How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion and the icon atlas. |
 | [`TypeStep`](#type-TypeStep) | struct | One step of the type ramp. |
 | [`ControlSizes`](#type-ControlSizes) | struct | The control, row and header heights and the gutter of the density in effect. |
 | [`UiTheme`](#type-UiTheme) | struct | The design tokens the UI draws with, read-only. |
@@ -82,6 +82,165 @@ module ui {
 | [`og.ui.textField`](#fn-textField) | function | One line of text: a press focuses it with the caret at the press, typed text inserts at the caret, Backspace, Delete, arrows, Home and End edit, Enter submits and leaves, Escape leaves. Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty. |
 | [`og.ui.tooltip`](#fn-tooltip) | function | A tooltip for the element just built: shown below it (above without room) once the pointer has rested on it for the slow motion duration, drawn over everything. The probe reads its text. |
 | [`og.ui.idi`](#fn-idi) | function | The id of the index-th of several siblings of one name: `idi("Slot", 3)` is `Slot#3`. |
+| [`Anchor`](#type-Anchor) | enum | A point of the safe area an anchored group sits at. |
+| [`TransitionKind`](#type-TransitionKind) | enum | How a transition moves its content in and out. Under reduced motion every kind only fades. |
+| [`Tone`](#type-Tone) | enum | A status tone, as the design language's badges and toasts. |
+| [`MeterKind`](#type-MeterKind) | enum | What a meter measures, which sets its colour. |
+| [`Breakpoint`](#type-Breakpoint) | enum | The play surface's size class. |
+| [`Contrast`](#type-Contrast) | enum | The theme variant: high contrast remaps muted inks, fills and borders to stronger tokens and outlines every control (no new colour). |
+| [`HueName`](#type-HueName) | enum | One of the twelve category hues of the tokens, for a game's accent. |
+| [`NavIntent`](#type-NavIntent) | enum | A focus-navigation intent, as the arrow keys, Tab, Enter, Space, Escape and a gamepad's d-pad, stick, A and B give. |
+| [`UiRect`](#type-UiRect) | struct | A rectangle of the play surface. |
+| [`IconAtlasDesc`](#type-IconAtlasDesc) | desc struct | The icon atlas: a texture of equal cells in a grid, named in reading order. |
+| [`AnchorDesc`](#type-AnchorDesc) | desc struct | An anchored group: a layer at a point of the safe area, over the tree (HUD corners, a centred title, a bar of touch controls). |
+| [`TransitionDesc`](#type-TransitionDesc) | desc struct | How a transition moves, timed in ticks from the motion tokens. |
+| [`Presence`](#type-Presence) | struct | Where a transition or dialog is this tick. |
+| [`ModalDesc`](#type-ModalDesc) | desc struct | A dialog: a scrim over everything and a centred panel. Focus moves in and stays while it is the topmost; Back and the backdrop dismiss it unless locked. |
+| [`ModalResult`](#type-ModalResult) | struct | A dialog's answer this tick. |
+| [`SpotlightDesc`](#type-SpotlightDesc) | desc struct | A spotlight: the surface dimmed except a hole around a target. |
+| [`ListDesc`](#type-ListDesc) | desc struct | A virtualised list: only the rows in view (and one more each side) are built, fillers keep the scroll range of every row. |
+| [`ListRange`](#type-ListRange) | struct | The rows (or cells) to build this tick: first up to, not including, last. |
+| [`ListResult`](#type-ListResult) | struct | What happened in a list or grid this tick. |
+| [`GridDesc`](#type-GridDesc) | desc struct | A virtualised grid of equal cells (inventories, level select), scrolling vertically. |
+| [`TabsDesc`](#type-TabsDesc) | desc struct | A segmented control of tabs. |
+| [`ChoiceResult`](#type-ChoiceResult) | struct | A choice control's response and the chosen index after this tick's input. |
+| [`SelectDesc`](#type-SelectDesc) | desc struct | A select: a trigger that opens a menu of options. |
+| [`StepperDesc`](#type-StepperDesc) | desc struct | A number stepper's range, step and digits. |
+| [`StepperResult`](#type-StepperResult) | struct | A stepper's response and value after this tick's input. |
+| [`RadioDesc`](#type-RadioDesc) | desc struct | How a radio group lays out. |
+| [`CheckListResult`](#type-CheckListResult) | struct | A checkbox list's response and values after this tick's input. |
+| [`ToastDesc`](#type-ToastDesc) | desc struct | A toast's tone and time. |
+| [`ChipDesc`](#type-ChipDesc) | desc struct | A chip's state. |
+| [`MeterDesc`](#type-MeterDesc) | desc struct | A meter: a capsule track with a fill that animates its changes by the tick. |
+| [`CooldownDesc`](#type-CooldownDesc) | desc struct | A cooldown ring's size and centre. |
+| [`IconDesc`](#type-IconDesc) | desc struct | An icon's size and ink. |
+| [`MapMarker`](#type-MapMarker) | desc struct | A marker on a mini-map. |
+| [`MinimapDesc`](#type-MinimapDesc) | desc struct | A mini-map frame. |
+| [`DialogueDesc`](#type-DialogueDesc) | desc struct | A dialogue box: a portrait slot, the speaker and the line typed out by the tick. |
+| [`DialogueResult`](#type-DialogueResult) | struct | A dialogue box's answer this tick. |
+| [`JoystickDesc`](#type-JoystickDesc) | desc struct | A virtual joystick. |
+| [`JoystickResult`](#type-JoystickResult) | struct | A joystick's vector this tick. |
+| [`DpadDesc`](#type-DpadDesc) | desc struct | A d-pad. |
+| [`DpadResult`](#type-DpadResult) | struct | Which arms of a d-pad are held this tick. |
+| [`ActionButtonDesc`](#type-ActionButtonDesc) | desc struct | A round touch action button (jump, fire). |
+| [`SkeletonDesc`](#type-SkeletonDesc) | desc struct | A skeleton: the neutral fill standing in for content that is loading. |
+| [`UiItemBuild`](#type-UiItemBuild) | callback | Builds one row or cell of a virtualised list or grid: ui calls made inside nest under it. |
+| [`og.ui.breakpoint`](#fn-breakpoint) | function | The size class of the play surface of the frame being built (desktop outside a frame). |
+| [`og.ui.frameViewport`](#fn-frameViewport) | function | The play surface of the frame being built: og.ui.viewport without the world, for code that only builds UI. |
+| [`og.ui.hasIcon`](#fn-hasIcon) | function | Whether the icon atlas has an icon of this name (templates draw a fallback otherwise). |
+| [`og.ui.seconds`](#fn-seconds) | function | The UI's clock in seconds: frames built over the tick rate (simulation time, never the wall clock). |
+| [`og.ui.frameTheme`](#fn-frameTheme) | function | The design tokens of the frame being built: og.ui.theme without the world, for code that only builds UI (the templates). |
+| [`og.ui.openAnchor`](#fn-openAnchor) | function | Open an anchored group, closed by close(): og.ui.anchor without the callback. |
+| [`og.ui.anchor`](#fn-anchor) | function | An anchored group built by `build`: a layer at a point of the safe area, over the tree, for HUD corners and touch controls. |
+| [`og.ui.openTransition`](#fn-openTransition) | function | Open a transition container (a column), closed by close(); build its children only while the answer is visible: it stays visible while it leaves. Its content takes no input while it moves. |
+| [`og.ui.transition`](#fn-transition) | function | Content that enters and leaves: fade, slide or scale by the tick from the motion tokens. `build` runs while it is visible. |
+| [`og.ui.openModal`](#fn-openModal) | function | Open a dialog, closed by closeModal(); build its content only while the answer is visible. The probe sees the backdrop as `<id>` and the panel as `<id>/Panel`. |
+| [`og.ui.closeModal`](#fn-closeModal) | function | Close a dialog opened with openModal (its panel and backdrop). |
+| [`og.ui.modal`](#fn-modal) | function | A dialog built by `build` while visible: scrim, centred panel, focus kept inside, Back and the backdrop dismiss it unless locked. Set your open flag false on `dismissed`. |
+| [`og.ui.spotlight`](#fn-spotlight) | function | A spotlight over everything (a tutorial step): the scrim on four sides of the hole, an amber edge around it. Presses on the dimmed parts stop there (clicked); presses in the hole reach what is under it. Shades are `<id>/Top`, `Left`, `Right`, `Bottom`; the hole is `<id>/Hole`. |
+| [`og.ui.bounds`](#fn-bounds) | function | Where an element was in the last frame, by id or `Parent/Child` path (topmost first), as touch_move_to resolves it. |
+| [`og.ui.openList`](#fn-openList) | function | Open a virtualised list (a scroll column) and learn which rows to build: listItem(i) and close() for each, then closeList(). |
+| [`og.ui.openGrid`](#fn-openGrid) | function | Open a virtualised grid and learn which cells to build: gridItem(i) and close() for each, then closeList(). |
+| [`og.ui.listItem`](#fn-listItem) | function | Open row `index` of the open list (`Row#index`): selectable and focusable; its content follows until close(). A press that started on one row and is released on this one answers `dropped`. |
+| [`og.ui.gridItem`](#fn-gridItem) | function | Open cell `index` of the open grid (`Cell#index`): a slot on fill, focusable; its content follows until close(). Drops answer `dropped` as listItem's. |
+| [`og.ui.closeList`](#fn-closeList) | function | Close a list or grid opened with openList or openGrid. |
+| [`og.ui.dragging`](#fn-dragging) | function | The row or cell a held press started on in the list or grid of this id (built under the same parent): a drag in progress, to draw what is dragged under the pointer. |
+| [`og.ui.list`](#fn-list) | function | A virtualised list built by `build(index)` for the rows in view. |
+| [`og.ui.grid`](#fn-grid) | function | A virtualised grid built by `build(index)` for the cells in view. |
+| [`og.ui.tabs`](#fn-tabs) | function | A segmented control: a neutral track, the chosen tab on the thumb. Tabs are `Tab#i` and the probe reads their labels. |
+| [`og.ui.select`](#fn-select) | function | A select: a field-like trigger with the chosen label and a chevron; a press or Activate opens its menu `<id>.menu` (options `Option#i`) under it, a focus scope; choosing closes it with changed. Back or a press outside closes it. |
+| [`og.ui.stepper`](#fn-stepper) | function | A number stepper: `Dec`, `Value`, `Inc`. The buttons step within the range; Left and Right step it while a button is focused. |
+| [`og.ui.radio`](#fn-radio) | function | A radio group of `Option#i` rows: a ring, filled amber when chosen, and a label. |
+| [`og.ui.checkbox`](#fn-checkbox) | function | A checkbox with a label; a press flips it. |
+| [`og.ui.checkboxList`](#fn-checkboxList) | function | Checkboxes in a column (`Option#i`). |
+| [`og.ui.chip`](#fn-chip) | function | A chip: a capsule on fill; selected inverts to fg. For filters and tags. |
+| [`og.ui.badge`](#fn-badge) | function | A badge: a small status capsule in its tone. |
+| [`og.ui.divider`](#fn-divider) | function | A hairline in the border colour across its parent. |
+| [`og.ui.spacer`](#fn-spacer) | function | Empty space. |
+| [`og.ui.keyValue`](#fn-keyValue) | function | A key (fg-muted) and its value (fg, at the end) on one row: stats, settings summaries, receipts. |
+| [`og.ui.skeleton`](#fn-skeleton) | function | A skeleton: the neutral fill standing in for content that is loading, with a sheen that passes every 1.6 s (still under reduced motion). |
+| [`og.ui.spinner`](#fn-spinner) | function | A loading spinner: eight dots around a circle, the bright one turning by the tick. |
+| [`og.ui.icon`](#fn-icon) | function | An icon of the atlas (UiDesc.icons) by name; an unknown name draws an empty slot and warns. The probe reads the name. |
+| [`og.ui.meter`](#fn-meter) | function | A health, mana or xp bar. A drop shows at once and leaves a pale trail that follows after a beat; a rise grows into place with a ghost of the target; both by the tick. |
+| [`og.ui.cooldown`](#fn-cooldown) | function | A cooldown: a disc whose amber ring fills clockwise from the top as it runs out, bright and full when ready, a label or icon in the middle. A press reports clicked (ready or not). |
+| [`og.ui.minimap`](#fn-minimap) | function | A mini-map frame: the map in a border-strong frame, markers as dots (the player amber and ringed), an N mark and a zone label. |
+| [`og.ui.dialogue`](#fn-dialogue) | function | A dialogue box: a portrait slot, the speaker in amber ink and the line typed out by the tick. A press or Activate while typing shows the whole line; once shown it answers advanced. The line is `<id>/Body/Line` and the probe reads what is shown. |
+| [`og.ui.joystick`](#fn-joystick) | function | A virtual joystick: a base and a knob that follows a press that started on it. og.Input carries one pointer, so a stick and a button are not held at once yet. |
+| [`og.ui.dpad`](#fn-dpad) | function | A d-pad of four arms (`Up`, `Down`, `Left`, `Right`), each at least 44 CSS px. |
+| [`og.ui.actionButton`](#fn-actionButton) | function | A round touch action button: pressed while held (jump, fire), clicked on a tap; at least 44 CSS px. |
+| [`og.ui.toast`](#fn-toast) | function | Queue a toast: it stacks at UiDesc.toastAnchor, enters, stays its time and leaves; at most three are up (older ones leave first); a press dismisses it. Callable anywhere (systems, commands, start); it is world state, so snapshots carry it. |
+| [`og.ui.dismissToast`](#fn-dismissToast) | function | Start a toast's exit. |
+| [`og.ui.navigate`](#fn-navigate) | function | Queue a navigation intent for the next tick: a gamepad og.Input does not read yet, a custom binding, a command. |
+| [`og.ui.back`](#fn-back) | function | Escape or gamepad B this tick, not taken by a dialog or menu: true once, then taken. A pause screen closes on it. |
+| [`og.ui.setNavigation`](#fn-setNavigation) | function | Whether keyboard and gamepad navigation moves focus on this screen (on by default). A gameplay HUD whose keys move the player turns it off; an open dialog or menu turns it back on while it is open. Takes effect from the next tick. |
+| [`og.ui.memory`](#fn-memory) | function | A number the UI keeps for an id under the open element (a template's tab, a count-up's start tick), in snapshots like the rest of the UI state. Read it every tick it is used: an unused memory is dropped. |
+| [`og.ui.remember`](#fn-remember) | function | Set a number memory (see memory). |
+| [`og.ui.tick`](#fn-tick) | function | Frames the UI has built: its clock, for animations by the tick. |
+| [`og.ui.previewViewport`](#fn-previewViewport) | function | Lay the UI out for another play surface (a phone in portrait at 3x, a notch) until cleared with null: for headless previews and playtests of responsive layouts. Render at width x dpr by height x dpr (`og run --size`). |
+| [`GraphicsQuality`](#type-GraphicsQuality) | enum | A graphics quality preset. |
+| [`UiAction`](#type-UiAction) | callback | A template's action, by its id (a menu item, `buy:<item>`, `share`). |
+| [`SettingsChanged`](#type-SettingsChanged) | callback | The settings after a change: persist them (cloud save, local storage through the shell) and apply them. |
+| [`MenuItem`](#type-MenuItem) | desc struct | An item of a menu: an id the game acts on and the label a player reads. |
+| [`MenuResult`](#type-MenuResult) | struct | What a menu-like template answered this tick. |
+| [`MainMenuDesc`](#type-MainMenuDesc) | desc struct | A title screen: the title, a subtitle, a column of items (the first primary unless one says so) and a footer. Centred on desktop and tablet, bottom-weighted on a phone. |
+| [`PauseMenuDesc`](#type-PauseMenuDesc) | desc struct | A pause screen: a dialog over the frozen game with Resume first. Back resumes. |
+| [`KeyBinding`](#type-KeyBinding) | desc struct | A control the settings screen lists: an action and the key bound to it. |
+| [`LanguageOption`](#type-LanguageOption) | desc struct | A language the settings screen offers, in its own name. |
+| [`GameSettings`](#type-GameSettings) | desc struct | The settings most games share. The game keeps them (a resource, a save) and passes them in every tick. |
+| [`SettingsDesc`](#type-SettingsDesc) | desc struct | A settings screen: Audio, Graphics, Controls and Language tabs (a select on a phone) over the game's settings, with persistence hooks. |
+| [`SettingsResult`](#type-SettingsResult) | struct | The settings screen's answer this tick. |
+| [`Ability`](#type-Ability) | desc struct | An ability on a HUD: a cooldown ring with its key. |
+| [`PlatformerHudDesc`](#type-PlatformerHudDesc) | desc struct | A platformer HUD: lives as hearts and a level name top left, coins and score top right, a timer, a pause button. |
+| [`HudResult`](#type-HudResult) | struct | What a HUD answered this tick. |
+| [`ShooterHudDesc`](#type-ShooterHudDesc) | desc struct | A shooter HUD: health and armor bottom left, ammo bottom right, abilities as cooldown rings, kills top right, a crosshair, an optional mini-map. |
+| [`PuzzleHudDesc`](#type-PuzzleHudDesc) | desc struct | A puzzle HUD: level and moves, the score towards a target with three star marks, an optional timer. |
+| [`Currency`](#type-Currency) | desc struct | A currency an idle game counts. |
+| [`Generator`](#type-Generator) | desc struct | A generator an idle game lists: level, cost, progress. |
+| [`IdleHudDesc`](#type-IdleHudDesc) | desc struct | An idle or incremental HUD: currencies with their rates on top, a big tap target, the generators in a list. |
+| [`RacingHudDesc`](#type-RacingHudDesc) | desc struct | A racing HUD: position and lap top left, the times top right, the speedometer and gear bottom right, the boost meter, an optional mini-map. |
+| [`DialogueLine`](#type-DialogueLine) | desc struct | One line of a cutscene. |
+| [`CutsceneDesc`](#type-CutsceneDesc) | desc struct | A dialogue scene: letterbox bars, the dialogue box at the bottom, Skip at the top right. |
+| [`CutsceneResult`](#type-CutsceneResult) | struct | A cutscene's answer this tick. |
+| [`ShopItem`](#type-ShopItem) | desc struct | An item a shop sells. |
+| [`ShopDesc`](#type-ShopDesc) | desc struct | A shop: the balance, category tabs, a grid of items with prices, a detail panel with Buy (disabled when the balance is short). |
+| [`ShopResult`](#type-ShopResult) | struct | A shop's answer this tick. |
+| [`InventoryItem`](#type-InventoryItem) | desc struct | What an inventory slot holds. |
+| [`InventoryDesc`](#type-InventoryDesc) | desc struct | An inventory: a grid of slots, items dragged between them, a detail panel with Use. |
+| [`SlotMove`](#type-SlotMove) | struct | An item dragged from one slot to another. |
+| [`InventoryResult`](#type-InventoryResult) | struct | An inventory's answer this tick. |
+| [`LevelInfo`](#type-LevelInfo) | desc struct | A level in a level select. |
+| [`LevelSelectDesc`](#type-LevelSelectDesc) | desc struct | A level select: a grid of level cards with stars and locks, the total stars. |
+| [`LevelSelectResult`](#type-LevelSelectResult) | struct | A level select's answer this tick. |
+| [`StatRow`](#type-StatRow) | desc struct | A labelled value on a results screen. |
+| [`ResultsDesc`](#type-ResultsDesc) | desc struct | A results screen: the title, stars that land one by one, the score counting up, the best (a badge for a new best), stats, actions and a share hook. |
+| [`LeaderboardEntry`](#type-LeaderboardEntry) | desc struct | A row of a leaderboard. |
+| [`LeaderboardDesc`](#type-LeaderboardDesc) | desc struct | A leaderboard: scope tabs, a virtualised list of ranks (medal colours for 1 to 3, the player highlighted), and honest loading, error and empty states. |
+| [`LeaderboardResult`](#type-LeaderboardResult) | struct | A leaderboard's answer this tick. |
+| [`TutorialStep`](#type-TutorialStep) | desc struct | A step of a tutorial: the element to point at, a title and a line. |
+| [`TutorialDesc`](#type-TutorialDesc) | desc struct | An onboarding overlay: a spotlight on each step's target, a callout beside it with Next and Skip, and the step count. |
+| [`TutorialResult`](#type-TutorialResult) | struct | A tutorial's answer this tick. |
+| [`LoadingDesc`](#type-LoadingDesc) | desc struct | A loading screen: the title, a real progress bar (or a spinner while unknown) and tips that change by the tick. |
+| [`ConfirmDesc`](#type-ConfirmDesc) | desc struct | A confirm dialog: a title, a consequence sentence, Cancel and the action. |
+| [`ConfirmResult`](#type-ConfirmResult) | struct | A confirm dialog's answer this tick. |
+| [`AlertDesc`](#type-AlertDesc) | desc struct | An alert: a title, a message and one button. |
+| [`og.ui.mainMenu`](#fn-mainMenu) | function | The title screen template. Returns the item chosen this tick. |
+| [`og.ui.pauseMenu`](#fn-pauseMenu) | function | The pause screen template: a dialog with Resume first; Back answers `resume`. |
+| [`og.ui.settingsScreen`](#fn-settingsScreen) | function | The settings template: Audio (volumes, mute), Graphics (quality, frame rate, reduced motion, contrast), Controls (sensitivity, invert, vibration, bindings) and Language. Pass the settings in every tick and keep what it answers. |
+| [`og.ui.platformerHud`](#fn-platformerHud) | function | The platformer HUD template. |
+| [`og.ui.shooterHud`](#fn-shooterHud) | function | The shooter HUD template. |
+| [`og.ui.puzzleHud`](#fn-puzzleHud) | function | The puzzle HUD template. |
+| [`og.ui.idleHud`](#fn-idleHud) | function | The idle and incremental HUD template: answers `tap` and `buy:<id>` actions. |
+| [`og.ui.racingHud`](#fn-racingHud) | function | The racing HUD template. |
+| [`og.ui.cutscene`](#fn-cutscene) | function | The dialogue and cutscene template: letterbox, the dialogue box, Skip. |
+| [`og.ui.shopScreen`](#fn-shopScreen) | function | The shop template. |
+| [`og.ui.inventoryScreen`](#fn-inventoryScreen) | function | The inventory template: a grid of slots with drag and drop. |
+| [`og.ui.levelSelect`](#fn-levelSelect) | function | The level select template. |
+| [`og.ui.resultsScreen`](#fn-resultsScreen) | function | The results template: stars, the score counting up, the best, stats, actions and Share. |
+| [`og.ui.leaderboardScreen`](#fn-leaderboardScreen) | function | The leaderboard template. |
+| [`og.ui.tutorialOverlay`](#fn-tutorialOverlay) | function | The onboarding template: a spotlight and a callout per step. |
+| [`og.ui.loadingScreen`](#fn-loadingScreen) | function | The loading template. |
+| [`og.ui.confirmDialog`](#fn-confirmDialog) | function | The confirm dialog template. |
+| [`og.ui.alertDialog`](#fn-alertDialog) | function | The alert template. Returns true the tick it is dismissed. |
 
 ## Functions
 
@@ -113,7 +272,7 @@ fn configure {
 }
 ```
 
-<sub>`api.ogt` line 2567</sub>
+<sub>`api.ogt` line 2901</sub>
 
 <a id="fn-viewport"></a>
 
@@ -141,7 +300,7 @@ fn viewport {
 }
 ```
 
-<sub>`api.ogt` line 2574</sub>
+<sub>`api.ogt` line 2908</sub>
 
 <a id="fn-theme"></a>
 
@@ -169,7 +328,7 @@ fn theme {
 }
 ```
 
-<sub>`api.ogt` line 2580</sub>
+<sub>`api.ogt` line 2914</sub>
 
 <a id="fn-open"></a>
 
@@ -199,7 +358,7 @@ fn open {
 }
 ```
 
-<sub>`api.ogt` line 2586</sub>
+<sub>`api.ogt` line 2920</sub>
 
 <a id="fn-openPanel"></a>
 
@@ -229,7 +388,7 @@ fn openPanel {
 }
 ```
 
-<sub>`api.ogt` line 2593</sub>
+<sub>`api.ogt` line 2927</sub>
 
 <a id="fn-openScroll"></a>
 
@@ -259,7 +418,7 @@ fn openScroll {
 }
 ```
 
-<sub>`api.ogt` line 2600</sub>
+<sub>`api.ogt` line 2934</sub>
 
 <a id="fn-close"></a>
 
@@ -282,7 +441,7 @@ fn close {
 }
 ```
 
-<sub>`api.ogt` line 2607</sub>
+<sub>`api.ogt` line 2941</sub>
 
 <a id="fn-row"></a>
 
@@ -315,7 +474,7 @@ fn row {
 }
 ```
 
-<sub>`api.ogt` line 2612</sub>
+<sub>`api.ogt` line 2946</sub>
 
 <a id="fn-column"></a>
 
@@ -348,7 +507,7 @@ fn column {
 }
 ```
 
-<sub>`api.ogt` line 2621</sub>
+<sub>`api.ogt` line 2955</sub>
 
 <a id="fn-panel"></a>
 
@@ -381,7 +540,7 @@ fn panel {
 }
 ```
 
-<sub>`api.ogt` line 2630</sub>
+<sub>`api.ogt` line 2964</sub>
 
 <a id="fn-scroll"></a>
 
@@ -414,7 +573,7 @@ fn scroll {
 }
 ```
 
-<sub>`api.ogt` line 2639</sub>
+<sub>`api.ogt` line 2973</sub>
 
 <a id="fn-label"></a>
 
@@ -446,7 +605,7 @@ fn label {
 }
 ```
 
-<sub>`api.ogt` line 2648</sub>
+<sub>`api.ogt` line 2982</sub>
 
 <a id="fn-button"></a>
 
@@ -478,7 +637,7 @@ fn button {
 }
 ```
 
-<sub>`api.ogt` line 2656</sub>
+<sub>`api.ogt` line 2990</sub>
 
 <a id="fn-image"></a>
 
@@ -508,7 +667,7 @@ fn image {
 }
 ```
 
-<sub>`api.ogt` line 2664</sub>
+<sub>`api.ogt` line 2998</sub>
 
 <a id="fn-progress"></a>
 
@@ -540,7 +699,7 @@ fn progress {
 }
 ```
 
-<sub>`api.ogt` line 2671</sub>
+<sub>`api.ogt` line 3005</sub>
 
 <a id="fn-slider"></a>
 
@@ -572,7 +731,7 @@ fn slider {
 }
 ```
 
-<sub>`api.ogt` line 2679</sub>
+<sub>`api.ogt` line 3013</sub>
 
 <a id="fn-toggle"></a>
 
@@ -604,7 +763,7 @@ fn toggle {
 }
 ```
 
-<sub>`api.ogt` line 2687</sub>
+<sub>`api.ogt` line 3021</sub>
 
 <a id="fn-textField"></a>
 
@@ -636,7 +795,7 @@ fn textField {
 }
 ```
 
-<sub>`api.ogt` line 2695</sub>
+<sub>`api.ogt` line 3029</sub>
 
 <a id="fn-tooltip"></a>
 
@@ -664,7 +823,7 @@ fn tooltip {
 }
 ```
 
-<sub>`api.ogt` line 2703</sub>
+<sub>`api.ogt` line 3037</sub>
 
 <a id="fn-idi"></a>
 
@@ -695,7 +854,2124 @@ fn idi {
 }
 ```
 
-<sub>`api.ogt` line 2709</sub>
+<sub>`api.ogt` line 3043</sub>
+
+<a id="fn-breakpoint"></a>
+
+### `og.ui.breakpoint`
+
+The size class of the play surface of the frame being built (desktop outside a frame).
+
+```ts
+og.ui.breakpoint(): Breakpoint
+```
+
+**Returns** `Breakpoint`.
+
+Binding symbol `og_ui_breakpoint` · publish builds: kept
+
+```ogt
+fn breakpoint {
+  doc "The size class of the play surface of the frame being built (desktop outside a frame)."
+  returns Breakpoint
+}
+```
+
+<sub>`api.ogt` line 3516</sub>
+
+<a id="fn-frameViewport"></a>
+
+### `og.ui.frameViewport`
+
+The play surface of the frame being built: og.ui.viewport without the world, for code that only builds UI.
+
+```ts
+og.ui.frameViewport(): Viewport
+```
+
+**Returns** `Viewport`.
+
+Binding symbol `og_ui_frame_viewport` · publish builds: kept
+
+```ogt
+fn frameViewport {
+  doc "The play surface of the frame being built: og.ui.viewport without the world, for code that only builds UI."
+  returns Viewport
+}
+```
+
+<sub>`api.ogt` line 3521</sub>
+
+<a id="fn-hasIcon"></a>
+
+### `og.ui.hasIcon`
+
+Whether the icon atlas has an icon of this name (templates draw a fallback otherwise).
+
+```ts
+og.ui.hasIcon(name: string): boolean
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `name` | `string` | no | The icon's name. |
+
+**Returns** `boolean`.
+
+Binding symbol `og_ui_has_icon` · publish builds: kept
+
+```ogt
+fn hasIcon {
+  doc "Whether the icon atlas has an icon of this name (templates draw a fallback otherwise)."
+  param name String "The icon's name."
+  returns bool
+}
+```
+
+<sub>`api.ogt` line 3526</sub>
+
+<a id="fn-seconds"></a>
+
+### `og.ui.seconds`
+
+The UI's clock in seconds: frames built over the tick rate (simulation time, never the wall clock).
+
+```ts
+og.ui.seconds(): number
+```
+
+**Returns** `number`.
+
+Binding symbol `og_ui_seconds` · publish builds: kept
+
+```ogt
+fn seconds {
+  doc "The UI's clock in seconds: frames built over the tick rate (simulation time, never the wall clock)."
+  returns f64
+}
+```
+
+<sub>`api.ogt` line 3532</sub>
+
+<a id="fn-frameTheme"></a>
+
+### `og.ui.frameTheme`
+
+The design tokens of the frame being built: og.ui.theme without the world, for code that only builds UI (the templates).
+
+```ts
+og.ui.frameTheme(): UiTheme
+```
+
+**Returns** `UiTheme`.
+
+Binding symbol `og_ui_frame_theme` · publish builds: kept
+
+```ogt
+fn frameTheme {
+  doc "The design tokens of the frame being built: og.ui.theme without the world, for code that only builds UI (the templates)."
+  returns UiTheme
+}
+```
+
+<sub>`api.ogt` line 3537</sub>
+
+<a id="fn-openAnchor"></a>
+
+### `og.ui.openAnchor`
+
+Open an anchored group, closed by close(): og.ui.anchor without the callback.
+
+```ts
+og.ui.openAnchor(id: string, desc?: AnchorDesc): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id; the probe path is the id alone. |
+| `desc` | `AnchorDesc` | yes | Where it sits and how it lays out. |
+
+**Returns** `void`.
+
+Binding symbol `og_ui_open_anchor` · publish builds: kept
+
+```ogt
+fn openAnchor {
+  doc "Open an anchored group, closed by close(): og.ui.anchor without the callback."
+  param id String "Its id; the probe path is the id alone."
+  param desc AnchorDesc "Where it sits and how it lays out."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 3542</sub>
+
+<a id="fn-anchor"></a>
+
+### `og.ui.anchor`
+
+An anchored group built by `build`: a layer at a point of the safe area, over the tree, for HUD corners and touch controls.
+
+```ts
+og.ui.anchor(id: string, desc: AnchorDesc, build: UiBuild): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `AnchorDesc` | no | Where it sits and how it lays out. |
+| `build` | `UiBuild` | no | Makes its children. |
+
+**Returns** `void`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn anchor {
+  doc "An anchored group built by `build`: a layer at a point of the safe area, over the tree, for HUD corners and touch controls."
+  host false
+  param id String "Its id."
+  param desc AnchorDesc "Where it sits and how it lays out."
+  param build UiBuild "Makes its children."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 3549</sub>
+
+<a id="fn-openTransition"></a>
+
+### `og.ui.openTransition`
+
+Open a transition container (a column), closed by close(); build its children only while the answer is visible: it stays visible while it leaves. Its content takes no input while it moves.
+
+```ts
+og.ui.openTransition(id: string, show: boolean, desc?: TransitionDesc): Presence
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `show` | `boolean` | no | Whether it should be shown. |
+| `desc` | `TransitionDesc` | yes | How it moves. |
+
+**Returns** `Presence`.
+
+Binding symbol `og_ui_open_transition` · publish builds: kept
+
+```ogt
+fn openTransition {
+  doc "Open a transition container (a column), closed by close(); build its children only while the answer is visible: it stays visible while it leaves. Its content takes no input while it moves."
+  param id String "Its id."
+  param show bool "Whether it should be shown."
+  param desc TransitionDesc "How it moves."
+  returns Presence
+}
+```
+
+<sub>`api.ogt` line 3558</sub>
+
+<a id="fn-transition"></a>
+
+### `og.ui.transition`
+
+Content that enters and leaves: fade, slide or scale by the tick from the motion tokens. `build` runs while it is visible.
+
+```ts
+og.ui.transition(id: string, show: boolean, desc: TransitionDesc, build: UiBuild): Presence
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `show` | `boolean` | no | Whether it should be shown. |
+| `desc` | `TransitionDesc` | no | How it moves. |
+| `build` | `UiBuild` | no | Makes its content. |
+
+**Returns** `Presence`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn transition {
+  doc "Content that enters and leaves: fade, slide or scale by the tick from the motion tokens. `build` runs while it is visible."
+  host false
+  param id String "Its id."
+  param show bool "Whether it should be shown."
+  param desc TransitionDesc "How it moves."
+  param build UiBuild "Makes its content."
+  returns Presence
+}
+```
+
+<sub>`api.ogt` line 3566</sub>
+
+<a id="fn-openModal"></a>
+
+### `og.ui.openModal`
+
+Open a dialog, closed by closeModal(); build its content only while the answer is visible. The probe sees the backdrop as `<id>` and the panel as `<id>/Panel`.
+
+```ts
+og.ui.openModal(id: string, open: boolean, desc?: ModalDesc): ModalResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `open` | `boolean` | no | Whether it should be open. |
+| `desc` | `ModalDesc` | yes | Title, width and dismissal rules. |
+
+**Returns** `ModalResult`.
+
+Binding symbol `og_ui_open_modal` · publish builds: kept
+
+```ogt
+fn openModal {
+  doc "Open a dialog, closed by closeModal(); build its content only while the answer is visible. The probe sees the backdrop as `<id>` and the panel as `<id>/Panel`."
+  param id String "Its id."
+  param open bool "Whether it should be open."
+  param desc ModalDesc "Title, width and dismissal rules."
+  returns ModalResult
+}
+```
+
+<sub>`api.ogt` line 3576</sub>
+
+<a id="fn-closeModal"></a>
+
+### `og.ui.closeModal`
+
+Close a dialog opened with openModal (its panel and backdrop).
+
+```ts
+og.ui.closeModal(): void
+```
+
+**Returns** `void`.
+
+Binding symbol `og_ui_close_modal` · publish builds: kept
+
+```ogt
+fn closeModal {
+  doc "Close a dialog opened with openModal (its panel and backdrop)."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 3584</sub>
+
+<a id="fn-modal"></a>
+
+### `og.ui.modal`
+
+A dialog built by `build` while visible: scrim, centred panel, focus kept inside, Back and the backdrop dismiss it unless locked. Set your open flag false on `dismissed`.
+
+```ts
+og.ui.modal(id: string, open: boolean, desc: ModalDesc, build: UiBuild): ModalResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `open` | `boolean` | no | Whether it should be open. |
+| `desc` | `ModalDesc` | no | Title, width and dismissal rules. |
+| `build` | `UiBuild` | no | Makes its content. |
+
+**Returns** `ModalResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn modal {
+  doc "A dialog built by `build` while visible: scrim, centred panel, focus kept inside, Back and the backdrop dismiss it unless locked. Set your open flag false on `dismissed`."
+  host false
+  param id String "Its id."
+  param open bool "Whether it should be open."
+  param desc ModalDesc "Title, width and dismissal rules."
+  param build UiBuild "Makes its content."
+  returns ModalResult
+}
+```
+
+<sub>`api.ogt` line 3589</sub>
+
+<a id="fn-spotlight"></a>
+
+### `og.ui.spotlight`
+
+A spotlight over everything (a tutorial step): the scrim on four sides of the hole, an amber edge around it. Presses on the dimmed parts stop there (clicked); presses in the hole reach what is under it. Shades are `<id>/Top`, `Left`, `Right`, `Bottom`; the hole is `<id>/Hole`.
+
+```ts
+og.ui.spotlight(id: string, hole: UiRect | null, desc?: SpotlightDesc): Response
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `hole` | `UiRect \| null` | no | The rectangle to leave lit, as og.ui.bounds answers; null dims everything. |
+| `desc` | `SpotlightDesc` | yes | Room around the hole. |
+
+**Returns** `Response`.
+
+Binding symbol `og_ui_spotlight` · publish builds: kept
+
+```ogt
+fn spotlight {
+  doc "A spotlight over everything (a tutorial step): the scrim on four sides of the hole, an amber edge around it. Presses on the dimmed parts stop there (clicked); presses in the hole reach what is under it. Shades are `<id>/Top`, `Left`, `Right`, `Bottom`; the hole is `<id>/Hole`."
+  param id String "Its id."
+  param hole Option.UiRect "The rectangle to leave lit, as og.ui.bounds answers; null dims everything."
+  param desc SpotlightDesc "Room around the hole."
+  returns Response
+}
+```
+
+<sub>`api.ogt` line 3599</sub>
+
+<a id="fn-bounds"></a>
+
+### `og.ui.bounds`
+
+Where an element was in the last frame, by id or `Parent/Child` path (topmost first), as touch_move_to resolves it.
+
+```ts
+og.ui.bounds(path: string): UiRect | null
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `path` | `string` | no | The id or path. |
+
+**Returns** `UiRect | null`.
+
+Binding symbol `og_ui_bounds` · publish builds: kept
+
+```ogt
+fn bounds {
+  doc "Where an element was in the last frame, by id or `Parent/Child` path (topmost first), as touch_move_to resolves it."
+  param path String "The id or path."
+  returns Option.UiRect
+}
+```
+
+<sub>`api.ogt` line 3607</sub>
+
+<a id="fn-openList"></a>
+
+### `og.ui.openList`
+
+Open a virtualised list (a scroll column) and learn which rows to build: listItem(i) and close() for each, then closeList().
+
+```ts
+og.ui.openList(id: string, desc?: ListDesc): ListRange
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `ListDesc` | yes | Row count and size. |
+
+**Returns** `ListRange`.
+
+Binding symbol `og_ui_open_list` · publish builds: kept
+
+```ogt
+fn openList {
+  doc "Open a virtualised list (a scroll column) and learn which rows to build: listItem(i) and close() for each, then closeList()."
+  param id String "Its id."
+  param desc ListDesc "Row count and size."
+  returns ListRange
+}
+```
+
+<sub>`api.ogt` line 3613</sub>
+
+<a id="fn-openGrid"></a>
+
+### `og.ui.openGrid`
+
+Open a virtualised grid and learn which cells to build: gridItem(i) and close() for each, then closeList().
+
+```ts
+og.ui.openGrid(id: string, desc?: GridDesc): ListRange
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `GridDesc` | yes | Cell count, size and columns. |
+
+**Returns** `ListRange`.
+
+Binding symbol `og_ui_open_grid` · publish builds: kept
+
+```ogt
+fn openGrid {
+  doc "Open a virtualised grid and learn which cells to build: gridItem(i) and close() for each, then closeList()."
+  param id String "Its id."
+  param desc GridDesc "Cell count, size and columns."
+  returns ListRange
+}
+```
+
+<sub>`api.ogt` line 3620</sub>
+
+<a id="fn-listItem"></a>
+
+### `og.ui.listItem`
+
+Open row `index` of the open list (`Row#index`): selectable and focusable; its content follows until close(). A press that started on one row and is released on this one answers `dropped`.
+
+```ts
+og.ui.listItem(index: number, selected: boolean): Response
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `index` | `number` | no | Its index. |
+| `selected` | `boolean` | no | Drawn selected (fill-strong). |
+
+**Returns** `Response`.
+
+Binding symbol `og_ui_list_item` · publish builds: kept
+
+```ogt
+fn listItem {
+  doc "Open row `index` of the open list (`Row#index`): selectable and focusable; its content follows until close(). A press that started on one row and is released on this one answers `dropped`."
+  param index u32 "Its index."
+  param selected bool "Drawn selected (fill-strong)."
+  returns Response
+}
+```
+
+<sub>`api.ogt` line 3627</sub>
+
+<a id="fn-gridItem"></a>
+
+### `og.ui.gridItem`
+
+Open cell `index` of the open grid (`Cell#index`): a slot on fill, focusable; its content follows until close(). Drops answer `dropped` as listItem's.
+
+```ts
+og.ui.gridItem(index: number, selected: boolean): Response
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `index` | `number` | no | Its index. |
+| `selected` | `boolean` | no | Drawn selected (fill-strong with an amber bar). |
+
+**Returns** `Response`.
+
+Binding symbol `og_ui_grid_item` · publish builds: kept
+
+```ogt
+fn gridItem {
+  doc "Open cell `index` of the open grid (`Cell#index`): a slot on fill, focusable; its content follows until close(). Drops answer `dropped` as listItem's."
+  param index u32 "Its index."
+  param selected bool "Drawn selected (fill-strong with an amber bar)."
+  returns Response
+}
+```
+
+<sub>`api.ogt` line 3634</sub>
+
+<a id="fn-closeList"></a>
+
+### `og.ui.closeList`
+
+Close a list or grid opened with openList or openGrid.
+
+```ts
+og.ui.closeList(): Response
+```
+
+**Returns** `Response`.
+
+Binding symbol `og_ui_close_list` · publish builds: kept
+
+```ogt
+fn closeList {
+  doc "Close a list or grid opened with openList or openGrid."
+  returns Response
+}
+```
+
+<sub>`api.ogt` line 3641</sub>
+
+<a id="fn-dragging"></a>
+
+### `og.ui.dragging`
+
+The row or cell a held press started on in the list or grid of this id (built under the same parent): a drag in progress, to draw what is dragged under the pointer.
+
+```ts
+og.ui.dragging(id: string): number | null
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | The list's or grid's id. |
+
+**Returns** `number | null`.
+
+Binding symbol `og_ui_dragging` · publish builds: kept
+
+```ogt
+fn dragging {
+  doc "The row or cell a held press started on in the list or grid of this id (built under the same parent): a drag in progress, to draw what is dragged under the pointer."
+  param id String "The list's or grid's id."
+  returns Option.u32
+}
+```
+
+<sub>`api.ogt` line 3646</sub>
+
+<a id="fn-list"></a>
+
+### `og.ui.list`
+
+A virtualised list built by `build(index)` for the rows in view.
+
+```ts
+og.ui.list(id: string, desc: ListDesc, build: UiItemBuild): ListResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `ListDesc` | no | Row count, size and the selected row. |
+| `build` | `UiItemBuild` | no | Makes one row's content. |
+
+**Returns** `ListResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn list {
+  doc "A virtualised list built by `build(index)` for the rows in view."
+  host false
+  param id String "Its id."
+  param desc ListDesc "Row count, size and the selected row."
+  param build UiItemBuild "Makes one row's content."
+  returns ListResult
+}
+```
+
+<sub>`api.ogt` line 3652</sub>
+
+<a id="fn-grid"></a>
+
+### `og.ui.grid`
+
+A virtualised grid built by `build(index)` for the cells in view.
+
+```ts
+og.ui.grid(id: string, desc: GridDesc, build: UiItemBuild): ListResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `GridDesc` | no | Cell count, size, columns and the selected cell. |
+| `build` | `UiItemBuild` | no | Makes one cell's content. |
+
+**Returns** `ListResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn grid {
+  doc "A virtualised grid built by `build(index)` for the cells in view."
+  host false
+  param id String "Its id."
+  param desc GridDesc "Cell count, size, columns and the selected cell."
+  param build UiItemBuild "Makes one cell's content."
+  returns ListResult
+}
+```
+
+<sub>`api.ogt` line 3661</sub>
+
+<a id="fn-tabs"></a>
+
+### `og.ui.tabs`
+
+A segmented control: a neutral track, the chosen tab on the thumb. Tabs are `Tab#i` and the probe reads their labels.
+
+```ts
+og.ui.tabs(id: string, items: readonly string[], selected: number, desc?: TabsDesc): ChoiceResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `items` | `readonly string[]` | no | The tab labels. |
+| `selected` | `number` | no | The chosen index from game state. |
+| `desc` | `TabsDesc` | yes | Fill and width. |
+
+**Returns** `ChoiceResult`.
+
+Binding symbol `og_ui_tabs` · publish builds: kept
+
+```ogt
+fn tabs {
+  doc "A segmented control: a neutral track, the chosen tab on the thumb. Tabs are `Tab#i` and the probe reads their labels."
+  param id String "Its id."
+  param items List.String "The tab labels."
+  param selected u32 "The chosen index from game state."
+  param desc TabsDesc "Fill and width."
+  returns ChoiceResult
+}
+```
+
+<sub>`api.ogt` line 3670</sub>
+
+<a id="fn-select"></a>
+
+### `og.ui.select`
+
+A select: a field-like trigger with the chosen label and a chevron; a press or Activate opens its menu `<id>.menu` (options `Option#i`) under it, a focus scope; choosing closes it with changed. Back or a press outside closes it.
+
+```ts
+og.ui.select(id: string, options: readonly string[], selected: number, desc?: SelectDesc): ChoiceResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `options` | `readonly string[]` | no | The option labels. |
+| `selected` | `number` | no | The chosen index from game state. |
+| `desc` | `SelectDesc` | yes | Placeholder, width, disabled. |
+
+**Returns** `ChoiceResult`.
+
+Binding symbol `og_ui_select` · publish builds: kept
+
+```ogt
+fn select {
+  doc "A select: a field-like trigger with the chosen label and a chevron; a press or Activate opens its menu `<id>.menu` (options `Option#i`) under it, a focus scope; choosing closes it with changed. Back or a press outside closes it."
+  param id String "Its id."
+  param options List.String "The option labels."
+  param selected u32 "The chosen index from game state."
+  param desc SelectDesc "Placeholder, width, disabled."
+  returns ChoiceResult
+}
+```
+
+<sub>`api.ogt` line 3679</sub>
+
+<a id="fn-stepper"></a>
+
+### `og.ui.stepper`
+
+A number stepper: `Dec`, `Value`, `Inc`. The buttons step within the range; Left and Right step it while a button is focused.
+
+```ts
+og.ui.stepper(id: string, value: number, desc?: StepperDesc): StepperResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `value` | `number` | no | The value from game state. |
+| `desc` | `StepperDesc` | yes | Range, step and digits. |
+
+**Returns** `StepperResult`.
+
+Binding symbol `og_ui_stepper` · publish builds: kept
+
+```ogt
+fn stepper {
+  doc "A number stepper: `Dec`, `Value`, `Inc`. The buttons step within the range; Left and Right step it while a button is focused."
+  param id String "Its id."
+  param value f32 "The value from game state."
+  param desc StepperDesc "Range, step and digits."
+  returns StepperResult
+}
+```
+
+<sub>`api.ogt` line 3688</sub>
+
+<a id="fn-radio"></a>
+
+### `og.ui.radio`
+
+A radio group of `Option#i` rows: a ring, filled amber when chosen, and a label.
+
+```ts
+og.ui.radio(id: string, options: readonly string[], selected: number, desc?: RadioDesc): ChoiceResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `options` | `readonly string[]` | no | The option labels. |
+| `selected` | `number` | no | The chosen index from game state. |
+| `desc` | `RadioDesc` | yes | Row or column. |
+
+**Returns** `ChoiceResult`.
+
+Binding symbol `og_ui_radio` · publish builds: kept
+
+```ogt
+fn radio {
+  doc "A radio group of `Option#i` rows: a ring, filled amber when chosen, and a label."
+  param id String "Its id."
+  param options List.String "The option labels."
+  param selected u32 "The chosen index from game state."
+  param desc RadioDesc "Row or column."
+  returns ChoiceResult
+}
+```
+
+<sub>`api.ogt` line 3696</sub>
+
+<a id="fn-checkbox"></a>
+
+### `og.ui.checkbox`
+
+A checkbox with a label; a press flips it.
+
+```ts
+og.ui.checkbox(id: string, on: boolean, label: string): ToggleResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `on` | `boolean` | no | The state from game state. |
+| `label` | `string` | no | The label. |
+
+**Returns** `ToggleResult`.
+
+Binding symbol `og_ui_checkbox` · publish builds: kept
+
+```ogt
+fn checkbox {
+  doc "A checkbox with a label; a press flips it."
+  param id String "Its id."
+  param on bool "The state from game state."
+  param label String "The label."
+  returns ToggleResult
+}
+```
+
+<sub>`api.ogt` line 3705</sub>
+
+<a id="fn-checkboxList"></a>
+
+### `og.ui.checkboxList`
+
+Checkboxes in a column (`Option#i`).
+
+```ts
+og.ui.checkboxList(id: string, labels: readonly string[], values: readonly boolean[]): CheckListResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `labels` | `readonly string[]` | no | The labels. |
+| `values` | `readonly boolean[]` | no | The states from game state. |
+
+**Returns** `CheckListResult`.
+
+Binding symbol `og_ui_checkbox_list` · publish builds: kept
+
+```ogt
+fn checkboxList {
+  doc "Checkboxes in a column (`Option#i`)."
+  param id String "Its id."
+  param labels List.String "The labels."
+  param values List.bool "The states from game state."
+  returns CheckListResult
+}
+```
+
+<sub>`api.ogt` line 3713</sub>
+
+<a id="fn-chip"></a>
+
+### `og.ui.chip`
+
+A chip: a capsule on fill; selected inverts to fg. For filters and tags.
+
+```ts
+og.ui.chip(id: string, text: string, desc?: ChipDesc): Response
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `text` | `string` | no | The label. |
+| `desc` | `ChipDesc` | yes | Selected and disabled. |
+
+**Returns** `Response`.
+
+Binding symbol `og_ui_chip` · publish builds: kept
+
+```ogt
+fn chip {
+  doc "A chip: a capsule on fill; selected inverts to fg. For filters and tags."
+  param id String "Its id."
+  param text String "The label."
+  param desc ChipDesc "Selected and disabled."
+  returns Response
+}
+```
+
+<sub>`api.ogt` line 3721</sub>
+
+<a id="fn-badge"></a>
+
+### `og.ui.badge`
+
+A badge: a small status capsule in its tone.
+
+```ts
+og.ui.badge(id: string, text: string, tone: Tone): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `text` | `string` | no | The label (a count, a word). |
+| `tone` | `Tone` | no | Its tone. |
+
+**Returns** `void`.
+
+Binding symbol `og_ui_badge` · publish builds: kept
+
+```ogt
+fn badge {
+  doc "A badge: a small status capsule in its tone."
+  param id String "Its id."
+  param text String "The label (a count, a word)."
+  param tone Tone "Its tone."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 3729</sub>
+
+<a id="fn-divider"></a>
+
+### `og.ui.divider`
+
+A hairline in the border colour across its parent.
+
+```ts
+og.ui.divider(id: string, vertical: boolean): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `vertical` | `boolean` | no | Stand it up (in a row). |
+
+**Returns** `void`.
+
+Binding symbol `og_ui_divider` · publish builds: kept
+
+```ogt
+fn divider {
+  doc "A hairline in the border colour across its parent."
+  param id String "Its id."
+  param vertical bool "Stand it up (in a row)."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 3737</sub>
+
+<a id="fn-spacer"></a>
+
+### `og.ui.spacer`
+
+Empty space.
+
+```ts
+og.ui.spacer(id: string, size: Size | null): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `size` | `Size \| null` | no | Its size along both axes; null grows into the free space. |
+
+**Returns** `void`.
+
+Binding symbol `og_ui_spacer` · publish builds: kept
+
+```ogt
+fn spacer {
+  doc "Empty space."
+  param id String "Its id."
+  param size Option.Size "Its size along both axes; null grows into the free space."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 3744</sub>
+
+<a id="fn-keyValue"></a>
+
+### `og.ui.keyValue`
+
+A key (fg-muted) and its value (fg, at the end) on one row: stats, settings summaries, receipts.
+
+```ts
+og.ui.keyValue(id: string, key: string, value: string, mono: boolean): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `key` | `string` | no | The key. |
+| `value` | `string` | no | The value. |
+| `mono` | `boolean` | no | The value in the monospaced font (prices, ids). |
+
+**Returns** `void`.
+
+Binding symbol `og_ui_key_value` · publish builds: kept
+
+```ogt
+fn keyValue {
+  doc "A key (fg-muted) and its value (fg, at the end) on one row: stats, settings summaries, receipts."
+  param id String "Its id."
+  param key String "The key."
+  param value String "The value."
+  param mono bool "The value in the monospaced font (prices, ids)."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 3751</sub>
+
+<a id="fn-skeleton"></a>
+
+### `og.ui.skeleton`
+
+A skeleton: the neutral fill standing in for content that is loading, with a sheen that passes every 1.6 s (still under reduced motion).
+
+```ts
+og.ui.skeleton(id: string, desc?: SkeletonDesc): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `SkeletonDesc` | yes | Width, line height and lines. |
+
+**Returns** `void`.
+
+Binding symbol `og_ui_skeleton` · publish builds: kept
+
+```ogt
+fn skeleton {
+  doc "A skeleton: the neutral fill standing in for content that is loading, with a sheen that passes every 1.6 s (still under reduced motion)."
+  param id String "Its id."
+  param desc SkeletonDesc "Width, line height and lines."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 3760</sub>
+
+<a id="fn-spinner"></a>
+
+### `og.ui.spinner`
+
+A loading spinner: eight dots around a circle, the bright one turning by the tick.
+
+```ts
+og.ui.spinner(id: string, size: number): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `size` | `number` | no | Its diameter in CSS px; 0 is the small control height. |
+
+**Returns** `void`.
+
+Binding symbol `og_ui_spinner` · publish builds: kept
+
+```ogt
+fn spinner {
+  doc "A loading spinner: eight dots around a circle, the bright one turning by the tick."
+  param id String "Its id."
+  param size f32 "Its diameter in CSS px; 0 is the small control height."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 3767</sub>
+
+<a id="fn-icon"></a>
+
+### `og.ui.icon`
+
+An icon of the atlas (UiDesc.icons) by name; an unknown name draws an empty slot and warns. The probe reads the name.
+
+```ts
+og.ui.icon(id: string, name: string, desc?: IconDesc): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `name` | `string` | no | The icon's name. |
+| `desc` | `IconDesc` | yes | Size and ink. |
+
+**Returns** `void`.
+
+Binding symbol `og_ui_icon` · publish builds: kept
+
+```ogt
+fn icon {
+  doc "An icon of the atlas (UiDesc.icons) by name; an unknown name draws an empty slot and warns. The probe reads the name."
+  param id String "Its id."
+  param name String "The icon's name."
+  param desc IconDesc "Size and ink."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 3774</sub>
+
+<a id="fn-meter"></a>
+
+### `og.ui.meter`
+
+A health, mana or xp bar. A drop shows at once and leaves a pale trail that follows after a beat; a rise grows into place with a ghost of the target; both by the tick.
+
+```ts
+og.ui.meter(id: string, value: number, max: number, desc?: MeterDesc): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `value` | `number` | no | The current value. |
+| `max` | `number` | no | The full value. |
+| `desc` | `MeterDesc` | yes | Kind, label, size and notches. |
+
+**Returns** `void`.
+
+Binding symbol `og_ui_meter` · publish builds: kept
+
+```ogt
+fn meter {
+  doc "A health, mana or xp bar. A drop shows at once and leaves a pale trail that follows after a beat; a rise grows into place with a ghost of the target; both by the tick."
+  param id String "Its id."
+  param value f32 "The current value."
+  param max f32 "The full value."
+  param desc MeterDesc "Kind, label, size and notches."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 3782</sub>
+
+<a id="fn-cooldown"></a>
+
+### `og.ui.cooldown`
+
+A cooldown: a disc whose amber ring fills clockwise from the top as it runs out, bright and full when ready, a label or icon in the middle. A press reports clicked (ready or not).
+
+```ts
+og.ui.cooldown(id: string, remaining: number, desc?: CooldownDesc): Response
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `remaining` | `number` | no | How much of the cooldown is left, 0 to 1: 1 just used, 0 ready. |
+| `desc` | `CooldownDesc` | yes | Size, label and icon. |
+
+**Returns** `Response`.
+
+Binding symbol `og_ui_cooldown` · publish builds: kept
+
+```ogt
+fn cooldown {
+  doc "A cooldown: a disc whose amber ring fills clockwise from the top as it runs out, bright and full when ready, a label or icon in the middle. A press reports clicked (ready or not)."
+  param id String "Its id."
+  param remaining f32 "How much of the cooldown is left, 0 to 1: 1 just used, 0 ready."
+  param desc CooldownDesc "Size, label and icon."
+  returns Response
+}
+```
+
+<sub>`api.ogt` line 3791</sub>
+
+<a id="fn-minimap"></a>
+
+### `og.ui.minimap`
+
+A mini-map frame: the map in a border-strong frame, markers as dots (the player amber and ringed), an N mark and a zone label.
+
+```ts
+og.ui.minimap(id: string, desc?: MinimapDesc): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `MinimapDesc` | yes | Map, markers and label. |
+
+**Returns** `void`.
+
+Binding symbol `og_ui_minimap` · publish builds: kept
+
+```ogt
+fn minimap {
+  doc "A mini-map frame: the map in a border-strong frame, markers as dots (the player amber and ringed), an N mark and a zone label."
+  param id String "Its id."
+  param desc MinimapDesc "Map, markers and label."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 3799</sub>
+
+<a id="fn-dialogue"></a>
+
+### `og.ui.dialogue`
+
+A dialogue box: a portrait slot, the speaker in amber ink and the line typed out by the tick. A press or Activate while typing shows the whole line; once shown it answers advanced. The line is `<id>/Body/Line` and the probe reads what is shown.
+
+```ts
+og.ui.dialogue(id: string, desc?: DialogueDesc): DialogueResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `DialogueDesc` | yes | Speaker, text, portrait and speed. |
+
+**Returns** `DialogueResult`.
+
+Binding symbol `og_ui_dialogue` · publish builds: kept
+
+```ogt
+fn dialogue {
+  doc "A dialogue box: a portrait slot, the speaker in amber ink and the line typed out by the tick. A press or Activate while typing shows the whole line; once shown it answers advanced. The line is `<id>/Body/Line` and the probe reads what is shown."
+  param id String "Its id."
+  param desc DialogueDesc "Speaker, text, portrait and speed."
+  returns DialogueResult
+}
+```
+
+<sub>`api.ogt` line 3806</sub>
+
+<a id="fn-joystick"></a>
+
+### `og.ui.joystick`
+
+A virtual joystick: a base and a knob that follows a press that started on it. og.Input carries one pointer, so a stick and a button are not held at once yet.
+
+```ts
+og.ui.joystick(id: string, desc?: JoystickDesc): JoystickResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `JoystickDesc` | yes | Size and dead zone. |
+
+**Returns** `JoystickResult`.
+
+Binding symbol `og_ui_joystick` · publish builds: kept
+
+```ogt
+fn joystick {
+  doc "A virtual joystick: a base and a knob that follows a press that started on it. og.Input carries one pointer, so a stick and a button are not held at once yet."
+  param id String "Its id."
+  param desc JoystickDesc "Size and dead zone."
+  returns JoystickResult
+}
+```
+
+<sub>`api.ogt` line 3813</sub>
+
+<a id="fn-dpad"></a>
+
+### `og.ui.dpad`
+
+A d-pad of four arms (`Up`, `Down`, `Left`, `Right`), each at least 44 CSS px.
+
+```ts
+og.ui.dpad(id: string, desc?: DpadDesc): DpadResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `DpadDesc` | yes | Its size. |
+
+**Returns** `DpadResult`.
+
+Binding symbol `og_ui_dpad` · publish builds: kept
+
+```ogt
+fn dpad {
+  doc "A d-pad of four arms (`Up`, `Down`, `Left`, `Right`), each at least 44 CSS px."
+  param id String "Its id."
+  param desc DpadDesc "Its size."
+  returns DpadResult
+}
+```
+
+<sub>`api.ogt` line 3820</sub>
+
+<a id="fn-actionButton"></a>
+
+### `og.ui.actionButton`
+
+A round touch action button: pressed while held (jump, fire), clicked on a tap; at least 44 CSS px.
+
+```ts
+og.ui.actionButton(id: string, text: string, desc?: ActionButtonDesc): Response
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `text` | `string` | no | Its label (and what the probe reads). |
+| `desc` | `ActionButtonDesc` | yes | Size, primary and icon. |
+
+**Returns** `Response`.
+
+Binding symbol `og_ui_action_button` · publish builds: kept
+
+```ogt
+fn actionButton {
+  doc "A round touch action button: pressed while held (jump, fire), clicked on a tap; at least 44 CSS px."
+  param id String "Its id."
+  param text String "Its label (and what the probe reads)."
+  param desc ActionButtonDesc "Size, primary and icon."
+  returns Response
+}
+```
+
+<sub>`api.ogt` line 3827</sub>
+
+<a id="fn-toast"></a>
+
+### `og.ui.toast`
+
+Queue a toast: it stacks at UiDesc.toastAnchor, enters, stays its time and leaves; at most three are up (older ones leave first); a press dismisses it. Callable anywhere (systems, commands, start); it is world state, so snapshots carry it.
+
+```ts
+og.ui.toast(world: World, text: string, desc?: ToastDesc): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose UI shows it. |
+| `text` | `string` | no | The message: a few words. |
+| `desc` | `ToastDesc` | yes | Tone and time. |
+
+**Returns** `number`: Its id, for dismissToast.
+
+Binding symbol `og_ui_toast` · publish builds: kept
+
+```ogt
+fn toast {
+  doc "Queue a toast: it stacks at UiDesc.toastAnchor, enters, stays its time and leaves; at most three are up (older ones leave first); a press dismisses it. Callable anywhere (systems, commands, start); it is world state, so snapshots carry it."
+  param world World "The world whose UI shows it."
+  param text String "The message: a few words."
+  param desc ToastDesc "Tone and time."
+  returns u32 "Its id, for dismissToast."
+}
+```
+
+<sub>`api.ogt` line 3835</sub>
+
+<a id="fn-dismissToast"></a>
+
+### `og.ui.dismissToast`
+
+Start a toast's exit.
+
+```ts
+og.ui.dismissToast(world: World, toastId: number): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `toastId` | `number` | no | The id toast() answered. |
+
+**Returns** `void`.
+
+Binding symbol `og_ui_dismiss_toast` · publish builds: kept
+
+```ogt
+fn dismissToast {
+  doc "Start a toast's exit."
+  param world World "The world."
+  param toastId u32 "The id toast() answered."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 3843</sub>
+
+<a id="fn-navigate"></a>
+
+### `og.ui.navigate`
+
+Queue a navigation intent for the next tick: a gamepad og.Input does not read yet, a custom binding, a command.
+
+```ts
+og.ui.navigate(world: World, intent: NavIntent): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `intent` | `NavIntent` | no | The intent. |
+
+**Returns** `void`.
+
+Binding symbol `og_ui_navigate` · publish builds: kept
+
+```ogt
+fn navigate {
+  doc "Queue a navigation intent for the next tick: a gamepad og.Input does not read yet, a custom binding, a command."
+  param world World "The world."
+  param intent NavIntent "The intent."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 3850</sub>
+
+<a id="fn-back"></a>
+
+### `og.ui.back`
+
+Escape or gamepad B this tick, not taken by a dialog or menu: true once, then taken. A pause screen closes on it.
+
+```ts
+og.ui.back(): boolean
+```
+
+**Returns** `boolean`.
+
+Binding symbol `og_ui_back` · publish builds: kept
+
+```ogt
+fn back {
+  doc "Escape or gamepad B this tick, not taken by a dialog or menu: true once, then taken. A pause screen closes on it."
+  returns bool
+}
+```
+
+<sub>`api.ogt` line 3857</sub>
+
+<a id="fn-setNavigation"></a>
+
+### `og.ui.setNavigation`
+
+Whether keyboard and gamepad navigation moves focus on this screen (on by default). A gameplay HUD whose keys move the player turns it off; an open dialog or menu turns it back on while it is open. Takes effect from the next tick.
+
+```ts
+og.ui.setNavigation(on: boolean): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `on` | `boolean` | no | On or off. |
+
+**Returns** `void`.
+
+Binding symbol `og_ui_set_navigation` · publish builds: kept
+
+```ogt
+fn setNavigation {
+  doc "Whether keyboard and gamepad navigation moves focus on this screen (on by default). A gameplay HUD whose keys move the player turns it off; an open dialog or menu turns it back on while it is open. Takes effect from the next tick."
+  param on bool "On or off."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 3862</sub>
+
+<a id="fn-memory"></a>
+
+### `og.ui.memory`
+
+A number the UI keeps for an id under the open element (a template's tab, a count-up's start tick), in snapshots like the rest of the UI state. Read it every tick it is used: an unused memory is dropped.
+
+```ts
+og.ui.memory(id: string, initial: number): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | The id, unique among its siblings' memories. |
+| `initial` | `number` | no | Its value the first time. |
+
+**Returns** `number`.
+
+Binding symbol `og_ui_memory` · publish builds: kept
+
+```ogt
+fn memory {
+  doc "A number the UI keeps for an id under the open element (a template's tab, a count-up's start tick), in snapshots like the rest of the UI state. Read it every tick it is used: an unused memory is dropped."
+  param id String "The id, unique among its siblings' memories."
+  param initial f64 "Its value the first time."
+  returns f64
+}
+```
+
+<sub>`api.ogt` line 3868</sub>
+
+<a id="fn-remember"></a>
+
+### `og.ui.remember`
+
+Set a number memory (see memory).
+
+```ts
+og.ui.remember(id: string, value: number): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | The id. |
+| `value` | `number` | no | The value. |
+
+**Returns** `void`.
+
+Binding symbol `og_ui_remember` · publish builds: kept
+
+```ogt
+fn remember {
+  doc "Set a number memory (see memory)."
+  param id String "The id."
+  param value f64 "The value."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 3875</sub>
+
+<a id="fn-tick"></a>
+
+### `og.ui.tick`
+
+Frames the UI has built: its clock, for animations by the tick.
+
+```ts
+og.ui.tick(): number
+```
+
+**Returns** `number`.
+
+Binding symbol `og_ui_tick` · publish builds: kept
+
+```ogt
+fn tick {
+  doc "Frames the UI has built: its clock, for animations by the tick."
+  returns u32
+}
+```
+
+<sub>`api.ogt` line 3882</sub>
+
+<a id="fn-previewViewport"></a>
+
+### `og.ui.previewViewport`
+
+Lay the UI out for another play surface (a phone in portrait at 3x, a notch) until cleared with null: for headless previews and playtests of responsive layouts. Render at width x dpr by height x dpr (`og run --size`).
+
+```ts
+og.ui.previewViewport(world: World, viewport: Viewport | null): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `viewport` | `Viewport \| null` | no | The surface to lay out for; null returns to the host's. |
+
+**Returns** `void`.
+
+Binding symbol `og_ui_preview_viewport` · publish builds: kept
+
+```ogt
+fn previewViewport {
+  doc "Lay the UI out for another play surface (a phone in portrait at 3x, a notch) until cleared with null: for headless previews and playtests of responsive layouts. Render at width x dpr by height x dpr (`og run --size`)."
+  param world World "The world."
+  param viewport Option.Viewport "The surface to lay out for; null returns to the host's."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 3887</sub>
+
+<a id="fn-mainMenu"></a>
+
+### `og.ui.mainMenu`
+
+The title screen template. Returns the item chosen this tick.
+
+```ts
+og.ui.mainMenu(id: string, desc?: MainMenuDesc): MenuResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `MainMenuDesc` | yes | Title, items and footer. |
+
+**Returns** `MenuResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn mainMenu {
+  doc "The title screen template. Returns the item chosen this tick."
+  host false
+  param id String "Its id."
+  param desc MainMenuDesc "Title, items and footer."
+  returns MenuResult
+}
+```
+
+<sub>`api.ogt` line 4414</sub>
+
+<a id="fn-pauseMenu"></a>
+
+### `og.ui.pauseMenu`
+
+The pause screen template: a dialog with Resume first; Back answers `resume`.
+
+```ts
+og.ui.pauseMenu(id: string, desc?: PauseMenuDesc): MenuResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `PauseMenuDesc` | yes | Open and items. |
+
+**Returns** `MenuResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn pauseMenu {
+  doc "The pause screen template: a dialog with Resume first; Back answers `resume`."
+  host false
+  param id String "Its id."
+  param desc PauseMenuDesc "Open and items."
+  returns MenuResult
+}
+```
+
+<sub>`api.ogt` line 4422</sub>
+
+<a id="fn-settingsScreen"></a>
+
+### `og.ui.settingsScreen`
+
+The settings template: Audio (volumes, mute), Graphics (quality, frame rate, reduced motion, contrast), Controls (sensitivity, invert, vibration, bindings) and Language. Pass the settings in every tick and keep what it answers.
+
+```ts
+og.ui.settingsScreen(id: string, desc?: SettingsDesc): SettingsResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `SettingsDesc` | yes | Open, the settings, languages and hooks. |
+
+**Returns** `SettingsResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn settingsScreen {
+  doc "The settings template: Audio (volumes, mute), Graphics (quality, frame rate, reduced motion, contrast), Controls (sensitivity, invert, vibration, bindings) and Language. Pass the settings in every tick and keep what it answers."
+  host false
+  param id String "Its id."
+  param desc SettingsDesc "Open, the settings, languages and hooks."
+  returns SettingsResult
+}
+```
+
+<sub>`api.ogt` line 4430</sub>
+
+<a id="fn-platformerHud"></a>
+
+### `og.ui.platformerHud`
+
+The platformer HUD template.
+
+```ts
+og.ui.platformerHud(id: string, desc?: PlatformerHudDesc): HudResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `PlatformerHudDesc` | yes | Lives, coins, score, level and timer. |
+
+**Returns** `HudResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn platformerHud {
+  doc "The platformer HUD template."
+  host false
+  param id String "Its id."
+  param desc PlatformerHudDesc "Lives, coins, score, level and timer."
+  returns HudResult
+}
+```
+
+<sub>`api.ogt` line 4438</sub>
+
+<a id="fn-shooterHud"></a>
+
+### `og.ui.shooterHud`
+
+The shooter HUD template.
+
+```ts
+og.ui.shooterHud(id: string, desc?: ShooterHudDesc): HudResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `ShooterHudDesc` | yes | Health, armor, ammo, abilities and map. |
+
+**Returns** `HudResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn shooterHud {
+  doc "The shooter HUD template."
+  host false
+  param id String "Its id."
+  param desc ShooterHudDesc "Health, armor, ammo, abilities and map."
+  returns HudResult
+}
+```
+
+<sub>`api.ogt` line 4446</sub>
+
+<a id="fn-puzzleHud"></a>
+
+### `og.ui.puzzleHud`
+
+The puzzle HUD template.
+
+```ts
+og.ui.puzzleHud(id: string, desc?: PuzzleHudDesc): HudResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `PuzzleHudDesc` | yes | Level, score, target, stars, moves and timer. |
+
+**Returns** `HudResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn puzzleHud {
+  doc "The puzzle HUD template."
+  host false
+  param id String "Its id."
+  param desc PuzzleHudDesc "Level, score, target, stars, moves and timer."
+  returns HudResult
+}
+```
+
+<sub>`api.ogt` line 4454</sub>
+
+<a id="fn-idleHud"></a>
+
+### `og.ui.idleHud`
+
+The idle and incremental HUD template: answers `tap` and `buy:<id>` actions.
+
+```ts
+og.ui.idleHud(id: string, desc?: IdleHudDesc): HudResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `IdleHudDesc` | yes | Currencies and generators. |
+
+**Returns** `HudResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn idleHud {
+  doc "The idle and incremental HUD template: answers `tap` and `buy:<id>` actions."
+  host false
+  param id String "Its id."
+  param desc IdleHudDesc "Currencies and generators."
+  returns HudResult
+}
+```
+
+<sub>`api.ogt` line 4462</sub>
+
+<a id="fn-racingHud"></a>
+
+### `og.ui.racingHud`
+
+The racing HUD template.
+
+```ts
+og.ui.racingHud(id: string, desc?: RacingHudDesc): HudResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `RacingHudDesc` | yes | Speed, gear, laps, place, times and boost. |
+
+**Returns** `HudResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn racingHud {
+  doc "The racing HUD template."
+  host false
+  param id String "Its id."
+  param desc RacingHudDesc "Speed, gear, laps, place, times and boost."
+  returns HudResult
+}
+```
+
+<sub>`api.ogt` line 4470</sub>
+
+<a id="fn-cutscene"></a>
+
+### `og.ui.cutscene`
+
+The dialogue and cutscene template: letterbox, the dialogue box, Skip.
+
+```ts
+og.ui.cutscene(id: string, desc?: CutsceneDesc): CutsceneResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `CutsceneDesc` | yes | Lines and the current index. |
+
+**Returns** `CutsceneResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn cutscene {
+  doc "The dialogue and cutscene template: letterbox, the dialogue box, Skip."
+  host false
+  param id String "Its id."
+  param desc CutsceneDesc "Lines and the current index."
+  returns CutsceneResult
+}
+```
+
+<sub>`api.ogt` line 4478</sub>
+
+<a id="fn-shopScreen"></a>
+
+### `og.ui.shopScreen`
+
+The shop template.
+
+```ts
+og.ui.shopScreen(id: string, desc?: ShopDesc): ShopResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `ShopDesc` | yes | Balance, items and categories. |
+
+**Returns** `ShopResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn shopScreen {
+  doc "The shop template."
+  host false
+  param id String "Its id."
+  param desc ShopDesc "Balance, items and categories."
+  returns ShopResult
+}
+```
+
+<sub>`api.ogt` line 4486</sub>
+
+<a id="fn-inventoryScreen"></a>
+
+### `og.ui.inventoryScreen`
+
+The inventory template: a grid of slots with drag and drop.
+
+```ts
+og.ui.inventoryScreen(id: string, desc?: InventoryDesc): InventoryResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `InventoryDesc` | yes | Slots and items. |
+
+**Returns** `InventoryResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn inventoryScreen {
+  doc "The inventory template: a grid of slots with drag and drop."
+  host false
+  param id String "Its id."
+  param desc InventoryDesc "Slots and items."
+  returns InventoryResult
+}
+```
+
+<sub>`api.ogt` line 4494</sub>
+
+<a id="fn-levelSelect"></a>
+
+### `og.ui.levelSelect`
+
+The level select template.
+
+```ts
+og.ui.levelSelect(id: string, desc?: LevelSelectDesc): LevelSelectResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `LevelSelectDesc` | yes | The levels. |
+
+**Returns** `LevelSelectResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn levelSelect {
+  doc "The level select template."
+  host false
+  param id String "Its id."
+  param desc LevelSelectDesc "The levels."
+  returns LevelSelectResult
+}
+```
+
+<sub>`api.ogt` line 4502</sub>
+
+<a id="fn-resultsScreen"></a>
+
+### `og.ui.resultsScreen`
+
+The results template: stars, the score counting up, the best, stats, actions and Share.
+
+```ts
+og.ui.resultsScreen(id: string, desc?: ResultsDesc): MenuResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `ResultsDesc` | yes | Score, stars, stats and actions. |
+
+**Returns** `MenuResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn resultsScreen {
+  doc "The results template: stars, the score counting up, the best, stats, actions and Share."
+  host false
+  param id String "Its id."
+  param desc ResultsDesc "Score, stars, stats and actions."
+  returns MenuResult
+}
+```
+
+<sub>`api.ogt` line 4510</sub>
+
+<a id="fn-leaderboardScreen"></a>
+
+### `og.ui.leaderboardScreen`
+
+The leaderboard template.
+
+```ts
+og.ui.leaderboardScreen(id: string, desc?: LeaderboardDesc): LeaderboardResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `LeaderboardDesc` | yes | Scopes, rows and states. |
+
+**Returns** `LeaderboardResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn leaderboardScreen {
+  doc "The leaderboard template."
+  host false
+  param id String "Its id."
+  param desc LeaderboardDesc "Scopes, rows and states."
+  returns LeaderboardResult
+}
+```
+
+<sub>`api.ogt` line 4518</sub>
+
+<a id="fn-tutorialOverlay"></a>
+
+### `og.ui.tutorialOverlay`
+
+The onboarding template: a spotlight and a callout per step.
+
+```ts
+og.ui.tutorialOverlay(id: string, desc?: TutorialDesc): TutorialResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `TutorialDesc` | yes | Steps and the current index. |
+
+**Returns** `TutorialResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn tutorialOverlay {
+  doc "The onboarding template: a spotlight and a callout per step."
+  host false
+  param id String "Its id."
+  param desc TutorialDesc "Steps and the current index."
+  returns TutorialResult
+}
+```
+
+<sub>`api.ogt` line 4526</sub>
+
+<a id="fn-loadingScreen"></a>
+
+### `og.ui.loadingScreen`
+
+The loading template.
+
+```ts
+og.ui.loadingScreen(id: string, desc?: LoadingDesc): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `LoadingDesc` | yes | Title, progress and tips. |
+
+**Returns** `void`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn loadingScreen {
+  doc "The loading template."
+  host false
+  param id String "Its id."
+  param desc LoadingDesc "Title, progress and tips."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 4534</sub>
+
+<a id="fn-confirmDialog"></a>
+
+### `og.ui.confirmDialog`
+
+The confirm dialog template.
+
+```ts
+og.ui.confirmDialog(id: string, desc?: ConfirmDesc): ConfirmResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `ConfirmDesc` | yes | Question, consequence and labels. |
+
+**Returns** `ConfirmResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn confirmDialog {
+  doc "The confirm dialog template."
+  host false
+  param id String "Its id."
+  param desc ConfirmDesc "Question, consequence and labels."
+  returns ConfirmResult
+}
+```
+
+<sub>`api.ogt` line 4542</sub>
+
+<a id="fn-alertDialog"></a>
+
+### `og.ui.alertDialog`
+
+The alert template. Returns true the tick it is dismissed.
+
+```ts
+og.ui.alertDialog(id: string, desc?: AlertDesc): boolean
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `AlertDesc` | yes | Title, message and label. |
+
+**Returns** `boolean`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn alertDialog {
+  doc "The alert template. Returns true the tick it is dismissed."
+  host false
+  param id String "Its id."
+  param desc AlertDesc "Title, message and label."
+  returns bool
+}
+```
+
+<sub>`api.ogt` line 4550</sub>
 
 ## Types
 
@@ -720,7 +2996,7 @@ enum Direction {
 }
 ```
 
-<sub>`api.ogt` line 2158</sub>
+<sub>`api.ogt` line 2484</sub>
 
 <a id="type-Align"></a>
 
@@ -747,7 +3023,7 @@ enum Align {
 }
 ```
 
-<sub>`api.ogt` line 2164</sub>
+<sub>`api.ogt` line 2490</sub>
 
 <a id="type-Cross"></a>
 
@@ -774,7 +3050,7 @@ enum Cross {
 }
 ```
 
-<sub>`api.ogt` line 2172</sub>
+<sub>`api.ogt` line 2498</sub>
 
 <a id="type-TextAlign"></a>
 
@@ -799,7 +3075,7 @@ enum TextAlign {
 }
 ```
 
-<sub>`api.ogt` line 2180</sub>
+<sub>`api.ogt` line 2506</sub>
 
 <a id="type-FontRole"></a>
 
@@ -824,7 +3100,7 @@ enum FontRole {
 }
 ```
 
-<sub>`api.ogt` line 2187</sub>
+<sub>`api.ogt` line 2513</sub>
 
 <a id="type-ButtonVariant"></a>
 
@@ -851,7 +3127,7 @@ enum ButtonVariant {
 }
 ```
 
-<sub>`api.ogt` line 2194</sub>
+<sub>`api.ogt` line 2520</sub>
 
 <a id="type-ControlSize"></a>
 
@@ -876,7 +3152,7 @@ enum ControlSize {
 }
 ```
 
-<sub>`api.ogt` line 2202</sub>
+<sub>`api.ogt` line 2528</sub>
 
 <a id="type-Scheme"></a>
 
@@ -899,7 +3175,7 @@ enum Scheme {
 }
 ```
 
-<sub>`api.ogt` line 2209</sub>
+<sub>`api.ogt` line 2535</sub>
 
 <a id="type-DensityMode"></a>
 
@@ -926,7 +3202,7 @@ enum DensityMode {
 }
 ```
 
-<sub>`api.ogt` line 2215</sub>
+<sub>`api.ogt` line 2541</sub>
 
 <a id="type-ThemeColor"></a>
 
@@ -1035,7 +3311,7 @@ enum ThemeColor {
 }
 ```
 
-<sub>`api.ogt` line 2223</sub>
+<sub>`api.ogt` line 2549</sub>
 
 <a id="type-TypeStepName"></a>
 
@@ -1096,7 +3372,7 @@ enum TypeStepName {
 }
 ```
 
-<sub>`api.ogt` line 2272</sub>
+<sub>`api.ogt` line 2598</sub>
 
 <a id="type-SizeRange"></a>
 
@@ -1123,7 +3399,7 @@ struct SizeRange {
 }
 ```
 
-<sub>`api.ogt` line 2297</sub>
+<sub>`api.ogt` line 2623</sub>
 
 <a id="type-FixedSize"></a>
 
@@ -1144,7 +3420,7 @@ struct FixedSize {
 }
 ```
 
-<sub>`api.ogt` line 2309</sub>
+<sub>`api.ogt` line 2635</sub>
 
 <a id="type-PercentSize"></a>
 
@@ -1165,7 +3441,7 @@ struct PercentSize {
 }
 ```
 
-<sub>`api.ogt` line 2316</sub>
+<sub>`api.ogt` line 2642</sub>
 
 <a id="type-Size"></a>
 
@@ -1193,7 +3469,7 @@ union Size {
 }
 ```
 
-<sub>`api.ogt` line 2323</sub>
+<sub>`api.ogt` line 2649</sub>
 
 <a id="type-Insets"></a>
 
@@ -1226,7 +3502,7 @@ struct Insets {
 }
 ```
 
-<sub>`api.ogt` line 2332</sub>
+<sub>`api.ogt` line 2658</sub>
 
 <a id="type-Paint"></a>
 
@@ -1256,7 +3532,7 @@ struct Paint {
 }
 ```
 
-<sub>`api.ogt` line 2348</sub>
+<sub>`api.ogt` line 2674</sub>
 
 <a id="type-ElementDesc"></a>
 
@@ -1304,7 +3580,7 @@ struct ElementDesc {
 }
 ```
 
-<sub>`api.ogt` line 2360</sub>
+<sub>`api.ogt` line 2686</sub>
 
 <a id="type-LabelDesc"></a>
 
@@ -1336,7 +3612,7 @@ struct LabelDesc {
 }
 ```
 
-<sub>`api.ogt` line 2381</sub>
+<sub>`api.ogt` line 2707</sub>
 
 <a id="type-ButtonDesc"></a>
 
@@ -1364,7 +3640,7 @@ struct ButtonDesc {
 }
 ```
 
-<sub>`api.ogt` line 2392</sub>
+<sub>`api.ogt` line 2718</sub>
 
 <a id="type-PanelDesc"></a>
 
@@ -1400,7 +3676,7 @@ struct PanelDesc {
 }
 ```
 
-<sub>`api.ogt` line 2401</sub>
+<sub>`api.ogt` line 2727</sub>
 
 <a id="type-ScrollDesc"></a>
 
@@ -1430,7 +3706,7 @@ struct ScrollDesc {
 }
 ```
 
-<sub>`api.ogt` line 2414</sub>
+<sub>`api.ogt` line 2740</sub>
 
 <a id="type-ImageDesc"></a>
 
@@ -1460,7 +3736,7 @@ struct ImageDesc {
 }
 ```
 
-<sub>`api.ogt` line 2425</sub>
+<sub>`api.ogt` line 2751</sub>
 
 <a id="type-ProgressDesc"></a>
 
@@ -1482,7 +3758,7 @@ struct ProgressDesc {
 }
 ```
 
-<sub>`api.ogt` line 2435</sub>
+<sub>`api.ogt` line 2761</sub>
 
 <a id="type-SliderDesc"></a>
 
@@ -1512,7 +3788,7 @@ struct SliderDesc {
 }
 ```
 
-<sub>`api.ogt` line 2441</sub>
+<sub>`api.ogt` line 2767</sub>
 
 <a id="type-FieldDesc"></a>
 
@@ -1538,7 +3814,7 @@ struct FieldDesc {
 }
 ```
 
-<sub>`api.ogt` line 2452</sub>
+<sub>`api.ogt` line 2778</sub>
 
 <a id="type-Response"></a>
 
@@ -1552,8 +3828,9 @@ What happened to an element this tick. Edges (clicked, changed, submitted) are t
 | `pressed` | `boolean` | `false` | — | — | — | The press that started on it is still held. |
 | `clicked` | `boolean` | `false` | — | — | — | Pressed and released inside it. |
 | `changed` | `boolean` | `false` | — | — | — | Its value changed (slider, toggle, text field). |
-| `focused` | `boolean` | `false` | — | — | — | It has keyboard focus (text field). |
+| `focused` | `boolean` | `false` | — | — | — | It has focus: a text field being edited, or the control keyboard and gamepad navigation landed on. |
 | `submitted` | `boolean` | `false` | — | — | — | Enter was pressed in it (text field). |
+| `dropped` | `number \| null` | `null` | — | — | — | A list row or grid cell a press started on was released over this one: that row's or cell's index (drag and drop). |
 
 ```ogt
 struct Response {
@@ -1562,12 +3839,13 @@ struct Response {
   field pressed bool "The press that started on it is still held."
   field clicked bool "Pressed and released inside it."
   field changed bool "Its value changed (slider, toggle, text field)."
-  field focused bool "It has keyboard focus (text field)."
+  field focused bool "It has focus: a text field being edited, or the control keyboard and gamepad navigation landed on."
   field submitted bool "Enter was pressed in it (text field)."
+  field dropped Option.u32 "A list row or grid cell a press started on was released over this one: that row's or cell's index (drag and drop)."
 }
 ```
 
-<sub>`api.ogt` line 2460</sub>
+<sub>`api.ogt` line 2786</sub>
 
 <a id="type-SliderResult"></a>
 
@@ -1577,7 +3855,7 @@ A slider's response and its value after this tick's input.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false }` | — | — | — | What happened to it. |
+| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null }` | — | — | — | What happened to it. |
 | `value` | `number` | `0` | — | — | — | The value, to keep in game state and pass back next tick. |
 
 ```ogt
@@ -1588,7 +3866,7 @@ struct SliderResult {
 }
 ```
 
-<sub>`api.ogt` line 2470</sub>
+<sub>`api.ogt` line 2797</sub>
 
 <a id="type-ToggleResult"></a>
 
@@ -1598,7 +3876,7 @@ A toggle's response and its state after this tick's input.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false }` | — | — | — | What happened to it. |
+| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null }` | — | — | — | What happened to it. |
 | `on` | `boolean` | `false` | — | — | — | The state, to keep in game state and pass back next tick. |
 
 ```ogt
@@ -1609,7 +3887,7 @@ struct ToggleResult {
 }
 ```
 
-<sub>`api.ogt` line 2476</sub>
+<sub>`api.ogt` line 2803</sub>
 
 <a id="type-FieldResult"></a>
 
@@ -1619,7 +3897,7 @@ A text field's response and its text after this tick's input.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false }` | — | — | — | What happened to it. |
+| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null }` | — | — | — | What happened to it. |
 | `value` | `string` | `""` | — | — | — | The text, to keep in game state and pass back next tick. |
 
 ```ogt
@@ -1630,7 +3908,7 @@ struct FieldResult {
 }
 ```
 
-<sub>`api.ogt` line 2482</sub>
+<sub>`api.ogt` line 2809</sub>
 
 <a id="type-Viewport"></a>
 
@@ -1645,6 +3923,7 @@ The play surface the UI lays out in.
 | `dpr` | `number` | `1` | — | — | — | Device pixels per CSS pixel; rectangles snap to device pixels. |
 | `safeArea` | `Insets` | `{ left: 0, top: 0, right: 0, bottom: 0 }` | — | — | — | The device's unsafe margins (notch, home indicator); the root pads by them. |
 | `coarsePointer` | `boolean` | `false` | — | — | — | A touch screen or another coarse pointer. |
+| `breakpoint` | `Breakpoint` | `"desktop"` | — | — | — | Its size class: phone portrait or landscape, tablet, desktop. |
 
 ```ogt
 struct Viewport {
@@ -1660,16 +3939,17 @@ struct Viewport {
   }
   field safeArea Insets "The device's unsafe margins (notch, home indicator); the root pads by them."
   field coarsePointer bool "A touch screen or another coarse pointer."
+  field breakpoint Breakpoint "Its size class: phone portrait or landscape, tablet, desktop."
 }
 ```
 
-<sub>`api.ogt` line 2488</sub>
+<sub>`api.ogt` line 2815</sub>
 
 <a id="type-UiDesc"></a>
 
 ### `UiDesc` (desc struct)
 
-How the UI looks: the scheme, the density and its fonts.
+How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion and the icon atlas.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -1680,20 +3960,32 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `font` | `Font \| null` | `null` | — | — | — | The body font, from og.load.font; null measures text at half an em per character and draws none. |
 | `displayFont` | `Font \| null` | `null` | — | — | — | The display font; null uses the body font. |
 | `monoFont` | `Font \| null` | `null` | — | — | — | The monospaced font; null uses the body font. |
+| `contrast` | `Contrast` | `"standard"` | — | — | — | Standard or high contrast. |
+| `accentHue` | `HueName \| null` | `null` | — | — | — | A token hue as the game's accent (its hover, active, ink and focus tones derived as the tokens derive amber's); null keeps amber. |
+| `accentColor` | `Color \| null` | `null` | — | — | — | An sRGB colour as the game's accent, when no hue is given. |
+| `reducedMotion` | `boolean` | `false` | — | — | — | Transitions only fade; sheens stop (prefers-reduced-motion). |
+| `icons` | `IconAtlasDesc \| null` | `null` | — | — | — | The icon atlas og.ui.icon draws from. |
+| `toastAnchor` | `Anchor \| null` | `null` | — | — | — | Where toasts stack; null is the bottom centre. |
 
 ```ogt
 struct UiDesc {
-  doc "How the UI looks: the scheme, the density and its fonts."
+  doc "How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion and the icon atlas."
   desc true
   field scheme Scheme "The palette."
   field density DensityMode "The control sizes."
   field font Option.Font "The body font, from og.load.font; null measures text at half an em per character and draws none."
   field displayFont Option.Font "The display font; null uses the body font."
   field monoFont Option.Font "The monospaced font; null uses the body font."
+  field contrast Contrast "Standard or high contrast."
+  field accentHue Option.HueName "A token hue as the game's accent (its hover, active, ink and focus tones derived as the tokens derive amber's); null keeps amber."
+  field accentColor Option.Color "An sRGB colour as the game's accent, when no hue is given."
+  field reducedMotion bool "Transitions only fade; sheens stop (prefers-reduced-motion)."
+  field icons Option.IconAtlasDesc "The icon atlas og.ui.icon draws from."
+  field toastAnchor Option.Anchor "Where toasts stack; null is the bottom centre."
 }
 ```
 
-<sub>`api.ogt` line 2503</sub>
+<sub>`api.ogt` line 2831</sub>
 
 <a id="type-TypeStep"></a>
 
@@ -1724,7 +4016,7 @@ struct TypeStep {
 }
 ```
 
-<sub>`api.ogt` line 2513</sub>
+<sub>`api.ogt` line 2847</sub>
 
 <a id="type-ControlSizes"></a>
 
@@ -1769,7 +4061,7 @@ struct ControlSizes {
 }
 ```
 
-<sub>`api.ogt` line 2527</sub>
+<sub>`api.ogt` line 2861</sub>
 
 <a id="type-UiTheme"></a>
 
@@ -1800,7 +4092,7 @@ struct UiTheme {
 }
 ```
 
-<sub>`api.ogt` line 2552</sub>
+<sub>`api.ogt` line 2886</sub>
 
 <a id="type-UiBuild"></a>
 
@@ -1820,4 +4112,2682 @@ callback UiBuild {
 }
 ```
 
-<sub>`api.ogt` line 2563</sub>
+<sub>`api.ogt` line 2897</sub>
+
+<a id="type-Anchor"></a>
+
+### `Anchor` (enum)
+
+A point of the safe area an anchored group sits at.
+
+A string: one of the variants below. The zero value is `"topLeft"`.
+
+| Variant | Doc |
+|---|---|
+| `"topLeft"` | The top left corner. |
+| `"top"` | The middle of the top edge. |
+| `"topRight"` | The top right corner. |
+| `"left"` | The middle of the left edge. |
+| `"center"` | The centre. |
+| `"right"` | The middle of the right edge. |
+| `"bottomLeft"` | The bottom left corner. |
+| `"bottom"` | The middle of the bottom edge. |
+| `"bottomRight"` | The bottom right corner. |
+
+```ogt
+enum Anchor {
+  doc "A point of the safe area an anchored group sits at."
+  variant topLeft "The top left corner."
+  variant top "The middle of the top edge."
+  variant topRight "The top right corner."
+  variant left "The middle of the left edge."
+  variant center "The centre."
+  variant right "The middle of the right edge."
+  variant bottomLeft "The bottom left corner."
+  variant bottom "The middle of the bottom edge."
+  variant bottomRight "The bottom right corner."
+}
+```
+
+<sub>`api.ogt` line 3053</sub>
+
+<a id="type-TransitionKind"></a>
+
+### `TransitionKind` (enum)
+
+How a transition moves its content in and out. Under reduced motion every kind only fades.
+
+A string: one of the variants below. The zero value is `"fade"`.
+
+| Variant | Doc |
+|---|---|
+| `"fade"` | Opacity only. |
+| `"slideUp"` | Rises into place from below. |
+| `"slideDown"` | Drops into place from above. |
+| `"slideLeft"` | Enters from the right. |
+| `"slideRight"` | Enters from the left. |
+| `"scale"` | Grows from slightly smaller around its centre. |
+
+```ogt
+enum TransitionKind {
+  doc "How a transition moves its content in and out. Under reduced motion every kind only fades."
+  variant fade "Opacity only."
+  variant slideUp "Rises into place from below."
+  variant slideDown "Drops into place from above."
+  variant slideLeft "Enters from the right."
+  variant slideRight "Enters from the left."
+  variant scale "Grows from slightly smaller around its centre."
+}
+```
+
+<sub>`api.ogt` line 3066</sub>
+
+<a id="type-Tone"></a>
+
+### `Tone` (enum)
+
+A status tone, as the design language's badges and toasts.
+
+A string: one of the variants below. The zero value is `"neutral"`.
+
+| Variant | Doc |
+|---|---|
+| `"neutral"` | Neutral: fill and muted ink. |
+| `"success"` | Success. |
+| `"warn"` | Warning (orange). |
+| `"danger"` | Danger. |
+| `"info"` | Information. |
+| `"accent"` | Amber identity: the soft accent and amber ink. |
+| `"inverse"` | Neutral emphasis: fg fill, inverse ink. |
+
+```ogt
+enum Tone {
+  doc "A status tone, as the design language's badges and toasts."
+  variant neutral "Neutral: fill and muted ink."
+  variant success "Success."
+  variant warn "Warning (orange)."
+  variant danger "Danger."
+  variant info "Information."
+  variant accent "Amber identity: the soft accent and amber ink."
+  variant inverse "Neutral emphasis: fg fill, inverse ink."
+}
+```
+
+<sub>`api.ogt` line 3076</sub>
+
+<a id="type-MeterKind"></a>
+
+### `MeterKind` (enum)
+
+What a meter measures, which sets its colour.
+
+A string: one of the variants below. The zero value is `"health"`.
+
+| Variant | Doc |
+|---|---|
+| `"health"` | Green, warning orange under 30 %, danger red under 15 %. |
+| `"mana"` | The blue hue. |
+| `"xp"` | The purple hue. |
+| `"accent"` | The accent. |
+
+```ogt
+enum MeterKind {
+  doc "What a meter measures, which sets its colour."
+  variant health "Green, warning orange under 30 %, danger red under 15 %."
+  variant mana "The blue hue."
+  variant xp "The purple hue."
+  variant accent "The accent."
+}
+```
+
+<sub>`api.ogt` line 3087</sub>
+
+<a id="type-Breakpoint"></a>
+
+### `Breakpoint` (enum)
+
+The play surface's size class.
+
+A string: one of the variants below. The zero value is `"desktop"`.
+
+| Variant | Doc |
+|---|---|
+| `"desktop"` | 1024 CSS px wide or more, the shorter side 600 or more. |
+| `"tablet"` | The shorter side 600 or more, under 1024 wide. |
+| `"phoneLandscape"` | The shorter side under 600, wider than tall. |
+| `"phonePortrait"` | The shorter side under 600, taller than wide. |
+
+```ogt
+enum Breakpoint {
+  doc "The play surface's size class."
+  variant desktop "1024 CSS px wide or more, the shorter side 600 or more."
+  variant tablet "The shorter side 600 or more, under 1024 wide."
+  variant phoneLandscape "The shorter side under 600, wider than tall."
+  variant phonePortrait "The shorter side under 600, taller than wide."
+}
+```
+
+<sub>`api.ogt` line 3095</sub>
+
+<a id="type-Contrast"></a>
+
+### `Contrast` (enum)
+
+The theme variant: high contrast remaps muted inks, fills and borders to stronger tokens and outlines every control (no new colour).
+
+A string: one of the variants below. The zero value is `"standard"`.
+
+| Variant | Doc |
+|---|---|
+| `"standard"` | The token palette as it is. |
+| `"high"` | Stronger inks, fills and edges. |
+
+```ogt
+enum Contrast {
+  doc "The theme variant: high contrast remaps muted inks, fills and borders to stronger tokens and outlines every control (no new colour)."
+  variant standard "The token palette as it is."
+  variant high "Stronger inks, fills and edges."
+}
+```
+
+<sub>`api.ogt` line 3103</sub>
+
+<a id="type-HueName"></a>
+
+### `HueName` (enum)
+
+One of the twelve category hues of the tokens, for a game's accent.
+
+A string: one of the variants below. The zero value is `"red"`.
+
+| Variant | Doc |
+|---|---|
+| `"red"` | hue-red. |
+| `"orange"` | hue-orange. |
+| `"yellow"` | hue-yellow. |
+| `"green"` | hue-green. |
+| `"mint"` | hue-mint. |
+| `"teal"` | hue-teal. |
+| `"cyan"` | hue-cyan. |
+| `"blue"` | hue-blue. |
+| `"indigo"` | hue-indigo. |
+| `"purple"` | hue-purple. |
+| `"pink"` | hue-pink. |
+| `"brown"` | hue-brown. |
+
+```ogt
+enum HueName {
+  doc "One of the twelve category hues of the tokens, for a game's accent."
+  variant red "hue-red."
+  variant orange "hue-orange."
+  variant yellow "hue-yellow."
+  variant green "hue-green."
+  variant mint "hue-mint."
+  variant teal "hue-teal."
+  variant cyan "hue-cyan."
+  variant blue "hue-blue."
+  variant indigo "hue-indigo."
+  variant purple "hue-purple."
+  variant pink "hue-pink."
+  variant brown "hue-brown."
+}
+```
+
+<sub>`api.ogt` line 3109</sub>
+
+<a id="type-NavIntent"></a>
+
+### `NavIntent` (enum)
+
+A focus-navigation intent, as the arrow keys, Tab, Enter, Space, Escape and a gamepad's d-pad, stick, A and B give.
+
+A string: one of the variants below. The zero value is `"up"`.
+
+| Variant | Doc |
+|---|---|
+| `"up"` | Up. |
+| `"down"` | Down. |
+| `"left"` | Left. |
+| `"right"` | Right. |
+| `"next"` | The next control in reading order (Tab). |
+| `"prev"` | The previous one (Shift+Tab). |
+| `"activate"` | Press the focused control (Enter, Space, A). |
+| `"back"` | Leave: the topmost dialog or menu closes, else og.ui.back() answers true (Escape, B). |
+
+```ogt
+enum NavIntent {
+  doc "A focus-navigation intent, as the arrow keys, Tab, Enter, Space, Escape and a gamepad's d-pad, stick, A and B give."
+  variant up "Up."
+  variant down "Down."
+  variant left "Left."
+  variant right "Right."
+  variant next "The next control in reading order (Tab)."
+  variant prev "The previous one (Shift+Tab)."
+  variant activate "Press the focused control (Enter, Space, A)."
+  variant back "Leave: the topmost dialog or menu closes, else og.ui.back() answers true (Escape, B)."
+}
+```
+
+<sub>`api.ogt` line 3125</sub>
+
+<a id="type-UiRect"></a>
+
+### `UiRect` (struct)
+
+A rectangle of the play surface.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `x` | `number` | `0` | — | `cssPx` | — | Its left edge. |
+| `y` | `number` | `0` | — | `cssPx` | — | Its top edge. |
+| `width` | `number` | `0` | — | `cssPx` | — | Its width. |
+| `height` | `number` | `0` | — | `cssPx` | — | Its height. |
+
+```ogt
+struct UiRect {
+  doc "A rectangle of the play surface."
+  field x f32 "Its left edge." {
+    unit cssPx
+  }
+  field y f32 "Its top edge." {
+    unit cssPx
+  }
+  field width f32 "Its width." {
+    unit cssPx
+  }
+  field height f32 "Its height." {
+    unit cssPx
+  }
+}
+```
+
+<sub>`api.ogt` line 3137</sub>
+
+<a id="type-IconAtlasDesc"></a>
+
+### `IconAtlasDesc` (desc struct)
+
+The icon atlas: a texture of equal cells in a grid, named in reading order.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `texture` | `Texture \| null` | `null` | — | — | — | The atlas texture, from og.load.texture. |
+| `columns` | `number` | `1` | ≥ 1 | — | — | Cells across. |
+| `rows` | `number` | `1` | ≥ 1 | — | — | Cells down. |
+| `names` | `readonly string[]` | `[]` | — | — | — | Each cell's name, in reading order: og.ui.icon draws a cell by its name. |
+
+```ogt
+struct IconAtlasDesc {
+  doc "The icon atlas: a texture of equal cells in a grid, named in reading order."
+  desc true
+  field texture Option.Texture "The atlas texture, from og.load.texture."
+  field columns u32 "Cells across." {
+    default 1
+    min 1
+  }
+  field rows u32 "Cells down." {
+    default 1
+    min 1
+  }
+  field names List.String "Each cell's name, in reading order: og.ui.icon draws a cell by its name."
+}
+```
+
+<sub>`api.ogt` line 3153</sub>
+
+<a id="type-AnchorDesc"></a>
+
+### `AnchorDesc` (desc struct)
+
+An anchored group: a layer at a point of the safe area, over the tree (HUD corners, a centred title, a bar of touch controls).
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `anchor` | `Anchor` | `"topLeft"` | — | — | — | Where it sits. |
+| `margin` | `number \| null` | `null` | — | — | — | The inset from the safe area's edges; null is the density's gutter. |
+| `offsetX` | `number` | `0` | — | `cssPx` | — | Moves it right after placing. |
+| `offsetY` | `number` | `0` | — | `cssPx` | — | Moves it down after placing. |
+| `direction` | `Direction` | `"row"` | — | — | — | Which way it lays out its children. |
+| `gap` | `number` | `0` | — | `cssPx` | — | Space between children. |
+| `padding` | `Insets` | `{ left: 0, top: 0, right: 0, bottom: 0 }` | — | — | — | Space inside its edges. |
+| `align` | `Align` | `"start"` | — | — | — | Where children sit along the main axis. |
+| `cross` | `Cross` | `"start"` | — | — | — | Where children sit across it. |
+| `background` | `Paint \| null` | `null` | — | — | — | Its fill; null draws none. |
+| `radius` | `number` | `0` | — | `cssPx` | — | Corner radius. |
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null fits the content. |
+| `height` | `Size \| null` | `null` | — | — | — | Its height; null fits the content. |
+| `over` | `boolean` | `false` | — | — | — | Draw over dialogs and spotlights (a tutorial callout, a dragged item); the default draws under them. |
+
+```ogt
+struct AnchorDesc {
+  doc "An anchored group: a layer at a point of the safe area, over the tree (HUD corners, a centred title, a bar of touch controls)."
+  desc true
+  field anchor Anchor "Where it sits."
+  field margin Option.f32 "The inset from the safe area's edges; null is the density's gutter."
+  field offsetX f32 "Moves it right after placing." {
+    unit cssPx
+  }
+  field offsetY f32 "Moves it down after placing." {
+    unit cssPx
+  }
+  field direction Direction "Which way it lays out its children."
+  field gap f32 "Space between children." {
+    unit cssPx
+  }
+  field padding Insets "Space inside its edges."
+  field align Align "Where children sit along the main axis."
+  field cross Cross "Where children sit across it."
+  field background Option.Paint "Its fill; null draws none."
+  field radius f32 "Corner radius." {
+    unit cssPx
+  }
+  field width Option.Size "Its width; null fits the content."
+  field height Option.Size "Its height; null fits the content."
+  field over bool "Draw over dialogs and spotlights (a tutorial callout, a dragged item); the default draws under them."
+}
+```
+
+<sub>`api.ogt` line 3168</sub>
+
+<a id="type-TransitionDesc"></a>
+
+### `TransitionDesc` (desc struct)
+
+How a transition moves, timed in ticks from the motion tokens.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `kind` | `TransitionKind` | `"fade"` | — | — | — | The movement. |
+| `durationMs` | `number` | `0` | ≥ 0 | `ms` | — | How long entering and leaving take; 0 is motion.duration.base (240 ms). |
+| `distance` | `number` | `0` | ≥ 0 | `cssPx` | — | How far slides travel; 0 is space.xl. |
+| `instant` | `boolean` | `false` | — | — | — | Shown at once the first time it is built (no entrance). |
+
+```ogt
+struct TransitionDesc {
+  doc "How a transition moves, timed in ticks from the motion tokens."
+  desc true
+  field kind TransitionKind "The movement."
+  field durationMs f32 "How long entering and leaving take; 0 is motion.duration.base (240 ms)." {
+    unit ms
+    min 0
+  }
+  field distance f32 "How far slides travel; 0 is space.xl." {
+    unit cssPx
+    min 0
+  }
+  field instant bool "Shown at once the first time it is built (no entrance)."
+}
+```
+
+<sub>`api.ogt` line 3195</sub>
+
+<a id="type-Presence"></a>
+
+### `Presence` (struct)
+
+Where a transition or dialog is this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `visible` | `boolean` | `false` | — | — | — | Build its content: shown, entering or leaving. |
+| `progress` | `number` | `0` | — | `ratio` | — | 0 gone, 1 settled. |
+| `entering` | `boolean` | `false` | — | — | — | Moving in. |
+| `leaving` | `boolean` | `false` | — | — | — | Moving out. |
+
+```ogt
+struct Presence {
+  doc "Where a transition or dialog is this tick."
+  field visible bool "Build its content: shown, entering or leaving."
+  field progress f32 "0 gone, 1 settled." {
+    unit ratio
+  }
+  field entering bool "Moving in."
+  field leaving bool "Moving out."
+}
+```
+
+<sub>`api.ogt` line 3210</sub>
+
+<a id="type-ModalDesc"></a>
+
+### `ModalDesc` (desc struct)
+
+A dialog: a scrim over everything and a centred panel. Focus moves in and stays while it is the topmost; Back and the backdrop dismiss it unless locked.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `title` | `string` | `""` | — | — | — | A title over the content; empty is none. |
+| `width` | `Size \| null` | `null` | — | — | — | The panel's width; null is 420 CSS px, at most the surface less its gutters. |
+| `locked` | `boolean` | `false` | — | — | — | Back and the backdrop do not dismiss it (a choice must be made). |
+| `ignoreBackdrop` | `boolean` | `false` | — | — | — | A press on the backdrop does not dismiss it. |
+| `transition` | `TransitionKind \| null` | `null` | — | — | — | How it enters and leaves; null is scale. |
+| `backdrop` | `Paint \| null` | `null` | — | — | — | The backdrop's fill; null is scrim. |
+| `bare` | `boolean` | `false` | — | — | — | No panel: the content sits centred on the backdrop (full-screen menus, loading). |
+
+```ogt
+struct ModalDesc {
+  doc "A dialog: a scrim over everything and a centred panel. Focus moves in and stays while it is the topmost; Back and the backdrop dismiss it unless locked."
+  desc true
+  field title String "A title over the content; empty is none."
+  field width Option.Size "The panel's width; null is 420 CSS px, at most the surface less its gutters."
+  field locked bool "Back and the backdrop do not dismiss it (a choice must be made)."
+  field ignoreBackdrop bool "A press on the backdrop does not dismiss it."
+  field transition Option.TransitionKind "How it enters and leaves; null is scale."
+  field backdrop Option.Paint "The backdrop's fill; null is scrim."
+  field bare bool "No panel: the content sits centred on the backdrop (full-screen menus, loading)."
+}
+```
+
+<sub>`api.ogt` line 3220</sub>
+
+<a id="type-ModalResult"></a>
+
+### `ModalResult` (struct)
+
+A dialog's answer this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `visible` | `boolean` | `false` | — | — | — | Build its content (open, or leaving). |
+| `dismissed` | `boolean` | `false` | — | — | — | Back or a press on the backdrop asked to close it: set your open flag false. |
+
+```ogt
+struct ModalResult {
+  doc "A dialog's answer this tick."
+  field visible bool "Build its content (open, or leaving)."
+  field dismissed bool "Back or a press on the backdrop asked to close it: set your open flag false."
+}
+```
+
+<sub>`api.ogt` line 3232</sub>
+
+<a id="type-SpotlightDesc"></a>
+
+### `SpotlightDesc` (desc struct)
+
+A spotlight: the surface dimmed except a hole around a target.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `padding` | `number` | `0` | ≥ 0 | `cssPx` | — | Room around the target; 0 is space.sm. |
+
+```ogt
+struct SpotlightDesc {
+  doc "A spotlight: the surface dimmed except a hole around a target."
+  desc true
+  field padding f32 "Room around the target; 0 is space.sm." {
+    unit cssPx
+    min 0
+  }
+}
+```
+
+<sub>`api.ogt` line 3238</sub>
+
+<a id="type-ListDesc"></a>
+
+### `ListDesc` (desc struct)
+
+A virtualised list: only the rows in view (and one more each side) are built, fillers keep the scroll range of every row.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `count` | `number` | `0` | — | — | — | How many rows there are. |
+| `rowHeight` | `number` | `0` | ≥ 0 | `cssPx` | — | Every row's height; 0 is the density's row height. |
+| `gap` | `number` | `0` | — | `cssPx` | — | Space between rows. |
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null fits. |
+| `height` | `Size \| null` | `null` | — | — | — | Its height (it scrolls inside); null grows. |
+| `padding` | `Insets` | `{ left: 0, top: 0, right: 0, bottom: 0 }` | — | — | — | Space inside. |
+| `selected` | `number \| null` | `null` | — | — | — | The selected row (fill-strong), for og.ui.list. |
+
+```ogt
+struct ListDesc {
+  doc "A virtualised list: only the rows in view (and one more each side) are built, fillers keep the scroll range of every row."
+  desc true
+  field count u32 "How many rows there are."
+  field rowHeight f32 "Every row's height; 0 is the density's row height." {
+    unit cssPx
+    min 0
+  }
+  field gap f32 "Space between rows." {
+    unit cssPx
+  }
+  field width Option.Size "Its width; null fits."
+  field height Option.Size "Its height (it scrolls inside); null grows."
+  field padding Insets "Space inside."
+  field selected Option.u32 "The selected row (fill-strong), for og.ui.list."
+}
+```
+
+<sub>`api.ogt` line 3247</sub>
+
+<a id="type-ListRange"></a>
+
+### `ListRange` (struct)
+
+The rows (or cells) to build this tick: first up to, not including, last.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `first` | `number` | `0` | — | — | — | The first index. |
+| `last` | `number` | `0` | — | — | — | One past the last index. |
+
+```ogt
+struct ListRange {
+  doc "The rows (or cells) to build this tick: first up to, not including, last."
+  field first u32 "The first index."
+  field last u32 "One past the last index."
+}
+```
+
+<sub>`api.ogt` line 3264</sub>
+
+<a id="type-ListResult"></a>
+
+### `ListResult` (struct)
+
+What happened in a list or grid this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `clicked` | `number \| null` | `null` | — | — | — | The row or cell pressed (or activated) this tick. |
+| `dropFrom` | `number \| null` | `null` | — | — | — | A drag and drop ended: the index it started on. |
+| `dropTo` | `number \| null` | `null` | — | — | — | And the index it was released over. |
+
+```ogt
+struct ListResult {
+  doc "What happened in a list or grid this tick."
+  field clicked Option.u32 "The row or cell pressed (or activated) this tick."
+  field dropFrom Option.u32 "A drag and drop ended: the index it started on."
+  field dropTo Option.u32 "And the index it was released over."
+}
+```
+
+<sub>`api.ogt` line 3270</sub>
+
+<a id="type-GridDesc"></a>
+
+### `GridDesc` (desc struct)
+
+A virtualised grid of equal cells (inventories, level select), scrolling vertically.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `count` | `number` | `0` | — | — | — | How many cells there are. |
+| `cellWidth` | `number` | `0` | ≥ 0 | `cssPx` | — | A cell's width; 0 is 64 (never under the 44 px touch target). |
+| `cellHeight` | `number` | `0` | ≥ 0 | `cssPx` | — | A cell's height; 0 is its width. |
+| `columns` | `number` | `0` | — | — | — | Cells across; 0 is as many as fit. |
+| `gap` | `number` | `0` | ≥ 0 | `cssPx` | — | Space between cells; 0 is space.sm. |
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null fits (exactly the columns when columns is set). |
+| `height` | `Size \| null` | `null` | — | — | — | Its height; null grows. |
+| `padding` | `Insets` | `{ left: 0, top: 0, right: 0, bottom: 0 }` | — | — | — | Space inside. |
+| `selected` | `number \| null` | `null` | — | — | — | The selected cell, for og.ui.grid. |
+
+```ogt
+struct GridDesc {
+  doc "A virtualised grid of equal cells (inventories, level select), scrolling vertically."
+  desc true
+  field count u32 "How many cells there are."
+  field cellWidth f32 "A cell's width; 0 is 64 (never under the 44 px touch target)." {
+    unit cssPx
+    min 0
+  }
+  field cellHeight f32 "A cell's height; 0 is its width." {
+    unit cssPx
+    min 0
+  }
+  field columns u32 "Cells across; 0 is as many as fit."
+  field gap f32 "Space between cells; 0 is space.sm." {
+    unit cssPx
+    min 0
+  }
+  field width Option.Size "Its width; null fits (exactly the columns when columns is set)."
+  field height Option.Size "Its height; null grows."
+  field padding Insets "Space inside."
+  field selected Option.u32 "The selected cell, for og.ui.grid."
+}
+```
+
+<sub>`api.ogt` line 3277</sub>
+
+<a id="type-TabsDesc"></a>
+
+### `TabsDesc` (desc struct)
+
+A segmented control of tabs.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `fill` | `boolean` | `false` | — | — | — | Equal segments across the width. |
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null fits (grows with fill). |
+
+```ogt
+struct TabsDesc {
+  doc "A segmented control of tabs."
+  desc true
+  field fill bool "Equal segments across the width."
+  field width Option.Size "Its width; null fits (grows with fill)."
+}
+```
+
+<sub>`api.ogt` line 3300</sub>
+
+<a id="type-ChoiceResult"></a>
+
+### `ChoiceResult` (struct)
+
+A choice control's response and the chosen index after this tick's input.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null }` | — | — | — | What happened to it; changed when the choice moved. |
+| `selected` | `number` | `0` | — | — | — | The chosen index, to keep in game state and pass back next tick. |
+
+```ogt
+struct ChoiceResult {
+  doc "A choice control's response and the chosen index after this tick's input."
+  field response Response "What happened to it; changed when the choice moved."
+  field selected u32 "The chosen index, to keep in game state and pass back next tick."
+}
+```
+
+<sub>`api.ogt` line 3307</sub>
+
+<a id="type-SelectDesc"></a>
+
+### `SelectDesc` (desc struct)
+
+A select: a trigger that opens a menu of options.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `placeholder` | `string` | `""` | — | — | — | Shown while nothing is chosen. |
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null grows from 160. |
+| `disabled` | `boolean` | `false` | — | — | — | Neutral and inert. |
+
+```ogt
+struct SelectDesc {
+  doc "A select: a trigger that opens a menu of options."
+  desc true
+  field placeholder String "Shown while nothing is chosen."
+  field width Option.Size "Its width; null grows from 160."
+  field disabled bool "Neutral and inert."
+}
+```
+
+<sub>`api.ogt` line 3313</sub>
+
+<a id="type-StepperDesc"></a>
+
+### `StepperDesc` (desc struct)
+
+A number stepper's range, step and digits.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `min` | `number` | `0` | — | — | — | The smallest value; min equal to max (the zero value) is unbounded. |
+| `max` | `number` | `0` | — | — | — | The largest value. |
+| `step` | `number` | `0` | ≥ 0 | — | — | How much a press changes it; 0 is 1. |
+| `decimals` | `number` | `0` | ≤ 6 | — | — | Digits after the point. |
+
+```ogt
+struct StepperDesc {
+  doc "A number stepper's range, step and digits."
+  desc true
+  field min f32 "The smallest value; min equal to max (the zero value) is unbounded."
+  field max f32 "The largest value."
+  field step f32 "How much a press changes it; 0 is 1." {
+    min 0
+  }
+  field decimals u32 "Digits after the point." {
+    max 6
+  }
+}
+```
+
+<sub>`api.ogt` line 3321</sub>
+
+<a id="type-StepperResult"></a>
+
+### `StepperResult` (struct)
+
+A stepper's response and value after this tick's input.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null }` | — | — | — | What happened to it. |
+| `value` | `number` | `0` | — | — | — | The value, to keep in game state and pass back next tick. |
+
+```ogt
+struct StepperResult {
+  doc "A stepper's response and value after this tick's input."
+  field response Response "What happened to it."
+  field value f32 "The value, to keep in game state and pass back next tick."
+}
+```
+
+<sub>`api.ogt` line 3334</sub>
+
+<a id="type-RadioDesc"></a>
+
+### `RadioDesc` (desc struct)
+
+How a radio group lays out.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `horizontal` | `boolean` | `false` | — | — | — | Options in a row (the default is a column). |
+
+```ogt
+struct RadioDesc {
+  doc "How a radio group lays out."
+  desc true
+  field horizontal bool "Options in a row (the default is a column)."
+}
+```
+
+<sub>`api.ogt` line 3340</sub>
+
+<a id="type-CheckListResult"></a>
+
+### `CheckListResult` (struct)
+
+A checkbox list's response and values after this tick's input.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null }` | — | — | — | What happened to it; changed when any box flipped. |
+| `values` | `readonly boolean[]` | `[]` | — | — | — | The values, to keep in game state and pass back next tick. |
+
+```ogt
+struct CheckListResult {
+  doc "A checkbox list's response and values after this tick's input."
+  field response Response "What happened to it; changed when any box flipped."
+  field values List.bool "The values, to keep in game state and pass back next tick."
+}
+```
+
+<sub>`api.ogt` line 3346</sub>
+
+<a id="type-ToastDesc"></a>
+
+### `ToastDesc` (desc struct)
+
+A toast's tone and time.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `tone` | `Tone` | `"neutral"` | — | — | — | Its tone: a dot of the tone's colour before the text. |
+| `durationMs` | `number` | `0` | ≥ 0 | `ms` | — | How long it stays; 0 is 3200 ms (6000 for danger). |
+
+```ogt
+struct ToastDesc {
+  doc "A toast's tone and time."
+  desc true
+  field tone Tone "Its tone: a dot of the tone's colour before the text."
+  field durationMs f32 "How long it stays; 0 is 3200 ms (6000 for danger)." {
+    unit ms
+    min 0
+  }
+}
+```
+
+<sub>`api.ogt` line 3352</sub>
+
+<a id="type-ChipDesc"></a>
+
+### `ChipDesc` (desc struct)
+
+A chip's state.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `selected` | `boolean` | `false` | — | — | — | Selected: inverted to fg. |
+| `disabled` | `boolean` | `false` | — | — | — | Neutral and inert. |
+
+```ogt
+struct ChipDesc {
+  doc "A chip's state."
+  desc true
+  field selected bool "Selected: inverted to fg."
+  field disabled bool "Neutral and inert."
+}
+```
+
+<sub>`api.ogt` line 3362</sub>
+
+<a id="type-MeterDesc"></a>
+
+### `MeterDesc` (desc struct)
+
+A meter: a capsule track with a fill that animates its changes by the tick.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `kind` | `MeterKind` | `"health"` | — | — | — | What it measures, which sets its colour. |
+| `color` | `Paint \| null` | `null` | — | — | — | A colour of your own instead of the kind's. |
+| `label` | `string` | `""` | — | — | — | Text inside the bar (such as `75 / 100`); empty is none. |
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null grows. |
+| `height` | `number` | `0` | ≥ 0 | `cssPx` | — | Its height; 0 is space.md, or the caption's line with a label. |
+| `segments` | `number` | `0` | — | — | — | Notches dividing it into this many parts; 0 or 1 is none. |
+
+```ogt
+struct MeterDesc {
+  doc "A meter: a capsule track with a fill that animates its changes by the tick."
+  desc true
+  field kind MeterKind "What it measures, which sets its colour."
+  field color Option.Paint "A colour of your own instead of the kind's."
+  field label String "Text inside the bar (such as `75 / 100`); empty is none."
+  field width Option.Size "Its width; null grows."
+  field height f32 "Its height; 0 is space.md, or the caption's line with a label." {
+    unit cssPx
+    min 0
+  }
+  field segments u32 "Notches dividing it into this many parts; 0 or 1 is none."
+}
+```
+
+<sub>`api.ogt` line 3369</sub>
+
+<a id="type-CooldownDesc"></a>
+
+### `CooldownDesc` (desc struct)
+
+A cooldown ring's size and centre.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `size` | `number` | `0` | ≥ 0 | `cssPx` | — | Its diameter; 0 is 56 (never under 44). |
+| `label` | `string` | `""` | — | — | — | Text in the middle (a key, seconds left); empty is none. |
+| `icon` | `string` | `""` | — | — | — | An icon of the atlas in the middle, by name; empty is none. |
+
+```ogt
+struct CooldownDesc {
+  doc "A cooldown ring's size and centre."
+  desc true
+  field size f32 "Its diameter; 0 is 56 (never under 44)." {
+    unit cssPx
+    min 0
+  }
+  field label String "Text in the middle (a key, seconds left); empty is none."
+  field icon String "An icon of the atlas in the middle, by name; empty is none."
+}
+```
+
+<sub>`api.ogt` line 3383</sub>
+
+<a id="type-IconDesc"></a>
+
+### `IconDesc` (desc struct)
+
+An icon's size and ink.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `size` | `number` | `0` | ≥ 0 | `cssPx` | — | Its size; 0 is 24. |
+| `tint` | `Paint \| null` | `null` | — | — | — | Its ink; null is fg. |
+
+```ogt
+struct IconDesc {
+  doc "An icon's size and ink."
+  desc true
+  field size f32 "Its size; 0 is 24." {
+    unit cssPx
+    min 0
+  }
+  field tint Option.Paint "Its ink; null is fg."
+}
+```
+
+<sub>`api.ogt` line 3394</sub>
+
+<a id="type-MapMarker"></a>
+
+### `MapMarker` (desc struct)
+
+A marker on a mini-map.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `x` | `number` | `0` | — | `ratio` | — | Across the map, 0 to 1. |
+| `y` | `number` | `0` | — | `ratio` | — | Down the map, 0 to 1. |
+| `tone` | `Tone` | `"neutral"` | — | — | — | Its colour; neutral is the stage ink. |
+| `player` | `boolean` | `false` | — | — | — | The player: the accent, larger, ringed. |
+
+```ogt
+struct MapMarker {
+  doc "A marker on a mini-map."
+  desc true
+  field x f32 "Across the map, 0 to 1." {
+    unit ratio
+  }
+  field y f32 "Down the map, 0 to 1." {
+    unit ratio
+  }
+  field tone Tone "Its colour; neutral is the stage ink."
+  field player bool "The player: the accent, larger, ringed."
+}
+```
+
+<sub>`api.ogt` line 3404</sub>
+
+<a id="type-MinimapDesc"></a>
+
+### `MinimapDesc` (desc struct)
+
+A mini-map frame.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `texture` | `Texture \| null` | `null` | — | — | — | The map; null is the stage colour. |
+| `uv` | `[number, number, number, number] \| null` | `null` | — | — | — | The region of the map shown, [u0, v0, u1, v1]; null is the whole texture. |
+| `size` | `number` | `0` | ≥ 0 | `cssPx` | — | Its side; 0 is 160. |
+| `markers` | `readonly MapMarker[]` | `[]` | — | — | — | Markers over the map. |
+| `label` | `string` | `""` | — | — | — | A zone name under it; empty is none. |
+
+```ogt
+struct MinimapDesc {
+  doc "A mini-map frame."
+  desc true
+  field texture Option.Texture "The map; null is the stage colour."
+  field uv Option.Array.f32.4 "The region of the map shown, [u0, v0, u1, v1]; null is the whole texture."
+  field size f32 "Its side; 0 is 160." {
+    unit cssPx
+    min 0
+  }
+  field markers List.MapMarker "Markers over the map."
+  field label String "A zone name under it; empty is none."
+}
+```
+
+<sub>`api.ogt` line 3417</sub>
+
+<a id="type-DialogueDesc"></a>
+
+### `DialogueDesc` (desc struct)
+
+A dialogue box: a portrait slot, the speaker and the line typed out by the tick.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `speaker` | `string` | `""` | — | — | — | Who speaks (amber ink). |
+| `text` | `string` | `""` | — | — | — | The line. A new text starts typing again. |
+| `portrait` | `Texture \| null` | `null` | — | — | — | A portrait texture; null is the speaker's initial. |
+| `portraitUv` | `[number, number, number, number] \| null` | `null` | — | — | — | The portrait's region of the texture; null is the whole texture. |
+| `portraitIcon` | `string` | `""` | — | — | — | A portrait from the icon atlas by name, when no texture is given; empty is the speaker's initial. |
+| `charsPerSecond` | `number` | `0` | ≥ 0 | — | — | Typing speed; 0 is 40. |
+| `portraitRight` | `boolean` | `false` | — | — | — | The portrait on the right. |
+
+```ogt
+struct DialogueDesc {
+  doc "A dialogue box: a portrait slot, the speaker and the line typed out by the tick."
+  desc true
+  field speaker String "Who speaks (amber ink)."
+  field text String "The line. A new text starts typing again."
+  field portrait Option.Texture "A portrait texture; null is the speaker's initial."
+  field portraitUv Option.Array.f32.4 "The portrait's region of the texture; null is the whole texture."
+  field portraitIcon String "A portrait from the icon atlas by name, when no texture is given; empty is the speaker's initial."
+  field charsPerSecond f32 "Typing speed; 0 is 40." {
+    min 0
+  }
+  field portraitRight bool "The portrait on the right."
+}
+```
+
+<sub>`api.ogt` line 3430</sub>
+
+<a id="type-DialogueResult"></a>
+
+### `DialogueResult` (struct)
+
+A dialogue box's answer this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `shown` | `number` | `0` | — | — | — | Characters shown. |
+| `done` | `boolean` | `false` | — | — | — | The whole line is shown. |
+| `advanced` | `boolean` | `false` | — | — | — | Pressed (or activated) while done: show the next line. |
+
+```ogt
+struct DialogueResult {
+  doc "A dialogue box's answer this tick."
+  field shown u32 "Characters shown."
+  field done bool "The whole line is shown."
+  field advanced bool "Pressed (or activated) while done: show the next line."
+}
+```
+
+<sub>`api.ogt` line 3444</sub>
+
+<a id="type-JoystickDesc"></a>
+
+### `JoystickDesc` (desc struct)
+
+A virtual joystick.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `size` | `number` | `0` | ≥ 0 | `cssPx` | — | The base's diameter; 0 is 128 (never under three touch targets). |
+| `deadZone` | `number` | `0` | 0 … 1 | `ratio` | — | The ignored radius; 0 is 0.15. |
+
+```ogt
+struct JoystickDesc {
+  doc "A virtual joystick."
+  desc true
+  field size f32 "The base's diameter; 0 is 128 (never under three touch targets)." {
+    unit cssPx
+    min 0
+  }
+  field deadZone f32 "The ignored radius; 0 is 0.15." {
+    unit ratio
+    min 0
+    max 1
+  }
+}
+```
+
+<sub>`api.ogt` line 3451</sub>
+
+<a id="type-JoystickResult"></a>
+
+### `JoystickResult` (struct)
+
+A joystick's vector this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `x` | `number` | `0` | — | — | — | -1 left to 1 right; 0 inside the dead zone. |
+| `y` | `number` | `0` | — | — | — | -1 up to 1 down; 0 inside the dead zone. |
+| `active` | `boolean` | `false` | — | — | — | A press that started on it is held. |
+
+```ogt
+struct JoystickResult {
+  doc "A joystick's vector this tick."
+  field x f32 "-1 left to 1 right; 0 inside the dead zone."
+  field y f32 "-1 up to 1 down; 0 inside the dead zone."
+  field active bool "A press that started on it is held."
+}
+```
+
+<sub>`api.ogt` line 3465</sub>
+
+<a id="type-DpadDesc"></a>
+
+### `DpadDesc` (desc struct)
+
+A d-pad.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `size` | `number` | `0` | ≥ 0 | `cssPx` | — | The pad's size; 0 is 132 (each arm at least 44). |
+
+```ogt
+struct DpadDesc {
+  doc "A d-pad."
+  desc true
+  field size f32 "The pad's size; 0 is 132 (each arm at least 44)." {
+    unit cssPx
+    min 0
+  }
+}
+```
+
+<sub>`api.ogt` line 3472</sub>
+
+<a id="type-DpadResult"></a>
+
+### `DpadResult` (struct)
+
+Which arms of a d-pad are held this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `up` | `boolean` | `false` | — | — | — | Up is held. |
+| `down` | `boolean` | `false` | — | — | — | Down is held. |
+| `left` | `boolean` | `false` | — | — | — | Left is held. |
+| `right` | `boolean` | `false` | — | — | — | Right is held. |
+
+```ogt
+struct DpadResult {
+  doc "Which arms of a d-pad are held this tick."
+  field up bool "Up is held."
+  field down bool "Down is held."
+  field left bool "Left is held."
+  field right bool "Right is held."
+}
+```
+
+<sub>`api.ogt` line 3481</sub>
+
+<a id="type-ActionButtonDesc"></a>
+
+### `ActionButtonDesc` (desc struct)
+
+A round touch action button (jump, fire).
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `size` | `number` | `0` | ≥ 0 | `cssPx` | — | Its diameter; 0 is 64 (never under 44). |
+| `primary` | `boolean` | `false` | — | — | — | The amber button (one per screen). |
+| `icon` | `string` | `""` | — | — | — | An icon of the atlas by name, instead of the label; empty is the label. |
+
+```ogt
+struct ActionButtonDesc {
+  doc "A round touch action button (jump, fire)."
+  desc true
+  field size f32 "Its diameter; 0 is 64 (never under 44)." {
+    unit cssPx
+    min 0
+  }
+  field primary bool "The amber button (one per screen)."
+  field icon String "An icon of the atlas by name, instead of the label; empty is the label."
+}
+```
+
+<sub>`api.ogt` line 3489</sub>
+
+<a id="type-SkeletonDesc"></a>
+
+### `SkeletonDesc` (desc struct)
+
+A skeleton: the neutral fill standing in for content that is loading.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null grows. |
+| `height` | `number` | `0` | ≥ 0 | `cssPx` | — | A line's height; 0 is the body size. |
+| `lines` | `number` | `0` | — | — | — | Stacked lines; 0 or 1 is one, the last of several is shorter. |
+
+```ogt
+struct SkeletonDesc {
+  doc "A skeleton: the neutral fill standing in for content that is loading."
+  desc true
+  field width Option.Size "Its width; null grows."
+  field height f32 "A line's height; 0 is the body size." {
+    unit cssPx
+    min 0
+  }
+  field lines u32 "Stacked lines; 0 or 1 is one, the last of several is shorter."
+}
+```
+
+<sub>`api.ogt` line 3500</sub>
+
+<a id="type-UiItemBuild"></a>
+
+### `UiItemBuild` (callback)
+
+Builds one row or cell of a virtualised list or grid: ui calls made inside nest under it.
+
+Game code supplies this function.
+
+```ts
+type UiItemBuild = (index: number) => void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `index` | `number` | no | Its index. |
+
+```ogt
+callback UiItemBuild {
+  doc "Builds one row or cell of a virtualised list or grid: ui calls made inside nest under it."
+  param index u32 "Its index."
+}
+```
+
+<sub>`api.ogt` line 3511</sub>
+
+<a id="type-GraphicsQuality"></a>
+
+### `GraphicsQuality` (enum)
+
+A graphics quality preset.
+
+A string: one of the variants below. The zero value is `"medium"`.
+
+| Variant | Doc |
+|---|---|
+| `"medium"` | Medium. |
+| `"low"` | Low: the fewest effects. |
+| `"high"` | High: every effect. |
+
+```ogt
+enum GraphicsQuality {
+  doc "A graphics quality preset."
+  variant medium "Medium."
+  variant low "Low: the fewest effects."
+  variant high "High: every effect."
+}
+```
+
+<sub>`api.ogt` line 3896</sub>
+
+<a id="type-UiAction"></a>
+
+### `UiAction` (callback)
+
+A template's action, by its id (a menu item, `buy:<item>`, `share`).
+
+Game code supplies this function.
+
+```ts
+type UiAction = (action: string) => void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `action` | `string` | no | The action's id. |
+
+```ogt
+callback UiAction {
+  doc "A template's action, by its id (a menu item, `buy:<item>`, `share`)."
+  param action String "The action's id."
+}
+```
+
+<sub>`api.ogt` line 3903</sub>
+
+<a id="type-SettingsChanged"></a>
+
+### `SettingsChanged` (callback)
+
+The settings after a change: persist them (cloud save, local storage through the shell) and apply them.
+
+Game code supplies this function.
+
+```ts
+type SettingsChanged = (settings: GameSettings) => void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `settings` | `GameSettings` | yes | The new settings. |
+
+```ogt
+callback SettingsChanged {
+  doc "The settings after a change: persist them (cloud save, local storage through the shell) and apply them."
+  param settings GameSettings "The new settings."
+}
+```
+
+<sub>`api.ogt` line 3908</sub>
+
+<a id="type-MenuItem"></a>
+
+### `MenuItem` (desc struct)
+
+An item of a menu: an id the game acts on and the label a player reads.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `id` | `string` | `""` | — | — | — | The id answered when it is chosen; also its probe id. |
+| `label` | `string` | `""` | — | — | — | What it says. |
+| `disabled` | `boolean` | `false` | — | — | — | Shown but inert. |
+| `primary` | `boolean` | `false` | — | — | — | The amber action (one per screen). |
+
+```ogt
+struct MenuItem {
+  doc "An item of a menu: an id the game acts on and the label a player reads."
+  desc true
+  field id String "The id answered when it is chosen; also its probe id."
+  field label String "What it says."
+  field disabled bool "Shown but inert."
+  field primary bool "The amber action (one per screen)."
+}
+```
+
+<sub>`api.ogt` line 3913</sub>
+
+<a id="type-MenuResult"></a>
+
+### `MenuResult` (struct)
+
+What a menu-like template answered this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `selected` | `string \| null` | `null` | — | — | — | The id of the item chosen this tick. |
+
+```ogt
+struct MenuResult {
+  doc "What a menu-like template answered this tick."
+  field selected Option.String "The id of the item chosen this tick."
+}
+```
+
+<sub>`api.ogt` line 3922</sub>
+
+<a id="type-MainMenuDesc"></a>
+
+### `MainMenuDesc` (desc struct)
+
+A title screen: the title, a subtitle, a column of items (the first primary unless one says so) and a footer. Centred on desktop and tablet, bottom-weighted on a phone.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `title` | `string` | `""` | — | — | — | The game's title, in display type. |
+| `subtitle` | `string` | `""` | — | — | — | A line under it; empty is none. |
+| `items` | `readonly MenuItem[]` | `[]` | — | — | — | The items, such as Play, Continue, Settings, Quit. |
+| `footer` | `string` | `""` | — | — | — | A line at the bottom (a version, credits); empty is none. |
+| `onSelect` | `UiAction \| null` | `null` | — | — | — | Called with the chosen item's id. |
+
+```ogt
+struct MainMenuDesc {
+  doc "A title screen: the title, a subtitle, a column of items (the first primary unless one says so) and a footer. Centred on desktop and tablet, bottom-weighted on a phone."
+  desc true
+  field title String "The game's title, in display type."
+  field subtitle String "A line under it; empty is none."
+  field items List.MenuItem "The items, such as Play, Continue, Settings, Quit."
+  field footer String "A line at the bottom (a version, credits); empty is none."
+  field onSelect Option.UiAction "Called with the chosen item's id."
+}
+```
+
+<sub>`api.ogt` line 3927</sub>
+
+<a id="type-PauseMenuDesc"></a>
+
+### `PauseMenuDesc` (desc struct)
+
+A pause screen: a dialog over the frozen game with Resume first. Back resumes.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `open` | `boolean` | `false` | — | — | — | Whether the game is paused. |
+| `title` | `string` | `"Paused"` | — | — | — | Its title. |
+| `items` | `readonly MenuItem[]` | `[]` | — | — | — | The items; empty is Resume, Settings, Quit to menu (`resume`, `settings`, `quit`). |
+| `onSelect` | `UiAction \| null` | `null` | — | — | — | Called with the chosen item's id; Back answers `resume`. |
+
+```ogt
+struct PauseMenuDesc {
+  doc "A pause screen: a dialog over the frozen game with Resume first. Back resumes."
+  desc true
+  field open bool "Whether the game is paused."
+  field title String "Its title." {
+    default "Paused"
+  }
+  field items List.MenuItem "The items; empty is Resume, Settings, Quit to menu (`resume`, `settings`, `quit`)."
+  field onSelect Option.UiAction "Called with the chosen item's id; Back answers `resume`."
+}
+```
+
+<sub>`api.ogt` line 3937</sub>
+
+<a id="type-KeyBinding"></a>
+
+### `KeyBinding` (desc struct)
+
+A control the settings screen lists: an action and the key bound to it.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `action` | `string` | `""` | — | — | — | The action's id. |
+| `label` | `string` | `""` | — | — | — | What a player reads. |
+| `key` | `string` | `""` | — | — | — | The bound key, as shown (`Space`, `A`, `←`). |
+
+```ogt
+struct KeyBinding {
+  doc "A control the settings screen lists: an action and the key bound to it."
+  desc true
+  field action String "The action's id."
+  field label String "What a player reads."
+  field key String "The bound key, as shown (`Space`, `A`, `←`)."
+}
+```
+
+<sub>`api.ogt` line 3948</sub>
+
+<a id="type-LanguageOption"></a>
+
+### `LanguageOption` (desc struct)
+
+A language the settings screen offers, in its own name.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `code` | `string` | `""` | — | — | — | Its code (`en`, `zh-CN`). |
+| `label` | `string` | `""` | — | — | — | Its name in itself (`English`, `简体中文`). |
+
+```ogt
+struct LanguageOption {
+  doc "A language the settings screen offers, in its own name."
+  desc true
+  field code String "Its code (`en`, `zh-CN`)."
+  field label String "Its name in itself (`English`, `简体中文`)."
+}
+```
+
+<sub>`api.ogt` line 3956</sub>
+
+<a id="type-GameSettings"></a>
+
+### `GameSettings` (desc struct)
+
+The settings most games share. The game keeps them (a resource, a save) and passes them in every tick.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `masterVolume` | `number` | `1` | 0 … 1 | `ratio` | — | The master volume. |
+| `musicVolume` | `number` | `0.8` | 0 … 1 | `ratio` | — | The music bus. |
+| `sfxVolume` | `number` | `1` | 0 … 1 | `ratio` | — | The effects bus. |
+| `muted` | `boolean` | `false` | — | — | — | Everything silent. |
+| `quality` | `GraphicsQuality` | `"medium"` | — | — | — | The graphics preset. |
+| `showFps` | `boolean` | `false` | — | — | — | Show the frame rate. |
+| `reducedMotion` | `boolean` | `false` | — | — | — | Keep state changes, drop movement (the UI's transitions only fade). |
+| `highContrast` | `boolean` | `false` | — | — | — | The high-contrast theme. |
+| `vibration` | `boolean` | `true` | — | — | — | Vibrate on hits (where the device can). |
+| `invertY` | `boolean` | `false` | — | — | — | Invert the vertical look axis. |
+| `sensitivity` | `number` | `1` | 0.1 … 3 | — | — | Look sensitivity. |
+| `language` | `string` | `"en"` | — | — | — | The language code. |
+| `bindings` | `readonly KeyBinding[]` | `[]` | — | — | — | The controls, as shown on the Controls tab. |
+
+```ogt
+struct GameSettings {
+  doc "The settings most games share. The game keeps them (a resource, a save) and passes them in every tick."
+  desc true
+  field masterVolume f32 "The master volume." {
+    default 1
+    min 0
+    max 1
+    unit ratio
+  }
+  field musicVolume f32 "The music bus." {
+    default 0.8
+    min 0
+    max 1
+    unit ratio
+  }
+  field sfxVolume f32 "The effects bus." {
+    default 1
+    min 0
+    max 1
+    unit ratio
+  }
+  field muted bool "Everything silent."
+  field quality GraphicsQuality "The graphics preset."
+  field showFps bool "Show the frame rate."
+  field reducedMotion bool "Keep state changes, drop movement (the UI's transitions only fade)."
+  field highContrast bool "The high-contrast theme."
+  field vibration bool "Vibrate on hits (where the device can)." {
+    default true
+  }
+  field invertY bool "Invert the vertical look axis."
+  field sensitivity f32 "Look sensitivity." {
+    default 1
+    min 0.1
+    max 3
+  }
+  field language String "The language code." {
+    default "en"
+  }
+  field bindings List.KeyBinding "The controls, as shown on the Controls tab."
+}
+```
+
+<sub>`api.ogt` line 3963</sub>
+
+<a id="type-SettingsDesc"></a>
+
+### `SettingsDesc` (desc struct)
+
+A settings screen: Audio, Graphics, Controls and Language tabs (a select on a phone) over the game's settings, with persistence hooks.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `open` | `boolean` | `false` | — | — | — | Whether it is shown. |
+| `settings` | `GameSettings` | `{}` | — | — | — | The settings from game state. |
+| `languages` | `readonly LanguageOption[]` | `[]` | — | — | — | The languages offered; empty hides the Language tab. |
+| `onChange` | `SettingsChanged \| null` | `null` | — | — | — | Called on every change (apply it at once: volume, contrast). |
+| `onSave` | `SettingsChanged \| null` | `null` | — | — | — | Called when the screen closes after changes (persist here). |
+
+```ogt
+struct SettingsDesc {
+  doc "A settings screen: Audio, Graphics, Controls and Language tabs (a select on a phone) over the game's settings, with persistence hooks."
+  desc true
+  field open bool "Whether it is shown."
+  field settings GameSettings "The settings from game state."
+  field languages List.LanguageOption "The languages offered; empty hides the Language tab."
+  field onChange Option.SettingsChanged "Called on every change (apply it at once: volume, contrast)."
+  field onSave Option.SettingsChanged "Called when the screen closes after changes (persist here)."
+}
+```
+
+<sub>`api.ogt` line 4004</sub>
+
+<a id="type-SettingsResult"></a>
+
+### `SettingsResult` (struct)
+
+The settings screen's answer this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `settings` | `GameSettings` | `{}` | — | — | — | The settings after this tick's input: keep them. |
+| `changed` | `boolean` | `false` | — | — | — | Something changed this tick. |
+| `closed` | `boolean` | `false` | — | — | — | The player closed the screen (Back, Done): set open false. |
+
+```ogt
+struct SettingsResult {
+  doc "The settings screen's answer this tick."
+  field settings GameSettings "The settings after this tick's input: keep them."
+  field changed bool "Something changed this tick."
+  field closed bool "The player closed the screen (Back, Done): set open false."
+}
+```
+
+<sub>`api.ogt` line 4014</sub>
+
+<a id="type-Ability"></a>
+
+### `Ability` (desc struct)
+
+An ability on a HUD: a cooldown ring with its key.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `id` | `string` | `""` | — | — | — | Its id (and probe id). |
+| `key` | `string` | `""` | — | — | — | The key or button shown in the middle. |
+| `icon` | `string` | `""` | — | — | — | An icon of the atlas instead of the key; empty is the key. |
+| `remaining` | `number` | `0` | — | `ratio` | — | How much of its cooldown is left: 1 just used, 0 ready. |
+
+```ogt
+struct Ability {
+  doc "An ability on a HUD: a cooldown ring with its key."
+  desc true
+  field id String "Its id (and probe id)."
+  field key String "The key or button shown in the middle."
+  field icon String "An icon of the atlas instead of the key; empty is the key."
+  field remaining f32 "How much of its cooldown is left: 1 just used, 0 ready." {
+    unit ratio
+  }
+}
+```
+
+<sub>`api.ogt` line 4021</sub>
+
+<a id="type-PlatformerHudDesc"></a>
+
+### `PlatformerHudDesc` (desc struct)
+
+A platformer HUD: lives as hearts and a level name top left, coins and score top right, a timer, a pause button.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `lives` | `number` | `0` | — | — | — | Lives left. |
+| `maxLives` | `number` | `3` | — | — | — | Lives at most (hearts drawn). |
+| `coins` | `number` | `0` | — | — | — | Coins collected. |
+| `score` | `number` | `0` | — | — | — | The score. |
+| `level` | `string` | `""` | — | — | — | The level's name; empty is none. |
+| `timeLeft` | `number \| null` | `null` | — | — | — | Seconds left; null hides the timer. |
+| `health` | `number \| null` | `null` | — | — | — | A health bar instead of hearts, 0 to 1; null shows hearts. |
+| `touch` | `boolean` | `false` | — | — | — | Show touch controls (a d-pad and Jump) on phones and tablets. |
+
+```ogt
+struct PlatformerHudDesc {
+  doc "A platformer HUD: lives as hearts and a level name top left, coins and score top right, a timer, a pause button."
+  desc true
+  field lives u32 "Lives left."
+  field maxLives u32 "Lives at most (hearts drawn)." {
+    default 3
+  }
+  field coins u32 "Coins collected."
+  field score u32 "The score."
+  field level String "The level's name; empty is none."
+  field timeLeft Option.f32 "Seconds left; null hides the timer."
+  field health Option.f32 "A health bar instead of hearts, 0 to 1; null shows hearts."
+  field touch bool "Show touch controls (a d-pad and Jump) on phones and tablets."
+}
+```
+
+<sub>`api.ogt` line 4032</sub>
+
+<a id="type-HudResult"></a>
+
+### `HudResult` (struct)
+
+What a HUD answered this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `paused` | `boolean` | `false` | — | — | — | The pause button was pressed (or Back). |
+| `action` | `string \| null` | `null` | — | — | — | A HUD action pressed this tick (an ability's id, `jump`, a generator's `buy:<id>`, `tap`). |
+| `moveX` | `number` | `0` | — | — | — | The touch controls' horizontal input, -1 to 1. |
+| `moveY` | `number` | `0` | — | — | — | The touch controls' vertical input, -1 (up) to 1. |
+| `held` | `readonly string[]` | `[]` | — | — | — | The touch action buttons held this tick. |
+
+```ogt
+struct HudResult {
+  doc "What a HUD answered this tick."
+  field paused bool "The pause button was pressed (or Back)."
+  field action Option.String "A HUD action pressed this tick (an ability's id, `jump`, a generator's `buy:<id>`, `tap`)."
+  field moveX f32 "The touch controls' horizontal input, -1 to 1."
+  field moveY f32 "The touch controls' vertical input, -1 (up) to 1."
+  field held List.String "The touch action buttons held this tick."
+}
+```
+
+<sub>`api.ogt` line 4047</sub>
+
+<a id="type-ShooterHudDesc"></a>
+
+### `ShooterHudDesc` (desc struct)
+
+A shooter HUD: health and armor bottom left, ammo bottom right, abilities as cooldown rings, kills top right, a crosshair, an optional mini-map.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `health` | `number` | `0` | — | — | — | Health. |
+| `maxHealth` | `number` | `100` | — | — | — | Full health. |
+| `armor` | `number` | `0` | — | — | — | Armor; 0 with maxArmor 0 hides it. |
+| `maxArmor` | `number` | `0` | — | — | — | Full armor. |
+| `ammo` | `number` | `0` | — | — | — | Rounds in the magazine. |
+| `magazine` | `number` | `0` | — | — | — | Rounds a magazine holds. |
+| `reserve` | `number` | `0` | — | — | — | Rounds in reserve. |
+| `weapon` | `string` | `""` | — | — | — | The weapon's name. |
+| `kills` | `number` | `0` | — | — | — | Kills. |
+| `abilities` | `readonly Ability[]` | `[]` | — | — | — | Abilities with cooldowns. |
+| `crosshair` | `boolean` | `true` | — | — | — | Draw a crosshair at the centre. |
+| `map` | `MinimapDesc \| null` | `null` | — | — | — | A mini-map top left; null is none. |
+| `touch` | `boolean` | `false` | — | — | — | Show touch controls (a stick and Fire) on phones and tablets. |
+
+```ogt
+struct ShooterHudDesc {
+  doc "A shooter HUD: health and armor bottom left, ammo bottom right, abilities as cooldown rings, kills top right, a crosshair, an optional mini-map."
+  desc true
+  field health f32 "Health."
+  field maxHealth f32 "Full health." {
+    default 100
+  }
+  field armor f32 "Armor; 0 with maxArmor 0 hides it."
+  field maxArmor f32 "Full armor."
+  field ammo u32 "Rounds in the magazine."
+  field magazine u32 "Rounds a magazine holds."
+  field reserve u32 "Rounds in reserve."
+  field weapon String "The weapon's name."
+  field kills u32 "Kills."
+  field abilities List.Ability "Abilities with cooldowns."
+  field crosshair bool "Draw a crosshair at the centre." {
+    default true
+  }
+  field map Option.MinimapDesc "A mini-map top left; null is none."
+  field touch bool "Show touch controls (a stick and Fire) on phones and tablets."
+}
+```
+
+<sub>`api.ogt` line 4056</sub>
+
+<a id="type-PuzzleHudDesc"></a>
+
+### `PuzzleHudDesc` (desc struct)
+
+A puzzle HUD: level and moves, the score towards a target with three star marks, an optional timer.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `level` | `string` | `""` | — | — | — | The level's name. |
+| `score` | `number` | `0` | — | — | — | The score. |
+| `target` | `number` | `1000` | — | — | — | The score that wins. |
+| `stars` | `readonly number[]` | `[]` | — | — | — | The scores for one, two and three stars; empty is a third, two thirds and all of the target. |
+| `moves` | `number \| null` | `null` | — | — | — | Moves left; null hides it. |
+| `timeLeft` | `number \| null` | `null` | — | — | — | Seconds left; null hides it. |
+
+```ogt
+struct PuzzleHudDesc {
+  doc "A puzzle HUD: level and moves, the score towards a target with three star marks, an optional timer."
+  desc true
+  field level String "The level's name."
+  field score u32 "The score."
+  field target u32 "The score that wins." {
+    default 1000
+  }
+  field stars List.u32 "The scores for one, two and three stars; empty is a third, two thirds and all of the target."
+  field moves Option.u32 "Moves left; null hides it."
+  field timeLeft Option.f32 "Seconds left; null hides it."
+}
+```
+
+<sub>`api.ogt` line 4078</sub>
+
+<a id="type-Currency"></a>
+
+### `Currency` (desc struct)
+
+A currency an idle game counts.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `id` | `string` | `""` | — | — | — | Its id. |
+| `name` | `string` | `""` | — | — | — | Its name. |
+| `amount` | `number` | `0` | — | — | — | How much there is. |
+| `perSecond` | `number` | `0` | — | — | — | How much it earns per second. |
+| `icon` | `string` | `""` | — | — | — | An icon of the atlas; empty is none. |
+
+```ogt
+struct Currency {
+  doc "A currency an idle game counts."
+  desc true
+  field id String "Its id."
+  field name String "Its name."
+  field amount f64 "How much there is."
+  field perSecond f64 "How much it earns per second."
+  field icon String "An icon of the atlas; empty is none."
+}
+```
+
+<sub>`api.ogt` line 4091</sub>
+
+<a id="type-Generator"></a>
+
+### `Generator` (desc struct)
+
+A generator an idle game lists: level, cost, progress.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `id` | `string` | `""` | — | — | — | Its id: buying answers `buy:<id>`. |
+| `name` | `string` | `""` | — | — | — | Its name. |
+| `level` | `number` | `0` | — | — | — | Its level. |
+| `cost` | `number` | `0` | — | — | — | The next level's price. |
+| `affordable` | `boolean` | `false` | — | — | — | The player can pay for it. |
+| `progress` | `number` | `0` | — | `ratio` | — | Its cycle, 0 to 1. |
+| `icon` | `string` | `""` | — | — | — | An icon of the atlas; empty is none. |
+
+```ogt
+struct Generator {
+  doc "A generator an idle game lists: level, cost, progress."
+  desc true
+  field id String "Its id: buying answers `buy:<id>`."
+  field name String "Its name."
+  field level u32 "Its level."
+  field cost f64 "The next level's price."
+  field affordable bool "The player can pay for it."
+  field progress f32 "Its cycle, 0 to 1." {
+    unit ratio
+  }
+  field icon String "An icon of the atlas; empty is none."
+}
+```
+
+<sub>`api.ogt` line 4101</sub>
+
+<a id="type-IdleHudDesc"></a>
+
+### `IdleHudDesc` (desc struct)
+
+An idle or incremental HUD: currencies with their rates on top, a big tap target, the generators in a list.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `currencies` | `readonly Currency[]` | `[]` | — | — | — | The currencies, the first the main one. |
+| `generators` | `readonly Generator[]` | `[]` | — | — | — | The generators. |
+| `tapLabel` | `string` | `"Tap"` | — | — | — | The tap target's label; empty hides it. |
+
+```ogt
+struct IdleHudDesc {
+  doc "An idle or incremental HUD: currencies with their rates on top, a big tap target, the generators in a list."
+  desc true
+  field currencies List.Currency "The currencies, the first the main one."
+  field generators List.Generator "The generators."
+  field tapLabel String "The tap target's label; empty hides it." {
+    default "Tap"
+  }
+}
+```
+
+<sub>`api.ogt` line 4115</sub>
+
+<a id="type-RacingHudDesc"></a>
+
+### `RacingHudDesc` (desc struct)
+
+A racing HUD: position and lap top left, the times top right, the speedometer and gear bottom right, the boost meter, an optional mini-map.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `speed` | `number` | `0` | — | — | — | The speed, in `unit`. |
+| `maxSpeed` | `number` | `300` | — | — | — | The dial's top. |
+| `unit` | `string` | `"km/h"` | — | — | — | The speed's unit. |
+| `gear` | `string` | `""` | — | — | — | The gear (`3`, `R`, `N`). |
+| `lap` | `number` | `1` | — | — | — | The lap. |
+| `laps` | `number` | `3` | — | — | — | Laps in the race. |
+| `position` | `number` | `1` | — | — | — | The player's place. |
+| `racers` | `number` | `8` | — | — | — | Cars in the race. |
+| `time` | `number` | `0` | — | — | — | The race time in seconds. |
+| `best` | `number \| null` | `null` | — | — | — | The best lap in seconds; null hides it. |
+| `boost` | `number` | `0` | — | `ratio` | — | The boost meter. |
+| `map` | `MinimapDesc \| null` | `null` | — | — | — | A mini-map; null is none. |
+| `touch` | `boolean` | `false` | — | — | — | Show touch controls (steering arrows, Brake, Boost) on phones and tablets. |
+
+```ogt
+struct RacingHudDesc {
+  doc "A racing HUD: position and lap top left, the times top right, the speedometer and gear bottom right, the boost meter, an optional mini-map."
+  desc true
+  field speed f32 "The speed, in `unit`."
+  field maxSpeed f32 "The dial's top." {
+    default 300
+  }
+  field unit String "The speed's unit." {
+    default "km/h"
+  }
+  field gear String "The gear (`3`, `R`, `N`)."
+  field lap u32 "The lap." {
+    default 1
+  }
+  field laps u32 "Laps in the race." {
+    default 3
+  }
+  field position u32 "The player's place." {
+    default 1
+  }
+  field racers u32 "Cars in the race." {
+    default 8
+  }
+  field time f32 "The race time in seconds."
+  field best Option.f32 "The best lap in seconds; null hides it."
+  field boost f32 "The boost meter." {
+    unit ratio
+  }
+  field map Option.MinimapDesc "A mini-map; null is none."
+  field touch bool "Show touch controls (steering arrows, Brake, Boost) on phones and tablets."
+}
+```
+
+<sub>`api.ogt` line 4125</sub>
+
+<a id="type-DialogueLine"></a>
+
+### `DialogueLine` (desc struct)
+
+One line of a cutscene.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `speaker` | `string` | `""` | — | — | — | Who speaks. |
+| `text` | `string` | `""` | — | — | — | What they say. |
+| `portrait` | `string` | `""` | — | — | — | An icon of the atlas as the portrait; empty is the speaker's initial. |
+
+```ogt
+struct DialogueLine {
+  doc "One line of a cutscene."
+  desc true
+  field speaker String "Who speaks."
+  field text String "What they say."
+  field portrait String "An icon of the atlas as the portrait; empty is the speaker's initial."
+}
+```
+
+<sub>`api.ogt` line 4157</sub>
+
+<a id="type-CutsceneDesc"></a>
+
+### `CutsceneDesc` (desc struct)
+
+A dialogue scene: letterbox bars, the dialogue box at the bottom, Skip at the top right.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `open` | `boolean` | `false` | — | — | — | Whether it plays. |
+| `lines` | `readonly DialogueLine[]` | `[]` | — | — | — | The lines. |
+| `index` | `number` | `0` | — | — | — | The line shown, from game state. |
+| `letterbox` | `boolean` | `true` | — | — | — | Cinematic bars. |
+| `skippable` | `boolean` | `true` | — | — | — | Show Skip. |
+
+```ogt
+struct CutsceneDesc {
+  doc "A dialogue scene: letterbox bars, the dialogue box at the bottom, Skip at the top right."
+  desc true
+  field open bool "Whether it plays."
+  field lines List.DialogueLine "The lines."
+  field index u32 "The line shown, from game state."
+  field letterbox bool "Cinematic bars." {
+    default true
+  }
+  field skippable bool "Show Skip." {
+    default true
+  }
+}
+```
+
+<sub>`api.ogt` line 4165</sub>
+
+<a id="type-CutsceneResult"></a>
+
+### `CutsceneResult` (struct)
+
+A cutscene's answer this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `index` | `number` | `0` | — | — | — | The line to show next tick: keep it. |
+| `finished` | `boolean` | `false` | — | — | — | The last line was advanced past. |
+| `skipped` | `boolean` | `false` | — | — | — | Skip was pressed (or Back). |
+
+```ogt
+struct CutsceneResult {
+  doc "A cutscene's answer this tick."
+  field index u32 "The line to show next tick: keep it."
+  field finished bool "The last line was advanced past."
+  field skipped bool "Skip was pressed (or Back)."
+}
+```
+
+<sub>`api.ogt` line 4179</sub>
+
+<a id="type-ShopItem"></a>
+
+### `ShopItem` (desc struct)
+
+An item a shop sells.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `id` | `string` | `""` | — | — | — | Its id: buying answers it. |
+| `name` | `string` | `""` | — | — | — | Its name. |
+| `price` | `number` | `0` | — | — | — | Its price in the shop's currency. |
+| `description` | `string` | `""` | — | — | — | A line about it. |
+| `icon` | `string` | `""` | — | — | — | An icon of the atlas; empty is none. |
+| `category` | `string` | `""` | — | — | — | Its category tab; empty is the first. |
+| `owned` | `boolean` | `false` | — | — | — | Already owned (one-off items): shown, not for sale. |
+
+```ogt
+struct ShopItem {
+  doc "An item a shop sells."
+  desc true
+  field id String "Its id: buying answers it."
+  field name String "Its name."
+  field price f64 "Its price in the shop's currency."
+  field description String "A line about it."
+  field icon String "An icon of the atlas; empty is none."
+  field category String "Its category tab; empty is the first."
+  field owned bool "Already owned (one-off items): shown, not for sale."
+}
+```
+
+<sub>`api.ogt` line 4186</sub>
+
+<a id="type-ShopDesc"></a>
+
+### `ShopDesc` (desc struct)
+
+A shop: the balance, category tabs, a grid of items with prices, a detail panel with Buy (disabled when the balance is short).
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `title` | `string` | `"Shop"` | — | — | — | Its title. |
+| `currency` | `string` | `"coins"` | — | — | — | The currency's name (`coins`). |
+| `currencyIcon` | `string` | `""` | — | — | — | The currency's icon; empty is none. |
+| `balance` | `number` | `0` | — | — | — | What the player has. |
+| `items` | `readonly ShopItem[]` | `[]` | — | — | — | What is for sale. |
+| `categories` | `readonly string[]` | `[]` | — | — | — | Category tabs; empty is one list. |
+| `onBuy` | `UiAction \| null` | `null` | — | — | — | Called with the bought item's id. |
+
+```ogt
+struct ShopDesc {
+  doc "A shop: the balance, category tabs, a grid of items with prices, a detail panel with Buy (disabled when the balance is short)."
+  desc true
+  field title String "Its title." {
+    default "Shop"
+  }
+  field currency String "The currency's name (`coins`)." {
+    default "coins"
+  }
+  field currencyIcon String "The currency's icon; empty is none."
+  field balance f64 "What the player has."
+  field items List.ShopItem "What is for sale."
+  field categories List.String "Category tabs; empty is one list."
+  field onBuy Option.UiAction "Called with the bought item's id."
+}
+```
+
+<sub>`api.ogt` line 4198</sub>
+
+<a id="type-ShopResult"></a>
+
+### `ShopResult` (struct)
+
+A shop's answer this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `bought` | `string \| null` | `null` | — | — | — | The item bought this tick: take the price and grant it. |
+| `closed` | `boolean` | `false` | — | — | — | Close was pressed (or Back). |
+
+```ogt
+struct ShopResult {
+  doc "A shop's answer this tick."
+  field bought Option.String "The item bought this tick: take the price and grant it."
+  field closed bool "Close was pressed (or Back)."
+}
+```
+
+<sub>`api.ogt` line 4214</sub>
+
+<a id="type-InventoryItem"></a>
+
+### `InventoryItem` (desc struct)
+
+What an inventory slot holds.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `slot` | `number` | `0` | — | — | — | The slot index. |
+| `id` | `string` | `""` | — | — | — | The item's id. |
+| `name` | `string` | `""` | — | — | — | Its name. |
+| `count` | `number` | `0` | — | — | — | How many (stacks); 0 or 1 hides the count. |
+| `icon` | `string` | `""` | — | — | — | An icon of the atlas; empty is its initial. |
+| `description` | `string` | `""` | — | — | — | A line about it. |
+
+```ogt
+struct InventoryItem {
+  doc "What an inventory slot holds."
+  desc true
+  field slot u32 "The slot index."
+  field id String "The item's id."
+  field name String "Its name."
+  field count u32 "How many (stacks); 0 or 1 hides the count."
+  field icon String "An icon of the atlas; empty is its initial."
+  field description String "A line about it."
+}
+```
+
+<sub>`api.ogt` line 4220</sub>
+
+<a id="type-InventoryDesc"></a>
+
+### `InventoryDesc` (desc struct)
+
+An inventory: a grid of slots, items dragged between them, a detail panel with Use.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `title` | `string` | `"Inventory"` | — | — | — | Its title. |
+| `slots` | `number` | `24` | — | — | — | How many slots. |
+| `columns` | `number` | `0` | — | — | — | Slots across; 0 fits the width. |
+| `items` | `readonly InventoryItem[]` | `[]` | — | — | — | The items, by slot. |
+| `useLabel` | `string` | `"Use"` | — | — | — | The detail panel's action; empty hides it. |
+
+```ogt
+struct InventoryDesc {
+  doc "An inventory: a grid of slots, items dragged between them, a detail panel with Use."
+  desc true
+  field title String "Its title." {
+    default "Inventory"
+  }
+  field slots u32 "How many slots." {
+    default 24
+  }
+  field columns u32 "Slots across; 0 fits the width."
+  field items List.InventoryItem "The items, by slot."
+  field useLabel String "The detail panel's action; empty hides it." {
+    default "Use"
+  }
+}
+```
+
+<sub>`api.ogt` line 4231</sub>
+
+<a id="type-SlotMove"></a>
+
+### `SlotMove` (struct)
+
+An item dragged from one slot to another.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `from` | `number` | `0` | — | — | — | The slot it left. |
+| `to` | `number` | `0` | — | — | — | The slot it was dropped on (swap when that slot holds an item). |
+
+```ogt
+struct SlotMove {
+  doc "An item dragged from one slot to another."
+  field from u32 "The slot it left."
+  field to u32 "The slot it was dropped on (swap when that slot holds an item)."
+}
+```
+
+<sub>`api.ogt` line 4247</sub>
+
+<a id="type-InventoryResult"></a>
+
+### `InventoryResult` (struct)
+
+An inventory's answer this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `selected` | `number \| null` | `null` | — | — | — | The selected slot. |
+| `moved` | `SlotMove \| null` | `null` | — | — | — | A drag and drop this tick: move (or swap) the items. |
+| `used` | `string \| null` | `null` | — | — | — | The id of the item Use was pressed for. |
+| `closed` | `boolean` | `false` | — | — | — | Close was pressed (or Back). |
+
+```ogt
+struct InventoryResult {
+  doc "An inventory's answer this tick."
+  field selected Option.u32 "The selected slot."
+  field moved Option.SlotMove "A drag and drop this tick: move (or swap) the items."
+  field used Option.String "The id of the item Use was pressed for."
+  field closed bool "Close was pressed (or Back)."
+}
+```
+
+<sub>`api.ogt` line 4253</sub>
+
+<a id="type-LevelInfo"></a>
+
+### `LevelInfo` (desc struct)
+
+A level in a level select.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `name` | `string` | `""` | — | — | — | Its name or number. |
+| `stars` | `number` | `0` | — | — | — | Stars earned, 0 to 3. |
+| `locked` | `boolean` | `false` | — | — | — | Not yet reachable: a lock, inert. |
+| `best` | `string` | `""` | — | — | — | The best result as shown; empty is none. |
+
+```ogt
+struct LevelInfo {
+  doc "A level in a level select."
+  desc true
+  field name String "Its name or number."
+  field stars u32 "Stars earned, 0 to 3."
+  field locked bool "Not yet reachable: a lock, inert."
+  field best String "The best result as shown; empty is none."
+}
+```
+
+<sub>`api.ogt` line 4261</sub>
+
+<a id="type-LevelSelectDesc"></a>
+
+### `LevelSelectDesc` (desc struct)
+
+A level select: a grid of level cards with stars and locks, the total stars.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `title` | `string` | `"Levels"` | — | — | — | Its title. |
+| `levels` | `readonly LevelInfo[]` | `[]` | — | — | — | The levels. |
+| `columns` | `number` | `0` | — | — | — | Cards across; 0 fits the width. |
+
+```ogt
+struct LevelSelectDesc {
+  doc "A level select: a grid of level cards with stars and locks, the total stars."
+  desc true
+  field title String "Its title." {
+    default "Levels"
+  }
+  field levels List.LevelInfo "The levels."
+  field columns u32 "Cards across; 0 fits the width."
+}
+```
+
+<sub>`api.ogt` line 4270</sub>
+
+<a id="type-LevelSelectResult"></a>
+
+### `LevelSelectResult` (struct)
+
+A level select's answer this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `chosen` | `number \| null` | `null` | — | — | — | The level picked this tick. |
+| `closed` | `boolean` | `false` | — | — | — | Back was pressed. |
+
+```ogt
+struct LevelSelectResult {
+  doc "A level select's answer this tick."
+  field chosen Option.u32 "The level picked this tick."
+  field closed bool "Back was pressed."
+}
+```
+
+<sub>`api.ogt` line 4280</sub>
+
+<a id="type-StatRow"></a>
+
+### `StatRow` (desc struct)
+
+A labelled value on a results screen.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `label` | `string` | `""` | — | — | — | The label. |
+| `value` | `string` | `""` | — | — | — | The value, as shown. |
+
+```ogt
+struct StatRow {
+  doc "A labelled value on a results screen."
+  desc true
+  field label String "The label."
+  field value String "The value, as shown."
+}
+```
+
+<sub>`api.ogt` line 4286</sub>
+
+<a id="type-ResultsDesc"></a>
+
+### `ResultsDesc` (desc struct)
+
+A results screen: the title, stars that land one by one, the score counting up, the best (a badge for a new best), stats, actions and a share hook.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `open` | `boolean` | `false` | — | — | — | Whether it is shown. |
+| `title` | `string` | `"Level complete"` | — | — | — | Its title. |
+| `score` | `number` | `0` | — | — | — | The score. |
+| `best` | `number` | `0` | — | — | — | The best score. |
+| `newBest` | `boolean` | `false` | — | — | — | This run set the best. |
+| `stars` | `number` | `0` | — | — | — | Stars earned. |
+| `maxStars` | `number` | `3` | — | — | — | Stars possible; 0 hides them. |
+| `stats` | `readonly StatRow[]` | `[]` | — | — | — | Stats under the score. |
+| `actions` | `readonly MenuItem[]` | `[]` | — | — | — | The actions; empty is Retry, Next and Menu (`retry`, `next`, `menu`). |
+| `shareText` | `string` | `""` | — | — | — | Text a share would post; empty hides Share. |
+| `onShare` | `UiAction \| null` | `null` | — | — | — | Called with the share text when Share is pressed (the shell posts it). |
+
+```ogt
+struct ResultsDesc {
+  doc "A results screen: the title, stars that land one by one, the score counting up, the best (a badge for a new best), stats, actions and a share hook."
+  desc true
+  field open bool "Whether it is shown."
+  field title String "Its title." {
+    default "Level complete"
+  }
+  field score f64 "The score."
+  field best f64 "The best score."
+  field newBest bool "This run set the best."
+  field stars u32 "Stars earned."
+  field maxStars u32 "Stars possible; 0 hides them." {
+    default 3
+  }
+  field stats List.StatRow "Stats under the score."
+  field actions List.MenuItem "The actions; empty is Retry, Next and Menu (`retry`, `next`, `menu`)."
+  field shareText String "Text a share would post; empty hides Share."
+  field onShare Option.UiAction "Called with the share text when Share is pressed (the shell posts it)."
+}
+```
+
+<sub>`api.ogt` line 4293</sub>
+
+<a id="type-LeaderboardEntry"></a>
+
+### `LeaderboardEntry` (desc struct)
+
+A row of a leaderboard.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `rank` | `number` | `0` | — | — | — | The rank. |
+| `name` | `string` | `""` | — | — | — | The player's name. |
+| `score` | `string` | `""` | — | — | — | The score, as shown. |
+| `player` | `boolean` | `false` | — | — | — | This is the player: highlighted. |
+
+```ogt
+struct LeaderboardEntry {
+  doc "A row of a leaderboard."
+  desc true
+  field rank u32 "The rank."
+  field name String "The player's name."
+  field score String "The score, as shown."
+  field player bool "This is the player: highlighted."
+}
+```
+
+<sub>`api.ogt` line 4313</sub>
+
+<a id="type-LeaderboardDesc"></a>
+
+### `LeaderboardDesc` (desc struct)
+
+A leaderboard: scope tabs, a virtualised list of ranks (medal colours for 1 to 3, the player highlighted), and honest loading, error and empty states.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `title` | `string` | `"Leaderboard"` | — | — | — | Its title. |
+| `scopes` | `readonly string[]` | `[]` | — | — | — | Scope tabs (Today, This week, All time); empty is none. |
+| `entries` | `readonly LeaderboardEntry[]` | `[]` | — | — | — | The rows. |
+| `loading` | `boolean` | `false` | — | — | — | The rows are loading: skeletons. |
+| `error` | `string` | `""` | — | — | — | Loading failed: this message and Retry. |
+| `empty` | `string` | `"No scores yet"` | — | — | — | Shown when there are no rows. |
+
+```ogt
+struct LeaderboardDesc {
+  doc "A leaderboard: scope tabs, a virtualised list of ranks (medal colours for 1 to 3, the player highlighted), and honest loading, error and empty states."
+  desc true
+  field title String "Its title." {
+    default "Leaderboard"
+  }
+  field scopes List.String "Scope tabs (Today, This week, All time); empty is none."
+  field entries List.LeaderboardEntry "The rows."
+  field loading bool "The rows are loading: skeletons."
+  field error String "Loading failed: this message and Retry."
+  field empty String "Shown when there are no rows." {
+    default "No scores yet"
+  }
+}
+```
+
+<sub>`api.ogt` line 4322</sub>
+
+<a id="type-LeaderboardResult"></a>
+
+### `LeaderboardResult` (struct)
+
+A leaderboard's answer this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `scope` | `number` | `0` | — | — | — | The scope tab chosen: keep it and load its rows. |
+| `changed` | `boolean` | `false` | — | — | — | The scope changed this tick. |
+| `retry` | `boolean` | `false` | — | — | — | Retry was pressed. |
+| `closed` | `boolean` | `false` | — | — | — | Close was pressed (or Back). |
+
+```ogt
+struct LeaderboardResult {
+  doc "A leaderboard's answer this tick."
+  field scope u32 "The scope tab chosen: keep it and load its rows."
+  field changed bool "The scope changed this tick."
+  field retry bool "Retry was pressed."
+  field closed bool "Close was pressed (or Back)."
+}
+```
+
+<sub>`api.ogt` line 4337</sub>
+
+<a id="type-TutorialStep"></a>
+
+### `TutorialStep` (desc struct)
+
+A step of a tutorial: the element to point at, a title and a line.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `target` | `string` | `""` | — | — | — | The element's id or path (as touch_move_to takes); empty points at nothing. |
+| `title` | `string` | `""` | — | — | — | The step's title. |
+| `text` | `string` | `""` | — | — | — | What to do. |
+
+```ogt
+struct TutorialStep {
+  doc "A step of a tutorial: the element to point at, a title and a line."
+  desc true
+  field target String "The element's id or path (as touch_move_to takes); empty points at nothing."
+  field title String "The step's title."
+  field text String "What to do."
+}
+```
+
+<sub>`api.ogt` line 4345</sub>
+
+<a id="type-TutorialDesc"></a>
+
+### `TutorialDesc` (desc struct)
+
+An onboarding overlay: a spotlight on each step's target, a callout beside it with Next and Skip, and the step count.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `open` | `boolean` | `false` | — | — | — | Whether it is shown. |
+| `steps` | `readonly TutorialStep[]` | `[]` | — | — | — | The steps. |
+| `index` | `number` | `0` | — | — | — | The step shown, from game state. |
+
+```ogt
+struct TutorialDesc {
+  doc "An onboarding overlay: a spotlight on each step's target, a callout beside it with Next and Skip, and the step count."
+  desc true
+  field open bool "Whether it is shown."
+  field steps List.TutorialStep "The steps."
+  field index u32 "The step shown, from game state."
+}
+```
+
+<sub>`api.ogt` line 4353</sub>
+
+<a id="type-TutorialResult"></a>
+
+### `TutorialResult` (struct)
+
+A tutorial's answer this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `index` | `number` | `0` | — | — | — | The step to show next tick: keep it. |
+| `finished` | `boolean` | `false` | — | — | — | The last step's Done was pressed. |
+| `skipped` | `boolean` | `false` | — | — | — | Skip was pressed (or Back). |
+
+```ogt
+struct TutorialResult {
+  doc "A tutorial's answer this tick."
+  field index u32 "The step to show next tick: keep it."
+  field finished bool "The last step's Done was pressed."
+  field skipped bool "Skip was pressed (or Back)."
+}
+```
+
+<sub>`api.ogt` line 4361</sub>
+
+<a id="type-LoadingDesc"></a>
+
+### `LoadingDesc` (desc struct)
+
+A loading screen: the title, a real progress bar (or a spinner while unknown) and tips that change by the tick.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `title` | `string` | `"Loading"` | — | — | — | What is loading. |
+| `progress` | `number \| null` | `null` | — | — | — | How far, 0 to 1; null is unknown (a spinner, never a fake bar). |
+| `tips` | `readonly string[]` | `[]` | — | — | — | Tips shown in turn. |
+| `tipSeconds` | `number` | `4` | ≥ 1 | — | — | Seconds per tip. |
+
+```ogt
+struct LoadingDesc {
+  doc "A loading screen: the title, a real progress bar (or a spinner while unknown) and tips that change by the tick."
+  desc true
+  field title String "What is loading." {
+    default "Loading"
+  }
+  field progress Option.f32 "How far, 0 to 1; null is unknown (a spinner, never a fake bar)."
+  field tips List.String "Tips shown in turn."
+  field tipSeconds f32 "Seconds per tip." {
+    default 4
+    min 1
+  }
+}
+```
+
+<sub>`api.ogt` line 4368</sub>
+
+<a id="type-ConfirmDesc"></a>
+
+### `ConfirmDesc` (desc struct)
+
+A confirm dialog: a title, a consequence sentence, Cancel and the action.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `open` | `boolean` | `false` | — | — | — | Whether it is open. |
+| `title` | `string` | `""` | — | — | — | The question. |
+| `message` | `string` | `""` | — | — | — | What will happen. |
+| `confirmLabel` | `string` | `"Confirm"` | — | — | — | The action's label. |
+| `cancelLabel` | `string` | `"Cancel"` | — | — | — | Cancel's label. |
+| `danger` | `boolean` | `false` | — | — | — | The action destroys something: the danger button. |
+
+```ogt
+struct ConfirmDesc {
+  doc "A confirm dialog: a title, a consequence sentence, Cancel and the action."
+  desc true
+  field open bool "Whether it is open."
+  field title String "The question."
+  field message String "What will happen."
+  field confirmLabel String "The action's label." {
+    default "Confirm"
+  }
+  field cancelLabel String "Cancel's label." {
+    default "Cancel"
+  }
+  field danger bool "The action destroys something: the danger button."
+}
+```
+
+<sub>`api.ogt` line 4382</sub>
+
+<a id="type-ConfirmResult"></a>
+
+### `ConfirmResult` (struct)
+
+A confirm dialog's answer this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `confirmed` | `boolean` | `false` | — | — | — | The action was chosen. |
+| `cancelled` | `boolean` | `false` | — | — | — | Cancel, Back or the backdrop. |
+
+```ogt
+struct ConfirmResult {
+  doc "A confirm dialog's answer this tick."
+  field confirmed bool "The action was chosen."
+  field cancelled bool "Cancel, Back or the backdrop."
+}
+```
+
+<sub>`api.ogt` line 4397</sub>
+
+<a id="type-AlertDesc"></a>
+
+### `AlertDesc` (desc struct)
+
+An alert: a title, a message and one button.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `open` | `boolean` | `false` | — | — | — | Whether it is open. |
+| `title` | `string` | `""` | — | — | — | The title. |
+| `message` | `string` | `""` | — | — | — | The message. |
+| `okLabel` | `string` | `"OK"` | — | — | — | The button's label. |
+
+```ogt
+struct AlertDesc {
+  doc "An alert: a title, a message and one button."
+  desc true
+  field open bool "Whether it is open."
+  field title String "The title."
+  field message String "The message."
+  field okLabel String "The button's label." {
+    default "OK"
+  }
+}
+```
+
+<sub>`api.ogt` line 4403</sub>

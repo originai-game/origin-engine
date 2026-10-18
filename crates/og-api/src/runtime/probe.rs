@@ -278,8 +278,11 @@ pub(crate) fn after_reload(eng: &Engine, swapped: bool) {
         st.warnings.extend(a.warnings);
         st.physics = Some(a.mounted.physics.clone());
         st.ui = Some(a.mounted.ui.clone());
+        st.anim = Some(a.anim.clone());
         st.physics_meshes.clone()
     };
+    // Animation assets too: the new og.anim gets every skeleton, clip and graph.
+    eng.state.borrow().anim_assets.replay(&a.anim);
     // Meshes are assets: the new physics gets every one the old one had.
     for (handle, mesh) in meshes {
         let _ = a.mounted.physics.set_mesh(handle, mesh);

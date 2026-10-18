@@ -1,0 +1,20 @@
+/* From @origingame/tokens (packages/tokens/dist/tokens.css, theme-dark.css);
+   only the values the player shell reads. Brand ink is packages/brand's #14161b. */
+:root {
+  --og-ink: #14161b;
+  --og-paper: #ffffff;
+  --color-fg: #f5f5f7;
+  --color-fg-muted: #aeaeb2;
+  --color-surface: #1c1c1e;
+  --color-surface-raised: #2c2c2e;
+  --color-border: #38383a;
+  --color-danger: #ff5a4f;
+  --color-scrim: rgb(0 0 0 / 0.42);
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, Roboto, "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Noto Sans SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Geist Mono Variable", "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --radius-card: 14px;
+  --radius-button: 9999px;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --dur-spring: 520ms;
+  --dur-bounce: 640ms;
+}

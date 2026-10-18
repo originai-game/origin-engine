@@ -3,6 +3,10 @@
 //! machine: the executor path that needs no E2B sandbox), then, inside the
 //! engine repository, the build toolchain against the repository's pins.
 //! Every problem has one line naming its fix.
+//!
+//! Outside the engine repository (an executor: bun, the engine package and
+//! its addon) the Rust and wasm-bindgen checks are skipped, and node is
+//! optional when bun is present (bun loads the addon itself).
 
 use std::path::Path;
 use std::process::{Command, ExitCode};
@@ -13,6 +17,8 @@ struct Tool {
     role: &'static str,
     install: fn(Option<&str>) -> String,
     pin: Pin,
+    /// Needed only to build the engine: checked inside the repository only.
+    repo_only: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -34,6 +40,7 @@ const TOOLS: &[Tool] = &[
             }
             None => "install rustup from https://rustup.rs".into(),
         },
+        repo_only: true,
         pin: Pin::RustToolchain,
     },
     Tool {
@@ -45,6 +52,7 @@ const TOOLS: &[Tool] = &[
             }
             None => "install rustup from https://rustup.rs".into(),
         },
+        repo_only: true,
         pin: Pin::RustToolchain,
     },
     Tool {
@@ -54,18 +62,21 @@ const TOOLS: &[Tool] = &[
             Some(v) => format!("`cargo install wasm-bindgen-cli --version {v} --locked`"),
             None => "`cargo install wasm-bindgen-cli --locked`".into(),
         },
+        repo_only: true,
         pin: Pin::WasmBindgenLock,
     },
     Tool {
         name: "bun",
         role: "bundles and type-checks game code",
         install: |_| "`curl -fsSL https://bun.sh/install | bash`".into(),
+        repo_only: false,
         pin: Pin::None,
     },
     Tool {
         name: "node",
         role: "loads the native addon outside bun",
         install: |_| "install Node.js 22 or newer from https://nodejs.org".into(),
+        repo_only: false,
         pin: Pin::None,
     },
 ];
@@ -97,7 +108,15 @@ pub fn run(args: &[&str]) -> ExitCode {
     }
 
     let mut problems = 0;
+    let bun = version_of("bun", root.as_deref().unwrap_or(&cwd)).is_some();
     for tool in TOOLS {
+        if tool.repo_only && root.is_none() {
+            println!(
+                "skipped  {:<13} {} (only inside the engine repository)",
+                tool.name, tool.role
+            );
+            continue;
+        }
         let pin = match tool.pin {
             Pin::RustToolchain => toolchain.as_deref(),
             Pin::WasmBindgenLock => bindgen.as_deref(),
@@ -106,6 +125,12 @@ pub fn run(args: &[&str]) -> ExitCode {
         // rustup resolves rust-toolchain.toml from the working directory.
         let found = version_of(tool.name, root.as_deref().unwrap_or(&cwd));
         match (found, pin) {
+            (None, _) if tool.name == "node" && bun => {
+                println!(
+                    "optional {:<13} not installed; bun loads the addon",
+                    tool.name
+                );
+            }
             (None, _) => {
                 problems += 1;
                 println!("missing  {:<13} {}", tool.name, tool.role);

@@ -47,6 +47,8 @@ impl Kind {
             "Material" => Kind::Material,
             "Asset" => Kind::Asset,
             "Sound" => Kind::Sound,
+            // The animation module's asset handles: u64 like every handle.
+            "SkeletonAsset" | "ClipAsset" | "GraphAsset" => Kind::Asset,
             "String" => Kind::Str,
             _ => return None,
         })

@@ -192,7 +192,7 @@ impl Assets {
     }
 
     /// The bytes of a cooked output, 16-aligned.
-    fn blob(&self, id: &str) -> Result<(og_blob_bytes::Aligned, &Bundle), String> {
+    pub(crate) fn blob(&self, id: &str) -> Result<(og_blob_bytes::Aligned, &Bundle), String> {
         let (bundle, dir) = self.bundle_for(id)?;
         let out = bundle.output(id).map_err(|e| e.to_string())?;
         let path = format!("{dir}/{}", out.file);

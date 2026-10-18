@@ -41,6 +41,27 @@ pub enum DrawCmd {
         color: [f32; 4],
         clip: Rect,
     },
+    /// A solid bar `w`×`h` centred at `center`, rotated clockwise on screen by
+    /// `angle` radians (chevrons, ticks, crosses). Drawn only when it lies
+    /// wholly inside its clip.
+    Bar {
+        center: (f32, f32),
+        w: f32,
+        h: f32,
+        angle: f32,
+        color: [f32; 4],
+        clip: Rect,
+    },
+    /// Half a disc of `radius` around `center`, on the side `angle` points to
+    /// (0: right, clockwise on screen): the atlas disc's right half on a
+    /// rotated quad. Pies and rings are two of them. Drawn only inside its clip.
+    Half {
+        center: (f32, f32),
+        radius: f32,
+        angle: f32,
+        color: [f32; 4],
+        clip: Rect,
+    },
     /// One line of text: `x` the pen start, `baseline` its baseline.
     Text {
         x: f32,
@@ -74,7 +95,10 @@ enum Batch {
 impl DrawCmd {
     fn batch(&self) -> Batch {
         match self {
-            DrawCmd::Quad { .. } | DrawCmd::Image { texture: None, .. } => Batch::Atlas,
+            DrawCmd::Quad { .. }
+            | DrawCmd::Bar { .. }
+            | DrawCmd::Half { .. }
+            | DrawCmd::Image { texture: None, .. } => Batch::Atlas,
             DrawCmd::Image {
                 texture: Some(t), ..
             } => Batch::Texture(*t),
@@ -88,7 +112,51 @@ impl DrawCmd {
                 rect.intersect(clip)
             }
             DrawCmd::Text { bounds, clip, .. } => bounds.intersect(clip),
+            DrawCmd::Bar {
+                center, w, h, clip, ..
+            } => {
+                let d = (w * w + h * h).sqrt();
+                Rect::new(center.0 - d / 2.0, center.1 - d / 2.0, d, d).intersect(clip)
+            }
+            DrawCmd::Half {
+                center,
+                radius,
+                clip,
+                ..
+            } => Rect::new(
+                center.0 - radius,
+                center.1 - radius,
+                2.0 * radius,
+                2.0 * radius,
+            )
+            .intersect(clip),
         }
+    }
+
+    /// Whether a rotated shape lies wholly inside its clip (it cannot be cut).
+    fn inside_clip(&self) -> bool {
+        let full = match self {
+            DrawCmd::Bar { center, w, h, .. } => {
+                let d = (w * w + h * h).sqrt();
+                Rect::new(center.0 - d / 2.0, center.1 - d / 2.0, d, d)
+            }
+            DrawCmd::Half { center, radius, .. } => Rect::new(
+                center.0 - radius,
+                center.1 - radius,
+                2.0 * radius,
+                2.0 * radius,
+            ),
+            _ => return true,
+        };
+        let clip = match self {
+            DrawCmd::Bar { clip, .. } | DrawCmd::Half { clip, .. } => clip,
+            _ => return true,
+        };
+        let e = 0.5;
+        full.x >= clip.x - e
+            && full.y >= clip.y - e
+            && full.right() <= clip.right() + e
+            && full.bottom() <= clip.bottom() + e
     }
 }
 
@@ -98,7 +166,7 @@ pub(crate) fn assign_levels(cmds: Vec<DrawCmd>) -> Vec<DrawItem> {
     let mut placed: Vec<(Rect, Batch, i32)> = Vec::with_capacity(cmds.len());
     for cmd in cmds {
         let bounds = cmd.bounds();
-        if bounds.is_empty() {
+        if bounds.is_empty() || !cmd.inside_clip() {
             continue;
         }
         let batch = cmd.batch();
@@ -270,6 +338,39 @@ pub(crate) fn emit(
                     sprites.push(sprite(r, uv, tex, *color, layer, z));
                 }
             }
+            DrawCmd::Bar {
+                center,
+                w,
+                h,
+                angle,
+                color,
+                ..
+            } => sprites.push(Sprite {
+                texture: Some(desc.atlas),
+                position: Vec3::new(center.0, -center.1, z),
+                size: Vec2::new(*w, *h),
+                anchor: Vec2::new(0.5, 0.5),
+                rotation: -angle,
+                color: *color,
+                uv_rect: [0.5, 0.5, 0.5, 0.5],
+                layer,
+            }),
+            DrawCmd::Half {
+                center,
+                radius,
+                angle,
+                color,
+                ..
+            } => sprites.push(Sprite {
+                texture: Some(desc.atlas),
+                position: Vec3::new(center.0, -center.1, z),
+                size: Vec2::new(*radius, 2.0 * radius),
+                anchor: Vec2::new(0.0, 0.5),
+                rotation: -angle,
+                color: *color,
+                uv_rect: [0.5, 0.0, 1.0, 1.0],
+                layer,
+            }),
             DrawCmd::Text {
                 x,
                 baseline,

@@ -1,24 +1,37 @@
-// `og build`'s web half: the play page of a game, ready to serve from one
-// directory (with COOP/COEP for the input and request rings).
+// `og build`'s web half: the exported game, a self-contained directory any
+// static host serves (docs/web-export.md).
 //
-//   bun src/node/web-build.ts --project <dir> --entry <src/main.ts> --out <dist> [--publish] [--json]
+//   bun src/node/web-build.ts --project <dir> --entry <src/main.ts> --out <dist>
+//       [--publish] [--json] [--settings <json>]
 //
-// Writes into <dist>:
-//   game.js                    the engine Worker: startWorker(game), the runtime, the game (minified with --publish)
-//   play.js, index.html        the page: the shell on a full-viewport canvas, ink #14161b while booting
+// `--settings` is project.ogt as og read and checked it (name, id, engine,
+// profile and the `publish` block); without it the defaults apply. Writes
+// into <dist>:
+//
+//   index.html                 the player shell (shell/page.ts): boot splash, gate, error card, badge;
+//                              `<meta name="og-engine" content="<version>">`
+//   play.js                    the shell, bundled (minified with --publish)
+//   game.js                    the engine Worker: startWorker(game), the runtime, the game
+//   audio-worklet.js           the AudioWorklet the shell loads on the first gesture
 //   origin-engine.js, origin-engine_bg.wasm   the web host (dist/web, or dist/web-publish with --publish)
-//   basis/                     Binomial's Basis transcoder (vendor/basis) and its licence
-//   cooked/                    the project's cooked bundle (og cook writes it)
-// and prints a size table (bytes and brotli -q 11, or gzip -9 without the
-// brotli CLI). With --json the table is one JSON line:
-//   { ok, out, publish, files: [{ path, bytes, compressed, codec }], total: { bytes, compressed }, probe: { build, members } }
-// `probe` is read from the copied web host itself (its hello under bun), so a
-// publish build proves it serves only the player-facing members.
+//   basis/                     Binomial's Basis transcoder and its licence
+//   cooked/                    the project's cooked bundle
+//   icons/                     the project's icon, or the brand tile at 192 and 512 px
+//   og-build.json              the build manifest (the Player's contract; shape in docs/web-export.md)
+//   _headers                   COOP/COEP/CORP and caching for static hosts (Netlify/Cloudflare Pages format)
+//   origingame.runtime.json    the platform's isolation declaration, when the project wants isolation
+//   manifest.webmanifest, sw.js   (--publish) the PWA manifest and the offline service worker
+//
+// The bytes depend only on the inputs: no dates, no absolute paths, files in
+// sorted order. Prints a size table (bytes and brotli -q 11, or gzip -9
+// without the brotli CLI); with --json one JSON line:
+//   { ok, out, publish, files: [{ path, bytes, compressed, codec }], total, probe: { build, members }, manifest }
 
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { bundleGame, ENGINE_ROOT } from "./build.ts";
+import { bootMark, engineMark, motionSubset, shellTokens, SHELL_MOTIONS, BRAND_DIR } from "../../shell/brand.ts";
 
 declare module "node:fs" {
   export function cpSync(from: string, to: string, options?: { recursive?: boolean }): void;
@@ -33,16 +46,110 @@ declare const Bun: {
   spawnSync(cmd: string[], o?: { stdin?: Uint8Array; stdout?: string; stderr?: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
   gzipSync(data: Uint8Array, o?: { level?: number }): Uint8Array;
   which(cmd: string): string | null;
+  CryptoHasher: new (algorithm: string) => { update(data: Uint8Array | string): unknown; digest(encoding: "hex"): string };
   version: string;
 };
 
 const here = dirname(fileURLToPath(import.meta.url));
+const SHELL_DIR = join(ENGINE_ROOT, "shell");
+export const ENGINE_VERSION = (JSON.parse(readFileSync(join(ENGINE_ROOT, "package.json"), "utf8")) as { version: string }).version;
+
+/** The manifest's file name (the platform's Player reads it). */
+export const BUILD_MANIFEST = "og-build.json";
 
 export interface SizeRow {
   readonly path: string;
   readonly bytes: number;
   readonly compressed: number;
   readonly codec: "brotli-11" | "gzip-9";
+}
+
+/** project.ogt's `publish` block as og checked it (crates/og-cli/src/project.rs). */
+export interface PublishSettings {
+  readonly probe: "player" | "all";
+  readonly isolation: "required" | "preferred" | "off";
+  readonly orientation: "any" | "landscape" | "portrait";
+  readonly fit: "letterbox" | "fill";
+  /** `"16:9"` and the like; absent: the screen's own. */
+  readonly aspect: string | null;
+  readonly dprCap: number;
+  readonly fullscreen: "gesture" | "off";
+  readonly gate: "tap" | "none";
+  readonly madeWith: boolean;
+  /** A PNG relative to the project, square, at least 192 px. */
+  readonly icon: string | null;
+  /** The installed app's short name; absent: the name. */
+  readonly shortName: string | null;
+}
+
+export interface ProjectSettings {
+  readonly name: string;
+  readonly id: string;
+  /** The engine version project.ogt pins. */
+  readonly engine: string;
+  readonly profile: "2d" | "3d";
+  readonly publish: PublishSettings;
+}
+
+export const DEFAULT_PUBLISH: PublishSettings = {
+  probe: "player",
+  isolation: "preferred",
+  orientation: "any",
+  fit: "fill",
+  aspect: null,
+  dprCap: 2,
+  fullscreen: "off",
+  gate: "tap",
+  madeWith: true,
+  icon: null,
+  shortName: null,
+};
+
+/** The settings of a project read without og (tests): name, id, engine and profile; publish defaults. */
+export function settingsOf(project: string): ProjectSettings {
+  const text = existsSync(join(project, "project.ogt")) ? readFileSync(join(project, "project.ogt"), "utf8") : "";
+  const word = (key: string) => new RegExp(`^\\s*${key}\\s+"([^"]*)"`, "m").exec(text)?.[1];
+  return {
+    name: word("name") ?? "Origin Engine game",
+    id: word("id") ?? "game",
+    engine: word("engine") ?? ENGINE_VERSION,
+    profile: word("profile") === "2d" ? "2d" : "3d",
+    publish: DEFAULT_PUBLISH,
+  };
+}
+
+export interface BuildFile {
+  readonly path: string;
+  readonly bytes: number;
+  readonly sha256: string;
+}
+
+/** og-build.json (docs/web-export.md §The manifest). */
+export interface BuildManifest {
+  readonly format: 1;
+  readonly engine: { readonly name: "origin-engine"; readonly version: string; readonly pinned: string };
+  readonly build: "publish" | "dev";
+  readonly game: { readonly name: string; readonly id: string; readonly profile: "2d" | "3d" };
+  readonly entry: "index.html";
+  readonly worker: "game.js";
+  readonly wasm: "origin-engine_bg.wasm";
+  readonly probe: { readonly protocol: 5; readonly wire: 1; readonly build: string; readonly members: readonly string[] };
+  readonly crossOriginIsolation: "required" | "preferred" | "off";
+  readonly display: {
+    readonly fit: "letterbox" | "fill";
+    readonly aspect: string | null;
+    readonly orientation: "any" | "landscape" | "portrait";
+    readonly dprCap: number;
+    readonly fullscreen: "gesture" | "off";
+    readonly gate: "tap" | "none";
+    readonly madeWith: boolean;
+  };
+  readonly icons: ReadonlyArray<{ readonly src: string; readonly sizes: string; readonly type: "image/png"; readonly source: "project" | "brand" }>;
+  readonly pwa: { readonly manifest: string; readonly serviceWorker: string } | null;
+  /** sha256 over the files' paths and hashes: the build's identity (the service worker's cache name). */
+  readonly version: string;
+  readonly files: readonly BuildFile[];
+  readonly total: { readonly files: number; readonly bytes: number };
 }
 
 export interface WebBuild {
@@ -52,22 +159,9 @@ export interface WebBuild {
   readonly files: SizeRow[];
   readonly total: { bytes: number; compressed: number };
   readonly probe: { build: string; members: string[] } | null;
+  readonly manifest?: BuildManifest;
   readonly reason?: string;
 }
-
-/** The page; `profile` is project.ogt's physics profile, read by play.ts. */
-const pageHtml = (profile: string) => `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="og-profile" content="${profile}">
-<title>Origin Engine</title>
-<style>html,body{margin:0;height:100%;background:#14161b;overscroll-behavior:none}canvas{display:block;width:100vw;height:100dvh;touch-action:none}</style>
-</head>
-<body><canvas></canvas><script type="module" src="./play.js"></script></body>
-</html>
-`;
 
 function walk(dir: string): string[] {
   const out: string[] = [];
@@ -77,6 +171,12 @@ function walk(dir: string): string[] {
     else out.push(path);
   }
   return out;
+}
+
+function sha256(data: Uint8Array | string): string {
+  const h = new Bun.CryptoHasher("sha256");
+  h.update(data);
+  return h.digest("hex");
 }
 
 function compressedSize(bytes: Uint8Array): { size: number; codec: SizeRow["codec"] } {
@@ -111,8 +211,111 @@ async function probeOf(glue: string, wasm: string): Promise<{ build: string; mem
   }
 }
 
-export async function webBuild(project: string, entry: string, out: string, publish: boolean): Promise<WebBuild> {
+/** A PNG's width and height (its IHDR), or null when the bytes are not a PNG. */
+export function pngSize(bytes: Uint8Array): { width: number; height: number } | null {
+  const sig = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  if (bytes.length < 24 || sig.some((b, i) => bytes[i] !== b)) return null;
+  const v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return { width: v.getUint32(16), height: v.getUint32(20) };
+}
+
+/** `"16:9"` as a ratio, or null. */
+export function aspectRatio(aspect: string | null): number | null {
+  const m = aspect ? /^(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/.exec(aspect) : null;
+  if (!m) return null;
+  const r = Number(m[1]) / Number(m[2]);
+  return Number.isFinite(r) && r > 0 ? r : null;
+}
+
+const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+
+/** index.html: the shell's markup with its CSS, marks and configuration inlined. */
+export function pageHtml(o: { settings: ProjectSettings; publish: boolean; config: Record<string, unknown>; icon: string; pwa: boolean }): string {
+  const css = [shellTokens(), motionSubset(SHELL_MOTIONS), readFileSync(join(SHELL_DIR, "shell.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\n\s*/g, "\n").trim()].join("\n");
+  // `<` cannot appear in the JSON's strings unescaped, so the script element cannot be closed early.
+  const config = JSON.stringify(o.config).replace(/</g, "\\u003c");
+  const title = escapeHtml(o.settings.name);
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="og-engine" content="${escapeHtml(ENGINE_VERSION)}">
+<meta name="og-build" content="${o.publish ? "publish" : "dev"}">
+<meta name="og-profile" content="${o.settings.profile}">
+<meta name="theme-color" content="#14161b">
+<meta name="color-scheme" content="dark">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="${escapeHtml(o.settings.publish.shortName ?? o.settings.name)}">
+<title>${title}</title>
+<link rel="icon" href="./${o.icon}">
+<link rel="apple-touch-icon" href="./${o.icon}">
+${o.pwa ? '<link rel="manifest" href="./manifest.webmanifest">\n' : ""}<link rel="modulepreload" href="./play.js">
+<style>
+${css}
+</style>
+</head>
+<body>
+<div id="og-stage"><canvas id="og-canvas" tabindex="0" aria-label="${title}"></canvas></div>
+<div id="og-boot" class="og-layer" role="progressbar" aria-label="Loading" aria-valuemin="0" aria-valuemax="100">
+${bootMark()}
+<div class="og-boot-label" id="og-boot-label" aria-live="polite"></div>
+</div>
+<div id="og-gate" class="og-layer" hidden><button type="button">Play</button></div>
+<div id="og-error" class="og-layer" role="alert" hidden>
+<div class="og-card">
+<h1></h1>
+<p></p>
+<details><summary>Log</summary><pre id="og-error-log"></pre></details>
+<details hidden><summary>World</summary><pre id="og-error-dump"></pre></details>
+<div class="og-actions"><button type="button" data-action="reload">Reload</button><button type="button" data-action="copy">Copy report</button></div>
+</div>
+</div>
+<div id="og-install" role="dialog" aria-label="Install" hidden><span></span><button type="button"></button><button type="button"></button></div>
+<a id="og-made-with" href="https://origingame.ai" target="_blank" rel="noopener"${o.settings.publish.madeWith ? "" : " hidden"}>${engineMark()}<span>Made with Origin Engine</span></a>
+<script type="application/json" id="og-config">${config}</script>
+<script type="module" src="./play.js"></script>
+</body>
+</html>
+`;
+}
+
+/** The `_headers` file: COOP/COEP when the project wants isolation, CORP and caching always. */
+export function headersFile(isolation: PublishSettings["isolation"]): string {
+  const lines = ["/*", "  Cross-Origin-Resource-Policy: cross-origin", "  X-Content-Type-Options: nosniff"];
+  if (isolation !== "off") lines.push("  Cross-Origin-Opener-Policy: same-origin", "  Cross-Origin-Embedder-Policy: require-corp");
+  lines.push(
+    "/index.html",
+    "  Cache-Control: no-cache",
+    "/",
+    "  Cache-Control: no-cache",
+    "/sw.js",
+    "  Cache-Control: no-cache",
+    "/og-build.json",
+    "  Cache-Control: no-cache",
+    "/*.wasm",
+    "  Content-Type: application/wasm",
+    "/manifest.webmanifest",
+    "  Content-Type: application/manifest+json",
+  );
+  return lines.join("\n") + "\n";
+}
+
+async function bundleScript(entry: string, minify: boolean): Promise<string | { error: string }> {
+  const r = await Bun.build({ entrypoints: [entry], target: "browser", format: "esm", minify });
+  if (!r.success) return { error: r.logs.map(String).join("\n") };
+  return r.outputs[0]!.text();
+}
+
+/** Files that never go into the service worker's precache (not fetched by the page). */
+const NOT_PRECACHED = /(^|\/)(LICENSE|NOTICE|README\.md|_headers|origingame\.runtime\.json|og-build\.json|sw\.js)$/;
+
+export async function webBuild(project: string, entry: string, out: string, publish: boolean, given?: ProjectSettings): Promise<WebBuild> {
   const fail = (reason: string): WebBuild => ({ ok: false, out, publish, files: [], total: { bytes: 0, compressed: 0 }, probe: null, reason });
+  const settings = given ?? settingsOf(project);
+  const p = settings.publish;
   const cooked = join(project, "cooked");
   if (!existsSync(join(cooked, ".cook.ogt"))) return fail(`${cooked} has no cooked bundle; run \`og cook ${project}\` first`);
   const host = join(ENGINE_ROOT, "dist", publish ? "web-publish" : "web");
@@ -121,20 +324,122 @@ export async function webBuild(project: string, entry: string, out: string, publ
   }
   const vendor = join(ENGINE_ROOT, "vendor", "basis");
   if (!existsSync(join(vendor, "basis_transcoder.wasm"))) return fail(`${vendor} is missing the Basis transcoder`);
+  let projectIcon: { bytes: Uint8Array; size: number } | null = null;
+  if (p.icon) {
+    const file = resolve(project, p.icon);
+    if (!existsSync(file)) return fail(`project.ogt publish.icon: ${p.icon} does not exist; give a square PNG of at least 192 px, or remove the line for the brand tile`);
+    const bytes = new Uint8Array(readFileSync(file));
+    const size = pngSize(bytes);
+    if (!size) return fail(`project.ogt publish.icon: ${p.icon} is not a PNG; give a square PNG of at least 192 px`);
+    if (size.width !== size.height || size.width < 192) return fail(`project.ogt publish.icon: ${p.icon} is ${size.width}x${size.height}; give a square PNG of at least 192 px (512 px is best)`);
+    projectIcon = { bytes, size: size.width };
+  }
   rmSync(out, { recursive: true, force: true });
   mkdirSync(out, { recursive: true });
 
   const game = await bundleGame(entry, join(out, "game.js"), "web", publish);
   if (!game.ok) return fail(`bundling ${entry}: ${game.reason}`);
-  const page = await Bun.build({ entrypoints: [join(here, "..", "web", "play.ts")], target: "browser", format: "esm", minify: publish });
-  if (!page.success) return fail(`bundling the play page: ${page.logs.map(String).join("\n")}`);
-  writeFileSync(join(out, "play.js"), await page.outputs[0]!.text());
-  const manifest = existsSync(join(project, "project.ogt")) ? readFileSync(join(project, "project.ogt"), "utf8") : "";
-  const profile = /^\s*profile\s+"(2d|3d)"/m.exec(manifest)?.[1] ?? "3d";
-  writeFileSync(join(out, "index.html"), pageHtml(profile));
+  for (const [file, src] of [["play.js", join(here, "..", "web", "play.ts")], ["audio-worklet.js", join(here, "..", "web", "audio-worklet.ts")]] as const) {
+    const text = await bundleScript(src, publish);
+    if (typeof text !== "string") return fail(`bundling ${file}: ${text.error}`);
+    writeFileSync(join(out, file), text);
+  }
   for (const f of ["origin-engine.js", "origin-engine_bg.wasm"]) cpSync(join(host, f), join(out, f));
   cpSync(vendor, join(out, "basis"), { recursive: true });
   cpSync(cooked, join(out, "cooked"), { recursive: true });
+
+  // Icons: the project's, or the brand tile (shell/brand, from the platform's packages/brand).
+  mkdirSync(join(out, "icons"), { recursive: true });
+  const icons: Array<BuildManifest["icons"][number]> = [];
+  if (projectIcon) {
+    writeFileSync(join(out, "icons", "icon.png"), projectIcon.bytes);
+    icons.push({ src: "icons/icon.png", sizes: `${projectIcon.size}x${projectIcon.size}`, type: "image/png", source: "project" });
+  } else {
+    for (const n of [192, 512]) {
+      cpSync(join(BRAND_DIR, `icon-${n}.png`), join(out, "icons", `icon-${n}.png`));
+      icons.push({ src: `icons/icon-${n}.png`, sizes: `${n}x${n}`, type: "image/png", source: "brand" });
+    }
+  }
+  const icon = icons[icons.length - 1]!.src;
+
+  // What the boot fetches, so its progress is the bytes received.
+  const wasmBytes = statSync(join(out, "origin-engine_bg.wasm")).size;
+  const cookedBytes = walk(join(out, "cooked"))
+    .filter((f) => !f.endsWith(".cook.ogt"))
+    .reduce((n, f) => n + statSync(f).size, 0);
+  const config = {
+    engine: ENGINE_VERSION,
+    build: publish ? "publish" : "dev",
+    name: settings.name,
+    profile: settings.profile,
+    isolation: p.isolation,
+    fit: p.fit,
+    aspect: aspectRatio(p.aspect),
+    orientation: p.orientation,
+    dprCap: p.dprCap,
+    fullscreen: p.fullscreen,
+    gate: p.gate,
+    madeWith: p.madeWith,
+    serviceWorker: publish,
+    expect: { wasm: wasmBytes, cooked: cookedBytes },
+  };
+  writeFileSync(join(out, "index.html"), pageHtml({ settings, publish, config, icon, pwa: publish }));
+  writeFileSync(join(out, "_headers"), headersFile(p.isolation));
+  if (p.isolation !== "off") writeFileSync(join(out, "origingame.runtime.json"), JSON.stringify({ version: 1, crossOriginIsolated: true }) + "\n");
+  if (publish) {
+    const webmanifest = {
+      id: "./",
+      name: settings.name,
+      short_name: p.shortName ?? settings.name,
+      start_url: "./",
+      scope: "./",
+      display: "standalone",
+      orientation: p.orientation,
+      background_color: "#14161b",
+      theme_color: "#14161b",
+      icons: icons.map((i) => ({ src: i.src, sizes: i.sizes, type: i.type, purpose: "any" })),
+    };
+    writeFileSync(join(out, "manifest.webmanifest"), JSON.stringify(webmanifest, null, 2) + "\n");
+  }
+
+  const fileRows = (): BuildFile[] =>
+    walk(out)
+      .map((path) => {
+        const bytes = new Uint8Array(readFileSync(path));
+        return { path: relative(out, path).split("\\").join("/"), bytes: bytes.length, sha256: sha256(bytes) };
+      })
+      .filter((f) => f.path !== BUILD_MANIFEST)
+      .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+  const identity = (rows: BuildFile[]) => sha256(rows.filter((f) => f.path !== "sw.js").map((f) => `${f.path}\0${f.sha256}\n`).join(""));
+  let version = identity(fileRows());
+  if (publish) {
+    const sw = await bundleScript(join(SHELL_DIR, "sw.ts"), true);
+    if (typeof sw !== "string") return fail(`bundling sw.js: ${sw.error}`);
+    const precache = fileRows().map((f) => f.path).filter((f) => !NOT_PRECACHED.test(f));
+    writeFileSync(join(out, "sw.js"), `const OG_SW=${JSON.stringify({ version: version.slice(0, 16), files: ["./", ...precache] })};\n${sw}`);
+    version = identity(fileRows());
+  }
+
+  const probe = await probeOf(join(out, "origin-engine.js"), join(out, "origin-engine_bg.wasm"));
+  const rows = fileRows();
+  const manifest: BuildManifest = {
+    format: 1,
+    engine: { name: "origin-engine", version: ENGINE_VERSION, pinned: settings.engine },
+    build: publish ? "publish" : "dev",
+    game: { name: settings.name, id: settings.id, profile: settings.profile },
+    entry: "index.html",
+    worker: "game.js",
+    wasm: "origin-engine_bg.wasm",
+    probe: { protocol: 5, wire: 1, build: probe?.build ?? (publish ? "publish" : "release"), members: probe?.members ?? [] },
+    crossOriginIsolation: p.isolation,
+    display: { fit: p.fit, aspect: p.aspect, orientation: p.orientation, dprCap: p.dprCap, fullscreen: p.fullscreen, gate: p.gate, madeWith: p.madeWith },
+    icons,
+    pwa: publish ? { manifest: "manifest.webmanifest", serviceWorker: "sw.js" } : null,
+    version,
+    files: rows,
+    total: { files: rows.length, bytes: rows.reduce((n, f) => n + f.bytes, 0) },
+  };
+  writeFileSync(join(out, BUILD_MANIFEST), JSON.stringify(manifest, null, 2) + "\n");
 
   const files = walk(out).map((path): SizeRow => {
     const bytes = new Uint8Array(readFileSync(path));
@@ -142,8 +447,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
     return { path: relative(out, path), bytes: bytes.length, compressed: c.size, codec: c.codec };
   });
   const total = files.reduce((t, f) => ({ bytes: t.bytes + f.bytes, compressed: t.compressed + f.compressed }), { bytes: 0, compressed: 0 });
-  const probe = await probeOf(join(out, "origin-engine.js"), join(out, "origin-engine_bg.wasm"));
-  return { ok: true, out, publish, files, total, probe };
+  return { ok: true, out, publish, files, total, probe, manifest };
 }
 
 function table(b: WebBuild): string {
@@ -163,10 +467,16 @@ if (import.meta.main) {
   const entry = opt("--entry");
   const out = opt("--out");
   if (!project || !entry || !out) {
-    process.stderr.write("usage: bun src/node/web-build.ts --project <dir> --entry <src/main.ts> --out <dist> [--publish] [--json]\n");
+    process.stderr.write("usage: bun src/node/web-build.ts --project <dir> --entry <src/main.ts> --out <dist> [--publish] [--json] [--settings <json>]\n");
     process.exit(2);
   }
-  const b = await webBuild(resolve(project!), resolve(entry!), resolve(out!), argv.includes("--publish"));
+  const given = opt("--settings");
+  let settings: ProjectSettings | undefined;
+  if (given) {
+    const s = JSON.parse(given) as Omit<ProjectSettings, "publish"> & { publish?: Partial<PublishSettings> };
+    settings = { ...s, publish: { ...DEFAULT_PUBLISH, ...s.publish } };
+  }
+  const b = await webBuild(resolve(project!), resolve(entry!), resolve(out!), argv.includes("--publish"), settings);
   if (!b.ok) {
     if (argv.includes("--json")) process.stdout.write(JSON.stringify(b) + "\n");
     process.stderr.write(`og build: ${b.reason}\n`);
@@ -176,5 +486,6 @@ if (import.meta.main) {
   else {
     process.stdout.write(table(b));
     if (b.probe) process.stdout.write(`probe: ${b.probe.build} build, ${b.probe.members.length} members: ${b.probe.members.join(", ")}\n`);
+    process.stdout.write(`${BUILD_MANIFEST}: ${b.manifest!.build} build of ${b.manifest!.game.name}, engine ${b.manifest!.engine.version}, isolation ${b.manifest!.crossOriginIsolation}, version ${b.manifest!.version.slice(0, 16)}\n`);
   }
 }

@@ -1,6 +1,9 @@
 // Sprites and MSDF text: instanced quads in the world's xy plane, alpha
-// blended into the HDR target after the 3D scene. One instance per sprite or
-// glyph; the quad's corners come from the vertex index (no vertex buffer).
+// blended (or added) into the HDR target after the 3D scene. One instance
+// per sprite or glyph; the quad's corners come from the vertex index (no
+// vertex buffer). Per instance: a hit flash, 2D lighting from the light map
+// (lit layers), a soft round dot for untextured particles, and a glow
+// strength (`fs_glow` adds glowing sprites into the glow buffer).
 // Prepended by frame.wgsl.
 
 struct SpriteParams {
@@ -11,17 +14,29 @@ struct SpriteParams {
 @group(1) @binding(1) var sprite_sampler: sampler;
 @group(1) @binding(2) var<uniform> sprite_params: SpriteParams;
 
+struct SpriteFxFrame {
+  screen: vec4<f32>,  // w, h, 1/w, 1/h
+};
+@group(2) @binding(0) var light_map: texture_2d<f32>;
+@group(2) @binding(1) var light_sampler: sampler;
+@group(2) @binding(2) var<uniform> sprite_fx: SpriteFxFrame;
+
 struct SpriteIn {
   @location(0) position_rotation: vec4<f32>,  // xyz: anchor position, w: rotation (radians)
   @location(1) size_anchor: vec4<f32>,        // xy: size, zw: anchor (fraction from bottom-left)
   @location(2) uv_rect: vec4<f32>,            // u0, v0, u1, v1 (v down)
   @location(3) color: vec4<f32>,
+  @location(4) flash: vec4<f32>,              // rgb: flash colour, a: amount
+  @location(5) fx: vec3<f32>,                 // x: glow, y: lit, z: soft dot
 };
 
 struct SpriteOut {
   @builtin(position) clip: vec4<f32>,
   @location(0) uv: vec2<f32>,
   @location(1) color: vec4<f32>,
+  @location(2) flash: vec4<f32>,
+  @location(3) fx: vec3<f32>,
+  @location(4) corner: vec2<f32>,
 };
 
 @vertex
@@ -41,14 +56,41 @@ fn vs(@builtin(vertex_index) vi: u32, s: SpriteIn) -> SpriteOut {
   // Bottom of the quad samples the bottom of the region (v grows downwards).
   o.uv = vec2<f32>(mix(s.uv_rect.x, s.uv_rect.z, c.x), mix(s.uv_rect.w, s.uv_rect.y, c.y));
   o.color = s.color;
+  o.flash = s.flash;
+  o.fx = s.fx;
+  o.corner = c;
   return o;
+}
+
+// The sprite's colour before lighting: texture, tint, soft dot, flash.
+fn sprite_color(in: SpriteOut) -> vec4<f32> {
+  var c = textureSample(sprite_tex, sprite_sampler, in.uv) * in.color;
+  if (in.fx.z > 0.5) {
+    let d = clamp(1.0 - length(in.corner * 2.0 - 1.0), 0.0, 1.0);
+    c.a *= d * d;
+  }
+  if (in.flash.a > 0.0) {
+    c = vec4<f32>(mix(c.rgb, in.flash.rgb, in.flash.a), c.a);
+  }
+  return c;
 }
 
 @fragment
 fn fs(in: SpriteOut) -> @location(0) vec4<f32> {
-  let c = textureSample(sprite_tex, sprite_sampler, in.uv) * in.color;
+  var c = sprite_color(in);
   if (c.a <= 0.0) { discard; }
+  if (in.fx.y > 0.5) {
+    let light = textureSampleLevel(light_map, light_sampler, in.clip.xy * sprite_fx.screen.zw, 0.0).rgb;
+    c = vec4<f32>(c.rgb * light, c.a);
+  }
   return c;
+}
+
+// Into the glow buffer: the sprite's light, whatever covers it.
+@fragment
+fn fs_glow(in: SpriteOut) -> @location(0) vec4<f32> {
+  let c = sprite_color(in);
+  return vec4<f32>(c.rgb * c.a * in.fx.x, 0.0);
 }
 
 fn median(r: f32, g: f32, b: f32) -> f32 {

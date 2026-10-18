@@ -125,21 +125,25 @@ impl Registry {
 
     /// Registers a Rust type (idempotent). A host schema of the same name and
     /// layout is adopted by the Rust type.
+    ///
+    /// Another Rust type of the same name and layout (two engine modules that
+    /// each declare `og.Transform`, as og-physics and og-anim do) shares the
+    /// schema: components of either type are the same rows. A typed resource
+    /// keeps the first type's value; reading or writing it through the other
+    /// type is refused as a missing resource or a type mismatch.
     pub fn register<T: Reflect>(&mut self) -> Result<(SchemaId, bool)> {
         if let Some(&id) = self.by_type.get(&TypeId::of::<T>()) {
             return Ok((id, false));
         }
         let (id, new) = self.register_schema(T::schema())?;
         let info = &mut self.types[id.0 as usize];
-        if info.rust.is_some() {
-            return Err(Error::new(
-                ErrorKind::Schema,
-                format!("'{}' is already registered by another Rust type", T::NAME),
-            ));
-        }
         // A derive that disagrees with its own schema is caught here, once.
         let probe = T::read_fields(&mut |_, buf| buf.fill(0));
         info.layout.encode(&probe)?;
+        if info.rust.is_some() {
+            self.by_type.insert(TypeId::of::<T>(), id);
+            return Ok((id, new));
+        }
         info.rust = Some(RustType {
             decode: decode_any::<T>,
             encode: encode_any::<T>,

@@ -24,10 +24,15 @@ pub enum UiKey {
     End,
     Enter,
     Escape,
+    Up,
+    Down,
+    Tab,
+    Space,
+    NumpadEnter,
 }
 
 impl UiKey {
-    pub const ALL: [UiKey; 8] = [
+    pub const ALL: [UiKey; 13] = [
         UiKey::Backspace,
         UiKey::Delete,
         UiKey::Left,
@@ -36,6 +41,11 @@ impl UiKey {
         UiKey::End,
         UiKey::Enter,
         UiKey::Escape,
+        UiKey::Up,
+        UiKey::Down,
+        UiKey::Tab,
+        UiKey::Space,
+        UiKey::NumpadEnter,
     ];
 
     /// Its `KeyboardEvent.code`.
@@ -49,6 +59,11 @@ impl UiKey {
             UiKey::End => "End",
             UiKey::Enter => "Enter",
             UiKey::Escape => "Escape",
+            UiKey::Up => "ArrowUp",
+            UiKey::Down => "ArrowDown",
+            UiKey::Tab => "Tab",
+            UiKey::Space => "Space",
+            UiKey::NumpadEnter => "NumpadEnter",
         }
     }
 }
@@ -70,6 +85,74 @@ pub trait InputSource {
     fn key_pressed(&self, code: &str) -> bool;
     /// Text typed this tick, appended to `out` in order.
     fn typed(&self, out: &mut String);
+    /// A Shift key is held (Shift+Tab moves focus backwards).
+    fn shift(&self) -> bool {
+        false
+    }
+    /// The first gamepad (standard mapping). og.Input has no gamepad yet, so
+    /// the default is none; a source that has one reports it here.
+    fn gamepad(&self) -> GamepadFrame {
+        GamepadFrame::default()
+    }
+}
+
+/// One tick of the first gamepad in the W3C standard mapping, as the UI
+/// navigates with it.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct GamepadFrame {
+    /// Buttons that went down this tick: bit `i` is standard button `i`
+    /// (0 A/south, 1 B/east, 12–15 d-pad up, down, left, right).
+    pub pressed: u32,
+    /// The left stick, x right and y down, each -1..1.
+    pub stick: Vec2,
+}
+
+impl GamepadFrame {
+    pub const A: u32 = 1 << 0;
+    pub const B: u32 = 1 << 1;
+    pub const UP: u32 = 1 << 12;
+    pub const DOWN: u32 = 1 << 13;
+    pub const LEFT: u32 = 1 << 14;
+    pub const RIGHT: u32 = 1 << 15;
+}
+
+/// A focus-navigation intent: from the arrow keys, Tab, Enter, Space and
+/// Escape, a gamepad's d-pad, stick, A and B, or [`crate::Ui::navigate`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Nav {
+    Up,
+    Down,
+    Left,
+    Right,
+    /// The next focusable control in reading order (Tab).
+    Next,
+    /// The previous one (Shift+Tab).
+    Prev,
+    /// Press the focused control (Enter, Space, gamepad A).
+    Activate,
+    /// Leave: close the topmost dialog or menu, or answer `Ui::back` (Escape, gamepad B).
+    Back,
+}
+
+impl Nav {
+    pub fn index(self) -> u8 {
+        self as u8
+    }
+
+    pub fn from_index(i: u8) -> Option<Nav> {
+        [
+            Nav::Up,
+            Nav::Down,
+            Nav::Left,
+            Nav::Right,
+            Nav::Next,
+            Nav::Prev,
+            Nav::Activate,
+            Nav::Back,
+        ]
+        .get(i as usize)
+        .copied()
+    }
 }
 
 impl InputSource for og_input::Input {
@@ -115,6 +198,10 @@ impl InputSource for og_input::Input {
             }
         }
     }
+
+    fn shift(&self) -> bool {
+        self.down("ShiftLeft") || self.down("ShiftRight")
+    }
 }
 
 /// One tick of input, as the UI consumes it.
@@ -130,6 +217,10 @@ pub struct InputFrame {
     pub keys: Vec<UiKey>,
     /// Text typed this tick.
     pub text: String,
+    /// A Shift key is held.
+    pub shift: bool,
+    /// The first gamepad.
+    pub gamepad: GamepadFrame,
 }
 
 impl InputFrame {
@@ -148,6 +239,8 @@ impl InputFrame {
                 .filter(|k| source.key_pressed(k.code()))
                 .collect(),
             text,
+            shift: source.shift(),
+            gamepad: source.gamepad(),
         }
     }
 

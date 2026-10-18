@@ -1,0 +1,2459 @@
+{
+ "chrome": "/Users/fan/.agent-browser/browsers/chrome-150.0.7871.115/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+ "failures": 0,
+ "transcript": [
+  {
+   "check": "dev isolated: unsolicited hello",
+   "ok": true
+  },
+  {
+   "check": "dev isolated: crossOriginIsolated is true",
+   "ok": true
+  },
+  {
+   "check": "dev isolated: the game page has its canvas",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "hello",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c1",
+    "result": {
+     "protocol": 5,
+     "substrate": "origin-engine"
+    },
+    "ms": 0.5
+   }
+  },
+  {
+   "check": "dev isolated: hello answers {protocol: 5, substrate}",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c2",
+    "result": 1,
+    "ms": 1.7
+   }
+  },
+  {
+   "check": "dev isolated: tick answers a number",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "state",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c3",
+    "result": {
+     "tick": 1,
+     "paused": false,
+     "timings": {
+      "frameMs": 10.485000014305115
+     }
+    },
+    "ms": 0.9
+   }
+  },
+  {
+   "check": "dev isolated: state answers {tick, paused, timings: {frameMs}}",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c4",
+    "result": 1,
+    "ms": 0.6
+   }
+  },
+  {
+   "check": "dev isolated: the clock holds behind the play gate",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c5",
+    "result": 2,
+    "ms": 0.5
+   }
+  },
+  {
+   "check": "dev isolated: a tap on the gate starts the clock",
+   "ok": true
+  },
+  {
+   "check": "dev isolated: real key events reach the engine's input layer",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "input",
+   "params": {
+    "event": {
+     "kind": "key",
+     "key": "Space",
+     "action": "press"
+    }
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c6",
+    "code": "unsupported",
+    "message": "unknown method input",
+    "ms": 0.5
+   }
+  },
+  {
+   "check": "dev isolated: input is not a wire method (unsupported)",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "capture",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c7",
+    "result": {
+     "tick": 2,
+     "width": 800,
+     "height": 450,
+     "png": "<61996 base64 chars>"
+    },
+    "ms": 878.1
+   }
+  },
+  {
+   "check": "dev isolated: capture answers the full frame as base64 PNG",
+   "ok": true
+  },
+  {
+   "check": "dev isolated: the PNG is the size it claims",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "capture",
+   "params": {
+    "width": 320
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c8",
+    "result": {
+     "tick": 4,
+     "width": 320,
+     "height": 180,
+     "png": "<22424 base64 chars>"
+    },
+    "ms": 9.2
+   }
+  },
+  {
+   "check": "dev isolated: capture {width: 320} fits the frame",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "entities",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c9",
+    "result": {
+     "items": [
+      {
+       "id": "runner"
+      },
+      {
+       "id": "sun"
+      },
+      {
+       "id": "sky"
+      },
+      {
+       "id": "moon"
+      },
+      {
+       "id": "crate-0"
+      },
+      {
+       "id": "crate-1"
+      },
+      {
+       "id": "crate-2"
+      },
+      {
+       "id": "crate-3"
+      },
+      {
+       "id": "fence-0"
+      },
+      {
+       "id": "fence-1"
+      },
+      {
+       "id": "fence-2"
+      },
+      {
+       "id": "coin-0"
+      },
+      {
+       "id": "coin-1"
+      },
+      {
+       "id": "coin-2"
+      },
+      {
+       "id": "coin-3"
+      },
+      {
+       "id": "coin-4"
+      },
+      {
+       "id": "coin-5"
+      },
+      {
+       "id": "coin-6"
+      },
+      {
+       "id": "coin-7"
+      },
+      {
+       "id": "coin-8"
+      },
+      {
+       "id": "coin-9"
+      },
+      {
+       "id": "coin-10"
+      },
+      {
+       "id": "coin-11"
+      },
+      {
+       "id": "coin-12"
+      },
+      {
+       "id": "coin-13"
+      },
+      {
+       "id": "coin-14"
+      },
+      {
+       "id": "coin-15"
+      }
+     ]
+    },
+    "ms": 0.6
+   }
+  },
+  {
+   "check": "dev isolated: entities lists the runner",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "entity",
+   "params": {
+    "id": "runner"
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c10",
+    "result": {
+     "id": "runner",
+     "params": {
+      "Tuning.coinValue": 10,
+      "Tuning.gravity": 36,
+      "Tuning.jumpCut": 0.5,
+      "Tuning.jumpSpeed": 12,
+      "Tuning.spawnInterval": 1.3,
+      "Tuning.speed": 6,
+      "Tuning.speedMax": 12,
+      "Tuning.speedRamp": 0.12
+     }
+    },
+    "ms": 0.7
+   }
+  },
+  {
+   "check": "dev isolated: entity answers {id, params}",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "entity",
+   "params": {
+    "id": "nobody"
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c11",
+    "code": "refused",
+    "message": "no entity nobody",
+    "ms": 1
+   }
+  },
+  {
+   "check": "dev isolated: entity of an unknown id is refused",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "bounds",
+   "params": {
+    "id": "runner"
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c12",
+    "result": {
+     "items": [
+      {
+       "parameter": "Tuning.coinValue",
+       "label": "Coin value",
+       "path": "Tuning.coinValue",
+       "min": 0,
+       "max": 100,
+       "value": 10
+      },
+      {
+       "parameter": "Tuning.gravity",
+       "label": "Gravity",
+       "path": "Tuning.gravity",
+       "min": 10,
+       "max": 80,
+       "value": 36
+      },
+      {
+       "parameter": "Tuning.jumpCut",
+       "label": "Jump cut",
+       "path": "Tuning.jumpCut",
+       "min": 0.1,
+       "max": 1,
+       "value": 0.5
+      },
+      {
+       "parameter": "Tuning.jumpSpeed",
+       "label": "Jump speed",
+       "path": "Tuning.jumpSpeed",
+       "min": 6,
+       "max": 20,
+       "value": 12
+      },
+      {
+       "parameter": "Tuning.spawnInterval",
+       "label": "Spawn interval",
+       "path": "Tuning.spawnInterval",
+       "min": 0.5,
+       "max": 60,
+       "value": 1.3
+      },
+      {
+       "parameter": "Tuning.speed",
+       "label": "Start speed",
+       "path": "Tuning.speed",
+       "min": 3,
+       "max": 12,
+       "value": 6
+      },
+      {
+       "parameter": "Tuning.speedMax",
+       "label": "Top speed",
+       "path": "Tuning.speedMax",
+       "min": 4,
+       "max": 20,
+       "value": 12
+      },
+      {
+       "parameter": "Tuning.speedRamp",
+       "label": "Speed ramp",
+       "path": "Tuning.speedRamp",
+       "min": 0,
+       "max": 1,
+       "value": 0.12
+      }
+     ]
+    },
+    "ms": 0.6
+   }
+  },
+  {
+   "check": "dev isolated: bounds answers {items} with the declared range and value",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "patch",
+   "params": {
+    "id": "runner",
+    "parameter": "Tuning.gravity",
+    "value": 40
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c13",
+    "result": {
+     "applied": true,
+     "roundTripMs": 8.5
+    },
+    "ms": 8.9
+   }
+  },
+  {
+   "check": "dev isolated: patch answers {applied, roundTripMs}",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "entity",
+   "params": {
+    "id": "runner"
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c14",
+    "result": {
+     "id": "runner",
+     "params": {
+      "Tuning.coinValue": 10,
+      "Tuning.gravity": 40,
+      "Tuning.jumpCut": 0.5,
+      "Tuning.jumpSpeed": 12,
+      "Tuning.spawnInterval": 1.3,
+      "Tuning.speed": 6,
+      "Tuning.speedMax": 12,
+      "Tuning.speedRamp": 0.12
+     }
+    },
+    "ms": 0.4
+   }
+  },
+  {
+   "check": "dev isolated: the patch applied",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "patch",
+   "params": {
+    "id": "runner",
+    "parameter": "Tuning.gravity",
+    "value": 500
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c15",
+    "code": "refused",
+    "message": "Tuning.gravity of runner refused",
+    "ms": 0.3
+   }
+  },
+  {
+   "check": "dev isolated: a patch outside the range is refused",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "pause",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c16",
+    "result": {
+     "tick": 6,
+     "paused": true,
+     "timings": {
+      "frameMs": 0.7699999809265137
+     }
+    },
+    "ms": 0.3
+   }
+  },
+  {
+   "check": "dev isolated: pause answers the state, paused",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c17",
+    "result": 6,
+    "ms": 0.1
+   }
+  },
+  {
+   "run": "dev isolated",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c18",
+    "result": 6,
+    "ms": 0.6
+   }
+  },
+  {
+   "check": "dev isolated: paused, the clock holds",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "advance",
+   "params": {
+    "steps": 10
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c19",
+    "result": {
+     "tick": 16,
+     "paused": true,
+     "timings": {
+      "frameMs": 0.7849999666213989
+     }
+    },
+    "ms": 5
+   }
+  },
+  {
+   "check": "dev isolated: advance {steps: 10} takes 10 ticks",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "resume",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c20",
+    "result": {
+     "tick": 16,
+     "paused": false,
+     "timings": {
+      "frameMs": 0.7849999666213989
+     }
+    },
+    "ms": 0.6
+   }
+  },
+  {
+   "check": "dev isolated: resume answers the state, playing",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "advance",
+   "params": {
+    "steps": -1
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c21",
+    "code": "refused",
+    "message": "steps must be a whole number from 0 to 3600",
+    "ms": 0.3
+   }
+  },
+  {
+   "check": "dev isolated: advance {steps: -1} is refused",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "frobnicate",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c22",
+    "code": "unsupported",
+    "message": "unknown method frobnicate",
+    "ms": 0.3
+   }
+  },
+  {
+   "check": "dev isolated: an unknown method is unsupported",
+   "ok": true
+  },
+  {
+   "check": "dev isolated: another wire version gets no answer",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "record",
+   "params": {
+    "seconds": 1
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c24",
+    "result": {
+     "mime": "video/webm;codecs=vp8",
+     "base64": "<229696 base64 chars>",
+     "durationMs": 1005
+    },
+    "ms": 1017.1
+   }
+  },
+  {
+   "check": "dev isolated: record {seconds: 1} answers a recording (or unsupported)",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "record",
+   "params": {
+    "seconds": 16
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c25",
+    "code": "refused",
+    "message": "seconds must be within (0, 15]",
+    "ms": 0.4
+   }
+  },
+  {
+   "check": "dev isolated: record {seconds: 16} is refused",
+   "ok": true
+  },
+  {
+   "check": "dev isolated: a page told another origin answers nothing",
+   "ok": true
+  },
+  {
+   "check": "dev isolated: and posts no hello",
+   "ok": true
+  },
+  {
+   "check": "dev isolated: a page told no origin is silent",
+   "ok": true
+  },
+  {
+   "check": "dev: unsolicited hello",
+   "ok": true
+  },
+  {
+   "check": "dev: crossOriginIsolated is false",
+   "ok": true
+  },
+  {
+   "check": "dev: the game page has its canvas",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "hello",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c1",
+    "result": {
+     "protocol": 5,
+     "substrate": "origin-engine"
+    },
+    "ms": 0.6
+   }
+  },
+  {
+   "check": "dev: hello answers {protocol: 5, substrate}",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c2",
+    "result": 1,
+    "ms": 1.6
+   }
+  },
+  {
+   "check": "dev: tick answers a number",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "state",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c3",
+    "result": {
+     "tick": 1,
+     "paused": false,
+     "timings": {
+      "frameMs": 8.899999976158142
+     }
+    },
+    "ms": 0.9
+   }
+  },
+  {
+   "check": "dev: state answers {tick, paused, timings: {frameMs}}",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c4",
+    "result": 1,
+    "ms": 1.1
+   }
+  },
+  {
+   "check": "dev: the clock holds behind the play gate",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c5",
+    "result": 36,
+    "ms": 0.5
+   }
+  },
+  {
+   "check": "dev: a tap on the gate starts the clock",
+   "ok": true
+  },
+  {
+   "check": "dev: real key events reach the engine's input layer",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "input",
+   "params": {
+    "event": {
+     "kind": "key",
+     "key": "Space",
+     "action": "press"
+    }
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c6",
+    "code": "unsupported",
+    "message": "unknown method input",
+    "ms": 0.5
+   }
+  },
+  {
+   "check": "dev: input is not a wire method (unsupported)",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "capture",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c7",
+    "result": {
+     "tick": 55,
+     "width": 800,
+     "height": 450,
+     "png": "<53032 base64 chars>"
+    },
+    "ms": 20.3
+   }
+  },
+  {
+   "check": "dev: capture answers the full frame as base64 PNG",
+   "ok": true
+  },
+  {
+   "check": "dev: the PNG is the size it claims",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "capture",
+   "params": {
+    "width": 320
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c8",
+    "result": {
+     "tick": 56,
+     "width": 320,
+     "height": 180,
+     "png": "<21904 base64 chars>"
+    },
+    "ms": 10
+   }
+  },
+  {
+   "check": "dev: capture {width: 320} fits the frame",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "entities",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c9",
+    "result": {
+     "items": [
+      {
+       "id": "runner"
+      },
+      {
+       "id": "sun"
+      },
+      {
+       "id": "sky"
+      },
+      {
+       "id": "moon"
+      },
+      {
+       "id": "crate-0"
+      },
+      {
+       "id": "crate-1"
+      },
+      {
+       "id": "crate-2"
+      },
+      {
+       "id": "crate-3"
+      },
+      {
+       "id": "fence-0"
+      },
+      {
+       "id": "fence-1"
+      },
+      {
+       "id": "fence-2"
+      },
+      {
+       "id": "coin-0"
+      },
+      {
+       "id": "coin-1"
+      },
+      {
+       "id": "coin-2"
+      },
+      {
+       "id": "coin-3"
+      },
+      {
+       "id": "coin-4"
+      },
+      {
+       "id": "coin-5"
+      },
+      {
+       "id": "coin-6"
+      },
+      {
+       "id": "coin-7"
+      },
+      {
+       "id": "coin-8"
+      },
+      {
+       "id": "coin-9"
+      },
+      {
+       "id": "coin-10"
+      },
+      {
+       "id": "coin-11"
+      },
+      {
+       "id": "coin-12"
+      },
+      {
+       "id": "coin-13"
+      },
+      {
+       "id": "coin-14"
+      },
+      {
+       "id": "coin-15"
+      }
+     ]
+    },
+    "ms": 0.6
+   }
+  },
+  {
+   "check": "dev: entities lists the runner",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "entity",
+   "params": {
+    "id": "runner"
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c10",
+    "result": {
+     "id": "runner",
+     "params": {
+      "Tuning.coinValue": 10,
+      "Tuning.gravity": 36,
+      "Tuning.jumpCut": 0.5,
+      "Tuning.jumpSpeed": 12,
+      "Tuning.spawnInterval": 1.3,
+      "Tuning.speed": 6,
+      "Tuning.speedMax": 12,
+      "Tuning.speedRamp": 0.12
+     }
+    },
+    "ms": 0.7
+   }
+  },
+  {
+   "check": "dev: entity answers {id, params}",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "entity",
+   "params": {
+    "id": "nobody"
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c11",
+    "code": "refused",
+    "message": "no entity nobody",
+    "ms": 0.2
+   }
+  },
+  {
+   "check": "dev: entity of an unknown id is refused",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "bounds",
+   "params": {
+    "id": "runner"
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c12",
+    "result": {
+     "items": [
+      {
+       "parameter": "Tuning.coinValue",
+       "label": "Coin value",
+       "path": "Tuning.coinValue",
+       "min": 0,
+       "max": 100,
+       "value": 10
+      },
+      {
+       "parameter": "Tuning.gravity",
+       "label": "Gravity",
+       "path": "Tuning.gravity",
+       "min": 10,
+       "max": 80,
+       "value": 36
+      },
+      {
+       "parameter": "Tuning.jumpCut",
+       "label": "Jump cut",
+       "path": "Tuning.jumpCut",
+       "min": 0.1,
+       "max": 1,
+       "value": 0.5
+      },
+      {
+       "parameter": "Tuning.jumpSpeed",
+       "label": "Jump speed",
+       "path": "Tuning.jumpSpeed",
+       "min": 6,
+       "max": 20,
+       "value": 12
+      },
+      {
+       "parameter": "Tuning.spawnInterval",
+       "label": "Spawn interval",
+       "path": "Tuning.spawnInterval",
+       "min": 0.5,
+       "max": 60,
+       "value": 1.3
+      },
+      {
+       "parameter": "Tuning.speed",
+       "label": "Start speed",
+       "path": "Tuning.speed",
+       "min": 3,
+       "max": 12,
+       "value": 6
+      },
+      {
+       "parameter": "Tuning.speedMax",
+       "label": "Top speed",
+       "path": "Tuning.speedMax",
+       "min": 4,
+       "max": 20,
+       "value": 12
+      },
+      {
+       "parameter": "Tuning.speedRamp",
+       "label": "Speed ramp",
+       "path": "Tuning.speedRamp",
+       "min": 0,
+       "max": 1,
+       "value": 0.12
+      }
+     ]
+    },
+    "ms": 0.5
+   }
+  },
+  {
+   "check": "dev: bounds answers {items} with the declared range and value",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "patch",
+   "params": {
+    "id": "runner",
+    "parameter": "Tuning.gravity",
+    "value": 40
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c13",
+    "result": {
+     "applied": true,
+     "roundTripMs": 9.9
+    },
+    "ms": 10.4
+   }
+  },
+  {
+   "check": "dev: patch answers {applied, roundTripMs}",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "entity",
+   "params": {
+    "id": "runner"
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c14",
+    "result": {
+     "id": "runner",
+     "params": {
+      "Tuning.coinValue": 10,
+      "Tuning.gravity": 40,
+      "Tuning.jumpCut": 0.5,
+      "Tuning.jumpSpeed": 12,
+      "Tuning.spawnInterval": 1.3,
+      "Tuning.speed": 6,
+      "Tuning.speedMax": 12,
+      "Tuning.speedRamp": 0.12
+     }
+    },
+    "ms": 0.4
+   }
+  },
+  {
+   "check": "dev: the patch applied",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "patch",
+   "params": {
+    "id": "runner",
+    "parameter": "Tuning.gravity",
+    "value": 500
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c15",
+    "code": "refused",
+    "message": "Tuning.gravity of runner refused",
+    "ms": 0.4
+   }
+  },
+  {
+   "check": "dev: a patch outside the range is refused",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "pause",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c16",
+    "result": {
+     "tick": 58,
+     "paused": true,
+     "timings": {
+      "frameMs": 0.6000000238418579
+     }
+    },
+    "ms": 0.3
+   }
+  },
+  {
+   "check": "dev: pause answers the state, paused",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c17",
+    "result": 58,
+    "ms": 0.3
+   }
+  },
+  {
+   "run": "dev",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c18",
+    "result": 58,
+    "ms": 0.5
+   }
+  },
+  {
+   "check": "dev: paused, the clock holds",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "advance",
+   "params": {
+    "steps": 10
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c19",
+    "result": {
+     "tick": 68,
+     "paused": true,
+     "timings": {
+      "frameMs": 0.6000000238418579
+     }
+    },
+    "ms": 3.3
+   }
+  },
+  {
+   "check": "dev: advance {steps: 10} takes 10 ticks",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "resume",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c20",
+    "result": {
+     "tick": 68,
+     "paused": false,
+     "timings": {
+      "frameMs": 0.6000000238418579
+     }
+    },
+    "ms": 0.3
+   }
+  },
+  {
+   "check": "dev: resume answers the state, playing",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "advance",
+   "params": {
+    "steps": -1
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c21",
+    "code": "refused",
+    "message": "steps must be a whole number from 0 to 3600",
+    "ms": 0.1
+   }
+  },
+  {
+   "check": "dev: advance {steps: -1} is refused",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "frobnicate",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c22",
+    "code": "unsupported",
+    "message": "unknown method frobnicate",
+    "ms": 0.2
+   }
+  },
+  {
+   "check": "dev: an unknown method is unsupported",
+   "ok": true
+  },
+  {
+   "check": "dev: another wire version gets no answer",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "record",
+   "params": {
+    "seconds": 1
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c24",
+    "result": {
+     "mime": "video/webm;codecs=vp8",
+     "base64": "<230344 base64 chars>",
+     "durationMs": 1002
+    },
+    "ms": 1005.3
+   }
+  },
+  {
+   "check": "dev: record {seconds: 1} answers a recording (or unsupported)",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "recordKind": "result",
+   "recordMime": "video/webm;codecs=vp8"
+  },
+  {
+   "run": "dev",
+   "method": "record",
+   "params": {
+    "seconds": 16
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c25",
+    "code": "refused",
+    "message": "seconds must be within (0, 15]",
+    "ms": 0.4
+   }
+  },
+  {
+   "check": "dev: record {seconds: 16} is refused",
+   "ok": true
+  },
+  {
+   "check": "dev: a page told another origin answers nothing",
+   "ok": true
+  },
+  {
+   "check": "dev: and posts no hello",
+   "ok": true
+  },
+  {
+   "check": "dev: a page told no origin is silent",
+   "ok": true
+  },
+  {
+   "check": "publish isolated: unsolicited hello",
+   "ok": true
+  },
+  {
+   "check": "publish isolated: crossOriginIsolated is true",
+   "ok": true
+  },
+  {
+   "check": "publish isolated: the game page has its canvas",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "hello",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c1",
+    "result": {
+     "protocol": 5,
+     "substrate": "origin-engine"
+    },
+    "ms": 0.5
+   }
+  },
+  {
+   "check": "publish isolated: hello answers {protocol: 5, substrate}",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c2",
+    "result": 1,
+    "ms": 2.1
+   }
+  },
+  {
+   "check": "publish isolated: tick answers a number",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "state",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c3",
+    "result": {
+     "tick": 1,
+     "paused": false,
+     "timings": {
+      "frameMs": 15.835000038146973
+     }
+    },
+    "ms": 0.7
+   }
+  },
+  {
+   "check": "publish isolated: state answers {tick, paused, timings: {frameMs}}",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c4",
+    "result": 1,
+    "ms": 0.6
+   }
+  },
+  {
+   "check": "publish isolated: the clock holds behind the play gate",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c5",
+    "result": 36,
+    "ms": 0.6
+   }
+  },
+  {
+   "check": "publish isolated: a tap on the gate starts the clock",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "input",
+   "params": {
+    "event": {
+     "kind": "key",
+     "key": "Space",
+     "action": "press"
+    }
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c6",
+    "code": "unsupported",
+    "message": "unknown method input",
+    "ms": 0.5
+   }
+  },
+  {
+   "check": "publish isolated: input is not a wire method (unsupported)",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "capture",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c7",
+    "result": {
+     "tick": 36,
+     "width": 800,
+     "height": 450,
+     "png": "<54896 base64 chars>"
+    },
+    "ms": 16.8
+   }
+  },
+  {
+   "check": "publish isolated: capture answers the full frame as base64 PNG",
+   "ok": true
+  },
+  {
+   "check": "publish isolated: the PNG is the size it claims",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "capture",
+   "params": {
+    "width": 320
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c8",
+    "result": {
+     "tick": 38,
+     "width": 320,
+     "height": 180,
+     "png": "<23516 base64 chars>"
+    },
+    "ms": 10.8
+   }
+  },
+  {
+   "check": "publish isolated: capture {width: 320} fits the frame",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "entities",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c9",
+    "result": {
+     "items": [
+      {
+       "id": "runner"
+      },
+      {
+       "id": "sun"
+      },
+      {
+       "id": "sky"
+      },
+      {
+       "id": "moon"
+      },
+      {
+       "id": "crate-0"
+      },
+      {
+       "id": "crate-1"
+      },
+      {
+       "id": "crate-2"
+      },
+      {
+       "id": "crate-3"
+      },
+      {
+       "id": "fence-0"
+      },
+      {
+       "id": "fence-1"
+      },
+      {
+       "id": "fence-2"
+      },
+      {
+       "id": "coin-0"
+      },
+      {
+       "id": "coin-1"
+      },
+      {
+       "id": "coin-2"
+      },
+      {
+       "id": "coin-3"
+      },
+      {
+       "id": "coin-4"
+      },
+      {
+       "id": "coin-5"
+      },
+      {
+       "id": "coin-6"
+      },
+      {
+       "id": "coin-7"
+      },
+      {
+       "id": "coin-8"
+      },
+      {
+       "id": "coin-9"
+      },
+      {
+       "id": "coin-10"
+      },
+      {
+       "id": "coin-11"
+      },
+      {
+       "id": "coin-12"
+      },
+      {
+       "id": "coin-13"
+      },
+      {
+       "id": "coin-14"
+      },
+      {
+       "id": "coin-15"
+      }
+     ]
+    },
+    "ms": 0.7
+   }
+  },
+  {
+   "check": "publish isolated: entities lists the runner",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "entity",
+   "params": {
+    "id": "runner"
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c10",
+    "result": {
+     "id": "runner",
+     "params": {
+      "Tuning.coinValue": 10,
+      "Tuning.gravity": 36,
+      "Tuning.jumpCut": 0.5,
+      "Tuning.jumpSpeed": 12,
+      "Tuning.spawnInterval": 1.3,
+      "Tuning.speed": 6,
+      "Tuning.speedMax": 12,
+      "Tuning.speedRamp": 0.12
+     }
+    },
+    "ms": 0.8
+   }
+  },
+  {
+   "check": "publish isolated: entity answers {id, params}",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "entity",
+   "params": {
+    "id": "nobody"
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c11",
+    "code": "refused",
+    "message": "no entity nobody",
+    "ms": 0.3
+   }
+  },
+  {
+   "check": "publish isolated: entity of an unknown id is refused",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "pause",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c12",
+    "code": "unsupported",
+    "message": "pause is not served by this build (a publish build serves the player members only)",
+    "ms": 0.3
+   }
+  },
+  {
+   "check": "publish isolated: pause is unsupported in a publish build",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "resume",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c13",
+    "code": "unsupported",
+    "message": "resume is not served by this build (a publish build serves the player members only)",
+    "ms": 0.6
+   }
+  },
+  {
+   "check": "publish isolated: resume is unsupported in a publish build",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "advance",
+   "params": {
+    "steps": 1
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c14",
+    "code": "unsupported",
+    "message": "advance is not served by this build (a publish build serves the player members only)",
+    "ms": 0.3
+   }
+  },
+  {
+   "check": "publish isolated: advance is unsupported in a publish build",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "bounds",
+   "params": {
+    "id": "runner"
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c15",
+    "code": "unsupported",
+    "message": "bounds is not served by this build (a publish build serves the player members only)",
+    "ms": 0.2
+   }
+  },
+  {
+   "check": "publish isolated: bounds is unsupported in a publish build",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "patch",
+   "params": {
+    "id": "runner",
+    "parameter": "Tuning.gravity",
+    "value": 40
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c16",
+    "code": "unsupported",
+    "message": "patch is not served by this build (a publish build serves the player members only)",
+    "ms": 0.2
+   }
+  },
+  {
+   "check": "publish isolated: patch is unsupported in a publish build",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "advance",
+   "params": {
+    "steps": -1
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c17",
+    "code": "refused",
+    "message": "steps must be a whole number from 0 to 3600",
+    "ms": 0.2
+   }
+  },
+  {
+   "check": "publish isolated: advance {steps: -1} is refused",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "frobnicate",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c18",
+    "code": "unsupported",
+    "message": "unknown method frobnicate",
+    "ms": 0.1
+   }
+  },
+  {
+   "check": "publish isolated: an unknown method is unsupported",
+   "ok": true
+  },
+  {
+   "check": "publish isolated: another wire version gets no answer",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "record",
+   "params": {
+    "seconds": 1
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c20",
+    "result": {
+     "mime": "video/webm;codecs=vp8",
+     "base64": "<227004 base64 chars>",
+     "durationMs": 1002
+    },
+    "ms": 1004
+   }
+  },
+  {
+   "check": "publish isolated: record {seconds: 1} answers a recording (or unsupported)",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "record",
+   "params": {
+    "seconds": 16
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c21",
+    "code": "refused",
+    "message": "seconds must be within (0, 15]",
+    "ms": 0.4
+   }
+  },
+  {
+   "check": "publish isolated: record {seconds: 16} is refused",
+   "ok": true
+  },
+  {
+   "check": "publish isolated: a page told another origin answers nothing",
+   "ok": true
+  },
+  {
+   "check": "publish isolated: and posts no hello",
+   "ok": true
+  },
+  {
+   "check": "publish isolated: a page told no origin is silent",
+   "ok": true
+  },
+  {
+   "check": "publish: unsolicited hello",
+   "ok": true
+  },
+  {
+   "check": "publish: crossOriginIsolated is false",
+   "ok": true
+  },
+  {
+   "check": "publish: the game page has its canvas",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "hello",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c1",
+    "result": {
+     "protocol": 5,
+     "substrate": "origin-engine"
+    },
+    "ms": 0.6
+   }
+  },
+  {
+   "check": "publish: hello answers {protocol: 5, substrate}",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c2",
+    "result": 1,
+    "ms": 2
+   }
+  },
+  {
+   "check": "publish: tick answers a number",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "state",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c3",
+    "result": {
+     "tick": 1,
+     "paused": false,
+     "timings": {
+      "frameMs": 15.800000071525574
+     }
+    },
+    "ms": 0.5
+   }
+  },
+  {
+   "check": "publish: state answers {tick, paused, timings: {frameMs}}",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c4",
+    "result": 1,
+    "ms": 0.6
+   }
+  },
+  {
+   "check": "publish: the clock holds behind the play gate",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c5",
+    "result": 36,
+    "ms": 0.3
+   }
+  },
+  {
+   "check": "publish: a tap on the gate starts the clock",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "input",
+   "params": {
+    "event": {
+     "kind": "key",
+     "key": "Space",
+     "action": "press"
+    }
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c6",
+    "code": "unsupported",
+    "message": "unknown method input",
+    "ms": 0.3
+   }
+  },
+  {
+   "check": "publish: input is not a wire method (unsupported)",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "capture",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c7",
+    "result": {
+     "tick": 36,
+     "width": 800,
+     "height": 450,
+     "png": "<54896 base64 chars>"
+    },
+    "ms": 16.7
+   }
+  },
+  {
+   "check": "publish: capture answers the full frame as base64 PNG",
+   "ok": true
+  },
+  {
+   "check": "publish: the PNG is the size it claims",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "capture",
+   "params": {
+    "width": 320
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c8",
+    "result": {
+     "tick": 37,
+     "width": 320,
+     "height": 180,
+     "png": "<23456 base64 chars>"
+    },
+    "ms": 12.5
+   }
+  },
+  {
+   "check": "publish: capture {width: 320} fits the frame",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "entities",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c9",
+    "result": {
+     "items": [
+      {
+       "id": "runner"
+      },
+      {
+       "id": "sun"
+      },
+      {
+       "id": "sky"
+      },
+      {
+       "id": "moon"
+      },
+      {
+       "id": "crate-0"
+      },
+      {
+       "id": "crate-1"
+      },
+      {
+       "id": "crate-2"
+      },
+      {
+       "id": "crate-3"
+      },
+      {
+       "id": "fence-0"
+      },
+      {
+       "id": "fence-1"
+      },
+      {
+       "id": "fence-2"
+      },
+      {
+       "id": "coin-0"
+      },
+      {
+       "id": "coin-1"
+      },
+      {
+       "id": "coin-2"
+      },
+      {
+       "id": "coin-3"
+      },
+      {
+       "id": "coin-4"
+      },
+      {
+       "id": "coin-5"
+      },
+      {
+       "id": "coin-6"
+      },
+      {
+       "id": "coin-7"
+      },
+      {
+       "id": "coin-8"
+      },
+      {
+       "id": "coin-9"
+      },
+      {
+       "id": "coin-10"
+      },
+      {
+       "id": "coin-11"
+      },
+      {
+       "id": "coin-12"
+      },
+      {
+       "id": "coin-13"
+      },
+      {
+       "id": "coin-14"
+      },
+      {
+       "id": "coin-15"
+      }
+     ]
+    },
+    "ms": 0.5
+   }
+  },
+  {
+   "check": "publish: entities lists the runner",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "entity",
+   "params": {
+    "id": "runner"
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c10",
+    "result": {
+     "id": "runner",
+     "params": {
+      "Tuning.coinValue": 10,
+      "Tuning.gravity": 36,
+      "Tuning.jumpCut": 0.5,
+      "Tuning.jumpSpeed": 12,
+      "Tuning.spawnInterval": 1.3,
+      "Tuning.speed": 6,
+      "Tuning.speedMax": 12,
+      "Tuning.speedRamp": 0.12
+     }
+    },
+    "ms": 0.7
+   }
+  },
+  {
+   "check": "publish: entity answers {id, params}",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "entity",
+   "params": {
+    "id": "nobody"
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c11",
+    "code": "refused",
+    "message": "no entity nobody",
+    "ms": 0.3
+   }
+  },
+  {
+   "check": "publish: entity of an unknown id is refused",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "pause",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c12",
+    "code": "unsupported",
+    "message": "pause is not served by this build (a publish build serves the player members only)",
+    "ms": 0.3
+   }
+  },
+  {
+   "check": "publish: pause is unsupported in a publish build",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "resume",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c13",
+    "code": "unsupported",
+    "message": "resume is not served by this build (a publish build serves the player members only)",
+    "ms": 0.2
+   }
+  },
+  {
+   "check": "publish: resume is unsupported in a publish build",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "advance",
+   "params": {
+    "steps": 1
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c14",
+    "code": "unsupported",
+    "message": "advance is not served by this build (a publish build serves the player members only)",
+    "ms": 0.1
+   }
+  },
+  {
+   "check": "publish: advance is unsupported in a publish build",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "bounds",
+   "params": {
+    "id": "runner"
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c15",
+    "code": "unsupported",
+    "message": "bounds is not served by this build (a publish build serves the player members only)",
+    "ms": 0.5
+   }
+  },
+  {
+   "check": "publish: bounds is unsupported in a publish build",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "patch",
+   "params": {
+    "id": "runner",
+    "parameter": "Tuning.gravity",
+    "value": 40
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c16",
+    "code": "unsupported",
+    "message": "patch is not served by this build (a publish build serves the player members only)",
+    "ms": 0.2
+   }
+  },
+  {
+   "check": "publish: patch is unsupported in a publish build",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "advance",
+   "params": {
+    "steps": -1
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c17",
+    "code": "refused",
+    "message": "steps must be a whole number from 0 to 3600",
+    "ms": 0.2
+   }
+  },
+  {
+   "check": "publish: advance {steps: -1} is refused",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "frobnicate",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c18",
+    "code": "unsupported",
+    "message": "unknown method frobnicate",
+    "ms": 0.1
+   }
+  },
+  {
+   "check": "publish: an unknown method is unsupported",
+   "ok": true
+  },
+  {
+   "check": "publish: another wire version gets no answer",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "record",
+   "params": {
+    "seconds": 1
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c20",
+    "result": {
+     "mime": "video/webm;codecs=vp8",
+     "base64": "<236776 base64 chars>",
+     "durationMs": 1002
+    },
+    "ms": 1003.7
+   }
+  },
+  {
+   "check": "publish: record {seconds: 1} answers a recording (or unsupported)",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "record",
+   "params": {
+    "seconds": 16
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c21",
+    "code": "refused",
+    "message": "seconds must be within (0, 15]",
+    "ms": 0.4
+   }
+  },
+  {
+   "check": "publish: record {seconds: 16} is refused",
+   "ok": true
+  },
+  {
+   "check": "publish: a page told another origin answers nothing",
+   "ok": true
+  },
+  {
+   "check": "publish: and posts no hello",
+   "ok": true
+  },
+  {
+   "check": "publish: a page told no origin is silent",
+   "ok": true
+  }
+ ]
+}

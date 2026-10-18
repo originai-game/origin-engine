@@ -1508,6 +1508,27 @@
           "returns": "Result<GltfInfo>",
           "returnsDoc": "Refused for a pending, failed or non-glTF asset.",
           "publish": true
+        },
+        {
+          "name": "animation",
+          "doc": "Load a cooked glTF's animation (its `<model>#anim` blob: the rig, the clips, the skin and morph streams) and register its skeleton and clips with og.anim. Loading the same model again answers the same handles.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose animation owns the assets."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The model's asset id, such as `models/walker.glb` (a `#anim` suffix is accepted)."
+            }
+          ],
+          "returns": "Result<Animation>",
+          "returnsDoc": "Refused for an uncooked path, a model the cook wrote no `#anim` blob for (no skins, clips or morph targets), a cook stamp mismatch or an invalid rig.",
+          "publish": true
         }
       ],
       "interfaces": [],
@@ -1736,6 +1757,63 @@
       "callbacks": []
     },
     {
+      "name": "anim",
+      "doc": "Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics.\nGame code owns the components and sets players, graph parameters and IK targets; og.anim writes the pose (kept as world state in the `og.anim` state block, so snapshots, restore and the world hash cover it), the joint palette, root motion into og.Transform and the fields marked written. Asset handles are what og.load.animation and og.anim.graph answer; 0 is none.\nClips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names. Assets are not world state: a hot reload registers them again.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "SkeletonAsset",
+        "ClipAsset",
+        "GraphAsset",
+        "SkeletonAsset",
+        "ClipAsset",
+        "GraphAsset",
+        "RootMotion",
+        "RootMotion",
+        "BlendshapeSource",
+        "BlendshapeSource",
+        "IkSolver",
+        "IkSolver",
+        "IkSpace",
+        "IkSpace",
+        "Skeleton",
+        "AnimationPlayer",
+        "AnimationGraph",
+        "Blendshapes",
+        "IkChain",
+        "AnimationEvent",
+        "ClipInfo",
+        "Animation",
+        "GraphDesc"
+      ],
+      "consts": [],
+      "functions": [
+        {
+          "name": "graph",
+          "doc": "Register a blend-tree graph for AnimationGraph.asset. Its `clip` lines are resolved by name against `clips`.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose animation owns the graph."
+            },
+            {
+              "name": "desc",
+              "type": "GraphDesc",
+              "optional": true,
+              "doc": "The text and the clips it may name."
+            }
+          ],
+          "returns": "Result<GraphAsset>",
+          "returnsDoc": "Refused for a parse error (the reason names the line), a clip name `clips` lacks, or an invalid graph.",
+          "publish": true
+        }
+      ],
+      "interfaces": [],
+      "callbacks": []
+    },
+    {
       "name": "audio",
       "doc": "Sound: inside the tick, the engine's og.audio system (after the game's systems and physics) turns AudioSource changes into a deterministic, time-stamped command stream; outside the tick the host's mixer renders it (an AudioWorklet on the web, the output device, a capture or a null sink natively).\nThe stream, not the PCM, is world state: snapshots, restore and the world hash cover it, and nothing a sink does reaches the world. Load sounds with og.load.sound; inserting a source plays it, setting `playing` false stops it, and a one-shot sets `playing` back to false when it ends.\nSpatial gain and pan are computed in the tick from the source's og.Transform relative to the first AudioListener (three.js convention: the listener looks down -Z, +X is right; with none, the origin looking down -Z).",
       "place": "namespace",
@@ -1819,7 +1897,93 @@
         "UiDesc",
         "TypeStep",
         "ControlSizes",
-        "UiTheme"
+        "UiTheme",
+        "Anchor",
+        "TransitionKind",
+        "Tone",
+        "MeterKind",
+        "Breakpoint",
+        "Contrast",
+        "HueName",
+        "NavIntent",
+        "UiRect",
+        "IconAtlasDesc",
+        "AnchorDesc",
+        "TransitionDesc",
+        "Presence",
+        "ModalDesc",
+        "ModalResult",
+        "SpotlightDesc",
+        "ListDesc",
+        "ListRange",
+        "ListResult",
+        "GridDesc",
+        "TabsDesc",
+        "ChoiceResult",
+        "SelectDesc",
+        "StepperDesc",
+        "StepperResult",
+        "RadioDesc",
+        "CheckListResult",
+        "ToastDesc",
+        "ChipDesc",
+        "MeterDesc",
+        "CooldownDesc",
+        "IconDesc",
+        "MapMarker",
+        "MinimapDesc",
+        "DialogueDesc",
+        "DialogueResult",
+        "JoystickDesc",
+        "JoystickResult",
+        "DpadDesc",
+        "DpadResult",
+        "ActionButtonDesc",
+        "SkeletonDesc",
+        "GraphicsQuality",
+        "MenuItem",
+        "MenuResult",
+        "MainMenuDesc",
+        "PauseMenuDesc",
+        "KeyBinding",
+        "LanguageOption",
+        "GameSettings",
+        "SettingsDesc",
+        "SettingsResult",
+        "Ability",
+        "PlatformerHudDesc",
+        "HudResult",
+        "ShooterHudDesc",
+        "PuzzleHudDesc",
+        "Currency",
+        "Generator",
+        "IdleHudDesc",
+        "RacingHudDesc",
+        "DialogueLine",
+        "CutsceneDesc",
+        "CutsceneResult",
+        "ShopItem",
+        "ShopDesc",
+        "ShopResult",
+        "InventoryItem",
+        "InventoryDesc",
+        "SlotMove",
+        "InventoryResult",
+        "LevelInfo",
+        "LevelSelectDesc",
+        "LevelSelectResult",
+        "StatRow",
+        "ResultsDesc",
+        "LeaderboardEntry",
+        "LeaderboardDesc",
+        "LeaderboardResult",
+        "TutorialStep",
+        "TutorialDesc",
+        "TutorialResult",
+        "LoadingDesc",
+        "ConfirmDesc",
+        "ConfirmResult",
+        "AlertDesc"
       ],
       "consts": [],
       "functions": [
@@ -2260,6 +2424,1476 @@
           "returns": "String",
           "publish": true,
           "host": false
+        },
+        {
+          "name": "breakpoint",
+          "doc": "The size class of the play surface of the frame being built (desktop outside a frame).",
+          "params": [],
+          "returns": "Breakpoint",
+          "publish": true
+        },
+        {
+          "name": "frameViewport",
+          "doc": "The play surface of the frame being built: og.ui.viewport without the world, for code that only builds UI.",
+          "params": [],
+          "returns": "Viewport",
+          "publish": true
+        },
+        {
+          "name": "hasIcon",
+          "doc": "Whether the icon atlas has an icon of this name (templates draw a fallback otherwise).",
+          "params": [
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "The icon's name."
+            }
+          ],
+          "returns": "bool",
+          "publish": true
+        },
+        {
+          "name": "seconds",
+          "doc": "The UI's clock in seconds: frames built over the tick rate (simulation time, never the wall clock).",
+          "params": [],
+          "returns": "f64",
+          "publish": true
+        },
+        {
+          "name": "frameTheme",
+          "doc": "The design tokens of the frame being built: og.ui.theme without the world, for code that only builds UI (the templates).",
+          "params": [],
+          "returns": "UiTheme",
+          "publish": true
+        },
+        {
+          "name": "openAnchor",
+          "doc": "Open an anchored group, closed by close(): og.ui.anchor without the callback.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id; the probe path is the id alone."
+            },
+            {
+              "name": "desc",
+              "type": "AnchorDesc",
+              "optional": true,
+              "doc": "Where it sits and how it lays out."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "anchor",
+          "doc": "An anchored group built by `build`: a layer at a point of the safe area, over the tree, for HUD corners and touch controls.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "AnchorDesc",
+              "optional": false,
+              "doc": "Where it sits and how it lays out."
+            },
+            {
+              "name": "build",
+              "type": "UiBuild",
+              "optional": false,
+              "doc": "Makes its children."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "openTransition",
+          "doc": "Open a transition container (a column), closed by close(); build its children only while the answer is visible: it stays visible while it leaves. Its content takes no input while it moves.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "show",
+              "type": "bool",
+              "optional": false,
+              "doc": "Whether it should be shown."
+            },
+            {
+              "name": "desc",
+              "type": "TransitionDesc",
+              "optional": true,
+              "doc": "How it moves."
+            }
+          ],
+          "returns": "Presence",
+          "publish": true
+        },
+        {
+          "name": "transition",
+          "doc": "Content that enters and leaves: fade, slide or scale by the tick from the motion tokens. `build` runs while it is visible.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "show",
+              "type": "bool",
+              "optional": false,
+              "doc": "Whether it should be shown."
+            },
+            {
+              "name": "desc",
+              "type": "TransitionDesc",
+              "optional": false,
+              "doc": "How it moves."
+            },
+            {
+              "name": "build",
+              "type": "UiBuild",
+              "optional": false,
+              "doc": "Makes its content."
+            }
+          ],
+          "returns": "Presence",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "openModal",
+          "doc": "Open a dialog, closed by closeModal(); build its content only while the answer is visible. The probe sees the backdrop as `<id>` and the panel as `<id>/Panel`.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "open",
+              "type": "bool",
+              "optional": false,
+              "doc": "Whether it should be open."
+            },
+            {
+              "name": "desc",
+              "type": "ModalDesc",
+              "optional": true,
+              "doc": "Title, width and dismissal rules."
+            }
+          ],
+          "returns": "ModalResult",
+          "publish": true
+        },
+        {
+          "name": "closeModal",
+          "doc": "Close a dialog opened with openModal (its panel and backdrop).",
+          "params": [],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "modal",
+          "doc": "A dialog built by `build` while visible: scrim, centred panel, focus kept inside, Back and the backdrop dismiss it unless locked. Set your open flag false on `dismissed`.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "open",
+              "type": "bool",
+              "optional": false,
+              "doc": "Whether it should be open."
+            },
+            {
+              "name": "desc",
+              "type": "ModalDesc",
+              "optional": false,
+              "doc": "Title, width and dismissal rules."
+            },
+            {
+              "name": "build",
+              "type": "UiBuild",
+              "optional": false,
+              "doc": "Makes its content."
+            }
+          ],
+          "returns": "ModalResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "spotlight",
+          "doc": "A spotlight over everything (a tutorial step): the scrim on four sides of the hole, an amber edge around it. Presses on the dimmed parts stop there (clicked); presses in the hole reach what is under it. Shades are `<id>/Top`, `Left`, `Right`, `Bottom`; the hole is `<id>/Hole`.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "hole",
+              "type": "Option<UiRect>",
+              "optional": false,
+              "doc": "The rectangle to leave lit, as og.ui.bounds answers; null dims everything."
+            },
+            {
+              "name": "desc",
+              "type": "SpotlightDesc",
+              "optional": true,
+              "doc": "Room around the hole."
+            }
+          ],
+          "returns": "Response",
+          "publish": true
+        },
+        {
+          "name": "bounds",
+          "doc": "Where an element was in the last frame, by id or `Parent/Child` path (topmost first), as touch_move_to resolves it.",
+          "params": [
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The id or path."
+            }
+          ],
+          "returns": "Option<UiRect>",
+          "publish": true
+        },
+        {
+          "name": "openList",
+          "doc": "Open a virtualised list (a scroll column) and learn which rows to build: listItem(i) and close() for each, then closeList().",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "ListDesc",
+              "optional": true,
+              "doc": "Row count and size."
+            }
+          ],
+          "returns": "ListRange",
+          "publish": true
+        },
+        {
+          "name": "openGrid",
+          "doc": "Open a virtualised grid and learn which cells to build: gridItem(i) and close() for each, then closeList().",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "GridDesc",
+              "optional": true,
+              "doc": "Cell count, size and columns."
+            }
+          ],
+          "returns": "ListRange",
+          "publish": true
+        },
+        {
+          "name": "listItem",
+          "doc": "Open row `index` of the open list (`Row#index`): selectable and focusable; its content follows until close(). A press that started on one row and is released on this one answers `dropped`.",
+          "params": [
+            {
+              "name": "index",
+              "type": "u32",
+              "optional": false,
+              "doc": "Its index."
+            },
+            {
+              "name": "selected",
+              "type": "bool",
+              "optional": false,
+              "doc": "Drawn selected (fill-strong)."
+            }
+          ],
+          "returns": "Response",
+          "publish": true
+        },
+        {
+          "name": "gridItem",
+          "doc": "Open cell `index` of the open grid (`Cell#index`): a slot on fill, focusable; its content follows until close(). Drops answer `dropped` as listItem's.",
+          "params": [
+            {
+              "name": "index",
+              "type": "u32",
+              "optional": false,
+              "doc": "Its index."
+            },
+            {
+              "name": "selected",
+              "type": "bool",
+              "optional": false,
+              "doc": "Drawn selected (fill-strong with an amber bar)."
+            }
+          ],
+          "returns": "Response",
+          "publish": true
+        },
+        {
+          "name": "closeList",
+          "doc": "Close a list or grid opened with openList or openGrid.",
+          "params": [],
+          "returns": "Response",
+          "publish": true
+        },
+        {
+          "name": "dragging",
+          "doc": "The row or cell a held press started on in the list or grid of this id (built under the same parent): a drag in progress, to draw what is dragged under the pointer.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "The list's or grid's id."
+            }
+          ],
+          "returns": "Option<u32>",
+          "publish": true
+        },
+        {
+          "name": "list",
+          "doc": "A virtualised list built by `build(index)` for the rows in view.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "ListDesc",
+              "optional": false,
+              "doc": "Row count, size and the selected row."
+            },
+            {
+              "name": "build",
+              "type": "UiItemBuild",
+              "optional": false,
+              "doc": "Makes one row's content."
+            }
+          ],
+          "returns": "ListResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "grid",
+          "doc": "A virtualised grid built by `build(index)` for the cells in view.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "GridDesc",
+              "optional": false,
+              "doc": "Cell count, size, columns and the selected cell."
+            },
+            {
+              "name": "build",
+              "type": "UiItemBuild",
+              "optional": false,
+              "doc": "Makes one cell's content."
+            }
+          ],
+          "returns": "ListResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "tabs",
+          "doc": "A segmented control: a neutral track, the chosen tab on the thumb. Tabs are `Tab#i` and the probe reads their labels.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "items",
+              "type": "List<String>",
+              "optional": false,
+              "doc": "The tab labels."
+            },
+            {
+              "name": "selected",
+              "type": "u32",
+              "optional": false,
+              "doc": "The chosen index from game state."
+            },
+            {
+              "name": "desc",
+              "type": "TabsDesc",
+              "optional": true,
+              "doc": "Fill and width."
+            }
+          ],
+          "returns": "ChoiceResult",
+          "publish": true
+        },
+        {
+          "name": "select",
+          "doc": "A select: a field-like trigger with the chosen label and a chevron; a press or Activate opens its menu `<id>.menu` (options `Option#i`) under it, a focus scope; choosing closes it with changed. Back or a press outside closes it.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "options",
+              "type": "List<String>",
+              "optional": false,
+              "doc": "The option labels."
+            },
+            {
+              "name": "selected",
+              "type": "u32",
+              "optional": false,
+              "doc": "The chosen index from game state."
+            },
+            {
+              "name": "desc",
+              "type": "SelectDesc",
+              "optional": true,
+              "doc": "Placeholder, width, disabled."
+            }
+          ],
+          "returns": "ChoiceResult",
+          "publish": true
+        },
+        {
+          "name": "stepper",
+          "doc": "A number stepper: `Dec`, `Value`, `Inc`. The buttons step within the range; Left and Right step it while a button is focused.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "value",
+              "type": "f32",
+              "optional": false,
+              "doc": "The value from game state."
+            },
+            {
+              "name": "desc",
+              "type": "StepperDesc",
+              "optional": true,
+              "doc": "Range, step and digits."
+            }
+          ],
+          "returns": "StepperResult",
+          "publish": true
+        },
+        {
+          "name": "radio",
+          "doc": "A radio group of `Option#i` rows: a ring, filled amber when chosen, and a label.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "options",
+              "type": "List<String>",
+              "optional": false,
+              "doc": "The option labels."
+            },
+            {
+              "name": "selected",
+              "type": "u32",
+              "optional": false,
+              "doc": "The chosen index from game state."
+            },
+            {
+              "name": "desc",
+              "type": "RadioDesc",
+              "optional": true,
+              "doc": "Row or column."
+            }
+          ],
+          "returns": "ChoiceResult",
+          "publish": true
+        },
+        {
+          "name": "checkbox",
+          "doc": "A checkbox with a label; a press flips it.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "on",
+              "type": "bool",
+              "optional": false,
+              "doc": "The state from game state."
+            },
+            {
+              "name": "label",
+              "type": "String",
+              "optional": false,
+              "doc": "The label."
+            }
+          ],
+          "returns": "ToggleResult",
+          "publish": true
+        },
+        {
+          "name": "checkboxList",
+          "doc": "Checkboxes in a column (`Option#i`).",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "labels",
+              "type": "List<String>",
+              "optional": false,
+              "doc": "The labels."
+            },
+            {
+              "name": "values",
+              "type": "List<bool>",
+              "optional": false,
+              "doc": "The states from game state."
+            }
+          ],
+          "returns": "CheckListResult",
+          "publish": true
+        },
+        {
+          "name": "chip",
+          "doc": "A chip: a capsule on fill; selected inverts to fg. For filters and tags.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "text",
+              "type": "String",
+              "optional": false,
+              "doc": "The label."
+            },
+            {
+              "name": "desc",
+              "type": "ChipDesc",
+              "optional": true,
+              "doc": "Selected and disabled."
+            }
+          ],
+          "returns": "Response",
+          "publish": true
+        },
+        {
+          "name": "badge",
+          "doc": "A badge: a small status capsule in its tone.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "text",
+              "type": "String",
+              "optional": false,
+              "doc": "The label (a count, a word)."
+            },
+            {
+              "name": "tone",
+              "type": "Tone",
+              "optional": false,
+              "doc": "Its tone."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "divider",
+          "doc": "A hairline in the border colour across its parent.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "vertical",
+              "type": "bool",
+              "optional": false,
+              "doc": "Stand it up (in a row)."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "spacer",
+          "doc": "Empty space.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "size",
+              "type": "Option<Size>",
+              "optional": false,
+              "doc": "Its size along both axes; null grows into the free space."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "keyValue",
+          "doc": "A key (fg-muted) and its value (fg, at the end) on one row: stats, settings summaries, receipts.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "key",
+              "type": "String",
+              "optional": false,
+              "doc": "The key."
+            },
+            {
+              "name": "value",
+              "type": "String",
+              "optional": false,
+              "doc": "The value."
+            },
+            {
+              "name": "mono",
+              "type": "bool",
+              "optional": false,
+              "doc": "The value in the monospaced font (prices, ids)."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "skeleton",
+          "doc": "A skeleton: the neutral fill standing in for content that is loading, with a sheen that passes every 1.6 s (still under reduced motion).",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "SkeletonDesc",
+              "optional": true,
+              "doc": "Width, line height and lines."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "spinner",
+          "doc": "A loading spinner: eight dots around a circle, the bright one turning by the tick.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "size",
+              "type": "f32",
+              "optional": false,
+              "doc": "Its diameter in CSS px; 0 is the small control height."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "icon",
+          "doc": "An icon of the atlas (UiDesc.icons) by name; an unknown name draws an empty slot and warns. The probe reads the name.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "The icon's name."
+            },
+            {
+              "name": "desc",
+              "type": "IconDesc",
+              "optional": true,
+              "doc": "Size and ink."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "meter",
+          "doc": "A health, mana or xp bar. A drop shows at once and leaves a pale trail that follows after a beat; a rise grows into place with a ghost of the target; both by the tick.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "value",
+              "type": "f32",
+              "optional": false,
+              "doc": "The current value."
+            },
+            {
+              "name": "max",
+              "type": "f32",
+              "optional": false,
+              "doc": "The full value."
+            },
+            {
+              "name": "desc",
+              "type": "MeterDesc",
+              "optional": true,
+              "doc": "Kind, label, size and notches."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "cooldown",
+          "doc": "A cooldown: a disc whose amber ring fills clockwise from the top as it runs out, bright and full when ready, a label or icon in the middle. A press reports clicked (ready or not).",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "remaining",
+              "type": "f32",
+              "optional": false,
+              "doc": "How much of the cooldown is left, 0 to 1: 1 just used, 0 ready."
+            },
+            {
+              "name": "desc",
+              "type": "CooldownDesc",
+              "optional": true,
+              "doc": "Size, label and icon."
+            }
+          ],
+          "returns": "Response",
+          "publish": true
+        },
+        {
+          "name": "minimap",
+          "doc": "A mini-map frame: the map in a border-strong frame, markers as dots (the player amber and ringed), an N mark and a zone label.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "MinimapDesc",
+              "optional": true,
+              "doc": "Map, markers and label."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "dialogue",
+          "doc": "A dialogue box: a portrait slot, the speaker in amber ink and the line typed out by the tick. A press or Activate while typing shows the whole line; once shown it answers advanced. The line is `<id>/Body/Line` and the probe reads what is shown.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "DialogueDesc",
+              "optional": true,
+              "doc": "Speaker, text, portrait and speed."
+            }
+          ],
+          "returns": "DialogueResult",
+          "publish": true
+        },
+        {
+          "name": "joystick",
+          "doc": "A virtual joystick: a base and a knob that follows a press that started on it. og.Input carries one pointer, so a stick and a button are not held at once yet.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "JoystickDesc",
+              "optional": true,
+              "doc": "Size and dead zone."
+            }
+          ],
+          "returns": "JoystickResult",
+          "publish": true
+        },
+        {
+          "name": "dpad",
+          "doc": "A d-pad of four arms (`Up`, `Down`, `Left`, `Right`), each at least 44 CSS px.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "DpadDesc",
+              "optional": true,
+              "doc": "Its size."
+            }
+          ],
+          "returns": "DpadResult",
+          "publish": true
+        },
+        {
+          "name": "actionButton",
+          "doc": "A round touch action button: pressed while held (jump, fire), clicked on a tap; at least 44 CSS px.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "text",
+              "type": "String",
+              "optional": false,
+              "doc": "Its label (and what the probe reads)."
+            },
+            {
+              "name": "desc",
+              "type": "ActionButtonDesc",
+              "optional": true,
+              "doc": "Size, primary and icon."
+            }
+          ],
+          "returns": "Response",
+          "publish": true
+        },
+        {
+          "name": "toast",
+          "doc": "Queue a toast: it stacks at UiDesc.toastAnchor, enters, stays its time and leaves; at most three are up (older ones leave first); a press dismisses it. Callable anywhere (systems, commands, start); it is world state, so snapshots carry it.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose UI shows it."
+            },
+            {
+              "name": "text",
+              "type": "String",
+              "optional": false,
+              "doc": "The message: a few words."
+            },
+            {
+              "name": "desc",
+              "type": "ToastDesc",
+              "optional": true,
+              "doc": "Tone and time."
+            }
+          ],
+          "returns": "u32",
+          "returnsDoc": "Its id, for dismissToast.",
+          "publish": true
+        },
+        {
+          "name": "dismissToast",
+          "doc": "Start a toast's exit.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "toastId",
+              "type": "u32",
+              "optional": false,
+              "doc": "The id toast() answered."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "navigate",
+          "doc": "Queue a navigation intent for the next tick: a gamepad og.Input does not read yet, a custom binding, a command.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "intent",
+              "type": "NavIntent",
+              "optional": false,
+              "doc": "The intent."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "back",
+          "doc": "Escape or gamepad B this tick, not taken by a dialog or menu: true once, then taken. A pause screen closes on it.",
+          "params": [],
+          "returns": "bool",
+          "publish": true
+        },
+        {
+          "name": "setNavigation",
+          "doc": "Whether keyboard and gamepad navigation moves focus on this screen (on by default). A gameplay HUD whose keys move the player turns it off; an open dialog or menu turns it back on while it is open. Takes effect from the next tick.",
+          "params": [
+            {
+              "name": "on",
+              "type": "bool",
+              "optional": false,
+              "doc": "On or off."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "memory",
+          "doc": "A number the UI keeps for an id under the open element (a template's tab, a count-up's start tick), in snapshots like the rest of the UI state. Read it every tick it is used: an unused memory is dropped.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "The id, unique among its siblings' memories."
+            },
+            {
+              "name": "initial",
+              "type": "f64",
+              "optional": false,
+              "doc": "Its value the first time."
+            }
+          ],
+          "returns": "f64",
+          "publish": true
+        },
+        {
+          "name": "remember",
+          "doc": "Set a number memory (see memory).",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "The id."
+            },
+            {
+              "name": "value",
+              "type": "f64",
+              "optional": false,
+              "doc": "The value."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "tick",
+          "doc": "Frames the UI has built: its clock, for animations by the tick.",
+          "params": [],
+          "returns": "u32",
+          "publish": true
+        },
+        {
+          "name": "previewViewport",
+          "doc": "Lay the UI out for another play surface (a phone in portrait at 3x, a notch) until cleared with null: for headless previews and playtests of responsive layouts. Render at width x dpr by height x dpr (`og run --size`).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "viewport",
+              "type": "Option<Viewport>",
+              "optional": false,
+              "doc": "The surface to lay out for; null returns to the host's."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "mainMenu",
+          "doc": "The title screen template. Returns the item chosen this tick.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "MainMenuDesc",
+              "optional": true,
+              "doc": "Title, items and footer."
+            }
+          ],
+          "returns": "MenuResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "pauseMenu",
+          "doc": "The pause screen template: a dialog with Resume first; Back answers `resume`.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "PauseMenuDesc",
+              "optional": true,
+              "doc": "Open and items."
+            }
+          ],
+          "returns": "MenuResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "settingsScreen",
+          "doc": "The settings template: Audio (volumes, mute), Graphics (quality, frame rate, reduced motion, contrast), Controls (sensitivity, invert, vibration, bindings) and Language. Pass the settings in every tick and keep what it answers.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "SettingsDesc",
+              "optional": true,
+              "doc": "Open, the settings, languages and hooks."
+            }
+          ],
+          "returns": "SettingsResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "platformerHud",
+          "doc": "The platformer HUD template.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "PlatformerHudDesc",
+              "optional": true,
+              "doc": "Lives, coins, score, level and timer."
+            }
+          ],
+          "returns": "HudResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "shooterHud",
+          "doc": "The shooter HUD template.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "ShooterHudDesc",
+              "optional": true,
+              "doc": "Health, armor, ammo, abilities and map."
+            }
+          ],
+          "returns": "HudResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "puzzleHud",
+          "doc": "The puzzle HUD template.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "PuzzleHudDesc",
+              "optional": true,
+              "doc": "Level, score, target, stars, moves and timer."
+            }
+          ],
+          "returns": "HudResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "idleHud",
+          "doc": "The idle and incremental HUD template: answers `tap` and `buy:<id>` actions.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "IdleHudDesc",
+              "optional": true,
+              "doc": "Currencies and generators."
+            }
+          ],
+          "returns": "HudResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "racingHud",
+          "doc": "The racing HUD template.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "RacingHudDesc",
+              "optional": true,
+              "doc": "Speed, gear, laps, place, times and boost."
+            }
+          ],
+          "returns": "HudResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "cutscene",
+          "doc": "The dialogue and cutscene template: letterbox, the dialogue box, Skip.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "CutsceneDesc",
+              "optional": true,
+              "doc": "Lines and the current index."
+            }
+          ],
+          "returns": "CutsceneResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "shopScreen",
+          "doc": "The shop template.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "ShopDesc",
+              "optional": true,
+              "doc": "Balance, items and categories."
+            }
+          ],
+          "returns": "ShopResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "inventoryScreen",
+          "doc": "The inventory template: a grid of slots with drag and drop.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "InventoryDesc",
+              "optional": true,
+              "doc": "Slots and items."
+            }
+          ],
+          "returns": "InventoryResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "levelSelect",
+          "doc": "The level select template.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "LevelSelectDesc",
+              "optional": true,
+              "doc": "The levels."
+            }
+          ],
+          "returns": "LevelSelectResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "resultsScreen",
+          "doc": "The results template: stars, the score counting up, the best, stats, actions and Share.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "ResultsDesc",
+              "optional": true,
+              "doc": "Score, stars, stats and actions."
+            }
+          ],
+          "returns": "MenuResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "leaderboardScreen",
+          "doc": "The leaderboard template.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "LeaderboardDesc",
+              "optional": true,
+              "doc": "Scopes, rows and states."
+            }
+          ],
+          "returns": "LeaderboardResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "tutorialOverlay",
+          "doc": "The onboarding template: a spotlight and a callout per step.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "TutorialDesc",
+              "optional": true,
+              "doc": "Steps and the current index."
+            }
+          ],
+          "returns": "TutorialResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "loadingScreen",
+          "doc": "The loading template.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "LoadingDesc",
+              "optional": true,
+              "doc": "Title, progress and tips."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "confirmDialog",
+          "doc": "The confirm dialog template.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "ConfirmDesc",
+              "optional": true,
+              "doc": "Question, consequence and labels."
+            }
+          ],
+          "returns": "ConfirmResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "alertDialog",
+          "doc": "The alert template. Returns true the tick it is dismissed.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "AlertDesc",
+              "optional": true,
+              "doc": "Title, message and label."
+            }
+          ],
+          "returns": "bool",
+          "publish": true,
+          "host": false
         }
       ],
       "interfaces": [],
@@ -2268,6 +3902,45 @@
           "name": "UiBuild",
           "doc": "Builds a container's children: ui calls made inside it nest under the container.",
           "params": [],
+          "returns": "Void"
+        },
+        {
+          "name": "UiItemBuild",
+          "doc": "Builds one row or cell of a virtualised list or grid: ui calls made inside nest under it.",
+          "params": [
+            {
+              "name": "index",
+              "type": "u32",
+              "optional": false,
+              "doc": "Its index."
+            }
+          ],
+          "returns": "Void"
+        },
+        {
+          "name": "UiAction",
+          "doc": "A template's action, by its id (a menu item, `buy:<item>`, `share`).",
+          "params": [
+            {
+              "name": "action",
+              "type": "String",
+              "optional": false,
+              "doc": "The action's id."
+            }
+          ],
+          "returns": "Void"
+        },
+        {
+          "name": "SettingsChanged",
+          "doc": "The settings after a change: persist them (cloud save, local storage through the shell) and apply them.",
+          "params": [
+            {
+              "name": "settings",
+              "type": "GameSettings",
+              "optional": true,
+              "doc": "The new settings."
+            }
+          ],
           "returns": "Void"
         }
       ]
@@ -6133,6 +7806,605 @@
       },
       "additionalProperties": false
     },
+    "SkeletonAsset": {
+      "x-og-kind": "handle",
+      "x-og-module": "anim",
+      "description": "A rig: a glTF's nodes in topological order with their rest transforms, and its skins (joints and inverse bind matrices).",
+      "type": "integer",
+      "minimum": 0
+    },
+    "ClipAsset": {
+      "x-og-kind": "handle",
+      "x-og-module": "anim",
+      "description": "An animation clip, resampled at the cook's rate, with its markers.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "GraphAsset": {
+      "x-og-kind": "handle",
+      "x-og-module": "anim",
+      "description": "A blend-tree graph (`type animgraph`) whose clip references were resolved to clip handles.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "RootMotion": {
+      "x-og-kind": "enum",
+      "x-og-module": "anim",
+      "description": "What the root joint's motion does to the entity.",
+      "type": "string",
+      "enum": [
+        "off",
+        "planar",
+        "full"
+      ],
+      "x-og-variants": {
+        "off": "The root animates in place; the entity does not move.",
+        "planar": "The root's horizontal (xz) travel and yaw move og.Transform.",
+        "full": "The root's whole translation and rotation move og.Transform."
+      }
+    },
+    "BlendshapeSource": {
+      "x-og-kind": "enum",
+      "x-og-module": "anim",
+      "description": "Who decides blendshape weights.",
+      "type": "string",
+      "enum": [
+        "component",
+        "clips"
+      ],
+      "x-og-variants": {
+        "component": "Game code writes w0...w7.",
+        "clips": "The playing clips' weight channels write them."
+      }
+    },
+    "IkSolver": {
+      "x-og-kind": "enum",
+      "x-og-module": "anim",
+      "description": "How an IK chain is solved.",
+      "type": "string",
+      "enum": [
+        "twoBone",
+        "fabrik"
+      ],
+      "x-og-variants": {
+        "twoBone": "Analytic two-bone (thigh, shin, foot), bending towards the pole.",
+        "fabrik": "FABRIK over `bones` bones, iteratively."
+      }
+    },
+    "IkSpace": {
+      "x-og-kind": "enum",
+      "x-og-module": "anim",
+      "description": "What an IK chain's target and pole are relative to.",
+      "type": "string",
+      "enum": [
+        "world",
+        "model"
+      ],
+      "x-og-variants": {
+        "world": "World positions: the skeleton entity's og.Transform applies.",
+        "model": "The skeleton's model space."
+      }
+    },
+    "Skeleton": {
+      "x-og-kind": "component",
+      "x-og-module": "anim",
+      "description": "A posed skeleton: the entity is drawn skinned by the joint palette og.anim writes each tick. The pose itself (every node's local transform) is world state kept by the `og.anim` state block.",
+      "type": "object",
+      "properties": {
+        "asset": {
+          "$ref": "#/$defs/SkeletonAsset",
+          "description": "The skeleton asset (og.load.animation's `skeleton`); 0 is none.",
+          "default": 0
+        },
+        "skin": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Which of the asset's skins the joint palette is for (glTF skin index).",
+          "default": 0,
+          "minimum": 0
+        },
+        "rootMotion": {
+          "$ref": "#/$defs/RootMotion",
+          "description": "Root motion extraction: off (animate in place), planar (xz travel and yaw move og.Transform) or full.",
+          "default": "off"
+        },
+        "rootJoint": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The joint whose motion is extracted (an index into the skin's joints; 0 is its first joint, usually the hips).",
+          "default": 0,
+          "minimum": 0
+        },
+        "jointCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Written: the number of joints in the palette (0 until the first tick).",
+          "default": 0,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "AnimationPlayer": {
+      "x-og-kind": "component",
+      "x-og-module": "anim",
+      "description": "Plays one clip on a skeleton. Alone it poses the skeleton from its rest pose; with an og.AnimationGraph it plays over the graph's result with `weight`. Changing `clip` cross-fades from the previous one over `fade`; a clip change starts the new clip at 0 (or at `time` if the game wrote it in the same tick).",
+      "type": "object",
+      "properties": {
+        "clip": {
+          "$ref": "#/$defs/ClipAsset",
+          "description": "The clip asset; 0 plays nothing.",
+          "default": 0
+        },
+        "time": {
+          "type": "number",
+          "description": "The playback position; written every tick, set it to seek (no markers fire across a seek).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "speed": {
+          "type": "number",
+          "description": "Playback rate (1 = as authored, negative plays backwards).",
+          "default": 1,
+          "minimum": -10,
+          "maximum": 10,
+          "x-og-tunable": true
+        },
+        "loop": {
+          "type": "boolean",
+          "description": "Wrap at the end of the clip; otherwise hold the last frame and set `finished`.",
+          "default": true
+        },
+        "weight": {
+          "type": "number",
+          "description": "How much of the pose this player decides (0 = none, 1 = all).",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "fade": {
+          "type": "number",
+          "description": "Cross-fade duration when `clip` changes.",
+          "default": 0.2,
+          "minimum": 0,
+          "maximum": 10,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "finished": {
+          "type": "boolean",
+          "description": "Written: a non-looping clip reached its end.",
+          "default": false,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "AnimationGraph": {
+      "x-og-kind": "component",
+      "x-og-module": "anim",
+      "description": "Runs a blend-tree graph (og.anim.graph) on a skeleton: its layers' state machines pick motions by the parameters p0...p7, which the graph names in `param` order (`param speed` is p0, the next `param` is p1, ...).",
+      "type": "object",
+      "properties": {
+        "asset": {
+          "$ref": "#/$defs/GraphAsset",
+          "description": "The graph asset; 0 is none.",
+          "default": 0
+        },
+        "weight": {
+          "type": "number",
+          "description": "How much of the pose the graph decides over the rest pose.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "speed": {
+          "type": "number",
+          "description": "A playback-rate multiplier for every layer.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 10,
+          "x-og-tunable": true
+        },
+        "p0": {
+          "type": "number",
+          "description": "Parameter 0 (the graph's first `param`).",
+          "default": 0,
+          "x-og-tunable": true
+        },
+        "p1": {
+          "type": "number",
+          "description": "Parameter 1.",
+          "default": 0,
+          "x-og-tunable": true
+        },
+        "p2": {
+          "type": "number",
+          "description": "Parameter 2.",
+          "default": 0,
+          "x-og-tunable": true
+        },
+        "p3": {
+          "type": "number",
+          "description": "Parameter 3.",
+          "default": 0,
+          "x-og-tunable": true
+        },
+        "p4": {
+          "type": "number",
+          "description": "Parameter 4.",
+          "default": 0,
+          "x-og-tunable": true
+        },
+        "p5": {
+          "type": "number",
+          "description": "Parameter 5.",
+          "default": 0,
+          "x-og-tunable": true
+        },
+        "p6": {
+          "type": "number",
+          "description": "Parameter 6.",
+          "default": 0,
+          "x-og-tunable": true
+        },
+        "p7": {
+          "type": "number",
+          "description": "Parameter 7.",
+          "default": 0,
+          "x-og-tunable": true
+        },
+        "state": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Written: the base layer's current state (its index in the graph file).",
+          "default": 0,
+          "readOnly": true
+        },
+        "stateTime": {
+          "type": "number",
+          "description": "Written: seconds since the base layer entered `state`.",
+          "default": 0,
+          "x-og-unit": "s",
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Blendshapes": {
+      "x-og-kind": "component",
+      "x-og-module": "anim",
+      "description": "Morph-target weights of the skeleton entity's mesh, in the order of the glTF mesh's targets. With `source` clips the playing clips' weight channels write them; with `component` game code does.",
+      "type": "object",
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/BlendshapeSource",
+          "description": "Who decides the weights: component (game code writes w0...w7) or clips (the animation writes them).",
+          "default": "component"
+        },
+        "mesh": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The glTF mesh index whose targets the weights drive (0 is the first mesh).",
+          "default": 0,
+          "minimum": 0
+        },
+        "w0": {
+          "type": "number",
+          "description": "Weight of target 0.",
+          "default": 0,
+          "minimum": -1,
+          "maximum": 2,
+          "x-og-tunable": true
+        },
+        "w1": {
+          "type": "number",
+          "description": "Weight of target 1.",
+          "default": 0,
+          "minimum": -1,
+          "maximum": 2,
+          "x-og-tunable": true
+        },
+        "w2": {
+          "type": "number",
+          "description": "Weight of target 2.",
+          "default": 0,
+          "minimum": -1,
+          "maximum": 2,
+          "x-og-tunable": true
+        },
+        "w3": {
+          "type": "number",
+          "description": "Weight of target 3.",
+          "default": 0,
+          "minimum": -1,
+          "maximum": 2,
+          "x-og-tunable": true
+        },
+        "w4": {
+          "type": "number",
+          "description": "Weight of target 4.",
+          "default": 0,
+          "minimum": -1,
+          "maximum": 2,
+          "x-og-tunable": true
+        },
+        "w5": {
+          "type": "number",
+          "description": "Weight of target 5.",
+          "default": 0,
+          "minimum": -1,
+          "maximum": 2,
+          "x-og-tunable": true
+        },
+        "w6": {
+          "type": "number",
+          "description": "Weight of target 6.",
+          "default": 0,
+          "minimum": -1,
+          "maximum": 2,
+          "x-og-tunable": true
+        },
+        "w7": {
+          "type": "number",
+          "description": "Weight of target 7.",
+          "default": 0,
+          "minimum": -1,
+          "maximum": 2,
+          "x-og-tunable": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "IkChain": {
+      "x-og-kind": "component",
+      "x-og-module": "anim",
+      "description": "An inverse-kinematics constraint on a skeleton, applied after its clips and graph: the chain of `bones` bones ending at joint `tip` turns so the tip reaches `target`. Put it on its own entity (a skeleton can have many chains); chains apply in query order.",
+      "type": "object",
+      "properties": {
+        "skeleton": {
+          "$ref": "#/$defs/Entity",
+          "description": "The entity with the og.Skeleton this chain bends.",
+          "default": 0
+        },
+        "tip": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The end joint (an index into the skin's joints): the foot or the hand.",
+          "default": 0,
+          "minimum": 0
+        },
+        "bones": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many bones above the tip turn (two-bone always uses 2).",
+          "default": 2,
+          "minimum": 1,
+          "maximum": 32
+        },
+        "solver": {
+          "$ref": "#/$defs/IkSolver",
+          "description": "twoBone (analytic, with a pole) or fabrik (iterative, any length).",
+          "default": "twoBone"
+        },
+        "target": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where the tip should be.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "pole": {
+          "$ref": "#/$defs/Vector3",
+          "description": "A point the middle joint bends towards (two-bone); the zero vector keeps the animated bend.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "space": {
+          "$ref": "#/$defs/IkSpace",
+          "description": "What `target` and `pole` are relative to: world (the skeleton entity's og.Transform applies) or model.",
+          "default": "world"
+        },
+        "weight": {
+          "type": "number",
+          "description": "How much of the solved rotation is applied (0 = the animated pose, 1 = fully solved).",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "iterations": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "FABRIK iterations at most.",
+          "default": 10,
+          "minimum": 1,
+          "maximum": 64
+        },
+        "tolerance": {
+          "type": "number",
+          "description": "The tip distance (model units) at which the target counts as reached.",
+          "default": 0.001,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "reached": {
+          "type": "boolean",
+          "description": "Written: the tip is within `tolerance` of the target after solving.",
+          "default": false,
+          "readOnly": true
+        },
+        "error": {
+          "type": "number",
+          "description": "Written: the tip's distance from the target after solving, in model units.",
+          "default": 0,
+          "x-og-unit": "m",
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "AnimationEvent": {
+      "x-og-kind": "event",
+      "x-og-module": "anim",
+      "description": "A named marker of a clip that playback passed in the last tick (read in the tick after it fired, like every event). Cross-fades and blends fire every contributing clip's markers.",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "The skeleton entity."
+        },
+        "clip": {
+          "$ref": "#/$defs/ClipAsset",
+          "description": "The clip asset the marker belongs to."
+        },
+        "name": {
+          "type": "string",
+          "description": "The marker's name (at most 63 bytes)."
+        },
+        "time": {
+          "type": "number",
+          "description": "The marker's time in the clip.",
+          "x-og-unit": "s"
+        },
+        "weight": {
+          "type": "number",
+          "description": "The clip's blend weight when it fired."
+        }
+      },
+      "required": [
+        "entity",
+        "clip",
+        "name",
+        "time",
+        "weight"
+      ],
+      "additionalProperties": false
+    },
+    "ClipInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "anim",
+      "description": "One clip of a loaded animation.",
+      "type": "object",
+      "properties": {
+        "clip": {
+          "$ref": "#/$defs/ClipAsset",
+          "description": "Its handle, what AnimationPlayer.clip takes."
+        },
+        "name": {
+          "type": "string",
+          "description": "The glTF animation's name."
+        },
+        "duration": {
+          "type": "number",
+          "description": "Its length.",
+          "x-og-unit": "s"
+        },
+        "markers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Its markers' names, in time order."
+        }
+      },
+      "required": [
+        "clip",
+        "name",
+        "duration",
+        "markers"
+      ],
+      "additionalProperties": false
+    },
+    "Animation": {
+      "x-og-kind": "struct",
+      "x-og-module": "anim",
+      "description": "What og.load.animation registered from a model's `#anim` blob.",
+      "type": "object",
+      "properties": {
+        "skeleton": {
+          "$ref": "#/$defs/SkeletonAsset",
+          "description": "The rig, what Skeleton.asset takes."
+        },
+        "clips": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ClipInfo"
+          },
+          "description": "Its clips, in glTF order."
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The rig's node names, in topological order."
+        },
+        "skins": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "description": "Each skin's joint count, in glTF order."
+        },
+        "morphTargets": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Morph targets across the model's meshes."
+        }
+      },
+      "required": [
+        "skeleton",
+        "clips",
+        "nodes",
+        "skins",
+        "morphTargets"
+      ],
+      "additionalProperties": false
+    },
+    "GraphDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "anim",
+      "description": "A blend-tree graph to register.",
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The graph's `.ogt` text (`type animgraph`, `version 1`; the grammar is og-anim's README).",
+          "default": ""
+        },
+        "clips": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ClipInfo"
+          },
+          "description": "The clips a `clip <motion> \"<name>\"` line may name, by ClipInfo.name: usually og.load.animation's `clips`.",
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
     "AudioBus": {
       "x-og-kind": "enum",
       "x-og-module": "audio",
@@ -7406,11 +9678,24 @@
         },
         "focused": {
           "type": "boolean",
-          "description": "It has keyboard focus (text field)."
+          "description": "It has focus: a text field being edited, or the control keyboard and gamepad navigation landed on."
         },
         "submitted": {
           "type": "boolean",
           "description": "Enter was pressed in it (text field)."
+        },
+        "dropped": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A list row or grid cell a press started on was released over this one: that row's or cell's index (drag and drop)."
         }
       },
       "required": [
@@ -7419,7 +9704,8 @@
         "clicked",
         "changed",
         "focused",
-        "submitted"
+        "submitted",
+        "dropped"
       ],
       "additionalProperties": false
     },
@@ -7514,6 +9800,10 @@
         "coarsePointer": {
           "type": "boolean",
           "description": "A touch screen or another coarse pointer."
+        },
+        "breakpoint": {
+          "$ref": "#/$defs/Breakpoint",
+          "description": "Its size class: phone portrait or landscape, tablet, desktop."
         }
       },
       "required": [
@@ -7521,14 +9811,15 @@
         "height",
         "dpr",
         "safeArea",
-        "coarsePointer"
+        "coarsePointer",
+        "breakpoint"
       ],
       "additionalProperties": false
     },
     "UiDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "How the UI looks: the scheme, the density and its fonts.",
+      "description": "How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion and the icon atlas.",
       "type": "object",
       "properties": {
         "scheme": {
@@ -7575,6 +9866,64 @@
             }
           ],
           "description": "The monospaced font; null uses the body font.",
+          "default": null
+        },
+        "contrast": {
+          "$ref": "#/$defs/Contrast",
+          "description": "Standard or high contrast.",
+          "default": "standard"
+        },
+        "accentHue": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HueName"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A token hue as the game's accent (its hover, active, ink and focus tones derived as the tokens derive amber's); null keeps amber.",
+          "default": null
+        },
+        "accentColor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Color"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An sRGB colour as the game's accent, when no hue is given.",
+          "default": null
+        },
+        "reducedMotion": {
+          "type": "boolean",
+          "description": "Transitions only fade; sheens stop (prefers-reduced-motion).",
+          "default": false
+        },
+        "icons": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IconAtlasDesc"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The icon atlas og.ui.icon draws from.",
+          "default": null
+        },
+        "toastAnchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Where toasts stack; null is the bottom centre.",
           "default": null
         }
       },
@@ -7726,6 +10075,3224 @@
         "sizes",
         "durationsMs"
       ],
+      "additionalProperties": false
+    },
+    "Anchor": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "A point of the safe area an anchored group sits at.",
+      "type": "string",
+      "enum": [
+        "topLeft",
+        "top",
+        "topRight",
+        "left",
+        "center",
+        "right",
+        "bottomLeft",
+        "bottom",
+        "bottomRight"
+      ],
+      "x-og-variants": {
+        "topLeft": "The top left corner.",
+        "top": "The middle of the top edge.",
+        "topRight": "The top right corner.",
+        "left": "The middle of the left edge.",
+        "center": "The centre.",
+        "right": "The middle of the right edge.",
+        "bottomLeft": "The bottom left corner.",
+        "bottom": "The middle of the bottom edge.",
+        "bottomRight": "The bottom right corner."
+      }
+    },
+    "TransitionKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "How a transition moves its content in and out. Under reduced motion every kind only fades.",
+      "type": "string",
+      "enum": [
+        "fade",
+        "slideUp",
+        "slideDown",
+        "slideLeft",
+        "slideRight",
+        "scale"
+      ],
+      "x-og-variants": {
+        "fade": "Opacity only.",
+        "slideUp": "Rises into place from below.",
+        "slideDown": "Drops into place from above.",
+        "slideLeft": "Enters from the right.",
+        "slideRight": "Enters from the left.",
+        "scale": "Grows from slightly smaller around its centre."
+      }
+    },
+    "Tone": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "A status tone, as the design language's badges and toasts.",
+      "type": "string",
+      "enum": [
+        "neutral",
+        "success",
+        "warn",
+        "danger",
+        "info",
+        "accent",
+        "inverse"
+      ],
+      "x-og-variants": {
+        "neutral": "Neutral: fill and muted ink.",
+        "success": "Success.",
+        "warn": "Warning (orange).",
+        "danger": "Danger.",
+        "info": "Information.",
+        "accent": "Amber identity: the soft accent and amber ink.",
+        "inverse": "Neutral emphasis: fg fill, inverse ink."
+      }
+    },
+    "MeterKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "What a meter measures, which sets its colour.",
+      "type": "string",
+      "enum": [
+        "health",
+        "mana",
+        "xp",
+        "accent"
+      ],
+      "x-og-variants": {
+        "health": "Green, warning orange under 30 %, danger red under 15 %.",
+        "mana": "The blue hue.",
+        "xp": "The purple hue.",
+        "accent": "The accent."
+      }
+    },
+    "Breakpoint": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "The play surface's size class.",
+      "type": "string",
+      "enum": [
+        "desktop",
+        "tablet",
+        "phoneLandscape",
+        "phonePortrait"
+      ],
+      "x-og-variants": {
+        "desktop": "1024 CSS px wide or more, the shorter side 600 or more.",
+        "tablet": "The shorter side 600 or more, under 1024 wide.",
+        "phoneLandscape": "The shorter side under 600, wider than tall.",
+        "phonePortrait": "The shorter side under 600, taller than wide."
+      }
+    },
+    "Contrast": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "The theme variant: high contrast remaps muted inks, fills and borders to stronger tokens and outlines every control (no new colour).",
+      "type": "string",
+      "enum": [
+        "standard",
+        "high"
+      ],
+      "x-og-variants": {
+        "standard": "The token palette as it is.",
+        "high": "Stronger inks, fills and edges."
+      }
+    },
+    "HueName": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "One of the twelve category hues of the tokens, for a game's accent.",
+      "type": "string",
+      "enum": [
+        "red",
+        "orange",
+        "yellow",
+        "green",
+        "mint",
+        "teal",
+        "cyan",
+        "blue",
+        "indigo",
+        "purple",
+        "pink",
+        "brown"
+      ],
+      "x-og-variants": {
+        "red": "hue-red.",
+        "orange": "hue-orange.",
+        "yellow": "hue-yellow.",
+        "green": "hue-green.",
+        "mint": "hue-mint.",
+        "teal": "hue-teal.",
+        "cyan": "hue-cyan.",
+        "blue": "hue-blue.",
+        "indigo": "hue-indigo.",
+        "purple": "hue-purple.",
+        "pink": "hue-pink.",
+        "brown": "hue-brown."
+      }
+    },
+    "NavIntent": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "A focus-navigation intent, as the arrow keys, Tab, Enter, Space, Escape and a gamepad's d-pad, stick, A and B give.",
+      "type": "string",
+      "enum": [
+        "up",
+        "down",
+        "left",
+        "right",
+        "next",
+        "prev",
+        "activate",
+        "back"
+      ],
+      "x-og-variants": {
+        "up": "Up.",
+        "down": "Down.",
+        "left": "Left.",
+        "right": "Right.",
+        "next": "The next control in reading order (Tab).",
+        "prev": "The previous one (Shift+Tab).",
+        "activate": "Press the focused control (Enter, Space, A).",
+        "back": "Leave: the topmost dialog or menu closes, else og.ui.back() answers true (Escape, B)."
+      }
+    },
+    "UiRect": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A rectangle of the play surface.",
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number",
+          "description": "Its left edge.",
+          "x-og-unit": "cssPx"
+        },
+        "y": {
+          "type": "number",
+          "description": "Its top edge.",
+          "x-og-unit": "cssPx"
+        },
+        "width": {
+          "type": "number",
+          "description": "Its width.",
+          "x-og-unit": "cssPx"
+        },
+        "height": {
+          "type": "number",
+          "description": "Its height.",
+          "x-og-unit": "cssPx"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "additionalProperties": false
+    },
+    "IconAtlasDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "The icon atlas: a texture of equal cells in a grid, named in reading order.",
+      "type": "object",
+      "properties": {
+        "texture": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The atlas texture, from og.load.texture.",
+          "default": null
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Cells across.",
+          "default": 1,
+          "minimum": 1
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Cells down.",
+          "default": 1,
+          "minimum": 1
+        },
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Each cell's name, in reading order: og.ui.icon draws a cell by its name.",
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "AnchorDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An anchored group: a layer at a point of the safe area, over the tree (HUD corners, a centred title, a bar of touch controls).",
+      "type": "object",
+      "properties": {
+        "anchor": {
+          "$ref": "#/$defs/Anchor",
+          "description": "Where it sits.",
+          "default": "topLeft"
+        },
+        "margin": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The inset from the safe area's edges; null is the density's gutter.",
+          "default": null
+        },
+        "offsetX": {
+          "type": "number",
+          "description": "Moves it right after placing.",
+          "default": 0,
+          "x-og-unit": "cssPx"
+        },
+        "offsetY": {
+          "type": "number",
+          "description": "Moves it down after placing.",
+          "default": 0,
+          "x-og-unit": "cssPx"
+        },
+        "direction": {
+          "$ref": "#/$defs/Direction",
+          "description": "Which way it lays out its children.",
+          "default": "row"
+        },
+        "gap": {
+          "type": "number",
+          "description": "Space between children.",
+          "default": 0,
+          "x-og-unit": "cssPx"
+        },
+        "padding": {
+          "$ref": "#/$defs/Insets",
+          "description": "Space inside its edges.",
+          "default": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0
+          }
+        },
+        "align": {
+          "$ref": "#/$defs/Align",
+          "description": "Where children sit along the main axis.",
+          "default": "start"
+        },
+        "cross": {
+          "$ref": "#/$defs/Cross",
+          "description": "Where children sit across it.",
+          "default": "start"
+        },
+        "background": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its fill; null draws none.",
+          "default": null
+        },
+        "radius": {
+          "type": "number",
+          "description": "Corner radius.",
+          "default": 0,
+          "x-og-unit": "cssPx"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null fits the content.",
+          "default": null
+        },
+        "height": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its height; null fits the content.",
+          "default": null
+        },
+        "over": {
+          "type": "boolean",
+          "description": "Draw over dialogs and spotlights (a tutorial callout, a dragged item); the default draws under them.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "TransitionDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "How a transition moves, timed in ticks from the motion tokens.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/TransitionKind",
+          "description": "The movement.",
+          "default": "fade"
+        },
+        "durationMs": {
+          "type": "number",
+          "description": "How long entering and leaving take; 0 is motion.duration.base (240 ms).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "ms"
+        },
+        "distance": {
+          "type": "number",
+          "description": "How far slides travel; 0 is space.xl.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "instant": {
+          "type": "boolean",
+          "description": "Shown at once the first time it is built (no entrance).",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "Presence": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "Where a transition or dialog is this tick.",
+      "type": "object",
+      "properties": {
+        "visible": {
+          "type": "boolean",
+          "description": "Build its content: shown, entering or leaving."
+        },
+        "progress": {
+          "type": "number",
+          "description": "0 gone, 1 settled.",
+          "x-og-unit": "ratio"
+        },
+        "entering": {
+          "type": "boolean",
+          "description": "Moving in."
+        },
+        "leaving": {
+          "type": "boolean",
+          "description": "Moving out."
+        }
+      },
+      "required": [
+        "visible",
+        "progress",
+        "entering",
+        "leaving"
+      ],
+      "additionalProperties": false
+    },
+    "ModalDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A dialog: a scrim over everything and a centred panel. Focus moves in and stays while it is the topmost; Back and the backdrop dismiss it unless locked.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "A title over the content; empty is none.",
+          "default": ""
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The panel's width; null is 420 CSS px, at most the surface less its gutters.",
+          "default": null
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "Back and the backdrop do not dismiss it (a choice must be made).",
+          "default": false
+        },
+        "ignoreBackdrop": {
+          "type": "boolean",
+          "description": "A press on the backdrop does not dismiss it.",
+          "default": false
+        },
+        "transition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TransitionKind"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "How it enters and leaves; null is scale.",
+          "default": null
+        },
+        "backdrop": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The backdrop's fill; null is scrim.",
+          "default": null
+        },
+        "bare": {
+          "type": "boolean",
+          "description": "No panel: the content sits centred on the backdrop (full-screen menus, loading).",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "ModalResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A dialog's answer this tick.",
+      "type": "object",
+      "properties": {
+        "visible": {
+          "type": "boolean",
+          "description": "Build its content (open, or leaving)."
+        },
+        "dismissed": {
+          "type": "boolean",
+          "description": "Back or a press on the backdrop asked to close it: set your open flag false."
+        }
+      },
+      "required": [
+        "visible",
+        "dismissed"
+      ],
+      "additionalProperties": false
+    },
+    "SpotlightDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A spotlight: the surface dimmed except a hole around a target.",
+      "type": "object",
+      "properties": {
+        "padding": {
+          "type": "number",
+          "description": "Room around the target; 0 is space.sm.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ListDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A virtualised list: only the rows in view (and one more each side) are built, fillers keep the scroll range of every row.",
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many rows there are.",
+          "default": 0
+        },
+        "rowHeight": {
+          "type": "number",
+          "description": "Every row's height; 0 is the density's row height.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "gap": {
+          "type": "number",
+          "description": "Space between rows.",
+          "default": 0,
+          "x-og-unit": "cssPx"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null fits.",
+          "default": null
+        },
+        "height": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its height (it scrolls inside); null grows.",
+          "default": null
+        },
+        "padding": {
+          "$ref": "#/$defs/Insets",
+          "description": "Space inside.",
+          "default": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0
+          }
+        },
+        "selected": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The selected row (fill-strong), for og.ui.list.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "ListRange": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "The rows (or cells) to build this tick: first up to, not including, last.",
+      "type": "object",
+      "properties": {
+        "first": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The first index."
+        },
+        "last": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "One past the last index."
+        }
+      },
+      "required": [
+        "first",
+        "last"
+      ],
+      "additionalProperties": false
+    },
+    "ListResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What happened in a list or grid this tick.",
+      "type": "object",
+      "properties": {
+        "clicked": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The row or cell pressed (or activated) this tick."
+        },
+        "dropFrom": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A drag and drop ended: the index it started on."
+        },
+        "dropTo": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "And the index it was released over."
+        }
+      },
+      "required": [
+        "clicked",
+        "dropFrom",
+        "dropTo"
+      ],
+      "additionalProperties": false
+    },
+    "GridDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A virtualised grid of equal cells (inventories, level select), scrolling vertically.",
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many cells there are.",
+          "default": 0
+        },
+        "cellWidth": {
+          "type": "number",
+          "description": "A cell's width; 0 is 64 (never under the 44 px touch target).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "cellHeight": {
+          "type": "number",
+          "description": "A cell's height; 0 is its width.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Cells across; 0 is as many as fit.",
+          "default": 0
+        },
+        "gap": {
+          "type": "number",
+          "description": "Space between cells; 0 is space.sm.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null fits (exactly the columns when columns is set).",
+          "default": null
+        },
+        "height": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its height; null grows.",
+          "default": null
+        },
+        "padding": {
+          "$ref": "#/$defs/Insets",
+          "description": "Space inside.",
+          "default": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0
+          }
+        },
+        "selected": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The selected cell, for og.ui.grid.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "TabsDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A segmented control of tabs.",
+      "type": "object",
+      "properties": {
+        "fill": {
+          "type": "boolean",
+          "description": "Equal segments across the width.",
+          "default": false
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null fits (grows with fill).",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "ChoiceResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A choice control's response and the chosen index after this tick's input.",
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/$defs/Response",
+          "description": "What happened to it; changed when the choice moved."
+        },
+        "selected": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The chosen index, to keep in game state and pass back next tick."
+        }
+      },
+      "required": [
+        "response",
+        "selected"
+      ],
+      "additionalProperties": false
+    },
+    "SelectDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A select: a trigger that opens a menu of options.",
+      "type": "object",
+      "properties": {
+        "placeholder": {
+          "type": "string",
+          "description": "Shown while nothing is chosen.",
+          "default": ""
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows from 160.",
+          "default": null
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Neutral and inert.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "StepperDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A number stepper's range, step and digits.",
+      "type": "object",
+      "properties": {
+        "min": {
+          "type": "number",
+          "description": "The smallest value; min equal to max (the zero value) is unbounded.",
+          "default": 0
+        },
+        "max": {
+          "type": "number",
+          "description": "The largest value.",
+          "default": 0
+        },
+        "step": {
+          "type": "number",
+          "description": "How much a press changes it; 0 is 1.",
+          "default": 0,
+          "minimum": 0
+        },
+        "decimals": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Digits after the point.",
+          "default": 0,
+          "maximum": 6
+        }
+      },
+      "additionalProperties": false
+    },
+    "StepperResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A stepper's response and value after this tick's input.",
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/$defs/Response",
+          "description": "What happened to it."
+        },
+        "value": {
+          "type": "number",
+          "description": "The value, to keep in game state and pass back next tick."
+        }
+      },
+      "required": [
+        "response",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "RadioDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "How a radio group lays out.",
+      "type": "object",
+      "properties": {
+        "horizontal": {
+          "type": "boolean",
+          "description": "Options in a row (the default is a column).",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "CheckListResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A checkbox list's response and values after this tick's input.",
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/$defs/Response",
+          "description": "What happened to it; changed when any box flipped."
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "boolean"
+          },
+          "description": "The values, to keep in game state and pass back next tick."
+        }
+      },
+      "required": [
+        "response",
+        "values"
+      ],
+      "additionalProperties": false
+    },
+    "ToastDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A toast's tone and time.",
+      "type": "object",
+      "properties": {
+        "tone": {
+          "$ref": "#/$defs/Tone",
+          "description": "Its tone: a dot of the tone's colour before the text.",
+          "default": "neutral"
+        },
+        "durationMs": {
+          "type": "number",
+          "description": "How long it stays; 0 is 3200 ms (6000 for danger).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "ms"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ChipDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A chip's state.",
+      "type": "object",
+      "properties": {
+        "selected": {
+          "type": "boolean",
+          "description": "Selected: inverted to fg.",
+          "default": false
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Neutral and inert.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "MeterDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A meter: a capsule track with a fill that animates its changes by the tick.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/MeterKind",
+          "description": "What it measures, which sets its colour.",
+          "default": "health"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A colour of your own instead of the kind's.",
+          "default": null
+        },
+        "label": {
+          "type": "string",
+          "description": "Text inside the bar (such as `75 / 100`); empty is none.",
+          "default": ""
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows.",
+          "default": null
+        },
+        "height": {
+          "type": "number",
+          "description": "Its height; 0 is space.md, or the caption's line with a label.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "segments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Notches dividing it into this many parts; 0 or 1 is none.",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "CooldownDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A cooldown ring's size and centre.",
+      "type": "object",
+      "properties": {
+        "size": {
+          "type": "number",
+          "description": "Its diameter; 0 is 56 (never under 44).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "label": {
+          "type": "string",
+          "description": "Text in the middle (a key, seconds left); empty is none.",
+          "default": ""
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon of the atlas in the middle, by name; empty is none.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "IconDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An icon's size and ink.",
+      "type": "object",
+      "properties": {
+        "size": {
+          "type": "number",
+          "description": "Its size; 0 is 24.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "tint": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its ink; null is fg.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "MapMarker": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A marker on a mini-map.",
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number",
+          "description": "Across the map, 0 to 1.",
+          "default": 0,
+          "x-og-unit": "ratio"
+        },
+        "y": {
+          "type": "number",
+          "description": "Down the map, 0 to 1.",
+          "default": 0,
+          "x-og-unit": "ratio"
+        },
+        "tone": {
+          "$ref": "#/$defs/Tone",
+          "description": "Its colour; neutral is the stage ink.",
+          "default": "neutral"
+        },
+        "player": {
+          "type": "boolean",
+          "description": "The player: the accent, larger, ringed.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "MinimapDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A mini-map frame.",
+      "type": "object",
+      "properties": {
+        "texture": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The map; null is the stage colour.",
+          "default": null
+        },
+        "uv": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 4,
+              "maxItems": 4
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The region of the map shown, [u0, v0, u1, v1]; null is the whole texture.",
+          "default": null
+        },
+        "size": {
+          "type": "number",
+          "description": "Its side; 0 is 160.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "markers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MapMarker"
+          },
+          "description": "Markers over the map.",
+          "default": []
+        },
+        "label": {
+          "type": "string",
+          "description": "A zone name under it; empty is none.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "DialogueDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A dialogue box: a portrait slot, the speaker and the line typed out by the tick.",
+      "type": "object",
+      "properties": {
+        "speaker": {
+          "type": "string",
+          "description": "Who speaks (amber ink).",
+          "default": ""
+        },
+        "text": {
+          "type": "string",
+          "description": "The line. A new text starts typing again.",
+          "default": ""
+        },
+        "portrait": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A portrait texture; null is the speaker's initial.",
+          "default": null
+        },
+        "portraitUv": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 4,
+              "maxItems": 4
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The portrait's region of the texture; null is the whole texture.",
+          "default": null
+        },
+        "portraitIcon": {
+          "type": "string",
+          "description": "A portrait from the icon atlas by name, when no texture is given; empty is the speaker's initial.",
+          "default": ""
+        },
+        "charsPerSecond": {
+          "type": "number",
+          "description": "Typing speed; 0 is 40.",
+          "default": 0,
+          "minimum": 0
+        },
+        "portraitRight": {
+          "type": "boolean",
+          "description": "The portrait on the right.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "DialogueResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A dialogue box's answer this tick.",
+      "type": "object",
+      "properties": {
+        "shown": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Characters shown."
+        },
+        "done": {
+          "type": "boolean",
+          "description": "The whole line is shown."
+        },
+        "advanced": {
+          "type": "boolean",
+          "description": "Pressed (or activated) while done: show the next line."
+        }
+      },
+      "required": [
+        "shown",
+        "done",
+        "advanced"
+      ],
+      "additionalProperties": false
+    },
+    "JoystickDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A virtual joystick.",
+      "type": "object",
+      "properties": {
+        "size": {
+          "type": "number",
+          "description": "The base's diameter; 0 is 128 (never under three touch targets).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "deadZone": {
+          "type": "number",
+          "description": "The ignored radius; 0 is 0.15.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        }
+      },
+      "additionalProperties": false
+    },
+    "JoystickResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A joystick's vector this tick.",
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number",
+          "description": "-1 left to 1 right; 0 inside the dead zone."
+        },
+        "y": {
+          "type": "number",
+          "description": "-1 up to 1 down; 0 inside the dead zone."
+        },
+        "active": {
+          "type": "boolean",
+          "description": "A press that started on it is held."
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "active"
+      ],
+      "additionalProperties": false
+    },
+    "DpadDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A d-pad.",
+      "type": "object",
+      "properties": {
+        "size": {
+          "type": "number",
+          "description": "The pad's size; 0 is 132 (each arm at least 44).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        }
+      },
+      "additionalProperties": false
+    },
+    "DpadResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "Which arms of a d-pad are held this tick.",
+      "type": "object",
+      "properties": {
+        "up": {
+          "type": "boolean",
+          "description": "Up is held."
+        },
+        "down": {
+          "type": "boolean",
+          "description": "Down is held."
+        },
+        "left": {
+          "type": "boolean",
+          "description": "Left is held."
+        },
+        "right": {
+          "type": "boolean",
+          "description": "Right is held."
+        }
+      },
+      "required": [
+        "up",
+        "down",
+        "left",
+        "right"
+      ],
+      "additionalProperties": false
+    },
+    "ActionButtonDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A round touch action button (jump, fire).",
+      "type": "object",
+      "properties": {
+        "size": {
+          "type": "number",
+          "description": "Its diameter; 0 is 64 (never under 44).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "primary": {
+          "type": "boolean",
+          "description": "The amber button (one per screen).",
+          "default": false
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon of the atlas by name, instead of the label; empty is the label.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "SkeletonDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A skeleton: the neutral fill standing in for content that is loading.",
+      "type": "object",
+      "properties": {
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows.",
+          "default": null
+        },
+        "height": {
+          "type": "number",
+          "description": "A line's height; 0 is the body size.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "lines": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Stacked lines; 0 or 1 is one, the last of several is shorter.",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "GraphicsQuality": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "A graphics quality preset.",
+      "type": "string",
+      "enum": [
+        "medium",
+        "low",
+        "high"
+      ],
+      "x-og-variants": {
+        "medium": "Medium.",
+        "low": "Low: the fewest effects.",
+        "high": "High: every effect."
+      }
+    },
+    "MenuItem": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An item of a menu: an id the game acts on and the label a player reads.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The id answered when it is chosen; also its probe id.",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "What it says.",
+          "default": ""
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Shown but inert.",
+          "default": false
+        },
+        "primary": {
+          "type": "boolean",
+          "description": "The amber action (one per screen).",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "MenuResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a menu-like template answered this tick.",
+      "type": "object",
+      "properties": {
+        "selected": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The id of the item chosen this tick."
+        }
+      },
+      "required": [
+        "selected"
+      ],
+      "additionalProperties": false
+    },
+    "MainMenuDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A title screen: the title, a subtitle, a column of items (the first primary unless one says so) and a footer. Centred on desktop and tablet, bottom-weighted on a phone.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The game's title, in display type.",
+          "default": ""
+        },
+        "subtitle": {
+          "type": "string",
+          "description": "A line under it; empty is none.",
+          "default": ""
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MenuItem"
+          },
+          "description": "The items, such as Play, Continue, Settings, Quit.",
+          "default": []
+        },
+        "footer": {
+          "type": "string",
+          "description": "A line at the bottom (a version, credits); empty is none.",
+          "default": ""
+        },
+        "onSelect": {
+          "anyOf": [
+            {
+              "x-og-type": "UiAction"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Called with the chosen item's id.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "PauseMenuDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A pause screen: a dialog over the frozen game with Resume first. Back resumes.",
+      "type": "object",
+      "properties": {
+        "open": {
+          "type": "boolean",
+          "description": "Whether the game is paused.",
+          "default": false
+        },
+        "title": {
+          "type": "string",
+          "description": "Its title.",
+          "default": "Paused"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MenuItem"
+          },
+          "description": "The items; empty is Resume, Settings, Quit to menu (`resume`, `settings`, `quit`).",
+          "default": []
+        },
+        "onSelect": {
+          "anyOf": [
+            {
+              "x-og-type": "UiAction"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Called with the chosen item's id; Back answers `resume`.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "KeyBinding": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A control the settings screen lists: an action and the key bound to it.",
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "The action's id.",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "What a player reads.",
+          "default": ""
+        },
+        "key": {
+          "type": "string",
+          "description": "The bound key, as shown (`Space`, `A`, `←`).",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "LanguageOption": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A language the settings screen offers, in its own name.",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Its code (`en`, `zh-CN`).",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "Its name in itself (`English`, `简体中文`).",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "GameSettings": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "The settings most games share. The game keeps them (a resource, a save) and passes them in every tick.",
+      "type": "object",
+      "properties": {
+        "masterVolume": {
+          "type": "number",
+          "description": "The master volume.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "musicVolume": {
+          "type": "number",
+          "description": "The music bus.",
+          "default": 0.8,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "sfxVolume": {
+          "type": "number",
+          "description": "The effects bus.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "muted": {
+          "type": "boolean",
+          "description": "Everything silent.",
+          "default": false
+        },
+        "quality": {
+          "$ref": "#/$defs/GraphicsQuality",
+          "description": "The graphics preset.",
+          "default": "medium"
+        },
+        "showFps": {
+          "type": "boolean",
+          "description": "Show the frame rate.",
+          "default": false
+        },
+        "reducedMotion": {
+          "type": "boolean",
+          "description": "Keep state changes, drop movement (the UI's transitions only fade).",
+          "default": false
+        },
+        "highContrast": {
+          "type": "boolean",
+          "description": "The high-contrast theme.",
+          "default": false
+        },
+        "vibration": {
+          "type": "boolean",
+          "description": "Vibrate on hits (where the device can).",
+          "default": true
+        },
+        "invertY": {
+          "type": "boolean",
+          "description": "Invert the vertical look axis.",
+          "default": false
+        },
+        "sensitivity": {
+          "type": "number",
+          "description": "Look sensitivity.",
+          "default": 1,
+          "minimum": 0.1,
+          "maximum": 3
+        },
+        "language": {
+          "type": "string",
+          "description": "The language code.",
+          "default": "en"
+        },
+        "bindings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/KeyBinding"
+          },
+          "description": "The controls, as shown on the Controls tab.",
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "SettingsDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A settings screen: Audio, Graphics, Controls and Language tabs (a select on a phone) over the game's settings, with persistence hooks.",
+      "type": "object",
+      "properties": {
+        "open": {
+          "type": "boolean",
+          "description": "Whether it is shown.",
+          "default": false
+        },
+        "settings": {
+          "$ref": "#/$defs/GameSettings",
+          "description": "The settings from game state.",
+          "default": {}
+        },
+        "languages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LanguageOption"
+          },
+          "description": "The languages offered; empty hides the Language tab.",
+          "default": []
+        },
+        "onChange": {
+          "anyOf": [
+            {
+              "x-og-type": "SettingsChanged"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Called on every change (apply it at once: volume, contrast).",
+          "default": null
+        },
+        "onSave": {
+          "anyOf": [
+            {
+              "x-og-type": "SettingsChanged"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Called when the screen closes after changes (persist here).",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "SettingsResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "The settings screen's answer this tick.",
+      "type": "object",
+      "properties": {
+        "settings": {
+          "$ref": "#/$defs/GameSettings",
+          "description": "The settings after this tick's input: keep them."
+        },
+        "changed": {
+          "type": "boolean",
+          "description": "Something changed this tick."
+        },
+        "closed": {
+          "type": "boolean",
+          "description": "The player closed the screen (Back, Done): set open false."
+        }
+      },
+      "required": [
+        "settings",
+        "changed",
+        "closed"
+      ],
+      "additionalProperties": false
+    },
+    "Ability": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An ability on a HUD: a cooldown ring with its key.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Its id (and probe id).",
+          "default": ""
+        },
+        "key": {
+          "type": "string",
+          "description": "The key or button shown in the middle.",
+          "default": ""
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon of the atlas instead of the key; empty is the key.",
+          "default": ""
+        },
+        "remaining": {
+          "type": "number",
+          "description": "How much of its cooldown is left: 1 just used, 0 ready.",
+          "default": 0,
+          "x-og-unit": "ratio"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PlatformerHudDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A platformer HUD: lives as hearts and a level name top left, coins and score top right, a timer, a pause button.",
+      "type": "object",
+      "properties": {
+        "lives": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Lives left.",
+          "default": 0
+        },
+        "maxLives": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Lives at most (hearts drawn).",
+          "default": 3
+        },
+        "coins": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Coins collected.",
+          "default": 0
+        },
+        "score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The score.",
+          "default": 0
+        },
+        "level": {
+          "type": "string",
+          "description": "The level's name; empty is none.",
+          "default": ""
+        },
+        "timeLeft": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Seconds left; null hides the timer.",
+          "default": null
+        },
+        "health": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A health bar instead of hearts, 0 to 1; null shows hearts.",
+          "default": null
+        },
+        "touch": {
+          "type": "boolean",
+          "description": "Show touch controls (a d-pad and Jump) on phones and tablets.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "HudResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a HUD answered this tick.",
+      "type": "object",
+      "properties": {
+        "paused": {
+          "type": "boolean",
+          "description": "The pause button was pressed (or Back)."
+        },
+        "action": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A HUD action pressed this tick (an ability's id, `jump`, a generator's `buy:<id>`, `tap`)."
+        },
+        "moveX": {
+          "type": "number",
+          "description": "The touch controls' horizontal input, -1 to 1."
+        },
+        "moveY": {
+          "type": "number",
+          "description": "The touch controls' vertical input, -1 (up) to 1."
+        },
+        "held": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The touch action buttons held this tick."
+        }
+      },
+      "required": [
+        "paused",
+        "action",
+        "moveX",
+        "moveY",
+        "held"
+      ],
+      "additionalProperties": false
+    },
+    "ShooterHudDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A shooter HUD: health and armor bottom left, ammo bottom right, abilities as cooldown rings, kills top right, a crosshair, an optional mini-map.",
+      "type": "object",
+      "properties": {
+        "health": {
+          "type": "number",
+          "description": "Health.",
+          "default": 0
+        },
+        "maxHealth": {
+          "type": "number",
+          "description": "Full health.",
+          "default": 100
+        },
+        "armor": {
+          "type": "number",
+          "description": "Armor; 0 with maxArmor 0 hides it.",
+          "default": 0
+        },
+        "maxArmor": {
+          "type": "number",
+          "description": "Full armor.",
+          "default": 0
+        },
+        "ammo": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Rounds in the magazine.",
+          "default": 0
+        },
+        "magazine": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Rounds a magazine holds.",
+          "default": 0
+        },
+        "reserve": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Rounds in reserve.",
+          "default": 0
+        },
+        "weapon": {
+          "type": "string",
+          "description": "The weapon's name.",
+          "default": ""
+        },
+        "kills": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Kills.",
+          "default": 0
+        },
+        "abilities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Ability"
+          },
+          "description": "Abilities with cooldowns.",
+          "default": []
+        },
+        "crosshair": {
+          "type": "boolean",
+          "description": "Draw a crosshair at the centre.",
+          "default": true
+        },
+        "map": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MinimapDesc"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A mini-map top left; null is none.",
+          "default": null
+        },
+        "touch": {
+          "type": "boolean",
+          "description": "Show touch controls (a stick and Fire) on phones and tablets.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "PuzzleHudDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A puzzle HUD: level and moves, the score towards a target with three star marks, an optional timer.",
+      "type": "object",
+      "properties": {
+        "level": {
+          "type": "string",
+          "description": "The level's name.",
+          "default": ""
+        },
+        "score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The score.",
+          "default": 0
+        },
+        "target": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The score that wins.",
+          "default": 1000
+        },
+        "stars": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "description": "The scores for one, two and three stars; empty is a third, two thirds and all of the target.",
+          "default": []
+        },
+        "moves": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Moves left; null hides it.",
+          "default": null
+        },
+        "timeLeft": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Seconds left; null hides it.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "Currency": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A currency an idle game counts.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Its id.",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name.",
+          "default": ""
+        },
+        "amount": {
+          "type": "number",
+          "description": "How much there is.",
+          "default": 0
+        },
+        "perSecond": {
+          "type": "number",
+          "description": "How much it earns per second.",
+          "default": 0
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon of the atlas; empty is none.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "Generator": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A generator an idle game lists: level, cost, progress.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Its id: buying answers `buy:<id>`.",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name.",
+          "default": ""
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its level.",
+          "default": 0
+        },
+        "cost": {
+          "type": "number",
+          "description": "The next level's price.",
+          "default": 0
+        },
+        "affordable": {
+          "type": "boolean",
+          "description": "The player can pay for it.",
+          "default": false
+        },
+        "progress": {
+          "type": "number",
+          "description": "Its cycle, 0 to 1.",
+          "default": 0,
+          "x-og-unit": "ratio"
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon of the atlas; empty is none.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "IdleHudDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An idle or incremental HUD: currencies with their rates on top, a big tap target, the generators in a list.",
+      "type": "object",
+      "properties": {
+        "currencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Currency"
+          },
+          "description": "The currencies, the first the main one.",
+          "default": []
+        },
+        "generators": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Generator"
+          },
+          "description": "The generators.",
+          "default": []
+        },
+        "tapLabel": {
+          "type": "string",
+          "description": "The tap target's label; empty hides it.",
+          "default": "Tap"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RacingHudDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A racing HUD: position and lap top left, the times top right, the speedometer and gear bottom right, the boost meter, an optional mini-map.",
+      "type": "object",
+      "properties": {
+        "speed": {
+          "type": "number",
+          "description": "The speed, in `unit`.",
+          "default": 0
+        },
+        "maxSpeed": {
+          "type": "number",
+          "description": "The dial's top.",
+          "default": 300
+        },
+        "unit": {
+          "type": "string",
+          "description": "The speed's unit.",
+          "default": "km/h"
+        },
+        "gear": {
+          "type": "string",
+          "description": "The gear (`3`, `R`, `N`).",
+          "default": ""
+        },
+        "lap": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The lap.",
+          "default": 1
+        },
+        "laps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Laps in the race.",
+          "default": 3
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The player's place.",
+          "default": 1
+        },
+        "racers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Cars in the race.",
+          "default": 8
+        },
+        "time": {
+          "type": "number",
+          "description": "The race time in seconds.",
+          "default": 0
+        },
+        "best": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The best lap in seconds; null hides it.",
+          "default": null
+        },
+        "boost": {
+          "type": "number",
+          "description": "The boost meter.",
+          "default": 0,
+          "x-og-unit": "ratio"
+        },
+        "map": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MinimapDesc"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A mini-map; null is none.",
+          "default": null
+        },
+        "touch": {
+          "type": "boolean",
+          "description": "Show touch controls (steering arrows, Brake, Boost) on phones and tablets.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "DialogueLine": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One line of a cutscene.",
+      "type": "object",
+      "properties": {
+        "speaker": {
+          "type": "string",
+          "description": "Who speaks.",
+          "default": ""
+        },
+        "text": {
+          "type": "string",
+          "description": "What they say.",
+          "default": ""
+        },
+        "portrait": {
+          "type": "string",
+          "description": "An icon of the atlas as the portrait; empty is the speaker's initial.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "CutsceneDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A dialogue scene: letterbox bars, the dialogue box at the bottom, Skip at the top right.",
+      "type": "object",
+      "properties": {
+        "open": {
+          "type": "boolean",
+          "description": "Whether it plays.",
+          "default": false
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DialogueLine"
+          },
+          "description": "The lines.",
+          "default": []
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The line shown, from game state.",
+          "default": 0
+        },
+        "letterbox": {
+          "type": "boolean",
+          "description": "Cinematic bars.",
+          "default": true
+        },
+        "skippable": {
+          "type": "boolean",
+          "description": "Show Skip.",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "CutsceneResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A cutscene's answer this tick.",
+      "type": "object",
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The line to show next tick: keep it."
+        },
+        "finished": {
+          "type": "boolean",
+          "description": "The last line was advanced past."
+        },
+        "skipped": {
+          "type": "boolean",
+          "description": "Skip was pressed (or Back)."
+        }
+      },
+      "required": [
+        "index",
+        "finished",
+        "skipped"
+      ],
+      "additionalProperties": false
+    },
+    "ShopItem": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An item a shop sells.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Its id: buying answers it.",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name.",
+          "default": ""
+        },
+        "price": {
+          "type": "number",
+          "description": "Its price in the shop's currency.",
+          "default": 0
+        },
+        "description": {
+          "type": "string",
+          "description": "A line about it.",
+          "default": ""
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon of the atlas; empty is none.",
+          "default": ""
+        },
+        "category": {
+          "type": "string",
+          "description": "Its category tab; empty is the first.",
+          "default": ""
+        },
+        "owned": {
+          "type": "boolean",
+          "description": "Already owned (one-off items): shown, not for sale.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "ShopDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A shop: the balance, category tabs, a grid of items with prices, a detail panel with Buy (disabled when the balance is short).",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Its title.",
+          "default": "Shop"
+        },
+        "currency": {
+          "type": "string",
+          "description": "The currency's name (`coins`).",
+          "default": "coins"
+        },
+        "currencyIcon": {
+          "type": "string",
+          "description": "The currency's icon; empty is none.",
+          "default": ""
+        },
+        "balance": {
+          "type": "number",
+          "description": "What the player has.",
+          "default": 0
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ShopItem"
+          },
+          "description": "What is for sale.",
+          "default": []
+        },
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Category tabs; empty is one list.",
+          "default": []
+        },
+        "onBuy": {
+          "anyOf": [
+            {
+              "x-og-type": "UiAction"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Called with the bought item's id.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "ShopResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A shop's answer this tick.",
+      "type": "object",
+      "properties": {
+        "bought": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The item bought this tick: take the price and grant it."
+        },
+        "closed": {
+          "type": "boolean",
+          "description": "Close was pressed (or Back)."
+        }
+      },
+      "required": [
+        "bought",
+        "closed"
+      ],
+      "additionalProperties": false
+    },
+    "InventoryItem": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "What an inventory slot holds.",
+      "type": "object",
+      "properties": {
+        "slot": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The slot index.",
+          "default": 0
+        },
+        "id": {
+          "type": "string",
+          "description": "The item's id.",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name.",
+          "default": ""
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many (stacks); 0 or 1 hides the count.",
+          "default": 0
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon of the atlas; empty is its initial.",
+          "default": ""
+        },
+        "description": {
+          "type": "string",
+          "description": "A line about it.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "InventoryDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An inventory: a grid of slots, items dragged between them, a detail panel with Use.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Its title.",
+          "default": "Inventory"
+        },
+        "slots": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many slots.",
+          "default": 24
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Slots across; 0 fits the width.",
+          "default": 0
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/InventoryItem"
+          },
+          "description": "The items, by slot.",
+          "default": []
+        },
+        "useLabel": {
+          "type": "string",
+          "description": "The detail panel's action; empty hides it.",
+          "default": "Use"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SlotMove": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "An item dragged from one slot to another.",
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The slot it left."
+        },
+        "to": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The slot it was dropped on (swap when that slot holds an item)."
+        }
+      },
+      "required": [
+        "from",
+        "to"
+      ],
+      "additionalProperties": false
+    },
+    "InventoryResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "An inventory's answer this tick.",
+      "type": "object",
+      "properties": {
+        "selected": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The selected slot."
+        },
+        "moved": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SlotMove"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A drag and drop this tick: move (or swap) the items."
+        },
+        "used": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The id of the item Use was pressed for."
+        },
+        "closed": {
+          "type": "boolean",
+          "description": "Close was pressed (or Back)."
+        }
+      },
+      "required": [
+        "selected",
+        "moved",
+        "used",
+        "closed"
+      ],
+      "additionalProperties": false
+    },
+    "LevelInfo": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A level in a level select.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Its name or number.",
+          "default": ""
+        },
+        "stars": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Stars earned, 0 to 3.",
+          "default": 0
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "Not yet reachable: a lock, inert.",
+          "default": false
+        },
+        "best": {
+          "type": "string",
+          "description": "The best result as shown; empty is none.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "LevelSelectDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A level select: a grid of level cards with stars and locks, the total stars.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Its title.",
+          "default": "Levels"
+        },
+        "levels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LevelInfo"
+          },
+          "description": "The levels.",
+          "default": []
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Cards across; 0 fits the width.",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "LevelSelectResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A level select's answer this tick.",
+      "type": "object",
+      "properties": {
+        "chosen": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The level picked this tick."
+        },
+        "closed": {
+          "type": "boolean",
+          "description": "Back was pressed."
+        }
+      },
+      "required": [
+        "chosen",
+        "closed"
+      ],
+      "additionalProperties": false
+    },
+    "StatRow": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A labelled value on a results screen.",
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "The label.",
+          "default": ""
+        },
+        "value": {
+          "type": "string",
+          "description": "The value, as shown.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "ResultsDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A results screen: the title, stars that land one by one, the score counting up, the best (a badge for a new best), stats, actions and a share hook.",
+      "type": "object",
+      "properties": {
+        "open": {
+          "type": "boolean",
+          "description": "Whether it is shown.",
+          "default": false
+        },
+        "title": {
+          "type": "string",
+          "description": "Its title.",
+          "default": "Level complete"
+        },
+        "score": {
+          "type": "number",
+          "description": "The score.",
+          "default": 0
+        },
+        "best": {
+          "type": "number",
+          "description": "The best score.",
+          "default": 0
+        },
+        "newBest": {
+          "type": "boolean",
+          "description": "This run set the best.",
+          "default": false
+        },
+        "stars": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Stars earned.",
+          "default": 0
+        },
+        "maxStars": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Stars possible; 0 hides them.",
+          "default": 3
+        },
+        "stats": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StatRow"
+          },
+          "description": "Stats under the score.",
+          "default": []
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MenuItem"
+          },
+          "description": "The actions; empty is Retry, Next and Menu (`retry`, `next`, `menu`).",
+          "default": []
+        },
+        "shareText": {
+          "type": "string",
+          "description": "Text a share would post; empty hides Share.",
+          "default": ""
+        },
+        "onShare": {
+          "anyOf": [
+            {
+              "x-og-type": "UiAction"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Called with the share text when Share is pressed (the shell posts it).",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "LeaderboardEntry": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A row of a leaderboard.",
+      "type": "object",
+      "properties": {
+        "rank": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The rank.",
+          "default": 0
+        },
+        "name": {
+          "type": "string",
+          "description": "The player's name.",
+          "default": ""
+        },
+        "score": {
+          "type": "string",
+          "description": "The score, as shown.",
+          "default": ""
+        },
+        "player": {
+          "type": "boolean",
+          "description": "This is the player: highlighted.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "LeaderboardDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A leaderboard: scope tabs, a virtualised list of ranks (medal colours for 1 to 3, the player highlighted), and honest loading, error and empty states.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Its title.",
+          "default": "Leaderboard"
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Scope tabs (Today, This week, All time); empty is none.",
+          "default": []
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LeaderboardEntry"
+          },
+          "description": "The rows.",
+          "default": []
+        },
+        "loading": {
+          "type": "boolean",
+          "description": "The rows are loading: skeletons.",
+          "default": false
+        },
+        "error": {
+          "type": "string",
+          "description": "Loading failed: this message and Retry.",
+          "default": ""
+        },
+        "empty": {
+          "type": "string",
+          "description": "Shown when there are no rows.",
+          "default": "No scores yet"
+        }
+      },
+      "additionalProperties": false
+    },
+    "LeaderboardResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A leaderboard's answer this tick.",
+      "type": "object",
+      "properties": {
+        "scope": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The scope tab chosen: keep it and load its rows."
+        },
+        "changed": {
+          "type": "boolean",
+          "description": "The scope changed this tick."
+        },
+        "retry": {
+          "type": "boolean",
+          "description": "Retry was pressed."
+        },
+        "closed": {
+          "type": "boolean",
+          "description": "Close was pressed (or Back)."
+        }
+      },
+      "required": [
+        "scope",
+        "changed",
+        "retry",
+        "closed"
+      ],
+      "additionalProperties": false
+    },
+    "TutorialStep": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A step of a tutorial: the element to point at, a title and a line.",
+      "type": "object",
+      "properties": {
+        "target": {
+          "type": "string",
+          "description": "The element's id or path (as touch_move_to takes); empty points at nothing.",
+          "default": ""
+        },
+        "title": {
+          "type": "string",
+          "description": "The step's title.",
+          "default": ""
+        },
+        "text": {
+          "type": "string",
+          "description": "What to do.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "TutorialDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An onboarding overlay: a spotlight on each step's target, a callout beside it with Next and Skip, and the step count.",
+      "type": "object",
+      "properties": {
+        "open": {
+          "type": "boolean",
+          "description": "Whether it is shown.",
+          "default": false
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TutorialStep"
+          },
+          "description": "The steps.",
+          "default": []
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The step shown, from game state.",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "TutorialResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A tutorial's answer this tick.",
+      "type": "object",
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The step to show next tick: keep it."
+        },
+        "finished": {
+          "type": "boolean",
+          "description": "The last step's Done was pressed."
+        },
+        "skipped": {
+          "type": "boolean",
+          "description": "Skip was pressed (or Back)."
+        }
+      },
+      "required": [
+        "index",
+        "finished",
+        "skipped"
+      ],
+      "additionalProperties": false
+    },
+    "LoadingDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A loading screen: the title, a real progress bar (or a spinner while unknown) and tips that change by the tick.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "What is loading.",
+          "default": "Loading"
+        },
+        "progress": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "How far, 0 to 1; null is unknown (a spinner, never a fake bar).",
+          "default": null
+        },
+        "tips": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Tips shown in turn.",
+          "default": []
+        },
+        "tipSeconds": {
+          "type": "number",
+          "description": "Seconds per tip.",
+          "default": 4,
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "ConfirmDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A confirm dialog: a title, a consequence sentence, Cancel and the action.",
+      "type": "object",
+      "properties": {
+        "open": {
+          "type": "boolean",
+          "description": "Whether it is open.",
+          "default": false
+        },
+        "title": {
+          "type": "string",
+          "description": "The question.",
+          "default": ""
+        },
+        "message": {
+          "type": "string",
+          "description": "What will happen.",
+          "default": ""
+        },
+        "confirmLabel": {
+          "type": "string",
+          "description": "The action's label.",
+          "default": "Confirm"
+        },
+        "cancelLabel": {
+          "type": "string",
+          "description": "Cancel's label.",
+          "default": "Cancel"
+        },
+        "danger": {
+          "type": "boolean",
+          "description": "The action destroys something: the danger button.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "ConfirmResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A confirm dialog's answer this tick.",
+      "type": "object",
+      "properties": {
+        "confirmed": {
+          "type": "boolean",
+          "description": "The action was chosen."
+        },
+        "cancelled": {
+          "type": "boolean",
+          "description": "Cancel, Back or the backdrop."
+        }
+      },
+      "required": [
+        "confirmed",
+        "cancelled"
+      ],
+      "additionalProperties": false
+    },
+    "AlertDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An alert: a title, a message and one button.",
+      "type": "object",
+      "properties": {
+        "open": {
+          "type": "boolean",
+          "description": "Whether it is open.",
+          "default": false
+        },
+        "title": {
+          "type": "string",
+          "description": "The title.",
+          "default": ""
+        },
+        "message": {
+          "type": "string",
+          "description": "The message.",
+          "default": ""
+        },
+        "okLabel": {
+          "type": "string",
+          "description": "The button's label.",
+          "default": "OK"
+        }
+      },
       "additionalProperties": false
     },
     "CoreAction": {

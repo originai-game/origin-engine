@@ -5,6 +5,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
+  anim,
   BUILTINS,
   commands,
   defineGame,
@@ -18,6 +19,7 @@ import {
   type FieldSpec,
 } from "./runtime.ts";
 import { cameras } from "./systems/cameras.ts";
+import { uiKit } from "./ui-kit/index.ts";
 
 const spec = (kind: string, value: unknown, options: unknown): FieldSpec =>
   Object.freeze({ kind, default: value, options: Object.freeze({ ...((options as object | undefined) ?? {}) }) });
@@ -41,6 +43,13 @@ export const Geometry = ((value = 0 as Api.Geometry, options) => spec("Geometry"
 export const Material = ((value = 0 as Api.Material, options) => spec("Material", value, options)) as typeof Api.Material;
 export const Asset = ((value = 0 as Api.Asset, options) => spec("Asset", value, options)) as typeof Api.Asset;
 export const Sound = ((value = 0 as Api.Sound, options) => spec("Sound", value, options)) as typeof Api.Sound;
+export const SkeletonAsset = ((value = 0 as Api.SkeletonAsset, options) => spec("SkeletonAsset", value, options)) as typeof Api.SkeletonAsset;
+export const ClipAsset = ((value = 0 as Api.ClipAsset, options) => spec("ClipAsset", value, options)) as typeof Api.ClipAsset;
+export const GraphAsset = ((value = 0 as Api.GraphAsset, options) => spec("GraphAsset", value, options)) as typeof Api.GraphAsset;
+export const RootMotion = ((value = "off" as Api.RootMotion, options) => spec("RootMotion", value, options)) as typeof Api.RootMotion;
+export const BlendshapeSource = ((value = "component" as Api.BlendshapeSource, options) => spec("BlendshapeSource", value, options)) as typeof Api.BlendshapeSource;
+export const IkSolver = ((value = "twoBone" as Api.IkSolver, options) => spec("IkSolver", value, options)) as typeof Api.IkSolver;
+export const IkSpace = ((value = "world" as Api.IkSpace, options) => spec("IkSpace", value, options)) as typeof Api.IkSpace;
 export const AudioBus = ((value = "master" as Api.AudioBus, options) => spec("AudioBus", value, options)) as typeof Api.AudioBus;
 
 export const defineComponent: typeof Api.defineComponent = (name, fields) =>
@@ -89,6 +98,7 @@ export const og: typeof Api.og = Object.freeze({
   load,
   commands,
   physics,
-  ui,
+  anim,
+  ui: Object.freeze({ ...ui, ...uiKit }),
   systems: Object.freeze({ cameras }),
 }) as unknown as typeof Api.og;

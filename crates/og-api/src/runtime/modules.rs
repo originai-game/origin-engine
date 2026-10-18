@@ -27,10 +27,14 @@ use og_physics::{
     ShapeCastDesc, ShapeDesc,
 };
 use og_ui::{
-    Align, ButtonDesc, ButtonVariant, ControlSize, Cross, DensityMode, Direction, Element,
-    FieldDesc, FontRole, Fonts, ImageDesc, InputFrame, Insets, LabelDesc, PanelDesc, ProgressDesc,
-    Response, Scheme, ScrollDesc, SharedUi, Size, SliderDesc, Srgba, TextAlign, Theme, TypeStep,
-    Ui, UiDesc, UiFont, Viewport,
+    ActionButtonDesc, Align, Anchor, AnchorDesc, ButtonDesc, ButtonVariant, ChipDesc, ControlSize,
+    CooldownDesc, Cross, DensityMode, DialogueDesc, Direction, DpadDesc, Element, FieldDesc,
+    FontRole, Fonts, GridDesc, HueName, IconAtlas, IconDesc, ImageDesc, InputFrame, Insets,
+    JoystickDesc, LabelDesc, ListDesc, ListRange, MapMarker, MeterDesc, MeterKind, MinimapDesc,
+    ModalDesc, Nav, PanelDesc, Presence, ProgressDesc, RadioDesc, Response, Scheme, ScrollDesc,
+    SelectDesc, SharedUi, Size, SkeletonDesc, SliderDesc, SpotlightDesc, Srgba, StepperDesc,
+    TabsDesc, TextAlign, Theme, ToastDesc, Tone, TransitionDesc, TransitionKind, TypeStep, Ui,
+    UiDesc, UiFont, Viewport,
 };
 use serde_json::{json, Map, Value};
 use std::any::Any;
@@ -66,18 +70,20 @@ pub(crate) struct Mounted {
 
 /// A UI with the theme and fonts of `previous` (a hot reload keeps them).
 pub(crate) fn new_ui(tick: u32, previous: Option<&SharedUi>) -> SharedUi {
-    let (theme, fonts) = match previous {
+    let (theme, fonts, icons) = match previous {
         Some(p) => {
             let ui = p.lock();
-            (*ui.theme(), ui.fonts().clone())
+            (*ui.theme(), ui.fonts().clone(), ui.icons().clone())
         }
-        None => (Theme::default(), Fonts::default()),
+        None => (Theme::default(), Fonts::default(), IconAtlas::default()),
     };
-    SharedUi::new(Ui::new(UiDesc {
+    let mut ui = Ui::new(UiDesc {
         theme,
         ticks_per_second: tick,
         fonts,
-    }))
+    });
+    ui.set_icons(icons);
+    SharedUi::new(ui)
 }
 
 /// The modules' systems that run before the game's: physics' collider
@@ -200,6 +206,9 @@ impl StateBlock for UiState {
 /// [`set_viewport`], else the render target at 1 CSS pixel per device
 /// pixel, else 1280×720.
 pub(crate) fn viewport_of(engine_id: u32) -> Viewport {
+    if let Some(v) = preview_of(engine_id) {
+        return v;
+    }
     let Ok(eng) = engine(engine_id) else {
         return Viewport::default();
     };
@@ -237,6 +246,7 @@ fn viewport_json(v: &Viewport) -> Value {
         "width": v.width, "height": v.height, "dpr": v.dpr,
         "safeArea": { "left": v.safe_area.left, "top": v.safe_area.top, "right": v.safe_area.right, "bottom": v.safe_area.bottom },
         "coarsePointer": v.coarse_pointer,
+        "breakpoint": v.breakpoint().name(),
     })
 }
 
@@ -683,6 +693,7 @@ fn response(r: Response) -> Value {
     json!({
         "hovered": r.hovered, "pressed": r.pressed, "clicked": r.clicked,
         "changed": r.changed, "focused": r.focused, "submitted": r.submitted,
+        "dropped": r.dropped,
     })
 }
 
@@ -713,10 +724,23 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
     let answer = (|| -> Result<_, String> {
         let eng = engine(world)?;
         let d = parse(desc.as_deref())?;
-        let mut theme = match d["scheme"].as_str() {
-            Some("light") => Theme::light(),
-            _ => Theme::dark(),
+        let scheme = match d["scheme"].as_str() {
+            Some("light") => Scheme::Light,
+            _ => Scheme::Dark,
         };
+        let mut theme = if d["contrast"].as_str() == Some("high") {
+            Theme::high_contrast(scheme)
+        } else {
+            Theme::new(scheme)
+        };
+        if let Some(h) = d["accentHue"].as_str().and_then(HueName::from_name) {
+            theme = theme.with_hue(h);
+        } else if d["accentColor"].is_object() {
+            let c = &d["accentColor"];
+            let ch = |k: &str| (f(c, k, 1.0).clamp(0.0, 1.0) * 255.0).round() as u8;
+            theme = theme.with_accent(Srgba::rgb(ch("r"), ch("g"), ch("b")));
+        }
+        theme.reduced_motion = d["reducedMotion"].as_bool().unwrap_or(false);
         theme.density = match d["density"].as_str() {
             Some("compact") => DensityMode::Compact,
             Some("comfortable") => DensityMode::Comfortable,
@@ -741,9 +765,42 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
             .ui
             .clone()
             .ok_or("this engine has no UI")?;
+        let icons = &d["icons"];
+        let atlas = if icons.is_object() {
+            let texture = match icons["texture"].as_f64() {
+                Some(t) => {
+                    let rs = eng.render.borrow();
+                    let i = super::assets::index_of(t)
+                        .ok_or_else(|| format!("icons.texture: {t} is not a texture"))?;
+                    Some(
+                        *rs.textures
+                            .get(i)
+                            .ok_or_else(|| format!("icons.texture: texture {t} is not alive"))?,
+                    )
+                }
+                None => None,
+            };
+            IconAtlas {
+                texture,
+                columns: icons["columns"].as_u64().unwrap_or(1).max(1) as u32,
+                rows: icons["rows"].as_u64().unwrap_or(1).max(1) as u32,
+                names: icons["names"]
+                    .as_array()
+                    .map(|a| {
+                        a.iter()
+                            .map(|n| n.as_str().unwrap_or_default().to_string())
+                            .collect()
+                    })
+                    .unwrap_or_default(),
+            }
+        } else {
+            IconAtlas::default()
+        };
         let mut ui = ui.lock();
         ui.set_theme(theme);
         ui.set_fonts(fonts);
+        ui.set_icons(atlas);
+        ui.set_toast_anchor(anchor_of(&d["toastAnchor"]).unwrap_or(Anchor::Bottom));
         Ok(())
     })();
     match answer {
@@ -797,6 +854,33 @@ pub fn og_ui_theme(world: u32) -> String {
             let s = t.sizes(&Viewport::default());
             (t, s)
         });
+    theme_json(theme, sizes)
+}
+
+pub fn og_ui_frame_viewport() -> String {
+    viewport_json(&with_ui("og.ui.frameViewport", |ui| ui.viewport()).unwrap_or_default())
+        .to_string()
+}
+
+pub fn og_ui_has_icon(name: String) -> bool {
+    with_ui("og.ui.hasIcon", |ui| ui.has_icon(&name)).unwrap_or(false)
+}
+
+pub fn og_ui_seconds() -> f64 {
+    with_ui("og.ui.seconds", |ui| ui.seconds()).unwrap_or(0.0)
+}
+
+pub fn og_ui_frame_theme() -> String {
+    let (theme, sizes) = with_ui("og.ui.frameTheme", |ui| (*ui.theme(), ui.sizes()))
+        .unwrap_or_else(|| {
+            let t = Theme::default();
+            let s = t.sizes(&Viewport::default());
+            (t, s)
+        });
+    theme_json(theme, sizes)
+}
+
+fn theme_json(theme: Theme, sizes: og_ui::Density) -> String {
     let hex = |c: Srgba| {
         let [r, g, b] = c.rgb;
         if c.alpha >= 1.0 {
@@ -1089,4 +1173,647 @@ pub(crate) fn emit(rs: &mut super::extract::RenderState) -> bool {
         rs.scene.texts.push(t);
     }
     true
+}
+
+// ── ui: the game widget set ─────────────────────────────────────────────────
+
+thread_local! {
+    /// Viewports set by og.ui.previewViewport, by engine: they win over the host's.
+    static PREVIEW: std::cell::RefCell<std::collections::BTreeMap<u32, Viewport>> =
+        const { std::cell::RefCell::new(std::collections::BTreeMap::new()) };
+}
+
+fn opt_f(v: &Value, k: &str) -> Option<f32> {
+    v[k].as_f64().map(|x| x as f32)
+}
+
+fn tone(v: &Value) -> Tone {
+    match v.as_str() {
+        Some("success") => Tone::Success,
+        Some("warn") => Tone::Warn,
+        Some("danger") => Tone::Danger,
+        Some("info") => Tone::Info,
+        Some("accent") => Tone::Accent,
+        Some("inverse") => Tone::Inverse,
+        _ => Tone::Neutral,
+    }
+}
+
+fn anchor_of(v: &Value) -> Option<Anchor> {
+    Some(match v.as_str()? {
+        "topLeft" => Anchor::TopLeft,
+        "top" => Anchor::Top,
+        "topRight" => Anchor::TopRight,
+        "left" => Anchor::Left,
+        "center" => Anchor::Center,
+        "right" => Anchor::Right,
+        "bottomLeft" => Anchor::BottomLeft,
+        "bottom" => Anchor::Bottom,
+        "bottomRight" => Anchor::BottomRight,
+        _ => return None,
+    })
+}
+
+fn transition_kind(v: &Value) -> Option<TransitionKind> {
+    Some(match v.as_str()? {
+        "fade" => TransitionKind::Fade,
+        "slideUp" => TransitionKind::SlideUp,
+        "slideDown" => TransitionKind::SlideDown,
+        "slideLeft" => TransitionKind::SlideLeft,
+        "slideRight" => TransitionKind::SlideRight,
+        "scale" => TransitionKind::Scale,
+        _ => return None,
+    })
+}
+
+fn strings(text: &str) -> Vec<String> {
+    serde_json::from_str::<Vec<String>>(text).unwrap_or_default()
+}
+
+fn idx(v: &Value) -> Option<u32> {
+    v.as_u64().map(|n| n as u32)
+}
+
+fn opt(v: Option<u32>) -> Value {
+    v.map_or(Value::Null, |n| json!(n))
+}
+
+fn rect_json(r: &og_ui::Rect) -> Value {
+    json!({ "x": r.x, "y": r.y, "width": r.width, "height": r.height })
+}
+
+fn texture_of(v: &Value) -> Option<og_render::TextureHandle> {
+    let t = v.as_f64()?;
+    let eng = engine(BUILDING.with(Cell::get).or_else(|| LAST.with(Cell::get))?).ok()?;
+    let rs = eng.render.borrow();
+    super::assets::index_of(t).and_then(|i| rs.textures.get(i).copied())
+}
+
+fn uv_of(v: &Value) -> Option<[f32; 4]> {
+    v.as_array().filter(|a| a.len() == 4).map(|a| {
+        let n = |i: usize| a[i].as_f64().unwrap_or(0.0) as f32;
+        [n(0), n(1), n(2), n(3)]
+    })
+}
+
+pub fn og_ui_breakpoint() -> String {
+    let b = with_ui("og.ui.breakpoint", |ui| ui.breakpoint()).unwrap_or_default();
+    b.name().to_string()
+}
+
+pub fn og_ui_open_anchor(id: String, desc: Option<String>) {
+    let d = desc_of(desc);
+    with_ui("og.ui.openAnchor", |ui| {
+        let t = *ui.theme();
+        let a = AnchorDesc {
+            anchor: anchor_of(&d["anchor"]).unwrap_or_default(),
+            margin: opt_f(&d, "margin"),
+            offset: (f(&d, "offsetX", 0.0), f(&d, "offsetY", 0.0)),
+            direction: match d["direction"].as_str() {
+                Some("column") => Direction::Column,
+                _ => Direction::Row,
+            },
+            gap: f(&d, "gap", 0.0),
+            padding: insets(&d["padding"]),
+            align: align(&d["align"]),
+            cross: cross(&d["cross"]),
+            background: paint(&t, &d["background"]),
+            radius: f(&d, "radius", 0.0),
+            width: size_or(&d["width"], Size::fit()),
+            height: size_or(&d["height"], Size::fit()),
+            over: d["over"].as_bool().unwrap_or(false),
+        };
+        ui.open_anchor(id.as_str(), a)
+    });
+}
+
+fn presence_json(p: Presence) -> String {
+    json!({ "visible": p.visible, "progress": p.progress, "entering": p.entering, "leaving": p.leaving }).to_string()
+}
+
+pub fn og_ui_open_transition(id: String, show: bool, desc: Option<String>) -> String {
+    let d = desc_of(desc);
+    let p = with_ui("og.ui.openTransition", |ui| {
+        ui.open_transition(
+            id.as_str(),
+            show,
+            TransitionDesc {
+                kind: transition_kind(&d["kind"]).unwrap_or_default(),
+                duration_ms: f(&d, "durationMs", 0.0),
+                distance: f(&d, "distance", 0.0),
+                instant: d["instant"].as_bool().unwrap_or(false),
+            },
+        )
+    });
+    presence_json(p.unwrap_or_default())
+}
+
+pub fn og_ui_open_modal(id: String, open: bool, desc: Option<String>) -> String {
+    let d = desc_of(desc);
+    let r = with_ui("og.ui.openModal", |ui| {
+        ui.open_modal(
+            id.as_str(),
+            open,
+            &ModalDesc {
+                title: d["title"].as_str().unwrap_or_default().to_string(),
+                width: size(&d["width"]),
+                locked: d["locked"].as_bool().unwrap_or(false),
+                ignore_backdrop: d["ignoreBackdrop"].as_bool().unwrap_or(false),
+                transition: transition_kind(&d["transition"]),
+                backdrop: paint(ui.theme(), &d["backdrop"]),
+                bare: d["bare"].as_bool().unwrap_or(false),
+            },
+        )
+    })
+    .unwrap_or_default();
+    json!({ "visible": r.visible, "dismissed": r.dismissed }).to_string()
+}
+
+pub fn og_ui_close_modal() {
+    with_ui("og.ui.closeModal", |ui| ui.close_modal());
+}
+
+pub fn og_ui_spotlight(id: String, hole: String, desc: Option<String>) -> String {
+    let h = parse(Some(&hole)).unwrap_or(Value::Null);
+    let d = desc_of(desc);
+    let hole = h.is_object().then(|| {
+        og_ui::Rect::new(
+            f(&h, "x", 0.0),
+            f(&h, "y", 0.0),
+            f(&h, "width", 0.0),
+            f(&h, "height", 0.0),
+        )
+    });
+    let r = with_ui("og.ui.spotlight", |ui| {
+        ui.spotlight(
+            id.as_str(),
+            hole,
+            SpotlightDesc {
+                padding: f(&d, "padding", 0.0),
+            },
+        )
+    });
+    response(r.unwrap_or_default()).to_string()
+}
+
+pub fn og_ui_bounds(path: String) -> String {
+    let b = with_ui("og.ui.bounds", |ui| {
+        ui.frame()
+            .element(&path)
+            .map(|e| og_ui::Rect::new(e.x, e.y, e.width, e.height))
+    })
+    .flatten();
+    b.map_or(Value::Null, |r| rect_json(&r)).to_string()
+}
+
+fn range_json(r: ListRange) -> String {
+    json!({ "first": r.first, "last": r.last }).to_string()
+}
+
+pub fn og_ui_open_list(id: String, desc: Option<String>) -> String {
+    let d = desc_of(desc);
+    let r = with_ui("og.ui.openList", |ui| {
+        ui.open_list(
+            id.as_str(),
+            ListDesc {
+                count: idx(&d["count"]).unwrap_or(0),
+                row_height: f(&d, "rowHeight", 0.0),
+                gap: f(&d, "gap", 0.0),
+                width: size_or(&d["width"], Size::fit()),
+                height: size(&d["height"]),
+                padding: insets(&d["padding"]),
+            },
+        )
+    });
+    range_json(r.unwrap_or_default())
+}
+
+pub fn og_ui_open_grid(id: String, desc: Option<String>) -> String {
+    let d = desc_of(desc);
+    let r = with_ui("og.ui.openGrid", |ui| {
+        ui.open_grid(
+            id.as_str(),
+            GridDesc {
+                count: idx(&d["count"]).unwrap_or(0),
+                cell_width: f(&d, "cellWidth", 0.0),
+                cell_height: f(&d, "cellHeight", 0.0),
+                columns: idx(&d["columns"]).unwrap_or(0),
+                gap: f(&d, "gap", 0.0),
+                width: size_or(&d["width"], Size::fit()),
+                height: size(&d["height"]),
+                padding: insets(&d["padding"]),
+            },
+        )
+    });
+    range_json(r.unwrap_or_default())
+}
+
+pub fn og_ui_list_item(index: u32, selected: bool) -> String {
+    response(with_ui("og.ui.listItem", |ui| ui.list_item(index, selected)).unwrap_or_default())
+        .to_string()
+}
+
+pub fn og_ui_grid_item(index: u32, selected: bool) -> String {
+    response(with_ui("og.ui.gridItem", |ui| ui.grid_item(index, selected)).unwrap_or_default())
+        .to_string()
+}
+
+pub fn og_ui_close_list() -> String {
+    response(with_ui("og.ui.closeList", |ui| ui.close_list()).unwrap_or_default()).to_string()
+}
+
+pub fn og_ui_dragging(id: String) -> String {
+    opt(with_ui("og.ui.dragging", |ui| ui.dragging(id.as_str())).flatten()).to_string()
+}
+
+fn choice(r: Response, selected: usize) -> String {
+    json!({ "response": response(r), "selected": selected }).to_string()
+}
+
+pub fn og_ui_tabs(id: String, items: String, selected: u32, desc: Option<String>) -> String {
+    let d = desc_of(desc);
+    let items = strings(&items);
+    let mut sel = selected as usize;
+    let r = with_ui("og.ui.tabs", |ui| {
+        let refs: Vec<&str> = items.iter().map(String::as_str).collect();
+        ui.tabs(
+            id.as_str(),
+            &refs,
+            &mut sel,
+            TabsDesc {
+                fill: d["fill"].as_bool().unwrap_or(false),
+                width: size(&d["width"]),
+            },
+        )
+    });
+    choice(r.unwrap_or_default(), sel)
+}
+
+pub fn og_ui_select(id: String, options: String, selected: u32, desc: Option<String>) -> String {
+    let d = desc_of(desc);
+    let options = strings(&options);
+    let mut sel = selected as usize;
+    let r = with_ui("og.ui.select", |ui| {
+        let refs: Vec<&str> = options.iter().map(String::as_str).collect();
+        ui.select(
+            id.as_str(),
+            &refs,
+            &mut sel,
+            &SelectDesc {
+                placeholder: d["placeholder"].as_str().unwrap_or_default().to_string(),
+                width: size(&d["width"]),
+                disabled: d["disabled"].as_bool().unwrap_or(false),
+            },
+        )
+    });
+    choice(r.unwrap_or_default(), sel)
+}
+
+pub fn og_ui_stepper(id: String, value: f64, desc: Option<String>) -> String {
+    let d = desc_of(desc);
+    let mut v = value as f32;
+    let r = with_ui("og.ui.stepper", |ui| {
+        ui.stepper(
+            id.as_str(),
+            &mut v,
+            StepperDesc {
+                min: f(&d, "min", 0.0),
+                max: f(&d, "max", 0.0),
+                step: f(&d, "step", 0.0),
+                decimals: idx(&d["decimals"]).unwrap_or(0).min(6),
+            },
+        )
+    });
+    json!({ "response": response(r.unwrap_or_default()), "value": v }).to_string()
+}
+
+pub fn og_ui_radio(id: String, options: String, selected: u32, desc: Option<String>) -> String {
+    let d = desc_of(desc);
+    let options = strings(&options);
+    let mut sel = selected as usize;
+    let r = with_ui("og.ui.radio", |ui| {
+        let refs: Vec<&str> = options.iter().map(String::as_str).collect();
+        ui.radio(
+            id.as_str(),
+            &refs,
+            &mut sel,
+            RadioDesc {
+                horizontal: d["horizontal"].as_bool().unwrap_or(false),
+            },
+        )
+    });
+    choice(r.unwrap_or_default(), sel)
+}
+
+pub fn og_ui_checkbox(id: String, on: bool, label: String) -> String {
+    let mut state = on;
+    let r = with_ui("og.ui.checkbox", |ui| {
+        ui.checkbox(id.as_str(), &mut state, &label)
+    });
+    json!({ "response": response(r.unwrap_or_default()), "on": state }).to_string()
+}
+
+pub fn og_ui_checkbox_list(id: String, labels: String, values: String) -> String {
+    let labels = strings(&labels);
+    let mut vals: Vec<bool> = serde_json::from_str(&values).unwrap_or_default();
+    vals.resize(labels.len(), false);
+    let r = with_ui("og.ui.checkboxList", |ui| {
+        let refs: Vec<&str> = labels.iter().map(String::as_str).collect();
+        ui.checkbox_list(id.as_str(), &refs, &mut vals)
+    });
+    json!({ "response": response(r.unwrap_or_default()), "values": vals }).to_string()
+}
+
+pub fn og_ui_chip(id: String, text: String, desc: Option<String>) -> String {
+    let d = desc_of(desc);
+    let r = with_ui("og.ui.chip", |ui| {
+        ui.chip(
+            id.as_str(),
+            &text,
+            ChipDesc {
+                selected: d["selected"].as_bool().unwrap_or(false),
+                disabled: d["disabled"].as_bool().unwrap_or(false),
+            },
+        )
+    });
+    response(r.unwrap_or_default()).to_string()
+}
+
+pub fn og_ui_badge(id: String, text: String, t: String) {
+    let tn = tone(&Value::String(t));
+    with_ui("og.ui.badge", |ui| ui.badge(id.as_str(), &text, tn));
+}
+
+pub fn og_ui_divider(id: String, vertical: bool) {
+    with_ui("og.ui.divider", |ui| ui.divider(id.as_str(), vertical));
+}
+
+pub fn og_ui_spacer(id: String, s: String) {
+    let v = parse(Some(&s)).unwrap_or(Value::Null);
+    with_ui("og.ui.spacer", |ui| ui.spacer(id.as_str(), size(&v)));
+}
+
+pub fn og_ui_key_value(id: String, key: String, value: String, mono: bool) {
+    with_ui("og.ui.keyValue", |ui| {
+        ui.key_value(id.as_str(), &key, &value, mono)
+    });
+}
+
+pub fn og_ui_skeleton(id: String, desc: Option<String>) {
+    let d = desc_of(desc);
+    with_ui("og.ui.skeleton", |ui| {
+        ui.skeleton(
+            id.as_str(),
+            SkeletonDesc {
+                width: size(&d["width"]),
+                height: f(&d, "height", 0.0),
+                lines: idx(&d["lines"]).unwrap_or(0),
+            },
+        )
+    });
+}
+
+pub fn og_ui_spinner(id: String, s: f64) {
+    with_ui("og.ui.spinner", |ui| ui.spinner(id.as_str(), s as f32));
+}
+
+pub fn og_ui_icon(id: String, name: String, desc: Option<String>) {
+    let d = desc_of(desc);
+    with_ui("og.ui.icon", |ui| {
+        let t = *ui.theme();
+        ui.icon(
+            id.as_str(),
+            &name,
+            IconDesc {
+                size: f(&d, "size", 0.0),
+                tint: paint(&t, &d["tint"]),
+            },
+        )
+    });
+}
+
+pub fn og_ui_meter(id: String, value: f64, max: f64, desc: Option<String>) {
+    let d = desc_of(desc);
+    with_ui("og.ui.meter", |ui| {
+        let t = *ui.theme();
+        let kind = match (paint(&t, &d["color"]), d["kind"].as_str()) {
+            (Some(c), _) => MeterKind::Custom(c),
+            (None, Some("mana")) => MeterKind::Mana,
+            (None, Some("xp")) => MeterKind::Xp,
+            (None, Some("accent")) => MeterKind::Accent,
+            _ => MeterKind::Health,
+        };
+        ui.meter(
+            id.as_str(),
+            value as f32,
+            max as f32,
+            &MeterDesc {
+                kind,
+                label: d["label"].as_str().unwrap_or_default().to_string(),
+                width: size(&d["width"]),
+                height: f(&d, "height", 0.0),
+                segments: idx(&d["segments"]).unwrap_or(0),
+            },
+        )
+    });
+}
+
+pub fn og_ui_cooldown(id: String, remaining: f64, desc: Option<String>) -> String {
+    let d = desc_of(desc);
+    let r = with_ui("og.ui.cooldown", |ui| {
+        ui.cooldown(
+            id.as_str(),
+            remaining as f32,
+            &CooldownDesc {
+                size: f(&d, "size", 0.0),
+                label: d["label"].as_str().unwrap_or_default().to_string(),
+                icon: d["icon"].as_str().unwrap_or_default().to_string(),
+            },
+        )
+    });
+    response(r.unwrap_or_default()).to_string()
+}
+
+pub fn og_ui_minimap(id: String, desc: Option<String>) {
+    let d = desc_of(desc);
+    let texture = texture_of(&d["texture"]);
+    with_ui("og.ui.minimap", |ui| {
+        let markers = d["markers"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .map(|m| MapMarker {
+                        x: f(m, "x", 0.0),
+                        y: f(m, "y", 0.0),
+                        tone: tone(&m["tone"]),
+                        player: m["player"].as_bool().unwrap_or(false),
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        ui.minimap(
+            id.as_str(),
+            &MinimapDesc {
+                texture,
+                uv: uv_of(&d["uv"]),
+                size: f(&d, "size", 0.0),
+                markers,
+                label: d["label"].as_str().unwrap_or_default().to_string(),
+            },
+        )
+    });
+}
+
+pub fn og_ui_dialogue(id: String, desc: Option<String>) -> String {
+    let d = desc_of(desc);
+    let portrait = texture_of(&d["portrait"])
+        .map(|t| (t, uv_of(&d["portraitUv"]).unwrap_or([0.0, 0.0, 1.0, 1.0])));
+    let r = with_ui("og.ui.dialogue", |ui| {
+        ui.dialogue(
+            id.as_str(),
+            &DialogueDesc {
+                speaker: d["speaker"].as_str().unwrap_or_default().to_string(),
+                text: d["text"].as_str().unwrap_or_default().to_string(),
+                portrait,
+                portrait_icon: d["portraitIcon"].as_str().unwrap_or_default().to_string(),
+                chars_per_second: f(&d, "charsPerSecond", 0.0),
+                portrait_right: d["portraitRight"].as_bool().unwrap_or(false),
+            },
+        )
+    })
+    .unwrap_or_default();
+    json!({ "shown": r.shown, "done": r.done, "advanced": r.advanced }).to_string()
+}
+
+pub fn og_ui_joystick(id: String, desc: Option<String>) -> String {
+    let d = desc_of(desc);
+    let r = with_ui("og.ui.joystick", |ui| {
+        ui.joystick(
+            id.as_str(),
+            JoystickDesc {
+                size: f(&d, "size", 0.0),
+                dead_zone: f(&d, "deadZone", 0.0),
+            },
+        )
+    })
+    .unwrap_or_default();
+    json!({ "x": r.x, "y": r.y, "active": r.active }).to_string()
+}
+
+pub fn og_ui_dpad(id: String, desc: Option<String>) -> String {
+    let d = desc_of(desc);
+    let r = with_ui("og.ui.dpad", |ui| {
+        ui.dpad(
+            id.as_str(),
+            DpadDesc {
+                size: f(&d, "size", 0.0),
+            },
+        )
+    })
+    .unwrap_or_default();
+    json!({ "up": r.up, "down": r.down, "left": r.left, "right": r.right }).to_string()
+}
+
+pub fn og_ui_action_button(id: String, text: String, desc: Option<String>) -> String {
+    let d = desc_of(desc);
+    let r = with_ui("og.ui.actionButton", |ui| {
+        ui.action_button(
+            id.as_str(),
+            &text,
+            &ActionButtonDesc {
+                size: f(&d, "size", 0.0),
+                primary: d["primary"].as_bool().unwrap_or(false),
+                icon: d["icon"].as_str().unwrap_or_default().to_string(),
+            },
+        )
+    });
+    response(r.unwrap_or_default()).to_string()
+}
+
+/// The UI of an engine, for calls that work between ticks too.
+fn ui_of(world: u32) -> Option<SharedUi> {
+    engine(world).ok()?.state.borrow().ui.clone()
+}
+
+pub fn og_ui_toast(world: u32, text: String, desc: Option<String>) -> u32 {
+    let d = desc_of(desc);
+    let Some(ui) = ui_of(world) else { return 0 };
+    let mut ui = ui.lock();
+    ui.toast(
+        &text,
+        ToastDesc {
+            tone: tone(&d["tone"]),
+            duration_ms: f(&d, "durationMs", 0.0),
+        },
+    )
+}
+
+pub fn og_ui_dismiss_toast(world: u32, toast_id: u32) {
+    if let Some(ui) = ui_of(world) {
+        ui.lock().dismiss_toast(toast_id);
+    }
+}
+
+pub fn og_ui_navigate(world: u32, intent: String) {
+    let nav = match intent.as_str() {
+        "up" => Nav::Up,
+        "down" => Nav::Down,
+        "left" => Nav::Left,
+        "right" => Nav::Right,
+        "next" => Nav::Next,
+        "prev" => Nav::Prev,
+        "activate" => Nav::Activate,
+        "back" => Nav::Back,
+        _ => return,
+    };
+    if let Some(ui) = ui_of(world) {
+        ui.lock().navigate(nav);
+    }
+}
+
+pub fn og_ui_back() -> bool {
+    with_ui("og.ui.back", |ui| ui.back()).unwrap_or(false)
+}
+
+pub fn og_ui_set_navigation(on: bool) {
+    with_ui("og.ui.setNavigation", |ui| ui.set_navigation(on));
+}
+
+pub fn og_ui_memory(id: String, initial: f64) -> f64 {
+    with_ui("og.ui.memory", |ui| ui.memory(&id, initial)).unwrap_or(initial)
+}
+
+pub fn og_ui_remember(id: String, value: f64) {
+    with_ui("og.ui.remember", |ui| ui.remember(&id, value));
+}
+
+pub fn og_ui_tick() -> u32 {
+    with_ui("og.ui.tick", |ui| ui.tick() as u32).unwrap_or(0)
+}
+
+pub fn og_ui_preview_viewport(world: u32, viewport: String) {
+    let v = parse(Some(&viewport)).unwrap_or(Value::Null);
+    PREVIEW.with(|p| {
+        let mut p = p.borrow_mut();
+        if v.is_object() {
+            let num = |k: &str, d: f64| v[k].as_f64().unwrap_or(d) as f32;
+            p.insert(
+                world,
+                Viewport {
+                    width: num("width", 1280.0).max(1.0),
+                    height: num("height", 720.0).max(1.0),
+                    dpr: num("dpr", 1.0),
+                    safe_area: insets(&v["safeArea"]),
+                    coarse_pointer: v["coarsePointer"].as_bool().unwrap_or(false),
+                },
+            );
+        } else {
+            p.remove(&world);
+        }
+    });
+}
+
+/// The previewed viewport of an engine, when one is set.
+fn preview_of(engine_id: u32) -> Option<Viewport> {
+    PREVIEW.with(|p| p.borrow().get(&engine_id).copied())
 }

@@ -31,6 +31,13 @@
       "source": "templates/game/assets/models/trickster.glb of origingame/origin-engine; shipped in @origingame/create's template/"
     },
     {
+      "path": "assets/models/walker.glb",
+      "bytes": 34296,
+      "sha256": "e068aeca18b491e54b48ae8c264d208a414f9de455a571340bf55ef0c3d2face",
+      "licence": "CC0 1.0 (LICENSES.md)",
+      "source": "templates/game/assets/models/walker.glb of origingame/origin-engine; shipped in @origingame/create's template/"
+    },
+    {
       "path": "assets/textures/stone.png",
       "bytes": 112774,
       "sha256": "8622957415b5174f09a2564256d319c14692998b3f7fd1ac6ae9d3709ed71a9c",

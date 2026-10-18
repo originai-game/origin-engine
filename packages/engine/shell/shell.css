@@ -1,0 +1,142 @@
+/* The player shell (docs/web-export.md): one ink surface, the canvas laid out
+   by the shell (letterbox or fill), the boot splash, the play gate, the error
+   card, the install hint and the "made with" badge. Tokens: brand/tokens.css. */
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--og-ink);
+  color: var(--color-fg);
+  font: 14px/1.4 var(--font-sans);
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+body { position: fixed; inset: 0; overflow: hidden; height: 100dvh; }
+#og-stage {
+  position: absolute;
+  inset: 0;
+  height: 100dvh;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#og-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  outline: none;
+}
+.og-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  box-sizing: border-box;
+}
+.og-layer[hidden] { display: none; }
+#og-boot { background: var(--og-ink); color: var(--og-paper); transition: opacity 240ms var(--ease-out); }
+#og-boot[data-done] { opacity: 0; pointer-events: none; }
+.og-boot-mark { width: 72px; height: 72px; color: var(--og-paper); }
+.og-mark:not([data-motion="progress"]) :is([data-part="ghost"], [data-part="fill"]),
+.og-mark[data-motion="progress"] [data-part="arms"] { display: none; }
+.og-boot-label { min-height: 1.4em; color: var(--color-fg-muted); font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
+#og-gate { background: rgb(20 22 27 / 0.55); cursor: pointer; }
+#og-gate button {
+  appearance: none;
+  border: 1px solid rgb(255 255 255 / 0.28);
+  background: rgb(255 255 255 / 0.1);
+  color: var(--og-paper);
+  font: 600 16px/1 var(--font-sans);
+  padding: 14px 28px;
+  border-radius: var(--radius-button);
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+#og-gate button:focus-visible { outline: 2px solid var(--og-paper); outline-offset: 3px; }
+#og-error { background: var(--og-ink); overflow: auto; justify-content: flex-start; padding-top: max(48px, env(safe-area-inset-top)); }
+.og-card {
+  width: min(560px, 100%);
+  box-sizing: border-box;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.og-card h1 { margin: 0; font-size: 17px; font-weight: 600; }
+.og-card p { margin: 0; color: var(--color-fg-muted); overflow-wrap: anywhere; }
+.og-card details { border-top: 1px solid var(--color-border); padding-top: 10px; }
+.og-card summary { cursor: pointer; color: var(--color-fg-muted); }
+.og-card pre {
+  margin: 8px 0 0;
+  max-height: 40dvh;
+  overflow: auto;
+  font: 12px/1.45 var(--font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--color-fg);
+}
+.og-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.og-actions button {
+  appearance: none;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  color: var(--color-fg);
+  font: 500 14px/1 var(--font-sans);
+  padding: 10px 16px;
+  border-radius: var(--radius-button);
+  cursor: pointer;
+}
+.og-actions button:first-child { background: var(--og-paper); color: var(--og-ink); border-color: var(--og-paper); }
+#og-install {
+  position: absolute;
+  left: 50%;
+  bottom: calc(max(16px, env(safe-area-inset-bottom)) + 24px);
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 32px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: 8px 8px 8px 14px;
+  font-size: 13px;
+}
+#og-install[hidden] { display: none; }
+#og-install button { appearance: none; border: 0; background: var(--color-surface-raised); color: var(--color-fg); font: 500 13px/1 var(--font-sans); padding: 8px 12px; border-radius: var(--radius-button); cursor: pointer; }
+#og-made-with {
+  position: absolute;
+  right: max(10px, env(safe-area-inset-right));
+  bottom: max(10px, env(safe-area-inset-bottom));
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--og-paper);
+  opacity: 0.55;
+  font: 500 11px/1 var(--font-sans);
+  text-decoration: none;
+  letter-spacing: 0.01em;
+  transition: opacity 240ms var(--ease-out);
+}
+#og-made-with:hover, #og-made-with:focus-visible { opacity: 0.9; }
+#og-made-with[data-playing] { opacity: 0.3; }
+#og-made-with[data-playing] span { display: none; }
+.og-engine-mark { width: 14px; height: 14px; }
+@media (prefers-reduced-motion: reduce) {
+  #og-boot, #og-made-with { transition: none; }
+}

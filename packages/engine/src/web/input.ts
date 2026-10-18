@@ -1,13 +1,26 @@
 // The input ring: the main thread writes page input into a SharedArrayBuffer
 // the engine Worker drains once per frame (docs/design.md §2.2). One slot is
 // 16 int32: kind, action, button, key length, x, y, deltaX, deltaY (as f32
-// bits), then up to 32 bytes of the key code. Without cross-origin isolation
-// the shell posts the same events as messages instead.
+// bits), then up to 32 bytes of the key code; a pointer slot carries its
+// pointerId in word 8 and its type (0 mouse, 1 touch, 2 pen) in word 9
+// instead. Without cross-origin isolation the shell posts the same events as
+// messages instead. The engine's input layer reads one pointer and ignores
+// the id and type (crates/og-input/README.md); they ride along for the IDL
+// change that will take them.
 
 /** An event as the probe's input() and the engine's input layer take it (IDL InjectedInput). */
 export type InjectedInput =
   | { kind: "key"; key: string; action: "press" | "down" | "up" }
-  | { kind: "pointer"; action: "click" | "move" | "down" | "up"; x: number; y: number; button: "none" | "left" | "middle" | "right" }
+  | {
+      kind: "pointer";
+      action: "click" | "move" | "down" | "up";
+      x: number;
+      y: number;
+      button: "none" | "left" | "middle" | "right";
+      /** The page's PointerEvent.pointerId (multi-touch), when it came from the page. */
+      pointerId?: number;
+      pointerType?: "mouse" | "touch" | "pen";
+    }
   | { kind: "wheel"; x: number; y: number; deltaX: number; deltaY: number };
 
 const SLOT = 16;
@@ -17,6 +30,7 @@ export const RING_SLOTS = 256;
 const KINDS = ["key", "pointer", "wheel"] as const;
 const ACTIONS = ["press", "down", "up", "click", "move"] as const;
 const BUTTONS = ["none", "left", "middle", "right"] as const;
+const POINTER_TYPES = ["mouse", "touch", "pen"] as const;
 
 export function createRing(): SharedArrayBuffer {
   return new SharedArrayBuffer((HEADER + RING_SLOTS * SLOT) * 4);
@@ -39,7 +53,11 @@ export function writeRing(buffer: SharedArrayBuffer, event: InjectedInput): bool
   floats[at + 5] = "y" in event ? event.y : 0;
   floats[at + 6] = event.kind === "wheel" ? event.deltaX : 0;
   floats[at + 7] = event.kind === "wheel" ? event.deltaY : 0;
-  new Uint8Array(buffer, (at + 8) * 4, 32).set(key);
+  new Uint8Array(buffer, (at + 8) * 4, 32).fill(0).set(key);
+  if (event.kind === "pointer") {
+    ints[at + 8] = event.pointerId ?? -1;
+    ints[at + 9] = POINTER_TYPES.indexOf(event.pointerType ?? "mouse");
+  }
   Atomics.store(ints, 0, write + 1);
   return true;
 }
@@ -61,7 +79,17 @@ export function drainRing(buffer: SharedArrayBuffer): InjectedInput[] {
       const bytes = new Uint8Array(buffer, (at + 8) * 4, ints[at + 3]!).slice();
       out.push({ kind, key: new TextDecoder().decode(bytes), action: action as "press" | "down" | "up" });
     } else if (kind === "pointer") {
-      out.push({ kind, action: action as "click" | "move" | "down" | "up", x, y, button: BUTTONS[ints[at + 2]!]! });
+      const id = ints[at + 8]!;
+      const type = POINTER_TYPES[ints[at + 9]!];
+      out.push({
+        kind,
+        action: action as "click" | "move" | "down" | "up",
+        x,
+        y,
+        button: BUTTONS[ints[at + 2]!]!,
+        ...(id >= 0 ? { pointerId: id } : {}),
+        ...(id >= 0 && type ? { pointerType: type } : {}),
+      });
     } else if (kind === "wheel") {
       out.push({ kind, x, y, deltaX: floats[at + 6]!, deltaY: floats[at + 7]! });
     }

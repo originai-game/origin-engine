@@ -53,7 +53,48 @@ Dependencies: M1 → M2 → everything TypeScript-facing; M0 → M3 (renderer
 work starts from the spike immediately); M4 needs M1's `.ogb`; M5 needs M2's
 hosts; M6 needs M3, M4, M5; M7 needs M6.
 
-### Status 2026-10-18
+### Status 2026-10-18, E1 rounds
+
+After M7 (the platform cutover, `docs/m7-platform-notes.md`) the E1 rounds
+ran as four parallel streams on one tree, gated by `scripts/check.sh` end
+to end (wasm 2,368,695 bytes brotli, 56% of the 4 MB budget; 1,099,937 at
+M6: og-anim, og-ui, og-physics and the effects are the growth).
+
+- **Animation** (0790651): og-anim and the cook's skin/clip/morph import;
+  the `anim` IDL module (`og.load.animation`, `og.anim`) on both hosts
+  with the walker posed identically on the native addon and in wasm
+  (`packages/engine/tests/anim.test.ts`). Evidence `tests/evidence/E1/anim-*`.
+- **UI kit**: about thirty widgets, focus navigation, motion, breakpoints,
+  theme variants and UI state format 2 in og-ui; nineteen screen templates
+  and the toast service in `og.ui` (103 functions); the `templates/ui-kit`
+  gallery with 42 metal references at desktop and phone sizes and a
+  two-host hash match in Chrome (WebGPU); the `og-ui` skill. Evidence
+  `tests/evidence/E1/ui-*`. Owed: the og-render overlay pass with
+  per-instance clips (`crates/og-ui/README.md` §overlay ask; until then the
+  UI is a plane in front of the camera and TAA blurs it), a gamepad
+  resource and multi-touch in og-input.
+- **Render effects**: AO, outlines, depth of field, motion blur, god rays,
+  LUT grading, vignette, aberration, grain, flash, camera shake, decals,
+  deterministic GPU/CPU particles, trails, ribbons and beams, 2D lights
+  with soft shadows and glow, per-sprite effects, GPU skinning and
+  blendshapes, toon/rim/dissolve (`crates/og-render/README.md` §E1
+  effects). Fourteen reference scenes on `metal` and `vulkan-cpu`, 25
+  effects tests, features-off references byte-identical. Costs
+  `tests/evidence/E1/vfx-feature-costs.md`. Owed: the browser-tier
+  references for the effect scenes, and an overlay pass (above).
+- **Web export** (`docs/web-export.md`): project.ogt's `publish` block,
+  `og-build.json` with every file's bytes and sha256, `_headers`,
+  `origingame.runtime.json`, the PWA manifest and service worker, byte-
+  deterministic output; the shell's splash, gate, error card and install
+  hint; the og-probe wire for Stage and Player parents (request ring when
+  isolated, postMessage otherwise) and the Player protocol 2; gamepad
+  input; `og run` reports a dying game process at once; `og doctor`
+  outside a project. Browser evidence `tests/evidence/E1/web-*`.
+- **Still pending**: the mobile measurements below (devices), and the
+  platform side of the cutover (`origin-engine-cutover` branch in the
+  platform repository: merge, then pin this revision).
+
+### Status 2026-10-18, M6
 
 The M6 crates are committed (8d160fe render, 4fb20c7 ui, 55ac8a2 audio,
 5c79c75 tools, d214078 ECS state blocks, 49ed935 physics) and

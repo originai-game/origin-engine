@@ -191,6 +191,8 @@ export interface HostAbi<A, V> {
   og_load_error(world: number, asset: number): string;
   /** `og.load.gltfInfo` */
   og_load_gltf_info(world: number, asset: number): string;
+  /** `og.load.animation` */
+  og_load_animation(world: number, path: string): string;
   /** `og.physics.raycast` */
   og_physics_raycast(world: number, desc: string | undefined): string;
   /** `og.physics.shapeCast` */
@@ -199,6 +201,8 @@ export interface HostAbi<A, V> {
   og_physics_overlap(world: number, desc: string | undefined): string;
   /** `og.physics.setMesh` */
   og_physics_set_mesh(world: number, mesh: number, desc: string | undefined): string;
+  /** `og.anim.graph` */
+  og_anim_graph(world: number, desc: string | undefined): string;
   /** `og.ui.configure` */
   og_ui_configure(world: number, desc: string | undefined): string;
   /** `og.ui.viewport` */
@@ -229,6 +233,100 @@ export interface HostAbi<A, V> {
   og_ui_text_field(id: string, value: string, desc: string | undefined): string;
   /** `og.ui.tooltip` */
   og_ui_tooltip(text: string): void;
+  /** `og.ui.breakpoint` */
+  og_ui_breakpoint(): string;
+  /** `og.ui.frameViewport` */
+  og_ui_frame_viewport(): string;
+  /** `og.ui.hasIcon` */
+  og_ui_has_icon(name: string): boolean;
+  /** `og.ui.seconds` */
+  og_ui_seconds(): number;
+  /** `og.ui.frameTheme` */
+  og_ui_frame_theme(): string;
+  /** `og.ui.openAnchor` */
+  og_ui_open_anchor(id: string, desc: string | undefined): void;
+  /** `og.ui.openTransition` */
+  og_ui_open_transition(id: string, show: boolean, desc: string | undefined): string;
+  /** `og.ui.openModal` */
+  og_ui_open_modal(id: string, open: boolean, desc: string | undefined): string;
+  /** `og.ui.closeModal` */
+  og_ui_close_modal(): void;
+  /** `og.ui.spotlight` */
+  og_ui_spotlight(id: string, hole: string, desc: string | undefined): string;
+  /** `og.ui.bounds` */
+  og_ui_bounds(path: string): string;
+  /** `og.ui.openList` */
+  og_ui_open_list(id: string, desc: string | undefined): string;
+  /** `og.ui.openGrid` */
+  og_ui_open_grid(id: string, desc: string | undefined): string;
+  /** `og.ui.listItem` */
+  og_ui_list_item(index: number, selected: boolean): string;
+  /** `og.ui.gridItem` */
+  og_ui_grid_item(index: number, selected: boolean): string;
+  /** `og.ui.closeList` */
+  og_ui_close_list(): string;
+  /** `og.ui.dragging` */
+  og_ui_dragging(id: string): string;
+  /** `og.ui.tabs` */
+  og_ui_tabs(id: string, items: string, selected: number, desc: string | undefined): string;
+  /** `og.ui.select` */
+  og_ui_select(id: string, options: string, selected: number, desc: string | undefined): string;
+  /** `og.ui.stepper` */
+  og_ui_stepper(id: string, value: number, desc: string | undefined): string;
+  /** `og.ui.radio` */
+  og_ui_radio(id: string, options: string, selected: number, desc: string | undefined): string;
+  /** `og.ui.checkbox` */
+  og_ui_checkbox(id: string, on: boolean, label: string): string;
+  /** `og.ui.checkboxList` */
+  og_ui_checkbox_list(id: string, labels: string, values: string): string;
+  /** `og.ui.chip` */
+  og_ui_chip(id: string, text: string, desc: string | undefined): string;
+  /** `og.ui.badge` */
+  og_ui_badge(id: string, text: string, tone: string): void;
+  /** `og.ui.divider` */
+  og_ui_divider(id: string, vertical: boolean): void;
+  /** `og.ui.spacer` */
+  og_ui_spacer(id: string, size: string): void;
+  /** `og.ui.keyValue` */
+  og_ui_key_value(id: string, key: string, value: string, mono: boolean): void;
+  /** `og.ui.skeleton` */
+  og_ui_skeleton(id: string, desc: string | undefined): void;
+  /** `og.ui.spinner` */
+  og_ui_spinner(id: string, size: number): void;
+  /** `og.ui.icon` */
+  og_ui_icon(id: string, name: string, desc: string | undefined): void;
+  /** `og.ui.meter` */
+  og_ui_meter(id: string, value: number, max: number, desc: string | undefined): void;
+  /** `og.ui.cooldown` */
+  og_ui_cooldown(id: string, remaining: number, desc: string | undefined): string;
+  /** `og.ui.minimap` */
+  og_ui_minimap(id: string, desc: string | undefined): void;
+  /** `og.ui.dialogue` */
+  og_ui_dialogue(id: string, desc: string | undefined): string;
+  /** `og.ui.joystick` */
+  og_ui_joystick(id: string, desc: string | undefined): string;
+  /** `og.ui.dpad` */
+  og_ui_dpad(id: string, desc: string | undefined): string;
+  /** `og.ui.actionButton` */
+  og_ui_action_button(id: string, text: string, desc: string | undefined): string;
+  /** `og.ui.toast` */
+  og_ui_toast(world: number, text: string, desc: string | undefined): number;
+  /** `og.ui.dismissToast` */
+  og_ui_dismiss_toast(world: number, toast_id: number): void;
+  /** `og.ui.navigate` */
+  og_ui_navigate(world: number, intent: string): void;
+  /** `og.ui.back` */
+  og_ui_back(): boolean;
+  /** `og.ui.setNavigation` */
+  og_ui_set_navigation(on: boolean): void;
+  /** `og.ui.memory` */
+  og_ui_memory(id: string, initial: number): number;
+  /** `og.ui.remember` */
+  og_ui_remember(id: string, value: number): void;
+  /** `og.ui.tick` */
+  og_ui_tick(): number;
+  /** `og.ui.previewViewport` */
+  og_ui_preview_viewport(world: number, viewport: string): void;
   /** `og.commands.register` */
   og_commands_register(name: string, handler: number, desc: string | undefined): string;
   /** `og.commands.parse` */
@@ -364,10 +462,12 @@ export const SYMBOLS: readonly string[] = [
   "og_load_status",
   "og_load_error",
   "og_load_gltf_info",
+  "og_load_animation",
   "og_physics_raycast",
   "og_physics_shape_cast",
   "og_physics_overlap",
   "og_physics_set_mesh",
+  "og_anim_graph",
   "og_ui_configure",
   "og_ui_viewport",
   "og_ui_theme",
@@ -383,6 +483,53 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_toggle",
   "og_ui_text_field",
   "og_ui_tooltip",
+  "og_ui_breakpoint",
+  "og_ui_frame_viewport",
+  "og_ui_has_icon",
+  "og_ui_seconds",
+  "og_ui_frame_theme",
+  "og_ui_open_anchor",
+  "og_ui_open_transition",
+  "og_ui_open_modal",
+  "og_ui_close_modal",
+  "og_ui_spotlight",
+  "og_ui_bounds",
+  "og_ui_open_list",
+  "og_ui_open_grid",
+  "og_ui_list_item",
+  "og_ui_grid_item",
+  "og_ui_close_list",
+  "og_ui_dragging",
+  "og_ui_tabs",
+  "og_ui_select",
+  "og_ui_stepper",
+  "og_ui_radio",
+  "og_ui_checkbox",
+  "og_ui_checkbox_list",
+  "og_ui_chip",
+  "og_ui_badge",
+  "og_ui_divider",
+  "og_ui_spacer",
+  "og_ui_key_value",
+  "og_ui_skeleton",
+  "og_ui_spinner",
+  "og_ui_icon",
+  "og_ui_meter",
+  "og_ui_cooldown",
+  "og_ui_minimap",
+  "og_ui_dialogue",
+  "og_ui_joystick",
+  "og_ui_dpad",
+  "og_ui_action_button",
+  "og_ui_toast",
+  "og_ui_dismiss_toast",
+  "og_ui_navigate",
+  "og_ui_back",
+  "og_ui_set_navigation",
+  "og_ui_memory",
+  "og_ui_remember",
+  "og_ui_tick",
+  "og_ui_preview_viewport",
   "og_commands_register",
   "og_commands_parse",
   "og_commands_help",

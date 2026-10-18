@@ -2,6 +2,14 @@
 // the canvas to the engine Worker as an OffscreenCanvas, and pumps input into
 // the SharedArrayBuffer ring when the page is cross-origin isolated (falling
 // back to postMessage otherwise). It never runs game code.
+//
+// Input: keyboard (KeyboardEvent.code; the keys that would scroll or move
+// focus are kept from the page), pointer events of every type (mouse, pen,
+// touch). The engine's input layer has one pointer: the primary pointer of
+// each gesture drives it, other touches keep their ids in the ring
+// (`pointerId`, words 8–9 of a pointer slot) and are not delivered until
+// the IDL carries pointer ids. Gamepads are polled on the display frame
+// (gamepad.ts) and delivered as the keys of their standard mapping.
 
 import { createRing, writeRing, type InjectedInput } from "./input.ts";
 import { createRpcRings, readFrames, waitForFrames, writeFrame, type RpcRings } from "./rpc-ring.ts";
@@ -28,7 +36,28 @@ export interface ShellOptions {
   readonly profile?: "2d" | "3d";
   /** Boot progress, 0 to 1, with the stage (`wasm`, `bundle`, `fetch`, `transcode`, `ready`). */
   readonly onProgress?: (value: number, stage: string) => void;
+  /** The highest device pixel ratio the canvas is drawn at (default 2). */
+  readonly dprCap?: number;
+  /** Bytes the boot fetches (the wasm, the cooked bundle), so progress is the bytes received. */
+  readonly expect?: { readonly wasm?: number; readonly cooked?: number };
+  /** Lines of the engine's log and the Worker's console. */
+  readonly onLog?: (lines: readonly string[]) => void;
+  /** The engine failed after it was ready (a trap, a failing system). */
+  readonly onCrash?: (message: string) => void;
+  /** The first frame was rendered. */
+  readonly onFirstFrame?: () => void;
+  /** Without autoplay, take one tick before the first frame (the first screen behind a play gate). */
+  readonly prime?: boolean;
 }
+
+/** The pixel size of a canvas laid out at `cssWidth`×`cssHeight` on this display, with the DPR cap. */
+export function pixelSize(cssWidth: number, cssHeight: number, devicePixelRatio: number, dprCap = 2): { width: number; height: number; dpr: number } {
+  const dpr = Math.max(0.5, Math.min(devicePixelRatio || 1, dprCap > 0 ? dprCap : 2));
+  return { width: Math.max(1, Math.round(cssWidth * dpr)), height: Math.max(1, Math.round(cssHeight * dpr)), dpr };
+}
+
+/** Keys the page would act on itself (scroll, focus); the shell keeps them for the game. */
+const KEPT_KEYS = new Set(["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Tab", "PageUp", "PageDown", "Home", "End", "Backspace"]);
 
 /** What the Worker reported when the engine was ready. */
 export interface Ready {
@@ -54,9 +83,17 @@ export class Shell {
   readonly #rpcPending = new Map<number, { resolve(v: unknown): void; reject(e: Error): void }>();
   readonly #listeners: Array<() => void> = [];
   readonly #rpc: RpcRings | undefined;
+  #onLog: ShellOptions["onLog"];
+  #onCrash: ShellOptions["onCrash"];
+  #onFirstFrame: ShellOptions["onFirstFrame"];
   #next = 1;
   #rpcNext = 1;
   #pumping = false;
+  #ring: SharedArrayBuffer | undefined;
+  #dprCap = 2;
+  /** The pointer that drives the engine's one pointer, while a gesture is down. */
+  #primary: number | null = null;
+  #playing = false;
 
   private constructor(worker: Worker, ready: Ready, rpc: RpcRings | undefined) {
     this.worker = worker;
@@ -65,7 +102,19 @@ export class Shell {
     this.ready = ready;
     this.#rpc = rpc;
     worker.addEventListener("message", (e: MessageEvent) => {
-      const m = e.data as { type: string; id?: number; value?: unknown; error?: string; frame?: string };
+      const m = e.data as { type: string; id?: number; value?: unknown; error?: string; frame?: string; lines?: string[]; message?: string };
+      if (m.type === "log" && m.lines) {
+        this.#onLog?.(m.lines);
+        return;
+      }
+      if (m.type === "crash") {
+        this.#onCrash?.(m.message ?? "the engine stopped");
+        return;
+      }
+      if (m.type === "frame") {
+        this.#onFirstFrame?.();
+        return;
+      }
       if (m.type === "rpc" && m.frame !== undefined) {
         this.#answer(m.frame);
         return;
@@ -81,9 +130,16 @@ export class Shell {
   /** Start the engine in the Worker and wire the page's input to it. */
   static async start(options: ShellOptions): Promise<Shell> {
     const { canvas, worker } = options;
-    const dpr = Math.min(globalThis.devicePixelRatio || 1, 2);
-    canvas.width = Math.max(1, Math.floor(canvas.clientWidth * dpr));
-    canvas.height = Math.max(1, Math.floor(canvas.clientHeight * dpr));
+    const size = pixelSize(canvas.clientWidth || 1, canvas.clientHeight || 1, globalThis.devicePixelRatio || 1, options.dprCap);
+    const dpr = size.dpr;
+    canvas.width = size.width;
+    canvas.height = size.height;
+    // Logs and a crash during the boot reach the page as well as after it.
+    const early = (e: MessageEvent) => {
+      const m = e.data as { type: string; lines?: string[] };
+      if (m.type === "log" && m.lines) options.onLog?.(m.lines);
+    };
+    worker.addEventListener("message", early);
     const offscreen = canvas.transferControlToOffscreen();
     const ring = globalThis.crossOriginIsolated ? createRing() : undefined;
     const rpc = globalThis.crossOriginIsolated ? createRpcRings() : undefined;
@@ -122,11 +178,25 @@ export class Shell {
         root: options.root,
         basis: options.basis,
         profile: options.profile,
+        ...(options.expect ? { expect: options.expect } : {}),
+        ...(options.prime ? { prime: true } : {}),
         viewport: { width: canvas.clientWidth || canvas.width / dpr, height: canvas.clientHeight || canvas.height / dpr, dpr, coarsePointer: globalThis.matchMedia?.("(pointer: coarse)").matches ?? false },
       },
       [offscreen],
     );
-    const shell = new Shell(worker, await ready, rpc);
+    let answered: Ready;
+    try {
+      answered = await ready;
+    } finally {
+      worker.removeEventListener("message", early);
+    }
+    const shell = new Shell(worker, answered, rpc);
+    shell.#ring = ring;
+    shell.#dprCap = options.dprCap ?? 2;
+    shell.#onLog = options.onLog;
+    shell.#onCrash = options.onCrash;
+    shell.#onFirstFrame = options.onFirstFrame;
+    shell.#playing = options.autoplay ?? true;
     shell.#wire(canvas, ring);
     return shell;
   }
@@ -135,7 +205,7 @@ export class Shell {
    * Call one probe member (JSON-RPC 2.0) through the request ring when the
    * page is cross-origin isolated, else through postMessage. Resolves with
    * the member's result (a protocol-5 refusal is `false` or `null`); rejects
-   * with the JSON-RPC error's message. A `capture` resolves once its
+   * with the JSON-RPC error's message, its `code` on the error. A `capture` resolves once its
    * readback has landed (the Worker retries it on the following frames).
    */
   probe(method: string, params: Record<string, unknown> = {}): Promise<unknown> {
@@ -149,11 +219,12 @@ export class Shell {
   }
 
   #answer(frame: string): void {
-    const m = JSON.parse(frame) as { id?: number; result?: unknown; error?: { message?: string } };
+    const m = JSON.parse(frame) as { id?: number; result?: unknown; error?: { code?: number; message?: string } };
     const p = typeof m.id === "number" ? this.#rpcPending.get(m.id) : undefined;
     if (!p) return;
     this.#rpcPending.delete(m.id!);
-    if (m.error) p.reject(new Error(m.error.message ?? "probe error"));
+    // The JSON-RPC code rides on the error: -32601 is a member this build does not serve.
+    if (m.error) p.reject(Object.assign(new Error(m.error.message ?? "probe error"), { code: m.error.code ?? -32603 }));
     else p.resolve(m.result);
   }
 
@@ -182,7 +253,35 @@ export class Shell {
 
   /** Start or stop ticking with the display. */
   play(on: boolean): void {
+    this.#playing = on;
     this.worker.postMessage({ type: "play", on });
+  }
+
+  /** Whether the clock ticks with the display (the last `play`). */
+  get playing(): boolean {
+    return this.#playing;
+  }
+
+  /**
+   * The canvas was laid out at `cssWidth`×`cssHeight`: resize the render
+   * target (device pixels, with the DPR cap) and tell the UI its viewport.
+   */
+  resize(cssWidth: number, cssHeight: number, safeArea?: Record<string, number>): { width: number; height: number; dpr: number } {
+    const size = pixelSize(cssWidth, cssHeight, globalThis.devicePixelRatio || 1, this.#dprCap);
+    const viewport = {
+      width: cssWidth,
+      height: cssHeight,
+      dpr: size.dpr,
+      ...(safeArea ? { safeArea } : {}),
+      coarsePointer: globalThis.matchMedia?.("(pointer: coarse)").matches ?? false,
+    };
+    this.worker.postMessage({ type: "resize", width: size.width, height: size.height, viewport });
+    return size;
+  }
+
+  /** Deliver one event as page input (the ring when isolated, else a message). */
+  inject(event: InjectedInput): void {
+    this.#send(this.#ring, event);
   }
 
   #send(ring: SharedArrayBuffer | undefined, event: InjectedInput): void {
@@ -192,19 +291,68 @@ export class Shell {
 
   #wire(canvas: HTMLCanvasElement, ring: SharedArrayBuffer | undefined): void {
     const listen = <K extends keyof HTMLElementEventMap>(target: EventTarget, type: K, fn: (e: HTMLElementEventMap[K]) => void) => {
-      target.addEventListener(type, fn as EventListener);
+      target.addEventListener(type, fn as EventListener, { passive: false });
       this.#listeners.push(() => target.removeEventListener(type, fn as EventListener));
     };
+    const typing = (e: KeyboardEvent) => {
+      const t = e.target as { tagName?: string; isContentEditable?: boolean } | null;
+      return !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable === true);
+    };
     listen(globalThis as unknown as EventTarget, "keydown", (e) => {
+      if (typing(e) || !e.code) return;
+      if (KEPT_KEYS.has(e.code)) e.preventDefault();
       if (!e.repeat) this.#send(ring, { kind: "key", key: e.code, action: "down" });
     });
-    listen(globalThis as unknown as EventTarget, "keyup", (e) => this.#send(ring, { kind: "key", key: e.code, action: "up" }));
-    const point = (e: PointerEvent, action: "move" | "down" | "up") =>
-      this.#send(ring, { kind: "pointer", action, x: e.offsetX, y: e.offsetY, button: action === "move" ? "none" : (BUTTONS[e.button] ?? "left") });
-    listen(canvas, "pointermove", (e) => point(e, "move"));
-    listen(canvas, "pointerdown", (e) => point(e, "down"));
-    listen(canvas, "pointerup", (e) => point(e, "up"));
-    listen(canvas, "wheel", (e) => this.#send(ring, { kind: "wheel", x: e.offsetX, y: e.offsetY, deltaX: e.deltaX, deltaY: e.deltaY }));
+    listen(globalThis as unknown as EventTarget, "keyup", (e) => {
+      if (typing(e) || !e.code) return;
+      this.#send(ring, { kind: "key", key: e.code, action: "up" });
+    });
+    // Relative to the canvas's CSS box, whichever element the event landed on.
+    const at = (e: PointerEvent | WheelEvent) => {
+      const r = canvas.getBoundingClientRect();
+      return { x: e.clientX - r.left, y: e.clientY - r.top };
+    };
+    const point = (e: PointerEvent, action: "move" | "down" | "up") => {
+      const p = at(e);
+      this.#send(ring, {
+        kind: "pointer",
+        action,
+        x: p.x,
+        y: p.y,
+        button: action === "move" ? "none" : (BUTTONS[e.button] ?? "left"),
+        pointerId: e.pointerId,
+        pointerType: e.pointerType === "touch" || e.pointerType === "pen" ? e.pointerType : "mouse",
+      });
+    };
+    listen(canvas, "pointerdown", (e) => {
+      if (this.#primary !== null && this.#primary !== e.pointerId) return;
+      this.#primary = e.pointerId;
+      try {
+        canvas.setPointerCapture(e.pointerId);
+      } catch {
+        /* a synthetic event has no active pointer */
+      }
+      if (e.pointerType !== "mouse") e.preventDefault();
+      point(e, "down");
+    });
+    listen(canvas, "pointermove", (e) => {
+      if (this.#primary !== null && this.#primary !== e.pointerId) return;
+      if (this.#primary === null && e.pointerType === "touch") return;
+      point(e, "move");
+    });
+    const end = (e: PointerEvent) => {
+      if (this.#primary !== e.pointerId) return;
+      this.#primary = null;
+      point(e, "up");
+    };
+    listen(canvas, "pointerup", end);
+    listen(canvas, "pointercancel", end);
+    listen(canvas, "contextmenu", (e) => e.preventDefault());
+    listen(canvas, "wheel", (e) => {
+      e.preventDefault();
+      const p = at(e);
+      this.#send(ring, { kind: "wheel", x: p.x, y: p.y, deltaX: e.deltaX, deltaY: e.deltaY });
+    });
   }
 
   /** Remove the page listeners and stop the Worker. */

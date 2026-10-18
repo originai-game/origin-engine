@@ -112,6 +112,20 @@ export interface ColumnKinds {
   Asset: { readonly array: Uint32Array; readonly stride: 2; readonly value: Asset };
   /** A Sound handle field. */
   Sound: { readonly array: Uint32Array; readonly stride: 2; readonly value: Sound };
+  /** A SkeletonAsset handle field. */
+  SkeletonAsset: { readonly array: Uint32Array; readonly stride: 2; readonly value: SkeletonAsset };
+  /** A ClipAsset handle field. */
+  ClipAsset: { readonly array: Uint32Array; readonly stride: 2; readonly value: ClipAsset };
+  /** A GraphAsset handle field. */
+  GraphAsset: { readonly array: Uint32Array; readonly stride: 2; readonly value: GraphAsset };
+  /** A RootMotion field: the variant's index. */
+  RootMotion: { readonly array: Uint32Array; readonly stride: 1; readonly value: RootMotion };
+  /** A BlendshapeSource field: the variant's index. */
+  BlendshapeSource: { readonly array: Uint32Array; readonly stride: 1; readonly value: BlendshapeSource };
+  /** An IkSolver field: the variant's index. */
+  IkSolver: { readonly array: Uint32Array; readonly stride: 1; readonly value: IkSolver };
+  /** An IkSpace field: the variant's index. */
+  IkSpace: { readonly array: Uint32Array; readonly stride: 1; readonly value: IkSpace };
   /** An AudioBus field: the variant's index. */
   AudioBus: { readonly array: Uint32Array; readonly stride: 1; readonly value: AudioBus };
 }
@@ -2487,6 +2501,7 @@ export interface Model {
 
 
 
+
 /**
  * A load completed.
  *
@@ -3110,6 +3125,521 @@ export interface MeshDesc {
 
 
 
+
+
+// ── anim ────────────────────────────────────────────────────────
+// Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics.
+// Game code owns the components and sets players, graph parameters and IK targets; og.anim writes the pose (kept as world state in the `og.anim` state block, so snapshots, restore and the world hash cover it), the joint palette, root motion into og.Transform and the fields marked written. Asset handles are what og.load.animation and og.anim.graph answer; 0 is none.
+// Clips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names. Assets are not world state: a hot reload registers them again.
+
+/**
+ * A rig: a glTF's nodes in topological order with their rest transforms, and its skins (joints and inverse bind matrices).
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type SkeletonAsset = number & { readonly [handleType]: "SkeletonAsset" };
+
+/**
+ * An animation clip, resampled at the cook's rate, with its markers.
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type ClipAsset = number & { readonly [handleType]: "ClipAsset" };
+
+/**
+ * A blend-tree graph (`type animgraph`) whose clip references were resolved to clip handles.
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type GraphAsset = number & { readonly [handleType]: "GraphAsset" };
+
+/**
+ * A SkeletonAsset handle field.
+ *
+ * A `SkeletonAsset` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function SkeletonAsset(value?: SkeletonAsset, options?: FieldOptions): FieldSpec<"SkeletonAsset">;
+
+/**
+ * A ClipAsset handle field.
+ *
+ * A `ClipAsset` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function ClipAsset(value?: ClipAsset, options?: FieldOptions): FieldSpec<"ClipAsset">;
+
+/**
+ * A GraphAsset handle field.
+ *
+ * A `GraphAsset` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function GraphAsset(value?: GraphAsset, options?: FieldOptions): FieldSpec<"GraphAsset">;
+
+/**
+ * What the root joint's motion does to the entity.
+ * - `"off"`: The root animates in place; the entity does not move.
+ * - `"planar"`: The root's horizontal (xz) travel and yaw move og.Transform.
+ * - `"full"`: The root's whole translation and rotation move og.Transform.
+ */
+export type RootMotion = "off" | "planar" | "full";
+
+/**
+ * A RootMotion field: the variant's index.
+ *
+ * A `RootMotion` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function RootMotion(value?: RootMotion, options?: FieldOptions): FieldSpec<"RootMotion">;
+
+/**
+ * Who decides blendshape weights.
+ * - `"component"`: Game code writes w0...w7.
+ * - `"clips"`: The playing clips' weight channels write them.
+ */
+export type BlendshapeSource = "component" | "clips";
+
+/**
+ * A BlendshapeSource field: the variant's index.
+ *
+ * A `BlendshapeSource` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function BlendshapeSource(value?: BlendshapeSource, options?: FieldOptions): FieldSpec<"BlendshapeSource">;
+
+/**
+ * How an IK chain is solved.
+ * - `"twoBone"`: Analytic two-bone (thigh, shin, foot), bending towards the pole.
+ * - `"fabrik"`: FABRIK over `bones` bones, iteratively.
+ */
+export type IkSolver = "twoBone" | "fabrik";
+
+/**
+ * An IkSolver field: the variant's index.
+ *
+ * A `IkSolver` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function IkSolver(value?: IkSolver, options?: FieldOptions): FieldSpec<"IkSolver">;
+
+/**
+ * What an IK chain's target and pole are relative to.
+ * - `"world"`: World positions: the skeleton entity's og.Transform applies.
+ * - `"model"`: The skeleton's model space.
+ */
+export type IkSpace = "world" | "model";
+
+/**
+ * An IkSpace field: the variant's index.
+ *
+ * A `IkSpace` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function IkSpace(value?: IkSpace, options?: FieldOptions): FieldSpec<"IkSpace">;
+
+/**
+ * A posed skeleton: the entity is drawn skinned by the joint palette og.anim writes each tick. The pose itself (every node's local transform) is world state kept by the `og.anim` state block.
+ *
+ * The value of the `Skeleton` component (token `og.Skeleton`).
+ */
+export interface Skeleton {
+  /** The skeleton asset (og.load.animation's `skeleton`); 0 is none. */
+  asset: SkeletonAsset;
+  /**
+   * Which of the asset's skins the joint palette is for (glTF skin index).
+   *
+   * @range 0..
+   */
+  skin: number;
+  /**
+   * Root motion extraction: off (animate in place), planar (xz travel and yaw move og.Transform) or full.
+   */
+  rootMotion: RootMotion;
+  /**
+   * The joint whose motion is extracted (an index into the skin's joints; 0 is its first joint, usually the hips).
+   *
+   * @range 0..
+   */
+  rootJoint: number;
+  /**
+   * Written: the number of joints in the palette (0 until the first tick).
+   *
+   * @readonly written by the engine
+   */
+  readonly jointCount: number;
+}
+
+/**
+ * Plays one clip on a skeleton. Alone it poses the skeleton from its rest pose; with an og.AnimationGraph it plays over the graph's result with `weight`. Changing `clip` cross-fades from the previous one over `fade`; a clip change starts the new clip at 0 (or at `time` if the game wrote it in the same tick).
+ *
+ * The value of the `AnimationPlayer` component (token `og.AnimationPlayer`).
+ */
+export interface AnimationPlayer {
+  /** The clip asset; 0 plays nothing. */
+  clip: ClipAsset;
+  /**
+   * The playback position; written every tick, set it to seek (no markers fire across a seek).
+   *
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  time: number;
+  /**
+   * Playback rate (1 = as authored, negative plays backwards).
+   *
+   * @default 1
+   * @range -10..10
+   * @tunable
+   */
+  speed: number;
+  /**
+   * Wrap at the end of the clip; otherwise hold the last frame and set `finished`.
+   *
+   * @default true
+   */
+  loop: boolean;
+  /**
+   * How much of the pose this player decides (0 = none, 1 = all).
+   *
+   * @default 1
+   * @range 0..1
+   * @tunable
+   */
+  weight: number;
+  /**
+   * Cross-fade duration when `clip` changes.
+   *
+   * @default 0.2
+   * @range 0..10
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  fade: number;
+  /**
+   * Written: a non-looping clip reached its end.
+   *
+   * @readonly written by the engine
+   */
+  readonly finished: boolean;
+}
+
+/**
+ * Runs a blend-tree graph (og.anim.graph) on a skeleton: its layers' state machines pick motions by the parameters p0...p7, which the graph names in `param` order (`param speed` is p0, the next `param` is p1, ...).
+ *
+ * The value of the `AnimationGraph` component (token `og.AnimationGraph`).
+ */
+export interface AnimationGraph {
+  /** The graph asset; 0 is none. */
+  asset: GraphAsset;
+  /**
+   * How much of the pose the graph decides over the rest pose.
+   *
+   * @default 1
+   * @range 0..1
+   * @tunable
+   */
+  weight: number;
+  /**
+   * A playback-rate multiplier for every layer.
+   *
+   * @default 1
+   * @range 0..10
+   * @tunable
+   */
+  speed: number;
+  /**
+   * Parameter 0 (the graph's first `param`).
+   *
+   * @tunable
+   */
+  p0: number;
+  /**
+   * Parameter 1.
+   *
+   * @tunable
+   */
+  p1: number;
+  /**
+   * Parameter 2.
+   *
+   * @tunable
+   */
+  p2: number;
+  /**
+   * Parameter 3.
+   *
+   * @tunable
+   */
+  p3: number;
+  /**
+   * Parameter 4.
+   *
+   * @tunable
+   */
+  p4: number;
+  /**
+   * Parameter 5.
+   *
+   * @tunable
+   */
+  p5: number;
+  /**
+   * Parameter 6.
+   *
+   * @tunable
+   */
+  p6: number;
+  /**
+   * Parameter 7.
+   *
+   * @tunable
+   */
+  p7: number;
+  /**
+   * Written: the base layer's current state (its index in the graph file).
+   *
+   * @readonly written by the engine
+   */
+  readonly state: number;
+  /**
+   * Written: seconds since the base layer entered `state`.
+   *
+   * @unit s (seconds of simulation time)
+   * @readonly written by the engine
+   */
+  readonly stateTime: number;
+}
+
+/**
+ * Morph-target weights of the skeleton entity's mesh, in the order of the glTF mesh's targets. With `source` clips the playing clips' weight channels write them; with `component` game code does.
+ *
+ * The value of the `Blendshapes` component (token `og.Blendshapes`).
+ */
+export interface Blendshapes {
+  /**
+   * Who decides the weights: component (game code writes w0...w7) or clips (the animation writes them).
+   */
+  source: BlendshapeSource;
+  /**
+   * The glTF mesh index whose targets the weights drive (0 is the first mesh).
+   *
+   * @range 0..
+   */
+  mesh: number;
+  /**
+   * Weight of target 0.
+   *
+   * @range -1..2
+   * @tunable
+   */
+  w0: number;
+  /**
+   * Weight of target 1.
+   *
+   * @range -1..2
+   * @tunable
+   */
+  w1: number;
+  /**
+   * Weight of target 2.
+   *
+   * @range -1..2
+   * @tunable
+   */
+  w2: number;
+  /**
+   * Weight of target 3.
+   *
+   * @range -1..2
+   * @tunable
+   */
+  w3: number;
+  /**
+   * Weight of target 4.
+   *
+   * @range -1..2
+   * @tunable
+   */
+  w4: number;
+  /**
+   * Weight of target 5.
+   *
+   * @range -1..2
+   * @tunable
+   */
+  w5: number;
+  /**
+   * Weight of target 6.
+   *
+   * @range -1..2
+   * @tunable
+   */
+  w6: number;
+  /**
+   * Weight of target 7.
+   *
+   * @range -1..2
+   * @tunable
+   */
+  w7: number;
+}
+
+/**
+ * An inverse-kinematics constraint on a skeleton, applied after its clips and graph: the chain of `bones` bones ending at joint `tip` turns so the tip reaches `target`. Put it on its own entity (a skeleton can have many chains); chains apply in query order.
+ *
+ * The value of the `IkChain` component (token `og.IkChain`).
+ */
+export interface IkChain {
+  /** The entity with the og.Skeleton this chain bends. */
+  skeleton: Entity;
+  /**
+   * The end joint (an index into the skin's joints): the foot or the hand.
+   *
+   * @range 0..
+   */
+  tip: number;
+  /**
+   * How many bones above the tip turn (two-bone always uses 2).
+   *
+   * @default 2
+   * @range 1..32
+   */
+  bones: number;
+  /** twoBone (analytic, with a pole) or fabrik (iterative, any length). */
+  solver: IkSolver;
+  /**
+   * Where the tip should be.
+   *
+   * @unit m (metres)
+   */
+  target: Vector3;
+  /**
+   * A point the middle joint bends towards (two-bone); the zero vector keeps the animated bend.
+   *
+   * @unit m (metres)
+   */
+  pole: Vector3;
+  /**
+   * What `target` and `pole` are relative to: world (the skeleton entity's og.Transform applies) or model.
+   */
+  space: IkSpace;
+  /**
+   * How much of the solved rotation is applied (0 = the animated pose, 1 = fully solved).
+   *
+   * @default 1
+   * @range 0..1
+   * @tunable
+   */
+  weight: number;
+  /**
+   * FABRIK iterations at most.
+   *
+   * @default 10
+   * @range 1..64
+   */
+  iterations: number;
+  /**
+   * The tip distance (model units) at which the target counts as reached.
+   *
+   * @default 0.001
+   * @range 0..
+   * @unit m (metres)
+   */
+  tolerance: number;
+  /**
+   * Written: the tip is within `tolerance` of the target after solving.
+   *
+   * @readonly written by the engine
+   */
+  readonly reached: boolean;
+  /**
+   * Written: the tip's distance from the target after solving, in model units.
+   *
+   * @unit m (metres)
+   * @readonly written by the engine
+   */
+  readonly error: number;
+}
+
+/**
+ * A named marker of a clip that playback passed in the last tick (read in the tick after it fired, like every event). Cross-fades and blends fire every contributing clip's markers.
+ *
+ * The payload of the `AnimationEvent` event (token `og.AnimationEvent`).
+ */
+export interface AnimationEvent {
+  /** The skeleton entity. */
+  readonly entity: Entity;
+  /** The clip asset the marker belongs to. */
+  readonly clip: ClipAsset;
+  /** The marker's name (at most 63 bytes). */
+  readonly name: string;
+  /**
+   * The marker's time in the clip.
+   *
+   * @unit s (seconds of simulation time)
+   */
+  readonly time: number;
+  /** The clip's blend weight when it fired. */
+  readonly weight: number;
+}
+
+/** One clip of a loaded animation. */
+export interface ClipInfo {
+  /** Its handle, what AnimationPlayer.clip takes. */
+  readonly clip: ClipAsset;
+  /** The glTF animation's name. */
+  readonly name: string;
+  /**
+   * Its length.
+   *
+   * @unit s (seconds of simulation time)
+   */
+  readonly duration: number;
+  /** Its markers' names, in time order. */
+  readonly markers: readonly string[];
+}
+
+/** What og.load.animation registered from a model's `#anim` blob. */
+export interface Animation {
+  /** The rig, what Skeleton.asset takes. */
+  readonly skeleton: SkeletonAsset;
+  /** Its clips, in glTF order. */
+  readonly clips: readonly ClipInfo[];
+  /** The rig's node names, in topological order. */
+  readonly nodes: readonly string[];
+  /** Each skin's joint count, in glTF order. */
+  readonly skins: readonly number[];
+  /** Morph targets across the model's meshes. */
+  readonly morphTargets: number;
+}
+
+/**
+ * A blend-tree graph to register.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface GraphDesc {
+  /**
+   * The graph's `.ogt` text (`type animgraph`, `version 1`; the grammar is og-anim's README).
+   *
+   * @default ""
+   */
+  readonly text?: string;
+  /**
+   * The clips a `clip <motion> "<name>"` line may name, by ClipInfo.name: usually og.load.animation's `clips`.
+   *
+   * @default []
+   */
+  readonly clips?: readonly ClipInfo[];
+}
 
 
 // ── audio ───────────────────────────────────────────────────────
@@ -3952,10 +4482,16 @@ export interface Response {
   readonly clicked: boolean;
   /** Its value changed (slider, toggle, text field). */
   readonly changed: boolean;
-  /** It has keyboard focus (text field). */
+  /**
+   * It has focus: a text field being edited, or the control keyboard and gamepad navigation landed on.
+   */
   readonly focused: boolean;
   /** Enter was pressed in it (text field). */
   readonly submitted: boolean;
+  /**
+   * A list row or grid cell a press started on was released over this one: that row's or cell's index (drag and drop).
+   */
+  readonly dropped: number | null;
 }
 
 /** A slider's response and its value after this tick's input. */
@@ -4006,10 +4542,12 @@ export interface Viewport {
   readonly safeArea: Insets;
   /** A touch screen or another coarse pointer. */
   readonly coarsePointer: boolean;
+  /** Its size class: phone portrait or landscape, tablet, desktop. */
+  readonly breakpoint: Breakpoint;
 }
 
 /**
- * How the UI looks: the scheme, the density and its fonts.
+ * How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion and the icon atlas.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -4044,6 +4582,42 @@ export interface UiDesc {
    * @default null
    */
   readonly monoFont?: Font | null;
+  /**
+   * Standard or high contrast.
+   *
+   * @default "standard"
+   */
+  readonly contrast?: Contrast;
+  /**
+   * A token hue as the game's accent (its hover, active, ink and focus tones derived as the tokens derive amber's); null keeps amber.
+   *
+   * @default null
+   */
+  readonly accentHue?: HueName | null;
+  /**
+   * An sRGB colour as the game's accent, when no hue is given.
+   *
+   * @default null
+   */
+  readonly accentColor?: Color | null;
+  /**
+   * Transitions only fade; sheens stop (prefers-reduced-motion).
+   *
+   * @default false
+   */
+  readonly reducedMotion?: boolean;
+  /**
+   * The icon atlas og.ui.icon draws from.
+   *
+   * @default null
+   */
+  readonly icons?: IconAtlasDesc | null;
+  /**
+   * Where toasts stack; null is the bottom centre.
+   *
+   * @default null
+   */
+  readonly toastAnchor?: Anchor | null;
 }
 
 /** One step of the type ramp. */
@@ -4142,6 +4716,2572 @@ export interface UiTheme {
 export type UiBuild = () => void;
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * A point of the safe area an anchored group sits at.
+ * - `"topLeft"`: The top left corner.
+ * - `"top"`: The middle of the top edge.
+ * - `"topRight"`: The top right corner.
+ * - `"left"`: The middle of the left edge.
+ * - `"center"`: The centre.
+ * - `"right"`: The middle of the right edge.
+ * - `"bottomLeft"`: The bottom left corner.
+ * - `"bottom"`: The middle of the bottom edge.
+ * - `"bottomRight"`: The bottom right corner.
+ */
+export type Anchor = "topLeft" | "top" | "topRight" | "left" | "center" | "right" | "bottomLeft" | "bottom" | "bottomRight";
+
+/**
+ * How a transition moves its content in and out. Under reduced motion every kind only fades.
+ * - `"fade"`: Opacity only.
+ * - `"slideUp"`: Rises into place from below.
+ * - `"slideDown"`: Drops into place from above.
+ * - `"slideLeft"`: Enters from the right.
+ * - `"slideRight"`: Enters from the left.
+ * - `"scale"`: Grows from slightly smaller around its centre.
+ */
+export type TransitionKind = "fade" | "slideUp" | "slideDown" | "slideLeft" | "slideRight" | "scale";
+
+/**
+ * A status tone, as the design language's badges and toasts.
+ * - `"neutral"`: Neutral: fill and muted ink.
+ * - `"success"`: Success.
+ * - `"warn"`: Warning (orange).
+ * - `"danger"`: Danger.
+ * - `"info"`: Information.
+ * - `"accent"`: Amber identity: the soft accent and amber ink.
+ * - `"inverse"`: Neutral emphasis: fg fill, inverse ink.
+ */
+export type Tone = "neutral" | "success" | "warn" | "danger" | "info" | "accent" | "inverse";
+
+/**
+ * What a meter measures, which sets its colour.
+ * - `"health"`: Green, warning orange under 30 %, danger red under 15 %.
+ * - `"mana"`: The blue hue.
+ * - `"xp"`: The purple hue.
+ * - `"accent"`: The accent.
+ */
+export type MeterKind = "health" | "mana" | "xp" | "accent";
+
+/**
+ * The play surface's size class.
+ * - `"desktop"`: 1024 CSS px wide or more, the shorter side 600 or more.
+ * - `"tablet"`: The shorter side 600 or more, under 1024 wide.
+ * - `"phoneLandscape"`: The shorter side under 600, wider than tall.
+ * - `"phonePortrait"`: The shorter side under 600, taller than wide.
+ */
+export type Breakpoint = "desktop" | "tablet" | "phoneLandscape" | "phonePortrait";
+
+/**
+ * The theme variant: high contrast remaps muted inks, fills and borders to stronger tokens and outlines every control (no new colour).
+ * - `"standard"`: The token palette as it is.
+ * - `"high"`: Stronger inks, fills and edges.
+ */
+export type Contrast = "standard" | "high";
+
+/**
+ * One of the twelve category hues of the tokens, for a game's accent.
+ * - `"red"`: hue-red.
+ * - `"orange"`: hue-orange.
+ * - `"yellow"`: hue-yellow.
+ * - `"green"`: hue-green.
+ * - `"mint"`: hue-mint.
+ * - `"teal"`: hue-teal.
+ * - `"cyan"`: hue-cyan.
+ * - `"blue"`: hue-blue.
+ * - `"indigo"`: hue-indigo.
+ * - `"purple"`: hue-purple.
+ * - `"pink"`: hue-pink.
+ * - `"brown"`: hue-brown.
+ */
+export type HueName = "red" | "orange" | "yellow" | "green" | "mint" | "teal" | "cyan" | "blue" | "indigo" | "purple" | "pink" | "brown";
+
+/**
+ * A focus-navigation intent, as the arrow keys, Tab, Enter, Space, Escape and a gamepad's d-pad, stick, A and B give.
+ * - `"up"`: Up.
+ * - `"down"`: Down.
+ * - `"left"`: Left.
+ * - `"right"`: Right.
+ * - `"next"`: The next control in reading order (Tab).
+ * - `"prev"`: The previous one (Shift+Tab).
+ * - `"activate"`: Press the focused control (Enter, Space, A).
+ * - `"back"`: Leave: the topmost dialog or menu closes, else og.ui.back() answers true (Escape, B).
+ */
+export type NavIntent = "up" | "down" | "left" | "right" | "next" | "prev" | "activate" | "back";
+
+/** A rectangle of the play surface. */
+export interface UiRect {
+  /**
+   * Its left edge.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly x: number;
+  /**
+   * Its top edge.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly y: number;
+  /**
+   * Its width.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly width: number;
+  /**
+   * Its height.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly height: number;
+}
+
+/**
+ * The icon atlas: a texture of equal cells in a grid, named in reading order.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface IconAtlasDesc {
+  /**
+   * The atlas texture, from og.load.texture.
+   *
+   * @default null
+   */
+  readonly texture?: Texture | null;
+  /**
+   * Cells across.
+   *
+   * @default 1
+   * @range 1..
+   */
+  readonly columns?: number;
+  /**
+   * Cells down.
+   *
+   * @default 1
+   * @range 1..
+   */
+  readonly rows?: number;
+  /**
+   * Each cell's name, in reading order: og.ui.icon draws a cell by its name.
+   *
+   * @default []
+   */
+  readonly names?: readonly string[];
+}
+
+/**
+ * An anchored group: a layer at a point of the safe area, over the tree (HUD corners, a centred title, a bar of touch controls).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface AnchorDesc {
+  /**
+   * Where it sits.
+   *
+   * @default "topLeft"
+   */
+  readonly anchor?: Anchor;
+  /**
+   * The inset from the safe area's edges; null is the density's gutter.
+   *
+   * @default null
+   */
+  readonly margin?: number | null;
+  /**
+   * Moves it right after placing.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly offsetX?: number;
+  /**
+   * Moves it down after placing.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly offsetY?: number;
+  /**
+   * Which way it lays out its children.
+   *
+   * @default "row"
+   */
+  readonly direction?: Direction;
+  /**
+   * Space between children.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly gap?: number;
+  /**
+   * Space inside its edges.
+   *
+   * @default { left: 0, top: 0, right: 0, bottom: 0 }
+   */
+  readonly padding?: Insets;
+  /**
+   * Where children sit along the main axis.
+   *
+   * @default "start"
+   */
+  readonly align?: Align;
+  /**
+   * Where children sit across it.
+   *
+   * @default "start"
+   */
+  readonly cross?: Cross;
+  /**
+   * Its fill; null draws none.
+   *
+   * @default null
+   */
+  readonly background?: Paint | null;
+  /**
+   * Corner radius.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly radius?: number;
+  /**
+   * Its width; null fits the content.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Its height; null fits the content.
+   *
+   * @default null
+   */
+  readonly height?: Size | null;
+  /**
+   * Draw over dialogs and spotlights (a tutorial callout, a dragged item); the default draws under them.
+   *
+   * @default false
+   */
+  readonly over?: boolean;
+}
+
+/**
+ * How a transition moves, timed in ticks from the motion tokens.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TransitionDesc {
+  /**
+   * The movement.
+   *
+   * @default "fade"
+   */
+  readonly kind?: TransitionKind;
+  /**
+   * How long entering and leaving take; 0 is motion.duration.base (240 ms).
+   *
+   * @default 0
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly durationMs?: number;
+  /**
+   * How far slides travel; 0 is space.xl.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly distance?: number;
+  /**
+   * Shown at once the first time it is built (no entrance).
+   *
+   * @default false
+   */
+  readonly instant?: boolean;
+}
+
+/** Where a transition or dialog is this tick. */
+export interface Presence {
+  /** Build its content: shown, entering or leaving. */
+  readonly visible: boolean;
+  /**
+   * 0 gone, 1 settled.
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly progress: number;
+  /** Moving in. */
+  readonly entering: boolean;
+  /** Moving out. */
+  readonly leaving: boolean;
+}
+
+/**
+ * A dialog: a scrim over everything and a centred panel. Focus moves in and stays while it is the topmost; Back and the backdrop dismiss it unless locked.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ModalDesc {
+  /**
+   * A title over the content; empty is none.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * The panel's width; null is 420 CSS px, at most the surface less its gutters.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Back and the backdrop do not dismiss it (a choice must be made).
+   *
+   * @default false
+   */
+  readonly locked?: boolean;
+  /**
+   * A press on the backdrop does not dismiss it.
+   *
+   * @default false
+   */
+  readonly ignoreBackdrop?: boolean;
+  /**
+   * How it enters and leaves; null is scale.
+   *
+   * @default null
+   */
+  readonly transition?: TransitionKind | null;
+  /**
+   * The backdrop's fill; null is scrim.
+   *
+   * @default null
+   */
+  readonly backdrop?: Paint | null;
+  /**
+   * No panel: the content sits centred on the backdrop (full-screen menus, loading).
+   *
+   * @default false
+   */
+  readonly bare?: boolean;
+}
+
+/** A dialog's answer this tick. */
+export interface ModalResult {
+  /** Build its content (open, or leaving). */
+  readonly visible: boolean;
+  /** Back or a press on the backdrop asked to close it: set your open flag false. */
+  readonly dismissed: boolean;
+}
+
+/**
+ * A spotlight: the surface dimmed except a hole around a target.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SpotlightDesc {
+  /**
+   * Room around the target; 0 is space.sm.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly padding?: number;
+}
+
+/**
+ * A virtualised list: only the rows in view (and one more each side) are built, fillers keep the scroll range of every row.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ListDesc {
+  /**
+   * How many rows there are.
+   *
+   * @default 0
+   */
+  readonly count?: number;
+  /**
+   * Every row's height; 0 is the density's row height.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly rowHeight?: number;
+  /**
+   * Space between rows.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly gap?: number;
+  /**
+   * Its width; null fits.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Its height (it scrolls inside); null grows.
+   *
+   * @default null
+   */
+  readonly height?: Size | null;
+  /**
+   * Space inside.
+   *
+   * @default { left: 0, top: 0, right: 0, bottom: 0 }
+   */
+  readonly padding?: Insets;
+  /**
+   * The selected row (fill-strong), for og.ui.list.
+   *
+   * @default null
+   */
+  readonly selected?: number | null;
+}
+
+/** The rows (or cells) to build this tick: first up to, not including, last. */
+export interface ListRange {
+  /** The first index. */
+  readonly first: number;
+  /** One past the last index. */
+  readonly last: number;
+}
+
+/** What happened in a list or grid this tick. */
+export interface ListResult {
+  /** The row or cell pressed (or activated) this tick. */
+  readonly clicked: number | null;
+  /** A drag and drop ended: the index it started on. */
+  readonly dropFrom: number | null;
+  /** And the index it was released over. */
+  readonly dropTo: number | null;
+}
+
+/**
+ * A virtualised grid of equal cells (inventories, level select), scrolling vertically.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface GridDesc {
+  /**
+   * How many cells there are.
+   *
+   * @default 0
+   */
+  readonly count?: number;
+  /**
+   * A cell's width; 0 is 64 (never under the 44 px touch target).
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly cellWidth?: number;
+  /**
+   * A cell's height; 0 is its width.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly cellHeight?: number;
+  /**
+   * Cells across; 0 is as many as fit.
+   *
+   * @default 0
+   */
+  readonly columns?: number;
+  /**
+   * Space between cells; 0 is space.sm.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly gap?: number;
+  /**
+   * Its width; null fits (exactly the columns when columns is set).
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Its height; null grows.
+   *
+   * @default null
+   */
+  readonly height?: Size | null;
+  /**
+   * Space inside.
+   *
+   * @default { left: 0, top: 0, right: 0, bottom: 0 }
+   */
+  readonly padding?: Insets;
+  /**
+   * The selected cell, for og.ui.grid.
+   *
+   * @default null
+   */
+  readonly selected?: number | null;
+}
+
+/**
+ * A segmented control of tabs.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TabsDesc {
+  /**
+   * Equal segments across the width.
+   *
+   * @default false
+   */
+  readonly fill?: boolean;
+  /**
+   * Its width; null fits (grows with fill).
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+}
+
+/** A choice control's response and the chosen index after this tick's input. */
+export interface ChoiceResult {
+  /** What happened to it; changed when the choice moved. */
+  readonly response: Response;
+  /** The chosen index, to keep in game state and pass back next tick. */
+  readonly selected: number;
+}
+
+/**
+ * A select: a trigger that opens a menu of options.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SelectDesc {
+  /**
+   * Shown while nothing is chosen.
+   *
+   * @default ""
+   */
+  readonly placeholder?: string;
+  /**
+   * Its width; null grows from 160.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Neutral and inert.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+}
+
+/**
+ * A number stepper's range, step and digits.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface StepperDesc {
+  /**
+   * The smallest value; min equal to max (the zero value) is unbounded.
+   *
+   * @default 0
+   */
+  readonly min?: number;
+  /**
+   * The largest value.
+   *
+   * @default 0
+   */
+  readonly max?: number;
+  /**
+   * How much a press changes it; 0 is 1.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly step?: number;
+  /**
+   * Digits after the point.
+   *
+   * @default 0
+   * @range ..6
+   */
+  readonly decimals?: number;
+}
+
+/** A stepper's response and value after this tick's input. */
+export interface StepperResult {
+  /** What happened to it. */
+  readonly response: Response;
+  /** The value, to keep in game state and pass back next tick. */
+  readonly value: number;
+}
+
+/**
+ * How a radio group lays out.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RadioDesc {
+  /**
+   * Options in a row (the default is a column).
+   *
+   * @default false
+   */
+  readonly horizontal?: boolean;
+}
+
+/** A checkbox list's response and values after this tick's input. */
+export interface CheckListResult {
+  /** What happened to it; changed when any box flipped. */
+  readonly response: Response;
+  /** The values, to keep in game state and pass back next tick. */
+  readonly values: readonly boolean[];
+}
+
+/**
+ * A toast's tone and time.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ToastDesc {
+  /**
+   * Its tone: a dot of the tone's colour before the text.
+   *
+   * @default "neutral"
+   */
+  readonly tone?: Tone;
+  /**
+   * How long it stays; 0 is 3200 ms (6000 for danger).
+   *
+   * @default 0
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly durationMs?: number;
+}
+
+/**
+ * A chip's state.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ChipDesc {
+  /**
+   * Selected: inverted to fg.
+   *
+   * @default false
+   */
+  readonly selected?: boolean;
+  /**
+   * Neutral and inert.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+}
+
+/**
+ * A meter: a capsule track with a fill that animates its changes by the tick.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface MeterDesc {
+  /**
+   * What it measures, which sets its colour.
+   *
+   * @default "health"
+   */
+  readonly kind?: MeterKind;
+  /**
+   * A colour of your own instead of the kind's.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+  /**
+   * Text inside the bar (such as `75 / 100`); empty is none.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Its height; 0 is space.md, or the caption's line with a label.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly height?: number;
+  /**
+   * Notches dividing it into this many parts; 0 or 1 is none.
+   *
+   * @default 0
+   */
+  readonly segments?: number;
+}
+
+/**
+ * A cooldown ring's size and centre.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CooldownDesc {
+  /**
+   * Its diameter; 0 is 56 (never under 44).
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly size?: number;
+  /**
+   * Text in the middle (a key, seconds left); empty is none.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * An icon of the atlas in the middle, by name; empty is none.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+}
+
+/**
+ * An icon's size and ink.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface IconDesc {
+  /**
+   * Its size; 0 is 24.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly size?: number;
+  /**
+   * Its ink; null is fg.
+   *
+   * @default null
+   */
+  readonly tint?: Paint | null;
+}
+
+/**
+ * A marker on a mini-map.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface MapMarker {
+  /**
+   * Across the map, 0 to 1.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly x?: number;
+  /**
+   * Down the map, 0 to 1.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly y?: number;
+  /**
+   * Its colour; neutral is the stage ink.
+   *
+   * @default "neutral"
+   */
+  readonly tone?: Tone;
+  /**
+   * The player: the accent, larger, ringed.
+   *
+   * @default false
+   */
+  readonly player?: boolean;
+}
+
+/**
+ * A mini-map frame.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface MinimapDesc {
+  /**
+   * The map; null is the stage colour.
+   *
+   * @default null
+   */
+  readonly texture?: Texture | null;
+  /**
+   * The region of the map shown, [u0, v0, u1, v1]; null is the whole texture.
+   *
+   * @default null
+   */
+  readonly uv?: [number, number, number, number] | null;
+  /**
+   * Its side; 0 is 160.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly size?: number;
+  /**
+   * Markers over the map.
+   *
+   * @default []
+   */
+  readonly markers?: readonly MapMarker[];
+  /**
+   * A zone name under it; empty is none.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+}
+
+/**
+ * A dialogue box: a portrait slot, the speaker and the line typed out by the tick.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DialogueDesc {
+  /**
+   * Who speaks (amber ink).
+   *
+   * @default ""
+   */
+  readonly speaker?: string;
+  /**
+   * The line. A new text starts typing again.
+   *
+   * @default ""
+   */
+  readonly text?: string;
+  /**
+   * A portrait texture; null is the speaker's initial.
+   *
+   * @default null
+   */
+  readonly portrait?: Texture | null;
+  /**
+   * The portrait's region of the texture; null is the whole texture.
+   *
+   * @default null
+   */
+  readonly portraitUv?: [number, number, number, number] | null;
+  /**
+   * A portrait from the icon atlas by name, when no texture is given; empty is the speaker's initial.
+   *
+   * @default ""
+   */
+  readonly portraitIcon?: string;
+  /**
+   * Typing speed; 0 is 40.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly charsPerSecond?: number;
+  /**
+   * The portrait on the right.
+   *
+   * @default false
+   */
+  readonly portraitRight?: boolean;
+}
+
+/** A dialogue box's answer this tick. */
+export interface DialogueResult {
+  /** Characters shown. */
+  readonly shown: number;
+  /** The whole line is shown. */
+  readonly done: boolean;
+  /** Pressed (or activated) while done: show the next line. */
+  readonly advanced: boolean;
+}
+
+/**
+ * A virtual joystick.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface JoystickDesc {
+  /**
+   * The base's diameter; 0 is 128 (never under three touch targets).
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly size?: number;
+  /**
+   * The ignored radius; 0 is 0.15.
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly deadZone?: number;
+}
+
+/** A joystick's vector this tick. */
+export interface JoystickResult {
+  /** -1 left to 1 right; 0 inside the dead zone. */
+  readonly x: number;
+  /** -1 up to 1 down; 0 inside the dead zone. */
+  readonly y: number;
+  /** A press that started on it is held. */
+  readonly active: boolean;
+}
+
+/**
+ * A d-pad.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DpadDesc {
+  /**
+   * The pad's size; 0 is 132 (each arm at least 44).
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly size?: number;
+}
+
+/** Which arms of a d-pad are held this tick. */
+export interface DpadResult {
+  /** Up is held. */
+  readonly up: boolean;
+  /** Down is held. */
+  readonly down: boolean;
+  /** Left is held. */
+  readonly left: boolean;
+  /** Right is held. */
+  readonly right: boolean;
+}
+
+/**
+ * A round touch action button (jump, fire).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ActionButtonDesc {
+  /**
+   * Its diameter; 0 is 64 (never under 44).
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly size?: number;
+  /**
+   * The amber button (one per screen).
+   *
+   * @default false
+   */
+  readonly primary?: boolean;
+  /**
+   * An icon of the atlas by name, instead of the label; empty is the label.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+}
+
+/**
+ * A skeleton: the neutral fill standing in for content that is loading.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SkeletonDesc {
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * A line's height; 0 is the body size.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly height?: number;
+  /**
+   * Stacked lines; 0 or 1 is one, the last of several is shorter.
+   *
+   * @default 0
+   */
+  readonly lines?: number;
+}
+
+/**
+ * Builds one row or cell of a virtualised list or grid: ui calls made inside nest under it.
+ *
+ * @param index Its index.
+ */
+export type UiItemBuild = (index: number) => void;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * A graphics quality preset.
+ * - `"medium"`: Medium.
+ * - `"low"`: Low: the fewest effects.
+ * - `"high"`: High: every effect.
+ */
+export type GraphicsQuality = "medium" | "low" | "high";
+
+/**
+ * A template's action, by its id (a menu item, `buy:<item>`, `share`).
+ *
+ * @param action The action's id.
+ */
+export type UiAction = (action: string) => void;
+
+/**
+ * The settings after a change: persist them (cloud save, local storage through the shell) and apply them.
+ *
+ * @param settings The new settings.
+ */
+export type SettingsChanged = (settings: GameSettings) => void;
+
+/**
+ * An item of a menu: an id the game acts on and the label a player reads.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface MenuItem {
+  /**
+   * The id answered when it is chosen; also its probe id.
+   *
+   * @default ""
+   */
+  readonly id?: string;
+  /**
+   * What it says.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Shown but inert.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+  /**
+   * The amber action (one per screen).
+   *
+   * @default false
+   */
+  readonly primary?: boolean;
+}
+
+/** What a menu-like template answered this tick. */
+export interface MenuResult {
+  /** The id of the item chosen this tick. */
+  readonly selected: string | null;
+}
+
+/**
+ * A title screen: the title, a subtitle, a column of items (the first primary unless one says so) and a footer. Centred on desktop and tablet, bottom-weighted on a phone.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface MainMenuDesc {
+  /**
+   * The game's title, in display type.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * A line under it; empty is none.
+   *
+   * @default ""
+   */
+  readonly subtitle?: string;
+  /**
+   * The items, such as Play, Continue, Settings, Quit.
+   *
+   * @default []
+   */
+  readonly items?: readonly MenuItem[];
+  /**
+   * A line at the bottom (a version, credits); empty is none.
+   *
+   * @default ""
+   */
+  readonly footer?: string;
+  /**
+   * Called with the chosen item's id.
+   *
+   * @default null
+   */
+  readonly onSelect?: UiAction | null;
+}
+
+/**
+ * A pause screen: a dialog over the frozen game with Resume first. Back resumes.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PauseMenuDesc {
+  /**
+   * Whether the game is paused.
+   *
+   * @default false
+   */
+  readonly open?: boolean;
+  /**
+   * Its title.
+   *
+   * @default "Paused"
+   */
+  readonly title?: string;
+  /**
+   * The items; empty is Resume, Settings, Quit to menu (`resume`, `settings`, `quit`).
+   *
+   * @default []
+   */
+  readonly items?: readonly MenuItem[];
+  /**
+   * Called with the chosen item's id; Back answers `resume`.
+   *
+   * @default null
+   */
+  readonly onSelect?: UiAction | null;
+}
+
+/**
+ * A control the settings screen lists: an action and the key bound to it.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface KeyBinding {
+  /**
+   * The action's id.
+   *
+   * @default ""
+   */
+  readonly action?: string;
+  /**
+   * What a player reads.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * The bound key, as shown (`Space`, `A`, `←`).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+}
+
+/**
+ * A language the settings screen offers, in its own name.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LanguageOption {
+  /**
+   * Its code (`en`, `zh-CN`).
+   *
+   * @default ""
+   */
+  readonly code?: string;
+  /**
+   * Its name in itself (`English`, `简体中文`).
+   *
+   * @default ""
+   */
+  readonly label?: string;
+}
+
+/**
+ * The settings most games share. The game keeps them (a resource, a save) and passes them in every tick.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface GameSettings {
+  /**
+   * The master volume.
+   *
+   * @default 1
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly masterVolume?: number;
+  /**
+   * The music bus.
+   *
+   * @default 0.8
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly musicVolume?: number;
+  /**
+   * The effects bus.
+   *
+   * @default 1
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly sfxVolume?: number;
+  /**
+   * Everything silent.
+   *
+   * @default false
+   */
+  readonly muted?: boolean;
+  /**
+   * The graphics preset.
+   *
+   * @default "medium"
+   */
+  readonly quality?: GraphicsQuality;
+  /**
+   * Show the frame rate.
+   *
+   * @default false
+   */
+  readonly showFps?: boolean;
+  /**
+   * Keep state changes, drop movement (the UI's transitions only fade).
+   *
+   * @default false
+   */
+  readonly reducedMotion?: boolean;
+  /**
+   * The high-contrast theme.
+   *
+   * @default false
+   */
+  readonly highContrast?: boolean;
+  /**
+   * Vibrate on hits (where the device can).
+   *
+   * @default true
+   */
+  readonly vibration?: boolean;
+  /**
+   * Invert the vertical look axis.
+   *
+   * @default false
+   */
+  readonly invertY?: boolean;
+  /**
+   * Look sensitivity.
+   *
+   * @default 1
+   * @range 0.1..3
+   */
+  readonly sensitivity?: number;
+  /**
+   * The language code.
+   *
+   * @default "en"
+   */
+  readonly language?: string;
+  /**
+   * The controls, as shown on the Controls tab.
+   *
+   * @default []
+   */
+  readonly bindings?: readonly KeyBinding[];
+}
+
+/**
+ * A settings screen: Audio, Graphics, Controls and Language tabs (a select on a phone) over the game's settings, with persistence hooks.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SettingsDesc {
+  /**
+   * Whether it is shown.
+   *
+   * @default false
+   */
+  readonly open?: boolean;
+  /**
+   * The settings from game state.
+   *
+   * @default {}
+   */
+  readonly settings?: GameSettings;
+  /**
+   * The languages offered; empty hides the Language tab.
+   *
+   * @default []
+   */
+  readonly languages?: readonly LanguageOption[];
+  /**
+   * Called on every change (apply it at once: volume, contrast).
+   *
+   * @default null
+   */
+  readonly onChange?: SettingsChanged | null;
+  /**
+   * Called when the screen closes after changes (persist here).
+   *
+   * @default null
+   */
+  readonly onSave?: SettingsChanged | null;
+}
+
+/** The settings screen's answer this tick. */
+export interface SettingsResult {
+  /** The settings after this tick's input: keep them. */
+  readonly settings: GameSettings;
+  /** Something changed this tick. */
+  readonly changed: boolean;
+  /** The player closed the screen (Back, Done): set open false. */
+  readonly closed: boolean;
+}
+
+/**
+ * An ability on a HUD: a cooldown ring with its key.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface Ability {
+  /**
+   * Its id (and probe id).
+   *
+   * @default ""
+   */
+  readonly id?: string;
+  /**
+   * The key or button shown in the middle.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * An icon of the atlas instead of the key; empty is the key.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * How much of its cooldown is left: 1 just used, 0 ready.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly remaining?: number;
+}
+
+/**
+ * A platformer HUD: lives as hearts and a level name top left, coins and score top right, a timer, a pause button.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PlatformerHudDesc {
+  /**
+   * Lives left.
+   *
+   * @default 0
+   */
+  readonly lives?: number;
+  /**
+   * Lives at most (hearts drawn).
+   *
+   * @default 3
+   */
+  readonly maxLives?: number;
+  /**
+   * Coins collected.
+   *
+   * @default 0
+   */
+  readonly coins?: number;
+  /**
+   * The score.
+   *
+   * @default 0
+   */
+  readonly score?: number;
+  /**
+   * The level's name; empty is none.
+   *
+   * @default ""
+   */
+  readonly level?: string;
+  /**
+   * Seconds left; null hides the timer.
+   *
+   * @default null
+   */
+  readonly timeLeft?: number | null;
+  /**
+   * A health bar instead of hearts, 0 to 1; null shows hearts.
+   *
+   * @default null
+   */
+  readonly health?: number | null;
+  /**
+   * Show touch controls (a d-pad and Jump) on phones and tablets.
+   *
+   * @default false
+   */
+  readonly touch?: boolean;
+}
+
+/** What a HUD answered this tick. */
+export interface HudResult {
+  /** The pause button was pressed (or Back). */
+  readonly paused: boolean;
+  /**
+   * A HUD action pressed this tick (an ability's id, `jump`, a generator's `buy:<id>`, `tap`).
+   */
+  readonly action: string | null;
+  /** The touch controls' horizontal input, -1 to 1. */
+  readonly moveX: number;
+  /** The touch controls' vertical input, -1 (up) to 1. */
+  readonly moveY: number;
+  /** The touch action buttons held this tick. */
+  readonly held: readonly string[];
+}
+
+/**
+ * A shooter HUD: health and armor bottom left, ammo bottom right, abilities as cooldown rings, kills top right, a crosshair, an optional mini-map.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ShooterHudDesc {
+  /**
+   * Health.
+   *
+   * @default 0
+   */
+  readonly health?: number;
+  /**
+   * Full health.
+   *
+   * @default 100
+   */
+  readonly maxHealth?: number;
+  /**
+   * Armor; 0 with maxArmor 0 hides it.
+   *
+   * @default 0
+   */
+  readonly armor?: number;
+  /**
+   * Full armor.
+   *
+   * @default 0
+   */
+  readonly maxArmor?: number;
+  /**
+   * Rounds in the magazine.
+   *
+   * @default 0
+   */
+  readonly ammo?: number;
+  /**
+   * Rounds a magazine holds.
+   *
+   * @default 0
+   */
+  readonly magazine?: number;
+  /**
+   * Rounds in reserve.
+   *
+   * @default 0
+   */
+  readonly reserve?: number;
+  /**
+   * The weapon's name.
+   *
+   * @default ""
+   */
+  readonly weapon?: string;
+  /**
+   * Kills.
+   *
+   * @default 0
+   */
+  readonly kills?: number;
+  /**
+   * Abilities with cooldowns.
+   *
+   * @default []
+   */
+  readonly abilities?: readonly Ability[];
+  /**
+   * Draw a crosshair at the centre.
+   *
+   * @default true
+   */
+  readonly crosshair?: boolean;
+  /**
+   * A mini-map top left; null is none.
+   *
+   * @default null
+   */
+  readonly map?: MinimapDesc | null;
+  /**
+   * Show touch controls (a stick and Fire) on phones and tablets.
+   *
+   * @default false
+   */
+  readonly touch?: boolean;
+}
+
+/**
+ * A puzzle HUD: level and moves, the score towards a target with three star marks, an optional timer.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PuzzleHudDesc {
+  /**
+   * The level's name.
+   *
+   * @default ""
+   */
+  readonly level?: string;
+  /**
+   * The score.
+   *
+   * @default 0
+   */
+  readonly score?: number;
+  /**
+   * The score that wins.
+   *
+   * @default 1000
+   */
+  readonly target?: number;
+  /**
+   * The scores for one, two and three stars; empty is a third, two thirds and all of the target.
+   *
+   * @default []
+   */
+  readonly stars?: readonly number[];
+  /**
+   * Moves left; null hides it.
+   *
+   * @default null
+   */
+  readonly moves?: number | null;
+  /**
+   * Seconds left; null hides it.
+   *
+   * @default null
+   */
+  readonly timeLeft?: number | null;
+}
+
+/**
+ * A currency an idle game counts.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface Currency {
+  /**
+   * Its id.
+   *
+   * @default ""
+   */
+  readonly id?: string;
+  /**
+   * Its name.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * How much there is.
+   *
+   * @default 0
+   */
+  readonly amount?: number;
+  /**
+   * How much it earns per second.
+   *
+   * @default 0
+   */
+  readonly perSecond?: number;
+  /**
+   * An icon of the atlas; empty is none.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+}
+
+/**
+ * A generator an idle game lists: level, cost, progress.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface Generator {
+  /**
+   * Its id: buying answers `buy:<id>`.
+   *
+   * @default ""
+   */
+  readonly id?: string;
+  /**
+   * Its name.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Its level.
+   *
+   * @default 0
+   */
+  readonly level?: number;
+  /**
+   * The next level's price.
+   *
+   * @default 0
+   */
+  readonly cost?: number;
+  /**
+   * The player can pay for it.
+   *
+   * @default false
+   */
+  readonly affordable?: boolean;
+  /**
+   * Its cycle, 0 to 1.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly progress?: number;
+  /**
+   * An icon of the atlas; empty is none.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+}
+
+/**
+ * An idle or incremental HUD: currencies with their rates on top, a big tap target, the generators in a list.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface IdleHudDesc {
+  /**
+   * The currencies, the first the main one.
+   *
+   * @default []
+   */
+  readonly currencies?: readonly Currency[];
+  /**
+   * The generators.
+   *
+   * @default []
+   */
+  readonly generators?: readonly Generator[];
+  /**
+   * The tap target's label; empty hides it.
+   *
+   * @default "Tap"
+   */
+  readonly tapLabel?: string;
+}
+
+/**
+ * A racing HUD: position and lap top left, the times top right, the speedometer and gear bottom right, the boost meter, an optional mini-map.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RacingHudDesc {
+  /**
+   * The speed, in `unit`.
+   *
+   * @default 0
+   */
+  readonly speed?: number;
+  /**
+   * The dial's top.
+   *
+   * @default 300
+   */
+  readonly maxSpeed?: number;
+  /**
+   * The speed's unit.
+   *
+   * @default "km/h"
+   */
+  readonly unit?: string;
+  /**
+   * The gear (`3`, `R`, `N`).
+   *
+   * @default ""
+   */
+  readonly gear?: string;
+  /**
+   * The lap.
+   *
+   * @default 1
+   */
+  readonly lap?: number;
+  /**
+   * Laps in the race.
+   *
+   * @default 3
+   */
+  readonly laps?: number;
+  /**
+   * The player's place.
+   *
+   * @default 1
+   */
+  readonly position?: number;
+  /**
+   * Cars in the race.
+   *
+   * @default 8
+   */
+  readonly racers?: number;
+  /**
+   * The race time in seconds.
+   *
+   * @default 0
+   */
+  readonly time?: number;
+  /**
+   * The best lap in seconds; null hides it.
+   *
+   * @default null
+   */
+  readonly best?: number | null;
+  /**
+   * The boost meter.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly boost?: number;
+  /**
+   * A mini-map; null is none.
+   *
+   * @default null
+   */
+  readonly map?: MinimapDesc | null;
+  /**
+   * Show touch controls (steering arrows, Brake, Boost) on phones and tablets.
+   *
+   * @default false
+   */
+  readonly touch?: boolean;
+}
+
+/**
+ * One line of a cutscene.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DialogueLine {
+  /**
+   * Who speaks.
+   *
+   * @default ""
+   */
+  readonly speaker?: string;
+  /**
+   * What they say.
+   *
+   * @default ""
+   */
+  readonly text?: string;
+  /**
+   * An icon of the atlas as the portrait; empty is the speaker's initial.
+   *
+   * @default ""
+   */
+  readonly portrait?: string;
+}
+
+/**
+ * A dialogue scene: letterbox bars, the dialogue box at the bottom, Skip at the top right.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CutsceneDesc {
+  /**
+   * Whether it plays.
+   *
+   * @default false
+   */
+  readonly open?: boolean;
+  /**
+   * The lines.
+   *
+   * @default []
+   */
+  readonly lines?: readonly DialogueLine[];
+  /**
+   * The line shown, from game state.
+   *
+   * @default 0
+   */
+  readonly index?: number;
+  /**
+   * Cinematic bars.
+   *
+   * @default true
+   */
+  readonly letterbox?: boolean;
+  /**
+   * Show Skip.
+   *
+   * @default true
+   */
+  readonly skippable?: boolean;
+}
+
+/** A cutscene's answer this tick. */
+export interface CutsceneResult {
+  /** The line to show next tick: keep it. */
+  readonly index: number;
+  /** The last line was advanced past. */
+  readonly finished: boolean;
+  /** Skip was pressed (or Back). */
+  readonly skipped: boolean;
+}
+
+/**
+ * An item a shop sells.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ShopItem {
+  /**
+   * Its id: buying answers it.
+   *
+   * @default ""
+   */
+  readonly id?: string;
+  /**
+   * Its name.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Its price in the shop's currency.
+   *
+   * @default 0
+   */
+  readonly price?: number;
+  /**
+   * A line about it.
+   *
+   * @default ""
+   */
+  readonly description?: string;
+  /**
+   * An icon of the atlas; empty is none.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * Its category tab; empty is the first.
+   *
+   * @default ""
+   */
+  readonly category?: string;
+  /**
+   * Already owned (one-off items): shown, not for sale.
+   *
+   * @default false
+   */
+  readonly owned?: boolean;
+}
+
+/**
+ * A shop: the balance, category tabs, a grid of items with prices, a detail panel with Buy (disabled when the balance is short).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ShopDesc {
+  /**
+   * Its title.
+   *
+   * @default "Shop"
+   */
+  readonly title?: string;
+  /**
+   * The currency's name (`coins`).
+   *
+   * @default "coins"
+   */
+  readonly currency?: string;
+  /**
+   * The currency's icon; empty is none.
+   *
+   * @default ""
+   */
+  readonly currencyIcon?: string;
+  /**
+   * What the player has.
+   *
+   * @default 0
+   */
+  readonly balance?: number;
+  /**
+   * What is for sale.
+   *
+   * @default []
+   */
+  readonly items?: readonly ShopItem[];
+  /**
+   * Category tabs; empty is one list.
+   *
+   * @default []
+   */
+  readonly categories?: readonly string[];
+  /**
+   * Called with the bought item's id.
+   *
+   * @default null
+   */
+  readonly onBuy?: UiAction | null;
+}
+
+/** A shop's answer this tick. */
+export interface ShopResult {
+  /** The item bought this tick: take the price and grant it. */
+  readonly bought: string | null;
+  /** Close was pressed (or Back). */
+  readonly closed: boolean;
+}
+
+/**
+ * What an inventory slot holds.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface InventoryItem {
+  /**
+   * The slot index.
+   *
+   * @default 0
+   */
+  readonly slot?: number;
+  /**
+   * The item's id.
+   *
+   * @default ""
+   */
+  readonly id?: string;
+  /**
+   * Its name.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * How many (stacks); 0 or 1 hides the count.
+   *
+   * @default 0
+   */
+  readonly count?: number;
+  /**
+   * An icon of the atlas; empty is its initial.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * A line about it.
+   *
+   * @default ""
+   */
+  readonly description?: string;
+}
+
+/**
+ * An inventory: a grid of slots, items dragged between them, a detail panel with Use.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface InventoryDesc {
+  /**
+   * Its title.
+   *
+   * @default "Inventory"
+   */
+  readonly title?: string;
+  /**
+   * How many slots.
+   *
+   * @default 24
+   */
+  readonly slots?: number;
+  /**
+   * Slots across; 0 fits the width.
+   *
+   * @default 0
+   */
+  readonly columns?: number;
+  /**
+   * The items, by slot.
+   *
+   * @default []
+   */
+  readonly items?: readonly InventoryItem[];
+  /**
+   * The detail panel's action; empty hides it.
+   *
+   * @default "Use"
+   */
+  readonly useLabel?: string;
+}
+
+/** An item dragged from one slot to another. */
+export interface SlotMove {
+  /** The slot it left. */
+  readonly from: number;
+  /** The slot it was dropped on (swap when that slot holds an item). */
+  readonly to: number;
+}
+
+/** An inventory's answer this tick. */
+export interface InventoryResult {
+  /** The selected slot. */
+  readonly selected: number | null;
+  /** A drag and drop this tick: move (or swap) the items. */
+  readonly moved: SlotMove | null;
+  /** The id of the item Use was pressed for. */
+  readonly used: string | null;
+  /** Close was pressed (or Back). */
+  readonly closed: boolean;
+}
+
+/**
+ * A level in a level select.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LevelInfo {
+  /**
+   * Its name or number.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Stars earned, 0 to 3.
+   *
+   * @default 0
+   */
+  readonly stars?: number;
+  /**
+   * Not yet reachable: a lock, inert.
+   *
+   * @default false
+   */
+  readonly locked?: boolean;
+  /**
+   * The best result as shown; empty is none.
+   *
+   * @default ""
+   */
+  readonly best?: string;
+}
+
+/**
+ * A level select: a grid of level cards with stars and locks, the total stars.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LevelSelectDesc {
+  /**
+   * Its title.
+   *
+   * @default "Levels"
+   */
+  readonly title?: string;
+  /**
+   * The levels.
+   *
+   * @default []
+   */
+  readonly levels?: readonly LevelInfo[];
+  /**
+   * Cards across; 0 fits the width.
+   *
+   * @default 0
+   */
+  readonly columns?: number;
+}
+
+/** A level select's answer this tick. */
+export interface LevelSelectResult {
+  /** The level picked this tick. */
+  readonly chosen: number | null;
+  /** Back was pressed. */
+  readonly closed: boolean;
+}
+
+/**
+ * A labelled value on a results screen.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface StatRow {
+  /**
+   * The label.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * The value, as shown.
+   *
+   * @default ""
+   */
+  readonly value?: string;
+}
+
+/**
+ * A results screen: the title, stars that land one by one, the score counting up, the best (a badge for a new best), stats, actions and a share hook.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ResultsDesc {
+  /**
+   * Whether it is shown.
+   *
+   * @default false
+   */
+  readonly open?: boolean;
+  /**
+   * Its title.
+   *
+   * @default "Level complete"
+   */
+  readonly title?: string;
+  /**
+   * The score.
+   *
+   * @default 0
+   */
+  readonly score?: number;
+  /**
+   * The best score.
+   *
+   * @default 0
+   */
+  readonly best?: number;
+  /**
+   * This run set the best.
+   *
+   * @default false
+   */
+  readonly newBest?: boolean;
+  /**
+   * Stars earned.
+   *
+   * @default 0
+   */
+  readonly stars?: number;
+  /**
+   * Stars possible; 0 hides them.
+   *
+   * @default 3
+   */
+  readonly maxStars?: number;
+  /**
+   * Stats under the score.
+   *
+   * @default []
+   */
+  readonly stats?: readonly StatRow[];
+  /**
+   * The actions; empty is Retry, Next and Menu (`retry`, `next`, `menu`).
+   *
+   * @default []
+   */
+  readonly actions?: readonly MenuItem[];
+  /**
+   * Text a share would post; empty hides Share.
+   *
+   * @default ""
+   */
+  readonly shareText?: string;
+  /**
+   * Called with the share text when Share is pressed (the shell posts it).
+   *
+   * @default null
+   */
+  readonly onShare?: UiAction | null;
+}
+
+/**
+ * A row of a leaderboard.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LeaderboardEntry {
+  /**
+   * The rank.
+   *
+   * @default 0
+   */
+  readonly rank?: number;
+  /**
+   * The player's name.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * The score, as shown.
+   *
+   * @default ""
+   */
+  readonly score?: string;
+  /**
+   * This is the player: highlighted.
+   *
+   * @default false
+   */
+  readonly player?: boolean;
+}
+
+/**
+ * A leaderboard: scope tabs, a virtualised list of ranks (medal colours for 1 to 3, the player highlighted), and honest loading, error and empty states.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LeaderboardDesc {
+  /**
+   * Its title.
+   *
+   * @default "Leaderboard"
+   */
+  readonly title?: string;
+  /**
+   * Scope tabs (Today, This week, All time); empty is none.
+   *
+   * @default []
+   */
+  readonly scopes?: readonly string[];
+  /**
+   * The rows.
+   *
+   * @default []
+   */
+  readonly entries?: readonly LeaderboardEntry[];
+  /**
+   * The rows are loading: skeletons.
+   *
+   * @default false
+   */
+  readonly loading?: boolean;
+  /**
+   * Loading failed: this message and Retry.
+   *
+   * @default ""
+   */
+  readonly error?: string;
+  /**
+   * Shown when there are no rows.
+   *
+   * @default "No scores yet"
+   */
+  readonly empty?: string;
+}
+
+/** A leaderboard's answer this tick. */
+export interface LeaderboardResult {
+  /** The scope tab chosen: keep it and load its rows. */
+  readonly scope: number;
+  /** The scope changed this tick. */
+  readonly changed: boolean;
+  /** Retry was pressed. */
+  readonly retry: boolean;
+  /** Close was pressed (or Back). */
+  readonly closed: boolean;
+}
+
+/**
+ * A step of a tutorial: the element to point at, a title and a line.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TutorialStep {
+  /**
+   * The element's id or path (as touch_move_to takes); empty points at nothing.
+   *
+   * @default ""
+   */
+  readonly target?: string;
+  /**
+   * The step's title.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * What to do.
+   *
+   * @default ""
+   */
+  readonly text?: string;
+}
+
+/**
+ * An onboarding overlay: a spotlight on each step's target, a callout beside it with Next and Skip, and the step count.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TutorialDesc {
+  /**
+   * Whether it is shown.
+   *
+   * @default false
+   */
+  readonly open?: boolean;
+  /**
+   * The steps.
+   *
+   * @default []
+   */
+  readonly steps?: readonly TutorialStep[];
+  /**
+   * The step shown, from game state.
+   *
+   * @default 0
+   */
+  readonly index?: number;
+}
+
+/** A tutorial's answer this tick. */
+export interface TutorialResult {
+  /** The step to show next tick: keep it. */
+  readonly index: number;
+  /** The last step's Done was pressed. */
+  readonly finished: boolean;
+  /** Skip was pressed (or Back). */
+  readonly skipped: boolean;
+}
+
+/**
+ * A loading screen: the title, a real progress bar (or a spinner while unknown) and tips that change by the tick.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LoadingDesc {
+  /**
+   * What is loading.
+   *
+   * @default "Loading"
+   */
+  readonly title?: string;
+  /**
+   * How far, 0 to 1; null is unknown (a spinner, never a fake bar).
+   *
+   * @default null
+   */
+  readonly progress?: number | null;
+  /**
+   * Tips shown in turn.
+   *
+   * @default []
+   */
+  readonly tips?: readonly string[];
+  /**
+   * Seconds per tip.
+   *
+   * @default 4
+   * @range 1..
+   */
+  readonly tipSeconds?: number;
+}
+
+/**
+ * A confirm dialog: a title, a consequence sentence, Cancel and the action.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ConfirmDesc {
+  /**
+   * Whether it is open.
+   *
+   * @default false
+   */
+  readonly open?: boolean;
+  /**
+   * The question.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * What will happen.
+   *
+   * @default ""
+   */
+  readonly message?: string;
+  /**
+   * The action's label.
+   *
+   * @default "Confirm"
+   */
+  readonly confirmLabel?: string;
+  /**
+   * Cancel's label.
+   *
+   * @default "Cancel"
+   */
+  readonly cancelLabel?: string;
+  /**
+   * The action destroys something: the danger button.
+   *
+   * @default false
+   */
+  readonly danger?: boolean;
+}
+
+/** A confirm dialog's answer this tick. */
+export interface ConfirmResult {
+  /** The action was chosen. */
+  readonly confirmed: boolean;
+  /** Cancel, Back or the backdrop. */
+  readonly cancelled: boolean;
+}
+
+/**
+ * An alert: a title, a message and one button.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface AlertDesc {
+  /**
+   * Whether it is open.
+   *
+   * @default false
+   */
+  readonly open?: boolean;
+  /**
+   * The title.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * The message.
+   *
+   * @default ""
+   */
+  readonly message?: string;
+  /**
+   * The button's label.
+   *
+   * @default "OK"
+   */
+  readonly okLabel?: string;
+}
 
 
 
@@ -5127,6 +8267,14 @@ export declare namespace og {
      * @returns Refused for a pending, failed or non-glTF asset.
      */
     function gltfInfo(world: World, asset: Asset): Result<GltfInfo>;
+    /**
+     * Load a cooked glTF's animation (its `<model>#anim` blob: the rig, the clips, the skin and morph streams) and register its skeleton and clips with og.anim. Loading the same model again answers the same handles.
+     *
+     * @param world The world whose animation owns the assets.
+     * @param path The model's asset id, such as `models/walker.glb` (a `#anim` suffix is accepted).
+     * @returns Refused for an uncooked path, a model the cook wrote no `#anim` blob for (no skins, clips or morph targets), a cook stamp mismatch or an invalid rig.
+     */
+    function animation(world: World, path: string): Result<Animation>;
   }
   /**
    * A body the physics step simulates. It needs an og.Transform and usually has an og.Collider; a dynamic body without an og.Velocity gets one.
@@ -5195,6 +8343,45 @@ export declare namespace og {
      * @returns Refused for an empty, non-finite or out-of-range mesh.
      */
     function setMesh(world: World, mesh: Geometry, desc?: MeshDesc): Result<void>;
+  }
+  /**
+   * A posed skeleton: the entity is drawn skinned by the joint palette og.anim writes each tick. The pose itself (every node's local transform) is world state kept by the `og.anim` state block.
+   */
+  const Skeleton: ComponentType<{ readonly asset: FieldSpec<"SkeletonAsset">; readonly skin: FieldSpec<"u32">; readonly rootMotion: FieldSpec<"RootMotion">; readonly rootJoint: FieldSpec<"u32">; readonly jointCount: FieldSpec<"u32"> }, Skeleton>;
+  /**
+   * Plays one clip on a skeleton. Alone it poses the skeleton from its rest pose; with an og.AnimationGraph it plays over the graph's result with `weight`. Changing `clip` cross-fades from the previous one over `fade`; a clip change starts the new clip at 0 (or at `time` if the game wrote it in the same tick).
+   */
+  const AnimationPlayer: ComponentType<{ readonly clip: FieldSpec<"ClipAsset">; readonly time: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly weight: FieldSpec<"f32">; readonly fade: FieldSpec<"f32">; readonly finished: FieldSpec<"bool"> }, AnimationPlayer>;
+  /**
+   * Runs a blend-tree graph (og.anim.graph) on a skeleton: its layers' state machines pick motions by the parameters p0...p7, which the graph names in `param` order (`param speed` is p0, the next `param` is p1, ...).
+   */
+  const AnimationGraph: ComponentType<{ readonly asset: FieldSpec<"GraphAsset">; readonly weight: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly p0: FieldSpec<"f32">; readonly p1: FieldSpec<"f32">; readonly p2: FieldSpec<"f32">; readonly p3: FieldSpec<"f32">; readonly p4: FieldSpec<"f32">; readonly p5: FieldSpec<"f32">; readonly p6: FieldSpec<"f32">; readonly p7: FieldSpec<"f32">; readonly state: FieldSpec<"u32">; readonly stateTime: FieldSpec<"f32"> }, AnimationGraph>;
+  /**
+   * Morph-target weights of the skeleton entity's mesh, in the order of the glTF mesh's targets. With `source` clips the playing clips' weight channels write them; with `component` game code does.
+   */
+  const Blendshapes: ComponentType<{ readonly source: FieldSpec<"BlendshapeSource">; readonly mesh: FieldSpec<"u32">; readonly w0: FieldSpec<"f32">; readonly w1: FieldSpec<"f32">; readonly w2: FieldSpec<"f32">; readonly w3: FieldSpec<"f32">; readonly w4: FieldSpec<"f32">; readonly w5: FieldSpec<"f32">; readonly w6: FieldSpec<"f32">; readonly w7: FieldSpec<"f32"> }, Blendshapes>;
+  /**
+   * An inverse-kinematics constraint on a skeleton, applied after its clips and graph: the chain of `bones` bones ending at joint `tip` turns so the tip reaches `target`. Put it on its own entity (a skeleton can have many chains); chains apply in query order.
+   */
+  const IkChain: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly tip: FieldSpec<"u32">; readonly bones: FieldSpec<"u32">; readonly solver: FieldSpec<"IkSolver">; readonly target: FieldSpec<"Vector3">; readonly pole: FieldSpec<"Vector3">; readonly space: FieldSpec<"IkSpace">; readonly weight: FieldSpec<"f32">; readonly iterations: FieldSpec<"u32">; readonly tolerance: FieldSpec<"f32">; readonly reached: FieldSpec<"bool">; readonly error: FieldSpec<"f32"> }, IkChain>;
+  /**
+   * A named marker of a clip that playback passed in the last tick (read in the tick after it fired, like every event). Cross-fades and blends fire every contributing clip's markers.
+   */
+  const AnimationEvent: EventType<AnimationEvent>;
+  /**
+   * Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics.
+   * Game code owns the components and sets players, graph parameters and IK targets; og.anim writes the pose (kept as world state in the `og.anim` state block, so snapshots, restore and the world hash cover it), the joint palette, root motion into og.Transform and the fields marked written. Asset handles are what og.load.animation and og.anim.graph answer; 0 is none.
+   * Clips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names. Assets are not world state: a hot reload registers them again.
+   */
+  namespace anim {
+    /**
+     * Register a blend-tree graph for AnimationGraph.asset. Its `clip` lines are resolved by name against `clips`.
+     *
+     * @param world The world whose animation owns the graph.
+     * @param desc The text and the clips it may name.
+     * @returns Refused for a parse error (the reason names the line), a clip name `clips` lacks, or an invalid graph.
+     */
+    function graph(world: World, desc?: GraphDesc): Result<GraphAsset>;
   }
   /**
    * A sound an entity plays. Level-triggered: while `playing` is true it plays (inserting a source plays it), setting it false stops it, and a one-shot that reaches its end sets it back to false and sends og.SoundEnded.
@@ -5366,6 +8553,492 @@ export declare namespace og {
      * @param index The index.
      */
     function idi(name: string, index: number): string;
+    /**
+     * The size class of the play surface of the frame being built (desktop outside a frame).
+     */
+    function breakpoint(): Breakpoint;
+    /**
+     * The play surface of the frame being built: og.ui.viewport without the world, for code that only builds UI.
+     */
+    function frameViewport(): Viewport;
+    /**
+     * Whether the icon atlas has an icon of this name (templates draw a fallback otherwise).
+     *
+     * @param name The icon's name.
+     */
+    function hasIcon(name: string): boolean;
+    /**
+     * The UI's clock in seconds: frames built over the tick rate (simulation time, never the wall clock).
+     */
+    function seconds(): number;
+    /**
+     * The design tokens of the frame being built: og.ui.theme without the world, for code that only builds UI (the templates).
+     */
+    function frameTheme(): UiTheme;
+    /**
+     * Open an anchored group, closed by close(): og.ui.anchor without the callback.
+     *
+     * @param id Its id; the probe path is the id alone.
+     * @param desc Where it sits and how it lays out.
+     */
+    function openAnchor(id: string, desc?: AnchorDesc): void;
+    /**
+     * An anchored group built by `build`: a layer at a point of the safe area, over the tree, for HUD corners and touch controls.
+     *
+     * @param id Its id.
+     * @param desc Where it sits and how it lays out.
+     * @param build Makes its children.
+     */
+    function anchor(id: string, desc: AnchorDesc, build: UiBuild): void;
+    /**
+     * Open a transition container (a column), closed by close(); build its children only while the answer is visible: it stays visible while it leaves. Its content takes no input while it moves.
+     *
+     * @param id Its id.
+     * @param show Whether it should be shown.
+     * @param desc How it moves.
+     */
+    function openTransition(id: string, show: boolean, desc?: TransitionDesc): Presence;
+    /**
+     * Content that enters and leaves: fade, slide or scale by the tick from the motion tokens. `build` runs while it is visible.
+     *
+     * @param id Its id.
+     * @param show Whether it should be shown.
+     * @param desc How it moves.
+     * @param build Makes its content.
+     */
+    function transition(id: string, show: boolean, desc: TransitionDesc, build: UiBuild): Presence;
+    /**
+     * Open a dialog, closed by closeModal(); build its content only while the answer is visible. The probe sees the backdrop as `<id>` and the panel as `<id>/Panel`.
+     *
+     * @param id Its id.
+     * @param open Whether it should be open.
+     * @param desc Title, width and dismissal rules.
+     */
+    function openModal(id: string, open: boolean, desc?: ModalDesc): ModalResult;
+    /** Close a dialog opened with openModal (its panel and backdrop). */
+    function closeModal(): void;
+    /**
+     * A dialog built by `build` while visible: scrim, centred panel, focus kept inside, Back and the backdrop dismiss it unless locked. Set your open flag false on `dismissed`.
+     *
+     * @param id Its id.
+     * @param open Whether it should be open.
+     * @param desc Title, width and dismissal rules.
+     * @param build Makes its content.
+     */
+    function modal(id: string, open: boolean, desc: ModalDesc, build: UiBuild): ModalResult;
+    /**
+     * A spotlight over everything (a tutorial step): the scrim on four sides of the hole, an amber edge around it. Presses on the dimmed parts stop there (clicked); presses in the hole reach what is under it. Shades are `<id>/Top`, `Left`, `Right`, `Bottom`; the hole is `<id>/Hole`.
+     *
+     * @param id Its id.
+     * @param hole The rectangle to leave lit, as og.ui.bounds answers; null dims everything.
+     * @param desc Room around the hole.
+     */
+    function spotlight(id: string, hole: UiRect | null, desc?: SpotlightDesc): Response;
+    /**
+     * Where an element was in the last frame, by id or `Parent/Child` path (topmost first), as touch_move_to resolves it.
+     *
+     * @param path The id or path.
+     */
+    function bounds(path: string): UiRect | null;
+    /**
+     * Open a virtualised list (a scroll column) and learn which rows to build: listItem(i) and close() for each, then closeList().
+     *
+     * @param id Its id.
+     * @param desc Row count and size.
+     */
+    function openList(id: string, desc?: ListDesc): ListRange;
+    /**
+     * Open a virtualised grid and learn which cells to build: gridItem(i) and close() for each, then closeList().
+     *
+     * @param id Its id.
+     * @param desc Cell count, size and columns.
+     */
+    function openGrid(id: string, desc?: GridDesc): ListRange;
+    /**
+     * Open row `index` of the open list (`Row#index`): selectable and focusable; its content follows until close(). A press that started on one row and is released on this one answers `dropped`.
+     *
+     * @param index Its index.
+     * @param selected Drawn selected (fill-strong).
+     */
+    function listItem(index: number, selected: boolean): Response;
+    /**
+     * Open cell `index` of the open grid (`Cell#index`): a slot on fill, focusable; its content follows until close(). Drops answer `dropped` as listItem's.
+     *
+     * @param index Its index.
+     * @param selected Drawn selected (fill-strong with an amber bar).
+     */
+    function gridItem(index: number, selected: boolean): Response;
+    /** Close a list or grid opened with openList or openGrid. */
+    function closeList(): Response;
+    /**
+     * The row or cell a held press started on in the list or grid of this id (built under the same parent): a drag in progress, to draw what is dragged under the pointer.
+     *
+     * @param id The list's or grid's id.
+     */
+    function dragging(id: string): number | null;
+    /**
+     * A virtualised list built by `build(index)` for the rows in view.
+     *
+     * @param id Its id.
+     * @param desc Row count, size and the selected row.
+     * @param build Makes one row's content.
+     */
+    function list(id: string, desc: ListDesc, build: UiItemBuild): ListResult;
+    /**
+     * A virtualised grid built by `build(index)` for the cells in view.
+     *
+     * @param id Its id.
+     * @param desc Cell count, size, columns and the selected cell.
+     * @param build Makes one cell's content.
+     */
+    function grid(id: string, desc: GridDesc, build: UiItemBuild): ListResult;
+    /**
+     * A segmented control: a neutral track, the chosen tab on the thumb. Tabs are `Tab#i` and the probe reads their labels.
+     *
+     * @param id Its id.
+     * @param items The tab labels.
+     * @param selected The chosen index from game state.
+     * @param desc Fill and width.
+     */
+    function tabs(id: string, items: readonly string[], selected: number, desc?: TabsDesc): ChoiceResult;
+    /**
+     * A select: a field-like trigger with the chosen label and a chevron; a press or Activate opens its menu `<id>.menu` (options `Option#i`) under it, a focus scope; choosing closes it with changed. Back or a press outside closes it.
+     *
+     * @param id Its id.
+     * @param options The option labels.
+     * @param selected The chosen index from game state.
+     * @param desc Placeholder, width, disabled.
+     */
+    function select(id: string, options: readonly string[], selected: number, desc?: SelectDesc): ChoiceResult;
+    /**
+     * A number stepper: `Dec`, `Value`, `Inc`. The buttons step within the range; Left and Right step it while a button is focused.
+     *
+     * @param id Its id.
+     * @param value The value from game state.
+     * @param desc Range, step and digits.
+     */
+    function stepper(id: string, value: number, desc?: StepperDesc): StepperResult;
+    /**
+     * A radio group of `Option#i` rows: a ring, filled amber when chosen, and a label.
+     *
+     * @param id Its id.
+     * @param options The option labels.
+     * @param selected The chosen index from game state.
+     * @param desc Row or column.
+     */
+    function radio(id: string, options: readonly string[], selected: number, desc?: RadioDesc): ChoiceResult;
+    /**
+     * A checkbox with a label; a press flips it.
+     *
+     * @param id Its id.
+     * @param on The state from game state.
+     * @param label The label.
+     */
+    function checkbox(id: string, on: boolean, label: string): ToggleResult;
+    /**
+     * Checkboxes in a column (`Option#i`).
+     *
+     * @param id Its id.
+     * @param labels The labels.
+     * @param values The states from game state.
+     */
+    function checkboxList(id: string, labels: readonly string[], values: readonly boolean[]): CheckListResult;
+    /**
+     * A chip: a capsule on fill; selected inverts to fg. For filters and tags.
+     *
+     * @param id Its id.
+     * @param text The label.
+     * @param desc Selected and disabled.
+     */
+    function chip(id: string, text: string, desc?: ChipDesc): Response;
+    /**
+     * A badge: a small status capsule in its tone.
+     *
+     * @param id Its id.
+     * @param text The label (a count, a word).
+     * @param tone Its tone.
+     */
+    function badge(id: string, text: string, tone: Tone): void;
+    /**
+     * A hairline in the border colour across its parent.
+     *
+     * @param id Its id.
+     * @param vertical Stand it up (in a row).
+     */
+    function divider(id: string, vertical: boolean): void;
+    /**
+     * Empty space.
+     *
+     * @param id Its id.
+     * @param size Its size along both axes; null grows into the free space.
+     */
+    function spacer(id: string, size: Size | null): void;
+    /**
+     * A key (fg-muted) and its value (fg, at the end) on one row: stats, settings summaries, receipts.
+     *
+     * @param id Its id.
+     * @param key The key.
+     * @param value The value.
+     * @param mono The value in the monospaced font (prices, ids).
+     */
+    function keyValue(id: string, key: string, value: string, mono: boolean): void;
+    /**
+     * A skeleton: the neutral fill standing in for content that is loading, with a sheen that passes every 1.6 s (still under reduced motion).
+     *
+     * @param id Its id.
+     * @param desc Width, line height and lines.
+     */
+    function skeleton(id: string, desc?: SkeletonDesc): void;
+    /**
+     * A loading spinner: eight dots around a circle, the bright one turning by the tick.
+     *
+     * @param id Its id.
+     * @param size Its diameter in CSS px; 0 is the small control height.
+     */
+    function spinner(id: string, size: number): void;
+    /**
+     * An icon of the atlas (UiDesc.icons) by name; an unknown name draws an empty slot and warns. The probe reads the name.
+     *
+     * @param id Its id.
+     * @param name The icon's name.
+     * @param desc Size and ink.
+     */
+    function icon(id: string, name: string, desc?: IconDesc): void;
+    /**
+     * A health, mana or xp bar. A drop shows at once and leaves a pale trail that follows after a beat; a rise grows into place with a ghost of the target; both by the tick.
+     *
+     * @param id Its id.
+     * @param value The current value.
+     * @param max The full value.
+     * @param desc Kind, label, size and notches.
+     */
+    function meter(id: string, value: number, max: number, desc?: MeterDesc): void;
+    /**
+     * A cooldown: a disc whose amber ring fills clockwise from the top as it runs out, bright and full when ready, a label or icon in the middle. A press reports clicked (ready or not).
+     *
+     * @param id Its id.
+     * @param remaining How much of the cooldown is left, 0 to 1: 1 just used, 0 ready.
+     * @param desc Size, label and icon.
+     */
+    function cooldown(id: string, remaining: number, desc?: CooldownDesc): Response;
+    /**
+     * A mini-map frame: the map in a border-strong frame, markers as dots (the player amber and ringed), an N mark and a zone label.
+     *
+     * @param id Its id.
+     * @param desc Map, markers and label.
+     */
+    function minimap(id: string, desc?: MinimapDesc): void;
+    /**
+     * A dialogue box: a portrait slot, the speaker in amber ink and the line typed out by the tick. A press or Activate while typing shows the whole line; once shown it answers advanced. The line is `<id>/Body/Line` and the probe reads what is shown.
+     *
+     * @param id Its id.
+     * @param desc Speaker, text, portrait and speed.
+     */
+    function dialogue(id: string, desc?: DialogueDesc): DialogueResult;
+    /**
+     * A virtual joystick: a base and a knob that follows a press that started on it. og.Input carries one pointer, so a stick and a button are not held at once yet.
+     *
+     * @param id Its id.
+     * @param desc Size and dead zone.
+     */
+    function joystick(id: string, desc?: JoystickDesc): JoystickResult;
+    /**
+     * A d-pad of four arms (`Up`, `Down`, `Left`, `Right`), each at least 44 CSS px.
+     *
+     * @param id Its id.
+     * @param desc Its size.
+     */
+    function dpad(id: string, desc?: DpadDesc): DpadResult;
+    /**
+     * A round touch action button: pressed while held (jump, fire), clicked on a tap; at least 44 CSS px.
+     *
+     * @param id Its id.
+     * @param text Its label (and what the probe reads).
+     * @param desc Size, primary and icon.
+     */
+    function actionButton(id: string, text: string, desc?: ActionButtonDesc): Response;
+    /**
+     * Queue a toast: it stacks at UiDesc.toastAnchor, enters, stays its time and leaves; at most three are up (older ones leave first); a press dismisses it. Callable anywhere (systems, commands, start); it is world state, so snapshots carry it.
+     *
+     * @param world The world whose UI shows it.
+     * @param text The message: a few words.
+     * @param desc Tone and time.
+     * @returns Its id, for dismissToast.
+     */
+    function toast(world: World, text: string, desc?: ToastDesc): number;
+    /**
+     * Start a toast's exit.
+     *
+     * @param world The world.
+     * @param toastId The id toast() answered.
+     */
+    function dismissToast(world: World, toastId: number): void;
+    /**
+     * Queue a navigation intent for the next tick: a gamepad og.Input does not read yet, a custom binding, a command.
+     *
+     * @param world The world.
+     * @param intent The intent.
+     */
+    function navigate(world: World, intent: NavIntent): void;
+    /**
+     * Escape or gamepad B this tick, not taken by a dialog or menu: true once, then taken. A pause screen closes on it.
+     */
+    function back(): boolean;
+    /**
+     * Whether keyboard and gamepad navigation moves focus on this screen (on by default). A gameplay HUD whose keys move the player turns it off; an open dialog or menu turns it back on while it is open. Takes effect from the next tick.
+     *
+     * @param on On or off.
+     */
+    function setNavigation(on: boolean): void;
+    /**
+     * A number the UI keeps for an id under the open element (a template's tab, a count-up's start tick), in snapshots like the rest of the UI state. Read it every tick it is used: an unused memory is dropped.
+     *
+     * @param id The id, unique among its siblings' memories.
+     * @param initial Its value the first time.
+     */
+    function memory(id: string, initial: number): number;
+    /**
+     * Set a number memory (see memory).
+     *
+     * @param id The id.
+     * @param value The value.
+     */
+    function remember(id: string, value: number): void;
+    /** Frames the UI has built: its clock, for animations by the tick. */
+    function tick(): number;
+    /**
+     * Lay the UI out for another play surface (a phone in portrait at 3x, a notch) until cleared with null: for headless previews and playtests of responsive layouts. Render at width x dpr by height x dpr (`og run --size`).
+     *
+     * @param world The world.
+     * @param viewport The surface to lay out for; null returns to the host's.
+     */
+    function previewViewport(world: World, viewport: Viewport | null): void;
+    /**
+     * The title screen template. Returns the item chosen this tick.
+     *
+     * @param id Its id.
+     * @param desc Title, items and footer.
+     */
+    function mainMenu(id: string, desc?: MainMenuDesc): MenuResult;
+    /**
+     * The pause screen template: a dialog with Resume first; Back answers `resume`.
+     *
+     * @param id Its id.
+     * @param desc Open and items.
+     */
+    function pauseMenu(id: string, desc?: PauseMenuDesc): MenuResult;
+    /**
+     * The settings template: Audio (volumes, mute), Graphics (quality, frame rate, reduced motion, contrast), Controls (sensitivity, invert, vibration, bindings) and Language. Pass the settings in every tick and keep what it answers.
+     *
+     * @param id Its id.
+     * @param desc Open, the settings, languages and hooks.
+     */
+    function settingsScreen(id: string, desc?: SettingsDesc): SettingsResult;
+    /**
+     * The platformer HUD template.
+     *
+     * @param id Its id.
+     * @param desc Lives, coins, score, level and timer.
+     */
+    function platformerHud(id: string, desc?: PlatformerHudDesc): HudResult;
+    /**
+     * The shooter HUD template.
+     *
+     * @param id Its id.
+     * @param desc Health, armor, ammo, abilities and map.
+     */
+    function shooterHud(id: string, desc?: ShooterHudDesc): HudResult;
+    /**
+     * The puzzle HUD template.
+     *
+     * @param id Its id.
+     * @param desc Level, score, target, stars, moves and timer.
+     */
+    function puzzleHud(id: string, desc?: PuzzleHudDesc): HudResult;
+    /**
+     * The idle and incremental HUD template: answers `tap` and `buy:<id>` actions.
+     *
+     * @param id Its id.
+     * @param desc Currencies and generators.
+     */
+    function idleHud(id: string, desc?: IdleHudDesc): HudResult;
+    /**
+     * The racing HUD template.
+     *
+     * @param id Its id.
+     * @param desc Speed, gear, laps, place, times and boost.
+     */
+    function racingHud(id: string, desc?: RacingHudDesc): HudResult;
+    /**
+     * The dialogue and cutscene template: letterbox, the dialogue box, Skip.
+     *
+     * @param id Its id.
+     * @param desc Lines and the current index.
+     */
+    function cutscene(id: string, desc?: CutsceneDesc): CutsceneResult;
+    /**
+     * The shop template.
+     *
+     * @param id Its id.
+     * @param desc Balance, items and categories.
+     */
+    function shopScreen(id: string, desc?: ShopDesc): ShopResult;
+    /**
+     * The inventory template: a grid of slots with drag and drop.
+     *
+     * @param id Its id.
+     * @param desc Slots and items.
+     */
+    function inventoryScreen(id: string, desc?: InventoryDesc): InventoryResult;
+    /**
+     * The level select template.
+     *
+     * @param id Its id.
+     * @param desc The levels.
+     */
+    function levelSelect(id: string, desc?: LevelSelectDesc): LevelSelectResult;
+    /**
+     * The results template: stars, the score counting up, the best, stats, actions and Share.
+     *
+     * @param id Its id.
+     * @param desc Score, stars, stats and actions.
+     */
+    function resultsScreen(id: string, desc?: ResultsDesc): MenuResult;
+    /**
+     * The leaderboard template.
+     *
+     * @param id Its id.
+     * @param desc Scopes, rows and states.
+     */
+    function leaderboardScreen(id: string, desc?: LeaderboardDesc): LeaderboardResult;
+    /**
+     * The onboarding template: a spotlight and a callout per step.
+     *
+     * @param id Its id.
+     * @param desc Steps and the current index.
+     */
+    function tutorialOverlay(id: string, desc?: TutorialDesc): TutorialResult;
+    /**
+     * The loading template.
+     *
+     * @param id Its id.
+     * @param desc Title, progress and tips.
+     */
+    function loadingScreen(id: string, desc?: LoadingDesc): void;
+    /**
+     * The confirm dialog template.
+     *
+     * @param id Its id.
+     * @param desc Question, consequence and labels.
+     */
+    function confirmDialog(id: string, desc?: ConfirmDesc): ConfirmResult;
+    /**
+     * The alert template. Returns true the tick it is dismissed.
+     *
+     * @param id Its id.
+     * @param desc Title, message and label.
+     */
+    function alertDialog(id: string, desc?: AlertDesc): boolean;
   }
   /**
    * Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.

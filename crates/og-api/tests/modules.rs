@@ -30,7 +30,10 @@ fn idl_schema(decl: &RecordDecl) -> Schema {
                         "Vector3" | "Color" => FieldType::Vec3,
                         "Quaternion" => FieldType::Quat,
                         "Matrix4" => FieldType::Mat4,
-                        "Entity" | "Geometry" | "Material" | "Asset" | "Sound" => FieldType::U64,
+                        "Entity" | "Geometry" | "Material" | "Asset" | "Sound"
+                        | "SkeletonAsset" | "ClipAsset" | "GraphAsset" => FieldType::U64,
+                        // Event text: og-anim's marker names are str64.
+                        "String" => FieldType::Str64,
                         other => panic!(
                             "{}.{}: column {other} has no storage type here",
                             decl.schema, f.name
@@ -70,7 +73,7 @@ fn check<T: Reflect>(failures: &mut Vec<String>) {
 }
 
 #[test]
-fn physics_and_audio_records_have_the_idl_layouts() {
+fn physics_audio_and_animation_records_have_the_idl_layouts() {
     let mut failures = Vec::new();
     check::<og_physics::Transform>(&mut failures);
     check::<og_physics::RigidBody>(&mut failures);
@@ -87,6 +90,13 @@ fn physics_and_audio_records_have_the_idl_layouts() {
     check::<og_audio::Audio>(&mut failures);
     check::<og_audio::SoundStarted>(&mut failures);
     check::<og_audio::SoundEnded>(&mut failures);
+    check::<og_anim::Transform>(&mut failures);
+    check::<og_anim::Skeleton>(&mut failures);
+    check::<og_anim::AnimationPlayer>(&mut failures);
+    check::<og_anim::AnimationGraph>(&mut failures);
+    check::<og_anim::Blendshapes>(&mut failures);
+    check::<og_anim::IkChain>(&mut failures);
+    check::<og_anim::AnimationEvent>(&mut failures);
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 

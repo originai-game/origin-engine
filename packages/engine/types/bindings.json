@@ -94,6 +94,48 @@
       "value": "Sound"
     },
     {
+      "name": "SkeletonAsset",
+      "array": "Uint32Array",
+      "stride": 2,
+      "value": "SkeletonAsset"
+    },
+    {
+      "name": "ClipAsset",
+      "array": "Uint32Array",
+      "stride": 2,
+      "value": "ClipAsset"
+    },
+    {
+      "name": "GraphAsset",
+      "array": "Uint32Array",
+      "stride": 2,
+      "value": "GraphAsset"
+    },
+    {
+      "name": "RootMotion",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "RootMotion"
+    },
+    {
+      "name": "BlendshapeSource",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "BlendshapeSource"
+    },
+    {
+      "name": "IkSolver",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "IkSolver"
+    },
+    {
+      "name": "IkSpace",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "IkSpace"
+    },
+    {
       "name": "AudioBus",
       "array": "Uint32Array",
       "stride": 1,
@@ -679,6 +721,317 @@
     },
     {
       "id": 14,
+      "name": "Skeleton",
+      "schema": "og.Skeleton",
+      "module": "anim",
+      "fields": [
+        {
+          "name": "asset",
+          "column": "SkeletonAsset",
+          "default": 0
+        },
+        {
+          "name": "skin",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "rootMotion",
+          "column": "RootMotion",
+          "default": "off"
+        },
+        {
+          "name": "rootJoint",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "jointCount",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "name": "AnimationPlayer",
+      "schema": "og.AnimationPlayer",
+      "module": "anim",
+      "fields": [
+        {
+          "name": "clip",
+          "column": "ClipAsset",
+          "default": 0
+        },
+        {
+          "name": "time",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "speed",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "loop",
+          "column": "bool",
+          "default": true
+        },
+        {
+          "name": "weight",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "fade",
+          "column": "f32",
+          "default": 0.2,
+          "tunable": true
+        },
+        {
+          "name": "finished",
+          "column": "bool",
+          "default": false,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "name": "AnimationGraph",
+      "schema": "og.AnimationGraph",
+      "module": "anim",
+      "fields": [
+        {
+          "name": "asset",
+          "column": "GraphAsset",
+          "default": 0
+        },
+        {
+          "name": "weight",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "speed",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "p0",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "p1",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "p2",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "p3",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "p4",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "p5",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "p6",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "p7",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "state",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "stateTime",
+          "column": "f32",
+          "default": 0,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "name": "Blendshapes",
+      "schema": "og.Blendshapes",
+      "module": "anim",
+      "fields": [
+        {
+          "name": "source",
+          "column": "BlendshapeSource",
+          "default": "component"
+        },
+        {
+          "name": "mesh",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "w0",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "w1",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "w2",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "w3",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "w4",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "w5",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "w6",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "w7",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "name": "IkChain",
+      "schema": "og.IkChain",
+      "module": "anim",
+      "fields": [
+        {
+          "name": "skeleton",
+          "column": "Entity",
+          "default": 0
+        },
+        {
+          "name": "tip",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "bones",
+          "column": "u32",
+          "default": 2
+        },
+        {
+          "name": "solver",
+          "column": "IkSolver",
+          "default": "twoBone"
+        },
+        {
+          "name": "target",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "pole",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "space",
+          "column": "IkSpace",
+          "default": "world"
+        },
+        {
+          "name": "weight",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "iterations",
+          "column": "u32",
+          "default": 10
+        },
+        {
+          "name": "tolerance",
+          "column": "f32",
+          "default": 0.001
+        },
+        {
+          "name": "reached",
+          "column": "bool",
+          "default": false,
+          "readonly": true
+        },
+        {
+          "name": "error",
+          "column": "f32",
+          "default": 0,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 19,
       "name": "AudioSource",
       "schema": "og.AudioSource",
       "module": "audio",
@@ -757,7 +1110,7 @@
       ]
     },
     {
-      "id": 15,
+      "id": 20,
       "name": "AudioListener",
       "schema": "og.AudioListener",
       "module": "audio",
@@ -1446,6 +1799,39 @@
     },
     {
       "id": 13,
+      "name": "AnimationEvent",
+      "schema": "og.AnimationEvent",
+      "module": "anim",
+      "fields": [
+        {
+          "name": "entity",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "clip",
+          "type": "ClipAsset",
+          "default": 0
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "default": ""
+        },
+        {
+          "name": "time",
+          "type": "f32",
+          "default": 0
+        },
+        {
+          "name": "weight",
+          "type": "f32",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 14,
       "name": "SoundStarted",
       "schema": "og.SoundStarted",
       "module": "audio",
@@ -1468,7 +1854,7 @@
       ]
     },
     {
-      "id": 14,
+      "id": 15,
       "name": "SoundEnded",
       "schema": "og.SoundEnded",
       "module": "audio",
@@ -3151,6 +3537,28 @@
     {
       "id": 81,
       "kind": "fn",
+      "path": "og.load.animation",
+      "symbol": "og_load_animation",
+      "module": "load",
+      "name": "animation",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Animation>",
+      "publish": true
+    },
+    {
+      "id": 82,
+      "kind": "fn",
       "path": "og.physics.raycast",
       "symbol": "og_physics_raycast",
       "module": "physics",
@@ -3171,7 +3579,7 @@
       "publish": true
     },
     {
-      "id": 82,
+      "id": 83,
       "kind": "fn",
       "path": "og.physics.shapeCast",
       "symbol": "og_physics_shape_cast",
@@ -3193,7 +3601,7 @@
       "publish": true
     },
     {
-      "id": 83,
+      "id": 84,
       "kind": "fn",
       "path": "og.physics.overlap",
       "symbol": "og_physics_overlap",
@@ -3215,7 +3623,7 @@
       "publish": true
     },
     {
-      "id": 84,
+      "id": 85,
       "kind": "fn",
       "path": "og.physics.setMesh",
       "symbol": "og_physics_set_mesh",
@@ -3242,7 +3650,29 @@
       "publish": true
     },
     {
-      "id": 85,
+      "id": 86,
+      "kind": "fn",
+      "path": "og.anim.graph",
+      "symbol": "og_anim_graph",
+      "module": "anim",
+      "name": "graph",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "GraphDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<GraphAsset>",
+      "publish": true
+    },
+    {
+      "id": 87,
       "kind": "fn",
       "path": "og.ui.configure",
       "symbol": "og_ui_configure",
@@ -3264,7 +3694,7 @@
       "publish": true
     },
     {
-      "id": 86,
+      "id": 88,
       "kind": "fn",
       "path": "og.ui.viewport",
       "symbol": "og_ui_viewport",
@@ -3281,7 +3711,7 @@
       "publish": true
     },
     {
-      "id": 87,
+      "id": 89,
       "kind": "fn",
       "path": "og.ui.theme",
       "symbol": "og_ui_theme",
@@ -3298,7 +3728,7 @@
       "publish": true
     },
     {
-      "id": 88,
+      "id": 90,
       "kind": "fn",
       "path": "og.ui.open",
       "symbol": "og_ui_open",
@@ -3320,7 +3750,7 @@
       "publish": true
     },
     {
-      "id": 89,
+      "id": 91,
       "kind": "fn",
       "path": "og.ui.openPanel",
       "symbol": "og_ui_open_panel",
@@ -3342,7 +3772,7 @@
       "publish": true
     },
     {
-      "id": 90,
+      "id": 92,
       "kind": "fn",
       "path": "og.ui.openScroll",
       "symbol": "og_ui_open_scroll",
@@ -3364,7 +3794,7 @@
       "publish": true
     },
     {
-      "id": 91,
+      "id": 93,
       "kind": "fn",
       "path": "og.ui.close",
       "symbol": "og_ui_close",
@@ -3375,7 +3805,7 @@
       "publish": true
     },
     {
-      "id": 92,
+      "id": 94,
       "kind": "fn",
       "path": "og.ui.label",
       "symbol": "og_ui_label",
@@ -3402,7 +3832,7 @@
       "publish": true
     },
     {
-      "id": 93,
+      "id": 95,
       "kind": "fn",
       "path": "og.ui.button",
       "symbol": "og_ui_button",
@@ -3429,7 +3859,7 @@
       "publish": true
     },
     {
-      "id": 94,
+      "id": 96,
       "kind": "fn",
       "path": "og.ui.image",
       "symbol": "og_ui_image",
@@ -3451,7 +3881,7 @@
       "publish": true
     },
     {
-      "id": 95,
+      "id": 97,
       "kind": "fn",
       "path": "og.ui.progress",
       "symbol": "og_ui_progress",
@@ -3478,7 +3908,7 @@
       "publish": true
     },
     {
-      "id": 96,
+      "id": 98,
       "kind": "fn",
       "path": "og.ui.slider",
       "symbol": "og_ui_slider",
@@ -3505,7 +3935,7 @@
       "publish": true
     },
     {
-      "id": 97,
+      "id": 99,
       "kind": "fn",
       "path": "og.ui.toggle",
       "symbol": "og_ui_toggle",
@@ -3532,7 +3962,7 @@
       "publish": true
     },
     {
-      "id": 98,
+      "id": 100,
       "kind": "fn",
       "path": "og.ui.textField",
       "symbol": "og_ui_text_field",
@@ -3559,7 +3989,7 @@
       "publish": true
     },
     {
-      "id": 99,
+      "id": 101,
       "kind": "fn",
       "path": "og.ui.tooltip",
       "symbol": "og_ui_tooltip",
@@ -3576,7 +4006,1043 @@
       "publish": true
     },
     {
-      "id": 100,
+      "id": 102,
+      "kind": "fn",
+      "path": "og.ui.breakpoint",
+      "symbol": "og_ui_breakpoint",
+      "module": "ui",
+      "name": "breakpoint",
+      "params": [],
+      "returns": "Breakpoint",
+      "publish": true
+    },
+    {
+      "id": 103,
+      "kind": "fn",
+      "path": "og.ui.frameViewport",
+      "symbol": "og_ui_frame_viewport",
+      "module": "ui",
+      "name": "frameViewport",
+      "params": [],
+      "returns": "Viewport",
+      "publish": true
+    },
+    {
+      "id": 104,
+      "kind": "fn",
+      "path": "og.ui.hasIcon",
+      "symbol": "og_ui_has_icon",
+      "module": "ui",
+      "name": "hasIcon",
+      "params": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "bool",
+      "publish": true
+    },
+    {
+      "id": 105,
+      "kind": "fn",
+      "path": "og.ui.seconds",
+      "symbol": "og_ui_seconds",
+      "module": "ui",
+      "name": "seconds",
+      "params": [],
+      "returns": "f64",
+      "publish": true
+    },
+    {
+      "id": 106,
+      "kind": "fn",
+      "path": "og.ui.frameTheme",
+      "symbol": "og_ui_frame_theme",
+      "module": "ui",
+      "name": "frameTheme",
+      "params": [],
+      "returns": "UiTheme",
+      "publish": true
+    },
+    {
+      "id": 107,
+      "kind": "fn",
+      "path": "og.ui.openAnchor",
+      "symbol": "og_ui_open_anchor",
+      "module": "ui",
+      "name": "openAnchor",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "AnchorDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Void",
+      "publish": true
+    },
+    {
+      "id": 108,
+      "kind": "fn",
+      "path": "og.ui.openTransition",
+      "symbol": "og_ui_open_transition",
+      "module": "ui",
+      "name": "openTransition",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "show",
+          "type": "bool",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "TransitionDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Presence",
+      "publish": true
+    },
+    {
+      "id": 109,
+      "kind": "fn",
+      "path": "og.ui.openModal",
+      "symbol": "og_ui_open_modal",
+      "module": "ui",
+      "name": "openModal",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "open",
+          "type": "bool",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "ModalDesc",
+          "optional": true
+        }
+      ],
+      "returns": "ModalResult",
+      "publish": true
+    },
+    {
+      "id": 110,
+      "kind": "fn",
+      "path": "og.ui.closeModal",
+      "symbol": "og_ui_close_modal",
+      "module": "ui",
+      "name": "closeModal",
+      "params": [],
+      "returns": "Void",
+      "publish": true
+    },
+    {
+      "id": 111,
+      "kind": "fn",
+      "path": "og.ui.spotlight",
+      "symbol": "og_ui_spotlight",
+      "module": "ui",
+      "name": "spotlight",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "hole",
+          "type": "Option<UiRect>",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "SpotlightDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Response",
+      "publish": true
+    },
+    {
+      "id": 112,
+      "kind": "fn",
+      "path": "og.ui.bounds",
+      "symbol": "og_ui_bounds",
+      "module": "ui",
+      "name": "bounds",
+      "params": [
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Option<UiRect>",
+      "publish": true
+    },
+    {
+      "id": 113,
+      "kind": "fn",
+      "path": "og.ui.openList",
+      "symbol": "og_ui_open_list",
+      "module": "ui",
+      "name": "openList",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "ListDesc",
+          "optional": true
+        }
+      ],
+      "returns": "ListRange",
+      "publish": true
+    },
+    {
+      "id": 114,
+      "kind": "fn",
+      "path": "og.ui.openGrid",
+      "symbol": "og_ui_open_grid",
+      "module": "ui",
+      "name": "openGrid",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "GridDesc",
+          "optional": true
+        }
+      ],
+      "returns": "ListRange",
+      "publish": true
+    },
+    {
+      "id": 115,
+      "kind": "fn",
+      "path": "og.ui.listItem",
+      "symbol": "og_ui_list_item",
+      "module": "ui",
+      "name": "listItem",
+      "params": [
+        {
+          "name": "index",
+          "type": "u32",
+          "optional": false
+        },
+        {
+          "name": "selected",
+          "type": "bool",
+          "optional": false
+        }
+      ],
+      "returns": "Response",
+      "publish": true
+    },
+    {
+      "id": 116,
+      "kind": "fn",
+      "path": "og.ui.gridItem",
+      "symbol": "og_ui_grid_item",
+      "module": "ui",
+      "name": "gridItem",
+      "params": [
+        {
+          "name": "index",
+          "type": "u32",
+          "optional": false
+        },
+        {
+          "name": "selected",
+          "type": "bool",
+          "optional": false
+        }
+      ],
+      "returns": "Response",
+      "publish": true
+    },
+    {
+      "id": 117,
+      "kind": "fn",
+      "path": "og.ui.closeList",
+      "symbol": "og_ui_close_list",
+      "module": "ui",
+      "name": "closeList",
+      "params": [],
+      "returns": "Response",
+      "publish": true
+    },
+    {
+      "id": 118,
+      "kind": "fn",
+      "path": "og.ui.dragging",
+      "symbol": "og_ui_dragging",
+      "module": "ui",
+      "name": "dragging",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Option<u32>",
+      "publish": true
+    },
+    {
+      "id": 119,
+      "kind": "fn",
+      "path": "og.ui.tabs",
+      "symbol": "og_ui_tabs",
+      "module": "ui",
+      "name": "tabs",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "items",
+          "type": "List<String>",
+          "optional": false
+        },
+        {
+          "name": "selected",
+          "type": "u32",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "TabsDesc",
+          "optional": true
+        }
+      ],
+      "returns": "ChoiceResult",
+      "publish": true
+    },
+    {
+      "id": 120,
+      "kind": "fn",
+      "path": "og.ui.select",
+      "symbol": "og_ui_select",
+      "module": "ui",
+      "name": "select",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "options",
+          "type": "List<String>",
+          "optional": false
+        },
+        {
+          "name": "selected",
+          "type": "u32",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "SelectDesc",
+          "optional": true
+        }
+      ],
+      "returns": "ChoiceResult",
+      "publish": true
+    },
+    {
+      "id": 121,
+      "kind": "fn",
+      "path": "og.ui.stepper",
+      "symbol": "og_ui_stepper",
+      "module": "ui",
+      "name": "stepper",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "value",
+          "type": "f32",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "StepperDesc",
+          "optional": true
+        }
+      ],
+      "returns": "StepperResult",
+      "publish": true
+    },
+    {
+      "id": 122,
+      "kind": "fn",
+      "path": "og.ui.radio",
+      "symbol": "og_ui_radio",
+      "module": "ui",
+      "name": "radio",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "options",
+          "type": "List<String>",
+          "optional": false
+        },
+        {
+          "name": "selected",
+          "type": "u32",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "RadioDesc",
+          "optional": true
+        }
+      ],
+      "returns": "ChoiceResult",
+      "publish": true
+    },
+    {
+      "id": 123,
+      "kind": "fn",
+      "path": "og.ui.checkbox",
+      "symbol": "og_ui_checkbox",
+      "module": "ui",
+      "name": "checkbox",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "on",
+          "type": "bool",
+          "optional": false
+        },
+        {
+          "name": "label",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "ToggleResult",
+      "publish": true
+    },
+    {
+      "id": 124,
+      "kind": "fn",
+      "path": "og.ui.checkboxList",
+      "symbol": "og_ui_checkbox_list",
+      "module": "ui",
+      "name": "checkboxList",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "labels",
+          "type": "List<String>",
+          "optional": false
+        },
+        {
+          "name": "values",
+          "type": "List<bool>",
+          "optional": false
+        }
+      ],
+      "returns": "CheckListResult",
+      "publish": true
+    },
+    {
+      "id": 125,
+      "kind": "fn",
+      "path": "og.ui.chip",
+      "symbol": "og_ui_chip",
+      "module": "ui",
+      "name": "chip",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "text",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "ChipDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Response",
+      "publish": true
+    },
+    {
+      "id": 126,
+      "kind": "fn",
+      "path": "og.ui.badge",
+      "symbol": "og_ui_badge",
+      "module": "ui",
+      "name": "badge",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "text",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "tone",
+          "type": "Tone",
+          "optional": false
+        }
+      ],
+      "returns": "Void",
+      "publish": true
+    },
+    {
+      "id": 127,
+      "kind": "fn",
+      "path": "og.ui.divider",
+      "symbol": "og_ui_divider",
+      "module": "ui",
+      "name": "divider",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "vertical",
+          "type": "bool",
+          "optional": false
+        }
+      ],
+      "returns": "Void",
+      "publish": true
+    },
+    {
+      "id": 128,
+      "kind": "fn",
+      "path": "og.ui.spacer",
+      "symbol": "og_ui_spacer",
+      "module": "ui",
+      "name": "spacer",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "size",
+          "type": "Option<Size>",
+          "optional": false
+        }
+      ],
+      "returns": "Void",
+      "publish": true
+    },
+    {
+      "id": 129,
+      "kind": "fn",
+      "path": "og.ui.keyValue",
+      "symbol": "og_ui_key_value",
+      "module": "ui",
+      "name": "keyValue",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "key",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "value",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "mono",
+          "type": "bool",
+          "optional": false
+        }
+      ],
+      "returns": "Void",
+      "publish": true
+    },
+    {
+      "id": 130,
+      "kind": "fn",
+      "path": "og.ui.skeleton",
+      "symbol": "og_ui_skeleton",
+      "module": "ui",
+      "name": "skeleton",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "SkeletonDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Void",
+      "publish": true
+    },
+    {
+      "id": 131,
+      "kind": "fn",
+      "path": "og.ui.spinner",
+      "symbol": "og_ui_spinner",
+      "module": "ui",
+      "name": "spinner",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "size",
+          "type": "f32",
+          "optional": false
+        }
+      ],
+      "returns": "Void",
+      "publish": true
+    },
+    {
+      "id": 132,
+      "kind": "fn",
+      "path": "og.ui.icon",
+      "symbol": "og_ui_icon",
+      "module": "ui",
+      "name": "icon",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "IconDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Void",
+      "publish": true
+    },
+    {
+      "id": 133,
+      "kind": "fn",
+      "path": "og.ui.meter",
+      "symbol": "og_ui_meter",
+      "module": "ui",
+      "name": "meter",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "value",
+          "type": "f32",
+          "optional": false
+        },
+        {
+          "name": "max",
+          "type": "f32",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "MeterDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Void",
+      "publish": true
+    },
+    {
+      "id": 134,
+      "kind": "fn",
+      "path": "og.ui.cooldown",
+      "symbol": "og_ui_cooldown",
+      "module": "ui",
+      "name": "cooldown",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "remaining",
+          "type": "f32",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "CooldownDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Response",
+      "publish": true
+    },
+    {
+      "id": 135,
+      "kind": "fn",
+      "path": "og.ui.minimap",
+      "symbol": "og_ui_minimap",
+      "module": "ui",
+      "name": "minimap",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "MinimapDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Void",
+      "publish": true
+    },
+    {
+      "id": 136,
+      "kind": "fn",
+      "path": "og.ui.dialogue",
+      "symbol": "og_ui_dialogue",
+      "module": "ui",
+      "name": "dialogue",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "DialogueDesc",
+          "optional": true
+        }
+      ],
+      "returns": "DialogueResult",
+      "publish": true
+    },
+    {
+      "id": 137,
+      "kind": "fn",
+      "path": "og.ui.joystick",
+      "symbol": "og_ui_joystick",
+      "module": "ui",
+      "name": "joystick",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "JoystickDesc",
+          "optional": true
+        }
+      ],
+      "returns": "JoystickResult",
+      "publish": true
+    },
+    {
+      "id": 138,
+      "kind": "fn",
+      "path": "og.ui.dpad",
+      "symbol": "og_ui_dpad",
+      "module": "ui",
+      "name": "dpad",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "DpadDesc",
+          "optional": true
+        }
+      ],
+      "returns": "DpadResult",
+      "publish": true
+    },
+    {
+      "id": 139,
+      "kind": "fn",
+      "path": "og.ui.actionButton",
+      "symbol": "og_ui_action_button",
+      "module": "ui",
+      "name": "actionButton",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "text",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "ActionButtonDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Response",
+      "publish": true
+    },
+    {
+      "id": 140,
+      "kind": "fn",
+      "path": "og.ui.toast",
+      "symbol": "og_ui_toast",
+      "module": "ui",
+      "name": "toast",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "text",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "ToastDesc",
+          "optional": true
+        }
+      ],
+      "returns": "u32",
+      "publish": true
+    },
+    {
+      "id": 141,
+      "kind": "fn",
+      "path": "og.ui.dismissToast",
+      "symbol": "og_ui_dismiss_toast",
+      "module": "ui",
+      "name": "dismissToast",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "toastId",
+          "type": "u32",
+          "optional": false
+        }
+      ],
+      "returns": "Void",
+      "publish": true
+    },
+    {
+      "id": 142,
+      "kind": "fn",
+      "path": "og.ui.navigate",
+      "symbol": "og_ui_navigate",
+      "module": "ui",
+      "name": "navigate",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "intent",
+          "type": "NavIntent",
+          "optional": false
+        }
+      ],
+      "returns": "Void",
+      "publish": true
+    },
+    {
+      "id": 143,
+      "kind": "fn",
+      "path": "og.ui.back",
+      "symbol": "og_ui_back",
+      "module": "ui",
+      "name": "back",
+      "params": [],
+      "returns": "bool",
+      "publish": true
+    },
+    {
+      "id": 144,
+      "kind": "fn",
+      "path": "og.ui.setNavigation",
+      "symbol": "og_ui_set_navigation",
+      "module": "ui",
+      "name": "setNavigation",
+      "params": [
+        {
+          "name": "on",
+          "type": "bool",
+          "optional": false
+        }
+      ],
+      "returns": "Void",
+      "publish": true
+    },
+    {
+      "id": 145,
+      "kind": "fn",
+      "path": "og.ui.memory",
+      "symbol": "og_ui_memory",
+      "module": "ui",
+      "name": "memory",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "initial",
+          "type": "f64",
+          "optional": false
+        }
+      ],
+      "returns": "f64",
+      "publish": true
+    },
+    {
+      "id": 146,
+      "kind": "fn",
+      "path": "og.ui.remember",
+      "symbol": "og_ui_remember",
+      "module": "ui",
+      "name": "remember",
+      "params": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "value",
+          "type": "f64",
+          "optional": false
+        }
+      ],
+      "returns": "Void",
+      "publish": true
+    },
+    {
+      "id": 147,
+      "kind": "fn",
+      "path": "og.ui.tick",
+      "symbol": "og_ui_tick",
+      "module": "ui",
+      "name": "tick",
+      "params": [],
+      "returns": "u32",
+      "publish": true
+    },
+    {
+      "id": 148,
+      "kind": "fn",
+      "path": "og.ui.previewViewport",
+      "symbol": "og_ui_preview_viewport",
+      "module": "ui",
+      "name": "previewViewport",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "viewport",
+          "type": "Option<Viewport>",
+          "optional": false
+        }
+      ],
+      "returns": "Void",
+      "publish": true
+    },
+    {
+      "id": 149,
       "kind": "fn",
       "path": "og.commands.register",
       "symbol": "og_commands_register",
@@ -3603,7 +5069,7 @@
       "publish": false
     },
     {
-      "id": 101,
+      "id": 150,
       "kind": "fn",
       "path": "og.commands.parse",
       "symbol": "og_commands_parse",
@@ -3620,7 +5086,7 @@
       "publish": false
     },
     {
-      "id": 102,
+      "id": 151,
       "kind": "fn",
       "path": "og.commands.help",
       "symbol": "og_commands_help",
@@ -3637,7 +5103,7 @@
       "publish": false
     },
     {
-      "id": 103,
+      "id": 152,
       "kind": "fn",
       "path": "og.commands.schedule",
       "symbol": "og_commands_schedule",
@@ -3659,7 +5125,7 @@
       "publish": false
     },
     {
-      "id": 104,
+      "id": 153,
       "kind": "prop",
       "path": "RuntimeProbe.version",
       "symbol": "og_runtime_probe_get_version",
@@ -3670,7 +5136,7 @@
       "publish": true
     },
     {
-      "id": 105,
+      "id": 154,
       "kind": "method",
       "path": "RuntimeProbe.tick",
       "symbol": "og_runtime_probe_tick",
@@ -3682,7 +5148,7 @@
       "publish": true
     },
     {
-      "id": 106,
+      "id": 155,
       "kind": "method",
       "path": "RuntimeProbe.state",
       "symbol": "og_runtime_probe_state",
@@ -3694,7 +5160,7 @@
       "publish": true
     },
     {
-      "id": 107,
+      "id": 156,
       "kind": "method",
       "path": "RuntimeProbe.advance",
       "symbol": "og_runtime_probe_advance",
@@ -3712,7 +5178,7 @@
       "publish": false
     },
     {
-      "id": 108,
+      "id": 157,
       "kind": "method",
       "path": "RuntimeProbe.pause",
       "symbol": "og_runtime_probe_pause",
@@ -3724,7 +5190,7 @@
       "publish": false
     },
     {
-      "id": 109,
+      "id": 158,
       "kind": "method",
       "path": "RuntimeProbe.resume",
       "symbol": "og_runtime_probe_resume",
@@ -3736,7 +5202,7 @@
       "publish": false
     },
     {
-      "id": 110,
+      "id": 159,
       "kind": "method",
       "path": "RuntimeProbe.input",
       "symbol": "og_runtime_probe_input",
@@ -3754,7 +5220,7 @@
       "publish": true
     },
     {
-      "id": 111,
+      "id": 160,
       "kind": "method",
       "path": "RuntimeProbe.accepted",
       "symbol": "og_runtime_probe_accepted",
@@ -3766,7 +5232,7 @@
       "publish": false
     },
     {
-      "id": 112,
+      "id": 161,
       "kind": "method",
       "path": "RuntimeProbe.pick",
       "symbol": "og_runtime_probe_pick",
@@ -3789,7 +5255,7 @@
       "publish": true
     },
     {
-      "id": 113,
+      "id": 162,
       "kind": "method",
       "path": "RuntimeProbe.entity",
       "symbol": "og_runtime_probe_entity",
@@ -3807,7 +5273,7 @@
       "publish": true
     },
     {
-      "id": 114,
+      "id": 163,
       "kind": "method",
       "path": "RuntimeProbe.bounds",
       "symbol": "og_runtime_probe_bounds",
@@ -3825,7 +5291,7 @@
       "publish": false
     },
     {
-      "id": 115,
+      "id": 164,
       "kind": "method",
       "path": "RuntimeProbe.patch",
       "symbol": "og_runtime_probe_patch",
@@ -3853,7 +5319,7 @@
       "publish": false
     },
     {
-      "id": 116,
+      "id": 165,
       "kind": "method",
       "path": "RuntimeProbe.run",
       "symbol": "og_runtime_probe_run",
@@ -3871,7 +5337,7 @@
       "publish": false
     },
     {
-      "id": 117,
+      "id": 166,
       "kind": "method",
       "path": "EngineProbe.hello",
       "symbol": "og_engine_probe_hello",
@@ -3883,7 +5349,7 @@
       "publish": true
     },
     {
-      "id": 118,
+      "id": 167,
       "kind": "method",
       "path": "EngineProbe.capture",
       "symbol": "og_engine_probe_capture",
@@ -3908,7 +5374,7 @@
       "publish": true
     },
     {
-      "id": 119,
+      "id": 168,
       "kind": "method",
       "path": "EngineProbe.sweep",
       "symbol": "og_engine_probe_sweep",
@@ -3927,7 +5393,7 @@
       "publish": false
     },
     {
-      "id": 120,
+      "id": 169,
       "kind": "method",
       "path": "EngineProbe.reload",
       "symbol": "og_engine_probe_reload",
@@ -3939,7 +5405,7 @@
       "publish": false
     },
     {
-      "id": 121,
+      "id": 170,
       "kind": "method",
       "path": "EngineProbe.snapshot",
       "symbol": "og_engine_probe_snapshot",
@@ -3951,7 +5417,7 @@
       "publish": false
     },
     {
-      "id": 122,
+      "id": 171,
       "kind": "method",
       "path": "EngineProbe.restore",
       "symbol": "og_engine_probe_restore",
@@ -3969,7 +5435,7 @@
       "publish": false
     },
     {
-      "id": 123,
+      "id": 172,
       "kind": "method",
       "path": "EngineProbe.dump",
       "symbol": "og_engine_probe_dump",
@@ -3988,7 +5454,7 @@
       "publish": false
     },
     {
-      "id": 124,
+      "id": 173,
       "kind": "method",
       "path": "EngineProbe.commands",
       "symbol": "og_engine_probe_commands",
@@ -4057,6 +5523,42 @@
       "name": "UiBuild",
       "module": "ui",
       "params": [],
+      "returns": "Void"
+    },
+    {
+      "name": "UiItemBuild",
+      "module": "ui",
+      "params": [
+        {
+          "name": "index",
+          "type": "u32",
+          "optional": false
+        }
+      ],
+      "returns": "Void"
+    },
+    {
+      "name": "UiAction",
+      "module": "ui",
+      "params": [
+        {
+          "name": "action",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Void"
+    },
+    {
+      "name": "SettingsChanged",
+      "module": "ui",
+      "params": [
+        {
+          "name": "settings",
+          "type": "GameSettings",
+          "optional": true
+        }
+      ],
       "returns": "Void"
     },
     {

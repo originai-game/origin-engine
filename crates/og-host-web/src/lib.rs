@@ -48,6 +48,8 @@ thread_local! {
     static TEXTURES: RefCell<BTreeMap<String, og_render::TextureData>> = const { RefCell::new(BTreeMap::new()) };
     /// Paths handed to the fetcher, so each is asked for once.
     static REQUESTED: RefCell<std::collections::BTreeSet<String>> = const { RefCell::new(std::collections::BTreeSet::new()) };
+    /// Render-target sizes the shell asked for, by engine, applied before the next frame.
+    static RESIZES: RefCell<BTreeMap<u32, (u32, u32)>> = const { RefCell::new(BTreeMap::new()) };
     /// The Worker's `fetch(path)` for files nobody fetched yet.
     static FETCHER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
     /// `performance` and its `now`, where the global has them (Workers do).
@@ -257,6 +259,20 @@ pub fn og_web_set_viewport(engine: u32, viewport: String) -> String {
     }
 }
 
+/// Resize an engine's display target to `width`×`height` device pixels (the
+/// shell's canvas after a resize or an orientation change). Applied before
+/// the next rendered frame, never during one; a size of 0 is taken as 1.
+#[wasm_bindgen]
+pub fn og_web_resize(engine: u32, width: u32, height: u32) {
+    RESIZES.with(|r| r.borrow_mut().insert(engine, (width.max(1), height.max(1))));
+}
+
+/// The size `og_web_resize` asked for since the last frame, taken once.
+#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+fn take_resize(engine: u32) -> Option<(u32, u32)> {
+    RESIZES.with(|r| r.borrow_mut().remove(&engine))
+}
+
 /// Routes Rust panics to the console instead of an opaque `unreachable`.
 #[wasm_bindgen]
 pub fn og_web_init() {
@@ -280,6 +296,7 @@ mod canvas {
     use wasm_bindgen::prelude::*;
 
     struct CanvasBackend {
+        engine: u32,
         renderer: Renderer,
         tier: String,
         /// A capture in flight and the size it was asked at.
@@ -302,6 +319,11 @@ mod canvas {
             .into()
         }
         fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
+            if let Some((w, h)) = super::take_resize(self.engine) {
+                // A capture in flight was asked at the old size; it restarts.
+                self.pending = None;
+                self.renderer.resize(w, h);
+            }
             self.renderer.poll();
             self.renderer
                 .render(scene, &RenderTarget::Surface)
@@ -386,6 +408,7 @@ mod canvas {
         set_render_backend(
             engine,
             Some(Box::new(CanvasBackend {
+                engine,
                 renderer,
                 tier: tier.clone(),
                 pending: None,

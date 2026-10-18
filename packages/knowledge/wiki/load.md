@@ -51,6 +51,7 @@ module load {
 | [`og.load.status`](#fn-status) | function | Where a load is. |
 | [`og.load.error`](#fn-error) | function | Why a load failed. |
 | [`og.load.gltfInfo`](#fn-gltfInfo) | function | What a ready glTF holds. |
+| [`og.load.animation`](#fn-animation) | function | Load a cooked glTF's animation (its `<model>#anim` blob: the rig, the clips, the skin and morph streams) and register its skeleton and clips with og.anim. Loading the same model again answers the same handles. |
 | [`og.AssetReady`](#record-AssetReady) | event | A load completed. |
 | [`og.AssetFailed`](#record-AssetFailed) | event | A load failed. |
 
@@ -446,6 +447,36 @@ fn gltfInfo {
 
 <sub>`api.ogt` line 1656</sub>
 
+<a id="fn-animation"></a>
+
+### `og.load.animation`
+
+Load a cooked glTF's animation (its `<model>#anim` blob: the rig, the clips, the skin and morph streams) and register its skeleton and clips with og.anim. Loading the same model again answers the same handles.
+
+```ts
+og.load.animation(world: World, path: string): Result<Animation>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose animation owns the assets. |
+| `path` | `string` | no | The model's asset id, such as `models/walker.glb` (a `#anim` suffix is accepted). |
+
+**Returns** `Result<Animation>`: Refused for an uncooked path, a model the cook wrote no `#anim` blob for (no skins, clips or morph targets), a cook stamp mismatch or an invalid rig.
+
+Binding symbol `og_load_animation` · publish builds: kept
+
+```ogt
+fn animation {
+  doc "Load a cooked glTF's animation (its `<model>#anim` blob: the rig, the clips, the skin and morph streams) and register its skeleton and clips with og.anim. Loading the same model again answers the same handles."
+  param world World "The world whose animation owns the assets."
+  param path String "The model's asset id, such as `models/walker.glb` (a `#anim` suffix is accepted)."
+  returns Result.Animation "Refused for an uncooked path, a model the cook wrote no `#anim` blob for (no skins, clips or morph targets), a cook stamp mismatch or an invalid rig."
+}
+```
+
+<sub>`api.ogt` line 1663</sub>
+
 ## Components, resources and events
 
 <a id="record-Model"></a>
@@ -490,7 +521,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 1663</sub>
+<sub>`api.ogt` line 1670</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -515,7 +546,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 1669</sub>
+<sub>`api.ogt` line 1676</sub>
 
 ## Types
 

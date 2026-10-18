@@ -1,12 +1,15 @@
-//! `og build [project] [--publish] [--out DIR] [--json]`: cook, then the play
-//! page's files in `<project>/dist` (or `publish.out` of project.ogt): the
-//! engine Worker bundle `game.js` (bun, the game with the runtime), the page
-//! (`index.html`, `play.js`), the web host runtime (`origin-engine.js`,
-//! `origin-engine_bg.wasm`), the Basis transcoder and `cooked/`. `--publish`
-//! takes the `publish` build of the web host, whose probe keeps only the
-//! player-facing members (hello, tick, state, pick, entity, input, capture),
-//! and minifies the bundle. Prints the size table
-//! (`packages/engine/src/node/web-build.ts` does the copying).
+//! `og build [project] [--publish] [--out DIR] [--json]`: cook, then export
+//! the game into `<project>/dist` (or `publish.out` of project.ogt): the
+//! player shell (`index.html`, `play.js`), the engine Worker bundle
+//! `game.js`, the web host (`origin-engine.js`, `origin-engine_bg.wasm`),
+//! the Basis transcoder, `cooked/`, the icons, `og-build.json`, `_headers`
+//! and, with the project's isolation, `origingame.runtime.json`.
+//! `--publish` takes the `publish` build of the web host, whose probe keeps
+//! only the player-facing members (hello, tick, state, pick, entity, input,
+//! capture), minifies, and adds the PWA (`manifest.webmanifest`, `sw.js`).
+//! project.ogt's `publish` block is checked here (`publish.rs`) and handed
+//! over as JSON; `packages/engine/src/node/web-build.ts` writes the files
+//! and prints the size table. Layout and contract: docs/web-export.md.
 
 use crate::project::{self, Project};
 use std::path::Path;
@@ -54,6 +57,13 @@ pub fn run(args: &[&str]) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+    let settings = match crate::publish::settings(&p.root.join("project.ogt")) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("og build: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
     let Some(package) = project::engine_package(Some(&p.root)) else {
         eprintln!("og build: {}", project::NO_ENGINE);
         return ExitCode::FAILURE;
@@ -78,7 +88,9 @@ pub fn run(args: &[&str]) -> ExitCode {
         .arg("--entry")
         .arg(&p.entry)
         .arg("--out")
-        .arg(&out);
+        .arg(&out)
+        .arg("--settings")
+        .arg(settings.to_string());
     if publish {
         cmd.arg("--publish");
     }

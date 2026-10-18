@@ -16,11 +16,23 @@
 // input ring, else as `input` messages. Ticks follow the display frame
 // (requestAnimationFrame in the Worker) unless the shell drives them.
 //
-// Messages to the shell: { type: "progress", value: 0..1, stage }, then
-// { type: "ready", engine, tier, transport, rpc, textureFormat, files,
-// textures } or { type: "error", message }; { type: "result", id, value |
-// error } for `call`; { type: "rpc", frame } for an answer that did not cross
-// the ring.
+// Messages to the shell: { type: "progress", value: 0..1, stage, loaded,
+// total } (bytes of the wasm and the cooked bundle actually received, so the
+// value is real and never goes backwards), then { type: "ready", engine,
+// tier, transport, rpc, textureFormat, files, textures } or { type: "error",
+// message } before ready; { type: "frame", first } after the first rendered
+// frame; { type: "crash", message } when the engine fails after ready (a
+// trap, a failing system, an uncaught error); { type: "log", lines } with
+// the engine's log and the Worker's console (the crash card shows the last
+// 200); { type: "result", id, value | error } for `call`; { type: "rpc",
+// frame } for an answer that did not cross the ring.
+//
+// Requests on the ring are served between frames by the request loop
+// whether or not the clock is playing (a page whose display frames stop, a
+// hidden tab or frame, still answers), and the loop always waits for the
+// next request instead of spinning: a waiting request used to starve the
+// Worker's animation frames while the clock played, so isolated pages never
+// answered.
 
 import { createEngine, type Engine, type GameToken } from "../runtime.ts";
 import { loadWebHost, type WebGlue } from "./host.ts";
@@ -55,8 +67,14 @@ interface Start {
   /** The project's physics profile (project.ogt `profile`). */
   profile?: "2d" | "3d";
   /** The play surface in CSS pixels, its DPR and safe area: what the UI lays out in. */
-  viewport?: { width: number; height: number; dpr: number; safeArea?: Record<string, number>; coarsePointer?: boolean };
+  viewport?: Viewport;
+  /** Bytes the boot will fetch (the wasm, the cooked bundle), for real progress; omitted: counted as they arrive. */
+  expect?: { wasm?: number; cooked?: number };
+  /** Without autoplay: take the first tick before the first frame, so the frame behind a play gate shows the game's first screen (its UI is built by ticks). */
+  prime?: boolean;
 }
+
+type Viewport = { width: number; height: number; dpr: number; safeArea?: Record<string, number>; coarsePointer?: boolean };
 
 interface Call {
   type: "call";
@@ -71,11 +89,13 @@ type Message =
   | { type: "input"; event: InjectedInput }
   | { type: "play"; on: boolean }
   | { type: "rpc"; frame: string }
-  | { type: "viewport"; viewport: NonNullable<Start["viewport"]> }
+  | { type: "viewport"; viewport: Viewport }
+  | { type: "resize"; width: number; height: number; viewport: Viewport }
   | AudioMessage;
 
 interface WorkerScope {
   onmessage: ((e: { data: Message }) => void) | null;
+  addEventListener?(type: string, fn: (e: { message?: string; error?: unknown; reason?: unknown; preventDefault?(): void }) => void): void;
   postMessage(message: unknown): void;
   requestAnimationFrame?(fn: (t: number) => void): number;
 }
@@ -92,6 +112,7 @@ export interface WebExtras {
   og_web_texture_ktx2(manifest: string, id: string, bytes: Uint8Array): Uint8Array;
   og_web_attach_canvas(engine: number, canvas: OffscreenCanvas, webgl: boolean): Promise<string>;
   og_web_set_viewport(engine: number, viewport: string): string;
+  og_web_resize?(engine: number, width: number, height: number): void;
 }
 
 /** Where the runtime asks for a bundle's files: `<root>/cooked/<file>` (crates/og-api/src/runtime/assets.rs). */
@@ -99,10 +120,47 @@ export function cookedDir(root: string): string {
   return `${root.replace(/\/+$/, "")}/cooked`;
 }
 
-async function bytesOf(url: string): Promise<Uint8Array> {
+/** Bytes received so far by the boot, against what it expects. */
+export class Received {
+  loaded = 0;
+  total: number;
+  constructor(total = 0) {
+    this.total = total;
+  }
+  /** Fraction in [0, 1]; grows the total when more arrived than expected. */
+  get value(): number {
+    if (this.loaded > this.total) this.total = this.loaded;
+    return this.total > 0 ? this.loaded / this.total : 0;
+  }
+}
+
+async function bytesOf(url: string, received?: Received, onChunk?: () => void): Promise<Uint8Array> {
   const r = await fetch(url);
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return new Uint8Array(await r.arrayBuffer());
+  if (!received || !r.body) {
+    const bytes = new Uint8Array(await r.arrayBuffer());
+    if (received) received.loaded += bytes.length;
+    onChunk?.();
+    return bytes;
+  }
+  const reader = r.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    length += value.length;
+    received.loaded += value.length;
+    onChunk?.();
+  }
+  const out = new Uint8Array(length);
+  let at = 0;
+  for (const c of chunks) {
+    out.set(c, at);
+    at += c.length;
+  }
+  return out;
 }
 
 /** The block compressions this device's GPU takes (for the format a texture would be transcoded to). */
@@ -140,6 +198,7 @@ export async function preloadBundle(
   basis: { js: string; wasm: string } | undefined,
   compressions: ReadonlySet<Compression>,
   progress: (value: number, stage: string) => void,
+  received?: Received,
 ): Promise<Preloaded> {
   const dir = cookedDir(root);
   const manifestPath = `${dir}/.cook.ogt`;
@@ -160,14 +219,15 @@ export async function preloadBundle(
     listed.map(async (o) => {
       const path = `${dir}/${o.file}`;
       try {
-        const bytes = await bytesOf(path);
+        const bytes = await bytesOf(path, received, received ? () => progress(received.value, "fetch") : undefined);
         glue.og_web_put_file(path, bytes);
         blobs.set(o.id, bytes);
       } catch (e) {
         failed++;
         glue.og_web_fail_file(path, `cannot fetch ${path} (${e instanceof Error ? e.message : String(e)})`);
       }
-      progress(0.1 + 0.7 * (++fetched / Math.max(1, listed.length)), "fetch");
+      ++fetched;
+      if (!received) progress(0.1 + 0.7 * (fetched / Math.max(1, listed.length)), "fetch");
     }),
   );
   const textures = listed.filter((o) => o.type === "og.Texture" && blobs.has(o.id));
@@ -184,7 +244,7 @@ export async function preloadBundle(
       glue.og_web_put_texture(t.id, out.width, out.height, out.levels[0]!, out.srgb);
       transcoded++;
     }
-    progress(0.8 + 0.2 * ((i + 1) / textures.length), "transcode");
+    if (!received) progress(0.8 + 0.2 * ((i + 1) / textures.length), "transcode");
   }
   return { files: listed.length - failed, failed, textures: transcoded, textureFormat };
 }
@@ -201,19 +261,61 @@ function isPendingCapture(frame: string, answer: string): boolean {
   }
 }
 
+/** The most log lines the Worker keeps for a crash card. */
+export const LOG_LINES = 200;
+
 /** Run `game` in this Worker, driven by the shell's messages. */
 export function startWorker(game: GameToken): void {
   let engine: Engine | null = null;
   let ring: SharedArrayBuffer | undefined;
   let rpc: RpcRings | undefined;
+  let canvas: OffscreenCanvas | undefined;
   let rendering = false;
   let playing = false;
   let scheduled = false;
+  let ready = false;
+  let crashed = false;
+  let firstFrame = false;
   let last = 0;
   let glueRef: (WebGlue & WebExtras & WebAudioGlue) | null = null;
   let audio: WorkerAudio | null = null;
   /** Captures waiting for their readback (requested on tick N, answered on N + 1). */
   const retries: Array<{ frame: string; left: number; viaRing: boolean }> = [];
+
+  // The console and the engine's log reach the shell (the crash card's last lines).
+  const log = (text: string) => self.postMessage({ type: "log", lines: [text] });
+  const consoleRef = (globalThis as unknown as { console?: Record<string, (...a: unknown[]) => void> }).console;
+  if (consoleRef) {
+    for (const level of ["error", "warn", "log", "info"] as const) {
+      const original = consoleRef[level]?.bind(consoleRef);
+      consoleRef[level] = (...args: unknown[]) => {
+        original?.(...args);
+        try {
+          log(`${level === "log" || level === "info" ? "" : `${level}: `}${args.map((a) => (a instanceof Error ? (a.stack ?? a.message) : typeof a === "string" ? a : JSON.stringify(a))).join(" ")}`);
+        } catch {
+          /* an unserializable argument is not worth a crash */
+        }
+      };
+    }
+  }
+  const flushLog = () => {
+    if (!engine) return;
+    const lines = engine.takeLog();
+    if (lines.length > 0) self.postMessage({ type: "log", lines: lines.map((l) => `tick ${l.tick}: ${l.warning ? "warning: " : ""}${l.text}`) });
+  };
+  const crash = (message: string) => {
+    if (crashed) return;
+    crashed = true;
+    playing = false;
+    try {
+      flushLog();
+    } catch {
+      /* the engine may be the thing that broke */
+    }
+    self.postMessage(ready ? { type: "crash", message } : { type: "error", message });
+  };
+  self.addEventListener?.("error", (e) => crash(e.message ?? String(e.error)));
+  self.addEventListener?.("unhandledrejection", (e) => crash(e.reason instanceof Error ? e.reason.message : String(e.reason)));
 
   const pumpInput = () => {
     if (engine && ring) for (const event of drainRing(ring)) engine.probe.input(event);
@@ -226,9 +328,25 @@ export function startWorker(game: GameToken): void {
   /** One request frame: answered now, or kept for a retry when it is a capture whose readback has not landed. */
   const serve = (frame: string, viaRing: boolean) => {
     if (!engine) return;
-    const out = engine.call(frame);
-    if (rendering && isPendingCapture(frame, out)) retries.push({ frame, left: 60, viaRing });
-    else answer(out, viaRing);
+    let out: string;
+    try {
+      out = engine.call(frame);
+    } catch (e) {
+      const id = (() => {
+        try {
+          return (JSON.parse(frame) as { id?: unknown }).id ?? null;
+        } catch {
+          return null;
+        }
+      })();
+      answer(JSON.stringify({ jsonrpc: "2.0", id, error: { code: -32603, message: e instanceof Error ? e.message : String(e) } }), viaRing);
+      crash(e instanceof Error ? e.message : String(e));
+      return;
+    }
+    if (rendering && isPendingCapture(frame, out)) {
+      retries.push({ frame, left: 60, viaRing });
+      schedule();
+    } else answer(out, viaRing);
   };
 
   const retry = () => {
@@ -250,39 +368,80 @@ export function startWorker(game: GameToken): void {
 
   const frame = (now: number) => {
     scheduled = false;
-    if (!engine) return;
-    pumpInput();
-    // Retries first: a capture asked this frame is requested now and answered on a later frame.
-    retry();
-    drainRpc();
-    // The clock holds while a capture waits for its readback.
-    if (playing && retries.length === 0) {
-      const answered = engine.frame(last ? now - last : 0);
-      if (!answered.ok) {
-        playing = false;
-        self.postMessage({ type: "error", message: answered.reason });
-        return;
+    if (!engine || crashed) return;
+    try {
+      pumpInput();
+      // Retries first: a capture asked this frame is requested now and answered on a later frame.
+      retry();
+      drainRpc();
+      // The clock holds while a capture waits for its readback.
+      if (playing && retries.length === 0) {
+        const answered = engine.frame(last ? now - last : 0);
+        if (!answered.ok) {
+          crash(answered.reason ?? "the engine refused a frame");
+          return;
+        }
+        if (!firstFrame && answered.rendered !== false) {
+          firstFrame = true;
+          self.postMessage({ type: "frame", first: true });
+        }
+        audio?.pump();
       }
-      audio?.pump();
+      flushLog();
+    } catch (e) {
+      crash(e instanceof Error ? (e.stack ?? e.message) : String(e));
+      return;
     }
     last = now;
     if (playing || retries.length > 0) schedule();
   };
+  /**
+   * The next frame on the display (requestAnimationFrame in the Worker); a
+   * display that stops sending frames (a hidden page) gets a timer instead,
+   * so a capture still lands.
+   */
   const schedule = () => {
     if (scheduled) return;
     scheduled = true;
-    if (self.requestAnimationFrame) self.requestAnimationFrame(frame);
-    else setTimeout(() => frame(performance.now()), 16);
+    let ran = false;
+    const run = (t: number) => {
+      if (ran) return;
+      ran = true;
+      frame(t);
+    };
+    if (self.requestAnimationFrame) self.requestAnimationFrame(run);
+    if (!playing || !self.requestAnimationFrame) setTimeout(() => run(performance.now()), self.requestAnimationFrame ? 100 : 16);
   };
 
-  /** While the clock is not playing, requests are still answered between frames. */
-  const idle = async () => {
-    while (rpc) {
-      await waitForFrames(rpc.requests, 100);
-      if (!playing && engine) {
+  /** Requests are answered between frames, whether the clock plays or not. */
+  const requests = async () => {
+    while (rpc && !crashed) {
+      await waitForFrames(rpc.requests, 1000);
+      if (!engine) continue;
+      try {
+        pumpInput();
         drainRpc();
-        if (retries.length > 0) schedule();
+      } catch (e) {
+        crash(e instanceof Error ? e.message : String(e));
       }
+      // Yield to the event loop: frames, fetches and messages run between requests.
+      await new Promise((r) => setTimeout(r, 0));
+    }
+  };
+
+  /** One rendered frame without a tick: the first frame behind the play gate. */
+  const present = () => {
+    if (!engine || playing) return;
+    try {
+      const answered = engine.frame(0);
+      if (!answered.ok) return crash(answered.reason ?? "the engine refused a frame");
+      if (!firstFrame && answered.rendered !== false) {
+        firstFrame = true;
+        self.postMessage({ type: "frame", first: true });
+      }
+      flushLog();
+    } catch (e) {
+      crash(e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -297,16 +456,35 @@ export function startWorker(game: GameToken): void {
   self.onmessage = async ({ data }) => {
     if (data.type === "start") {
       try {
-        const progress = (value: number, stage: string) => self.postMessage({ type: "progress", value, stage });
+        const received = new Received((data.expect?.wasm ?? 0) + (data.expect?.cooked ?? 0));
+        const progress = (value: number, stage: string) =>
+          self.postMessage({ type: "progress", value: Math.min(1, value), stage, loaded: received.loaded, total: received.total });
         progress(0, "wasm");
         const glue = (await import(data.glue)) as WebGlue & WebExtras & WebAudioGlue;
         glueRef = glue;
-        await loadWebHost(glue, data.wasm);
-        progress(0.1, "bundle");
+        // The wasm streams through a counting body, so its bytes move the bar while it compiles.
+        let wasm: unknown = data.wasm;
+        if (data.expect?.wasm && typeof Response === "function" && typeof ReadableStream === "function") {
+          const r = await fetch(data.wasm);
+          if (!r.ok || !r.body) throw new Error(`cannot fetch ${data.wasm} (HTTP ${r.status})`);
+          const reader = r.body.getReader();
+          const counted = new ReadableStream<Uint8Array>({
+            async pull(controller) {
+              const { done, value } = await reader.read();
+              if (done) return controller.close();
+              received.loaded += value.length;
+              progress(received.value, "wasm");
+              controller.enqueue(value);
+            },
+          });
+          wasm = new Response(counted, { headers: { "content-type": "application/wasm" } });
+        }
+        await loadWebHost(glue, wasm);
+        progress(data.expect ? received.value : 0.1, "bundle");
         let loaded: Preloaded | null = null;
         if (data.root !== undefined) {
           const compressions = await deviceCompressions(!!data.webgl);
-          loaded = await preloadBundle(glue, data.root, data.basis, compressions, progress);
+          loaded = await preloadBundle(glue, data.root, data.basis, compressions, progress, data.expect ? received : undefined);
           glue.og_web_set_fetcher((path: string) => {
             bytesOf(path).then(
               (bytes) => glue.og_web_put_file(path, bytes),
@@ -327,10 +505,12 @@ export function startWorker(game: GameToken): void {
         rpc = data.rpc;
         let tier = "none";
         if (data.canvas) {
+          canvas = data.canvas;
           tier = await glue.og_web_attach_canvas(engine.id, data.canvas, !!data.webgl);
           rendering = true;
         }
         progress(1, "ready");
+        ready = true;
         self.postMessage({
           type: "ready",
           engine: engine.id,
@@ -341,28 +521,40 @@ export function startWorker(game: GameToken): void {
           files: loaded?.files ?? 0,
           textures: loaded?.textures ?? 0,
         });
-        void idle();
+        void requests();
         if (data.autoplay) {
           playing = true;
           schedule();
+        } else if (rendering) {
+          if (data.prime && engine.probe.tick() === 0) {
+            const primed = engine.advance(1);
+            if (!primed.ok) throw new Error(primed.reason);
+          }
+          present();
         }
       } catch (e) {
-        self.postMessage({ type: "error", message: e instanceof Error ? e.message : String(e) });
+        crash(e instanceof Error ? e.message : String(e));
       }
       return;
     }
-    if (!engine) return;
+    if (!engine || crashed) return;
     if (data.type === "input") engine.probe.input(data.event);
     if (data.type === "viewport" && glueRef) glueRef.og_web_set_viewport(engine.id, JSON.stringify(data.viewport));
+    if (data.type === "resize" && glueRef) {
+      if (canvas) {
+        canvas.width = Math.max(1, data.width);
+        canvas.height = Math.max(1, data.height);
+      }
+      glueRef.og_web_resize?.(engine.id, data.width, data.height);
+      glueRef.og_web_set_viewport(engine.id, JSON.stringify(data.viewport));
+      if (!playing) present();
+    }
     if (data.type === "audio" && glueRef && !audio) {
       const attached = WorkerAudio.attach(glueRef, engine.id, data);
       if (attached.ok) audio = attached.value;
-      else self.postMessage({ type: "error", message: `audio: ${attached.reason}` });
+      else log(`warn: audio: ${attached.reason}`);
     }
-    if (data.type === "rpc") {
-      serve(data.frame, false);
-      if (retries.length > 0) schedule();
-    }
+    if (data.type === "rpc") serve(data.frame, false);
     if (data.type === "play") {
       playing = data.on;
       last = 0;

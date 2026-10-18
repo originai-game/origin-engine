@@ -4,6 +4,7 @@
 //! it applies to, and the tolerance its reference comparison uses.
 
 use crate::compare::Tolerance;
+use crate::fx_scenes as fx;
 use glam::{Mat4, Quat, Vec2, Vec3};
 use og_render::gltf::{load_glb, GltfModel};
 use og_render::{
@@ -27,6 +28,20 @@ pub const SCENES: &[&str] = &[
     "text-msdf",
     "sky-only",
     "showcase",
+    "particles",
+    "particles-cpu",
+    "fx-2d",
+    "trails-beams",
+    "decals",
+    "post-grade",
+    "ao-gtao",
+    "ao-ssao",
+    "dof-low",
+    "dof-high",
+    "god-rays",
+    "motion-blur",
+    "stylised",
+    "skinning",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -144,9 +159,53 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // world-space text and sprites, the tier's antialiasing.
         "showcase" => {
             g.scene = showcase()?;
+            crate::fx_scenes::showcase_effects(&mut g.scene);
             g.desc.antialias = Antialias::Tier;
             g.frames = 16;
+            g.update = Some(crate::fx_scenes::showcase_update);
         }
+        // Night camp: GPU particles (CPU on the no-compute tier) after 120 ticks.
+        "particles" => {
+            g.scene = fx::particles_scene();
+            g.frames = 120;
+            g.update = Some(fx::tick_update);
+        }
+        // The same simulated on the CPU path on any tier (no collision).
+        "particles-cpu" => {
+            g.scene = fx::particles_scene();
+            g.desc.particles = og_render::ParticleSimulation::Cpu;
+            g.frames = 120;
+            g.update = Some(fx::tick_update);
+        }
+        // 2D: lights with soft shadows from crates, glow, 2D particles, flash.
+        "fx-2d" => {
+            g.scene = fx::fx_2d_scene()?;
+            g.frames = 60;
+            g.update = Some(fx::tick_update);
+        }
+        "trails-beams" => {
+            g.scene = fx::trails_scene();
+            g.frames = 50;
+            g.update = Some(fx::move_wisps);
+        }
+        "decals" => g.scene = fx::decals_scene(),
+        // The spike's scene through a teal-orange LUT, vignette, fringing and grain.
+        "post-grade" => {
+            g.scene = spike_gltf_scene()?;
+            fx::grade(&mut g.scene);
+        }
+        "ao-gtao" => g.scene = fx::ao_scene(og_render::AoMethod::Gtao),
+        "ao-ssao" => g.scene = fx::ao_scene(og_render::AoMethod::Ssao),
+        "dof-low" => g.scene = fx::dof_scene(og_render::DofQuality::Low)?,
+        "dof-high" => g.scene = fx::dof_scene(og_render::DofQuality::High)?,
+        "god-rays" => g.scene = fx::god_rays_scene(),
+        "motion-blur" => {
+            g.scene = fx::motion_blur_scene();
+            g.frames = 4;
+            g.update = Some(fx::move_blur);
+        }
+        "stylised" => g.scene = fx::stylised_scene()?,
+        "skinning" => g.scene = fx::skinning_scene(),
         other => {
             return Err(format!(
                 "unknown gfx scene '{other}' (known: {})",
@@ -158,7 +217,11 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
 }
 
 /// Rows top to bottom of an RGBA8 image made by `f(x, y) -> [r, g, b, a]`.
-fn texture(size: u32, color_space: ColorSpace, f: impl Fn(f32, f32) -> [u8; 4]) -> TextureData {
+pub(crate) fn texture(
+    size: u32,
+    color_space: ColorSpace,
+    f: impl Fn(f32, f32) -> [u8; 4],
+) -> TextureData {
     let mut rgba = Vec::with_capacity((size * size * 4) as usize);
     for y in 0..size {
         for x in 0..size {
@@ -176,7 +239,7 @@ fn texture(size: u32, color_space: ColorSpace, f: impl Fn(f32, f32) -> [u8; 4]) 
     }
 }
 
-fn ground(scene: &mut RenderScene, size: f32, cell_m: f32, roughness: f32) {
+pub(crate) fn ground(scene: &mut RenderScene, size: f32, cell_m: f32, roughness: f32) {
     let checker = scene.add_texture(shapes::checker(512, 16));
     let material = scene.add_material(Material {
         base_color_texture: Some(checker),
@@ -507,7 +570,7 @@ pub fn dim_scene(brightness: f32) -> RenderScene {
 }
 
 /// Sprite textures: a soft disc, a 2x2 atlas of shapes, a ring.
-fn sprite_textures(scene: &mut RenderScene) -> [og_render::TextureHandle; 3] {
+pub(crate) fn sprite_textures(scene: &mut RenderScene) -> [og_render::TextureHandle; 3] {
     let disc = scene.add_texture(texture(64, ColorSpace::Srgb, |u, v| {
         let d = ((u - 0.5).powi(2) + (v - 0.5).powi(2)).sqrt() * 2.0;
         let a = ((1.0 - d) * 4.0).clamp(0.0, 1.0);
@@ -732,7 +795,7 @@ fn showcase() -> Result<RenderScene, String> {
     let mut scene = RenderScene::new();
     let models = [load("trickster.glb")?, load("dropship.glb")?];
     let parts: Vec<_> = models.iter().map(|m| (m.add_to(&mut scene), m)).collect();
-    ground(&mut scene, 60.0, 0.5, 0.75);
+    crate::fx_scenes::terrain(&mut scene, 60.0);
     let place = |scene: &mut RenderScene, k: usize, pos: Vec3, yaw: f32, height: f32| {
         let (p, m) = &parts[k];
         let scale = height / (m.max - m.min).max_element().max(1e-3);
@@ -855,7 +918,7 @@ const SPIKE_TIME: f32 = 59.0 / 60.0;
 const SUN: Vec3 = Vec3::new(0.45, 0.8, 0.35);
 const SUN_COLOR: Vec3 = Vec3::new(1.0, 0.95, 0.85);
 
-fn load(name: &str) -> Result<GltfModel, String> {
+pub(crate) fn load(name: &str) -> Result<GltfModel, String> {
     let path = assets_dir().join(name);
     let bytes = std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
     load_glb(&bytes).map_err(|e| format!("{}: {e}", path.display()))

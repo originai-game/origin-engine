@@ -447,8 +447,12 @@ fn sky_only_matches_its_reference() {
 fn showcase_matches_its_reference() {
     let report = check("showcase");
     let s = report.stats;
-    assert_eq!((s.lights, s.sprites), (3, 40));
+    // The campfire adds a fourth light; its three systems, two trails, a
+    // beam and four decals join the M3 showcase.
+    assert_eq!((s.lights, s.sprites), (4, 40));
     assert!(s.glyphs > 0 && s.shadow_passes == 3 + 1 + 6);
+    assert_eq!((s.particle_systems, s.strips, s.decals), (3, 3, 4));
+    assert!(s.prepass_draws > 0, "ambient occlusion runs the prepass");
 }
 
 /// Capture of a BGRA, non-sRGB output (a WebGPU canvas's format) encodes
@@ -476,4 +480,100 @@ fn capture_of_a_bgra_output_matches_rgba() {
         c.rmse, c.max_channel_diff
     );
     assert!(c.max_channel_diff <= 2, "max diff {}", c.max_channel_diff);
+}
+
+// ---------------------------------------------------------------------------
+// The E1 effect scenes (og_tests::fx_scenes): each against its reference,
+// with the counts that say the feature ran.
+// ---------------------------------------------------------------------------
+
+/// Night camp after 120 ticks: six systems (flames, smoke, embers, magic,
+/// sparkles, sparks), GPU on the full tier.
+#[test]
+fn particles_match_their_reference() {
+    let s = check("particles").stats;
+    assert_eq!(s.particle_systems, 6);
+    assert!(s.particle_capacity >= 1_000);
+    if adapter().tier == Tier::Full {
+        assert_eq!(s.particles_cpu, 0, "simulated in compute");
+    } else {
+        assert!(s.particles_cpu > 100);
+    }
+}
+
+/// The same scene on the CPU path (any tier): collision is skipped.
+#[test]
+fn particles_cpu_match_their_reference() {
+    let s = check("particles-cpu").stats;
+    assert!(
+        s.particles_cpu > 200,
+        "{} live CPU particles",
+        s.particles_cpu
+    );
+    assert_eq!(s.particle_collision_skipped, 2);
+}
+
+#[test]
+fn fx_2d_matches_its_reference() {
+    let s = check("fx-2d").stats;
+    assert_eq!((s.lights_2d, s.occluders_2d), (3, 5));
+    assert!(s.sprites > 24 * 14 + 5, "{} sprites", s.sprites);
+}
+
+#[test]
+fn trails_beams_match_their_reference() {
+    let s = check("trails-beams").stats;
+    // Three trails, one ribbon, two beams.
+    assert_eq!(s.strips, 6);
+}
+
+#[test]
+fn decals_match_their_reference() {
+    assert_eq!(check("decals").stats.decals, 5);
+}
+
+#[test]
+fn post_grade_matches_its_reference() {
+    check("post-grade");
+}
+
+#[test]
+fn ao_gtao_matches_its_reference() {
+    assert!(check("ao-gtao").stats.prepass_draws > 0);
+}
+
+#[test]
+fn ao_ssao_matches_its_reference() {
+    assert!(check("ao-ssao").stats.prepass_draws > 0);
+}
+
+#[test]
+fn dof_low_matches_its_reference() {
+    check("dof-low");
+}
+
+#[test]
+fn dof_high_matches_its_reference() {
+    check("dof-high");
+}
+
+#[test]
+fn god_rays_match_their_reference() {
+    check("god-rays");
+}
+
+#[test]
+fn motion_blur_matches_its_reference() {
+    check("motion-blur");
+}
+
+#[test]
+fn stylised_matches_its_reference() {
+    assert!(check("stylised").stats.prepass_draws > 0);
+}
+
+#[test]
+fn skinning_matches_its_reference() {
+    let s = check("skinning").stats;
+    assert_eq!((s.skinned_instances, s.joints), (5, 20));
 }

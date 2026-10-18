@@ -6,7 +6,15 @@
 //! append-only: a handle stays valid for the scene's lifetime, and only
 //! materials can be replaced in place ([`RenderScene::set_material`]).
 
+use crate::effects::{
+    AmbientOcclusion, CameraShake, ChromaticAberration, ColorGrading, ColorLut, Decal,
+    DepthOfField, FilmGrain, Glow, GodRays, Light2d, Lighting2d, LutHandle, MotionBlur, Occluder2d,
+    Outline, ScreenFlash, SpriteFx, Vignette,
+};
 use crate::material::StandardMaterial;
+use crate::particles::{EmitterHandle, ParticleEmitter, ParticleSystem};
+use crate::ribbons::{Beam, Ribbon, Trail, TrailStyle, TrailStyleHandle};
+use crate::skin::{JointPalette, MorphTargets, SkinData, SkinnedInstance};
 use crate::texture::TextureUpload;
 use glam::{Mat4, Vec3};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -481,13 +489,28 @@ impl Default for Bloom {
     }
 }
 
-/// Post-processing after the lit image: bloom and the tonemap. Exposure
-/// belongs to the [`Camera`].
+/// Post-processing around the lit image. Every effect is `None` (off, no
+/// pass recorded) by default. Exposure belongs to the [`Camera`].
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct PostEffects {
     /// `None` turns bloom off (no passes run).
     pub bloom: Option<Bloom>,
     pub tonemap: Tonemap,
+    /// Screen-space ambient occlusion (GTAO / SSAO).
+    pub ao: Option<AmbientOcclusion>,
+    /// Outlines for every opaque surface (materials can set their own).
+    pub outline: Option<Outline>,
+    pub depth_of_field: Option<DepthOfField>,
+    pub motion_blur: Option<MotionBlur>,
+    pub god_rays: Option<GodRays>,
+    /// The 2D glow buffer (sprites with [`SpriteFx::glow`]).
+    pub glow: Option<Glow>,
+    pub color_grading: Option<ColorGrading>,
+    pub vignette: Option<Vignette>,
+    pub chromatic_aberration: Option<ChromaticAberration>,
+    pub film_grain: Option<FilmGrain>,
+    /// A full-screen hit flash.
+    pub flash: Option<ScreenFlash>,
 }
 
 /// A diagnostic view in place of the lit image.
@@ -498,6 +521,9 @@ pub enum DebugView {
     /// Each lit pixel coloured by the shadow cascade that covers it: red,
     /// green, blue for cascades 0, 1, 2; black beyond the last one.
     Cascades,
+    /// The screen-space ambient occlusion term (white: unoccluded), with
+    /// [`PostEffects::ao`] set.
+    AmbientOcclusion,
 }
 
 /// A textured quad in the world's xy plane, facing +z (towards the 2D
@@ -616,6 +642,13 @@ pub struct RenderScene {
     gltf_materials: Vec<Option<Material>>,
     material_revisions: Vec<u64>,
     fonts: Vec<MsdfFont>,
+    /// Per mesh: its skin, for meshes added with `add_skinned_mesh`.
+    skins: Vec<Option<SkinData>>,
+    /// Per mesh: its blendshape targets.
+    morphs: Vec<Option<MorphTargets>>,
+    emitters: Vec<ParticleEmitter>,
+    luts: Vec<ColorLut>,
+    trail_styles: Vec<TrailStyle>,
     /// Objects to draw this frame, in any order.
     pub instances: Vec<Instance>,
     pub camera: Camera,
@@ -629,6 +662,35 @@ pub struct RenderScene {
     /// MSDF text, sorted with the sprites by layer.
     pub texts: Vec<Text>,
     pub debug: DebugView,
+    /// The game's tick (drives beams' scroll and film grain; particle
+    /// systems and trails carry their own).
+    pub tick: u64,
+    /// Ticks per second (the fixed step of particles and trails).
+    pub tick_rate: f32,
+    /// Running particle systems (state is kept by their id).
+    pub particles: Vec<ParticleSystem>,
+    pub trails: Vec<Trail>,
+    pub ribbons: Vec<Ribbon>,
+    pub beams: Vec<Beam>,
+    /// Projected decals (the first [`crate::MAX_DECALS`] are drawn).
+    pub decals: Vec<Decal>,
+    /// The texture decals take their `uv_rect` from (`None`: solid colour).
+    pub decal_atlas: Option<TextureHandle>,
+    /// 2D lighting of the sprite layers (`None`: sprites are unlit).
+    pub lighting_2d: Option<Lighting2d>,
+    pub lights_2d: Vec<Light2d>,
+    pub occluders_2d: Vec<Occluder2d>,
+    /// Effects on single sprites (flash, glow, blend), by sprite index.
+    pub sprite_fx: Vec<SpriteFx>,
+    /// Screen shake applied to the camera.
+    pub shake: CameraShake,
+    /// Each instance's transform in the previous frame (same order as
+    /// `instances`), for per-object motion blur. Ignored unless its length
+    /// equals `instances`'; then only the camera's motion blurs.
+    pub previous_transforms: Vec<Mat4>,
+    /// This frame's joint palettes ([`SkinnedInstance::palette`] indexes them).
+    pub joint_palettes: Vec<JointPalette>,
+    pub skinned_instances: Vec<SkinnedInstance>,
 }
 
 impl Default for RenderScene {
@@ -656,11 +718,116 @@ impl RenderScene {
             sprites: Vec::new(),
             texts: Vec::new(),
             debug: DebugView::None,
+            skins: Vec::new(),
+            morphs: Vec::new(),
+            emitters: Vec::new(),
+            luts: Vec::new(),
+            trail_styles: Vec::new(),
+            tick: 0,
+            tick_rate: 60.0,
+            particles: Vec::new(),
+            trails: Vec::new(),
+            ribbons: Vec::new(),
+            beams: Vec::new(),
+            decals: Vec::new(),
+            decal_atlas: None,
+            lighting_2d: None,
+            lights_2d: Vec::new(),
+            occluders_2d: Vec::new(),
+            sprite_fx: Vec::new(),
+            shake: CameraShake::default(),
+            previous_transforms: Vec::new(),
+            joint_palettes: Vec::new(),
+            skinned_instances: Vec::new(),
         }
+    }
+
+    /// Adds a mesh with a per-vertex skin (four joints and weights each),
+    /// drawn posed by [`RenderScene::skinned_instances`]. The skin must have
+    /// one entry per vertex ([`crate::RenderError::InvalidData`] at upload).
+    pub fn add_skinned_mesh(&mut self, mesh: MeshData, skin: SkinData) -> MeshHandle {
+        let h = self.add_mesh(mesh);
+        self.skins[h.index()] = Some(skin);
+        h
+    }
+
+    /// Gives a mesh blendshape targets (one delta per vertex per target, at
+    /// most [`crate::MAX_MORPH_TARGETS`]); draw it with
+    /// [`RenderScene::skinned_instances`] (weights per instance; a mesh
+    /// without a skin stays in its bind pose). Checked at upload. Set them
+    /// before the mesh's first frame; `false` for a handle of another scene.
+    pub fn set_morph_targets(&mut self, mesh: MeshHandle, targets: MorphTargets) -> bool {
+        match self.morphs.get_mut(mesh.index()) {
+            Some(m) => {
+                *m = Some(targets);
+                true
+            }
+            None => false,
+        }
+    }
+
+    pub(crate) fn morphs(&self) -> &[Option<MorphTargets>] {
+        &self.morphs
+    }
+
+    pub fn skin(&self, handle: MeshHandle) -> Option<&SkinData> {
+        self.skins.get(handle.index())?.as_ref()
+    }
+
+    /// Adds a particle emitter description (an asset).
+    pub fn add_emitter(&mut self, emitter: ParticleEmitter) -> EmitterHandle {
+        self.emitters.push(emitter);
+        EmitterHandle(self.emitters.len() as u32 - 1)
+    }
+
+    /// Replaces an emitter (running systems keep their particles while the
+    /// capacity is unchanged). `false` for a handle of another scene.
+    pub fn set_emitter(&mut self, handle: EmitterHandle, emitter: ParticleEmitter) -> bool {
+        match self.emitters.get_mut(handle.index()) {
+            Some(e) => {
+                *e = emitter;
+                true
+            }
+            None => false,
+        }
+    }
+
+    pub fn emitter(&self, handle: EmitterHandle) -> Option<&ParticleEmitter> {
+        self.emitters.get(handle.index())
+    }
+
+    /// Adds a 32³ colour grading table ([`ColorLut`]).
+    pub fn add_lut(&mut self, lut: ColorLut) -> LutHandle {
+        self.luts.push(lut);
+        LutHandle(self.luts.len() as u32 - 1)
+    }
+
+    /// Adds a trail style (an asset).
+    pub fn add_trail_style(&mut self, style: TrailStyle) -> TrailStyleHandle {
+        self.trail_styles.push(style);
+        TrailStyleHandle(self.trail_styles.len() as u32 - 1)
+    }
+
+    pub(crate) fn emitters(&self) -> &[ParticleEmitter] {
+        &self.emitters
+    }
+
+    pub(crate) fn luts(&self) -> &[ColorLut] {
+        &self.luts
+    }
+
+    pub(crate) fn trail_styles(&self) -> &[TrailStyle] {
+        &self.trail_styles
+    }
+
+    pub(crate) fn skins(&self) -> &[Option<SkinData>] {
+        &self.skins
     }
 
     pub fn add_mesh(&mut self, mesh: MeshData) -> MeshHandle {
         self.meshes.push(mesh);
+        self.skins.push(None);
+        self.morphs.push(None);
         MeshHandle(self.meshes.len() as u32 - 1)
     }
 
@@ -792,6 +959,11 @@ impl RenderScene {
 
     pub fn texture_count(&self) -> usize {
         self.textures.len()
+    }
+
+    /// Every material's handle, in insertion order (tools that edit all of them).
+    pub fn material_handles(&self) -> impl Iterator<Item = MaterialHandle> {
+        (0..self.materials.len()).map(MaterialHandle::from_index)
     }
 
     pub fn material_count(&self) -> usize {

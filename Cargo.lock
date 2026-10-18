@@ -1606,6 +1606,7 @@ version = "0.0.1"
 dependencies = [
  "glam 0.34.1",
  "miniz_oxide 0.8.9",
+ "og-anim",
  "og-audio",
  "og-cook",
  "og-core",

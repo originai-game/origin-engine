@@ -58,6 +58,123 @@ resolves against, so a scripted `touch_move_to` and a click agree.
 
 Any container with `interactive: true` reports its response from `close()`.
 
+### The game widget set (`src/widgets.rs`)
+
+| Call | What it is | Probe ids and text |
+|---|---|---|
+| `tabs(id, items, &mut usize, TabsDesc)` | a segmented control: `fill` track, the chosen tab on `thumb` | `Tab#i`, the labels |
+| `select(id, options, &mut usize, &SelectDesc)` | a field-like trigger and chevron; opens `<id>.menu` (a popover layer and focus scope) with `Option#i`; a press outside or Back closes it | the chosen label |
+| `stepper(id, &mut f32, StepperDesc)` | `Dec`, `Value`, `Inc`; bounded; Left/Right step while a button is focused | `−`, the value, `+` |
+| `radio(id, options, &mut usize, RadioDesc)` | `Option#i` rows: a ring, amber with a dot when chosen | the labels |
+| `checkbox(id, &mut bool, label)`, `checkbox_list(id, labels, &mut [bool])` | a box, amber with a tick (two rotated bars) | the label(s) |
+| `chip(id, text, ChipDesc)` | a capsule on `fill`; selected inverts to `fg` | the text |
+| `badge(id, text, Tone)` | a small capsule in a tone (neutral, success, warn, danger, info, accent, inverse) | the text |
+| `key_value(id, key, value, mono)` | `Key` (fg-muted) and `Value` (end) on one row | both |
+| `divider(id, vertical)`, `spacer(id, Option<Size>)` | a hairline in `border`; empty space | — |
+| `skeleton(id, SkeletonDesc)`, `spinner(id, size)` | the neutral fill with a passing sheen (still under reduced motion); eight dots turning by the tick | — |
+| `icon(id, name, IconDesc)` | a cell of the icon atlas (`set_icons`) by name, tinted | the name |
+| `meter(id, value, max, &MeterDesc)` | health (green, warn under 30 %, danger under 15 %), mana (blue hue), xp (purple hue), accent or custom; a drop leaves a pale trail that follows after `fast`, a rise grows over `slow`, by the tick; notches; a label inside | the label |
+| `cooldown(id, remaining, &CooldownDesc)` | a disc whose amber ring fills clockwise from the top as the cooldown runs out (two rotated half discs), full when ready; a label or icon in the middle | the label |
+| `minimap(id, &MinimapDesc)` | the map texture in a `border-strong` frame, dots for markers (the player amber and ringed), N, a zone label | `Map`, `Zone` |
+| `dialogue(id, &DialogueDesc)` | portrait slot (texture, icon or initial), speaker in `accent-ink`, the line typed at `chars_per_second` by the tick; a press finishes the line, the next answers `advanced` | `Body/Line` shows what is typed |
+| `joystick(id, JoystickDesc)` | a base and a knob following a press that started on it; answers −1..1 with a dead zone; at least three touch targets wide | — |
+| `dpad(id, DpadDesc)` | `Up`, `Down`, `Left`, `Right` arms (each ≥ 44 CSS px) answering which are held | the arm names |
+| `action_button(id, text, &ActionButtonDesc)` | a round touch button (≥ 44): `pressed` while held, `clicked` on a tap; primary is amber | the text |
+| `open_list`/`list_item`/`close_list`, `list(id, ListDesc, selected, row)` | a virtualised scroll list: only rows in view (and one each side) are built, fillers keep the full scroll range; `Row#i` rows select and focus | `Row#i` |
+| `open_grid`/`grid_item`/`close_list`, `grid(...)` | the same for a wrapping grid of equal cells (`Cell#i`) | `Cell#i` |
+| `spotlight(id, Option<Rect>, SpotlightDesc)` | the scrim on four sides of a hole (`Top`, `Left`, `Right`, `Bottom`, `Hole`) with an amber edge; presses on the shades stop there, presses in the hole reach what is under it | — |
+| `toast(text, ToastDesc)`, `dismiss_toast(id)` | a queue in the UI state: at most three up (older leave first), 3.2 s (6 s danger), enter and leave by the tick, a press dismisses; stacked at `set_toast_anchor` | `Toasts/Toast#n`, the text |
+| `memory(id, initial)`, `remember(id, value)` | a number kept for an id in the UI state (a template's tab) | — |
+
+Widget memory between ticks (a select being open, a meter's trail, the
+dialogue's start, a transition's progress, a drag's source) lives in
+`State::anims`, keyed by the element's path hash and dropped when the widget
+is not built; it, the toast queue, the UI clock, queued navigation and the
+focus scope are all in `save_state`, so a restored world replays the UI.
+
+**Drag and drop.** A press on a list row or grid cell marks it the source; a
+release over another row or cell answers `Response::dropped = Some(source)`
+there, and `dragging(id)` answers the source while the press is held; the
+cell under a drag shows the focus ring.
+
+## Layers
+
+Elements outside the tree, laid out after it and drawn over it in rank order:
+anchored groups (`anchor`, rank 1; `over: true` raises one to rank 3), dialogs
+(`open_modal`/`close_modal`, `modal`: a scrim backdrop that takes presses,
+padded by the safe area, with a centred `Panel`, rank 2), popovers (a
+select's menu, rank 3), the toast stack (rank 4) and tooltips (rank 5). A
+layer's probe path is its own id. Anchored groups sit at one of nine points of
+the safe area (`Anchor::TopLeft` … `BottomRight`, `Center`), inset by the
+density's gutter (or `margin`), moved by `offset`.
+
+## Focus navigation (`src/nav.rs`)
+
+One focus for pointer, keyboard and gamepad. Intents come from the arrow
+keys, Tab/Shift+Tab, Enter, Space and Escape (`InputFrame::keys`, `shift`),
+from a gamepad (`InputFrame::gamepad`: d-pad and A/B edges, the left stick
+past half-way once, then after `motion.duration.slow` every
+`motion.duration.fast`) and from `navigate(Nav)` (queued for the next tick).
+
+- Directions pick the nearest focusable control whose centre lies that way,
+  scoring distance along it plus three times the gap across it; with none,
+  focus wraps to the far end of the same row or column. Next/Prev walk
+  reading (draw) order and wrap.
+- Activate presses the focused control (`Response::clicked`); Left/Right
+  adjust a focused slider or stepper; while a text field is edited, Left,
+  Right, Enter, Space and Escape belong to it.
+- Back closes the topmost dialog or menu, else `back()` answers true once.
+- A dialog or open menu is a focus scope: while it is the topmost, focus
+  stays inside; when it opens, focus moves to its first control (or the one a
+  widget asks for, the select's chosen option); when it closes, focus returns.
+- A press focuses the control without the ring; navigation shows the ring
+  (amber `focus`, a gap of what is behind, then the control).
+- Navigation that lands on a control outside its scroll container's view
+  scrolls it in (rows just outside a virtualised list are reachable).
+- `set_navigation(false)` turns arrows and Tab off for a gameplay screen whose
+  keys move the player (the HUD templates do); an open scope turns it on.
+
+The browser shell already maps a gamepad's standard buttons to keys (A Space,
+B Escape, d-pad and stick arrows, Back Tab, Start Enter), so pads navigate on
+the web today; `GamepadFrame` is ready for og-input's gamepad resource.
+
+## Motion (`src/motion.rs`)
+
+`transition(id, show, TransitionDesc, f)` (`open_transition` + `close`) moves
+its content in and out: fade, slide up/down/left/right (by `space.xl`) or
+scale (from 92 %), over `motion.duration.base` unless given, eased by the
+token curves (`ease_out` entering, `ease_exit` leaving, cubic Béziers solved
+by bisection: arithmetic only), advancing one tick per frame. Content is
+built while visible (it stays visible while it leaves) and takes no input
+while it moves. Dialogs scale in over a fading scrim; toasts slide. Under
+`Theme::reduced_motion` every movement becomes a fade and skeleton sheens stop.
+The transform applies to the laid-out rectangles (so drawing, hit testing and
+the probe agree), to opacity and to text size.
+
+## Responsive layout and the safe area
+
+`Viewport::breakpoint()` / `Ui::breakpoint()`: `PhonePortrait` and
+`PhoneLandscape` (shorter side under 600), `Tablet` (under 1024 wide),
+`Desktop`. Density `Auto` already raises controls to touch size on a coarse
+pointer or a surface under 768 px; touch widgets never go under the touch
+`h-control-sm` (44). The root and every anchored group keep to the safe area;
+dialog backdrops cover the whole surface and pad their content by it.
+
+## Theme variants
+
+`Theme::dark()` (default) and `light()`; `Theme::high_contrast(scheme)`
+remaps `fg-muted` → `fg`, `fg-subtle` → `fg-muted`, `fill` → `fill-strong`,
+`fill-strong` → `border-strong`, `border` → `border-strong`, deepens the scrim
+and outlines every control in `border-strong` (token values only);
+`with_accent(Srgba)` and `with_hue(HueName)` set a game's accent and derive
+its hover, active, ink, soft and focus tones the way the tokens derive them
+from amber (the same mix towards white or black, the same alpha; amber in
+gives the token palette back exactly), picking `accent-fg` or the light `fg`
+as the ink on it by contrast. `reduced_motion` is a theme flag. The generator
+still owns every value (`src/theme.rs`); variants are mappings over it.
+
+
+
 ## Layout
 
 Sizes per axis: `Size::Fit { min, max }` (content; the default),
@@ -162,21 +279,57 @@ regeneration does not pass. Colours convert to linear for og-render
   `width·dpr × height·dpr` with `Tonemap::None` and 0 EV so token colours come
   out as authored.
 
-**What og-render should add** (the minimal change, for its owner):
+- **Rotated shapes.** `DrawCmd::Bar` (a solid bar rotated about its centre:
+  chevrons, ticks, the d-pad's arrows) and `DrawCmd::Half` (the atlas disc's
+  right half on a quad anchored at the disc's centre, rotated: two make any
+  pie, so a cooldown ring is a track disc, two halves and a core disc) are
+  sprites with `rotation`; they cannot be cut by the CPU clip, so one that is
+  not wholly inside its clip is not drawn.
 
-1. A **screen-space overlay**: `RenderScene::overlay { sprites, texts }` drawn
-   after the tonemap into the output, with its own orthographic projection in
-   output pixels, no depth test, straight alpha. Today UI sprites are
-   world-space: they pass through exposure and the tonemap and are
-   depth-tested against the 3D scene, so a UI over a **3D** game cannot be
-   drawn in the same frame (2D games with `Tonemap::None` work now, as the
-   sample does). One extra pass, reusing the sprite pipeline with another
-   view-projection.
-2. A **clip rectangle per instance** (`clip: Option<[f32; 4]>` on `Sprite` and
-   `Text`, 16 bytes in the instance, `discard` outside in `sprite.wgsl`): exact
-   clipping of glyphs and rounded corners at scroll edges without breaking
-   runs (a per-run scissor would split runs per clip). og-ui then drops its
-   CPU clipping of text lines.
+**The og-render overlay ask** (for the render owner; until it lands, the
+runtime keeps drawing the UI on a plane in front of a camera that looks down
+−Z and skips it for any other camera, and TAA blurs it):
+
+```rust
+/// Drawn last, in output pixels, over the finished frame.
+pub struct Overlay {
+    /// Quads and text in overlay space: CSS pixels, origin top left, y down
+    /// (`position.y` grows downward; `rotation` clockwise on screen).
+    pub sprites: Vec<Sprite>,
+    pub texts: Vec<Text>,
+    /// The overlay's size in CSS pixels and device pixels per CSS pixel: the
+    /// projection maps (0, 0)–(width, height) onto the output's
+    /// (0, 0)–(width·scale, height·scale).
+    pub width: f32,
+    pub height: f32,
+    pub scale: f32,
+    /// Optional per-instance clip rectangles, overlay space: `clips[i]`
+    /// applies to the sprite or text whose `clip` index is `i` (fragment
+    /// discard; no run splitting).
+    pub clips: Vec<[f32; 4]>,
+}
+// RenderScene { ..., pub overlay: Option<Overlay> }
+```
+
+1. Drawn **after** every post effect (exposure, bloom, tonemap, TAA
+   resolve, FXAA) into the final target, so it is never tone mapped, never
+   exposed, never jittered, never in TAA history, and never depth-tested;
+   colours are linear in, encoded like sprite colours on write; straight alpha
+   over the frame.
+2. Sorted and batched exactly as sprites and text are today (layer, kind,
+   texture; the same atlas and font handles, MSDF text, `rotation` about the
+   anchor), so og-ui's painter levels keep working.
+3. Included in `read_offscreen`, the probe's `screenshot` and `capture`, and
+   counted in `FrameStats` (sprites, glyphs, draws).
+4. Available on every backend tier (Metal, Vulkan, WebGPU, WebGL2): one more
+   pass with the sprite pipeline and an orthographic view-projection.
+5. Optional, same pass: `Sprite::clip`/`Text::clip` as an index into
+   `clips` (16 bytes per instance or a `u32`), so og-ui can drop its CPU
+   clipping (text cut by whole lines, rotated shapes dropped at edges).
+
+With it, `og_api::runtime::modules::emit` hands og-ui's frame to the overlay
+with `UiFrame::emit` unchanged except for y-down coordinates, and the UI
+shows over 3D games at any camera, sharp under TAA.
 
 ## Input
 
@@ -225,88 +378,34 @@ the last frame's hit rectangles); a host snapshot that stores them with the
 world replays the UI exactly (`tests/probe.rs` proves it through the probe's
 snapshot and restore).
 
-## TypeScript shape proposed for the IDL `ui` module
+## In TypeScript
 
-For the IDL agent to transcribe into `crates/og-api/api.ogt` (module `ui`,
-TypeScript `og.ui`). Lengths are `cssPx`; every desc's zero value is the
-default stated.
+The IDL module `ui` (`crates/og-api/api.ogt`, `og.ui` in
+`packages/engine/types/index.d.ts`, `packages/knowledge/wiki/ui.md`) carries
+every call above with the same names in lowerCamelCase: value-carrying
+widgets return the new value (`og.ui.tabs(...).selected`,
+`og.ui.stepper(...).value`); containers have `open*`/`close` pairs and
+`host false` sugar taking a build callback (`row`, `column`, `panel`,
+`scroll`, `anchor`, `transition`, `modal`, `list`, `grid`); `toast`,
+`dismissToast`, `navigate` and `previewViewport` take the world and work
+between ticks; `frameTheme`, `frameViewport`, `breakpoint`, `hasIcon`,
+`seconds`, `tick` read the frame being built. The bindings are in
+`og_api::runtime::modules` (both hosts call them).
 
-```ts
-// Sizes along one axis.
-type Size =
-  | { kind: "fit"; min?: number; max?: number }      // default: fit 0..∞
-  | { kind: "grow"; min?: number; max?: number }
-  | { kind: "fixed"; px: number }
-  | { kind: "percent"; fraction: number };             // ratio of the parent's inner size
-
-interface Insets { left: number; top: number; right: number; bottom: number }   // all 0
-
-enum Direction { row, column }                        // row
-enum Align { start, center, end, spaceBetween }       // start (main axis)
-enum Cross { start, center, end, stretch }            // start (cross axis)
-enum TextAlign { start, center, end }                 // start
-enum FontRole { body, display, mono }                 // body
-enum ButtonVariant { secondary, primary, quiet, danger }  // secondary
-enum ControlSize { small, medium, large }             // medium
-enum Scheme { light, dark }                           // dark
-enum DensityMode { auto, compact, comfortable, touch }    // auto
-// The palette keys of tokens.json (generated from the vendored file, as theme.rs is).
-enum ThemeColor { bg, bgSubtle, surface, surfaceRaised, surfaceHover, fill, fillStrong, thumb,
-  border, borderStrong, fg, fgMuted, fgSubtle, fgInverse, accent, accentHover, accentActive,
-  accentSoft, accentFg, accentInk, focus, danger, success, warn, info, stage, stageSurface,
-  stageRaised, stageBorder, stageFg, stageMuted, stageDanger /* … every color key */ }
-// The type steps of tokens.json: xs, meta, caption, sm, body, reading, base, lg, xl, xl2 … xl8,
-// displaySm, displayMd, displayLg, displayXl, displayXl2.
-enum TypeStepName { /* generated */ }
-
-interface Paint { token?: ThemeColor; color?: Color /* sRGB as authored, alpha 1 */; alpha?: number /* default 1 */ }
-
-interface ElementDesc {        // desc true
-  direction: Direction; width: Size; height: Size; padding: Insets; gap: number;
-  align: Align; cross: Cross; wrap: boolean; scroll: boolean; interactive: boolean;
-  background?: Paint; radius: number;
-}
-interface LabelDesc { step?: TypeStepName /* body */; color?: Paint /* fg */; align: TextAlign; nowrap: boolean; width: Size; font: FontRole }
-interface ButtonDesc { variant: ButtonVariant; size: ControlSize; disabled: boolean; width?: Size /* fit */ }
-interface PanelDesc { row: boolean; width: Size; height: Size; padding?: Insets /* space.lg */; gap?: number /* space.md */; align: Align; cross: Cross; background?: Paint /* surface */ }
-interface ScrollDesc { width: Size; height: Size; padding: Insets; gap: number }
-interface ImageDesc { texture?: render.Texture /* none: solid */; uv?: [number, number, number, number] /* whole */; tint?: Paint /* white */; width: Size; height: Size }
-interface ProgressDesc { width?: Size /* grow */ }
-interface SliderDesc { min: number; max: number /* min == max: 0..1 */; step: number /* 0: continuous */; width?: Size /* grow */ }
-interface FieldDesc { placeholder: string; width?: Size /* grow */; maxChars: number /* 0: no limit */ }
-
-interface Response { hovered: boolean; pressed: boolean; clicked: boolean; changed: boolean; focused: boolean; submitted: boolean }
-
-interface Viewport { width: number; height: number; dpr: number; safeArea: Insets; coarsePointer: boolean }
-interface UiDesc { scheme: Scheme; density: DensityMode; font?: load.Font; displayFont?: load.Font; monoFont?: load.Font }
-
-// og.ui — call inside a system; the engine runs begin() before the game's
-// systems with og.Input and the shell's viewport, and end() after them,
-// then emits the frame into the render scene and the probe.
-function configure(desc: UiDesc): void;
-function viewport(): Viewport;                                   // this tick's play surface
-function open(id: string, desc?: ElementDesc): void;
-function close(): Response;
-function row(id: string, desc: ElementDesc, build: () => void): void;      // TS sugar over open/close
-function column(id: string, desc: ElementDesc, build: () => void): void;   // TS sugar
-function panel(id: string, desc: PanelDesc, build: () => void): void;      // TS sugar
-function scroll(id: string, desc: ScrollDesc, build: () => void): void;    // TS sugar
-function label(id: string, text: string, desc?: LabelDesc): void;
-function button(id: string, text: string, desc?: ButtonDesc): Response;
-function image(id: string, desc: ImageDesc): void;
-function progress(id: string, value: number /* ratio */, desc?: ProgressDesc): void;
-function slider(id: string, value: number, desc?: SliderDesc): { response: Response; value: number };
-function toggle(id: string, on: boolean, label: string): { response: Response; on: boolean };
-function textField(id: string, value: string, desc?: FieldDesc): { response: Response; value: string };
-function tooltip(text: string): void;
-function idi(name: string, index: number): string;              // "name#index"
-function theme(): Theme;                                         // the generated tokens, read-only (palette, space, radius, typeRamp, sizes, durationsMs)
-```
-
-The value-carrying widgets return the new value instead of taking a
-reference (TypeScript has no `&mut`). `row`/`column`/`panel`/`scroll` with a
-closure are TypeScript sugar over `open`/`close`, so the binding needs no
-callbacks across the boundary. The command channel needs no new actions.
+**The UI kit** (`packages/engine/src/ui-kit`, merged into `og.ui`): screen
+templates written in TypeScript over those calls, each one call per tick with
+data in and what happened out, declared in the IDL as `host false`:
+`mainMenu`, `pauseMenu`, `settingsScreen` (Audio, Graphics, Controls,
+Language over `GameSettings`, `onChange`/`onSave` hooks), `platformerHud`,
+`shooterHud`, `puzzleHud`, `idleHud`, `racingHud` (with touch controls on
+phones and tablets), `cutscene`, `shopScreen`, `inventoryScreen` (drag and
+drop), `levelSelect`, `resultsScreen` (stars landing, the score counting up,
+a share hook), `leaderboardScreen` (loading, error and empty states),
+`tutorialOverlay` (spotlight and callout), `loadingScreen` (real progress or
+a spinner, tips), `confirmDialog`, `alertDialog`, and the toast service
+`og.ui.toast`. `templates/ui-kit` shows them all and is the reference source
+of `references/<tier>/kit-*.png`; `packages/knowledge/skills/og-ui` teaches a
+Maker which to pick and how to theme it.
 
 ## Tests
 
@@ -324,8 +423,12 @@ cargo check --target wasm32-unknown-unknown -p og-ui
 | `tests/probe.rs` | through og-probe's command channel only: a click needs press and release inside (press-inside-release-outside, press-outside-release-inside and held presses do not click); `dump_ui` lists every visible element with bounds and text, in draw order; `move_to_text` exact, substring, `@N`, `@-N` and misses (which cancel the next touch); wheel scrolling moves rows, clips them to the list and stops at the content's end; the text field, toggle and slider edit game state; restoring the world and `save_state` replays identical frames |
 | `tests/gfx.rs` | the sample screen rendered headless matches `references/<tier>/sample-screen.png` (og-tests' tolerance: 32/255 per channel, ≤ 0.5 % outliers, RMSE ≤ 0.01) in at most 2 sprite draws per painter level, no missing glyph; a scroll container cuts every sprite and text line it draws to its rectangle |
 | `tests/theme.rs` | `src/theme.rs` equals the generator's output for the vendored tokens |
+| `tests/widgets.rs` | focus: arrows pick the aligned neighbour and wrap, Tab/Shift+Tab walk reading order and wrap, Enter and Space press, the gamepad d-pad and A, the stick at once then after 24 and every 11 ticks; a dialog takes focus, keeps Tab inside, blocks presses to what is under it, closes on the backdrop and Back (not when locked) and returns focus; a select opens, chooses (mouse and keys) and closes on a press outside; a 1000-row list builds at most 13 rows, reaches its last row and scrolls a keyboard-focused row into view; toasts cap at three, leave after 3.2 s and come back with a restored state; a transition advances 1/15 per tick, is inert while moving, leaves; a meter's trail follows a drop and two runs draw identical frames; the dialogue types 15 characters in 30 ticks at 30/s, a press finishes, the next advances; anchors keep to the safe area and touch controls to 44 px; a joystick answers (1, 0) at its edge; amber in gives the token palette back, a hue accent derives lighter hovers in dark, high contrast takes `fg` for muted ink; a drag from cell 0 to cell 6 drops once and a click is no drop |
+| `tests/kit_gfx.rs` | the widget set (tabs, an open select menu with the focus ring, stepper, radio, checkboxes, chips, badges, meters with trail, notches and label, skeleton, four cooldown rings, stick, d-pad, action button, spinner, a toast) matches `references/<tier>/widget-set.png` in 4 sprite draws; the pies are the expected half-disc angles |
+| `templates/ui-kit/tests/*.og.ts` | through the command channel on the native host: every template at 1280×720 and 390×844@3 matches `references/<tier>/kit-{desktop,phone}-<screen>.png`; touch, keyboard and gamepad flows, drag and drop, the phone's safe area and 44 px targets, the tutorial spotlight (`templates/ui-kit/README.md`) |
 
-Each was checked by breaking the code it covers (grow caps, the
+Each was checked by breaking the code it covers (the kit round's breaks are
+in `tests/evidence/E1/ui-break-and-restore.md`; earlier: grow caps, the
 release-inside rule, label probe text, element order, scroll clipping, wheel
 scrolling, a theme constant, the primary colour, the saved scroll state,
 Backspace, the toggle's click). A tier without its own reference compares
@@ -340,24 +443,22 @@ font is og-tests' committed MSDF atlas (Noto Sans SC subset, OFL).
   (needs per-glyph spacing in og-render's `Text`); kerning and shaping
   (rustybuzz, with og-render); RTL; ellipsis truncation; selection in fields;
   multi-line text areas; IME composition.
-- **Animations**: hover, press and focus transitions and overlay entry on the
-  token springs and easings (`SPRING_DEFAULT`, `EASE_OUT`), ticked
-  deterministically; momentum scrolling on `SPRING_MOMENTUM`; caret blink.
+- **Animations**: hover and press transitions on the token springs
+  (`SPRING_DEFAULT`); momentum scrolling on `SPRING_MOMENTUM`; caret blink.
+  (Overlay entry and exit, toasts, meters and typing run on the token
+  easings by the tick since the kit round.)
 - **Accessibility**: an accessibility tree mirrored to the shell (roles,
   names, values, states) so screen readers and the DOM can read the canvas
-  UI; keyboard focus order (Tab, arrows) and visible focus for every control;
-  `prefers-reduced-motion` and contrast modes from the shell.
+  UI; `prefers-reduced-motion` and `prefers-contrast` read from the shell
+  into `UiDesc` (the theme flags exist; nothing sets them from the page yet).
 - Materials: glass (blur needs a render-graph pass), shadows and the dark
   edge light; icons (iconoir) as an MTSDF atlas.
 - Layout: horizontal and two-axis scrolling, nested scroll chaining,
-  aspect-ratio images, absolute/floating elements beyond tooltips (menus,
-  dialogs, toasts), z-order control.
+  aspect-ratio images.
+- **Input**: og-input owes a gamepad resource (`InputSource::gamepad` reads
+  it then; today the web shell maps pads to keys) and multi-touch (`og.Input`
+  carries one pointer, so a stick and a button cannot be held together).
 - The og-render overlay and per-instance clip above; then drop CPU clipping.
-- **Reaching TypeScript**: the `ui` module proposed above is not in
-  `crates/og-api/api.ogt` at 49ed935 and no host links og-ui yet, so games
-  cannot call it; the IDL transcription and the host wiring (begin/end
-  around the game's systems, emit into the render scene, `SharedUi::probe()`
-  as the probe's `UiTree`) are owed.
 - og-probe re-exports og-input since 5c79c75, so the `ProbeInput` bridge in
   `tests/support/mod.rs` and the "og-probe still ships its interim
   `og.Input`" note in §Input are out of date; the bridge can go.

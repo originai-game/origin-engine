@@ -26,7 +26,7 @@ function walk(root: string, at = root): string[] {
   });
 }
 
-const sourceFiles = walk(template).filter((f) => !/^(cooked|dist|node_modules)\//.test(f)).sort();
+const sourceFiles = walk(template).filter((f) => !/^(cooked|dist|og-out|node_modules|\.og)\//.test(f)).sort();
 
 test("scaffolds every template file with the game's name and id", () => {
   const r = cli("space-run", "--name", "Space Run");
