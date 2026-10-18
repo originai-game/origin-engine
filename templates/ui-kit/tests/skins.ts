@@ -1,9 +1,11 @@
 // The style-pack gallery: every screen of the kit in one skin, composed into
-// one reference sheet per skin (crates/og-ui/references/<tier>/kit-skin-<name>.png:
-// 7 × 3 screens, each the 1280×720 frame box-filtered to 640×360, in
-// FRAME_SCREENS order without the gallery). Each screen is compared with its
-// cell of the sheet under og-tests' rule (frames.ts). `OG_UI_CAPTURE=1 og test .`
-// records the sheet instead.
+// one reference sheet per skin and surface, in FRAME_SCREENS order without
+// the gallery: on a desktop crates/og-ui/references/<tier>/kit-skin-<name>.png
+// (7 × 3 cells, each the 1280×720 frame box-filtered to 640×360), on a phone
+// in portrait kit-skin-<name>-phone.png (10 × 2 cells, each the 390×844@3
+// frame box-filtered to its 390×844 CSS pixels). Each screen is compared with
+// its cell of the sheet under og-tests' rule (frames.ts).
+// `OG_UI_CAPTURE=1 og test .` records the sheets instead.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -12,35 +14,47 @@ import { playtest, type PlaytestDesc } from "@origingame/engine/playtest";
 import { decodePng, difference, outDir, referencesDir, type Image } from "./frames.ts";
 import { framesScript } from "./script.ts";
 
-const COLS = 7;
-const CELL_W = 640;
-const CELL_H = 360;
+/** How a surface's frames become a sheet: the frame size, the box filter, the columns. */
+interface Surface {
+  readonly size: string;
+  readonly viewport: string;
+  readonly factor: number;
+  readonly cols: number;
+  readonly suffix: string;
+}
 
-/** A 2× box filter (1280×720 to 640×360). */
-export function half(img: Image): Image {
-  const w = img.width >> 1;
-  const h = img.height >> 1;
+const SURFACES: Record<"desktop" | "phone", Surface> = {
+  desktop: { size: "1280x720", viewport: "", factor: 2, cols: 7, suffix: "" },
+  phone: { size: "1170x2532", viewport: "0.0:viewport:phone;", factor: 3, cols: 10, suffix: "-phone" },
+};
+
+/** An n× box filter (1280×720 by 2 to 640×360; 1170×2532 by 3 to 390×844). */
+export function shrink(img: Image, n: number): Image {
+  const w = Math.floor(img.width / n);
+  const h = Math.floor(img.height / n);
   const out = new Uint8Array(w * h * 4);
+  const area = n * n;
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       for (let k = 0; k < 4; k++) {
-        const at = (yy: number, xx: number) => img.rgba[(yy * img.width + xx) * 4 + k]!;
-        out[(y * w + x) * 4 + k] = (at(2 * y, 2 * x) + at(2 * y, 2 * x + 1) + at(2 * y + 1, 2 * x) + at(2 * y + 1, 2 * x + 1) + 2) >> 2;
+        let sum = 0;
+        for (let dy = 0; dy < n; dy++) for (let dx = 0; dx < n; dx++) sum += img.rgba[((n * y + dy) * img.width + n * x + dx) * 4 + k]!;
+        out[(y * w + x) * 4 + k] = Math.floor((sum + (area >> 1)) / area);
       }
     }
   }
   return { width: w, height: h, rgba: out };
 }
 
-/** Cell `i` of a sheet. */
-export function cell(sheet: Image, i: number): Image {
-  const x0 = (i % COLS) * CELL_W;
-  const y0 = Math.floor(i / COLS) * CELL_H;
-  const out = new Uint8Array(CELL_W * CELL_H * 4);
-  for (let y = 0; y < CELL_H; y++) {
-    out.set(sheet.rgba.subarray(((y0 + y) * sheet.width + x0) * 4, ((y0 + y) * sheet.width + x0 + CELL_W) * 4), y * CELL_W * 4);
+/** Cell `i` of a sheet with `cols` columns of `cw`×`ch` cells. */
+export function cell(sheet: Image, i: number, cols: number, cw: number, ch: number): Image {
+  const x0 = (i % cols) * cw;
+  const y0 = Math.floor(i / cols) * ch;
+  const out = new Uint8Array(cw * ch * 4);
+  for (let y = 0; y < ch; y++) {
+    out.set(sheet.rgba.subarray(((y0 + y) * sheet.width + x0) * 4, ((y0 + y) * sheet.width + x0 + cw) * 4), y * cw * 4);
   }
-  return { width: CELL_W, height: CELL_H, rgba: out };
+  return { width: cw, height: ch, rgba: out };
 }
 
 function crc32(bytes: Uint8Array): number {
@@ -86,29 +100,33 @@ export function encodePng(img: Image): Uint8Array {
   return png;
 }
 
-/** The playtest of one style pack. */
-export function skinPlaytest(skin: string): PlaytestDesc {
+/** The playtest of one style pack on a surface (desktop by default). */
+export function skinPlaytest(skin: string, on: "desktop" | "phone" = "desktop"): PlaytestDesc {
+  const surface = SURFACES[on];
   const script = framesScript(0.5);
   const files = script.files.filter((f) => f !== "gallery.png");
+  const name = `kit-skin-${skin}${surface.suffix}.png`;
   return playtest({
-    name: `every screen in the ${skin} style pack matches its cell of kit-skin-${skin}.png`,
-    size: "1280x720",
-    commands: `0.2:skin:${skin};${script.commands}`,
+    name: `every screen in the ${skin} style pack${on === "phone" ? " on a phone" : ""} matches its cell of ${name}`,
+    size: surface.size,
+    commands: `${surface.viewport}0.2:skin:${skin};${script.commands}`,
     check(run, t) {
       t.equal(run.warnings.join("; "), "", "the script ran without warnings");
       t.ok(run.quit, "the script reached quit");
-      const cells = files.map((f) => half(decodePng(readFileSync(join(outDir(), f)))));
-      const sheet: Image = { width: COLS * CELL_W, height: Math.ceil(cells.length / COLS) * CELL_H, rgba: new Uint8Array(0) };
+      const cells = files.map((f) => shrink(decodePng(readFileSync(join(outDir(), f))), surface.factor));
+      const cw = cells[0]!.width;
+      const ch = cells[0]!.height;
+      const cols = surface.cols;
+      const sheet: Image = { width: cols * cw, height: Math.ceil(cells.length / cols) * ch, rgba: new Uint8Array(0) };
       sheet.rgba = new Uint8Array(sheet.width * sheet.height * 4);
       cells.forEach((c, i) => {
-        const x0 = (i % COLS) * CELL_W;
-        const y0 = Math.floor(i / COLS) * CELL_H;
-        for (let y = 0; y < CELL_H; y++) sheet.rgba.set(c.rgba.subarray(y * CELL_W * 4, (y + 1) * CELL_W * 4), ((y0 + y) * sheet.width + x0) * 4);
+        const x0 = (i % cols) * cw;
+        const y0 = Math.floor(i / cols) * ch;
+        for (let y = 0; y < ch; y++) sheet.rgba.set(c.rgba.subarray(y * cw * 4, (y + 1) * cw * 4), ((y0 + y) * sheet.width + x0) * 4);
       });
-      writeFileSync(join(outDir(), `kit-skin-${skin}.png`), encodePng(sheet));
+      writeFileSync(join(outDir(), name), encodePng(sheet));
       const refs = referencesDir();
       const own = join(refs, run.tier);
-      const name = `kit-skin-${skin}.png`;
       if (process.env.OG_UI_CAPTURE !== undefined) {
         mkdirSync(own, { recursive: true });
         writeFileSync(join(own, name), encodePng(sheet));
@@ -125,7 +143,7 @@ export function skinPlaytest(skin: string): PlaytestDesc {
       const ref = decodePng(readFileSync(refPath));
       t.equal(`${ref.width}x${ref.height}`, `${sheet.width}x${sheet.height}`, "the sheet has every screen");
       files.forEach((f, i) => {
-        const d = difference(cells[i]!, cell(ref, i));
+        const d = difference(cells[i]!, cell(ref, i, cols, cw, ch));
         t.ok(d.outliers <= 0.005 && d.rmse <= 0.01, `${skin} ${f} matches its cell: ${(d.outliers * 100).toFixed(3)} % outliers (≤ 0.5 %), RMSE ${d.rmse.toFixed(5)} (≤ 0.01)`);
       });
     },

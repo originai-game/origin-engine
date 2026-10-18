@@ -48,6 +48,7 @@ tier without its own references compares with `metal` and says so.
 | `phone` | on a phone the HUD corners sit in the safe area, every touch control is at least 44 CSS px, a tap on Jump answers once |
 | `tutorial` | the spotlight's hole contains each step's target, a press on the dimmed part changes nothing, Next walks to Done |
 | `skin-<pack>` (six) | every screen but the gallery, in that style pack at 1280×720, matches its 640×360 cell of `crates/og-ui/references/<tier>/kit-skin-<pack>.png` (7 × 3 cells in `FRAME_SCREENS` order) |
+| `skin-<pack>-phone` (six) | the same on a phone in portrait (390×844@3 with the notch and home indicator), each screen box-filtered to its 390×844 CSS pixels against its cell of `kit-skin-<pack>-phone.png` (10 × 2 cells) |
 | `juice` | an iris transition keeps the old screen until it has closed and builds the new one as it opens; the results score counts and lands on 12,840; a dialog's open, a hover and a press start voices on the ui bus |
 
 ## Style packs
