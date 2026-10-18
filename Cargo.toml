@@ -27,6 +27,10 @@ log = "0.4"
 # every native step in this profile (AGENTS.md §Build and gate discipline).
 [profile.dev]
 debug = false
+# Dependencies never carry debuginfo, also where CARGO_PROFILE_DEV_DEBUG
+# turns it on for the workspace (CI).
+[profile.dev.package."*"]
+debug = false
 
 # What ships: the wasm the size gate measures, packages/engine packs, the
 # perf lane. Never used for tests, drift or the gate's addon.
