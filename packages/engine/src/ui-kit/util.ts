@@ -75,6 +75,7 @@ export function capsule(id: string, build: () => void, desc: { gap?: number; pad
     cross: "center",
     background: token("materialThick"),
     radius: t.button,
+    frame: "capsule",
   }, build) as Api.Response;
 }
 

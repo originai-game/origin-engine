@@ -39,7 +39,7 @@ export function shopScreen(id: string, desc: Api.ShopDesc = {}): Api.ShopResult 
       }
       capsule("Balance", () => {
         if (desc.currencyIcon) iconOr("Icon", desc.currencyIcon, 18, token("accent"));
-        kit.label("Amount", fmt(balance), { font: "mono", nowrap: true });
+        kit.counter("Amount", balance, { font: "mono" });
         kit.label("Unit", desc.currency ?? "coins", { step: "meta", color: token("fgMuted"), nowrap: true });
       });
     });

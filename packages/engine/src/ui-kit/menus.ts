@@ -38,7 +38,7 @@ export function mainMenu(id: string, desc: Api.MainMenuDesc = {}): Api.MenuResul
     radius: t.panel,
   }, () => {
     kit.column("Heading", { gap: t.xs, cross: "center", width: grow() }, () => {
-      kit.label("Title", desc.title ?? "", { step: phone ? "displayMd" : "displayLg", font: "display", align: "center", width: grow() });
+      kit.label("Title", desc.title ?? "", { step: phone ? "displayMd" : "displayLg", font: "display", align: "center", width: grow(), heading: true });
       if (desc.subtitle) kit.label("Subtitle", desc.subtitle, { color: token("fgMuted"), align: "center", width: grow() });
     });
     chosen = menuColumn("Items", items, grow());
@@ -91,7 +91,7 @@ export function loadingScreen(id: string, desc: Api.LoadingDesc = {}): void {
   const tips = desc.tips ?? [];
   const tip = tips.length > 0 ? tips[Math.floor(kit.seconds() / Math.max(1, desc.tipSeconds ?? 4)) % tips.length]! : "";
   kit.modal(id, true, { locked: true, bare: true, backdrop: token("bg"), transition: "fade", width: px(Math.min(380, frame().viewport.width - 32)) }, () => {
-    kit.label("Title", desc.title ?? "Loading", { step: "xl", align: "center", width: grow() });
+    kit.label("Title", desc.title ?? "Loading", { step: "xl", align: "center", width: grow(), heading: true });
     const p = desc.progress;
     if (p === null || p === undefined) {
       kit.spinner("Spinner", 0);
@@ -106,7 +106,7 @@ export function loadingScreen(id: string, desc: Api.LoadingDesc = {}): void {
   });
 }
 
-/** Stars landing one by one: k appears 0.3 s after k-1, from the screen's opening. */
+/** Stars landing one by one: k appears 0.3 s after k-1, from the screen's opening; an earned one bursts. */
 function stars(id: string, earned: number, max: number, since: number, size: number): void {
   const { t } = frame();
   kit.row(id, { gap: t.sm, cross: "center" }, () => {
@@ -115,6 +115,7 @@ function stars(id: string, earned: number, max: number, since: number, size: num
       const on = k < earned;
       kit.transition(kit.idi("Star", k), shown, { kind: "scale", instant: false }, () => {
         iconOr("Mark", "star", size, token(on ? "accent" : "fillStrong"));
+        if (on) kit.burst({ delayMs: 120 });
       });
       if (!shown) kit.spacer(kit.idi("Gap", k), px(size));
     }
@@ -132,16 +133,16 @@ export function resultsScreen(id: string, desc: Api.ResultsDesc = {}): Api.MenuR
   const items = menuItems(desc.actions, [["retry", "Retry"], ["next", "Next"], ["menu", "Menu"]]);
   let chosen: string | null = null;
   const score = desc.score ?? 0;
-  const k = Math.min(1, Math.max(0, (kit.seconds() - since) / 0.9));
-  const counted = Math.round(score * (1 - (1 - k) * (1 - k) * (1 - k)));
+  // The score counts up over 0.9 s from the opening; "New best" pops in when it lands.
+  const landed = open && kit.seconds() - since >= 0.9;
   kit.modal(id, open, { title: desc.title ?? "Level complete", locked: true, width: px(Math.min(phone ? 360 : 420, frame().viewport.width - 32)) }, () => {
     const max = desc.maxStars ?? 3;
     if (max > 0) kit.row("StarRow", { width: grow(), align: "center" }, () => stars("Stars", desc.stars ?? 0, max, since, 44));
     kit.column("ScoreBlock", { width: grow(), cross: "center", gap: t.xxs }, () => {
-      kit.label("Score", fmt(counted), { step: "displayLg", font: "display", align: "center", width: grow() });
+      kit.counter("Score", score, { from: 0, durationMs: 900, step: "displayLg", font: "display", align: "center", width: grow() });
       kit.row("BestRow", { gap: t.sm, cross: "center" }, () => {
         kit.label("Best", `Best ${fmt(Math.max(desc.best ?? 0, desc.newBest ? score : 0))}`, { step: "meta", color: token("fgMuted"), nowrap: true });
-        if (desc.newBest) kit.badge("NewBest", "New best", "accent");
+        if (desc.newBest) kit.transition("Reveal", landed, { kind: "pop" }, () => kit.badge("NewBest", "New best", "accent"));
       });
     });
     const stats = desc.stats ?? [];
