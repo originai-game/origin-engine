@@ -14,6 +14,16 @@ tests that never run `cargo`.
 | `scripts/check.sh quick` | fmt clippy test-quick drift bun-quick | the loop while working; CI job `quick` on every PR | 83 s (test-quick 61 s for 203 tests) |
 | `scripts/check.sh` (full) | fmt clippy wasm-build test wasm-opt size-gate drift bun-test determinism | before a change to rendering, animation, physics, the tick or the export is called done; CI job `gate` on every PR and push to main | 145 s (test 80 s under nextest, wasm-opt 23 s, size-gate 16 s, bun-test 17 s) |
 
+`og-tests::wasm` (og-render must compile for wasm32) used to run its own
+`cargo check --target wasm32-unknown-unknown -p og-render` in
+`target/tmp/wasm-check` (547 MB): 0.32 s inside the test step when that
+directory was warm, 7.5 s cold run alone, reported at about 29 s cold in a
+loaded gate. Since the full lane runs `wasm-build` before `test`, it takes
+that step's og-render build when it is newer than og-render's sources:
+0.014 s in the full gate at 00c33d3 (165 s for the nine steps: fmt 1,
+clippy 0, wasm-build 6, test 94, wasm-opt 25, size-gate 16, drift 1,
+bun-test 20, determinism 2), and no second wasm32 target directory.
+
 Before the lanes (2026-10-18, E1 tree) the single gate took 310 s warm:
 `cargo test` serial 111 s, `packages/engine`'s `bun run test` 156 s of which
 a release build of `og`, the addon and two wasm variants was most. Four
