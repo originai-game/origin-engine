@@ -1,50 +1,54 @@
-// The sprite sheet: assets/models/sprites.glb holds one unit quad per sprite,
-// each with its own material, in this order (tools/make-assets.py writes it).
-// A sprite is drawn by an og.Mesh with that geometry and material; its size
-// is the entity's Transform.scale.
+// The art: assets/sprites, written by tools/make-assets.py and loaded once in
+// `start`. The gems are one flipbook sheet (gems.ogt over gems.png): clip 2c
+// is colour c's idle loop (a long hold, then a glint), clip 2c + 1 its clear
+// burst (once). The board is a nine-sliced panel with a hand-written 7 x 7
+// tilemap of checker cells on it; the selection frame and the backdrop are
+// plain textures.
 
 import { og } from "@origingame/engine";
-import type { Geometry, Material, World } from "@origingame/engine";
+import type { FlipbookSheet, Texture, TilemapAsset, World } from "@origingame/engine";
 
-export const SPRITES = [
-  "backdrop",
-  "board",
-  "cell",
-  "tile_ruby",
-  "tile_sky",
-  "tile_leaf",
-  "tile_sun",
-  "tile_plum",
-  "tile_coral",
-  "ring",
-] as const;
+/** Gem colours, by Piece.colour. Six cuts, so colour is never the only cue. */
+export const GEMS = ["ruby", "sky", "leaf", "sun", "plum", "coral"] as const;
 
-/** The tile sprites, by colour index (Piece.colour). Six shapes, so colour is never the only cue. */
-export const TILE_SPRITES = ["tile_ruby", "tile_sky", "tile_leaf", "tile_sun", "tile_plum", "tile_coral"] as const;
+/** The idle clip of a colour (an index into the sheet's clips). */
+export const idleClip = (colour: number): number => colour * 2;
+/** The clear burst of a colour. */
+export const clearClip = (colour: number): number => colour * 2 + 1;
 
-export type SpriteName = (typeof SPRITES)[number];
+/** Seconds of one idle cycle (gems.ogt: 2.4 s of hold, then 0.16 s of glint). */
+export const IDLE_CYCLE = 2.56;
 
-export interface Sprite {
-  readonly geometry: Geometry;
-  readonly material: Material;
+/** The panel's nine-slice insets in texture pixels (tools/make-assets.py PANEL_INSET). */
+export const PANEL_INSET = 32;
+
+export interface Art {
+  readonly gems: FlipbookSheet;
+  readonly gemTexture: Texture;
+  readonly panel: Texture;
+  readonly backdrop: Texture;
+  readonly ring: Texture;
+  readonly board: TilemapAsset;
 }
 
-export type Sheet = Readonly<Record<SpriteName, Sprite>>;
+function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }, what: string): T {
+  if (!r.ok) throw new Error(`${what}: ${r.reason} (run tools/make-assets.py and og cook)`);
+  return r.value;
+}
 
-/** Loads the sheet once, in `start`; every sprite is ready at once from the cooked bundle. */
-export function loadSheet(world: World): Sheet {
-  const asset = og.load.gltf(world, "models/sprites.glb");
-  if (!asset.ok) throw new Error(asset.reason);
-  const info = og.load.gltfInfo(world, asset.value);
-  if (!info.ok) throw new Error(info.reason);
-  const out: Partial<Record<SpriteName, Sprite>> = {};
-  SPRITES.forEach((name, i) => {
-    const geometry = info.value.geometries[i];
-    const material = info.value.materials[i];
-    if (geometry === undefined || material === undefined) {
-      throw new Error(`models/sprites.glb has no sprite ${i} (${name}); run tools/make-assets.py and og cook`);
+export function loadArt(world: World): Art {
+  const sheet = must(og.load.flipbook(world, "sprites/gems.ogt"), "sprites/gems.ogt");
+  GEMS.forEach((name, c) => {
+    if (sheet.clips[idleClip(c)]?.name !== `idle_${name}` || sheet.clips[clearClip(c)]?.name !== `clear_${name}`) {
+      throw new Error(`sprites/gems.ogt does not list idle_${name} and clear_${name} as clips ${idleClip(c)} and ${clearClip(c)}`);
     }
-    out[name] = { geometry, material };
   });
-  return out as Sheet;
+  return {
+    gems: sheet.sheet,
+    gemTexture: sheet.texture,
+    panel: must(og.load.texture(world, "sprites/panel.png"), "sprites/panel.png"),
+    backdrop: must(og.load.texture(world, "sprites/backdrop.png"), "sprites/backdrop.png"),
+    ring: must(og.load.texture(world, "sprites/ring.png"), "sprites/ring.png"),
+    board: must(og.load.tilemap(world, "sprites/board.ogt"), "sprites/board.ogt").map,
+  };
 }

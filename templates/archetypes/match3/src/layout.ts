@@ -4,6 +4,8 @@
 export const SIZE = 7;
 /** Cell pitch. */
 export const PITCH = 1;
+/** A gem's size in its cell. */
+export const GEM_SIZE = 0.92;
 /** The board's centre height. */
 export const BOARD_Y = -0.4;
 
