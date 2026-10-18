@@ -371,7 +371,14 @@ export const Collide = defineSystem(
     if (crashed) {
       run.phase[ri] = Phase.Over;
       run.phaseTicks[ri] = 0;
-      run.best[ri] = Math.max(run.best[ri]!, run.score[ri]!);
+      const score = run.score[ri]!;
+      if (score > run.best[ri]!) {
+        run.best[ri] = score;
+        // The best survives a reload: the player's store (the Player's save, or this browser's).
+        og.platform.storeSet(world, { key: "best", value: score });
+      }
+      og.platform.leaderboardSubmit(world, { board: "main", score });
+      og.platform.telemetry(world, "round.over", { score, coins: run.coins[ri]!, distance: Math.round(run.distance[ri]!) });
       run.grounded[ri] = 0;
       run.rising[ri] = 0;
       ra.vy[ri] = FEEL.knockUp;
@@ -493,3 +500,22 @@ export const HudText = defineSystem("Hud", { reads: [Run, Hud, Tuning], after: [
 const WHITE = { r: 1, g: 1, b: 1 };
 const MINT = { r: 0.3, g: 0.85, b: 0.75 };
 const CORAL = { r: 1, g: 0.25, b: 0.18 };
+
+/** The best score from the player's store: asked for on the first tick, taken when the answer arrives. */
+export const Records = defineSystem("Records", { reads: [Actor], writes: [Run] }, (q, time, world) => {
+  const r = runnerRow(q);
+  if (r === null) return;
+  const run = r.a.column(Run);
+  if (time.tick === 0) {
+    const asked = og.platform.storeGet(world, "best");
+    run.bestRequest[r.i] = asked.ok ? asked.value : 0;
+    return;
+  }
+  const request = run.bestRequest[r.i]!;
+  if (request === 0) return;
+  const answer = og.platform.result(world, request) as { ok: boolean; data: { value: unknown } } | null;
+  if (answer === null) return;
+  run.bestRequest[r.i] = 0;
+  const saved = answer.ok && typeof answer.data.value === "number" ? answer.data.value : 0;
+  run.best[r.i] = Math.max(run.best[r.i]!, saved);
+});

@@ -14,7 +14,7 @@ import { og } from "@origingame/engine";
 import type { Entity, FlipbookInfo, TilemapInfo, World } from "@origingame/engine";
 import { COURIER, PROPS, loadArt } from "./art.ts";
 import { Actor, Hud, Kind, Phase, Run, Tuning } from "./components.ts";
-import { Animate, Collide, Director, Dust, GROUND_Y, HudText, Jump, REST_Y, RUNNER_SIZE, RUNNER_X, SCENERY_SPAN, Scroll, Spawn } from "./systems.ts";
+import { Animate, Collide, Director, Dust, GROUND_Y, HudText, Jump, Records, REST_Y, RUNNER_SIZE, RUNNER_X, SCENERY_SPAN, Scroll, Spawn } from "./systems.ts";
 
 /** Pool sizes: how many of each can be in play at once. */
 const POOLS = { crate: 4, fence: 3, coin: 16, dust: 4 } as const;
@@ -186,7 +186,7 @@ export default og.game({
   tick: 60,
   seed: 1,
   scenes: { main: "scenes/main.ogt" },
-  systems: [Director, Jump, Scroll, Spawn, Collide, Dust, Animate, HudText],
+  systems: [Records, Director, Jump, Scroll, Spawn, Collide, Dust, Animate, HudText],
   // MSAA, not the tier's TAA: pixel art stays sharp, with no temporal blur.
   render: { antialias: "msaa4" },
   start,
