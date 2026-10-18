@@ -250,6 +250,18 @@ compares (or with `--record` writes) `<project>/references/<tier>/`. The
 topdown archetype's four frames matched `metal` at RMSE ≤ 0.00009 on WebGPU
 and ≤ 0.00005 on WebGL2 (2026-10-18) and are committed for both tiers.
 
+`bun tests/web/archetype-hashes.ts [--webgl]` compares the three
+archetypes' world hashes across hosts: each replay playtest's script runs
+in Chrome and in `og run` at the page's play surface (1280×577 in the
+headless window), and the two `dump_world` hashes at the same tick must be
+equal. They are on WebGPU and WebGL2 (2026-10-19,
+`tests/evidence/E7/archetype-hashes-*.md`). They used to differ because the
+native `og run` called `GameDesc.start` before attaching its renderer, so
+`og.render.capabilities` answered 0×0 there and runner and match3 laid
+their view out for 16:9 instead of the surface; `og run` and `og polish`
+now create the engine with `deferStart` and run the start once the
+renderer is attached, as the web Worker always did.
+
 Against their own references both tiers reproduce exactly (RMSE 0 on two
 clean runs). Against `metal`, measured at the commit that recorded them
 (2026-10-18):

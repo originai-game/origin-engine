@@ -7,7 +7,9 @@
 // dump world. Prints the result as JSON and writes the captured frame.
 //
 //   bun tests/web/template.ts [--project <dir>] [--commands <script>] [--advance <ticks>] [--webgl] [--publish]
-//     [--entry <file>] [--png <out.png>] [--chrome <path>]
+//     [--entry <file>] [--png <out.png>] [--chrome <path>] [--entities <name,name>]
+//
+// --entities adds each named entity's dump (the probe's dump { what: "entity" }) to the answer.
 
 import { existsSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -72,7 +74,9 @@ try {
   const capture = await p.capture();
   const captureMs = performance.now() - c0;
   const dump = await p.dump({ what: "world" });
-  await post({ crossOriginIsolated, readyMs: Math.round(ready), hello, scheduled, captureMs: Math.round(captureMs), capture, dump });
+  const entities = {};
+  for (const id of ${JSON.stringify((opt("--entities") ?? "").split(",").filter((s) => s))}) entities[id] = await p.dump({ what: "entity", id });
+  await post({ crossOriginIsolated, readyMs: Math.round(ready), hello, scheduled, captureMs: Math.round(captureMs), capture, dump, entities });
 } catch (e) {
   await post({ error: String(e && e.stack || e) });
 }

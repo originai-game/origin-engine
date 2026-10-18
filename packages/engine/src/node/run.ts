@@ -119,7 +119,11 @@ function projectProfile(dir: string | undefined): "2d" | "3d" | undefined {
 
 const game = await importGame(entry);
 const profile = projectProfile(root);
-const created = createEngine(game, { ...(seed === undefined ? {} : { seed }), ...(root ? { root } : {}), ...(profile ? { profile } : {}), ...(locale ? { locale } : {}) });
+const probing = commands !== undefined || port !== undefined || watchFile !== undefined;
+// With a renderer, GameDesc.start runs once it is attached (as the web Worker
+// does), so og.render.capabilities reports the play surface's size there.
+const deferStart = probing && render;
+const created = createEngine(game, { ...(seed === undefined ? {} : { seed }), ...(root ? { root } : {}), ...(profile ? { profile } : {}), ...(locale ? { locale } : {}), ...(deferStart ? { deferStart } : {}) });
 if (!created.ok) fail(`${entry}: ${created.reason}`);
 const engine: Engine = created.value;
 // og.platform: the local store, in memory unless --platform-store names a file.
@@ -155,12 +159,14 @@ function drain(): void {
   }
 }
 
-const probing = commands !== undefined || port !== undefined || watchFile !== undefined;
 let tier = "none";
-if (probing && render) {
+if (deferStart) {
   const attached = JSON.parse(extras.og_node_attach_offscreen(engine.id, size.width, size.height)) as { ok: boolean; value?: string; reason?: string };
   if (attached.ok) tier = attached.value!;
   else process.stderr.write(`WARN no renderer (${attached.reason}); screenshot and capture refuse\n`);
+  // The first tick boundary: GameDesc.start, with the surface in place.
+  const started = engine.advance(0);
+  if (!started.ok) fail(started.reason);
 }
 drain();
 

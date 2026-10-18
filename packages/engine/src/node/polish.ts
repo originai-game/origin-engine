@@ -145,7 +145,8 @@ async function runOne(file: string, entry: string, root: string, out: string): P
   const game = ((await import(pathToFileURL(resolve(entry)).href)) as { default?: GameToken }).default;
   if (!game) fail(`${entry} has no default export`);
   const profile = projectProfile(root);
-  const created = createEngine(game!, { root, ...(profile ? { profile } : {}), ...(desc!.seed === undefined ? {} : { seed: desc!.seed }) });
+  // GameDesc.start runs once the renderer is attached (as og run and the web Worker do).
+  const created = createEngine(game!, { root, deferStart: true, ...(profile ? { profile } : {}), ...(desc!.seed === undefined ? {} : { seed: desc!.seed }) });
   if (!created.ok) fail(`${entry}: ${created.reason}`);
   const engine: Engine = created.value;
   engine.attachPlatform(nativePlatform());
@@ -154,6 +155,8 @@ async function runOne(file: string, entry: string, root: string, out: string): P
   const sink = opened.value;
   const attached = JSON.parse(extras.og_node_attach_offscreen(engine.id, size.width, size.height)) as { ok: boolean; value?: string; reason?: string };
   const tier = attached.ok ? attached.value! : "none";
+  const started = engine.advance(0);
+  if (!started.ok) fail(started.reason);
 
   const warnings: string[] = [];
   const markers = new Map<string, number>();

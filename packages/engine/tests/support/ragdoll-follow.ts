@@ -36,7 +36,7 @@ function start(world: World): void {
   if (!rig.ok) throw new Error(rig.reason);
   const set = og.physics.setRagdollRig(world, e.value, rig.value);
   if (!set.ok) throw new Error(set.reason);
-  rest = rig.value.bones.map((b) => ({ x: 1 + (b.position?.x ?? 0), y: b.position?.y ?? 0, z: 2 + (b.position?.z ?? 0) }));
+  rest = (rig.value.bones ?? []).map((b) => ({ x: 1 + (b.position?.x ?? 0), y: b.position?.y ?? 0, z: 2 + (b.position?.z ?? 0) }));
   doll = e.value;
 }
 
