@@ -859,7 +859,9 @@ fn distribute_w(nodes: &mut [Node], i: usize, fonts: &dyn Metrics) {
     let inner = (nodes[i].w - nodes[i].el.padding.horizontal()).max(0.0);
     if let Content::Text(t) = &nodes[i].content {
         let m = fonts.metrics_for(t.font, &t.text);
-        let lines = break_lines(&t.text, m, t.step.size, t.wrap.then_some(inner));
+        // A fit width snapped to the device pixel may land up to half a
+        // pixel under the text it was measured from: that is no reason to wrap.
+        let lines = break_lines(&t.text, m, t.step.size, t.wrap.then_some(inner + 0.5));
         nodes[i].lines = lines;
         return;
     }

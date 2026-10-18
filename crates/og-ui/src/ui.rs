@@ -2242,8 +2242,13 @@ impl Ui {
                                 let left = Rect::new(x - gap - w, cy - h / 2.0, w, h);
                                 let right =
                                     Rect::new(x + line.width * sk + gap, cy - h / 2.0, w, h);
-                                self.ornament(o, left, false, false, alpha, clip, cmds);
-                                self.ornament(o, right, true, false, alpha, clip, cmds);
+                                // Both sides of a centred heading; the side away from the edge otherwise.
+                                if tc.align != TextAlign::Start {
+                                    self.ornament(o, left, false, false, alpha, clip, cmds);
+                                }
+                                if tc.align != TextAlign::End {
+                                    self.ornament(o, right, true, false, alpha, clip, cmds);
+                                }
                             }
                         }
                     }

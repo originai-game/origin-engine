@@ -132,6 +132,7 @@ pub enum Ink {
     Fg,
     Muted,
     Border,
+    Focus,
 }
 
 impl Ink {
@@ -142,6 +143,7 @@ impl Ink {
             "fg" => Ink::Fg,
             "muted" => Ink::Muted,
             "border" => Ink::Border,
+            "focus" => Ink::Focus,
             _ => return None,
         })
     }
@@ -153,6 +155,7 @@ impl Ink {
             Ink::Fg => p.fg,
             Ink::Muted => p.fg_muted,
             Ink::Border => p.border_strong,
+            Ink::Focus => p.focus,
         }
     }
 }
@@ -836,7 +839,7 @@ pub fn parse_skin(text: &str) -> Result<SkinFile, String> {
                     None => Ink::Authored,
                     Some(w) => Ink::parse(w).ok_or_else(|| {
                         p.err(&format!(
-                            "ink '{w}' is authored, accent, fg, muted or border"
+                            "ink '{w}' is authored, accent, fg, muted, border or focus"
                         ))
                     })?,
                 };
@@ -891,7 +894,7 @@ pub fn parse_skin(text: &str) -> Result<SkinFile, String> {
                 theme.skin.glows[part.class().index()] = Some(Glow {
                     size: p.num(1)?.max(0.0),
                     ink: Ink::parse(iw).ok_or_else(|| {
-                        p.err(&format!("ink '{iw}' is accent, fg, muted or border"))
+                        p.err(&format!("ink '{iw}' is accent, fg, muted, border or focus"))
                     })?,
                     alpha: p.num(3)?.clamp(0.0, 1.0),
                 });
@@ -912,7 +915,7 @@ pub fn parse_skin(text: &str) -> Result<SkinFile, String> {
                 theme.skin.text_glows[i] = Some(Glow {
                     size: p.num(1)?.max(0.0),
                     ink: Ink::parse(iw).ok_or_else(|| {
-                        p.err(&format!("ink '{iw}' is accent, fg, muted or border"))
+                        p.err(&format!("ink '{iw}' is accent, fg, muted, border or focus"))
                     })?,
                     alpha: p.num(3)?.clamp(0.0, 1.0),
                 });
