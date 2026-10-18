@@ -88,11 +88,11 @@ og_lock_acquire "$target" "packages/engine/scripts/build.sh (wasm)"
 wasm="$target/wasm32-unknown-unknown/wasm/og_host_web.wasm"
 cargo build --profile wasm -q --target wasm32-unknown-unknown -p og-host-web --lib --features publish
 wasm-bindgen --target web --out-dir "$here/dist/web-publish" --out-name origin-engine "$wasm"
-# What ships is optimised for size (wasm-opt -Oz, as CI's size gate measures);
-# without wasm-opt on PATH the publish wasm stays as wasm-bindgen wrote it.
+# What ships is optimised for size by the gate's own wasm-opt invocation
+# (scripts/wasm-opt.sh), so it is the module the size gate measures; without
+# wasm-opt on PATH the publish wasm stays as wasm-bindgen wrote it.
 if command -v wasm-opt >/dev/null 2>&1; then
-  wasm-opt -Oz --enable-bulk-memory --enable-nontrapping-float-to-int \
-    "$here/dist/web-publish/origin-engine_bg.wasm" -o "$here/dist/web-publish/origin-engine_bg.wasm"
+  "$root/scripts/wasm-opt.sh" "$here/dist/web-publish/origin-engine_bg.wasm" "$here/dist/web-publish/origin-engine_bg.wasm"
 else
   echo "build.sh: no wasm-opt; dist/web-publish is not size-optimised (scripts/install-tools.sh installs it)" >&2
 fi

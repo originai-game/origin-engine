@@ -248,7 +248,8 @@ step_wasm_build() {
 # else all. size-gate reads opt.txt; build.sh under OG_GATE=1 reads both.
 # wasm_opt_one RAW NAME: wasm-bindgen (when the module uses it) then wasm-opt
 # into $OG_WASM_OUT/opt/NAME.wasm.
-WASM_OPT_FLAGS="-Oz --enable-bulk-memory --enable-nontrapping-float-to-int --low-memory-unused"
+# The flags are scripts/wasm-opt.sh's, the one invocation build.sh ships with.
+WASM_OPT_FLAGS="$("$OG_ROOT/scripts/wasm-opt.sh" --flags)"
 wasm_opt_one() {
   local raw="$1" name="$2" input="$1" lock have key cache
   # A raw module byte-identical to one already optimised (an edit that does
@@ -275,13 +276,8 @@ wasm_opt_one() {
     wasm-bindgen --target web --out-dir "$OG_WASM_OUT/bindgen/$name" --out-name origin-engine "$raw" || return 1
     input="$OG_WASM_OUT/bindgen/$name/origin-engine_bg.wasm"
   fi
-  # --low-memory-unused: rustc links wasm32 stack-first (the stack is
-  # [0, 1 MiB), data from 1 MiB), so the low 1 KiB is only ever the bottom of
-  # a stack about to overflow; it lets wasm-opt fold constant offsets into
-  # loads and stores (binaryen 133: -100 KB, -23.7 KB brotli on the publish
-  # variant). --converge, a second -Oz and the strip flags gained nothing.
-  # shellcheck disable=SC2086 # the flags are words
-  wasm-opt $WASM_OPT_FLAGS "$input" -o "$OG_WASM_OUT/opt/$name.wasm" || return 1
+  # The flags and why: scripts/wasm-opt.sh.
+  "$OG_ROOT/scripts/wasm-opt.sh" "$input" "$OG_WASM_OUT/opt/$name.wasm" || return 1
   og_say "$name: $(og_bytes "$raw") B raw -> $(og_bytes "$input") B bindgen -> $(og_bytes "$OG_WASM_OUT/opt/$name.wasm") B wasm-opt -Oz"
   rm -rf "$cache"; mkdir -p "$cache"
   [ ! -d "$OG_WASM_OUT/bindgen/$name" ] || cp -R "$OG_WASM_OUT/bindgen/$name" "$cache/bindgen"
