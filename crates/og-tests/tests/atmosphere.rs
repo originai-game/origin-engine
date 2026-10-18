@@ -91,6 +91,30 @@ fn atmosphere_scenes_match_their_references() {
     }
 }
 
+/// Rain and snow over the colonnade: their particles fill the view after
+/// the warm-up, under the preset's fog and dimmed light. The presets: rain
+/// dims more than snow, `dim` 0 and intensity 0 leave the light alone,
+/// mist has no particles, and an orthographic camera gets 2D sprites.
+#[test]
+fn weather_presets_match_their_references() {
+    for scene in ["weather-rain", "weather-snow"] {
+        let r = check(scene);
+        assert_eq!(r.stats.particle_systems, 1, "{scene}: the preset's particles");
+        assert!(r.stats.particle_capacity >= 6000, "{scene}: {}", r.stats.particle_capacity);
+    }
+    let w = |kind, intensity, dim, layer| {
+        og_render::weather(kind, intensity, Vec3::X, 18.0, Vec3::ONE, dim, layer)
+    };
+    let (rain, snow) = (w(og_render::WEATHER_RAIN, 1.0, 1.0, None), w(og_render::WEATHER_SNOW, 1.0, 1.0, None));
+    assert!(rain.light < snow.light && snow.light < 1.0);
+    assert_eq!(w(og_render::WEATHER_RAIN, 1.0, 0.0, None).light, 1.0);
+    assert_eq!(w(og_render::WEATHER_RAIN, 0.0, 1.0, None).light, 1.0);
+    let mist = w(og_render::WEATHER_MIST, 1.0, 1.0, None);
+    assert!(mist.emitter.is_none() && mist.fog.is_some_and(|f| f.height_density > 0.0));
+    let flat = w(og_render::WEATHER_SNOW, 1.0, 1.0, Some(7)).emitter.unwrap();
+    assert_eq!(flat.render, og_render::ParticleRender::Sprite { layer: 7 });
+}
+
 #[test]
 fn water_scenes_match_their_references() {
     let w = check("water-3d");

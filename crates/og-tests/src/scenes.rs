@@ -50,6 +50,8 @@ pub const SCENES: &[&str] = &[
     "water-2d",
     "fluid-2d",
     "shader-hooks",
+    "weather-rain",
+    "weather-snow",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -247,6 +249,16 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "fluid-2d" => g.scene = crate::atmo_scenes::fluid_2d_scene(),
         // Material shader hooks: dissolve by noise, wind-swayed grass.
         "shader-hooks" => g.scene = crate::atmo_scenes::hooks_scene(45),
+        // Weather presets over the colonnade: particles, fog, dimmed light.
+        "weather-rain" | "weather-snow" => {
+            g.scene = crate::atmo_scenes::weather_scene(if name == "weather-rain" {
+                og_render::WEATHER_RAIN
+            } else {
+                og_render::WEATHER_SNOW
+            });
+            g.frames = crate::atmo_scenes::WEATHER_FRAMES;
+            g.update = Some(fx::tick_update);
+        }
         other => {
             return Err(format!(
                 "unknown gfx scene '{other}' (known: {})",

@@ -50,6 +50,7 @@ mod skin;
 mod sprites;
 mod texture;
 mod water;
+mod weather;
 
 #[cfg(feature = "gltf")]
 pub mod gltf;
@@ -78,6 +79,9 @@ pub use hooks::{
 };
 pub use metaballs::{MAX_FLUIDS, Metaballs};
 pub use water::{Water, Water2d, WaterHeights};
+pub use weather::{
+    WEATHER_DUST, WEATHER_MIST, WEATHER_NONE, WEATHER_RAIN, WEATHER_SNOW, WeatherLook, weather,
+};
 pub use texture::{TextureCompression, TextureDesc, TextureFormat, TextureFormats, TextureUpload};
 /// The wgpu this crate is built on, for hosts that create surfaces or pass views.
 pub use wgpu;

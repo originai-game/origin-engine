@@ -2,7 +2,7 @@
 //! §Atmosphere): fog with a procedural sky, the day-night cycle at dusk and
 //! at night, planar 3D water with a rippling height field, a side-on 2D
 //! water body, a 2D fluid drawn as metaballs, and material shader hooks
-//! (a dissolve by noise and wind-swayed grass).
+//! (a dissolve by noise and wind-swayed grass), and weather presets.
 
 use crate::fx_scenes::terrain;
 use glam::{Mat4, Vec2, Vec3};
@@ -488,3 +488,40 @@ pub fn hooks_scene_parts(tick: u64) -> (RenderScene, og_render::MaterialHandle) 
     scene.post.bloom = Some(Bloom::default());
     (scene, teal)
 }
+
+/// The colonnade in weather `kind` (an og-render `WEATHER_*` preset) at
+/// intensity 1: its particles placed over the camera, its fog, its dimmed
+/// light. Render [`WEATHER_FRAMES`] frames with [`crate::fx_scenes::tick_update`]
+/// so the particles fill the view.
+pub fn weather_scene(kind: u32) -> RenderScene {
+    let mut scene = day_night_scene(14.0, false);
+    let look = og_render::weather(
+        kind,
+        1.0,
+        Vec3::new(2.0, 0.0, 0.6),
+        18.0,
+        Vec3::ONE,
+        1.0,
+        None,
+    );
+    scene.fog = look.fog;
+    scene.light.intensity *= look.light;
+    scene.environment.intensity *= 0.5 + 0.5 * look.light;
+    if let Some(e) = look.emitter.clone() {
+        let emitter = scene.add_emitter(e);
+        scene.particles.push(og_render::ParticleSystem::new(
+            1,
+            emitter,
+            Mat4::from_translation(look.origin(
+                scene.camera.position,
+                scene.camera.target - scene.camera.position,
+            )),
+            7,
+            0,
+        ));
+    }
+    scene
+}
+
+/// Frames a weather scene runs before its capture.
+pub const WEATHER_FRAMES: u32 = 240;
