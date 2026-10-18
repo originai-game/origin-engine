@@ -69,3 +69,32 @@ for (const profile of ["3d", "2d"]) {
     expect(node.tally!.entered).toBeGreaterThan(0);
   }, 180_000);
 }
+
+test("tweens, presets, hit stop, slow motion and camera feel give the same hashes on both hosts and replay from a snapshot", () => {
+  const run = (host: string, ...extra: string[]) => {
+    const r = Bun.spawnSync(["bun", "tests/support/feel-hash.ts", "--host", host, ...extra], { cwd: pkg });
+    const out = new TextDecoder().decode(r.stdout);
+    if (r.exitCode !== 0) throw new Error(`${host} host: ${new TextDecoder().decode(r.stderr)}${out}`);
+    return JSON.parse(out.trim().split("\n").pop()!) as {
+      checkpoints: { tick: number; hash: string }[];
+      tally: { done: number; tags: number; frozen: number };
+      end: string;
+      replayed: string;
+    };
+  };
+  const [node, web, again] = [run("node"), run("web"), run("node")];
+  expect(node.checkpoints.map((c) => c.tick)).toEqual([20, 23, 40, 80, 140]);
+  expect(web.checkpoints).toEqual(node.checkpoints);
+  expect(again.checkpoints).toEqual(node.checkpoints);
+  // The snapshot taken inside the hit stop replays into the same world.
+  expect(node.replayed).toBe(node.end);
+  expect(web.replayed).toBe(web.end);
+  // The systems saw eight frozen ticks; every tween and group reported once
+  // (sequence 3, parallel 4, squash and flash untagged; the yoyo never ends).
+  expect(node.tally).toEqual({ done: 4, tags: 7, frozen: 8 });
+  // The hit stop is in the hash: without it the worlds part after it starts.
+  const free = run("node", "--no-hit-stop");
+  expect(free.checkpoints[0]).toEqual(node.checkpoints[0]);
+  expect(free.checkpoints[1]!.hash).not.toBe(node.checkpoints[1]!.hash);
+  expect(free.tally.frozen).toBe(0);
+}, 120_000);

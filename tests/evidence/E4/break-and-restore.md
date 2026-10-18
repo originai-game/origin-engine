@@ -53,3 +53,5 @@ Each new test was run once against broken code (the break below), seen to fail, 
 | og-api/src/runtime/feel.rs: presets start recovering on their first tick | bun test tests/feel.test.ts | tweens animate a field, report once, and squash recovers to rest FAIL |
 | og-api/src/runtime/fx.rs: the immediate sprites clear og.Sprite's effects (the bug found while writing the test) | bun test tests/feel.test.ts | og.tween.flash whitens an og.Sprite and fades back FAIL |
 | og-api/src/runtime/feel.rs: blob shadows drawn over the sprites of their layer | bun test tests/feel.test.ts | og.Sprite draws at its entity, y-sorted, with a blob shadow under it FAIL |
+| packages/engine/src/runtime.ts: og.time.hitStop sends ticks + 1 | bun test tests/hosts.test.ts | tweens, presets, hit stop, slow motion and camera feel give the same hashes on both hosts ... FAIL |
+| packages/engine/src/runtime.ts: og.time.hitStop sends 0 | bun test tests/hosts.test.ts | tweens, presets, hit stop, slow motion and camera feel give the same hashes on both hosts ... FAIL |
