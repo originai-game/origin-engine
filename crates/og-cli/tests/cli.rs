@@ -417,3 +417,49 @@ fn api_gen_wiki_writes_only_the_wiki_and_removes_stale_pages() {
     assert!(!root.join("crates/og-host-web").exists());
     let _ = std::fs::remove_dir_all(&root);
 }
+
+/// A scene row that omits a field of an engine component gets the IDL's
+/// default (og.Transform's quaternion identity, scale one), not zero: a
+/// sprite on an entity that only states its position must not vanish.
+#[test]
+fn cook_defaults_the_engine_component_fields_a_scene_omits() {
+    let dir = scratch_root();
+    std::fs::create_dir_all(dir.join("assets/scenes")).unwrap();
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(dir.join("src/main.ts"), "export default 0;\n").unwrap();
+    std::fs::write(
+        dir.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\n",
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("assets/scenes/main.ogt"),
+        "type scene\nversion 1\n---\nname \"Main\"\nentity \"probe\" {\n  Transform {\n    position 1 2 3\n  }\n}\nentity \"turned\" {\n  Transform {\n    scale 2 2 2\n  }\n}\n",
+    )
+    .unwrap();
+    let out = og().arg("cook").arg(&dir).output().unwrap();
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out));
+    let bundle = og_cook::runtime::Bundle::open(&dir.join("cooked")).unwrap();
+    let id = "scenes/main.ogt";
+    let scene = bundle.scene(id, bundle.read(id).unwrap().as_slice()).unwrap();
+    let table = scene
+        .components
+        .iter()
+        .find(|t| t.name == "Transform")
+        .expect("a Transform table");
+    assert!(!table.inferred, "packed with the engine's schema");
+    let layout = og_core::reflect::Layout::of(&table.schema);
+    let lanes = |row: usize, field: &str| -> Vec<f32> {
+        let i = table.schema.field_index(field).unwrap();
+        table.get(row).unwrap()[layout.range(i)]
+            .chunks(4)
+            .map(|b| f32::from_le_bytes(b.try_into().unwrap()))
+            .collect()
+    };
+    let _ = std::fs::remove_dir_all(&dir);
+    assert_eq!(lanes(0, "position"), [1.0, 2.0, 3.0]);
+    assert_eq!(lanes(0, "quaternion"), [0.0, 0.0, 0.0, 1.0]);
+    assert_eq!(lanes(0, "scale"), [1.0, 1.0, 1.0]);
+    assert_eq!(lanes(1, "position"), [0.0, 0.0, 0.0]);
+    assert_eq!(lanes(1, "scale"), [2.0, 2.0, 2.0]);
+}

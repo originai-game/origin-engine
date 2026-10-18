@@ -55,3 +55,5 @@ Each new test was run once against broken code (the break below), seen to fail, 
 | og-api/src/runtime/feel.rs: blob shadows drawn over the sprites of their layer | bun test tests/feel.test.ts | og.Sprite draws at its entity, y-sorted, with a blob shadow under it FAIL |
 | packages/engine/src/runtime.ts: og.time.hitStop sends ticks + 1 | bun test tests/hosts.test.ts | tweens, presets, hit stop, slow motion and camera feel give the same hashes on both hosts ... FAIL |
 | packages/engine/src/runtime.ts: og.time.hitStop sends 0 | bun test tests/hosts.test.ts | tweens, presets, hit stop, slow motion and camera feel give the same hashes on both hosts ... FAIL |
+| (before the fix) og-tween: a leaf waits untouched through its delay, so a preset started with a hit stop writes nothing until the stop ends | bun test tests/feel.test.ts | a squash and a flash started with a hit stop show their impact through the stop, then recover FAIL |
+| og-cli/src/cook.rs: the engine schemas carry no IDL defaults | cargo test -p og-cli --test cli cook_defaults | cook_defaults_the_engine_component_fields_a_scene_omits FAIL |
