@@ -17,6 +17,7 @@ mod flipbook;
 mod font;
 mod model;
 mod scene;
+pub mod sfx;
 mod texture;
 pub mod tilemap;
 
@@ -635,6 +636,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     Ok(doc) if doc.ty == "tileset" => Kind::Tileset,
                     Ok(doc) if doc.ty == "tilemap" => Kind::Tilemap,
                     Ok(doc) if doc.ty == "flipbook" => Kind::Flipbook,
+                    Ok(doc) if doc.ty == sfx::SFX_TYPE => Kind::Sound,
                     Ok(doc) if doc.ty == e6::BEHAVIOUR_TYPE => Kind::Behaviour,
                     Ok(doc) if doc.ty == e6::NAVMESH_TYPE => Kind::NavMesh,
                     Ok(doc) => {
@@ -809,7 +811,12 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                 Err(e) => early_errors.push((s.rel.clone(), "texture", e)),
             },
             Kind::Sound => {
-                let st = stamp(&[b"sound", &hash]);
+                // A preset's stamp moves with the synthesiser.
+                let st = if s.rel.ends_with(".ogt") {
+                    stamp(&[b"sfx", sfx::SYNTH_VERSION.as_bytes(), &hash])
+                } else {
+                    stamp(&[b"sound", &hash])
+                };
                 outs.push((s.rel.clone(), format::Sound::NAME, st, Work::Sound(s)));
             }
             Kind::Lut => {
@@ -1124,6 +1131,9 @@ fn run(
                 }
             );
             texture::cook(&img, *k, &options.texture, p.stamp).map(|b| (b, vec![note]))
+        }
+        Work::Sound(s) if s.rel.ends_with(".ogt") => {
+            sfx::cook(&s.bytes, p.stamp).map(|(b, n)| (b, vec![n]))
         }
         Work::Sound(s) => audio::cook(&s.bytes, p.stamp).map(|(b, n)| (b, vec![n])),
         Work::Lut(s) => {
