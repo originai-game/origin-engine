@@ -441,7 +441,9 @@ fn cook_defaults_the_engine_component_fields_a_scene_omits() {
     assert_eq!(out.status.code(), Some(0), "{}", text(&out));
     let bundle = og_cook::runtime::Bundle::open(&dir.join("cooked")).unwrap();
     let id = "scenes/main.ogt";
-    let scene = bundle.scene(id, bundle.read(id).unwrap().as_slice()).unwrap();
+    let scene = bundle
+        .scene(id, bundle.read(id).unwrap().as_slice())
+        .unwrap();
     let table = scene
         .components
         .iter()

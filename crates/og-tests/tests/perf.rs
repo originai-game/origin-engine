@@ -144,6 +144,9 @@ fn perf_showcase() {
 fn perf_tilemap_256() {
     let (ms, adapter) = perf("tilemap-256");
     if adapter.contains("M4 Pro") {
-        assert!(ms < 1.0, "tilemap-256 takes {ms:.3} ms per frame on {adapter}: the budget is 1 ms");
+        assert!(
+            ms < 1.0,
+            "tilemap-256 takes {ms:.3} ms per frame on {adapter}: the budget is 1 ms"
+        );
     }
 }

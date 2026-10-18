@@ -1085,7 +1085,11 @@ pub fn tilemap_256() -> RenderScene {
         for x in 0..128u32 {
             let t = (y / 32) * 4 + x / 32;
             let edge = x % 32 == 0 || y % 32 == 0;
-            let c = [(t * 37 % 200 + 40) as u8, (t * 71 % 200 + 40) as u8, (t * 113 % 200 + 40) as u8];
+            let c = [
+                (t * 37 % 200 + 40) as u8,
+                (t * 71 % 200 + 40) as u8,
+                (t * 113 % 200 + 40) as u8,
+            ];
             let k = if edge { 2 } else { 1 };
             rgba.extend_from_slice(&[c[0] / k, c[1] / k, c[2] / k, 255]);
         }
@@ -1108,7 +1112,10 @@ pub fn tilemap_256() -> RenderScene {
         let mut layer = Layer::new(format!("l{l}"), n, n, l as i32);
         for (i, c) in layer.cells.iter_mut().enumerate() {
             let (x, y) = (i as u32 % n, i as u32 / n);
-            let h = (x.wrapping_mul(73_856_093) ^ y.wrapping_mul(19_349_663) ^ l.wrapping_mul(83_492_791)) % 100;
+            let h = (x.wrapping_mul(73_856_093)
+                ^ y.wrapping_mul(19_349_663)
+                ^ l.wrapping_mul(83_492_791))
+                % 100;
             // Layer 0 is full ground, the others sparser decoration.
             let filled = l == 0 || h < [100, 40, 20, 10][l as usize];
             *c = if filled { 1 + (h % 16) } else { 0 };
@@ -1141,11 +1148,23 @@ pub fn tilemap_256() -> RenderScene {
                 chunks.push(og_render::TileChunk {
                     min,
                     max,
-                    quads: q.quads.iter().map(|t| og_render::TileQuad { min: t.min, size: t.size, uv: t.uv }).collect(),
+                    quads: q
+                        .quads
+                        .iter()
+                        .map(|t| og_render::TileQuad {
+                            min: t.min,
+                            size: t.size,
+                            uv: t.uv,
+                        })
+                        .collect(),
                     animated: q
                         .animated
                         .iter()
-                        .map(|a| og_render::TileAnimation { quad: a.quad, uvs: a.frames.clone(), durations: a.durations.clone() })
+                        .map(|a| og_render::TileAnimation {
+                            quad: a.quad,
+                            uvs: a.frames.clone(),
+                            durations: a.durations.clone(),
+                        })
                         .collect(),
                 });
             }
