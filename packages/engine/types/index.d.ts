@@ -15113,7 +15113,7 @@ export declare namespace og {
      */
     function setTile(world: World, desc?: SetTileDesc): Result<void>;
     /**
-     * A cell's tile: a tile layer's tile id (-1 empty), a terrain layer's 1 or 0; -1 outside the map or before the map is adopted.
+     * A cell's tile id, -1 when empty: on a terrain layer the tile auto-tiling resolved from the neighbours (setTile writes 1 or 0 there; the id changes with them). -1 outside the map or before the map is adopted.
      *
      * @param world The world.
      * @param entity The entity with the og.Tilemap.

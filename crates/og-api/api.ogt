@@ -5232,7 +5232,7 @@ module tilemap {
   }
 
   fn getTile {
-    doc "A cell's tile: a tile layer's tile id (-1 empty), a terrain layer's 1 or 0; -1 outside the map or before the map is adopted."
+    doc "A cell's tile id, -1 when empty: on a terrain layer the tile auto-tiling resolved from the neighbours (setTile writes 1 or 0 there; the id changes with them). -1 outside the map or before the map is adopted."
     param world World "The world."
     param entity Entity "The entity with the og.Tilemap."
     param layer String "The layer's name."

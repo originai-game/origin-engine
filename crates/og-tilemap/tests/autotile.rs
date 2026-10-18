@@ -44,7 +44,12 @@ fn an_isolated_cell_and_a_3x3_block_resolve_to_their_neighbourhoods() {
     assert_eq!(t(3, 4), Some(blob_tile(W | NW | N | NE | E)), "bottom edge");
     assert_eq!(t(4, 3), Some(blob_tile(N | S | SW | W | NW)), "right edge");
     assert_eq!(t(1, 1), None, "empty cells draw nothing");
-    assert_eq!(s.get(WALLS, 3, 3), 1);
+    assert_eq!(
+        s.get(WALLS, 3, 3),
+        blob_tile(255) as i32,
+        "getTile answers the resolved tile"
+    );
+    assert_eq!(s.get(WALLS, 1, 1), -1, "an empty terrain cell has no tile");
 }
 
 #[test]

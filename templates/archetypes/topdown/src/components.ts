@@ -119,7 +119,7 @@ export const Report = defineComponent("Report", {
   steps: u32(0),
   hurts: u32(0),
   facing: u32(0),
-  doorWall: i32(0, { doc: "og.tilemap.getTile of the walls terrain at the doorway's first cell: 1 filled while closed, 0 once open." }),
+  doorWall: i32(0, { doc: "og.tilemap.getTile of the walls terrain at the doorway's first cell: the auto-tiled wall tile while closed, -1 once open." }),
 });
 
 /** One voice: plays its sound once when Game.sfx asks for its bit. */

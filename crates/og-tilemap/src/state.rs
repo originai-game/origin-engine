@@ -233,17 +233,14 @@ impl MapState {
         l.version += 1;
     }
 
-    /// Tile layers: the tile id at (x, y) or -1 when empty; terrain layers:
-    /// 1 filled, 0 empty. -1 outside the map or for an unknown layer.
+    /// The tile id at (x, y), -1 when empty: a terrain layer's tile as
+    /// auto-tiling resolved it from the neighbours. -1 outside the map or
+    /// for an unknown layer.
     pub fn get(&self, layer: usize, x: u32, y: u32) -> i32 {
         let (Some(l), Some(i)) = (self.layers.get(layer), self.index(x, y)) else {
             return -1;
         };
-        if l.terrain.is_some() {
-            l.cells[i] as i32
-        } else {
-            (l.cells[i] & TILE_MASK) as i32 - 1
-        }
+        (l.resolved[i] & TILE_MASK) as i32 - 1
     }
 
     /// The tile drawn at (x, y) with its flips (terrain layers resolved).

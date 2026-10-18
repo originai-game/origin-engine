@@ -35,7 +35,7 @@ module tilemap {
 | [`SetTileDesc`](#type-SetTileDesc) | desc struct | One cell to change. |
 | [`TileCell`](#type-TileCell) | struct | A cell of a map. |
 | [`og.tilemap.setTile`](#fn-setTile) | function | Change a cell. It applies at once to getTile, and to drawing and colliders at the og.tilemap system (this tick when called before it). Deterministic: equal edits in equal order give equal maps. |
-| [`og.tilemap.getTile`](#fn-getTile) | function | A cell's tile: a tile layer's tile id (-1 empty), a terrain layer's 1 or 0; -1 outside the map or before the map is adopted. |
+| [`og.tilemap.getTile`](#fn-getTile) | function | A cell's tile id, -1 when empty: on a terrain layer the tile auto-tiling resolved from the neighbours (setTile writes 1 or 0 there; the id changes with them). -1 outside the map or before the map is adopted. |
 | [`og.tilemap.cellAt`](#fn-cellAt) | function | The cell under a world point (its xy), for a map at its entity's position. |
 | [`og.tilemap.cellCenter`](#fn-cellCenter) | function | A cell's centre in world coordinates (z of the map). |
 
@@ -75,7 +75,7 @@ fn setTile {
 
 ### `og.tilemap.getTile`
 
-A cell's tile: a tile layer's tile id (-1 empty), a terrain layer's 1 or 0; -1 outside the map or before the map is adopted.
+A cell's tile id, -1 when empty: on a terrain layer the tile auto-tiling resolved from the neighbours (setTile writes 1 or 0 there; the id changes with them). -1 outside the map or before the map is adopted.
 
 ```ts
 og.tilemap.getTile(world: World, entity: Entity, layer: string, x: number, y: number): number
@@ -95,7 +95,7 @@ Binding symbol `og_tilemap_get_tile` · publish builds: kept
 
 ```ogt
 fn getTile {
-  doc "A cell's tile: a tile layer's tile id (-1 empty), a terrain layer's 1 or 0; -1 outside the map or before the map is adopted."
+  doc "A cell's tile id, -1 when empty: on a terrain layer the tile auto-tiling resolved from the neighbours (setTile writes 1 or 0 there; the id changes with them). -1 outside the map or before the map is adopted."
   param world World "The world."
   param entity Entity "The entity with the og.Tilemap."
   param layer String "The layer's name."

@@ -27,14 +27,14 @@ export default playtest({
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
     const locked = report(run, "locked.json");
     t.equal(locked.doorOpen, false, "the door stays shut without the key");
-    t.equal(locked.doorWall, 1, "the doorway's cell is filled wall terrain");
+    t.ok(locked.doorWall >= 0, `the doorway's cell draws the wall terrain's auto-tiled tile (${locked.doorWall})`);
     t.near(position(run, "locked.json").x, 19 - 0.3, 0.03, "the doorway's wall stops the hero");
     t.equal(locked.room, 1, "still in room 1");
     t.equal(report(run, "key.json").hasKey, true, "walking over the key picks it up");
     const through = report(run, "through.json");
     t.equal(through.doorOpen, true, "the key opened the door");
     t.equal(through.hasKey, false, "the key was spent");
-    t.equal(through.doorWall, 0, "the doorway's wall terrain cell is cleared");
+    t.equal(through.doorWall, -1, "the doorway's wall terrain cell is cleared: no tile");
     t.ok(position(run, "through.json").x > MAP.split + 1, `the hero walked through (x ${position(run, "through.json").x.toFixed(2)})`);
     t.equal(through.room, 2, "the hero is in room 2");
   },
