@@ -40,7 +40,10 @@
 //! ```
 
 pub mod command;
+pub mod dsp;
+pub mod listen;
 pub mod mixer;
+pub mod music;
 pub mod schema;
 pub mod sink;
 pub mod sound;
@@ -53,11 +56,15 @@ pub mod system;
 pub mod qoa;
 
 pub use command::{COMMAND_BYTES, Command, Op, TickPacket};
+pub use listen::Listen;
 pub use mixer::{Clock, MixStats, Mixer, MixerDesc};
+pub use music::{MUSIC_SYSTEM, next_times};
 pub use schema::{
-    Audio, AudioListener, AudioPlayback, AudioSource, AudioStream, Bus, SoundEnded, SoundStarted,
-    Transform, end_reason,
+    Audio, AudioBusFx, AudioListener, AudioPlayback, AudioSource, AudioStream, Bus, Music,
+    MusicBeat, SoundEnded, SoundStarted, Transform, end_reason,
 };
 pub use sink::{HeadlessMode, HeadlessSink, SinkStats, wav};
 pub use sound::{SoundBank, SoundData};
-pub use system::{AudioDesc, AudioLink, SYSTEM_NAME, install, link, publish_link, retire_link};
+pub use system::{
+    AudioDesc, AudioLink, Occluder, SYSTEM_NAME, install, link, publish_link, retire_link,
+};

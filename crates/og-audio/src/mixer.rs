@@ -16,10 +16,19 @@
 //!   `RAMP_FRAMES`; a stop fades over `FADE_FRAMES`.
 //! - **Pan** is Web Audio's StereoPannerNode law (equal power for mono,
 //!   balance for stereo). Bus gains (master × bus) fold into each voice.
+//!   A voice's low-pass (distance, occlusion, `lowpass`) is a one-pole
+//!   whose cutoff glides with its gain ramp. A play at a negative position
+//!   starts that many source frames later (a `startAt` inside a tick).
+//! - **Buses**: voices sum into their bus; each of music, sfx and ui runs
+//!   its inserts (high-pass, low-pass, compressor, then ducking by its key
+//!   bus's level) and sends to the shared reverb, then sums into master,
+//!   which runs its own inserts; the reverb's wet output joins master.
 //! - **Limiter**: stereo-linked peak envelope (instant attack, 100 ms
 //!   release) through a tanh soft knee at -1.9 dBFS: |output| < 1.0.
 
-use crate::command::{Command, Op, TickPacket};
+use crate::command::{Command, Op, TickPacket, fx};
+use crate::dsp::{Biquad, Compressor, Ducker, OnePole, Reverb};
+use crate::listen::Listen;
 use crate::schema::BUS_COUNT;
 use crate::sound::{Reader, SoundBank};
 use crate::system::AudioLink;
@@ -113,6 +122,7 @@ struct Voice {
     ramp: u32,
     stopping: bool,
     done: bool,
+    lp: OnePole,
 }
 
 /// Web Audio's StereoPannerNode gains for `pan`, as a matrix.
@@ -203,12 +213,27 @@ impl Voice {
         let step = self.base_step * f64::from(self.pitch);
         let span = (self.loop_end - self.loop_start) as f64;
         for o in out.as_chunks_mut::<2>().0.iter_mut() {
+            if self.pos < 0.0 {
+                if self.pos > -1e-6 {
+                    // Rounding of a start time: this is its frame.
+                    self.pos = 0.0;
+                } else {
+                    // Scheduled later in the tick: silent, ramps held, until it starts.
+                    self.pos += step;
+                    if self.stopping {
+                        self.done = true;
+                        return false;
+                    }
+                    continue;
+                }
+            }
             let i = self.pos as u64;
             let frac = (self.pos - i as f64) as f32;
             let (al, ar) = self.reader.frame(i);
             let (bl, br) = self.reader.frame(self.next_index(i));
-            let l = al + (bl - al) * frac;
-            let r = ar + (br - ar) * frac;
+            let (l, r) = self
+                .lp
+                .process(al + (bl - al) * frac, ar + (br - ar) * frac);
             if self.ramp > 0 {
                 for k in 0..4 {
                     self.cur[k] += self.inc[k];
@@ -299,6 +324,85 @@ pub struct Mixer {
     limiter: Limiter,
     stats: MixStats,
     scratch: Vec<f32>,
+    chains: [BusChain; BUS_COUNT],
+    /// Per-bus scratch (interleaved stereo), then the reverb's input.
+    bus_out: [Vec<f32>; BUS_COUNT],
+    send: Vec<f32>,
+    reverb: Option<Reverb>,
+    room: f32,
+    damping: f32,
+    /// Per-frame peaks of the buses that key a ducker.
+    keys: [Vec<f32>; BUS_COUNT],
+    listen: Option<Listen>,
+}
+
+/// One bus's inserts and the parameters they were built from.
+#[derive(Clone, Copy, Debug)]
+struct BusChain {
+    params: [f32; 14],
+    lp: Biquad,
+    hp: Biquad,
+    comp: Compressor,
+    duck: Ducker,
+    reverb: f32,
+    /// Any insert is on (else the bus passes straight through).
+    active: bool,
+}
+
+impl Default for BusChain {
+    fn default() -> Self {
+        let mut params = [0.0; 14];
+        params[fx::RATIO as usize] = 4.0;
+        BusChain {
+            params,
+            lp: Biquad::default(),
+            hp: Biquad::default(),
+            comp: Compressor::default(),
+            duck: Ducker::default(),
+            reverb: 0.0,
+            active: false,
+        }
+    }
+}
+
+impl BusChain {
+    fn set(&mut self, param: u32, value: f32, rate: f32) {
+        let Some(slot) = self.params.get_mut(param as usize) else {
+            return;
+        };
+        *slot = value;
+        let p = self.params;
+        let at = |k: u32| p[k as usize];
+        match param {
+            fx::LOWPASS => self.lp.set(at(fx::LOWPASS), false, rate),
+            fx::HIGHPASS => self.hp.set(at(fx::HIGHPASS), true, rate),
+            fx::REVERB => self.reverb = at(fx::REVERB).clamp(0.0, 1.0),
+            fx::THRESHOLD | fx::RATIO | fx::ATTACK | fx::RELEASE | fx::MAKEUP => self.comp.set(
+                at(fx::THRESHOLD),
+                at(fx::RATIO),
+                at(fx::ATTACK),
+                at(fx::RELEASE),
+                at(fx::MAKEUP),
+                rate,
+            ),
+            _ => {
+                let key = at(fx::DUCK_KEY) as usize;
+                self.duck.set(
+                    (1..=BUS_COUNT).contains(&key).then(|| key - 1),
+                    at(fx::DUCK_THRESHOLD),
+                    at(fx::DUCK_DEPTH),
+                    at(fx::DUCK_ATTACK),
+                    at(fx::DUCK_RELEASE),
+                    rate,
+                );
+            }
+        }
+        self.active = at(fx::LOWPASS) > 0.0
+            || at(fx::HIGHPASS) > 0.0
+            || at(fx::THRESHOLD) < 0.0
+            || at(fx::MAKEUP) != 0.0
+            || self.duck.key.is_some();
+    }
 }
 
 /// A command this late re-anchors a free clock (100 ms).
@@ -324,12 +428,31 @@ impl Mixer {
             limiter: Limiter::new(desc.sample_rate),
             stats: MixStats::default(),
             scratch: Vec::new(),
+            chains: [BusChain::default(); BUS_COUNT],
+            bus_out: Default::default(),
+            send: Vec::new(),
+            reverb: None,
+            room: 0.6,
+            damping: 0.4,
+            keys: Default::default(),
+            listen: None,
         }
+    }
+
+    /// Records every rendered frame into `listen` (the probe's `listen`).
+    pub fn record_into(&mut self, listen: Listen) {
+        self.listen = Some(listen);
+    }
+
+    /// A bus's compressor gain reduction and ducking gain now (dB, linear).
+    pub fn bus_dynamics(&self, bus: usize) -> (f32, f32) {
+        let c = &self.chains[bus.min(BUS_COUNT - 1)];
+        (c.comp.reduction, c.duck.current())
     }
 
     /// A driven mixer for `link`'s world and bank.
     pub fn for_link(link: &AudioLink, sample_rate: u32, clock: Clock) -> Mixer {
-        Mixer::new(
+        let mut m = Mixer::new(
             MixerDesc {
                 sample_rate,
                 tick_rate: link.tick_rate(),
@@ -337,7 +460,17 @@ impl Mixer {
                 limiter: true,
             },
             link.bank().clone(),
-        )
+        );
+        m.record_into(link.listen().clone());
+        m
+    }
+
+    fn ramp_frames(&self, seconds: f64, default: u32) -> u32 {
+        if seconds > 0.0 {
+            ((seconds * f64::from(self.desc.sample_rate)) as u32).max(1)
+        } else {
+            default
+        }
     }
 
     pub fn desc(&self) -> MixerDesc {
@@ -424,23 +557,27 @@ impl Mixer {
             }
             Event::Command(c) => {
                 self.stats.commands += 1;
+                let rate = self.desc.sample_rate as f32;
                 match c.op {
                     Op::Play => self.play(&c),
                     Op::Stop => {
+                        let fade = self.ramp_frames(c.position, FADE_FRAMES);
                         for v in self.voices.iter_mut().filter(|v| v.id == c.voice) {
                             v.stopping = true;
-                            v.retarget(&self.buses, FADE_FRAMES);
+                            v.retarget(&self.buses, fade);
                         }
                     }
                     Op::Params => {
                         let buses = self.buses;
+                        let ramp = self.ramp_frames(c.position, RAMP_FRAMES);
                         for v in self
                             .voices
                             .iter_mut()
                             .filter(|v| v.id == c.voice && !v.stopping)
                         {
                             v.apply(&c);
-                            v.retarget(&buses, RAMP_FRAMES);
+                            v.lp.set(c.lowpass, rate, ramp);
+                            v.retarget(&buses, ramp);
                         }
                     }
                     Op::Bus => {
@@ -448,7 +585,24 @@ impl Mixer {
                         self.buses[b] = c.gain.max(0.0);
                         let buses = self.buses;
                         for v in &mut self.voices {
-                            v.retarget(&buses, RAMP_FRAMES);
+                            // A longer fade in progress (a crossfade) keeps its length.
+                            let ramp = RAMP_FRAMES.max(v.ramp);
+                            v.retarget(&buses, ramp);
+                        }
+                    }
+                    Op::Fx => {
+                        let b = usize::from(c.bus).min(BUS_COUNT - 1);
+                        match c.voice {
+                            fx::ROOM => self.room = c.gain,
+                            fx::DAMPING => self.damping = c.gain,
+                            k => self.chains[b].set(k, c.gain, rate),
+                        }
+                        if let Some(r) = &mut self.reverb {
+                            r.set(self.room, self.damping);
+                        } else if self.chains.iter().any(|ch| ch.reverb > 0.0) {
+                            let mut r = Reverb::new(self.desc.sample_rate);
+                            r.set(self.room, self.damping);
+                            self.reverb = Some(r);
                         }
                     }
                     Op::StopAll => {
@@ -487,7 +641,8 @@ impl Mixer {
             id: c.voice,
             stereo: data.channels > 1,
             frames,
-            pos: c.position.max(0.0),
+            // Negative: it starts that many source frames later.
+            pos: c.position,
             base_step: f64::from(data.sample_rate) / f64::from(self.desc.sample_rate),
             reader: Reader::new(data),
             pitch: 1.0,
@@ -503,8 +658,10 @@ impl Mixer {
             ramp: 0,
             stopping: false,
             done: false,
+            lp: OnePole::default(),
         };
         v.apply(c);
+        v.lp.set(c.lowpass, self.desc.sample_rate as f32, 0);
         if v.looping && v.pos >= v.loop_end as f64 {
             let span = (v.loop_end - v.loop_start) as f64;
             v.pos = v.loop_start as f64 + (v.pos - v.loop_start as f64) % span;
@@ -518,10 +675,81 @@ impl Mixer {
 
     fn mix(&mut self, out: &mut [f32]) {
         out.fill(0.0);
-        self.voices.retain_mut(|v| v.render_add(out));
+        let routed = self.reverb.is_some() || self.chains.iter().any(|c| c.active);
+        if !routed {
+            // No inserts anywhere: every voice straight into the output.
+            self.voices.retain_mut(|v| v.render_add(out));
+        } else {
+            self.mix_buses(out);
+        }
         if self.desc.limiter {
             self.stats.limited += self.limiter.process(out);
         }
+        if let Some(l) = &self.listen {
+            l.record(out, self.desc.sample_rate);
+        }
+    }
+
+    /// Voices into their buses; each bus's inserts, ducking and reverb send;
+    /// the sum, the reverb's return and master's inserts into `out`.
+    fn mix_buses(&mut self, out: &mut [f32]) {
+        let n = out.len();
+        let mut buf = std::mem::take(&mut self.bus_out);
+        for b in &mut buf {
+            b.clear();
+            b.resize(n, 0.0);
+        }
+        self.voices.retain_mut(|v| v.render_add(&mut buf[v.bus]));
+        // The keys' levels, before any insert touches them.
+        for (k, peaks) in self.keys.iter_mut().enumerate() {
+            peaks.clear();
+            if self.chains.iter().any(|c| c.duck.key == Some(k)) {
+                peaks.extend(
+                    buf[k]
+                        .as_chunks::<2>()
+                        .0
+                        .iter()
+                        .map(|f| f[0].abs().max(f[1].abs())),
+                );
+            }
+        }
+        self.send.clear();
+        self.send.resize(n, 0.0);
+        for b in [1, 2, 3, 0] {
+            let chain = &mut self.chains[b];
+            let key = chain.duck.key.map(|k| &self.keys[k]);
+            let send = chain.reverb;
+            for (i, f) in buf[b].as_chunks_mut::<2>().0.iter_mut().enumerate() {
+                let (mut l, mut r) = (f[0], f[1]);
+                if chain.active {
+                    (l, r) = chain.hp.process(l, r);
+                    (l, r) = chain.lp.process(l, r);
+                    (l, r) = chain.comp.process(l, r);
+                    if let Some(k) = key {
+                        let g = chain.duck.gain(k.get(i).copied().unwrap_or(0.0));
+                        l *= g;
+                        r *= g;
+                    }
+                }
+                f[0] = l;
+                f[1] = r;
+                if send > 0.0 {
+                    self.send[i * 2] += l * send;
+                    self.send[i * 2 + 1] += r * send;
+                }
+            }
+            if b != 0 {
+                let (master, rest) = buf.split_at_mut(1);
+                for (o, x) in master[0].iter_mut().zip(&rest[b - 1]) {
+                    *o += x;
+                }
+            }
+        }
+        out.copy_from_slice(&buf[0]);
+        if let Some(r) = &mut self.reverb {
+            r.process_add(&self.send, out);
+        }
+        self.bus_out = buf;
     }
 
     /// Renders `out.len() / 2` stereo frames, applying commands at their frames.

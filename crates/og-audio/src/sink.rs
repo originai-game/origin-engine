@@ -1,7 +1,8 @@
-//! Headless sinks: `null` consumes the command stream and renders nothing;
-//! `capture` renders it with a driven mixer into memory (a WAV for
-//! `og run`, evidence and tests). Both follow the world's tick, so a
-//! headless run's audio is a function of its command stream.
+//! Headless sinks: `null` consumes the command stream and keeps only the
+//! last two seconds it renders (the probe's `listen`); `capture` renders it
+//! with a driven mixer into memory (a WAV for `og run --audio`, evidence
+//! and tests). Both follow the world's tick, so a headless run's audio is a
+//! function of its command stream.
 
 use crate::command::{Op, TickPacket};
 use crate::mixer::{Clock, MixStats, Mixer};
@@ -11,7 +12,8 @@ use og_core::hash::StableHasher;
 /// What a headless sink does with the stream.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HeadlessMode {
-    /// Count and hash the packets; no PCM.
+    /// Count and hash the packets; render at 48 kHz only into the link's
+    /// listen ring (the last two seconds).
     Null,
     /// Render PCM at this rate into memory.
     Capture { sample_rate: u32 },
@@ -35,23 +37,23 @@ pub struct HeadlessSink {
     mixer: Option<Mixer>,
     pcm: Vec<f32>,
     stats: SinkStats,
+    capture: bool,
 }
 
 impl HeadlessSink {
     /// Attaches to `link` (so the next tick resyncs).
     pub fn new(link: &AudioLink, mode: HeadlessMode) -> HeadlessSink {
         link.attach();
-        let mixer = match mode {
-            HeadlessMode::Null => None,
-            HeadlessMode::Capture { sample_rate } => {
-                Some(Mixer::for_link(link, sample_rate, Clock::Driven))
-            }
+        let (rate, capture) = match mode {
+            HeadlessMode::Null => (48_000, false),
+            HeadlessMode::Capture { sample_rate } => (sample_rate, true),
         };
         HeadlessSink {
             link: link.clone(),
-            mixer,
+            mixer: Some(Mixer::for_link(link, rate, Clock::Driven)),
             pcm: Vec::new(),
             stats: SinkStats::default(),
+            capture,
         }
     }
 
@@ -82,7 +84,13 @@ impl HeadlessSink {
             }
         }
         if let Some(m) = &mut self.mixer {
+            if !self.capture {
+                self.pcm.clear();
+            }
             m.render_until_tick(self.link.next_tick(), usize::MAX, &mut self.pcm);
+            if !self.capture {
+                self.pcm.clear();
+            }
         }
     }
 
@@ -93,7 +101,7 @@ impl HeadlessSink {
         }
     }
 
-    /// The captured interleaved stereo PCM so far.
+    /// The captured interleaved stereo PCM so far (empty for a null sink).
     pub fn pcm(&self) -> &[f32] {
         &self.pcm
     }
@@ -105,7 +113,10 @@ impl HeadlessSink {
 
     /// The capture rate, or `None` for a null sink.
     pub fn sample_rate(&self) -> Option<u32> {
-        self.mixer.as_ref().map(|m| m.desc().sample_rate)
+        self.mixer
+            .as_ref()
+            .filter(|_| self.capture)
+            .map(|m| m.desc().sample_rate)
     }
 
     pub fn mixer(&mut self) -> Option<&mut Mixer> {

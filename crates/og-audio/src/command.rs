@@ -5,20 +5,20 @@
 //!
 //! | offset | type | field | meaning |
 //! |---:|---|---|---|
-//! | 0 | u8 | `op` | 1 play, 2 stop, 3 params, 4 bus, 5 stop-all |
+//! | 0 | u8 | `op` | 1 play, 2 stop, 3 params, 4 bus, 5 stop-all, 6 fx |
 //! | 1 | u8 | `flags` | bit 0 loop, bit 1 spatial |
-//! | 2 | u8 | `bus` | 0 master, 1 music, 2 sfx, 3 ui (the bus a `bus` op sets) |
+//! | 2 | u8 | `bus` | 0 master, 1 music, 2 sfx, 3 ui (the bus a `bus` or `fx` op sets) |
 //! | 3 | u8 | reserved | 0 |
-//! | 4 | u32 | `voice` | the voice id (0 for `bus`, `stop-all`) |
+//! | 4 | u32 | `voice` | the voice id (0 for `bus`, `stop-all`; the parameter for `fx`, [`fx`]) |
 //! | 8 | u64 | `tick` | the tick whose start the command takes effect at |
 //! | 16 | u64 | `sound` | the sound handle (`play`) |
-//! | 24 | f32 | `gain` | voice gain, or the bus gain for `bus` |
+//! | 24 | f32 | `gain` | voice gain, the bus gain for `bus`, the value for `fx` |
 //! | 28 | f32 | `pitch` | playback rate |
 //! | 32 | f32 | `pan` | -1 left .. 1 right |
 //! | 36 | u32 | `loop_start` | loop start, frames of the sound |
 //! | 40 | u32 | `loop_end` | loop end (exclusive), frames; 0 = the sound's end |
-//! | 44 | u32 | reserved | 0 |
-//! | 48 | f64 | `position` | where `play` starts, frames of the sound |
+//! | 44 | f32 | `lowpass` | the voice's low-pass cutoff in Hz (play, params); 0 open |
+//! | 48 | f64 | `position` | `play`: where it starts, frames of the sound (negative: starts that many frames later, sample-accurately); `params`, `stop`: the ramp in seconds (0: the default 256 frames) |
 
 /// What a command does.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -33,6 +33,38 @@ pub enum Op {
     Bus = 4,
     /// Stop every voice (a resync's first command; never in the hashed stream).
     StopAll = 5,
+    /// Set one effect parameter of bus `bus`: `voice` is the parameter ([`fx`]), `gain` its value.
+    Fx = 6,
+}
+
+/// The effect parameters an `fx` command sets (its `voice` field).
+pub mod fx {
+    /// Low-pass insert cutoff, Hz (0: off).
+    pub const LOWPASS: u32 = 1;
+    /// High-pass insert cutoff, Hz (0: off).
+    pub const HIGHPASS: u32 = 2;
+    /// Send to the reverb, 0..1.
+    pub const REVERB: u32 = 3;
+    /// Compressor threshold, dB (0: off).
+    pub const THRESHOLD: u32 = 4;
+    pub const RATIO: u32 = 5;
+    /// Seconds.
+    pub const ATTACK: u32 = 6;
+    pub const RELEASE: u32 = 7;
+    /// dB.
+    pub const MAKEUP: u32 = 8;
+    /// The ducking key: 1 + the key bus's index (0: no ducking).
+    pub const DUCK_KEY: u32 = 9;
+    /// dB the bus is turned down by.
+    pub const DUCK_DEPTH: u32 = 10;
+    /// dB the key must exceed.
+    pub const DUCK_THRESHOLD: u32 = 11;
+    pub const DUCK_ATTACK: u32 = 12;
+    pub const DUCK_RELEASE: u32 = 13;
+    /// The reverb's room size, 0..1 (any bus; the reverb is shared).
+    pub const ROOM: u32 = 20;
+    /// The reverb's damping, 0..1.
+    pub const DAMPING: u32 = 21;
 }
 
 impl Op {
@@ -43,6 +75,7 @@ impl Op {
             3 => Op::Params,
             4 => Op::Bus,
             5 => Op::StopAll,
+            6 => Op::Fx,
             _ => return None,
         })
     }
@@ -70,6 +103,8 @@ pub struct Command {
     pub pan: f32,
     pub loop_start: u32,
     pub loop_end: u32,
+    /// The voice's low-pass cutoff in Hz; 0 is open.
+    pub lowpass: f32,
     pub position: f64,
 }
 
@@ -88,6 +123,7 @@ impl Command {
             pan: 0.0,
             loop_start: 0,
             loop_end: 0,
+            lowpass: 0.0,
             position: 0.0,
         }
     }
@@ -107,7 +143,7 @@ impl Command {
         out.extend_from_slice(&self.pan.to_le_bytes());
         out.extend_from_slice(&self.loop_start.to_le_bytes());
         out.extend_from_slice(&self.loop_end.to_le_bytes());
-        out.extend_from_slice(&0u32.to_le_bytes());
+        out.extend_from_slice(&self.lowpass.to_le_bytes());
         out.extend_from_slice(&self.position.to_le_bytes());
     }
 
@@ -131,6 +167,7 @@ impl Command {
             pan: f32_at(32),
             loop_start: u32_at(36),
             loop_end: u32_at(40),
+            lowpass: f32_at(44),
             position: f64::from_le_bytes(b[48..56].try_into().unwrap()),
         })
     }
