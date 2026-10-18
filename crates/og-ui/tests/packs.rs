@@ -13,6 +13,9 @@ use og_ui::skin::{SkinPart, Slice};
 use og_ui::*;
 use std::path::PathBuf;
 
+/// Where, the fill a template gives it, the frame, the inks on it.
+type Check = (&'static str, Srgba, SkinPart, Vec<(&'static str, Srgba)>);
+
 const PACKS: [&str; 6] = ["pixel", "cartoon", "fantasy", "scifi", "paper", "neon"];
 
 fn root() -> PathBuf {
@@ -110,7 +113,7 @@ fn every_style_pack_parses_and_keeps_body_text_at_4_5_to_1() {
                 .unwrap_or_else(|| panic!("{name} has no {} slice", part.name()))
         };
         // (where, the fill a template gives it, the frame, the inks on it)
-        let checks: Vec<(&str, Srgba, SkinPart, Vec<(&str, Srgba)>)> = vec![
+        let checks: Vec<Check> = vec![
             (
                 "dialog",
                 p.surface_raised,
