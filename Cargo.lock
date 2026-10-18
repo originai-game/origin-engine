@@ -1604,20 +1604,13 @@ dependencies = [
 name = "og-api"
 version = "0.0.1"
 dependencies = [
- "glam 0.34.1",
- "miniz_oxide 0.8.9",
  "og-anim",
  "og-audio",
- "og-cook",
  "og-core",
- "og-ecs",
+ "og-idl",
  "og-input",
  "og-physics",
- "og-probe",
- "og-render",
- "og-tilemap",
  "og-tween",
- "og-ui",
  "serde_json",
 ]
 
@@ -1644,6 +1637,7 @@ dependencies = [
  "og-api",
  "og-cook",
  "og-core",
+ "og-idl",
  "serde_json",
  "tungstenite",
 ]
@@ -1720,6 +1714,7 @@ dependencies = [
  "og-cook",
  "og-probe",
  "og-render",
+ "og-runtime",
  "pollster",
 ]
 
@@ -1733,11 +1728,19 @@ dependencies = [
  "og-cook",
  "og-probe",
  "og-render",
+ "og-runtime",
  "serde_json",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
  "wgpu",
+]
+
+[[package]]
+name = "og-idl"
+version = "0.0.1"
+dependencies = [
+ "og-core",
 ]
 
 [[package]]
@@ -1784,6 +1787,28 @@ dependencies = [
  "og-core",
  "pollster",
  "wgpu",
+]
+
+[[package]]
+name = "og-runtime"
+version = "0.0.1"
+dependencies = [
+ "glam 0.34.1",
+ "miniz_oxide 0.8.9",
+ "og-anim",
+ "og-api",
+ "og-audio",
+ "og-cook",
+ "og-core",
+ "og-ecs",
+ "og-input",
+ "og-physics",
+ "og-probe",
+ "og-render",
+ "og-tilemap",
+ "og-tween",
+ "og-ui",
+ "serde_json",
 ]
 
 [[package]]

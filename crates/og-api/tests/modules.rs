@@ -139,13 +139,13 @@ fn theme_color_names_every_token_colour() {
         .map(|k| camel(k))
         .collect();
     want.sort();
-    let api = og_api::read(&root.join(og_api::IDL_PATH)).unwrap();
+    let api = og_idl::read(&root.join(og_idl::IDL_PATH)).unwrap();
     let mut have: Vec<String> = api
         .modules
         .iter()
         .flat_map(|m| m.items.iter())
         .find_map(|i| match i {
-            og_api::model::Item::Enum(e) if e.name == "ThemeColor" => Some(
+            og_idl::model::Item::Enum(e) if e.name == "ThemeColor" => Some(
                 e.variants
                     .iter()
                     .map(|v| v.name.clone())

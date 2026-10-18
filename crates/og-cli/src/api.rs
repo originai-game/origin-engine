@@ -37,7 +37,7 @@ fn root_option(rest: &[&str]) -> Result<PathBuf, ExitCode> {
             crate::find_root(&cwd).ok_or_else(|| {
                 eprintln!(
                     "og api: no {} above {}; run inside the engine repository or pass --root <dir>.",
-                    og_api::IDL_PATH,
+                    og_idl::IDL_PATH,
                     cwd.display()
                 );
                 ExitCode::from(2)
@@ -57,7 +57,7 @@ fn root_option(rest: &[&str]) -> Result<PathBuf, ExitCode> {
 /// Writes every generated file, or with `wiki` only the wiki pages, and
 /// removes wiki pages the IDL no longer generates (a deleted module's page).
 fn api_gen(root: &Path, wiki: bool) -> ExitCode {
-    let api = match og_api::read(&root.join(og_api::IDL_PATH)) {
+    let api = match og_idl::read(&root.join(og_idl::IDL_PATH)) {
         Ok(api) => api,
         Err(e) => {
             eprint!("og api gen: {e}");
@@ -65,18 +65,28 @@ fn api_gen(root: &Path, wiki: bool) -> ExitCode {
         }
     };
     let files = if wiki {
-        og_api::generate_wiki(&api)
+        og_idl::generate_wiki(&api)
     } else {
-        og_api::generate(&api)
+        og_idl::generate(&api)
     };
-    if let Err(e) = og_api::write(root, &files) {
-        eprintln!("og api gen: cannot write under {}: {e}", root.display());
-        return ExitCode::FAILURE;
+    let written = match og_idl::write(root, &files) {
+        Ok(written) => written,
+        Err(e) => {
+            eprintln!("og api gen: cannot write under {}: {e}", root.display());
+            return ExitCode::FAILURE;
+        }
+    };
+    for path in &written {
+        println!("wrote {path}");
     }
-    for f in &files {
-        println!("wrote {}", f.path);
-    }
-    let dir = root.join(og_api::WIKI_DIR);
+    // Unchanged files keep their modification time, so cargo rebuilds only
+    // the crates whose generated Rust changed.
+    println!(
+        "{} of {} generated files unchanged",
+        files.len() - written.len(),
+        files.len()
+    );
+    let dir = root.join(og_idl::WIKI_DIR);
     let mut stale: Vec<PathBuf> = std::fs::read_dir(&dir)
         .map(|entries| {
             entries
@@ -86,7 +96,7 @@ fn api_gen(root: &Path, wiki: bool) -> ExitCode {
                 .filter(|p| {
                     let rel = format!(
                         "{}/{}",
-                        og_api::WIKI_DIR,
+                        og_idl::WIKI_DIR,
                         p.file_name().unwrap_or_default().to_string_lossy()
                     );
                     !files.iter().any(|f| f.path == rel)
@@ -109,7 +119,7 @@ fn api_gen(root: &Path, wiki: bool) -> ExitCode {
 }
 
 fn api_check(root: &Path) -> ExitCode {
-    match og_api::check(root) {
+    match og_idl::check(root) {
         Err(e) => {
             eprint!("og api check: {e}");
             ExitCode::FAILURE
@@ -117,7 +127,7 @@ fn api_check(root: &Path) -> ExitCode {
         Ok(drift) if drift.is_empty() => {
             println!(
                 "og api check: the generated files match {}.",
-                og_api::IDL_PATH
+                og_idl::IDL_PATH
             );
             ExitCode::SUCCESS
         }
@@ -125,7 +135,7 @@ fn api_check(root: &Path) -> ExitCode {
             eprintln!(
                 "og api check: {} file(s) differ from what {} generates:",
                 drift.len(),
-                og_api::IDL_PATH
+                og_idl::IDL_PATH
             );
             for d in &drift {
                 eprintln!("  {d}");

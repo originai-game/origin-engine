@@ -17,12 +17,13 @@ doctest = false
 [features]
 default = []
 # A published game: the commands module and the probe's non-player members are not exported.
-publish = ["og-api/publish"]
+publish = ["og-runtime/publish"]
 # Audio on the default output device through cpal (og-audio); without it the sinks are null and capture.
 native-audio = ["dep:cpal"]
 
 [dependencies]
-og-api = { path = "../og-api", features = ["runtime"] }
+og-api = { path = "../og-api" }
+og-runtime = { path = "../og-runtime" }
 og-render = { path = "../og-render" }
 og-probe = { path = "../og-probe", features = ["ws"] }
 og-cook = { path = "../og-cook", default-features = false, features = ["transcode"] }

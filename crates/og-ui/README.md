@@ -358,7 +358,7 @@ exactly as authored over any game, at any camera, sharp under TAA:
   (`tests/gfx.rs` `a_scroll_container_clips_everything_it_draws` reads the
   pixels on both sides of the edge).
 
-The runtime (`og_api::runtime::modules::emit`) writes the frame into
+The runtime (`og_runtime::modules::emit`) writes the frame into
 `RenderScene::overlay` with scale 0 (fit the output's height), so the UI
 shows over 3D games at any camera; the camera-plane workaround is gone.
 Recapturing on the overlay moved only clipped content: the store list's top
@@ -425,7 +425,7 @@ widgets return the new value (`og.ui.tabs(...).selected`,
 `dismissToast`, `navigate` and `previewViewport` take the world and work
 between ticks; `frameTheme`, `frameViewport`, `breakpoint`, `hasIcon`,
 `seconds`, `tick` read the frame being built. The bindings are in
-`og_api::runtime::modules` (both hosts call them).
+`og_runtime::modules` (both hosts call them).
 
 **The UI kit** (`packages/engine/src/ui-kit`, merged into `og.ui`): screen
 templates written in TypeScript over those calls, each one call per tick with

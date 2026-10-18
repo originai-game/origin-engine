@@ -1,4 +1,4 @@
-//! The host-neutral runtime both hosts wrap (feature `runtime`).
+//! Origin Engine `og-runtime`: the host-neutral runtime both hosts wrap.
 //!
 //! `og-host-web` and `og-host-node` implement the generated `og_api::host`
 //! traits; almost every method is a call into this module with the same wire

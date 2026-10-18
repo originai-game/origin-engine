@@ -12,6 +12,7 @@ path = "src/main.rs"
 
 [dependencies]
 og-api = { path = "../og-api" }
+og-idl = { path = "../og-idl" }
 og-core = { path = "../og-core" }
 og-cook = { path = "../og-cook" }
 serde_json = "1"

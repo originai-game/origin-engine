@@ -5,7 +5,7 @@
 
 use crate::{WebHooks, WebHost};
 use og_api::host::*;
-use og_api::runtime as rt;
+use og_runtime as rt;
 use std::rc::Rc;
 
 impl Wire for WebHost {

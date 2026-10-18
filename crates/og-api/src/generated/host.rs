@@ -1,9 +1,15 @@
 // Generated from crates/og-api/api.ogt by `og api gen`. Do not edit: `og api check` fails on any difference; change api.ogt and regenerate.
 //! The host contract, generated from the IDL: one trait per module with
 //! callables, each method a binding symbol with its wire signature (see
-//! `og_api::gen::host` for the wire forms). `og-host-web` and
+//! og-idl's `gen/host.rs` for the wire forms). `og-host-web` and
 //! `og-host-node` implement every trait, and their generated glue calls
 //! the methods, so a member missing on either host is a build error.
+//!
+//! The IDL's prose is not repeated here: a method names its TypeScript
+//! path, documented in api.ogt and packages/knowledge/wiki/<module>.md.
+//! An edit to the docs alone then leaves this file, and so the hosts
+//! and the wasm, unchanged; field docs stay in RECORDS, which the
+//! runtime's reflection serves.
 
 // Field metadata (min, max, step) is written as the IDL states it.
 #![allow(clippy::approx_constant)]
@@ -44,499 +50,499 @@ pub trait Lifecycle: Wire {
     fn og_engine_write_resource(&self, world: u32, resource: String, value: String) -> String;
 }
 
-/// `reflect`: Reflection: components and resources are declared once with their field layout and metadata, and registered by name.
+/// `reflect`: packages/knowledge/wiki/reflect.md.
 pub trait ReflectApi: Wire {
-    /// `defineComponent`: Declare a component: plain data stored per entity in engine memory, one column per field.
+    /// `defineComponent`
     fn og_reflect_define_component(&self, name: String, fields: String) -> String;
-    /// `defineResource`: Declare a resource: a reflected singleton, such as a tuning table. Its fields start at their defaults.
+    /// `defineResource`
     fn og_reflect_define_resource(&self, name: String, fields: String) -> String;
 }
 
-/// `world`: The world: an archetype ECS. Entities are generational handles; components are columns in engine memory.
+/// `world`: packages/knowledge/wiki/world.md.
 pub trait WorldApi: Wire {
-    /// `World.tick`: Fixed steps taken since the world was created.
+    /// `World.tick`
     fn og_world_get_tick(&self, world: u32) -> u32;
-    /// `World.spawn`: Spawn an entity.
+    /// `World.spawn`
     fn og_world_spawn(&self, world: u32, desc: Option<String>) -> String;
-    /// `World.despawn`: Despawn an entity and its descendants.
+    /// `World.despawn`
     fn og_world_despawn(&self, world: u32, entity: f64) -> String;
-    /// `World.alive`: Whether an entity handle is live.
+    /// `World.alive`
     fn og_world_alive(&self, world: u32, entity: f64) -> bool;
-    /// `World.has`: Whether an entity has a component.
+    /// `World.has`
     fn og_world_has(&self, world: u32, entity: f64, component: String) -> bool;
-    /// `World.insert`: Add a component to an entity, or overwrite it when present. A structural change.
+    /// `World.insert`
     fn og_world_insert(&self, world: u32, entity: f64, component: String, value: Option<String>) -> String;
-    /// `World.remove`: Remove a component from an entity. A structural change.
+    /// `World.remove`
     fn og_world_remove(&self, world: u32, entity: f64, component: String) -> String;
-    /// `World.get`: Copy one entity's component value. For bulk work use a system's typed views.
+    /// `World.get`
     fn og_world_get(&self, world: u32, entity: f64, component: String) -> String;
-    /// `World.set`: Write some fields of one entity's component.
+    /// `World.set`
     fn og_world_set(&self, world: u32, entity: f64, component: String, value: String) -> String;
-    /// `World.resource`: A resource's live value. Inside a system, the resource must be among the system's reads or writes.
+    /// `World.resource`
     fn og_world_resource(&self, world: u32, resource: String) -> String;
-    /// `World.find`: The entity with a name.
+    /// `World.find`
     fn og_world_find(&self, world: u32, name: String) -> String;
-    /// `World.nameOf`: An entity's name.
+    /// `World.nameOf`
     fn og_world_name_of(&self, world: u32, entity: f64) -> String;
-    /// `World.query`: A query over the current archetypes, for commands and callbacks; systems receive theirs.
+    /// `World.query`
     fn og_world_query(&self, world: u32, desc: Option<String>) -> String;
-    /// `World.events`: The events of one type emitted during the previous tick and this one, oldest first.
+    /// `World.events`
     fn og_world_events(&self, world: u32, event: String) -> String;
-    /// `World.emit`: Emit an event; readers see it this tick and the next.
+    /// `World.emit`
     fn og_world_emit(&self, world: u32, event: String, payload: String) -> String;
-    /// `World.instantiate`: Spawn a loaded scene or glTF asset into the world: a root entity from the desc, then (for a scene) every scene entity under it with its components and names, or (for a glTF) a Model on the root.
+    /// `World.instantiate`
     fn og_world_instantiate(&self, world: u32, asset: f64, desc: Option<String>) -> String;
-    /// `Query.archetypes`: The matched archetypes this tick.
+    /// `Query.archetypes`
     fn og_query_archetypes(&self, query: u32) -> String;
-    /// `Query.count`: The number of matched entities.
+    /// `Query.count`
     fn og_query_count(&self, query: u32) -> u32;
-    /// `ArchetypeView.count`: The number of entities in the archetype.
+    /// `ArchetypeView.count`
     fn og_archetype_view_get_count(&self, archetype_view: u32) -> u32;
-    /// `ArchetypeView.tick`: The tick this view belongs to.
+    /// `ArchetypeView.tick`
     fn og_archetype_view_get_tick(&self, archetype_view: u32) -> u32;
-    /// `ArchetypeView.entities`: The entities as (index, generation) pairs: entity i is at 2i and 2i + 1.
+    /// `ArchetypeView.entities`
     fn og_archetype_view_get_entities(&self, archetype_view: u32) -> Self::Array;
-    /// `ArchetypeView.entity`: The handle of entity i.
+    /// `ArchetypeView.entity`
     fn og_archetype_view_entity(&self, archetype_view: u32, index: u32) -> f64;
-    /// `ArchetypeView.has`: Whether the archetype carries a component.
+    /// `ArchetypeView.has`
     fn og_archetype_view_has(&self, archetype_view: u32, component: String) -> bool;
-    /// `ArchetypeView.column`: The typed views of a component's fields: one typed array per field, `count * stride` long.
+    /// `ArchetypeView.column`
     fn og_archetype_view_column(&self, archetype_view: u32, component: String) -> Self::Views;
 }
 
-/// `system`: Systems: functions the engine calls once per tick with their matched archetypes.
+/// `system`: packages/knowledge/wiki/system.md.
 pub trait SystemApi: Wire {
-    /// `System.name`: The system's unique name.
+    /// `System.name`
     fn og_system_get_name(&self, system: u32) -> String;
-    /// `System.reads`: What it reads.
+    /// `System.reads`
     fn og_system_get_reads(&self, system: u32) -> String;
-    /// `System.writes`: What it writes.
+    /// `System.writes`
     fn og_system_get_writes(&self, system: u32) -> String;
-    /// `defineSystem`: Declare a system.
+    /// `defineSystem`
     fn og_system_define_system(&self, name: String, desc: String, run: u32) -> u32;
 }
 
-/// `game`: The game entry: what the bundle's default export declares.
+/// `game`: packages/knowledge/wiki/game.md.
 pub trait GameApi: Wire {
-    /// `Game.tick`: The fixed tick rate in hertz.
+    /// `Game.tick`
     fn og_game_get_tick(&self, game: u32) -> u32;
-    /// `Game.systems`: The systems in declaration order.
+    /// `Game.systems`
     fn og_game_get_systems(&self, game: u32) -> String;
-    /// `og.game`: Declare the game. The bundle's default export is its result.
+    /// `og.game`
     fn og_game_game(&self, desc: Option<String>) -> u32;
 }
 
-/// `transform`: Transforms in the three.js vocabulary: position, quaternion and scale, composed into matrixWorld down the parent chain.
+/// `transform`: packages/knowledge/wiki/transform.md.
 pub trait TransformApi: Wire {
-    /// `og.transform.compose`: A matrix from position, rotation and scale, as three.js Matrix4.compose.
+    /// `og.transform.compose`
     fn og_transform_compose(&self, position: String, quaternion: String, scale: String) -> String;
-    /// `og.transform.decompose`: Position, rotation and scale from a matrix, as three.js Matrix4.decompose.
+    /// `og.transform.decompose`
     fn og_transform_decompose(&self, matrix: String) -> String;
-    /// `og.transform.lookAt`: The rotation that points -Z from an eye towards a target, as three.js Object3D.lookAt for cameras.
+    /// `og.transform.lookAt`
     fn og_transform_look_at(&self, eye: String, target: String, up: Option<String>) -> String;
-    /// `og.transform.fromAxisAngle`: A rotation about an axis, as three.js Quaternion.setFromAxisAngle.
+    /// `og.transform.fromAxisAngle`
     fn og_transform_from_axis_angle(&self, axis: String, angle: f64) -> String;
 }
 
-/// `time`: Simulation time. Game code never reads the wall clock; it reads Time.
+/// `time`: packages/knowledge/wiki/time.md.
 pub trait TimeApi: Wire {
-    /// `og.time.setScale`: Set the global time scale (slow motion): physics, og.anim, flipbooks and tweens advance by dt * scale from the system after the call; systems may call it.
+    /// `og.time.setScale`
     fn og_time_set_scale(&self, world: u32, scale: f64) -> String;
-    /// `og.time.hitStop`: Freeze scaled time for `ticks` ticks from now (this tick included): physics, og.anim, flipbooks and scaled tweens hold while input, the UI, unscaled tweens and camera shake keep moving. A longer hit stop in progress is never shortened. Typical values: 2-3 ticks for a light hit, 5-8 heavy, 10-15 a finishing blow.
+    /// `og.time.hitStop`
     fn og_time_hit_stop(&self, world: u32, ticks: u32) -> String;
 }
 
-/// `rng`: Deterministic randomness. Every random draw comes from an Rng stream; the sequence for a seed is identical on every host and in the Web scaffold's rng.ts.
+/// `rng`: packages/knowledge/wiki/rng.md.
 pub trait RngApi: Wire {
-    /// `RngStream.seed`: The stream's derived seed.
+    /// `RngStream.seed`
     fn og_rng_stream_get_seed(&self, rng_stream: u32) -> u32;
-    /// `RngStream.next`: Uniform in [0, 1).
+    /// `RngStream.next`
     fn og_rng_stream_next(&self, rng_stream: u32) -> f64;
-    /// `RngStream.range`: Uniform in [low, high).
+    /// `RngStream.range`
     fn og_rng_stream_range(&self, rng_stream: u32, low: f64, high: f64) -> f64;
-    /// `RngStream.integer`: A uniform integer in [low, high].
+    /// `RngStream.integer`
     fn og_rng_stream_integer(&self, rng_stream: u32, low: i32, high: i32) -> i32;
-    /// `RngStream.chance`: True with probability p.
+    /// `RngStream.chance`
     fn og_rng_stream_chance(&self, rng_stream: u32, p: f64) -> bool;
-    /// `RngStream.fork`: A fresh stream on a seed derived from this stream's seed and a label.
+    /// `RngStream.fork`
     fn og_rng_stream_fork(&self, rng_stream: u32, label: String) -> u32;
-    /// `Rng.next`: Uniform in [0, 1).
+    /// `Rng.next`
     fn og_rng_next(&self, world: u32) -> f64;
-    /// `Rng.range`: Uniform in [low, high).
+    /// `Rng.range`
     fn og_rng_range(&self, world: u32, low: f64, high: f64) -> f64;
-    /// `Rng.integer`: A uniform integer in [low, high].
+    /// `Rng.integer`
     fn og_rng_integer(&self, world: u32, low: i32, high: i32) -> i32;
-    /// `Rng.chance`: True with probability p.
+    /// `Rng.chance`
     fn og_rng_chance(&self, world: u32, p: f64) -> bool;
-    /// `Rng.fork`: A stream for a subsystem, derived from the seed and a label, so drawing from it leaves the main sequence alone.
+    /// `Rng.fork`
     fn og_rng_fork(&self, world: u32, label: String) -> u32;
 }
 
-/// `input`: Input as the game sees it: the Input resource for polling, events for edges.
+/// `input`: packages/knowledge/wiki/input.md.
 pub trait InputApi: Wire {
-    /// `Input.down`: Whether a key is held.
+    /// `Input.down`
     fn og_input_down(&self, world: u32, key: String) -> bool;
-    /// `Input.pressed`: Whether a key went down this tick.
+    /// `Input.pressed`
     fn og_input_pressed(&self, world: u32, key: String) -> bool;
-    /// `Input.released`: Whether a key went up this tick.
+    /// `Input.released`
     fn og_input_released(&self, world: u32, key: String) -> bool;
-    /// `Input.axis`: -1, 0 or 1 from two keys, such as `axis("KeyA", "KeyD")`.
+    /// `Input.axis`
     fn og_input_axis(&self, world: u32, negative: String, positive: String) -> f64;
-    /// `Input.axis2`: A 2D axis from four keys, such as `axis2("KeyA", "KeyD", "KeyS", "KeyW")`: each component -1, 0 or 1.
+    /// `Input.axis2`
     fn og_input_axis2(&self, world: u32, left: String, right: String, down: String, up: String) -> String;
-    /// `Input.buttonDown`: Whether a pointer button is held.
+    /// `Input.buttonDown`
     fn og_input_button_down(&self, world: u32, button: String) -> bool;
-    /// `Input.buttonPressed`: Whether a pointer button went down this tick.
+    /// `Input.buttonPressed`
     fn og_input_button_pressed(&self, world: u32, button: String) -> bool;
-    /// `Input.buttonReleased`: Whether a pointer button went up this tick.
+    /// `Input.buttonReleased`
     fn og_input_button_released(&self, world: u32, button: String) -> bool;
-    /// `Pointers.down`: Whether a pointer is held.
+    /// `Pointers.down`
     fn og_pointers_down(&self, world: u32, id: u32) -> bool;
-    /// `Pointers.pressed`: Whether a pointer went down this tick.
+    /// `Pointers.pressed`
     fn og_pointers_pressed(&self, world: u32, id: u32) -> bool;
-    /// `Pointers.released`: Whether a pointer went up this tick.
+    /// `Pointers.released`
     fn og_pointers_released(&self, world: u32, id: u32) -> bool;
-    /// `Pointers.position`: Where a pointer is, in CSS pixels.
+    /// `Pointers.position`
     fn og_pointers_position(&self, world: u32, id: u32) -> String;
-    /// `Pointers.start`: Where a pointer went down, in CSS pixels: a touch control claims the pointers that started on it.
+    /// `Pointers.start`
     fn og_pointers_start(&self, world: u32, id: u32) -> String;
-    /// `Pointers.count`: How many pointers are held.
+    /// `Pointers.count`
     fn og_pointers_count(&self, world: u32) -> u32;
-    /// `Gamepad.connected`: Whether a pad is connected.
+    /// `Gamepad.connected`
     fn og_gamepad_connected(&self, world: u32, pad: Option<u32>) -> bool;
-    /// `Gamepad.down`: Whether a button is held.
+    /// `Gamepad.down`
     fn og_gamepad_down(&self, world: u32, button: String, pad: Option<u32>) -> bool;
-    /// `Gamepad.pressed`: Whether a button went down this tick.
+    /// `Gamepad.pressed`
     fn og_gamepad_pressed(&self, world: u32, button: String, pad: Option<u32>) -> bool;
-    /// `Gamepad.released`: Whether a button went up this tick.
+    /// `Gamepad.released`
     fn og_gamepad_released(&self, world: u32, button: String, pad: Option<u32>) -> bool;
-    /// `Gamepad.axis`: An analog input: a stick's x or y (-1 to 1, y down) or a trigger (0 to 1). Dead zones are the game's.
+    /// `Gamepad.axis`
     fn og_gamepad_axis(&self, world: u32, axis: String, pad: Option<u32>) -> f64;
 }
 
-/// `camera`: The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names.
+/// `camera`: packages/knowledge/wiki/camera.md.
 pub trait CameraApi: Wire {
-    /// `Camera.lookAt`: Rotate the camera to look at a point, as three.js Camera.lookAt.
+    /// `Camera.lookAt`
     fn og_camera_look_at(&self, world: u32, target: String);
-    /// `Camera.worldToScreen`: Where a world point lands on the play surface.
+    /// `Camera.worldToScreen`
     fn og_camera_world_to_screen(&self, world: u32, point: String) -> String;
-    /// `Camera.screenToRay`: The ray through a point of the play surface, for picking.
+    /// `Camera.screenToRay`
     fn og_camera_screen_to_ray(&self, world: u32, x: f64, y: f64) -> String;
-    /// `og.camera.shake`: Add screen shake: trauma, clamped to 1, which og.Camera decays by traumaDecay. The shake grows with trauma squared, so 0.2 is a nudge, 0.5 a heavy hit, 1 an explosion. Visual only. Systems may call it; it takes effect at the engine's og.camera system this tick.
+    /// `og.camera.shake`
     fn og_camera_shake(&self, world: u32, trauma: f64) -> String;
-    /// `og.camera.punch`: A zoom punch: the view narrows by `amount` (0.05 is a tap, 0.15 a slam) and springs back by Camera.punchDecay. Visual only.
+    /// `og.camera.punch`
     fn og_camera_punch(&self, world: u32, amount: f64) -> String;
-    /// `og.camera.kick`: A directional nudge of the view (recoil, an impact from one side): offset by `distance` along `direction`, returning by Camera.kickDecay. Visual only.
+    /// `og.camera.kick`
     fn og_camera_kick(&self, world: u32, direction: String, distance: f64) -> String;
 }
 
-/// `render`: What is drawn: meshes with materials. Draws are instanced by (geometry, material) automatically; there is no per-object draw call.
+/// `render`: packages/knowledge/wiki/render.md.
 pub trait RenderApi: Wire {
-    /// `og.render.ribbon`: Draw a ribbon this frame. Systems and commands may call it; the list is cleared at every tick.
+    /// `og.render.ribbon`
     fn og_render_ribbon(&self, world: u32, desc: Option<String>) -> String;
-    /// `og.render.sprite`: Draw a sprite this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the sprite should show.
+    /// `og.render.sprite`
     fn og_render_sprite(&self, world: u32, desc: Option<String>) -> String;
-    /// `og.render.floatingText`: Spawn a floating text (damage numbers, +coins, `blocked`). It lives `lifetime` seconds of scaled time on its own; systems and commands may call it.
+    /// `og.render.floatingText`
     fn og_render_floating_text(&self, world: u32, desc: Option<String>) -> String;
-    /// `og.render.measureText`: The size text takes when og.render.text draws it, for centring, wrapping and layout.
+    /// `og.render.measureText`
     fn og_render_measure_text(&self, world: u32, desc: Option<String>) -> String;
-    /// `og.render.boxGeometry`: Make a box geometry for og.Mesh. Physics can use it as a convex or triangle-mesh Collider.mesh too.
+    /// `og.render.boxGeometry`
     fn og_render_box_geometry(&self, world: u32, desc: Option<String>) -> String;
-    /// `og.render.planeGeometry`: Make a plane geometry for og.Mesh. Physics can use it as a triangle-mesh Collider.mesh too.
+    /// `og.render.planeGeometry`
     fn og_render_plane_geometry(&self, world: u32, desc: Option<String>) -> String;
-    /// `og.render.sphereGeometry`: Make a sphere geometry for og.Mesh (give its body a sphere Collider, not this mesh).
+    /// `og.render.sphereGeometry`
     fn og_render_sphere_geometry(&self, world: u32, desc: Option<String>) -> String;
-    /// `og.render.standardMaterial`: Create a standard material.
+    /// `og.render.standardMaterial`
     fn og_render_standard_material(&self, world: u32, desc: Option<String>) -> String;
-    /// `og.render.updateMaterial`: Change some parameters of a standard material.
+    /// `og.render.updateMaterial`
     fn og_render_update_material(&self, world: u32, material: f64, desc: Option<String>) -> String;
-    /// `og.render.capabilities`: The renderer's tier and limits on this device.
+    /// `og.render.capabilities`
     fn og_render_capabilities(&self, world: u32) -> String;
-    /// `og.render.text`: Draw text this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the text should show. Multi-page fonts are drawn page by page with one layout.
+    /// `og.render.text`
     fn og_render_text(&self, world: u32, desc: Option<String>) -> String;
 }
 
-/// `load`: Asset loading from cooked output: `og cook` turns assets/ into cooked/ (.ogb blobs and the manifest cooked/.cook.ogt), and the runtime reads only cooked/.
+/// `load`: packages/knowledge/wiki/load.md.
 pub trait LoadApi: Wire {
-    /// `og.load.bundle`: Open another cooked bundle (the game's own `cooked` is open before the first tick). Its loads read through it once it is ready.
+    /// `og.load.bundle`
     fn og_load_bundle(&self, world: u32, path: String) -> String;
-    /// `og.load.bundleInfo`: What an open bundle holds.
+    /// `og.load.bundleInfo`
     fn og_load_bundle_info(&self, world: u32, asset: f64) -> String;
-    /// `og.load.defaultBundle`: The game's own bundle, opened before the first tick from `cooked/`.
+    /// `og.load.defaultBundle`
     fn og_load_default_bundle(&self, world: u32) -> String;
-    /// `og.load.gltf`: Load a cooked glTF (.gltf or .glb), as three.js GLTFLoader.load: its meshes, materials and textures join the renderer once.
+    /// `og.load.gltf`
     fn og_load_gltf(&self, world: u32, path: String, desc: Option<String>) -> String;
-    /// `og.load.scene`: Load a cooked scene (.ogt). world.instantiate spawns its entities: depth first, parents before children, each component table matched to a registered component by its reflected name (`Transform` is og.Transform) and migrated field by field; a field the scene lacks keeps its default, one the component lacks is dropped with a warning.
+    /// `og.load.scene`
     fn og_load_scene(&self, world: u32, path: String) -> String;
-    /// `og.load.font`: Load a cooked MSDF font for og.render.text.
+    /// `og.load.font`
     fn og_load_font(&self, world: u32, path: String) -> String;
-    /// `og.load.fontInfo`: A loaded font's metrics.
+    /// `og.load.fontInfo`
     fn og_load_font_info(&self, world: u32, font: f64) -> String;
-    /// `og.load.sound`: Load a cooked sound for the audio module.
+    /// `og.load.sound`
     fn og_load_sound(&self, world: u32, path: String) -> String;
-    /// `og.load.lut`: A colour lookup table for PostEffects.lut, from a cooked `.cube` file (Adobe/Resolve 3D LUT; other sizes are resampled to 32). Loaded once per path.
+    /// `og.load.lut`
     fn og_load_lut(&self, world: u32, path: String) -> String;
-    /// `og.load.emitter`: A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the grammar is the `particles` page of the wiki's render module and og-cook's fx module): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. The textures it names are loaded with it. Loaded once per path.
+    /// `og.load.emitter`
     fn og_load_emitter(&self, world: u32, path: String) -> String;
-    /// `og.load.texture`: Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load.
+    /// `og.load.texture`
     fn og_load_texture(&self, world: u32, path: String) -> String;
-    /// `og.load.skin`: Load a cooked UI skin (an `.ogt` of `type skin`: the atlas and its nine-slice frames, ornaments, palette, radii, type ramp, fonts, icons, motion and sounds; the grammar is og-ui's `skin` module) for UiDesc.skin. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path.
+    /// `og.load.skin`
     fn og_load_skin(&self, world: u32, path: String) -> String;
-    /// `og.load.soundInfo`: A loaded sound's format and length.
+    /// `og.load.soundInfo`
     fn og_load_sound_info(&self, world: u32, sound: f64) -> String;
-    /// `og.load.status`: Where a load is.
+    /// `og.load.status`
     fn og_load_status(&self, world: u32, asset: f64) -> String;
-    /// `og.load.error`: Why a load failed.
+    /// `og.load.error`
     fn og_load_error(&self, world: u32, asset: f64) -> String;
-    /// `og.load.gltfInfo`: What a ready glTF holds.
+    /// `og.load.gltfInfo`
     fn og_load_gltf_info(&self, world: u32, asset: f64) -> String;
-    /// `og.load.animation`: Load a cooked glTF's animation (its `<model>#anim` blob: the rig, the clips, the skin and morph streams) and register its skeleton and clips with og.anim. Loading the same model again answers the same handles.
+    /// `og.load.animation`
     fn og_load_animation(&self, world: u32, path: String) -> String;
-    /// `og.load.flipbook`: Load a cooked flipbook sheet (an `.ogt` of `type flipbook`, with its Aseprite or TexturePacker atlas resolved by the cook) and its texture, and register it with og.flipbook. Loading the same path again answers the same handles.
+    /// `og.load.flipbook`
     fn og_load_flipbook(&self, world: u32, path: String) -> String;
-    /// `og.load.tilemap`: Load a cooked map (a tilemap `.ogt`, a Tiled `.tmj` or an LDtk `.ldtk`), its tilesets and their textures. Loading the same path again answers the same handles.
+    /// `og.load.tilemap`
     fn og_load_tilemap(&self, world: u32, path: String) -> String;
 }
 
-/// `physics`: Rigid bodies over rapier (rapier3d in the 3D profile, rapier2d in 2D, both with enhanced determinism): game code owns the components, the engine's og.physics system steps them after the game's systems and writes the dynamic bodies back.
+/// `physics`: packages/knowledge/wiki/physics.md.
 pub trait PhysicsApi: Wire {
-    /// `og.physics.raycast`: The nearest collider along a ray. Inside a system it sees the colliders as they were at the start of the tick (og.physics.queries records them before the game's systems); between ticks, as the world holds them.
+    /// `og.physics.raycast`
     fn og_physics_raycast(&self, world: u32, desc: Option<String>) -> String;
-    /// `og.physics.shapeCast`: The first collider a shape meets when swept along a direction; the same view of the colliders as raycast.
+    /// `og.physics.shapeCast`
     fn og_physics_shape_cast(&self, world: u32, desc: Option<String>) -> String;
-    /// `og.physics.overlap`: Every collider overlapping a shape, sorted by entity id; the same view of the colliders as raycast.
+    /// `og.physics.overlap`
     fn og_physics_overlap(&self, world: u32, desc: Option<String>) -> String;
-    /// `og.physics.setMesh`: Register (or replace) the geometry a convex or triangle-mesh Collider names by its mesh handle. Loaded glTF geometries are registered under their own handles already; meshes are assets, not world state.
+    /// `og.physics.setMesh`
     fn og_physics_set_mesh(&self, world: u32, mesh: f64, desc: Option<String>) -> String;
 }
 
-/// `anim`: Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics.
+/// `anim`: packages/knowledge/wiki/anim.md.
 pub trait AnimApi: Wire {
-    /// `og.anim.graph`: Register a blend-tree graph for AnimationGraph.asset. Its `clip` lines are resolved by name against `clips`.
+    /// `og.anim.graph`
     fn og_anim_graph(&self, world: u32, desc: Option<String>) -> String;
 }
 
-/// `tween`: Tweens: animate any numeric field of a component (og.Transform.position, og.Sprite.color, og.Sprite.opacity, a game's own f32) from its value to a target over time with an easing curve, a delay, loops and yoyo; chain them in sequences or run them in parallel. Advanced by the engine's og.tween system after the game's systems and before og.anim and physics, by scaled time (slow motion, hit stop) unless unscaled.
+/// `tween`: packages/knowledge/wiki/tween.md.
 pub trait TweenApi: Wire {
-    /// `og.tween.to`: Start a tween. Systems may call it; it first moves in this tick's og.tween run.
+    /// `og.tween.to`
     fn og_tween_to(&self, world: u32, desc: Option<String>) -> String;
-    /// `og.tween.sequence`: Start tweens one after another (each with its own delay, duration and loops); the time one leaves over goes to the next.
+    /// `og.tween.sequence`
     fn og_tween_sequence(&self, world: u32, steps: String, desc: Option<String>) -> String;
-    /// `og.tween.parallel`: Start tweens together; the group ends with the last one.
+    /// `og.tween.parallel`
     fn og_tween_parallel(&self, world: u32, tweens: String, desc: Option<String>) -> String;
-    /// `og.tween.cancel`: Stop a tween where it is (no event).
+    /// `og.tween.cancel`
     fn og_tween_cancel(&self, world: u32, tween: f64) -> bool;
-    /// `og.tween.cancelEntity`: Stop every tween of an entity (no events), say before starting a new reaction.
+    /// `og.tween.cancelEntity`
     fn og_tween_cancel_entity(&self, world: u32, entity: f64) -> u32;
-    /// `og.tween.active`: Whether a tween is still running.
+    /// `og.tween.active`
     fn og_tween_active(&self, world: u32, tween: f64) -> bool;
-    /// `og.tween.squash`: Squash and stretch the entity's og.Transform.scale (cancels its earlier squash).
+    /// `og.tween.squash`
     fn og_tween_squash(&self, world: u32, desc: Option<String>) -> String;
-    /// `og.tween.flash`: Flash the entity's og.Sprite, or its og.Mesh (cancels its earlier flash).
+    /// `og.tween.flash`
     fn og_tween_flash(&self, world: u32, desc: Option<String>) -> String;
 }
 
-/// `tilemap`: Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component.
+/// `tilemap`: packages/knowledge/wiki/tilemap.md.
 pub trait TilemapApi: Wire {
-    /// `og.tilemap.setTile`: Change a cell. It applies at once to getTile, and to drawing and colliders at the og.tilemap system (this tick when called before it). Deterministic: equal edits in equal order give equal maps.
+    /// `og.tilemap.setTile`
     fn og_tilemap_set_tile(&self, world: u32, desc: Option<String>) -> String;
-    /// `og.tilemap.getTile`: A cell's tile: a tile layer's tile id (-1 empty), a terrain layer's 1 or 0; -1 outside the map or before the map is adopted.
+    /// `og.tilemap.getTile`
     fn og_tilemap_get_tile(&self, world: u32, entity: f64, layer: String, x: u32, y: u32) -> i32;
-    /// `og.tilemap.cellAt`: The cell under a world point (its xy), for a map at its entity's position.
+    /// `og.tilemap.cellAt`
     fn og_tilemap_cell_at(&self, world: u32, entity: f64, point: String) -> String;
-    /// `og.tilemap.cellCenter`: A cell's centre in world coordinates (z of the map).
+    /// `og.tilemap.cellCenter`
     fn og_tilemap_cell_center(&self, world: u32, entity: f64, x: u32, y: u32) -> String;
 }
 
-/// `ui`: The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, themes it with the platform's design tokens, draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it.
+/// `ui`: packages/knowledge/wiki/ui.md.
 pub trait UiApi: Wire {
-    /// `og.ui.configure`: Set the scheme, the density and the fonts, typically in GameDesc.start. Takes effect from the next tick.
+    /// `og.ui.configure`
     fn og_ui_configure(&self, world: u32, desc: Option<String>) -> String;
-    /// `og.ui.viewport`: This tick's play surface: the render target's size in CSS pixels, its DPR and safe area, as the host reports them.
+    /// `og.ui.viewport`
     fn og_ui_viewport(&self, world: u32) -> String;
-    /// `og.ui.theme`: The design tokens the UI draws with.
+    /// `og.ui.theme`
     fn og_ui_theme(&self, world: u32) -> String;
-    /// `og.ui.open`: Open a container; the calls until its close() build its children.
+    /// `og.ui.open`
     fn og_ui_open(&self, id: String, desc: Option<String>);
-    /// `og.ui.openPanel`: Open a card, closed by close(): og.ui.panel without the callback.
+    /// `og.ui.openPanel`
     fn og_ui_open_panel(&self, id: String, desc: Option<String>);
-    /// `og.ui.openScroll`: Open a vertical scroll container, closed by close(): og.ui.scroll without the callback.
+    /// `og.ui.openScroll`
     fn og_ui_open_scroll(&self, id: String, desc: Option<String>);
-    /// `og.ui.close`: Close the open container.
+    /// `og.ui.close`
     fn og_ui_close(&self) -> String;
-    /// `og.ui.label`: MSDF text that wraps at its width (word breaks, any CJK character, long words between characters) unless nowrap. The probe reads its text.
+    /// `og.ui.label`
     fn og_ui_label(&self, id: String, text: String, desc: Option<String>);
-    /// `og.ui.button`: A capsule button with a label; `clicked` is a press and a release inside it. The probe reads its label.
+    /// `og.ui.button`
     fn og_ui_button(&self, id: String, text: String, desc: Option<String>) -> String;
-    /// `og.ui.image`: A texture region, or a solid rectangle.
+    /// `og.ui.image`
     fn og_ui_image(&self, id: String, desc: Option<String>);
-    /// `og.ui.progress`: A capsule track filled to a fraction.
+    /// `og.ui.progress`
     fn og_ui_progress(&self, id: String, value: f64, desc: Option<String>);
-    /// `og.ui.slider`: A track with a fill and a thumb: a press anywhere on it sets the value and dragging follows. Pass back the value it answers next tick.
+    /// `og.ui.slider`
     fn og_ui_slider(&self, id: String, value: f64, desc: Option<String>) -> String;
-    /// `og.ui.toggle`: A switch with a label; a click flips it. Pass back the state it answers next tick. The probe reads its label.
+    /// `og.ui.toggle`
     fn og_ui_toggle(&self, id: String, on: bool, label: String) -> String;
-    /// `og.ui.textField`: One line of text: a press focuses it with the caret at the press, typed text inserts at the caret, Backspace, Delete, arrows, Home and End edit, Enter submits and leaves, Escape leaves. Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty.
+    /// `og.ui.textField`
     fn og_ui_text_field(&self, id: String, value: String, desc: Option<String>) -> String;
-    /// `og.ui.tooltip`: A tooltip for the element just built: shown below it (above without room) once the pointer has rested on it for the slow motion duration, drawn over everything. The probe reads its text.
+    /// `og.ui.tooltip`
     fn og_ui_tooltip(&self, text: String);
-    /// `og.ui.breakpoint`: The size class of the play surface of the frame being built (desktop outside a frame).
+    /// `og.ui.breakpoint`
     fn og_ui_breakpoint(&self) -> String;
-    /// `og.ui.frameViewport`: The play surface of the frame being built: og.ui.viewport without the world, for code that only builds UI.
+    /// `og.ui.frameViewport`
     fn og_ui_frame_viewport(&self) -> String;
-    /// `og.ui.hasIcon`: Whether the icon atlas has an icon of this name (templates draw a fallback otherwise).
+    /// `og.ui.hasIcon`
     fn og_ui_has_icon(&self, name: String) -> bool;
-    /// `og.ui.seconds`: The UI's clock in seconds: frames built over the tick rate (simulation time, never the wall clock).
+    /// `og.ui.seconds`
     fn og_ui_seconds(&self) -> f64;
-    /// `og.ui.frameTheme`: The design tokens of the frame being built: og.ui.theme without the world, for code that only builds UI (the templates).
+    /// `og.ui.frameTheme`
     fn og_ui_frame_theme(&self) -> String;
-    /// `og.ui.openAnchor`: Open an anchored group, closed by close(): og.ui.anchor without the callback.
+    /// `og.ui.openAnchor`
     fn og_ui_open_anchor(&self, id: String, desc: Option<String>);
-    /// `og.ui.openTransition`: Open a transition container (a column), closed by close(); build its children only while the answer is visible: it stays visible while it leaves. Its content takes no input while it moves.
+    /// `og.ui.openTransition`
     fn og_ui_open_transition(&self, id: String, show: bool, desc: Option<String>) -> String;
-    /// `og.ui.openModal`: Open a dialog, closed by closeModal(); build its content only while the answer is visible. The probe sees the backdrop as `<id>` and the panel as `<id>/Panel`.
+    /// `og.ui.openModal`
     fn og_ui_open_modal(&self, id: String, open: bool, desc: Option<String>) -> String;
-    /// `og.ui.closeModal`: Close a dialog opened with openModal (its panel and backdrop).
+    /// `og.ui.closeModal`
     fn og_ui_close_modal(&self);
-    /// `og.ui.spotlight`: A spotlight over everything (a tutorial step): the scrim on four sides of the hole, an amber edge around it. Presses on the dimmed parts stop there (clicked); presses in the hole reach what is under it. Shades are `<id>/Top`, `Left`, `Right`, `Bottom`; the hole is `<id>/Hole`.
+    /// `og.ui.spotlight`
     fn og_ui_spotlight(&self, id: String, hole: String, desc: Option<String>) -> String;
-    /// `og.ui.bounds`: Where an element was in the last frame, by id or `Parent/Child` path (topmost first), as touch_move_to resolves it.
+    /// `og.ui.bounds`
     fn og_ui_bounds(&self, path: String) -> String;
-    /// `og.ui.openList`: Open a virtualised list (a scroll column) and learn which rows to build: listItem(i) and close() for each, then closeList().
+    /// `og.ui.openList`
     fn og_ui_open_list(&self, id: String, desc: Option<String>) -> String;
-    /// `og.ui.openGrid`: Open a virtualised grid and learn which cells to build: gridItem(i) and close() for each, then closeList().
+    /// `og.ui.openGrid`
     fn og_ui_open_grid(&self, id: String, desc: Option<String>) -> String;
-    /// `og.ui.listItem`: Open row `index` of the open list (`Row#index`): selectable and focusable; its content follows until close(). A press that started on one row and is released on this one answers `dropped`.
+    /// `og.ui.listItem`
     fn og_ui_list_item(&self, index: u32, selected: bool) -> String;
-    /// `og.ui.gridItem`: Open cell `index` of the open grid (`Cell#index`): a slot on fill, focusable; its content follows until close(). Drops answer `dropped` as listItem's.
+    /// `og.ui.gridItem`
     fn og_ui_grid_item(&self, index: u32, selected: bool) -> String;
-    /// `og.ui.closeList`: Close a list or grid opened with openList or openGrid.
+    /// `og.ui.closeList`
     fn og_ui_close_list(&self) -> String;
-    /// `og.ui.dragging`: The row or cell a held press started on in the list or grid of this id (built under the same parent): a drag in progress, to draw what is dragged under the pointer.
+    /// `og.ui.dragging`
     fn og_ui_dragging(&self, id: String) -> String;
-    /// `og.ui.tabs`: A segmented control: a neutral track, the chosen tab on the thumb. Tabs are `Tab#i` and the probe reads their labels.
+    /// `og.ui.tabs`
     fn og_ui_tabs(&self, id: String, items: String, selected: u32, desc: Option<String>) -> String;
-    /// `og.ui.select`: A select: a field-like trigger with the chosen label and a chevron; a press or Activate opens its menu `<id>.menu` (options `Option#i`) under it, a focus scope; choosing closes it with changed. Back or a press outside closes it.
+    /// `og.ui.select`
     fn og_ui_select(&self, id: String, options: String, selected: u32, desc: Option<String>) -> String;
-    /// `og.ui.stepper`: A number stepper: `Dec`, `Value`, `Inc`. The buttons step within the range; Left and Right step it while a button is focused.
+    /// `og.ui.stepper`
     fn og_ui_stepper(&self, id: String, value: f64, desc: Option<String>) -> String;
-    /// `og.ui.radio`: A radio group of `Option#i` rows: a ring, filled amber when chosen, and a label.
+    /// `og.ui.radio`
     fn og_ui_radio(&self, id: String, options: String, selected: u32, desc: Option<String>) -> String;
-    /// `og.ui.checkbox`: A checkbox with a label; a press flips it.
+    /// `og.ui.checkbox`
     fn og_ui_checkbox(&self, id: String, on: bool, label: String) -> String;
-    /// `og.ui.checkboxList`: Checkboxes in a column (`Option#i`).
+    /// `og.ui.checkboxList`
     fn og_ui_checkbox_list(&self, id: String, labels: String, values: String) -> String;
-    /// `og.ui.chip`: A chip: a capsule on fill; selected inverts to fg. For filters and tags.
+    /// `og.ui.chip`
     fn og_ui_chip(&self, id: String, text: String, desc: Option<String>) -> String;
-    /// `og.ui.badge`: A badge: a small status capsule in its tone.
+    /// `og.ui.badge`
     fn og_ui_badge(&self, id: String, text: String, tone: String);
-    /// `og.ui.divider`: A hairline in the border colour across its parent.
+    /// `og.ui.divider`
     fn og_ui_divider(&self, id: String, vertical: bool);
-    /// `og.ui.spacer`: Empty space.
+    /// `og.ui.spacer`
     fn og_ui_spacer(&self, id: String, size: String);
-    /// `og.ui.keyValue`: A key (fg-muted) and its value (fg, at the end) on one row: stats, settings summaries, receipts.
+    /// `og.ui.keyValue`
     fn og_ui_key_value(&self, id: String, key: String, value: String, mono: bool);
-    /// `og.ui.skeleton`: A skeleton: the neutral fill standing in for content that is loading, with a sheen that passes every 1.6 s (still under reduced motion).
+    /// `og.ui.skeleton`
     fn og_ui_skeleton(&self, id: String, desc: Option<String>);
-    /// `og.ui.spinner`: A loading spinner: eight dots around a circle, the bright one turning by the tick.
+    /// `og.ui.spinner`
     fn og_ui_spinner(&self, id: String, size: f64);
-    /// `og.ui.icon`: An icon of the atlas (UiDesc.icons) by name; an unknown name draws an empty slot and warns. The probe reads the name.
+    /// `og.ui.icon`
     fn og_ui_icon(&self, id: String, name: String, desc: Option<String>);
-    /// `og.ui.meter`: A health, mana or xp bar. A drop shows at once and leaves a pale trail that follows after a beat; a rise grows into place with a ghost of the target; both by the tick.
+    /// `og.ui.meter`
     fn og_ui_meter(&self, id: String, value: f64, max: f64, desc: Option<String>);
-    /// `og.ui.cooldown`: A cooldown: a disc whose amber ring fills clockwise from the top as it runs out, bright and full when ready, a label or icon in the middle. A press reports clicked (ready or not).
+    /// `og.ui.cooldown`
     fn og_ui_cooldown(&self, id: String, remaining: f64, desc: Option<String>) -> String;
-    /// `og.ui.minimap`: A mini-map frame: the map in a border-strong frame, markers as dots (the player amber and ringed), an N mark and a zone label.
+    /// `og.ui.minimap`
     fn og_ui_minimap(&self, id: String, desc: Option<String>);
-    /// `og.ui.dialogue`: A dialogue box: a portrait slot, the speaker in amber ink and the line typed out by the tick. A press or Activate while typing shows the whole line; once shown it answers advanced. The line is `<id>/Body/Line` and the probe reads what is shown.
+    /// `og.ui.dialogue`
     fn og_ui_dialogue(&self, id: String, desc: Option<String>) -> String;
-    /// `og.ui.joystick`: A virtual joystick: a base and a knob that follows a press that started on it. It keeps the finger that grabbed it (any of og.Pointers), so another finger can hold an action button at the same time.
+    /// `og.ui.joystick`
     fn og_ui_joystick(&self, id: String, desc: Option<String>) -> String;
-    /// `og.ui.dpad`: A d-pad of four arms (`Up`, `Down`, `Left`, `Right`), each at least 44 CSS px.
+    /// `og.ui.dpad`
     fn og_ui_dpad(&self, id: String, desc: Option<String>) -> String;
-    /// `og.ui.actionButton`: A round touch action button: pressed while held (jump, fire), clicked on a tap; at least 44 CSS px.
+    /// `og.ui.actionButton`
     fn og_ui_action_button(&self, id: String, text: String, desc: Option<String>) -> String;
-    /// `og.ui.toast`: Queue a toast: it stacks at UiDesc.toastAnchor, enters, stays its time and leaves; at most three are up (older ones leave first); a press dismisses it. Callable anywhere (systems, commands, start); it is world state, so snapshots carry it.
+    /// `og.ui.toast`
     fn og_ui_toast(&self, world: u32, text: String, desc: Option<String>) -> u32;
-    /// `og.ui.dismissToast`: Start a toast's exit.
+    /// `og.ui.dismissToast`
     fn og_ui_dismiss_toast(&self, world: u32, toast_id: u32);
-    /// `og.ui.navigate`: Queue a navigation intent for the next tick: a gamepad og.Input does not read yet, a custom binding, a command.
+    /// `og.ui.navigate`
     fn og_ui_navigate(&self, world: u32, intent: String);
-    /// `og.ui.back`: Escape or gamepad B this tick, not taken by a dialog or menu: true once, then taken. A pause screen closes on it.
+    /// `og.ui.back`
     fn og_ui_back(&self) -> bool;
-    /// `og.ui.setNavigation`: Whether keyboard and gamepad navigation moves focus on this screen (on by default). A gameplay HUD whose keys move the player turns it off; an open dialog or menu turns it back on while it is open. Takes effect from the next tick.
+    /// `og.ui.setNavigation`
     fn og_ui_set_navigation(&self, on: bool);
-    /// `og.ui.memory`: A number the UI keeps for an id under the open element (a template's tab, a count-up's start tick), in snapshots like the rest of the UI state. Read it every tick it is used: an unused memory is dropped.
+    /// `og.ui.memory`
     fn og_ui_memory(&self, id: String, initial: f64) -> f64;
-    /// `og.ui.remember`: Set a number memory (see memory).
+    /// `og.ui.remember`
     fn og_ui_remember(&self, id: String, value: f64);
-    /// `og.ui.tick`: Frames the UI has built: its clock, for animations by the tick.
+    /// `og.ui.tick`
     fn og_ui_tick(&self) -> u32;
-    /// `og.ui.counter`: A number label that counts (ease-out cubic, by the tick) from where it was to the value each time the value changes, grouped with commas; a skin with motion.pop bumps it when it lands. Scores, currency, rewards.
+    /// `og.ui.counter`
     fn og_ui_counter(&self, id: String, value: f64, desc: Option<String>) -> f64;
-    /// `og.ui.burst`: Throw rays and sparks from the element built just before (a star landing, a reward), once, from when it first appears. Off under reduced motion.
+    /// `og.ui.burst`
     fn og_ui_burst(&self, desc: Option<String>);
-    /// `og.ui.screenTransition`: A transition between game screens drawn over the whole frame (through the overlay, over every other UI layer). Pass the screen the game wants every tick and build the one it answers: when the wanted screen changes the cover closes over the old screen for half the duration, the answer switches, and the cover opens on the new one. Deterministic by the tick; snapshots carry it; under reduced motion every kind is a fade.
+    /// `og.ui.screenTransition`
     fn og_ui_screen_transition(&self, id: String, screen: String, desc: Option<String>) -> String;
-    /// `og.ui.previewViewport`: Lay the UI out for another play surface (a phone in portrait at 3x, a notch) until cleared with null: for headless previews and playtests of responsive layouts. Render at width x dpr by height x dpr (`og run --size`).
+    /// `og.ui.previewViewport`
     fn og_ui_preview_viewport(&self, world: u32, viewport: String);
 }
 
-/// `commands`: The command channel: actions scheduled on simulation time, from `og run --commands "t:action[:args];..."` or the probe's commands().
+/// `commands`: packages/knowledge/wiki/commands.md.
 pub trait CommandsApi: Wire {
-    /// `og.commands.register`: Register an action into the command channel. GameDesc.commands does this for a game's own actions.
+    /// `og.commands.register`
     fn og_commands_register(&self, name: String, handler: u32, desc: Option<String>) -> String;
-    /// `og.commands.parse`: Parse a script without scheduling it.
+    /// `og.commands.parse`
     fn og_commands_parse(&self, script: String) -> String;
-    /// `og.commands.help`: Every action the channel knows: core actions in CoreAction order, then registered ones by name.
+    /// `og.commands.help`
     fn og_commands_help(&self, world: u32) -> String;
-    /// `og.commands.schedule`: Schedule a script on simulation time, from the current tick.
+    /// `og.commands.schedule`
     fn og_commands_schedule(&self, world: u32, script: String) -> String;
 }
 
-/// `probe`: The probe: RuntimeProbe protocol 5 (origin/packages/contracts/src/probe.ts) served natively, plus the engine's wire members.
+/// `probe`: packages/knowledge/wiki/probe.md.
 pub trait ProbeApi: Wire {
-    /// `RuntimeProbe.version`: PROBE_VERSION.
+    /// `RuntimeProbe.version`
     fn og_runtime_probe_get_version(&self, runtime_probe: u32) -> u32;
-    /// `RuntimeProbe.tick`: Fixed steps the world has taken since load.
+    /// `RuntimeProbe.tick`
     fn og_runtime_probe_tick(&self, runtime_probe: u32) -> u32;
-    /// `RuntimeProbe.state`: A JSON snapshot: the fixed timings head, then the game's own facts.
+    /// `RuntimeProbe.state`
     fn og_runtime_probe_state(&self, runtime_probe: u32) -> String;
-    /// `RuntimeProbe.advance`: Take whole fixed steps regardless of the wall clock.
+    /// `RuntimeProbe.advance`
     fn og_runtime_probe_advance(&self, runtime_probe: u32, steps: u32) -> u32;
-    /// `RuntimeProbe.pause`: Hold the wall-clock loop; advance still steps.
+    /// `RuntimeProbe.pause`
     fn og_runtime_probe_pause(&self, runtime_probe: u32) -> bool;
-    /// `RuntimeProbe.resume`: Release the wall-clock loop.
+    /// `RuntimeProbe.resume`
     fn og_runtime_probe_resume(&self, runtime_probe: u32) -> bool;
-    /// `RuntimeProbe.input`: One event through the input layer's own path.
+    /// `RuntimeProbe.input`
     fn og_runtime_probe_input(&self, runtime_probe: u32, event: String) -> bool;
-    /// `RuntimeProbe.accepted`: Page events (keyboard, pointer, wheel) the input layer accepted since load.
+    /// `RuntimeProbe.accepted`
     fn og_runtime_probe_accepted(&self, runtime_probe: u32) -> u32;
-    /// `RuntimeProbe.pick`: What is under a point of the play surface.
+    /// `RuntimeProbe.pick`
     fn og_runtime_probe_pick(&self, runtime_probe: u32, x: f64, y: f64) -> String;
-    /// `RuntimeProbe.entity`: One entity's published parameters: its tunable fields as `Component.field` keys.
+    /// `RuntimeProbe.entity`
     fn og_runtime_probe_entity(&self, runtime_probe: u32, id: String) -> String;
-    /// `RuntimeProbe.bounds`: The ranges of one entity's tunable fields, from the schema.
+    /// `RuntimeProbe.bounds`
     fn og_runtime_probe_bounds(&self, runtime_probe: u32, id: String) -> String;
-    /// `RuntimeProbe.patch`: Move one tunable field for this run only; it applies within one frame. The probe never writes project files.
+    /// `RuntimeProbe.patch`
     fn og_runtime_probe_patch(&self, runtime_probe: u32, id: String, parameter: String, value: String) -> bool;
-    /// `RuntimeProbe.run`: Run a program of the members above in order, stopping at the first refusal.
+    /// `RuntimeProbe.run`
     fn og_runtime_probe_run(&self, runtime_probe: u32, program: String) -> String;
-    /// `EngineProbe.hello`: Who is speaking: protocol, wire, engine version, tick rate, renderer tier, build.
+    /// `EngineProbe.hello`
     fn og_engine_probe_hello(&self, engine_probe: u32) -> String;
-    /// `EngineProbe.capture`: The frame of the current tick, rendered offscreen and read back as a PNG.
+    /// `EngineProbe.capture`
     fn og_engine_probe_capture(&self, engine_probe: u32, width: Option<u32>, height: Option<u32>) -> String;
-    /// `EngineProbe.sweep`: A filmstrip over one tunable: per value, restore, patch, advance, capture.
+    /// `EngineProbe.sweep`
     fn og_engine_probe_sweep(&self, engine_probe: u32, desc: Option<String>) -> String;
-    /// `EngineProbe.reload`: Hot reload: snapshot, swap the game bundle, re-register components by name, restore.
+    /// `EngineProbe.reload`
     fn og_engine_probe_reload(&self, engine_probe: u32) -> String;
-    /// `EngineProbe.snapshot`: Snapshot the whole world in the running process.
+    /// `EngineProbe.snapshot`
     fn og_engine_probe_snapshot(&self, engine_probe: u32) -> String;
-    /// `EngineProbe.restore`: Restore a snapshot taken by this process.
+    /// `EngineProbe.restore`
     fn og_engine_probe_restore(&self, engine_probe: u32, id: String) -> bool;
-    /// `EngineProbe.dump`: A world, entity or UI dump, as the command channel's dump actions write.
+    /// `EngineProbe.dump`
     fn og_engine_probe_dump(&self, engine_probe: u32, desc: Option<String>) -> String;
-    /// `EngineProbe.commands`: Schedule a command script on simulation time, as `og run --commands`.
+    /// `EngineProbe.commands`
     fn og_engine_probe_commands(&self, engine_probe: u32, script: String) -> String;
 }
 

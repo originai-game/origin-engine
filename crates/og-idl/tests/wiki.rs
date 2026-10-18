@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 fn idl_path() -> PathBuf {
     match std::env::var("OG_WIKI_TEST_IDL") {
         Ok(p) => PathBuf::from(p),
-        Err(_) => Path::new(env!("CARGO_MANIFEST_DIR")).join("api.ogt"),
+        Err(_) => Path::new(env!("CARGO_MANIFEST_DIR")).join("../og-api/api.ogt"),
     }
 }
 
@@ -20,15 +20,15 @@ struct Wiki {
     source: Vec<String>,
     pages: BTreeMap<String, String>,
     bindings: String,
-    api: og_api::Api,
+    api: og_idl::Api,
 }
 
 fn wiki() -> Wiki {
     let path = idl_path();
     let text = std::fs::read_to_string(&path).unwrap();
-    let api = og_api::parse(&text).unwrap_or_else(|d| panic!("{}: {d:?}", path.display()));
-    let files = og_api::generate(&api);
-    let prefix = format!("{}/", og_api::WIKI_DIR);
+    let api = og_idl::parse(&text).unwrap_or_else(|d| panic!("{}: {d:?}", path.display()));
+    let files = og_idl::generate(&api);
+    let prefix = format!("{}/", og_idl::WIKI_DIR);
     let pages = files
         .iter()
         .filter_map(|f| {

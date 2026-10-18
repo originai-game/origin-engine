@@ -32,7 +32,7 @@ pub mod glue;
 mod audio;
 mod host;
 
-use og_api::runtime::{Dispatch, Fetch, Hooks};
+use og_runtime::{Dispatch, Fetch, Hooks};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use wasm_bindgen::prelude::*;
@@ -252,7 +252,7 @@ pub fn og_web_set_viewport(engine: u32, viewport: String) -> String {
     let parsed: Result<serde_json::Value, _> = serde_json::from_str(&viewport);
     match parsed
         .map_err(|e| e.to_string())
-        .and_then(|v| og_api::runtime::set_viewport(engine, v))
+        .and_then(|v| og_runtime::set_viewport(engine, v))
     {
         Ok(()) => r#"{"ok":true}"#.to_string(),
         Err(e) => serde_json::json!({ "ok": false, "reason": e }).to_string(),
@@ -290,8 +290,8 @@ pub fn og_web_init() {
 
 #[cfg(target_arch = "wasm32")]
 mod canvas {
-    use og_api::runtime::{RenderBackend, set_render_backend};
     use og_render::{Backend, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage};
+    use og_runtime::{RenderBackend, set_render_backend};
     use wasm_bindgen::prelude::*;
 
     struct CanvasBackend {
@@ -388,7 +388,7 @@ mod canvas {
         } else {
             Backend::WebGpu
         };
-        let options = og_api::runtime::render_options(engine);
+        let options = og_runtime::render_options(engine);
         let desc = RenderDesc {
             width: canvas.width().max(1),
             height: canvas.height().max(1),

@@ -12,10 +12,11 @@ crate-type = ["cdylib", "rlib"]
 [features]
 default = []
 # A published game: the commands module and the probe's non-player members are not exported.
-publish = ["og-api/publish"]
+publish = ["og-runtime/publish"]
 
 [dependencies]
-og-api = { path = "../og-api", features = ["runtime"] }
+og-api = { path = "../og-api" }
+og-runtime = { path = "../og-runtime" }
 og-render = { path = "../og-render" }
 og-probe = { path = "../og-probe", default-features = false }
 og-cook = { path = "../og-cook", default-features = false, features = ["runtime"] }

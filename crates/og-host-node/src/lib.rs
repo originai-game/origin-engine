@@ -19,7 +19,7 @@
 //!   (`GameDesc.render` picks the antialiasing); the probe's `capture` and
 //!   the `screenshot` command render offscreen at the asked size and read it
 //!   back blocking (`og_render::Renderer::read_offscreen`).
-//! - og-probe is mounted by the runtime (`og_api::runtime`); this host adds
+//! - og-probe is mounted by the runtime (`og_runtime`); this host adds
 //!   its loopback WebSocket (`og_node_probe_listen`, `og_node_probe_serve`,
 //!   og-probe's `ProbeServer` at `127.0.0.1:<port>/probe`), cooked files read
 //!   from disk (`Hooks::read_asset`) and og-cook's Basis transcoder for
@@ -36,7 +36,7 @@ mod host;
 use napi::bindgen_prelude::{FromNapiValue, ToNapiValue, TypeName, ValidateNapiValue, ValueType};
 use napi::{Env, sys};
 use napi_derive::napi;
-use og_api::runtime::{ColumnPtr, Dispatch, Fetch, Hooks, RenderBackend};
+use og_runtime::{ColumnPtr, Dispatch, Fetch, Hooks, RenderBackend};
 use std::cell::{Cell, RefCell};
 use std::ptr;
 
@@ -422,7 +422,7 @@ fn antialias(options: &str) -> og_render::Antialias {
 #[napi(js_name = "og_node_attach_offscreen")]
 pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) -> String {
     let _env = EnvScope::enter(&env);
-    let options = og_api::runtime::render_options(engine);
+    let options = og_runtime::render_options(engine);
     let desc = og_render::RenderDesc {
         width: width.max(1),
         height: height.max(1),
@@ -433,7 +433,7 @@ pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) 
         .map_err(|e| e.to_string())
         .and_then(|renderer| {
             let tier = renderer.info().backend_tier();
-            og_api::runtime::set_render_backend(
+            og_runtime::set_render_backend(
                 engine,
                 Some(Box::new(OffscreenBackend {
                     renderer,
@@ -482,7 +482,7 @@ pub fn og_node_probe_serve(env: Env, engine: u32) -> u32 {
     loop {
         let pending = SERVERS.with(|s| s.borrow().get(&engine).and_then(|srv| srv.poll()));
         let Some(pending) = pending else { break };
-        let frame = og_api::runtime::answer_call(engine, &pending.call);
+        let frame = og_runtime::answer_call(engine, &pending.call);
         pending.answer(frame);
         answered += 1;
     }

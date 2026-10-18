@@ -3,7 +3,7 @@
 //! generated files are what api.ogt generates; and the generated declarations
 //! type-check with the design's example.
 
-use og_api::model::{Item, Member, RecordKind};
+use og_idl::model::{Item, Member, RecordKind};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -14,8 +14,8 @@ fn repo() -> PathBuf {
         .unwrap()
 }
 
-fn api() -> og_api::Api {
-    og_api::read(&repo().join(og_api::IDL_PATH)).unwrap_or_else(|e| panic!("{e}"))
+fn api() -> og_idl::Api {
+    og_idl::read(&repo().join(og_idl::IDL_PATH)).unwrap_or_else(|e| panic!("{e}"))
 }
 
 #[test]
@@ -231,13 +231,13 @@ fn the_probe_is_protocol_5_plus_the_wire_members_with_the_publish_trim() {
 fn broken_idls_are_refused_with_the_right_reason() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
     let valid = std::fs::read_to_string(dir.join("valid.ogt")).unwrap();
-    if let Err(d) = og_api::parse(&valid) {
+    if let Err(d) = og_idl::parse(&valid) {
         panic!("valid.ogt refused: {d:?}");
     }
     // og-core's reader is the IDL's reader: comments and blank lines may
     // precede the header, and diagnostics keep the lines of the file.
     let commented = format!("# The fixture API.\n\n{valid}");
-    if let Err(d) = og_api::parse(&commented) {
+    if let Err(d) = og_idl::parse(&commented) {
         panic!("valid.ogt behind a comment refused: {d:?}");
     }
     let mut checked = 0;
@@ -257,7 +257,7 @@ fn broken_idls_are_refused_with_the_right_reason() {
             .unwrap_or_else(|| panic!("{} has no `# expect: <line>: <reason>`", path.display()));
         let (line, reason) = expect.split_once(": ").unwrap();
         let line: usize = line.parse().unwrap();
-        match og_api::parse(&text) {
+        match og_idl::parse(&text) {
             Ok(_) => panic!("{} was accepted", path.display()),
             Err(diags) => {
                 assert_eq!(
@@ -282,13 +282,13 @@ fn broken_idls_are_refused_with_the_right_reason() {
 
 #[test]
 fn the_committed_generated_files_match_the_idl() {
-    let drift = og_api::check(&repo()).unwrap_or_else(|e| panic!("{e}"));
+    let drift = og_idl::check(&repo()).unwrap_or_else(|e| panic!("{e}"));
     assert!(
         drift.is_empty(),
         "generated files drifted; run `og api gen`:\n{}",
         drift.iter().map(|d| format!("  {d}\n")).collect::<String>()
     );
-    for file in og_api::generate(&api()) {
+    for file in og_idl::generate(&api()) {
         // The first line of a .d.ts, the first key of a JSON file.
         let head: String = file.contents.lines().take(2).collect();
         assert!(

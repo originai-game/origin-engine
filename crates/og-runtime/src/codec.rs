@@ -156,7 +156,7 @@ pub struct Layout {
 
 /// The variants of an IDL enum column (`AudioBus`), from the engine's records.
 fn enum_variants(column: &str) -> Option<Vec<String>> {
-    crate::host::RECORDS
+    og_api::host::RECORDS
         .iter()
         .flat_map(|r| r.fields.iter())
         .find(|f| f.column == column && !f.variants.is_empty())
@@ -227,7 +227,7 @@ impl Layout {
     }
 
     /// A layout of an engine-owned record from the generated table.
-    pub fn from_decl(decl: &crate::host::RecordDecl) -> Result<Layout, String> {
+    pub fn from_decl(decl: &og_api::host::RecordDecl) -> Result<Layout, String> {
         let kind = match decl.kind {
             "component" => RecordKind::Component,
             "resource" => RecordKind::Resource,

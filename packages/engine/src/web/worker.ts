@@ -115,7 +115,7 @@ export interface WebExtras {
   og_web_resize?(engine: number, width: number, height: number): void;
 }
 
-/** Where the runtime asks for a bundle's files: `<root>/cooked/<file>` (crates/og-api/src/runtime/assets.rs). */
+/** Where the runtime asks for a bundle's files: `<root>/cooked/<file>` (crates/og-runtime/src/assets.rs). */
 export function cookedDir(root: string): string {
   return `${root.replace(/\/+$/, "")}/cooked`;
 }

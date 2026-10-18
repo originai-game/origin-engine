@@ -1,0 +1,10 @@
+[package]
+name = "og-idl"
+version = "0.0.1"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Origin Engine IDL: crates/og-api/api.ogt, its model, validator and generators (TypeScript, binding table, schema, wiki, host traits and glue), behind `og api gen` and `og api check`."
+
+[dependencies]
+og-core = { path = "../og-core" }

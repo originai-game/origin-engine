@@ -620,7 +620,7 @@ pub(crate) fn assemble(
 
     // Engine-owned records in IDL order. A record og-core cannot store yet
     // is left out with a warning; using its token is then refused by name.
-    for decl in crate::host::RECORDS {
+    for decl in og_api::host::RECORDS {
         if decl.schema == Time::NAME
             || decl.schema == Rng::NAME
             || REGISTERED_BY_MODULES.contains(&decl.schema)
@@ -682,7 +682,7 @@ pub(crate) fn assemble(
     resources.push("og.Gamepad".to_string());
     // The input events and og-input's further resources are read through
     // the layout og-input registered.
-    for decl in crate::host::RECORDS {
+    for decl in og_api::host::RECORDS {
         if !REGISTERED_BY_MODULES.contains(&decl.schema) || decl.schema == "og.Input" {
             continue;
         }

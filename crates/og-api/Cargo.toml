@@ -4,33 +4,13 @@ version = "0.0.1"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "Origin Engine API: the IDL (api.ogt), its validator and generators (TypeScript, binding table, schema, host traits and glue), and the host-neutral runtime."
+description = "Origin Engine API: the host traits and record tables generated from api.ogt (og-idl generates them), and the host-neutral runtime."
 
 [dependencies]
-og-core = { path = "../og-core" }
-og-ecs = { path = "../og-ecs", optional = true }
-og-render = { path = "../og-render", optional = true }
-og-probe = { path = "../og-probe", default-features = false, optional = true }
-og-cook = { path = "../og-cook", default-features = false, features = ["runtime"], optional = true }
-miniz_oxide = { version = "0.8", optional = true }
-glam = { workspace = true, optional = true }
-serde_json = { version = "1", features = ["float_roundtrip"], optional = true }
-og-physics = { path = "../og-physics", optional = true }
-og-audio = { path = "../og-audio", optional = true }
-og-ui = { path = "../og-ui", optional = true }
-og-input = { path = "../og-input", optional = true }
-og-anim = { path = "../og-anim", optional = true }
-og-tween = { path = "../og-tween", optional = true }
-og-tilemap = { path = "../og-tilemap", optional = true }
-
-[features]
-default = []
-# The host-neutral runtime og-host-web and og-host-node wrap (`og_api::runtime`).
-runtime = ["dep:og-ecs", "dep:og-render", "dep:og-probe", "dep:og-cook", "dep:miniz_oxide", "dep:glam", "dep:serde_json", "dep:og-physics", "dep:og-audio", "dep:og-ui", "dep:og-anim", "dep:og-input", "dep:og-tween", "dep:og-tilemap"]
-# A published game: the probe keeps only its player-facing members.
-publish = ["runtime", "og-probe/publish"]
 
 [dev-dependencies]
+og-core = { path = "../og-core" }
+og-idl = { path = "../og-idl" }
 og-anim = { path = "../og-anim" }
 og-tween = { path = "../og-tween" }
 og-input = { path = "../og-input" }

@@ -93,6 +93,6 @@ fn main() -> ExitCode {
 pub(crate) fn find_root(start: &Path) -> Option<PathBuf> {
     start
         .ancestors()
-        .find(|dir| dir.join(og_api::IDL_PATH).is_file())
+        .find(|dir| dir.join(og_idl::IDL_PATH).is_file())
         .map(Path::to_path_buf)
 }

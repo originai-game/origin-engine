@@ -5,7 +5,7 @@
 
 use crate::{NodeArray, NodeFunction, NodeHooks, NodeHost, NodeViews};
 use og_api::host::*;
-use og_api::runtime as rt;
+use og_runtime as rt;
 use std::rc::Rc;
 
 impl Wire for NodeHost {

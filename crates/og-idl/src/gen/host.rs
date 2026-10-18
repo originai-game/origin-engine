@@ -159,15 +159,6 @@ fn rust_param(p: &WireParam) -> String {
     }
 }
 
-fn first_doc(b: &Binding<'_>) -> String {
-    let doc = match (b.function, b.prop) {
-        (Some(f), _) => f.doc.first().cloned(),
-        (None, Some(p)) => p.doc.first().cloned(),
-        _ => None,
-    };
-    doc.unwrap_or_default()
-}
-
 /// The lifecycle members: not game API, but what the TypeScript loaders
 /// drive. Both hosts implement them like any module.
 /// `(name, Rust type, TypeScript type)` of a lifecycle parameter.
@@ -265,9 +256,15 @@ pub fn host_rs(ix: &Index<'_>) -> String {
     out.push_str(
         "//! The host contract, generated from the IDL: one trait per module with\n\
          //! callables, each method a binding symbol with its wire signature (see\n\
-         //! `og_api::gen::host` for the wire forms). `og-host-web` and\n\
+         //! og-idl's `gen/host.rs` for the wire forms). `og-host-web` and\n\
          //! `og-host-node` implement every trait, and their generated glue calls\n\
-         //! the methods, so a member missing on either host is a build error.\n\n\
+         //! the methods, so a member missing on either host is a build error.\n\
+         //!\n\
+         //! The IDL's prose is not repeated here: a method names its TypeScript\n\
+         //! path, documented in api.ogt and packages/knowledge/wiki/<module>.md.\n\
+         //! An edit to the docs alone then leaves this file, and so the hosts\n\
+         //! and the wasm, unchanged; field docs stay in RECORDS, which the\n\
+         //! runtime's reflection serves.\n\n\
          // Field metadata (min, max, step) is written as the IDL states it.\n\
          #![allow(clippy::approx_constant)]\n\n",
     );
@@ -308,13 +305,12 @@ pub fn host_rs(ix: &Index<'_>) -> String {
         }
         let tname = trait_name(&m.name);
         out.push_str(&format!(
-            "\n/// `{}`: {}\npub trait {tname}: Wire {{\n",
-            m.name,
-            m.doc.first().cloned().unwrap_or_default()
+            "\n/// `{0}`: packages/knowledge/wiki/{0}.md.\npub trait {tname}: Wire {{\n",
+            m.name
         ));
         for b in members {
             let (params, ret) = signature(ix, b);
-            out.push_str(&format!("    /// `{}`: {}\n", b.path, first_doc(b)));
+            out.push_str(&format!("    /// `{}`\n", b.path));
             let mut ps = vec!["&self".to_string()];
             ps.extend(params.iter().map(rust_param));
             let r = if ret == Wire::Unit {

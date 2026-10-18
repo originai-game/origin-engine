@@ -2,7 +2,22 @@
 
 The engine's public API, declared once in `api.ogt`, the generators that
 turn it into everything else (design §3.1), and the host-neutral runtime both
-hosts wrap.
+hosts wrap. Three crates, so that an edit rebuilds only what compiles it:
+
+| Crate | Holds | Depends on it |
+|---|---|---|
+| `og-idl` (`crates/og-idl`) | the IDL's model, validator and generators: `read`, `generate`, `write`, `check` | `og` (`og api gen`, `og api check`) |
+| `og-api` (this crate) | `api.ogt` and what the generators write here: `og_api::host`, the traits and record tables; no dependencies | both hosts, `og-runtime`, `og`'s cook |
+| `og-runtime` (`crates/og-runtime`) | the host-neutral runtime the traits call (below) | both hosts |
+
+`og api gen` rewrites only a file whose bytes change, and the generated Rust
+carries no IDL prose (a trait method names its TypeScript path; the docs
+live in `api.ogt`, the `.d.ts` and the wiki). So a doc-only IDL edit
+rewrites the TypeScript, schema and wiki outputs and rebuilds no crate; an
+edit to a component field's doc rewrites `RECORDS` (the runtime's
+reflection serves it) and rebuilds the hosts; a generator edit rebuilds
+`og-idl` and `og` only. There is no build script: the outputs are committed
+and `og api check` (the gate's drift step) holds them to the IDL.
 
 | Output | Path | Consumer |
 |---|---|---|
@@ -19,11 +34,11 @@ Every generated file starts with a line saying it is generated from
 `api.ogt`. Wiki pages quote each declaration's IDL text with the line it
 starts on, its TypeScript form, its docs, its fields' defaults, ranges and
 units, and its binding symbol; `index.md` maps every module, type, function
-and member to its anchor (`crates/og-api/tests/wiki.rs` holds the quotes to
+and member to its anchor (`crates/og-idl/tests/wiki.rs` holds the quotes to
 the IDL and every link to an anchor). `og api gen` writes them (`--wiki`
 writes the wiki alone and removes a page whose module is gone); `og api check`
 regenerates into a temporary directory and fails on any difference, including
-a file in one of the generated directories (`og_api::OUTPUT_DIRS`) that the
+a file in one of the generated directories (`og_idl::OUTPUT_DIRS`) that the
 generator does not write.
 
 ```
@@ -111,7 +126,7 @@ and diagnostics show the angle-bracket form.
 
 ### Validation
 
-`og_api::parse` refuses an IDL with any of these, each reported with its line:
+`og_idl::parse` refuses an IDL with any of these, each reported with its line:
 
 - grammar errors, unknown keys, malformed type expressions, extra values on a
   declaration line;
@@ -165,7 +180,7 @@ diagnostic in its first comment.
 `packages/engine/examples/hello.ts` is the design's §3.2 example and
 `packages/engine/tests/contract.ts` asserts the declarations' contract with
 `@ts-expect-error`; `bun run typecheck` in `packages/engine` checks both, and
-`cargo test -p og-api` runs that check. The runtime in `packages/engine/src/`
+`cargo test -p og-idl` runs that check. The runtime in `packages/engine/src/`
 types its exports by the generated declarations, so a runtime member that
 drifts from the IDL fails the same check.
 
@@ -210,11 +225,11 @@ Engine-owned records register under dotted schema names (`og.Transform`,
 TypeScript token and the schema name coincide and never collide with a game's
 own PascalCase names.
 
-## The runtime (feature `runtime`)
+## The runtime (`og-runtime`)
 
-`og_api::runtime` is what the trait methods call: declarations recorded in
+`og_runtime` is what the trait methods call: declarations recorded in
 call order, engines assembled from them, the tick, the dispatcher and the
-view tables. Both hosts depend on it with the feature; `og-cli` does not.
+view tables. Both hosts depend on it; `og-cli` does not.
 
 - **Declarations** (`defineComponent`, `defineResource`, `defineSystem`,
   `og.game`, `og.commands.register`) are recorded per thread before any
