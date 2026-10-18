@@ -184,11 +184,20 @@ pub struct AiChanged {
 pub type SightRay =
     Arc<dyn Fn(Vec3, Vec3, f32, u32, Entity) -> Option<(f32, Entity)> + Send + Sync>;
 
+/// Where a think's game commands go as they are made: (command, args).
+pub type CommandSink = Arc<dyn Fn(&str, Vec<String>) + Send + Sync>;
+
 /// How og.ai joins a world.
 #[derive(Clone)]
 pub struct AiDesc {
     pub plane: Plane,
     pub ray: Option<SightRay>,
+    /// Commands go here (the host's command channel) instead of the queue
+    /// [`AiSystem::take_commands`] answers.
+    pub sink: Option<CommandSink>,
+    /// The behaviours to run (a hot reload keeps the engine's); a fresh
+    /// registry when `None`.
+    pub behaviours: Option<Arc<Mutex<Behaviours>>>,
 }
 
 /// A record's fields as packed bytes: name → (type, offset).
@@ -370,7 +379,7 @@ pub fn install(world: &mut World, records: &[String], desc: AiDesc) -> Result<Ai
         reads.push(name.clone());
     }
     let sys = AiSystem {
-        behaviours: Arc::new(Mutex::new(Behaviours::default())),
+        behaviours: desc.behaviours.clone().unwrap_or_default(),
         state: Arc::new(Mutex::new(State::default())),
     };
     let run_sys = sys.clone();
@@ -636,8 +645,18 @@ fn run(
         }
         let perception = ctx.get::<Perception>(e).ok();
         let mut mem = st.mems.remove(&key).unwrap_or_default();
-        if !mem.started || mem.nodes.len() != b.nodes.len() {
-            tree::start(&b, &mut mem, pos, nav.map_or(3.5, |a| a.speed), tick);
+        if !mem.started || mem.behaviour != agent.behaviour || mem.nodes.len() != b.nodes.len() {
+            // A first think, or another behaviour: start afresh.
+            let speed = if mem.started {
+                mem.base_speed
+            } else {
+                nav.map_or(3.5, |a| a.speed)
+            };
+            mem = AgentMem {
+                behaviour: agent.behaviour,
+                ..AgentMem::default()
+            };
+            tree::start(&b, &mut mem, pos, speed, tick);
         }
         let locate = |h: u64| -> Option<Vec3> {
             let t = Entity::from_bits(h);
@@ -729,7 +748,14 @@ fn run(
             })?;
         }
         ctx.set(e, agent)?;
-        st.commands.extend(fx.commands);
+        match &desc.sink {
+            Some(sink) => {
+                for (c, a) in fx.commands {
+                    sink(&c, a);
+                }
+            }
+            None => st.commands.extend(fx.commands),
+        }
         for w in fx.warnings {
             if st.warned.insert(w.clone()) {
                 st.warnings.push(w);
@@ -844,6 +870,7 @@ impl StateBlock for AiBlock {
         put_u32(o, st.mems.len() as u32);
         for (k, m) in &st.mems {
             put_u64(o, *k);
+            put_u64(o, m.behaviour);
             o.push(u8::from(m.started));
             o.push(u8::from(m.entered));
             put_u32(o, m.state);
@@ -896,6 +923,7 @@ impl StateBlock for AiBlock {
         for _ in 0..r.u32()? {
             let k = r.u64()?;
             let mut m = AgentMem {
+                behaviour: r.u64()?,
                 started: r.u8()? != 0,
                 entered: r.u8()? != 0,
                 state: r.u32()?,

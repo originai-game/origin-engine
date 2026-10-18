@@ -103,6 +103,9 @@ pub struct NavAgent {
     /// How fast it turns when facing its movement.
     #[reflect(name = "turnSpeed", min = 0, max = 100, default = 10, unit = "radps")]
     pub turn_speed: f32,
+    /// Moves the entity (its og.Velocity, or its og.Transform) while true; false keeps planning but leaves the motion to the game (a knock-back, a stun).
+    #[reflect(default = 1)]
+    pub drive: bool,
     /// NAV_IDLE, NAV_MOVING, NAV_ARRIVED, NAV_UNREACHABLE or NAV_PARTIAL (written by og.nav).
     pub status: u32,
     /// Its velocity (written by og.nav).
@@ -131,6 +134,7 @@ impl Default for NavAgent {
             smooth: true,
             face_movement: false,
             turn_speed: 10.0,
+            drive: true,
             status: STATUS_IDLE,
             velocity: Vec3::ZERO,
             waypoint: Vec3::ZERO,
@@ -615,7 +619,8 @@ fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<(
         } = *row;
         let key = e.to_bits();
         let p2 = plane.to_plane(pos);
-        let mut v2 = plane.to_plane(agent.velocity);
+        // A body's actual velocity (physics, or the game, may have changed it).
+        let mut v2 = plane.to_plane(vel.map_or(agent.velocity, |v| v.linear));
         let mut desired = Vec2::ZERO;
         let mut new_pos = pos;
         let ps = state.paths.entry(key).or_default();
@@ -835,6 +840,12 @@ fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<(
             if s != steering.unwrap() {
                 ctx.set(e, s)?;
             }
+        }
+        if !agent.drive {
+            agent.velocity = vel.map_or(Vec3::ZERO, |v| v.linear);
+            agent.status = status;
+            ctx.set(e, agent)?;
+            continue;
         }
         // Velocity and position.
         let speed_cap = agent.speed.max(0.0);

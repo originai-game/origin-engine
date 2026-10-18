@@ -15,10 +15,12 @@ pub mod asset;
 pub mod system;
 pub mod tree;
 
-pub use asset::{Action, BEHAVIOUR_TYPE, BUILTIN_KEYS, Behaviour, Check, Kind, Op, Root, Value};
+pub use asset::{
+    Action, BEHAVIOUR_TYPE, BUILTIN_KEYS, Behaviour, Check, Kind, Op, Root, Speed, Value,
+};
 pub use system::{
-    AiAgent, AiChanged, AiDesc, AiSystem, Behaviours, Description, NEVER, Noise, Perceivable,
-    Perception, SYSTEM_NAME, SightRay, install,
+    AiAgent, AiChanged, AiDesc, AiSystem, Behaviours, CommandSink, Description, NEVER, Noise,
+    Perceivable, Perception, SYSTEM_NAME, SightRay, install,
 };
 pub use tree::{AgentMem, Status};
 

@@ -3,7 +3,7 @@
 //! the action that runs this tick says where to go ([`Motion`]); when none
 //! does, the agent stops. Game actions are queued commands.
 
-use crate::asset::{Action, Behaviour, Check, Kind, Op, Root, Value};
+use crate::asset::{Action, Behaviour, Check, Kind, Op, Root, Speed, Value};
 use og_core::glam::Vec3;
 use std::collections::BTreeMap;
 
@@ -44,6 +44,8 @@ pub struct NodeMem {
 /// An agent's memory of its behaviour.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AgentMem {
+    /// The behaviour handle the memory is for.
+    pub behaviour: u64,
     pub started: bool,
     /// The machine has run its initial state's `enter`.
     pub entered: bool,
@@ -166,10 +168,17 @@ impl Walker<'_, '_> {
         self.s.nav_status == og_nav::STATUS_ARRIVED && self.s.nav_target.distance(t) < 0.05
     }
 
-    fn go(&mut self, t: Vec3, speed: Option<f32>, mem: &AgentMem) {
+    fn go(&mut self, t: Vec3, speed: &Option<Speed>, mem: &AgentMem) {
+        let speed = match speed {
+            None => mem.base_speed,
+            Some(Speed::Fixed(v)) => *v,
+            Some(Speed::Read(k)) => {
+                (self.s.resolve)(k, mem).map_or(mem.base_speed, |v| v.num() as f32)
+            }
+        };
         self.fx.motion = Motion {
             target: Some(t),
-            speed: Some(speed.unwrap_or(mem.base_speed)),
+            speed: Some(speed),
         };
     }
 
@@ -348,7 +357,7 @@ impl Walker<'_, '_> {
                 {
                     return Status::Failure;
                 }
-                self.go(t, *speed, mem);
+                self.go(t, speed, mem);
                 Status::Running
             }
             Action::Chase { key, speed, reach } => {
@@ -358,7 +367,7 @@ impl Walker<'_, '_> {
                 if pos.distance(t) <= *reach {
                     return Status::Success;
                 }
-                self.go(t, *speed, mem);
+                self.go(t, speed, mem);
                 Status::Running
             }
             Action::Flee {
@@ -375,7 +384,7 @@ impl Walker<'_, '_> {
                     return Status::Success;
                 }
                 let dir = if d > 1e-4 { away / d } else { Vec3::X };
-                self.go(pos + dir * (*distance - d + 1.0), *speed, mem);
+                self.go(pos + dir * (*distance - d + 1.0), speed, mem);
                 Status::Running
             }
             Action::Patrol {
@@ -410,7 +419,7 @@ impl Walker<'_, '_> {
                     mem.nodes[i].until = s.tick + self.ticks(*wait);
                     return Status::Running;
                 }
-                self.go(t, *speed, mem);
+                self.go(t, speed, mem);
                 Status::Running
             }
             Action::Wander {
@@ -434,7 +443,7 @@ impl Walker<'_, '_> {
                     mem.nodes[i].until = s.tick + self.ticks(*wait);
                     return Status::Running;
                 }
-                self.go(t, *speed, mem);
+                self.go(t, speed, mem);
                 Status::Running
             }
             Action::Wait { seconds } => {

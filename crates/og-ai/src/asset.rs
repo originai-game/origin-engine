@@ -125,6 +125,13 @@ pub struct Check {
     pub value: Value,
 }
 
+/// A speed: fixed, or read from a key or field each think (a tunable).
+#[derive(Clone, Debug, PartialEq)]
+pub enum Speed {
+    Fixed(f32),
+    Read(String),
+}
+
 /// A movement or game action.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Action {
@@ -132,31 +139,31 @@ pub enum Action {
     MoveTo {
         key: Option<String>,
         point: Vec3,
-        speed: Option<f32>,
+        speed: Option<Speed>,
     },
     /// After a blackboard entity key's position (default `target`); succeeds within reach.
     Chase {
         key: String,
-        speed: Option<f32>,
+        speed: Option<Speed>,
         reach: f32,
     },
     /// Away from a key's position (default `target`) until `distance` away.
     Flee {
         key: String,
-        speed: Option<f32>,
+        speed: Option<Speed>,
         distance: f32,
     },
     /// Round a route's points, waiting at each; `loops` false succeeds at its end.
     Patrol {
         route: usize,
         wait: f32,
-        speed: Option<f32>,
+        speed: Option<Speed>,
         loops: bool,
     },
     /// To random points within `radius` of where the agent started.
     Wander {
         radius: f32,
-        speed: Option<f32>,
+        speed: Option<Speed>,
         wait: f32,
     },
     /// Running for `seconds`, then success.
@@ -309,13 +316,19 @@ fn opt_f32(b: Option<&Block>, key: &str, default: f32) -> Result<f32, String> {
     }
 }
 
-fn opt_speed(b: Option<&Block>) -> Result<Option<f32>, String> {
+fn opt_speed(b: Option<&Block>) -> Result<Option<Speed>, String> {
     match b.and_then(|b| b.get("speed")) {
         None => Ok(None),
-        Some(e) => e
-            .f32(0)
-            .map(Some)
-            .map_err(|_| err(e, "'speed' takes a number of metres per second")),
+        Some(e) => match e.values.first() {
+            Some(OgtValue::Number(n)) => Ok(Some(Speed::Fixed(n.as_f32()))),
+            Some(v) if word_or_string(v).is_some() => {
+                Ok(Some(Speed::Read(word_or_string(v).unwrap().to_string())))
+            }
+            _ => Err(err(
+                e,
+                "'speed' takes metres per second, or a key or field holding them (Tuning.slimeSpeed)",
+            )),
+        },
     }
 }
 

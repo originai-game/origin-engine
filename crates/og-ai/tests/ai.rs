@@ -154,6 +154,8 @@ fn scene(behaviour: &str, wall: bool) -> Scene {
         AiDesc {
             plane: Plane::Xy,
             ray: Some(ray),
+            sink: None,
+            behaviours: None,
         },
     )
     .unwrap();
