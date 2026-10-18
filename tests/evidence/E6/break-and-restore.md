@@ -120,3 +120,18 @@ Each break rebuilt the dev addon (`OG_GATE=1 sh packages/engine/scripts/build.sh
 | the cook's key check | no table is checked | `tables_are_validated_and_every_locale_is_checked_against_the_base` |
 | joined forms | the GSUB closure is the letters alone | `an_arabic_font_carries_its_joined_forms_and_its_file` |
 | the host's locale | og_engine_create ignores `locale` | `og.i18n: the host's locale picks the table …` |
+
+## The polish probe (`packages/engine/tests/polish.test.ts`)
+
+| Broken | Edit | Failed |
+|---|---|---|
+| floating text on damage | polish.ts never counts a floating text in a damage moment's window | `og polish scores the topdown playtests …` (combat's floating 0, expected 4) |
+| the refusal | og-cli's and polish.ts's no-playtest refusals both skipped | `og polish refuses a project without playtests` (exit 0, expected 1) |
+
+## Sounds the polish probe found missing (`tests/sounds.og.ts` of runner, match3 and ui-kit)
+
+| Broken | Edit | Failed |
+|---|---|---|
+| runner voices | Voices clears the request without setting `playing` | runner `sounds` (no og.AudioPlayback on the start, jump, coin and crash voices; the crash's peak 0) |
+| match3 swap sounds | Resolve no longer asks for the swap or refused sound | match3 `sounds` (a swap and a refused swap played 0 times) |
+| ui-kit's default | Demo.sounds defaults to false again | ui-kit `sounds` (no voice and peak 0 for a press without `sounds:on`) |

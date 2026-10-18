@@ -1,0 +1,551 @@
+{
+ "project": "match3",
+ "date": "2026-10-18",
+ "scores": {
+  "contrast": null,
+  "textSize": null,
+  "hud": null,
+  "transitions": null,
+  "uiSounds": null,
+  "latency": 100,
+  "hitFeedback": null,
+  "idle": 100,
+  "frameTime": 100,
+  "inputSound": 53,
+  "locale": null,
+  "taste": null,
+  "feel": 88
+ },
+ "findings": [],
+ "playtests": [
+  {
+   "playtest": "drag",
+   "title": "a drag onto a neighbour swaps like two taps",
+   "tier": "metal",
+   "ticks": 186,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 2,
+    "answered": 2,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 88.66,
+    "sound": 1
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1,
+    "stepP95Ms": 1.41,
+    "renderMedianMs": 1.68,
+    "renderP95Ms": 2,
+    "frameP95Ms": 3.35,
+    "frameMaxMs": 5.14
+   },
+   "audio": {
+    "seconds": 3.1,
+    "peak": 0.19,
+    "rms": 0.021,
+    "clipped": 0,
+    "silentShare": 72.58
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "endings",
+   "title": "reaching the target wins, running out of moves loses, a press deals again",
+   "tier": "metal",
+   "ticks": 348,
+   "shots": [
+    {
+     "name": "won",
+     "tick": 180,
+     "frame": "frames/endings-won.png",
+     "menu": false,
+     "hud": 0,
+     "centre": 0,
+     "texts": 0,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "lost",
+     "tick": 342,
+     "frame": null,
+     "menu": false,
+     "hud": 0,
+     "centre": 0,
+     "texts": 0,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 2,
+    "answered": 2,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 91.85,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.99,
+    "stepP95Ms": 1.45,
+    "renderMedianMs": 1.66,
+    "renderP95Ms": 2,
+    "frameP95Ms": 3.43,
+    "frameMaxMs": 131.54
+   },
+   "audio": {
+    "seconds": 5.8,
+    "peak": 0.19,
+    "rms": 0.0312,
+    "clipped": 0,
+    "silentShare": 55.75
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "frames",
+   "title": "the dealt board, a clear and a cascade match their reference frames",
+   "tier": "metal",
+   "ticks": 132,
+   "shots": [
+    {
+     "name": "dealt",
+     "tick": 72,
+     "frame": "frames/frames-dealt.png",
+     "menu": false,
+     "hud": 0,
+     "centre": 0,
+     "texts": 0,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "clearing",
+     "tick": 92,
+     "frame": null,
+     "menu": false,
+     "hud": 0,
+     "centre": 0,
+     "texts": 0,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "cascade",
+     "tick": 128,
+     "frame": null,
+     "menu": false,
+     "hud": 0,
+     "centre": 0,
+     "texts": 0,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 1,
+    "answered": 1,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 93.18,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1,
+    "stepP95Ms": 2.28,
+    "renderMedianMs": 1.67,
+    "renderP95Ms": 2.03,
+    "frameP95Ms": 4.21,
+    "frameMaxMs": 151.5
+   },
+   "audio": {
+    "seconds": 2.2,
+    "peak": 0.19,
+    "rms": 0.0219,
+    "clipped": 0,
+    "silentShare": 74.24
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "replay",
+   "title": "a replay of swaps, clears and a cascade lands on the same world hash",
+   "tier": "metal",
+   "ticks": 165,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 1,
+    "answered": 1,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 90.91,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1,
+    "stepP95Ms": 1.64,
+    "renderMedianMs": 1.66,
+    "renderP95Ms": 1.97,
+    "frameP95Ms": 3.89,
+    "frameMaxMs": 5.35
+   },
+   "audio": {
+    "seconds": 2.75,
+    "peak": 0.19,
+    "rms": 0.0226,
+    "clipped": 0,
+    "silentShare": 64.85
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "sounds",
+   "title": "selections, swaps, clears, a cascade, the win and the loss each play their sound",
+   "tier": "metal",
+   "ticks": 438,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 6,
+    "answered": 6,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 88.6,
+    "sound": 4
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1,
+    "stepP95Ms": 1.51,
+    "renderMedianMs": 1.65,
+    "renderP95Ms": 2.01,
+    "frameP95Ms": 3.38,
+    "frameMaxMs": 5.31
+   },
+   "audio": {
+    "seconds": 7.3,
+    "peak": 0.19,
+    "rms": 0.0283,
+    "clipped": 0,
+    "silentShare": 59.82
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "swap",
+   "title": "a swap that makes a line clears, scores and cascades; one that makes nothing is free",
+   "tier": "metal",
+   "ticks": 246,
+   "shots": [
+    {
+     "name": "title",
+     "tick": 18,
+     "frame": "frames/swap-title.png",
+     "menu": false,
+     "hud": 0,
+     "centre": 0,
+     "texts": 0,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "play",
+     "tick": 54,
+     "frame": null,
+     "menu": false,
+     "hud": 0,
+     "centre": 0,
+     "texts": 0,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "clearing",
+     "tick": 147,
+     "frame": null,
+     "menu": false,
+     "hud": 0,
+     "centre": 0,
+     "texts": 0,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "settled",
+     "tick": 240,
+     "frame": null,
+     "menu": false,
+     "hud": 0,
+     "centre": 0,
+     "texts": 0,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 5,
+    "answered": 5,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 85.09,
+    "sound": 4
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.98,
+    "stepP95Ms": 1.75,
+    "renderMedianMs": 1.67,
+    "renderP95Ms": 1.98,
+    "frameP95Ms": 3.69,
+    "frameMaxMs": 144.84
+   },
+   "audio": {
+    "seconds": 4.1,
+    "peak": 0.19,
+    "rms": 0.0192,
+    "clipped": 0,
+    "silentShare": 72.36
+   },
+   "warnings": []
+  }
+ ],
+ "warnings": []
+}
