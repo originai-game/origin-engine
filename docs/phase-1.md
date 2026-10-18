@@ -96,6 +96,27 @@ hosts; M6 needs M3, M4, M5; M7 needs M6.
   31 is not published yet. Versions: `docs/ci.md` §Toolchain; evidence
   `tests/evidence/toolchain-2026-10.md`.
 
+### Build speed 2026-10
+
+- **2026-10-19** (edd9736..HEAD): the inner loop, measured with another
+  agent on the machine. The full lane went from 165–320 s to 103 s with
+  `--all` and 41 s after a template-only change, the quick lane from
+  83–154 s to 19–26 s, `cargo nextest run --workspace` from 112 s to
+  20–29 s. The causes were not the compiler: 252,881 stale object files
+  in `target/debug/deps` that every Metal device open read (1.4 s per GPU
+  test; the dev profile now has no debuginfo), og-cook's tests cooking the
+  template once per process and one at a time (now once per test build,
+  under a file lock, in parallel), an O(n²) vertex search, and nextest
+  starting the longest work last. og-api is three crates (og-idl, og-api,
+  og-runtime), so a doc-only IDL edit rebuilds nothing; the gate is
+  path-aware (GPU tests, wasm steps, drift, web-reference skipped when
+  their inputs did not change; `--all` and CI run everything), wasm-opt
+  and brotli reuse results by content, sccache is the wrapper in
+  `.cargo/config.toml` (a fresh worktree's test build about 70 s) and
+  parallel rounds reuse `scripts/worktree.sh` worktrees. No reference frame
+  was re-recorded. Rules: `docs/ci.md` §Lanes, AGENTS.md §Build and gate
+  discipline; evidence `tests/evidence/build-speed-2026-10.md`.
+
 ### Status 2026-10-18, E4 round
 
 - **2D and game feel** (b6da6a1..4e63a59, branch `e4-2d-feel`): `og.TimeScale`

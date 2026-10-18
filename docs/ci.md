@@ -25,6 +25,7 @@ absent.
 | bun | 1.4.2 | `BUN_VERSION` in `scripts/install-tools.sh` |
 | TypeScript (type checking only; Bun bundles) | 7.0.2 | `packages/engine/package.json` `typecheck`, `crates/og-idl/tests/idl.rs`, the templates' `devDependencies` |
 | cargo-nextest | 0.9.148 here | not pinned |
+| sccache (the rustc wrapper, `.cargo/config.toml`; not used in CI) | 0.14.0 | `SCCACHE_VERSION` in `scripts/install-tools.sh` |
 | cargo-zigbuild, zig (`build.sh --linux-x64`) | 0.23.4, 0.17.0 here | not pinned; outside the gate |
 | Chrome for Testing (`make web-reference`, browser tests) | 150 | `CHROME_PATH`; outside the gate |
 
@@ -46,20 +47,74 @@ step.
 
 ## Lanes
 
-| Lane | Steps | When | Warm, Apple M4 Pro |
+| Lane | Steps | When | Warm, Apple M4 Pro, another agent on the machine |
 |---|---|---|---|
-| `scripts/check.sh quick` | fmt clippy test-quick drift bun-quick | the loop while working; CI job `quick` on every PR | 83 s (test-quick 61 s for 203 tests) |
-| `scripts/check.sh` (full) | fmt clippy wasm-build test wasm-opt size-gate drift bun-test determinism | before a change to rendering, animation, physics, the tick or the export is called done; CI job `gate` on every PR and push to main | 145 s (test 80 s under nextest, wasm-opt 23 s, size-gate 16 s, bun-test 17 s) |
+| `scripts/check.sh quick` | fmt clippy test-quick drift bun-quick | the loop while working; CI job `quick` on every PR | 19–26 s (test-quick 16–20 s for 225 tests, 256 with og-ui's and og-render's GPU tests) |
+| `scripts/check.sh` (full) | fmt clippy wasm-build test wasm-opt size-gate drift bun-test determinism | before a change to rendering, animation, physics, the tick or the export is called done; CI job `gate` on every PR and push to main | `--all` 103 s (test 26 for 348 tests, wasm-opt 30, size-gate 16, bun-test 18); after an og-render change 196 s under load (wasm-build 42, test 46, wasm-opt 59); after a template-only change 41 s |
 
-`og-tests::wasm` (og-render must compile for wasm32) used to run its own
-`cargo check --target wasm32-unknown-unknown -p og-render` in
-`target/tmp/wasm-check` (547 MB): 0.32 s inside the test step when that
-directory was warm, 7.5 s cold run alone, reported at about 29 s cold in a
-loaded gate. Since the full lane runs `wasm-build` before `test`, it takes
-that step's og-render build when it is newer than og-render's sources:
-0.014 s in the full gate at 00c33d3 (165 s for the nine steps: fmt 1,
-clippy 0, wasm-build 6, test 94, wasm-opt 25, size-gate 16, drift 1,
-bun-test 20, determinism 2), and no second wasm32 target directory.
+Both lanes are path-aware. A step that passes records the working tree it
+passed on in `<target>/og-gate/green/<step>`: a git tree of the whole
+working copy, untracked files included, written through a private index
+(the real one is untouched). The next run compares that tree with the
+current one (`git diff --name-only`) and skips what none of its inputs
+changed:
+
+| Skipped | When nothing changed in | Then |
+|---|---|---|
+| the GPU reference tests (nextest `-E 'not (package(og-tests) \| package(og-ui) \| package(og-render))'` in test and test-quick; `--exclude` under cargo test) | og-tests, og-ui, og-render and every workspace crate they build on (`cargo tree`, with dev-dependencies), `templates/ui-kit/assets` | the rest of the test step runs; the step's summary line says the GPU tests were skipped |
+| wasm-build, wasm-opt, size-gate | `crates/` | the last outputs in `target/og-wasm` are reused (only when every file they list exists; a step that ran upstream in this invocation always runs the next) |
+| drift | `crates/og-api` (`api.ogt`), og-idl and the crates it builds on, `crates/og-cli`, and every generated directory (`og_idl::OUTPUT_DIRS`), so a hand edit to a generated file is still caught | |
+| web-reference (`make web-reference`; in no lane) | og-host-web's crates for wasm32, `packages/engine`, `templates/fx-showcase` | |
+
+A change to `scripts/`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`,
+`.cargo/` or `.config/` reruns every one of them. Each skip prints its
+reason, the tree it rests on and its inputs; `--all` (`scripts/check.sh
+--all`, `scripts/check.sh --all quick`, `scripts/check.sh --all test`) runs
+every step and every test, and so does any run with `CI` set in the
+environment: CI's lanes stay complete. A failed step clears its record. The
+determinism step, bun-test and the non-GPU tests always run.
+
+wasm-opt and size-gate also keep results by content in
+`target/og-wasm-cache`: a raw module byte-identical to one already
+optimised (keyed by its SHA-256, the wasm-bindgen and wasm-opt versions and
+the flags) takes the earlier bindgen output and `-Oz` module, and brotli's
+size of a module measured before is its recorded size. An edit under
+`crates/` that does not reach the wasm (a test, a comment, native-only
+code) then costs wasm-build's few seconds instead of 32 s of wasm-opt and
+18 s of brotli. `--all` bypasses that cache too.
+
+What the 2026-10 build-speed round changed (before 165–320 s for the full
+lane, 83–154 s for quick; `tests/evidence/build-speed-2026-10.md` has every
+measurement):
+
+- **The dev profile has no debuginfo.** On macOS it stays in object files
+  that rustc never removes, `target/debug/deps` had grown to 252,881 of
+  them, and every process that opens a Metal device reads its executable's
+  directory: each GPU test lost 1.4 s there. Panics still name file and
+  line; `CARGO_PROFILE_DEV_DEBUG=line-tables-only` (which CI sets) gives
+  backtraces with lines.
+- **wgpu, wgpu-core, wgpu-hal, wgpu-types and naga are optimised in dev**
+  (opt-level 3, with the physics and encoder crates), and the workspace
+  crates build in 16 codegen units (an og-core edit's test build 10.4 s to
+  6.6 s). `-j` below 12, nextest `--test-threads` 8 and a gpu group of 6
+  measured no faster.
+- **Tests:** og-cook's template and rigged models are cooked once per test
+  build and read by every test process (a file lock in `tests/support`), so
+  its template tests run in parallel; the walk's and the particle runs'
+  second run is on a second thread; nextest starts the long poles first
+  and the every-slot tests last. `cargo nextest run --workspace` went from
+  112 s to 20–29 s.
+- **og-api is three crates** (og-idl, og-api, og-runtime;
+  `crates/og-api/README.md`): a doc-only IDL edit rebuilds nothing, a
+  generator edit only og.
+- **sccache** is the wrapper in `.cargo/config.toml` (`RUSTC_WRAPPER=`
+  turns it off; CI does, caching `target/`), so a fresh worktree's test
+  build takes about 70 s; parallel rounds reuse `scripts/worktree.sh`
+  worktrees (AGENTS.md §Build and gate discipline).
+
+`og-tests::wasm` (og-render must compile for wasm32) takes the full lane's
+`wasm-build` og-render artifact when it is newer than og-render's sources,
+so it needs no second wasm32 target directory.
 
 Before the lanes (2026-10-18, E1 tree) the single gate took 310 s warm:
 `cargo test` serial 111 s, `packages/engine`'s `bun run test` 156 s of which
@@ -73,8 +128,8 @@ had grown `target/` to 143 GB.
 |---|---|---|---|---|---|
 | `fmt` | `cargo fmt --all --check` | both | yes | yes | |
 | `clippy` | `cargo clippy --workspace --all-targets -- -D warnings` | both | yes | yes | |
-| `test-quick` | `cargo nextest run --workspace --exclude og-tests` (`cargo test` without nextest) | quick | yes, on lavapipe | | |
-| `test` | `cargo nextest run --workspace && cargo test --workspace --doc` (`cargo test --workspace` without nextest); gfx tests in `og-tests`. Runs after `wasm-build`, whose og-render artifact `og-tests::wasm` takes when it is newer than og-render's sources (else that test runs `cargo check --target wasm32-unknown-unknown -p og-render` itself) | full | | yes, on lavapipe | |
+| `test-quick` | `cargo nextest run --workspace --exclude og-tests` (`cargo test` without nextest); og-ui's and og-render's GPU tests left out when their inputs did not change (§Lanes) | quick | yes, on lavapipe | | |
+| `test` | `cargo nextest run --workspace && cargo test --workspace --doc` (`cargo test --workspace` without nextest); gfx tests in `og-tests`, left out with og-ui's and og-render's when their inputs did not change (§Lanes). Runs after `wasm-build`, whose og-render artifact `og-tests::wasm` takes when it is newer than og-render's sources (else that test runs `cargo check --target wasm32-unknown-unknown -p og-render` itself) | full | | yes, on lavapipe | |
 | `wasm-build` | `cargo build --release --target wasm32-unknown-unknown -p <crate> --lib` for `scripts/wasm-crates.txt`, plus the `publish` feature variant of crates marked `publish`; copies to `target/og-wasm/raw/` | full | | yes | |
 | `wasm-opt` | `wasm-bindgen --target web --out-name origin-engine` (when the module uses it) then `wasm-opt -Oz --enable-bulk-memory --enable-nontrapping-float-to-int --low-memory-unused` (rustc links wasm32 stack-first, so the low 1 KiB is only the bottom of an overflowing stack); `opt.txt` lists the shipping (publish) variants, `opt-all.txt` every one | full | | yes | |
 | `size-gate` | `scripts/size-gate.sh`: brotli `-q 11` sum of `opt.txt` ≤ `wasm_core_brotli_bytes` | full | | yes | |
@@ -83,12 +138,16 @@ had grown `target/` to 143 GB.
 | `bun-test` | `bun run test` in each `packages/*` with a `test` script; `OG_GATE=1` makes `packages/engine/scripts/build.sh` take the dev addon and `og` and the gate's wasm instead of compiling release and wasm again (below) | full | | yes | |
 | `determinism` | `tools/wasm-determinism/run.sh`: the same math digest and world hash on the host and on wasm32 scalar and simd128 under node | full | | yes | needs node |
 | perf | `cargo test -p og-tests --release -- --ignored perf` | `make perf` | | | yes |
-| web-reference | `bun tests/web/reference.ts` and `--webgl` in `packages/engine`: templates/fx-showcase's five stations in headless Chrome, compared with `references/webgpu`/`webgl2` or else `metal` under og-tests' tolerance (below) | `make web-reference` | | | |
+| `web-reference` | `bun tests/web/reference.ts` and `--webgl` in `packages/engine`: templates/fx-showcase's five stations in headless Chrome, compared with `references/webgpu`/`webgl2` or else `metal` under og-tests' tolerance (below); path-aware (§Lanes) | `scripts/check.sh web-reference` (`make web-reference`), in no lane | | | |
 
-`cargo nextest` runs test binaries in parallel, one process per test;
-`.config/nextest.toml` serialises the one binary whose tests share a fixture
-directory (`og-cook::template`) and gives every slot to the tests that
-assert a wall-clock bound. `scripts/install-tools.sh` installs it; without
+`cargo nextest` runs test binaries in parallel, one process per test.
+Fixtures several tests read are made once across their processes under a
+file lock (og-cook's `tests/support`: the template and the rigged models,
+keyed by the test executable and the sources); `.config/nextest.toml` gives
+every slot to the tests that assert a wall-clock bound (and runs them last),
+two slots to the determinism runs that step two worlds or renderers at once,
+four at a time to the GPU-bound packages, and starts og-tests, the cooks,
+the pile and the walk first. `scripts/install-tools.sh` installs it; without
 it the steps fall back to `cargo test`.
 
 CI runs on `ubuntu-latest`. The Rust toolchain comes from
@@ -111,11 +170,18 @@ are uploaded on every run as `size-gate-<run>`.
 scripts/install-tools.sh             # once; macOS uses Homebrew for brotli
 scripts/check.sh quick               # the quick lane (make quick)
 scripts/check.sh                     # the full lane, stops at the first FAIL
+scripts/check.sh --all               # the full lane with nothing skipped (what CI runs)
 scripts/check.sh clippy test         # selected steps, in the order given
 scripts/check.sh wasm-build wasm-opt size-gate   # the size gate (make wasm)
 scripts/check.sh --list
+scripts/check.sh web-reference       # the browser tiers (make web-reference); needs Chrome
 make check                           # the same through the Makefile
 ```
+
+The path-aware state is `<target>/og-gate/` (the green trees) and
+`<target>/og-wasm-cache/` (wasm-opt and brotli by content); both are kept
+across runs and are only ever bypassed with `--all`, never deleted to force
+a step.
 
 One gate per target directory: `scripts/check.sh` (and a release
 `packages/engine/scripts/build.sh`) holds `<target>/og-gate.lock` for its
