@@ -92,6 +92,21 @@ test("og.nav: drive false plans and reports but leaves the motion to the game", 
   expect(must(engine.world.get(e, og.Transform)).position.x).toBe(2.5);
 });
 
+test("og.nav: an agent moved off its path (a teleport, a knock-back) plans again from where it is", () => {
+  const engine = start(og.game({ resources: [Nav], start: walker(true) }));
+  const w = engine.world;
+  engine.advance(20);
+  const e = w.find("walker")!;
+  const before = must(w.get(e, og.NavAgent)).plans;
+  must(w.set(e, og.Transform, { position: { x: 14.5, y: 0, z: 9.2 } }) as never);
+  engine.advance(1);
+  expect(must(w.get(e, og.NavAgent)).plans).toBe(before + 1);
+  const leg = og.nav.pathOf(w, e)!;
+  expect(leg.points[0]!.x).toBeCloseTo(14.5, 1);
+  engine.advance(200);
+  expect(must(w.get(e, og.NavAgent)).status).toBe(NAV_ARRIVED);
+});
+
 test("og.nav: a navmesh built from a floor and a box routes round it, and an obstacle rebuilds tiles", () => {
   const engine = start(og.game({}));
   const w = engine.world;

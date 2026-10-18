@@ -40,3 +40,12 @@ Each break rebuilt the dev addon (`OG_GATE=1 sh packages/engine/scripts/build.sh
 | navmesh boxes | `og.nav.build` drops every box (`hi.y > min.y` inverted) | `og.nav: a navmesh built from a floor and a box …` (the path does not go round) |
 | `NavAgent.drive` | the drive check never skips the motion | `og.nav: drive false plans and reports but leaves the motion to the game` (the walker moved) |
 | a speed read from a field | `speed Pace.chase` falls back to the agent's base speed | `og.ai: a guard on a behaviour tree …` (NavAgent.speed 2, not 5) |
+| re-planning off the path | an agent far from its path's leg is not stale | `og.nav: an agent moved off its path … plans again` (no new plan) |
+
+## The topdown slime on a behaviour tree (`templates/archetypes/topdown/tests/`)
+
+| Broken | Edit | Failed |
+|---|---|---|
+| occlusion | the slime's `og.Perception` gets `occlude: false` | `flee` (the hero behind the pillar is seen and chased) |
+| the bite | `biteHero` returns for any distance | `ai` (no hurt, no heart lost, no bite counted) and `combat` (the opening bite) |
+| fear | `check Slime.hp below 0` in `assets/ai/slime.ogt` | `flee` (it chases at 20 hp and ends 1.70 m from the hero) |

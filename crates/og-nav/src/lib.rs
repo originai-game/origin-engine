@@ -24,7 +24,7 @@ pub use flow::FlowField;
 pub use grid::{Algorithm, BLOCKED, Grid, GridPath, Scratch};
 pub use mesh::{Heightfield, MeshPath, NavMesh, NavParams, Obstacle, Poly, PolyRef, Span, Tile};
 pub use system::{
-    Nav, NavAgent, NavDesc, NavSystem, Navs, PLANS_PER_TICK, Plane, Raycaster, STATUS_ARRIVED,
-    STATUS_IDLE, STATUS_MOVING, STATUS_PARTIAL, STATUS_UNREACHABLE, SYSTEM_NAME, SharedNavs,
-    Steering, install, plan,
+    Nav, NavAgent, NavDesc, NavSystem, Navs, OFF_PATH, PLANS_PER_TICK, Plane, Raycaster,
+    STATUS_ARRIVED, STATUS_IDLE, STATUS_MOVING, STATUS_PARTIAL, STATUS_UNREACHABLE, SYSTEM_NAME,
+    SharedNavs, Steering, install, plan,
 };

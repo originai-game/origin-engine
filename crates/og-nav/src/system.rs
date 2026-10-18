@@ -417,6 +417,9 @@ pub struct NavDesc {
     pub plans_per_tick: u32,
 }
 
+/// An agent farther than this (or four radii) from its path's current leg plans again.
+pub const OFF_PATH: f32 = 1.5;
+
 /// The default [`NavDesc::plans_per_tick`].
 pub const PLANS_PER_TICK: u32 = 32;
 
@@ -657,8 +660,25 @@ fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<(
                     };
                     let moved = ps.target.distance(agent.target) > agent.repath_distance.max(1e-4);
                     let due = agent.repath_ticks > 0 && ps.age >= agent.repath_ticks;
-                    let stale =
-                        ps.nav != agent.nav || ps.version != version || ps.corners.is_empty();
+                    // Off its path (teleported, knocked away): plan again from here.
+                    let off = ps.corners.len() >= 2 && {
+                        let n = (ps.next as usize).clamp(1, ps.corners.len() - 1);
+                        let (a, b) = (
+                            plane.to_plane(ps.corners[n - 1]),
+                            plane.to_plane(ps.corners[n]),
+                        );
+                        let ab = b - a;
+                        let t = if ab.length_squared() > 1e-12 {
+                            ((p2 - a).dot(ab) / ab.length_squared()).clamp(0.0, 1.0)
+                        } else {
+                            0.0
+                        };
+                        p2.distance(a + ab * t) > OFF_PATH.max(agent.radius * 4.0)
+                    };
+                    let stale = ps.nav != agent.nav
+                        || ps.version != version
+                        || ps.corners.is_empty()
+                        || off;
                     if (moved || due || stale) && budget > 0 {
                         budget -= 1;
                         let (corners, st, poly) = match nav {
