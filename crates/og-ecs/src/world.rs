@@ -9,7 +9,7 @@ use crate::state::{Block, StateBlock};
 use crate::storage::Archetype;
 use og_core::handle::HandleAllocator;
 use og_core::reflect::{schemas_to_json, Reflect, Schema};
-use og_core::{Error, ErrorKind, Result, Rng, Time};
+use og_core::{Error, ErrorKind, Result, Rng, Time, TimeScale};
 use std::cell::{Ref, RefCell};
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -97,6 +97,7 @@ pub struct World {
     pub(crate) events: Vec<RefCell<EventQueue>>,
     pub(crate) systems: Vec<System>,
     pub(crate) time_id: SchemaId,
+    pub(crate) scale_id: SchemaId,
     /// Bumped by every operation that may move a column or an entity list.
     pub(crate) structural: u64,
     /// Entity names: one name per live entity, one entity per name.
@@ -136,6 +137,7 @@ impl World {
             events: Vec::new(),
             systems: Vec::new(),
             time_id: SchemaId(0),
+            scale_id: SchemaId(0),
             structural: 0,
             names: BTreeMap::new(),
             by_name: BTreeMap::new(),
@@ -144,8 +146,10 @@ impl World {
         world.archetype_for(Vec::new());
         world.time_id = world.register::<Time>()?;
         world.register::<Rng>()?;
+        world.scale_id = world.register::<TimeScale>()?;
         world.insert_resource(Time::from_rate(desc.tick_rate))?;
         world.insert_resource(Rng::new(desc.seed))?;
+        world.insert_resource(TimeScale::default())?;
         Ok(world)
     }
 
@@ -622,6 +626,30 @@ impl World {
             .expect("Time is a resource of every world")
     }
 
+    /// Slow motion and hit stop (the default when a restored snapshot had none).
+    pub fn time_scale(&self) -> TimeScale {
+        self.resource::<TimeScale>().map(|s| *s).unwrap_or_default()
+    }
+
+    /// The scaled length of the current tick ([`TimeScale::dt`]).
+    pub fn scaled_dt(&self) -> f32 {
+        self.time_scale().dt(&self.time())
+    }
+
+    /// Sets the global time scale (0 to [`og_core::time::MAX_TIME_SCALE`]).
+    pub fn set_time_scale(&mut self, scale: f32) -> Result<()> {
+        let mut s = self.time_scale();
+        s.scale = check_scale(scale)?;
+        self.insert_resource(s)
+    }
+
+    /// Starts (or extends) a hit stop of `ticks` ticks: it never shortens one in progress.
+    pub fn hit_stop(&mut self, ticks: u32) -> Result<()> {
+        let mut s = self.time_scale();
+        s.hit_stop = s.hit_stop.max(ticks);
+        self.insert_resource(s)
+    }
+
     // ---- events -----------------------------------------------------------
 
     /// Sends event `T`; systems read it during the next [`Self::step`].
@@ -862,6 +890,10 @@ impl World {
                 return Err(err);
             }
         }
+        let time = self.time();
+        if let Ok(scale) = self.resource_mut::<TimeScale>() {
+            scale.end_tick(&time);
+        }
         self.resource_mut::<Time>()?.advance();
         Ok(())
     }
@@ -1015,3 +1047,18 @@ bundle_tuple!(A, B, C, D, E);
 bundle_tuple!(A, B, C, D, E, F);
 bundle_tuple!(A, B, C, D, E, F, G);
 bundle_tuple!(A, B, C, D, E, F, G, H);
+
+/// A valid [`TimeScale::scale`].
+pub(crate) fn check_scale(scale: f32) -> Result<f32> {
+    if scale.is_finite() && (0.0..=og_core::time::MAX_TIME_SCALE).contains(&scale) {
+        Ok(scale)
+    } else {
+        Err(Error::new(
+            ErrorKind::Invalid,
+            format!(
+                "time scale {scale} is outside 0..={}",
+                og_core::time::MAX_TIME_SCALE
+            ),
+        ))
+    }
+}

@@ -536,7 +536,8 @@ fn missing(entity: Entity, what: &str, handle: u64) -> Error {
 }
 
 fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
-    let dt = ctx.time().dt;
+    // Scaled time: slow motion plays slower, a hit stop holds the pose.
+    let dt = ctx.scaled_dt();
     let skeletons = entities(ctx, 0)?;
     let with = |q: usize| -> Result<BTreeSet<u64>> {
         Ok(entities(ctx, q)?.iter().map(|e| e.to_bits()).collect())

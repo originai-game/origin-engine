@@ -119,6 +119,12 @@ impl System {
             ));
         }
         let writes = ids(world, &desc.writes, &name)?;
+        if writes.contains(&world.scale_id) {
+            return Err(Error::new(
+                ErrorKind::Access,
+                format!("system '{name}' declares a write to og.TimeScale; use set_time_scale and hit_stop"),
+            ));
+        }
         if writes.contains(&world.time_id) {
             return Err(Error::new(
                 ErrorKind::Access,
@@ -206,6 +212,47 @@ impl<'w> SystemContext<'w> {
         self.world.time()
     }
 
+    /// Slow motion and hit stop, readable by every system.
+    pub fn time_scale(&self) -> og_core::TimeScale {
+        self.world.time_scale()
+    }
+
+    /// The scaled length of this tick: what physics, animation and tweens
+    /// advance by (0 during a hit stop).
+    pub fn scaled_dt(&self) -> f32 {
+        self.world.scaled_dt()
+    }
+
+    /// Sets the global time scale; any system may (an engine service, like
+    /// reading `Time`). Later systems of this tick see it.
+    pub fn set_time_scale(&self, scale: f32) -> Result<()> {
+        let scale = crate::world::check_scale(scale)?;
+        self.edit_time_scale(|s| s.scale = scale)
+    }
+
+    /// Starts or extends a hit stop of `ticks` ticks (any system may).
+    pub fn hit_stop(&self, ticks: u32) -> Result<()> {
+        self.edit_time_scale(|s| s.hit_stop = s.hit_stop.max(ticks))
+    }
+
+    fn edit_time_scale(&self, f: impl FnOnce(&mut og_core::TimeScale)) -> Result<()> {
+        let name = og_core::TimeScale::NAME;
+        let cell = self.world.resource_cell(self.world.scale_id)?;
+        let mut value = cell
+            .try_borrow_mut()
+            .map_err(|_| crate::world::busy(name))?;
+        match &mut *value {
+            crate::world::ResourceValue::Typed(b) => match b.downcast_mut::<og_core::TimeScale>() {
+                Some(s) => {
+                    f(s);
+                    Ok(())
+                }
+                None => Err(crate::world::no_resource(name)),
+            },
+            crate::world::ResourceValue::Raw(_) => Err(crate::world::no_resource(name)),
+        }
+    }
+
     /// The id of a registered Rust type.
     pub fn id<T: Reflect>(&self) -> Result<SchemaId> {
         self.world.id::<T>()
@@ -217,7 +264,9 @@ impl<'w> SystemContext<'w> {
         } else {
             &self.system.reads
         };
-        if list.binary_search(&id).is_ok() || (!write && id == self.world.time_id) {
+        if list.binary_search(&id).is_ok()
+            || (!write && (id == self.world.time_id || id == self.world.scale_id))
+        {
             return Ok(());
         }
         Err(Error::new(

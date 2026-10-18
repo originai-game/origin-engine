@@ -648,7 +648,16 @@ pub(crate) struct StepOut {
 
 fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> Result<()> {
     let settings = *ctx.resource::<Physics>()?;
-    let dt = ctx.time().dt;
+    // Slow motion steps by the scaled tick; a hit stop (scaled dt 0) holds
+    // the simulation as it is and carries the touching pairs over, so no
+    // contact ends or starts while time stands still.
+    let dt = ctx.scaled_dt();
+    if dt <= 0.0 {
+        for c in ctx.events::<Contact>()? {
+            ctx.send(c)?;
+        }
+        return Ok(());
+    }
     let scene: Scene = gather::gather(&|i| ctx.query(i), ids)?;
     // The simulation is taken out for the step and put back only when it
     // succeeds: a failed tick leaves none, and the next one rebuilds it.
