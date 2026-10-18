@@ -26,7 +26,16 @@ function walk(root: string, at = root): string[] {
   });
 }
 
-const sourceFiles = walk(template).filter((f) => !/^(cooked|dist|og-out|node_modules|\.og)\//.test(f)).sort();
+// The template keeps its Git attributes as `gitattributes` (this repository
+// stores media as plain blobs); a scaffold gets them as `.gitattributes`.
+const scaffolded = (f: string) => (f === "gitattributes" ? ".gitattributes" : f);
+const sourceFiles = walk(template).filter((f) => !/^(cooked|dist|og-out|node_modules|\.og)\//.test(f)).map(scaffolded).sort();
+
+function git(cwd: string, ...args: string[]): string {
+  const r = Bun.spawnSync(["git", ...args], { cwd });
+  if (r.exitCode !== 0) throw new Error(`git ${args.join(" ")}: ${new TextDecoder().decode(r.stderr)}`);
+  return new TextDecoder().decode(r.stdout);
+}
 
 test("scaffolds every template file with the game's name and id", () => {
   const r = cli("space-run", "--name", "Space Run");
@@ -88,10 +97,32 @@ test("--archetype scaffolds an archetype game instead of the template", () => {
   const archetype = join(pkg, "..", "..", "templates", "archetypes", "runner");
   const r = cli("dash", "--archetype", "runner", "--name", "Dash");
   expect(r.code).toBe(0);
-  const want = walk(archetype).filter((f) => !/^(cooked|dist|node_modules|og-out|\.og)\//.test(f)).sort();
+  const want = walk(archetype).filter((f) => !/^(cooked|dist|node_modules|og-out|\.og)\//.test(f)).map(scaffolded).sort();
   expect(walk(join(scratch, "dash")).sort()).toEqual(want);
   expect(readFileSync(join(scratch, "dash", "project.ogt"), "utf8")).toContain('name "Dash"');
   const unknown = cli("nope", "--archetype", "no-such-game");
   expect(unknown.code).not.toBe(0);
   expect(unknown.err).toContain("runner");
+});
+
+test("a scaffolded project routes media through Git LFS; the engine repository does not", () => {
+  const repo = join(pkg, "..", "..");
+  for (const [dir, args] of [
+    ["lfs-game", ["--name", "LFS Game"]],
+    ["lfs-runner", ["--archetype", "runner"]],
+    ["lfs-match3", ["--archetype", "match3"]],
+    ["lfs-topdown", ["--archetype", "topdown"]],
+  ] as const) {
+    expect(cli(dir, ...args).code).toBe(0);
+    const made = join(scratch, dir);
+    git(made, "init", "-q");
+    for (const media of ["a.glb", "assets/b.png", "c.wav", "d.ttf"]) {
+      expect(git(made, "check-attr", "filter", media).trim()).toBe(`${media}: filter: lfs`);
+    }
+    expect(git(made, "check-attr", "filter", "project.ogt").trim()).toBe("project.ogt: filter: unspecified");
+    expect(existsSync(join(made, "gitattributes"))).toBeFalse();
+  }
+  for (const media of ["templates/game/assets/models/dropship.glb", "templates/archetypes/runner/assets/x.png", "templates/archetypes/topdown/a.wav"]) {
+    expect(git(repo, "check-attr", "filter", media).trim()).toBe(`${media}: filter: unspecified`);
+  }
 });

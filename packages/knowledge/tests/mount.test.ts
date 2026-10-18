@@ -48,6 +48,14 @@ test("a mount writes the text payload byte for byte, no binaries, and leaves oth
   expect(r.out).toContain(`${text.length} added, 0 changed, 0 removed`);
 });
 
+test("the overlay carries the template's Git attributes as .gitattributes", () => {
+  const p = platform();
+  expect(mount(p).code).toBe(0);
+  const overlay = join(p, PROD, "game-scaffold/origin-engine-ts");
+  expect(readFileSync(join(overlay, ".gitattributes"), "utf8").split("\n")).toContain("*.glb filter=lfs diff=lfs merge=lfs -text");
+  expect(existsSync(join(overlay, "gitattributes"))).toBeFalse();
+});
+
 test("a second mount changes nothing and --check passes", () => {
   const p = platform();
   mount(p);

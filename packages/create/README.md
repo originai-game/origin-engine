@@ -15,7 +15,10 @@ not empty is refused unless `--force` is given.
 
 The published package carries the template under `template/`, copied by the
 `prepack` script (`scripts/pack-template.ts`); build output (`cooked/`,
-`dist/`, `node_modules/`) is never copied. `bun run test` scaffolds into a
+`dist/`, `node_modules/`) is never copied. The template's `gitattributes`
+(media through Git LFS) is written as the project's `.gitattributes`: under
+its own name it would route the engine repository's plain-blob media through
+LFS too. `bun run test` scaffolds into a
 temporary directory and checks the result.
 
 Note on the name: npm maps `npm create @origingame/game` to the package

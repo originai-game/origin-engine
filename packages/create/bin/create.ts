@@ -16,6 +16,14 @@ import { fileURLToPath } from "node:url";
 /** Directories of a template copy that are build output, never scaffolded. */
 export const SKIPPED = new Set(["cooked", "dist", "node_modules", "og-out", ".og"]);
 
+/**
+ * Template files stored under another name and renamed in the scaffold: the
+ * template's Git attributes route media through LFS in a game's repository,
+ * but as `.gitattributes` they would do the same in the engine repository,
+ * which stores the template's media as plain blobs.
+ */
+export const RENAMED: ReadonlyMap<string, string> = new Map([["gitattributes", ".gitattributes"]]);
+
 export interface CreateOptions {
   readonly dir: string;
   readonly name?: string;
@@ -110,10 +118,13 @@ export function create(options: CreateOptions): Created {
   }
   const template = options.template ?? templateDir(options.archetype);
   const list = files(template);
+  const written: string[] = [];
   mkdirSync(dir, { recursive: true });
   for (const file of list) {
-    mkdirSync(dirname(join(dir, file)), { recursive: true });
-    cpSync(join(template, file), join(dir, file));
+    const to = RENAMED.get(file) ?? file;
+    mkdirSync(dirname(join(dir, to)), { recursive: true });
+    cpSync(join(template, file), join(dir, to));
+    written.push(to);
   }
   const manifest = join(dir, "project.ogt");
   writeFileSync(manifest, setOgt(setOgt(readFileSync(manifest, "utf8"), "name", name), "id", id));
@@ -123,7 +134,7 @@ export function create(options: CreateOptions): Created {
     pkg.name = id;
     writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
   }
-  return { dir, name, id, files: list };
+  return { dir, name, id, files: written };
 }
 
 const USAGE = `usage: create [dir] [--name "Name"] [--id slug] [--archetype name] [--force]

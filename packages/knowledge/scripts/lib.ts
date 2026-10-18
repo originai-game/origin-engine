@@ -74,6 +74,14 @@ export function walk(dir: string, skip: ReadonlySet<string> = new Set()): string
 /** What never travels with a template: build and run output (the template's .gitignore) and installs. */
 export const TEMPLATE_SKIP: ReadonlySet<string> = new Set(["cooked", "dist", "og-out", ".og", "node_modules", ".DS_Store"]);
 
+/**
+ * Template files stored under another name than the scaffold gives them
+ * (packages/create's RENAMED): the template's `gitattributes` lands in the
+ * overlay as `.gitattributes`, which in the engine repository would route
+ * the template's plain-blob media through LFS.
+ */
+export const TEMPLATE_RENAMED: ReadonlyMap<string, string> = new Map([["gitattributes", ".gitattributes"]]);
+
 const fatal = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 /** Whether bytes are text the platform's payload can carry (UTF-8, no NUL). */
@@ -100,7 +108,8 @@ export function payload(roots: Roots): PayloadFile[] {
     const skip = m.from === "@template/" ? TEMPLATE_SKIP : new Set<string>();
     const sources = m.from.endsWith("/") ? walk(base, skip) : [base];
     for (const source of sources) {
-      const rel = m.from.endsWith("/") ? relative(base, source).split("\\").join("/") : "";
+      const found = m.from.endsWith("/") ? relative(base, source).split("\\").join("/") : "";
+      const rel = m.from === "@template/" ? (TEMPLATE_RENAMED.get(found) ?? found) : found;
       const path = m.to.endsWith("/") ? m.to + rel : m.to;
       const symlink = existsSync(source) ? lstatSync(source).isSymbolicLink() : false;
       files.push({ path, source, bytes: existsSync(source) && !symlink ? new Uint8Array(readFileSync(source)) : new Uint8Array(), symlink });
