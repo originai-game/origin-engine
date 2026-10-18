@@ -14,9 +14,9 @@ import { og } from "@origingame/engine";
 import type { Entity, Texture, World } from "@origingame/engine";
 import { PANEL_INSET, idleClip, loadArt } from "./art.ts";
 import { adjacent, cellOf, parseBoard } from "./board.ts";
-import { Hud, Kind, Match, PHASE_NAMES, Phase, Piece, Tuning } from "./components.ts";
+import { Hud, Kind, Match, PHASE_NAMES, Phase, Piece, Sfx, Sound, Sounds, Tuning } from "./components.ts";
 import { BOARD_TOP, BOARD_Y, GEM_SIZE, PITCH, SIZE, cellCentre } from "./layout.ts";
-import { Animate, Flow, HudText, Pick, Resolve } from "./systems.ts";
+import { Animate, Flow, HudText, Pick, Resolve, Voices } from "./systems.ts";
 
 /** The view keeps at least this much of the world visible. */
 const MIN_VIEW = { width: 8.6, height: 12 } as const;
@@ -94,6 +94,25 @@ function start(world: World): void {
   must(world.insert(board, Piece, { kind: Kind.Board }));
   must(world.insert(board, Match, { viewHeight: height, viewCentreY: centreY, font: font.value as unknown as number }));
   must(world.insert(board, Hud, { font: font.value as unknown as number, top: centreY + height / 2, halfWidth }));
+
+  // The voices: one per sound, played by the Voices system.
+  const voices: [string, number, number][] = [
+    ["audio/select.wav", Sound.Select, 0.4],
+    ["audio/swap.wav", Sound.Swap, 0.45],
+    ["audio/refused.wav", Sound.Refused, 0.5],
+    ["audio/clear.wav", Sound.Clear, 0.55],
+    ["audio/cascade.wav", Sound.Cascade, 0.6],
+    ["audio/won.wav", Sound.Won, 0.6],
+    ["audio/lost.wav", Sound.Lost, 0.6],
+  ];
+  for (const [path, bit, volume] of voices) {
+    const sound = og.load.sound(world, path);
+    if (!sound.ok) throw new Error(sound.reason);
+    const v = world.spawn({ name: `sfx-${bit}` });
+    if (!v.ok) throw new Error(v.reason);
+    must(world.insert(v.value, og.AudioSource, { sound: sound.value, playing: false, volume }));
+    must(world.insert(v.value, Sfx, { bit }));
+  }
 }
 
 /** The board's Match, outside systems. */
@@ -148,7 +167,8 @@ export default og.game({
   tick: 60,
   seed: 1,
   scenes: { main: "scenes/main.ogt" },
-  systems: [Flow, Pick, Resolve, Animate, HudText],
+  resources: [Sounds],
+  systems: [Flow, Pick, Resolve, Voices, Animate, HudText],
   render: { antialias: "msaa4" },
   start,
   commands: { deal: dealCommand, swap: swapCommand },
