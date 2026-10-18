@@ -35,6 +35,7 @@ declare module "node:crypto" {
 
 declare module "node:zlib" {
   export function inflateSync(data: Uint8Array): Uint8Array;
+  export function deflateSync(data: Uint8Array, options?: { level?: number }): Uint8Array;
 }
 
 declare module "bun:test" {

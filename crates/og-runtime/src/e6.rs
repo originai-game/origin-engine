@@ -205,6 +205,7 @@ pub(crate) fn retire(engine: u32) {
 /// The dump actions (`dump_ai:<entity>[:path]`, `dump_nav:<entity>[:path]`)
 /// and the probe's `listen`, over the engine's audio link.
 pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine: u32) {
+    super::polish::register(probe, engine);
     probe.set_listen(move |seconds| {
         let link = og_audio::link(engine)?;
         let (pcm, rate) = link.listen().last(seconds)?;

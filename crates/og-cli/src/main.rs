@@ -2,7 +2,8 @@
 //!
 //! One binary for the author's loop: `og run` (native host, probe, command
 //! channel), `og probe` (a WebSocket client of the probe), `og dev` (watch,
-//! rebuild, hot reload), `og test` (bun tests and playtests), `og build`
+//! rebuild, hot reload), `og test` (bun tests and playtests), `og polish`
+//! (playtests scored against og-taste and og-feel), `og build`
 //! (the play page), `og cook`, `og doctor` and `og api` (the IDL outputs).
 
 mod api;
@@ -10,6 +11,7 @@ mod bundle;
 mod cook;
 mod dev;
 mod doctor;
+mod polish;
 mod probe;
 mod project;
 mod publish;
@@ -29,7 +31,8 @@ usage: og <command> [options]
 
 commands:
   run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P]
-      [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio <out.wav>] [--json]
+      [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio <out.wav>]
+      [--platform-store <file.json>] [--locale <tag>] [--json]
                       cook, bundle and run the game on the native host with the probe; outputs of
                       screenshot/dump_* land in --out (default <project>/og-out)
   probe <method> [params-json] [--port P] [--out file.png] [--raw]
@@ -39,6 +42,11 @@ commands:
                       report each reload against the 300 ms budget
   test [project] [--json]
                       the project's bun tests, then each tests/*.og.ts playtest headless
+  polish [project] [--out DIR] [--frames N] [--json]
+                      play the playtests headless and score them against og-taste and og-feel
+                      (contrast, text size, HUD, transitions, UI sounds, input latency, hit
+                      feedback, idle frames, frame time, missing locale keys) into DIR/report.md
+                      (default <project>/og-out/polish) with frames and a fix per finding
   build [project] [--publish] [--out DIR] [--json]
                       cook and export the game to dist/ (or publish.out): the player shell,
                       game.js, the web host, cooked/, og-build.json, _headers; --publish keeps
@@ -79,6 +87,7 @@ fn main() -> ExitCode {
         ["probe", rest @ ..] => probe::run(rest),
         ["dev", rest @ ..] => dev::run(rest),
         ["test", rest @ ..] => test::run(rest),
+        ["polish", rest @ ..] => polish::run(rest),
         ["build", rest @ ..] => bundle::run(rest),
         ["cook", rest @ ..] => cook::run(rest),
         ["api", rest @ ..] => api::run(rest),

@@ -41,6 +41,7 @@ mod i18n;
 mod modules;
 mod nav;
 mod platform;
+mod polish;
 mod probe;
 
 pub use ai::{og_ai_describe, og_ai_get, og_ai_load, og_ai_noise, og_ai_parse, og_ai_set};
