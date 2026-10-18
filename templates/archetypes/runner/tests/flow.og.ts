@@ -56,11 +56,12 @@ export default playtest({
 
     const world = run.json<{ systems: Array<{ name: string; matched: number | null }> }>("world.json");
     // 36 actor rows: sky, moon, 3 clouds, 3 city maps, 27 pooled rows and the runner; 33 of them draw an og.Sprite.
-    for (const [s, rows] of [["Director", 33], ["Jump", 36], ["Scroll", 36], ["Spawn", 33], ["Collide", 36], ["Dust", 36]] as const) {
+    for (const [s, rows] of [["Director", 33], ["Scroll", 36], ["Spawn", 33], ["Collide", 36], ["Dust", 36]] as const) {
       const sys = world.systems.find((x) => x.name === s);
       t.equal(sys?.matched, rows, `${s} sees its ${rows} actor rows`);
     }
     t.equal(world.systems.find((x) => x.name === "Animate")?.matched, 1, "Animate sees the runner row only");
+    t.equal(world.systems.find((x) => x.name === "Jump")?.matched, 1, "Jump sees the runner row only (the one with og.PlatformerController)");
     t.equal(world.systems.find((x) => x.name === "Hud")?.matched, 1, "Hud sees the runner row only");
   },
 });

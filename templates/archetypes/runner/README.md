@@ -30,11 +30,15 @@ og build .                   # dist/: the play page for the browser
   from the dice) a pattern enters from the right: a crate, a crate under an
   arc of coins, a line of coins, and after 60 m a fence or a fence under a
   high coin, and after 150 m two crates in a row.
-- **Jumping.** A press takes off at `Tuning.jumpSpeed`; holding keeps the
-  rise, releasing cuts the upward speed to `Tuning.jumpCut` of itself. A
-  release before 6 ticks still rises 6 ticks: the shortest hop (1.1 m)
-  clears a crate (0.7 m), only a full jump (1.9 m) clears a fence (1.55 m).
-  A press up to 6 ticks before landing is kept and jumps on landing.
+- **Jumping.** The courier's body is an `og.PlatformerController` that
+  never runs (the world scrolls past it) on a static roof collider: a press
+  jumps to `Tuning.jumpHeight` in `Tuning.timeToApex`, hanging a little at
+  the top (`apexGravity`) and coming down a little faster (`fallGravity`);
+  releasing while rising multiplies gravity by `jumpCut`. A two-tick tap is
+  the shortest hop (1.30 m) and clears a crate (0.7 m); only a full jump
+  (2.12 m) clears a fence (1.55 m). A press up to 0.1 s before landing jumps
+  on landing (the controller's buffer), and one 0.08 s after running off an
+  edge still jumps (its coyote time).
 - **Score.** `floor(distance) + coins × Tuning.coinValue`. Touching a crate or
   a fence ends the round; the best score is kept for the session.
 - **Game over.** The card holds for 30 ticks, then a press starts the next
@@ -75,7 +79,7 @@ x = −1000 until a pattern or a footfall puts them in play.
 | Component | On | What it holds |
 |---|---|---|
 | `Actor` | every row | `kind` (sky, moon, cloud, city, dust, runner, crate, fence, coin), `active` (collides), the hit box `w`×`h`, `parallax` (the share of the run speed a row scrolls at), `wrap` (the span scenery jumps right by), `vy` |
-| `Run` | every row; **the runner's is the authority** | `phase` (0 title, 1 running, 2 over), `phaseTicks`, `speed`, `distance`, `coins`, `score`, `best`, `rounds`, `spawnIn`, and the jump's `grounded`, `buffer`, `hold`, `rising` |
+| `Run` | every row; **the runner's is the authority** | `phase` (0 title, 1 running, 2 over), `phaseTicks`, `speed`, `distance`, `coins`, `score`, `best`, `rounds`, `spawnIn`, and the body's `grounded` (copied from the controller), `startHeld` (the starting press is not a jump) and `kick` (a speed Director or Collide gave the body) |
 | `Tuning` | every row; **the runner's is the authority** | the tunables below |
 | `Hud` | the runner only | the font handle and the visible area the HUD lays out in |
 
@@ -95,7 +99,7 @@ become a resource or the runner's alone and the systems keep their shape.
 | System | Reads | Writes | Job |
 |---|---|---|---|
 | `Director` | `og.Input`, `Tuning` | `Run`, `Actor`, `og.Transform`, `og.Sprite` | phases; the speed ramp, distance and score; a new round (pools retired, the courier stood up) |
-| `Jump` | `og.Input`, `Tuning` | `Run`, `Actor`, `og.Transform` | buffered take-off (a stretch), the hold and the cut, gravity, landing (a squash) |
+| `Jump` | `og.Input`, `Tuning`, `og.CharacterEvent` | `Run`, `Actor`, `og.PlatformerController` | the controller's jump held while the press is, its tunables from `Tuning`; its take-off (a stretch and the sound) and landing (a squash) events |
 | `Scroll` | `Run` | `Actor`, `og.Transform` | everything left at speed × parallax; scenery wraps by its span; pooled rows retire past x = −13 |
 | `Spawn` | `Tuning` | `og.Rng`, `Run`, `Actor`, `og.Transform`, `og.Sprite` | the next pattern at x = 13 from the dice |
 | `Collide` | `og.Transform`, `Tuning` | `Run`, `Actor` | coins collected ("+10" and the coin's pop), crashes (the crash's feel), the best score |
@@ -129,21 +133,22 @@ the playtests below hold with any of them.
 | `speed` | 6 | 3–12 | m/s | the pace a round starts at |
 | `speedRamp` | 0.12 | 0–1 | m/s² | how fast the pace rises (the cap after 50 s) |
 | `speedMax` | 12 | 4–20 | m/s | the top pace (and where the afterimage shows) |
-| `gravity` | 36 | 10–80 | m/s² | how heavy jumps feel; a full jump peaks at jumpSpeed² / (2 gravity) |
-| `jumpSpeed` | 12 | 6–20 | m/s | take-off speed |
-| `jumpCut` | 0.5 | 0.1–1 | × | what a release keeps of the rise: the hop's height |
+| `jumpHeight` | 2 | 0.5–6 | m | a held jump's height |
+| `timeToApex` | 0.333 | 0.15–1 | s | how long it takes to peak (with the height: gravity and take-off speed) |
+| `jumpCut` | 1.8 | 1–6 | × | gravity while rising with the press released: the hop's height |
+| `apexGravity` | 0.75 | 0.2–1 | × | gravity near the top of a held jump: the hang |
+| `fallGravity` | 1.15 | 1–3 | × | gravity on the way down: the landing's snap |
 | `spawnInterval` | 1.3 | 0.5–60 | s | the gap between patterns |
 | `coinValue` | 10 | 0–100 | points | what a coin adds (and the floating text shows) |
 
 They are written in `assets/scenes/main.ogt` (the runner's `Tuning` block)
 and live with `set:runner.Tuning.<field>=<value>` from the command channel
-or Tune. The hop/jump numbers were measured against the obstacle heights:
-with these defaults a hop clears a crate if it leaves 7–17 ticks before the
-crate arrives, a full jump clears a fence if it leaves 13–24 ticks before.
+or Tune. The hop and jump heights above were measured with `get:runner.og.Transform.position`
+through a tap and a hold; `tests/jump.og.ts` holds them against the obstacles.
 
 ## What a Maker changes first
 
-1. **Feel**: `jumpSpeed`, `gravity` and `jumpCut` in the scene's `Tuning`.
+1. **Feel**: `jumpHeight`, `timeToApex`, `jumpCut`, `apexGravity` and `fallGravity` in the scene's `Tuning`.
    Keep the hop below the fence and above the crate (`tests/jump.og.ts`
    checks exactly that). The juice is `FEEL` in `src/systems.ts`.
 2. **Pace**: `speed`, `speedRamp`, `speedMax`, `spawnInterval`.

@@ -1,5 +1,5 @@
 // The runner's systems, in tick order: Director (phases and pace), Jump (the
-// runner's body), Scroll (the world moves left past a runner who stays put),
+// runner's body: og.PlatformerController's jump, fed the press), Scroll (the world moves left past a runner who stays put),
 // Spawn (obstacle and coin patterns from the dice), Collide (coins and
 // crashes, with their feel), Voices (the jump, coin, crash and start
 // sounds the systems before it asked for), Dust (puffs on the run clip's footfalls),
@@ -10,7 +10,7 @@
 // system (src/components.ts says why). Motion uses Time.scaledDt, so a hit
 // stop freezes the world while the camera still shakes.
 
-import { og, defineSystem } from "@origingame/engine";
+import { og, defineSystem, CHARACTER_JUMPED, CHARACTER_LANDED } from "@origingame/engine";
 import type { ArchetypeView, Entity, Query, World } from "@origingame/engine";
 import { COURIER } from "./art.ts";
 import { Actor, Hud, Kind, Phase, Run, Sfx, Sound, Sounds, Tuning } from "./components.ts";
@@ -21,10 +21,6 @@ export const GROUND_Y = 0;
 export const RUNNER_X = -5;
 /** The runner sprite's size. Its position is its feet; its hit box is centred RUNNER_SIZE.y / 2 above them. */
 export const RUNNER_SIZE = { x: 1.3, y: 1.625 } as const;
-/** Ticks an early press waits for the landing. */
-const JUMP_BUFFER = 6;
-/** A release before this many ticks still rises this long: the shortest hop. */
-const MIN_HOLD = 6;
 /** Ticks the game-over card holds before a press restarts. */
 const OVER_HOLD = 30;
 /** Where a pooled row waits while parked. */
@@ -127,9 +123,9 @@ export const Director = defineSystem(
     ask(world, Sound.Start);
     run.spawnIn[i] = Math.max(1, tune.spawnInterval[i]! * 1.5);
     run.grounded[i] = 1;
-    run.buffer[i] = 0;
-    run.hold[i] = 0;
-    run.rising[i] = 0;
+    run.startHeld[i] = 1;
+    // Jump hands the body this velocity (0: standing) on the next tick's step.
+    run.kick[i] = 1;
     r.a.column(Actor).vy[i] = 0;
     // The crash's knock-back, squash and flash end before the card's hold; stop them anyway and stand the courier up.
     og.tween.cancelEntity(world, r.a.entity(i));
@@ -143,59 +139,56 @@ export const Director = defineSystem(
   },
 );
 
-/** The runner's body: a buffered press takes off, holding keeps the rise, releasing early cuts it; gravity brings it down. Take-off stretches, landing squashes. */
+/**
+ * The runner's body is an og.PlatformerController that never runs (moveX 0;
+ * the world scrolls past it): this system holds its jump while the press is
+ * held (the press that started the round excepted), copies its tunables from
+ * Tuning, and turns its events into feel. The controller buffers an early
+ * press, cuts a released jump, hangs at the apex and lands on the roof's
+ * collider; take-off stretches and landing squashes, a tick after the step
+ * that did them (og.CharacterEvent).
+ */
 export const Jump = defineSystem(
   "Jump",
-  { reads: [og.Input, Tuning], writes: [Run, Actor, og.Transform, Sounds], after: ["Director"] },
-  (q, time, world) => {
+  { reads: [og.Input, Tuning, og.CharacterEvent], writes: [Run, Actor, og.PlatformerController, Sounds], after: ["Director"] },
+  (q, _time, world) => {
     const r = runnerRow(q);
     const input = world.resource(og.Input);
     if (r === null || !input.ok) return;
     const { a, i } = r;
     const run = a.column(Run);
     const tune = a.column(Tuning);
+    const me = a.entity(i);
+    const body = a.column(og.PlatformerController);
     const actor = a.column(Actor);
-    const p = a.column(og.Transform).position;
-    if (run.phase[i] === Phase.Title) return;
-    if (run.phase[i] === Phase.Running) {
-      // The press that started the round does not also jump.
-      if (pressed(input.value) && run.phaseTicks[i]! > 0) run.buffer[i] = JUMP_BUFFER;
-      if (run.buffer[i]! > 0 && run.grounded[i]) {
-        actor.vy[i] = tune.jumpSpeed[i]!;
-        run.grounded[i] = 0;
-        run.rising[i] = 1;
-        run.hold[i] = 0;
-        run.buffer[i] = 0;
-        og.tween.squash(world, { entity: a.entity(i), impact: FEEL.takeOff, duration: 0.22 });
-        ask(world, Sound.Jump);
-      } else if (run.buffer[i]! > 0) {
-        run.buffer[i] = run.buffer[i]! - 1;
-      }
-      if (run.rising[i]) {
-        run.hold[i] = run.hold[i]! + 1;
-        if (actor.vy[i]! <= 0) {
-          run.rising[i] = 0;
-        } else if (!held(input.value) && run.hold[i]! >= MIN_HOLD) {
-          actor.vy[i] = actor.vy[i]! * tune.jumpCut[i]!;
-          run.rising[i] = 0;
-        }
-      }
-    }
-    if (run.grounded[i]) return;
-    const dt = time.scaledDt;
-    if (dt === 0) return;
-    // After a crash the runner still falls back to the roof.
-    actor.vy[i] = actor.vy[i]! - tune.gravity[i]! * dt;
-    const feet = p[i * 3 + 1]! + actor.vy[i]! * dt;
-    if (feet <= GROUND_Y) {
-      p[i * 3 + 1] = GROUND_Y;
-      actor.vy[i] = 0;
-      run.grounded[i] = 1;
-      run.rising[i] = 0;
-      og.tween.squash(world, { entity: a.entity(i), impact: FEEL.landing, duration: 0.2 });
+    // Director (a new round) and Collide (a crash's knock up) set the body's
+    // vertical speed through Actor.vy and Run.kick; otherwise the body owns it.
+    if (run.kick[i]) {
+      run.kick[i] = 0;
+      body.velocity[i * 3] = 0;
+      body.velocity[i * 3 + 1] = actor.vy[i]!;
+      run.grounded[i] = actor.vy[i]! > 0 ? 0 : 1;
     } else {
-      p[i * 3 + 1] = feet;
+      actor.vy[i] = body.velocity[i * 3 + 1]!;
+      run.grounded[i] = body.grounded[i]!;
     }
+    for (const e of world.events(og.CharacterEvent)) {
+      if (e.entity !== me) continue;
+      if (e.kind === CHARACTER_JUMPED) {
+        og.tween.squash(world, { entity: me, impact: FEEL.takeOff, duration: 0.22 });
+        ask(world, Sound.Jump);
+      } else if (e.kind === CHARACTER_LANDED && run.phase[i] === Phase.Running) {
+        og.tween.squash(world, { entity: me, impact: FEEL.landing, duration: 0.2 });
+      }
+    }
+    const down = held(input.value);
+    if (!down) run.startHeld[i] = 0;
+    body.jump[i] = run.phase[i] === Phase.Running && down && !run.startHeld[i] ? 1 : 0;
+    body.jumpHeight[i] = tune.jumpHeight[i]!;
+    body.timeToApex[i] = tune.timeToApex[i]!;
+    body.jumpCut[i] = tune.jumpCut[i]!;
+    body.apexGravity[i] = tune.apexGravity[i]!;
+    body.fallGravity[i] = tune.fallGravity[i]!;
   },
 );
 
@@ -384,8 +377,8 @@ export const Collide = defineSystem(
       og.platform.leaderboardSubmit(world, { board: "main", score });
       og.platform.telemetry(world, "round.over", { score, coins: run.coins[ri]!, distance: Math.round(run.distance[ri]!) });
       run.grounded[ri] = 0;
-      run.rising[ri] = 0;
       ra.vy[ri] = FEEL.knockUp;
+      run.kick[ri] = 1;
       crashFeel(world, r.a.entity(ri));
       ask(world, Sound.Crash);
     }

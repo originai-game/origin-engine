@@ -10,7 +10,7 @@
 // are in src/systems.ts, the components in src/components.ts, the art in
 // src/art.ts.
 
-import { og } from "@origingame/engine";
+import { og, SHAPE_BOX } from "@origingame/engine";
 import type { Entity, FlipbookInfo, TilemapInfo, World } from "@origingame/engine";
 import { COURIER, PROPS, loadArt } from "./art.ts";
 import { Actor, Hud, Kind, Phase, Run, Sfx, Sound, Sounds, Tuning } from "./components.ts";
@@ -143,6 +143,13 @@ function start(world: World): void {
   must(world.insert(runner, Run));
   must(world.insert(runner, Hud, { font: font.value as unknown as number, halfWidth, top, bottom: VIEW_BOTTOM }));
   must(world.set(runner, og.Transform, { position: { x: RUNNER_X, y: 0, z: 0 } }));
+  // The body: a box from the feet up that never runs (the world scrolls past
+  // it), on og.PlatformerController's jump; the roof below is one static collider.
+  must(world.insert(runner, og.Collider, { shape: SHAPE_BOX, size: { x: 0.5, y: 1.2, z: 1 }, offset: { x: 0, y: 0.6, z: 0 } }));
+  must(world.insert(runner, og.PlatformerController, { moveX: 0, coyoteTime: 0.08, jumpBuffer: 0.1, maxFallSpeed: 30 }));
+  const roof = world.spawn({ name: "roof-solid", position: { x: 0, y: GROUND_Y - 0.5, z: 0 } });
+  if (!roof.ok) throw new Error(roof.reason);
+  must(world.insert(roof.value, og.Collider, { shape: SHAPE_BOX, size: { x: 80, y: 1, z: 1 } }));
 
   // The voices: one per sound, played by the Voices system.
   const voices: [string, number, number][] = [

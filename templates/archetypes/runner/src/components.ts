@@ -53,10 +53,9 @@ export const Run = defineComponent("Run", {
   bestRequest: u32(0, { doc: "The og.platform request reading the stored best (0 once answered)." }),
   rounds: u32(0, { doc: "Rounds started." }),
   spawnIn: f32(0, { unit: "s", doc: "Seconds until the next obstacle pattern." }),
-  grounded: bool(true, { doc: "The runner stands on the roof." }),
-  buffer: u32(0, { unit: "ticks", doc: "Ticks left in which an early press still jumps on landing." }),
-  hold: u32(0, { unit: "ticks", doc: "Ticks the current jump has been held." }),
-  rising: bool(false, { doc: "The runner is in the held part of a jump." }),
+  grounded: bool(true, { doc: "The runner stands on the roof (og.PlatformerController.grounded after the last step)." }),
+  startHeld: bool(false, { doc: "The press that started the round is still held: it does not also jump." }),
+  kick: bool(false, { doc: "Director or Collide set Actor.vy this tick: Jump hands it to the body." }),
 });
 
 /** Tune's parameters. Authoritative on the runner row. */
@@ -64,9 +63,11 @@ export const Tuning = defineComponent("Tuning", {
   speed: f32(6, { min: 3, max: 12, step: 0.5, unit: "m/s", tunable: true, label: "Start speed", doc: "The run speed when a round starts." }),
   speedRamp: f32(0.12, { min: 0, max: 1, step: 0.02, unit: "m/s²", tunable: true, label: "Speed ramp", doc: "How fast the run speeds up." }),
   speedMax: f32(12, { min: 4, max: 20, step: 0.5, unit: "m/s", tunable: true, label: "Top speed" }),
-  gravity: f32(36, { min: 10, max: 80, step: 1, unit: "m/s²", tunable: true, label: "Gravity" }),
-  jumpSpeed: f32(12, { min: 6, max: 20, step: 0.5, unit: "m/s", tunable: true, label: "Jump speed", doc: "Take-off speed; a full jump peaks at jumpSpeed² / (2 gravity)." }),
-  jumpCut: f32(0.5, { min: 0.1, max: 1, step: 0.05, tunable: true, label: "Jump cut", doc: "The share of upward speed a release keeps: a tap is a hop, a hold a full jump." }),
+  jumpHeight: f32(2, { min: 0.5, max: 6, step: 0.1, unit: "m", tunable: true, label: "Jump height", doc: "How high a held jump goes (og.PlatformerController.jumpHeight)." }),
+  timeToApex: f32(0.333, { min: 0.15, max: 1, step: 0.01, unit: "s", tunable: true, label: "Time to apex", doc: "How long a held jump takes to peak; with jumpHeight it sets gravity and the take-off speed." }),
+  jumpCut: f32(1.8, { min: 1, max: 6, step: 0.1, tunable: true, label: "Jump cut", doc: "Gravity times this while rising with the press released: a tap is a hop, a hold a full jump." }),
+  apexGravity: f32(0.75, { min: 0.2, max: 1, step: 0.05, tunable: true, label: "Apex hang", doc: "Gravity times this near the top of a held jump (1: no hang)." }),
+  fallGravity: f32(1.15, { min: 1, max: 3, step: 0.05, tunable: true, label: "Fall gravity", doc: "Gravity times this on the way down (above 1: a snappier landing)." }),
   spawnInterval: f32(1.3, { min: 0.5, max: 60, step: 0.1, unit: "s", tunable: true, label: "Spawn interval", doc: "Seconds between obstacle patterns, before the dice (×0.85–1.25)." }),
   coinValue: u32(10, { min: 0, max: 100, step: 1, tunable: true, label: "Coin value" }),
 });
