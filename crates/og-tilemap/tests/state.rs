@@ -89,15 +89,17 @@ fn tile_layer_edits_are_checked_and_bump_only_their_chunk() {
     assert_eq!((s.chunk_version(0, 0, 0), s.chunk_version(0, 1, 0)), (1, 0));
     s.set(0, 20, 3, 5).unwrap();
     assert_eq!(s.chunk_version(0, 1, 0), 1);
-    assert!(s
-        .set(0, 40, 0, 1)
-        .unwrap_err()
-        .to_string()
-        .contains("outside"));
-    assert!(s
-        .set(0, 0, 0, 64)
-        .unwrap_err()
-        .to_string()
-        .contains("not in layer 'floor'"));
+    assert!(
+        s.set(0, 40, 0, 1)
+            .unwrap_err()
+            .to_string()
+            .contains("outside")
+    );
+    assert!(
+        s.set(0, 0, 0, 64)
+            .unwrap_err()
+            .to_string()
+            .contains("not in layer 'floor'")
+    );
     assert!(s.set(7, 0, 0, 1).is_err());
 }

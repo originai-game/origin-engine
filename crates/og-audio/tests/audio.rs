@@ -24,8 +24,8 @@
 mod support;
 
 use og_audio::{
-    end_reason, AudioPlayback, AudioSource, AudioStream, HeadlessMode, HeadlessSink, Mixer,
-    MixerDesc, Op, SoundBank, SoundEnded, SoundStarted, Transform,
+    AudioPlayback, AudioSource, AudioStream, HeadlessMode, HeadlessSink, Mixer, MixerDesc, Op,
+    SoundBank, SoundEnded, SoundStarted, Transform, end_reason,
 };
 use og_core::glam::Vec3;
 use og_ecs::World;

@@ -20,12 +20,12 @@ pub mod ring;
 pub mod sink;
 
 pub use event::{
-    gamepad_button, GamepadState, InjectedInput, KeyAction, Modifiers, PointerAction,
-    PointerButton, GAMEPAD_BUTTONS, MAX_GAMEPADS, MAX_POINTERS,
+    GAMEPAD_BUTTONS, GamepadState, InjectedInput, KeyAction, MAX_GAMEPADS, MAX_POINTERS, Modifiers,
+    PointerAction, PointerButton, gamepad_button,
 };
-pub use keys::{key_for_char, key_index, KEY_CODES, KEY_SET_BITS};
+pub use keys::{KEY_CODES, KEY_SET_BITS, key_for_char, key_index};
 pub use resource::{
-    register, Gamepad, GamepadAxis, Input, InputEvent, KeyDown, KeySet, KeyUp, PointerDown,
-    PointerMove, PointerUp, Pointers, Wheel,
+    Gamepad, GamepadAxis, Input, InputEvent, KeyDown, KeySet, KeyUp, PointerDown, PointerMove,
+    PointerUp, Pointers, Wheel, register,
 };
 pub use sink::{InputLayer, InputSink, RingReport, WorldInput};

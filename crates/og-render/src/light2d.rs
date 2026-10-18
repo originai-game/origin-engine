@@ -2,8 +2,8 @@
 //! [`Occluder2d`]s with soft penumbrae (`shaders/light2d.wgsl`). Lit sprite
 //! layers multiply their colour with it in the sprite shader.
 
-use crate::effects::{Light2d, Occluder2d, MAX_LIGHTS_2D, MAX_OCCLUDERS_2D};
 use crate::HDR_FORMAT;
+use crate::effects::{Light2d, MAX_LIGHTS_2D, MAX_OCCLUDERS_2D, Occluder2d};
 use glam::{Mat4, Vec3};
 
 const LIGHT2D_WGSL: &str = include_str!("../shaders/light2d.wgsl");

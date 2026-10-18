@@ -52,27 +52,27 @@ pub mod gltf;
 #[cfg(not(target_arch = "wasm32"))]
 mod headless;
 
-pub use capture::{CaptureRequest, CAPTURE_TIMEOUT};
+pub use capture::{CAPTURE_TIMEOUT, CaptureRequest};
 pub use effects::*;
 pub use graph::{GraphError, GraphPlan, RenderGraph, TargetDesc};
 #[cfg(not(target_arch = "wasm32"))]
 pub use headless::render_to_rgba;
 pub use material::{Side, StandardMaterial};
 pub use particles::{
-    Burst, ColorCurve, Curve, EmitterHandle, EmitterShape, ParticleAlign, ParticleBlend,
-    ParticleCollision, ParticleEmitter, ParticleNoise, ParticleRender, ParticleSimulation,
-    ParticleState, ParticleSystem, SheetMode, SimulationSpace, SpriteSheet, MAX_CURVE_KEYS,
+    Burst, ColorCurve, Curve, EmitterHandle, EmitterShape, MAX_CURVE_KEYS, ParticleAlign,
+    ParticleBlend, ParticleCollision, ParticleEmitter, ParticleNoise, ParticleRender,
+    ParticleSimulation, ParticleState, ParticleSystem, SheetMode, SimulationSpace, SpriteSheet,
 };
 pub use ribbons::{Beam, Ribbon, RibbonPoint, RibbonUv, Trail, TrailStyle, TrailStyleHandle};
 pub use scene::*;
 pub use skin::{
-    JointPalette, MorphTargets, SkinData, SkinnedInstance, MAX_JOINTS, MAX_MORPH_TARGETS,
+    JointPalette, MAX_JOINTS, MAX_MORPH_TARGETS, MorphTargets, SkinData, SkinnedInstance,
 };
 pub use texture::{TextureCompression, TextureDesc, TextureFormat, TextureFormats, TextureUpload};
 /// The wgpu this crate is built on, for hosts that create surfaces or pass views.
 pub use wgpu;
 
-use frame::{Cascade, Frustum, CASCADES, LOCAL_SHADOW_LAYERS};
+use frame::{CASCADES, Cascade, Frustum, LOCAL_SHADOW_LAYERS};
 use glam::{Mat4, Vec2, Vec3};
 use material::MaterialUniform;
 use post::FramePass;
@@ -1977,7 +1977,10 @@ impl Renderer {
         if !self.info.texture_formats.supported.contains(&desc.format) {
             return Err(RenderError::Unsupported(format!(
                 "texture {index}: {:?} on {} {:?} (supported: {:?}; transcode to RenderInfo::texture_formats)",
-                desc.format, self.info.adapter, self.info.backend, self.info.texture_formats.supported
+                desc.format,
+                self.info.adapter,
+                self.info.backend,
+                self.info.texture_formats.supported
             )));
         }
         let format = desc.format.wgpu(desc.color_space).expect("validated");
@@ -2011,7 +2014,16 @@ impl Renderer {
         index: usize,
         m: &StandardMaterial,
     ) -> Result<wgpu::BindGroup, RenderError> {
-        let [map, metalness, roughness, normal, emissive, ao, gradient, dissolve] = m.textures();
+        let [
+            map,
+            metalness,
+            roughness,
+            normal,
+            emissive,
+            ao,
+            gradient,
+            dissolve,
+        ] = m.textures();
         let texture = |t: Option<TextureHandle>| -> Result<Option<&GpuTexture>, RenderError> {
             match t {
                 None => Ok(None),
@@ -2578,13 +2590,13 @@ impl Renderer {
             )
             .map_err(RenderError::InvalidHandle)?;
         for run in &ribbon_frame.runs {
-            if let Some(t) = run.texture {
-                if t.index() >= self.cache.textures.len() {
-                    return Err(RenderError::InvalidHandle(format!(
-                        "strip texture {}",
-                        t.index()
-                    )));
-                }
+            if let Some(t) = run.texture
+                && t.index() >= self.cache.textures.len()
+            {
+                return Err(RenderError::InvalidHandle(format!(
+                    "strip texture {}",
+                    t.index()
+                )));
             }
             self.ribbon_group(run.texture);
         }
@@ -2641,21 +2653,21 @@ impl Renderer {
         for s in &particle_frame.systems {
             self.sprite_group(s.texture);
         }
-        if let Some(t) = scene.decal_atlas {
-            if t.index() >= self.cache.textures.len() {
-                return Err(RenderError::InvalidHandle(format!(
-                    "decal atlas {}",
-                    t.index()
-                )));
-            }
+        if let Some(t) = scene.decal_atlas
+            && t.index() >= self.cache.textures.len()
+        {
+            return Err(RenderError::InvalidHandle(format!(
+                "decal atlas {}",
+                t.index()
+            )));
         }
         let lut_index = post_fx.color_grading.map(|g| g.lut.index());
-        if let Some(i) = lut_index {
-            if i >= self.cache.luts.len() {
-                return Err(RenderError::InvalidHandle(format!(
-                    "colour grading lut {i}"
-                )));
-            }
+        if let Some(i) = lut_index
+            && i >= self.cache.luts.len()
+        {
+            return Err(RenderError::InvalidHandle(format!(
+                "colour grading lut {i}"
+            )));
         }
         let glow = post_fx.glow.is_some() && !sprite_frame.glow_runs.is_empty();
 

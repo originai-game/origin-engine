@@ -8,7 +8,7 @@
 mod support;
 
 use og_ui::*;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::path::PathBuf;
 use support::out_dir;
 

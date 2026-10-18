@@ -21,7 +21,7 @@
 //! Every value is checked here; a bad one names its line and the fix.
 
 use og_core::ogt::{Block, Entry};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::path::Path;
 
 fn word<'a>(e: &'a Entry, file: &str, allowed: &[&str]) -> Result<&'a str, String> {
@@ -78,9 +78,9 @@ pub fn settings(manifest: &Path) -> Result<Value, String> {
             "gate" => json!(word(e, &file, &["tap", "none"])?),
             "made_with" => json!(word(e, &file, &["true", "false"])? == "true"),
             "dpr_cap" => {
-                let n = e.f32(0).map_err(|_| {
-                    format!("{file}:{}: publish.dpr_cap takes a number", e.line)
-                })?;
+                let n = e
+                    .f32(0)
+                    .map_err(|_| format!("{file}:{}: publish.dpr_cap takes a number", e.line))?;
                 if !(0.5..=4.0).contains(&n) {
                     return Err(format!(
                         "{file}:{}: publish.dpr_cap is {n}; use a number from 0.5 to 4 (2 is the default)",
@@ -109,7 +109,7 @@ pub fn settings(manifest: &Path) -> Result<Value, String> {
                 return Err(format!(
                     "{file}:{}: publish has no `{other}`; it takes probe, out, isolation, fit, aspect, orientation, dpr_cap, fullscreen, gate, made_with, icon and short_name",
                     e.line
-                ))
+                ));
             }
         };
         let key = match e.key.as_str() {

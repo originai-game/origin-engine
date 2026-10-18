@@ -75,25 +75,41 @@ pub enum BlobError {
 impl fmt::Display for BlobError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            BlobError::Malformed { path, reason } => write!(f, "{path}: not a valid .ogb blob: {reason}"),
+            BlobError::Malformed { path, reason } => {
+                write!(f, "{path}: not a valid .ogb blob: {reason}")
+            }
             BlobError::ContainerVersion { path, found } => write!(
                 f,
                 "{path}: .ogb container version {found} is not supported (this reader knows {CONTAINER_VERSION}); re-run og cook"
             ),
-            BlobError::TypeMismatch { path, expected, found } => write!(
+            BlobError::TypeMismatch {
+                path,
+                expected,
+                found,
+            } => write!(
                 f,
                 "{path}: holds type {found:016x}, expected {expected:016x}; re-run og cook"
             ),
-            BlobError::SchemaVersion { path, expected, found } => write!(
+            BlobError::SchemaVersion {
+                path,
+                expected,
+                found,
+            } => write!(
                 f,
                 "{path}: schema version {found}, expected {expected}; re-run og cook"
             ),
-            BlobError::StampMismatch { path, expected, found } => write!(
+            BlobError::StampMismatch {
+                path,
+                expected,
+                found,
+            } => write!(
                 f,
                 "{path}: cook stamp mismatch: the blob has {found:016x}, the manifest expects {expected:016x}; re-run og cook"
             ),
             BlobError::MissingSection { path, name } => write!(f, "{path}: no section '{name}'"),
-            BlobError::SectionType { path, name, reason } => write!(f, "{path}: section '{name}': {reason}"),
+            BlobError::SectionType { path, name, reason } => {
+                write!(f, "{path}: section '{name}': {reason}")
+            }
         }
     }
 }
@@ -323,14 +339,14 @@ impl<'a> Blob<'a> {
                 found: self.header.schema_version,
             });
         }
-        if let Some(stamp) = expect.stamp {
-            if self.header.cook_stamp != stamp {
-                return Err(BlobError::StampMismatch {
-                    path,
-                    expected: stamp,
-                    found: self.header.cook_stamp,
-                });
-            }
+        if let Some(stamp) = expect.stamp
+            && self.header.cook_stamp != stamp
+        {
+            return Err(BlobError::StampMismatch {
+                path,
+                expected: stamp,
+                found: self.header.cook_stamp,
+            });
         }
         Ok(())
     }

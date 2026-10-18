@@ -4,15 +4,15 @@
 //! (`v`, `pose`, `unpose`, `angvel`, ...) defined beside it.
 
 use super::{
-    angvel, cache, flat, from_mesh, pose, primitive, rp, unangvel, unpose, unv, v,
-    ShapeCastOptions, PROFILE_NAME,
+    PROFILE_NAME, ShapeCastOptions, angvel, cache, flat, from_mesh, pose, primitive, rp, unangvel,
+    unpose, unv, v,
 };
 use crate::gather::{Body, Scene};
 use crate::schema::*;
 use crate::{OverlapDesc, ShapeDesc};
 use crate::{
-    QueryFilter, RaycastHit, ShapeCastDesc, ShapeCastHit, ShapeKey, Shared, StepOut,
-    SHAPE_CACHE_LIMIT,
+    QueryFilter, RaycastHit, SHAPE_CACHE_LIMIT, ShapeCastDesc, ShapeCastHit, ShapeKey, Shared,
+    StepOut,
 };
 use og_core::glam::{Quat, Vec3};
 use og_core::{Error, ErrorKind, Result};
@@ -199,8 +199,10 @@ fn body_kind(b: &Body) -> Result<rp::RigidBodyType> {
         other => {
             return Err(Error::new(
                 ErrorKind::Invalid,
-                format!("entity {e}: og.RigidBody.kind {other} is not a kind (0 dynamic, 1 static, 2 kinematic)"),
-            ))
+                format!(
+                    "entity {e}: og.RigidBody.kind {other} is not a kind (0 dynamic, 1 static, 2 kinematic)"
+                ),
+            ));
         }
     };
     for (what, x) in [

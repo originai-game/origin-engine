@@ -26,7 +26,7 @@
 //! `$OG_EVIDENCE_DIR/M4/` (default `<target tmp>/evidence/M4/`).
 
 use og_blob::BlobError;
-use og_cook::cook::{cook_project, CookOptions};
+use og_cook::cook::{CookOptions, cook_project};
 use og_cook::runtime::{Bundle, LoadError};
 use og_core::hash::StableHasher;
 use std::collections::BTreeMap;

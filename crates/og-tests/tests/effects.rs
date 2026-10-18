@@ -8,14 +8,13 @@
 
 use glam::{Mat4, Vec2, Vec3};
 use og_render::{
-    shapes, AmbientOcclusion, AoMethod, Background, Beam, Burst, Camera, CameraShake,
-    ChromaticAberration, ColorCurve, ColorGrading, ColorLut, Curve, Decal, DepthOfField,
-    DofQuality, EmitterShape, Exposure, FilmGrain, FrameStats, Glow, GodRays, JointPalette,
-    Light2d, Lighting2d, Material, MorphTargets, MotionBlur, Occluder2d, Outline,
-    ParticleCollision, ParticleEmitter, ParticleRender, ParticleSimulation, ParticleSystem,
-    Projection, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage, ScreenFlash,
-    SkinnedInstance, Sprite, SpriteFx, StandardMaterial, Tier, Tonemap, Trail, TrailStyle,
-    Vignette, MAX_DECALS,
+    AmbientOcclusion, AoMethod, Background, Beam, Burst, Camera, CameraShake, ChromaticAberration,
+    ColorCurve, ColorGrading, ColorLut, Curve, Decal, DepthOfField, DofQuality, EmitterShape,
+    Exposure, FilmGrain, FrameStats, Glow, GodRays, JointPalette, Light2d, Lighting2d, MAX_DECALS,
+    Material, MorphTargets, MotionBlur, Occluder2d, Outline, ParticleCollision, ParticleEmitter,
+    ParticleRender, ParticleSimulation, ParticleSystem, Projection, RenderDesc, RenderScene,
+    RenderTarget, Renderer, RgbaImage, ScreenFlash, SkinnedInstance, Sprite, SpriteFx,
+    StandardMaterial, Tier, Tonemap, Trail, TrailStyle, Vignette, shapes,
 };
 use og_tests::fx_scenes as fx;
 use og_tests::{gfx, scenes};
@@ -812,12 +811,14 @@ fn vignette_aberration_grain_and_flash() {
         amount: 1.0,
     });
     let (flashed, _) = frame(&small(), &f);
-    assert!(flashed
-        .pixels
-        .as_chunks::<4>()
-        .0
-        .iter()
-        .all(|p| p[0] == 255 && p[1] == 0 && p[2] == 0));
+    assert!(
+        flashed
+            .pixels
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .all(|p| p[0] == 255 && p[1] == 0 && p[2] == 0)
+    );
 }
 
 fn base_scene_with(f: impl Fn(&mut RenderScene)) -> RenderScene {

@@ -3,7 +3,7 @@
 //! [`InputLayer`], the engine's sink over the `og.Input` resource.
 
 use crate::event::InjectedInput;
-use crate::resource::{register, Gamepad, Input, Pointers};
+use crate::resource::{Gamepad, Input, Pointers, register};
 use crate::ring;
 use og_ecs::World;
 

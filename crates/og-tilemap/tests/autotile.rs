@@ -4,7 +4,7 @@
 
 mod support;
 use og_tilemap::mask::*;
-use og_tilemap::{reduce_blob, MapState, Tileset};
+use og_tilemap::{MapState, Tileset, reduce_blob};
 use support::*;
 
 const WALLS: usize = 1;

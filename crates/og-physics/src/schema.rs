@@ -5,8 +5,8 @@
 //! Enumerations are `u32` codes (the committed reflection has no enum field
 //! type yet); the codes are the `pub const`s below and are stable.
 
-use og_core::glam::{Quat, Vec3};
 use og_core::Reflect;
+use og_core::glam::{Quat, Vec3};
 use serde::{Deserialize, Serialize};
 
 // ---- shared with the rest of the engine -------------------------------------

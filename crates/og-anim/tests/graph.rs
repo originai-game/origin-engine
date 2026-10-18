@@ -119,11 +119,26 @@ fn blend1d_mixes_walk_and_run_and_the_additive_layer_adds() {
 #[test]
 fn bad_graph_text_is_refused_with_its_line() {
     let cases = [
-        ("param a\nlayer l {\n  state s nowhere\n}\n", "line 6: unknown motion 'nowhere'"),
-        ("clip c \"nope\"\nlayer l {\n  state s c\n}\n", "line 4: clip 'nope' is not loaded"),
-        ("clip c \"idle\"\nlayer l {\n  state s c\n  transition s s {\n    when speed gt 1\n  }\n}\n", "line 8: unknown parameter 'speed'"),
-        ("clip c \"idle\"\nblend1d b x {\n  child b 0\n}\n", "unknown parameter 'x'"),
-        ("param x\nblend1d b x {\n  child b 0\n}\nlayer l {\n  state s b\n}\n", "motion 'b' contains itself"),
+        (
+            "param a\nlayer l {\n  state s nowhere\n}\n",
+            "line 6: unknown motion 'nowhere'",
+        ),
+        (
+            "clip c \"nope\"\nlayer l {\n  state s c\n}\n",
+            "line 4: clip 'nope' is not loaded",
+        ),
+        (
+            "clip c \"idle\"\nlayer l {\n  state s c\n  transition s s {\n    when speed gt 1\n  }\n}\n",
+            "line 8: unknown parameter 'speed'",
+        ),
+        (
+            "clip c \"idle\"\nblend1d b x {\n  child b 0\n}\n",
+            "unknown parameter 'x'",
+        ),
+        (
+            "param x\nblend1d b x {\n  child b 0\n}\nlayer l {\n  state s b\n}\n",
+            "motion 'b' contains itself",
+        ),
         ("param x\n", "at least one `layer`"),
     ];
     for (body, want) in cases {

@@ -313,15 +313,15 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
             );
         }
     }
-    if let Some(l) = resource(world, layouts.lighting_2d.as_ref()) {
-        if on(&l, "enabled", false) {
-            scene.lighting_2d = Some(Lighting2d {
-                ambient: color(&l["ambient"], Vec3::splat(0.15)),
-                min_layer: l["minLayer"].as_i64().unwrap_or(-1_000_000) as i32,
-                max_layer: l["maxLayer"].as_i64().unwrap_or(99) as i32,
-                resolution: f(&l, "resolution", 0.5),
-            });
-        }
+    if let Some(l) = resource(world, layouts.lighting_2d.as_ref())
+        && on(&l, "enabled", false)
+    {
+        scene.lighting_2d = Some(Lighting2d {
+            ambient: color(&l["ambient"], Vec3::splat(0.15)),
+            min_layer: l["minLayer"].as_i64().unwrap_or(-1_000_000) as i32,
+            max_layer: l["maxLayer"].as_i64().unwrap_or(99) as i32,
+            resolution: f(&l, "resolution", 0.5),
+        });
     }
 }
 

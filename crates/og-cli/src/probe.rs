@@ -36,7 +36,7 @@ pub fn call(
                     .map_err(|e| format!("{url} answered something that is not JSON: {e}"));
             }
             Message::Close(_) => {
-                return Err(format!("{url} closed the connection without an answer"))
+                return Err(format!("{url} closed the connection without an answer"));
             }
             _ => {}
         }
@@ -111,7 +111,9 @@ pub fn run(args: &[&str]) -> ExitCode {
         [m, p] => match serde_json::from_str(p) {
             Ok(v) => (*m, v),
             Err(e) => {
-                eprintln!("og probe: the params are not JSON ({e}); write them as one argument, such as '{{\"steps\": 60}}'");
+                eprintln!(
+                    "og probe: the params are not JSON ({e}); write them as one argument, such as '{{\"steps\": 60}}'"
+                );
                 return ExitCode::from(2);
             }
         },

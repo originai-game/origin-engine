@@ -752,7 +752,7 @@ pub fn parse_skin(text: &str) -> Result<SkinFile, String> {
                         "numeric" | "mono" => 2,
                         "fallback" => 3,
                         _ => {
-                            return Err(q.err("is a font role: body, display, numeric or fallback"))
+                            return Err(q.err("is a font role: body, display, numeric or fallback"));
                         }
                     };
                     file.fonts[i] = Some(q.string(0)?.to_string());
@@ -810,7 +810,7 @@ pub fn parse_skin(text: &str) -> Result<SkinFile, String> {
                     _ => {
                         return Err(p.err(
                             "takes one corner inset or four (left top right bottom), in texels",
-                        ))
+                        ));
                     }
                 };
                 if b[0] + b[2] > px[2] || b[1] + b[3] > px[3] || b.iter().any(|v| *v < 0.0) {

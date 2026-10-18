@@ -155,9 +155,21 @@ fn run(
     let tier = info.backend_tier();
     let mut line = format!(
         "{name}: {}x{} tier={tier} adapter=\"{}\" aa={:?} draws={} batches={} instances={} culled={} triangles={} shadow_passes={} shadow_casters={} lights={} sprites={} glyphs={} sprite_draws={} setup+first={setup_ms:.1}ms",
-        image.width, image.height, info.adapter, info.antialias, stats.draw_calls, stats.batches, stats.instances,
-        stats.culled, stats.triangles, stats.shadow_passes, stats.shadow_casters, stats.lights, stats.sprites,
-        stats.glyphs, stats.sprite_draws
+        image.width,
+        image.height,
+        info.adapter,
+        info.antialias,
+        stats.draw_calls,
+        stats.batches,
+        stats.instances,
+        stats.culled,
+        stats.triangles,
+        stats.shadow_passes,
+        stats.shadow_casters,
+        stats.lights,
+        stats.sprites,
+        stats.glyphs,
+        stats.sprite_draws
     );
     if let Some((ms, cpu)) = timing {
         let _ = write!(line, " frame={ms:.3}ms cpu={cpu:.3}ms ({frames} frames)");

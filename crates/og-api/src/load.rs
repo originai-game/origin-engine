@@ -4,9 +4,9 @@
 //! reported here; meaning errors (an unknown type, a duplicate, a missing doc)
 //! are the validator's.
 
+use crate::Diagnostic;
 use crate::model::*;
 use crate::values::{as_f64, show};
-use crate::Diagnostic;
 use og_core::ogt::{Entry as Node, Value};
 
 /// The entries of a block, or none for a line without one.

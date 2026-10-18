@@ -217,18 +217,18 @@ impl Hierarchy {
                 }
             }
         }
-        if let Ok(pid) = world.id_by_name("og.Parent") {
-            if let Ok(field) = world.field_by_id(pid, "entity") {
-                let q = QueryDesc {
-                    read: vec!["og.Parent".into()],
-                    ..QueryDesc::default()
-                };
-                if let Ok(all) = world.query(&q) {
-                    for a in all {
-                        if let Ok(p) = a.read::<u64>(field) {
-                            for (e, parent) in a.entities().iter().zip(p.iter()) {
-                                h.parent.insert(e.to_bits(), *parent);
-                            }
+        if let Ok(pid) = world.id_by_name("og.Parent")
+            && let Ok(field) = world.field_by_id(pid, "entity")
+        {
+            let q = QueryDesc {
+                read: vec!["og.Parent".into()],
+                ..QueryDesc::default()
+            };
+            if let Ok(all) = world.query(&q) {
+                for a in all {
+                    if let Ok(p) = a.read::<u64>(field) {
+                        for (e, parent) in a.entities().iter().zip(p.iter()) {
+                            h.parent.insert(e.to_bits(), *parent);
                         }
                     }
                 }
@@ -458,18 +458,18 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     // entity order (deterministic), at most MAX_LIGHTS of them drawn.
     let forward = |m: Mat4| m.transform_vector3(Vec3::NEG_Z).normalize_or_zero();
     let layouts = &rs.draw;
-    if let Some(dl) = &layouts.directional {
-        if let Some((e, v)) = rows(world, dl).into_iter().next() {
-            let m = h.world_of(e);
-            let light = &mut scene.light;
-            let dir = forward(m);
-            light.direction_to_light = if dir == Vec3::ZERO { Vec3::Y } else { -dir };
-            light.color = color(&v["color"], 1.0);
-            light.intensity = f(&v, "intensity", 3.0);
-            light.cast_shadows = on(&v, "castShadow", true);
-            light.max_shadow_distance = f(&v, "shadowDistance", 200.0);
-            scene.environment.sky.sun_direction = light.direction_to_light.normalize_or_zero();
-        }
+    if let Some(dl) = &layouts.directional
+        && let Some((e, v)) = rows(world, dl).into_iter().next()
+    {
+        let m = h.world_of(e);
+        let light = &mut scene.light;
+        let dir = forward(m);
+        light.direction_to_light = if dir == Vec3::ZERO { Vec3::Y } else { -dir };
+        light.color = color(&v["color"], 1.0);
+        light.intensity = f(&v, "intensity", 3.0);
+        light.cast_shadows = on(&v, "castShadow", true);
+        light.max_shadow_distance = f(&v, "shadowDistance", 200.0);
+        scene.environment.sky.sun_direction = light.direction_to_light.normalize_or_zero();
     }
     let mut locals: Vec<(u64, og_render::Light)> = Vec::new();
     if let Some(pl) = &layouts.point {

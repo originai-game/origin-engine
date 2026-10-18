@@ -11,12 +11,12 @@
 //! On wasm32 they are exported as `math_digest` and `bouncing_boxes_hash`
 //! (no imports; `load.mjs` instantiates the module under node).
 
+use og_core::Rng;
 use og_core::hash::StableHasher;
 use og_core::math::{
-    atan, atan2, cos, exp, ln, pow, quat_from_axis_angle, sin, sin_cos, Mat4, Quat, Vec3, Vec3A,
-    Vec4,
+    Mat4, Quat, Vec3, Vec3A, Vec4, atan, atan2, cos, exp, ln, pow, quat_from_axis_angle, sin,
+    sin_cos,
 };
-use og_core::Rng;
 
 #[allow(dead_code)] // `Stats` fields are read only by the og-ecs test
 #[path = "../../../crates/og-ecs/tests/support/bouncing_boxes.rs"]

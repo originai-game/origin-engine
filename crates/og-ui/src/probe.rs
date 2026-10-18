@@ -37,7 +37,7 @@ impl SharedUi {
         build: F,
     ) -> (
         SystemDesc,
-        impl Fn(&mut SystemContext<'_>) -> og_core::Result<()> + Send + 'static,
+        impl Fn(&mut SystemContext<'_>) -> og_core::Result<()> + Send + 'static + use<V, F>,
     )
     where
         V: Fn() -> Viewport + Send + 'static,

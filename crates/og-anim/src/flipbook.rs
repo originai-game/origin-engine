@@ -248,7 +248,7 @@ impl FlipbookSheet {
                             return Err(parse_err(
                                 e.line,
                                 format!("filter is nearest or linear, not `{w}`"),
-                            ))
+                            ));
                         }
                     }
                 }
@@ -261,7 +261,7 @@ impl FlipbookSheet {
                     return Err(parse_err(
                         e.line,
                         format!("unknown key `{k}` in a flipbook sheet"),
-                    ))
+                    ));
                 }
             }
         }
@@ -398,7 +398,7 @@ impl FlipbookSheet {
                         return Err(parse_err(
                             c.line,
                             format!("unknown key `{k}` in clip {name}"),
-                        ))
+                        ));
                     }
                 }
             }
@@ -415,7 +415,7 @@ impl FlipbookSheet {
                             d.len(),
                             frames.len()
                         ),
-                    ))
+                    ));
                 }
                 None => {
                     if !(fps > 0.0 && fps.is_finite()) {
@@ -740,15 +740,15 @@ fn fire(
     for s in from..=to {
         let frame = cycle[(s % len) as usize];
         for (f, name) in &clip.events {
-            if *f == frame {
-                if let Ok(name) = Str64::new(name) {
-                    out.push(FlipbookEvent {
-                        entity,
-                        clip: clip_index,
-                        frame,
-                        name,
-                    });
-                }
+            if *f == frame
+                && let Ok(name) = Str64::new(name)
+            {
+                out.push(FlipbookEvent {
+                    entity,
+                    clip: clip_index,
+                    frame,
+                    name,
+                });
             }
         }
     }

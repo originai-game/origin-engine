@@ -4,9 +4,9 @@
 //! turns movement into fades (and bursts off).
 
 use crate::draw::DrawCmd;
-use crate::id::{child_key, Id};
-use crate::layout::{Content, FontRole, Frame, Rect, Shape, Size, TextAlign, NONE};
-use crate::motion::{ease_out, Fx};
+use crate::id::{Id, child_key};
+use crate::layout::{Content, FontRole, Frame, NONE, Rect, Shape, Size, TextAlign};
+use crate::motion::{Fx, ease_out};
 use crate::style::{Srgba, TypeStep};
 use crate::ui::{Anim, Ui};
 use og_render::TextureHandle;

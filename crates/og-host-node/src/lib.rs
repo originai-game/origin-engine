@@ -34,7 +34,7 @@ mod audio;
 mod host;
 
 use napi::bindgen_prelude::{FromNapiValue, ToNapiValue, TypeName, ValidateNapiValue, ValueType};
-use napi::{sys, Env};
+use napi::{Env, sys};
 use napi_derive::napi;
 use og_api::runtime::{ColumnPtr, Dispatch, Fetch, Hooks, RenderBackend};
 use std::cell::{Cell, RefCell};
@@ -92,11 +92,13 @@ impl ValidateNapiValue for NodeFunction {}
 
 impl FromNapiValue for NodeFunction {
     unsafe fn from_napi_value(env: sys::napi_env, value: sys::napi_value) -> napi::Result<Self> {
-        let mut r = ptr::null_mut();
-        if !ok(sys::napi_create_reference(env, value, 1, &mut r)) {
-            return Err(napi::Error::from_reason("cannot keep the dispatcher"));
+        unsafe {
+            let mut r = ptr::null_mut();
+            if !ok(sys::napi_create_reference(env, value, 1, &mut r)) {
+                return Err(napi::Error::from_reason("cannot keep the dispatcher"));
+            }
+            Ok(NodeFunction(r))
         }
-        Ok(NodeFunction(r))
     }
 }
 
@@ -128,77 +130,79 @@ fn copy_mode() -> bool {
 /// new external ArrayBuffer over it (or a copy, where external memory is
 /// refused or `OG_NODE_VIEWS=copy`).
 unsafe fn buffer_for(env: sys::napi_env, col: &ColumnPtr) -> napi::Result<sys::napi_value> {
-    let found = LIVE.with(|l| {
-        let mut l = l.borrow_mut();
-        l.iter_mut()
-            .find(|k| k.column == col.ptr && k.len == col.len)
-            .map(|k| {
-                if let Some(js) = k.copy {
-                    ptr::copy_nonoverlapping(col.ptr, js, col.len);
-                    k.write_back |= col.writable;
-                }
-                k.buffer
-            })
-    });
-    if let Some(r) = found {
-        let mut buffer = ptr::null_mut();
-        sys::napi_get_reference_value(env, r, &mut buffer);
-        if !buffer.is_null() {
-            return Ok(buffer);
-        }
-    }
-    let mut buffer = ptr::null_mut();
-    let mut copy = None;
-    let mut aliased = false;
-    if !copy_mode() && col.len > 0 {
-        let status = sys::napi_create_external_arraybuffer(
-            env,
-            col.ptr.cast(),
-            col.len,
-            None,
-            ptr::null_mut(),
-            &mut buffer,
-        );
-        if ok(status) {
-            aliased = true;
-        } else {
-            // The runtime refuses external memory: copy from now on.
-            COPY.with(|c| c.set(Some(true)));
-            let mut pending = false;
-            sys::napi_is_exception_pending(env, &mut pending);
-            if pending {
-                let mut e = ptr::null_mut();
-                sys::napi_get_and_clear_last_exception(env, &mut e);
+    unsafe {
+        let found = LIVE.with(|l| {
+            let mut l = l.borrow_mut();
+            l.iter_mut()
+                .find(|k| k.column == col.ptr && k.len == col.len)
+                .map(|k| {
+                    if let Some(js) = k.copy {
+                        ptr::copy_nonoverlapping(col.ptr, js, col.len);
+                        k.write_back |= col.writable;
+                    }
+                    k.buffer
+                })
+        });
+        if let Some(r) = found {
+            let mut buffer = ptr::null_mut();
+            sys::napi_get_reference_value(env, r, &mut buffer);
+            if !buffer.is_null() {
+                return Ok(buffer);
             }
         }
-    }
-    if !aliased {
-        let mut data = ptr::null_mut();
-        if !ok(sys::napi_create_arraybuffer(
-            env,
-            col.len,
-            &mut data,
-            &mut buffer,
-        )) {
-            return Err(napi::Error::from_reason("cannot allocate a column buffer"));
+        let mut buffer = ptr::null_mut();
+        let mut copy = None;
+        let mut aliased = false;
+        if !copy_mode() && col.len > 0 {
+            let status = sys::napi_create_external_arraybuffer(
+                env,
+                col.ptr.cast(),
+                col.len,
+                None,
+                ptr::null_mut(),
+                &mut buffer,
+            );
+            if ok(status) {
+                aliased = true;
+            } else {
+                // The runtime refuses external memory: copy from now on.
+                COPY.with(|c| c.set(Some(true)));
+                let mut pending = false;
+                sys::napi_is_exception_pending(env, &mut pending);
+                if pending {
+                    let mut e = ptr::null_mut();
+                    sys::napi_get_and_clear_last_exception(env, &mut e);
+                }
+            }
         }
-        if col.len > 0 {
-            ptr::copy_nonoverlapping(col.ptr, data.cast::<u8>(), col.len);
-            copy = Some(data.cast::<u8>());
+        if !aliased {
+            let mut data = ptr::null_mut();
+            if !ok(sys::napi_create_arraybuffer(
+                env,
+                col.len,
+                &mut data,
+                &mut buffer,
+            )) {
+                return Err(napi::Error::from_reason("cannot allocate a column buffer"));
+            }
+            if col.len > 0 {
+                ptr::copy_nonoverlapping(col.ptr, data.cast::<u8>(), col.len);
+                copy = Some(data.cast::<u8>());
+            }
         }
+        let mut r = ptr::null_mut();
+        sys::napi_create_reference(env, buffer, 1, &mut r);
+        LIVE.with(|l| {
+            l.borrow_mut().push(Kept {
+                buffer: r,
+                column: col.ptr,
+                len: col.len,
+                copy,
+                write_back: copy.is_some() && col.writable,
+            })
+        });
+        Ok(buffer)
     }
-    let mut r = ptr::null_mut();
-    sys::napi_create_reference(env, buffer, 1, &mut r);
-    LIVE.with(|l| {
-        l.borrow_mut().push(Kept {
-            buffer: r,
-            column: col.ptr,
-            len: col.len,
-            copy,
-            write_back: copy.is_some() && col.writable,
-        })
-    });
-    Ok(buffer)
 }
 
 /// `ArchetypeView.column`: one ArrayBuffer per field, in field order.
@@ -206,13 +210,15 @@ pub struct NodeViews(pub Vec<ColumnPtr>);
 
 impl ToNapiValue for NodeViews {
     unsafe fn to_napi_value(env: sys::napi_env, val: Self) -> napi::Result<sys::napi_value> {
-        let mut array = ptr::null_mut();
-        sys::napi_create_array_with_length(env, val.0.len(), &mut array);
-        for (i, col) in val.0.iter().enumerate() {
-            let buffer = buffer_for(env, col)?;
-            sys::napi_set_element(env, array, i as u32, buffer);
+        unsafe {
+            let mut array = ptr::null_mut();
+            sys::napi_create_array_with_length(env, val.0.len(), &mut array);
+            for (i, col) in val.0.iter().enumerate() {
+                let buffer = buffer_for(env, col)?;
+                sys::napi_set_element(env, array, i as u32, buffer);
+            }
+            Ok(array)
         }
-        Ok(array)
     }
 }
 
@@ -222,16 +228,18 @@ pub(crate) struct NodeHooks {
 }
 
 unsafe fn js_string(env: sys::napi_env, value: sys::napi_value) -> String {
-    let mut s = ptr::null_mut();
-    if !ok(sys::napi_coerce_to_string(env, value, &mut s)) {
-        return String::new();
+    unsafe {
+        let mut s = ptr::null_mut();
+        if !ok(sys::napi_coerce_to_string(env, value, &mut s)) {
+            return String::new();
+        }
+        let mut len = 0;
+        sys::napi_get_value_string_utf8(env, s, ptr::null_mut(), 0, &mut len);
+        let mut buf = vec![0u8; len + 1];
+        sys::napi_get_value_string_utf8(env, s, buf.as_mut_ptr().cast(), len + 1, &mut len);
+        buf.truncate(len);
+        String::from_utf8_lossy(&buf).into_owned()
     }
-    let mut len = 0;
-    sys::napi_get_value_string_utf8(env, s, ptr::null_mut(), 0, &mut len);
-    let mut buf = vec![0u8; len + 1];
-    sys::napi_get_value_string_utf8(env, s, buf.as_mut_ptr().cast(), len + 1, &mut len);
-    buf.truncate(len);
-    String::from_utf8_lossy(&buf).into_owned()
 }
 
 impl Hooks for NodeHooks {

@@ -4,7 +4,7 @@
 //! blobs.
 
 use crate::project::Project;
-use og_cook::{cook_project, CookOptions, Report};
+use og_cook::{CookOptions, Report, cook_project};
 use std::path::Path;
 use std::process::ExitCode;
 
@@ -33,7 +33,7 @@ pub fn engine_schemas() -> Vec<og_core::Schema> {
                     }
                     .into(),
                 ))
-                .ok()
+                .ok();
             }
         })
     };
@@ -165,11 +165,11 @@ pub fn run(args: &[&str]) -> ExitCode {
     }
     match cook(&p.root, threads) {
         Ok(r) => {
-            if let Some(path) = report {
-                if let Err(e) = std::fs::write(&path, r.to_markdown()) {
-                    eprintln!("og cook: cannot write {path}: {e}");
-                    return ExitCode::FAILURE;
-                }
+            if let Some(path) = report
+                && let Err(e) = std::fs::write(&path, r.to_markdown())
+            {
+                eprintln!("og cook: cannot write {path}: {e}");
+                return ExitCode::FAILURE;
             }
             if json {
                 println!("{}", r.to_json());

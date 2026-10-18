@@ -3,7 +3,7 @@
 //! (`og-cook`, the `<model>#anim` blob); the loaders build these types; the
 //! host registers them with [`crate::AnimationSystem`] under a handle.
 
-use crate::xform::{nlerp, unit, Trs};
+use crate::xform::{Trs, nlerp, unit};
 use og_core::glam::{Mat4, Quat, Vec3};
 use og_core::{Error, ErrorKind, Result};
 
@@ -389,11 +389,7 @@ pub fn bind(skeleton: &SkeletonAsset, clip: &ClipAsset) -> Vec<u32> {
                 }
                 return NONE;
             }
-            if by_index.is_some() {
-                ch.node
-            } else {
-                NONE
-            }
+            if by_index.is_some() { ch.node } else { NONE }
         })
         .collect()
 }

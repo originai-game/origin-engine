@@ -256,7 +256,10 @@ fn engine_checks(cwd: &Path) -> usize {
                 addon["path"].as_str().unwrap_or(""),
                 addon["views"].as_str().unwrap_or("?")
             ),
-            _ => addon["reason"].as_str().unwrap_or("does not load").to_string(),
+            _ => addon["reason"]
+                .as_str()
+                .unwrap_or("does not load")
+                .to_string(),
         },
         "install the package for this platform (npm installs @origingame/engine-<platform>-<arch> through optionalDependencies), or in a checkout run `bun run build` in packages/engine",
     );

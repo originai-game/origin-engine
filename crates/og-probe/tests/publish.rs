@@ -15,7 +15,9 @@ fn only_player_facing_members_answer() {
     assert_eq!(BUILD, "publish");
     assert_eq!(
         hello["members"],
-        json!(["hello", "tick", "state", "pick", "entity", "input", "capture"])
+        json!([
+            "hello", "tick", "state", "pick", "entity", "input", "capture"
+        ])
     );
     for member in MEMBERS {
         let r = h.call(member, json!({"id": "player", "x": 1, "y": 1, "event": {"kind": "key", "key": "KeyA", "action": "press"}}));

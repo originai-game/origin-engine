@@ -2,12 +2,12 @@
 //! compute simulation (full tier), the CPU path's uploads, and the draw.
 
 use crate::particles::{
-    appearance, hash_seed, mesh_points, plan_ticks, sheet_frames, CpuParticles, EmitterShape,
-    ParticleAlign, ParticleBlend, ParticleEmitter, ParticleRender, ParticleState, ParticleSystem,
-    SheetMode, SimulationSpace, TickStep, MAX_CURVE_KEYS,
+    CpuParticles, EmitterShape, MAX_CURVE_KEYS, ParticleAlign, ParticleBlend, ParticleEmitter,
+    ParticleRender, ParticleState, ParticleSystem, SheetMode, SimulationSpace, TickStep,
+    appearance, hash_seed, mesh_points, plan_ticks, sheet_frames,
 };
 use crate::scene::{RenderScene, Sprite};
-use crate::{RenderError, HDR_FORMAT};
+use crate::{HDR_FORMAT, RenderError};
 use glam::{Mat4, Vec2, Vec3};
 use std::collections::HashMap;
 
@@ -416,14 +416,14 @@ impl ParticleRenderer {
             e.validate().map_err(|m| {
                 RenderError::InvalidData(format!("emitter {}: {m}", sys.emitter.index()))
             })?;
-            if let Some(t) = e.texture {
-                if t.index() >= texture_count {
-                    return Err(RenderError::InvalidHandle(format!(
-                        "emitter {}: texture {}",
-                        sys.emitter.index(),
-                        t.index()
-                    )));
-                }
+            if let Some(t) = e.texture
+                && t.index() >= texture_count
+            {
+                return Err(RenderError::InvalidHandle(format!(
+                    "emitter {}: texture {}",
+                    sys.emitter.index(),
+                    t.index()
+                )));
             }
             // The surface table, rebuilt when the emitter's shape changed.
             let fresh = match self.points.get(&sys.emitter.index()) {

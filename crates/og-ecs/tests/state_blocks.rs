@@ -3,8 +3,8 @@
 //! refused restore changes neither the world nor any block; a snapshot
 //! without a block resets it; a world without blocks is untouched.
 
-use og_core::math::Vec3;
 use og_core::ErrorKind;
+use og_core::math::Vec3;
 use og_ecs::{Reflect, StateBlock, World, WorldDesc};
 use std::any::Any;
 use std::sync::{Arc, Mutex};

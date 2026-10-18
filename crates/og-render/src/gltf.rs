@@ -3,11 +3,11 @@
 //! become [`Material`]s and their images [`TextureData`]. A bridge until the
 //! cook (M4) produces `.ogb` meshes.
 
+use crate::RenderError;
 use crate::scene::{
     AlphaMode, ColorSpace, Material, MaterialHandle, MeshData, MeshHandle, Mips, RenderScene,
     TextureData, TextureHandle, Vertex,
 };
-use crate::RenderError;
 use glam::{Mat4, Quat, Vec3};
 use std::collections::HashMap;
 

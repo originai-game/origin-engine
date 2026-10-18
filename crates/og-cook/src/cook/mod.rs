@@ -20,10 +20,10 @@ mod texture;
 pub mod tilemap;
 
 use crate::format::{self, BlobKind, COOKER_VERSION};
-use crate::runtime::{Manifest, ManifestAsset, ManifestOutput, MANIFEST};
-use og_core::hash::{hash_bytes, StableHasher};
-use og_core::ogt::Document;
+use crate::runtime::{MANIFEST, Manifest, ManifestAsset, ManifestOutput};
 use og_core::Schema;
+use og_core::hash::{StableHasher, hash_bytes};
+use og_core::ogt::Document;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::path::{Path, PathBuf};
@@ -73,7 +73,11 @@ impl MeshOptions {
     fn describe(&self) -> String {
         format!(
             "lods {} ratio {} error {} overdraw {} tangents {} quantize 16/oct16/uv16/rgba8 codec meshopt-v1",
-            self.lod_levels, self.lod_ratio, self.lod_max_error, self.overdraw_threshold, self.tangents
+            self.lod_levels,
+            self.lod_ratio,
+            self.lod_max_error,
+            self.overdraw_threshold,
+            self.tangents
         )
     }
 }
@@ -340,7 +344,7 @@ impl Report {
 
     /// The report as JSON.
     pub fn to_json(&self) -> String {
-        use serde_json::{json, Value};
+        use serde_json::{Value, json};
         let assets: Vec<Value> = self
             .assets
             .iter()
@@ -530,7 +534,7 @@ fn anim_settings(s: &Source) -> Result<anim::AnimSettings, String> {
                     return Err(format!(
                         "line {}: unknown animation setting '{k}' (rate, event)",
                         e.line
-                    ))
+                    ));
                 }
             }
         }
@@ -900,14 +904,16 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
     let next = std::sync::atomic::AtomicUsize::new(0);
     std::thread::scope(|scope| {
         for _ in 0..threads.min(todo.len()) {
-            scope.spawn(|| loop {
-                let k = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                let Some(&i) = todo.get(k) else { break };
-                let p = &plan[i];
-                let t = Instant::now();
-                let r = run(p, options, threads, &schemas, &known);
-                *results[i].lock().expect("no poisoning") =
-                    Some((r, t.elapsed().as_secs_f64() * 1000.0));
+            scope.spawn(|| {
+                loop {
+                    let k = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    let Some(&i) = todo.get(k) else { break };
+                    let p = &plan[i];
+                    let t = Instant::now();
+                    let r = run(p, options, threads, &schemas, &known);
+                    *results[i].lock().expect("no poisoning") =
+                        Some((r, t.elapsed().as_secs_f64() * 1000.0));
+                }
             });
         }
     });

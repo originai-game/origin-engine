@@ -16,7 +16,7 @@ mod support;
 use og_anim::*;
 use og_ecs::{Entity, World};
 use std::collections::BTreeSet;
-use support::walk::{build, WALKERS};
+use support::walk::{WALKERS, build};
 
 struct Run {
     hashes: Vec<(u64, u64)>,
@@ -151,7 +151,11 @@ fn a_3600_tick_walk_gives_the_same_hash_twice_and_after_a_restore_at_1800() {
         .collect();
     let report = format!(
         "{{\n  \"walkers\": {WALKERS},\n  \"ik_chains\": {chains},\n  \"ticks\": 3600,\n  \"profile\": \"{}\",\n  \"run_a\": [{}],\n  \"run_b_equal\": true,\n  \"restored_at_1800\": [{}],\n  \"graph_states_seen\": {:?},\n  \"footstep_events\": {},\n  \"chains_reached_at_3600\": {reached},\n  \"min_root_motion_travel_m\": {:.3}\n}}\n",
-        if cfg!(debug_assertions) { "debug" } else { "release" },
+        if cfg!(debug_assertions) {
+            "debug"
+        } else {
+            "release"
+        },
         hashes.join(", "),
         restored.join(", "),
         ra.states_seen,

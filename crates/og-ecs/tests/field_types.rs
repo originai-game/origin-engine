@@ -183,18 +183,20 @@ fn strings_ride_on_events_only() {
     w.send_bytes(said, &raw).unwrap();
     let mut bad_enum = raw.clone();
     bad_enum[64] = 2;
-    assert!(w
-        .send_bytes(said, &bad_enum)
-        .unwrap_err()
-        .reason()
-        .contains("enum index 2"));
+    assert!(
+        w.send_bytes(said, &bad_enum)
+            .unwrap_err()
+            .reason()
+            .contains("enum index 2")
+    );
     let mut bad_text = raw.clone();
     bad_text[5] = b'!';
-    assert!(w
-        .send_bytes(said, &bad_text)
-        .unwrap_err()
-        .reason()
-        .contains("followed by non-zero bytes"));
+    assert!(
+        w.send_bytes(said, &bad_text)
+            .unwrap_err()
+            .reason()
+            .contains("followed by non-zero bytes")
+    );
 
     // Events are copied, so they round-trip through a snapshot and are read
     // the next tick.

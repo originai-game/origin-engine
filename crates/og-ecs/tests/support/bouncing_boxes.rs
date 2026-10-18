@@ -5,8 +5,8 @@
 //! Boxes fall, bounce off the walls of an arena with random jitter, emit
 //! events, retire after enough bounces and are replaced by newly spawned ones.
 
-use og_core::math::{sin, Vec3};
 use og_core::Rng;
+use og_core::math::{Vec3, sin};
 use og_ecs::{QueryDesc, Reflect, SystemDesc, World, WorldDesc};
 
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]

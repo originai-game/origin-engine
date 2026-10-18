@@ -15,7 +15,7 @@
 //! Evidence: `$OG_EVIDENCE_DIR/anim-cook-resample.json` (default
 //! `<target tmp>/evidence/`): per clip, rates, frames and the largest error.
 
-use og_cook::cook::{cook_project, CookOptions};
+use og_cook::cook::{CookOptions, cook_project};
 use og_cook::runtime::{Bundle, CookedAnimation};
 use std::path::PathBuf;
 
@@ -367,7 +367,9 @@ fn skins_and_morphs_follow_the_cooked_vertices() {
 fn markers_come_from_extras_and_import_settings() {
     let (_, b) = cooked(
         "settings",
-        Some("type import\nversion 1\n---\nanimation {\n  rate 60\n  event \"idle\" \"breath\" 1\n}\n"),
+        Some(
+            "type import\nversion 1\n---\nanimation {\n  rate 60\n  event \"idle\" \"breath\" 1\n}\n",
+        ),
     );
     let a = anim(&b, "models/walker.glb");
     let names = |c: &str| -> Vec<(String, f32)> {
@@ -439,9 +441,11 @@ fn a_cooked_walker_plays_in_og_anim() {
     let out = sys.output(e).unwrap();
     assert_eq!(out.palette.len(), 12);
     // The thigh swings: its palette entry is not the identity.
-    assert!(out.palette[3]
-        .to_cols_array()
-        .iter()
-        .zip(og_core::glam::Mat4::IDENTITY.to_cols_array())
-        .any(|(x, y)| (x - y).abs() > 1e-3));
+    assert!(
+        out.palette[3]
+            .to_cols_array()
+            .iter()
+            .zip(og_core::glam::Mat4::IDENTITY.to_cols_array())
+            .any(|(x, y)| (x - y).abs() > 1e-3)
+    );
 }

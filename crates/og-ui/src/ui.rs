@@ -1,19 +1,19 @@
 //! The immediate-mode context: build a tree every tick, read responses back.
 
-use crate::draw::{assign_levels, emit, DrawCmd, DrawItem, EmitDesc};
-use crate::id::{child_key, Id};
+use crate::draw::{DrawCmd, DrawItem, EmitDesc, assign_levels, emit};
+use crate::id::{Id, child_key};
 use crate::input::{InputFrame, Nav, UiKey};
 use crate::layout::{
-    layout, preorder, Align, Anchor, Content, Cross, Direction, Element, Float, FontRole, Insets,
-    Metrics, Node, Rect, Shape, Size, TextAlign, TextContent, Widget, NONE,
+    Align, Anchor, Content, Cross, Direction, Element, Float, FontRole, Insets, Metrics, NONE,
+    Node, Rect, Shape, Size, TextAlign, TextContent, Widget, layout, preorder,
 };
 use crate::motion::Fx;
 use crate::skin::{Ink, Ornament, SkinPart, Slice};
 use crate::style::{Breakpoint, Density, Srgba, Theme, TypeStep};
 use crate::text::{FontMetrics, UiFont};
 use og_core::glam::Vec2;
-use og_probe::hooks::{find_by_id, find_by_text};
 use og_probe::UiElement;
+use og_probe::hooks::{find_by_id, find_by_text};
 use og_render::{Overlay, TextureHandle};
 use std::collections::BTreeMap;
 
@@ -698,16 +698,15 @@ impl Ui {
             self.state.focus_visible = false;
         }
         // Wheel over a scroll container; drag on one that holds the press.
-        if input.wheel.y != 0.0 {
-            if let Some(h) = self
+        if input.wheel.y != 0.0
+            && let Some(h) = self
                 .state
                 .hits
                 .iter()
                 .rev()
                 .find(|h| h.has(HIT_SCROLL) && h.rect.contains(p.x, p.y))
-            {
-                *self.state.scroll.entry(h.key).or_insert(0.0) += input.wheel.y;
-            }
+        {
+            *self.state.scroll.entry(h.key).or_insert(0.0) += input.wheel.y;
         }
         if input.down
             && !input.pressed
@@ -1199,10 +1198,10 @@ impl Ui {
             f.dy += h.dy * e;
             f.scale = 1.0 + (h.scale - 1.0) * e;
         }
-        if r.pressed {
-            if let Some(p) = skin.press {
-                f.dy += p.dy;
-            }
+        if r.pressed
+            && let Some(p) = skin.press
+        {
+            f.dy += p.dy;
         }
         if a.b > 0.0 {
             let k = (now - a.t) as f32 / self.ticks_for(t.durations_ms.slow) as f32;
@@ -1269,19 +1268,20 @@ impl Ui {
             }
         }
         let thumb = self.thumb();
-        if self.state.active == key && (self.input.down || self.input.pressed) {
-            if let Some(h) = self.hit(key) {
-                let travel = (h.rect.width - thumb).max(1.0);
-                let t = ((self.input.pointer.x - h.rect.x - thumb / 2.0) / travel).clamp(0.0, 1.0);
-                let mut v = lo + t * (hi - lo);
-                if desc.step > 0.0 {
-                    v = lo + ((v - lo) / desc.step).round() * desc.step;
-                    v = v.clamp(lo.min(hi), lo.max(hi));
-                }
-                if v != *value {
-                    *value = v;
-                    r.changed = true;
-                }
+        if self.state.active == key
+            && (self.input.down || self.input.pressed)
+            && let Some(h) = self.hit(key)
+        {
+            let travel = (h.rect.width - thumb).max(1.0);
+            let t = ((self.input.pointer.x - h.rect.x - thumb / 2.0) / travel).clamp(0.0, 1.0);
+            let mut v = lo + t * (hi - lo);
+            if desc.step > 0.0 {
+                v = lo + ((v - lo) / desc.step).round() * desc.step;
+                v = v.clamp(lo.min(hi), lo.max(hi));
+            }
+            if v != *value {
+                *value = v;
+                r.changed = true;
             }
         }
         let t = if hi != lo {
@@ -2072,19 +2072,19 @@ impl Ui {
                 }
             }
         }
-        if self.kinds[i].0 == "divider" {
-            if let Some(o) = t.skin.divider.filter(|_| t.skin.atlas.is_some()) {
-                let (cx, cy) = rect.center();
-                self.ornament(
-                    o,
-                    Rect::new(cx - o.w / 2.0, cy - o.h / 2.0, o.w, o.h),
-                    false,
-                    false,
-                    alpha,
-                    clip,
-                    cmds,
-                );
-            }
+        if self.kinds[i].0 == "divider"
+            && let Some(o) = t.skin.divider.filter(|_| t.skin.atlas.is_some())
+        {
+            let (cx, cy) = rect.center();
+            self.ornament(
+                o,
+                Rect::new(cx - o.w / 2.0, cy - o.h / 2.0, o.w, o.h),
+                false,
+                false,
+                alpha,
+                clip,
+                cmds,
+            );
         }
         let track = t.skin.slice(SkinPart::Track);
         match n.widget {
@@ -2242,21 +2242,21 @@ impl Ui {
                             }
                         }
                         cmds.push(text(0.0, 0.0, tc.color));
-                        if n.heading && k == 0 {
-                            if let Some(o) = t.skin.flourish.filter(|_| t.skin.atlas.is_some()) {
-                                let cy = ly + lh / 2.0;
-                                let gap = o.offset + t.space.sm;
-                                let (w, h) = (o.w * sk, o.h * sk);
-                                let left = Rect::new(x - gap - w, cy - h / 2.0, w, h);
-                                let right =
-                                    Rect::new(x + line.width * sk + gap, cy - h / 2.0, w, h);
-                                // Both sides of a centred heading; the side away from the edge otherwise.
-                                if tc.align != TextAlign::Start {
-                                    self.ornament(o, left, false, false, alpha, clip, cmds);
-                                }
-                                if tc.align != TextAlign::End {
-                                    self.ornament(o, right, true, false, alpha, clip, cmds);
-                                }
+                        if n.heading
+                            && k == 0
+                            && let Some(o) = t.skin.flourish.filter(|_| t.skin.atlas.is_some())
+                        {
+                            let cy = ly + lh / 2.0;
+                            let gap = o.offset + t.space.sm;
+                            let (w, h) = (o.w * sk, o.h * sk);
+                            let left = Rect::new(x - gap - w, cy - h / 2.0, w, h);
+                            let right = Rect::new(x + line.width * sk + gap, cy - h / 2.0, w, h);
+                            // Both sides of a centred heading; the side away from the edge otherwise.
+                            if tc.align != TextAlign::Start {
+                                self.ornament(o, left, false, false, alpha, clip, cmds);
+                            }
+                            if tc.align != TextAlign::End {
+                                self.ornament(o, right, true, false, alpha, clip, cmds);
                             }
                         }
                     }

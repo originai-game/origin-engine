@@ -3,15 +3,15 @@
 //! each playing source's playhead (so `SoundEnded` lands on a tick that only
 //! depends on the world), and hands the commands to an attached sink.
 
-use crate::command::{encode, Command, Op, TickPacket, FLAG_LOOP, FLAG_SPATIAL};
+use crate::command::{Command, FLAG_LOOP, FLAG_SPATIAL, Op, TickPacket, encode};
 use crate::schema::{
-    end_reason, Audio, AudioListener, AudioPlayback, AudioSource, AudioStream, SoundEnded,
-    SoundStarted, Transform, BUS_COUNT,
+    Audio, AudioListener, AudioPlayback, AudioSource, AudioStream, BUS_COUNT, SoundEnded,
+    SoundStarted, Transform, end_reason,
 };
 use crate::sound::SoundBank;
+use og_core::Result;
 use og_core::glam::{Quat, Vec3, Vec4};
 use og_core::hash::StableHasher;
-use og_core::Result;
 use og_ecs::{Entity, QueryDesc, SystemContext, SystemDesc, World};
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::{Arc, Mutex};

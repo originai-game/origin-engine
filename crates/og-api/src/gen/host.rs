@@ -13,7 +13,7 @@
 //! `Wire` implementation: `ArchetypeView.entities` (`Array`),
 //! `ArchetypeView.column` (`Views`) and the dispatcher (`Function`).
 
-use super::{bindings, default_json, schema_name, snake, Binding, GENERATED_BY};
+use super::{Binding, GENERATED_BY, bindings, default_json, schema_name, snake};
 use crate::index::{Index, TypeDecl};
 use crate::model::*;
 

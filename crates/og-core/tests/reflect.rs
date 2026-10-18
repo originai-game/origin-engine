@@ -2,7 +2,7 @@
 //! and the wiki read, and moves values through packed bytes.
 
 use og_core::math::{Quat, Vec3};
-use og_core::reflect::{from_bytes, schemas_to_json, to_bytes, Layout};
+use og_core::reflect::{Layout, from_bytes, schemas_to_json, to_bytes};
 use og_core::{ErrorKind, FieldSchema, FieldType, Reflect, Schema};
 
 /// Hit points of anything that can be destroyed.

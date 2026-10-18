@@ -2,10 +2,10 @@
 //! rules that turn [`InjectedInput`] into both.
 
 use crate::event::{
-    GamepadState, InjectedInput, KeyAction, PointerAction, PointerButton, MAX_GAMEPADS,
-    MAX_POINTERS,
+    GamepadState, InjectedInput, KeyAction, MAX_GAMEPADS, MAX_POINTERS, PointerAction,
+    PointerButton,
 };
-use crate::keys::{key_index, KEY_CODES};
+use crate::keys::{KEY_CODES, key_index};
 use og_core::glam::Vec2;
 use og_core::{Reflect, Str64};
 use og_ecs::World;

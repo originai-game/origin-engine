@@ -3,7 +3,7 @@
 
 mod support;
 use glam::Vec2;
-use og_tilemap::{animated_frame, chunk_quads, chunks_in, Tileset, CHUNK, FLIP_X, FLIP_Y};
+use og_tilemap::{CHUNK, FLIP_X, FLIP_Y, Tileset, animated_frame, chunk_quads, chunks_in};
 use support::*;
 
 #[test]

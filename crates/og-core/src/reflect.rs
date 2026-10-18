@@ -569,10 +569,10 @@ impl Schema {
                     return err(format!("field '{at}' has a non-finite {what}"));
                 }
             }
-            if let (Some(min), Some(max)) = (f.min, f.max) {
-                if min > max {
-                    return err(format!("field '{at}' has min {min} above max {max}"));
-                }
+            if let (Some(min), Some(max)) = (f.min, f.max)
+                && min > max
+            {
+                return err(format!("field '{at}' has min {min} above max {max}"));
             }
             if f.ty == FieldType::Enum {
                 if f.variants.is_empty() {

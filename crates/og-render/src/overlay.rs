@@ -3,10 +3,10 @@
 //! rectangles. Sorted like the world's 2D batch (layer, kind, texture or
 //! font; submission order within a run), one instanced draw per run.
 
+use crate::RenderError;
 use crate::effects::SpriteBlend;
 use crate::scene::{Overlay, TextureHandle};
 use crate::sprites::{FontLayout, RunSource, SpriteRun};
-use crate::RenderError;
 use glam::Vec2;
 
 /// `struct OverlayIn` in overlay.wgsl.
@@ -62,13 +62,13 @@ pub(crate) fn build<'a>(
     let mut keyed: Vec<(i32, RunSource, OverlayInstance)> =
         Vec::with_capacity(overlay.sprites.len() + overlay.texts.len() * 8);
     for (i, s) in overlay.sprites.iter().enumerate() {
-        if let Some(t) = s.texture {
-            if t.index() >= texture_count {
-                return Err(RenderError::InvalidHandle(format!(
-                    "overlay sprite {i}: texture {}",
-                    t.index()
-                )));
-            }
+        if let Some(t) = s.texture
+            && t.index() >= texture_count
+        {
+            return Err(RenderError::InvalidHandle(format!(
+                "overlay sprite {i}: texture {}",
+                t.index()
+            )));
         }
         let clip = clip_rect(overlay, s.clip, &format!("sprite {i}"))?;
         keyed.push((

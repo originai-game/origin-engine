@@ -4,7 +4,7 @@
 //! the members that need it refuse exactly as protocol 5 says.
 
 use og_ecs::{Entity, World};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 /// A frame read back from the renderer.
 #[derive(Clone, Debug, PartialEq, Eq)]

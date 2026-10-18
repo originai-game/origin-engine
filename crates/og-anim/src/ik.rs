@@ -3,8 +3,8 @@
 //! then turn each joint (root to tip) by the shortest arc onto them; only
 //! local rotations change, so bone lengths are kept exactly.
 
-use crate::asset::{SkeletonAsset, NONE};
-use crate::xform::{nlerp, rotation_arc, Trs};
+use crate::asset::{NONE, SkeletonAsset};
+use crate::xform::{Trs, nlerp, rotation_arc};
 use og_core::glam::Vec3;
 
 /// What a solve did.

@@ -1074,7 +1074,7 @@ impl RenderScene {
     }
 
     /// Every material's handle, in insertion order (tools that edit all of them).
-    pub fn material_handles(&self) -> impl Iterator<Item = MaterialHandle> {
+    pub fn material_handles(&self) -> impl Iterator<Item = MaterialHandle> + use<> {
         (0..self.materials.len()).map(MaterialHandle::from_index)
     }
 

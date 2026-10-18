@@ -4,7 +4,7 @@
 //! engine's og.DirectionalLight (castShadow is a bool): "28 bytes is not a
 //! whole number of 25-byte rows".
 
-use og_cook::cook::{cook_project, CookOptions};
+use og_cook::cook::{CookOptions, cook_project};
 use og_cook::runtime::Bundle;
 use og_core::reflect::{FieldSchema, FieldType, Schema};
 

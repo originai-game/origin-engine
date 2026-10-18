@@ -5,7 +5,7 @@
 //! symbol, so the wiki cannot drift from the IDL. Nothing here names a
 //! module: pages follow whatever `api.ogt` declares, in its order.
 
-use super::{bindings, default_json, schema_name, ts, Binding, GENERATED_BY};
+use super::{Binding, GENERATED_BY, bindings, default_json, schema_name, ts};
 use crate::index::Index;
 use crate::model::*;
 use std::fmt::Write;
@@ -123,11 +123,7 @@ fn quote(out: &mut String, lines: &[&str], line: usize, more: Option<&str>) {
 /// A table cell: one line, pipes escaped.
 fn cell(s: &str) -> String {
     let s = s.replace('\n', " ").replace('|', "\\|");
-    if s.is_empty() {
-        "—".into()
-    } else {
-        s
-    }
+    if s.is_empty() { "—".into() } else { s }
 }
 
 fn code(s: &str) -> String {
@@ -171,11 +167,7 @@ fn place_text(m: &Module) -> String {
 }
 
 fn publish_text(publish: bool) -> &'static str {
-    if publish {
-        "kept"
-    } else {
-        "dropped"
-    }
+    if publish { "kept" } else { "dropped" }
 }
 
 // Anchors are explicit, so links never depend on a renderer's heading slugs.
@@ -280,10 +272,10 @@ fn params_table(out: &mut String, ix: &Index<'_>, params: &[Param], generics: &[
     out.push_str("| Parameter | Type | Optional | Doc |\n|---|---|---|---|\n");
     for (p, o) in params.iter().zip(omit) {
         let mut doc = p.doc.join(" ");
-        if let Some(d) = &p.default {
-            if let Some(j) = default_json(ix, &p.ty, Some(d)) {
-                let _ = write!(doc, " Default `{}`.", ts::compact_json(&j));
-            }
+        if let Some(d) = &p.default
+            && let Some(j) = default_json(ix, &p.ty, Some(d))
+        {
+            let _ = write!(doc, " Default `{}`.", ts::compact_json(&j));
         }
         if p.flatten {
             doc.push_str(" Its fields travel as the call's own parameters on the wire.");

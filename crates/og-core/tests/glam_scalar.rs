@@ -9,8 +9,8 @@
 //! another order and fail this test; these are the types that diverged
 //! across hosts before `scalar-math`.
 
-use og_core::math::{Affine3A, Mat3, Mat3A, Mat4, Quat, Vec3, Vec3A, Vec4};
 use og_core::Rng;
+use og_core::math::{Affine3A, Mat3, Mat3A, Mat4, Quat, Vec3, Vec3A, Vec4};
 
 type V3 = [f32; 3];
 type V4 = [f32; 4];

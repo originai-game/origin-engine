@@ -4,7 +4,7 @@
 //! (og-ecs refuses the engine otherwise). And the UI's ThemeColor enum names
 //! every colour of the design tokens og-ui is generated from.
 
-use og_api::host::{RecordDecl, RECORDS};
+use og_api::host::{RECORDS, RecordDecl};
 use og_core::reflect::{FieldSchema, FieldType, Reflect, Schema};
 use std::path::Path;
 

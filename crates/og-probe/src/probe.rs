@@ -3,20 +3,20 @@
 
 use crate::base64;
 use crate::command::{
-    self, CommandDesc, CommandHandler, CommandInfo, CommandStep, CommandsReport, LogLine, Output,
-    ParseError, Payload, CORE_ACTIONS,
+    self, CORE_ACTIONS, CommandDesc, CommandHandler, CommandInfo, CommandStep, CommandsReport,
+    LogLine, Output, ParseError, Payload,
 };
-use crate::hooks::{find_by_id, find_by_text, Capture, Reloader, UiTree};
+use crate::hooks::{Capture, Reloader, UiTree, find_by_id, find_by_text};
 use crate::input::{
-    key_for_char, InjectedInput, InputSink, KeyAction, Modifiers, PointerAction, PointerButton,
-    WorldInput,
+    InjectedInput, InputSink, KeyAction, Modifiers, PointerAction, PointerButton, WorldInput,
+    key_for_char,
 };
 use crate::names::Names;
 use crate::value;
 use og_core::glam::{Mat3, Quat, Vec3};
 use og_core::{Error, ErrorKind, FieldType, Layout, Rng, Schema};
 use og_ecs::{Entity, QueryDesc, SchemaId, World};
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 use std::collections::{BTreeMap, VecDeque};
 use std::rc::Rc;
 
@@ -633,7 +633,7 @@ impl Probe {
                     other => {
                         return Err(format!(
                             "'{other}' is not down, move or up; write `{usage}`"
-                        ))
+                        ));
                     }
                 };
                 let target = step.args.get(2..).map(|a| a.join(":")).unwrap_or_default();
@@ -722,7 +722,9 @@ impl Probe {
                 if self.deliver(world, &event) {
                     Ok(())
                 } else {
-                    Err(format!("the input layer refused key '{key}'; keys are KeyboardEvent.code names such as KeyW, Space, ArrowLeft"))
+                    Err(format!(
+                        "the input layer refused key '{key}'; keys are KeyboardEvent.code names such as KeyW, Space, ArrowLeft"
+                    ))
                 }
             }
             "type" => {
@@ -1153,10 +1155,12 @@ impl Probe {
                     Some(steps) => Some(json!(self.advance(world, steps)?)),
                     None => None,
                 },
-                "input" => Some(json!(operation
-                    .get("event")
-                    .and_then(InjectedInput::from_json)
-                    .is_some_and(|e| self.input(world, &e)))),
+                "input" => Some(json!(
+                    operation
+                        .get("event")
+                        .and_then(InjectedInput::from_json)
+                        .is_some_and(|e| self.input(world, &e))
+                )),
                 "pause" => Some(json!(self.pause())),
                 "resume" => Some(json!(self.resume())),
                 "read" => Some(json!({"tick": self.tick(world), "state": self.state(world)})),

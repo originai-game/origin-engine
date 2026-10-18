@@ -6,6 +6,6 @@
 //! in the world hash, replayed.
 
 pub use og_input::{
-    key_for_char, key_index, InjectedInput, Input, InputLayer, InputSink, KeyAction, Modifiers,
-    PointerAction, PointerButton, WorldInput, KEY_CODES,
+    InjectedInput, Input, InputLayer, InputSink, KEY_CODES, KeyAction, Modifiers, PointerAction,
+    PointerButton, WorldInput, key_for_char, key_index,
 };

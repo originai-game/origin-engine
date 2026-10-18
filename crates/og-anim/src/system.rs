@@ -2,13 +2,13 @@
 //! player, graph, root motion, blendshapes and IK chains; the joint palettes
 //! it leaves for the renderer; and the state block that saves it all.
 
-use crate::asset::{bind, ClipAsset, SkeletonAsset, NONE};
+use crate::asset::{ClipAsset, NONE, SkeletonAsset, bind};
 use crate::codec::{Reader, Writer};
 use crate::graph::{GraphAsset, LayerMode, Motion};
 use crate::ik;
 use crate::pose::{Blend, Fired, Leaf, Pose, RootMotion};
 use crate::schema::*;
-use crate::xform::{unit, Trs};
+use crate::xform::{Trs, unit};
 use og_core::glam::{Mat4, Quat, Vec3};
 use og_core::{Error, ErrorKind, Result, Str64};
 use og_ecs::{Entity, QueryDesc, StateBlock, SystemContext, SystemDesc, World};
@@ -153,20 +153,20 @@ impl Shared {
     fn recompute_outputs(&mut self) {
         self.outputs.clear();
         for (&e, st) in &self.states {
-            if let Some(skel) = self.skeletons.get(&st.skeleton) {
-                if skel.nodes.len() == st.pose.len() {
-                    let mut palette = Vec::new();
-                    skel.palette(st.skin, &st.pose, &mut palette);
-                    self.outputs.insert(
-                        e,
-                        AnimOutput {
-                            skin: st.skin,
-                            palette,
-                            mesh: st.mesh,
-                            weights: st.weights,
-                        },
-                    );
-                }
+            if let Some(skel) = self.skeletons.get(&st.skeleton)
+                && skel.nodes.len() == st.pose.len()
+            {
+                let mut palette = Vec::new();
+                skel.palette(st.skin, &st.pose, &mut palette);
+                self.outputs.insert(
+                    e,
+                    AnimOutput {
+                        skin: st.skin,
+                        palette,
+                        mesh: st.mesh,
+                        weights: st.weights,
+                    },
+                );
             }
         }
     }
@@ -641,11 +641,11 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
             }
             None => state.player = PlayerState::default(),
         }
-        if root.is_some() {
-            if let Some(t) = transform.as_mut() {
-                t.position += t.quaternion * (t.scale * delta.translation);
-                t.quaternion = unit(t.quaternion * delta.rotation);
-            }
+        if root.is_some()
+            && let Some(t) = transform.as_mut()
+        {
+            t.position += t.quaternion * (t.scale * delta.translation);
+            t.quaternion = unit(t.quaternion * delta.rotation);
         }
         let mut blend = blend;
         if let Some(b) = blend.as_mut() {

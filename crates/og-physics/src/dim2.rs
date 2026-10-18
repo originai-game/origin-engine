@@ -92,13 +92,15 @@ pub(crate) fn primitive(c: &Collider, s: Vec3) -> Result<Option<rp::SharedShape>
                     "og.Collider.shape {} is 3D only; the 2D profile has 0 box, 1 circle, 2 capsule, 4 polygon",
                     c.shape
                 ),
-            ))
+            ));
         }
         other => {
             return Err(Error::new(
                 ErrorKind::Invalid,
-                format!("og.Collider.shape {other} is not a shape (2D: 0 box, 1 circle, 2 capsule, 4 polygon)"),
-            ))
+                format!(
+                    "og.Collider.shape {other} is not a shape (2D: 0 box, 1 circle, 2 capsule, 4 polygon)"
+                ),
+            ));
         }
     }))
 }
@@ -117,4 +119,4 @@ pub(crate) fn from_mesh(_shape: u32, mesh: &crate::MeshDesc, s: Vec3) -> Result<
 #[allow(clippy::duplicate_mod)]
 #[path = "sim.rs"]
 mod sim;
-pub(crate) use sim::{step, QueryWorld, Sim};
+pub(crate) use sim::{QueryWorld, Sim, step};

@@ -9,7 +9,7 @@
 use super::*;
 use og_anim::*;
 use og_core::glam::Vec3;
-use og_core::{math, Reflect};
+use og_core::{Reflect, math};
 use og_ecs::{Entity, QueryDesc, SystemDesc, World, WorldDesc};
 
 pub const WALKERS: u32 = 20;
@@ -79,12 +79,12 @@ pub fn build(seed: u32) -> (World, AnimationSystem) {
                             }
                             ctx.set(e, p)?;
                         }
-                        if let Ok(mut b) = ctx.get::<Blendshapes>(e) {
-                            if b.source == BLENDSHAPES_FROM_COMPONENT {
-                                b.w0 = 0.5 + 0.5 * math::sin(tick as f32 / 13.0);
-                                b.w1 = (tick % 60) as f32 / 60.0;
-                                ctx.set(e, b)?;
-                            }
+                        if let Ok(mut b) = ctx.get::<Blendshapes>(e)
+                            && b.source == BLENDSHAPES_FROM_COMPONENT
+                        {
+                            b.w0 = 0.5 + 0.5 * math::sin(tick as f32 / 13.0);
+                            b.w1 = (tick % 60) as f32 / 60.0;
+                            ctx.set(e, b)?;
                         }
                     } else {
                         let mut c: IkChain = ctx.get(e)?;

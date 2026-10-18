@@ -2,7 +2,7 @@
 //! (`packages/engine/types/bindings.json`) and the JSON Schema with the API
 //! catalog (`packages/engine/schema/api.schema.json`).
 
-use super::{bindings as all_bindings, default_json, joined, GENERATED_BY};
+use super::{GENERATED_BY, bindings as all_bindings, default_json, joined};
 use crate::index::{Index, TypeDecl};
 use crate::json::Json;
 use crate::model::*;
@@ -25,10 +25,10 @@ fn params_json(ix: &Index<'_>, params: &[Param], with_doc: bool) -> Json {
                 if p.flatten {
                     o.set("flatten", Json::Bool(true));
                 }
-                if let Some(d) = &p.default {
-                    if let Some(j) = default_json(ix, &p.ty, Some(d)) {
-                        o.set("default", j);
-                    }
+                if let Some(d) = &p.default
+                    && let Some(j) = default_json(ix, &p.ty, Some(d))
+                {
+                    o.set("default", j);
                 }
                 if with_doc {
                     o.set("doc", Json::str(joined(&p.doc)));
@@ -387,10 +387,10 @@ fn object_body(
     for f in fields {
         let mut p = type_schema(ix, &f.ty);
         p.set("description", Json::str(joined(&f.doc)));
-        if let Some(d) = default_json(ix, &f.ty, f.default.as_deref()) {
-            if f.default.is_some() || !required {
-                p.set("default", d);
-            }
+        if let Some(d) = default_json(ix, &f.ty, f.default.as_deref())
+            && (f.default.is_some() || !required)
+        {
+            p.set("default", d);
         }
         if let Some(n) = f.min {
             p.set("minimum", Json::num(n));

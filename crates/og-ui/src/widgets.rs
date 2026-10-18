@@ -7,10 +7,10 @@
 
 use crate::id::Id;
 use crate::layout::{
-    Align, Anchor, Content, Cross, Direction, Element, Float, FontRole, Frame, Insets, Shape, Size,
-    TextAlign, Widget, NONE,
+    Align, Anchor, Content, Cross, Direction, Element, Float, FontRole, Frame, Insets, NONE, Shape,
+    Size, TextAlign, Widget,
 };
-use crate::motion::{ease_exit, ease_out, fx, TransitionKind};
+use crate::motion::{TransitionKind, ease_exit, ease_out, fx};
 use crate::style::Srgba;
 use crate::ui::{Anim, Response, Toast, Ui};
 use og_core::hash::StableHasher;
@@ -442,12 +442,12 @@ impl Ui {
         let t = self.theme;
         let ticks = self.ticks_for(t.durations_ms.base) as f32;
         let p = ((self.state.tick - since) as f32 + 1.0) / ticks;
-        if let Some(kind) = kind {
-            if p < 1.0 {
-                let mut f = fx(kind, ease_out(p.min(1.0)), t.space.xl, t.reduced_motion);
-                f.inert = true;
-                self.nodes[i].fx = Some(f);
-            }
+        if let Some(kind) = kind
+            && p < 1.0
+        {
+            let mut f = fx(kind, ease_out(p.min(1.0)), t.space.xl, t.reduced_motion);
+            f.inert = true;
+            self.nodes[i].fx = Some(f);
         }
         let stagger = t.skin.motion.stagger_ms;
         if stagger > 0.0 && !t.reduced_motion {
@@ -2729,28 +2729,28 @@ impl Ui {
         } else {
             self.touch(key, true).filter(|t| t.1).map(|t| t.0)
         };
-        if let Some(finger) = finger {
-            if let Some(h) = self.hit(key) {
-                let (cx, cy) = h.rect.center();
-                let (mut dx, mut dy) = ((finger.x - cx) / radius, (finger.y - cy) / radius);
-                let len = (dx * dx + dy * dy).sqrt();
-                if len > 1.0 {
-                    dx /= len;
-                    dy /= len;
-                }
-                kx = dx;
-                ky = dy;
-                let dz = if desc.dead_zone > 0.0 {
-                    desc.dead_zone
-                } else {
-                    0.15
-                };
-                if len.min(1.0) > dz {
-                    out.x = dx;
-                    out.y = dy;
-                }
-                out.active = true;
+        if let Some(finger) = finger
+            && let Some(h) = self.hit(key)
+        {
+            let (cx, cy) = h.rect.center();
+            let (mut dx, mut dy) = ((finger.x - cx) / radius, (finger.y - cy) / radius);
+            let len = (dx * dx + dy * dy).sqrt();
+            if len > 1.0 {
+                dx /= len;
+                dy /= len;
             }
+            kx = dx;
+            ky = dy;
+            let dz = if desc.dead_zone > 0.0 {
+                desc.dead_zone
+            } else {
+                0.15
+            };
+            if len.min(1.0) > dz {
+                out.x = dx;
+                out.y = dy;
+            }
+            out.active = true;
         }
         let knob = size * 0.42;
         let travel = radius - knob / 2.0;

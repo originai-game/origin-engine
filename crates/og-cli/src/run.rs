@@ -54,7 +54,7 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
                 i += 1;
             }
             other if other.starts_with('-') => {
-                return Err(format!("unknown option `{other}`. {USAGE}"))
+                return Err(format!("unknown option `{other}`. {USAGE}"));
             }
             other => r.project = other.to_string(),
         }

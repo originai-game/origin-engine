@@ -202,10 +202,11 @@ impl InputSource for og_input::Input {
     fn typed(&self, out: &mut String) {
         let shift = self.down("ShiftLeft") || self.down("ShiftRight");
         for c in (0x20u8..=0x7e).map(char::from) {
-            if let Some((code, shifted)) = og_input::key_for_char(c) {
-                if shifted == shift && self.pressed(&code) {
-                    out.push(c);
-                }
+            if let Some((code, shifted)) = og_input::key_for_char(c)
+                && shifted == shift
+                && self.pressed(&code)
+            {
+                out.push(c);
             }
         }
     }

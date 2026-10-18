@@ -7,7 +7,7 @@
 //! - structs, enums, unions, handles, interfaces, callbacks and record values
 //!   are exported types named as in the IDL.
 
-use super::{default_json, GENERATED_BY};
+use super::{GENERATED_BY, default_json};
 use crate::index::{Index, TypeDecl};
 use crate::json::Json;
 use crate::model::*;
@@ -445,10 +445,10 @@ impl<'a> Gen<'a, '_> {
             .iter()
             .map(|p| {
                 let mut s = format!("@param {} {}", p.name, p.doc.join(" "));
-                if let Some(d) = &p.default {
-                    if let Some(j) = default_json(self.ix, &p.ty, Some(d)) {
-                        let _ = write!(s, " Default `{}`.", compact(&j));
-                    }
+                if let Some(d) = &p.default
+                    && let Some(j) = default_json(self.ix, &p.ty, Some(d))
+                {
+                    let _ = write!(s, " Default `{}`.", compact(&j));
                 }
                 s
             })
@@ -457,10 +457,10 @@ impl<'a> Gen<'a, '_> {
 
     fn field_tags(&self, f: &Field, desc: bool) -> Vec<String> {
         let mut tags = Vec::new();
-        if f.default.is_some() || desc {
-            if let Some(j) = default_json(self.ix, &f.ty, f.default.as_deref()) {
-                tags.push(format!("@default {}", compact(&j)));
-            }
+        if (f.default.is_some() || desc)
+            && let Some(j) = default_json(self.ix, &f.ty, f.default.as_deref())
+        {
+            tags.push(format!("@default {}", compact(&j)));
         }
         match (f.min, f.max) {
             (Some(lo), Some(hi)) => tags.push(format!("@range {lo}..{hi}")),

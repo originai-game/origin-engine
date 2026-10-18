@@ -1,18 +1,18 @@
 //! The binding symbols, host-neutral: each function is the body of the
 //! trait method of the same name (wire arguments in, wire answer out).
 
-use super::assets::{self, index_of, Payload, Status};
+use super::assets::{self, Payload, Status, index_of};
 use super::codec::{Layout, RecordKind};
 use super::engine::{
-    before_structural, declare_game, declare_system, engine, queued_structural, running,
-    world_query_views, CommandDecl, Engine, QueryRec, DECL, HANDLES,
+    CommandDecl, DECL, Engine, HANDLES, QueryRec, before_structural, declare_game, declare_system,
+    engine, queued_structural, running, world_query_views,
 };
-use super::probe::{self as rprobe, with_probe, NameOp};
+use super::probe::{self as rprobe, NameOp, with_probe};
 use super::{ok, ok_void, parse, refuse};
 use og_core::reflect::Reflect;
 use og_core::{Rng, Time};
 use og_ecs::{Entity, QueryDesc, World};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 fn err(e: og_core::Error) -> String {
     e.reason().to_string()
@@ -59,7 +59,7 @@ fn component(eng: &Engine, name: &str) -> Result<(Layout, og_ecs::SchemaId), Str
         None => {
             return Err(warning.unwrap_or_else(|| {
                 format!("'{name}' is not a registered component: declare it with defineComponent")
-            }))
+            }));
         }
     };
     let id = eng.world()?.id_by_name(name).map_err(err)?;
@@ -170,7 +170,9 @@ fn spawn(eng: &Engine, desc: &Value) -> Result<Entity, String> {
             return Err(format!("an entity named '{name}' already exists"));
         }
         if name.starts_with('#') || name.chars().any(|c| c.is_whitespace() || ":;=".contains(c)) {
-            return Err(format!("'{name}' cannot be addressed by the probe: a name has no whitespace, ':', ';' or '=' and does not start with '#'"));
+            return Err(format!(
+                "'{name}' cannot be addressed by the probe: a name has no whitespace, ':', ';' or '=' and does not start with '#'"
+            ));
         }
     }
     let mut components = Vec::new();
@@ -341,7 +343,9 @@ pub fn og_world_has(world: u32, entity_id: f64, comp: String) -> bool {
 }
 
 fn in_system(what: &str) -> String {
-    format!("{what} inside a system needs og-ecs SystemContext packed-byte access (requested from Core); do it in a command, or through the system's views")
+    format!(
+        "{what} inside a system needs og-ecs SystemContext packed-byte access (requested from Core); do it in a command, or through the system's views"
+    )
 }
 
 pub fn og_world_insert(world: u32, entity_id: f64, comp: String, value: Option<String>) -> String {
@@ -539,7 +543,9 @@ pub fn og_world_name_of(world: u32, entity_id: f64) -> String {
 
 pub fn og_world_query(world: u32, desc: Option<String>) -> String {
     if running(world).is_some() {
-        return refuse("a system receives its query as its first argument; world.query is for commands and callbacks");
+        return refuse(
+            "a system receives its query as its first argument; world.query is for commands and callbacks",
+        );
     }
     result((|| {
         let eng = engine(world)?;
@@ -647,7 +653,7 @@ pub fn og_world_instantiate(world: u32, asset: f64, desc: Option<String>) -> Str
                     return Err(format!(
                         "{} is still loading; instantiate it once og.load.status says ready",
                         entry.path
-                    ))
+                    ));
                 }
                 (Status::Failed(e), _) => return Err(e.clone()),
                 (_, Payload::Scene(s)) => Some(s.clone()),
@@ -799,12 +805,13 @@ pub fn og_game_get_tick(game: u32) -> u32 {
 
 pub fn og_game_get_systems(game: u32) -> String {
     DECL.with(|d| {
-        json!(d
-            .borrow()
-            .games
-            .get(game as usize)
-            .map(|g| g.systems.clone())
-            .unwrap_or_default())
+        json!(
+            d.borrow()
+                .games
+                .get(game as usize)
+                .map(|g| g.systems.clone())
+                .unwrap_or_default()
+        )
         .to_string()
     })
 }

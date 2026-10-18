@@ -165,10 +165,12 @@ fn the_showcase_frame_is_recorded_from_its_graph() {
         .expect("render");
     assert!(without.graph_passes < stats.graph_passes);
     assert!(without.transient_textures < stats.transient_textures);
-    assert!(!renderer
-        .frame_graph()
-        .expect("a graph")
-        .ordered_names()
-        .iter()
-        .any(|n| n.starts_with("bloom")));
+    assert!(
+        !renderer
+            .frame_graph()
+            .expect("a graph")
+            .ordered_names()
+            .iter()
+            .any(|n| n.starts_with("bloom"))
+    );
 }

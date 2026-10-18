@@ -61,8 +61,10 @@ pub(crate) fn primitive(c: &Collider, s: Vec3) -> Result<Option<rp::SharedShape>
         other => {
             return Err(Error::new(
                 ErrorKind::Invalid,
-                format!("og.Collider.shape {other} is not a shape (0 box, 1 sphere, 2 capsule, 3 cylinder, 4 convex, 5 trimesh)"),
-            ))
+                format!(
+                    "og.Collider.shape {other} is not a shape (0 box, 1 sphere, 2 capsule, 3 cylinder, 4 convex, 5 trimesh)"
+                ),
+            ));
         }
     }))
 }
@@ -89,4 +91,4 @@ pub(crate) fn from_mesh(shape: u32, mesh: &crate::MeshDesc, s: Vec3) -> Result<r
 #[allow(clippy::duplicate_mod)]
 #[path = "sim.rs"]
 mod sim;
-pub(crate) use sim::{step, QueryWorld, Sim};
+pub(crate) use sim::{QueryWorld, Sim, step};

@@ -18,7 +18,7 @@
 //! the world hash carry it with the physics world (`og.physics`) and the
 //! audio stream (its resources).
 
-use super::engine::{engine, running, Engine};
+use super::engine::{Engine, engine, running};
 use super::{ok, ok_void, parse, refuse};
 use og_core::glam::Vec3;
 use og_ecs::{Entity, StateBlock, SystemDesc, World};
@@ -36,7 +36,7 @@ use og_ui::{
     StepperDesc, TabsDesc, TextAlign, Theme, ToastDesc, Tone, TransitionDesc, TransitionKind,
     TypeStep, Ui, UiDesc, UiFont, Viewport,
 };
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 use std::any::Any;
 use std::cell::Cell;
 
@@ -762,7 +762,9 @@ fn with_ui<T>(call: &str, f: impl FnOnce(&mut Ui) -> T) -> Option<T> {
     let eng = target.and_then(|id| engine(id).ok())?;
     if building.is_none() {
         if let Ok(mut st) = eng.state.try_borrow_mut() {
-            let text = format!("{call} was called outside a system: og.ui calls build the frame the engine opens before the game's systems and closes after them, so they do nothing anywhere else");
+            let text = format!(
+                "{call} was called outside a system: og.ui calls build the frame the engine opens before the game's systems and closes after them, so they do nothing anywhere else"
+            );
             if st.ui_warned.insert(text.clone()) {
                 st.log
                     .push(json!({ "tick": 0, "warning": true, "text": text }));
@@ -1319,8 +1321,8 @@ pub fn og_ui_screen_transition(id: String, screen: String, desc: Option<String>)
         let i = super::assets::index_of(h)?;
         let target = BUILDING.with(Cell::get)?;
         let eng = engine(target).ok()?;
-        let t = eng.render.borrow().textures.get(i).copied();
-        t
+
+        eng.render.borrow().textures.get(i).copied()
     });
     let r = with_ui("og.ui.screenTransition", |ui| {
         let t = *ui.theme();

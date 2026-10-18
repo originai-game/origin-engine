@@ -3,8 +3,8 @@
 //! same name and layout shares the first's schema, so both read and write
 //! the same rows; a type of the same name and another layout is refused.
 
-use og_core::math::Vec3;
 use og_core::ErrorKind;
+use og_core::math::Vec3;
 use og_ecs::{Reflect, World, WorldDesc};
 
 mod physics {

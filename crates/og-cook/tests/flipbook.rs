@@ -8,7 +8,7 @@
 
 use og_anim::{FlipMode, FlipbookSheet};
 use og_cook::runtime::Bundle;
-use og_cook::{cook_project, CookOptions};
+use og_cook::{CookOptions, cook_project};
 use std::path::PathBuf;
 
 fn project(name: &str, files: &[(&str, Vec<u8>)]) -> PathBuf {

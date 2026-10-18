@@ -45,9 +45,8 @@
 
 use og_core::ogt::{Document, Entry, Value};
 use og_render::{
-    Burst, ColorCurve, ColorLut, Curve, EmitterShape, ParticleAlign, ParticleBlend,
+    Burst, ColorCurve, ColorLut, Curve, EmitterShape, MAX_CURVE_KEYS, ParticleAlign, ParticleBlend,
     ParticleCollision, ParticleEmitter, ParticleRender, SheetMode, SimulationSpace, TextureHandle,
-    MAX_CURVE_KEYS,
 };
 
 /// The `.ogt` type of an emitter file.
@@ -168,7 +167,7 @@ pub fn parse_emitter(
                     other => {
                         return Err(format!(
                             "line {line}: shape `{other}` (point, sphere, cone, box)"
-                        ))
+                        ));
                     }
                 };
             }
@@ -187,7 +186,7 @@ pub fn parse_emitter(
                     _ => {
                         return Err(format!(
                             "line {line}: burst <time> <count> [<cycles> <interval>]"
-                        ))
+                        ));
                     }
                 };
                 bursts.push(burst);
@@ -302,7 +301,7 @@ pub fn parse_emitter(
                     Some(other) => {
                         return Err(format!(
                             "line {line}: sheet mode `{other}` (off, life, fps, random)"
-                        ))
+                        ));
                     }
                 };
             }
@@ -333,7 +332,7 @@ pub fn parse_emitter(
                     other => {
                         return Err(format!(
                             "line {line}: align `{other}` (camera, velocity <stretch>)"
-                        ))
+                        ));
                     }
                 }
             }
@@ -359,7 +358,7 @@ pub fn parse_emitter(
                     other => {
                         return Err(format!(
                             "line {line}: render `{other}` (billboard, sprite <layer>)"
-                        ))
+                        ));
                     }
                 }
             }

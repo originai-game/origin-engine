@@ -73,7 +73,7 @@ fn infer(name: &str, rows: &[Pending]) -> Result<Schema, CookError> {
                 n => {
                     return Err(CookError(format!(
                         "line {line}: {name}.{f}: {n} values; without a schema a field has 1 to 4"
-                    )))
+                    )));
                 }
             };
             match fields.iter().find(|x| &x.name == f) {
@@ -82,7 +82,7 @@ fn infer(name: &str, rows: &[Pending]) -> Result<Schema, CookError> {
                         "line {line}: {name}.{f} has {} value(s) here and {} elsewhere",
                         v.len(),
                         x.ty.lanes()
-                    )))
+                    )));
                 }
                 Some(_) => {}
                 None => fields.push(FieldSchema::new(f.clone(), ty)),
@@ -183,15 +183,15 @@ pub fn references(text: &str) -> Vec<String> {
     let mut out = BTreeSet::new();
     fn walk(b: &Block, out: &mut BTreeSet<String>) {
         for e in &b.entries {
-            if e.key == "model" {
-                if let Ok(s) = e.string(0) {
-                    out.insert(crate::runtime::asset_id(s).to_string());
-                }
+            if e.key == "model"
+                && let Ok(s) = e.string(0)
+            {
+                out.insert(crate::runtime::asset_id(s).to_string());
             }
-            if e.key == "entity" {
-                if let Some(b) = &e.block {
-                    walk(b, out);
-                }
+            if e.key == "entity"
+                && let Some(b) = &e.block
+            {
+                walk(b, out);
             }
         }
     }
@@ -244,7 +244,7 @@ pub fn cook(
                 return Err(CookError(format!(
                     "line {}: unknown scene entry '{k}' (expected name or entity)",
                     e.line
-                )))
+                )));
             }
         }
     }
@@ -276,10 +276,16 @@ pub fn cook(
             match (c.key.as_str(), &c.block) {
                 ("entity", _) => children.push(c),
                 ("model", None) => {
-                    let id = crate::runtime::asset_id(c.string(0).map_err(|x| CookError(format!("line {}: model: {x}", c.line)))?)
-                        .to_string();
+                    let id = crate::runtime::asset_id(
+                        c.string(0)
+                            .map_err(|x| CookError(format!("line {}: model: {x}", c.line)))?,
+                    )
+                    .to_string();
                     if !known(&id) {
-                        return Err(CookError(format!("line {}: model '{id}' is not an asset of this project", c.line)));
+                        return Err(CookError(format!(
+                            "line {}: model '{id}' is not an asset of this project",
+                            c.line
+                        )));
                     }
                     let r = match refs.iter().position(|r| r == &id) {
                         Some(r) => r,
@@ -298,16 +304,29 @@ pub fn cook(
                     };
                     for f in &fields.entries {
                         if f.block.is_some() {
-                            return Err(CookError(format!("line {}: {comp}.{}: fields do not nest", f.line, f.key)));
+                            return Err(CookError(format!(
+                                "line {}: {comp}.{}: fields do not nest",
+                                f.line, f.key
+                            )));
                         }
                         if pending.fields.iter().any(|(n, ..)| n == &f.key) {
-                            return Err(CookError(format!("line {}: {comp}.{} is set twice", f.line, f.key)));
+                            return Err(CookError(format!(
+                                "line {}: {comp}.{} is set twice",
+                                f.line, f.key
+                            )));
                         }
-                        pending.fields.push((f.key.clone(), lanes(&f.values, f.line, comp, &f.key)?, f.line));
+                        pending.fields.push((
+                            f.key.clone(),
+                            lanes(&f.values, f.line, comp, &f.key)?,
+                            f.line,
+                        ));
                     }
                     let rows = tables.entry(comp.to_string()).or_default();
                     if rows.iter().any(|r| r.entity == index) {
-                        return Err(CookError(format!("line {}: the entity has two {comp} components", c.line)));
+                        return Err(CookError(format!(
+                            "line {}: the entity has two {comp} components",
+                            c.line
+                        )));
                     }
                     rows.push(pending);
                 }
@@ -315,7 +334,7 @@ pub fn cook(
                     return Err(CookError(format!(
                         "line {}: '{k}' in an entity is neither a component block, a child entity nor a model",
                         c.line
-                    )))
+                    )));
                 }
             }
         }

@@ -131,13 +131,13 @@ pub(crate) fn json_field(field: &FieldSchema, value: &Value) -> Result<Vec<u8>, 
             }) {
                 Some(on) => Ok(vec![u8::from(on)]),
                 None => Err("a bool takes true, false, 0 or 1".into()),
-            }
+            };
         }
         FieldType::Str64 | FieldType::Str256 => {
             return Err(format!(
                 "a {} field is not patched (strings are event fields)",
                 field.ty.name()
-            ))
+            ));
         }
         _ => {}
     }

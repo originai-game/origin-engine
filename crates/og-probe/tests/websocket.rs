@@ -4,8 +4,8 @@
 
 mod support;
 
-use og_probe::server::{ProbeServer, DEFAULT_PORT};
-use serde_json::{json, Value};
+use og_probe::server::{DEFAULT_PORT, ProbeServer};
+use serde_json::{Value, json};
 use std::net::TcpStream;
 use std::thread;
 use std::time::{Duration, Instant};

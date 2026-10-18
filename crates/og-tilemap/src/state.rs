@@ -1,7 +1,7 @@
 //! A placed map's current cells: terrain resolution, deterministic edits,
 //! snapshots, collision rectangles and draw chunks.
 
-use crate::map::{TilemapAsset, FLIP_X, FLIP_Y, TILE_MASK};
+use crate::map::{FLIP_X, FLIP_Y, TILE_MASK, TilemapAsset};
 use crate::tileset::{Collision, Terrain, Tileset};
 use glam::Vec2;
 use og_core::{Error, ErrorKind, Result};
@@ -273,8 +273,8 @@ impl MapState {
                 1 => 1,
                 _ => {
                     return Err(invalid(format!(
-                    "layer '{name}' is a terrain layer: set 1 to fill or 0 to clear, not {value}"
-                )))
+                        "layer '{name}' is a terrain layer: set 1 to fill or 0 to clear, not {value}"
+                    )));
                 }
             };
             if self.layers[layer].cells[i] == v {
@@ -625,7 +625,7 @@ pub fn chunks_in(
     layer: usize,
     view_min: Vec2,
     view_max: Vec2,
-) -> impl Iterator<Item = (u32, u32)> {
+) -> impl Iterator<Item = (u32, u32)> + use<> {
     let mut out = Vec::new();
     if layer < state.layers.len() {
         let size = state.asset.tile_size();

@@ -259,7 +259,7 @@ impl GraphAsset {
                                 return Err(err(
                                     b,
                                     format!("unknown clip setting '{k}' (speed, loop)"),
-                                ))
+                                ));
                             }
                         }
                     }
@@ -381,7 +381,7 @@ impl GraphAsset {
                                 }
                             }
                             k => {
-                                return Err(err(s, format!("unknown state setting '{k}' (speed)")))
+                                return Err(err(s, format!("unknown state setting '{k}' (speed)")));
                             }
                         }
                     }
@@ -423,7 +423,7 @@ impl GraphAsset {
                                 return Err(err(
                                     b,
                                     format!("layer mode '{w}' (override or additive)"),
-                                ))
+                                ));
                             }
                         };
                     }
@@ -466,7 +466,7 @@ impl GraphAsset {
                                                     format!(
                                                         "comparison '{o}' (gt, ge, lt, le, eq, ne)"
                                                     ),
-                                                ))
+                                                ));
                                             }
                                         };
                                         t.conditions.push(Condition {
@@ -487,9 +487,9 @@ impl GraphAsset {
                                         return Err(err(
                                             c,
                                             format!(
-                                            "unknown transition setting '{k}' (when, exit, fade)"
-                                        ),
-                                        ))
+                                                "unknown transition setting '{k}' (when, exit, fade)"
+                                            ),
+                                        ));
                                     }
                                 }
                             }
@@ -503,9 +503,9 @@ impl GraphAsset {
                         return Err(err(
                             b,
                             format!(
-                            "unknown layer setting '{k}' (state, entry, mode, weight, transition)"
-                        ),
-                        ))
+                                "unknown layer setting '{k}' (state, entry, mode, weight, transition)"
+                            ),
+                        ));
                     }
                 }
             }
@@ -622,9 +622,9 @@ impl GraphAsset {
                         .iter()
                         .enumerate()
                         .min_by(|a, b| {
-                            (p - a.1 .0)
+                            (p - a.1.0)
                                 .length_squared()
-                                .total_cmp(&(p - b.1 .0).length_squared())
+                                .total_cmp(&(p - b.1.0).length_squared())
                         })
                         .map_or(0, |c| c.0);
                     self.leaves(children[near].1, params, weight, out);

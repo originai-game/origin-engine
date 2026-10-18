@@ -2,7 +2,7 @@
 //! mask's rank among the 47 (so a tile id names its neighbourhood), and maps.
 #![allow(dead_code)]
 
-use og_tilemap::{reduce_blob, Layer, MapState, TilemapAsset, Tileset, TilesetRef};
+use og_tilemap::{Layer, MapState, TilemapAsset, Tileset, TilesetRef, reduce_blob};
 use std::sync::Arc;
 
 /// The 47 reduced blob masks, ascending.

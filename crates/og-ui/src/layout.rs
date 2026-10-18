@@ -16,10 +16,10 @@
 //! 5. **Positions**: main-axis `Align`, cross-axis `Cross`, scroll offsets,
 //!    clip rectangles; rectangles snap to device pixels (`Viewport::dpr`).
 
+use crate::FontMetrics;
 use crate::motion::Fx;
 use crate::style::{Srgba, TypeStep};
-use crate::text::{break_lines, is_cjk, longest_word, widest_line, Line};
-use crate::FontMetrics;
+use crate::text::{Line, break_lines, is_cjk, longest_word, widest_line};
 use og_render::TextureHandle;
 
 /// A rectangle in CSS pixels, origin at the top left, y down.
@@ -692,7 +692,7 @@ fn fill_up(w: &mut [f32], idx: &[usize], max: &[f32], extra: f32) {
             let active = base
                 .iter()
                 .zip(&cap)
-                .filter(|(&b, &c)| b <= lo && c > lo)
+                .filter(|&(&b, &c)| b <= lo && c > lo)
                 .count();
             level = lo + (extra - f(lo)) / active.max(1) as f32;
             solved = true;
@@ -704,7 +704,7 @@ fn fill_up(w: &mut [f32], idx: &[usize], max: &[f32], extra: f32) {
         let active = base
             .iter()
             .zip(&cap)
-            .filter(|(&b, &c)| b <= lo && c > lo)
+            .filter(|&(&b, &c)| b <= lo && c > lo)
             .count();
         if active > 0 {
             level = lo + (extra - f(lo)) / active as f32;

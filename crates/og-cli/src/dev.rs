@@ -194,7 +194,11 @@ pub fn run(args: &[&str]) -> ExitCode {
                     } else {
                         println!(
                             "reload {reloads}: {} in {total:.0} ms (rebuild {rebuild:.0} ms + swap {swap:.0} ms; budget {BUDGET_MS} ms{})",
-                            if ok { "ok" } else { "refused, the old bundle keeps running" },
+                            if ok {
+                                "ok"
+                            } else {
+                                "refused, the old bundle keeps running"
+                            },
                             if within { "" } else { ", OVER" }
                         );
                     }

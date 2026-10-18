@@ -214,10 +214,10 @@ fn build_flat<'v>(
         }
         return obj;
     }
-    if name == "Array" {
-        if let [inner, TypeRef::Int(n)] = ty.args() {
-            return Json::Arr((0..*n).map(|_| build_flat(ix, inner, values)).collect());
-        }
+    if name == "Array"
+        && let [inner, TypeRef::Int(n)] = ty.args()
+    {
+        return Json::Arr((0..*n).map(|_| build_flat(ix, inner, values)).collect());
     }
     match values.next() {
         Some(v) if v.as_bool().is_some() => Json::Bool(v.as_bool() == Some(true)),

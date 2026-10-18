@@ -5,9 +5,9 @@
 
 use glam::{Mat4, Vec2, Vec3};
 use og_render::{
-    shapes, Antialias, Background, Camera, DebugView, Exposure, FrameStats, Light, Material,
-    RenderDesc, RenderError, RenderInfo, RenderScene, RenderTarget, Renderer, RgbaImage, Sprite,
-    Text, Tier, Tonemap,
+    Antialias, Background, Camera, DebugView, Exposure, FrameStats, Light, Material, RenderDesc,
+    RenderError, RenderInfo, RenderScene, RenderTarget, Renderer, RgbaImage, Sprite, Text, Tier,
+    Tonemap, shapes,
 };
 use og_tests::gfx;
 use og_tests::scenes::{self, GfxScene};
@@ -173,10 +173,10 @@ fn shadows_fall_in_every_cascade_at_200m_scale() {
         .zip(lit.pixels.as_chunks::<4>().0.iter())
         .zip(unshadowed.pixels.as_chunks::<4>().0.iter())
     {
-        if let Some(c) = cascade_of(d) {
-            if luma(a) < 0.8 * luma(b) {
-                shadowed[c] += 1;
-            }
+        if let Some(c) = cascade_of(d)
+            && luma(a) < 0.8 * luma(b)
+        {
+            shadowed[c] += 1;
         }
     }
     println!("shadowed pixels per cascade: {shadowed:?}");

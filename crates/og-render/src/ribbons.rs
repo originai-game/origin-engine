@@ -9,7 +9,7 @@
 //! - A [`Beam`] joins two points (lasers, lightning, tethers): its texture
 //!   scrolls along it with the scene's clock and it can jitter.
 
-use crate::particles::{hash_seed, noise1, ColorCurve, Curve, ParticleBlend};
+use crate::particles::{ColorCurve, Curve, ParticleBlend, hash_seed, noise1};
 use crate::scene::TextureHandle;
 use glam::{Vec3, Vec4};
 use std::collections::{HashMap, VecDeque};

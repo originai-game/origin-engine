@@ -322,9 +322,10 @@ fn restoring_the_world_and_the_ui_state_replays_the_same_frames() {
     assert_eq!(first.1.search, "ab");
     assert_eq!(first.1.clicks.len(), 1);
 
-    assert!(rig
-        .ui
-        .lock()
-        .restore_state(&ui_state[..ui_state.len() - 1])
-        .is_err());
+    assert!(
+        rig.ui
+            .lock()
+            .restore_state(&ui_state[..ui_state.len() - 1])
+            .is_err()
+    );
 }

@@ -60,7 +60,9 @@ pub enum GraphError {
 impl fmt::Display for GraphError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            GraphError::DuplicateTarget(t) => write!(f, "render graph: target '{t}' is declared twice"),
+            GraphError::DuplicateTarget(t) => {
+                write!(f, "render graph: target '{t}' is declared twice")
+            }
             GraphError::DuplicatePass(p) => write!(f, "render graph: pass '{p}' is declared twice"),
             GraphError::MissingTarget { pass, target } => write!(
                 f,

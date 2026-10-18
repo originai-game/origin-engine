@@ -209,7 +209,9 @@ fn tab_walks_reading_order_and_shift_tab_walks_back() {
     }
     assert_eq!(
         seen,
-        ["B00", "B01", "B02", "B10", "B11", "B12", "B20", "B21", "B22", "B00"],
+        [
+            "B00", "B01", "B02", "B10", "B11", "B12", "B20", "B21", "B22", "B00"
+        ],
         "Tab in reading order, wrapping"
     );
     rig.step(

@@ -66,12 +66,13 @@ fn read_uri(
     let b = uri.as_bytes();
     let mut i = 0;
     while i < b.len() {
-        if b[i] == b'%' && i + 2 < b.len() {
-            if let Ok(v) = u8::from_str_radix(&uri[i + 1..i + 3], 16) {
-                path.push(v as char);
-                i += 3;
-                continue;
-            }
+        if b[i] == b'%'
+            && i + 2 < b.len()
+            && let Ok(v) = u8::from_str_radix(&uri[i + 1..i + 3], 16)
+        {
+            path.push(v as char);
+            i += 3;
+            continue;
         }
         path.push(b[i] as char);
         i += 1;

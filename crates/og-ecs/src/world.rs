@@ -8,7 +8,7 @@ use crate::schedule::{Command, System, SystemContext, SystemDesc, SystemInfo};
 use crate::state::{Block, StateBlock};
 use crate::storage::Archetype;
 use og_core::handle::HandleAllocator;
-use og_core::reflect::{schemas_to_json, Reflect, Schema};
+use og_core::reflect::{Reflect, Schema, schemas_to_json};
 use og_core::{Error, ErrorKind, Result, Rng, Time, TimeScale};
 use std::cell::{Ref, RefCell};
 use std::collections::BTreeMap;
@@ -168,11 +168,11 @@ impl World {
         let (id, _) = self.registry.register::<T>()?;
         self.grow_tables();
         // A host value of the layout the Rust type adopted becomes typed.
-        if let Some(slot) = self.resources[id.0 as usize].as_mut() {
-            if let ResourceValue::Raw(bytes) = slot.get_mut() {
-                let value = self.registry.decode::<T>(id, bytes)?;
-                *slot.get_mut() = ResourceValue::Typed(Box::new(value));
-            }
+        if let Some(slot) = self.resources[id.0 as usize].as_mut()
+            && let ResourceValue::Raw(bytes) = slot.get_mut()
+        {
+            let value = self.registry.decode::<T>(id, bytes)?;
+            *slot.get_mut() = ResourceValue::Typed(Box::new(value));
         }
         Ok(id)
     }
@@ -713,7 +713,9 @@ impl World {
         if !addressable {
             return Err(Error::new(
                 ErrorKind::Invalid,
-                format!("'{name}' is not an entity name: non-empty, at most {MAX_NAME} bytes, no whitespace, ':', ';' or '=', and not starting with '#'"),
+                format!(
+                    "'{name}' is not an entity name: non-empty, at most {MAX_NAME} bytes, no whitespace, ':', ';' or '=', and not starting with '#'"
+                ),
             ));
         }
         match self.by_name.get(name) {
@@ -722,7 +724,7 @@ impl World {
                 return Err(Error::new(
                     ErrorKind::Invalid,
                     format!("the name '{name}' already belongs to entity {holder}"),
-                ))
+                ));
             }
             None => {}
         }

@@ -52,12 +52,12 @@ pub mod system;
 #[path = "../../og-cook/src/qoa.rs"]
 pub mod qoa;
 
-pub use command::{Command, Op, TickPacket, COMMAND_BYTES};
+pub use command::{COMMAND_BYTES, Command, Op, TickPacket};
 pub use mixer::{Clock, MixStats, Mixer, MixerDesc};
 pub use schema::{
-    end_reason, Audio, AudioListener, AudioPlayback, AudioSource, AudioStream, Bus, SoundEnded,
-    SoundStarted, Transform,
+    Audio, AudioListener, AudioPlayback, AudioSource, AudioStream, Bus, SoundEnded, SoundStarted,
+    Transform, end_reason,
 };
-pub use sink::{wav, HeadlessMode, HeadlessSink, SinkStats};
+pub use sink::{HeadlessMode, HeadlessSink, SinkStats, wav};
 pub use sound::{SoundBank, SoundData};
-pub use system::{install, link, publish_link, retire_link, AudioDesc, AudioLink, SYSTEM_NAME};
+pub use system::{AudioDesc, AudioLink, SYSTEM_NAME, install, link, publish_link, retire_link};

@@ -7,10 +7,10 @@
 mod support;
 
 use og_core::glam::Vec3;
-use og_probe::command::{parse, CORE_ACTIONS};
+use og_probe::command::{CORE_ACTIONS, parse};
 use og_probe::{CommandDesc, Input, Payload};
-use serde_json::{json, Value};
-use support::{build, Camera, Harness, Health, Transform};
+use serde_json::{Value, json};
+use support::{Camera, Harness, Health, Transform, build};
 
 /// Run the host loop: one tick per frame until `quit` (or a bound).
 fn run(h: &mut Harness, max_ticks: u64) {
@@ -142,9 +142,10 @@ fn help_lists_every_action_core_and_registered() {
     ] {
         assert!(names.contains(&core), "{core}");
     }
-    assert!(help
-        .iter()
-        .all(|i| !i.doc.is_empty() && i.usage.starts_with(&i.name)));
+    assert!(
+        help.iter()
+            .all(|i| !i.doc.is_empty() && i.usage.starts_with(&i.name))
+    );
     let wave = help.last().unwrap();
     assert_eq!(
         (wave.usage.as_str(), wave.core),
@@ -186,10 +187,11 @@ fn help_lists_every_action_core_and_registered() {
             .is_err(),
         "names are snake_case"
     );
-    assert!(h
-        .probe
-        .register_command("spawn:wave", CommandDesc::default(), noop)
-        .is_err());
+    assert!(
+        h.probe
+            .register_command("spawn:wave", CommandDesc::default(), noop)
+            .is_err()
+    );
 }
 
 #[test]
@@ -387,11 +389,12 @@ fn pointer_and_key_actions_go_through_the_input_layer() {
     assert!(!input(&h).down("Digit1"), "every press is released");
     h.probe.schedule(&h.world, "0:key_down:Bogus").unwrap();
     h.probe.pump(&mut h.world);
-    assert!(h
-        .probe
-        .take_log()
-        .iter()
-        .any(|l| l.text.contains("refused key 'Bogus'")));
+    assert!(
+        h.probe
+            .take_log()
+            .iter()
+            .any(|l| l.text.contains("refused key 'Bogus'"))
+    );
 }
 
 #[test]

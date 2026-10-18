@@ -18,7 +18,7 @@ mod codec;
 mod ease;
 pub mod presets;
 
-pub use ease::{Ease, EASES, EASE_NAMES};
+pub use ease::{EASE_NAMES, EASES, Ease};
 
 use og_core::reflect::FieldType;
 use og_core::{Error, ErrorKind, Reflect, Result, Schema};
@@ -113,7 +113,7 @@ impl Target {
                 return Err(invalid(format!(
                     "{}.{field} is a {ty:?} field; tweens animate numbers (f32, f64, i32, u32, vectors, colours, quaternions)",
                     schema.name
-                )))
+                )));
             }
         };
         let mut t = Target {

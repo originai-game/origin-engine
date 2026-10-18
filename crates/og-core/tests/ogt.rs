@@ -1,7 +1,7 @@
 //! `.ogt`: the reader and the canonical writer round-trip.
 
-use og_core::ogt::{parse, Block, Document, Entry, Number, Value};
 use og_core::ErrorKind;
+use og_core::ogt::{Block, Document, Entry, Number, Value, parse};
 use std::path::{Path, PathBuf};
 
 const CANONICAL: &str = r#"type scene

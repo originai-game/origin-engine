@@ -3,7 +3,7 @@
 
 mod support;
 use glam::Vec2;
-use og_tilemap::{collision_rects, collision_rects_all, Rect};
+use og_tilemap::{Rect, collision_rects, collision_rects_all};
 use support::*;
 
 const FLOOR: usize = 0;

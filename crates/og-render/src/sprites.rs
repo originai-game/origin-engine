@@ -2,9 +2,9 @@
 //! (layer, kind, texture) so each run of one texture (or one font) in one
 //! layer is a single instanced draw.
 
+use crate::RenderError;
 use crate::effects::SpriteBlend;
 use crate::scene::{FontHandle, Glyph, RenderScene, Sprite, TextureHandle, TileLayer};
-use crate::RenderError;
 use glam::Vec2;
 use std::collections::HashMap;
 
@@ -158,14 +158,13 @@ fn tile_instances(
     for off in offsets {
         let at = origin + off;
         for c in layer.chunks.iter() {
-            if let Some(v) = view {
-                if at.x + c.max.x < v.min.x
+            if let Some(v) = view
+                && (at.x + c.max.x < v.min.x
                     || at.x + c.min.x > v.max.x
                     || at.y + c.max.y < v.min.y
-                    || at.y + c.min.y > v.max.y
-                {
-                    continue;
-                }
+                    || at.y + c.min.y > v.max.y)
+            {
+                continue;
             }
             chunks += 1;
             let first = out.len();
@@ -248,13 +247,13 @@ pub(crate) fn build<'a>(
         Vec::with_capacity(scene.sprites.len() + extra.len());
     let mut glowing: Vec<(Option<TextureHandle>, SpriteInstance)> = Vec::new();
     for (i, s) in scene.sprites.iter().enumerate() {
-        if let Some(t) = s.texture {
-            if t.index() >= texture_count {
-                return Err(RenderError::InvalidHandle(format!(
-                    "sprite {i}: texture {}",
-                    t.index()
-                )));
-            }
+        if let Some(t) = s.texture
+            && t.index() >= texture_count
+        {
+            return Err(RenderError::InvalidHandle(format!(
+                "sprite {i}: texture {}",
+                t.index()
+            )));
         }
         let found = if fx.is_empty() {
             None

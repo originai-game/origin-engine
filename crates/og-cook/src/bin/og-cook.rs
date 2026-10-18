@@ -3,7 +3,7 @@
 //! Cooks `<project>/assets` into `<project>/cooked` and prints the report. A
 //! development tool for this crate; `og cook` is the user-facing command.
 
-use og_cook::{cook_project, CookOptions};
+use og_cook::{CookOptions, cook_project};
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
@@ -37,7 +37,9 @@ fn main() -> ExitCode {
                 }
             }
             "-h" | "--help" => {
-                println!("usage: og-cook <project> [--threads N] [--report out.md] [--json out.json] [--schemas schema.json]");
+                println!(
+                    "usage: og-cook <project> [--threads N] [--report out.md] [--json out.json] [--schemas schema.json]"
+                );
                 return ExitCode::SUCCESS;
             }
             _ => root = Some(a),

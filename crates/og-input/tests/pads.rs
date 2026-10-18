@@ -12,7 +12,7 @@ use og_input::{
     Gamepad, GamepadAxis, GamepadState, InjectedInput, Input, InputLayer, InputSink, PointerAction,
     PointerButton, PointerDown, PointerUp, Pointers,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::{Arc, Mutex};
 
 fn touch(action: PointerAction, id: u32, x: f32, y: f32) -> InjectedInput {

@@ -47,7 +47,7 @@ use crate::registry::{Registry, SchemaId};
 use crate::state::Block;
 use crate::storage::Archetype;
 use crate::world::{
-    resource_to_bytes, Entities, EventQueue, Location, ResourceValue, World, MAX_NAME, PENDING,
+    Entities, EventQueue, Location, MAX_NAME, PENDING, ResourceValue, World, resource_to_bytes,
 };
 use og_core::handle::{HandleAllocator, RawHandle, SlotState};
 use og_core::hash::hash_bytes;
@@ -529,7 +529,7 @@ fn decode_blocks(
                     return Err(Error::new(
                         ErrorKind::NotFound,
                         format!("snapshot: state block '{name}' is not added to this world"),
-                    ))
+                    ));
                 }
             }
         }

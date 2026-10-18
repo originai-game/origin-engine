@@ -1,9 +1,9 @@
 //! Poses and the operations the system composes them with: sampling a clip,
 //! blending, additive layering, root-motion extraction and clip markers.
 
-use crate::asset::{ChannelPath, ClipAsset, SkeletonAsset, NONE};
+use crate::asset::{ChannelPath, ClipAsset, NONE, SkeletonAsset};
 use crate::schema::{BLENDSHAPES, ROOT_MOTION_FULL};
-use crate::xform::{nlerp, twist_y, Trs};
+use crate::xform::{Trs, nlerp, twist_y};
 use og_core::glam::{Quat, Vec3};
 
 /// Every node's local transform, plus the blendshape weights of one mesh.
@@ -66,11 +66,7 @@ impl Pose {
 }
 
 fn ratio(a: f32, b: f32) -> f32 {
-    if b == 0.0 {
-        1.0
-    } else {
-        a / b
-    }
+    if b == 0.0 { 1.0 } else { a / b }
 }
 
 /// Accumulates weighted poses (and root deltas) into their normalised blend,

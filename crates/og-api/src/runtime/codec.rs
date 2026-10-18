@@ -3,7 +3,7 @@
 //! its packed bytes (what `og-ecs` stores).
 
 use og_core::reflect::{FieldSchema, FieldType, Schema};
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 /// A column kind of the IDL (`reflect`, `world`, `render` modules).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -347,13 +347,13 @@ impl Layout {
                 return Err(format!(
                     "a '{}' value is an object, got {other}",
                     self.schema
-                ))
+                ));
             }
         };
-        if let Some(o) = obj {
-            if let Some(k) = o.keys().find(|k| self.field(k).is_none()) {
-                return Err(format!("'{}' has no field '{k}'", self.schema));
-            }
+        if let Some(o) = obj
+            && let Some(k) = o.keys().find(|k| self.field(k).is_none())
+        {
+            return Err(format!("'{}' has no field '{k}'", self.schema));
         }
         let mut out = Vec::with_capacity(self.size());
         for (i, f) in self.fields.iter().enumerate() {

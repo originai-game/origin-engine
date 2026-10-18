@@ -10,9 +10,9 @@
 mod support;
 
 use og_ecs::SystemDesc;
-use og_probe::{Rebuilt, Reloader, MEMBERS};
-use serde_json::{json, Value};
-use support::{base64_decode, build, bundle, Harness};
+use og_probe::{MEMBERS, Rebuilt, Reloader};
+use serde_json::{Value, json};
+use support::{Harness, base64_decode, build, bundle};
 
 const PARSE_ERROR: i64 = -32700;
 const INVALID_REQUEST: i64 = -32600;
@@ -90,10 +90,12 @@ fn every_member_answers_as_protocol_5_says() {
     assert_eq!(hello["protocol"], json!(5));
     assert_eq!(hello["wire"], json!(1));
     assert_eq!(hello["substrate"], json!("origin-engine"));
-    assert!(hello["engine"]
-        .as_str()
-        .unwrap()
-        .starts_with("origin-engine "));
+    assert!(
+        hello["engine"]
+            .as_str()
+            .unwrap()
+            .starts_with("origin-engine ")
+    );
     assert_eq!(hello["ticksPerSecond"], json!(60));
     assert_eq!(hello["tier"], json!("vulkan"));
     assert!(["dev", "release"].contains(&hello["build"].as_str().unwrap()));
@@ -410,19 +412,23 @@ fn every_member_answers_as_protocol_5_says() {
         .map(|a| a["count"].as_u64().unwrap())
         .sum();
     assert_eq!(counted, 5);
-    assert!(world["archetypes"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(
-            |a| a["components"] == json!(["og.Transform", "Mover", "Velocity", "Health"])
-                && a["count"] == json!(1)
-        ));
-    assert!(world["archetypes"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|a| a["components"] == json!(["og.Transform"]) && a["count"] == json!(3)));
+    assert!(
+        world["archetypes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(
+                |a| a["components"] == json!(["og.Transform", "Mover", "Velocity", "Health"])
+                    && a["count"] == json!(1)
+            )
+    );
+    assert!(
+        world["archetypes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|a| a["components"] == json!(["og.Transform"]) && a["count"] == json!(3))
+    );
     assert_eq!(
         world["systems"][0],
         json!({"name": "steer", "matched": 1, "reads": ["og.Input"], "writes": ["Velocity"], "ms": null})
@@ -759,11 +765,12 @@ fn reload_swaps_the_bundle_and_keeps_the_world() {
         hash,
         "a bundle that fails to load leaves the old one running"
     );
-    assert!(h
-        .probe
-        .take_log()
-        .iter()
-        .any(|l| l.warning && l.text.contains("Unexpected token")));
+    assert!(
+        h.probe
+            .take_log()
+            .iter()
+            .any(|l| l.warning && l.text.contains("Unexpected token"))
+    );
 
     h.probe.set_reloader(Box::new(WithoutHealth));
     let report = h.result("reload", json!({}));

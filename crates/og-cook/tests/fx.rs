@@ -5,10 +5,10 @@
 
 use og_cook::fx::parse_emitter;
 use og_cook::runtime::Bundle;
-use og_cook::{cook_project, CookOptions};
+use og_cook::{CookOptions, cook_project};
 use og_render::{
-    EmitterShape, ParticleAlign, ParticleBlend, ParticleRender, SheetMode, SimulationSpace,
-    LUT_SIZE,
+    EmitterShape, LUT_SIZE, ParticleAlign, ParticleBlend, ParticleRender, SheetMode,
+    SimulationSpace,
 };
 use std::path::PathBuf;
 

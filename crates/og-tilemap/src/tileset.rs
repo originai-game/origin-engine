@@ -296,10 +296,13 @@ impl Tileset {
         // Collide rects covering the whole tile are full tiles.
         let (tw, th) = (t.tile_width as f32, t.tile_height as f32);
         for d in t.tiles.values_mut() {
-            if let Some(Collision::Rect { x, y, w, h }) = d.collision {
-                if x <= 0.0 && y <= 0.0 && x + w >= tw && y + h >= th {
-                    d.collision = Some(Collision::Full);
-                }
+            if let Some(Collision::Rect { x, y, w, h }) = d.collision
+                && x <= 0.0
+                && y <= 0.0
+                && x + w >= tw
+                && y + h >= th
+            {
+                d.collision = Some(Collision::Full);
             }
         }
         t.validate()?;
@@ -503,7 +506,7 @@ fn parse_tile(block: &Block, t: &Tileset) -> Result<TileDef> {
                 return Err(err(
                     e.line,
                     format!("unknown key '{other}' in a tile block"),
-                ))
+                ));
             }
         }
     }
@@ -560,7 +563,7 @@ fn parse_terrain(name: String, block: &Block, line: usize) -> Result<Terrain> {
                 return Err(err(
                     e.line,
                     format!("unknown key '{other}' in a terrain block"),
-                ))
+                ));
             }
         }
     }

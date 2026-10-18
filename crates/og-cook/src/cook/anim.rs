@@ -244,7 +244,7 @@ fn events_of(
                 _ => {
                     return Err(format!(
                         "clip '{clip}': an extras.\"og.events\" entry needs \"name\" and \"time\", got {e}"
-                    ))
+                    ));
                 }
             }
         }

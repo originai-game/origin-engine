@@ -6,8 +6,8 @@
 //! then row order, both captured by a snapshot), static colliders after
 //! them in the order of query 3.
 
-use crate::schema::{Collider, RigidBody, Transform, Velocity};
 use crate::StepOut;
+use crate::schema::{Collider, RigidBody, Transform, Velocity};
 use og_core::glam::{Quat, Vec3};
 use og_core::{Layout, Reflect, Result};
 use og_ecs::{

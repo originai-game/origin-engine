@@ -4,7 +4,7 @@
 
 use og_audio::qoa;
 use og_audio::{
-    install, AudioDesc, AudioLink, AudioListener, AudioSource, SoundBank, SoundEnded, Transform,
+    AudioDesc, AudioLink, AudioListener, AudioSource, SoundBank, SoundEnded, Transform, install,
 };
 use og_core::glam::Vec3;
 use og_core::{Reflect, Rng};
@@ -138,14 +138,13 @@ pub fn scene(bank: &SoundBank, sounds: SceneSounds, options: SceneOptions) -> (W
                         ctx.set(e, Transform::at(Vec3::new(x, 0.0, -2.0)))?;
                     }
                 }
-                if let Some(at) = options.music_change_at {
-                    if tick == at {
-                        let music: Vec<_> =
-                            ctx.query(1)?.flat_map(|a| a.entities().to_vec()).collect();
-                        for e in music {
-                            let s = ctx.get::<AudioSource>(e)?;
-                            ctx.set(e, AudioSource { volume: 0.45, ..s })?;
-                        }
+                if let Some(at) = options.music_change_at
+                    && tick == at
+                {
+                    let music: Vec<_> = ctx.query(1)?.flat_map(|a| a.entities().to_vec()).collect();
+                    for e in music {
+                        let s = ctx.get::<AudioSource>(e)?;
+                        ctx.set(e, AudioSource { volume: 0.45, ..s })?;
                     }
                 }
                 let fire = ctx.resource_mut::<Rng>()?.next_f64() < 0.06;

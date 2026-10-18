@@ -344,7 +344,9 @@ fn the_widget_set_matches_its_reference_frame() {
     let reference = if own.exists() {
         own
     } else {
-        println!("no {tier} reference; comparing with the metal one. Record it with OG_UI_CAPTURE=1 on that tier");
+        println!(
+            "no {tier} reference; comparing with the metal one. Record it with OG_UI_CAPTURE=1 on that tier"
+        );
         dir("metal").join("widget-set.png")
     };
     let expected = image::open(&reference)

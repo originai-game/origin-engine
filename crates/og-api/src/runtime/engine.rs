@@ -8,7 +8,7 @@ use super::{ok, parse, refuse};
 use og_core::reflect::Reflect;
 use og_core::{Error, ErrorKind, Rng, Time};
 use og_ecs::{Entity, FieldRef, QueryDesc, SchemaId, SystemContext, SystemDesc, World, WorldDesc};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::cell::{Cell, RefCell, UnsafeCell};
 use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
@@ -354,7 +354,7 @@ impl Frame {
     /// the dispatch), and never held across another call into game code.
     #[allow(clippy::mut_from_ref)]
     pub unsafe fn ctx<'a>(&self) -> &'a mut SystemContext<'a> {
-        &mut *(self.ctx as *mut SystemContext<'a>)
+        unsafe { &mut *(self.ctx as *mut SystemContext<'a>) }
     }
 }
 
@@ -838,7 +838,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         Some(other) => {
             return Err(format!(
                 "options.profile is '{other}'; a project's profile is \"2d\" or \"3d\""
-            ))
+            ));
         }
     };
     let mut a = assemble(game, seed, engine_id, profile, None)?;

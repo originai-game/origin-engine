@@ -5,7 +5,7 @@
 //! `OG_GFX_CAPTURE=1` (re)records every reference instead of comparing;
 //! `OG_GFX_CAPTURE=scene-a,scene-b` records only those scenes.
 
-use crate::compare::{compare, Comparison};
+use crate::compare::{Comparison, compare};
 use crate::scenes::{self, GfxScene};
 use og_render::{FrameStats, RenderInfo, RenderTarget, Renderer, RgbaImage};
 use std::path::{Path, PathBuf};
@@ -173,7 +173,10 @@ pub fn check(scene: &str, out_dir: &Path) -> Result<GfxReport, String> {
         return Ok(report);
     }
     if !reference.exists() {
-        return Err(format!("{report}: no reference at {} for backend tier '{tier}'; record one with OG_GFX_CAPTURE={scene}", reference.display()));
+        return Err(format!(
+            "{report}: no reference at {} for backend tier '{tier}'; record one with OG_GFX_CAPTURE={scene}",
+            reference.display()
+        ));
     }
     let expected = load_png(&reference)?;
     if (expected.width, expected.height) != (rendered.image.width, rendered.image.height) {

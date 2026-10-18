@@ -6,7 +6,7 @@
 //! files under `packages/engine/`). [`check`] regenerates into a temporary
 //! directory and compares, which is the drift check behind `og api check`.
 
-mod gen;
+mod r#gen;
 /// The host contract generated from the IDL: the traits `og-host-web` and
 /// `og-host-node` implement (`og api gen` writes `src/generated/host.rs`).
 #[rustfmt::skip]
@@ -144,31 +144,31 @@ pub fn generate(api: &Api) -> Vec<Generated> {
     vec![
         Generated {
             path: "packages/engine/types/index.d.ts".to_string(),
-            contents: gen::ts::dts(&ix),
+            contents: r#gen::ts::dts(&ix),
         },
         Generated {
             path: "packages/engine/types/bindings.json".to_string(),
-            contents: gen::tables::bindings(&ix),
+            contents: r#gen::tables::bindings(&ix),
         },
         Generated {
             path: "packages/engine/schema/api.schema.json".to_string(),
-            contents: gen::tables::schema(&ix),
+            contents: r#gen::tables::schema(&ix),
         },
         Generated {
             path: "packages/engine/src/generated/abi.ts".to_string(),
-            contents: gen::host::abi_ts(&ix),
+            contents: r#gen::host::abi_ts(&ix),
         },
         Generated {
             path: "crates/og-api/src/generated/host.rs".to_string(),
-            contents: gen::host::host_rs(&ix),
+            contents: r#gen::host::host_rs(&ix),
         },
         Generated {
             path: "crates/og-host-web/src/generated/glue.rs".to_string(),
-            contents: gen::host::glue(&ix, gen::host::Target::Web),
+            contents: r#gen::host::glue(&ix, r#gen::host::Target::Web),
         },
         Generated {
             path: "crates/og-host-node/src/generated/glue.rs".to_string(),
-            contents: gen::host::glue(&ix, gen::host::Target::Node),
+            contents: r#gen::host::glue(&ix, r#gen::host::Target::Node),
         },
     ]
     .into_iter()
@@ -187,7 +187,7 @@ pub fn generate_wiki(api: &Api) -> Vec<Generated> {
 pub const WIKI_DIR: &str = "packages/knowledge/wiki";
 
 fn wiki_pages(ix: &Index<'_>) -> Vec<Generated> {
-    gen::wiki::pages(ix)
+    r#gen::wiki::pages(ix)
         .into_iter()
         .map(|(name, contents)| Generated {
             path: format!("{WIKI_DIR}/{name}"),

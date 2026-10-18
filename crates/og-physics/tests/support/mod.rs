@@ -6,7 +6,7 @@ pub mod pile;
 
 use og_core::glam::{Quat, Vec3};
 use og_ecs::{Entity, World, WorldDesc};
-use og_physics::{install, Collider, Physics, PhysicsSystem, RigidBody, Transform, Velocity};
+use og_physics::{Collider, Physics, PhysicsSystem, RigidBody, Transform, Velocity, install};
 
 /// A 60 Hz world with `og.Transform` registered as the physics crate's Rust
 /// type and physics installed with `settings`.

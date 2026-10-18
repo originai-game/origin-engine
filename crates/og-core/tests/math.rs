@@ -4,8 +4,8 @@
 //! of this crate (CPython's `math` in f64, then rounded once to f32). Every
 //! host must reproduce them bit for bit; that is the cross-host contract.
 
-use og_core::math::{atan, atan2, cos, exp, ln, pow, quat_from_axis_angle, sin, sin_cos, Vec3};
 use og_core::Rng;
+use og_core::math::{Vec3, atan, atan2, cos, exp, ln, pow, quat_from_axis_angle, sin, sin_cos};
 
 const SIN: &[(u32, u32)] = &[
     (0x00000000, 0x00000000), // sin(0.0)

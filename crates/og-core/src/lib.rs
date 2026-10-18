@@ -16,7 +16,9 @@
 //! floating-point library; byte layouts are little-endian.
 
 #[cfg(target_endian = "big")]
-compile_error!("Origin Engine stores packed layouts and snapshots little-endian; big-endian hosts are not supported");
+compile_error!(
+    "Origin Engine stores packed layouts and snapshots little-endian; big-endian hosts are not supported"
+);
 
 // The derive names `::og_core`; this lets the crate use it on its own types.
 extern crate self as og_core;
@@ -34,7 +36,7 @@ pub use error::{Error, ErrorKind, Result};
 pub use handle::{Handle, HandleAllocator, Pool, RawHandle};
 pub use og_core_derive::Reflect;
 pub use reflect::{
-    Bool8, FieldSchema, FieldType, FieldValue, Layout, Reflect, ReflectField, Schema, Str256, Str64,
+    Bool8, FieldSchema, FieldType, FieldValue, Layout, Reflect, ReflectField, Schema, Str64, Str256,
 };
 pub use rng::Rng;
 pub use time::{Time, TimeScale};

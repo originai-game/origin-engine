@@ -102,13 +102,15 @@ pub fn og_node_audio_open(engine: u32, mode: String, sample_rate: Option<u32>) -
             Err(e) => return refuse(&e),
         },
         #[cfg(not(feature = "native-audio"))]
-        "device" => return refuse(
-            "this addon was built without the `native-audio` feature (cpal); use null or capture",
-        ),
+        "device" => {
+            return refuse(
+                "this addon was built without the `native-audio` feature (cpal); use null or capture",
+            );
+        }
         other => {
             return refuse(&format!(
                 "unknown audio mode '{other}': null, capture or device"
-            ))
+            ));
         }
     };
     SINKS.with(|s| s.borrow_mut().insert(engine, sink));

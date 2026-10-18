@@ -81,11 +81,7 @@ impl Trs {
 }
 
 fn recip(x: f32) -> f32 {
-    if x == 0.0 {
-        0.0
-    } else {
-        1.0 / x
-    }
+    if x == 0.0 { 0.0 } else { 1.0 / x }
 }
 
 /// `q` normalised; a zero or non-finite quaternion is the identity.

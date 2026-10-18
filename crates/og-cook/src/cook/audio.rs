@@ -28,7 +28,7 @@ pub fn cook(bytes: &[u8], stamp: u64) -> Result<(Vec<u8>, String), CookError> {
         (f, b) => {
             return Err(CookError(format!(
                 "WAV: {b}-bit {f:?} samples are not supported"
-            )))
+            )));
         }
     }
     .map_err(|e| CookError(format!("WAV: {e}")))?;

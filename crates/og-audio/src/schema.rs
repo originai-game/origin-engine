@@ -2,8 +2,8 @@
 //! types are the layout (`og_core::reflect`); `crates/og-audio/README.md`
 //! lists them for the IDL (`crates/og-api/api.ogt`).
 
-use og_core::glam::{Quat, Vec3};
 use og_core::Reflect;
+use og_core::glam::{Quat, Vec3};
 
 /// The buses a source can play on. `Master` is also the gain every bus
 /// passes through.

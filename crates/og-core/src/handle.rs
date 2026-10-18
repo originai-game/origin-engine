@@ -208,7 +208,7 @@ impl HandleAllocator {
                 None => return invalid(format!("free list names slot {index}, past the end")),
                 Some(s) if s.alive => return invalid(format!("free list names live slot {index}")),
                 Some(_) if in_free[index as usize] => {
-                    return invalid(format!("free list names slot {index} twice"))
+                    return invalid(format!("free list names slot {index} twice"));
                 }
                 Some(_) => in_free[index as usize] = true,
             }

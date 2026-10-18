@@ -11,12 +11,12 @@
 //! a live handle and a stale number cannot alias a later asset.
 
 use super::codec::Layout;
-use super::engine::{before_structural, hooks, Engine};
+use super::engine::{Engine, before_structural, hooks};
 use super::extract::add_font;
 use og_cook::runtime::{Bundle, CookedSound, SceneDesc};
 use og_core::reflect::{FieldType, Schema};
 use og_ecs::Entity;
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 use std::collections::BTreeMap;
 
 /// What a host answers for a read or a decode.
@@ -254,7 +254,7 @@ pub(crate) fn load_gltf(eng: &Engine, path: &str) -> Result<usize, String> {
             let data = match hooks().map(|h| h.texture(&tex)) {
                 Some(Fetch::Ready(d)) => d,
                 Some(Fetch::Pending) => {
-                    return Err(format!("{}: the texture is still being transcoded", t.id))
+                    return Err(format!("{}: the texture is still being transcoded", t.id));
                 }
                 Some(Fetch::Failed(e)) => return Err(format!("{}: {e}", t.id)),
                 None => return Err("no host is installed to decode textures".into()),
@@ -397,7 +397,7 @@ pub(crate) fn load_texture(eng: &Engine, path: &str) -> Result<usize, String> {
         match hooks().map(|h| h.texture(&tex)) {
             Some(Fetch::Ready(d)) => d,
             Some(Fetch::Pending) => {
-                return Err(format!("{id}: the texture is still being transcoded"))
+                return Err(format!("{id}: the texture is still being transcoded"));
             }
             Some(Fetch::Failed(e)) => return Err(format!("{id}: {e}")),
             None => return Err("no host is installed to decode textures".into()),
@@ -593,13 +593,11 @@ pub(crate) fn spawn_scene(
                     .is_some_and(|tl| tl.schema == layout.schema);
             }
         }
-        if !has_transform {
-            if let Some(tl) = &transform {
-                let id = world
-                    .id_by_name(&tl.schema)
-                    .map_err(|e| e.reason().to_string())?;
-                components.push((id, tl.encode(None, None)?));
-            }
+        if !has_transform && let Some(tl) = &transform {
+            let id = world
+                .id_by_name(&tl.schema)
+                .map_err(|e| e.reason().to_string())?;
+            components.push((id, tl.encode(None, None)?));
         }
         let parent = e.parent.and_then(|p| spawned.get(p).copied()).or(root);
         if let (Some(p), Some(pl)) = (parent, &parent_layout) {

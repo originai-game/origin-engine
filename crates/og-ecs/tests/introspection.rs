@@ -2,8 +2,8 @@
 //! world: `system_info` (declarations and matched counts), entity names (in
 //! snapshots and the hash), and the structural-change counter.
 
-use og_core::math::Vec3;
 use og_core::ErrorKind;
+use og_core::math::Vec3;
 use og_ecs::{QueryDesc, Reflect, SystemDesc, World, WorldDesc};
 
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]

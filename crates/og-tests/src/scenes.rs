@@ -6,11 +6,11 @@
 use crate::compare::Tolerance;
 use crate::fx_scenes as fx;
 use glam::{Mat4, Quat, Vec2, Vec3};
-use og_render::gltf::{load_glb, GltfModel};
+use og_render::gltf::{GltfModel, load_glb};
 use og_render::{
-    shapes, Antialias, Background, Bloom, Camera, ColorSpace, DirectionalLight, Environment,
-    Exposure, Glyph, Light, LightKind, Material, Mips, MsdfFont, ProceduralSky, Projection,
-    RenderDesc, RenderScene, ShadowBounds, Sprite, Text, TextureData, Tier, Tonemap,
+    Antialias, Background, Bloom, Camera, ColorSpace, DirectionalLight, Environment, Exposure,
+    Glyph, Light, LightKind, Material, Mips, MsdfFont, ProceduralSky, Projection, RenderDesc,
+    RenderScene, ShadowBounds, Sprite, Text, TextureData, Tier, Tonemap, shapes,
 };
 use std::path::PathBuf;
 
@@ -234,7 +234,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             return Err(format!(
                 "unknown gfx scene '{other}' (known: {})",
                 SCENES.join(", ")
-            ))
+            ));
         }
     }
     Ok(g)
@@ -760,7 +760,13 @@ pub const TEXT_LINES: &[(&str, f32, f32, f32, [f32; 4])] = &[
         0.55,
         [0.6, 0.85, 1.0, 1.0],
     ),
-    ("tiny 12px-ish text stays legible", -9.2, -4.2, 0.32, [0.8, 0.8, 0.8, 1.0]),
+    (
+        "tiny 12px-ish text stays legible",
+        -9.2,
+        -4.2,
+        0.32,
+        [0.8, 0.8, 0.8, 1.0],
+    ),
 ];
 
 fn text_scene() -> Result<RenderScene, String> {
@@ -1076,7 +1082,7 @@ fn layout(scene: &mut RenderScene, models: &[Parts], count: u32, spacing: f32) {
 
 /// A 256x256 map of 1-unit tiles in four layers, drawn as og-tilemap chunks.
 pub fn tilemap_256() -> RenderScene {
-    use og_tilemap::{chunk_quads, Layer, MapState, TilemapAsset, Tileset, TilesetRef};
+    use og_tilemap::{Layer, MapState, TilemapAsset, Tileset, TilesetRef, chunk_quads};
     use std::sync::Arc;
     let mut scene = RenderScene::new();
     // A 128x128 atlas of 16 tiles of 32 px, each a distinct colour.

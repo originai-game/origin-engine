@@ -1,7 +1,7 @@
 //! Layered maps (`.ogt` of `type tilemap`, or imported by the cook from
 //! Tiled and LDtk) and their coordinates.
 
-use crate::tileset::{num, uint, Tileset};
+use crate::tileset::{Tileset, num, uint};
 use glam::Vec2;
 use og_core::ogt::{Document, Entry};
 use og_core::{Error, ErrorKind, Result};
@@ -169,7 +169,10 @@ impl TilemapAsset {
             } else if l.cells.iter().any(|c| c & FLIP_DIAGONAL != 0) {
                 return Err(err(
                     0,
-                    format!("layer '{}' has a diagonally flipped (rotated) tile, which maps do not support", l.name),
+                    format!(
+                        "layer '{}' has a diagonally flipped (rotated) tile, which maps do not support",
+                        l.name
+                    ),
                 ));
             }
         }
@@ -286,7 +289,7 @@ impl TilemapAsset {
                         return Err(err(
                             p.line,
                             format!("unknown key '{other}' in an object block"),
-                        ))
+                        ));
                     }
                 }
             }
@@ -378,7 +381,7 @@ fn parse_layer(e: &Entry, m: &TilemapAsset, index: i32) -> Result<Layer> {
                 return Err(err(
                     p.line,
                     format!("unknown key '{other}' in a layer block"),
-                ))
+                ));
             }
         }
     }

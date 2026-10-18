@@ -204,7 +204,9 @@ fn the_probe_is_protocol_5_plus_the_wire_members_with_the_publish_trim() {
     let names: Vec<&str> = engine.iter().map(|(n, _)| n.as_str()).collect();
     assert_eq!(
         names,
-        ["hello", "capture", "sweep", "reload", "snapshot", "restore", "dump", "commands"]
+        [
+            "hello", "capture", "sweep", "reload", "snapshot", "restore", "dump", "commands"
+        ]
     );
     assert_eq!(
         iface("EngineProbe").extends.as_deref(),
@@ -219,7 +221,9 @@ fn the_probe_is_protocol_5_plus_the_wire_members_with_the_publish_trim() {
         .collect();
     assert_eq!(
         published,
-        ["version", "tick", "state", "input", "pick", "entity", "hello", "capture"]
+        [
+            "version", "tick", "state", "input", "pick", "entity", "hello", "capture"
+        ]
     );
 }
 

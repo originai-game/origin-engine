@@ -68,11 +68,11 @@ fn api_check_passes_on_the_repository() {
 fn api_check_detects_a_hand_edit_and_a_stray_file_and_gen_repairs_them() {
     let root = scratch_root();
     let root_arg = root.to_str().unwrap();
-    let gen = og()
+    let r#gen = og()
         .args(["api", "gen", "--root", root_arg])
         .output()
         .unwrap();
-    assert!(gen.status.success(), "{}", text(&gen));
+    assert!(r#gen.status.success(), "{}", text(&r#gen));
     let clean = og()
         .args(["api", "check", "--root", root_arg])
         .output()
@@ -111,16 +111,18 @@ fn api_check_detects_a_hand_edit_and_a_stray_file_and_gen_repairs_them() {
     );
 
     std::fs::remove_file(root.join("packages/engine/schema/notes.json")).unwrap();
-    assert!(og()
-        .args(["api", "gen", "--root", root_arg])
-        .status()
-        .unwrap()
-        .success());
-    assert!(og()
-        .args(["api", "check", "--root", root_arg])
-        .status()
-        .unwrap()
-        .success());
+    assert!(
+        og().args(["api", "gen", "--root", root_arg])
+            .status()
+            .unwrap()
+            .success()
+    );
+    assert!(
+        og().args(["api", "check", "--root", root_arg])
+            .status()
+            .unwrap()
+            .success()
+    );
     assert_eq!(std::fs::read_to_string(&dts).unwrap(), original);
     let _ = std::fs::remove_dir_all(&root);
 }
@@ -310,7 +312,9 @@ fn build_refuses_a_bad_publish_setting_by_line() {
     std::fs::create_dir_all(dir.join("src")).unwrap();
     std::fs::write(dir.join("src/main.ts"), "export default 0;\n").unwrap();
     let manifest = |publish: &str| {
-        format!("type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\npublish {{\n{publish}\n}}\n")
+        format!(
+            "type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\npublish {{\n{publish}\n}}\n"
+        )
     };
     for (publish, expect) in [
         (

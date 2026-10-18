@@ -3,7 +3,7 @@
 //! member and the command channel deliver it. The same shape as og-probe's
 //! interim `input` module, so the probe can re-export these types.
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KeyAction {

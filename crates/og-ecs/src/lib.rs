@@ -49,6 +49,6 @@ pub use registry::{FieldRef, SchemaId};
 pub use schedule::{SystemContext, SystemDesc, SystemInfo};
 pub use snapshot::MigrationReport;
 pub use state::StateBlock;
-pub use world::{Bundle, BundleEncoder, World, WorldDesc, MAX_NAME};
+pub use world::{Bundle, BundleEncoder, MAX_NAME, World, WorldDesc};
 
 pub use og_core::{Error, ErrorKind, Reflect, Result};

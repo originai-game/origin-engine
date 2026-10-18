@@ -4,11 +4,11 @@
 //! cascade count, and bounded, cancellable capture.
 
 use glam::{Mat4, Vec3};
-use og_core::reflect::{from_bytes, to_bytes, Layout, Reflect};
+use og_core::reflect::{Layout, Reflect, from_bytes, to_bytes};
 use og_render::{
-    shapes, Background, Camera, ColorSpace, DebugView, FrameStats, Material, RenderDesc,
-    RenderError, RenderScene, RenderTarget, Renderer, RgbaImage, Side, StandardMaterial,
-    TextureCompression, TextureFormat, Tonemap,
+    Background, Camera, ColorSpace, DebugView, FrameStats, Material, RenderDesc, RenderError,
+    RenderScene, RenderTarget, Renderer, RgbaImage, Side, StandardMaterial, TextureCompression,
+    TextureFormat, Tonemap, shapes,
 };
 use og_tests::{blocks, compare, scenes};
 use std::path::PathBuf;
@@ -671,12 +671,11 @@ fn cascade_count_is_one_to_three() {
         let mut seen = [0usize; 3];
         for p in img.pixels.as_chunks::<4>().0.iter() {
             let max = *p[..3].iter().max().expect("rgb");
-            if max > 100 {
-                if let Some(c) =
+            if max > 100
+                && let Some(c) =
                     (0..3).find(|&c| p[c] == max && (0..3).all(|o| o == c || p[o] < 60))
-                {
-                    seen[c] += 1;
-                }
+            {
+                seen[c] += 1;
             }
         }
         println!("{cascades} cascades requested: pixels per cascade colour {seen:?}");

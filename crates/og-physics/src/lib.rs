@@ -40,7 +40,7 @@ mod dim3;
 
 pub use schema::*;
 
-use gather::{Ids, Scene, QUERIES};
+use gather::{Ids, QUERIES, Scene};
 use og_core::glam::{Quat, Vec3};
 use og_core::{Error, ErrorKind, Result};
 use og_ecs::{Entity, StateBlock, SystemContext, SystemDesc, World};
@@ -280,7 +280,7 @@ impl StateBlock for PhysicsState {
                 return Err(Error::new(
                     ErrorKind::Invalid,
                     format!("a {tag}D physics world; this engine lacks that profile"),
-                ))
+                ));
             }
         };
         Ok(Box::new(saved))
@@ -358,7 +358,7 @@ impl PhysicsSystem {
         &self,
     ) -> (
         SystemDesc,
-        impl Fn(&mut SystemContext<'_>) -> Result<()> + Send + 'static,
+        impl Fn(&mut SystemContext<'_>) -> Result<()> + Send + 'static + use<>,
     ) {
         let mut desc = SystemDesc::new(QUERY_SYSTEM_NAME)
             .read::<Physics>()
@@ -395,7 +395,9 @@ impl PhysicsSystem {
         let Some((settings, scene)) = shared.recorded.take() else {
             return Err(Error::new(
                 ErrorKind::Invalid,
-                format!("no tick has recorded the colliders yet: {QUERY_SYSTEM_NAME} runs at the start of each tick; between ticks, query the world"),
+                format!(
+                    "no tick has recorded the colliders yet: {QUERY_SYSTEM_NAME} runs at the start of each tick; between ticks, query the world"
+                ),
             ));
         };
         let built = QueryInner::build(settings.profile, &scene, &mut shared);
@@ -438,7 +440,7 @@ fn check_profile(profile: u32) -> Result<()> {
             return Err(Error::new(
                 ErrorKind::Invalid,
                 format!("og.Physics.profile is {other}; it must be 2 (2D) or 3 (3D)"),
-            ))
+            ));
         }
     };
     if built {
@@ -446,7 +448,9 @@ fn check_profile(profile: u32) -> Result<()> {
     } else {
         Err(Error::new(
             ErrorKind::Invalid,
-            format!("og.Physics.profile {profile}: this engine was built without the physics{profile}d feature"),
+            format!(
+                "og.Physics.profile {profile}: this engine was built without the physics{profile}d feature"
+            ),
         ))
     }
 }
@@ -569,11 +573,7 @@ pub(crate) fn unit(q: Quat) -> Quat {
 }
 
 fn max_distance(d: f32) -> f32 {
-    if d > 0.0 {
-        d
-    } else {
-        f32::MAX
-    }
+    if d > 0.0 { d } else { f32::MAX }
 }
 
 impl PhysicsQuery {

@@ -10,7 +10,7 @@
 //! ```
 
 use og_ecs::World;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::fmt;
 use std::rc::Rc;
 
@@ -176,30 +176,102 @@ impl CommandInfo {
 /// The actions the engine ships: name, usage, doc (design §3.3, IDL
 /// `commands.CoreAction`, plus `help`).
 pub const CORE_ACTIONS: &[(&str, &str, &str)] = &[
-    ("screenshot", "screenshot[:path][:full|:N]", "Capture the frame at this tick: the render target's size, `full` the same, `N` a long edge of N pixels."),
-    ("touch_move_to", "touch_move_to:<ui id>", "Move the pointer to the centre of a UI element by its id, or a `Parent/Child` path of ids."),
-    ("touch_move", "touch_move:x,y", "Move the pointer to CSS pixel coordinates."),
-    ("touch_start", "touch_start", "Press the pointer (left button) where it is."),
+    (
+        "screenshot",
+        "screenshot[:path][:full|:N]",
+        "Capture the frame at this tick: the render target's size, `full` the same, `N` a long edge of N pixels.",
+    ),
+    (
+        "touch_move_to",
+        "touch_move_to:<ui id>",
+        "Move the pointer to the centre of a UI element by its id, or a `Parent/Child` path of ids.",
+    ),
+    (
+        "touch_move",
+        "touch_move:x,y",
+        "Move the pointer to CSS pixel coordinates.",
+    ),
+    (
+        "touch_start",
+        "touch_start",
+        "Press the pointer (left button) where it is.",
+    ),
     ("touch_end", "touch_end", "Release the pointer where it is."),
-    ("scroll", "scroll:dx,dy", "Scroll at the pointer by CSS pixels."),
-    ("touch", "touch:<id>:<down|move|up>:<x,y | ui id>", "A further touch (pointer 1 to 4, og.Pointers) while the pointer is held elsewhere: press, move or lift it at CSS pixel coordinates or a UI element's centre."),
-    ("gamepad", "gamepad:<a+b+...|->[:lx,ly[,rx,ry]][:lt,rt]", "Set pad 0's whole state (og.Gamepad): the standard buttons held, joined by `+` (`-` none), the stick axes (y down) and the triggers; `gamepad:off` disconnects it."),
-    ("key_down", "key_down:<Key>", "Hold a key by its KeyboardEvent.code, such as `KeyW` or `Space`."),
+    (
+        "scroll",
+        "scroll:dx,dy",
+        "Scroll at the pointer by CSS pixels.",
+    ),
+    (
+        "touch",
+        "touch:<id>:<down|move|up>:<x,y | ui id>",
+        "A further touch (pointer 1 to 4, og.Pointers) while the pointer is held elsewhere: press, move or lift it at CSS pixel coordinates or a UI element's centre.",
+    ),
+    (
+        "gamepad",
+        "gamepad:<a+b+...|->[:lx,ly[,rx,ry]][:lt,rt]",
+        "Set pad 0's whole state (og.Gamepad): the standard buttons held, joined by `+` (`-` none), the stick axes (y down) and the triggers; `gamepad:off` disconnects it.",
+    ),
+    (
+        "key_down",
+        "key_down:<Key>",
+        "Hold a key by its KeyboardEvent.code, such as `KeyW` or `Space`.",
+    ),
     ("key_up", "key_up:<Key>", "Release a key."),
-    ("type", "type:<text>", "Type text, one key press per character (Shift for capitals and symbols)."),
-    ("move_to_text", "move_to_text:[=]text[@N]", "Move the pointer to the UI element showing the text: a substring, exactly with `=`, the Nth match (0-based, negative from the end) with `@N`; topmost first."),
-    ("teleport", "teleport:<entity>:x,y[,z]", "Set an entity's Transform.position."),
-    ("frame_entity", "frame_entity:<entity>", "Turn the Camera resource to look at an entity's Transform.position."),
-    ("dump_world", "dump_world[:path]", "Write the world dump: archetype tables, systems and their matched counts, resources."),
-    ("dump_entity", "dump_entity:<entity>[:path]", "Write one entity's dump: its components with every field, and its transform."),
-    ("dump_ui", "dump_ui[:path]", "Write the UI tree with bounds."),
-    ("set", "set:<entity>.<component>.<field>=<value>", "Write one field through the schema; vectors as `x,y,z`; range-checked, never clamped."),
+    (
+        "type",
+        "type:<text>",
+        "Type text, one key press per character (Shift for capitals and symbols).",
+    ),
+    (
+        "move_to_text",
+        "move_to_text:[=]text[@N]",
+        "Move the pointer to the UI element showing the text: a substring, exactly with `=`, the Nth match (0-based, negative from the end) with `@N`; topmost first.",
+    ),
+    (
+        "teleport",
+        "teleport:<entity>:x,y[,z]",
+        "Set an entity's Transform.position.",
+    ),
+    (
+        "frame_entity",
+        "frame_entity:<entity>",
+        "Turn the Camera resource to look at an entity's Transform.position.",
+    ),
+    (
+        "dump_world",
+        "dump_world[:path]",
+        "Write the world dump: archetype tables, systems and their matched counts, resources.",
+    ),
+    (
+        "dump_entity",
+        "dump_entity:<entity>[:path]",
+        "Write one entity's dump: its components with every field, and its transform.",
+    ),
+    (
+        "dump_ui",
+        "dump_ui[:path]",
+        "Write the UI tree with bounds.",
+    ),
+    (
+        "set",
+        "set:<entity>.<component>.<field>=<value>",
+        "Write one field through the schema; vectors as `x,y,z`; range-checked, never clamped.",
+    ),
     ("seed", "seed:<n>", "Reseed the world's Rng resource."),
     ("pause", "pause", "Hold the clock; advance still steps."),
     ("resume", "resume", "Release the clock."),
-    ("advance", "advance:<ticks>", "Take fixed steps now (at most 3600), running the steps scheduled on the way."),
+    (
+        "advance",
+        "advance:<ticks>",
+        "Take fixed steps now (at most 3600), running the steps scheduled on the way.",
+    ),
     ("quit", "quit", "End the run."),
-    ("help", "help", "List every action the channel knows, core and registered."),
+    (
+        "help",
+        "help",
+        "List every action the channel knows, core and registered.",
+    ),
 ];
 
 /// What scheduling a script did.

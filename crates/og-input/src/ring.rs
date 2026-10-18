@@ -28,7 +28,7 @@
 //! first 2^31 events of a page.
 
 use crate::event::{
-    GamepadState, InjectedInput, KeyAction, Modifiers, PointerAction, PointerButton, MAX_GAMEPADS,
+    GamepadState, InjectedInput, KeyAction, MAX_GAMEPADS, Modifiers, PointerAction, PointerButton,
 };
 
 /// Header words (write index, read index).

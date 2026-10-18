@@ -9,8 +9,8 @@
 //! cancelled tween, twice, or never; a dead target keeps the tween alive;
 //! a snapshot mid-tween restores a world that animates differently.
 
-use og_core::glam::Vec3;
 use og_core::Reflect;
+use og_core::glam::Vec3;
 use og_ecs::{Entity, World, WorldDesc};
 use og_tween::*;
 
@@ -419,16 +419,20 @@ fn targets_must_be_numeric_fields_and_values_must_fit() {
     assert!(refuse("opacity.x").contains("no lane"));
     assert!(refuse("position.w").contains("no lane"));
     let v = target(&w, e, "position");
-    assert!(t
-        .start(Node::Leaf(Leaf::new(v, vec![1.0, 2.0])), false, 0)
-        .is_err());
-    assert!(t
-        .start(Node::Leaf(Leaf::new(v, vec![f32::NAN])), false, 0)
-        .is_err());
-    assert!(t
-        .start(Node::Leaf(Leaf::new(v, vec![1.0]).duration(-1.0)), false, 0)
-        .is_err());
-    assert!(t
-        .start(Node::group(GroupKind::Parallel, vec![], 0), false, 0)
-        .is_err());
+    assert!(
+        t.start(Node::Leaf(Leaf::new(v, vec![1.0, 2.0])), false, 0)
+            .is_err()
+    );
+    assert!(
+        t.start(Node::Leaf(Leaf::new(v, vec![f32::NAN])), false, 0)
+            .is_err()
+    );
+    assert!(
+        t.start(Node::Leaf(Leaf::new(v, vec![1.0]).duration(-1.0)), false, 0)
+            .is_err()
+    );
+    assert!(
+        t.start(Node::group(GroupKind::Parallel, vec![], 0), false, 0)
+            .is_err()
+    );
 }

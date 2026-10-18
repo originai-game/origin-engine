@@ -1,10 +1,10 @@
 //! Meaning checks over a loaded API. Every rule here is listed in
 //! `crates/og-api/README.md` §Validation; a rule added here is added there.
 
-use crate::index::{Index, TypeDecl, ARRAYS, GENERICS, META, PRIMITIVES};
+use crate::Diagnostic;
+use crate::index::{ARRAYS, GENERICS, Index, META, PRIMITIVES, TypeDecl};
 use crate::model::*;
 use crate::values::{as_f64, is_number, show as show_value};
-use crate::Diagnostic;
 use og_core::ogt::Value;
 use std::collections::BTreeSet;
 
@@ -109,7 +109,7 @@ impl<'a> Validator<'a, '_> {
         }
 
         let mut symbols = std::collections::BTreeMap::new();
-        for b in crate::gen::bindings(self.ix) {
+        for b in crate::r#gen::bindings(self.ix) {
             let line = b
                 .function
                 .map(|f| f.line)
@@ -269,10 +269,10 @@ impl<'a> Validator<'a, '_> {
             }
             self.doc(&p.doc, p.line, || format!("param `{}` of {what}", p.name));
             self.ty(&p.ty, generics, p.line);
-            if let Some(d) = &p.default {
-                if let Err(e) = self.value(&p.ty, d) {
-                    self.error(p.line, format!("default of param `{}`: {e}", p.name));
-                }
+            if let Some(d) = &p.default
+                && let Err(e) = self.value(&p.ty, d)
+            {
+                self.error(p.line, format!("default of param `{}`: {e}", p.name));
             }
             if p.flatten && !self.ix.is_desc(&p.ty) {
                 self.error(
@@ -397,16 +397,16 @@ impl<'a> Validator<'a, '_> {
     fn interface(&mut self, i: &'a Interface) {
         self.name(pascal, &i.name, i.line, "interface", "PascalCase");
         self.doc(&i.doc, i.line, || format!("interface `{}`", i.name));
-        if let Some(base) = &i.extends {
-            if self.ix.interface(base).is_none() {
-                self.error(
-                    i.line,
-                    format!(
-                        "interface `{}` extends `{base}`, which is not an interface",
-                        i.name
-                    ),
-                );
-            }
+        if let Some(base) = &i.extends
+            && self.ix.interface(base).is_none()
+        {
+            self.error(
+                i.line,
+                format!(
+                    "interface `{}` extends `{base}`, which is not an interface",
+                    i.name
+                ),
+            );
         }
         let mut seen = BTreeSet::new();
         for (owner, m) in self.ix.members(i) {
@@ -533,20 +533,19 @@ impl<'a> Validator<'a, '_> {
                     format!("field `{owner}.{}` has type `{}`, which is not a column kind: component and resource fields are columns", f.name, f.ty),
                 );
             }
-            if let FieldSite::Record(RecordKind::Event) = site {
-                if matches!(
+            if let FieldSite::Record(RecordKind::Event) = site
+                && (matches!(
                     self.ix.decl(f.ty.name()),
                     Some(TypeDecl::Interface(_) | TypeDecl::Callback(_))
-                ) || META.contains(&f.ty.name())
-                {
-                    self.error(
-                        f.line,
-                        format!(
-                            "event field `{owner}.{}` must be data, not `{}`",
-                            f.name, f.ty
-                        ),
-                    );
-                }
+                ) || META.contains(&f.ty.name()))
+            {
+                self.error(
+                    f.line,
+                    format!(
+                        "event field `{owner}.{}` must be data, not `{}`",
+                        f.name, f.ty
+                    ),
+                );
             }
             if (f.tunable || f.readonly) && !reflected {
                 self.error(f.line, format!("field `{owner}.{}`: `tunable` and `readonly` belong to component and resource fields", f.name));
@@ -554,13 +553,13 @@ impl<'a> Validator<'a, '_> {
             if f.optional && !matches!(site, FieldSite::Struct { desc: false }) {
                 self.error(f.line, format!("field `{owner}.{}`: `optional` belongs to plain struct fields (desc fields are all optional)", f.name));
             }
-            if let Some(unit) = &f.unit {
-                if !self.ix.units.contains_key(unit.as_str()) {
-                    self.error(
-                        f.line,
-                        format!("field `{owner}.{}` uses unknown unit `{unit}`", f.name),
-                    );
-                }
+            if let Some(unit) = &f.unit
+                && !self.ix.units.contains_key(unit.as_str())
+            {
+                self.error(
+                    f.line,
+                    format!("field `{owner}.{}` uses unknown unit `{unit}`", f.name),
+                );
             }
             let numeric = !matches!(self.ix.decl(f.ty.name()), Some(TypeDecl::Enum(_)))
                 && self
@@ -576,13 +575,13 @@ impl<'a> Validator<'a, '_> {
                     ),
                 );
             }
-            if let (Some(lo), Some(hi)) = (f.min, f.max) {
-                if lo > hi {
-                    self.error(
-                        f.line,
-                        format!("field `{owner}.{}`: min {lo} is above max {hi}", f.name),
-                    );
-                }
+            if let (Some(lo), Some(hi)) = (f.min, f.max)
+                && lo > hi
+            {
+                self.error(
+                    f.line,
+                    format!("field `{owner}.{}`: min {lo} is above max {hi}", f.name),
+                );
             }
             if f.step.is_some_and(|s| s <= 0.0) {
                 self.error(
@@ -736,14 +735,14 @@ impl<'a> Validator<'a, '_> {
     /// A literal default against its type.
     fn value(&self, ty: &TypeRef, values: &[Value]) -> Result<(), String> {
         let name = ty.name();
-        if let [Value::Word(w)] = values {
-            if w == "null" {
-                return match name {
-                    "Option" | "Json" => Ok(()),
-                    _ if matches!(self.ix.decl(name), Some(TypeDecl::Handle(_))) => Ok(()),
-                    _ => Err(format!("`null` is not a `{ty}`")),
-                };
-            }
+        if let [Value::Word(w)] = values
+            && w == "null"
+        {
+            return match name {
+                "Option" | "Json" => Ok(()),
+                _ if matches!(self.ix.decl(name), Some(TypeDecl::Handle(_))) => Ok(()),
+                _ => Err(format!("`null` is not a `{ty}`")),
+            };
         }
         match name {
             "Option" => return self.value(&ty.args()[0], values),
@@ -752,7 +751,7 @@ impl<'a> Validator<'a, '_> {
                     Ok(())
                 } else {
                     Err("a Json default is one value".into())
-                }
+                };
             }
             "String" => {
                 return match values {
@@ -761,7 +760,7 @@ impl<'a> Validator<'a, '_> {
                         "a String default is one quoted string, got {}",
                         show(values)
                     )),
-                }
+                };
             }
             _ => {}
         }
@@ -796,7 +795,7 @@ impl<'a> Validator<'a, '_> {
                     return Err(format!(
                         "expected true or false, got `{}`",
                         show_value(other)
-                    ))
+                    ));
                 }
                 (s, v) if is_number(v) => {
                     let n = as_f64(v).unwrap_or(f64::NAN);
@@ -814,7 +813,7 @@ impl<'a> Validator<'a, '_> {
                     return Err(format!(
                         "expected a bare {s} number, got `{}`",
                         show_value(other)
-                    ))
+                    ));
                 }
             }
         }

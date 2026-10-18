@@ -7,7 +7,7 @@
 #[path = "support/bouncing_boxes.rs"]
 mod world;
 
-use world::{build, run, Stats};
+use world::{Stats, build, run};
 
 #[test]
 fn the_same_seed_gives_the_same_world_after_3600_ticks() {

@@ -6,7 +6,7 @@
 
 use crate::graph::{GraphError, GraphPlan, RenderGraph, TargetDesc};
 use crate::scene::{Exposure, PostEffects, Tonemap};
-use crate::{target_texture, Antialias, DEPTH_FORMAT, HDR_FORMAT};
+use crate::{Antialias, DEPTH_FORMAT, HDR_FORMAT, target_texture};
 use std::collections::HashMap;
 
 const FULLSCREEN_WGSL: &str = include_str!("../shaders/fullscreen.wgsl");

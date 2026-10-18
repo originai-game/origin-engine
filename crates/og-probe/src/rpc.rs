@@ -11,11 +11,11 @@
 
 use crate::input::InjectedInput;
 use crate::probe::{
-    served_members, DumpKind, Probe, SweepDesc, MAX_CAPTURE_EDGE, MAX_SWEEP_VALUES,
-    PLAYTEST_MAX_TICKS,
+    DumpKind, MAX_CAPTURE_EDGE, MAX_SWEEP_VALUES, PLAYTEST_MAX_TICKS, Probe, SweepDesc,
+    served_members,
 };
 use og_ecs::World;
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 pub const PARSE_ERROR: i64 = -32700;
 pub const INVALID_REQUEST: i64 = -32600;
@@ -89,7 +89,7 @@ pub fn parse(text: &str) -> Result<Call, String> {
                 &Value::Null,
                 INVALID_REQUEST,
                 "a numeric or string id is required (notifications are not served)",
-            ))
+            ));
         }
     };
     if object.get("jsonrpc").and_then(Value::as_str) != Some("2.0") {

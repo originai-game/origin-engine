@@ -12,7 +12,7 @@
 use crate::entity::Entity;
 use crate::query::{QueryAccess, QueryDesc, QueryIter};
 use crate::registry::SchemaId;
-use crate::world::{busy, dead, encode_bundle, typed_ref, Bundle, ResourceValue, World};
+use crate::world::{Bundle, ResourceValue, World, busy, dead, encode_bundle, typed_ref};
 use og_core::reflect::Reflect;
 use og_core::{Error, ErrorKind, Result, Time};
 use std::cell::{Ref, RefMut};
@@ -122,13 +122,17 @@ impl System {
         if writes.contains(&world.scale_id) {
             return Err(Error::new(
                 ErrorKind::Access,
-                format!("system '{name}' declares a write to og.TimeScale; use set_time_scale and hit_stop"),
+                format!(
+                    "system '{name}' declares a write to og.TimeScale; use set_time_scale and hit_stop"
+                ),
             ));
         }
         if writes.contains(&world.time_id) {
             return Err(Error::new(
                 ErrorKind::Access,
-                format!("system '{name}' declares a write to Time; the world advances Time, systems read it"),
+                format!(
+                    "system '{name}' declares a write to Time; the world advances Time, systems read it"
+                ),
             ));
         }
         let mut reads = ids(world, &desc.reads, &name)?;

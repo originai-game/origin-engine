@@ -32,4 +32,4 @@ pub mod runtime;
 pub mod cook;
 
 #[cfg(feature = "cook")]
-pub use cook::{cook_project, CookError, CookOptions, Report};
+pub use cook::{CookError, CookOptions, Report, cook_project};

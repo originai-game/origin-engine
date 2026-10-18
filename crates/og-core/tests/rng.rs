@@ -2,8 +2,8 @@
 //! bun, inherited by the Godot module's `rng.rs`): a seed names the same
 //! sequence on every substrate.
 
-use og_core::reflect::{from_bytes, to_bytes};
 use og_core::Rng;
+use og_core::reflect::{from_bytes, to_bytes};
 
 #[test]
 fn matches_the_web_substrate_sequence() {

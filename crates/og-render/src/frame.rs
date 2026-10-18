@@ -2,7 +2,7 @@
 //! light's stable cascades, the local lights' shadow views, frustum culling,
 //! and the frame uniform the lit shaders read (`shaders/frame.wgsl`).
 
-use crate::scene::{Camera, Light, LightKind, Projection, MAX_LIGHTS};
+use crate::scene::{Camera, Light, LightKind, MAX_LIGHTS, Projection};
 use glam::{Mat4, Vec2, Vec3, Vec4};
 
 /// The most cascades of the directional light's shadow map (the uniform's array size).

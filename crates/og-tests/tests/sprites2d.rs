@@ -14,9 +14,9 @@
 
 use glam::{Vec2, Vec3};
 use og_render::{
-    nine_slice, Background, Camera, ColorSpace, FrameStats, Mips, RenderScene, RenderTarget,
-    Renderer, RgbaImage, Sprite, SpriteOrder, Text, TextOutline, TextureData, TextureFilter,
-    TileAnimation, TileChunk, TileLayer, TileQuad, Tonemap, Trail, TrailStyle,
+    Background, Camera, ColorSpace, FrameStats, Mips, RenderScene, RenderTarget, Renderer,
+    RgbaImage, Sprite, SpriteOrder, Text, TextOutline, TextureData, TextureFilter, TileAnimation,
+    TileChunk, TileLayer, TileQuad, Tonemap, Trail, TrailStyle, nine_slice,
 };
 use og_tests::scenes;
 use std::sync::Arc;

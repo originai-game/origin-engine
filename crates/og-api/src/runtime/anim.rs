@@ -21,10 +21,10 @@
 //! weights; the skinned copies of the primitives are made from the
 //! `#anim` blob's streams the first time such an entity is drawn.
 
-use super::engine::{engine, Engine};
+use super::engine::{Engine, engine};
 use super::{ok, parse, refuse};
 use og_anim::{AnimationSystem, ClipAsset, GraphAsset, SkeletonAsset};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
 /// The record og-anim registers itself (its `name` is a `str64`).

@@ -13,7 +13,7 @@ mod support;
 
 use og_physics::*;
 use std::time::Instant;
-use support::pile::{self, PileStats, BODIES};
+use support::pile::{self, BODIES, PileStats};
 
 #[test]
 fn the_pile_is_deterministic_and_a_restore_at_tick_1800_ends_in_the_same_world() {
@@ -84,7 +84,11 @@ fn the_pile_is_deterministic_and_a_restore_at_tick_1800_ends_in_the_same_world()
         stats.exited,
         stats.churned,
         a_secs * 1000.0 / 3600.0,
-        if cfg!(debug_assertions) { "debug" } else { "release" },
+        if cfg!(debug_assertions) {
+            "debug"
+        } else {
+            "release"
+        },
     );
     print!("{report}");
     if let Some(path) = std::env::var_os("OG_PHYSICS_PILE_REPORT") {

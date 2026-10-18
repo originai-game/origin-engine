@@ -279,19 +279,18 @@ pub fn og_web_init() {
     std::panic::set_hook(Box::new(|info| {
         let message = format!("origin-engine panicked: {info}");
         let console = js_sys::Reflect::get(&js_sys::global(), &JsValue::from_str("console"));
-        if let Ok(console) = console {
-            if let Ok(error) = js_sys::Reflect::get(&console, &JsValue::from_str("error")) {
-                if let Some(f) = error.dyn_ref::<js_sys::Function>() {
-                    let _ = f.call1(&console, &JsValue::from_str(&message));
-                }
-            }
+        if let Ok(console) = console
+            && let Ok(error) = js_sys::Reflect::get(&console, &JsValue::from_str("error"))
+            && let Some(f) = error.dyn_ref::<js_sys::Function>()
+        {
+            let _ = f.call1(&console, &JsValue::from_str(&message));
         }
     }));
 }
 
 #[cfg(target_arch = "wasm32")]
 mod canvas {
-    use og_api::runtime::{set_render_backend, RenderBackend};
+    use og_api::runtime::{RenderBackend, set_render_backend};
     use og_render::{Backend, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage};
     use wasm_bindgen::prelude::*;
 

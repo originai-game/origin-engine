@@ -31,7 +31,7 @@ use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote};
 use syn::{
-    parse_macro_input, Attribute, Data, DeriveInput, Expr, ExprLit, Fields, Lit, LitStr, UnOp,
+    Attribute, Data, DeriveInput, Expr, ExprLit, Fields, Lit, LitStr, UnOp, parse_macro_input,
 };
 
 #[proc_macro_derive(Reflect, attributes(reflect))]
@@ -88,7 +88,7 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
             return Err(syn::Error::new_spanned(
                 ident,
                 "Reflect: only structs are supported (enums and unions have no column layout)",
-            ))
+            ));
         }
     };
     let (fields, unit) = match &data.fields {
@@ -105,7 +105,7 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
             return Err(syn::Error::new_spanned(
                 ident,
                 "Reflect: tuple structs are not supported; name the fields so the schema can",
-            ))
+            ));
         }
     };
 
@@ -222,14 +222,13 @@ fn reflect_attrs(attrs: &[Attribute]) -> impl Iterator<Item = &Attribute> {
 fn doc_of(attrs: &[Attribute]) -> String {
     let mut lines = Vec::new();
     for attr in attrs.iter().filter(|a| a.path().is_ident("doc")) {
-        if let syn::Meta::NameValue(nv) = &attr.meta {
-            if let Expr::Lit(ExprLit {
+        if let syn::Meta::NameValue(nv) = &attr.meta
+            && let Expr::Lit(ExprLit {
                 lit: Lit::Str(s), ..
             }) = &nv.value
-            {
-                let line = s.value();
-                lines.push(line.strip_prefix(' ').unwrap_or(&line).to_string());
-            }
+        {
+            let line = s.value();
+            lines.push(line.strip_prefix(' ').unwrap_or(&line).to_string());
         }
     }
     lines.join("\n").trim().to_string()
@@ -309,16 +308,16 @@ fn field_meta(field: &syn::Field) -> syn::Result<FieldMeta> {
             Ok(())
         })?;
     }
-    if let (Some(min), Some(max)) = (meta.min, meta.max) {
-        if min > max {
-            return Err(syn::Error::new_spanned(
-                &field.ty,
-                format!(
-                    "Reflect: field `{}` has min {min} above max {max}",
-                    meta.ident
-                ),
-            ));
-        }
+    if let (Some(min), Some(max)) = (meta.min, meta.max)
+        && min > max
+    {
+        return Err(syn::Error::new_spanned(
+            &field.ty,
+            format!(
+                "Reflect: field `{}` has min {min} above max {max}",
+                meta.ident
+            ),
+        ));
     }
     Ok(meta)
 }

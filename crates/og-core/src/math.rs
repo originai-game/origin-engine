@@ -225,11 +225,7 @@ fn atan64(x: f64) -> f64 {
     if inverted {
         r = FRAC_PI_2 - r;
     }
-    if negative {
-        -r
-    } else {
-        r
-    }
+    if negative { -r } else { r }
 }
 
 /// Arctangent of `x`, in [-π/2, π/2], deterministic on every host.
@@ -374,11 +370,7 @@ pub fn pow(x: f32, y: f32) -> f32 {
     }
     let t = (f64::from(y) * ln64(f64::from(x.abs()))).clamp(-200.0, 200.0);
     let r = exp64(t) as f32;
-    if x < 0.0 && odd {
-        -r
-    } else {
-        r
-    }
+    if x < 0.0 && odd { -r } else { r }
 }
 
 /// The rotation of `angle` radians about the unit vector `axis`, built with

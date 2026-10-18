@@ -5,19 +5,19 @@
 //! ticks ([`Probe::serve`]) and the answer goes back to the connection that
 //! asked. Malformed frames are answered by the transport itself.
 
-use crate::rpc::{self, Call};
 use crate::Probe;
+use crate::rpc::{self, Call};
 use og_ecs::World;
 use std::io;
 use std::net::{Ipv4Addr, SocketAddr, TcpListener, TcpStream};
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
+use tungstenite::Message;
 use tungstenite::handshake::server::{ErrorResponse, Request, Response};
 use tungstenite::http::StatusCode;
-use tungstenite::Message;
 
 /// The port `og` serves the probe on unless told otherwise.
 pub const DEFAULT_PORT: u16 = 47800;
@@ -158,7 +158,7 @@ fn connection(stream: TcpStream, calls: Sender<Pending>, stop: Arc<AtomicBool>) 
                     io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut
                 ) =>
             {
-                continue
+                continue;
             }
             Err(_) => return,
         };

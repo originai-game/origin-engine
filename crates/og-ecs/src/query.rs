@@ -12,7 +12,7 @@
 use crate::entity::Entity;
 use crate::registry::{FieldRef, Registry, SchemaId};
 use crate::storage::Archetype;
-use crate::world::{busy, World};
+use crate::world::{World, busy};
 use og_core::reflect::{FieldValue, Reflect};
 use og_core::{Error, ErrorKind, Result};
 use std::cell::{Ref, RefMut};

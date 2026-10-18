@@ -11,8 +11,8 @@ use crate::runtime::asset_id;
 use og_blob::BlobWriter;
 use og_core::ogt::Block;
 use og_tilemap::{
-    Collision, Filter, Layer, MapObject, TileAnim, TileDef, TilemapAsset, Tileset, TilesetRef,
-    FLIP_DIAGONAL, FLIP_X, FLIP_Y, TILE_MASK,
+    Collision, FLIP_DIAGONAL, FLIP_X, FLIP_Y, Filter, Layer, MapObject, TILE_MASK, TileAnim,
+    TileDef, TilemapAsset, Tileset, TilesetRef,
 };
 use serde_json::Value;
 use std::cell::RefCell;
@@ -66,7 +66,7 @@ impl MapSettings {
                 other => {
                     return Err(format!(
                         "unknown key '{other}' in the tilemap import settings"
-                    ))
+                    ));
                 }
             }
         }
@@ -166,10 +166,10 @@ pub fn import(
         "ldtk" => import_ldtk(rel, text, settings, known)?,
         _ => TilemapAsset::parse(text).map_err(|e| e.to_string())?,
     };
-    if ext == "ogt" {
-        if let Some(u) = settings.unit {
-            map.unit = u;
-        }
+    if ext == "ogt"
+        && let Some(u) = settings.unit
+    {
+        map.unit = u;
     }
     if let Some(t) = &settings.tileset {
         for r in &mut map.tilesets {
@@ -664,8 +664,8 @@ fn walk_tiled(
                         None => tileset = Some(set.index),
                         Some(t) if t != set.index => {
                             return Err(format!(
-                            "layer '{name}' mixes tiles of two tilesets; a layer uses one tileset"
-                        ))
+                                "layer '{name}' mixes tiles of two tilesets; a layer uses one tileset"
+                            ));
                         }
                         _ => {}
                     }

@@ -398,7 +398,7 @@ fn write_block(out: &mut String, block: &Block, depth: usize) -> Result<()> {
                     return Err(Error::new(
                         ErrorKind::Invalid,
                         format!("'{}' value '{w}' is not a word; use a string", entry.key),
-                    ))
+                    ));
                 }
             }
         }
@@ -492,17 +492,18 @@ fn tokenize(line: &str, n: usize) -> Result<Vec<Token>> {
                             s.push(code);
                         }
                         Some((_, other)) => {
-                            return Err(parse_error(n, format!("unknown escape \\{other}")))
+                            return Err(parse_error(n, format!("unknown escape \\{other}")));
                         }
                         None => return Err(parse_error(n, "unterminated string")),
                     },
                     Some((_, c)) => s.push(c),
                 }
             }
-            if let Some(&(_, next)) = chars.peek() {
-                if next != ' ' && next != '\t' {
-                    return Err(parse_error(n, "a string must be followed by a space"));
-                }
+            if let Some(&(_, next)) = chars.peek()
+                && next != ' '
+                && next != '\t'
+            {
+                return Err(parse_error(n, "a string must be followed by a space"));
             }
             tokens.push(Token::Str(s));
             continue;
@@ -527,7 +528,7 @@ fn tokenize(line: &str, n: usize) -> Result<Vec<Token>> {
                 return Err(parse_error(
                     n,
                     format!("'{t}' is not a number, string or word"),
-                ))
+                ));
             }
         });
     }
@@ -579,7 +580,7 @@ pub fn parse(text: &str) -> Result<Document> {
             return Err(Error::new(
                 ErrorKind::Parse,
                 "missing header: 'type <word>', 'version <integer>', '---'",
-            ))
+            ));
         }
     };
 
@@ -608,7 +609,7 @@ pub fn parse(text: &str) -> Result<Document> {
                 return Err(parse_error(
                     n,
                     "a line starts with a key (a word other than true or false)",
-                ))
+                ));
             }
         };
         let mut entry = Entry::new(key);
