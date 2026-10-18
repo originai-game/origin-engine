@@ -520,12 +520,22 @@ struct ShadowMap {
 
 impl ShadowMap {
     fn new(device: &wgpu::Device, label: &str, size: u32, layers: u32) -> ShadowMap {
+        // wgpu's GL backend must pick a texture's target when creating it and
+        // takes a square texture of a multiple of six layers for a cube map
+        // (array), which WebGL2 then neither renders to by layer nor reads as
+        // a 2D array: the twelve local shadow layers read as zero (every
+        // shadowed light dark). One spare layer keeps it a 2D array.
+        let allocated = if layers.is_multiple_of(6) {
+            layers + 1
+        } else {
+            layers
+        };
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some(label),
             size: wgpu::Extent3d {
                 width: size,
                 height: size,
-                depth_or_array_layers: layers,
+                depth_or_array_layers: allocated,
             },
             mip_level_count: 1,
             sample_count: 1,
@@ -584,6 +594,7 @@ pub struct Renderer {
     material_sampler: wgpu::Sampler,
     sprite_sampler: wgpu::Sampler,
     frame_layout: wgpu::BindGroupLayout,
+    sky_layout: wgpu::BindGroupLayout,
     material_layout: wgpu::BindGroupLayout,
     sprite_layout: wgpu::BindGroupLayout,
     frame_buffer: wgpu::Buffer,
@@ -623,8 +634,9 @@ pub struct Renderer {
     prev_view_proj: Option<Mat4>,
     fx_groups: Option<FxGroups>,
     mips: mips::MipGenerator,
-    /// The frame bind group (camera, shadow maps, IBL) for the sky it was generated from.
-    environment: Option<(ProceduralSky, wgpu::BindGroup)>,
+    /// The frame bind group (camera, shadow maps, IBL) and the sky pass's
+    /// (the sky cube) for the sky they were generated from.
+    environment: Option<(ProceduralSky, wgpu::BindGroup, wgpu::BindGroup)>,
     default_white: wgpu::TextureView,
     default_normal: wgpu::TextureView,
     white_sprite_group: wgpu::BindGroup,
@@ -1187,8 +1199,14 @@ impl Renderer {
                 texture_entry(4, true, wgpu::TextureViewDimension::Cube),
                 tex2d(5),
                 sampler_entry(6, wgpu::SamplerBindingType::Filtering),
-                texture_entry(7, true, wgpu::TextureViewDimension::Cube),
             ],
+        });
+        // The sky cube, bound by the sky pass alone: in the frame group it
+        // would take a texture slot from every lit pipeline, and WebGL2's
+        // skinned one needs them all (wgpu's GL backend has 16 per pipeline).
+        let sky_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("sky"),
+            entries: &[texture_entry(0, true, wgpu::TextureViewDimension::Cube)],
         });
         let material_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("material"),
@@ -1337,7 +1355,7 @@ impl Renderer {
             "pbr skinned",
             &[&frame_layout, &material_layout, &fx_layout, &palette_layout],
         );
-        let sky_pl = pipeline_layout("sky", &[&frame_layout]);
+        let sky_pl = pipeline_layout("sky", &[&frame_layout, &sky_layout]);
         let sprite_pl = pipeline_layout(
             "sprite",
             &[&frame_layout, &sprite_layout, &sprite_fx_layout],
@@ -1562,6 +1580,7 @@ impl Renderer {
             material_sampler,
             sprite_sampler,
             frame_layout,
+            sky_layout,
             material_layout,
             sprite_layout,
             frame_buffer,
@@ -2033,7 +2052,7 @@ impl Renderer {
 
     /// (Re)generates the image-based lighting when the sky changed.
     fn ensure_environment(&mut self, sky: &ProceduralSky) {
-        if self.environment.as_ref().is_some_and(|(s, _)| s == sky) {
+        if self.environment.as_ref().is_some_and(|(s, ..)| s == sky) {
             return;
         }
         let ibl = ibl::Ibl::generate(&self.device, &self.queue, sky.sun_direction, sky.sun_color);
@@ -2045,10 +2064,15 @@ impl Renderer {
             wgpu::BindingResource::TextureView(&ibl.prefiltered),
             wgpu::BindingResource::TextureView(&ibl.brdf_lut),
             wgpu::BindingResource::Sampler(&ibl.sampler),
-            wgpu::BindingResource::TextureView(&ibl.sky),
         ];
         let group = bind_group(&self.device, "frame", &self.frame_layout, &entries);
-        self.environment = Some((*sky, group));
+        let sky_group = bind_group(
+            &self.device,
+            "sky",
+            &self.sky_layout,
+            &[wgpu::BindingResource::TextureView(&ibl.sky)],
+        );
+        self.environment = Some((*sky, group, sky_group));
     }
 
     /// Sorts the instances into (mesh, material) batches; returns the batches,
@@ -2323,6 +2347,7 @@ impl Renderer {
                 )));
             }
         }
+        let joint_base = self.palette.joint_base(self.cache.morph_data.len());
         let mut order: Vec<usize> = (0..scene.skinned_instances.len()).collect();
         order.sort_by_key(|&i| {
             let s = &scene.skinned_instances[i];
@@ -2368,6 +2393,7 @@ impl Renderer {
                 None => (m.w_axis.truncate(), 0.0),
             });
             let (first, count) = offsets[s.palette as usize];
+            let first = first + joint_base;
             let (morph_first, targets) = self.cache.morph_ranges[mesh];
             let w = s.morph_weights;
             data.push(skin::SkinnedInstanceGpu {
@@ -2689,14 +2715,14 @@ impl Renderer {
                 "skinned instances",
                 bytemuck::cast_slice(&skinned_data),
             );
-            let morphs = std::mem::take(&mut self.cache.morphs_dirty)
-                .then_some(self.cache.morph_data.as_slice());
+            let morphs_changed = std::mem::take(&mut self.cache.morphs_dirty);
             self.palette.write(
                 &self.device,
                 &self.queue,
                 &self.palette_layout,
                 &joint_matrices,
-                morphs,
+                &self.cache.morph_data,
+                morphs_changed,
             );
         }
         grow_and_write(
@@ -3154,11 +3180,10 @@ impl Renderer {
             };
             self.fx_groups = Some(groups);
         }
-        let frame_bind_group = &self
+        let (_, frame_bind_group, sky_group) = self
             .environment
             .as_ref()
-            .expect("environment generated above")
-            .1;
+            .expect("environment generated above");
         let groups = self.fx_groups.as_ref().expect("made above");
         let (fx_group, sprite_fx_group, glow_fx_group) = (&groups.fx, &groups.sprite, &groups.glow);
         let scene_depth = self
@@ -3499,6 +3524,7 @@ impl Renderer {
                         draw_skinned(&mut pass, &skinned_visible, false, 1, 3, &lit_skinned);
                     if scene.environment.background == Background::Sky {
                         pass.set_pipeline(&self.sky_pipeline);
+                        pass.set_bind_group(1, sky_group, &[]);
                         pass.draw(0..3, 0..1);
                         stats.draw_calls += 1;
                     }

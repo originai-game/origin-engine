@@ -38,4 +38,3 @@ struct Frame {
 @group(0) @binding(4) var prefiltered_map: texture_cube<f32>;
 @group(0) @binding(5) var brdf_lut: texture_2d<f32>;
 @group(0) @binding(6) var ibl_sampler: sampler;
-@group(0) @binding(7) var sky_map: texture_cube<f32>;

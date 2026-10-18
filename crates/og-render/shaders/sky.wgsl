@@ -1,7 +1,10 @@
 // Sky pass: the environment's sky cubemap drawn as the background. A
 // fullscreen triangle at the far plane (depth 1, LessEqual, no depth write)
 // after the opaque batches, so it only shades pixels no geometry covered.
-// Prepended by frame.wgsl.
+// Prepended by frame.wgsl; the sky cube is the sky pass's own group (it
+// would cost every lit pipeline a texture slot in the frame group).
+
+@group(1) @binding(0) var sky_map: texture_cube<f32>;
 
 struct SkyOut { @builtin(position) pos: vec4<f32>, @location(0) ndc: vec2<f32> };
 

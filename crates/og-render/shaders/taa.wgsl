@@ -13,7 +13,9 @@ struct Taa {
 };
 @group(0) @binding(0) var current: texture_2d<f32>;
 @group(0) @binding(1) var history: texture_2d<f32>;
-@group(0) @binding(2) var depth: texture_depth_2d;
+// The depth buffer (Depth32Float) read as an unfilterable float texture:
+// GLSL cannot textureLoad a texture_depth_2d.
+@group(0) @binding(2) var depth: texture_2d<f32>;
 @group(0) @binding(3) var linear_sampler: sampler;
 @group(0) @binding(4) var<uniform> taa: Taa;
 
@@ -48,7 +50,7 @@ fn fs(in: VsOut) -> @location(0) vec4<f32> {
   }
 
   // Reproject: this pixel's world point, seen by the previous frame.
-  let d = textureLoad(depth, px, 0);
+  let d = textureLoad(depth, px, 0).r;
   let ndc = vec2<f32>(in.uv.x * 2.0 - 1.0, 1.0 - in.uv.y * 2.0);
   let w = taa.inv_view_proj * vec4<f32>(ndc, d, 1.0);
   let world = w.xyz / w.w;

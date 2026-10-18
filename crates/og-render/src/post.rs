@@ -313,14 +313,10 @@ impl PostPasses {
             entries: &[
                 layout_entry(0, float_texture(false)),
                 layout_entry(1, float_texture(true)),
-                layout_entry(
-                    2,
-                    wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Depth,
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        multisampled: false,
-                    },
-                ),
+                // The depth buffer as an unfilterable float texture: GLSL
+                // has no `textureLoad` from a depth texture (WebGL2), and
+                // every backend reads the same depth this way.
+                layout_entry(2, float_texture(false)),
                 layout_entry(3, sampler_ty),
                 layout_entry(4, UNIFORM),
             ],

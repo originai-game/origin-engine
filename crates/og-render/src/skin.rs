@@ -163,9 +163,13 @@ impl PaletteMode {
             ty,
             count: None,
         };
+        let entries = match self {
+            PaletteMode::Storage => vec![entry(0), entry(1)],
+            PaletteMode::Texture => vec![entry(0)],
+        };
         device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("joint palette"),
-            entries: &[entry(0), entry(1)],
+            entries: &entries,
         })
     }
 }
@@ -191,57 +195,56 @@ impl Vec4Array {
         }
     }
 
-    /// Uploads `data`; returns whether the resource was recreated.
-    fn write(
-        &mut self,
-        mode: PaletteMode,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        data: &[[f32; 4]],
-    ) -> bool {
-        let count = (data.len() as u32).max(TEXTURE_ROW);
-        let mut grew = false;
-        if count > self.capacity {
-            let capacity = count.next_power_of_two();
-            match mode {
-                PaletteMode::Storage => {
-                    self.buffer = Some(device.create_buffer(&wgpu::BufferDescriptor {
-                        label: Some("vertex vec4 array"),
-                        size: capacity as u64 * 16,
-                        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-                        mapped_at_creation: false,
-                    }));
-                }
-                PaletteMode::Texture => {
-                    let texture = device.create_texture(&wgpu::TextureDescriptor {
-                        label: Some("vertex vec4 array"),
-                        size: wgpu::Extent3d {
-                            width: TEXTURE_ROW,
-                            height: capacity.div_ceil(TEXTURE_ROW),
-                            depth_or_array_layers: 1,
-                        },
-                        mip_level_count: 1,
-                        sample_count: 1,
-                        dimension: wgpu::TextureDimension::D2,
-                        format: wgpu::TextureFormat::Rgba32Float,
-                        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-                        view_formats: &[],
-                    });
-                    let view = texture.create_view(&Default::default());
-                    self.texture = Some((texture, view));
-                }
-            }
-            self.capacity = capacity;
-            grew = true;
+    /// Makes room for `count` vec4s; returns whether the resource was
+    /// recreated (its contents are then gone).
+    fn reserve(&mut self, mode: PaletteMode, device: &wgpu::Device, count: usize) -> bool {
+        let count = (count as u32).max(TEXTURE_ROW);
+        if count <= self.capacity {
+            return false;
         }
+        let capacity = count.next_power_of_two();
+        match mode {
+            PaletteMode::Storage => {
+                self.buffer = Some(device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("vertex vec4 array"),
+                    size: capacity as u64 * 16,
+                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                }));
+            }
+            PaletteMode::Texture => {
+                let texture = device.create_texture(&wgpu::TextureDescriptor {
+                    label: Some("vertex vec4 array"),
+                    size: wgpu::Extent3d {
+                        width: TEXTURE_ROW,
+                        height: capacity.div_ceil(TEXTURE_ROW),
+                        depth_or_array_layers: 1,
+                    },
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: wgpu::TextureFormat::Rgba32Float,
+                    usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                    view_formats: &[],
+                });
+                let view = texture.create_view(&Default::default());
+                self.texture = Some((texture, view));
+            }
+        }
+        self.capacity = capacity;
+        true
+    }
+
+    /// Writes `data` from row `row` (of [`TEXTURE_ROW`] vec4s) on.
+    fn upload(&self, mode: PaletteMode, queue: &wgpu::Queue, row: u32, data: &[[f32; 4]]) {
         if data.is_empty() {
-            return grew;
+            return;
         }
         match mode {
             PaletteMode::Storage => {
                 queue.write_buffer(
                     self.buffer.as_ref().expect("made"),
-                    0,
+                    row as u64 * TEXTURE_ROW as u64 * 16,
                     bytemuck::cast_slice(data),
                 );
             }
@@ -249,8 +252,12 @@ impl Vec4Array {
                 let rows = data.len().div_ceil(TEXTURE_ROW as usize);
                 let mut padded = data.to_vec();
                 padded.resize(rows * TEXTURE_ROW as usize, [0.0; 4]);
+                let (texture, _) = self.texture.as_ref().expect("made");
                 queue.write_texture(
-                    self.texture.as_ref().expect("made").0.as_image_copy(),
+                    wgpu::TexelCopyTextureInfo {
+                        origin: wgpu::Origin3d { x: 0, y: row, z: 0 },
+                        ..texture.as_image_copy()
+                    },
                     bytemuck::cast_slice(&padded),
                     wgpu::TexelCopyBufferLayout {
                         offset: 0,
@@ -265,7 +272,6 @@ impl Vec4Array {
                 );
             }
         }
-        grew
     }
 
     fn resource(&self) -> wgpu::BindingResource<'_> {
@@ -277,12 +283,23 @@ impl Vec4Array {
     }
 }
 
+/// Rows of [`TEXTURE_ROW`] vec4s that `texels` vec4s take.
+fn rows(texels: usize) -> u32 {
+    texels.div_ceil(TEXTURE_ROW as usize) as u32
+}
+
 /// The frame's joint palette and the scene's morph deltas on the GPU, and
-/// the bind group that reads them.
+/// the bind group that reads them: two storage buffers, or on the texture
+/// path one texture, the morph deltas in its first rows and the palette
+/// after them (wgpu's GL backend has 16 texture slots per pipeline, and the
+/// lit skinned pipeline needs every other one).
 pub(crate) struct GpuPalette {
     mode: PaletteMode,
     palette: Vec4Array,
+    /// Storage only: the morph deltas.
     morphs: Vec4Array,
+    /// Texture only: the rows of morph deltas the texture holds before the palette.
+    morph_rows: Option<u32>,
     pub bind_group: Option<wgpu::BindGroup>,
 }
 
@@ -292,41 +309,72 @@ impl GpuPalette {
             mode,
             palette: Vec4Array::new(),
             morphs: Vec4Array::new(),
+            morph_rows: None,
             bind_group: None,
         }
     }
 
-    /// Uploads the joint matrices (four columns each) and, when `morphs` is
-    /// given, the scene's morph deltas; rebinds when a resource grew.
+    /// Where the palette's first joint is for a scene with `morph_texels`
+    /// morph deltas: what every skinned instance's first joint is offset by.
+    pub fn joint_base(&self, morph_texels: usize) -> u32 {
+        match self.mode {
+            PaletteMode::Storage => 0,
+            PaletteMode::Texture => rows(morph_texels) * TEXTURE_JOINTS_PER_ROW,
+        }
+    }
+
+    /// Uploads the joint matrices (four columns each) and, when
+    /// `morphs_changed` (or their storage was recreated), the scene's morph
+    /// deltas; rebinds when a resource was recreated.
     pub fn write(
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         layout: &wgpu::BindGroupLayout,
         matrices: &[[[f32; 4]; 4]],
-        morphs: Option<&[[f32; 4]]>,
+        morphs: &[[f32; 4]],
+        morphs_changed: bool,
     ) {
         let columns: &[[f32; 4]] = bytemuck::cast_slice(matrices);
-        let mut rebind = self.palette.write(self.mode, device, queue, columns);
-        if let Some(m) = morphs {
-            rebind |= self.morphs.write(self.mode, device, queue, m);
-        } else if self.morphs.capacity == 0 {
-            rebind |= self.morphs.write(self.mode, device, queue, &[]);
-        }
+        let mode = self.mode;
+        let rebind = match mode {
+            PaletteMode::Storage => {
+                let mut grew = self.palette.reserve(mode, device, columns.len());
+                self.palette.upload(mode, queue, 0, columns);
+                let morphs_grew = self.morphs.reserve(mode, device, morphs.len());
+                if morphs_changed || morphs_grew {
+                    self.morphs.upload(mode, queue, 0, morphs);
+                }
+                grew |= morphs_grew;
+                grew
+            }
+            PaletteMode::Texture => {
+                let morph_rows = rows(morphs.len());
+                let size = (morph_rows * TEXTURE_ROW) as usize + columns.len();
+                let grew = self.palette.reserve(mode, device, size);
+                if morphs_changed || grew || self.morph_rows != Some(morph_rows) {
+                    self.palette.upload(mode, queue, 0, morphs);
+                    self.morph_rows = Some(morph_rows);
+                }
+                self.palette.upload(mode, queue, morph_rows, columns);
+                grew
+            }
+        };
         if rebind || self.bind_group.is_none() {
+            let mut entries = vec![wgpu::BindGroupEntry {
+                binding: 0,
+                resource: self.palette.resource(),
+            }];
+            if mode == PaletteMode::Storage {
+                entries.push(wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.morphs.resource(),
+                });
+            }
             self.bind_group = Some(device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("joint palette"),
                 layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: self.palette.resource(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: self.morphs.resource(),
-                    },
-                ],
+                entries: &entries,
             }));
         }
     }
