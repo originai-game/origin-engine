@@ -57,3 +57,14 @@ Each new test was run once against broken code (the break below), seen to fail, 
 | packages/engine/src/runtime.ts: og.time.hitStop sends 0 | bun test tests/hosts.test.ts | tweens, presets, hit stop, slow motion and camera feel give the same hashes on both hosts ... FAIL |
 | (before the fix) og-tween: a leaf waits untouched through its delay, so a preset started with a hit stop writes nothing until the stop ends | bun test tests/feel.test.ts | a squash and a flash started with a hit stop show their impact through the stop, then recover FAIL |
 | og-cli/src/cook.rs: the engine schemas carry no IDL defaults | cargo test -p og-cli --test cli cook_defaults | cook_defaults_the_engine_component_fields_a_scene_omits FAIL |
+| templates/archetypes/runner/src/systems.ts: the coin's floating text never fires | og test . (runner) | frames FAIL (coin.png RMSE 0.01488) |
+| templates/archetypes/runner/src/systems.ts: the crash flash back to an unscaled tween (before the preset fix) | og test . (runner) | frames FAIL (crash.png RMSE 0.02844) |
+| templates/archetypes/runner/src/systems.ts: dust x from the wall clock | og test . (runner) | replay FAIL (63ff54deb6a4f90f vs 9dbf5040e072e43b) |
+| templates/archetypes/match3/src/layout.ts: gem size 0.92 to 0.88 | og test . (match3) | frames FAIL (about 1 % outliers on all three) |
+| templates/archetypes/match3/src/systems.ts: fall delay plus a clock-based offset | og test . (match3) | replay FAIL (two hashes) |
+| templates/archetypes/match3/src/systems.ts: cascade label 0.2 m higher | og test . (match3) | frames FAIL (cascade.png RMSE 0.027) |
+| templates/archetypes/topdown/src/systems.ts: walk speed times 0.5 | og test . (topdown) | walk FAIL (x 6.75, expected 9 ± 0.1) |
+| templates/archetypes/topdown/src/systems.ts: the hit's og.tween.flash removed | og test . (topdown) | combat and frames FAIL (the struck slime not white during the stop) |
+| templates/archetypes/topdown/src/systems.ts: the door leaves its wall cells | og test . (topdown) | door FAIL (wall cell still 1, hero stopped at 18.70) |
+| templates/archetypes/topdown/src/main.ts: the map drawn over the actors | og test . (topdown) | frames FAIL (RMSE 0.033 to 0.049 on all four) |
+| templates/archetypes/topdown/src/systems.ts: wander direction from Math.random | og test . (topdown) | replay FAIL (two hashes) |
