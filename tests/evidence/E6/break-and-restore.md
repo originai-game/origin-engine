@@ -49,3 +49,10 @@ Each break rebuilt the dev addon (`OG_GATE=1 sh packages/engine/scripts/build.sh
 | occlusion | the slime's `og.Perception` gets `occlude: false` | `flee` (the hero behind the pillar is seen and chased) |
 | the bite | `biteHero` returns for any distance | `ai` (no hurt, no heart lost, no bite counted) and `combat` (the opening bite) |
 | fear | `check Slime.hp below 0` in `assets/ai/slime.ogt` | `flee` (it chases at 20 hp and ends 1.70 m from the hero) |
+
+## The 3D guard (`templates/game/tests/guard.og.ts`)
+
+| Broken | Edit | Failed |
+|---|---|---|
+| occlusion | the guard's `og.Perception` gets `occlude: false` | `guard` (seen through the wall at once; searching and alarmed six times) |
+| the cone before the first move | og.ai's forward falls back to zero instead of the Transform's facing | `guard` (the trickster 4 m behind it is seen; it then chases it the wrong way) |
