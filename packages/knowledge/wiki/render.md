@@ -79,6 +79,9 @@ module render {
 | [`RenderCapabilities`](#type-RenderCapabilities) | struct | What the renderer can do on this device. Backend limits are reported here, never by missing members. |
 | [`og.render.standardMaterial`](#fn-standardMaterial) | function | Create a standard material. |
 | [`og.render.updateMaterial`](#fn-updateMaterial) | function | Change some parameters of a standard material. |
+| [`Shader`](#type-Shader) | handle | A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read. |
+| [`og.render.shaderMaterial`](#fn-shaderMaterial) | function | Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; see the `shader` page of the wiki's render module), its parameters at their defaults. Skinned meshes draw it without the hooks; shadows and the depth prepass use the undisplaced mesh. |
+| [`og.render.setShaderParam`](#fn-setShaderParam) | function | Set a parameter of a shader material, by the name its shader declares: a number for float, two to four for vec2, vec3, vec4 and color. |
 | [`og.render.capabilities`](#fn-capabilities) | function | The renderer's tier and limits on this device. |
 | [`og.render.text`](#fn-text) | function | Draw text this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the text should show. Multi-page fonts are drawn page by page with one layout. |
 
@@ -356,6 +359,72 @@ fn updateMaterial {
 
 <sub>`api.ogt` line 2655</sub>
 
+<a id="fn-shaderMaterial"></a>
+
+### `og.render.shaderMaterial`
+
+Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; see the `shader` page of the wiki's render module), its parameters at their defaults. Skinned meshes draw it without the hooks; shadows and the depth prepass use the undisplaced mesh.
+
+```ts
+og.render.shaderMaterial(world: World, shader: Shader, desc?: StandardMaterialDesc): Result<Material>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the material. |
+| `shader` | `Shader` | no | The shader. |
+| `desc` | `StandardMaterialDesc` | yes | The base material; omitted parameters take three.js defaults. A dissolve sets alphaTest so that alpha below it is cut. |
+
+**Returns** `Result<Material>`: Refused for a shader not loaded in this world.
+
+Binding symbol `og_render_shader_material` · publish builds: kept
+
+```ogt
+fn shaderMaterial {
+  doc "Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; see the `shader` page of the wiki's render module), its parameters at their defaults. Skinned meshes draw it without the hooks; shadows and the depth prepass use the undisplaced mesh."
+  param world World "The world whose renderer owns the material."
+  param shader Shader "The shader."
+  param desc StandardMaterialDesc "The base material; omitted parameters take three.js defaults. A dissolve sets alphaTest so that alpha below it is cut."
+  returns Result.Material "Refused for a shader not loaded in this world."
+}
+```
+
+<sub>`api.ogt` line 2665</sub>
+
+<a id="fn-setShaderParam"></a>
+
+### `og.render.setShaderParam`
+
+Set a parameter of a shader material, by the name its shader declares: a number for float, two to four for vec2, vec3, vec4 and color.
+
+```ts
+og.render.setShaderParam(world: World, material: Material, name: string, value: readonly number[]): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the material. |
+| `material` | `Material` | no | A material made by og.render.shaderMaterial. |
+| `name` | `string` | no | The parameter's name. |
+| `value` | `readonly number[]` | no | Its value; missing components are 0. |
+
+**Returns** `Result<void>`: Refused for a material without a shader or a parameter its shader does not declare.
+
+Binding symbol `og_render_set_shader_param` · publish builds: kept
+
+```ogt
+fn setShaderParam {
+  doc "Set a parameter of a shader material, by the name its shader declares: a number for float, two to four for vec2, vec3, vec4 and color."
+  param world World "The world whose renderer owns the material."
+  param material Material "A material made by og.render.shaderMaterial."
+  param name String "The parameter's name."
+  param value List.f32 "Its value; missing components are 0."
+  returns Result.Void "Refused for a material without a shader or a parameter its shader does not declare."
+}
+```
+
+<sub>`api.ogt` line 2673</sub>
+
 <a id="fn-capabilities"></a>
 
 ### `og.render.capabilities`
@@ -382,7 +451,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 2663</sub>
+<sub>`api.ogt` line 2682</sub>
 
 <a id="fn-text"></a>
 
@@ -412,7 +481,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 2669</sub>
+<sub>`api.ogt` line 2688</sub>
 
 ## Components, resources and events
 
@@ -2322,6 +2391,20 @@ struct RenderCapabilities {
 ```
 
 <sub>`api.ogt` line 2637</sub>
+
+<a id="type-Shader"></a>
+
+### `Shader` (handle)
+
+A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read.
+
+A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+
+```ogt
+handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read."
+```
+
+<sub>`api.ogt` line 2663</sub>
 
 ## Column kinds
 

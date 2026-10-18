@@ -824,6 +824,7 @@ pub(crate) fn extract_layouts(eng: &Engine) -> (Option<Layout>, Option<Layout>, 
             point: get("og.PointLight"),
             spot: get("og.SpotLight"),
             fx: super::fx::FxLayouts::from(get),
+            atmo: super::atmosphere::AtmoLayouts::from(get, st.physics.clone()),
         },
     )
 }

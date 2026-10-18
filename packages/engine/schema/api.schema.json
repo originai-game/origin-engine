@@ -1174,7 +1174,8 @@
         "BoxGeometryDesc",
         "PlaneGeometryDesc",
         "SphereGeometryDesc",
-        "RenderCapabilities"
+        "RenderCapabilities",
+        "Shader"
       ],
       "consts": [
         {
@@ -1374,6 +1375,66 @@
           ],
           "returns": "Result<Void>",
           "returnsDoc": "Refused for a dead material.",
+          "publish": true
+        },
+        {
+          "name": "shaderMaterial",
+          "doc": "Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; see the `shader` page of the wiki's render module), its parameters at their defaults. Skinned meshes draw it without the hooks; shadows and the depth prepass use the undisplaced mesh.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the material."
+            },
+            {
+              "name": "shader",
+              "type": "Shader",
+              "optional": false,
+              "doc": "The shader."
+            },
+            {
+              "name": "desc",
+              "type": "StandardMaterialDesc",
+              "optional": true,
+              "doc": "The base material; omitted parameters take three.js defaults. A dissolve sets alphaTest so that alpha below it is cut."
+            }
+          ],
+          "returns": "Result<Material>",
+          "returnsDoc": "Refused for a shader not loaded in this world.",
+          "publish": true
+        },
+        {
+          "name": "setShaderParam",
+          "doc": "Set a parameter of a shader material, by the name its shader declares: a number for float, two to four for vec2, vec3, vec4 and color.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the material."
+            },
+            {
+              "name": "material",
+              "type": "Material",
+              "optional": false,
+              "doc": "A material made by og.render.shaderMaterial."
+            },
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "The parameter's name."
+            },
+            {
+              "name": "value",
+              "type": "List<f32>",
+              "optional": false,
+              "doc": "Its value; missing components are 0."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for a material without a shader or a parameter its shader does not declare.",
           "publish": true
         },
         {
@@ -1647,6 +1708,27 @@
           "publish": true
         },
         {
+          "name": "shader",
+          "doc": "A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). Loaded once per path.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns it."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The asset id, such as `shaders/dissolve.ogt`."
+            }
+          ],
+          "returns": "Result<Shader>",
+          "returnsDoc": "Refused for a path not in the bundle or not a shader.",
+          "publish": true
+        },
+        {
           "name": "texture",
           "doc": "Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load.",
           "params": [
@@ -1852,6 +1934,18 @@
         "SensorEntered",
         "SensorExited",
         "Contact",
+        "Joint",
+        "CharacterController",
+        "PlatformerController",
+        "CharacterEvent",
+        "Vehicle",
+        "Rope",
+        "Cloth",
+        "Fluid2D",
+        "WaterSurface",
+        "WaterLine",
+        "Splash",
+        "Ragdoll",
         "QueryFilter",
         "RaycastDesc",
         "RaycastHit",
@@ -1859,7 +1953,11 @@
         "ShapeCastDesc",
         "ShapeCastHit",
         "OverlapDesc",
-        "MeshDesc"
+        "MeshDesc",
+        "WheelPose",
+        "RagdollBoneDesc",
+        "RagdollRigDesc",
+        "BonePose"
       ],
       "consts": [
         {
@@ -1963,6 +2061,138 @@
           "type": "u32",
           "value": 3,
           "doc": "Physics.profile: rapier3d."
+        },
+        {
+          "name": "JOINT_FIXED",
+          "type": "u32",
+          "value": 0,
+          "doc": "`Joint.kind`: the two bodies move as one."
+        },
+        {
+          "name": "JOINT_REVOLUTE",
+          "type": "u32",
+          "value": 1,
+          "doc": "`Joint.kind`: a hinge about `axis` (2D: about z), with optional limits and a motor."
+        },
+        {
+          "name": "JOINT_PRISMATIC",
+          "type": "u32",
+          "value": 2,
+          "doc": "`Joint.kind`: a slider along `axis`, with optional limits and a motor."
+        },
+        {
+          "name": "JOINT_SPRING",
+          "type": "u32",
+          "value": 3,
+          "doc": "`Joint.kind`: a damped spring pulling the anchors to `restLength` apart."
+        },
+        {
+          "name": "JOINT_ROPE",
+          "type": "u32",
+          "value": 4,
+          "doc": "`Joint.kind`: a rope: the anchors stay at most `length` apart, free inside it."
+        },
+        {
+          "name": "JOINT_BALL",
+          "type": "u32",
+          "value": 5,
+          "doc": "`Joint.kind`: a ball and socket (3D; the 2D profile treats it as a hinge)."
+        },
+        {
+          "name": "MOTOR_NONE",
+          "type": "u32",
+          "value": 0,
+          "doc": "`Joint.motor`: no motor."
+        },
+        {
+          "name": "MOTOR_VELOCITY",
+          "type": "u32",
+          "value": 1,
+          "doc": "`Joint.motor`: drive towards `motorTarget` speed (rad/s or m/s)."
+        },
+        {
+          "name": "MOTOR_POSITION",
+          "type": "u32",
+          "value": 2,
+          "doc": "`Joint.motor`: spring towards `motorTarget` angle or position (a servo)."
+        },
+        {
+          "name": "CHARACTER_JUMPED",
+          "type": "u32",
+          "value": 1,
+          "doc": "`CharacterEvent.kind`: a jump from the ground (or in coyote time)."
+        },
+        {
+          "name": "CHARACTER_LANDED",
+          "type": "u32",
+          "value": 2,
+          "doc": "`CharacterEvent.kind`: touched the ground after being in the air."
+        },
+        {
+          "name": "CHARACTER_WALL_JUMPED",
+          "type": "u32",
+          "value": 3,
+          "doc": "`CharacterEvent.kind`: a jump off a wall."
+        },
+        {
+          "name": "CHARACTER_AIR_JUMPED",
+          "type": "u32",
+          "value": 4,
+          "doc": "`CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps)."
+        },
+        {
+          "name": "CHARACTER_LEFT_GROUND",
+          "type": "u32",
+          "value": 5,
+          "doc": "`CharacterEvent.kind`: left the ground without jumping (ran off an edge)."
+        },
+        {
+          "name": "CHARACTER_BUMPED",
+          "type": "u32",
+          "value": 6,
+          "doc": "`CharacterEvent.kind`: hit a ceiling while rising."
+        },
+        {
+          "name": "DRIVE_REAR",
+          "type": "u32",
+          "value": 0,
+          "doc": "`Vehicle.drive`: the rear wheels drive."
+        },
+        {
+          "name": "DRIVE_FRONT",
+          "type": "u32",
+          "value": 1,
+          "doc": "`Vehicle.drive`: the front wheels drive."
+        },
+        {
+          "name": "DRIVE_ALL",
+          "type": "u32",
+          "value": 2,
+          "doc": "`Vehicle.drive`: every wheel drives."
+        },
+        {
+          "name": "PIN_TOP",
+          "type": "u32",
+          "value": 1,
+          "doc": "`Cloth.pins` bit: the whole top row is pinned."
+        },
+        {
+          "name": "PIN_TOP_CORNERS",
+          "type": "u32",
+          "value": 2,
+          "doc": "`Cloth.pins` bit: the top-left and top-right corners are pinned."
+        },
+        {
+          "name": "PIN_LEFT",
+          "type": "u32",
+          "value": 4,
+          "doc": "`Cloth.pins` bit: the whole left column is pinned (a flag on a pole)."
+        },
+        {
+          "name": "PIN_TOP_RINGS",
+          "type": "u32",
+          "value": 8,
+          "doc": "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
         }
       ],
       "functions": [
@@ -2053,6 +2283,256 @@
           ],
           "returns": "Result<Void>",
           "returnsDoc": "Refused for an empty, non-finite or out-of-range mesh.",
+          "publish": true
+        },
+        {
+          "name": "ropePoints",
+          "doc": "An og.Rope's points after the last step, from its entity to its end (empty before its first step). The engine draws visible ropes itself; this is for game logic and custom drawing.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The rope's entity."
+            }
+          ],
+          "returns": "Result<List<Vector3>>",
+          "returnsDoc": "Refused for an entity without an og.Rope.",
+          "publish": true
+        },
+        {
+          "name": "clothPoints",
+          "doc": "An og.Cloth's points after the last step, row by row (`columns` per row, rows downwards from the top edge).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The cloth's entity."
+            }
+          ],
+          "returns": "Result<List<Vector3>>",
+          "returnsDoc": "Refused for an entity without an og.Cloth.",
+          "publish": true
+        },
+        {
+          "name": "fluidParticles",
+          "doc": "An og.Fluid2D's particle positions after the last step, in world space.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The fluid's entity."
+            }
+          ],
+          "returns": "Result<List<Vector2>>",
+          "returnsDoc": "Refused for an entity without an og.Fluid2D.",
+          "publish": true
+        },
+        {
+          "name": "waterHeight",
+          "doc": "The surface height of an og.WaterSurface (world y) or an og.WaterLine (world y at `x`; `z` ignored) at a point, as the last step left it: for boats that bob and spray that starts on the surface.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The water's entity."
+            },
+            {
+              "name": "x",
+              "type": "f32",
+              "optional": false,
+              "doc": "World x, in metres."
+            },
+            {
+              "name": "z",
+              "type": "f32",
+              "optional": false,
+              "doc": "World z, in metres (3D)."
+            }
+          ],
+          "returns": "Result<f32>",
+          "returnsDoc": "Refused for an entity without water; outside the water, its rest level.",
+          "publish": true
+        },
+        {
+          "name": "vehicleWheels",
+          "doc": "An og.Vehicle's wheels after the last step (front left, front right, rear left, rear right), for drawing wheel models.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The vehicle's entity."
+            }
+          ],
+          "returns": "Result<List<WheelPose>>",
+          "returnsDoc": "Refused for an entity without a vehicle.",
+          "publish": true
+        },
+        {
+          "name": "ragdollRigFromSkeleton",
+          "doc": "A ragdoll rig from a loaded skeleton (og.load.animation's `skeleton`): a bone per joint of its first skin, parents first, each from its joint's rest pose to its first child joint, every bone naming its joint and the rig naming the skeleton. Pass it to og.physics.setRagdollRig, edited or not.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "skeleton",
+              "type": "SkeletonAsset",
+              "optional": false,
+              "doc": "The skeleton."
+            }
+          ],
+          "returns": "Result<RagdollRigDesc>",
+          "returnsDoc": "Refused for a skeleton that is not loaded or has no skin.",
+          "publish": true
+        },
+        {
+          "name": "setRagdollRig",
+          "doc": "Give an entity with an og.Ragdoll its bones (and, from og.physics.ragdollRigFromSkeleton, the skeleton they stand for: its og.Model is then drawn blended from the animation towards the bones by og.Ragdoll.blend). While weight is 0 the bones follow the rig's rest pose at the entity. Rigs are assets, not world state: kept by the engine and given again to a reloaded world.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The ragdoll's entity."
+            },
+            {
+              "name": "desc",
+              "type": "RagdollRigDesc",
+              "optional": true,
+              "doc": "The bones, parents first."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an empty rig or a parent that does not come before its child.",
+          "publish": true
+        },
+        {
+          "name": "ragdollPose",
+          "doc": "An og.Ragdoll's bones after the last step, in rig order (empty before its first step).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The ragdoll's entity."
+            }
+          ],
+          "returns": "Result<List<BonePose>>",
+          "returnsDoc": "Refused for an entity without a ragdoll.",
+          "publish": true
+        }
+      ],
+      "interfaces": [],
+      "callbacks": []
+    },
+    {
+      "name": "atmosphere",
+      "doc": "Fog, a procedural sky, the day-night cycle, weather and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before.\nThe day-night clock is a function of the tick (DayNight.start plus the simulated time times speed), so it is the same on every run and after a restore; rendering reads the world and never writes it.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "Fog",
+        "Sky",
+        "DayNight",
+        "Weather",
+        "Water",
+        "Water2D"
+      ],
+      "consts": [
+        {
+          "name": "WEATHER_NONE",
+          "type": "u32",
+          "value": 0,
+          "doc": "Weather.kind: clear."
+        },
+        {
+          "name": "WEATHER_RAIN",
+          "type": "u32",
+          "value": 1,
+          "doc": "Weather.kind: rain streaks falling with the wind, the light dimmed and a grey distance fog."
+        },
+        {
+          "name": "WEATHER_SNOW",
+          "type": "u32",
+          "value": 2,
+          "doc": "Weather.kind: flakes drifting down on gusts, a pale fog."
+        },
+        {
+          "name": "WEATHER_DUST",
+          "type": "u32",
+          "value": 3,
+          "doc": "Weather.kind: dust blowing along the wind near the ground, a warm thick fog."
+        },
+        {
+          "name": "WEATHER_MIST",
+          "type": "u32",
+          "value": 4,
+          "doc": "Weather.kind: no particles, a dense low height fog."
+        }
+      ],
+      "functions": [
+        {
+          "name": "timeOfDay",
+          "doc": "The DayNight clock at the current tick, in hours from 0 to 24 (its start when the cycle is off): for lamps that light at dusk and shops that close at night. Inside a system, declare og.DayNight among its reads.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "f32",
           "publish": true
         }
       ],
@@ -9927,6 +10407,13 @@
       ],
       "additionalProperties": false
     },
+    "Shader": {
+      "x-og-kind": "handle",
+      "x-og-module": "render",
+      "description": "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read.",
+      "type": "integer",
+      "minimum": 0
+    },
     "Asset": {
       "x-og-kind": "handle",
       "x-og-module": "load",
@@ -10624,6 +11111,1404 @@
       ],
       "additionalProperties": false
     },
+    "Joint": {
+      "x-og-kind": "component",
+      "x-og-module": "physics",
+      "description": "A joint between two bodies (or a body and a point of the world). The component may sit on one of the bodies (`body` 0) or on an entity of its own, so one body can have several joints. Anchors are in each body's frame (rotated and moved with it, not scaled); without `other` the second anchor is a world point. A joint whose bodies are not both `og.RigidBody` entities does nothing until they are.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "JOINT_FIXED 0, JOINT_REVOLUTE 1 (hinge), JOINT_PRISMATIC 2 (slider), JOINT_SPRING 3, JOINT_ROPE 4, JOINT_BALL 5.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 5,
+          "x-og-label": "Kind"
+        },
+        "body": {
+          "$ref": "#/$defs/Entity",
+          "description": "The first body; 0 is this entity.",
+          "default": 0
+        },
+        "other": {
+          "$ref": "#/$defs/Entity",
+          "description": "The second body; 0 joins the first one to the world at `otherAnchor`.",
+          "default": 0
+        },
+        "anchor": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where the joint sits on the first body, in its frame.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "otherAnchor": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where it sits on the second body, in its frame (a world point without `other`).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "axis": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The hinge or slide axis in the first body's frame (a hinge in 2D turns about z).",
+          "default": {
+            "x": 1,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "limits": {
+          "type": "boolean",
+          "description": "Whether `min`..`max` bound the hinge angle (rad) or the slide (m).",
+          "default": false
+        },
+        "min": {
+          "type": "number",
+          "description": "The lower limit: radians for a hinge, metres for a slider.",
+          "default": 0
+        },
+        "max": {
+          "type": "number",
+          "description": "The upper limit.",
+          "default": 0
+        },
+        "motor": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "MOTOR_NONE 0, MOTOR_VELOCITY 1 (drive at motorTarget speed), MOTOR_POSITION 2 (spring to motorTarget).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 2
+        },
+        "motorTarget": {
+          "type": "number",
+          "description": "The motor's target speed (rad/s, m/s) or angle or position (rad, m).",
+          "default": 0,
+          "x-og-tunable": true
+        },
+        "motorStiffness": {
+          "type": "number",
+          "description": "A position motor's stiffness; a velocity motor's strength.",
+          "default": 50,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "motorDamping": {
+          "type": "number",
+          "description": "A position motor's damping.",
+          "default": 5,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "motorMaxForce": {
+          "type": "number",
+          "description": "The most force (or torque) the motor applies; 0 is unbounded.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "restLength": {
+          "type": "number",
+          "description": "A spring's rest length.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "stiffness": {
+          "type": "number",
+          "description": "A spring's stiffness (N/m).",
+          "default": 40,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "damping": {
+          "type": "number",
+          "description": "A spring's damping (N·s/m).",
+          "default": 2,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "length": {
+          "type": "number",
+          "description": "A rope's longest distance between the anchors.",
+          "default": 2,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "collide": {
+          "type": "boolean",
+          "description": "Whether the two bodies still collide with each other.",
+          "default": false
+        },
+        "value": {
+          "type": "number",
+          "description": "Written: the hinge angle (rad) or the slide (m) after the step; the anchors' distance for springs and ropes.",
+          "default": 0,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "CharacterController": {
+      "x-og-kind": "component",
+      "x-og-module": "physics",
+      "description": "A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. The entity needs an og.Transform and an og.Collider; the step makes it a kinematic body and pushes dynamic bodies it walks into.",
+      "type": "object",
+      "properties": {
+        "move": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The wanted velocity across the ground (m/s, world space; y is ignored unless gravityScale is 0). Set it every tick.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "mps"
+        },
+        "jump": {
+          "type": "boolean",
+          "description": "Held to jump: a jump starts on the tick it becomes true while grounded (or in coyote time).",
+          "default": false
+        },
+        "jumpSpeed": {
+          "type": "number",
+          "description": "The upward speed of a jump.",
+          "default": 6,
+          "minimum": 0,
+          "x-og-unit": "mps",
+          "x-og-tunable": true
+        },
+        "gravityScale": {
+          "type": "number",
+          "description": "Multiplies og.Physics.gravity; 0 for top-down movement in any direction.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 10,
+          "x-og-tunable": true
+        },
+        "maxSlope": {
+          "type": "number",
+          "description": "The steepest slope it walks up.",
+          "default": 45,
+          "minimum": 0,
+          "maximum": 89,
+          "x-og-unit": "deg",
+          "x-og-tunable": true
+        },
+        "stepHeight": {
+          "type": "number",
+          "description": "The highest step it climbs without jumping (0: none).",
+          "default": 0.3,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "snapDistance": {
+          "type": "number",
+          "description": "How far below it the ground still holds it (stairs down, slopes): 0 lets it leave every edge.",
+          "default": 0.2,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "skin": {
+          "type": "number",
+          "description": "The gap kept between it and every surface.",
+          "default": 0.02,
+          "minimum": 0.001,
+          "x-og-unit": "m"
+        },
+        "coyoteTime": {
+          "type": "number",
+          "description": "After leaving an edge, a jump still starts within this time.",
+          "default": 0.1,
+          "minimum": 0,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "maxFallSpeed": {
+          "type": "number",
+          "description": "The fastest fall.",
+          "default": 40,
+          "minimum": 0,
+          "x-og-unit": "mps",
+          "x-og-tunable": true
+        },
+        "pushBodies": {
+          "type": "boolean",
+          "description": "Push dynamic bodies it walks into.",
+          "default": true
+        },
+        "grounded": {
+          "type": "boolean",
+          "description": "Written: standing on walkable ground after the step.",
+          "default": false,
+          "readOnly": true
+        },
+        "sliding": {
+          "type": "boolean",
+          "description": "Written: sliding down a slope steeper than maxSlope.",
+          "default": false,
+          "readOnly": true
+        },
+        "velocity": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Written: the velocity it moved at this tick (the platform's carry included).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "mps",
+          "readOnly": true
+        },
+        "groundNormal": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Written: the ground's normal (zero in the air).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "readOnly": true
+        },
+        "coyote": {
+          "type": "number",
+          "description": "Written: seconds left in which a jump may still start (coyote time).",
+          "default": 0,
+          "readOnly": true
+        },
+        "jumpWasHeld": {
+          "type": "boolean",
+          "description": "Written: `jump` as the last step saw it (a jump starts on its rising edge).",
+          "default": false,
+          "readOnly": true
+        },
+        "ground": {
+          "$ref": "#/$defs/Entity",
+          "description": "Written: the entity it stands on (0 in the air); a moving one carries it.",
+          "default": 0,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "PlatformerController": {
+      "x-og-kind": "component",
+      "x-og-module": "physics",
+      "description": "A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height (releasing jump while rising cuts the jump), apex hang, air jumps, wall slide and wall jump, one-way platforms (colliders on `oneWayLayers` are solid from above only; hold `down` to drop through), moving platforms (it rides what it stands on) and corner correction (a jump that clips a ceiling corner by less than `cornerCorrection` slides past it). The entity needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body.",
+      "type": "object",
+      "properties": {
+        "moveX": {
+          "type": "number",
+          "description": "The run input, -1 (left) to 1 (right). Set it every tick.",
+          "default": 0,
+          "minimum": -1,
+          "maximum": 1
+        },
+        "jump": {
+          "type": "boolean",
+          "description": "Held to jump: a press is buffered for jumpBuffer; releasing while rising cuts the jump.",
+          "default": false
+        },
+        "down": {
+          "type": "boolean",
+          "description": "Held to drop through a one-way platform.",
+          "default": false
+        },
+        "maxSpeed": {
+          "type": "number",
+          "description": "The top running speed.",
+          "default": 8,
+          "minimum": 0,
+          "x-og-unit": "mps",
+          "x-og-tunable": true
+        },
+        "acceleration": {
+          "type": "number",
+          "description": "How fast it reaches maxSpeed on the ground.",
+          "default": 70,
+          "minimum": 0,
+          "x-og-unit": "mps2",
+          "x-og-tunable": true
+        },
+        "deceleration": {
+          "type": "number",
+          "description": "How fast it stops on the ground without input.",
+          "default": 80,
+          "minimum": 0,
+          "x-og-unit": "mps2",
+          "x-og-tunable": true
+        },
+        "airAcceleration": {
+          "type": "number",
+          "description": "Acceleration in the air.",
+          "default": 45,
+          "minimum": 0,
+          "x-og-unit": "mps2",
+          "x-og-tunable": true
+        },
+        "airDeceleration": {
+          "type": "number",
+          "description": "Deceleration in the air without input.",
+          "default": 25,
+          "minimum": 0,
+          "x-og-unit": "mps2",
+          "x-og-tunable": true
+        },
+        "jumpHeight": {
+          "type": "number",
+          "description": "How high a full jump goes.",
+          "default": 3.2,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "timeToApex": {
+          "type": "number",
+          "description": "How long a full jump takes to reach its height (sets gravity and the jump speed).",
+          "default": 0.4,
+          "minimum": 0.05,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "fallGravity": {
+          "type": "number",
+          "description": "Gravity multiplier while falling (snappier landings above 1).",
+          "default": 1.8,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "jumpCut": {
+          "type": "number",
+          "description": "Gravity multiplier while rising with jump released (variable jump height; 1 disables it).",
+          "default": 2.5,
+          "minimum": 1,
+          "x-og-tunable": true
+        },
+        "apexGravity": {
+          "type": "number",
+          "description": "Gravity multiplier near the apex while jump is held (hang time; 1 disables it).",
+          "default": 0.6,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "apexThreshold": {
+          "type": "number",
+          "description": "The vertical speed below which the apex multiplier applies.",
+          "default": 1.5,
+          "minimum": 0,
+          "x-og-unit": "mps",
+          "x-og-tunable": true
+        },
+        "maxFallSpeed": {
+          "type": "number",
+          "description": "The fastest fall.",
+          "default": 20,
+          "minimum": 0,
+          "x-og-unit": "mps",
+          "x-og-tunable": true
+        },
+        "coyoteTime": {
+          "type": "number",
+          "description": "After running off an edge, a jump still starts within this time.",
+          "default": 0.1,
+          "minimum": 0,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "jumpBuffer": {
+          "type": "number",
+          "description": "A jump pressed this long before landing starts on landing.",
+          "default": 0.12,
+          "minimum": 0,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "airJumps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Extra jumps in the air (1: a double jump).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 8
+        },
+        "wallJumps": {
+          "type": "boolean",
+          "description": "Slide down walls it pushes against (and jump off them).",
+          "default": true
+        },
+        "wallSlideSpeed": {
+          "type": "number",
+          "description": "The fastest slide down a wall.",
+          "default": 3,
+          "minimum": 0,
+          "x-og-unit": "mps",
+          "x-og-tunable": true
+        },
+        "wallJump": {
+          "$ref": "#/$defs/Vector2",
+          "description": "A wall jump's velocity: x away from the wall, y up.",
+          "default": {
+            "x": 8,
+            "y": 12
+          },
+          "x-og-unit": "mps",
+          "x-og-tunable": true
+        },
+        "wallJumpLock": {
+          "type": "number",
+          "description": "After a wall jump, the run input is ignored for this long (so it leaves the wall).",
+          "default": 0.14,
+          "minimum": 0,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "oneWayLayers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The collision layers that are one-way platforms (solid from above), as bits.",
+          "default": 0
+        },
+        "cornerCorrection": {
+          "type": "number",
+          "description": "How far a rising jump is nudged sideways past a ceiling corner (0: never).",
+          "default": 0.15,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "maxSlope": {
+          "type": "number",
+          "description": "The steepest slope it runs up.",
+          "default": 50,
+          "minimum": 0,
+          "maximum": 89,
+          "x-og-unit": "deg",
+          "x-og-tunable": true
+        },
+        "snapDistance": {
+          "type": "number",
+          "description": "How far below it the ground still holds it (slopes, small drops).",
+          "default": 0.1,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "skin": {
+          "type": "number",
+          "description": "The gap kept between it and every surface.",
+          "default": 0.01,
+          "minimum": 0.001,
+          "x-og-unit": "m"
+        },
+        "grounded": {
+          "type": "boolean",
+          "description": "Written: standing on ground after the step.",
+          "default": false,
+          "readOnly": true
+        },
+        "onWall": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Written: -1 sliding on a wall to its left, 1 to its right, 0 none.",
+          "default": 0,
+          "minimum": -1,
+          "maximum": 1,
+          "readOnly": true
+        },
+        "facing": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Written: -1 facing left, 1 right (the last run direction).",
+          "default": 1,
+          "minimum": -1,
+          "maximum": 1,
+          "readOnly": true
+        },
+        "velocity": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Written: the velocity after the step (the platform's carry excluded).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "mps",
+          "readOnly": true
+        },
+        "jumping": {
+          "type": "boolean",
+          "description": "Written: rising from a jump (until the apex or a release cut).",
+          "default": false,
+          "readOnly": true
+        },
+        "airJumpsLeft": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Written: air jumps left before landing.",
+          "default": 0,
+          "readOnly": true
+        },
+        "coyote": {
+          "type": "number",
+          "description": "Written: seconds of coyote time left.",
+          "default": 0,
+          "readOnly": true
+        },
+        "buffer": {
+          "type": "number",
+          "description": "Written: seconds a buffered jump press stays valid.",
+          "default": 0,
+          "readOnly": true
+        },
+        "wallLock": {
+          "type": "number",
+          "description": "Written: seconds the run input stays locked after a wall jump.",
+          "default": 0,
+          "readOnly": true
+        },
+        "dropTime": {
+          "type": "number",
+          "description": "Written: seconds one-way platforms stay passable after dropping through.",
+          "default": 0,
+          "readOnly": true
+        },
+        "jumpWasHeld": {
+          "type": "boolean",
+          "description": "Written: `jump` as the last step saw it.",
+          "default": false,
+          "readOnly": true
+        },
+        "ground": {
+          "$ref": "#/$defs/Entity",
+          "description": "Written: the entity it stands on (0 in the air); a moving one carries it.",
+          "default": 0,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "CharacterEvent": {
+      "x-og-kind": "event",
+      "x-og-module": "physics",
+      "description": "Something a CharacterController or PlatformerController did this step: the hooks for dust, squash, sounds and camera kicks. Read the next tick.",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "The character."
+        },
+        "kind": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "CHARACTER_JUMPED 1, LANDED 2, WALL_JUMPED 3, AIR_JUMPED 4, LEFT_GROUND 5, BUMPED 6.",
+          "minimum": 0,
+          "maximum": 6
+        },
+        "speed": {
+          "type": "number",
+          "description": "The vertical speed at the moment (a landing's impact speed is negative).",
+          "x-og-unit": "mps"
+        }
+      },
+      "required": [
+        "entity",
+        "kind",
+        "speed"
+      ],
+      "additionalProperties": false
+    },
+    "Vehicle": {
+      "x-og-kind": "component",
+      "x-og-module": "physics",
+      "description": "A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle); its forward is the chassis's local +z (three.js Object3D.lookAt aims +z). 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. The wheels are not entities: og.physics.vehicleWheels gives their poses for drawing.",
+      "type": "object",
+      "properties": {
+        "throttle": {
+          "type": "number",
+          "description": "The accelerator, -1 (reverse) to 1. Set it every tick.",
+          "default": 0,
+          "minimum": -1,
+          "maximum": 1
+        },
+        "steer": {
+          "type": "number",
+          "description": "The steering, -1 (left) to 1 (right); 3D only.",
+          "default": 0,
+          "minimum": -1,
+          "maximum": 1
+        },
+        "brake": {
+          "type": "number",
+          "description": "The brake, 0 to 1.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "wheelBase": {
+          "type": "number",
+          "description": "The distance between the front and rear axles.",
+          "default": 2.6,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "track": {
+          "type": "number",
+          "description": "The distance between the left and right wheels (3D).",
+          "default": 1.6,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "wheelRadius": {
+          "type": "number",
+          "description": "The wheels' radius.",
+          "default": 0.4,
+          "minimum": 0.01,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "mountHeight": {
+          "type": "number",
+          "description": "The height of the wheel mounts below the chassis centre.",
+          "default": 0.2,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "suspensionRest": {
+          "type": "number",
+          "description": "The suspension's length at rest.",
+          "default": 0.35,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "suspensionTravel": {
+          "type": "number",
+          "description": "How far the suspension compresses or extends from rest.",
+          "default": 0.25,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "suspensionStiffness": {
+          "type": "number",
+          "description": "The suspension's stiffness.",
+          "default": 30,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "suspensionDamping": {
+          "type": "number",
+          "description": "The suspension's damping.",
+          "default": 4,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "grip": {
+          "type": "number",
+          "description": "The tyres' grip (3D: the friction slip; 2D: the wheels' friction).",
+          "default": 2,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "engineForce": {
+          "type": "number",
+          "description": "The engine's force at full throttle (3D: per driven wheel, N; 2D: the motor's torque).",
+          "default": 80,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "maxSpeed": {
+          "type": "number",
+          "description": "The top speed: the engine's force fades out towards it (throttle against the motion brakes first).",
+          "default": 20,
+          "minimum": 0,
+          "x-og-unit": "mps",
+          "x-og-tunable": true
+        },
+        "brakeForce": {
+          "type": "number",
+          "description": "The brakes' force at full brake.",
+          "default": 30,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "maxSteer": {
+          "type": "number",
+          "description": "The front wheels' largest steering angle (3D).",
+          "default": 0.55,
+          "minimum": 0,
+          "maximum": 1.2,
+          "x-og-unit": "rad",
+          "x-og-tunable": true
+        },
+        "drive": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "DRIVE_REAR 0, DRIVE_FRONT 1, DRIVE_ALL 2.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 2
+        },
+        "wheelMass": {
+          "type": "number",
+          "description": "The wheels' mass (2D: the wheel bodies; 3D ignores it).",
+          "default": 1,
+          "minimum": 0.01,
+          "x-og-unit": "kg",
+          "x-og-tunable": true
+        },
+        "speed": {
+          "type": "number",
+          "description": "Written: the forward speed (m/s; negative reversing).",
+          "default": 0,
+          "x-og-unit": "mps",
+          "readOnly": true
+        },
+        "contacts": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Written: how many wheels touch the ground.",
+          "default": 0,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Rope": {
+      "x-og-kind": "component",
+      "x-og-module": "physics",
+      "description": "A Verlet rope: `segments` links from the entity's position (plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind, colliding with every solid collider at `radius`. It moves nothing (one-way: a rope joint ties bodies together, og.Joint JOINT_ROPE). Its points are world state (the og.physics state block); og.physics.ropePoints reads them and the renderer draws the rope as a strip of `width` and `color`.",
+      "type": "object",
+      "properties": {
+        "segments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The number of links (points minus one).",
+          "default": 16,
+          "minimum": 1,
+          "maximum": 256
+        },
+        "length": {
+          "type": "number",
+          "description": "The rope's length at rest.",
+          "default": 4,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "offset": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The start's offset from the entity's position (world axes).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "end": {
+          "$ref": "#/$defs/Entity",
+          "description": "The entity the far end is tied to; 0 leaves it free.",
+          "default": 0
+        },
+        "endOffset": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The far end's offset from `end`'s position.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "iterations": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Constraint passes per step: more is stiffer, at more cost.",
+          "default": 12,
+          "minimum": 1,
+          "maximum": 64,
+          "x-og-tunable": true
+        },
+        "damping": {
+          "type": "number",
+          "description": "How much of its velocity each point keeps per tick (1: none lost).",
+          "default": 0.99,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "gravityScale": {
+          "type": "number",
+          "description": "Multiplies og.Physics.gravity.",
+          "default": 1,
+          "minimum": -10,
+          "maximum": 10,
+          "x-og-tunable": true
+        },
+        "wind": {
+          "$ref": "#/$defs/Vector3",
+          "description": "A steady acceleration (wind).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "mps2",
+          "x-og-tunable": true
+        },
+        "radius": {
+          "type": "number",
+          "description": "The thickness it collides at (0: no collision).",
+          "default": 0.05,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "width": {
+          "type": "number",
+          "description": "The drawn width.",
+          "default": 0.08,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "color": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The drawn linear colour.",
+          "default": {
+            "x": 0.55,
+            "y": 0.42,
+            "z": 0.28
+          }
+        },
+        "visible": {
+          "type": "boolean",
+          "description": "Whether the renderer draws it.",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Cloth": {
+      "x-og-kind": "component",
+      "x-og-module": "physics",
+      "description": "A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind and collision against every solid collider. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour).",
+      "type": "object",
+      "properties": {
+        "columns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Points across.",
+          "default": 12,
+          "minimum": 2,
+          "maximum": 64
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Points down.",
+          "default": 12,
+          "minimum": 2,
+          "maximum": 64
+        },
+        "spacing": {
+          "type": "number",
+          "description": "The rest distance between neighbouring points.",
+          "default": 0.15,
+          "minimum": 0.001,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "pins": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Which points are pinned, a sum of PIN_* bits (1 top row, 2 top corners, 4 left column, 8 top rings).",
+          "default": 1
+        },
+        "iterations": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Constraint passes per step.",
+          "default": 8,
+          "minimum": 1,
+          "maximum": 64,
+          "x-og-tunable": true
+        },
+        "damping": {
+          "type": "number",
+          "description": "How much of its velocity each point keeps per tick.",
+          "default": 0.985,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "gravityScale": {
+          "type": "number",
+          "description": "Multiplies og.Physics.gravity.",
+          "default": 1,
+          "minimum": -10,
+          "maximum": 10,
+          "x-og-tunable": true
+        },
+        "wind": {
+          "$ref": "#/$defs/Vector3",
+          "description": "A steady acceleration (wind); the cloth flutters with it.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "mps2",
+          "x-og-tunable": true
+        },
+        "gust": {
+          "type": "number",
+          "description": "How much the wind varies over the cloth and the tick (0: steady).",
+          "default": 0.6,
+          "minimum": 0,
+          "maximum": 2,
+          "x-og-tunable": true
+        },
+        "radius": {
+          "type": "number",
+          "description": "The thickness it collides at (0: no collision).",
+          "default": 0.04,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "material": {
+          "$ref": "#/$defs/Material",
+          "description": "The material it is drawn with (og.render.standardMaterial); 0 is a plain cloth.",
+          "default": 0
+        },
+        "visible": {
+          "type": "boolean",
+          "description": "Whether the renderer draws it.",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Fluid2D": {
+      "x-og-kind": "component",
+      "x-og-module": "physics",
+      "description": "A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`.",
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many particles (spawned when the component appears or count changes).",
+          "default": 1000,
+          "minimum": 1,
+          "maximum": 8192
+        },
+        "size": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The spawn box, centred on the entity.",
+          "default": {
+            "x": 4,
+            "y": 3
+          },
+          "x-og-unit": "m"
+        },
+        "bounds": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The container around the entity (0 0: none; colliders still hold it).",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "x-og-unit": "m"
+        },
+        "radius": {
+          "type": "number",
+          "description": "The interaction radius: particles closer than this push and drag each other.",
+          "default": 0.18,
+          "minimum": 0.01,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "restDensity": {
+          "type": "number",
+          "description": "The density it settles at (neighbours within radius, weighted).",
+          "default": 1,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "stiffness": {
+          "type": "number",
+          "description": "The pressure's strength (above about 0.15 it gets springy, then unstable).",
+          "default": 0.1,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "nearStiffness": {
+          "type": "number",
+          "description": "The near pressure's strength (keeps particles apart, gives surface tension).",
+          "default": 0.5,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "viscosity": {
+          "type": "number",
+          "description": "Linear viscosity (honey above 1).",
+          "default": 0.15,
+          "minimum": 0,
+          "maximum": 4,
+          "x-og-tunable": true
+        },
+        "gravityScale": {
+          "type": "number",
+          "description": "Multiplies og.Physics.gravity.",
+          "default": 1,
+          "minimum": -10,
+          "maximum": 10,
+          "x-og-tunable": true
+        },
+        "substeps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Simulation steps per tick.",
+          "default": 2,
+          "minimum": 1,
+          "maximum": 8
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The seed of the spawn jitter.",
+          "default": 0
+        },
+        "color": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The surface's linear colour.",
+          "default": {
+            "x": 0.15,
+            "y": 0.45,
+            "z": 0.95
+          }
+        },
+        "opacity": {
+          "type": "number",
+          "description": "The surface's opacity.",
+          "default": 0.9,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "blobScale": {
+          "type": "number",
+          "description": "The drawn size of each particle's blob (times radius).",
+          "default": 1.6,
+          "minimum": 0.1,
+          "maximum": 4
+        },
+        "threshold": {
+          "type": "number",
+          "description": "The field value where the surface starts (higher: thinner, separate drops).",
+          "default": 0.45,
+          "minimum": 0.01,
+          "maximum": 4
+        },
+        "layer": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "The sprite layer it is drawn on.",
+          "default": 0
+        },
+        "visible": {
+          "type": "boolean",
+          "description": "Whether the renderer draws it.",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "WaterSurface": {
+      "x-og-kind": "component",
+      "x-og-module": "physics",
+      "description": "Height-field water (3D): a `resolution` × `resolution` grid of heights over a `size` square centred on the entity (its y is the rest level), waves travelling at `waveSpeed` and fading by `damping`. Dynamic bodies crossing it push waves (splashes; og.Splash events) and float by `buoyancy`. The heights are world state; an og.Water on the same entity draws them.",
+      "type": "object",
+      "properties": {
+        "resolution": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Grid points along each side.",
+          "default": 64,
+          "minimum": 8,
+          "maximum": 256
+        },
+        "size": {
+          "type": "number",
+          "description": "The side of the square of water.",
+          "default": 16,
+          "minimum": 0.1,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "waveSpeed": {
+          "type": "number",
+          "description": "How fast waves travel.",
+          "default": 3,
+          "minimum": 0,
+          "x-og-unit": "mps",
+          "x-og-tunable": true
+        },
+        "damping": {
+          "type": "number",
+          "description": "How much of a wave survives a second (1: no loss).",
+          "default": 0.4,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "splash": {
+          "type": "number",
+          "description": "How strongly bodies push waves.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "buoyancy": {
+          "type": "number",
+          "description": "The upward force on a submerged body per cubic metre of its box under water (0: bodies sink).",
+          "default": 9.81,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "drag": {
+          "type": "number",
+          "description": "How much a submerged body's velocity is slowed.",
+          "default": 1.5,
+          "minimum": 0,
+          "x-og-unit": "perSecond",
+          "x-og-tunable": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "WaterLine": {
+      "x-og-kind": "component",
+      "x-og-module": "physics",
+      "description": "2D water for side-scrollers: a `width` × `depth` pool whose top edge (at the entity's y, centred on its x) is `columns` springs, each pulled to its rest height by `tension`, damped by `damping` and passing waves to its neighbours by `spread`. Bodies (and characters) crossing the surface splash it (og.Splash events) and float by `buoyancy`. The springs are world state; an og.Water2D on the same entity draws it.",
+      "type": "object",
+      "properties": {
+        "width": {
+          "type": "number",
+          "description": "The pool's width.",
+          "default": 12,
+          "minimum": 0.1,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "depth": {
+          "type": "number",
+          "description": "The pool's depth below the surface.",
+          "default": 3,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Springs along the surface.",
+          "default": 96,
+          "minimum": 4,
+          "maximum": 512
+        },
+        "tension": {
+          "type": "number",
+          "description": "How hard each spring pulls back to rest.",
+          "default": 60,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "damping": {
+          "type": "number",
+          "description": "How fast a spring's motion dies.",
+          "default": 2.5,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "spread": {
+          "type": "number",
+          "description": "How much of a spring's height its neighbours feel each pass (waves travel).",
+          "default": 0.25,
+          "minimum": 0,
+          "maximum": 0.5,
+          "x-og-tunable": true
+        },
+        "splash": {
+          "type": "number",
+          "description": "How strongly crossing bodies splash.",
+          "default": 0.04,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "buoyancy": {
+          "type": "number",
+          "description": "The upward force on a submerged body per square metre of its box under water (0: bodies sink).",
+          "default": 12,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "drag": {
+          "type": "number",
+          "description": "How much a submerged body's velocity is slowed.",
+          "default": 2,
+          "minimum": 0,
+          "x-og-unit": "perSecond",
+          "x-og-tunable": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Splash": {
+      "x-og-kind": "event",
+      "x-og-module": "physics",
+      "description": "Something crossed a water surface (og.WaterSurface or og.WaterLine): for splash particles and sounds. Read the next tick.",
+      "type": "object",
+      "properties": {
+        "water": {
+          "$ref": "#/$defs/Entity",
+          "description": "The water's entity."
+        },
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "What crossed it."
+        },
+        "point": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where it crossed the surface.",
+          "x-og-unit": "m"
+        },
+        "speed": {
+          "type": "number",
+          "description": "Its vertical speed (negative going in).",
+          "x-og-unit": "mps"
+        }
+      },
+      "required": [
+        "water",
+        "entity",
+        "point",
+        "speed"
+      ],
+      "additionalProperties": false
+    },
+    "Ragdoll": {
+      "x-og-kind": "component",
+      "x-og-module": "physics",
+      "description": "A ragdoll over an og.Skeleton (3D): a capsule body per bone with a parent, ball joints with cone limits between them, built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state (the og.physics state block), not entities.",
+      "type": "object",
+      "properties": {
+        "weight": {
+          "type": "number",
+          "description": "0 animated, 1 ragdoll. Set it to 1 on a hit; back to 0 to recover.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "blendTime": {
+          "type": "number",
+          "description": "How long the blend between animation and physics takes, both ways.",
+          "default": 0.25,
+          "minimum": 0,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "mass": {
+          "type": "number",
+          "description": "The whole body's mass, shared by the bones by length.",
+          "default": 60,
+          "minimum": 0.1,
+          "x-og-unit": "kg",
+          "x-og-tunable": true
+        },
+        "thickness": {
+          "type": "number",
+          "description": "A bone capsule's radius as a fraction of its length.",
+          "default": 0.22,
+          "minimum": 0.01,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "jointLimit": {
+          "type": "number",
+          "description": "How far each joint bends from the rest pose.",
+          "default": 0.9,
+          "minimum": 0,
+          "maximum": 3.1,
+          "x-og-unit": "rad",
+          "x-og-tunable": true
+        },
+        "damping": {
+          "type": "number",
+          "description": "How much of their motion the bones lose per second.",
+          "default": 0.6,
+          "minimum": 0,
+          "maximum": 20,
+          "x-og-unit": "perSecond",
+          "x-og-tunable": true
+        },
+        "impulse": {
+          "$ref": "#/$defs/Vector3",
+          "description": "An impulse given to every bone when weight first goes up (a hit).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "blend": {
+          "type": "number",
+          "description": "Written: the blend in use (0 animation .. 1 physics).",
+          "default": 0,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
     "QueryFilter": {
       "x-og-kind": "desc",
       "x-og-module": "physics",
@@ -10923,6 +12808,667 @@
           },
           "description": "Triangles as triples of indices into positions; a convex hull ignores them.",
           "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "WheelPose": {
+      "x-og-kind": "struct",
+      "x-og-module": "physics",
+      "description": "A wheel of an og.Vehicle as the last step left it, for drawing.",
+      "type": "object",
+      "properties": {
+        "position": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The wheel's centre in world space.",
+          "x-og-unit": "m"
+        },
+        "rotation": {
+          "$ref": "#/$defs/Quaternion",
+          "description": "Its rotation (steering and spin) in world space."
+        },
+        "contact": {
+          "type": "boolean",
+          "description": "Whether it touches the ground."
+        }
+      },
+      "required": [
+        "position",
+        "rotation",
+        "contact"
+      ],
+      "additionalProperties": false
+    },
+    "RagdollBoneDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "physics",
+      "description": "One bone of a ragdoll rig: a capsule from the bone's position along `axis` for `length`.",
+      "type": "object",
+      "properties": {
+        "parent": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "The parent bone's index (it must come earlier); -1 for the root.",
+          "default": -1
+        },
+        "position": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The bone's rest position relative to the entity.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "rotation": {
+          "$ref": "#/$defs/Quaternion",
+          "description": "The bone's rest rotation relative to the entity; a zero quaternion is no rotation.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "length": {
+          "type": "number",
+          "description": "How long the bone is (to its child).",
+          "default": 0.25,
+          "x-og-unit": "m"
+        },
+        "axis": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The direction the bone points in its own frame (towards its child).",
+          "default": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          }
+        },
+        "joint": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "The skeleton joint (its index in the skin) the bone stands for, so the model is drawn with it; -1 for none.",
+          "default": -1
+        }
+      },
+      "additionalProperties": false
+    },
+    "RagdollRigDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "physics",
+      "description": "The bones of a ragdoll, parents first, for og.physics.setRagdollRig; og.physics.ragdollRigFromSkeleton makes one from a model's skeleton.",
+      "type": "object",
+      "properties": {
+        "bones": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RagdollBoneDesc"
+          },
+          "description": "The bones.",
+          "default": []
+        },
+        "skeleton": {
+          "$ref": "#/$defs/SkeletonAsset",
+          "description": "The skeleton the bones' joints belong to (0: none): the entity's posed model is drawn blended towards the bones by og.Ragdoll.blend.",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "BonePose": {
+      "x-og-kind": "struct",
+      "x-og-module": "physics",
+      "description": "A ragdoll bone's pose as the last step left it (blended with the animation by og.Ragdoll.weight).",
+      "type": "object",
+      "properties": {
+        "position": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The bone's position in world space.",
+          "x-og-unit": "m"
+        },
+        "rotation": {
+          "$ref": "#/$defs/Quaternion",
+          "description": "Its rotation in world space."
+        }
+      },
+      "required": [
+        "position",
+        "rotation"
+      ],
+      "additionalProperties": false
+    },
+    "Fog": {
+      "x-og-kind": "resource",
+      "x-og-module": "atmosphere",
+      "description": "Distance and height fog over the 3D scene and world sprites: distance fog thickens exponentially by density from start (or linearly from start to end when end > start), height fog is densest below height and thins by falloff per metre above it; looking into the sun it turns towards sunColor. The overlay is never fogged.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Draw the fog.",
+          "default": false
+        },
+        "color": {
+          "$ref": "#/$defs/Color",
+          "description": "The colour the fog tends to (linear, before exposure).",
+          "default": {
+            "r": 0.62,
+            "g": 0.68,
+            "b": 0.76
+          }
+        },
+        "density": {
+          "type": "number",
+          "description": "Distance fog per metre (0: none).",
+          "default": 0.02,
+          "minimum": 0,
+          "maximum": 2,
+          "x-og-tunable": true
+        },
+        "start": {
+          "type": "number",
+          "description": "Where distance fog starts.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "end": {
+          "type": "number",
+          "description": "With end > start, a linear ramp to full fog at end as well.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "heightDensity": {
+          "type": "number",
+          "description": "Height fog at and below height (0: none).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 10,
+          "x-og-tunable": true
+        },
+        "height": {
+          "type": "number",
+          "description": "The world height below which height fog is densest.",
+          "default": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "falloff": {
+          "type": "number",
+          "description": "How fast height fog thins above height, per metre.",
+          "default": 0.5,
+          "minimum": 0.0001,
+          "maximum": 20,
+          "x-og-tunable": true
+        },
+        "sunColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The fog's colour looking into the sun (forward scattering).",
+          "default": {
+            "r": 1,
+            "g": 0.86,
+            "b": 0.62
+          }
+        },
+        "sunPower": {
+          "type": "number",
+          "description": "How tight the sun's glow in the fog is (higher: smaller).",
+          "default": 8,
+          "minimum": 0,
+          "maximum": 256,
+          "x-og-tunable": true
+        },
+        "maxOpacity": {
+          "type": "number",
+          "description": "The most the fog hides.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "sky": {
+          "type": "number",
+          "description": "How much of the fog covers the sky (0: the sky stays clear).",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Sky": {
+      "x-og-kind": "resource",
+      "x-og-module": "atmosphere",
+      "description": "A procedural sky of chosen colours, drawn behind the scene per pixel and lighting it (the image-based light follows it). Without it, RenderSettings.sky draws the built-in sky. A DayNight that is enabled sets the sky itself.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Draw and light by this sky.",
+          "default": false
+        },
+        "zenith": {
+          "$ref": "#/$defs/Color",
+          "description": "Overhead.",
+          "default": {
+            "r": 0.18,
+            "g": 0.36,
+            "b": 0.78
+          }
+        },
+        "horizon": {
+          "$ref": "#/$defs/Color",
+          "description": "At the horizon.",
+          "default": {
+            "r": 0.78,
+            "g": 0.84,
+            "b": 0.92
+          }
+        },
+        "ground": {
+          "$ref": "#/$defs/Color",
+          "description": "Below the horizon.",
+          "default": {
+            "r": 0.16,
+            "g": 0.14,
+            "b": 0.12
+          }
+        },
+        "sunDirection": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Towards the sun (match your DirectionalLight).",
+          "default": {
+            "x": 0.45,
+            "y": 0.8,
+            "z": 0.35
+          }
+        },
+        "sunColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The sun's colour.",
+          "default": {
+            "r": 1,
+            "g": 0.95,
+            "b": 0.88
+          }
+        },
+        "sunSize": {
+          "type": "number",
+          "description": "The sun disc's angular radius (0: no disc).",
+          "default": 1.8,
+          "minimum": 0,
+          "maximum": 20,
+          "x-og-unit": "deg",
+          "x-og-tunable": true
+        },
+        "sunIntensity": {
+          "type": "number",
+          "description": "The disc's brightness.",
+          "default": 40,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "glow": {
+          "type": "number",
+          "description": "The glow around the sun.",
+          "default": 0.6,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "glowPower": {
+          "type": "number",
+          "description": "How tight the glow is.",
+          "default": 24,
+          "minimum": 1,
+          "x-og-tunable": true
+        },
+        "stars": {
+          "type": "number",
+          "description": "Stars where the sky is dark: 0 none, 1 a full night sky.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "brightness": {
+          "type": "number",
+          "description": "A multiplier on the whole sky.",
+          "default": 1.1,
+          "minimum": 0,
+          "x-og-tunable": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "DayNight": {
+      "x-og-kind": "resource",
+      "x-og-module": "atmosphere",
+      "description": "A day-night cycle: the time of day drives the sun's direction, the sky's colours and stars, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Run the cycle.",
+          "default": false
+        },
+        "start": {
+          "type": "number",
+          "description": "The time of day at tick 0, in hours (6 sunrise, 12 noon, 18 sunset).",
+          "default": 9,
+          "minimum": 0,
+          "maximum": 24,
+          "x-og-tunable": true
+        },
+        "speed": {
+          "type": "number",
+          "description": "Game hours per simulated second (0.05: a day in 8 minutes; 0 holds the time).",
+          "default": 0.05,
+          "minimum": 0,
+          "maximum": 24,
+          "x-og-tunable": true
+        },
+        "tilt": {
+          "type": "number",
+          "description": "How far the sun's path leans from overhead.",
+          "default": 25,
+          "minimum": 0,
+          "maximum": 89,
+          "x-og-unit": "deg",
+          "x-og-tunable": true
+        },
+        "azimuth": {
+          "type": "number",
+          "description": "Where the sun rises, turned about +y from +x.",
+          "default": 0,
+          "x-og-unit": "deg",
+          "x-og-tunable": true
+        },
+        "lightIntensity": {
+          "type": "number",
+          "description": "A multiplier on the sun and moon light.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 10,
+          "x-og-tunable": true
+        },
+        "tintFog": {
+          "type": "boolean",
+          "description": "Turn the og.Fog colour towards the horizon's.",
+          "default": true
+        },
+        "step": {
+          "type": "number",
+          "description": "Game minutes between regenerations of the image-based light.",
+          "default": 10,
+          "minimum": 1,
+          "maximum": 120,
+          "x-og-tunable": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Weather": {
+      "x-og-kind": "resource",
+      "x-og-module": "atmosphere",
+      "description": "A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence) and dimmed sunlight. Particles are simulated by the renderer from the tick, so they look the same on every run; they never touch the simulation.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "WEATHER_NONE 0, WEATHER_RAIN 1, WEATHER_SNOW 2, WEATHER_DUST 3, WEATHER_MIST 4.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 4,
+          "x-og-label": "Kind"
+        },
+        "intensity": {
+          "type": "number",
+          "description": "How heavy: scales the particle rate, the fog and the dimming.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 2,
+          "x-og-tunable": true
+        },
+        "wind": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where the wind blows the particles.",
+          "default": {
+            "x": 1.5,
+            "y": 0,
+            "z": 0.5
+          },
+          "x-og-unit": "mps",
+          "x-og-tunable": true
+        },
+        "radius": {
+          "type": "number",
+          "description": "The size of the region around the camera the particles fill.",
+          "default": 18,
+          "minimum": 1,
+          "maximum": 200,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "tint": {
+          "$ref": "#/$defs/Color",
+          "description": "Multiplies the particles' colour.",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "dim": {
+          "type": "number",
+          "description": "How much of the preset's dimming of the sunlight applies.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "layer": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "With an orthographic camera (2D), the sprite layer the particles draw in.",
+          "default": 50
+        }
+      },
+      "additionalProperties": false
+    },
+    "Water": {
+      "x-og-kind": "component",
+      "x-og-module": "atmosphere",
+      "description": "A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space where the tier allows, the sky's cubemap on WebGL2). With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated).",
+      "type": "object",
+      "properties": {
+        "size": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The extent along the entity's x and z.",
+          "default": {
+            "x": 16,
+            "y": 16
+          },
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "segments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Grid cells per side (the height field's detail).",
+          "default": 64,
+          "minimum": 1,
+          "maximum": 256
+        },
+        "shallow": {
+          "$ref": "#/$defs/Color",
+          "description": "Shallow water's colour (tints what is seen through it).",
+          "default": {
+            "r": 0.55,
+            "g": 0.85,
+            "b": 0.82
+          }
+        },
+        "deep": {
+          "$ref": "#/$defs/Color",
+          "description": "Deep water's colour.",
+          "default": {
+            "r": 0.02,
+            "g": 0.09,
+            "b": 0.14
+          }
+        },
+        "depthFade": {
+          "type": "number",
+          "description": "The depth over which water turns from shallow to deep.",
+          "default": 2.5,
+          "minimum": 0.01,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "opacity": {
+          "type": "number",
+          "description": "How opaque deep water gets.",
+          "default": 0.92,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "foam": {
+          "$ref": "#/$defs/Color",
+          "description": "The foam's colour.",
+          "default": {
+            "r": 0.95,
+            "g": 0.97,
+            "b": 1
+          }
+        },
+        "foamWidth": {
+          "type": "number",
+          "description": "The water depth over which foam rings geometry (0: none).",
+          "default": 0.35,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "waveScale": {
+          "type": "number",
+          "description": "Detail waves per metre.",
+          "default": 0.6,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "waveSpeed": {
+          "type": "number",
+          "description": "How fast the detail waves travel.",
+          "default": 1,
+          "x-og-tunable": true
+        },
+        "waveStrength": {
+          "type": "number",
+          "description": "How strongly they bend the surface (0: a mirror).",
+          "default": 0.35,
+          "minimum": 0,
+          "maximum": 4,
+          "x-og-tunable": true
+        },
+        "refraction": {
+          "type": "number",
+          "description": "How far refraction shifts what is seen through the water.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "reflectivity": {
+          "type": "number",
+          "description": "How much it reflects.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 2,
+          "x-og-tunable": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Water2D": {
+      "x-og-kind": "component",
+      "x-og-module": "atmosphere",
+      "description": "Draws the og.WaterLine on the same entity in the sprite order: the body from its surface down, a gradient from the top colour to the bottom one, and a bright lip along the surface.",
+      "type": "object",
+      "properties": {
+        "top": {
+          "$ref": "#/$defs/Color",
+          "description": "The body's colour at the surface.",
+          "default": {
+            "r": 0.16,
+            "g": 0.5,
+            "b": 0.72
+          }
+        },
+        "topOpacity": {
+          "type": "number",
+          "description": "Its opacity there.",
+          "default": 0.72,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "bottom": {
+          "$ref": "#/$defs/Color",
+          "description": "The colour at the bottom.",
+          "default": {
+            "r": 0.02,
+            "g": 0.1,
+            "b": 0.25
+          }
+        },
+        "bottomOpacity": {
+          "type": "number",
+          "description": "Its opacity there.",
+          "default": 0.92,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "lip": {
+          "$ref": "#/$defs/Color",
+          "description": "The lip along the surface.",
+          "default": {
+            "r": 0.8,
+            "g": 0.95,
+            "b": 1
+          }
+        },
+        "lipWidth": {
+          "type": "number",
+          "description": "How thick the lip is (0: none).",
+          "default": 0.06,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "layer": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "The sprite layer it is drawn in.",
+          "default": 0
         }
       },
       "additionalProperties": false

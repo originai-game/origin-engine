@@ -579,6 +579,18 @@ pub fn og_render_update_material(env: Env, world: u32, material: f64, desc: Opti
     <Host as RenderApi>::og_render_update_material(&Host, world, material, desc)
 }
 
+#[napi(js_name = "og_render_shader_material")]
+pub fn og_render_shader_material(env: Env, world: u32, shader: f64, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_shader_material(&Host, world, shader, desc)
+}
+
+#[napi(js_name = "og_render_set_shader_param")]
+pub fn og_render_set_shader_param(env: Env, world: u32, material: f64, name: String, value: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_set_shader_param(&Host, world, material, name, value)
+}
+
 #[napi(js_name = "og_render_capabilities")]
 pub fn og_render_capabilities(env: Env, world: u32) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -649,6 +661,12 @@ pub fn og_load_lut(env: Env, world: u32, path: String) -> String {
 pub fn og_load_emitter(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as LoadApi>::og_load_emitter(&Host, world, path)
+}
+
+#[napi(js_name = "og_load_shader")]
+pub fn og_load_shader(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_shader(&Host, world, path)
 }
 
 #[napi(js_name = "og_load_texture")]
@@ -727,6 +745,60 @@ pub fn og_physics_overlap(env: Env, world: u32, desc: Option<String>) -> String 
 pub fn og_physics_set_mesh(env: Env, world: u32, mesh: f64, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as PhysicsApi>::og_physics_set_mesh(&Host, world, mesh, desc)
+}
+
+#[napi(js_name = "og_physics_rope_points")]
+pub fn og_physics_rope_points(env: Env, world: u32, entity: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_rope_points(&Host, world, entity)
+}
+
+#[napi(js_name = "og_physics_cloth_points")]
+pub fn og_physics_cloth_points(env: Env, world: u32, entity: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_cloth_points(&Host, world, entity)
+}
+
+#[napi(js_name = "og_physics_fluid_particles")]
+pub fn og_physics_fluid_particles(env: Env, world: u32, entity: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_fluid_particles(&Host, world, entity)
+}
+
+#[napi(js_name = "og_physics_water_height")]
+pub fn og_physics_water_height(env: Env, world: u32, entity: f64, x: f64, z: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_water_height(&Host, world, entity, x, z)
+}
+
+#[napi(js_name = "og_physics_vehicle_wheels")]
+pub fn og_physics_vehicle_wheels(env: Env, world: u32, entity: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_vehicle_wheels(&Host, world, entity)
+}
+
+#[napi(js_name = "og_physics_ragdoll_rig_from_skeleton")]
+pub fn og_physics_ragdoll_rig_from_skeleton(env: Env, world: u32, skeleton: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_ragdoll_rig_from_skeleton(&Host, world, skeleton)
+}
+
+#[napi(js_name = "og_physics_set_ragdoll_rig")]
+pub fn og_physics_set_ragdoll_rig(env: Env, world: u32, entity: f64, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_set_ragdoll_rig(&Host, world, entity, desc)
+}
+
+#[napi(js_name = "og_physics_ragdoll_pose")]
+pub fn og_physics_ragdoll_pose(env: Env, world: u32, entity: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_ragdoll_pose(&Host, world, entity)
+}
+
+#[napi(js_name = "og_atmosphere_time_of_day")]
+pub fn og_atmosphere_time_of_day(env: Env, world: u32) -> f64 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as AtmosphereApi>::og_atmosphere_time_of_day(&Host, world)
 }
 
 #[napi(js_name = "og_anim_graph")]

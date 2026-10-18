@@ -117,6 +117,8 @@ pub(crate) struct RenderState {
     pub notes: Vec<String>,
     /// The feel modules' drawing state (`super::feel`).
     pub feel: super::feel::FeelRender,
+    /// The atmosphere's and the physics extras' drawing state (`super::atmosphere`).
+    pub atmo: super::atmosphere::AtmoState,
 }
 
 impl RenderState {
@@ -142,6 +144,7 @@ impl RenderState {
             ui_pages: BTreeMap::new(),
             notes: Vec::new(),
             feel: Default::default(),
+            atmo: Default::default(),
         }
     }
 }
@@ -296,6 +299,8 @@ pub(crate) struct DrawLayouts {
     pub spot: Option<Layout>,
     /// The effect records (`super::fx`).
     pub fx: super::fx::FxLayouts,
+    /// The atmosphere's and the physics extras' records (`super::atmosphere`).
+    pub atmo: super::atmosphere::AtmoLayouts,
 }
 
 /// Rebuild the per-frame part of `rs.scene` from the world as of its tick.
@@ -304,6 +309,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let camera = resource(world, rs.camera.as_ref());
     let settings = resource(world, rs.settings.as_ref());
     let mut h = Hierarchy::of(world);
+    rs.atmo.palettes.clear();
     let scene = &mut rs.scene;
     let (models, geometries, materials) = (&rs.models, &rs.geometries, &rs.materials);
     scene.instances.clear();
@@ -516,6 +522,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let tick = time.tick;
     super::fx::settings(world, rs);
     super::fx::components(world, rs, &mut h, tick);
+    super::atmosphere::extract(world, rs, &mut h);
     let vp = super::fx::viewport(rs);
     // The camera's shake, punch, kick and zones (on the frame only), then
     // og.Sprite rows, floating texts and tile layers.

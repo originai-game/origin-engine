@@ -48,7 +48,10 @@ pub fn parse_shader(
         ));
     }
     if doc.version != 1 {
-        return Err(format!("shader version {} (this engine reads 1)", doc.version));
+        return Err(format!(
+            "shader version {} (this engine reads 1)",
+            doc.version
+        ));
     }
     let mut code = None;
     let mut params = Vec::new();
@@ -188,8 +191,13 @@ pub fn validate_shader(shader: &MaterialShader) -> Result<Vec<String>, String> {
             if full {
                 naga::back::spv::write_vec(&module, &info, &Default::default(), None)
                     .map_err(|e| format!("SPIR-V: {e}"))?;
-                naga::back::msl::write_string(&module, &info, &Default::default(), &Default::default())
-                    .map_err(|e| format!("MSL: {e}"))?;
+                naga::back::msl::write_string(
+                    &module,
+                    &info,
+                    &Default::default(),
+                    &Default::default(),
+                )
+                .map_err(|e| format!("MSL: {e}"))?;
             } else {
                 for (stage, entry) in [
                     (naga::ShaderStage::Vertex, "vs"),
@@ -217,7 +225,8 @@ pub fn validate_shader(shader: &MaterialShader) -> Result<Vec<String>, String> {
                         naga::proc::BoundsCheckPolicies::default(),
                     )
                     .map_err(|e| format!("GLSL ES 3.0 ({entry}): {e}"))?;
-                    w.write().map_err(|e| format!("GLSL ES 3.0 ({entry}): {e}"))?;
+                    w.write()
+                        .map_err(|e| format!("GLSL ES 3.0 ({entry}): {e}"))?;
                 }
             }
         }

@@ -197,6 +197,10 @@ export interface HostAbi<A, V> {
   og_render_standard_material(world: number, desc: string | undefined): string;
   /** `og.render.updateMaterial` */
   og_render_update_material(world: number, material: number, desc: string | undefined): string;
+  /** `og.render.shaderMaterial` */
+  og_render_shader_material(world: number, shader: number, desc: string | undefined): string;
+  /** `og.render.setShaderParam` */
+  og_render_set_shader_param(world: number, material: number, name: string, value: string): string;
   /** `og.render.capabilities` */
   og_render_capabilities(world: number): string;
   /** `og.render.text` */
@@ -221,6 +225,8 @@ export interface HostAbi<A, V> {
   og_load_lut(world: number, path: string): string;
   /** `og.load.emitter` */
   og_load_emitter(world: number, path: string): string;
+  /** `og.load.shader` */
+  og_load_shader(world: number, path: string): string;
   /** `og.load.texture` */
   og_load_texture(world: number, path: string): string;
   /** `og.load.skin` */
@@ -247,6 +253,24 @@ export interface HostAbi<A, V> {
   og_physics_overlap(world: number, desc: string | undefined): string;
   /** `og.physics.setMesh` */
   og_physics_set_mesh(world: number, mesh: number, desc: string | undefined): string;
+  /** `og.physics.ropePoints` */
+  og_physics_rope_points(world: number, entity: number): string;
+  /** `og.physics.clothPoints` */
+  og_physics_cloth_points(world: number, entity: number): string;
+  /** `og.physics.fluidParticles` */
+  og_physics_fluid_particles(world: number, entity: number): string;
+  /** `og.physics.waterHeight` */
+  og_physics_water_height(world: number, entity: number, x: number, z: number): string;
+  /** `og.physics.vehicleWheels` */
+  og_physics_vehicle_wheels(world: number, entity: number): string;
+  /** `og.physics.ragdollRigFromSkeleton` */
+  og_physics_ragdoll_rig_from_skeleton(world: number, skeleton: number): string;
+  /** `og.physics.setRagdollRig` */
+  og_physics_set_ragdoll_rig(world: number, entity: number, desc: string | undefined): string;
+  /** `og.physics.ragdollPose` */
+  og_physics_ragdoll_pose(world: number, entity: number): string;
+  /** `og.atmosphere.timeOfDay` */
+  og_atmosphere_time_of_day(world: number): number;
   /** `og.anim.graph` */
   og_anim_graph(world: number, desc: string | undefined): string;
   /** `og.tween.to` */
@@ -541,6 +565,8 @@ export const SYMBOLS: readonly string[] = [
   "og_render_sphere_geometry",
   "og_render_standard_material",
   "og_render_update_material",
+  "og_render_shader_material",
+  "og_render_set_shader_param",
   "og_render_capabilities",
   "og_render_text",
   "og_load_bundle",
@@ -553,6 +579,7 @@ export const SYMBOLS: readonly string[] = [
   "og_load_sound",
   "og_load_lut",
   "og_load_emitter",
+  "og_load_shader",
   "og_load_texture",
   "og_load_skin",
   "og_load_sound_info",
@@ -566,6 +593,15 @@ export const SYMBOLS: readonly string[] = [
   "og_physics_shape_cast",
   "og_physics_overlap",
   "og_physics_set_mesh",
+  "og_physics_rope_points",
+  "og_physics_cloth_points",
+  "og_physics_fluid_particles",
+  "og_physics_water_height",
+  "og_physics_vehicle_wheels",
+  "og_physics_ragdoll_rig_from_skeleton",
+  "og_physics_set_ragdoll_rig",
+  "og_physics_ragdoll_pose",
+  "og_atmosphere_time_of_day",
   "og_anim_graph",
   "og_tween_to",
   "og_tween_sequence",

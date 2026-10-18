@@ -2,7 +2,7 @@
 
 # The Origin Engine API
 
-`@origingame/engine`, API version 1: 21 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
+`@origingame/engine`, API version 1: 22 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
 
 The Origin Engine API. Game code declares components and systems, and reads the world through typed views over engine memory.
 
@@ -25,6 +25,7 @@ Every failure is a returned Result; desc objects may omit any field; nothing rea
 | [`render`](render.md) | `og.render.*` | kept | What is drawn: meshes with materials. Draws are instanced by (geometry, material) automatically; there is no per-object draw call. |
 | [`load`](load.md) | `og.load.*` | kept | Asset loading from cooked output: `og cook` turns assets/ into cooked/ (.ogb blobs and the manifest cooked/.cook.ogt), and the runtime reads only cooked/. |
 | [`physics`](physics.md) | `og.physics.*` | kept | Rigid bodies over rapier (rapier3d in the 3D profile, rapier2d in 2D, both with enhanced determinism): game code owns the components, the engine's og.physics system steps them after the game's systems and writes the dynamic bodies back. |
+| [`atmosphere`](atmosphere.md) | `og.atmosphere.*` | kept | Fog, a procedural sky, the day-night cycle, weather and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before. |
 | [`anim`](anim.md) | `og.anim.*` | kept | Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics. |
 | [`tween`](tween.md) | `og.tween.*` | kept | Tweens: animate any numeric field of a component (og.Transform.position, og.Sprite.color, og.Sprite.opacity, a game's own f32) from its value to a target over time with an easing curve, a delay, loops and yoyo; chain them in sequences or run them in parallel. Advanced by the engine's og.tween system after the game's systems and before og.anim and physics, by scaled time (slow motion, hit stop) unless unscaled. |
 | [`tilemap`](tilemap.md) | `og.tilemap.*` | kept | Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component. |
@@ -59,7 +60,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-638 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+700 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -91,6 +92,7 @@ Field units the docs and Tune use.
 | [`BODY_DYNAMIC`](physics.md#const-BODY_DYNAMIC) | constant | physics | — |
 | [`BODY_KINEMATIC`](physics.md#const-BODY_KINEMATIC) | constant | physics | — |
 | [`BODY_STATIC`](physics.md#const-BODY_STATIC) | constant | physics | — |
+| [`BonePose`](physics.md#type-BonePose) | struct | physics | — |
 | [`bool()`](reflect.md#column-bool) | column kind | reflect | — |
 | [`BoxGeometryDesc`](render.md#type-BoxGeometryDesc) | desc struct | render | — |
 | [`Breakpoint`](ui.md#type-Breakpoint) | enum | ui | — |
@@ -103,6 +105,12 @@ Field units the docs and Tune use.
 | [`Camera.screenToRay`](camera.md#member-Camera-screenToRay) | method | camera | `og_camera_screen_to_ray` |
 | [`Camera.worldToScreen`](camera.md#member-Camera-worldToScreen) | method | camera | `og_camera_world_to_screen` |
 | [`Capture`](probe.md#type-Capture) | struct | probe | — |
+| [`CHARACTER_AIR_JUMPED`](physics.md#const-CHARACTER_AIR_JUMPED) | constant | physics | — |
+| [`CHARACTER_BUMPED`](physics.md#const-CHARACTER_BUMPED) | constant | physics | — |
+| [`CHARACTER_JUMPED`](physics.md#const-CHARACTER_JUMPED) | constant | physics | — |
+| [`CHARACTER_LANDED`](physics.md#const-CHARACTER_LANDED) | constant | physics | — |
+| [`CHARACTER_LEFT_GROUND`](physics.md#const-CHARACTER_LEFT_GROUND) | constant | physics | — |
+| [`CHARACTER_WALL_JUMPED`](physics.md#const-CHARACTER_WALL_JUMPED) | constant | physics | — |
 | [`CheckListResult`](ui.md#type-CheckListResult) | struct | ui | — |
 | [`ChipDesc`](ui.md#type-ChipDesc) | desc struct | ui | — |
 | [`ChoiceResult`](ui.md#type-ChoiceResult) | struct | ui | — |
@@ -140,6 +148,9 @@ Field units the docs and Tune use.
 | [`DofQuality()`](render.md#column-DofQuality) | column kind | render | — |
 | [`DpadDesc`](ui.md#type-DpadDesc) | desc struct | ui | — |
 | [`DpadResult`](ui.md#type-DpadResult) | struct | ui | — |
+| [`DRIVE_ALL`](physics.md#const-DRIVE_ALL) | constant | physics | — |
+| [`DRIVE_FRONT`](physics.md#const-DRIVE_FRONT) | constant | physics | — |
+| [`DRIVE_REAR`](physics.md#const-DRIVE_REAR) | constant | physics | — |
 | [`DumpDesc`](probe.md#type-DumpDesc) | desc struct | probe | — |
 | [`DumpKind`](probe.md#type-DumpKind) | enum | probe | — |
 | [`DumpResult`](probe.md#type-DumpResult) | union | probe | — |
@@ -224,6 +235,12 @@ Field units the docs and Tune use.
 | [`InventoryDesc`](ui.md#type-InventoryDesc) | desc struct | ui | — |
 | [`InventoryItem`](ui.md#type-InventoryItem) | desc struct | ui | — |
 | [`InventoryResult`](ui.md#type-InventoryResult) | struct | ui | — |
+| [`JOINT_BALL`](physics.md#const-JOINT_BALL) | constant | physics | — |
+| [`JOINT_FIXED`](physics.md#const-JOINT_FIXED) | constant | physics | — |
+| [`JOINT_PRISMATIC`](physics.md#const-JOINT_PRISMATIC) | constant | physics | — |
+| [`JOINT_REVOLUTE`](physics.md#const-JOINT_REVOLUTE) | constant | physics | — |
+| [`JOINT_ROPE`](physics.md#const-JOINT_ROPE) | constant | physics | — |
+| [`JOINT_SPRING`](physics.md#const-JOINT_SPRING) | constant | physics | — |
 | [`JoystickDesc`](ui.md#type-JoystickDesc) | desc struct | ui | — |
 | [`JoystickResult`](ui.md#type-JoystickResult) | struct | ui | — |
 | [`KeyAction`](input.md#type-KeyAction) | enum | input | — |
@@ -268,6 +285,9 @@ Field units the docs and Tune use.
 | [`ModalDesc`](ui.md#type-ModalDesc) | desc struct | ui | — |
 | [`ModalResult`](ui.md#type-ModalResult) | struct | ui | — |
 | [`Modifiers`](input.md#type-Modifiers) | struct | input | — |
+| [`MOTOR_NONE`](physics.md#const-MOTOR_NONE) | constant | physics | — |
+| [`MOTOR_POSITION`](physics.md#const-MOTOR_POSITION) | constant | physics | — |
+| [`MOTOR_VELOCITY`](physics.md#const-MOTOR_VELOCITY) | constant | physics | — |
 | [`NavIntent`](ui.md#type-NavIntent) | enum | ui | — |
 | [`og.Afterimage`](render.md#record-Afterimage) | component | render | — |
 | [`og.anim.clip`](anim.md#fn-clip) | function | anim | — |
@@ -277,6 +297,7 @@ Field units the docs and Tune use.
 | [`og.AnimationPlayer`](anim.md#record-AnimationPlayer) | component | anim | — |
 | [`og.AssetFailed`](load.md#record-AssetFailed) | event | load | — |
 | [`og.AssetReady`](load.md#record-AssetReady) | event | load | — |
+| [`og.atmosphere.timeOfDay`](atmosphere.md#fn-timeOfDay) | function | atmosphere | `og_atmosphere_time_of_day` |
 | [`og.Audio`](audio.md#record-Audio) | resource | audio | — |
 | [`og.AudioListener`](audio.md#record-AudioListener) | component | audio | — |
 | [`og.AudioSource`](audio.md#record-AudioSource) | component | audio | — |
@@ -288,6 +309,9 @@ Field units the docs and Tune use.
 | [`og.camera.shake`](camera.md#fn-shake) | function | camera | `og_camera_shake` |
 | [`og.CameraRail`](camera.md#record-CameraRail) | component | camera | — |
 | [`og.CameraZone`](camera.md#record-CameraZone) | component | camera | — |
+| [`og.CharacterController`](physics.md#record-CharacterController) | component | physics | — |
+| [`og.CharacterEvent`](physics.md#record-CharacterEvent) | event | physics | — |
+| [`og.Cloth`](physics.md#record-Cloth) | component | physics | — |
 | [`og.Collider`](physics.md#record-Collider) | component | physics | — |
 | [`og.CollisionEnded`](physics.md#record-CollisionEnded) | event | physics | — |
 | [`og.CollisionStarted`](physics.md#record-CollisionStarted) | event | physics | — |
@@ -296,16 +320,20 @@ Field units the docs and Tune use.
 | [`og.commands.register`](commands.md#fn-register) | function | commands | `og_commands_register` |
 | [`og.commands.schedule`](commands.md#fn-schedule) | function | commands | `og_commands_schedule` |
 | [`og.Contact`](physics.md#record-Contact) | event | physics | — |
+| [`og.DayNight`](atmosphere.md#record-DayNight) | resource | atmosphere | — |
 | [`og.Decal`](render.md#record-Decal) | component | render | — |
 | [`og.DirectionalLight`](render.md#record-DirectionalLight) | component | render | — |
 | [`og.Flipbook`](anim.md#record-Flipbook) | component | anim | — |
 | [`og.FlipbookEvent`](anim.md#record-FlipbookEvent) | event | anim | — |
+| [`og.Fluid2D`](physics.md#record-Fluid2D) | component | physics | — |
+| [`og.Fog`](atmosphere.md#record-Fog) | resource | atmosphere | — |
 | [`og.Follow2D`](camera.md#record-Follow2D) | component | camera | — |
 | [`og.FollowCamera`](camera.md#record-FollowCamera) | component | camera | — |
 | [`og.game`](game.md#fn-game) | function | game | `og_game_game` |
 | [`og.Gamepad`](input.md#record-Gamepad) | resource | input | — |
 | [`og.IkChain`](anim.md#record-IkChain) | component | anim | — |
 | [`og.Input`](input.md#record-Input) | resource | input | — |
+| [`og.Joint`](physics.md#record-Joint) | component | physics | — |
 | [`og.KeyDown`](input.md#record-KeyDown) | event | input | — |
 | [`og.KeyUp`](input.md#record-KeyUp) | event | input | — |
 | [`og.Light2D`](render.md#record-Light2D) | component | render | — |
@@ -323,6 +351,7 @@ Field units the docs and Tune use.
 | [`og.load.gltfInfo`](load.md#fn-gltfInfo) | function | load | `og_load_gltf_info` |
 | [`og.load.lut`](load.md#fn-lut) | function | load | `og_load_lut` |
 | [`og.load.scene`](load.md#fn-scene) | function | load | `og_load_scene` |
+| [`og.load.shader`](load.md#fn-shader) | function | load | `og_load_shader` |
 | [`og.load.skin`](load.md#fn-skin) | function | load | `og_load_skin` |
 | [`og.load.sound`](load.md#fn-sound) | function | load | `og_load_sound` |
 | [`og.load.soundInfo`](load.md#fn-soundInfo) | function | load | `og_load_sound_info` |
@@ -337,22 +366,34 @@ Field units the docs and Tune use.
 | [`og.Parent`](transform.md#record-Parent) | component | transform | — |
 | [`og.ParticleSystem`](render.md#record-ParticleSystem) | component | render | — |
 | [`og.Physics`](physics.md#record-Physics) | resource | physics | — |
+| [`og.physics.clothPoints`](physics.md#fn-clothPoints) | function | physics | `og_physics_cloth_points` |
+| [`og.physics.fluidParticles`](physics.md#fn-fluidParticles) | function | physics | `og_physics_fluid_particles` |
 | [`og.physics.overlap`](physics.md#fn-overlap) | function | physics | `og_physics_overlap` |
+| [`og.physics.ragdollPose`](physics.md#fn-ragdollPose) | function | physics | `og_physics_ragdoll_pose` |
+| [`og.physics.ragdollRigFromSkeleton`](physics.md#fn-ragdollRigFromSkeleton) | function | physics | `og_physics_ragdoll_rig_from_skeleton` |
 | [`og.physics.raycast`](physics.md#fn-raycast) | function | physics | `og_physics_raycast` |
+| [`og.physics.ropePoints`](physics.md#fn-ropePoints) | function | physics | `og_physics_rope_points` |
 | [`og.physics.setMesh`](physics.md#fn-setMesh) | function | physics | `og_physics_set_mesh` |
+| [`og.physics.setRagdollRig`](physics.md#fn-setRagdollRig) | function | physics | `og_physics_set_ragdoll_rig` |
 | [`og.physics.shapeCast`](physics.md#fn-shapeCast) | function | physics | `og_physics_shape_cast` |
+| [`og.physics.vehicleWheels`](physics.md#fn-vehicleWheels) | function | physics | `og_physics_vehicle_wheels` |
+| [`og.physics.waterHeight`](physics.md#fn-waterHeight) | function | physics | `og_physics_water_height` |
+| [`og.PlatformerController`](physics.md#record-PlatformerController) | component | physics | — |
 | [`og.PointerDown`](input.md#record-PointerDown) | event | input | — |
 | [`og.PointerMove`](input.md#record-PointerMove) | event | input | — |
 | [`og.Pointers`](input.md#record-Pointers) | resource | input | — |
 | [`og.PointerUp`](input.md#record-PointerUp) | event | input | — |
 | [`og.PointLight`](render.md#record-PointLight) | component | render | — |
 | [`og.PostEffects`](render.md#record-PostEffects) | resource | render | — |
+| [`og.Ragdoll`](physics.md#record-Ragdoll) | component | physics | — |
 | [`og.render.boxGeometry`](render.md#fn-boxGeometry) | function | render | `og_render_box_geometry` |
 | [`og.render.capabilities`](render.md#fn-capabilities) | function | render | `og_render_capabilities` |
 | [`og.render.floatingText`](render.md#fn-floatingText) | function | render | `og_render_floating_text` |
 | [`og.render.measureText`](render.md#fn-measureText) | function | render | `og_render_measure_text` |
 | [`og.render.planeGeometry`](render.md#fn-planeGeometry) | function | render | `og_render_plane_geometry` |
 | [`og.render.ribbon`](render.md#fn-ribbon) | function | render | `og_render_ribbon` |
+| [`og.render.setShaderParam`](render.md#fn-setShaderParam) | function | render | `og_render_set_shader_param` |
+| [`og.render.shaderMaterial`](render.md#fn-shaderMaterial) | function | render | `og_render_shader_material` |
 | [`og.render.sphereGeometry`](render.md#fn-sphereGeometry) | function | render | `og_render_sphere_geometry` |
 | [`og.render.sprite`](render.md#fn-sprite) | function | render | `og_render_sprite` |
 | [`og.render.standardMaterial`](render.md#fn-standardMaterial) | function | render | `og_render_standard_material` |
@@ -361,11 +402,14 @@ Field units the docs and Tune use.
 | [`og.RenderSettings`](render.md#record-RenderSettings) | resource | render | — |
 | [`og.RigidBody`](physics.md#record-RigidBody) | component | physics | — |
 | [`og.Rng`](rng.md#record-Rng) | resource | rng | — |
+| [`og.Rope`](physics.md#record-Rope) | component | physics | — |
 | [`og.SensorEntered`](physics.md#record-SensorEntered) | event | physics | — |
 | [`og.SensorExited`](physics.md#record-SensorExited) | event | physics | — |
 | [`og.Skeleton`](anim.md#record-Skeleton) | component | anim | — |
+| [`og.Sky`](atmosphere.md#record-Sky) | resource | atmosphere | — |
 | [`og.SoundEnded`](audio.md#record-SoundEnded) | event | audio | — |
 | [`og.SoundStarted`](audio.md#record-SoundStarted) | event | audio | — |
+| [`og.Splash`](physics.md#record-Splash) | event | physics | — |
 | [`og.SpotLight`](render.md#record-SpotLight) | component | render | — |
 | [`og.Sprite`](render.md#record-Sprite) | component | render | — |
 | [`og.systems.cameras`](systems.md#value-cameras) | value | systems | — |
@@ -485,7 +529,13 @@ Field units the docs and Tune use.
 | [`og.ui.transition`](ui.md#fn-transition) | function | ui | — |
 | [`og.ui.tutorialOverlay`](ui.md#fn-tutorialOverlay) | function | ui | — |
 | [`og.ui.viewport`](ui.md#fn-viewport) | function | ui | `og_ui_viewport` |
+| [`og.Vehicle`](physics.md#record-Vehicle) | component | physics | — |
 | [`og.Velocity`](physics.md#record-Velocity) | component | physics | — |
+| [`og.Water`](atmosphere.md#record-Water) | component | atmosphere | — |
+| [`og.Water2D`](atmosphere.md#record-Water2D) | component | atmosphere | — |
+| [`og.WaterLine`](physics.md#record-WaterLine) | component | physics | — |
+| [`og.WaterSurface`](physics.md#record-WaterSurface) | component | physics | — |
+| [`og.Weather`](atmosphere.md#record-Weather) | resource | atmosphere | — |
 | [`og.Wheel`](input.md#record-Wheel) | event | input | — |
 | [`OverlapDesc`](physics.md#type-OverlapDesc) | desc struct | physics | — |
 | [`Paint`](ui.md#type-Paint) | desc struct | ui | — |
@@ -496,6 +546,10 @@ Field units the docs and Tune use.
 | [`PercentSize`](ui.md#type-PercentSize) | struct | ui | — |
 | [`PickOperation`](probe.md#type-PickOperation) | struct | probe | — |
 | [`PickResult`](probe.md#type-PickResult) | struct | probe | — |
+| [`PIN_LEFT`](physics.md#const-PIN_LEFT) | constant | physics | — |
+| [`PIN_TOP`](physics.md#const-PIN_TOP) | constant | physics | — |
+| [`PIN_TOP_CORNERS`](physics.md#const-PIN_TOP_CORNERS) | constant | physics | — |
+| [`PIN_TOP_RINGS`](physics.md#const-PIN_TOP_RINGS) | constant | physics | — |
 | [`PlaneGeometryDesc`](render.md#type-PlaneGeometryDesc) | desc struct | render | — |
 | [`PlatformerHudDesc`](ui.md#type-PlatformerHudDesc) | desc struct | ui | — |
 | [`PLAYTEST_MAX_TICKS`](probe.md#const-PLAYTEST_MAX_TICKS) | constant | probe | — |
@@ -532,6 +586,8 @@ Field units the docs and Tune use.
 | [`QueryFilter`](physics.md#type-QueryFilter) | desc struct | physics | — |
 | [`RacingHudDesc`](ui.md#type-RacingHudDesc) | desc struct | ui | — |
 | [`RadioDesc`](ui.md#type-RadioDesc) | desc struct | ui | — |
+| [`RagdollBoneDesc`](physics.md#type-RagdollBoneDesc) | desc struct | physics | — |
+| [`RagdollRigDesc`](physics.md#type-RagdollRigDesc) | desc struct | physics | — |
 | [`Ray`](math.md#type-Ray) | struct | math | — |
 | [`RaycastDesc`](physics.md#type-RaycastDesc) | desc struct | physics | — |
 | [`RaycastHit`](physics.md#type-RaycastHit) | struct | physics | — |
@@ -582,6 +638,7 @@ Field units the docs and Tune use.
 | [`SettingsChanged`](ui.md#type-SettingsChanged) | callback | ui | — |
 | [`SettingsDesc`](ui.md#type-SettingsDesc) | desc struct | ui | — |
 | [`SettingsResult`](ui.md#type-SettingsResult) | struct | ui | — |
+| [`Shader`](render.md#type-Shader) | handle | render | — |
 | [`SHAPE_BOX`](physics.md#const-SHAPE_BOX) | constant | physics | — |
 | [`SHAPE_CAPSULE`](physics.md#const-SHAPE_CAPSULE) | constant | physics | — |
 | [`SHAPE_CONVEX`](physics.md#const-SHAPE_CONVEX) | constant | physics | — |
@@ -681,7 +738,13 @@ Field units the docs and Tune use.
 | [`Vector3`](math.md#type-Vector3) | struct | math | — |
 | [`Vector3()`](reflect.md#column-Vector3) | column kind | reflect | — |
 | [`Viewport`](ui.md#type-Viewport) | struct | ui | — |
+| [`WEATHER_DUST`](atmosphere.md#const-WEATHER_DUST) | constant | atmosphere | — |
+| [`WEATHER_MIST`](atmosphere.md#const-WEATHER_MIST) | constant | atmosphere | — |
+| [`WEATHER_NONE`](atmosphere.md#const-WEATHER_NONE) | constant | atmosphere | — |
+| [`WEATHER_RAIN`](atmosphere.md#const-WEATHER_RAIN) | constant | atmosphere | — |
+| [`WEATHER_SNOW`](atmosphere.md#const-WEATHER_SNOW) | constant | atmosphere | — |
 | [`WheelInput`](input.md#type-WheelInput) | struct | input | — |
+| [`WheelPose`](physics.md#type-WheelPose) | struct | physics | — |
 | [`WipeSide`](ui.md#type-WipeSide) | enum | ui | — |
 | [`World`](world.md#type-World) | interface | world | — |
 | [`World.alive`](world.md#member-World-alive) | method | world | `og_world_alive` |

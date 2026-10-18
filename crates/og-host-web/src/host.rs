@@ -313,6 +313,18 @@ impl CameraApi for WebHost {
 }
 
 impl RenderApi for WebHost {
+    fn og_render_shader_material(&self, world: u32, shader: f64, desc: Option<String>) -> String {
+        rt::og_render_shader_material(world, shader, desc)
+    }
+    fn og_render_set_shader_param(
+        &self,
+        world: u32,
+        material: f64,
+        name: String,
+        value: String,
+    ) -> String {
+        rt::og_render_set_shader_param(world, material, name, value)
+    }
     fn og_render_box_geometry(&self, world: u32, desc: Option<String>) -> String {
         rt::og_render_box_geometry(world, desc)
     }
@@ -349,6 +361,9 @@ impl RenderApi for WebHost {
 }
 
 impl LoadApi for WebHost {
+    fn og_load_shader(&self, world: u32, path: String) -> String {
+        rt::og_load_shader(world, path)
+    }
     fn og_load_texture(&self, world: u32, path: String) -> String {
         rt::og_load_texture(world, path)
     }
@@ -465,7 +480,37 @@ impl AnimApi for WebHost {
     }
 }
 
+impl AtmosphereApi for WebHost {
+    fn og_atmosphere_time_of_day(&self, world: u32) -> f64 {
+        rt::og_atmosphere_time_of_day(world)
+    }
+}
+
 impl PhysicsApi for WebHost {
+    fn og_physics_rope_points(&self, world: u32, entity: f64) -> String {
+        rt::og_physics_rope_points(world, entity)
+    }
+    fn og_physics_cloth_points(&self, world: u32, entity: f64) -> String {
+        rt::og_physics_cloth_points(world, entity)
+    }
+    fn og_physics_fluid_particles(&self, world: u32, entity: f64) -> String {
+        rt::og_physics_fluid_particles(world, entity)
+    }
+    fn og_physics_water_height(&self, world: u32, entity: f64, x: f64, z: f64) -> String {
+        rt::og_physics_water_height(world, entity, x, z)
+    }
+    fn og_physics_vehicle_wheels(&self, world: u32, entity: f64) -> String {
+        rt::og_physics_vehicle_wheels(world, entity)
+    }
+    fn og_physics_ragdoll_rig_from_skeleton(&self, world: u32, skeleton: f64) -> String {
+        rt::og_physics_ragdoll_rig_from_skeleton(world, skeleton)
+    }
+    fn og_physics_set_ragdoll_rig(&self, world: u32, entity: f64, desc: Option<String>) -> String {
+        rt::og_physics_set_ragdoll_rig(world, entity, desc)
+    }
+    fn og_physics_ragdoll_pose(&self, world: u32, entity: f64) -> String {
+        rt::og_physics_ragdoll_pose(world, entity)
+    }
     fn og_physics_raycast(&self, world: u32, desc: Option<String>) -> String {
         rt::og_physics_raycast(world, desc)
     }

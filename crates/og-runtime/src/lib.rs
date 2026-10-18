@@ -30,17 +30,23 @@
 mod anim;
 mod api;
 mod assets;
+mod atmosphere;
 mod codec;
 mod engine;
 mod extract;
 mod feel;
 mod fx;
 mod modules;
+mod physics_ext;
 mod probe;
 
 pub use anim::{og_anim_graph, og_load_animation};
 pub use api::*;
 pub use assets::Fetch;
+pub use atmosphere::{
+    og_atmosphere_time_of_day, og_load_shader, og_render_set_shader_param,
+    og_render_shader_material,
+};
 pub use codec::{Kind, Layout, RecordKind};
 pub use engine::{
     ColumnPtr, Dispatch, Hooks, RenderBackend, advance, answer_call, begin_bundle, call_rpc,
@@ -68,6 +74,11 @@ pub use modules::{
     og_ui_seconds, og_ui_select, og_ui_set_navigation, og_ui_skeleton, og_ui_slider, og_ui_spacer,
     og_ui_spinner, og_ui_spotlight, og_ui_stepper, og_ui_tabs, og_ui_text_field, og_ui_theme,
     og_ui_tick, og_ui_toast, og_ui_toggle, og_ui_tooltip, og_ui_viewport, set_viewport,
+};
+pub use physics_ext::{
+    og_physics_cloth_points, og_physics_fluid_particles, og_physics_ragdoll_pose,
+    og_physics_ragdoll_rig_from_skeleton, og_physics_rope_points, og_physics_set_ragdoll_rig,
+    og_physics_vehicle_wheels, og_physics_water_height,
 };
 pub use probe::png;
 

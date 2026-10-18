@@ -68,7 +68,7 @@ fn component(eng: &Engine, name: &str) -> Result<(Layout, og_ecs::SchemaId), Str
 
 /// A record's layout and id while a system runs (the world is borrowed by
 /// the step, so the id comes from the runtime's own table).
-fn running_record(
+pub(crate) fn running_record(
     eng: &Engine,
     name: &str,
     kind: RecordKind,
@@ -1257,7 +1257,7 @@ pub fn og_camera_screen_to_ray(world: u32, x: f64, y: f64) -> String {
 /// A StandardMaterialDesc applied over `base` (fields the desc omits keep
 /// their values): og-render's StandardMaterial carries every field under
 /// the same name; texture fields are Texture handles (null clears them).
-fn material(
+pub(crate) fn material(
     base: og_render::StandardMaterial,
     desc: &Value,
     textures: &[og_render::TextureHandle],
@@ -1346,7 +1346,7 @@ fn material(
 }
 
 /// Material handles are the render state's material index with generation 1.
-fn material_handle(index: usize) -> f64 {
+pub(crate) fn material_handle(index: usize) -> f64 {
     assets::handle(index) as f64
 }
 

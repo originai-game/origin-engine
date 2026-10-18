@@ -13,6 +13,7 @@ import {
   defineSystem as defineSystemImpl,
   load,
   physics,
+  atmosphere,
   render,
   transform,
   ui,
@@ -94,6 +95,35 @@ export const SOUND_STOPPED: typeof Api.SOUND_STOPPED = 1;
 export const SOUND_REMOVED: typeof Api.SOUND_REMOVED = 2;
 export const SOUND_REPLACED: typeof Api.SOUND_REPLACED = 3;
 
+// The E5 round: physics beyond rigid bodies and the atmosphere.
+export const WEATHER_NONE: typeof Api.WEATHER_NONE = 0;
+export const WEATHER_RAIN: typeof Api.WEATHER_RAIN = 1;
+export const WEATHER_SNOW: typeof Api.WEATHER_SNOW = 2;
+export const WEATHER_DUST: typeof Api.WEATHER_DUST = 3;
+export const WEATHER_MIST: typeof Api.WEATHER_MIST = 4;
+export const JOINT_FIXED: typeof Api.JOINT_FIXED = 0;
+export const JOINT_REVOLUTE: typeof Api.JOINT_REVOLUTE = 1;
+export const JOINT_PRISMATIC: typeof Api.JOINT_PRISMATIC = 2;
+export const JOINT_SPRING: typeof Api.JOINT_SPRING = 3;
+export const JOINT_ROPE: typeof Api.JOINT_ROPE = 4;
+export const JOINT_BALL: typeof Api.JOINT_BALL = 5;
+export const MOTOR_NONE: typeof Api.MOTOR_NONE = 0;
+export const MOTOR_VELOCITY: typeof Api.MOTOR_VELOCITY = 1;
+export const MOTOR_POSITION: typeof Api.MOTOR_POSITION = 2;
+export const CHARACTER_JUMPED: typeof Api.CHARACTER_JUMPED = 1;
+export const CHARACTER_LANDED: typeof Api.CHARACTER_LANDED = 2;
+export const CHARACTER_WALL_JUMPED: typeof Api.CHARACTER_WALL_JUMPED = 3;
+export const CHARACTER_AIR_JUMPED: typeof Api.CHARACTER_AIR_JUMPED = 4;
+export const CHARACTER_LEFT_GROUND: typeof Api.CHARACTER_LEFT_GROUND = 5;
+export const CHARACTER_BUMPED: typeof Api.CHARACTER_BUMPED = 6;
+export const DRIVE_REAR: typeof Api.DRIVE_REAR = 0;
+export const DRIVE_FRONT: typeof Api.DRIVE_FRONT = 1;
+export const DRIVE_ALL: typeof Api.DRIVE_ALL = 2;
+export const PIN_TOP: typeof Api.PIN_TOP = 1;
+export const PIN_TOP_CORNERS: typeof Api.PIN_TOP_CORNERS = 2;
+export const PIN_LEFT: typeof Api.PIN_LEFT = 4;
+export const PIN_TOP_RINGS: typeof Api.PIN_TOP_RINGS = 8;
+
 export const og: typeof Api.og = Object.freeze({
   ...BUILTINS,
   game: (desc?: Api.GameDesc) => defineGame(desc as never),
@@ -102,6 +132,7 @@ export const og: typeof Api.og = Object.freeze({
   load,
   commands,
   physics,
+  atmosphere,
   anim,
   time,
   camera,

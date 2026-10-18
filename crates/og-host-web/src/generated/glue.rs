@@ -484,6 +484,16 @@ pub fn og_render_update_material(world: u32, material: f64, desc: Option<String>
 }
 
 #[wasm_bindgen]
+pub fn og_render_shader_material(world: u32, shader: f64, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_shader_material(&Host, world, shader, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_render_set_shader_param(world: u32, material: f64, name: String, value: String) -> String {
+    <Host as RenderApi>::og_render_set_shader_param(&Host, world, material, name, value)
+}
+
+#[wasm_bindgen]
 pub fn og_render_capabilities(world: u32) -> String {
     <Host as RenderApi>::og_render_capabilities(&Host, world)
 }
@@ -541,6 +551,11 @@ pub fn og_load_lut(world: u32, path: String) -> String {
 #[wasm_bindgen]
 pub fn og_load_emitter(world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_emitter(&Host, world, path)
+}
+
+#[wasm_bindgen]
+pub fn og_load_shader(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_shader(&Host, world, path)
 }
 
 #[wasm_bindgen]
@@ -606,6 +621,51 @@ pub fn og_physics_overlap(world: u32, desc: Option<String>) -> String {
 #[wasm_bindgen]
 pub fn og_physics_set_mesh(world: u32, mesh: f64, desc: Option<String>) -> String {
     <Host as PhysicsApi>::og_physics_set_mesh(&Host, world, mesh, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_physics_rope_points(world: u32, entity: f64) -> String {
+    <Host as PhysicsApi>::og_physics_rope_points(&Host, world, entity)
+}
+
+#[wasm_bindgen]
+pub fn og_physics_cloth_points(world: u32, entity: f64) -> String {
+    <Host as PhysicsApi>::og_physics_cloth_points(&Host, world, entity)
+}
+
+#[wasm_bindgen]
+pub fn og_physics_fluid_particles(world: u32, entity: f64) -> String {
+    <Host as PhysicsApi>::og_physics_fluid_particles(&Host, world, entity)
+}
+
+#[wasm_bindgen]
+pub fn og_physics_water_height(world: u32, entity: f64, x: f64, z: f64) -> String {
+    <Host as PhysicsApi>::og_physics_water_height(&Host, world, entity, x, z)
+}
+
+#[wasm_bindgen]
+pub fn og_physics_vehicle_wheels(world: u32, entity: f64) -> String {
+    <Host as PhysicsApi>::og_physics_vehicle_wheels(&Host, world, entity)
+}
+
+#[wasm_bindgen]
+pub fn og_physics_ragdoll_rig_from_skeleton(world: u32, skeleton: f64) -> String {
+    <Host as PhysicsApi>::og_physics_ragdoll_rig_from_skeleton(&Host, world, skeleton)
+}
+
+#[wasm_bindgen]
+pub fn og_physics_set_ragdoll_rig(world: u32, entity: f64, desc: Option<String>) -> String {
+    <Host as PhysicsApi>::og_physics_set_ragdoll_rig(&Host, world, entity, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_physics_ragdoll_pose(world: u32, entity: f64) -> String {
+    <Host as PhysicsApi>::og_physics_ragdoll_pose(&Host, world, entity)
+}
+
+#[wasm_bindgen]
+pub fn og_atmosphere_time_of_day(world: u32) -> f64 {
+    <Host as AtmosphereApi>::og_atmosphere_time_of_day(&Host, world)
 }
 
 #[wasm_bindgen]

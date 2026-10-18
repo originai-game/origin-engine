@@ -289,6 +289,13 @@ pub(crate) fn after_reload(eng: &Engine, swapped: bool) {
     for (handle, mesh) in meshes {
         let _ = a.mounted.physics.set_mesh(handle, mesh);
     }
+    // So are ragdoll rigs.
+    for (&e, kept) in &eng.render.borrow().atmo.rigs {
+        let _ = a
+            .mounted
+            .physics
+            .set_ragdoll_rig(og_ecs::Entity::from_bits(e), kept.rig.clone());
+    }
     og_audio::publish_link(eng.id, a.mounted.audio.clone());
     eng.render.borrow_mut().ui = Some(a.mounted.ui.clone());
     if let Ok(mut probe) = eng.probe.try_borrow_mut() {

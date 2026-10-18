@@ -845,6 +845,10 @@ export const render = Object.freeze({
   boxGeometry: (world: WorldImpl, desc?: unknown) => parse(abi().og_render_box_geometry(world.id, json(desc))),
   planeGeometry: (world: WorldImpl, desc?: unknown) => parse(abi().og_render_plane_geometry(world.id, json(desc))),
   sphereGeometry: (world: WorldImpl, desc?: unknown) => parse(abi().og_render_sphere_geometry(world.id, json(desc))),
+  shaderMaterial: (world: WorldImpl, shader: number, desc?: unknown) =>
+    parse(abi().og_render_shader_material(world.id, shader, json(desc))),
+  setShaderParam: (world: WorldImpl, material: number, name: string, value: ReadonlyArray<number>) =>
+    parse(abi().og_render_set_shader_param(world.id, material, name, JSON.stringify(value))),
 });
 
 export const load = Object.freeze({
@@ -859,6 +863,7 @@ export const load = Object.freeze({
   texture: (world: WorldImpl, path: string) => parse(abi().og_load_texture(world.id, path)),
   lut: (world: WorldImpl, path: string) => parse(abi().og_load_lut(world.id, path)),
   emitter: (world: WorldImpl, path: string) => parse(abi().og_load_emitter(world.id, path)),
+  shader: (world: WorldImpl, path: string) => parse(abi().og_load_shader(world.id, path)),
   skin: (world: WorldImpl, path: string) => parse(abi().og_load_skin(world.id, path)),
   soundInfo: (world: WorldImpl, sound: number) => parse(abi().og_load_sound_info(world.id, sound)),
   status: (world: WorldImpl, asset: number) => abi().og_load_status(world.id, asset),
@@ -924,6 +929,21 @@ export const physics = Object.freeze({
   shapeCast: (world: WorldImpl, desc?: unknown) => parse(abi().og_physics_shape_cast(world.id, json(desc))),
   overlap: (world: WorldImpl, desc?: unknown) => parse(abi().og_physics_overlap(world.id, json(desc))),
   setMesh: (world: WorldImpl, mesh: number, desc?: unknown) => parse(abi().og_physics_set_mesh(world.id, mesh, json(desc))),
+  ropePoints: (world: WorldImpl, entity: number) => parse(abi().og_physics_rope_points(world.id, entity)),
+  clothPoints: (world: WorldImpl, entity: number) => parse(abi().og_physics_cloth_points(world.id, entity)),
+  fluidParticles: (world: WorldImpl, entity: number) => parse(abi().og_physics_fluid_particles(world.id, entity)),
+  waterHeight: (world: WorldImpl, entity: number, x: number, z: number) =>
+    parse(abi().og_physics_water_height(world.id, entity, x, z)),
+  vehicleWheels: (world: WorldImpl, entity: number) => parse(abi().og_physics_vehicle_wheels(world.id, entity)),
+  ragdollRigFromSkeleton: (world: WorldImpl, skeleton: number) =>
+    parse(abi().og_physics_ragdoll_rig_from_skeleton(world.id, skeleton)),
+  setRagdollRig: (world: WorldImpl, entity: number, desc?: unknown) =>
+    parse(abi().og_physics_set_ragdoll_rig(world.id, entity, json(desc))),
+  ragdollPose: (world: WorldImpl, entity: number) => parse(abi().og_physics_ragdoll_pose(world.id, entity)),
+});
+
+export const atmosphere = Object.freeze({
+  timeOfDay: (world: WorldImpl) => abi().og_atmosphere_time_of_day(world.id),
 });
 
 /** Runs `build` between an open and its close, closing even when it throws. */

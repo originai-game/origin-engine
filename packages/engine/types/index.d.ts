@@ -4318,6 +4318,15 @@ export interface RenderCapabilities {
 
 
 
+/**
+ * A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read.
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type Shader = number & { readonly [handleType]: "Shader" };
+
+
+
 
 
 // ── load ────────────────────────────────────────────────────────
@@ -4476,6 +4485,7 @@ export interface Model {
   /** The glTF asset. */
   asset: Asset;
 }
+
 
 
 
@@ -4882,6 +4892,1359 @@ export interface Contact {
   readonly sensor: number;
 }
 
+/** `Joint.kind`: the two bodies move as one. */
+export declare const JOINT_FIXED: 0;
+
+/** `Joint.kind`: a hinge about `axis` (2D: about z), with optional limits and a motor. */
+export declare const JOINT_REVOLUTE: 1;
+
+/** `Joint.kind`: a slider along `axis`, with optional limits and a motor. */
+export declare const JOINT_PRISMATIC: 2;
+
+/** `Joint.kind`: a damped spring pulling the anchors to `restLength` apart. */
+export declare const JOINT_SPRING: 3;
+
+/** `Joint.kind`: a rope: the anchors stay at most `length` apart, free inside it. */
+export declare const JOINT_ROPE: 4;
+
+/** `Joint.kind`: a ball and socket (3D; the 2D profile treats it as a hinge). */
+export declare const JOINT_BALL: 5;
+
+/** `Joint.motor`: no motor. */
+export declare const MOTOR_NONE: 0;
+
+/** `Joint.motor`: drive towards `motorTarget` speed (rad/s or m/s). */
+export declare const MOTOR_VELOCITY: 1;
+
+/** `Joint.motor`: spring towards `motorTarget` angle or position (a servo). */
+export declare const MOTOR_POSITION: 2;
+
+/**
+ * A joint between two bodies (or a body and a point of the world). The component may sit on one of the bodies (`body` 0) or on an entity of its own, so one body can have several joints. Anchors are in each body's frame (rotated and moved with it, not scaled); without `other` the second anchor is a world point. A joint whose bodies are not both `og.RigidBody` entities does nothing until they are.
+ *
+ * The value of the `Joint` component (token `og.Joint`).
+ */
+export interface Joint {
+  /**
+   * JOINT_FIXED 0, JOINT_REVOLUTE 1 (hinge), JOINT_PRISMATIC 2 (slider), JOINT_SPRING 3, JOINT_ROPE 4, JOINT_BALL 5.
+   *
+   * @range 0..5
+   * @label Kind
+   */
+  kind: number;
+  /** The first body; 0 is this entity. */
+  body: Entity;
+  /** The second body; 0 joins the first one to the world at `otherAnchor`. */
+  other: Entity;
+  /**
+   * Where the joint sits on the first body, in its frame.
+   *
+   * @unit m (metres)
+   */
+  anchor: Vector3;
+  /**
+   * Where it sits on the second body, in its frame (a world point without `other`).
+   *
+   * @unit m (metres)
+   */
+  otherAnchor: Vector3;
+  /**
+   * The hinge or slide axis in the first body's frame (a hinge in 2D turns about z).
+   *
+   * @default { x: 1, y: 0, z: 0 }
+   */
+  axis: Vector3;
+  /** Whether `min`..`max` bound the hinge angle (rad) or the slide (m). */
+  limits: boolean;
+  /** The lower limit: radians for a hinge, metres for a slider. */
+  min: number;
+  /** The upper limit. */
+  max: number;
+  /**
+   * MOTOR_NONE 0, MOTOR_VELOCITY 1 (drive at motorTarget speed), MOTOR_POSITION 2 (spring to motorTarget).
+   *
+   * @range 0..2
+   */
+  motor: number;
+  /**
+   * The motor's target speed (rad/s, m/s) or angle or position (rad, m).
+   *
+   * @tunable
+   */
+  motorTarget: number;
+  /**
+   * A position motor's stiffness; a velocity motor's strength.
+   *
+   * @default 50
+   * @range 0..
+   * @tunable
+   */
+  motorStiffness: number;
+  /**
+   * A position motor's damping.
+   *
+   * @default 5
+   * @range 0..
+   * @tunable
+   */
+  motorDamping: number;
+  /**
+   * The most force (or torque) the motor applies; 0 is unbounded.
+   *
+   * @range 0..
+   * @tunable
+   */
+  motorMaxForce: number;
+  /**
+   * A spring's rest length.
+   *
+   * @default 1
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  restLength: number;
+  /**
+   * A spring's stiffness (N/m).
+   *
+   * @default 40
+   * @range 0..
+   * @tunable
+   */
+  stiffness: number;
+  /**
+   * A spring's damping (N·s/m).
+   *
+   * @default 2
+   * @range 0..
+   * @tunable
+   */
+  damping: number;
+  /**
+   * A rope's longest distance between the anchors.
+   *
+   * @default 2
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  length: number;
+  /** Whether the two bodies still collide with each other. */
+  collide: boolean;
+  /**
+   * Written: the hinge angle (rad) or the slide (m) after the step; the anchors' distance for springs and ropes.
+   *
+   * @readonly written by the engine
+   */
+  readonly value: number;
+}
+
+/**
+ * A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. The entity needs an og.Transform and an og.Collider; the step makes it a kinematic body and pushes dynamic bodies it walks into.
+ *
+ * The value of the `CharacterController` component (token `og.CharacterController`).
+ */
+export interface CharacterController {
+  /**
+   * The wanted velocity across the ground (m/s, world space; y is ignored unless gravityScale is 0). Set it every tick.
+   *
+   * @unit mps (metres per second)
+   */
+  move: Vector3;
+  /**
+   * Held to jump: a jump starts on the tick it becomes true while grounded (or in coyote time).
+   */
+  jump: boolean;
+  /**
+   * The upward speed of a jump.
+   *
+   * @default 6
+   * @range 0..
+   * @unit mps (metres per second)
+   * @tunable
+   */
+  jumpSpeed: number;
+  /**
+   * Multiplies og.Physics.gravity; 0 for top-down movement in any direction.
+   *
+   * @default 1
+   * @range 0..10
+   * @tunable
+   */
+  gravityScale: number;
+  /**
+   * The steepest slope it walks up.
+   *
+   * @default 45
+   * @range 0..89
+   * @unit deg (degrees)
+   * @tunable
+   */
+  maxSlope: number;
+  /**
+   * The highest step it climbs without jumping (0: none).
+   *
+   * @default 0.3
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  stepHeight: number;
+  /**
+   * How far below it the ground still holds it (stairs down, slopes): 0 lets it leave every edge.
+   *
+   * @default 0.2
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  snapDistance: number;
+  /**
+   * The gap kept between it and every surface.
+   *
+   * @default 0.02
+   * @range 0.001..
+   * @unit m (metres)
+   */
+  skin: number;
+  /**
+   * After leaving an edge, a jump still starts within this time.
+   *
+   * @default 0.1
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  coyoteTime: number;
+  /**
+   * The fastest fall.
+   *
+   * @default 40
+   * @range 0..
+   * @unit mps (metres per second)
+   * @tunable
+   */
+  maxFallSpeed: number;
+  /**
+   * Push dynamic bodies it walks into.
+   *
+   * @default true
+   */
+  pushBodies: boolean;
+  /**
+   * Written: standing on walkable ground after the step.
+   *
+   * @readonly written by the engine
+   */
+  readonly grounded: boolean;
+  /**
+   * Written: sliding down a slope steeper than maxSlope.
+   *
+   * @readonly written by the engine
+   */
+  readonly sliding: boolean;
+  /**
+   * Written: the velocity it moved at this tick (the platform's carry included).
+   *
+   * @unit mps (metres per second)
+   * @readonly written by the engine
+   */
+  readonly velocity: Vector3;
+  /**
+   * Written: the ground's normal (zero in the air).
+   *
+   * @readonly written by the engine
+   */
+  readonly groundNormal: Vector3;
+  /**
+   * Written: seconds left in which a jump may still start (coyote time).
+   *
+   * @readonly written by the engine
+   */
+  readonly coyote: number;
+  /**
+   * Written: `jump` as the last step saw it (a jump starts on its rising edge).
+   *
+   * @readonly written by the engine
+   */
+  readonly jumpWasHeld: boolean;
+  /**
+   * Written: the entity it stands on (0 in the air); a moving one carries it.
+   *
+   * @readonly written by the engine
+   */
+  readonly ground: Entity;
+}
+
+/**
+ * A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height (releasing jump while rising cuts the jump), apex hang, air jumps, wall slide and wall jump, one-way platforms (colliders on `oneWayLayers` are solid from above only; hold `down` to drop through), moving platforms (it rides what it stands on) and corner correction (a jump that clips a ceiling corner by less than `cornerCorrection` slides past it). The entity needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body.
+ *
+ * The value of the `PlatformerController` component (token `og.PlatformerController`).
+ */
+export interface PlatformerController {
+  /**
+   * The run input, -1 (left) to 1 (right). Set it every tick.
+   *
+   * @range -1..1
+   */
+  moveX: number;
+  /** Held to jump: a press is buffered for jumpBuffer; releasing while rising cuts the jump. */
+  jump: boolean;
+  /** Held to drop through a one-way platform. */
+  down: boolean;
+  /**
+   * The top running speed.
+   *
+   * @default 8
+   * @range 0..
+   * @unit mps (metres per second)
+   * @tunable
+   */
+  maxSpeed: number;
+  /**
+   * How fast it reaches maxSpeed on the ground.
+   *
+   * @default 70
+   * @range 0..
+   * @unit mps2 (metres per second squared)
+   * @tunable
+   */
+  acceleration: number;
+  /**
+   * How fast it stops on the ground without input.
+   *
+   * @default 80
+   * @range 0..
+   * @unit mps2 (metres per second squared)
+   * @tunable
+   */
+  deceleration: number;
+  /**
+   * Acceleration in the air.
+   *
+   * @default 45
+   * @range 0..
+   * @unit mps2 (metres per second squared)
+   * @tunable
+   */
+  airAcceleration: number;
+  /**
+   * Deceleration in the air without input.
+   *
+   * @default 25
+   * @range 0..
+   * @unit mps2 (metres per second squared)
+   * @tunable
+   */
+  airDeceleration: number;
+  /**
+   * How high a full jump goes.
+   *
+   * @default 3.2
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  jumpHeight: number;
+  /**
+   * How long a full jump takes to reach its height (sets gravity and the jump speed).
+   *
+   * @default 0.4
+   * @range 0.05..
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  timeToApex: number;
+  /**
+   * Gravity multiplier while falling (snappier landings above 1).
+   *
+   * @default 1.8
+   * @range 0..
+   * @tunable
+   */
+  fallGravity: number;
+  /**
+   * Gravity multiplier while rising with jump released (variable jump height; 1 disables it).
+   *
+   * @default 2.5
+   * @range 1..
+   * @tunable
+   */
+  jumpCut: number;
+  /**
+   * Gravity multiplier near the apex while jump is held (hang time; 1 disables it).
+   *
+   * @default 0.6
+   * @range 0..1
+   * @tunable
+   */
+  apexGravity: number;
+  /**
+   * The vertical speed below which the apex multiplier applies.
+   *
+   * @default 1.5
+   * @range 0..
+   * @unit mps (metres per second)
+   * @tunable
+   */
+  apexThreshold: number;
+  /**
+   * The fastest fall.
+   *
+   * @default 20
+   * @range 0..
+   * @unit mps (metres per second)
+   * @tunable
+   */
+  maxFallSpeed: number;
+  /**
+   * After running off an edge, a jump still starts within this time.
+   *
+   * @default 0.1
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  coyoteTime: number;
+  /**
+   * A jump pressed this long before landing starts on landing.
+   *
+   * @default 0.12
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  jumpBuffer: number;
+  /**
+   * Extra jumps in the air (1: a double jump).
+   *
+   * @range 0..8
+   */
+  airJumps: number;
+  /**
+   * Slide down walls it pushes against (and jump off them).
+   *
+   * @default true
+   */
+  wallJumps: boolean;
+  /**
+   * The fastest slide down a wall.
+   *
+   * @default 3
+   * @range 0..
+   * @unit mps (metres per second)
+   * @tunable
+   */
+  wallSlideSpeed: number;
+  /**
+   * A wall jump's velocity: x away from the wall, y up.
+   *
+   * @default { x: 8, y: 12 }
+   * @unit mps (metres per second)
+   * @tunable
+   */
+  wallJump: Vector2;
+  /**
+   * After a wall jump, the run input is ignored for this long (so it leaves the wall).
+   *
+   * @default 0.14
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  wallJumpLock: number;
+  /** The collision layers that are one-way platforms (solid from above), as bits. */
+  oneWayLayers: number;
+  /**
+   * How far a rising jump is nudged sideways past a ceiling corner (0: never).
+   *
+   * @default 0.15
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  cornerCorrection: number;
+  /**
+   * The steepest slope it runs up.
+   *
+   * @default 50
+   * @range 0..89
+   * @unit deg (degrees)
+   * @tunable
+   */
+  maxSlope: number;
+  /**
+   * How far below it the ground still holds it (slopes, small drops).
+   *
+   * @default 0.1
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  snapDistance: number;
+  /**
+   * The gap kept between it and every surface.
+   *
+   * @default 0.01
+   * @range 0.001..
+   * @unit m (metres)
+   */
+  skin: number;
+  /**
+   * Written: standing on ground after the step.
+   *
+   * @readonly written by the engine
+   */
+  readonly grounded: boolean;
+  /**
+   * Written: -1 sliding on a wall to its left, 1 to its right, 0 none.
+   *
+   * @range -1..1
+   * @readonly written by the engine
+   */
+  readonly onWall: number;
+  /**
+   * Written: -1 facing left, 1 right (the last run direction).
+   *
+   * @default 1
+   * @range -1..1
+   * @readonly written by the engine
+   */
+  readonly facing: number;
+  /**
+   * Written: the velocity after the step (the platform's carry excluded).
+   *
+   * @unit mps (metres per second)
+   * @readonly written by the engine
+   */
+  readonly velocity: Vector3;
+  /**
+   * Written: rising from a jump (until the apex or a release cut).
+   *
+   * @readonly written by the engine
+   */
+  readonly jumping: boolean;
+  /**
+   * Written: air jumps left before landing.
+   *
+   * @readonly written by the engine
+   */
+  readonly airJumpsLeft: number;
+  /**
+   * Written: seconds of coyote time left.
+   *
+   * @readonly written by the engine
+   */
+  readonly coyote: number;
+  /**
+   * Written: seconds a buffered jump press stays valid.
+   *
+   * @readonly written by the engine
+   */
+  readonly buffer: number;
+  /**
+   * Written: seconds the run input stays locked after a wall jump.
+   *
+   * @readonly written by the engine
+   */
+  readonly wallLock: number;
+  /**
+   * Written: seconds one-way platforms stay passable after dropping through.
+   *
+   * @readonly written by the engine
+   */
+  readonly dropTime: number;
+  /**
+   * Written: `jump` as the last step saw it.
+   *
+   * @readonly written by the engine
+   */
+  readonly jumpWasHeld: boolean;
+  /**
+   * Written: the entity it stands on (0 in the air); a moving one carries it.
+   *
+   * @readonly written by the engine
+   */
+  readonly ground: Entity;
+}
+
+/** `CharacterEvent.kind`: a jump from the ground (or in coyote time). */
+export declare const CHARACTER_JUMPED: 1;
+
+/** `CharacterEvent.kind`: touched the ground after being in the air. */
+export declare const CHARACTER_LANDED: 2;
+
+/** `CharacterEvent.kind`: a jump off a wall. */
+export declare const CHARACTER_WALL_JUMPED: 3;
+
+/** `CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps). */
+export declare const CHARACTER_AIR_JUMPED: 4;
+
+/** `CharacterEvent.kind`: left the ground without jumping (ran off an edge). */
+export declare const CHARACTER_LEFT_GROUND: 5;
+
+/** `CharacterEvent.kind`: hit a ceiling while rising. */
+export declare const CHARACTER_BUMPED: 6;
+
+/**
+ * Something a CharacterController or PlatformerController did this step: the hooks for dust, squash, sounds and camera kicks. Read the next tick.
+ *
+ * The payload of the `CharacterEvent` event (token `og.CharacterEvent`).
+ */
+export interface CharacterEvent {
+  /** The character. */
+  readonly entity: Entity;
+  /**
+   * CHARACTER_JUMPED 1, LANDED 2, WALL_JUMPED 3, AIR_JUMPED 4, LEFT_GROUND 5, BUMPED 6.
+   *
+   * @range 0..6
+   */
+  readonly kind: number;
+  /**
+   * The vertical speed at the moment (a landing's impact speed is negative).
+   *
+   * @unit mps (metres per second)
+   */
+  readonly speed: number;
+}
+
+/** `Vehicle.drive`: the rear wheels drive. */
+export declare const DRIVE_REAR: 0;
+
+/** `Vehicle.drive`: the front wheels drive. */
+export declare const DRIVE_FRONT: 1;
+
+/** `Vehicle.drive`: every wheel drives. */
+export declare const DRIVE_ALL: 2;
+
+/**
+ * A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle); its forward is the chassis's local +z (three.js Object3D.lookAt aims +z). 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. The wheels are not entities: og.physics.vehicleWheels gives their poses for drawing.
+ *
+ * The value of the `Vehicle` component (token `og.Vehicle`).
+ */
+export interface Vehicle {
+  /**
+   * The accelerator, -1 (reverse) to 1. Set it every tick.
+   *
+   * @range -1..1
+   */
+  throttle: number;
+  /**
+   * The steering, -1 (left) to 1 (right); 3D only.
+   *
+   * @range -1..1
+   */
+  steer: number;
+  /**
+   * The brake, 0 to 1.
+   *
+   * @range 0..1
+   */
+  brake: number;
+  /**
+   * The distance between the front and rear axles.
+   *
+   * @default 2.6
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  wheelBase: number;
+  /**
+   * The distance between the left and right wheels (3D).
+   *
+   * @default 1.6
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  track: number;
+  /**
+   * The wheels' radius.
+   *
+   * @default 0.4
+   * @range 0.01..
+   * @unit m (metres)
+   * @tunable
+   */
+  wheelRadius: number;
+  /**
+   * The height of the wheel mounts below the chassis centre.
+   *
+   * @default 0.2
+   * @unit m (metres)
+   * @tunable
+   */
+  mountHeight: number;
+  /**
+   * The suspension's length at rest.
+   *
+   * @default 0.35
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  suspensionRest: number;
+  /**
+   * How far the suspension compresses or extends from rest.
+   *
+   * @default 0.25
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  suspensionTravel: number;
+  /**
+   * The suspension's stiffness.
+   *
+   * @default 30
+   * @range 0..
+   * @tunable
+   */
+  suspensionStiffness: number;
+  /**
+   * The suspension's damping.
+   *
+   * @default 4
+   * @range 0..
+   * @tunable
+   */
+  suspensionDamping: number;
+  /**
+   * The tyres' grip (3D: the friction slip; 2D: the wheels' friction).
+   *
+   * @default 2
+   * @range 0..
+   * @tunable
+   */
+  grip: number;
+  /**
+   * The engine's force at full throttle (3D: per driven wheel, N; 2D: the motor's torque).
+   *
+   * @default 80
+   * @range 0..
+   * @tunable
+   */
+  engineForce: number;
+  /**
+   * The top speed: the engine's force fades out towards it (throttle against the motion brakes first).
+   *
+   * @default 20
+   * @range 0..
+   * @unit mps (metres per second)
+   * @tunable
+   */
+  maxSpeed: number;
+  /**
+   * The brakes' force at full brake.
+   *
+   * @default 30
+   * @range 0..
+   * @tunable
+   */
+  brakeForce: number;
+  /**
+   * The front wheels' largest steering angle (3D).
+   *
+   * @default 0.55
+   * @range 0..1.2
+   * @unit rad (radians)
+   * @tunable
+   */
+  maxSteer: number;
+  /**
+   * DRIVE_REAR 0, DRIVE_FRONT 1, DRIVE_ALL 2.
+   *
+   * @range 0..2
+   */
+  drive: number;
+  /**
+   * The wheels' mass (2D: the wheel bodies; 3D ignores it).
+   *
+   * @default 1
+   * @range 0.01..
+   * @unit kg (kilograms)
+   * @tunable
+   */
+  wheelMass: number;
+  /**
+   * Written: the forward speed (m/s; negative reversing).
+   *
+   * @unit mps (metres per second)
+   * @readonly written by the engine
+   */
+  readonly speed: number;
+  /**
+   * Written: how many wheels touch the ground.
+   *
+   * @readonly written by the engine
+   */
+  readonly contacts: number;
+}
+
+/**
+ * A Verlet rope: `segments` links from the entity's position (plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind, colliding with every solid collider at `radius`. It moves nothing (one-way: a rope joint ties bodies together, og.Joint JOINT_ROPE). Its points are world state (the og.physics state block); og.physics.ropePoints reads them and the renderer draws the rope as a strip of `width` and `color`.
+ *
+ * The value of the `Rope` component (token `og.Rope`).
+ */
+export interface Rope {
+  /**
+   * The number of links (points minus one).
+   *
+   * @default 16
+   * @range 1..256
+   */
+  segments: number;
+  /**
+   * The rope's length at rest.
+   *
+   * @default 4
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  length: number;
+  /**
+   * The start's offset from the entity's position (world axes).
+   *
+   * @unit m (metres)
+   */
+  offset: Vector3;
+  /** The entity the far end is tied to; 0 leaves it free. */
+  end: Entity;
+  /**
+   * The far end's offset from `end`'s position.
+   *
+   * @unit m (metres)
+   */
+  endOffset: Vector3;
+  /**
+   * Constraint passes per step: more is stiffer, at more cost.
+   *
+   * @default 12
+   * @range 1..64
+   * @tunable
+   */
+  iterations: number;
+  /**
+   * How much of its velocity each point keeps per tick (1: none lost).
+   *
+   * @default 0.99
+   * @range 0..1
+   * @tunable
+   */
+  damping: number;
+  /**
+   * Multiplies og.Physics.gravity.
+   *
+   * @default 1
+   * @range -10..10
+   * @tunable
+   */
+  gravityScale: number;
+  /**
+   * A steady acceleration (wind).
+   *
+   * @unit mps2 (metres per second squared)
+   * @tunable
+   */
+  wind: Vector3;
+  /**
+   * The thickness it collides at (0: no collision).
+   *
+   * @default 0.05
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  radius: number;
+  /**
+   * The drawn width.
+   *
+   * @default 0.08
+   * @range 0..
+   * @unit m (metres)
+   */
+  width: number;
+  /**
+   * The drawn linear colour.
+   *
+   * @default { x: 0.55, y: 0.42, z: 0.28 }
+   */
+  color: Vector3;
+  /**
+   * Whether the renderer draws it.
+   *
+   * @default true
+   */
+  visible: boolean;
+}
+
+/** `Cloth.pins` bit: the whole top row is pinned. */
+export declare const PIN_TOP: 1;
+
+/** `Cloth.pins` bit: the top-left and top-right corners are pinned. */
+export declare const PIN_TOP_CORNERS: 2;
+
+/** `Cloth.pins` bit: the whole left column is pinned (a flag on a pole). */
+export declare const PIN_LEFT: 4;
+
+/** `Cloth.pins` bit: every fourth point of the top row (curtain rings). */
+export declare const PIN_TOP_RINGS: 8;
+
+/**
+ * A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind and collision against every solid collider. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour).
+ *
+ * The value of the `Cloth` component (token `og.Cloth`).
+ */
+export interface Cloth {
+  /**
+   * Points across.
+   *
+   * @default 12
+   * @range 2..64
+   */
+  columns: number;
+  /**
+   * Points down.
+   *
+   * @default 12
+   * @range 2..64
+   */
+  rows: number;
+  /**
+   * The rest distance between neighbouring points.
+   *
+   * @default 0.15
+   * @range 0.001..
+   * @unit m (metres)
+   * @tunable
+   */
+  spacing: number;
+  /**
+   * Which points are pinned, a sum of PIN_* bits (1 top row, 2 top corners, 4 left column, 8 top rings).
+   *
+   * @default 1
+   */
+  pins: number;
+  /**
+   * Constraint passes per step.
+   *
+   * @default 8
+   * @range 1..64
+   * @tunable
+   */
+  iterations: number;
+  /**
+   * How much of its velocity each point keeps per tick.
+   *
+   * @default 0.985
+   * @range 0..1
+   * @tunable
+   */
+  damping: number;
+  /**
+   * Multiplies og.Physics.gravity.
+   *
+   * @default 1
+   * @range -10..10
+   * @tunable
+   */
+  gravityScale: number;
+  /**
+   * A steady acceleration (wind); the cloth flutters with it.
+   *
+   * @unit mps2 (metres per second squared)
+   * @tunable
+   */
+  wind: Vector3;
+  /**
+   * How much the wind varies over the cloth and the tick (0: steady).
+   *
+   * @default 0.6
+   * @range 0..2
+   * @tunable
+   */
+  gust: number;
+  /**
+   * The thickness it collides at (0: no collision).
+   *
+   * @default 0.04
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  radius: number;
+  /** The material it is drawn with (og.render.standardMaterial); 0 is a plain cloth. */
+  material: Material;
+  /**
+   * Whether the renderer draws it.
+   *
+   * @default true
+   */
+  visible: boolean;
+}
+
+/**
+ * A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`.
+ *
+ * The value of the `Fluid2D` component (token `og.Fluid2D`).
+ */
+export interface Fluid2D {
+  /**
+   * How many particles (spawned when the component appears or count changes).
+   *
+   * @default 1000
+   * @range 1..8192
+   */
+  count: number;
+  /**
+   * The spawn box, centred on the entity.
+   *
+   * @default { x: 4, y: 3 }
+   * @unit m (metres)
+   */
+  size: Vector2;
+  /**
+   * The container around the entity (0 0: none; colliders still hold it).
+   *
+   * @unit m (metres)
+   */
+  bounds: Vector2;
+  /**
+   * The interaction radius: particles closer than this push and drag each other.
+   *
+   * @default 0.18
+   * @range 0.01..
+   * @unit m (metres)
+   * @tunable
+   */
+  radius: number;
+  /**
+   * The density it settles at (neighbours within radius, weighted).
+   *
+   * @default 1
+   * @range 0..
+   * @tunable
+   */
+  restDensity: number;
+  /**
+   * The pressure's strength (above about 0.15 it gets springy, then unstable).
+   *
+   * @default 0.1
+   * @range 0..
+   * @tunable
+   */
+  stiffness: number;
+  /**
+   * The near pressure's strength (keeps particles apart, gives surface tension).
+   *
+   * @default 0.5
+   * @range 0..
+   * @tunable
+   */
+  nearStiffness: number;
+  /**
+   * Linear viscosity (honey above 1).
+   *
+   * @default 0.15
+   * @range 0..4
+   * @tunable
+   */
+  viscosity: number;
+  /**
+   * Multiplies og.Physics.gravity.
+   *
+   * @default 1
+   * @range -10..10
+   * @tunable
+   */
+  gravityScale: number;
+  /**
+   * Simulation steps per tick.
+   *
+   * @default 2
+   * @range 1..8
+   */
+  substeps: number;
+  /** The seed of the spawn jitter. */
+  seed: number;
+  /**
+   * The surface's linear colour.
+   *
+   * @default { x: 0.15, y: 0.45, z: 0.95 }
+   */
+  color: Vector3;
+  /**
+   * The surface's opacity.
+   *
+   * @default 0.9
+   * @range 0..1
+   */
+  opacity: number;
+  /**
+   * The drawn size of each particle's blob (times radius).
+   *
+   * @default 1.6
+   * @range 0.1..4
+   */
+  blobScale: number;
+  /**
+   * The field value where the surface starts (higher: thinner, separate drops).
+   *
+   * @default 0.45
+   * @range 0.01..4
+   */
+  threshold: number;
+  /** The sprite layer it is drawn on. */
+  layer: number;
+  /**
+   * Whether the renderer draws it.
+   *
+   * @default true
+   */
+  visible: boolean;
+}
+
+/**
+ * Height-field water (3D): a `resolution` × `resolution` grid of heights over a `size` square centred on the entity (its y is the rest level), waves travelling at `waveSpeed` and fading by `damping`. Dynamic bodies crossing it push waves (splashes; og.Splash events) and float by `buoyancy`. The heights are world state; an og.Water on the same entity draws them.
+ *
+ * The value of the `WaterSurface` component (token `og.WaterSurface`).
+ */
+export interface WaterSurface {
+  /**
+   * Grid points along each side.
+   *
+   * @default 64
+   * @range 8..256
+   */
+  resolution: number;
+  /**
+   * The side of the square of water.
+   *
+   * @default 16
+   * @range 0.1..
+   * @unit m (metres)
+   * @tunable
+   */
+  size: number;
+  /**
+   * How fast waves travel.
+   *
+   * @default 3
+   * @range 0..
+   * @unit mps (metres per second)
+   * @tunable
+   */
+  waveSpeed: number;
+  /**
+   * How much of a wave survives a second (1: no loss).
+   *
+   * @default 0.4
+   * @range 0..1
+   * @tunable
+   */
+  damping: number;
+  /**
+   * How strongly bodies push waves.
+   *
+   * @default 1
+   * @range 0..
+   * @tunable
+   */
+  splash: number;
+  /**
+   * The upward force on a submerged body per cubic metre of its box under water (0: bodies sink).
+   *
+   * @default 9.81
+   * @range 0..
+   * @tunable
+   */
+  buoyancy: number;
+  /**
+   * How much a submerged body's velocity is slowed.
+   *
+   * @default 1.5
+   * @range 0..
+   * @unit perSecond (a rate per second: the fraction of a value that decays in one second)
+   * @tunable
+   */
+  drag: number;
+}
+
+/**
+ * 2D water for side-scrollers: a `width` × `depth` pool whose top edge (at the entity's y, centred on its x) is `columns` springs, each pulled to its rest height by `tension`, damped by `damping` and passing waves to its neighbours by `spread`. Bodies (and characters) crossing the surface splash it (og.Splash events) and float by `buoyancy`. The springs are world state; an og.Water2D on the same entity draws it.
+ *
+ * The value of the `WaterLine` component (token `og.WaterLine`).
+ */
+export interface WaterLine {
+  /**
+   * The pool's width.
+   *
+   * @default 12
+   * @range 0.1..
+   * @unit m (metres)
+   * @tunable
+   */
+  width: number;
+  /**
+   * The pool's depth below the surface.
+   *
+   * @default 3
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  depth: number;
+  /**
+   * Springs along the surface.
+   *
+   * @default 96
+   * @range 4..512
+   */
+  columns: number;
+  /**
+   * How hard each spring pulls back to rest.
+   *
+   * @default 60
+   * @range 0..
+   * @tunable
+   */
+  tension: number;
+  /**
+   * How fast a spring's motion dies.
+   *
+   * @default 2.5
+   * @range 0..
+   * @tunable
+   */
+  damping: number;
+  /**
+   * How much of a spring's height its neighbours feel each pass (waves travel).
+   *
+   * @default 0.25
+   * @range 0..0.5
+   * @tunable
+   */
+  spread: number;
+  /**
+   * How strongly crossing bodies splash.
+   *
+   * @default 0.04
+   * @range 0..
+   * @tunable
+   */
+  splash: number;
+  /**
+   * The upward force on a submerged body per square metre of its box under water (0: bodies sink).
+   *
+   * @default 12
+   * @range 0..
+   * @tunable
+   */
+  buoyancy: number;
+  /**
+   * How much a submerged body's velocity is slowed.
+   *
+   * @default 2
+   * @range 0..
+   * @unit perSecond (a rate per second: the fraction of a value that decays in one second)
+   * @tunable
+   */
+  drag: number;
+}
+
+/**
+ * Something crossed a water surface (og.WaterSurface or og.WaterLine): for splash particles and sounds. Read the next tick.
+ *
+ * The payload of the `Splash` event (token `og.Splash`).
+ */
+export interface Splash {
+  /** The water's entity. */
+  readonly water: Entity;
+  /** What crossed it. */
+  readonly entity: Entity;
+  /**
+   * Where it crossed the surface.
+   *
+   * @unit m (metres)
+   */
+  readonly point: Vector3;
+  /**
+   * Its vertical speed (negative going in).
+   *
+   * @unit mps (metres per second)
+   */
+  readonly speed: number;
+}
+
+/**
+ * A ragdoll over an og.Skeleton (3D): a capsule body per bone with a parent, ball joints with cone limits between them, built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state (the og.physics state block), not entities.
+ *
+ * The value of the `Ragdoll` component (token `og.Ragdoll`).
+ */
+export interface Ragdoll {
+  /**
+   * 0 animated, 1 ragdoll. Set it to 1 on a hit; back to 0 to recover.
+   *
+   * @range 0..1
+   * @tunable
+   */
+  weight: number;
+  /**
+   * How long the blend between animation and physics takes, both ways.
+   *
+   * @default 0.25
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  blendTime: number;
+  /**
+   * The whole body's mass, shared by the bones by length.
+   *
+   * @default 60
+   * @range 0.1..
+   * @unit kg (kilograms)
+   * @tunable
+   */
+  mass: number;
+  /**
+   * A bone capsule's radius as a fraction of its length.
+   *
+   * @default 0.22
+   * @range 0.01..1
+   * @tunable
+   */
+  thickness: number;
+  /**
+   * How far each joint bends from the rest pose.
+   *
+   * @default 0.9
+   * @range 0..3.1
+   * @unit rad (radians)
+   * @tunable
+   */
+  jointLimit: number;
+  /**
+   * How much of their motion the bones lose per second.
+   *
+   * @default 0.6
+   * @range 0..20
+   * @unit perSecond (a rate per second: the fraction of a value that decays in one second)
+   * @tunable
+   */
+  damping: number;
+  /** An impulse given to every bone when weight first goes up (a hit). */
+  impulse: Vector3;
+  /**
+   * Written: the blend in use (0 animation .. 1 physics).
+   *
+   * @readonly written by the engine
+   */
+  readonly blend: number;
+}
+
 /**
  * Which colliders a scene query considers. The zero value considers every solid collider on every layer.
  *
@@ -5119,6 +6482,598 @@ export interface MeshDesc {
 
 
 
+
+
+/** A wheel of an og.Vehicle as the last step left it, for drawing. */
+export interface WheelPose {
+  /**
+   * The wheel's centre in world space.
+   *
+   * @unit m (metres)
+   */
+  readonly position: Vector3;
+  /** Its rotation (steering and spin) in world space. */
+  readonly rotation: Quaternion;
+  /** Whether it touches the ground. */
+  readonly contact: boolean;
+}
+
+/**
+ * One bone of a ragdoll rig: a capsule from the bone's position along `axis` for `length`.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RagdollBoneDesc {
+  /**
+   * The parent bone's index (it must come earlier); -1 for the root.
+   *
+   * @default -1
+   */
+  readonly parent?: number;
+  /**
+   * The bone's rest position relative to the entity.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly position?: Vector3;
+  /**
+   * The bone's rest rotation relative to the entity; a zero quaternion is no rotation.
+   *
+   * @default { x: 0, y: 0, z: 0, w: 1 }
+   */
+  readonly rotation?: Quaternion;
+  /**
+   * How long the bone is (to its child).
+   *
+   * @default 0.25
+   * @unit m (metres)
+   */
+  readonly length?: number;
+  /**
+   * The direction the bone points in its own frame (towards its child).
+   *
+   * @default { x: 0, y: 1, z: 0 }
+   */
+  readonly axis?: Vector3;
+  /**
+   * The skeleton joint (its index in the skin) the bone stands for, so the model is drawn with it; -1 for none.
+   *
+   * @default -1
+   */
+  readonly joint?: number;
+}
+
+/**
+ * The bones of a ragdoll, parents first, for og.physics.setRagdollRig; og.physics.ragdollRigFromSkeleton makes one from a model's skeleton.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RagdollRigDesc {
+  /**
+   * The bones.
+   *
+   * @default []
+   */
+  readonly bones?: readonly RagdollBoneDesc[];
+  /**
+   * The skeleton the bones' joints belong to (0: none): the entity's posed model is drawn blended towards the bones by og.Ragdoll.blend.
+   *
+   * @default 0
+   */
+  readonly skeleton?: SkeletonAsset;
+}
+
+/**
+ * A ragdoll bone's pose as the last step left it (blended with the animation by og.Ragdoll.weight).
+ */
+export interface BonePose {
+  /**
+   * The bone's position in world space.
+   *
+   * @unit m (metres)
+   */
+  readonly position: Vector3;
+  /** Its rotation in world space. */
+  readonly rotation: Quaternion;
+}
+
+
+
+
+
+
+
+
+
+// ── atmosphere ──────────────────────────────────────────────────
+// Fog, a procedural sky, the day-night cycle, weather and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before.
+// The day-night clock is a function of the tick (DayNight.start plus the simulated time times speed), so it is the same on every run and after a restore; rendering reads the world and never writes it.
+
+/** Weather.kind: clear. */
+export declare const WEATHER_NONE: 0;
+
+/**
+ * Weather.kind: rain streaks falling with the wind, the light dimmed and a grey distance fog.
+ */
+export declare const WEATHER_RAIN: 1;
+
+/** Weather.kind: flakes drifting down on gusts, a pale fog. */
+export declare const WEATHER_SNOW: 2;
+
+/** Weather.kind: dust blowing along the wind near the ground, a warm thick fog. */
+export declare const WEATHER_DUST: 3;
+
+/** Weather.kind: no particles, a dense low height fog. */
+export declare const WEATHER_MIST: 4;
+
+/**
+ * Distance and height fog over the 3D scene and world sprites: distance fog thickens exponentially by density from start (or linearly from start to end when end > start), height fog is densest below height and thins by falloff per metre above it; looking into the sun it turns towards sunColor. The overlay is never fogged.
+ *
+ * The `Fog` resource (token `og.Fog`).
+ */
+export interface Fog {
+  /** Draw the fog. */
+  enabled: boolean;
+  /**
+   * The colour the fog tends to (linear, before exposure).
+   *
+   * @default { r: 0.62, g: 0.68, b: 0.76 }
+   */
+  color: Color;
+  /**
+   * Distance fog per metre (0: none).
+   *
+   * @default 0.02
+   * @range 0..2
+   * @tunable
+   */
+  density: number;
+  /**
+   * Where distance fog starts.
+   *
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  start: number;
+  /**
+   * With end > start, a linear ramp to full fog at end as well.
+   *
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  end: number;
+  /**
+   * Height fog at and below height (0: none).
+   *
+   * @range 0..10
+   * @tunable
+   */
+  heightDensity: number;
+  /**
+   * The world height below which height fog is densest.
+   *
+   * @unit m (metres)
+   * @tunable
+   */
+  height: number;
+  /**
+   * How fast height fog thins above height, per metre.
+   *
+   * @default 0.5
+   * @range 0.0001..20
+   * @tunable
+   */
+  falloff: number;
+  /**
+   * The fog's colour looking into the sun (forward scattering).
+   *
+   * @default { r: 1, g: 0.86, b: 0.62 }
+   */
+  sunColor: Color;
+  /**
+   * How tight the sun's glow in the fog is (higher: smaller).
+   *
+   * @default 8
+   * @range 0..256
+   * @tunable
+   */
+  sunPower: number;
+  /**
+   * The most the fog hides.
+   *
+   * @default 1
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  maxOpacity: number;
+  /**
+   * How much of the fog covers the sky (0: the sky stays clear).
+   *
+   * @default 1
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  sky: number;
+}
+
+/**
+ * A procedural sky of chosen colours, drawn behind the scene per pixel and lighting it (the image-based light follows it). Without it, RenderSettings.sky draws the built-in sky. A DayNight that is enabled sets the sky itself.
+ *
+ * The `Sky` resource (token `og.Sky`).
+ */
+export interface Sky {
+  /** Draw and light by this sky. */
+  enabled: boolean;
+  /**
+   * Overhead.
+   *
+   * @default { r: 0.18, g: 0.36, b: 0.78 }
+   */
+  zenith: Color;
+  /**
+   * At the horizon.
+   *
+   * @default { r: 0.78, g: 0.84, b: 0.92 }
+   */
+  horizon: Color;
+  /**
+   * Below the horizon.
+   *
+   * @default { r: 0.16, g: 0.14, b: 0.12 }
+   */
+  ground: Color;
+  /**
+   * Towards the sun (match your DirectionalLight).
+   *
+   * @default { x: 0.45, y: 0.8, z: 0.35 }
+   */
+  sunDirection: Vector3;
+  /**
+   * The sun's colour.
+   *
+   * @default { r: 1, g: 0.95, b: 0.88 }
+   */
+  sunColor: Color;
+  /**
+   * The sun disc's angular radius (0: no disc).
+   *
+   * @default 1.8
+   * @range 0..20
+   * @unit deg (degrees)
+   * @tunable
+   */
+  sunSize: number;
+  /**
+   * The disc's brightness.
+   *
+   * @default 40
+   * @range 0..
+   * @tunable
+   */
+  sunIntensity: number;
+  /**
+   * The glow around the sun.
+   *
+   * @default 0.6
+   * @range 0..
+   * @tunable
+   */
+  glow: number;
+  /**
+   * How tight the glow is.
+   *
+   * @default 24
+   * @range 1..
+   * @tunable
+   */
+  glowPower: number;
+  /**
+   * Stars where the sky is dark: 0 none, 1 a full night sky.
+   *
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  stars: number;
+  /**
+   * A multiplier on the whole sky.
+   *
+   * @default 1.1
+   * @range 0..
+   * @tunable
+   */
+  brightness: number;
+}
+
+/**
+ * A day-night cycle: the time of day drives the sun's direction, the sky's colours and stars, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly.
+ *
+ * The `DayNight` resource (token `og.DayNight`).
+ */
+export interface DayNight {
+  /** Run the cycle. */
+  enabled: boolean;
+  /**
+   * The time of day at tick 0, in hours (6 sunrise, 12 noon, 18 sunset).
+   *
+   * @default 9
+   * @range 0..24
+   * @tunable
+   */
+  start: number;
+  /**
+   * Game hours per simulated second (0.05: a day in 8 minutes; 0 holds the time).
+   *
+   * @default 0.05
+   * @range 0..24
+   * @tunable
+   */
+  speed: number;
+  /**
+   * How far the sun's path leans from overhead.
+   *
+   * @default 25
+   * @range 0..89
+   * @unit deg (degrees)
+   * @tunable
+   */
+  tilt: number;
+  /**
+   * Where the sun rises, turned about +y from +x.
+   *
+   * @unit deg (degrees)
+   * @tunable
+   */
+  azimuth: number;
+  /**
+   * A multiplier on the sun and moon light.
+   *
+   * @default 1
+   * @range 0..10
+   * @tunable
+   */
+  lightIntensity: number;
+  /**
+   * Turn the og.Fog colour towards the horizon's.
+   *
+   * @default true
+   */
+  tintFog: boolean;
+  /**
+   * Game minutes between regenerations of the image-based light.
+   *
+   * @default 10
+   * @range 1..120
+   * @tunable
+   */
+  step: number;
+}
+
+/**
+ * A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence) and dimmed sunlight. Particles are simulated by the renderer from the tick, so they look the same on every run; they never touch the simulation.
+ *
+ * The `Weather` resource (token `og.Weather`).
+ */
+export interface Weather {
+  /**
+   * WEATHER_NONE 0, WEATHER_RAIN 1, WEATHER_SNOW 2, WEATHER_DUST 3, WEATHER_MIST 4.
+   *
+   * @range 0..4
+   * @label Kind
+   */
+  kind: number;
+  /**
+   * How heavy: scales the particle rate, the fog and the dimming.
+   *
+   * @default 1
+   * @range 0..2
+   * @tunable
+   */
+  intensity: number;
+  /**
+   * Where the wind blows the particles.
+   *
+   * @default { x: 1.5, y: 0, z: 0.5 }
+   * @unit mps (metres per second)
+   * @tunable
+   */
+  wind: Vector3;
+  /**
+   * The size of the region around the camera the particles fill.
+   *
+   * @default 18
+   * @range 1..200
+   * @unit m (metres)
+   * @tunable
+   */
+  radius: number;
+  /**
+   * Multiplies the particles' colour.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  tint: Color;
+  /**
+   * How much of the preset's dimming of the sunlight applies.
+   *
+   * @default 1
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  dim: number;
+  /**
+   * With an orthographic camera (2D), the sprite layer the particles draw in.
+   *
+   * @default 50
+   */
+  layer: number;
+}
+
+/**
+ * A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space where the tier allows, the sky's cubemap on WebGL2). With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated).
+ *
+ * The value of the `Water` component (token `og.Water`).
+ */
+export interface Water {
+  /**
+   * The extent along the entity's x and z.
+   *
+   * @default { x: 16, y: 16 }
+   * @unit m (metres)
+   * @tunable
+   */
+  size: Vector2;
+  /**
+   * Grid cells per side (the height field's detail).
+   *
+   * @default 64
+   * @range 1..256
+   */
+  segments: number;
+  /**
+   * Shallow water's colour (tints what is seen through it).
+   *
+   * @default { r: 0.55, g: 0.85, b: 0.82 }
+   */
+  shallow: Color;
+  /**
+   * Deep water's colour.
+   *
+   * @default { r: 0.02, g: 0.09, b: 0.14 }
+   */
+  deep: Color;
+  /**
+   * The depth over which water turns from shallow to deep.
+   *
+   * @default 2.5
+   * @range 0.01..
+   * @unit m (metres)
+   * @tunable
+   */
+  depthFade: number;
+  /**
+   * How opaque deep water gets.
+   *
+   * @default 0.92
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  opacity: number;
+  /**
+   * The foam's colour.
+   *
+   * @default { r: 0.95, g: 0.97, b: 1 }
+   */
+  foam: Color;
+  /**
+   * The water depth over which foam rings geometry (0: none).
+   *
+   * @default 0.35
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  foamWidth: number;
+  /**
+   * Detail waves per metre.
+   *
+   * @default 0.6
+   * @range 0..
+   * @tunable
+   */
+  waveScale: number;
+  /**
+   * How fast the detail waves travel.
+   *
+   * @default 1
+   * @tunable
+   */
+  waveSpeed: number;
+  /**
+   * How strongly they bend the surface (0: a mirror).
+   *
+   * @default 0.35
+   * @range 0..4
+   * @tunable
+   */
+  waveStrength: number;
+  /**
+   * How far refraction shifts what is seen through the water.
+   *
+   * @default 1
+   * @range 0..
+   * @tunable
+   */
+  refraction: number;
+  /**
+   * How much it reflects.
+   *
+   * @default 1
+   * @range 0..2
+   * @tunable
+   */
+  reflectivity: number;
+}
+
+/**
+ * Draws the og.WaterLine on the same entity in the sprite order: the body from its surface down, a gradient from the top colour to the bottom one, and a bright lip along the surface.
+ *
+ * The value of the `Water2D` component (token `og.Water2D`).
+ */
+export interface Water2D {
+  /**
+   * The body's colour at the surface.
+   *
+   * @default { r: 0.16, g: 0.5, b: 0.72 }
+   */
+  top: Color;
+  /**
+   * Its opacity there.
+   *
+   * @default 0.72
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  topOpacity: number;
+  /**
+   * The colour at the bottom.
+   *
+   * @default { r: 0.02, g: 0.1, b: 0.25 }
+   */
+  bottom: Color;
+  /**
+   * Its opacity there.
+   *
+   * @default 0.92
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  bottomOpacity: number;
+  /**
+   * The lip along the surface.
+   *
+   * @default { r: 0.8, g: 0.95, b: 1 }
+   */
+  lip: Color;
+  /**
+   * How thick the lip is (0: none).
+   *
+   * @default 0.06
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  lipWidth: number;
+  /** The sprite layer it is drawn in. */
+  layer: number;
+}
 
 
 // ── anim ────────────────────────────────────────────────────────
@@ -11150,6 +13105,25 @@ export declare namespace og {
      */
     function updateMaterial(world: World, material: Material, desc?: StandardMaterialDesc): Result<void>;
     /**
+     * Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; see the `shader` page of the wiki's render module), its parameters at their defaults. Skinned meshes draw it without the hooks; shadows and the depth prepass use the undisplaced mesh.
+     *
+     * @param world The world whose renderer owns the material.
+     * @param shader The shader.
+     * @param desc The base material; omitted parameters take three.js defaults. A dissolve sets alphaTest so that alpha below it is cut.
+     * @returns Refused for a shader not loaded in this world.
+     */
+    function shaderMaterial(world: World, shader: Shader, desc?: StandardMaterialDesc): Result<Material>;
+    /**
+     * Set a parameter of a shader material, by the name its shader declares: a number for float, two to four for vec2, vec3, vec4 and color.
+     *
+     * @param world The world whose renderer owns the material.
+     * @param material A material made by og.render.shaderMaterial.
+     * @param name The parameter's name.
+     * @param value Its value; missing components are 0.
+     * @returns Refused for a material without a shader or a parameter its shader does not declare.
+     */
+    function setShaderParam(world: World, material: Material, name: string, value: readonly number[]): Result<void>;
+    /**
      * The renderer's tier and limits on this device.
      *
      * @param world The world whose renderer is asked.
@@ -11256,6 +13230,14 @@ export declare namespace og {
      */
     function emitter(world: World, path: string): Result<ParticleEmitter>;
     /**
+     * A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). Loaded once per path.
+     *
+     * @param world The world whose renderer owns it.
+     * @param path The asset id, such as `shaders/dissolve.ogt`.
+     * @returns Refused for a path not in the bundle or not a shader.
+     */
+    function shader(world: World, path: string): Result<Shader>;
+    /**
      * Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load.
      *
      * @param world The world whose renderer owns the texture.
@@ -11356,6 +13338,54 @@ export declare namespace og {
    */
   const Contact: EventType<Contact>;
   /**
+   * A joint between two bodies (or a body and a point of the world). The component may sit on one of the bodies (`body` 0) or on an entity of its own, so one body can have several joints. Anchors are in each body's frame (rotated and moved with it, not scaled); without `other` the second anchor is a world point. A joint whose bodies are not both `og.RigidBody` entities does nothing until they are.
+   */
+  const Joint: ComponentType<{ readonly kind: FieldSpec<"u32">; readonly body: FieldSpec<"Entity">; readonly other: FieldSpec<"Entity">; readonly anchor: FieldSpec<"Vector3">; readonly otherAnchor: FieldSpec<"Vector3">; readonly axis: FieldSpec<"Vector3">; readonly limits: FieldSpec<"bool">; readonly min: FieldSpec<"f32">; readonly max: FieldSpec<"f32">; readonly motor: FieldSpec<"u32">; readonly motorTarget: FieldSpec<"f32">; readonly motorStiffness: FieldSpec<"f32">; readonly motorDamping: FieldSpec<"f32">; readonly motorMaxForce: FieldSpec<"f32">; readonly restLength: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly length: FieldSpec<"f32">; readonly collide: FieldSpec<"bool">; readonly value: FieldSpec<"f32"> }, Joint>;
+  /**
+   * A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. The entity needs an og.Transform and an og.Collider; the step makes it a kinematic body and pushes dynamic bodies it walks into.
+   */
+  const CharacterController: ComponentType<{ readonly move: FieldSpec<"Vector3">; readonly jump: FieldSpec<"bool">; readonly jumpSpeed: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly maxSlope: FieldSpec<"f32">; readonly stepHeight: FieldSpec<"f32">; readonly snapDistance: FieldSpec<"f32">; readonly skin: FieldSpec<"f32">; readonly coyoteTime: FieldSpec<"f32">; readonly maxFallSpeed: FieldSpec<"f32">; readonly pushBodies: FieldSpec<"bool">; readonly grounded: FieldSpec<"bool">; readonly sliding: FieldSpec<"bool">; readonly velocity: FieldSpec<"Vector3">; readonly groundNormal: FieldSpec<"Vector3">; readonly coyote: FieldSpec<"f32">; readonly jumpWasHeld: FieldSpec<"bool">; readonly ground: FieldSpec<"Entity"> }, CharacterController>;
+  /**
+   * A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height (releasing jump while rising cuts the jump), apex hang, air jumps, wall slide and wall jump, one-way platforms (colliders on `oneWayLayers` are solid from above only; hold `down` to drop through), moving platforms (it rides what it stands on) and corner correction (a jump that clips a ceiling corner by less than `cornerCorrection` slides past it). The entity needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body.
+   */
+  const PlatformerController: ComponentType<{ readonly moveX: FieldSpec<"f32">; readonly jump: FieldSpec<"bool">; readonly down: FieldSpec<"bool">; readonly maxSpeed: FieldSpec<"f32">; readonly acceleration: FieldSpec<"f32">; readonly deceleration: FieldSpec<"f32">; readonly airAcceleration: FieldSpec<"f32">; readonly airDeceleration: FieldSpec<"f32">; readonly jumpHeight: FieldSpec<"f32">; readonly timeToApex: FieldSpec<"f32">; readonly fallGravity: FieldSpec<"f32">; readonly jumpCut: FieldSpec<"f32">; readonly apexGravity: FieldSpec<"f32">; readonly apexThreshold: FieldSpec<"f32">; readonly maxFallSpeed: FieldSpec<"f32">; readonly coyoteTime: FieldSpec<"f32">; readonly jumpBuffer: FieldSpec<"f32">; readonly airJumps: FieldSpec<"u32">; readonly wallJumps: FieldSpec<"bool">; readonly wallSlideSpeed: FieldSpec<"f32">; readonly wallJump: FieldSpec<"Vector2">; readonly wallJumpLock: FieldSpec<"f32">; readonly oneWayLayers: FieldSpec<"u32">; readonly cornerCorrection: FieldSpec<"f32">; readonly maxSlope: FieldSpec<"f32">; readonly snapDistance: FieldSpec<"f32">; readonly skin: FieldSpec<"f32">; readonly grounded: FieldSpec<"bool">; readonly onWall: FieldSpec<"i32">; readonly facing: FieldSpec<"i32">; readonly velocity: FieldSpec<"Vector3">; readonly jumping: FieldSpec<"bool">; readonly airJumpsLeft: FieldSpec<"u32">; readonly coyote: FieldSpec<"f32">; readonly buffer: FieldSpec<"f32">; readonly wallLock: FieldSpec<"f32">; readonly dropTime: FieldSpec<"f32">; readonly jumpWasHeld: FieldSpec<"bool">; readonly ground: FieldSpec<"Entity"> }, PlatformerController>;
+  /**
+   * Something a CharacterController or PlatformerController did this step: the hooks for dust, squash, sounds and camera kicks. Read the next tick.
+   */
+  const CharacterEvent: EventType<CharacterEvent>;
+  /**
+   * A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle); its forward is the chassis's local +z (three.js Object3D.lookAt aims +z). 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. The wheels are not entities: og.physics.vehicleWheels gives their poses for drawing.
+   */
+  const Vehicle: ComponentType<{ readonly throttle: FieldSpec<"f32">; readonly steer: FieldSpec<"f32">; readonly brake: FieldSpec<"f32">; readonly wheelBase: FieldSpec<"f32">; readonly track: FieldSpec<"f32">; readonly wheelRadius: FieldSpec<"f32">; readonly mountHeight: FieldSpec<"f32">; readonly suspensionRest: FieldSpec<"f32">; readonly suspensionTravel: FieldSpec<"f32">; readonly suspensionStiffness: FieldSpec<"f32">; readonly suspensionDamping: FieldSpec<"f32">; readonly grip: FieldSpec<"f32">; readonly engineForce: FieldSpec<"f32">; readonly maxSpeed: FieldSpec<"f32">; readonly brakeForce: FieldSpec<"f32">; readonly maxSteer: FieldSpec<"f32">; readonly drive: FieldSpec<"u32">; readonly wheelMass: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly contacts: FieldSpec<"u32"> }, Vehicle>;
+  /**
+   * A Verlet rope: `segments` links from the entity's position (plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind, colliding with every solid collider at `radius`. It moves nothing (one-way: a rope joint ties bodies together, og.Joint JOINT_ROPE). Its points are world state (the og.physics state block); og.physics.ropePoints reads them and the renderer draws the rope as a strip of `width` and `color`.
+   */
+  const Rope: ComponentType<{ readonly segments: FieldSpec<"u32">; readonly length: FieldSpec<"f32">; readonly offset: FieldSpec<"Vector3">; readonly end: FieldSpec<"Entity">; readonly endOffset: FieldSpec<"Vector3">; readonly iterations: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly width: FieldSpec<"f32">; readonly color: FieldSpec<"Vector3">; readonly visible: FieldSpec<"bool"> }, Rope>;
+  /**
+   * A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind and collision against every solid collider. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour).
+   */
+  const Cloth: ComponentType<{ readonly columns: FieldSpec<"u32">; readonly rows: FieldSpec<"u32">; readonly spacing: FieldSpec<"f32">; readonly pins: FieldSpec<"u32">; readonly iterations: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly gust: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly material: FieldSpec<"Material">; readonly visible: FieldSpec<"bool"> }, Cloth>;
+  /**
+   * A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`.
+   */
+  const Fluid2D: ComponentType<{ readonly count: FieldSpec<"u32">; readonly size: FieldSpec<"Vector2">; readonly bounds: FieldSpec<"Vector2">; readonly radius: FieldSpec<"f32">; readonly restDensity: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly nearStiffness: FieldSpec<"f32">; readonly viscosity: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly seed: FieldSpec<"u32">; readonly color: FieldSpec<"Vector3">; readonly opacity: FieldSpec<"f32">; readonly blobScale: FieldSpec<"f32">; readonly threshold: FieldSpec<"f32">; readonly layer: FieldSpec<"i32">; readonly visible: FieldSpec<"bool"> }, Fluid2D>;
+  /**
+   * Height-field water (3D): a `resolution` × `resolution` grid of heights over a `size` square centred on the entity (its y is the rest level), waves travelling at `waveSpeed` and fading by `damping`. Dynamic bodies crossing it push waves (splashes; og.Splash events) and float by `buoyancy`. The heights are world state; an og.Water on the same entity draws them.
+   */
+  const WaterSurface: ComponentType<{ readonly resolution: FieldSpec<"u32">; readonly size: FieldSpec<"f32">; readonly waveSpeed: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly splash: FieldSpec<"f32">; readonly buoyancy: FieldSpec<"f32">; readonly drag: FieldSpec<"f32"> }, WaterSurface>;
+  /**
+   * 2D water for side-scrollers: a `width` × `depth` pool whose top edge (at the entity's y, centred on its x) is `columns` springs, each pulled to its rest height by `tension`, damped by `damping` and passing waves to its neighbours by `spread`. Bodies (and characters) crossing the surface splash it (og.Splash events) and float by `buoyancy`. The springs are world state; an og.Water2D on the same entity draws it.
+   */
+  const WaterLine: ComponentType<{ readonly width: FieldSpec<"f32">; readonly depth: FieldSpec<"f32">; readonly columns: FieldSpec<"u32">; readonly tension: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly spread: FieldSpec<"f32">; readonly splash: FieldSpec<"f32">; readonly buoyancy: FieldSpec<"f32">; readonly drag: FieldSpec<"f32"> }, WaterLine>;
+  /**
+   * Something crossed a water surface (og.WaterSurface or og.WaterLine): for splash particles and sounds. Read the next tick.
+   */
+  const Splash: EventType<Splash>;
+  /**
+   * A ragdoll over an og.Skeleton (3D): a capsule body per bone with a parent, ball joints with cone limits between them, built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state (the og.physics state block), not entities.
+   */
+  const Ragdoll: ComponentType<{ readonly weight: FieldSpec<"f32">; readonly blendTime: FieldSpec<"f32">; readonly mass: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly jointLimit: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly impulse: FieldSpec<"Vector3">; readonly blend: FieldSpec<"f32"> }, Ragdoll>;
+  /**
    * Rigid bodies over rapier (rapier3d in the 3D profile, rapier2d in 2D, both with enhanced determinism): game code owns the components, the engine's og.physics system steps them after the game's systems and writes the dynamic bodies back.
    * The profile is the project's (`profile "2d"` or `"3d"` in project.ogt). In 2D, bodies move in the xy plane and rotate about z; a transform keeps its z. A collider without a RigidBody is static at its transform.
    * The rapier world persists between ticks and is world state: snapshots, restore and the world hash cover the whole simulation. Events sent in tick N are read in tick N + 1.
@@ -11393,6 +13423,109 @@ export declare namespace og {
      * @returns Refused for an empty, non-finite or out-of-range mesh.
      */
     function setMesh(world: World, mesh: Geometry, desc?: MeshDesc): Result<void>;
+    /**
+     * An og.Rope's points after the last step, from its entity to its end (empty before its first step). The engine draws visible ropes itself; this is for game logic and custom drawing.
+     *
+     * @param world The world.
+     * @param entity The rope's entity.
+     * @returns Refused for an entity without an og.Rope.
+     */
+    function ropePoints(world: World, entity: Entity): Result<readonly Vector3[]>;
+    /**
+     * An og.Cloth's points after the last step, row by row (`columns` per row, rows downwards from the top edge).
+     *
+     * @param world The world.
+     * @param entity The cloth's entity.
+     * @returns Refused for an entity without an og.Cloth.
+     */
+    function clothPoints(world: World, entity: Entity): Result<readonly Vector3[]>;
+    /**
+     * An og.Fluid2D's particle positions after the last step, in world space.
+     *
+     * @param world The world.
+     * @param entity The fluid's entity.
+     * @returns Refused for an entity without an og.Fluid2D.
+     */
+    function fluidParticles(world: World, entity: Entity): Result<readonly Vector2[]>;
+    /**
+     * The surface height of an og.WaterSurface (world y) or an og.WaterLine (world y at `x`; `z` ignored) at a point, as the last step left it: for boats that bob and spray that starts on the surface.
+     *
+     * @param world The world.
+     * @param entity The water's entity.
+     * @param x World x, in metres.
+     * @param z World z, in metres (3D).
+     * @returns Refused for an entity without water; outside the water, its rest level.
+     */
+    function waterHeight(world: World, entity: Entity, x: number, z: number): Result<number>;
+    /**
+     * An og.Vehicle's wheels after the last step (front left, front right, rear left, rear right), for drawing wheel models.
+     *
+     * @param world The world.
+     * @param entity The vehicle's entity.
+     * @returns Refused for an entity without a vehicle.
+     */
+    function vehicleWheels(world: World, entity: Entity): Result<readonly WheelPose[]>;
+    /**
+     * A ragdoll rig from a loaded skeleton (og.load.animation's `skeleton`): a bone per joint of its first skin, parents first, each from its joint's rest pose to its first child joint, every bone naming its joint and the rig naming the skeleton. Pass it to og.physics.setRagdollRig, edited or not.
+     *
+     * @param world The world.
+     * @param skeleton The skeleton.
+     * @returns Refused for a skeleton that is not loaded or has no skin.
+     */
+    function ragdollRigFromSkeleton(world: World, skeleton: SkeletonAsset): Result<RagdollRigDesc>;
+    /**
+     * Give an entity with an og.Ragdoll its bones (and, from og.physics.ragdollRigFromSkeleton, the skeleton they stand for: its og.Model is then drawn blended from the animation towards the bones by og.Ragdoll.blend). While weight is 0 the bones follow the rig's rest pose at the entity. Rigs are assets, not world state: kept by the engine and given again to a reloaded world.
+     *
+     * @param world The world.
+     * @param entity The ragdoll's entity.
+     * @param desc The bones, parents first.
+     * @returns Refused for an empty rig or a parent that does not come before its child.
+     */
+    function setRagdollRig(world: World, entity: Entity, desc?: RagdollRigDesc): Result<void>;
+    /**
+     * An og.Ragdoll's bones after the last step, in rig order (empty before its first step).
+     *
+     * @param world The world.
+     * @param entity The ragdoll's entity.
+     * @returns Refused for an entity without a ragdoll.
+     */
+    function ragdollPose(world: World, entity: Entity): Result<readonly BonePose[]>;
+  }
+  /**
+   * Distance and height fog over the 3D scene and world sprites: distance fog thickens exponentially by density from start (or linearly from start to end when end > start), height fog is densest below height and thins by falloff per metre above it; looking into the sun it turns towards sunColor. The overlay is never fogged.
+   */
+  const Fog: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly color: FieldSpec<"Color">; readonly density: FieldSpec<"f32">; readonly start: FieldSpec<"f32">; readonly end: FieldSpec<"f32">; readonly heightDensity: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly falloff: FieldSpec<"f32">; readonly sunColor: FieldSpec<"Color">; readonly sunPower: FieldSpec<"f32">; readonly maxOpacity: FieldSpec<"f32">; readonly sky: FieldSpec<"f32"> }, Fog>;
+  /**
+   * A procedural sky of chosen colours, drawn behind the scene per pixel and lighting it (the image-based light follows it). Without it, RenderSettings.sky draws the built-in sky. A DayNight that is enabled sets the sky itself.
+   */
+  const Sky: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly zenith: FieldSpec<"Color">; readonly horizon: FieldSpec<"Color">; readonly ground: FieldSpec<"Color">; readonly sunDirection: FieldSpec<"Vector3">; readonly sunColor: FieldSpec<"Color">; readonly sunSize: FieldSpec<"f32">; readonly sunIntensity: FieldSpec<"f32">; readonly glow: FieldSpec<"f32">; readonly glowPower: FieldSpec<"f32">; readonly stars: FieldSpec<"f32">; readonly brightness: FieldSpec<"f32"> }, Sky>;
+  /**
+   * A day-night cycle: the time of day drives the sun's direction, the sky's colours and stars, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly.
+   */
+  const DayNight: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly start: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly tilt: FieldSpec<"f32">; readonly azimuth: FieldSpec<"f32">; readonly lightIntensity: FieldSpec<"f32">; readonly tintFog: FieldSpec<"bool">; readonly step: FieldSpec<"f32"> }, DayNight>;
+  /**
+   * A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence) and dimmed sunlight. Particles are simulated by the renderer from the tick, so they look the same on every run; they never touch the simulation.
+   */
+  const Weather: ResourceType<{ readonly kind: FieldSpec<"u32">; readonly intensity: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly tint: FieldSpec<"Color">; readonly dim: FieldSpec<"f32">; readonly layer: FieldSpec<"i32"> }, Weather>;
+  /**
+   * A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space where the tier allows, the sky's cubemap on WebGL2). With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated).
+   */
+  const Water: ComponentType<{ readonly size: FieldSpec<"Vector2">; readonly segments: FieldSpec<"u32">; readonly shallow: FieldSpec<"Color">; readonly deep: FieldSpec<"Color">; readonly depthFade: FieldSpec<"f32">; readonly opacity: FieldSpec<"f32">; readonly foam: FieldSpec<"Color">; readonly foamWidth: FieldSpec<"f32">; readonly waveScale: FieldSpec<"f32">; readonly waveSpeed: FieldSpec<"f32">; readonly waveStrength: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32"> }, Water>;
+  /**
+   * Draws the og.WaterLine on the same entity in the sprite order: the body from its surface down, a gradient from the top colour to the bottom one, and a bright lip along the surface.
+   */
+  const Water2D: ComponentType<{ readonly top: FieldSpec<"Color">; readonly topOpacity: FieldSpec<"f32">; readonly bottom: FieldSpec<"Color">; readonly bottomOpacity: FieldSpec<"f32">; readonly lip: FieldSpec<"Color">; readonly lipWidth: FieldSpec<"f32">; readonly layer: FieldSpec<"i32"> }, Water2D>;
+  /**
+   * Fog, a procedural sky, the day-night cycle, weather and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before.
+   * The day-night clock is a function of the tick (DayNight.start plus the simulated time times speed), so it is the same on every run and after a restore; rendering reads the world and never writes it.
+   */
+  namespace atmosphere {
+    /**
+     * The DayNight clock at the current tick, in hours from 0 to 24 (its start when the cycle is off): for lamps that light at dusk and shops that close at night. Inside a system, declare og.DayNight among its reads.
+     *
+     * @param world The world.
+     */
+    function timeOfDay(world: World): number;
   }
   /**
    * A posed skeleton: the entity is drawn skinned by the joint palette og.anim writes each tick. The pose itself (every node's local transform) is world state kept by the `og.anim` state block.

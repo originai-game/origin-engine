@@ -20,7 +20,7 @@ module load {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 2679</sub>
+<sub>`api.ogt` line 2698</sub>
 
 ## Contents
 
@@ -49,6 +49,7 @@ module load {
 | [`og.load.sound`](#fn-sound) | function | Load a cooked sound for the audio module. |
 | [`og.load.lut`](#fn-lut) | function | A colour lookup table for PostEffects.lut, from a cooked `.cube` file (Adobe/Resolve 3D LUT; other sizes are resampled to 32). Loaded once per path. |
 | [`og.load.emitter`](#fn-emitter) | function | A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the grammar is the `particles` page of the wiki's render module and og-cook's fx module): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. The textures it names are loaded with it. Loaded once per path. |
+| [`og.load.shader`](#fn-shader) | function | A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). Loaded once per path. |
 | [`og.load.texture`](#fn-texture) | function | Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load. |
 | [`og.load.skin`](#fn-skin) | function | Load a cooked UI skin (an `.ogt` of `type skin`: the atlas and its nine-slice frames, ornaments, palette, radii, type ramp, fonts, icons, motion and sounds; the grammar is og-ui's `skin` module) for UiDesc.skin. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. |
 | [`og.load.soundInfo`](#fn-soundInfo) | function | A loaded sound's format and length. |
@@ -91,7 +92,7 @@ fn bundle {
 }
 ```
 
-<sub>`api.ogt` line 2761</sub>
+<sub>`api.ogt` line 2780</sub>
 
 <a id="fn-bundleInfo"></a>
 
@@ -121,7 +122,7 @@ fn bundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 2768</sub>
+<sub>`api.ogt` line 2787</sub>
 
 <a id="fn-defaultBundle"></a>
 
@@ -149,7 +150,7 @@ fn defaultBundle {
 }
 ```
 
-<sub>`api.ogt` line 2775</sub>
+<sub>`api.ogt` line 2794</sub>
 
 <a id="fn-gltf"></a>
 
@@ -181,7 +182,7 @@ fn gltf {
 }
 ```
 
-<sub>`api.ogt` line 2781</sub>
+<sub>`api.ogt` line 2800</sub>
 
 <a id="fn-scene"></a>
 
@@ -211,7 +212,7 @@ fn scene {
 }
 ```
 
-<sub>`api.ogt` line 2789</sub>
+<sub>`api.ogt` line 2808</sub>
 
 <a id="fn-font"></a>
 
@@ -241,7 +242,7 @@ fn font {
 }
 ```
 
-<sub>`api.ogt` line 2796</sub>
+<sub>`api.ogt` line 2815</sub>
 
 <a id="fn-fontInfo"></a>
 
@@ -271,7 +272,7 @@ fn fontInfo {
 }
 ```
 
-<sub>`api.ogt` line 2803</sub>
+<sub>`api.ogt` line 2822</sub>
 
 <a id="fn-sound"></a>
 
@@ -301,7 +302,7 @@ fn sound {
 }
 ```
 
-<sub>`api.ogt` line 2810</sub>
+<sub>`api.ogt` line 2829</sub>
 
 <a id="fn-lut"></a>
 
@@ -331,7 +332,7 @@ fn lut {
 }
 ```
 
-<sub>`api.ogt` line 2817</sub>
+<sub>`api.ogt` line 2836</sub>
 
 <a id="fn-emitter"></a>
 
@@ -361,7 +362,37 @@ fn emitter {
 }
 ```
 
-<sub>`api.ogt` line 2824</sub>
+<sub>`api.ogt` line 2843</sub>
+
+<a id="fn-shader"></a>
+
+### `og.load.shader`
+
+A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). Loaded once per path.
+
+```ts
+og.load.shader(world: World, path: string): Result<Shader>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns it. |
+| `path` | `string` | no | The asset id, such as `shaders/dissolve.ogt`. |
+
+**Returns** `Result<Shader>`: Refused for a path not in the bundle or not a shader.
+
+Binding symbol `og_load_shader` · publish builds: kept
+
+```ogt
+fn shader {
+  doc "A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). Loaded once per path."
+  param world World "The world whose renderer owns it."
+  param path String "The asset id, such as `shaders/dissolve.ogt`."
+  returns Result.Shader "Refused for a path not in the bundle or not a shader."
+}
+```
+
+<sub>`api.ogt` line 2850</sub>
 
 <a id="fn-texture"></a>
 
@@ -391,7 +422,7 @@ fn texture {
 }
 ```
 
-<sub>`api.ogt` line 2831</sub>
+<sub>`api.ogt` line 2857</sub>
 
 <a id="fn-skin"></a>
 
@@ -421,7 +452,7 @@ fn skin {
 }
 ```
 
-<sub>`api.ogt` line 2838</sub>
+<sub>`api.ogt` line 2864</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -451,7 +482,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 2845</sub>
+<sub>`api.ogt` line 2871</sub>
 
 <a id="fn-status"></a>
 
@@ -481,7 +512,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 2852</sub>
+<sub>`api.ogt` line 2878</sub>
 
 <a id="fn-error"></a>
 
@@ -511,7 +542,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 2859</sub>
+<sub>`api.ogt` line 2885</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -541,7 +572,7 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 2866</sub>
+<sub>`api.ogt` line 2892</sub>
 
 <a id="fn-animation"></a>
 
@@ -571,7 +602,7 @@ fn animation {
 }
 ```
 
-<sub>`api.ogt` line 2873</sub>
+<sub>`api.ogt` line 2899</sub>
 
 <a id="fn-flipbook"></a>
 
@@ -601,7 +632,7 @@ fn flipbook {
 }
 ```
 
-<sub>`api.ogt` line 2880</sub>
+<sub>`api.ogt` line 2906</sub>
 
 <a id="fn-tilemap"></a>
 
@@ -631,7 +662,7 @@ fn tilemap {
 }
 ```
 
-<sub>`api.ogt` line 2887</sub>
+<sub>`api.ogt` line 2913</sub>
 
 ## Components, resources and events
 
@@ -654,7 +685,7 @@ component Model {
 }
 ```
 
-<sub>`api.ogt` line 2756</sub>
+<sub>`api.ogt` line 2775</sub>
 
 <a id="record-AssetReady"></a>
 
@@ -677,7 +708,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 2894</sub>
+<sub>`api.ogt` line 2920</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -702,7 +733,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 2900</sub>
+<sub>`api.ogt` line 2926</sub>
 
 ## Types
 
@@ -718,7 +749,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Asset "A loaded bundle, scene or glTF asset."
 ```
 
-<sub>`api.ogt` line 2684</sub>
+<sub>`api.ogt` line 2703</sub>
 
 <a id="type-Font"></a>
 
@@ -732,7 +763,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Font "A cooked MSDF font: its glyph table and one or more atlas pages."
 ```
 
-<sub>`api.ogt` line 2685</sub>
+<sub>`api.ogt` line 2704</sub>
 
 <a id="type-Sound"></a>
 
@@ -746,7 +777,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Sound "A cooked sound: QOA-encoded PCM the audio module plays."
 ```
 
-<sub>`api.ogt` line 2686</sub>
+<sub>`api.ogt` line 2705</sub>
 
 <a id="type-Skin"></a>
 
@@ -760,7 +791,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Skin "A cooked UI skin: its atlas, fonts, icons and sounds loaded with it, for og.ui.configure."
 ```
 
-<sub>`api.ogt` line 2687</sub>
+<sub>`api.ogt` line 2706</sub>
 
 <a id="type-LoadStatus"></a>
 
@@ -785,7 +816,7 @@ enum LoadStatus {
 }
 ```
 
-<sub>`api.ogt` line 2703</sub>
+<sub>`api.ogt` line 2722</sub>
 
 <a id="type-GltfDesc"></a>
 
@@ -811,7 +842,7 @@ struct GltfDesc {
 }
 ```
 
-<sub>`api.ogt` line 2710</sub>
+<sub>`api.ogt` line 2729</sub>
 
 <a id="type-GltfInfo"></a>
 
@@ -836,7 +867,7 @@ struct GltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 2718</sub>
+<sub>`api.ogt` line 2737</sub>
 
 <a id="type-BundleInfo"></a>
 
@@ -859,7 +890,7 @@ struct BundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 2726</sub>
+<sub>`api.ogt` line 2745</sub>
 
 <a id="type-FontInfo"></a>
 
@@ -890,7 +921,7 @@ struct FontInfo {
 }
 ```
 
-<sub>`api.ogt` line 2733</sub>
+<sub>`api.ogt` line 2752</sub>
 
 <a id="type-SoundInfo"></a>
 
@@ -919,7 +950,7 @@ struct SoundInfo {
 }
 ```
 
-<sub>`api.ogt` line 2744</sub>
+<sub>`api.ogt` line 2763</sub>
 
 ## Column kinds
 
@@ -939,7 +970,7 @@ column Asset {
 }
 ```
 
-<sub>`api.ogt` line 2689</sub>
+<sub>`api.ogt` line 2708</sub>
 
 ```ogt
 column Sound {
@@ -950,4 +981,4 @@ column Sound {
 }
 ```
 
-<sub>`api.ogt` line 2696</sub>
+<sub>`api.ogt` line 2715</sub>
