@@ -289,6 +289,17 @@ impl Probe {
                 or_null(self.dump(world, kind, id))
             }
             "commands" => or_null(self.commands(world, string(p, "script")?)),
+            "listen" => {
+                let seconds = match p.get("seconds") {
+                    None | Some(Value::Null) => 1.0,
+                    Some(v) => v
+                        .as_f64()
+                        .filter(|s| s.is_finite() && (0.0..=2.0).contains(s))
+                        .ok_or_else(|| RpcError::invalid("seconds must be a number from 0 to 2"))?
+                        as f32,
+                };
+                or_null(self.listen(world, seconds))
+            }
             _ => unreachable!("served_members lists only implemented members"),
         })
     }

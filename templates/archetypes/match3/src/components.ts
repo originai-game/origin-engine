@@ -3,7 +3,7 @@
 //
 // Why every row carries Match and Tuning: a system sees exactly one query
 // (the AND of the components it declares), and inside a system the engine
-// reaches no other entity and no game resource yet. So the systems that
+// reaches no other entity (a game resource it declares, yes). So the systems that
 // swap, clear and refill tiles must see the round's state on the same rows
 // as the tiles. Every row is spawned with the same six components
 // (og.Transform, og.Sprite, og.Flipbook, Piece, Match, Tuning) and the row whose
@@ -11,7 +11,7 @@
 // other rows' Match and Tuning keep their defaults and nothing reads them.
 // Tune and `set:board.Tuning.<field>=<value>` write that row.
 
-import { bool, defineComponent, f32, f64, i32, u32 } from "@origingame/engine";
+import { bool, defineComponent, defineResource, f32, f64, i32, u32 } from "@origingame/engine";
 
 import { SIZE } from "./layout.ts";
 
@@ -78,4 +78,18 @@ export const Hud = defineComponent("Hud", {
   font: f64(0, { doc: "The Font handle." }),
   top: f32(6, { unit: "m", doc: "The top of the view." }),
   halfWidth: f32(8, { unit: "m" }),
+});
+
+/** Sound requests: bits of Sounds.sfx that the Voices system plays once each. */
+export const Sound = { Select: 1, Swap: 2, Refused: 4, Clear: 8, Cascade: 16, Won: 32, Lost: 64 } as const;
+
+/** The sounds asked for this tick (a resource: the systems that ask see no voice rows). */
+export const Sounds = defineResource("Sounds", {
+  sfx: u32(0, { doc: "Sound.* bits waiting to play." }),
+});
+
+/** One voice: plays its sound once when Sounds.sfx asks for its bit. */
+export const Sfx = defineComponent("Sfx", {
+  bit: u32(0, { doc: "Sound.* of src/components.ts." }),
+  plays: u32(0, { doc: "Times Voices has started it." }),
 });

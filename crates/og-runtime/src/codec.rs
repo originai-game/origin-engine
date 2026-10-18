@@ -53,6 +53,8 @@ impl Kind {
             "Texture" | "Lut" | "ParticleEmitter" => Kind::Asset,
             // The E4 handles: flipbook sheets, tilemaps, tweens.
             "FlipbookSheet" | "TilemapAsset" | "Tween" => Kind::Asset,
+            // The E6 handles: navigation (grids, navmeshes, flow fields) and behaviours.
+            "Navigation" | "Behaviour" => Kind::Asset,
             "String" => Kind::Str,
             _ => return None,
         })

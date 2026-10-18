@@ -14,6 +14,7 @@
 
 import { createRing, writeRing, type InjectedInput } from "./input.ts";
 import { createRpcRings, readFrames, waitForFrames, writeFrame, type RpcRings } from "./rpc-ring.ts";
+import { localPlatform, storagePersistence, type PlatformCall, type PlatformHost } from "../platform-local.ts";
 
 export interface ShellOptions {
   /** The play surface. Its pixel size is set from its CSS size and the device pixel ratio. */
@@ -49,6 +50,10 @@ export interface ShellOptions {
   readonly onFirstFrame?: () => void;
   /** Without autoplay, take one tick before the first frame (the first screen behind a play gate). */
   readonly prime?: boolean;
+  /** The locale og.i18n is asked for; default: `navigator.language`. */
+  readonly locale?: string;
+  /** What answers og.platform's calls; default: the browser's own storage (`setPlatform` changes it, a Player bridge for instance). */
+  readonly platform?: PlatformHost;
 }
 
 /** The pixel size of a canvas laid out at `cssWidth`×`cssHeight` on this display, with the DPR cap. */
@@ -95,6 +100,7 @@ export class Shell {
   /** Engine pointer ids (0 to 4) of the page pointers held down, by PointerEvent.pointerId. */
   #pointers = new Map<number, number>();
   #playing = false;
+  #platform: PlatformHost = localPlatform(storagePersistence(`og.platform:${globalThis.location?.pathname ?? "/"}`));
 
   private constructor(worker: Worker, ready: Ready, rpc: RpcRings | undefined) {
     this.worker = worker;
@@ -118,6 +124,11 @@ export class Shell {
       }
       if (m.type === "rpc" && m.frame !== undefined) {
         this.#answer(m.frame);
+        return;
+      }
+      if (m.type === "platform") {
+        const calls = (m as unknown as { calls: PlatformCall[] }).calls ?? [];
+        this.#platform.handle(calls, (request, answer) => worker.postMessage({ type: "platform-answer", request, answer }));
         return;
       }
       if (m.type !== "result" || m.id === undefined) return;
@@ -179,6 +190,7 @@ export class Shell {
         root: options.root,
         basis: options.basis,
         profile: options.profile,
+        locale: options.locale ?? globalThis.navigator?.language,
         ...(options.expect ? { expect: options.expect } : {}),
         ...(options.prime ? { prime: true } : {}),
         viewport: { width: canvas.clientWidth || canvas.width / dpr, height: canvas.clientHeight || canvas.height / dpr, dpr, coarsePointer: globalThis.matchMedia?.("(pointer: coarse)").matches ?? false },
@@ -198,6 +210,8 @@ export class Shell {
     shell.#onCrash = options.onCrash;
     shell.#onFirstFrame = options.onFirstFrame;
     shell.#playing = options.autoplay ?? true;
+    if (options.platform) shell.setPlatform(options.platform);
+    else shell.setPlatform(shell.#platform);
     shell.#wire(canvas, ring);
     return shell;
   }
@@ -250,6 +264,12 @@ export class Shell {
       this.#pending.set(id, { resolve, reject });
       this.worker.postMessage({ type: "call", id, method, args });
     });
+  }
+
+  /** What answers og.platform's calls from now on (og.platform.info reports its host and capabilities). */
+  setPlatform(host: PlatformHost): void {
+    this.#platform = host;
+    this.worker.postMessage({ type: "platform-host", host: host.host, capabilities: host.capabilities });
   }
 
   /** Start or stop ticking with the display. */

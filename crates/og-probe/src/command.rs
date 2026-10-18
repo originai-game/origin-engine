@@ -156,6 +156,34 @@ pub struct CommandDesc {
 /// script continues.
 pub type CommandHandler = Rc<dyn Fn(&mut World, &[String]) -> Result<(), String>>;
 
+/// A registered dump: it answers JSON for the world as of its tick, which
+/// the probe writes as an output like `dump_entity`'s (see
+/// [`crate::Probe::register_dump`]).
+pub type DumpHandler = Rc<dyn Fn(&World, &[String]) -> Result<serde_json::Value, String>>;
+
+/// Actions an engine module asks for from inside a tick (an AI's game
+/// command), run at the start of the next tick before its scheduled steps.
+/// Cloning shares it.
+#[derive(Clone, Debug, Default)]
+pub struct Inbox(std::sync::Arc<std::sync::Mutex<Vec<Queued>>>);
+
+/// An action and its arguments, waiting in an [`Inbox`].
+type Queued = (String, Vec<String>);
+
+impl Inbox {
+    /// Queues `action` with `args` for the next tick's start.
+    pub fn push(&self, action: impl Into<String>, args: Vec<String>) {
+        self.0
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .push((action.into(), args));
+    }
+
+    pub(crate) fn take(&self) -> Vec<Queued> {
+        std::mem::take(&mut *self.0.lock().unwrap_or_else(|e| e.into_inner()))
+    }
+}
+
 /// One action as `help` lists it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CommandInfo {
@@ -266,6 +294,11 @@ pub const CORE_ACTIONS: &[(&str, &str, &str)] = &[
         "advance:<ticks>",
         "Take fixed steps now (at most 3600), running the steps scheduled on the way.",
     ),
+    (
+        "listen",
+        "listen[:path][:seconds]",
+        "Write the last seconds (default 1, at most 2) of audio the host's mixer rendered as a 16-bit stereo WAV.",
+    ),
     ("quit", "quit", "End the run."),
     (
         "help",
@@ -304,6 +337,8 @@ pub enum Payload {
     Json(Value),
     /// A listing, such as `help`.
     Text(String),
+    /// Audio: a WAV file (`listen`).
+    Wav(Vec<u8>),
 }
 
 /// A file a command produced (`screenshot`, `dump_*`, `help`). The probe
@@ -330,6 +365,7 @@ impl Output {
             Payload::Png { .. } => "png",
             Payload::Json(_) => "json",
             Payload::Text(_) => "txt",
+            Payload::Wav(_) => "wav",
         };
         format!("{}-{:06}.{ext}", self.action, self.tick)
     }
@@ -344,6 +380,7 @@ impl Output {
                 text.into_bytes()
             }
             Payload::Text(text) => text.clone().into_bytes(),
+            Payload::Wav(bytes) => bytes.clone(),
         }
     }
 }

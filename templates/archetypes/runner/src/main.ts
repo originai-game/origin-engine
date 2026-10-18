@@ -13,8 +13,8 @@
 import { og } from "@origingame/engine";
 import type { Entity, FlipbookInfo, TilemapInfo, World } from "@origingame/engine";
 import { COURIER, PROPS, loadArt } from "./art.ts";
-import { Actor, Hud, Kind, Phase, Run, Tuning } from "./components.ts";
-import { Animate, Collide, Director, Dust, GROUND_Y, HudText, Jump, REST_Y, RUNNER_SIZE, RUNNER_X, SCENERY_SPAN, Scroll, Spawn } from "./systems.ts";
+import { Actor, Hud, Kind, Phase, Run, Sfx, Sound, Sounds, Tuning } from "./components.ts";
+import { Animate, Collide, Director, Dust, GROUND_Y, HudText, Jump, Records, REST_Y, RUNNER_SIZE, RUNNER_X, SCENERY_SPAN, Scroll, Spawn, Voices } from "./systems.ts";
 
 /** Pool sizes: how many of each can be in play at once. */
 const POOLS = { crate: 4, fence: 3, coin: 16, dust: 4 } as const;
@@ -143,6 +143,22 @@ function start(world: World): void {
   must(world.insert(runner, Run));
   must(world.insert(runner, Hud, { font: font.value as unknown as number, halfWidth, top, bottom: VIEW_BOTTOM }));
   must(world.set(runner, og.Transform, { position: { x: RUNNER_X, y: 0, z: 0 } }));
+
+  // The voices: one per sound, played by the Voices system.
+  const voices: [string, number, number][] = [
+    ["audio/jump.wav", Sound.Jump, 0.45],
+    ["audio/coin.wav", Sound.Coin, 0.5],
+    ["audio/crash.wav", Sound.Crash, 0.7],
+    ["audio/start.wav", Sound.Start, 0.55],
+  ];
+  for (const [path, bit, volume] of voices) {
+    const sound = og.load.sound(world, path);
+    if (!sound.ok) throw new Error(sound.reason);
+    const v = world.spawn({ name: `sfx-${bit}` });
+    if (!v.ok) throw new Error(v.reason);
+    must(world.insert(v.value, og.AudioSource, { sound: sound.value, playing: false, volume }));
+    must(world.insert(v.value, Sfx, { bit }));
+  }
 }
 
 
@@ -186,7 +202,8 @@ export default og.game({
   tick: 60,
   seed: 1,
   scenes: { main: "scenes/main.ogt" },
-  systems: [Director, Jump, Scroll, Spawn, Collide, Dust, Animate, HudText],
+  resources: [Sounds],
+  systems: [Records, Director, Jump, Scroll, Spawn, Collide, Voices, Dust, Animate, HudText],
   // MSAA, not the tier's TAA: pixel art stays sharp, with no temporal blur.
   render: { antialias: "msaa4" },
   start,

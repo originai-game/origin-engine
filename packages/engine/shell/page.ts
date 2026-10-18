@@ -28,6 +28,8 @@ import { AudioShell } from "../src/web/audio.ts";
 import { pollGamepads } from "../src/web/gamepad.ts";
 import { mountWire } from "./wire.ts";
 import { connectPlayer } from "./player.ts";
+import { deferredPlatform, HELLO_WAIT_MS, playerPlatform, storagePersistence } from "./platform.ts";
+import { localPlatform, type PlatformHost } from "../src/platform-local.ts";
 
 /** The page's configuration (`<script type="application/json" id="og-config">`, written by og build). */
 export interface ShellConfig {
@@ -286,10 +288,22 @@ export async function play(): Promise<PlayHandle> {
     log.push(["warn: this game declares crossOriginIsolation required, but the page is not cross-origin isolated (serve it with COOP/COEP: see the headers file); it runs single-threaded"]);
   }
 
+  // og.platform: a framed page's calls wait for the Player's hello (then the Player answers,
+  // falling back to this browser's storage where it cannot); unframed, the browser's storage.
+  const platformStore = storagePersistence(`og.platform:${location.pathname}`);
+  let platformReady: (h: PlatformHost) => void = () => {};
+  const hostReady = new Promise<PlatformHost>((r) => (platformReady = r));
+  const helloForPlatform = () => platformReady(playerPlatform(player, platformStore));
+  playerEvents.hello = helloForPlatform;
+  if (player.hosted) helloForPlatform();
+  else if (player.framed) setTimeout(() => platformReady(localPlatform(platformStore)), HELLO_WAIT_MS);
+  const platform = player.framed ? deferredPlatform(hostReady, ["store.get", "store.set", "store.list", "telemetry"]) : localPlatform(platformStore);
+
   let firstFrameAt = 0;
   let shell: Shell;
   try {
     shell = await Shell.start({
+      platform,
       canvas,
       worker: new Worker(new URL("./game.js", location.href), { type: "module" }),
       glue: new URL("./origin-engine.js", location.href).href,
@@ -404,6 +418,9 @@ export async function play(): Promise<PlayHandle> {
   let byPlayer = player.hosted;
   playerEvents.hello = (m) => {
     byPlayer = true;
+    helloForPlatform();
+    // What it answers may have changed with this hello.
+    shell.setPlatform(playerPlatform(player, platformStore));
     pausedByPlayer = m.paused;
     if (m.started && phase === "gate") start();
   };

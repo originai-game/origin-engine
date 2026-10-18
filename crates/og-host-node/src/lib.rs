@@ -32,6 +32,7 @@
 pub mod glue;
 mod audio;
 mod host;
+mod host_e6;
 
 use napi::bindgen_prelude::{FromNapiValue, ToNapiValue, TypeName, ValidateNapiValue, ValueType};
 use napi::{Env, sys};

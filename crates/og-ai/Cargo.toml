@@ -1,0 +1,15 @@
+[package]
+name = "og-ai"
+version = "0.0.1"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Origin Engine AI as data: behaviour trees and state machines from .ogt (conditions on blackboard keys, component and resource fields; actions that move through og-nav and run the game's commands), perception (sight cones against physics occlusion, hearing from sounds and noises), per-agent blackboards and the og.ai system, deterministic and snapshot-covered."
+
+# Pure Rust over og-core, og-ecs and og-nav's records; builds for
+# wasm32-unknown-unknown.
+[dependencies]
+og-core = { path = "../og-core" }
+og-ecs = { path = "../og-ecs" }
+og-nav = { path = "../og-nav" }
+og-audio = { path = "../og-audio" }

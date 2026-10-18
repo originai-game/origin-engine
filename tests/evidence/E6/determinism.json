@@ -1,0 +1,16 @@
+{
+  "about": "Two runs of the same script, each in a fresh process, 2026-10-19, Apple M4 Pro (metal).",
+  "replays": {
+    "templates/archetypes/topdown tests/replay.og.ts (456 ticks, slimes on og.ai and og.nav)": ["d82368d8c005a26a", "d82368d8c005a26a"],
+    "templates/archetypes/runner tests/replay.og.ts (546 ticks, with og.platform calls and the new voices)": ["629e0079ec8366ca", "629e0079ec8366ca"],
+    "templates/archetypes/match3 tests/replay.og.ts (165 ticks, with the new voices)": ["7916d2171844b5c5", "7916d2171844b5c5"]
+  },
+  "audio": {
+    "og run --audio over topdown's three hits, the door and a dash (222 ticks): world hash and WAV SHA-256": [
+      ["ec0ad336ea9c2929", "e06073818614e381acb097a3d0d6a657cf6f79d07372aea4dbe21ae498968f43"],
+      ["ec0ad336ea9c2929", "e06073818614e381acb097a3d0d6a657cf6f79d07372aea4dbe21ae498968f43"]
+    ],
+    "og-audio tests/mix.rs busy scene": "audio/e6-mix.json (the same PCM hash on two runs)",
+    "sound presets": "audio/presets.json (each preset's render hashed twice)"
+  }
+}

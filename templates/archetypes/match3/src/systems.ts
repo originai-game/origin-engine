@@ -1,6 +1,7 @@
 // The match3 systems, in tick order: Flow (title, rounds, the end cards),
 // Pick (taps and drags choose a swap), Resolve (swap, clear, fall, cascade,
-// refill, the end of a round), Animate (what each row shows) and Hud.
+// refill, the end of a round), Voices (the sounds Pick and Resolve asked
+// for), Animate (what each row shows) and Hud.
 //
 // Each system sees the rows through its typed views. The board row
 // (Piece.kind === Kind.Board) carries the round's state and tuning for every
@@ -17,7 +18,7 @@ import type { ArchetypeView, Query, Rng, TweenDesc, View, World } from "@origing
 import { IDLE_CYCLE, clearClip, idleClip } from "./art.ts";
 import { adjacent, cellOf, colOf, count, deal, findLines, hasMove, rowOf } from "./board.ts";
 import type { Grid } from "./board.ts";
-import { Hud, Kind, Match, Phase, Piece, Tag, Tuning } from "./components.ts";
+import { Hud, Kind, Match, Phase, Piece, Sfx, Sound, Sounds, Tag, Tuning } from "./components.ts";
 import { BOARD_TOP, GEM_SIZE, PITCH, SIZE, cellAt, cellCentre } from "./layout.ts";
 
 /** Ticks an end card holds before a press starts the next round. */
@@ -140,7 +141,7 @@ function startSwap(m: View<typeof Match>, b: number, a: number, c: number): void
 /** Taps and drags: tap a tile, then a neighbour; or press a tile and drag towards a neighbour. */
 export const Pick = defineSystem(
   "Pick",
-  { reads: [og.Input, Piece], writes: [Match], after: ["Flow"] },
+  { reads: [og.Input, Piece], writes: [Match, Sounds], after: ["Flow"] },
   (q, _time, world) => {
     const board = boardRow(q);
     const input = world.resource(og.Input);
@@ -175,6 +176,7 @@ export const Pick = defineSystem(
         startSwap(m, b, sel, cell);
       } else {
         m.selected[b] = sel === cell ? -1 : cell;
+        if (sel !== cell) ask(world, Sound.Select);
         m.dragFrom[b] = cell;
         m.pressX[b] = wx;
         m.pressY[b] = wy;
@@ -318,6 +320,7 @@ function startClear(world: World, tiles: readonly Row[], m: View<typeof Match>, 
   if (biggest >= 4) og.camera.punch(world, Math.min(0.12, 0.05 + 0.02 * (biggest - 4)));
   if (chain >= 2) og.camera.shake(world, Math.min(0.6, 0.16 * chain));
   if (chain >= 3) og.time.hitStop(world, 3);
+  ask(world, chain >= 2 ? Sound.Cascade : Sound.Clear);
   const seconds = Math.max(1, tune.clearTicks[b]!) / 60;
   const tweens: TweenDesc[] = [];
   for (const t of tiles) {
@@ -375,10 +378,16 @@ function collapse(world: World, tiles: readonly Row[], rng: Rng, colours: number
   return tweens;
 }
 
+/** Ask for a sound this tick (Voices plays it). */
+function ask(world: World, bit: number): void {
+  const sounds = world.resource(Sounds);
+  if (sounds.ok) sounds.value.sfx |= bit;
+}
+
 /** Swap, clear, fall and cascade; then the end of the round or the next move. */
 export const Resolve = defineSystem(
   "Resolve",
-  { reads: [Tuning, og.TweenCompleted], writes: [og.Rng, Match, Piece, og.Transform], after: ["Pick"] },
+  { reads: [Tuning, og.TweenCompleted], writes: [og.Rng, Match, Piece, og.Transform, Sounds], after: ["Pick"] },
   (q, _time, world) => {
     const board = boardRow(q);
     const rng = world.resource(og.Rng);
@@ -420,6 +429,7 @@ export const Resolve = defineSystem(
         ease: "cubicInOut",
         ...(refused ? { loops: 1, yoyo: true } : {}),
       });
+      ask(world, refused ? Sound.Refused : Sound.Swap);
       if (refused) {
         // A swap that makes no line goes there and back (one yoyo) and costs nothing.
         waitFor(world, m, b, [slide(ta, c), slide(tc, a)], Tag.SwapBack);
@@ -463,7 +473,9 @@ export const Resolve = defineSystem(
     m.chain[b] = 0;
     if (m.score[b]! >= tune.target[b]! || m.movesLeft[b] === 0) {
       m.best[b] = Math.max(m.best[b]!, m.score[b]!);
-      return enter(m.score[b]! >= tune.target[b]! ? Phase.Won : Phase.Lost);
+      const won = m.score[b]! >= tune.target[b]!;
+      ask(world, won ? Sound.Won : Sound.Lost);
+      return enter(won ? Phase.Won : Phase.Lost);
     }
     if (!hasMove(gridOf(tiles).grid)) {
       // No swap makes a line: deal the colours again where the gems stand, with a jolt.
@@ -483,6 +495,30 @@ export const Resolve = defineSystem(
 function entering(y: number): number {
   return Math.min(1, Math.max(0, (BOARD_TOP - y) / (0.5 * PITCH)));
 }
+
+/** Plays each requested sound once: a voice already playing is stopped this tick and restarted the next. */
+export const Voices = defineSystem("Voices", { writes: [Sfx, Sounds, og.AudioSource], after: ["Resolve"] }, (q, _time, world) => {
+  const sounds = world.resource(Sounds);
+  if (!sounds.ok || sounds.value.sfx === 0) return;
+  const s = sounds.value;
+  let left = s.sfx;
+  for (const a of q.archetypes()) {
+    const sfx = a.column(Sfx);
+    const src = a.column(og.AudioSource);
+    for (let i = 0; i < a.count; i++) {
+      const b = sfx.bit[i]!;
+      if ((s.sfx & b) === 0) continue;
+      if (src.playing[i]) {
+        src.playing[i] = 0;
+      } else {
+        src.playing[i] = 1;
+        sfx.plays[i] = sfx.plays[i]! + 1;
+        left &= ~b;
+      }
+    }
+  }
+  s.sfx = left;
+});
 
 /**
  * What each row shows: each gem's clip (its colour's idle loop, or the burst

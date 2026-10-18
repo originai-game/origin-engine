@@ -1,0 +1,22 @@
+[package]
+name = "og-nav"
+version = "0.0.1"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Origin Engine navigation: grid A* and jump point search, flow fields, a tiled navmesh with funnel paths and runtime region rebuilds, steering behaviours and the og.nav agent system, all deterministic."
+
+# Pure Rust over og-core and og-ecs; builds for wasm32-unknown-unknown.
+# `bake` adds the voxeliser (triangles to the walkable heightfield) that
+# og-cook runs at cook time; the runtime and the wasm never build it.
+[dependencies]
+og-core = { path = "../og-core" }
+og-ecs = { path = "../og-ecs" }
+
+[features]
+default = []
+bake = []
+
+[dev-dependencies]
+# The tests bake levels, so they build the voxeliser.
+og-nav = { path = ".", features = ["bake"] }

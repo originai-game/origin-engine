@@ -23,12 +23,18 @@ export interface HostAbi<A, V> {
   og_host_begin_bundle(): void;
   /** The probe's JSON-RPC 2.0 entry: one request frame in, its answer frame out (og-probe `Probe::call`). The native loopback WebSocket and the web request ring carry exactly these frames. Call it between ticks, never from a system. */
   og_engine_call(engine: number, frame: string): string;
-  /** The files the command channel produced since the last call (`screenshot`, `dump_*`, `help`), as JSON `[{ tick, action, file, kind, data }]`: `file` is og-probe's `Output::file_name()`, `kind` is `png`, `json` or `text`, `data` is base64 for a PNG and the text otherwise. The host writes them (og run) or posts them. */
+  /** The files the command channel produced since the last call (`screenshot`, `dump_*`, `help`), as JSON `[{ tick, action, file, kind, data }]`: `file` is og-probe's `Output::file_name()`, `kind` is `png`, `json`, `text` or `wav`, `data` is base64 for a PNG or a WAV and the text otherwise. The host writes them (og run) or posts them. */
   og_engine_take_outputs(engine: number): string;
   /** Log lines since the last call, as JSON `[{ tick, warning, text }]`: the command channel's and the probe's warnings and the loader's, each naming the fix. */
   og_engine_take_log(engine: number): string;
   /** Write some fields of a resource: how the runtime makes `world.resource(R).value` a live value. A Result. */
   og_engine_write_resource(world: number, resource: string, value: string): string;
+  /** The platform calls (IDL `platform`) made since the last call, oldest first, as JSON `[{ request, method, args, tick }]`. The host answers each but `telemetry` (one-way) with og_platform_answer. */
+  og_platform_take(engine: number): string;
+  /** Answer one platform call: JSON `{ ok: true, data }` or `{ ok: false, error: { code, message, retryable } }`. It is applied at the start of the next tick (og.platform sends PlatformAnswered). False for an unknown, one-way or answered request, or a malformed answer. */
+  og_platform_answer(engine: number, request: number, answer: string): boolean;
+  /** Say what answers this engine's platform calls: JSON `{ host, capabilities }` (`player`, `local` or `none`; the methods it answers), as og.platform.info reports. */
+  og_platform_set_host(engine: number, info: string): void;
   /** `defineComponent` */
   og_reflect_define_component(name: string, fields: string): string;
   /** `defineResource` */
@@ -297,6 +303,80 @@ export interface HostAbi<A, V> {
   og_tilemap_cell_at(world: number, entity: number, point: string): string;
   /** `og.tilemap.cellCenter` */
   og_tilemap_cell_center(world: number, entity: number, x: number, y: number): string;
+  /** `og.nav.grid` */
+  og_nav_grid(world: number, desc: string | undefined): string;
+  /** `og.nav.gridFromTilemap` */
+  og_nav_grid_from_tilemap(world: number, desc: string | undefined): string;
+  /** `og.nav.setCost` */
+  og_nav_set_cost(world: number, grid: number, x: number, y: number, cost: number): string;
+  /** `og.nav.cellAt` */
+  og_nav_cell_at(world: number, grid: number, point: string): string;
+  /** `og.nav.findPath` */
+  og_nav_find_path(world: number, desc: string | undefined): string;
+  /** `og.nav.flowField` */
+  og_nav_flow_field(world: number, desc: string | undefined): string;
+  /** `og.nav.setFlowTargets` */
+  og_nav_set_flow_targets(world: number, field: number, targets: string): string;
+  /** `og.nav.flowAt` */
+  og_nav_flow_at(world: number, field: number, point: string): string;
+  /** `og.nav.load` */
+  og_nav_load(world: number, path: string): string;
+  /** `og.nav.build` */
+  og_nav_build(world: number, desc: string | undefined): string;
+  /** `og.nav.setObstacle` */
+  og_nav_set_obstacle(world: number, mesh: number, id: number, obstacle: string | undefined): string;
+  /** `og.nav.nearest` */
+  og_nav_nearest(world: number, mesh: number, point: string, extent: string | undefined): string;
+  /** `og.nav.pathOf` */
+  og_nav_path_of(world: number, entity: number): string;
+  /** `og.ai.load` */
+  og_ai_load(world: number, path: string): string;
+  /** `og.ai.parse` */
+  og_ai_parse(world: number, text: string): string;
+  /** `og.ai.get` */
+  og_ai_get(world: number, entity: number, key: string): string;
+  /** `og.ai.set` */
+  og_ai_set(world: number, entity: number, key: string, value: string): string;
+  /** `og.ai.noise` */
+  og_ai_noise(world: number, desc: string | undefined): string;
+  /** `og.ai.describe` */
+  og_ai_describe(world: number, entity: number): string;
+  /** `og.platform.storeGet` */
+  og_platform_store_get(world: number, key: string): string;
+  /** `og.platform.storeSet` */
+  og_platform_store_set(world: number, desc: string | undefined): string;
+  /** `og.platform.storeList` */
+  og_platform_store_list(world: number): number;
+  /** `og.platform.leaderboardSubmit` */
+  og_platform_leaderboard_submit(world: number, desc: string | undefined): string;
+  /** `og.platform.leaderboardTop` */
+  og_platform_leaderboard_top(world: number, desc: string | undefined): number;
+  /** `og.platform.leaderboardAround` */
+  og_platform_leaderboard_around(world: number, desc: string | undefined): number;
+  /** `og.platform.telemetry` */
+  og_platform_telemetry(world: number, name: string, attrs: string | undefined): string;
+  /** `og.platform.point` */
+  og_platform_point(world: number, desc: string | undefined): string;
+  /** `og.platform.aiMark` */
+  og_platform_ai_mark(world: number, desc: string | undefined): string;
+  /** `og.platform.loadSettings` */
+  og_platform_load_settings(world: number): number;
+  /** `og.platform.saveSettings` */
+  og_platform_save_settings(world: number, value: string): string;
+  /** `og.platform.result` */
+  og_platform_result(world: number, request: number): string;
+  /** `og.platform.info` */
+  og_platform_info(world: number): string;
+  /** `og.i18n.load` */
+  og_i18n_load(world: number, path: string): string;
+  /** `og.i18n.setLocale` */
+  og_i18n_set_locale(world: number, locale: string): string;
+  /** `og.i18n.locale` */
+  og_i18n_locale(world: number): string;
+  /** `og.i18n.t` */
+  og_i18n_t(world: number, key: string, args: string | undefined): string;
+  /** `og.i18n.has` */
+  og_i18n_has(world: number, key: string): boolean;
   /** `og.ui.configure` */
   og_ui_configure(world: number, desc: string | undefined): string;
   /** `og.ui.viewport` */
@@ -477,6 +557,8 @@ export interface HostAbi<A, V> {
   og_engine_probe_dump(engine_probe: number, desc: string | undefined): string;
   /** `EngineProbe.commands` */
   og_engine_probe_commands(engine_probe: number, script: string): string;
+  /** `EngineProbe.listen` */
+  og_engine_probe_listen(engine_probe: number, seconds: number | undefined): string;
 }
 
 /** Every binding symbol, in binding-table order, then the lifecycle members. */
@@ -615,6 +697,43 @@ export const SYMBOLS: readonly string[] = [
   "og_tilemap_get_tile",
   "og_tilemap_cell_at",
   "og_tilemap_cell_center",
+  "og_nav_grid",
+  "og_nav_grid_from_tilemap",
+  "og_nav_set_cost",
+  "og_nav_cell_at",
+  "og_nav_find_path",
+  "og_nav_flow_field",
+  "og_nav_set_flow_targets",
+  "og_nav_flow_at",
+  "og_nav_load",
+  "og_nav_build",
+  "og_nav_set_obstacle",
+  "og_nav_nearest",
+  "og_nav_path_of",
+  "og_ai_load",
+  "og_ai_parse",
+  "og_ai_get",
+  "og_ai_set",
+  "og_ai_noise",
+  "og_ai_describe",
+  "og_platform_store_get",
+  "og_platform_store_set",
+  "og_platform_store_list",
+  "og_platform_leaderboard_submit",
+  "og_platform_leaderboard_top",
+  "og_platform_leaderboard_around",
+  "og_platform_telemetry",
+  "og_platform_point",
+  "og_platform_ai_mark",
+  "og_platform_load_settings",
+  "og_platform_save_settings",
+  "og_platform_result",
+  "og_platform_info",
+  "og_i18n_load",
+  "og_i18n_set_locale",
+  "og_i18n_locale",
+  "og_i18n_t",
+  "og_i18n_has",
   "og_ui_configure",
   "og_ui_viewport",
   "og_ui_theme",
@@ -705,6 +824,7 @@ export const SYMBOLS: readonly string[] = [
   "og_engine_probe_restore",
   "og_engine_probe_dump",
   "og_engine_probe_commands",
+  "og_engine_probe_listen",
   "og_host_set_dispatcher",
   "og_engine_create",
   "og_engine_destroy",
@@ -716,4 +836,7 @@ export const SYMBOLS: readonly string[] = [
   "og_engine_take_outputs",
   "og_engine_take_log",
   "og_engine_write_resource",
+  "og_platform_take",
+  "og_platform_answer",
+  "og_platform_set_host",
 ];

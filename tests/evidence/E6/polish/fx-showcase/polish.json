@@ -1,0 +1,188 @@
+{
+ "project": "fx-showcase",
+ "date": "2026-10-18",
+ "scores": {
+  "contrast": 100,
+  "textSize": 100,
+  "hud": 100,
+  "transitions": null,
+  "uiSounds": null,
+  "latency": null,
+  "hitFeedback": null,
+  "idle": 100,
+  "frameTime": 100,
+  "inputSound": null,
+  "locale": null,
+  "taste": 100,
+  "feel": 100
+ },
+ "findings": [],
+ "playtests": [
+  {
+   "playtest": "frames",
+   "title": "every station matches its reference frame",
+   "tier": "metal",
+   "ticks": 432,
+   "shots": [
+    {
+     "name": "post",
+     "tick": 60,
+     "frame": "frames/frames-post.png",
+     "menu": false,
+     "hud": 0.35,
+     "centre": 0,
+     "texts": 1,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "lens",
+     "tick": 120,
+     "frame": "frames/frames-lens.png",
+     "menu": false,
+     "hud": 0.35,
+     "centre": 0,
+     "texts": 1,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "fx",
+     "tick": 240,
+     "frame": "frames/frames-fx.png",
+     "menu": false,
+     "hud": 0.35,
+     "centre": 0,
+     "texts": 1,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "2d",
+     "tick": 300,
+     "frame": "frames/frames-2d.png",
+     "menu": false,
+     "hud": 0.35,
+     "centre": 0,
+     "texts": 1,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "stylised",
+     "tick": 420,
+     "frame": "frames/frames-stylised.png",
+     "menu": false,
+     "hud": 0.35,
+     "centre": 0,
+     "texts": 1,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 5,
+    "passing": 5,
+    "worst": [
+     {
+      "shot": "post",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ratio": 15.41
+     },
+     {
+      "shot": "lens",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ratio": 15.41
+     },
+     {
+      "shot": "fx",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ratio": 15.41
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 5,
+    "passing": 5,
+    "smallest": [
+     {
+      "shot": "post",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ink": 16
+     },
+     {
+      "shot": "lens",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ink": 16
+     },
+     {
+      "shot": "fx",
+      "id": "BadgeText",
+      "text": "og.ui over the frame",
+      "ink": 16
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 5,
+    "worstShare": 0.35,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 4,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.73,
+    "stepP95Ms": 1.86,
+    "renderMedianMs": 4.48,
+    "renderP95Ms": 5.01,
+    "frameP95Ms": 6.14,
+    "frameMaxMs": 923.64
+   },
+   "audio": {
+    "seconds": 7.2,
+    "peak": 0,
+    "rms": 0,
+    "clipped": 0,
+    "silentShare": 100
+   },
+   "warnings": []
+  }
+ ],
+ "warnings": []
+}

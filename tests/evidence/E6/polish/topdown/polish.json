@@ -1,0 +1,611 @@
+{
+ "project": "topdown",
+ "date": "2026-10-18",
+ "scores": {
+  "contrast": null,
+  "textSize": null,
+  "hud": null,
+  "transitions": null,
+  "uiSounds": null,
+  "latency": 100,
+  "hitFeedback": 100,
+  "idle": 100,
+  "frameTime": 100,
+  "inputSound": 28,
+  "locale": null,
+  "taste": null,
+  "feel": 86
+ },
+ "findings": [
+  {
+   "measure": "hit feedback",
+   "where": "ai",
+   "detail": "2 of 2 damage moments (hp) had no hit stop within 8 ticks",
+   "fix": "og-feel §3 (hit stop by impact weight)"
+  },
+  {
+   "measure": "hit feedback",
+   "where": "combat",
+   "detail": "1 of 4 damage moments (hp, hits) had no hit stop within 8 ticks",
+   "fix": "og-feel §3 (hit stop by impact weight)"
+  }
+ ],
+ "playtests": [
+  {
+   "playtest": "ai",
+   "title": "the slime patrols its beat, chases the hero on sight and bites in reach",
+   "tier": "metal",
+   "ticks": 336,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 28.83,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 2,
+    "hitStop": 0,
+    "shake": 2,
+    "floating": 2,
+    "sound": 2,
+    "flash": 2,
+    "particles": 0,
+    "facts": [
+     "hp"
+    ]
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.25,
+    "stepP95Ms": 1.64,
+    "renderMedianMs": 1,
+    "renderP95Ms": 1.24,
+    "frameP95Ms": 2.87,
+    "frameMaxMs": 6.63
+   },
+   "audio": {
+    "seconds": 5.6,
+    "peak": 0.08,
+    "rms": 0.0091,
+    "clipped": 0,
+    "silentShare": 93.15
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "combat",
+   "title": "a bite hurts the hero; three sword hits kill the slime with hit stop, flash and a crit",
+   "tier": "metal",
+   "ticks": 186,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 3,
+    "answered": 3,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 56.63,
+    "sound": 3
+   },
+   "damage": {
+    "moments": 4,
+    "hitStop": 3,
+    "shake": 4,
+    "floating": 4,
+    "sound": 4,
+    "flash": 4,
+    "particles": 0,
+    "facts": [
+     "hp",
+     "hits"
+    ]
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.27,
+    "stepP95Ms": 1.74,
+    "renderMedianMs": 1.02,
+    "renderP95Ms": 1.3,
+    "frameP95Ms": 2.95,
+    "frameMaxMs": 5.32
+   },
+   "audio": {
+    "seconds": 3.1,
+    "peak": 0.26,
+    "rms": 0.0192,
+    "clipped": 0,
+    "silentShare": 79.03
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "door",
+   "title": "the doorway blocks until the key, then opens and leads into room 2",
+   "tier": "metal",
+   "ticks": 204,
+   "shots": [
+    {
+     "name": "door",
+     "tick": 198,
+     "frame": "frames/door-door.png",
+     "menu": false,
+     "hud": 0,
+     "centre": 0,
+     "texts": 0,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 3,
+    "answered": 3,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 20.79,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.26,
+    "stepP95Ms": 1.84,
+    "renderMedianMs": 1.03,
+    "renderP95Ms": 1.31,
+    "frameP95Ms": 3.08,
+    "frameMaxMs": 74.35
+   },
+   "audio": {
+    "seconds": 3.4,
+    "peak": 0.32,
+    "rms": 0.0263,
+    "clipped": 0,
+    "silentShare": 77.45
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "flee",
+   "title": "the pillar hides the hero from the slime, and a hurt slime flees",
+   "tier": "metal",
+   "ticks": 138,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 31.25,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.22,
+    "stepP95Ms": 1.7,
+    "renderMedianMs": 0.99,
+    "renderP95Ms": 1.31,
+    "frameP95Ms": 2.85,
+    "frameMaxMs": 4.74
+   },
+   "audio": {
+    "seconds": 2.3,
+    "peak": 0,
+    "rms": 0,
+    "clipped": 0,
+    "silentShare": 100
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "frames",
+   "title": "the rooms, a crit's freeze frame and a dash match their reference frames",
+   "tier": "metal",
+   "ticks": 222,
+   "shots": [
+    {
+     "name": "start",
+     "tick": 30,
+     "frame": "frames/frames-start.png",
+     "menu": false,
+     "hud": 0,
+     "centre": 0,
+     "texts": 0,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "crit",
+     "tick": 131,
+     "frame": null,
+     "menu": false,
+     "hud": 0,
+     "centre": 0,
+     "texts": 0,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "dash",
+     "tick": 168,
+     "frame": null,
+     "menu": false,
+     "hud": 0,
+     "centre": 0,
+     "texts": 0,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "east",
+     "tick": 216,
+     "frame": null,
+     "menu": false,
+     "hud": 0,
+     "centre": 0,
+     "texts": 0,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 5,
+    "answered": 5,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 29.27,
+    "sound": 3
+   },
+   "damage": {
+    "moments": 3,
+    "hitStop": 3,
+    "shake": 3,
+    "floating": 3,
+    "sound": 3,
+    "flash": 3,
+    "particles": 0,
+    "facts": [
+     "hits"
+    ]
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.2,
+    "stepP95Ms": 1.73,
+    "renderMedianMs": 1,
+    "renderP95Ms": 1.3,
+    "frameP95Ms": 3.04,
+    "frameMaxMs": 82.86
+   },
+   "audio": {
+    "seconds": 3.7,
+    "peak": 0.32,
+    "rms": 0.0271,
+    "clipped": 0,
+    "silentShare": 78.38
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "replay",
+   "title": "a whole visit replays to the same hash",
+   "tier": "metal",
+   "ticks": 456,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 11,
+    "answered": 11,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 26.02,
+    "sound": 1
+   },
+   "damage": {
+    "moments": 1,
+    "hitStop": 1,
+    "shake": 1,
+    "floating": 1,
+    "sound": 1,
+    "flash": 1,
+    "particles": 0,
+    "facts": [
+     "hits"
+    ]
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.22,
+    "stepP95Ms": 1.67,
+    "renderMedianMs": 1,
+    "renderP95Ms": 1.27,
+    "frameP95Ms": 2.88,
+    "frameMaxMs": 6.38
+   },
+   "audio": {
+    "seconds": 7.6,
+    "peak": 0.32,
+    "rms": 0.0193,
+    "clipped": 0,
+    "silentShare": 85.09
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "walk",
+   "title": "the hero walks at its speed, steps on the walk frames and stops at walls",
+   "tier": "metal",
+   "ticks": 336,
+   "shots": [
+    {
+     "name": "walk",
+     "tick": 216,
+     "frame": "frames/walk-walk.png",
+     "menu": false,
+     "hud": 0,
+     "centre": 0,
+     "texts": 0,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 3,
+    "answered": 3,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 23.61,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.26,
+    "stepP95Ms": 1.64,
+    "renderMedianMs": 1,
+    "renderP95Ms": 1.27,
+    "frameP95Ms": 2.86,
+    "frameMaxMs": 76.8
+   },
+   "audio": {
+    "seconds": 5.6,
+    "peak": 0,
+    "rms": 0,
+    "clipped": 0,
+    "silentShare": 100
+   },
+   "warnings": []
+  }
+ ],
+ "warnings": []
+}

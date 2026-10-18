@@ -1,10 +1,10 @@
 type import
 version 1
 ---
-# Latin-1, CJK punctuation and the Chinese the demo shows (the language list).
+# The characters the UI kit's string tables use (tools/make-locale-fonts.py).
 font {
   charset latin cjk-punct
-  chars "简体中文原点引擎设置"
+  chars "简体中文原点引擎设置。一丢个中会作停冒出删单原取回图场坊失始存将小已币库度开戏探撤操无旧暂本枚档槽此法消游点版的磨继续置菜设返这进退金销除险？"
   em_px 32
   px_range 4
 }

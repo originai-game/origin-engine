@@ -18,7 +18,7 @@ module commands {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7618</sub>
+<sub>`api.ogt` line 8731</sub>
 
 ## Contents
 
@@ -67,7 +67,7 @@ fn register {
 }
 ```
 
-<sub>`api.ogt` line 7688</sub>
+<sub>`api.ogt` line 8802</sub>
 
 <a id="fn-parse"></a>
 
@@ -95,7 +95,7 @@ fn parse {
 }
 ```
 
-<sub>`api.ogt` line 7696</sub>
+<sub>`api.ogt` line 8810</sub>
 
 <a id="fn-help"></a>
 
@@ -123,7 +123,7 @@ fn help {
 }
 ```
 
-<sub>`api.ogt` line 7702</sub>
+<sub>`api.ogt` line 8816</sub>
 
 <a id="fn-schedule"></a>
 
@@ -153,7 +153,7 @@ fn schedule {
 }
 ```
 
-<sub>`api.ogt` line 7708</sub>
+<sub>`api.ogt` line 8822</sub>
 
 ## Types
 
@@ -168,6 +168,7 @@ A string: one of the variants below. The zero value is `"screenshot"`.
 | Variant | Doc |
 |---|---|
 | `"screenshot"` | `screenshot[:path][:full\|:N]`: capture the next frame. |
+| `"listen"` | `listen[:path][:seconds]`: write the last seconds of rendered audio as a WAV. |
 | `"touch_move_to"` | `touch_move_to:<ui id>`: move the pointer to a UI element. |
 | `"touch_move"` | `touch_move:x,y`: move the pointer to CSS pixel coordinates. |
 | `"touch_start"` | `touch_start`: press the pointer where it is. |
@@ -196,6 +197,7 @@ A string: one of the variants below. The zero value is `"screenshot"`.
 enum CoreAction {
   doc "The actions the engine ships. Arguments follow the action, separated by `:`."
   variant screenshot "`screenshot[:path][:full|:N]`: capture the next frame."
+  variant listen "`listen[:path][:seconds]`: write the last seconds of rendered audio as a WAV."
   variant touch_move_to "`touch_move_to:<ui id>`: move the pointer to a UI element."
   variant touch_move "`touch_move:x,y`: move the pointer to CSS pixel coordinates."
   variant touch_start "`touch_start`: press the pointer where it is."
@@ -222,7 +224,7 @@ enum CoreAction {
 }
 ```
 
-<sub>`api.ogt` line 7623</sub>
+<sub>`api.ogt` line 8736</sub>
 
 <a id="type-CommandHandler"></a>
 
@@ -249,7 +251,7 @@ callback CommandHandler {
 }
 ```
 
-<sub>`api.ogt` line 7651</sub>
+<sub>`api.ogt` line 8765</sub>
 
 <a id="type-CommandDesc"></a>
 
@@ -273,7 +275,7 @@ struct CommandDesc {
 }
 ```
 
-<sub>`api.ogt` line 7657</sub>
+<sub>`api.ogt` line 8771</sub>
 
 <a id="type-CommandStep"></a>
 
@@ -298,7 +300,7 @@ struct CommandStep {
 }
 ```
 
-<sub>`api.ogt` line 7664</sub>
+<sub>`api.ogt` line 8778</sub>
 
 <a id="type-CommandInfo"></a>
 
@@ -323,7 +325,7 @@ struct CommandInfo {
 }
 ```
 
-<sub>`api.ogt` line 7673</sub>
+<sub>`api.ogt` line 8787</sub>
 
 <a id="type-CommandsReport"></a>
 
@@ -346,4 +348,4 @@ struct CommandsReport {
 }
 ```
 
-<sub>`api.ogt` line 7681</sub>
+<sub>`api.ogt` line 8795</sub>

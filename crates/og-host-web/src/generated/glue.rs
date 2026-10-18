@@ -64,6 +64,21 @@ pub fn og_engine_write_resource(world: u32, resource: String, value: String) -> 
 }
 
 #[wasm_bindgen]
+pub fn og_platform_take(engine: u32) -> String {
+    <Host as Lifecycle>::og_platform_take(&Host, engine)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_answer(engine: u32, request: u32, answer: String) -> bool {
+    <Host as Lifecycle>::og_platform_answer(&Host, engine, request, answer)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_set_host(engine: u32, info: String) {
+    <Host as Lifecycle>::og_platform_set_host(&Host, engine, info)
+}
+
+#[wasm_bindgen]
 pub fn og_reflect_define_component(name: String, fields: String) -> String {
     <Host as ReflectApi>::og_reflect_define_component(&Host, name, fields)
 }
@@ -734,6 +749,191 @@ pub fn og_tilemap_cell_center(world: u32, entity: f64, x: u32, y: u32) -> String
 }
 
 #[wasm_bindgen]
+pub fn og_nav_grid(world: u32, desc: Option<String>) -> String {
+    <Host as NavApi>::og_nav_grid(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_nav_grid_from_tilemap(world: u32, desc: Option<String>) -> String {
+    <Host as NavApi>::og_nav_grid_from_tilemap(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_nav_set_cost(world: u32, grid: f64, x: u32, y: u32, cost: u32) -> String {
+    <Host as NavApi>::og_nav_set_cost(&Host, world, grid, x, y, cost)
+}
+
+#[wasm_bindgen]
+pub fn og_nav_cell_at(world: u32, grid: f64, point: String) -> String {
+    <Host as NavApi>::og_nav_cell_at(&Host, world, grid, point)
+}
+
+#[wasm_bindgen]
+pub fn og_nav_find_path(world: u32, desc: Option<String>) -> String {
+    <Host as NavApi>::og_nav_find_path(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_nav_flow_field(world: u32, desc: Option<String>) -> String {
+    <Host as NavApi>::og_nav_flow_field(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_nav_set_flow_targets(world: u32, field: f64, targets: String) -> String {
+    <Host as NavApi>::og_nav_set_flow_targets(&Host, world, field, targets)
+}
+
+#[wasm_bindgen]
+pub fn og_nav_flow_at(world: u32, field: f64, point: String) -> String {
+    <Host as NavApi>::og_nav_flow_at(&Host, world, field, point)
+}
+
+#[wasm_bindgen]
+pub fn og_nav_load(world: u32, path: String) -> String {
+    <Host as NavApi>::og_nav_load(&Host, world, path)
+}
+
+#[wasm_bindgen]
+pub fn og_nav_build(world: u32, desc: Option<String>) -> String {
+    <Host as NavApi>::og_nav_build(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_nav_set_obstacle(world: u32, mesh: f64, id: u32, obstacle: Option<String>) -> String {
+    <Host as NavApi>::og_nav_set_obstacle(&Host, world, mesh, id, obstacle)
+}
+
+#[wasm_bindgen]
+pub fn og_nav_nearest(world: u32, mesh: f64, point: String, extent: Option<String>) -> String {
+    <Host as NavApi>::og_nav_nearest(&Host, world, mesh, point, extent)
+}
+
+#[wasm_bindgen]
+pub fn og_nav_path_of(world: u32, entity: f64) -> String {
+    <Host as NavApi>::og_nav_path_of(&Host, world, entity)
+}
+
+#[wasm_bindgen]
+pub fn og_ai_load(world: u32, path: String) -> String {
+    <Host as AiApi>::og_ai_load(&Host, world, path)
+}
+
+#[wasm_bindgen]
+pub fn og_ai_parse(world: u32, text: String) -> String {
+    <Host as AiApi>::og_ai_parse(&Host, world, text)
+}
+
+#[wasm_bindgen]
+pub fn og_ai_get(world: u32, entity: f64, key: String) -> String {
+    <Host as AiApi>::og_ai_get(&Host, world, entity, key)
+}
+
+#[wasm_bindgen]
+pub fn og_ai_set(world: u32, entity: f64, key: String, value: String) -> String {
+    <Host as AiApi>::og_ai_set(&Host, world, entity, key, value)
+}
+
+#[wasm_bindgen]
+pub fn og_ai_noise(world: u32, desc: Option<String>) -> String {
+    <Host as AiApi>::og_ai_noise(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ai_describe(world: u32, entity: f64) -> String {
+    <Host as AiApi>::og_ai_describe(&Host, world, entity)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_store_get(world: u32, key: String) -> String {
+    <Host as PlatformApi>::og_platform_store_get(&Host, world, key)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_store_set(world: u32, desc: Option<String>) -> String {
+    <Host as PlatformApi>::og_platform_store_set(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_store_list(world: u32) -> u32 {
+    <Host as PlatformApi>::og_platform_store_list(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_leaderboard_submit(world: u32, desc: Option<String>) -> String {
+    <Host as PlatformApi>::og_platform_leaderboard_submit(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_leaderboard_top(world: u32, desc: Option<String>) -> u32 {
+    <Host as PlatformApi>::og_platform_leaderboard_top(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_leaderboard_around(world: u32, desc: Option<String>) -> u32 {
+    <Host as PlatformApi>::og_platform_leaderboard_around(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_telemetry(world: u32, name: String, attrs: Option<String>) -> String {
+    <Host as PlatformApi>::og_platform_telemetry(&Host, world, name, attrs)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_point(world: u32, desc: Option<String>) -> String {
+    <Host as PlatformApi>::og_platform_point(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_ai_mark(world: u32, desc: Option<String>) -> String {
+    <Host as PlatformApi>::og_platform_ai_mark(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_load_settings(world: u32) -> u32 {
+    <Host as PlatformApi>::og_platform_load_settings(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_save_settings(world: u32, value: String) -> String {
+    <Host as PlatformApi>::og_platform_save_settings(&Host, world, value)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_result(world: u32, request: u32) -> String {
+    <Host as PlatformApi>::og_platform_result(&Host, world, request)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_info(world: u32) -> String {
+    <Host as PlatformApi>::og_platform_info(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_i18n_load(world: u32, path: String) -> String {
+    <Host as I18nApi>::og_i18n_load(&Host, world, path)
+}
+
+#[wasm_bindgen]
+pub fn og_i18n_set_locale(world: u32, locale: String) -> String {
+    <Host as I18nApi>::og_i18n_set_locale(&Host, world, locale)
+}
+
+#[wasm_bindgen]
+pub fn og_i18n_locale(world: u32) -> String {
+    <Host as I18nApi>::og_i18n_locale(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_i18n_t(world: u32, key: String, args: Option<String>) -> String {
+    <Host as I18nApi>::og_i18n_t(&Host, world, key, args)
+}
+
+#[wasm_bindgen]
+pub fn og_i18n_has(world: u32, key: String) -> bool {
+    <Host as I18nApi>::og_i18n_has(&Host, world, key)
+}
+
+#[wasm_bindgen]
 pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
     <Host as UiApi>::og_ui_configure(&Host, world, desc)
 }
@@ -1198,4 +1398,10 @@ pub fn og_engine_probe_dump(engine_probe: u32, desc: Option<String>) -> String {
 #[wasm_bindgen]
 pub fn og_engine_probe_commands(engine_probe: u32, script: String) -> String {
     <Host as ProbeApi>::og_engine_probe_commands(&Host, engine_probe, script)
+}
+
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_engine_probe_listen(engine_probe: u32, seconds: Option<f64>) -> String {
+    <Host as ProbeApi>::og_engine_probe_listen(&Host, engine_probe, seconds)
 }

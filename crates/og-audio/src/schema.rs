@@ -73,6 +73,23 @@ pub struct AudioSource {
     /// Plays while true (inserting a source plays it); the engine sets it false when a one-shot ends.
     #[reflect(default = 1)]
     pub playing: bool,
+    /// When more than og.Audio.maxVoices would play, the lowest priority is stopped first (then the quietest, then the oldest).
+    #[reflect(min = 0, max = 255, default = 128)]
+    pub priority: u32,
+    /// A low-pass filter on this source, its cutoff in Hz; 0 is off.
+    #[reflect(min = 0, max = 20000, unit = "hz", tunable)]
+    pub lowpass: f32,
+    /// A spatial source behind a collider (a physics ray to the listener) plays at og.Audio.occlusionGain through a low-pass at og.Audio.occlusionCutoff.
+    pub occlude: bool,
+    /// A spatial source's low-pass by distance: the cutoff in Hz at maxDistance, from 20 kHz at refDistance (log-linear between); 0 is off.
+    #[reflect(name = "distanceCutoff", min = 0, max = 20000, unit = "hz", tunable)]
+    pub distance_cutoff: f32,
+    /// Starts at this world time (seconds since tick 0), sample-accurately, even inside a tick; 0 or a time past starts at once. og.Music.nextBar gives bar-aligned times.
+    #[reflect(name = "startAt", min = 0, unit = "s")]
+    pub start_at: f64,
+    /// Starts, stops and volume changes ramp over this long (crossfades, stems brought in and out); 0 is 5 ms.
+    #[reflect(min = 0, max = 30, unit = "s", tunable)]
+    pub fade: f32,
 }
 
 impl Default for AudioSource {
@@ -91,6 +108,12 @@ impl Default for AudioSource {
             max_distance: 100.0,
             rolloff_factor: 1.0,
             playing: true,
+            priority: 128,
+            lowpass: 0.0,
+            occlude: false,
+            distance_cutoff: 0.0,
+            start_at: 0.0,
+            fade: 0.0,
         }
     }
 }
@@ -137,6 +160,28 @@ pub struct Audio {
     /// Gain of the ui bus.
     #[reflect(min = 0, max = 2, default = 1, tunable)]
     pub ui: f32,
+    /// The most sources that play at once; past it the lowest og.AudioSource.priority is stopped (SoundEnded reason SOUND_CULLED).
+    #[reflect(name = "maxVoices", min = 1, max = 256, default = 32)]
+    pub max_voices: u32,
+    /// The gain of an occluded source (og.AudioSource.occlude).
+    #[reflect(name = "occlusionGain", min = 0, max = 1, default = 0.35, tunable)]
+    pub occlusion_gain: f32,
+    /// The low-pass cutoff of an occluded source.
+    #[reflect(
+        name = "occlusionCutoff",
+        min = 20,
+        max = 20000,
+        default = 900,
+        unit = "hz",
+        tunable
+    )]
+    pub occlusion_cutoff: f32,
+    /// The shared reverb's room size (the buses' og.AudioBusFx.reverb sends feed it).
+    #[reflect(name = "reverbRoom", min = 0, max = 1, default = 0.6, tunable)]
+    pub reverb_room: f32,
+    /// The shared reverb's damping of high frequencies.
+    #[reflect(name = "reverbDamping", min = 0, max = 1, default = 0.4, tunable)]
+    pub reverb_damping: f32,
 }
 
 impl Default for Audio {
@@ -146,6 +191,11 @@ impl Default for Audio {
             music: 1.0,
             sfx: 1.0,
             ui: 1.0,
+            max_voices: 32,
+            occlusion_gain: 0.35,
+            occlusion_cutoff: 900.0,
+            reverb_room: 0.6,
+            reverb_damping: 0.4,
         }
     }
 }
@@ -178,6 +228,8 @@ pub mod end_reason {
     pub const REMOVED: u32 = 2;
     /// `sound` was changed to another sound while playing.
     pub const REPLACED: u32 = 3;
+    /// More sources played than og.Audio.maxVoices, and this one had the lowest priority.
+    pub const CULLED: u32 = 4;
 }
 
 /// Emitted in the tick a sound ends (readers see it the tick after).
@@ -190,7 +242,7 @@ pub struct SoundEnded {
     pub sound: u64,
     /// The voice id in the command stream.
     pub voice: u32,
-    /// 0 finished, 1 stopped, 2 removed, 3 replaced.
+    /// 0 finished, 1 stopped, 2 removed, 3 replaced, 4 culled.
     pub reason: u32,
 }
 
@@ -221,6 +273,8 @@ pub struct AudioPlayback {
     /// The loop end last sent, in frames (exclusive).
     #[reflect(name = "loopEnd")]
     pub loop_end: u32,
+    /// The low-pass cutoff last sent, Hz (0: open).
+    pub lowpass: f32,
 }
 
 /// Engine-owned: the command stream's running hash and counters. Being a
@@ -243,6 +297,8 @@ pub struct AudioStream {
     /// The bus gains last sent (master, music, sfx, ui); negative before the first tick.
     #[reflect(name = "busSent")]
     pub bus_sent: og_core::glam::Vec4,
+    /// A hash of the bus effects last sent.
+    pub fx: u64,
 }
 
 /// The engine's `og.Transform`, mirrored so the system can read positions.
@@ -272,4 +328,156 @@ impl Transform {
             ..Transform::default()
         }
     }
+}
+
+/// A bus's insert effects: a low- and high-pass, a compressor, side-chain
+/// ducking by another bus and a send to the shared reverb. One entity per
+/// bus (the first in query order counts); changes reach the mixer as `fx`
+/// commands in the stream.
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "og.AudioBusFx")]
+pub struct AudioBusFx {
+    /// The bus these effects are on.
+    #[reflect(variants = ["master", "music", "sfx", "ui"], default = 1)]
+    pub bus: u32,
+    /// Low-pass cutoff (12 dB/octave); 0 is off.
+    #[reflect(min = 0, max = 20000, unit = "hz", tunable)]
+    pub lowpass: f32,
+    /// High-pass cutoff (12 dB/octave); 0 is off.
+    #[reflect(min = 0, max = 20000, unit = "hz", tunable)]
+    pub highpass: f32,
+    /// How much of the bus goes to the reverb, 0..1.
+    #[reflect(min = 0, max = 1, tunable)]
+    pub reverb: f32,
+    /// The compressor's threshold; 0 dB is off.
+    #[reflect(min = -60, max = 0, unit = "db", tunable)]
+    pub threshold: f32,
+    /// The compressor's ratio (input dB over the threshold per output dB).
+    #[reflect(min = 1, max = 30, default = 4, tunable)]
+    pub ratio: f32,
+    /// The compressor's attack.
+    #[reflect(min = 0, max = 1, default = 0.005, unit = "s", tunable)]
+    pub attack: f32,
+    /// The compressor's release.
+    #[reflect(min = 0, max = 3, default = 0.15, unit = "s", tunable)]
+    pub release: f32,
+    /// Gain after the compressor.
+    #[reflect(min = -24, max = 24, unit = "db", tunable)]
+    pub makeup: f32,
+    /// Turns this bus down while `duckBus` is loud (music under dialogue or effects).
+    pub duck: bool,
+    /// The bus that ducks this one.
+    #[reflect(name = "duckBus", variants = ["master", "music", "sfx", "ui"], default = 2)]
+    pub duck_bus: u32,
+    /// How far it is turned down.
+    #[reflect(
+        name = "duckDepth",
+        min = 0,
+        max = 60,
+        default = 9,
+        unit = "db",
+        tunable
+    )]
+    pub duck_depth: f32,
+    /// How loud the key bus must be.
+    #[reflect(name = "duckThreshold", min = -80, max = 0, default = -36, unit = "db", tunable)]
+    pub duck_threshold: f32,
+    /// How fast it goes down.
+    #[reflect(
+        name = "duckAttack",
+        min = 0,
+        max = 2,
+        default = 0.02,
+        unit = "s",
+        tunable
+    )]
+    pub duck_attack: f32,
+    /// How fast it comes back.
+    #[reflect(
+        name = "duckRelease",
+        min = 0,
+        max = 5,
+        default = 0.4,
+        unit = "s",
+        tunable
+    )]
+    pub duck_release: f32,
+}
+
+impl Default for AudioBusFx {
+    fn default() -> Self {
+        AudioBusFx {
+            bus: Bus::Music as u32,
+            lowpass: 0.0,
+            highpass: 0.0,
+            reverb: 0.0,
+            threshold: 0.0,
+            ratio: 4.0,
+            attack: 0.005,
+            release: 0.15,
+            makeup: 0.0,
+            duck: false,
+            duck_bus: Bus::Sfx as u32,
+            duck_depth: 9.0,
+            duck_threshold: -36.0,
+            duck_attack: 0.02,
+            duck_release: 0.4,
+        }
+    }
+}
+
+/// A musical clock: tempo and metre. The engine's og.music system writes
+/// the current bar and beat and the times of the next beat and bar each
+/// tick, and sends og.MusicBeat on every beat; a source whose `startAt` is
+/// `nextBar` starts on the bar line, to the sample.
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "og.Music")]
+pub struct Music {
+    /// Beats per minute.
+    #[reflect(min = 20, max = 400, default = 120, unit = "bpm", tunable)]
+    pub bpm: f32,
+    /// Beats per bar.
+    #[reflect(name = "beatsPerBar", min = 1, max = 16, default = 4)]
+    pub beats_per_bar: u32,
+    /// The world time of the first bar's first beat, in seconds.
+    #[reflect(min = 0, unit = "s")]
+    pub start: f64,
+    /// The bar the tick is in, from 1 (0 before start; written by og.music).
+    pub bar: u32,
+    /// The beat in the bar, from 1 (written by og.music).
+    pub beat: u32,
+    /// The world time of the next beat (written by og.music).
+    #[reflect(name = "nextBeat", unit = "s")]
+    pub next_beat: f64,
+    /// The world time of the next bar line (written by og.music).
+    #[reflect(name = "nextBar", unit = "s")]
+    pub next_bar: f64,
+}
+
+impl Default for Music {
+    fn default() -> Self {
+        Music {
+            bpm: 120.0,
+            beats_per_bar: 4,
+            start: 0.0,
+            bar: 0,
+            beat: 0,
+            next_beat: 0.0,
+            next_bar: 0.0,
+        }
+    }
+}
+
+/// A beat of an og.Music clock, sent in the tick whose interval holds it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
+#[reflect(name = "og.MusicBeat")]
+pub struct MusicBeat {
+    /// The entity with the og.Music.
+    pub entity: u64,
+    /// The bar, from 1.
+    pub bar: u32,
+    /// The beat in the bar, from 1 (1 is the bar line).
+    pub beat: u32,
+    /// Its world time in seconds.
+    pub time: f64,
 }

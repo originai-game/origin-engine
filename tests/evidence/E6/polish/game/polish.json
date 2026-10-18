@@ -1,0 +1,228 @@
+{
+ "project": "game",
+ "date": "2026-10-18",
+ "scores": {
+  "contrast": 67,
+  "textSize": 100,
+  "hud": 100,
+  "transitions": null,
+  "uiSounds": 100,
+  "latency": 100,
+  "hitFeedback": null,
+  "idle": 49,
+  "frameTime": 100,
+  "inputSound": 100,
+  "locale": null,
+  "taste": 92,
+  "feel": 87
+ },
+ "findings": [
+  {
+   "measure": "idle frames",
+   "where": "guard",
+   "detail": "49.72 % of ticks show and play nothing new (nothing moves or animates, no UI motion, no sound, no tween, text or particle)",
+   "fix": "og-feel §9 (idle loops: breathing, a pickup's spin) and og-taste §5 (motion): something alive on every screen"
+  },
+  {
+   "measure": "contrast",
+   "where": "smoke smoke: `Start` \"Started\"",
+   "detail": "3.45:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  }
+ ],
+ "playtests": [
+  {
+   "playtest": "guard",
+   "title": "the guard patrols, sees inside its cone and not through the wall, chases, searches and returns",
+   "tier": "metal",
+   "ticks": 366,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 15.45,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 49.72
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.48,
+    "stepP95Ms": 0.68,
+    "renderMedianMs": 3.4,
+    "renderP95Ms": 3.65,
+    "frameP95Ms": 4.29,
+    "frameMaxMs": 5.56
+   },
+   "audio": {
+    "seconds": 6.1,
+    "peak": 0,
+    "rms": 0,
+    "clipped": 0,
+    "silentShare": 100
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "smoke",
+   "title": "A tap on Start spins the trickster and drops the crate; the run writes its frame, dumps and UI tree",
+   "tier": "metal",
+   "ticks": 150,
+   "shots": [
+    {
+     "name": "smoke",
+     "tick": 120,
+     "frame": "frames/smoke-smoke.png",
+     "menu": false,
+     "hud": 1.35,
+     "centre": 0,
+     "texts": 3,
+     "lowContrast": 1,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 3,
+    "passing": 2,
+    "worst": [
+     {
+      "shot": "smoke",
+      "id": "Start",
+      "text": "Started",
+      "ratio": 3.45
+     },
+     {
+      "shot": "smoke",
+      "id": "Status",
+      "text": "开始游戏  1.5 rad/s",
+      "ratio": 9.29
+     },
+     {
+      "shot": "smoke",
+      "id": "Title",
+      "text": "Origin Engine",
+      "ratio": 15.63
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 3,
+    "passing": 3,
+    "smallest": [
+     {
+      "shot": "smoke",
+      "id": "Start",
+      "text": "Started",
+      "ink": 11
+     },
+     {
+      "shot": "smoke",
+      "id": "Status",
+      "text": "开始游戏  1.5 rad/s",
+      "ink": 15
+     },
+     {
+      "shot": "smoke",
+      "id": "Title",
+      "text": "Origin Engine",
+      "ink": 26
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 1,
+    "worstShare": 1.35,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 1,
+    "pressesWithSound": 1,
+    "motionTicks": 1
+   },
+   "latency": {
+    "inputs": 1,
+    "answered": 1,
+    "medianTicks": 1,
+    "maxTicks": 1,
+    "baselineShare": 65.05,
+    "sound": 1
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 21.43
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.59,
+    "stepP95Ms": 0.79,
+    "renderMedianMs": 3.4,
+    "renderP95Ms": 3.73,
+    "frameP95Ms": 4.45,
+    "frameMaxMs": 128.2
+   },
+   "audio": {
+    "seconds": 2.5,
+    "peak": 0.34,
+    "rms": 0.0152,
+    "clipped": 0,
+    "silentShare": 78.67
+   },
+   "warnings": []
+  }
+ ],
+ "warnings": []
+}

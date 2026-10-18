@@ -3,7 +3,9 @@
 //! kerning, missing glyphs take no space), so measured text and drawn text
 //! agree to the pixel.
 
+use crate::shape::Shaper;
 use og_render::{FontHandle, MsdfFont};
+use std::sync::Arc;
 
 /// Advances and vertical extents of a font, in em.
 #[derive(Clone, Debug, PartialEq)]
@@ -16,6 +18,9 @@ pub struct FontMetrics {
     pub ascender: f32,
     /// Baseline to the bottom of the lowest glyph, in em (negative).
     pub descender: f32,
+    /// The font file, for a font cooked with a shaped script (its words are
+    /// measured and drawn shaped: `crate::shape`).
+    pub shaper: Option<Arc<Shaper>>,
 }
 
 impl FontMetrics {
@@ -48,6 +53,7 @@ impl FontMetrics {
             fixed: None,
             ascender: top,
             descender: bottom,
+            shaper: None,
         }
     }
 
@@ -59,7 +65,19 @@ impl FontMetrics {
             fixed: Some(advance),
             ascender: 0.8,
             descender: -0.2,
+            shaper: None,
         }
+    }
+
+    /// Shapes this font's shaped-script words with its font file.
+    pub fn with_shaper(mut self, shaper: Option<Arc<Shaper>>) -> FontMetrics {
+        self.shaper = shaper;
+        self
+    }
+
+    /// `line` as it is drawn: shaped words, in visual order.
+    pub fn visual(&self, line: &str, default: og_i18n::Direction) -> String {
+        crate::shape::visual(line, default, self.shaper.as_deref(), &|c| self.has(c))
     }
 
     pub fn with_extents(mut self, ascender: f32, descender: f32) -> FontMetrics {
@@ -84,8 +102,24 @@ impl FontMetrics {
         self.fixed.is_some() || self.advances.binary_search_by_key(&c, |(k, _)| *k).is_ok()
     }
 
-    /// The width of one line of text at `size` CSS pixels per em.
+    /// The width of one line of text at `size` CSS pixels per em (shaped
+    /// words at their shaped width).
     pub fn measure(&self, text: &str, size: f32) -> f32 {
+        if let Some(s) = &self.shaper
+            && text.chars().any(og_i18n::needs_shaping)
+        {
+            let has = |c: char| self.has(c);
+            return text
+                .split_inclusive(' ')
+                .map(|w| {
+                    let (word, space) = w.strip_suffix(' ').map_or((w, false), |x| (x, true));
+                    let drawn = s.word(word, &has).unwrap_or_else(|| word.to_string());
+                    drawn.chars().map(|c| self.advance(c)).sum::<f32>()
+                        + if space { self.advance(' ') } else { 0.0 }
+                })
+                .sum::<f32>()
+                * size;
+        }
         text.chars().map(|c| self.advance(c)).sum::<f32>() * size
     }
 }

@@ -5,7 +5,7 @@
 //   bun src/node/run.ts --entry <game.js|.ts> [--root <project>] [--ticks N] [--seed S]
 //       [--setup action[:arg...]]... [--commands "t:action[:args];..."] [--out <dir>]
 //       [--port P] [--size WxH] [--realtime] [--watch <bundle.js>] [--no-render]
-//       [--audio null|device|<out.wav>] [--json]
+//       [--audio null|device|<out.wav>] [--platform-store <file.json>] [--locale <tag>] [--json]
 //
 // - Without --commands, --port or --watch: advance --ticks N at once and print
 //   the world hash (M2's hello world).
@@ -22,9 +22,11 @@
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, watch, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { loadNativeHost, native } from "./index.ts";
 import { openAudio, type AudioSink } from "./audio.ts";
+import { nativePlatform } from "./platform.ts";
 import { beginBundle, createEngine, type Engine, type GameToken } from "../runtime.ts";
 
 const argv = process.argv.slice(2);
@@ -41,6 +43,8 @@ let watchFile: string | undefined;
 let render = true;
 let asJson = false;
 let audioOut = "null";
+let platformStore: string | undefined;
+let locale: string | undefined;
 const setup: string[] = [];
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i]!;
@@ -66,6 +70,8 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--no-render") render = false;
   else if (a === "--json") asJson = true;
   else if (a === "--audio") audioOut = next();
+  else if (a === "--platform-store") platformStore = resolve(next());
+  else if (a === "--locale") locale = next();
   else if (a === "--headless") {
     // Native runs are always headless; accepted for `og run --headless`.
   } else fail(`unknown argument '${a}'`);
@@ -113,9 +119,11 @@ function projectProfile(dir: string | undefined): "2d" | "3d" | undefined {
 
 const game = await importGame(entry);
 const profile = projectProfile(root);
-const created = createEngine(game, { ...(seed === undefined ? {} : { seed }), ...(root ? { root } : {}), ...(profile ? { profile } : {}) });
+const created = createEngine(game, { ...(seed === undefined ? {} : { seed }), ...(root ? { root } : {}), ...(profile ? { profile } : {}), ...(locale ? { locale } : {}) });
 if (!created.ok) fail(`${entry}: ${created.reason}`);
 const engine: Engine = created.value;
+// og.platform: the local store, in memory unless --platform-store names a file.
+engine.attachPlatform(nativePlatform(platformStore));
 // One sink per engine, pumped after every step (crates/og-audio/README.md
 // §Host contract): null keeps the stream drained, a .wav path captures it.
 const audioMode = audioOut === "device" ? "device" : audioOut === "null" ? "null" : "capture";
@@ -136,7 +144,7 @@ function drain(): void {
   for (const o of engine.takeOutputs()) {
     const path = resolve(out, o.file);
     mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, o.kind === "png" ? decode(o.data) : o.data);
+    writeFileSync(path, o.kind === "png" || o.kind === "wav" ? decode(o.data) : o.data);
     outputs.push(path);
     if (!asJson) process.stdout.write(`tick ${o.tick} ${o.action}: wrote ${path}\n`);
   }
@@ -251,10 +259,13 @@ if (!probing) {
 }
 const ms = performance.now() - t0;
 drain();
+let wavSha256: string | undefined;
 if (audioMode === "capture") {
   const wavPath = resolve(audioOut);
   mkdirSync(dirname(wavPath), { recursive: true });
-  writeFileSync(wavPath, sink.wav());
+  const wav = sink.wav();
+  writeFileSync(wavPath, wav);
+  wavSha256 = createHash("sha256").update(wav).digest("hex");
   outputs.push(wavPath);
 }
 const audioStats = sink.stats();
@@ -271,7 +282,7 @@ const summary = {
   runtime: typeof Bun !== "undefined" ? `bun ${Bun.version}` : `node ${process.version}`,
   tier,
   quit,
-  audio: { mode: audioMode, commands: audioStats.commands, receivedHash: audioStats.receivedHash },
+  audio: { mode: audioMode, commands: audioStats.commands, receivedHash: audioStats.receivedHash, wavSha256 },
   outputs,
   warnings,
 };

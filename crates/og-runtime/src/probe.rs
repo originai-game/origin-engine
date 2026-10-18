@@ -253,6 +253,7 @@ pub(crate) fn set_reloader(eng: &Rc<Engine>) {
 /// systems, commands, facts) when the probe swapped the world, and drops it
 /// when the probe kept the old bundle.
 pub(crate) fn after_reload(eng: &Engine, swapped: bool) {
+    super::e6::after_reload(eng.id, swapped);
     let Some(a) = eng.state.borrow_mut().reloaded.take() else {
         return;
     };
@@ -381,6 +382,7 @@ pub(crate) fn outputs_json(outputs: Vec<og_probe::Output>) -> Value {
                         json!(String::from_utf8_lossy(&o.bytes()).into_owned()),
                     ),
                     og_probe::Payload::Text(t) => ("text", json!(t)),
+                    og_probe::Payload::Wav(bytes) => ("wav", json!(base64(bytes))),
                 };
                 json!({ "tick": o.tick, "action": o.action, "file": o.file_name(), "kind": kind, "data": data })
             })

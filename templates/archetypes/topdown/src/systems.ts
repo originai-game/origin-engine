@@ -1,7 +1,9 @@
 // Tomb Room's systems, in tick order: Control (the hero: walk, swing, dash,
-// hurt), Slimes (wander, chase, take hits, hurt the hero), Pickups (coins
-// and the key), Door (the locked doorway and the rooms), Sfx (the voices)
-// and Hud (screen text).
+// hurt), Slimes (take hits, knockback and death; what a slime decides is
+// assets/ai/slime.ogt, run by og.ai before these systems and moved by og.nav
+// after them), Pickups (coins and the key), Door (the locked doorway and the
+// rooms), Sfx (the voices) and Hud (screen text). `biteHero` is the
+// behaviour's `bite` command.
 //
 // Control reads the hero's flipbook events: a walk clip's "step" counts a
 // footstep, an attack clip's "hit" is the sword's strike frame, so the
@@ -37,14 +39,6 @@ function must(r: { ok: true } | { ok: false; reason: string }): void {
 
 function fontOf(g: { font: number }): never {
   return g.font as unknown as never;
-}
-
-/** A small deterministic hash: wander choices without Math.random. */
-function hash(a: number, b: number): number {
-  let h = (2166136261 ^ a) >>> 0;
-  h = Math.imul(h, 16777619) >>> 0;
-  h = (h ^ b) >>> 0;
-  return Math.imul(h, 16777619) >>> 0;
 }
 
 /** A triangle wave of the tick, 0..1 over `period` ticks (tick arithmetic only, so every host agrees). */
@@ -196,10 +190,15 @@ function faceOf(x: number, y: number, old: number): number {
   return y < 0 ? Facing.Down : Facing.Up;
 }
 
-/** Slimes wander, chase a hero in sight, take the sword's hits and hurt the hero on contact. */
+/**
+ * Slimes take the sword's hits, are knocked back and stunned, and die. The
+ * walking is og.nav's (the agent's velocity) except while stunned, held by a
+ * hit stop or dead, when `NavAgent.drive` is off and this system owns the
+ * velocity; dead slimes stop thinking. Perception's sight follows the tunable.
+ */
 export const Slimes = defineSystem(
   "Slimes",
-  { reads: [Tuning], writes: [Game, Slime, og.Transform, og.Velocity, og.Flipbook, og.Sprite], after: ["Control"] },
+  { reads: [Tuning], writes: [Game, Slime, og.Transform, og.Velocity, og.Flipbook, og.Sprite, og.NavAgent, og.AiAgent, og.Perception], after: ["Control"] },
   (q, time, world) => {
     const game = world.resource(Game);
     const tune = world.resource(Tuning);
@@ -210,15 +209,20 @@ export const Slimes = defineSystem(
     for (const a of q.archetypes()) {
       const s = a.column(Slime);
       const p = a.column(og.Transform).position;
-      const scl = a.column(og.Transform).scale;
       const v = a.column(og.Velocity).linear;
       const fb = a.column(og.Flipbook);
       const sprite = a.column(og.Sprite);
+      const nav = a.column(og.NavAgent);
+      const ai = a.column(og.AiAgent);
+      const eyes = a.column(og.Perception);
       for (let i = 0; i < a.count; i++) {
         const me = a.entity(i);
         const x = p[i * 3]!;
         const y = p[i * 3 + 1]!;
+        eyes.sight[i] = g.hp > 0 ? t.slimeSight : 0;
         if (s.dead[i]) {
+          nav.drive[i] = 0;
+          ai.active[i] = 0;
           v[i * 3] = 0;
           v[i * 3 + 1] = 0;
           if (time.hitStop > 0) continue;
@@ -232,66 +236,54 @@ export const Slimes = defineSystem(
           hitSlime(world, me, g, t, s, i, x, y, font);
           fb.clip[i] = s.hurt[i]!;
         }
-        if (time.hitStop > 0) {
+        if (s.dead[i] || time.hitStop > 0) {
+          nav.drive[i] = 0;
           v[i * 3] = 0;
           v[i * 3 + 1] = 0;
           continue;
         }
-        if (s.dead[i]) continue;
-
-        let vx = 0;
-        let vy = 0;
         if (s.stun[i]! > 0) {
+          nav.drive[i] = 0;
           s.stun[i] = s.stun[i]! - 1;
-          vx = s.knockX[i]!;
-          vy = s.knockY[i]!;
+          v[i * 3] = s.knockX[i]!;
+          v[i * 3 + 1] = s.knockY[i]!;
+          v[i * 3 + 2] = 0;
           s.knockX[i] = s.knockX[i]! * 0.82;
           s.knockY[i] = s.knockY[i]! * 0.82;
           if (s.stun[i] === 0) fb.clip[i] = s.bob[i]!;
-        } else {
-          const dx = g.heroX - x;
-          const dy = g.heroY - y;
-          const d = Math.hypot(dx, dy);
-          if (g.hp > 0 && d < t.slimeSight && d > 0.01) {
-            vx = (dx / d) * t.slimeSpeed;
-            vy = (dy / d) * t.slimeSpeed;
-          } else {
-            if (s.wanderFor[i] === 0) {
-              const h = hash(world.tick, me & 0xffff);
-              const dir = h % 10;
-              // Eight directions, or two chances in ten of a pause.
-              if (dir < 8) {
-                const ang = (dir * Math.PI) / 4;
-                s.wanderX[i] = Math.round(Math.cos(ang) * 1000) / 1000;
-                s.wanderY[i] = Math.round(Math.sin(ang) * 1000) / 1000;
-              } else {
-                s.wanderX[i] = 0;
-                s.wanderY[i] = 0;
-              }
-              s.wanderFor[i] = 40 + ((h >>> 8) % 50);
-            }
-            s.wanderFor[i] = s.wanderFor[i]! - 1;
-            vx = s.wanderX[i]! * t.slimeSpeed * 0.5;
-            vy = s.wanderY[i]! * t.slimeSpeed * 0.5;
-          }
-          // Contact: the hero is hurt and knocked away, unless it is still blinking.
-          if (g.hp > 0 && g.iframes === 0 && d < 0.75) {
-            const ux = d > 0.01 ? dx / d : 0;
-            const uy = d > 0.01 ? dy / d : 1;
-            hurtHero(world, g, t, ux, uy, font);
-            // The slime bounces back off the bite, so it does not sit on the hero.
-            s.knockX[i] = -ux * t.knockback * 0.5;
-            s.knockY[i] = -uy * t.knockback * 0.5;
-            s.stun[i] = 20;
-          }
+          continue;
         }
-        v[i * 3] = vx;
-        v[i * 3 + 1] = vy;
-        v[i * 3 + 2] = 0;
+        nav.drive[i] = 1;
       }
     }
   },
 );
+
+/**
+ * `bite:<slime>`: the behaviour's attack (og.ai queues it with the slime's
+ * handle when the hero is in reach; it runs before the next tick). The hero
+ * is hurt and knocked away unless it is down or still blinking, and the
+ * slime bounces back off the bite, so it does not sit on the hero.
+ */
+export function biteHero(world: World, args: readonly string[]): void {
+  const me = Number(args[0]) as Entity;
+  const game = world.resource(Game);
+  const tune = world.resource(Tuning);
+  const slime = world.get(me, Slime);
+  const at = world.get(me, og.Transform);
+  if (!game.ok || !tune.ok || !slime.ok || !at.ok) throw new Error(`bite: ${args[0]} is not a slime`);
+  const g = game.value;
+  const s = slime.value;
+  if (s.dead || s.stun > 0 || g.hp === 0 || g.iframes > 0) return;
+  const dx = g.heroX - at.value.position.x;
+  const dy = g.heroY - at.value.position.y;
+  const d = Math.hypot(dx, dy);
+  if (d > 0.85) return;
+  const ux = d > 0.01 ? dx / d : 0;
+  const uy = d > 0.01 ? dy / d : 1;
+  hurtHero(world, g, tune.value, ux, uy, fontOf(g));
+  must(world.set(me, Slime, { knockX: -ux * tune.value.knockback * 0.5, knockY: -uy * tune.value.knockback * 0.5, stun: 20, bites: s.bites + 1 }));
+}
 
 type GameValue = Value<typeof Game>;
 type TuneValue = Value<typeof Tuning>;

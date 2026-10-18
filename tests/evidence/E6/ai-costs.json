@@ -1,0 +1,8 @@
+{
+  "agents": 200,
+  "grid": "64x64, a wall with a gap",
+  "tickMs.thinkEvery1": 0.513,
+  "tickMs.thinkEvery3": 0.398,
+  "tickMs.navOnly": 0.240,
+  "aiMsPerAgentThink": 0.00136
+}

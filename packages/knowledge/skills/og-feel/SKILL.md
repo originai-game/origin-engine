@@ -274,3 +274,24 @@ outputs you read:
 
 `templates/archetypes/topdown`, `runner` and `match3` do all of this; read
 their `src/` and `tests/` for working patterns.
+
+## 14. Feel, measured: `og polish`
+
+`og polish .` (og-taste §11) also samples every tick of every playtest
+(`dump_pulse`: time scale and hit stop, camera trauma, punch and kick,
+floating texts, afterimages, tweens, particle systems, voices by bus, the
+named entities' positions and flipbook frames, step and render time) and
+scores this skill's checklist:
+
+| Measure | From | Passes at |
+|---|---|---|
+| Input latency | ticks from the tick an input lands to the first thing seen or heard to change (a named entity accelerating or changing clip, the UI, a sound, a tween, a floating text, shake, hit stop, a particle burst); a press answered on its release counts from the release | 0–1 ticks (§1) |
+| Hit feedback | each damage moment (a fact named `hp`, `health`, `lives`… falling, or `hits`, `damage`, `kills`… rising): hit stop, shake, floating text and a sound within 8 ticks | three of the four (§3, §4, §7, og-audio §1) |
+| Idle frames | ticks after the first ten where nothing moves or animates, no UI moves, no sound starts or plays, no tween, text or particle runs | at most 10 % (§9: idle loops) |
+| Sound on input | inputs answered by a sound within 6 ticks | every action (og-audio §1) |
+| Frame time | step + render, p95, on the tier it ran on (`metal` on a Mac, `vulkan-cpu` on CI's lavapipe) | 8.3 ms (half the frame) |
+
+Facts are the game's `facts` (og-game): expose `hp`, `hits` or `kills`
+there or the hit measures stay n/a. A baseline line in the report says how
+often things change with no input at all; when it is high (a runner that
+always moves), read latency together with the frames.

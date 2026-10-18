@@ -4,7 +4,7 @@
 use crate::base64;
 use crate::command::{
     self, CORE_ACTIONS, CommandDesc, CommandHandler, CommandInfo, CommandStep, CommandsReport,
-    LogLine, Output, ParseError, Payload,
+    DumpHandler, Inbox, LogLine, Output, ParseError, Payload,
 };
 use crate::hooks::{Capture, Reloader, UiTree, find_by_id, find_by_text};
 use crate::input::{
@@ -41,7 +41,7 @@ pub const ENGINE_VERSION: &str = concat!("origin-engine ", env!("CARGO_PKG_VERSI
 pub const MEMBERS: &[&str] = &[
     "hello", "tick", "state", "advance", "pause", "resume", "input", "accepted", "pick", "entity",
     "bounds", "patch", "run", "capture", "sweep", "reload", "snapshot", "restore", "dump",
-    "commands",
+    "commands", "listen",
 ];
 
 /// The player-facing members a `publish` build keeps.
@@ -105,7 +105,14 @@ enum Queued {
 
 struct Registered {
     desc: CommandDesc,
-    handler: CommandHandler,
+    handler: Handler,
+}
+
+#[derive(Clone)]
+enum Handler {
+    Act(CommandHandler),
+    /// A dump and the index of its optional path argument.
+    Dump(DumpHandler, usize),
 }
 
 type FactsFn = Box<dyn Fn(&World) -> Value>;
@@ -142,7 +149,22 @@ pub struct Probe {
     log: Vec<LogLine>,
     pointer: (f32, f32),
     target_missed: bool,
+    inbox: Inbox,
+    listen: Option<ListenFn>,
 }
+
+/// What the host's mixer rendered last, for `listen`: the last `seconds`
+/// as a 16-bit stereo WAV and its rate, frames, peak and RMS.
+pub struct Heard {
+    pub wav: Vec<u8>,
+    pub rate: u32,
+    pub frames: u64,
+    pub peak: f32,
+    pub rms: f32,
+}
+
+/// The host's `listen` hook.
+pub type ListenFn = Box<dyn Fn(f32) -> Option<Heard>>;
 
 fn fault(context: &str, err: Error) -> Error {
     err.context(context)
@@ -212,6 +234,7 @@ impl Probe {
             ui: None,
             reloader: None,
             facts: None,
+            listen: None,
             commands: BTreeMap::new(),
             queue: BTreeMap::new(),
             seq: 0,
@@ -225,6 +248,7 @@ impl Probe {
             log: Vec::new(),
             pointer: (0.0, 0.0),
             target_missed: false,
+            inbox: Inbox::default(),
         })
     }
 
@@ -253,6 +277,26 @@ impl Probe {
     /// The game's own facts for `state().facts` (`GameDesc.facts`).
     pub fn set_facts(&mut self, facts: impl Fn(&World) -> Value + 'static) {
         self.facts = Some(Box::new(facts));
+    }
+
+    /// Gives `listen` the host's audio: the last seconds its mixer rendered.
+    pub fn set_listen(&mut self, listen: impl Fn(f32) -> Option<Heard> + 'static) {
+        self.listen = Some(Box::new(listen));
+    }
+
+    /// `listen`: the last `seconds` (0 to 2) of audio the host's mixer
+    /// rendered, a WAV in base64 with its rate, frames, peak and RMS; `None`
+    /// without audio or before anything was rendered.
+    pub fn listen(&mut self, world: &World, seconds: f32) -> Option<Value> {
+        let h = (self.listen.as_ref()?)(seconds.clamp(0.0, 2.0))?;
+        Some(json!({
+            "tick": world.time().tick,
+            "rate": h.rate,
+            "frames": h.frames,
+            "peak": h.peak,
+            "rms": h.rms,
+            "wav": base64::encode(&h.wav),
+        }))
     }
 
     /// The last tick's timings for `state().timings`, measured by the host.
@@ -334,10 +378,34 @@ impl Probe {
             name.to_owned(),
             Registered {
                 desc,
-                handler: Rc::new(handler),
+                handler: Handler::Act(Rc::new(handler)),
             },
         );
         Ok(())
+    }
+
+    /// Register a dump action: `handler` answers JSON for the world as of
+    /// the tick it runs (with the arguments before `path_arg`), written as
+    /// an output at `args[path_arg]` or `<name>-<tick>.json`. Refused as
+    /// [`Self::register_command`] refuses.
+    pub fn register_dump(
+        &mut self,
+        name: &str,
+        desc: CommandDesc,
+        path_arg: usize,
+        handler: impl Fn(&World, &[String]) -> Result<Value, String> + 'static,
+    ) -> og_core::Result<()> {
+        self.register_command(name, desc, |_, _| Ok(()))?;
+        if let Some(r) = self.commands.get_mut(name) {
+            r.handler = Handler::Dump(Rc::new(handler), path_arg);
+        }
+        Ok(())
+    }
+
+    /// The queue engine modules push actions into from inside a tick; they
+    /// run at the start of the next tick (before its scheduled steps).
+    pub fn inbox(&self) -> Inbox {
+        self.inbox.clone()
     }
 
     /// Every action the channel knows: core actions, then registered ones by name.
@@ -395,6 +463,19 @@ impl Probe {
 
     /// Run the steps due at the current tick (and earlier), in order.
     pub fn pump(&mut self, world: &mut World) {
+        for (action, args) in self.inbox.take() {
+            if self.quit {
+                break;
+            }
+            self.execute(
+                world,
+                CommandStep {
+                    at: 0.0,
+                    action,
+                    args,
+                },
+            );
+        }
         while !self.quit {
             let now = world.time().tick;
             let Some((&key, _)) = self.queue.first_key_value() else {
@@ -545,6 +626,29 @@ impl Probe {
                         height: frame.height,
                         bytes: frame.png,
                     },
+                });
+                Ok(())
+            }
+            "listen" => {
+                let mut path = None;
+                let mut seconds = 1.0f32;
+                for a in args {
+                    if let Ok(s) = a.parse::<f32>() {
+                        seconds = s.clamp(0.0, 2.0);
+                    } else if path.is_none() && !a.is_empty() {
+                        path = Some(a.clone());
+                    }
+                }
+                let listen = self
+                    .listen
+                    .as_ref()
+                    .ok_or("no audio in this host: nothing to listen to")?;
+                let heard = listen(seconds).ok_or("the mixer has rendered nothing yet")?;
+                self.outputs.push(Output {
+                    tick,
+                    action: step.action.clone(),
+                    path,
+                    payload: Payload::Wav(heard.wav),
                 });
                 Ok(())
             }
@@ -925,8 +1029,27 @@ impl Probe {
                         "unknown action '{name}', skipped; `help` lists the actions"
                     ));
                 };
-                let handler = registered.handler.clone();
-                handler(world, args)
+                match registered.handler.clone() {
+                    Handler::Act(handler) => handler(world, args),
+                    Handler::Dump(handler, path_arg) => {
+                        let (head, path) = if args.len() > path_arg {
+                            (
+                                &args[..path_arg],
+                                args.get(path_arg).filter(|p| !p.is_empty()).cloned(),
+                            )
+                        } else {
+                            (&args[..], None)
+                        };
+                        let value = handler(world, head)?;
+                        self.outputs.push(Output {
+                            tick,
+                            action: name.to_owned(),
+                            path,
+                            payload: Payload::Json(value),
+                        });
+                        Ok(())
+                    }
+                }
             }
         }
     }

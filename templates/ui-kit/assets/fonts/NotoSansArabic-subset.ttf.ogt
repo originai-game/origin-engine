@@ -1,0 +1,10 @@
+type import
+version 1
+---
+# The characters the UI kit's string tables use (tools/make-locale-fonts.py).
+font {
+  charset ascii arabic
+  chars ""
+  em_px 32
+  px_range 4
+}

@@ -1,7 +1,8 @@
 // The runner's systems, in tick order: Director (phases and pace), Jump (the
 // runner's body), Scroll (the world moves left past a runner who stays put),
 // Spawn (obstacle and coin patterns from the dice), Collide (coins and
-// crashes, with their feel), Dust (puffs on the run clip's footfalls),
+// crashes, with their feel), Voices (the jump, coin, crash and start
+// sounds the systems before it asked for), Dust (puffs on the run clip's footfalls),
 // Animate (the courier's clip and afterimage) and Hud (text).
 //
 // Each system sees the actor rows through its typed views. The runner row
@@ -12,7 +13,7 @@
 import { og, defineSystem } from "@origingame/engine";
 import type { ArchetypeView, Entity, Query, World } from "@origingame/engine";
 import { COURIER } from "./art.ts";
-import { Actor, Hud, Kind, Phase, Run, Tuning } from "./components.ts";
+import { Actor, Hud, Kind, Phase, Run, Sfx, Sound, Sounds, Tuning } from "./components.ts";
 
 /** The ground's top: the runner's feet rest here. */
 export const GROUND_Y = 0;
@@ -96,7 +97,7 @@ function retirePools(q: Query): void {
 /** Phases and pace: a press starts a round from the title or after a crash; the speed ramps while running. */
 export const Director = defineSystem(
   "Director",
-  { reads: [og.Input, Tuning], writes: [Run, Actor, og.Transform, og.Sprite] },
+  { reads: [og.Input, Tuning], writes: [Run, Actor, og.Transform, og.Sprite, Sounds] },
   (q, time, world) => {
     const r = runnerRow(q);
     const input = world.resource(og.Input);
@@ -123,6 +124,7 @@ export const Director = defineSystem(
     run.coins[i] = 0;
     run.score[i] = 0;
     run.rounds[i] = run.rounds[i]! + 1;
+    ask(world, Sound.Start);
     run.spawnIn[i] = Math.max(1, tune.spawnInterval[i]! * 1.5);
     run.grounded[i] = 1;
     run.buffer[i] = 0;
@@ -144,7 +146,7 @@ export const Director = defineSystem(
 /** The runner's body: a buffered press takes off, holding keeps the rise, releasing early cuts it; gravity brings it down. Take-off stretches, landing squashes. */
 export const Jump = defineSystem(
   "Jump",
-  { reads: [og.Input, Tuning], writes: [Run, Actor, og.Transform], after: ["Director"] },
+  { reads: [og.Input, Tuning], writes: [Run, Actor, og.Transform, Sounds], after: ["Director"] },
   (q, time, world) => {
     const r = runnerRow(q);
     const input = world.resource(og.Input);
@@ -165,6 +167,7 @@ export const Jump = defineSystem(
         run.hold[i] = 0;
         run.buffer[i] = 0;
         og.tween.squash(world, { entity: a.entity(i), impact: FEEL.takeOff, duration: 0.22 });
+        ask(world, Sound.Jump);
       } else if (run.buffer[i]! > 0) {
         run.buffer[i] = run.buffer[i]! - 1;
       }
@@ -336,7 +339,7 @@ function crashFeel(world: World, runner: Entity): void {
 /** Overlap tests against the runner's hit box: a coin is collected, a crate or a fence ends the round. */
 export const Collide = defineSystem(
   "Collide",
-  { reads: [og.Transform, Tuning], writes: [Run, Actor], after: ["Spawn"] },
+  { reads: [og.Transform, Tuning], writes: [Run, Actor, Sounds], after: ["Spawn"] },
   (q, _time, world) => {
     const r = runnerRow(q);
     if (r === null) return;
@@ -362,6 +365,7 @@ export const Collide = defineSystem(
           actor.active[i] = 0;
           run.coins[ri] = run.coins[ri]! + 1;
           coinPop(world, a.entity(i), p[i * 3]!, p[i * 3 + 1]!, value);
+          ask(world, Sound.Coin);
         } else {
           crashed = true;
         }
@@ -371,14 +375,51 @@ export const Collide = defineSystem(
     if (crashed) {
       run.phase[ri] = Phase.Over;
       run.phaseTicks[ri] = 0;
-      run.best[ri] = Math.max(run.best[ri]!, run.score[ri]!);
+      const score = run.score[ri]!;
+      if (score > run.best[ri]!) {
+        run.best[ri] = score;
+        // The best survives a reload: the player's store (the Player's save, or this browser's).
+        og.platform.storeSet(world, { key: "best", value: score });
+      }
+      og.platform.leaderboardSubmit(world, { board: "main", score });
+      og.platform.telemetry(world, "round.over", { score, coins: run.coins[ri]!, distance: Math.round(run.distance[ri]!) });
       run.grounded[ri] = 0;
       run.rising[ri] = 0;
       ra.vy[ri] = FEEL.knockUp;
       crashFeel(world, r.a.entity(ri));
+      ask(world, Sound.Crash);
     }
   },
 );
+
+/** Ask for a sound this tick (Voices plays it). */
+function ask(world: World, bit: number): void {
+  const sounds = world.resource(Sounds);
+  if (sounds.ok) sounds.value.sfx |= bit;
+}
+
+/** Plays each requested sound once: a voice already playing is stopped this tick and restarted the next. */
+export const Voices = defineSystem("Voices", { reads: [Sfx], writes: [Sounds, og.AudioSource], after: ["Collide"] }, (q, _time, world) => {
+  const sounds = world.resource(Sounds);
+  if (!sounds.ok || sounds.value.sfx === 0) return;
+  const s = sounds.value;
+  let left = s.sfx;
+  for (const a of q.archetypes()) {
+    const bit = a.column(Sfx).bit;
+    const src = a.column(og.AudioSource);
+    for (let i = 0; i < a.count; i++) {
+      const b = bit[i]!;
+      if ((s.sfx & b) === 0) continue;
+      if (src.playing[i]) {
+        src.playing[i] = 0;
+      } else {
+        src.playing[i] = 1;
+        left &= ~b;
+      }
+    }
+  }
+  s.sfx = left;
+});
 
 /** On each footfall of the run clip (its "step" events) a dust puff leaves the courier's feet. */
 export const Dust = defineSystem(
@@ -493,3 +534,22 @@ export const HudText = defineSystem("Hud", { reads: [Run, Hud, Tuning], after: [
 const WHITE = { r: 1, g: 1, b: 1 };
 const MINT = { r: 0.3, g: 0.85, b: 0.75 };
 const CORAL = { r: 1, g: 0.25, b: 0.18 };
+
+/** The best score from the player's store: asked for on the first tick, taken when the answer arrives. */
+export const Records = defineSystem("Records", { reads: [Actor], writes: [Run] }, (q, time, world) => {
+  const r = runnerRow(q);
+  if (r === null) return;
+  const run = r.a.column(Run);
+  if (time.tick === 0) {
+    const asked = og.platform.storeGet(world, "best");
+    run.bestRequest[r.i] = asked.ok ? asked.value : 0;
+    return;
+  }
+  const request = run.bestRequest[r.i]!;
+  if (request === 0) return;
+  const answer = og.platform.result(world, request) as { ok: boolean; data: { value: unknown } } | null;
+  if (answer === null) return;
+  run.bestRequest[r.i] = 0;
+  const saved = answer.ok && typeof answer.data.value === "number" ? answer.data.value : 0;
+  run.best[r.i] = Math.max(run.best[r.i]!, saved);
+});

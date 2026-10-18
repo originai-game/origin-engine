@@ -196,6 +196,35 @@ resumes its AudioContext on `gesture`. It posts only to `window.parent` at
 its own origin and hears only `window.parent` at its own origin with
 `og: "player", protocol: 2`; an unframed page sends and hears nothing.
 
+### Platform services over protocol 2 (E6)
+
+`og.platform` (IDL module `platform`, docs/design.md §2.8) reaches the
+Player through the same channel. The engine Worker hands each tick's calls
+to the page (`{ type: "platform", calls }`); the page answers them
+(`platform-answer`) and the answers are applied at the start of the next
+tick. A framed page holds its first calls (the tick behind the gate) until
+the Player's `hello`, or 1.5 s, so they never reach the wrong store. The
+messages the shell now sends and hears:
+
+| Shell → Player | When | Answered by |
+|---|---|---|
+| `call` `save.get` | `store.get`, `store.list`, and before every `store.set` | `result` with the save (the store is its `store` object: `{ <key>: { value, revision } }`) |
+| `call` `save.set` `{ data }` | `store.set` (the whole save with the key written; the per-key revision is checked in the shell) | `result` `{ ok, revision }` or `{ ok, queued: true }` |
+| `call` `leaderboard.submit` `{ score, board, order }` | `leaderboardSubmit` | `result` `{ ok, rank, board? }` (or queued) |
+| `call` `leaderboard.top` `{ n, board }` | `leaderboardTop`; `leaderboardAround` asks `n: 100` and cuts around `me` | `result` `{ board, sort, top, me }` |
+| `event` `game.custom.<name>` `{ attrs }` | `telemetry` (one-way) | — |
+
+Each `call` carries the shell's own `id` (`oe-<n>`), and its `result` is
+matched by it; a call unanswered in 15 s fails with `timeout`. Where the
+Player's `hello.capabilities` lacks `save.get`/`save.set` (a verification
+run) or answers `unavailable`, the store falls back to the browser's
+`localStorage` (`og.platform:<path>`); unframed, every call is answered from
+there (the native host's local platform, `src/platform-local.ts`). `point`
+and `ai.mark` answer `unavailable` under a Player: protocol 2 has no such
+methods (docs/platform-asks.md). Errors keep the Player's codes and
+`retryable`. `tests/web/player.ts` checks the `save.get` round trip from a
+stand-in Player (the runner's stored best becomes its best).
+
 ### The og-probe wire (`origin/packages/contracts/src/probe-wire.ts`)
 
 The shell serves the wire itself (`shell/wire.ts`) over the engine's probe,
@@ -225,10 +254,15 @@ which lives in the Worker and answers asynchronously:
 - A dev (Stage) build serves every member; a publish build the 7 player
   members. `globalThis.__runtime_probe__` (`version: 5`, `substrate:
   "origin-engine"`, every member a Promise) stays for in-page callers.
+- `listen` (E6, dev builds): the last seconds (at most 2) of what the
+  engine Worker's mixer rendered, `{tick, rate, frames, peak, rms, wav}`
+  with a base64 16-bit stereo WAV; the command channel's
+  `listen[:path][:seconds]` writes the same as a `wav` output; before the
+  page's audio is attached it answers `null`.
 
 Proven in headless Chrome 150 by `bun run test:browser` in
 `packages/engine`: `tests/web/wire.ts` (dev and publish, isolated and not:
-120 checks), `tests/web/player.ts` (10) and `tests/web/export.ts` (40;
+120 checks), `tests/web/player.ts` (12, with og.platform's `save.get`) and `tests/web/export.ts` (40;
 transcripts in `tests/evidence/E1/web-*`). These need a Chrome and are not
 in the gate; `tests/web-export.test.ts` (layout, manifest, determinism,
 icons) is.

@@ -1,10 +1,88 @@
 //! TrueType/OpenType → font blobs: an MTSDF atlas (RGB multi-channel and A
 //! true signed distance, fdsm) and a glyph table for the declared charset.
+//!
+//! Shaped scripts (Arabic and the others og-i18n's `needs_shaping` names):
+//! when the charset holds one, the blob also carries the font file (raw
+//! section `ttf`) for og-ui's run-time shaping, and the atlas every glyph the
+//! font's substitutions reach from the charset's (contextual forms,
+//! ligatures), each under the private-use code point U+F0000 + glyph id,
+//! which is what og-ui draws a shaped run as.
 
 use super::{CookError, FontSettings};
 use crate::format::{self, *};
 use crate::ktx2;
 use og_blob::BlobWriter;
+
+/// Where a glyph id is drawn from: U+F0000 + id (Supplementary Private Use Area-A).
+pub const GLYPH_PUA: u32 = 0xF_0000;
+
+/// Every glyph the font's GSUB substitutions reach from `start`, start included.
+fn substitution_closure(face: &ttf_parser::Face, start: &[ttf_parser::GlyphId]) -> Vec<u16> {
+    use ttf_parser::gsub::SubstitutionSubtable as S;
+    let mut set: std::collections::BTreeSet<u16> = start.iter().map(|g| g.0).collect();
+    let Some(gsub) = face.tables().gsub else {
+        return set.into_iter().collect();
+    };
+    loop {
+        let before = set.len();
+        let now: Vec<ttf_parser::GlyphId> = set.iter().map(|&g| ttf_parser::GlyphId(g)).collect();
+        for lookup in gsub.lookups {
+            for k in 0..lookup.subtables.len() {
+                let Some(sub) = lookup.subtables.get::<S>(k) else {
+                    continue;
+                };
+                for &g in &now {
+                    match &sub {
+                        S::Single(ttf_parser::gsub::SingleSubstitution::Format1 {
+                            coverage,
+                            delta,
+                        }) => {
+                            if coverage.contains(g) {
+                                set.insert((i32::from(g.0) + i32::from(*delta)) as u16);
+                            }
+                        }
+                        S::Single(ttf_parser::gsub::SingleSubstitution::Format2 {
+                            coverage,
+                            substitutes,
+                        }) => {
+                            if let Some(o) = coverage.get(g).and_then(|i| substitutes.get(i)) {
+                                set.insert(o.0);
+                            }
+                        }
+                        S::Multiple(m) => {
+                            if let Some(seq) = m.coverage.get(g).and_then(|i| m.sequences.get(i)) {
+                                set.extend(seq.substitutes.into_iter().map(|o| o.0));
+                            }
+                        }
+                        S::Alternate(a) => {
+                            if let Some(alt) =
+                                a.coverage.get(g).and_then(|i| a.alternate_sets.get(i))
+                            {
+                                set.extend(alt.alternates.into_iter().map(|o| o.0));
+                            }
+                        }
+                        S::Ligature(l) => {
+                            if let Some(ligs) =
+                                l.coverage.get(g).and_then(|i| l.ligature_sets.get(i))
+                            {
+                                for lig in ligs {
+                                    if lig.components.into_iter().all(|c| now.contains(&c)) {
+                                        set.insert(lig.glyph.0);
+                                    }
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        if set.len() == before {
+            break;
+        }
+    }
+    set.into_iter().collect()
+}
 
 /// The code points a charset word names.
 // A charset is a list of ranges and some charsets are one range: clippy's
@@ -17,6 +95,13 @@ fn charset(word: &str) -> Option<Vec<std::ops::RangeInclusive<u32>>> {
         "punct" => vec![0x2000..=0x206f],
         "cjk-punct" => vec![0x3000..=0x303f, 0xff00..=0xffef],
         "kana" => vec![0x3040..=0x30ff],
+        "hangul" => vec![0x1100..=0x11ff, 0x3130..=0x318f, 0xac00..=0xd7af],
+        "arabic" => vec![
+            0x0600..=0x06ff,
+            0x0750..=0x077f,
+            0xfb50..=0xfdff,
+            0xfe70..=0xfeff,
+        ],
         "all" => vec![0..=0x10ffff],
         _ => return None,
     })
@@ -37,7 +122,12 @@ fn render(face: &ttf_parser::Face, cp: u32, s: &FontSettings) -> Option<Glyph> {
     use fdsm::bezier::scanline::FillRule;
     use fdsm::shape::Shape;
     use fdsm::transform::Transform;
-    let gid = face.glyph_index(char::from_u32(cp)?)?;
+    // A private-use code point past GLYPH_PUA is a glyph id (a shaped form).
+    let gid = if (GLYPH_PUA..GLYPH_PUA + 0x1_0000).contains(&cp) {
+        ttf_parser::GlyphId((cp - GLYPH_PUA) as u16)
+    } else {
+        face.glyph_index(char::from_u32(cp)?)?
+    };
     let upem = face.units_per_em() as f64;
     let advance = face.glyph_hor_advance(gid).unwrap_or(0) as f32 / upem as f32;
     let empty = Glyph {
@@ -120,7 +210,7 @@ pub fn cook(
     for word in &s.charset {
         let ranges = charset(word).ok_or_else(|| {
             CookError(format!(
-                "unknown charset '{word}' (known: ascii, latin, punct, cjk-punct, kana, all)"
+                "unknown charset '{word}' (known: ascii, latin, punct, cjk-punct, kana, hangul, arabic, all)"
             ))
         })?;
         for r in ranges {
@@ -145,6 +235,25 @@ pub fn cook(
         return Err(CookError(
             "the charset selects no glyph of this font".into(),
         ));
+    }
+    // Shaped scripts: every form the substitutions reach, as glyph ids.
+    let shaped: Vec<ttf_parser::GlyphId> = wanted
+        .iter()
+        .filter_map(|&cp| char::from_u32(cp))
+        .filter(|&c| og_i18n::needs_shaping(c))
+        .filter_map(|c| face.glyph_index(c))
+        .collect();
+    let shaping = !shaped.is_empty();
+    if shaping {
+        // The marks and joiners shaping inserts or keeps.
+        let mut start = shaped;
+        for c in ['\u{200c}', '\u{200d}', '\u{0640}', ' '] {
+            start.extend(face.glyph_index(c));
+        }
+        let forms = substitution_closure(&face, &start);
+        wanted.extend(forms.into_iter().map(|g| GLYPH_PUA + u32::from(g)));
+        wanted.sort_unstable();
+        wanted.dedup();
     }
 
     // Render in parallel; results land by index, so the order is fixed.
@@ -263,7 +372,11 @@ pub fn cook(
         page_count,
         page_width: width,
         page_height: height,
-        uncooked_codepoints: (in_font.len() - rows.len()) as u32,
+        // Shaped forms are glyphs, not code points of the font's cmap.
+        uncooked_codepoints: in_font
+            .len()
+            .saturating_sub(rows.iter().filter(|r| r.codepoint < GLYPH_PUA).count())
+            as u32,
     };
     let mut w = BlobWriter::new(
         format::Font::type_hash(),
@@ -276,6 +389,9 @@ pub fn cook(
         let ktx = ktx2::write_rgba8_zlib(width, height, px, false, false, format::COOKER_VERSION);
         w.raw(&format!("atlas.{i}"), ktx, 16);
     }
+    if shaping {
+        w.raw("ttf", bytes.to_vec(), 16);
+    }
     let mut note = format!(
         "{} glyphs of {} in the font, {page_count} page(s) of {width}x{height}, {} px/em, range {} px",
         rows.len(),
@@ -283,6 +399,13 @@ pub fn cook(
         s.em_px,
         s.px_range
     );
+    if shaping {
+        let forms = rows.iter().filter(|r| r.codepoint >= GLYPH_PUA).count();
+        note.push_str(&format!(
+            "; shaped script: {forms} contextual form(s) and the font file ({} bytes) for run-time shaping",
+            bytes.len()
+        ));
+    }
     if !missing.is_empty() {
         let list: String = missing
             .iter()

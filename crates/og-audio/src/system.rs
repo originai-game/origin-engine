@@ -3,10 +3,10 @@
 //! each playing source's playhead (so `SoundEnded` lands on a tick that only
 //! depends on the world), and hands the commands to an attached sink.
 
-use crate::command::{Command, FLAG_LOOP, FLAG_SPATIAL, Op, TickPacket, encode};
+use crate::command::{Command, FLAG_LOOP, FLAG_SPATIAL, Op, TickPacket, encode, fx};
 use crate::schema::{
-    Audio, AudioListener, AudioPlayback, AudioSource, AudioStream, BUS_COUNT, SoundEnded,
-    SoundStarted, Transform, end_reason,
+    Audio, AudioBusFx, AudioListener, AudioPlayback, AudioSource, AudioStream, BUS_COUNT,
+    SoundEnded, SoundStarted, Transform, end_reason,
 };
 use crate::sound::SoundBank;
 use og_core::Result;
@@ -23,8 +23,12 @@ pub const SYSTEM_NAME: &str = "og.audio";
 /// dropped (about 17 s at 60 Hz).
 pub const MAX_QUEUED_PACKETS: usize = 1024;
 
+/// Whether something solid stands between a source and the listener (the
+/// host casts a physics ray); `og.AudioSource.occlude` asks it.
+pub type Occluder = Arc<dyn Fn(Vec3, Vec3) -> bool + Send + Sync>;
+
 /// How audio joins a world.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Default)]
 pub struct AudioDesc {
     /// The bank sources' `sound` handles index; a fresh one when `None`.
     pub bank: Option<SoundBank>,
@@ -32,6 +36,18 @@ pub struct AudioDesc {
     /// sink attached to it keeps receiving: a hot reload's rebuilt world
     /// passes the old world's link. Ignored when its tick rate differs.
     pub link: Option<AudioLink>,
+    /// Occlusion's ray (none: nothing occludes).
+    pub occluder: Option<Occluder>,
+}
+
+impl std::fmt::Debug for AudioDesc {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AudioDesc")
+            .field("bank", &self.bank)
+            .field("link", &self.link)
+            .field("occluder", &self.occluder.is_some())
+            .finish()
+    }
 }
 
 #[derive(Default)]
@@ -53,6 +69,7 @@ pub struct AudioLink {
     state: Arc<Mutex<LinkState>>,
     bank: SoundBank,
     tick_rate: u32,
+    listen: crate::listen::Listen,
 }
 
 impl std::fmt::Debug for AudioLink {
@@ -70,6 +87,11 @@ impl AudioLink {
     /// Ticks per second of the world.
     pub fn tick_rate(&self) -> u32 {
         self.tick_rate
+    }
+
+    /// What the sink's mixer rendered last (the probe's `listen`).
+    pub fn listen(&self) -> &crate::listen::Listen {
+        &self.listen
     }
 
     /// Starts queueing packets for a sink. The next tick sends a resync
@@ -185,6 +207,8 @@ pub fn install(world: &mut World, desc: &AudioDesc) -> Result<AudioLink> {
     world.register::<SoundEnded>()?;
     world.register::<AudioPlayback>()?;
     world.register::<AudioStream>()?;
+    world.register::<AudioBusFx>()?;
+    crate::music::register(world)?;
     if !world.has_resource::<Audio>() {
         world.insert_resource(Audio::default())?;
     }
@@ -197,6 +221,7 @@ pub fn install(world: &mut World, desc: &AudioDesc) -> Result<AudioLink> {
         voices: 0,
         tick_rate,
         bus_sent: Vec4::splat(-1.0),
+        fx: fx_hash(&fx_state(&[None; BUS_COUNT], &Audio::default())),
     })?;
     let link = match &desc.link {
         Some(l) if l.tick_rate == tick_rate => {
@@ -208,14 +233,18 @@ pub fn install(world: &mut World, desc: &AudioDesc) -> Result<AudioLink> {
             state: Arc::new(Mutex::new(LinkState::default())),
             bank: desc.bank.clone().unwrap_or_default(),
             tick_rate,
+            listen: crate::listen::Listen::default(),
         },
     };
+    crate::music::install(world)?;
     let system_link = link.clone();
+    let occluder = desc.occluder.clone();
     world.add_system(
         SystemDesc::new(SYSTEM_NAME)
             .read::<Audio>()
             .read::<AudioListener>()
             .read::<Transform>()
+            .read::<AudioBusFx>()
             .write::<AudioSource>()
             .write::<AudioPlayback>()
             .write::<AudioStream>()
@@ -238,8 +267,10 @@ pub fn install(world: &mut World, desc: &AudioDesc) -> Result<AudioLink> {
                     .write::<AudioPlayback>()
                     .without::<AudioSource>(),
             )
-            .query(QueryDesc::new().read::<AudioListener>().read::<Transform>()),
-        move |ctx| run(ctx, &system_link),
+            .query(QueryDesc::new().read::<AudioListener>().read::<Transform>())
+            // 4: bus effects.
+            .query(QueryDesc::new().read::<AudioBusFx>()),
+        move |ctx| run(ctx, &system_link, occluder.as_ref()),
     )?;
     Ok(link)
 }
@@ -272,6 +303,7 @@ fn spatialise(ear: &Ear, p: Vec3, s: &AudioSource) -> (f32, f32) {
 }
 
 /// What one playing source sends this tick.
+#[derive(Clone, Copy)]
 struct Wanted {
     gain: f32,
     pan: f32,
@@ -280,18 +312,52 @@ struct Wanted {
     flags: u32,
     loop_start: u32,
     loop_end: u32,
+    lowpass: f32,
 }
 
+/// The lower of two cutoffs, 0 being open.
+fn min_cutoff(a: f32, b: f32) -> f32 {
+    match (a > 0.0, b > 0.0) {
+        (true, true) => a.min(b),
+        (true, false) => a,
+        _ => b,
+    }
+}
+
+/// A spatial source's cutoff by distance: 20 kHz at `refDistance`, `at_max`
+/// at `maxDistance`, log-linear between.
+fn distance_cutoff(dist: f32, s: &AudioSource) -> f32 {
+    if s.distance_cutoff <= 0.0 {
+        return 0.0;
+    }
+    let refd = s.ref_distance.max(0.0);
+    let maxd = s.max_distance.max(refd + 1e-3);
+    let t = ((dist - refd) / (maxd - refd)).clamp(0.0, 1.0);
+    if t <= 0.0 {
+        return 0.0;
+    }
+    let (lo, hi) = (s.distance_cutoff.clamp(20.0, 20_000.0).ln(), 20_000f32.ln());
+    (hi + (lo - hi) * t).exp()
+}
+
+#[allow(clippy::too_many_arguments)]
 fn wanted(
     ctx: &SystemContext<'_>,
     e: Entity,
     s: &AudioSource,
     ear: &Ear,
+    audio: &Audio,
+    occluder: Option<&Occluder>,
     rate: u32,
     frames: u64,
 ) -> Wanted {
     let (mut gain, mut pan) = (s.volume.max(0.0), s.pan.clamp(-1.0, 1.0));
     let mut flags = if s.looping { FLAG_LOOP as u32 } else { 0 };
+    let mut lowpass = if s.lowpass > 0.0 {
+        s.lowpass.clamp(20.0, 20_000.0)
+    } else {
+        0.0
+    };
     if s.spatial {
         let p = ctx
             .get::<Transform>(e)
@@ -301,6 +367,11 @@ fn wanted(
         gain *= g;
         pan = sp;
         flags |= FLAG_SPATIAL as u32;
+        lowpass = min_cutoff(lowpass, distance_cutoff(p.distance(ear.position), s));
+        if s.occlude && occluder.is_some_and(|o| o(p, ear.position)) {
+            gain *= audio.occlusion_gain.clamp(0.0, 1.0);
+            lowpass = min_cutoff(lowpass, audio.occlusion_cutoff.clamp(20.0, 20_000.0));
+        }
     }
     let to_frames = |sec: f32| -> u32 {
         let f = (f64::from(sec.max(0.0)) * f64::from(rate)).round();
@@ -324,6 +395,7 @@ fn wanted(
         flags,
         loop_start,
         loop_end,
+        lowpass,
     }
 }
 
@@ -349,6 +421,7 @@ fn voice_command(op: Op, tick: u64, voice: u32, sound: u64, w: &Wanted, position
         pan: w.pan,
         loop_start: w.loop_start,
         loop_end: w.loop_end,
+        lowpass: w.lowpass,
         position,
     }
 }
@@ -378,13 +451,89 @@ fn ended(ctx: &SystemContext<'_>, e: Entity, p: &AudioPlayback, reason: u32) -> 
     })
 }
 
-fn run(ctx: &mut SystemContext<'_>, link: &AudioLink) -> Result<()> {
+/// Every bus's effect parameters as the mixer takes them ([`fx`] ids),
+/// with the shared reverb's room and damping on master.
+pub(crate) fn fx_state(
+    chosen: &[Option<AudioBusFx>; BUS_COUNT],
+    audio: &Audio,
+) -> Vec<(u8, u32, f32)> {
+    let mut out = Vec::with_capacity(BUS_COUNT * 13 + 2);
+    for (b, f) in chosen.iter().enumerate() {
+        let f = f.unwrap_or_default();
+        let b = b as u8;
+        let duck_key = if f.duck {
+            f.duck_bus.min(BUS_COUNT as u32 - 1) + 1
+        } else {
+            0
+        };
+        out.extend_from_slice(&[
+            (b, fx::LOWPASS, f.lowpass.max(0.0)),
+            (b, fx::HIGHPASS, f.highpass.max(0.0)),
+            (b, fx::REVERB, f.reverb.clamp(0.0, 1.0)),
+            (b, fx::THRESHOLD, f.threshold.min(0.0)),
+            (b, fx::RATIO, f.ratio.max(1.0)),
+            (b, fx::ATTACK, f.attack.max(0.0)),
+            (b, fx::RELEASE, f.release.max(0.0)),
+            (b, fx::MAKEUP, f.makeup),
+            (b, fx::DUCK_KEY, duck_key as f32),
+            (b, fx::DUCK_DEPTH, f.duck_depth.max(0.0)),
+            (b, fx::DUCK_THRESHOLD, f.duck_threshold),
+            (b, fx::DUCK_ATTACK, f.duck_attack.max(0.0)),
+            (b, fx::DUCK_RELEASE, f.duck_release.max(0.0)),
+        ]);
+    }
+    out.push((0, fx::ROOM, audio.reverb_room.clamp(0.0, 1.0)));
+    out.push((0, fx::DAMPING, audio.reverb_damping.clamp(0.0, 1.0)));
+    out
+}
+
+pub(crate) fn fx_hash(state: &[(u8, u32, f32)]) -> u64 {
+    let mut h = StableHasher::new();
+    for (b, k, v) in state {
+        h.write_u32(u32::from(*b) << 16 | *k);
+        h.write_u32(v.to_bits());
+    }
+    h.finish()
+}
+
+fn fx_commands(state: &[(u8, u32, f32)], tick: u64) -> impl Iterator<Item = Command> + '_ {
+    state.iter().map(move |&(b, k, v)| {
+        let mut c = Command::new(Op::Fx, tick);
+        c.bus = b;
+        c.voice = k;
+        c.gain = v;
+        c
+    })
+}
+
+/// A source waiting to start this tick.
+struct Fresh {
+    e: Entity,
+    s: AudioSource,
+    w: Wanted,
+    rate: u32,
+    frames: u64,
+    /// Seconds into the tick it starts at.
+    delay: f64,
+}
+
+/// A voice's standing under the voice cap: higher priority, then louder,
+/// then newer is kept.
+type Standing = (u32, u32, u64);
+
+fn standing(priority: u32, gain: f32, newness: u64) -> Standing {
+    (priority, gain.max(0.0).to_bits(), newness)
+}
+
+fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder>) -> Result<()> {
     let tick = ctx.time().tick;
     let resync = link.begin(tick);
     let bank = link.bank.clone();
     let mut stream = *ctx.resource::<AudioStream>()?;
     let audio = *ctx.resource::<Audio>()?;
     let tick_rate = stream.tick_rate.max(1);
+    let t0 = tick as f64 / f64::from(tick_rate);
+    let t1 = (tick + 1) as f64 / f64::from(tick_rate);
     let mut commands: Vec<Command> = Vec::new();
     // In a resync tick: the voices that sound during this tick, at their
     // playheads at its start.
@@ -403,6 +552,23 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink) -> Result<()> {
         }
     }
     stream.bus_sent = Vec4::from_array(gains.map(|g| g.max(0.0)));
+
+    // Bus effects: every parameter again when any changed.
+    let mut chosen: [Option<AudioBusFx>; BUS_COUNT] = [None; BUS_COUNT];
+    let fx_entities: Vec<Entity> = ctx.query(4)?.flat_map(|a| a.entities().to_vec()).collect();
+    for e in fx_entities {
+        let f = ctx.get::<AudioBusFx>(e)?;
+        let b = f.bus.min(BUS_COUNT as u32 - 1) as usize;
+        if chosen[b].is_none() {
+            chosen[b] = Some(f);
+        }
+    }
+    let fx_now = fx_state(&chosen, &audio);
+    let fx_now_hash = fx_hash(&fx_now);
+    if fx_now_hash != stream.fx {
+        commands.extend(fx_commands(&fx_now, tick));
+        stream.fx = fx_now_hash;
+    }
 
     // The listener.
     let mut ear = Ear {
@@ -432,16 +598,19 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink) -> Result<()> {
     // Playing sources.
     let playing: Vec<Entity> = ctx.query(0)?.flat_map(|a| a.entities().to_vec()).collect();
     let mut to_start: Vec<Entity> = Vec::new();
+    // (entity, voice, priority, gain) of the voices that play on.
+    let mut sounding: Vec<(Entity, u32, u32, f32)> = Vec::new();
     for e in playing {
         let s = ctx.get::<AudioSource>(e)?;
         let mut p = ctx.get::<AudioPlayback>(e)?;
-        let stop = |commands: &mut Vec<Command>, voice: u32| {
+        let stop = |commands: &mut Vec<Command>, voice: u32, fade: f32| {
             let mut c = Command::new(Op::Stop, tick);
             c.voice = voice;
+            c.position = f64::from(fade.max(0.0));
             commands.push(c);
         };
         if !s.playing {
-            stop(&mut commands, p.voice);
+            stop(&mut commands, p.voice, s.fade);
             ended(ctx, e, &p, end_reason::STOPPED)?;
             ctx.remove::<AudioPlayback>(e)?;
             continue;
@@ -454,22 +623,30 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink) -> Result<()> {
         let Some((rate, frames)) = info else {
             // Another sound (or this one left the bank): end this voice and
             // start the new sound as a fresh source.
-            stop(&mut commands, p.voice);
+            stop(&mut commands, p.voice, 0.0);
             ended(ctx, e, &p, end_reason::REPLACED)?;
             ctx.remove::<AudioPlayback>(e)?;
             to_start.push(e);
             continue;
         };
-        let w = wanted(ctx, e, &s, &ear, rate, frames);
+        let w = wanted(ctx, e, &s, &ear, &audio, occluder, rate, frames);
         let changed = w.gain != p.gain
             || w.pan != p.pan
             || w.pitch != p.pitch
             || w.bus != p.bus
             || w.flags != p.flags
             || w.loop_start != p.loop_start
-            || w.loop_end != p.loop_end;
+            || w.loop_end != p.loop_end
+            || w.lowpass != p.lowpass;
         if changed {
-            commands.push(voice_command(Op::Params, tick, p.voice, p.sound, &w, 0.0));
+            commands.push(voice_command(
+                Op::Params,
+                tick,
+                p.voice,
+                p.sound,
+                &w,
+                f64::from(s.fade.max(0.0)),
+            ));
         }
         if resync {
             snapshot.push(voice_command(
@@ -495,6 +672,7 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink) -> Result<()> {
             continue;
         }
         live.push(p.voice);
+        sounding.push((e, p.voice, s.priority, w.gain));
         p.cursor = cursor;
         p.gain = w.gain;
         p.pan = w.pan;
@@ -503,35 +681,151 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink) -> Result<()> {
         p.flags = w.flags;
         p.loop_start = w.loop_start;
         p.loop_end = w.loop_end;
+        p.lowpass = w.lowpass;
         ctx.set(e, p)?;
     }
 
-    // Sources to start: new ones, then replaced ones.
-    let mut fresh: Vec<Entity> = ctx.query(1)?.flat_map(|a| a.entities().to_vec()).collect();
-    fresh.extend(to_start);
-    for e in fresh {
+    // Sources to start: new ones, then replaced ones; a source whose
+    // startAt is after this tick waits.
+    let mut fresh_entities: Vec<Entity> =
+        ctx.query(1)?.flat_map(|a| a.entities().to_vec()).collect();
+    fresh_entities.extend(to_start);
+    let mut fresh: Vec<Fresh> = Vec::new();
+    for e in fresh_entities {
         let s = ctx.get::<AudioSource>(e)?;
-        if !s.playing {
+        if !s.playing || s.start_at >= t1 {
             continue;
         }
         // A sound not (yet) in the bank waits: it starts on the first tick it is there.
         let Some((rate, frames)) = bank.info(s.sound) else {
             continue;
         };
-        let w = wanted(ctx, e, &s, &ear, rate, frames);
+        let w = wanted(ctx, e, &s, &ear, &audio, occluder, rate, frames);
+        let delay = if s.start_at > t0 {
+            s.start_at - t0
+        } else {
+            0.0
+        };
+        fresh.push(Fresh {
+            e,
+            s,
+            w,
+            rate,
+            frames,
+            delay,
+        });
+    }
+
+    // The voice cap: the lowest standing is culled, playing or not yet started.
+    let cap = audio.max_voices.max(1) as usize;
+    if sounding.len() + fresh.len() > cap {
+        // (standing, index into sounding, index into fresh)
+        let mut all: Vec<(Standing, Option<usize>, Option<usize>)> = Vec::new();
+        for (i, &(_, voice, prio, gain)) in sounding.iter().enumerate() {
+            all.push((standing(prio, gain, u64::from(voice)), Some(i), None));
+        }
+        for (i, f) in fresh.iter().enumerate() {
+            all.push((
+                standing(f.s.priority, f.w.gain, u64::MAX / 2 + i as u64),
+                None,
+                Some(i),
+            ));
+        }
+        all.sort_by_key(|a| std::cmp::Reverse(a.0));
+        let mut cull_fresh = vec![false; fresh.len()];
+        for (_, playing, starting) in all.into_iter().skip(cap) {
+            if let Some(i) = playing {
+                let (e, voice, _, _) = sounding[i];
+                let mut c = Command::new(Op::Stop, tick);
+                c.voice = voice;
+                commands.push(c);
+                let p = ctx.get::<AudioPlayback>(e)?;
+                ended(ctx, e, &p, end_reason::CULLED)?;
+                let s = ctx.get::<AudioSource>(e)?;
+                ctx.set(
+                    e,
+                    AudioSource {
+                        playing: false,
+                        ..s
+                    },
+                )?;
+                ctx.remove::<AudioPlayback>(e)?;
+                live.retain(|v| *v != voice);
+                snapshot.retain(|c| c.voice != voice);
+            }
+            if let Some(i) = starting {
+                cull_fresh[i] = true;
+            }
+        }
+        let mut k = 0;
+        fresh.retain(|f| {
+            let keep = !cull_fresh[k];
+            k += 1;
+            if !keep {
+                let _ = ctx.send(SoundEnded {
+                    entity: f.e.to_bits(),
+                    sound: f.s.sound,
+                    voice: 0,
+                    reason: end_reason::CULLED,
+                });
+                let _ = ctx.set(
+                    f.e,
+                    AudioSource {
+                        playing: false,
+                        ..f.s
+                    },
+                );
+            }
+            keep
+        });
+    }
+
+    for Fresh {
+        e,
+        s,
+        w,
+        rate,
+        frames,
+        delay,
+    } in fresh
+    {
         let voice = stream.next_voice;
         stream.next_voice = stream.next_voice.wrapping_add(1).max(1);
-        let play = voice_command(Op::Play, tick, voice, s.sound, &w, 0.0);
-        commands.push(play);
+        // A start inside the tick: that many frames of the sound later.
+        let position = -(delay * f64::from(rate) * f64::from(w.pitch));
+        let mut started = Vec::with_capacity(2);
+        if s.fade > 0.0 {
+            // Fade in: start silent, then ramp to the gain.
+            let silent = Wanted { gain: 0.0, ..w };
+            started.push(voice_command(
+                Op::Play,
+                tick,
+                voice,
+                s.sound,
+                &silent,
+                position,
+            ));
+            started.push(voice_command(
+                Op::Params,
+                tick,
+                voice,
+                s.sound,
+                &w,
+                f64::from(s.fade),
+            ));
+        } else {
+            started.push(voice_command(Op::Play, tick, voice, s.sound, &w, position));
+        }
+        commands.extend_from_slice(&started);
         if resync {
-            snapshot.push(play);
+            snapshot.extend_from_slice(&started);
         }
         ctx.send(SoundStarted {
             entity: e.to_bits(),
             sound: s.sound,
             voice,
         })?;
-        let (cursor, done) = advance(0.0, rate, tick_rate, &w, frames);
+        let (cursor, done) = advance(position, rate, tick_rate, &w, frames);
         if done {
             // Shorter than one tick: it starts and ends in this tick.
             ctx.send(SoundEnded {
@@ -563,6 +857,7 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink) -> Result<()> {
                 flags: w.flags,
                 loop_start: w.loop_start,
                 loop_end: w.loop_end,
+                lowpass: w.lowpass,
             },
         )?;
     }
@@ -587,6 +882,7 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink) -> Result<()> {
             c.gain = g;
             all.push(c);
         }
+        all.extend(fx_commands(&fx_now, tick));
         all.extend(snapshot);
         TickPacket {
             tick,

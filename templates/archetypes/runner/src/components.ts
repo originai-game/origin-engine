@@ -3,7 +3,7 @@
 //
 // Why every actor row carries Run and Tuning: a system sees exactly one
 // query (the AND of the components it declares), and inside a system the
-// engine reaches no other entity and no game resource yet. So the systems
+// engine reaches no other entity (a game resource it declares, yes). So the systems
 // that move obstacles, collect coins and end the run must see the run's
 // state on the same rows as the actors. Every actor is spawned with
 // og.Transform, Actor, Run and Tuning (plus og.Sprite, og.Flipbook or
@@ -12,7 +12,7 @@
 // Run and Tuning keep their defaults and nothing reads them. Tune and
 // `set:runner.Tuning.<field>=<value>` write that row.
 
-import { bool, defineComponent, f32, f64, u32 } from "@origingame/engine";
+import { bool, defineComponent, defineResource, f32, f64, u32 } from "@origingame/engine";
 
 /** What an actor row is. */
 export const Kind = {
@@ -49,7 +49,8 @@ export const Run = defineComponent("Run", {
   distance: f64(0, { unit: "m", doc: "Metres run this round." }),
   coins: u32(0, { doc: "Coins collected this round." }),
   score: u32(0, { doc: "floor(distance) + coins * Tuning.coinValue." }),
-  best: u32(0, { doc: "The best score since the game started." }),
+  best: u32(0, { doc: "The best score: this session's, or the player's store's (og.platform) when higher." }),
+  bestRequest: u32(0, { doc: "The og.platform request reading the stored best (0 once answered)." }),
   rounds: u32(0, { doc: "Rounds started." }),
   spawnIn: f32(0, { unit: "s", doc: "Seconds until the next obstacle pattern." }),
   grounded: bool(true, { doc: "The runner stands on the roof." }),
@@ -76,4 +77,17 @@ export const Hud = defineComponent("Hud", {
   halfWidth: f32(8.9, { unit: "m" }),
   top: f32(8.5, { unit: "m" }),
   bottom: f32(-1.5, { unit: "m" }),
+});
+
+/** Sound requests: bits of Sounds.sfx that the Voices system plays once each. */
+export const Sound = { Jump: 1, Coin: 2, Crash: 4, Start: 8 } as const;
+
+/** The sounds asked for this tick (a resource: the systems that ask see no voice rows). */
+export const Sounds = defineResource("Sounds", {
+  sfx: u32(0, { doc: "Sound.* bits waiting to play." }),
+});
+
+/** One voice: plays its sound once when Sounds.sfx asks for its bit. */
+export const Sfx = defineComponent("Sfx", {
+  bit: u32(0, { doc: "Sound.* of src/components.ts." }),
 });

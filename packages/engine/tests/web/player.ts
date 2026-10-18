@@ -6,6 +6,10 @@
 // fractions, says `ready` after its first frame; it waits for `start` (its
 // own gate stays down under a Player), plays on `start`, holds the clock on
 // `pause` and plays again on `resume`; nothing is posted to another origin.
+// og.platform through the Player: the runner's first tick asks the store for
+// its best score; the shell holds that call until the Player's hello, then
+// sends `save.get` as a protocol 2 `call`, and the save's `store.best`
+// becomes the game's best (its `state()` facts).
 //
 //   bun tests/web/player.ts [--out <result.json>] [--chrome <path>]
 
@@ -37,7 +41,11 @@ addEventListener("message", (e) => {
   const m = e.data;
   if (!m || m.og !== "player" || m.protocol !== 2) return;
   got.push({ ...m, at: Math.round(performance.now()) });
-  if (m.kind === "hello") g.contentWindow.postMessage({ og: "player", protocol: 2, kind: "hello", locale: "en", region: "global", capabilities: ["pause"], started: false, paused: false }, location.origin);
+  if (m.kind === "hello") g.contentWindow.postMessage({ og: "player", protocol: 2, kind: "hello", locale: "en", region: "global", capabilities: ["pause", "save.get", "save.set", "leaderboard.submit", "leaderboard.top"], started: false, paused: false }, location.origin);
+  if (m.kind === "call") {
+    const data = m.method === "save.get" ? { store: { best: { value: 4321, revision: 3 } } } : {};
+    g.contentWindow.postMessage({ og: "player", protocol: 2, kind: "result", id: m.id, ok: true, data }, location.origin);
+  }
 });
 window.send = (kind) => g.contentWindow.postMessage({ og: "player", protocol: 2, kind }, location.origin);
 </script></body></html>`;
@@ -82,6 +90,11 @@ try {
   await wait(600);
   const t5 = await page.eval<number>("g.contentWindow.__runtime_probe__.tick()");
   check(t5 > t4 + 20, "resume plays again", { t4, t5 });
+  const calls = (await page.eval<Array<{ kind: string; method?: string; id?: string }>>("got")).filter((m) => m.kind === "call");
+  check(calls.some((c) => c.method === "save.get" && typeof c.id === "string"), "og.platform's store.get reached the Player as a save.get call", calls);
+  const state = await page.eval<{ facts?: { best?: number } }>("g.contentWindow.__runtime_probe__.state()");
+  const best = state.facts?.best;
+  check(best === 4321, "the save's store.best is the game's best score", state);
   const sample = (await page.eval<typeof got>("got")).find((m) => m.kind === "sample") as { timings?: Record<string, number>; renderer?: string } | undefined;
   check(!!sample?.timings?.["firstFrame"] && sample.renderer === "webgpu", "a sample with the first-frame time and the renderer", sample);
 } finally {

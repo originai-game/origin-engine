@@ -176,10 +176,67 @@ playhead. Only the regular commands are hashed.
   resynced voice fades in; a fresh one starts at full gain (attacks kept).
   Mono sources pan with Web Audio's equal-power law, stereo ones with its
   balance law; a source's first two channels are used.
-- **Buses** fold into each voice's gain (master × bus): no per-bus effects
-  yet.
+- **Buses** fold into each voice's gain (master × bus). Without any
+  `og.AudioBusFx` every voice sums straight into the output; with one, each
+  voice sums into its bus, music, sfx and ui run their inserts (12 dB/oct
+  high-pass, low-pass, a stereo-linked compressor with makeup, then side-chain
+  ducking by their key bus's pre-insert level) and their reverb send, sum
+  into master, which runs its own inserts; the shared reverb (Freeverb's
+  eight combs and four all-passes per channel, scaled to the rate) returns
+  into master before the limiter.
+- **Voice filter**: each voice has a one-pole low-pass (its `lowpass`, its
+  distance cutoff and its occlusion, the lowest of them) whose coefficient
+  glides with the gain ramp.
+- **Scheduled starts**: a play at a negative position starts that many
+  source frames later (silent, its ramps held), so `startAt` lands on its
+  sample inside a tick. `params` and `stop` carry their ramp in seconds
+  (`AudioSource.fade`); a bus change keeps a longer fade in progress.
 - **Limiter**: stereo-linked peak envelope (instant attack, 100 ms release)
   through a tanh soft knee from 0.8: output peaks stay below 1.0.
+
+## E6: effects, music, priority, occlusion, listen
+
+Records (`schema.rs`, IDL module `audio`):
+
+- `og.AudioSource` gains `priority` (0–255, 128), `lowpass` (Hz), `occlude`,
+  `distanceCutoff` (Hz at `maxDistance`, from 20 kHz at `refDistance`,
+  log-linear), `startAt` (world seconds, to the sample) and `fade` (s).
+- `og.Audio` gains `maxVoices` (32), `occlusionGain` (0.35),
+  `occlusionCutoff` (900 Hz), `reverbRoom` (0.6) and `reverbDamping` (0.4).
+- `og.AudioBusFx` (component, one per bus): `bus`, `lowpass`, `highpass`,
+  `reverb`, `threshold`/`ratio`/`attack`/`release`/`makeup`, `duck`,
+  `duckBus`, `duckDepth`, `duckThreshold`, `duckAttack`, `duckRelease`.
+- `og.Music` (component): `bpm`, `beatsPerBar`, `start`; written by
+  `og.music` (before `og.audio`): `bar`, `beat`, `nextBeat`, `nextBar`
+  (from the next tick on). `og.MusicBeat` (event) per beat, in the tick
+  whose interval holds it.
+- `og.SoundEnded.reason` 4 (`SOUND_CULLED`): the voice cap.
+
+Tick side: bus effects are sent as `fx` commands (op 6: `bus`, the
+parameter in `voice`, the value in `gain`) whenever any changed, and in
+every resync; `AudioStream.fx` holds the hash of what was sent. Past
+`maxVoices`, voices are ranked by priority, then gain, then age (newer
+wins) and the lowest are stopped or never started (`SOUND_CULLED`, `playing`
+false). A spatial `occlude` source asks the host's `Occluder` (the runtime
+casts a physics ray between it and the listener, clear of both bodies)
+and, when blocked, plays at `occlusionGain` through `occlusionCutoff`. A
+source whose `startAt` is past the tick waits; inside the tick it plays at
+a negative position. With `fade`, a start is a silent play and a params
+ramping to the gain over `fade`; a stop and every change ramp over it.
+
+`listen`: every mixer made by `Mixer::for_link` records what it renders
+into the link's two-second ring (`AudioLink::listen`); the null sink now
+renders at 48 kHz into that ring only, so the probe's `listen` member and
+the command channel's `listen[:path][:seconds]` action have the last
+seconds a person would have heard, headless too. `og run --audio out.wav`
+captures the whole run (its SHA-256 is in `--json`).
+
+Tests: `tests/mix.rs` (each broken once, `tests/evidence/E6/break-and-restore.md`):
+bus filters per bus, ducking 12 dB and back, the compressor's 10.5 dB, the
+reverb tail, scheduled starts on their sample and stems aligned, the music
+clock and a stinger on the bar line, a two-second crossfade, the voice cap,
+occlusion and distance dulling, and the same PCM twice with `listen`
+returning its last second (`$OG_EVIDENCE_DIR/M6/e6-mix.{wav,json}`).
 
 ## Ring (web)
 

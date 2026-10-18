@@ -13,7 +13,7 @@
 //! |---|---|---|
 //! | model (`og.Model`) | [`ModelMeta`] | `primitives` [`PrimitiveRow`], `lods` [`LodRow`], `meshes` [`MeshRow`], `materials` [`MaterialRow`], `textures` [`TextureRefRow`], `nodes` [`NodeRow`], `scenes` [`SceneRow`], `roots` (u32 node indices), `strings`, `vertices`, `indices` |
 //! | texture (`og.Texture`) | [`TextureMeta`] | `ktx2` (a KTX2 file) |
-//! | sound (`og.Sound`) | [`SoundMeta`] | `qoa` (a QOA file) |
+//! | sound (`og.Sound`; a `.wav`, or a procedural preset: an `.ogt` of `type sfx` synthesised by the cook) | [`SoundMeta`] | `qoa` (a QOA file) |
 //! | font (`og.Font`) | [`FontMeta`] | `glyphs` [`GlyphRow`], `atlas.<n>` (KTX2 RGBA8, zlib) |
 //! | scene (`og.Scene`) | [`SceneMeta`] | `entities` [`EntityRow`], `refs` [`RefRow`], `components` [`ComponentRow`], `strings`, per component `c.<Type>` rows and `s.<Type>` its schema JSON |
 //! | colour LUT (`og.Lut`, a `.cube`) | [`LutMeta`] | `rgba` (size³ RGBA8, red fastest) |
@@ -24,6 +24,9 @@
 //! | animation (`og.Animation`, a glTF's `#anim`) | [`AnimMeta`] | `nodes` [`NodeRow`], `skins` [`SkinRow`], `joints` (u32 node indices), `inverse_binds` (16 f32 per joint, column-major), `clips` [`ClipRow`], `channels` [`ChannelRow`], `samples` (f32), `events` [`EventRow`], `skin_streams` [`SkinStreamRow`], `skin_data` (meshopt streams), `morphs` [`MorphRow`], `targets` [`TargetRow`], `morph_data` (meshopt streams), `strings` |
 //! | tileset (`og.Tileset`, an `.ogt` of `type tileset`) | [`TilesetMeta`] | `text` (the canonical tileset text) |
 //! | tilemap (`og.Tilemap`, an `.ogt` of `type tilemap`, a Tiled `.tmj`, an LDtk `.ldtk`) | [`TilemapMeta`] | `layers` [`MapLayerRow`], `cells` (u32 per cell, layer after layer), `objects` [`MapObjectRow`], `props` [`MapPropRow`], `tilesets` [`MapTilesetRow`], `strings` |
+//! | behaviour (`og.Behaviour`, an `.ogt` of `type behaviour`) | [`BehaviourMeta`] | `text` (the validated behaviour file) |
+//! | navmesh (`og.NavMesh`, an `.ogt` of `type navmesh`) | [`NavMeshMeta`] | `columns` [`NavColumnRow`], `spans` [`NavSpanRow`] (the walkable heightfield), `tiles` [`NavTileRow`], `verts` [`NavVertRow`], `polys` [`NavPolyRow`], `poly_verts` (u32) |
+//! | string table (`og.Strings`, an `.ogt` of `type strings`) | [`StringsMeta`] | `text` (the validated table) |
 
 use og_core::hash::StableHasher;
 use og_core::{Reflect, Schema};
@@ -772,5 +775,134 @@ impl BlobKind for Flipbook {
     const NAME: &'static str = "og.Flipbook";
     fn schemas() -> Vec<Schema> {
         vec![FlipbookMeta::schema()]
+    }
+}
+
+// ── E6: behaviours and navmeshes ─────────────────────────────────────────
+
+row!(
+    /// The root of a behaviour blob (an `.ogt` of `type behaviour`).
+    BehaviourMeta, "og.Behaviour", 1 {
+        /// Bytes of the validated behaviour text in `text`.
+        text_bytes: u32,
+    }
+);
+
+/// The behaviour blob: `text` holds the behaviour file the cook validated
+/// (og-ai's `Behaviour::parse`), parsed again at load.
+pub struct Behaviour;
+impl BlobKind for Behaviour {
+    const NAME: &'static str = "og.Behaviour";
+    fn schemas() -> Vec<Schema> {
+        vec![BehaviourMeta::schema()]
+    }
+}
+
+row!(
+    /// The root of a navmesh blob (an `.ogt` of `type navmesh`): the
+    /// heightfield's grid and the agent it was baked for.
+    NavMeshMeta, "og.NavMesh", 1 {
+        cell_size: f32,
+        cell_height: f32,
+        agent_height: f32,
+        agent_radius: f32,
+        agent_climb: f32,
+        max_slope: f32,
+        tile_size: u32,
+        max_error: f32,
+        origin_x: f32,
+        origin_y: f32,
+        origin_z: f32,
+        width: u32,
+        depth: u32,
+        tiles: u32,
+    }
+);
+
+row!(
+    /// One column of the heightfield: its first span and span count.
+    NavColumnRow, "og.NavMesh.column", 1 {
+        first: u32,
+        count: u32,
+    }
+);
+
+row!(
+    /// One walkable floor: its height and the headroom above it, in cell heights.
+    NavSpanRow, "og.NavMesh.span", 1 {
+        floor: u32,
+        clear: u32,
+    }
+);
+
+row!(
+    /// One tile: its vertices and polygons, as ranges of `verts` and `polys`.
+    NavTileRow, "og.NavMesh.tile", 1 {
+        vert_first: u32,
+        vert_count: u32,
+        poly_first: u32,
+        poly_count: u32,
+    }
+);
+
+row!(
+    /// One tile vertex: world position and lattice coordinates.
+    NavVertRow, "og.NavMesh.vert", 1 {
+        x: f32,
+        y: f32,
+        z: f32,
+        lx: i32,
+        lz: i32,
+    }
+);
+
+row!(
+    /// One polygon: its vertex indices as a range of `poly_verts` (u32,
+    /// into its tile's vertices), and its region.
+    NavPolyRow, "og.NavMesh.poly", 1 {
+        index_first: u32,
+        index_count: u32,
+        region: u32,
+    }
+);
+
+/// The navmesh blob: `meta`, `columns` and `spans` (the walkable
+/// heightfield, so obstacles can rebuild tiles at runtime), and the tiles
+/// the cook built: `tiles`, `verts`, `polys`, `poly_verts` (u32). Links are
+/// made at load.
+pub struct NavMesh;
+impl BlobKind for NavMesh {
+    const NAME: &'static str = "og.NavMesh";
+    fn schemas() -> Vec<Schema> {
+        vec![
+            NavMeshMeta::schema(),
+            NavColumnRow::schema(),
+            NavSpanRow::schema(),
+            NavTileRow::schema(),
+            NavVertRow::schema(),
+            NavPolyRow::schema(),
+        ]
+    }
+}
+
+// ── E6: string tables ────────────────────────────────────────────────────
+
+row!(
+    /// The root of a string table blob (an `.ogt` of `type strings`).
+    StringsMeta, "og.Strings", 1 {
+        /// Bytes of the validated table text in `text`.
+        text_bytes: u32,
+        /// Its entries.
+        strings: u32,
+    }
+);
+
+/// The string table blob: `text` holds the table the cook validated
+/// (og-i18n's `StringTable::parse`), parsed again at load.
+pub struct Strings;
+impl BlobKind for Strings {
+    const NAME: &'static str = "og.Strings";
+    fn schemas() -> Vec<Schema> {
+        vec![StringsMeta::schema()]
     }
 }

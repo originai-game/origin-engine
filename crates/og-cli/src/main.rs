@@ -2,7 +2,8 @@
 //!
 //! One binary for the author's loop: `og run` (native host, probe, command
 //! channel), `og probe` (a WebSocket client of the probe), `og dev` (watch,
-//! rebuild, hot reload), `og test` (bun tests and playtests), `og build`
+//! rebuild, hot reload), `og test` (bun tests and playtests), `og polish`
+//! (playtests scored against og-taste and og-feel), `og build`
 //! (the play page), `og cook`, `og doctor` and `og api` (the IDL outputs).
 
 mod api;
@@ -10,10 +11,12 @@ mod bundle;
 mod cook;
 mod dev;
 mod doctor;
+mod polish;
 mod probe;
 mod project;
 mod publish;
 mod run;
+mod sfx;
 mod test;
 
 use std::path::{Path, PathBuf};
@@ -28,7 +31,8 @@ usage: og <command> [options]
 
 commands:
   run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P]
-      [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--json]
+      [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio <out.wav>]
+      [--platform-store <file.json>] [--locale <tag>] [--json]
                       cook, bundle and run the game on the native host with the probe; outputs of
                       screenshot/dump_* land in --out (default <project>/og-out)
   probe <method> [params-json] [--port P] [--out file.png] [--raw]
@@ -38,12 +42,22 @@ commands:
                       report each reload against the 300 ms budget
   test [project] [--json]
                       the project's bun tests, then each tests/*.og.ts playtest headless
+  polish [project] [--out DIR] [--frames N] [--json]
+                      play the playtests headless and score them against og-taste and og-feel
+                      (contrast, text size, HUD, transitions, UI sounds, input latency, hit
+                      feedback, idle frames, frame time, missing locale keys) into DIR/report.md
+                      (default <project>/og-out/polish) with frames and a fix per finding
   build [project] [--publish] [--out DIR] [--json]
                       cook and export the game to dist/ (or publish.out): the player shell,
                       game.js, the web host, cooked/, og-build.json, _headers; --publish keeps
                       only the player-facing probe members and adds the PWA (sw.js, manifest)
   cook [project] [--threads N] [--report out.md] [--json]
                       assets/ into cooked/, incrementally
+  sfx [<preset> [--seed N] [--pitch P] [--length L] [--volume V] --out <file.ogt|file.wav>]
+  sfx library <dir>
+                      the procedural sound presets (coin, jump, hit, click, ...): list them,
+                      write one as an asset `og cook` synthesises (or render it to a WAV),
+                      or write the whole library
   doctor              check bun, the engine package, the native addon, the wasm, a headless
                       renderer, and (in the engine repository) the build toolchain, naming each fix
   api gen [--wiki] [--root <dir>]
@@ -73,9 +87,11 @@ fn main() -> ExitCode {
         ["probe", rest @ ..] => probe::run(rest),
         ["dev", rest @ ..] => dev::run(rest),
         ["test", rest @ ..] => test::run(rest),
+        ["polish", rest @ ..] => polish::run(rest),
         ["build", rest @ ..] => bundle::run(rest),
         ["cook", rest @ ..] => cook::run(rest),
         ["api", rest @ ..] => api::run(rest),
+        ["sfx", rest @ ..] => sfx::run(rest),
         [] => {
             eprint!("{USAGE}");
             ExitCode::from(2)

@@ -7,14 +7,17 @@
 // torches drawn above the hero) and its objects (the spawn, the enemy, the
 // pickups, the door and the two rooms). `start` below loads it, spawns the
 // actors at its objects, gives each room a camera zone and the hero a 2D
-// follow camera. The systems are in src/systems.ts, the state in
-// src/components.ts, the flipbook sheets in src/art.ts.
+// follow camera. The slime's mind is data: assets/ai/slime.ogt, a behaviour
+// tree og.ai runs (patrol, chase on sight, bite, flee when hurt), walking a
+// grid og.nav makes from the map's wall collision. The systems are in
+// src/systems.ts, the state in src/components.ts, the flipbook sheets in
+// src/art.ts.
 
 import { og, BODY_DYNAMIC, LOCK_ROTATION_X, LOCK_ROTATION_Y, LOCK_ROTATION_Z, LOCK_TRANSLATION_Z, SHAPE_BOX } from "@origingame/engine";
 import type { Entity, FlipbookInfo, World } from "@origingame/engine";
 import { checkHeroClips, clip, heroClip, HeroClip, loadSheets } from "./art.ts";
 import { Facing, Game, Hero, Pickup, PickupKind, Report, Slime, Sfx, Sound, Tuning } from "./components.ts";
-import { Control, Door, Hud, openDoor, Pickups, Slimes, Voices } from "./systems.ts";
+import { biteHero, Control, Door, Hud, openDoor, Pickups, Slimes, Voices } from "./systems.ts";
 
 /** The visible height in tiles: a whole room (12 tall), as in the old top-down adventures. */
 const VIEW_HEIGHT = 12;
@@ -23,7 +26,7 @@ const INK = { r: 0.00699, g: 0.00802, b: 0.01096 };
 /** Sprite layers: the map's floor draws at -10, its walls at -9, the door at -8, torches at +5. */
 const ACTOR_LAYER = 0;
 
-/** Collision layers: the map's walls are layer 1; the hero and slimes collide with walls only, not each other. */
+/** Collision layers: the map's walls are layer 1; the hero and slimes collide with walls only, not each other. Walls also hide the hero from a slime. */
 const WALLS = 1;
 const HERO = 4;
 const SLIMES = 2;
@@ -73,6 +76,9 @@ function start(world: World): void {
   const top = tilemap.height * tilemap.tileHeight;
   const map = must(world.spawn({ name: "tomb", position: { x: 0, y: top, z: 0 } }));
   must(world.insert(map, og.Tilemap, { map: tilemap.map }));
+  // The slimes' walking grid: a cell per tile, blocked where the walls collide.
+  const grid = must(og.nav.gridFromTilemap(world, { entity: map }));
+  const mind = must(og.ai.load(world, "ai/slime.ogt"));
 
   const settings = must(world.resource(og.RenderSettings));
   settings.environmentIntensity = 0;
@@ -99,6 +105,10 @@ function start(world: World): void {
         const s = actor(world, o.name, x, yTop, sheets.slime, clip(sheets.slime, "bob"), 0.4);
         body(world, s, 0.7, 0.4, SLIMES);
         must(world.insert(s, Slime, { bob: clip(sheets.slime, "bob"), hurt: clip(sheets.slime, "hurt") }));
+        // og.nav walks it (writing its velocity), og.ai decides where; it sees the hero all round, not through walls.
+        must(world.insert(s, og.NavAgent, { nav: grid, speed: 1.6, acceleration: 30, radius: 0.35, stopDistance: 0.1, repathTicks: 20 }));
+        must(world.insert(s, og.AiAgent, { behaviour: mind.behaviour }));
+        must(world.insert(s, og.Perception, { sight: 5, fov: 360, eyeHeight: 0, occluders: WALLS, team: 2, memory: 3 }));
         game.enemyHp = must(world.get(s, Slime)).hp;
         break;
       }
@@ -139,6 +149,7 @@ function start(world: World): void {
   body(world, hero, 0.6, 0.35, HERO);
   must(world.insert(hero, Hero));
   must(world.insert(hero, Report));
+  must(world.insert(hero, og.Perceivable, { team: 1, eyeHeight: 0 }));
   must(world.insert(hero, og.Afterimage, { count: 4, interval: 2, opacity: 0.5, color: { r: 1, g: 0.75, b: 0.45 }, active: false }));
   must(world.insert(hero, og.Follow2D, { offset: { x: 0, y: 0.5 }, deadZone: { x: 0.6, y: 0.4 }, smoothTime: 0.12, lookAhead: 0.15, lookAheadMax: { x: 1.5, y: 1 } }));
 
@@ -221,7 +232,7 @@ export default og.game({
   systems: [Control, Slimes, Pickups, Door, Voices, Hud],
   render: { antialias: "off" },
   start,
-  commands: { place, slime, give, face },
+  commands: { place, slime, give, face, bite: biteHero },
   facts: (world) => {
     const g = world.resource(Game);
     const hero = world.find("hero");

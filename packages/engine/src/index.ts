@@ -24,6 +24,7 @@ import {
   type FieldSpec,
 } from "./runtime.ts";
 import { cameras } from "./systems/cameras.ts";
+import { ai, i18n, nav, platform } from "./e6.ts";
 import { uiKit } from "./ui-kit/index.ts";
 
 const spec = (kind: string, value: unknown, options: unknown): FieldSpec =>
@@ -56,6 +57,8 @@ export const BlendshapeSource = ((value = "component" as Api.BlendshapeSource, o
 export const IkSolver = ((value = "twoBone" as Api.IkSolver, options) => spec("IkSolver", value, options)) as typeof Api.IkSolver;
 export const IkSpace = ((value = "world" as Api.IkSpace, options) => spec("IkSpace", value, options)) as typeof Api.IkSpace;
 export const AudioBus = ((value = "master" as Api.AudioBus, options) => spec("AudioBus", value, options)) as typeof Api.AudioBus;
+export const Navigation = ((value = 0 as Api.Navigation, options) => spec("Navigation", value, options)) as typeof Api.Navigation;
+export const Behaviour = ((value = 0 as Api.Behaviour, options) => spec("Behaviour", value, options)) as typeof Api.Behaviour;
 
 export const defineComponent: typeof Api.defineComponent = (name, fields) =>
   defineRecord("component", name, fields as unknown as Record<string, FieldSpec>) as never;
@@ -94,6 +97,14 @@ export const SOUND_FINISHED: typeof Api.SOUND_FINISHED = 0;
 export const SOUND_STOPPED: typeof Api.SOUND_STOPPED = 1;
 export const SOUND_REMOVED: typeof Api.SOUND_REMOVED = 2;
 export const SOUND_REPLACED: typeof Api.SOUND_REPLACED = 3;
+export const NAV_IDLE: typeof Api.NAV_IDLE = 0;
+export const NAV_MOVING: typeof Api.NAV_MOVING = 1;
+export const NAV_ARRIVED: typeof Api.NAV_ARRIVED = 2;
+export const NAV_UNREACHABLE: typeof Api.NAV_UNREACHABLE = 3;
+export const NAV_PARTIAL: typeof Api.NAV_PARTIAL = 4;
+export const AI_RUNNING: typeof Api.AI_RUNNING = 1;
+export const AI_SUCCESS: typeof Api.AI_SUCCESS = 2;
+export const AI_FAILURE: typeof Api.AI_FAILURE = 3;
 
 // The E5 round: physics beyond rigid bodies and the atmosphere.
 export const WEATHER_NONE: typeof Api.WEATHER_NONE = 0;
@@ -138,6 +149,10 @@ export const og: typeof Api.og = Object.freeze({
   camera,
   tween,
   tilemap,
+  nav,
+  ai,
+  platform,
+  i18n,
   ui: Object.freeze({ ...ui, ...uiKit }),
   systems: Object.freeze({ cameras }),
 }) as unknown as typeof Api.og;

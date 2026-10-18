@@ -1,0 +1,11 @@
+[package]
+name = "og-i18n"
+version = "0.0.1"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Origin Engine localization: string tables (`type strings` .ogt), an ICU MessageFormat subset (placeholders, plurals, selects, numbers), CLDR plural rules, locale negotiation and text direction."
+
+# Pure Rust over og-core; builds for wasm32-unknown-unknown.
+[dependencies]
+og-core = { path = "../og-core" }

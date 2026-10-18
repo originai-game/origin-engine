@@ -174,10 +174,15 @@ nine-slice insets), `backdrop.png`, `ring.png`, `cells.png` +
 `cells.ogt` + `board.ogt` (the tileset and the map, `kind pixel`), the
 sounds and the font subset. Then `og cook .`.
 
+The sounds play through one `og.AudioSource` voice each: Pick (a
+selection) and Resolve (a swap, a refused swap, a clear, a cascade, the win
+and the loss) set bits of the `Sounds` resource and Voices plays each once
+(`og polish` found the archetype silent; tests/sounds.og.ts holds it).
+
 ## Known limits (engine gaps, not design)
 
-- No audio playback yet: the sounds are cooked, not played.
-- Systems cannot read other entities, game resources or the camera, so
+- Systems cannot read other entities or the camera (a game resource they
+  declare, `Sounds`, they can), so
   `Match` and `Tuning` ride on every row, and `Pick` maps the pointer from
   `og.render.capabilities` (device pixels) assuming a device pixel ratio of
   1: on a high-DPR phone taps land at the wrong cell until a system can

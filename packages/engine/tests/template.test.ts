@@ -1,7 +1,8 @@
 // The project template end to end on the native host: `create` scaffolds it,
-// `og test` cooks its assets and runs its playtest through `og run --headless
-// --commands`, and the run leaves the frame and the dumps the playtest
-// checked. The scaffold stays in target/evidence/template/ for inspection.
+// `og test` cooks its assets (a behaviour and a navmesh among them) and runs
+// its playtests through `og run --headless --commands` (the smoke test and
+// the guard on og.ai and og.nav), and the run leaves the frame and the dumps
+// the smoke test checked. The scaffold stays in target/evidence/template/ for inspection.
 import { expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -36,7 +37,8 @@ test("a scaffolded game cooks, passes its playtest and leaves the frame and dump
   const tested = run([ogBin(), "test", game]);
   if (tested.code !== 0) throw new Error(tested.out);
   expect(tested.out).toMatch(/PASS smoke \(8 checks/);
-  expect(tested.out).toContain("1 suite(s) passed");
+  expect(tested.out).toMatch(/PASS guard \(16 checks/);
+  expect(tested.out).toContain("2 suite(s) passed");
 
   const out = join(game, "og-out", "test", "smoke");
   const png = readFileSync(join(out, "smoke.png"));

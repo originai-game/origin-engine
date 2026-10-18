@@ -35,6 +35,8 @@ export interface PlaytestRun {
   png(file: string): { width: number; height: number; bytes: number };
   /** A written text output. */
   text(file: string): string;
+  /** A written WAV (`listen`): its rate, frames, peak and RMS (16-bit PCM read back, both channels). */
+  wav(file: string): { rate: number; frames: number; peak: number; rms: number };
 }
 
 /** The checks a playtest makes; a playtest that made none fails. */

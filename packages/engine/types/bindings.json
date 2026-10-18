@@ -200,6 +200,18 @@
       "array": "Uint32Array",
       "stride": 1,
       "value": "AudioBus"
+    },
+    {
+      "name": "Navigation",
+      "array": "Uint32Array",
+      "stride": 2,
+      "value": "Navigation"
+    },
+    {
+      "name": "Behaviour",
+      "array": "Uint32Array",
+      "stride": 2,
+      "value": "Behaviour"
     }
   ],
   "components": [
@@ -3192,6 +3204,39 @@
           "name": "playing",
           "column": "bool",
           "default": true
+        },
+        {
+          "name": "priority",
+          "column": "u32",
+          "default": 128
+        },
+        {
+          "name": "lowpass",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "occlude",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "distanceCutoff",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "startAt",
+          "column": "f64",
+          "default": 0
+        },
+        {
+          "name": "fade",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
         }
       ]
     },
@@ -3206,6 +3251,566 @@
           "column": "f32",
           "default": 1,
           "tunable": true
+        }
+      ]
+    },
+    {
+      "id": 45,
+      "name": "AudioBusFx",
+      "schema": "og.AudioBusFx",
+      "module": "audio",
+      "fields": [
+        {
+          "name": "bus",
+          "column": "AudioBus",
+          "default": "music"
+        },
+        {
+          "name": "lowpass",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "highpass",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "reverb",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "threshold",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "ratio",
+          "column": "f32",
+          "default": 4,
+          "tunable": true
+        },
+        {
+          "name": "attack",
+          "column": "f32",
+          "default": 0.005,
+          "tunable": true
+        },
+        {
+          "name": "release",
+          "column": "f32",
+          "default": 0.15,
+          "tunable": true
+        },
+        {
+          "name": "makeup",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "duck",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "duckBus",
+          "column": "AudioBus",
+          "default": "sfx"
+        },
+        {
+          "name": "duckDepth",
+          "column": "f32",
+          "default": 9,
+          "tunable": true
+        },
+        {
+          "name": "duckThreshold",
+          "column": "f32",
+          "default": -36,
+          "tunable": true
+        },
+        {
+          "name": "duckAttack",
+          "column": "f32",
+          "default": 0.02,
+          "tunable": true
+        },
+        {
+          "name": "duckRelease",
+          "column": "f32",
+          "default": 0.4,
+          "tunable": true
+        }
+      ]
+    },
+    {
+      "id": 46,
+      "name": "Music",
+      "schema": "og.Music",
+      "module": "audio",
+      "fields": [
+        {
+          "name": "bpm",
+          "column": "f32",
+          "default": 120,
+          "tunable": true
+        },
+        {
+          "name": "beatsPerBar",
+          "column": "u32",
+          "default": 4
+        },
+        {
+          "name": "start",
+          "column": "f64",
+          "default": 0
+        },
+        {
+          "name": "bar",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "beat",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "nextBeat",
+          "column": "f64",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "nextBar",
+          "column": "f64",
+          "default": 0,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 47,
+      "name": "NavAgent",
+      "schema": "og.NavAgent",
+      "module": "nav",
+      "fields": [
+        {
+          "name": "nav",
+          "column": "Navigation",
+          "default": 0
+        },
+        {
+          "name": "target",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "seeking",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "speed",
+          "column": "f32",
+          "default": 3.5,
+          "tunable": true
+        },
+        {
+          "name": "acceleration",
+          "column": "f32",
+          "default": 20,
+          "tunable": true
+        },
+        {
+          "name": "radius",
+          "column": "f32",
+          "default": 0.4,
+          "tunable": true
+        },
+        {
+          "name": "stopDistance",
+          "column": "f32",
+          "default": 0.1,
+          "tunable": true
+        },
+        {
+          "name": "slowRadius",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "repathTicks",
+          "column": "u32",
+          "default": 30
+        },
+        {
+          "name": "repathDistance",
+          "column": "f32",
+          "default": 0.5
+        },
+        {
+          "name": "smooth",
+          "column": "bool",
+          "default": true
+        },
+        {
+          "name": "faceMovement",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "turnSpeed",
+          "column": "f32",
+          "default": 10
+        },
+        {
+          "name": "drive",
+          "column": "bool",
+          "default": true
+        },
+        {
+          "name": "status",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "velocity",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "readonly": true
+        },
+        {
+          "name": "waypoint",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "readonly": true
+        },
+        {
+          "name": "remaining",
+          "column": "f32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "plans",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 48,
+      "name": "Steering",
+      "schema": "og.Steering",
+      "module": "nav",
+      "fields": [
+        {
+          "name": "seek",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "flee",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "fleeFrom",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "fleeRadius",
+          "column": "f32",
+          "default": 6,
+          "tunable": true
+        },
+        {
+          "name": "wander",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "wanderRadius",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "wanderDistance",
+          "column": "f32",
+          "default": 2,
+          "tunable": true
+        },
+        {
+          "name": "wanderJitter",
+          "column": "f32",
+          "default": 3,
+          "tunable": true
+        },
+        {
+          "name": "pursue",
+          "column": "Entity",
+          "default": 0
+        },
+        {
+          "name": "pursueWeight",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "evade",
+          "column": "Entity",
+          "default": 0
+        },
+        {
+          "name": "evadeWeight",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "separation",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "separationRadius",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "avoidance",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "avoidDistance",
+          "column": "f32",
+          "default": 2,
+          "tunable": true
+        },
+        {
+          "name": "avoidMask",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "wanderAngle",
+          "column": "f32",
+          "default": 0,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 49,
+      "name": "AiAgent",
+      "schema": "og.AiAgent",
+      "module": "ai",
+      "fields": [
+        {
+          "name": "behaviour",
+          "column": "Behaviour",
+          "default": 0
+        },
+        {
+          "name": "active",
+          "column": "bool",
+          "default": true
+        },
+        {
+          "name": "thinkEvery",
+          "column": "u32",
+          "default": 1
+        },
+        {
+          "name": "status",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "state",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "node",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "changes",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 50,
+      "name": "Perception",
+      "schema": "og.Perception",
+      "module": "ai",
+      "fields": [
+        {
+          "name": "sight",
+          "column": "f32",
+          "default": 8,
+          "tunable": true
+        },
+        {
+          "name": "fov",
+          "column": "f32",
+          "default": 120,
+          "tunable": true
+        },
+        {
+          "name": "eyeHeight",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "occlude",
+          "column": "bool",
+          "default": true
+        },
+        {
+          "name": "occluders",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "hearing",
+          "column": "f32",
+          "default": 6,
+          "tunable": true
+        },
+        {
+          "name": "memory",
+          "column": "f32",
+          "default": 3,
+          "tunable": true
+        },
+        {
+          "name": "team",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "forward",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "target",
+          "column": "Entity",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "sees",
+          "column": "bool",
+          "default": false,
+          "readonly": true
+        },
+        {
+          "name": "lastSeen",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "readonly": true
+        },
+        {
+          "name": "sinceSeen",
+          "column": "f32",
+          "default": 1000000,
+          "readonly": true
+        },
+        {
+          "name": "heard",
+          "column": "bool",
+          "default": false,
+          "readonly": true
+        },
+        {
+          "name": "heardAt",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "readonly": true
+        },
+        {
+          "name": "sinceHeard",
+          "column": "f32",
+          "default": 1000000,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 51,
+      "name": "Perceivable",
+      "schema": "og.Perceivable",
+      "module": "ai",
+      "fields": [
+        {
+          "name": "team",
+          "column": "u32",
+          "default": 1
+        },
+        {
+          "name": "eyeHeight",
+          "column": "f32",
+          "default": 0
         }
       ]
     }
@@ -4599,6 +5204,35 @@
           "column": "f32",
           "default": 1,
           "tunable": true
+        },
+        {
+          "name": "maxVoices",
+          "column": "u32",
+          "default": 32
+        },
+        {
+          "name": "occlusionGain",
+          "column": "f32",
+          "default": 0.35,
+          "tunable": true
+        },
+        {
+          "name": "occlusionCutoff",
+          "column": "f32",
+          "default": 900,
+          "tunable": true
+        },
+        {
+          "name": "reverbRoom",
+          "column": "f32",
+          "default": 0.6,
+          "tunable": true
+        },
+        {
+          "name": "reverbDamping",
+          "column": "f32",
+          "default": 0.4,
+          "tunable": true
         }
       ]
     }
@@ -5027,6 +5661,34 @@
     },
     {
       "id": 18,
+      "name": "MusicBeat",
+      "schema": "og.MusicBeat",
+      "module": "audio",
+      "fields": [
+        {
+          "name": "entity",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "bar",
+          "type": "u32",
+          "default": 0
+        },
+        {
+          "name": "beat",
+          "type": "u32",
+          "default": 0
+        },
+        {
+          "name": "time",
+          "type": "f64",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 19,
       "name": "SoundStarted",
       "schema": "og.SoundStarted",
       "module": "audio",
@@ -5049,7 +5711,7 @@
       ]
     },
     {
-      "id": 19,
+      "id": 20,
       "name": "SoundEnded",
       "schema": "og.SoundEnded",
       "module": "audio",
@@ -5073,6 +5735,52 @@
           "name": "reason",
           "type": "u32",
           "default": 0
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "name": "AiChanged",
+      "schema": "og.AiChanged",
+      "module": "ai",
+      "fields": [
+        {
+          "name": "entity",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "state",
+          "type": "u32",
+          "default": 0
+        },
+        {
+          "name": "node",
+          "type": "u32",
+          "default": 0
+        },
+        {
+          "name": "status",
+          "type": "u32",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "name": "PlatformAnswered",
+      "schema": "og.PlatformAnswered",
+      "module": "platform",
+      "fields": [
+        {
+          "name": "request",
+          "type": "u32",
+          "default": 0
+        },
+        {
+          "name": "ok",
+          "type": "bool",
+          "default": false
         }
       ]
     }
@@ -7943,6 +8651,875 @@
     {
       "id": 134,
       "kind": "fn",
+      "path": "og.nav.grid",
+      "symbol": "og_nav_grid",
+      "module": "nav",
+      "name": "grid",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "NavGridDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Navigation>",
+      "publish": true
+    },
+    {
+      "id": 135,
+      "kind": "fn",
+      "path": "og.nav.gridFromTilemap",
+      "symbol": "og_nav_grid_from_tilemap",
+      "module": "nav",
+      "name": "gridFromTilemap",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "TilemapGridDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Navigation>",
+      "publish": true
+    },
+    {
+      "id": 136,
+      "kind": "fn",
+      "path": "og.nav.setCost",
+      "symbol": "og_nav_set_cost",
+      "module": "nav",
+      "name": "setCost",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "grid",
+          "type": "Navigation",
+          "optional": false
+        },
+        {
+          "name": "x",
+          "type": "u32",
+          "optional": false
+        },
+        {
+          "name": "y",
+          "type": "u32",
+          "optional": false
+        },
+        {
+          "name": "cost",
+          "type": "u32",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 137,
+      "kind": "fn",
+      "path": "og.nav.cellAt",
+      "symbol": "og_nav_cell_at",
+      "module": "nav",
+      "name": "cellAt",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "grid",
+          "type": "Navigation",
+          "optional": false
+        },
+        {
+          "name": "point",
+          "type": "Vector3",
+          "optional": false
+        }
+      ],
+      "returns": "NavCell",
+      "publish": true
+    },
+    {
+      "id": 138,
+      "kind": "fn",
+      "path": "og.nav.findPath",
+      "symbol": "og_nav_find_path",
+      "module": "nav",
+      "name": "findPath",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "PathDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<NavPath>",
+      "publish": true
+    },
+    {
+      "id": 139,
+      "kind": "fn",
+      "path": "og.nav.flowField",
+      "symbol": "og_nav_flow_field",
+      "module": "nav",
+      "name": "flowField",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "FlowDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Navigation>",
+      "publish": true
+    },
+    {
+      "id": 140,
+      "kind": "fn",
+      "path": "og.nav.setFlowTargets",
+      "symbol": "og_nav_set_flow_targets",
+      "module": "nav",
+      "name": "setFlowTargets",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "field",
+          "type": "Navigation",
+          "optional": false
+        },
+        {
+          "name": "targets",
+          "type": "List<Vector3>",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 141,
+      "kind": "fn",
+      "path": "og.nav.flowAt",
+      "symbol": "og_nav_flow_at",
+      "module": "nav",
+      "name": "flowAt",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "field",
+          "type": "Navigation",
+          "optional": false
+        },
+        {
+          "name": "point",
+          "type": "Vector3",
+          "optional": false
+        }
+      ],
+      "returns": "Vector3",
+      "publish": true
+    },
+    {
+      "id": 142,
+      "kind": "fn",
+      "path": "og.nav.load",
+      "symbol": "og_nav_load",
+      "module": "nav",
+      "name": "load",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<NavMeshInfo>",
+      "publish": true
+    },
+    {
+      "id": 143,
+      "kind": "fn",
+      "path": "og.nav.build",
+      "symbol": "og_nav_build",
+      "module": "nav",
+      "name": "build",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "NavMeshDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<NavMeshInfo>",
+      "publish": true
+    },
+    {
+      "id": 144,
+      "kind": "fn",
+      "path": "og.nav.setObstacle",
+      "symbol": "og_nav_set_obstacle",
+      "module": "nav",
+      "name": "setObstacle",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "mesh",
+          "type": "Navigation",
+          "optional": false
+        },
+        {
+          "name": "id",
+          "type": "u32",
+          "optional": false
+        },
+        {
+          "name": "obstacle",
+          "type": "NavBox",
+          "optional": true
+        }
+      ],
+      "returns": "Result<NavRebuild>",
+      "publish": true
+    },
+    {
+      "id": 145,
+      "kind": "fn",
+      "path": "og.nav.nearest",
+      "symbol": "og_nav_nearest",
+      "module": "nav",
+      "name": "nearest",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "mesh",
+          "type": "Navigation",
+          "optional": false
+        },
+        {
+          "name": "point",
+          "type": "Vector3",
+          "optional": false
+        },
+        {
+          "name": "extent",
+          "type": "Vector3",
+          "optional": true
+        }
+      ],
+      "returns": "Option<Vector3>",
+      "publish": true
+    },
+    {
+      "id": 146,
+      "kind": "fn",
+      "path": "og.nav.pathOf",
+      "symbol": "og_nav_path_of",
+      "module": "nav",
+      "name": "pathOf",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        }
+      ],
+      "returns": "Option<NavPath>",
+      "publish": true
+    },
+    {
+      "id": 147,
+      "kind": "fn",
+      "path": "og.ai.load",
+      "symbol": "og_ai_load",
+      "module": "ai",
+      "name": "load",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<BehaviourInfo>",
+      "publish": true
+    },
+    {
+      "id": 148,
+      "kind": "fn",
+      "path": "og.ai.parse",
+      "symbol": "og_ai_parse",
+      "module": "ai",
+      "name": "parse",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "text",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<BehaviourInfo>",
+      "publish": true
+    },
+    {
+      "id": 149,
+      "kind": "fn",
+      "path": "og.ai.get",
+      "symbol": "og_ai_get",
+      "module": "ai",
+      "name": "get",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        },
+        {
+          "name": "key",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Json",
+      "publish": true
+    },
+    {
+      "id": 150,
+      "kind": "fn",
+      "path": "og.ai.set",
+      "symbol": "og_ai_set",
+      "module": "ai",
+      "name": "set",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        },
+        {
+          "name": "key",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "value",
+          "type": "Json",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 151,
+      "kind": "fn",
+      "path": "og.ai.noise",
+      "symbol": "og_ai_noise",
+      "module": "ai",
+      "name": "noise",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "NoiseDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 152,
+      "kind": "fn",
+      "path": "og.ai.describe",
+      "symbol": "og_ai_describe",
+      "module": "ai",
+      "name": "describe",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        }
+      ],
+      "returns": "Option<AiDescription>",
+      "publish": true
+    },
+    {
+      "id": 153,
+      "kind": "fn",
+      "path": "og.platform.storeGet",
+      "symbol": "og_platform_store_get",
+      "module": "platform",
+      "name": "storeGet",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "key",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<u32>",
+      "publish": true
+    },
+    {
+      "id": 154,
+      "kind": "fn",
+      "path": "og.platform.storeSet",
+      "symbol": "og_platform_store_set",
+      "module": "platform",
+      "name": "storeSet",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "StoreSetDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<u32>",
+      "publish": true
+    },
+    {
+      "id": 155,
+      "kind": "fn",
+      "path": "og.platform.storeList",
+      "symbol": "og_platform_store_list",
+      "module": "platform",
+      "name": "storeList",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        }
+      ],
+      "returns": "u32",
+      "publish": true
+    },
+    {
+      "id": 156,
+      "kind": "fn",
+      "path": "og.platform.leaderboardSubmit",
+      "symbol": "og_platform_leaderboard_submit",
+      "module": "platform",
+      "name": "leaderboardSubmit",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "LeaderboardSubmitDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<u32>",
+      "publish": true
+    },
+    {
+      "id": 157,
+      "kind": "fn",
+      "path": "og.platform.leaderboardTop",
+      "symbol": "og_platform_leaderboard_top",
+      "module": "platform",
+      "name": "leaderboardTop",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "LeaderboardQueryDesc",
+          "optional": true
+        }
+      ],
+      "returns": "u32",
+      "publish": true
+    },
+    {
+      "id": 158,
+      "kind": "fn",
+      "path": "og.platform.leaderboardAround",
+      "symbol": "og_platform_leaderboard_around",
+      "module": "platform",
+      "name": "leaderboardAround",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "LeaderboardQueryDesc",
+          "optional": true
+        }
+      ],
+      "returns": "u32",
+      "publish": true
+    },
+    {
+      "id": 159,
+      "kind": "fn",
+      "path": "og.platform.telemetry",
+      "symbol": "og_platform_telemetry",
+      "module": "platform",
+      "name": "telemetry",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "attrs",
+          "type": "Json",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 160,
+      "kind": "fn",
+      "path": "og.platform.point",
+      "symbol": "og_platform_point",
+      "module": "platform",
+      "name": "point",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "PointDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<u32>",
+      "publish": true
+    },
+    {
+      "id": 161,
+      "kind": "fn",
+      "path": "og.platform.aiMark",
+      "symbol": "og_platform_ai_mark",
+      "module": "platform",
+      "name": "aiMark",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "AiMarkDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<u32>",
+      "publish": true
+    },
+    {
+      "id": 162,
+      "kind": "fn",
+      "path": "og.platform.loadSettings",
+      "symbol": "og_platform_load_settings",
+      "module": "platform",
+      "name": "loadSettings",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        }
+      ],
+      "returns": "u32",
+      "publish": true
+    },
+    {
+      "id": 163,
+      "kind": "fn",
+      "path": "og.platform.saveSettings",
+      "symbol": "og_platform_save_settings",
+      "module": "platform",
+      "name": "saveSettings",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "value",
+          "type": "Json",
+          "optional": false
+        }
+      ],
+      "returns": "Result<u32>",
+      "publish": true
+    },
+    {
+      "id": 164,
+      "kind": "fn",
+      "path": "og.platform.result",
+      "symbol": "og_platform_result",
+      "module": "platform",
+      "name": "result",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "request",
+          "type": "u32",
+          "optional": false
+        }
+      ],
+      "returns": "Option<PlatformResult>",
+      "publish": true
+    },
+    {
+      "id": 165,
+      "kind": "fn",
+      "path": "og.platform.info",
+      "symbol": "og_platform_info",
+      "module": "platform",
+      "name": "info",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        }
+      ],
+      "returns": "PlatformInfo",
+      "publish": true
+    },
+    {
+      "id": 166,
+      "kind": "fn",
+      "path": "og.i18n.load",
+      "symbol": "og_i18n_load",
+      "module": "i18n",
+      "name": "load",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<LocaleInfo>",
+      "publish": true
+    },
+    {
+      "id": 167,
+      "kind": "fn",
+      "path": "og.i18n.setLocale",
+      "symbol": "og_i18n_set_locale",
+      "module": "i18n",
+      "name": "setLocale",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "locale",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "LocaleInfo",
+      "publish": true
+    },
+    {
+      "id": 168,
+      "kind": "fn",
+      "path": "og.i18n.locale",
+      "symbol": "og_i18n_locale",
+      "module": "i18n",
+      "name": "locale",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        }
+      ],
+      "returns": "LocaleInfo",
+      "publish": true
+    },
+    {
+      "id": 169,
+      "kind": "fn",
+      "path": "og.i18n.t",
+      "symbol": "og_i18n_t",
+      "module": "i18n",
+      "name": "t",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "key",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "args",
+          "type": "Json",
+          "optional": true
+        }
+      ],
+      "returns": "String",
+      "publish": true
+    },
+    {
+      "id": 170,
+      "kind": "fn",
+      "path": "og.i18n.has",
+      "symbol": "og_i18n_has",
+      "module": "i18n",
+      "name": "has",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "key",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "bool",
+      "publish": true
+    },
+    {
+      "id": 171,
+      "kind": "fn",
       "path": "og.ui.configure",
       "symbol": "og_ui_configure",
       "module": "ui",
@@ -7963,7 +9540,7 @@
       "publish": true
     },
     {
-      "id": 135,
+      "id": 172,
       "kind": "fn",
       "path": "og.ui.viewport",
       "symbol": "og_ui_viewport",
@@ -7980,7 +9557,7 @@
       "publish": true
     },
     {
-      "id": 136,
+      "id": 173,
       "kind": "fn",
       "path": "og.ui.theme",
       "symbol": "og_ui_theme",
@@ -7997,7 +9574,7 @@
       "publish": true
     },
     {
-      "id": 137,
+      "id": 174,
       "kind": "fn",
       "path": "og.ui.open",
       "symbol": "og_ui_open",
@@ -8019,7 +9596,7 @@
       "publish": true
     },
     {
-      "id": 138,
+      "id": 175,
       "kind": "fn",
       "path": "og.ui.openPanel",
       "symbol": "og_ui_open_panel",
@@ -8041,7 +9618,7 @@
       "publish": true
     },
     {
-      "id": 139,
+      "id": 176,
       "kind": "fn",
       "path": "og.ui.openScroll",
       "symbol": "og_ui_open_scroll",
@@ -8063,7 +9640,7 @@
       "publish": true
     },
     {
-      "id": 140,
+      "id": 177,
       "kind": "fn",
       "path": "og.ui.close",
       "symbol": "og_ui_close",
@@ -8074,7 +9651,7 @@
       "publish": true
     },
     {
-      "id": 141,
+      "id": 178,
       "kind": "fn",
       "path": "og.ui.label",
       "symbol": "og_ui_label",
@@ -8101,7 +9678,7 @@
       "publish": true
     },
     {
-      "id": 142,
+      "id": 179,
       "kind": "fn",
       "path": "og.ui.button",
       "symbol": "og_ui_button",
@@ -8128,7 +9705,7 @@
       "publish": true
     },
     {
-      "id": 143,
+      "id": 180,
       "kind": "fn",
       "path": "og.ui.image",
       "symbol": "og_ui_image",
@@ -8150,7 +9727,7 @@
       "publish": true
     },
     {
-      "id": 144,
+      "id": 181,
       "kind": "fn",
       "path": "og.ui.progress",
       "symbol": "og_ui_progress",
@@ -8177,7 +9754,7 @@
       "publish": true
     },
     {
-      "id": 145,
+      "id": 182,
       "kind": "fn",
       "path": "og.ui.slider",
       "symbol": "og_ui_slider",
@@ -8204,7 +9781,7 @@
       "publish": true
     },
     {
-      "id": 146,
+      "id": 183,
       "kind": "fn",
       "path": "og.ui.toggle",
       "symbol": "og_ui_toggle",
@@ -8231,7 +9808,7 @@
       "publish": true
     },
     {
-      "id": 147,
+      "id": 184,
       "kind": "fn",
       "path": "og.ui.textField",
       "symbol": "og_ui_text_field",
@@ -8258,7 +9835,7 @@
       "publish": true
     },
     {
-      "id": 148,
+      "id": 185,
       "kind": "fn",
       "path": "og.ui.tooltip",
       "symbol": "og_ui_tooltip",
@@ -8275,7 +9852,7 @@
       "publish": true
     },
     {
-      "id": 149,
+      "id": 186,
       "kind": "fn",
       "path": "og.ui.breakpoint",
       "symbol": "og_ui_breakpoint",
@@ -8286,7 +9863,7 @@
       "publish": true
     },
     {
-      "id": 150,
+      "id": 187,
       "kind": "fn",
       "path": "og.ui.frameViewport",
       "symbol": "og_ui_frame_viewport",
@@ -8297,7 +9874,7 @@
       "publish": true
     },
     {
-      "id": 151,
+      "id": 188,
       "kind": "fn",
       "path": "og.ui.hasIcon",
       "symbol": "og_ui_has_icon",
@@ -8314,7 +9891,7 @@
       "publish": true
     },
     {
-      "id": 152,
+      "id": 189,
       "kind": "fn",
       "path": "og.ui.seconds",
       "symbol": "og_ui_seconds",
@@ -8325,7 +9902,7 @@
       "publish": true
     },
     {
-      "id": 153,
+      "id": 190,
       "kind": "fn",
       "path": "og.ui.frameTheme",
       "symbol": "og_ui_frame_theme",
@@ -8336,7 +9913,7 @@
       "publish": true
     },
     {
-      "id": 154,
+      "id": 191,
       "kind": "fn",
       "path": "og.ui.openAnchor",
       "symbol": "og_ui_open_anchor",
@@ -8358,7 +9935,7 @@
       "publish": true
     },
     {
-      "id": 155,
+      "id": 192,
       "kind": "fn",
       "path": "og.ui.openTransition",
       "symbol": "og_ui_open_transition",
@@ -8385,7 +9962,7 @@
       "publish": true
     },
     {
-      "id": 156,
+      "id": 193,
       "kind": "fn",
       "path": "og.ui.openModal",
       "symbol": "og_ui_open_modal",
@@ -8412,7 +9989,7 @@
       "publish": true
     },
     {
-      "id": 157,
+      "id": 194,
       "kind": "fn",
       "path": "og.ui.closeModal",
       "symbol": "og_ui_close_modal",
@@ -8423,7 +10000,7 @@
       "publish": true
     },
     {
-      "id": 158,
+      "id": 195,
       "kind": "fn",
       "path": "og.ui.spotlight",
       "symbol": "og_ui_spotlight",
@@ -8450,7 +10027,7 @@
       "publish": true
     },
     {
-      "id": 159,
+      "id": 196,
       "kind": "fn",
       "path": "og.ui.bounds",
       "symbol": "og_ui_bounds",
@@ -8467,7 +10044,7 @@
       "publish": true
     },
     {
-      "id": 160,
+      "id": 197,
       "kind": "fn",
       "path": "og.ui.openList",
       "symbol": "og_ui_open_list",
@@ -8489,7 +10066,7 @@
       "publish": true
     },
     {
-      "id": 161,
+      "id": 198,
       "kind": "fn",
       "path": "og.ui.openGrid",
       "symbol": "og_ui_open_grid",
@@ -8511,7 +10088,7 @@
       "publish": true
     },
     {
-      "id": 162,
+      "id": 199,
       "kind": "fn",
       "path": "og.ui.listItem",
       "symbol": "og_ui_list_item",
@@ -8533,7 +10110,7 @@
       "publish": true
     },
     {
-      "id": 163,
+      "id": 200,
       "kind": "fn",
       "path": "og.ui.gridItem",
       "symbol": "og_ui_grid_item",
@@ -8555,7 +10132,7 @@
       "publish": true
     },
     {
-      "id": 164,
+      "id": 201,
       "kind": "fn",
       "path": "og.ui.closeList",
       "symbol": "og_ui_close_list",
@@ -8566,7 +10143,7 @@
       "publish": true
     },
     {
-      "id": 165,
+      "id": 202,
       "kind": "fn",
       "path": "og.ui.dragging",
       "symbol": "og_ui_dragging",
@@ -8583,7 +10160,7 @@
       "publish": true
     },
     {
-      "id": 166,
+      "id": 203,
       "kind": "fn",
       "path": "og.ui.tabs",
       "symbol": "og_ui_tabs",
@@ -8615,7 +10192,7 @@
       "publish": true
     },
     {
-      "id": 167,
+      "id": 204,
       "kind": "fn",
       "path": "og.ui.select",
       "symbol": "og_ui_select",
@@ -8647,7 +10224,7 @@
       "publish": true
     },
     {
-      "id": 168,
+      "id": 205,
       "kind": "fn",
       "path": "og.ui.stepper",
       "symbol": "og_ui_stepper",
@@ -8674,7 +10251,7 @@
       "publish": true
     },
     {
-      "id": 169,
+      "id": 206,
       "kind": "fn",
       "path": "og.ui.radio",
       "symbol": "og_ui_radio",
@@ -8706,7 +10283,7 @@
       "publish": true
     },
     {
-      "id": 170,
+      "id": 207,
       "kind": "fn",
       "path": "og.ui.checkbox",
       "symbol": "og_ui_checkbox",
@@ -8733,7 +10310,7 @@
       "publish": true
     },
     {
-      "id": 171,
+      "id": 208,
       "kind": "fn",
       "path": "og.ui.checkboxList",
       "symbol": "og_ui_checkbox_list",
@@ -8760,7 +10337,7 @@
       "publish": true
     },
     {
-      "id": 172,
+      "id": 209,
       "kind": "fn",
       "path": "og.ui.chip",
       "symbol": "og_ui_chip",
@@ -8787,7 +10364,7 @@
       "publish": true
     },
     {
-      "id": 173,
+      "id": 210,
       "kind": "fn",
       "path": "og.ui.badge",
       "symbol": "og_ui_badge",
@@ -8814,7 +10391,7 @@
       "publish": true
     },
     {
-      "id": 174,
+      "id": 211,
       "kind": "fn",
       "path": "og.ui.divider",
       "symbol": "og_ui_divider",
@@ -8836,7 +10413,7 @@
       "publish": true
     },
     {
-      "id": 175,
+      "id": 212,
       "kind": "fn",
       "path": "og.ui.spacer",
       "symbol": "og_ui_spacer",
@@ -8858,7 +10435,7 @@
       "publish": true
     },
     {
-      "id": 176,
+      "id": 213,
       "kind": "fn",
       "path": "og.ui.keyValue",
       "symbol": "og_ui_key_value",
@@ -8890,7 +10467,7 @@
       "publish": true
     },
     {
-      "id": 177,
+      "id": 214,
       "kind": "fn",
       "path": "og.ui.skeleton",
       "symbol": "og_ui_skeleton",
@@ -8912,7 +10489,7 @@
       "publish": true
     },
     {
-      "id": 178,
+      "id": 215,
       "kind": "fn",
       "path": "og.ui.spinner",
       "symbol": "og_ui_spinner",
@@ -8934,7 +10511,7 @@
       "publish": true
     },
     {
-      "id": 179,
+      "id": 216,
       "kind": "fn",
       "path": "og.ui.icon",
       "symbol": "og_ui_icon",
@@ -8961,7 +10538,7 @@
       "publish": true
     },
     {
-      "id": 180,
+      "id": 217,
       "kind": "fn",
       "path": "og.ui.meter",
       "symbol": "og_ui_meter",
@@ -8993,7 +10570,7 @@
       "publish": true
     },
     {
-      "id": 181,
+      "id": 218,
       "kind": "fn",
       "path": "og.ui.cooldown",
       "symbol": "og_ui_cooldown",
@@ -9020,7 +10597,7 @@
       "publish": true
     },
     {
-      "id": 182,
+      "id": 219,
       "kind": "fn",
       "path": "og.ui.minimap",
       "symbol": "og_ui_minimap",
@@ -9042,7 +10619,7 @@
       "publish": true
     },
     {
-      "id": 183,
+      "id": 220,
       "kind": "fn",
       "path": "og.ui.dialogue",
       "symbol": "og_ui_dialogue",
@@ -9064,7 +10641,7 @@
       "publish": true
     },
     {
-      "id": 184,
+      "id": 221,
       "kind": "fn",
       "path": "og.ui.joystick",
       "symbol": "og_ui_joystick",
@@ -9086,7 +10663,7 @@
       "publish": true
     },
     {
-      "id": 185,
+      "id": 222,
       "kind": "fn",
       "path": "og.ui.dpad",
       "symbol": "og_ui_dpad",
@@ -9108,7 +10685,7 @@
       "publish": true
     },
     {
-      "id": 186,
+      "id": 223,
       "kind": "fn",
       "path": "og.ui.actionButton",
       "symbol": "og_ui_action_button",
@@ -9135,7 +10712,7 @@
       "publish": true
     },
     {
-      "id": 187,
+      "id": 224,
       "kind": "fn",
       "path": "og.ui.toast",
       "symbol": "og_ui_toast",
@@ -9162,7 +10739,7 @@
       "publish": true
     },
     {
-      "id": 188,
+      "id": 225,
       "kind": "fn",
       "path": "og.ui.dismissToast",
       "symbol": "og_ui_dismiss_toast",
@@ -9184,7 +10761,7 @@
       "publish": true
     },
     {
-      "id": 189,
+      "id": 226,
       "kind": "fn",
       "path": "og.ui.navigate",
       "symbol": "og_ui_navigate",
@@ -9206,7 +10783,7 @@
       "publish": true
     },
     {
-      "id": 190,
+      "id": 227,
       "kind": "fn",
       "path": "og.ui.back",
       "symbol": "og_ui_back",
@@ -9217,7 +10794,7 @@
       "publish": true
     },
     {
-      "id": 191,
+      "id": 228,
       "kind": "fn",
       "path": "og.ui.setNavigation",
       "symbol": "og_ui_set_navigation",
@@ -9234,7 +10811,7 @@
       "publish": true
     },
     {
-      "id": 192,
+      "id": 229,
       "kind": "fn",
       "path": "og.ui.memory",
       "symbol": "og_ui_memory",
@@ -9256,7 +10833,7 @@
       "publish": true
     },
     {
-      "id": 193,
+      "id": 230,
       "kind": "fn",
       "path": "og.ui.remember",
       "symbol": "og_ui_remember",
@@ -9278,7 +10855,7 @@
       "publish": true
     },
     {
-      "id": 194,
+      "id": 231,
       "kind": "fn",
       "path": "og.ui.tick",
       "symbol": "og_ui_tick",
@@ -9289,7 +10866,7 @@
       "publish": true
     },
     {
-      "id": 195,
+      "id": 232,
       "kind": "fn",
       "path": "og.ui.counter",
       "symbol": "og_ui_counter",
@@ -9316,7 +10893,7 @@
       "publish": true
     },
     {
-      "id": 196,
+      "id": 233,
       "kind": "fn",
       "path": "og.ui.burst",
       "symbol": "og_ui_burst",
@@ -9333,7 +10910,7 @@
       "publish": true
     },
     {
-      "id": 197,
+      "id": 234,
       "kind": "fn",
       "path": "og.ui.screenTransition",
       "symbol": "og_ui_screen_transition",
@@ -9360,7 +10937,7 @@
       "publish": true
     },
     {
-      "id": 198,
+      "id": 235,
       "kind": "fn",
       "path": "og.ui.previewViewport",
       "symbol": "og_ui_preview_viewport",
@@ -9382,7 +10959,7 @@
       "publish": true
     },
     {
-      "id": 199,
+      "id": 236,
       "kind": "fn",
       "path": "og.commands.register",
       "symbol": "og_commands_register",
@@ -9409,7 +10986,7 @@
       "publish": false
     },
     {
-      "id": 200,
+      "id": 237,
       "kind": "fn",
       "path": "og.commands.parse",
       "symbol": "og_commands_parse",
@@ -9426,7 +11003,7 @@
       "publish": false
     },
     {
-      "id": 201,
+      "id": 238,
       "kind": "fn",
       "path": "og.commands.help",
       "symbol": "og_commands_help",
@@ -9443,7 +11020,7 @@
       "publish": false
     },
     {
-      "id": 202,
+      "id": 239,
       "kind": "fn",
       "path": "og.commands.schedule",
       "symbol": "og_commands_schedule",
@@ -9465,7 +11042,7 @@
       "publish": false
     },
     {
-      "id": 203,
+      "id": 240,
       "kind": "prop",
       "path": "RuntimeProbe.version",
       "symbol": "og_runtime_probe_get_version",
@@ -9476,7 +11053,7 @@
       "publish": true
     },
     {
-      "id": 204,
+      "id": 241,
       "kind": "method",
       "path": "RuntimeProbe.tick",
       "symbol": "og_runtime_probe_tick",
@@ -9488,7 +11065,7 @@
       "publish": true
     },
     {
-      "id": 205,
+      "id": 242,
       "kind": "method",
       "path": "RuntimeProbe.state",
       "symbol": "og_runtime_probe_state",
@@ -9500,7 +11077,7 @@
       "publish": true
     },
     {
-      "id": 206,
+      "id": 243,
       "kind": "method",
       "path": "RuntimeProbe.advance",
       "symbol": "og_runtime_probe_advance",
@@ -9518,7 +11095,7 @@
       "publish": false
     },
     {
-      "id": 207,
+      "id": 244,
       "kind": "method",
       "path": "RuntimeProbe.pause",
       "symbol": "og_runtime_probe_pause",
@@ -9530,7 +11107,7 @@
       "publish": false
     },
     {
-      "id": 208,
+      "id": 245,
       "kind": "method",
       "path": "RuntimeProbe.resume",
       "symbol": "og_runtime_probe_resume",
@@ -9542,7 +11119,7 @@
       "publish": false
     },
     {
-      "id": 209,
+      "id": 246,
       "kind": "method",
       "path": "RuntimeProbe.input",
       "symbol": "og_runtime_probe_input",
@@ -9560,7 +11137,7 @@
       "publish": true
     },
     {
-      "id": 210,
+      "id": 247,
       "kind": "method",
       "path": "RuntimeProbe.accepted",
       "symbol": "og_runtime_probe_accepted",
@@ -9572,7 +11149,7 @@
       "publish": false
     },
     {
-      "id": 211,
+      "id": 248,
       "kind": "method",
       "path": "RuntimeProbe.pick",
       "symbol": "og_runtime_probe_pick",
@@ -9595,7 +11172,7 @@
       "publish": true
     },
     {
-      "id": 212,
+      "id": 249,
       "kind": "method",
       "path": "RuntimeProbe.entity",
       "symbol": "og_runtime_probe_entity",
@@ -9613,7 +11190,7 @@
       "publish": true
     },
     {
-      "id": 213,
+      "id": 250,
       "kind": "method",
       "path": "RuntimeProbe.bounds",
       "symbol": "og_runtime_probe_bounds",
@@ -9631,7 +11208,7 @@
       "publish": false
     },
     {
-      "id": 214,
+      "id": 251,
       "kind": "method",
       "path": "RuntimeProbe.patch",
       "symbol": "og_runtime_probe_patch",
@@ -9659,7 +11236,7 @@
       "publish": false
     },
     {
-      "id": 215,
+      "id": 252,
       "kind": "method",
       "path": "RuntimeProbe.run",
       "symbol": "og_runtime_probe_run",
@@ -9677,7 +11254,7 @@
       "publish": false
     },
     {
-      "id": 216,
+      "id": 253,
       "kind": "method",
       "path": "EngineProbe.hello",
       "symbol": "og_engine_probe_hello",
@@ -9689,7 +11266,7 @@
       "publish": true
     },
     {
-      "id": 217,
+      "id": 254,
       "kind": "method",
       "path": "EngineProbe.capture",
       "symbol": "og_engine_probe_capture",
@@ -9714,7 +11291,7 @@
       "publish": true
     },
     {
-      "id": 218,
+      "id": 255,
       "kind": "method",
       "path": "EngineProbe.sweep",
       "symbol": "og_engine_probe_sweep",
@@ -9733,7 +11310,7 @@
       "publish": false
     },
     {
-      "id": 219,
+      "id": 256,
       "kind": "method",
       "path": "EngineProbe.reload",
       "symbol": "og_engine_probe_reload",
@@ -9745,7 +11322,7 @@
       "publish": false
     },
     {
-      "id": 220,
+      "id": 257,
       "kind": "method",
       "path": "EngineProbe.snapshot",
       "symbol": "og_engine_probe_snapshot",
@@ -9757,7 +11334,7 @@
       "publish": false
     },
     {
-      "id": 221,
+      "id": 258,
       "kind": "method",
       "path": "EngineProbe.restore",
       "symbol": "og_engine_probe_restore",
@@ -9775,7 +11352,7 @@
       "publish": false
     },
     {
-      "id": 222,
+      "id": 259,
       "kind": "method",
       "path": "EngineProbe.dump",
       "symbol": "og_engine_probe_dump",
@@ -9794,7 +11371,7 @@
       "publish": false
     },
     {
-      "id": 223,
+      "id": 260,
       "kind": "method",
       "path": "EngineProbe.commands",
       "symbol": "og_engine_probe_commands",
@@ -9809,6 +11386,25 @@
         }
       ],
       "returns": "Option<CommandsReport>",
+      "publish": false
+    },
+    {
+      "id": 261,
+      "kind": "method",
+      "path": "EngineProbe.listen",
+      "symbol": "og_engine_probe_listen",
+      "module": "probe",
+      "owner": "EngineProbe",
+      "name": "listen",
+      "params": [
+        {
+          "name": "seconds",
+          "type": "f32",
+          "optional": true,
+          "default": 1
+        }
+      ],
+      "returns": "Option<Heard>",
       "publish": false
     }
   ],

@@ -35,6 +35,7 @@
 // answered.
 
 import { createEngine, type Engine, type GameToken } from "../runtime.ts";
+import type { PlatformAnswer, PlatformHost } from "../platform-local.ts";
 import { loadWebHost, type WebGlue } from "./host.ts";
 import { drainRing, type InjectedInput } from "./input.ts";
 import { WorkerAudio, type AudioMessage, type WebAudioGlue } from "./audio.ts";
@@ -66,6 +67,8 @@ interface Start {
   basis?: { js: string; wasm: string };
   /** The project's physics profile (project.ogt `profile`). */
   profile?: "2d" | "3d";
+  /** The locale og.i18n is asked for (the page's `navigator.language`). */
+  locale?: string;
   /** The play surface in CSS pixels, its DPR and safe area: what the UI lays out in. */
   viewport?: Viewport;
   /** Bytes the boot will fetch (the wasm, the cooked bundle), for real progress; omitted: counted as they arrive. */
@@ -91,7 +94,14 @@ type Message =
   | { type: "rpc"; frame: string }
   | { type: "viewport"; viewport: Viewport }
   | { type: "resize"; width: number; height: number; viewport: Viewport }
+  | { type: "platform-answer"; request: number; answer: PlatformAnswer }
+  | { type: "platform-host"; host: string; capabilities: string[] }
   | AudioMessage;
+
+/** og.platform's host in the Worker: the calls go to the page, whose answers come back as `platform-answer`. */
+function toPage(host: string, capabilities: readonly string[]): PlatformHost {
+  return { host, capabilities, handle: (calls) => self.postMessage({ type: "platform", calls }) };
+}
 
 interface WorkerScope {
   onmessage: ((e: { data: Message }) => void) | null;
@@ -500,10 +510,13 @@ export function startWorker(game: GameToken): void {
           ...(data.seed === undefined ? {} : { seed: data.seed }),
           ...(data.root === undefined ? {} : { root: data.root }),
           ...(data.profile === undefined ? {} : { profile: data.profile }),
+          ...(data.locale ? { locale: data.locale } : {}),
           deferStart: true,
         });
         if (!created.ok) throw new Error(created.reason);
         engine = created.value;
+        // og.platform: calls go to the page, which answers them (the Player, or the browser's storage).
+        engine.attachPlatform(toPage("none", []));
         if (data.viewport) glue.og_web_set_viewport(engine.id, JSON.stringify(data.viewport));
         ring = data.ring;
         rpc = data.rpc;
@@ -559,6 +572,8 @@ export function startWorker(game: GameToken): void {
       else log(`warn: audio: ${attached.reason}`);
     }
     if (data.type === "rpc") serve(data.frame, false);
+    if (data.type === "platform-answer") engine.answerPlatform(data.request, data.answer);
+    if (data.type === "platform-host") engine.attachPlatform(toPage(data.host, data.capabilities));
     if (data.type === "play") {
       playing = data.on;
       last = 0;

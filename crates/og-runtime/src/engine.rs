@@ -700,6 +700,8 @@ pub(crate) fn assemble(
     // the UI's begin), then the game's, then the modules' after them.
     let ui = super::modules::new_ui(game.tick, previous.as_ref().map(|p| p.0));
     let physics = super::modules::mount_front(&mut world, engine_id, profile, &ui)?;
+    let record_names: Vec<String> = layouts.keys().cloned().collect();
+    super::e6::mount_front(&mut world, engine_id, profile, &physics, &record_names)?;
 
     // Systems: the game's, ordered.
     let mut systems_decl = Vec::new();
@@ -789,6 +791,7 @@ pub(crate) fn assemble(
     let anim = super::anim::install(&mut world)?;
     let feel_records = super::feel::Records::of(&world, &layouts)?;
     super::feel::install_middle(&mut world, &feel, &feel_records)?;
+    super::e6::mount_back(&mut world, engine_id, profile, &physics)?;
     let mounted =
         super::modules::mount_back(&mut world, engine_id, physics, ui, previous.map(|p| p.1))?;
     super::feel::install_back(&mut world, &feel, &feel_records)?;
@@ -900,6 +903,13 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         rs.feel.feel = Some((a.feel.clone(), a.feel_records.clone()));
     }
     rprobe::install(&engine, a.game.facts)?;
+    {
+        let mut probe = engine.probe.borrow_mut();
+        super::e6::commit(engine_id, probe.inbox());
+        super::e6::register_commands(&mut probe, engine_id);
+    }
+    // The host's locale (og run --locale, the browser's language).
+    super::i18n::request(engine_id, options["locale"].as_str().unwrap_or(""));
     ENGINES.with(|e| e.borrow_mut().push(Some(engine.clone())));
     rprobe::set_reloader(&engine);
 
@@ -982,6 +992,7 @@ pub fn destroy(id: u32) -> bool {
     }
     before_structural(&eng);
     og_audio::retire_link(id);
+    super::e6::retire(id);
     ENGINES.with(|e| {
         if let Some(slot) = e.borrow_mut().get_mut(id as usize) {
             *slot = None;
@@ -1155,6 +1166,9 @@ pub fn take_log(id: u32) -> String {
             let mut st = eng.state.borrow_mut();
             let mut log = std::mem::take(&mut st.log);
             for w in std::mem::take(&mut eng.assets.borrow_mut().warnings) {
+                log.push(json!({ "tick": 0, "warning": true, "text": w }));
+            }
+            for w in super::e6::take_warnings(id) {
                 log.push(json!({ "tick": 0, "warning": true, "text": w }));
             }
             Value::Array(log).to_string()

@@ -105,18 +105,23 @@ pub fn cook(root: &Path, threads: usize) -> Result<Report, String> {
     }
 }
 
-/// One line: what was cooked this time.
+/// One line: what was cooked this time; then one per warning (a locale's
+/// missing string keys).
 pub fn summary(r: &Report) -> String {
     let outputs: Vec<_> = r.assets.iter().flat_map(|a| a.outputs.iter()).collect();
     let cooked = outputs.iter().filter(|o| o.cooked).count();
     let bytes: u64 = outputs.iter().map(|o| o.bytes).sum();
-    format!(
+    let mut s = format!(
         "og cook: {} assets, {} outputs ({cooked} cooked, {} up to date), {bytes} bytes in cooked/, {:.0} ms",
         r.assets.len(),
         outputs.len(),
         outputs.len() - cooked,
         r.elapsed_ms
-    )
+    );
+    for w in &r.warnings {
+        s.push_str(&format!("\nog cook: warning: {w}"));
+    }
+    s
 }
 
 pub fn run(args: &[&str]) -> ExitCode {

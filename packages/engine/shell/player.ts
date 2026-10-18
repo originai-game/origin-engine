@@ -4,7 +4,8 @@
 // received, `ready` at the first rendered frame, `fail` before ready,
 // `crash` after it (an error name and a fingerprint only), one `sample`
 // with the startup milestones and the renderer. It hears `hello`, `start`,
-// `gesture`, `pause` and `resume` from the Player.
+// `gesture`, `pause` and `resume` from the Player, and the `result` of each
+// `call` it made (og.platform's calls, through ./platform.ts).
 //
 // Rules: post only to `window.parent`, naming this page's own origin (the
 // Player and its releases share the play origin); accept only messages from
@@ -34,6 +35,14 @@ export function fingerprint(message: string): string {
   return `oe-${h.toString(16).padStart(8, "0")}`;
 }
 
+/** A `result`: the data, or the Player's error. */
+export type PlayerResult =
+  | { readonly ok: true; readonly data: unknown }
+  | { readonly ok: false; readonly error: { readonly code: string; readonly message: string; readonly retryable: boolean; readonly status?: number } };
+
+/** How long a call waits for its `result` before it fails with `timeout`. */
+export const CALL_TIMEOUT_MS = 15_000;
+
 export function connectPlayer(events: PlayerEvents) {
   const w = globalThis as unknown as Window;
   const framed = (() => {
@@ -49,6 +58,9 @@ export function connectPlayer(events: PlayerEvents) {
   let heard = false;
   let started = false;
   let paused = false;
+  let capabilities: readonly string[] = [];
+  let nextCall = 1;
+  const calls = new Map<string, (r: PlayerResult) => void>();
 
   const post = (kind: string, fields: Record<string, unknown> = {}) => {
     if (!framed || !origin || origin === "null") return;
@@ -68,12 +80,30 @@ export function connectPlayer(events: PlayerEvents) {
         heard = true;
         if (m["started"] === true) started = true;
         paused = m["paused"] === true;
-        events.hello?.({
-          started: m["started"] === true,
-          paused,
-          capabilities: Array.isArray(m["capabilities"]) ? (m["capabilities"] as unknown[]).filter((c): c is string => typeof c === "string") : [],
-        });
+        capabilities = Array.isArray(m["capabilities"]) ? (m["capabilities"] as unknown[]).filter((c): c is string => typeof c === "string") : [];
+        events.hello?.({ started: m["started"] === true, paused, capabilities });
         break;
+      case "result": {
+        const id = m["id"];
+        const done = typeof id === "string" ? calls.get(id) : undefined;
+        if (!done) break;
+        calls.delete(id as string);
+        if (m["ok"] === true) done({ ok: true, data: m["data"] ?? null });
+        else {
+          const e = (m["error"] ?? {}) as Record<string, unknown>;
+          const code = typeof e["code"] === "string" ? e["code"] : "failed";
+          done({
+            ok: false,
+            error: {
+              code,
+              message: typeof e["message"] === "string" ? e["message"] : "",
+              retryable: e["retryable"] === true,
+              ...(typeof e["status"] === "number" ? { status: e["status"] } : {}),
+            },
+          });
+        }
+        break;
+      }
       case "start":
         heard = true;
         started = true;
@@ -110,6 +140,10 @@ export function connectPlayer(events: PlayerEvents) {
     get paused(): boolean {
       return paused;
     },
+    /** The methods the Player's hello said it answers (empty before it, or unframed). */
+    get capabilities(): readonly string[] {
+      return capabilities;
+    },
     loading(value: number | null, label?: string) {
       if (readySent) return;
       if (value !== null) {
@@ -138,8 +172,20 @@ export function connectPlayer(events: PlayerEvents) {
     event(name: string, attrs?: Record<string, string | number | boolean | null>) {
       post("event", { name, ...(attrs ? { attrs } : {}) });
     },
-    call(method: string, args?: Record<string, unknown>) {
-      post("call", { id: `oe-${Math.random().toString(36).slice(2, 10)}`, method, ...(args ? { args } : {}) });
+    /** One `call`, answered by its `result` (or `timeout` after CALL_TIMEOUT_MS; `unavailable` unframed). */
+    request(method: string, args?: Record<string, unknown>, timeoutMs = CALL_TIMEOUT_MS): Promise<PlayerResult> {
+      if (!framed) return Promise.resolve({ ok: false, error: { code: "unavailable", message: "no Player frames this page", retryable: false } });
+      const id = `oe-${nextCall++}`;
+      return new Promise((resolve) => {
+        const timer = setTimeout(() => {
+          if (calls.delete(id)) resolve({ ok: false, error: { code: "timeout", message: `the Player did not answer ${method} in ${timeoutMs} ms`, retryable: true } });
+        }, timeoutMs);
+        calls.set(id, (r) => {
+          clearTimeout(timer);
+          resolve(r);
+        });
+        post("call", { id, method, ...(args ? { args } : {}) });
+      });
     },
   };
 }

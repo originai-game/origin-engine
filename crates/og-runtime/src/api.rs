@@ -2179,3 +2179,12 @@ pub fn og_engine_probe_dump(probe: u32, desc: Option<String>) -> String {
 pub fn og_engine_probe_commands(probe: u32, script: String) -> String {
     member(probe, "commands", json!({ "script": script })).to_string()
 }
+
+pub fn og_engine_probe_listen(probe: u32, seconds: Option<f64>) -> String {
+    member(
+        probe,
+        "listen",
+        json!({ "seconds": seconds.unwrap_or(1.0) }),
+    )
+    .to_string()
+}

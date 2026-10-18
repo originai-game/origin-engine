@@ -2,7 +2,7 @@
 
 # The Origin Engine API
 
-`@origingame/engine`, API version 1: 22 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
+`@origingame/engine`, API version 1: 26 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
 
 The Origin Engine API. Game code declares components and systems, and reads the world through typed views over engine memory.
 
@@ -30,6 +30,10 @@ Every failure is a returned Result; desc objects may omit any field; nothing rea
 | [`tween`](tween.md) | `og.tween.*` | kept | Tweens: animate any numeric field of a component (og.Transform.position, og.Sprite.color, og.Sprite.opacity, a game's own f32) from its value to a target over time with an easing curve, a delay, loops and yoyo; chain them in sequences or run them in parallel. Advanced by the engine's og.tween system after the game's systems and before og.anim and physics, by scaled time (slow motion, hit stop) unless unscaled. |
 | [`tilemap`](tilemap.md) | `og.tilemap.*` | kept | Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component. |
 | [`audio`](audio.md) | types and tokens | kept | Sound: inside the tick, the engine's og.audio system (after the game's systems and physics) turns AudioSource changes into a deterministic, time-stamped command stream; outside the tick the host's mixer renders it (an AudioWorklet on the web, the output device, a capture or a null sink natively). |
+| [`nav`](nav.md) | `og.nav.*` | kept | Navigation: grids (A* and jump point search with eight-way moves that never cut a blocked corner, line-of-sight smoothing), flow fields for crowds, and navmeshes (baked at cook time from a level's static colliders and models, or built at runtime for a flat procedural level) with funnel paths and box obstacles that rebuild only the tiles they touch. |
+| [`ai`](ai.md) | `og.ai.*` | kept | Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (crates/og-ai/README.md has the grammar), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent. |
+| [`platform`](platform.md) | `og.platform.*` | kept | Platform services as host capabilities (docs/design.md §2.8): cloud store, leaderboards, telemetry, Origin Point and AI marks. Game code names a method and its arguments, never a credential, a URL or a cookie: the host owns them. On the web the shell forwards each call to the Player through origin-checked postMessage (Player protocol 2, docs/web-export.md); natively the host answers from a local JSON store (`og run --platform-store`, default `<project>/.og/platform.json`). |
+| [`i18n`](i18n.md) | `og.i18n.*` | kept | Localization: one string table per locale (`.ogt` of `type strings`: `locale "ja"`, its font chain `fonts "..."`, `string "key" "message"`), messages in a subset of ICU MessageFormat (`{name}`, `{n, number}`, `{n, plural, =0 {..} one {..} other {..}}` with `#`, `{g, select, a {..} other {..}}`), CLDR plural rules, and the locale the host asks for (the browser's `navigator.language` on the web, `og run --locale` natively). |
 | [`ui`](ui.md) | `og.ui.*` | kept | The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, themes it with the platform's design tokens, draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it. |
 | [`systems`](systems.md) | types and tokens | kept | Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for. |
 | [`commands`](commands.md) | `og.commands.*` | dropped | The command channel: actions scheduled on simulation time, from `og run --commands "t:action[:args];..."` or the probe's commands(). |
@@ -57,16 +61,23 @@ Field units the docs and Tune use.
 | `radps` | radians per second |
 | `perSecond` | a rate per second: the fraction of a value that decays in one second |
 | `kgPerM3` | kilograms per cubic metre (per square metre in the 2D profile) |
+| `db` | decibels |
+| `bpm` | beats per minute |
 
 ## Every name
 
-700 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+786 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
 | [`Ability`](ui.md#type-Ability) | desc struct | ui | — |
 | [`ActionButtonDesc`](ui.md#type-ActionButtonDesc) | desc struct | ui | — |
 | [`AdvanceOperation`](probe.md#type-AdvanceOperation) | struct | probe | — |
+| [`AI_FAILURE`](ai.md#const-AI_FAILURE) | constant | ai | — |
+| [`AI_RUNNING`](ai.md#const-AI_RUNNING) | constant | ai | — |
+| [`AI_SUCCESS`](ai.md#const-AI_SUCCESS) | constant | ai | — |
+| [`AiDescription`](ai.md#type-AiDescription) | struct | ai | — |
+| [`AiMarkDesc`](platform.md#type-AiMarkDesc) | desc struct | platform | — |
 | [`AlertDesc`](ui.md#type-AlertDesc) | desc struct | ui | — |
 | [`Align`](ui.md#type-Align) | enum | ui | — |
 | [`Anchor`](ui.md#type-Anchor) | enum | ui | — |
@@ -87,6 +98,9 @@ Field units the docs and Tune use.
 | [`Asset()`](load.md#column-Asset) | column kind | load | — |
 | [`AudioBus`](audio.md#type-AudioBus) | enum | audio | — |
 | [`AudioBus()`](audio.md#column-AudioBus) | column kind | audio | — |
+| [`Behaviour`](ai.md#type-Behaviour) | handle | ai | — |
+| [`Behaviour()`](ai.md#column-Behaviour) | column kind | ai | — |
+| [`BehaviourInfo`](ai.md#type-BehaviourInfo) | struct | ai | — |
 | [`BlendshapeSource`](anim.md#type-BlendshapeSource) | enum | anim | — |
 | [`BlendshapeSource()`](anim.md#column-BlendshapeSource) | column kind | anim | — |
 | [`BODY_DYNAMIC`](physics.md#const-BODY_DYNAMIC) | constant | physics | — |
@@ -161,6 +175,7 @@ Field units the docs and Tune use.
 | [`EngineProbe.commands`](probe.md#member-EngineProbe-commands) | method | probe | `og_engine_probe_commands` |
 | [`EngineProbe.dump`](probe.md#member-EngineProbe-dump) | method | probe | `og_engine_probe_dump` |
 | [`EngineProbe.hello`](probe.md#member-EngineProbe-hello) | method | probe | `og_engine_probe_hello` |
+| [`EngineProbe.listen`](probe.md#member-EngineProbe-listen) | method | probe | `og_engine_probe_listen` |
 | [`EngineProbe.reload`](probe.md#member-EngineProbe-reload) | method | probe | `og_engine_probe_reload` |
 | [`EngineProbe.restore`](probe.md#member-EngineProbe-restore) | method | probe | `og_engine_probe_restore` |
 | [`EngineProbe.snapshot`](probe.md#member-EngineProbe-snapshot) | method | probe | `og_engine_probe_snapshot` |
@@ -183,6 +198,7 @@ Field units the docs and Tune use.
 | [`FlipbookSheet()`](anim.md#column-FlipbookSheet) | column kind | anim | — |
 | [`FlipMode`](anim.md#type-FlipMode) | enum | anim | — |
 | [`FloatingTextDesc`](render.md#type-FloatingTextDesc) | desc struct | render | — |
+| [`FlowDesc`](nav.md#type-FlowDesc) | desc struct | nav | — |
 | [`Font`](load.md#type-Font) | handle | load | — |
 | [`FontInfo`](load.md#type-FontInfo) | struct | load | — |
 | [`FontRole`](ui.md#type-FontRole) | enum | ui | — |
@@ -209,6 +225,7 @@ Field units the docs and Tune use.
 | [`GraphDesc`](anim.md#type-GraphDesc) | desc struct | anim | — |
 | [`GraphicsQuality`](ui.md#type-GraphicsQuality) | enum | ui | — |
 | [`GridDesc`](ui.md#type-GridDesc) | desc struct | ui | — |
+| [`Heard`](probe.md#type-Heard) | struct | probe | — |
 | [`Hello`](probe.md#type-Hello) | struct | probe | — |
 | [`HudResult`](ui.md#type-HudResult) | struct | ui | — |
 | [`HueName`](ui.md#type-HueName) | enum | ui | — |
@@ -250,7 +267,9 @@ Field units the docs and Tune use.
 | [`LanguageOption`](ui.md#type-LanguageOption) | desc struct | ui | — |
 | [`LeaderboardDesc`](ui.md#type-LeaderboardDesc) | desc struct | ui | — |
 | [`LeaderboardEntry`](ui.md#type-LeaderboardEntry) | desc struct | ui | — |
+| [`LeaderboardQueryDesc`](platform.md#type-LeaderboardQueryDesc) | desc struct | platform | — |
 | [`LeaderboardResult`](ui.md#type-LeaderboardResult) | struct | ui | — |
+| [`LeaderboardSubmitDesc`](platform.md#type-LeaderboardSubmitDesc) | desc struct | platform | — |
 | [`LevelInfo`](ui.md#type-LevelInfo) | desc struct | ui | — |
 | [`LevelSelectDesc`](ui.md#type-LevelSelectDesc) | desc struct | ui | — |
 | [`LevelSelectResult`](ui.md#type-LevelSelectResult) | struct | ui | — |
@@ -259,6 +278,7 @@ Field units the docs and Tune use.
 | [`ListResult`](ui.md#type-ListResult) | struct | ui | — |
 | [`LoadingDesc`](ui.md#type-LoadingDesc) | desc struct | ui | — |
 | [`LoadStatus`](load.md#type-LoadStatus) | enum | load | — |
+| [`LocaleInfo`](i18n.md#type-LocaleInfo) | struct | i18n | — |
 | [`LOCK_ROTATION_X`](physics.md#const-LOCK_ROTATION_X) | constant | physics | — |
 | [`LOCK_ROTATION_Y`](physics.md#const-LOCK_ROTATION_Y) | constant | physics | — |
 | [`LOCK_ROTATION_Z`](physics.md#const-LOCK_ROTATION_Z) | constant | physics | — |
@@ -288,8 +308,32 @@ Field units the docs and Tune use.
 | [`MOTOR_NONE`](physics.md#const-MOTOR_NONE) | constant | physics | — |
 | [`MOTOR_POSITION`](physics.md#const-MOTOR_POSITION) | constant | physics | — |
 | [`MOTOR_VELOCITY`](physics.md#const-MOTOR_VELOCITY) | constant | physics | — |
+| [`NAV_ARRIVED`](nav.md#const-NAV_ARRIVED) | constant | nav | — |
+| [`NAV_IDLE`](nav.md#const-NAV_IDLE) | constant | nav | — |
+| [`NAV_MOVING`](nav.md#const-NAV_MOVING) | constant | nav | — |
+| [`NAV_PARTIAL`](nav.md#const-NAV_PARTIAL) | constant | nav | — |
+| [`NAV_UNREACHABLE`](nav.md#const-NAV_UNREACHABLE) | constant | nav | — |
+| [`NavAlgorithm`](nav.md#type-NavAlgorithm) | enum | nav | — |
+| [`NavBox`](nav.md#type-NavBox) | desc struct | nav | — |
+| [`NavCell`](nav.md#type-NavCell) | struct | nav | — |
+| [`NavGridDesc`](nav.md#type-NavGridDesc) | desc struct | nav | — |
+| [`Navigation`](nav.md#type-Navigation) | handle | nav | — |
+| [`Navigation()`](nav.md#column-Navigation) | column kind | nav | — |
 | [`NavIntent`](ui.md#type-NavIntent) | enum | ui | — |
+| [`NavMeshDesc`](nav.md#type-NavMeshDesc) | desc struct | nav | — |
+| [`NavMeshInfo`](nav.md#type-NavMeshInfo) | struct | nav | — |
+| [`NavPath`](nav.md#type-NavPath) | struct | nav | — |
+| [`NavRebuild`](nav.md#type-NavRebuild) | struct | nav | — |
+| [`NoiseDesc`](ai.md#type-NoiseDesc) | desc struct | ai | — |
 | [`og.Afterimage`](render.md#record-Afterimage) | component | render | — |
+| [`og.ai.describe`](ai.md#fn-describe) | function | ai | `og_ai_describe` |
+| [`og.ai.get`](ai.md#fn-get) | function | ai | `og_ai_get` |
+| [`og.ai.load`](ai.md#fn-load) | function | ai | `og_ai_load` |
+| [`og.ai.noise`](ai.md#fn-noise) | function | ai | `og_ai_noise` |
+| [`og.ai.parse`](ai.md#fn-parse) | function | ai | `og_ai_parse` |
+| [`og.ai.set`](ai.md#fn-set) | function | ai | `og_ai_set` |
+| [`og.AiAgent`](ai.md#record-AiAgent) | component | ai | — |
+| [`og.AiChanged`](ai.md#record-AiChanged) | event | ai | — |
 | [`og.anim.clip`](anim.md#fn-clip) | function | anim | — |
 | [`og.anim.graph`](anim.md#fn-graph) | function | anim | `og_anim_graph` |
 | [`og.AnimationEvent`](anim.md#record-AnimationEvent) | event | anim | — |
@@ -299,6 +343,7 @@ Field units the docs and Tune use.
 | [`og.AssetReady`](load.md#record-AssetReady) | event | load | — |
 | [`og.atmosphere.timeOfDay`](atmosphere.md#fn-timeOfDay) | function | atmosphere | `og_atmosphere_time_of_day` |
 | [`og.Audio`](audio.md#record-Audio) | resource | audio | — |
+| [`og.AudioBusFx`](audio.md#record-AudioBusFx) | component | audio | — |
 | [`og.AudioListener`](audio.md#record-AudioListener) | component | audio | — |
 | [`og.AudioSource`](audio.md#record-AudioSource) | component | audio | — |
 | [`og.Beam`](render.md#record-Beam) | component | render | — |
@@ -331,6 +376,11 @@ Field units the docs and Tune use.
 | [`og.FollowCamera`](camera.md#record-FollowCamera) | component | camera | — |
 | [`og.game`](game.md#fn-game) | function | game | `og_game_game` |
 | [`og.Gamepad`](input.md#record-Gamepad) | resource | input | — |
+| [`og.i18n.has`](i18n.md#fn-has) | function | i18n | `og_i18n_has` |
+| [`og.i18n.load`](i18n.md#fn-load) | function | i18n | `og_i18n_load` |
+| [`og.i18n.locale`](i18n.md#fn-locale) | function | i18n | `og_i18n_locale` |
+| [`og.i18n.setLocale`](i18n.md#fn-setLocale) | function | i18n | `og_i18n_set_locale` |
+| [`og.i18n.t`](i18n.md#fn-t) | function | i18n | `og_i18n_t` |
 | [`og.IkChain`](anim.md#record-IkChain) | component | anim | — |
 | [`og.Input`](input.md#record-Input) | resource | input | — |
 | [`og.Joint`](physics.md#record-Joint) | component | physics | — |
@@ -361,10 +411,28 @@ Field units the docs and Tune use.
 | [`og.MatrixWorld`](transform.md#record-MatrixWorld) | component | transform | — |
 | [`og.Mesh`](render.md#record-Mesh) | component | render | — |
 | [`og.Model`](load.md#record-Model) | component | load | — |
+| [`og.Music`](audio.md#record-Music) | component | audio | — |
+| [`og.MusicBeat`](audio.md#record-MusicBeat) | event | audio | — |
+| [`og.nav.build`](nav.md#fn-build) | function | nav | `og_nav_build` |
+| [`og.nav.cellAt`](nav.md#fn-cellAt) | function | nav | `og_nav_cell_at` |
+| [`og.nav.findPath`](nav.md#fn-findPath) | function | nav | `og_nav_find_path` |
+| [`og.nav.flowAt`](nav.md#fn-flowAt) | function | nav | `og_nav_flow_at` |
+| [`og.nav.flowField`](nav.md#fn-flowField) | function | nav | `og_nav_flow_field` |
+| [`og.nav.grid`](nav.md#fn-grid) | function | nav | `og_nav_grid` |
+| [`og.nav.gridFromTilemap`](nav.md#fn-gridFromTilemap) | function | nav | `og_nav_grid_from_tilemap` |
+| [`og.nav.load`](nav.md#fn-load) | function | nav | `og_nav_load` |
+| [`og.nav.nearest`](nav.md#fn-nearest) | function | nav | `og_nav_nearest` |
+| [`og.nav.pathOf`](nav.md#fn-pathOf) | function | nav | `og_nav_path_of` |
+| [`og.nav.setCost`](nav.md#fn-setCost) | function | nav | `og_nav_set_cost` |
+| [`og.nav.setFlowTargets`](nav.md#fn-setFlowTargets) | function | nav | `og_nav_set_flow_targets` |
+| [`og.nav.setObstacle`](nav.md#fn-setObstacle) | function | nav | `og_nav_set_obstacle` |
+| [`og.NavAgent`](nav.md#record-NavAgent) | component | nav | — |
 | [`og.Occluder2D`](render.md#record-Occluder2D) | component | render | — |
 | [`og.OrbitCamera`](camera.md#record-OrbitCamera) | component | camera | — |
 | [`og.Parent`](transform.md#record-Parent) | component | transform | — |
 | [`og.ParticleSystem`](render.md#record-ParticleSystem) | component | render | — |
+| [`og.Perceivable`](ai.md#record-Perceivable) | component | ai | — |
+| [`og.Perception`](ai.md#record-Perception) | component | ai | — |
 | [`og.Physics`](physics.md#record-Physics) | resource | physics | — |
 | [`og.physics.clothPoints`](physics.md#fn-clothPoints) | function | physics | `og_physics_cloth_points` |
 | [`og.physics.fluidParticles`](physics.md#fn-fluidParticles) | function | physics | `og_physics_fluid_particles` |
@@ -378,6 +446,20 @@ Field units the docs and Tune use.
 | [`og.physics.shapeCast`](physics.md#fn-shapeCast) | function | physics | `og_physics_shape_cast` |
 | [`og.physics.vehicleWheels`](physics.md#fn-vehicleWheels) | function | physics | `og_physics_vehicle_wheels` |
 | [`og.physics.waterHeight`](physics.md#fn-waterHeight) | function | physics | `og_physics_water_height` |
+| [`og.platform.aiMark`](platform.md#fn-aiMark) | function | platform | `og_platform_ai_mark` |
+| [`og.platform.info`](platform.md#fn-info) | function | platform | `og_platform_info` |
+| [`og.platform.leaderboardAround`](platform.md#fn-leaderboardAround) | function | platform | `og_platform_leaderboard_around` |
+| [`og.platform.leaderboardSubmit`](platform.md#fn-leaderboardSubmit) | function | platform | `og_platform_leaderboard_submit` |
+| [`og.platform.leaderboardTop`](platform.md#fn-leaderboardTop) | function | platform | `og_platform_leaderboard_top` |
+| [`og.platform.loadSettings`](platform.md#fn-loadSettings) | function | platform | `og_platform_load_settings` |
+| [`og.platform.point`](platform.md#fn-point) | function | platform | `og_platform_point` |
+| [`og.platform.result`](platform.md#fn-result) | function | platform | `og_platform_result` |
+| [`og.platform.saveSettings`](platform.md#fn-saveSettings) | function | platform | `og_platform_save_settings` |
+| [`og.platform.storeGet`](platform.md#fn-storeGet) | function | platform | `og_platform_store_get` |
+| [`og.platform.storeList`](platform.md#fn-storeList) | function | platform | `og_platform_store_list` |
+| [`og.platform.storeSet`](platform.md#fn-storeSet) | function | platform | `og_platform_store_set` |
+| [`og.platform.telemetry`](platform.md#fn-telemetry) | function | platform | `og_platform_telemetry` |
+| [`og.PlatformAnswered`](platform.md#record-PlatformAnswered) | event | platform | — |
 | [`og.PlatformerController`](physics.md#record-PlatformerController) | component | physics | — |
 | [`og.PointerDown`](input.md#record-PointerDown) | event | input | — |
 | [`og.PointerMove`](input.md#record-PointerMove) | event | input | — |
@@ -412,6 +494,7 @@ Field units the docs and Tune use.
 | [`og.Splash`](physics.md#record-Splash) | event | physics | — |
 | [`og.SpotLight`](render.md#record-SpotLight) | component | render | — |
 | [`og.Sprite`](render.md#record-Sprite) | component | render | — |
+| [`og.Steering`](nav.md#record-Steering) | component | nav | — |
 | [`og.systems.cameras`](systems.md#value-cameras) | value | systems | — |
 | [`og.Tilemap`](tilemap.md#record-Tilemap) | component | tilemap | — |
 | [`og.tilemap.cellAt`](tilemap.md#fn-cellAt) | function | tilemap | `og_tilemap_cell_at` |
@@ -542,6 +625,7 @@ Field units the docs and Tune use.
 | [`PanelDesc`](ui.md#type-PanelDesc) | desc struct | ui | — |
 | [`ParticleEmitter`](render.md#type-ParticleEmitter) | handle | render | — |
 | [`ParticleEmitter()`](render.md#column-ParticleEmitter) | column kind | render | — |
+| [`PathDesc`](nav.md#type-PathDesc) | desc struct | nav | — |
 | [`PauseMenuDesc`](ui.md#type-PauseMenuDesc) | desc struct | ui | — |
 | [`PercentSize`](ui.md#type-PercentSize) | struct | ui | — |
 | [`PickOperation`](probe.md#type-PickOperation) | struct | probe | — |
@@ -552,7 +636,12 @@ Field units the docs and Tune use.
 | [`PIN_TOP_RINGS`](physics.md#const-PIN_TOP_RINGS) | constant | physics | — |
 | [`PlaneGeometryDesc`](render.md#type-PlaneGeometryDesc) | desc struct | render | — |
 | [`PlatformerHudDesc`](ui.md#type-PlatformerHudDesc) | desc struct | ui | — |
+| [`PlatformError`](platform.md#type-PlatformError) | struct | platform | — |
+| [`PlatformInfo`](platform.md#type-PlatformInfo) | struct | platform | — |
+| [`PlatformOrder`](platform.md#type-PlatformOrder) | enum | platform | — |
+| [`PlatformResult`](platform.md#type-PlatformResult) | struct | platform | — |
 | [`PLAYTEST_MAX_TICKS`](probe.md#const-PLAYTEST_MAX_TICKS) | constant | probe | — |
+| [`PointDesc`](platform.md#type-PointDesc) | desc struct | platform | — |
 | [`PointerAction`](input.md#type-PointerAction) | enum | input | — |
 | [`PointerButton`](input.md#type-PointerButton) | enum | input | — |
 | [`PointerInput`](input.md#type-PointerInput) | struct | input | — |
@@ -666,6 +755,7 @@ Field units the docs and Tune use.
 | [`SnapshotInfo`](probe.md#type-SnapshotInfo) | struct | probe | — |
 | [`Sound`](load.md#type-Sound) | handle | load | — |
 | [`Sound()`](load.md#column-Sound) | column kind | load | — |
+| [`SOUND_CULLED`](audio.md#const-SOUND_CULLED) | constant | audio | — |
 | [`SOUND_FINISHED`](audio.md#const-SOUND_FINISHED) | constant | audio | — |
 | [`SOUND_REMOVED`](audio.md#const-SOUND_REMOVED) | constant | audio | — |
 | [`SOUND_REPLACED`](audio.md#const-SOUND_REPLACED) | constant | audio | — |
@@ -683,6 +773,7 @@ Field units the docs and Tune use.
 | [`StatRow`](ui.md#type-StatRow) | desc struct | ui | — |
 | [`StepperDesc`](ui.md#type-StepperDesc) | desc struct | ui | — |
 | [`StepperResult`](ui.md#type-StepperResult) | struct | ui | — |
+| [`StoreSetDesc`](platform.md#type-StoreSetDesc) | desc struct | platform | — |
 | [`StripBlend`](render.md#type-StripBlend) | enum | render | — |
 | [`StripBlend()`](render.md#column-StripBlend) | column kind | render | — |
 | [`SweepDesc`](probe.md#type-SweepDesc) | desc struct | probe | — |
@@ -707,6 +798,7 @@ Field units the docs and Tune use.
 | [`TileLayerInfo`](tilemap.md#type-TileLayerInfo) | struct | tilemap | — |
 | [`TilemapAsset`](tilemap.md#type-TilemapAsset) | handle | tilemap | — |
 | [`TilemapAsset()`](tilemap.md#column-TilemapAsset) | column kind | tilemap | — |
+| [`TilemapGridDesc`](nav.md#type-TilemapGridDesc) | desc struct | nav | — |
 | [`TilemapInfo`](tilemap.md#type-TilemapInfo) | struct | tilemap | — |
 | [`TileObject`](tilemap.md#type-TileObject) | struct | tilemap | — |
 | [`ToastDesc`](ui.md#type-ToastDesc) | desc struct | ui | — |

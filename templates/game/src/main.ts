@@ -8,6 +8,11 @@
 // gives the ground its mesh and collider, drops a crate above it, puts the
 // camera and the UI font in place. The Start button of the menu panel (or S
 // or Enter) starts the trickster spinning and lets the crate fall.
+//
+// A guard walks the yard: a state machine in assets/ai/guard.ogt (og.ai)
+// patrols its post on the navmesh baked from assets/nav/yard.ogt (og.nav),
+// sees the trickster only inside its view cone and not through the wall,
+// raises the alarm and chases it, then searches and goes back.
 
 import { og, defineComponent, defineResource, defineSystem, bool, f32, Vector3, SHAPE_BOX } from "@origingame/engine";
 import type { World } from "@origingame/engine";
@@ -27,6 +32,9 @@ export const Spin = defineComponent("Spin", {
 
 /** Whether the player has pressed Start. */
 export const Run = defineResource("Run", { started: bool(), chimed: bool() });
+
+/** The guard's alarms, raised by its machine's `alarm` command. */
+export const Alarm = defineComponent("Alarm", { raised: f32(0) });
 
 export const Move = defineSystem("Move", { reads: [Velocity], writes: [og.Transform] }, (q, time) => {
   for (const a of q.archetypes()) {
@@ -164,19 +172,59 @@ export default og.game({
     if (trickster !== null) {
       world.insert(trickster, Spin);
       world.insert(trickster, Health);
+      // What the guard looks for: team 1, looked at 1 m above its feet.
+      world.insert(trickster, og.Perceivable, { team: 1, eyeHeight: 1 });
     }
+
+    // The wall the navmesh was baked around (assets/nav/yard.ogt): drawn, and solid to the guard's sight.
+    const wall = must(world.spawn({ name: "wall", position: { x: -3, y: 1, z: -2 } }));
+    const slabGeo = must(og.render.boxGeometry(world, { width: 0.6, height: 2, depth: 6 }));
+    const plaster = must(og.render.standardMaterial(world, { color: { r: 0.55, g: 0.52, b: 0.48 }, roughness: 0.9 }));
+    world.insert(wall, og.Mesh, { geometry: slabGeo, material: plaster, castShadow: true, receiveShadow: true });
+    world.insert(wall, og.Collider, { shape: SHAPE_BOX, size: { x: 0.6, y: 2, z: 6 } });
+
+    // The guard: the walker model, moved by og.nav on the baked navmesh and run by og.ai's machine.
+    const yard = must(og.nav.load(world, "nav/yard.ogt"));
+    const mind = must(og.ai.load(world, "ai/guard.ogt"));
+    const walker = must(og.load.gltf(world, "models/walker.glb"));
+    const guard = must(world.instantiate(walker, { name: "guard", position: { x: -6, y: 0, z: -3 } }));
+    // Facing east (+X), towards the wall: its view cone is 120° around the way it faces until it moves.
+    world.set(guard, og.Transform, { quaternion: { x: 0, y: Math.SQRT1_2, z: 0, w: Math.SQRT1_2 } });
+    world.insert(guard, og.NavAgent, { nav: yard.mesh, speed: 1.5, acceleration: 12, radius: 0.4, faceMovement: true, turnSpeed: 8 });
+    world.insert(guard, og.AiAgent, { behaviour: mind.behaviour });
+    world.insert(guard, og.Perception, { sight: 9, fov: 120, eyeHeight: 1.6, team: 2 });
+    world.insert(guard, Alarm);
     const font = og.load.font(world, "fonts/NotoSansSC-Regular-subset.ttf");
-    if (font.ok) og.ui.configure(world, { font: font.value });
+    // A press answers with a sound as well as its look (og-taste §6): the `click` preset, synthesised by og cook.
+    const click = og.load.sound(world, "audio/click.ogt");
+    og.ui.configure(world, { ...(font.ok ? { font: font.value } : {}), ...(click.ok ? { sounds: { press: click.value } } : {}) });
   },
-  commands: { spawn_wave: (world, args) => spawnWave(world, Number(args[0] ?? 3)) },
+  commands: {
+    spawn_wave: (world, args) => spawnWave(world, Number(args[0] ?? 3)),
+    // The guard's machine raises it on entering `alert`; og.ai passes the guard's handle first.
+    alarm: (world, args) => {
+      const guard = Number(args[0]) as never;
+      const a = must(world.get(guard, Alarm));
+      must(world.set(guard, Alarm, { raised: a.raised + 1 }) as never);
+    },
+    /** `lure:<x>:<z>`: moves the trickster on the ground. */
+    lure: (world, args) => {
+      const t = world.find("trickster");
+      if (t === null) throw new Error("no trickster");
+      must(world.set(t, og.Transform, { position: { x: Number(args[0]), y: 0, z: Number(args[1]) } }) as never);
+    },
+  },
   facts: (world) => {
     const run = world.resource(Run);
     const trickster = world.find("trickster");
     const spin = trickster === null ? null : world.get(trickster, Spin);
     const crate = world.find("crate");
     const at = crate === null ? null : world.get(crate, og.Transform);
+    const guard = world.find("guard");
+    const mind = guard === null ? null : (og.ai.describe(world, guard) as { state: string } | null);
     return {
       started: run.ok && run.value.started,
+      guard: mind?.state ?? null,
       spin: spin?.ok ? spin.value.speed : null,
       crateY: at?.ok ? at.value.position.y : null,
     };

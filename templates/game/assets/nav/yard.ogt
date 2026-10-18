@@ -1,0 +1,27 @@
+type navmesh
+version 1
+---
+# The yard's navmesh, baked by `og cook` (og.nav.load("nav/yard.ogt")): the
+# ground and the wall `start` builds in src/main.ts, voxelised for an agent
+# 0.4 m wide and 1.8 m tall. A `scene` or `model` entry bakes glTF geometry
+# instead of boxes.
+agent {
+  radius 0.4
+  height 1.8
+  climb 0.4
+  slope 45
+}
+cellSize 0.25
+tileSize 32
+bounds {
+  min -12 -1 -12
+  max 12 3 12
+}
+box {
+  center 0 -0.1 0
+  size 30 0.2 30
+}
+box {
+  center -3 1 -2
+  size 0.6 2 6
+}

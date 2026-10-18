@@ -18,7 +18,7 @@ module reflect {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 82</sub>
+<sub>`api.ogt` line 84</sub>
 
 ## Contents
 
@@ -72,7 +72,7 @@ fn defineComponent {
 }
 ```
 
-<sub>`api.ogt` line 169</sub>
+<sub>`api.ogt` line 171</sub>
 
 <a id="fn-defineResource"></a>
 
@@ -103,7 +103,7 @@ fn defineResource {
 }
 ```
 
-<sub>`api.ogt` line 178</sub>
+<sub>`api.ogt` line 180</sub>
 
 ## Types
 
@@ -139,7 +139,7 @@ struct FieldOptions {
 }
 ```
 
-<sub>`api.ogt` line 87</sub>
+<sub>`api.ogt` line 89</sub>
 
 ## Column kinds
 
@@ -167,7 +167,7 @@ column f32 {
 }
 ```
 
-<sub>`api.ogt` line 99</sub>
+<sub>`api.ogt` line 101</sub>
 
 ```ogt
 column f64 {
@@ -178,7 +178,7 @@ column f64 {
 }
 ```
 
-<sub>`api.ogt` line 106</sub>
+<sub>`api.ogt` line 108</sub>
 
 ```ogt
 column u32 {
@@ -189,7 +189,7 @@ column u32 {
 }
 ```
 
-<sub>`api.ogt` line 113</sub>
+<sub>`api.ogt` line 115</sub>
 
 ```ogt
 column i32 {
@@ -200,7 +200,7 @@ column i32 {
 }
 ```
 
-<sub>`api.ogt` line 120</sub>
+<sub>`api.ogt` line 122</sub>
 
 ```ogt
 column bool {
@@ -211,7 +211,7 @@ column bool {
 }
 ```
 
-<sub>`api.ogt` line 127</sub>
+<sub>`api.ogt` line 129</sub>
 
 ```ogt
 column Vector2 {
@@ -222,7 +222,7 @@ column Vector2 {
 }
 ```
 
-<sub>`api.ogt` line 134</sub>
+<sub>`api.ogt` line 136</sub>
 
 ```ogt
 column Vector3 {
@@ -233,7 +233,7 @@ column Vector3 {
 }
 ```
 
-<sub>`api.ogt` line 141</sub>
+<sub>`api.ogt` line 143</sub>
 
 ```ogt
 column Quaternion {
@@ -244,7 +244,7 @@ column Quaternion {
 }
 ```
 
-<sub>`api.ogt` line 148</sub>
+<sub>`api.ogt` line 150</sub>
 
 ```ogt
 column Matrix4 {
@@ -255,7 +255,7 @@ column Matrix4 {
 }
 ```
 
-<sub>`api.ogt` line 155</sub>
+<sub>`api.ogt` line 157</sub>
 
 ```ogt
 column Color {
@@ -266,4 +266,4 @@ column Color {
 }
 ```
 
-<sub>`api.ogt` line 162</sub>
+<sub>`api.ogt` line 164</sub>

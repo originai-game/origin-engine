@@ -7,7 +7,7 @@ use crate::project::{self, Project};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
-fn files(dir: &Path, suffix: &str, out: &mut Vec<PathBuf>) {
+pub(crate) fn files(dir: &Path, suffix: &str, out: &mut Vec<PathBuf>) {
     let Ok(read) = std::fs::read_dir(dir) else {
         return;
     };

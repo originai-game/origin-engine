@@ -1,0 +1,23 @@
+{
+  "rate": 48000,
+  "presets": {
+    "back": { "seconds": 0.142, "cookedBytes": 2976, "wavSha256": "8e60d2a83182958dbefc0cd06051b510331eee31b060429245fe1847ae6e7515", "rendersEqual": true },
+    "click": { "seconds": 0.036, "cookedBytes": 912, "wavSha256": "6d1105f6d50962f9f985c13155311102ac714cf8721f904d15195e1b562a3fee", "rendersEqual": true },
+    "coin": { "seconds": 0.282, "cookedBytes": 5688, "wavSha256": "2a8bb66fead248d56eb263762f4c3097934021a855a07f31c4d2393f575c36fb", "rendersEqual": true },
+    "death": { "seconds": 0.912, "cookedBytes": 17928, "wavSha256": "303ea6f2dcf1f2e28cff3fcd67afa1d431ed3dbf4ecd61aab8086729390c52ec", "rendersEqual": true },
+    "door": { "seconds": 0.602, "cookedBytes": 11904, "wavSha256": "1a0ad1e045107da9dbc782f30ce16fcb7422c62fbba3dd7f819b501d2d16fe10", "rendersEqual": true },
+    "error": { "seconds": 0.282, "cookedBytes": 5688, "wavSha256": "d5fdf357b9fc6a82d202aef40a757a2a45fed7c4b9e616be3798c2b7c734cacd", "rendersEqual": true },
+    "explosion": { "seconds": 1.012, "cookedBytes": 19872, "wavSha256": "ef24a1d1d6c640da7ad221458c8ed3d180b84df8bd7ad87d9bddc23d5e231876", "rendersEqual": true },
+    "footstep": { "seconds": 0.061, "cookedBytes": 1400, "wavSha256": "feec64a66ab96c5e46a0315a62419ab3ab9c767b0ebc6184d204f3f12c28b26e", "rendersEqual": true },
+    "hit": { "seconds": 0.152, "cookedBytes": 3168, "wavSha256": "47599ec77fa78d5a2cbcc1125b7e47c93bc19922bb42e649a8f18cea238cc67f", "rendersEqual": true },
+    "hurt": { "seconds": 0.272, "cookedBytes": 5496, "wavSha256": "91c1f417dc811a28971f19c1d32e9df0ad96bb92fd6108a76b8a9e6410c0790a", "rendersEqual": true },
+    "jump": { "seconds": 0.182, "cookedBytes": 3744, "wavSha256": "75c7859fb99c2869f80d5318e4caaeb125dd587e0e3defa8dfc10c08ec9b3f7d", "rendersEqual": true },
+    "land": { "seconds": 0.142, "cookedBytes": 2976, "wavSha256": "f362631db7cacce0e2b1fd52649fea80e648dd27cbade49702f340388192348f", "rendersEqual": true },
+    "laser": { "seconds": 0.212, "cookedBytes": 4320, "wavSha256": "7fb102b0402b23863f5f972b395f0d76a93eee98342a9412953e42f6a495ed78", "rendersEqual": true },
+    "levelup": { "seconds": 0.752, "cookedBytes": 14832, "wavSha256": "219aae6f0403ee111e926f130077c4d430d6ae48a2bdf22fb23894f32b31d15a", "rendersEqual": true },
+    "pickup": { "seconds": 0.132, "cookedBytes": 2784, "wavSha256": "4dce0b74834a0b6d777b9e6295c425e3701081aef69140ba72153b50577ac7ab", "rendersEqual": true },
+    "powerup": { "seconds": 0.512, "cookedBytes": 10152, "wavSha256": "406d54699079313dcfc80ffa4d977cbcdb9969417d650b9ff5f942f2e46a2ce3", "rendersEqual": true },
+    "select": { "seconds": 0.142, "cookedBytes": 2976, "wavSha256": "5ef4c38eaee42ace512a48128793b636e00c00eb392ce100e8cf8528ea4d0171", "rendersEqual": true },
+    "whoosh": { "seconds": 0.460, "cookedBytes": 9152, "wavSha256": "7b6f9fef16eb4abf8df734327496d01715a40fa923fa4c643c6be929bc5c79cf", "rendersEqual": true }
+  }
+}

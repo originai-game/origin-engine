@@ -79,7 +79,8 @@ fn clamp_s16(v: i32) -> i32 {
 
 fn div(v: i32, scalefactor: usize) -> i32 {
     let reciprocal = RECIPROCAL_TAB[scalefactor];
-    let n = (v * reciprocal + (1 << 15)) >> 16;
+    // In i64: a full-scale residual times the largest reciprocal overflows i32.
+    let n = ((i64::from(v) * i64::from(reciprocal) + (1 << 15)) >> 16) as i32;
     n + ((v > 0) as i32 - (v < 0) as i32) - ((n > 0) as i32 - (n < 0) as i32)
 }
 

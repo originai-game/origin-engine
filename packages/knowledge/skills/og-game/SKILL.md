@@ -1,6 +1,6 @@
 ---
 name: og-game
-description: Building a game on Origin Engine — the project layout, components and systems on the ECS, the game entry, scenes as .ogt text, assets cooked from assets/ to cooked/, the og.load loaders, effects, fog, sky, day and night, weather and water, material shaders in WGSL, and physics beyond rigid bodies (joints, character and platformer controllers, vehicles, ropes, cloth, 2D fluids, ragdolls). Use when creating, structuring or extending a TypeScript Origin Engine game (a project with a project.ogt; not a Godot project.godot).
+description: Building a game on Origin Engine — the project layout, components and systems on the ECS, the game entry, scenes as .ogt text, assets cooked from assets/ to cooked/, the og.load loaders, effects, fog, sky, day and night, weather and water, material shaders in WGSL, physics beyond rigid bodies (joints, character and platformer controllers, vehicles, ropes, cloth, 2D fluids, ragdolls), which skill covers enemies, sound, platform services and languages, and the performance budget. Use when creating, structuring or extending a TypeScript Origin Engine game (a project with a project.ogt; not a Godot project.godot).
 ---
 
 An Origin Engine project is plain files: TypeScript in `src/`, source assets
@@ -303,6 +303,27 @@ snapshots (`reference/physics.md`):
 Readouts (`ropePoints`, `clothPoints`, `fluidParticles`, `waterHeight`,
 `vehicleWheels`, `ragdollPose`) show the last step. `templates/fx-showcase`
 has a station for each.
+
+## Enemies, sound, platform, languages, polish
+
+| Need | Skill |
+|---|---|
+| Enemies and NPCs: navigation (`og.nav`) and minds as data (`og.ai`) | og-ai |
+| Sound effects, presets, UI sounds, the mix, music | og-audio |
+| Saves, settings, leaderboards, telemetry (`og.platform`) | og-platform-sdk |
+| Text in several languages (`og.i18n`), fonts, right to left | og-i18n |
+| Scoring a build against og-taste and og-feel | `og polish .` (og-taste §11, og-feel §14) |
+
+## Performance
+
+A frame is 16.7 ms at 60 Hz; keep step + render under half of it on a
+desktop so phones have room. `og run --json` prints `advanceMs`, and `og
+polish` the p95 step and render time of every playtest. The usual costs:
+draws (share geometry and one material per look), particle systems (cap
+`maxParticles` in the emitter's .ogt, despawn emitters that are done),
+per-tick TypeScript over many entities (iterate archetype columns, never
+`world.get` per entity; spread expensive work over ticks, as og.ai's
+`thinkEvery` does), and loads in the middle of play (load in `start`).
 
 ## Where to look things up
 

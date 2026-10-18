@@ -1,0 +1,10 @@
+{
+  "voices": 32,
+  "rate": 48000,
+  "seconds": 20,
+  "tickMsPerSecond.effects": 0.846,
+  "mixMsPerSecond.effects": 9.686,
+  "tickMsPerSecond.dry": 0.731,
+  "mixMsPerSecond.dry": 6.907,
+  "mixShareOfRealTime.effects": 0.0097
+}

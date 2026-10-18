@@ -1,0 +1,24 @@
+type strings
+version 1
+---
+# The UI kit's ja strings (og.i18n; templates/ui-kit/README.md §Locales).
+locale "ja"
+fonts "fonts/NotoSansJP-subset.otf"
+string "gallery.button" "ギャラリー"
+string "menu.title" "オリジン・クエスト"
+string "menu.subtitle" "ちいさな冒険"
+string "menu.play" "プレイ"
+string "menu.continue" "つづきから"
+string "menu.settings" "設定"
+string "menu.quit" "終了"
+string "menu.footer" "バージョン {version}"
+string "pause.title" "一時停止中"
+string "pause.resume" "再開"
+string "pause.settings" "設定"
+string "pause.quit" "メニューに戻る"
+string "hud.level" "1-2 古い水車小屋"
+string "hud.coins" "{n, plural, other {コイン#枚}}"
+string "confirm.title" "このセーブを削除しますか？"
+string "confirm.message" "スロット{slot}の進行状況は失われます。元に戻すことはできません。"
+string "confirm.delete" "削除"
+string "confirm.cancel" "キャンセル"

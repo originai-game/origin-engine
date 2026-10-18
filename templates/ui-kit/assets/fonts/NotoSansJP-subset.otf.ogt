@@ -1,0 +1,10 @@
+type import
+version 1
+---
+# The characters the UI kit's string tables use (tools/make-locale-fonts.py).
+font {
+  charset ascii cjk-punct
+  chars "。いかきこさしすせちつづでとなにのはまらるれわをんイエオキギクコジスセットニバブプメャュョラリルレロン・ー一中了停元再冒削古失定小屋戻時枚止水況状終行設車進開除険？"
+  em_px 32
+  px_range 4
+}
