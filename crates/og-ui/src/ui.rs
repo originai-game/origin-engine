@@ -2787,7 +2787,7 @@ fn tiles(at: f32, len: f32, tile: f32, fill: SliceFill, tiled: bool) -> Vec<(f32
     match fill {
         SliceFill::Stretch => vec![(at, len, 1.0)],
         SliceFill::Round => {
-            let n = (len / tile).round().max(1.0).min(4096.0) as usize;
+            let n = (len / tile).round().clamp(1.0, 4096.0) as usize;
             let w = len / n as f32;
             (0..n).map(|i| (at + i as f32 * w, w, 1.0)).collect()
         }
