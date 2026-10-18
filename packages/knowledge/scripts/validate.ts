@@ -1,7 +1,7 @@
 // Validates @origingame/engine-knowledge against the OriginGame platform's
 // knowledge rules (rules/platform.json, transcribed from the platform with
 // scripts/sync-rules.ts; each rule names its platform source), and the
-// package's own contract: a generated wiki, three skills, and a scaffold
+// package's own contract: a generated wiki, the skills in SKILLS, and a scaffold
 // overlay whose pin and distribution list match the project template.
 //
 //   bun scripts/validate.ts            problems, then the packs and hashes
@@ -44,7 +44,7 @@ export function readRules(pkg: string): Rules {
 }
 
 /** The skills this package ships. */
-export const SKILLS = ["og-build", "og-core", "og-game"] as const;
+export const SKILLS = ["og-build", "og-core", "og-game", "og-taste", "og-ui"] as const;
 
 /** What a scaffolded project must contain (scaffold/README.md describes each). */
 export const TEMPLATE_FILES = ["project.ogt", "src/main.ts", "package.json", "tsconfig.json", "tests/smoke.og.ts"] as const;

@@ -1,6 +1,6 @@
 ---
 name: og-ui
-description: Game screens and HUDs on Origin Engine with og.ui — which screen template to pick (title, pause, settings, five HUDs, cutscene, shop, inventory, level select, results, leaderboard, tutorial, loading, dialogs, toasts), how to feed it data and read what it answers, the widget set beneath, focus for keyboard and gamepad, phones and the safe area, and theming from the platform tokens. Use when building or changing menus, HUDs or any UI in a project with a project.ogt.
+description: Game screens and HUDs on Origin Engine with og.ui — which screen template to pick (title, pause, settings, five HUDs, cutscene, shop, inventory, level select, results, leaderboard, tutorial, loading, dialogs, toasts), how to feed it data and read what it answers, the widget set beneath, focus for keyboard and gamepad, phones and the safe area, and the look: skins (style packs), count-ups, bursts, screen transitions and UI sounds. Use when building or changing menus, HUDs or any UI in a project with a project.ogt.
 ---
 
 `og.ui` is the engine's immediate-mode UI: a system describes the tree every
@@ -113,26 +113,48 @@ Preview a phone headless with a game command that calls
 `og.ui.previewViewport(world, { width: 390, height: 844, dpr: 3, safeArea: { top: 47, bottom: 34, left: 0, right: 0 }, coarsePointer: true })`
 and `og run --size 1170x2532`.
 
-## Theming
+## Theming: skins, motion, transitions, sounds
 
-The look is the platform's tokens: never pass hex colours for chrome; use
-`{ token: "accent" }`, `"fgMuted"`, `"surface"` and the type steps
-(`displayLg`, `xl`, `meta`). Configure once in `GameDesc.start`:
+The default look is the platform's tokens; a game should have its own. A
+**skin** (`og.load.skin`, an `.ogt` of `type skin`) replaces the palette,
+radii, type ramp, durations, fonts and icons, and dresses every element
+class in nine-slice frames from its atlas (panel, card, button with hover,
+pressed and disabled, field, slot, tooltip, HUD capsule, progress track and
+fill), with ornaments (panel corners, the divider, a heading flourish), a
+panel texture, shadows and glows, press squash and hover lift, entrances and
+sounds. Choosing one is the og-taste skill. Six packs to start from are in
+the engine repository under `templates/ui-kit/assets/skins/` (`pixel`,
+`cartoon`, `fantasy`, `scifi`, `paper`, `neon`; copy the directory into the
+game's `assets/skins/`):
 
 ```ts
+const skin = og.load.skin(world, "skins/fantasy/skin.ogt");   // atlas, fonts, icons load with it
 og.ui.configure(world, {
-  font,                              // og.load.font
-  scheme: "dark",                    // the default: games run on a stage
-  accentHue: "blue",                 // or accentColor: { r, g, b }; hover, active, ink and focus are derived
-  contrast: "high",                  // stronger inks and fills, outlined controls
-  reducedMotion: true,               // transitions only fade
-  icons: { texture, columns: 8, rows: 4, names: [...] },  // og.ui.icon(id, "heart")
+  skin: skin.ok ? skin.value : null,
+  contrast: "high",                  // still applies over a skin
+  reducedMotion: settings.reducedMotion,   // every motion becomes a fade
+  sounds: { hover, press, open, close, success, error },  // og.load.sound handles, played on the ui bus
 });
 ```
 
-Amber (the accent) is for the one primary action per screen, ink and focus;
-selection is a neutral fill. Pass a `GameSettings`' `highContrast` and
-`reducedMotion` straight into `configure` when they change.
+Never pass hex colours for chrome: use `{ token: "accent" }`, `"fgMuted"`,
+`"surface"` and the type steps (`displayLg`, `xl`, `meta`); the skin's
+palette answers them. A container that should look like a HUD capsule or a
+card takes `frame: "capsule"` (or `"card"`, `"slot"`…) in its desc; titles
+take `heading: true`. Without a skin both are plain.
+
+Motion and juice, all by the tick and in the UI state:
+
+| Want | Call |
+|---|---|
+| A score, coins or a reward counting up | `og.ui.counter(id, value, { from: 0, font: "display", step: "displayLg" })` |
+| Sparks when a star or reward lands | `og.ui.burst({ count: 10 })` right after the element |
+| A panel or item popping in | `og.ui.transition(id, show, { kind: "pop" })` (also `fade`, `slideUp`…, `scale`) |
+| A change of game screen | `const s = og.ui.screenTransition("Screens", state.screen, { kind: "iris" }).shown;` then build `s` (`fade`, `wipe`, `iris`, `dissolve`, `slide`; a colour or a texture) |
+
+Skins add the rest themselves: dialog and panel entrances with staggered
+controls, hover lift and press squash, eased progress bars, toasts flying in,
+a shake and the error sound on a press of a disabled button.
 
 ## Proving it
 
