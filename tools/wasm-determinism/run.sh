@@ -12,10 +12,11 @@
 #
 # Builds: host debug, host release, wasm32 release (scalar), wasm32 release
 # with +simd128. The host release runs twice, lanes off (OG_LANES=off) and
-# on (OG_LANES=4: og-anim's evaluation and the rapier step on four threads,
-# crates/og-lanes), and the lanes run must have run in parallel, so the
-# comparison is never between two serial runs. Needs cargo, the
-# wasm32-unknown-unknown target and node.
+# on (OG_LANES=4: the rapier step on four threads, crates/og-lanes; the
+# walk's few skeletons stay below og-anim's grain, the native lanes test
+# packages/engine/tests/lanes.test.ts splits a crowd), and the lanes run
+# must have run in parallel, so the comparison is never between two serial
+# runs. Needs cargo, the wasm32-unknown-unknown target and node.
 # Builds go to $CARGO_TARGET_DIR/wasm-determinism (default target/).
 set -eu -o pipefail
 here="$(cd "$(dirname "$0")" && pwd)"

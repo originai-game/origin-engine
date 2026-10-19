@@ -41,7 +41,8 @@ pub struct Report {
     /// Why lanes are serial, empty when they are on.
     pub why: &'static str,
     /// The helper calls that ran in parallel since the start ([`install`]
-    /// counts one call of one item).
+    /// counts one call of one item, and only natively, where it hands the
+    /// work to the pool; in the wasm it runs it on the calling thread).
     pub parallel_calls: u64,
     /// The items those calls ran.
     pub parallel_items: u64,
@@ -125,12 +126,14 @@ where
 /// the same results on any number of threads (rapier's does under
 /// `enhanced-determinism`; the lanes determinism test checks it).
 pub fn install<R: Send>(f: impl FnOnce() -> R + Send) -> R {
-    let on = report().on;
-    if on {
-        CALLS.fetch_add(1, Ordering::Relaxed);
-        ITEMS.fetch_add(1, Ordering::Relaxed);
-    }
-    imp::install(on, f)
+    imp::install(report().on, f)
+}
+
+/// Counts one call of one item that went to the pool ([`install`]).
+#[cfg(not(target_arch = "wasm32"))]
+fn counted() {
+    CALLS.fetch_add(1, Ordering::Relaxed);
+    ITEMS.fetch_add(1, Ordering::Relaxed);
 }
 
 #[cfg(any(not(target_arch = "wasm32"), target_feature = "atomics"))]
@@ -188,24 +191,31 @@ mod imp {
         }
     }
 
-    /// One thread for a rayon library when lanes are off.
-    static SERIAL: OnceLock<Option<rayon::ThreadPool>> = OnceLock::new();
+    thread_local! {
+        /// One thread for a rayon library when lanes are off: the calling
+        /// thread itself (`use_current_thread`), so the work runs inline.
+        /// A pool of its own thread would cost a wake there and back on
+        /// every call, 0.1 ms at the median and milliseconds at the tail on
+        /// a loaded machine. Rayon leaks such a pool's registry, one per
+        /// thread that ever calls with lanes off. Where the thread already
+        /// belongs to a pool (a lane calling in), there is none and the
+        /// work runs on that pool, with the same results.
+        static SERIAL: Option<rayon::ThreadPool> = rayon::ThreadPoolBuilder::new()
+            .num_threads(1)
+            .use_current_thread()
+            .build()
+            .ok();
+    }
 
     pub fn install<R: Send>(on: bool, f: impl FnOnce() -> R + Send) -> R {
         if on && let Some(p) = &pool_of().0 {
+            super::counted();
             return p.install(f);
         }
-        let serial = SERIAL.get_or_init(|| {
-            rayon::ThreadPoolBuilder::new()
-                .num_threads(1)
-                .thread_name(|_| "og-lane-serial".into())
-                .build()
-                .ok()
-        });
-        match serial {
+        SERIAL.with(|serial| match serial {
             Some(p) => p.install(f),
             None => f(),
-        }
+        })
     }
 
     fn pooled<R: Send>(f: impl FnOnce() -> R + Send) -> R {

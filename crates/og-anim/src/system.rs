@@ -688,9 +688,11 @@ fn evaluate(sh: &Shared, ev: &mut Eval, dt: f32) -> Result<(Trs, Vec<Fired>)> {
     Ok((delta, events))
 }
 
-/// Skeletons per lane task: an entity's graph or clip evaluation is a few
-/// microseconds, so a task takes at least four.
-const GRAIN: usize = 4;
+/// Skeletons per lane task. An entity's graph or clip evaluation is about a
+/// microsecond and its palette less (20 characters: 21 and 12 us on an M4
+/// Pro), while waking the pool costs tens of microseconds idle and
+/// milliseconds on a loaded machine, so only crowds of 128 or more split.
+const GRAIN: usize = 64;
 
 fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
     // Scaled time: slow motion plays slower, a hit stop holds the pose.

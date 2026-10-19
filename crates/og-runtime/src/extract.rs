@@ -297,8 +297,10 @@ fn rows(world: &World, layout: &Layout) -> Vec<(u64, Value)> {
     og_lanes::map(&cells, ROW_GRAIN, |(e, bytes)| (*e, layout.decode(bytes)))
 }
 
-/// Rows per lane task when decoding a component's rows.
-const ROW_GRAIN: usize = 64;
+/// Rows per lane task when decoding a component's rows: a row decodes in
+/// about 0.6 us, so a task is a few hundred microseconds of work and a
+/// component splits from 1,024 rows (500 rows stay serial).
+const ROW_GRAIN: usize = 512;
 
 /// The layouts of the drawing components the engine registered.
 #[derive(Default)]
