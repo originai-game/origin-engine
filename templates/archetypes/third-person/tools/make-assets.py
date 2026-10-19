@@ -17,7 +17,9 @@
   assets/audio/*.ogt: og sfx presets for the interface and the footsteps.
 - assets/fonts/NotoSansSC-subset.ttf + .ogt: Noto Sans SC subset to the
   characters of assets/strings/zh-CN.ogt (needs fontTools and the project
-  template's font; skipped with a note when either is missing).
+  template's font). When either is missing both stay as committed, and the
+  script fails naming any character of assets/strings/*.ogt the committed
+  font has no glyph for.
 
 Standard library only except the font subset; deterministic.
 """
@@ -265,17 +267,75 @@ machine {{
 """)
 
 
+def cmap_chars(path):
+    """The code points a TTF's cmap maps (formats 4 and 12; standard library only)."""
+    data = open(path, "rb").read()
+    tables = {}
+    for i in range(struct.unpack(">H", data[4:6])[0]):
+        tag, _, offset, _ = struct.unpack(">4sIII", data[12 + 16 * i:28 + 16 * i])
+        tables[tag] = offset
+    if b"cmap" not in tables:
+        sys.exit(f"{path} has no cmap table")
+    cmap = tables[b"cmap"]
+    found = set()
+    for i in range(struct.unpack(">H", data[cmap + 2:cmap + 4])[0]):
+        _, _, sub = struct.unpack(">HHI", data[cmap + 4 + 8 * i:cmap + 12 + 8 * i])
+        at = cmap + sub
+        fmt = struct.unpack(">H", data[at:at + 2])[0]
+        if fmt == 4:
+            segs = struct.unpack(">H", data[at + 6:at + 8])[0] // 2
+            ends = struct.unpack(f">{segs}H", data[at + 14:at + 14 + 2 * segs])
+            base = at + 16 + 2 * segs
+            starts = struct.unpack(f">{segs}H", data[base:base + 2 * segs])
+            deltas = struct.unpack(f">{segs}h", data[base + 2 * segs:base + 4 * segs])
+            ranges_at = base + 4 * segs
+            ranges = struct.unpack(f">{segs}H", data[ranges_at:ranges_at + 2 * segs])
+            for k in range(segs):
+                for c in range(starts[k], ends[k] + 1):
+                    if c == 0xFFFF:
+                        continue
+                    if ranges[k] == 0:
+                        glyph = (c + deltas[k]) & 0xFFFF
+                    else:
+                        g_at = ranges_at + 2 * k + ranges[k] + 2 * (c - starts[k])
+                        glyph = struct.unpack(">H", data[g_at:g_at + 2])[0]
+                        glyph = (glyph + deltas[k]) & 0xFFFF if glyph else 0
+                    if glyph:
+                        found.add(c)
+        elif fmt == 12:
+            groups = struct.unpack(">I", data[at + 12:at + 16])[0]
+            for k in range(groups):
+                first, last, glyph = struct.unpack(">III", data[at + 16 + 12 * k:at + 28 + 12 * k])
+                found.update(c for c in range(first, last + 1) if glyph + c - first)
+    return found
+
+
 def font():
     text = open(os.path.join(assets, "strings", "zh-CN.ogt"), encoding="utf-8").read()
     chars = "".join(sorted({ch for ch in text if ord(ch) > 0x2E7F}))
     src = os.path.join(root, "..", "..", "game", "assets", "fonts", "NotoSansSC-Regular-subset.ttf")
+    dst = os.path.join(assets, "fonts", "NotoSansSC-subset.ttf")
     try:
-        subset_font(src, os.path.join(assets, "fonts", "NotoSansSC-subset.ttf"), chars)
-    except Exception as e:  # noqa: BLE001
-        print(f"font subset skipped ({e}); the committed assets/fonts/NotoSansSC-subset.ttf stays")
-    write("fonts/NotoSansSC-subset.ttf.ogt", "type import\nversion 1\n---\n"
-          "# Latin-1, CJK punctuation and every character of assets/strings/zh-CN.ogt (tools/make-assets.py).\n"
-          f'font {{\n  charset latin cjk-punct\n  chars "{chars}"\n  em_px 32\n  px_range 4\n}}\n')
+        subset_font(src, dst, chars)
+    except ImportError:
+        print("font subset skipped: fontTools is not installed (pip install fonttools); checking the committed font")
+    except FileNotFoundError:
+        print(f"font subset skipped: no source font at {os.path.normpath(src)}; checking the committed font")
+    else:
+        write("fonts/NotoSansSC-subset.ttf.ogt", "type import\nversion 1\n---\n"
+              "# Latin-1, CJK punctuation and every character of assets/strings/zh-CN.ogt (tools/make-assets.py).\n"
+              f'font {{\n  charset latin cjk-punct\n  chars "{chars}"\n  em_px 32\n  px_range 4\n}}\n')
+        return
+    # Not subset: the committed font must already draw every CJK character the strings use.
+    strings = os.path.join(assets, "strings")
+    need = set()
+    for name in sorted(os.listdir(strings)):
+        if name.endswith(".ogt"):
+            need.update(ch for ch in open(os.path.join(strings, name), encoding="utf-8").read() if ord(ch) > 0x2E7F)
+    missing = "".join(sorted(ch for ch in need if ord(ch) not in cmap_chars(dst)))
+    if missing:
+        sys.exit(f"{os.path.relpath(dst, root)} has no glyph for {missing} (used in assets/strings); "
+                 "install fontTools and the project template's font and run tools/make-assets.py again")
 
 
 def main():

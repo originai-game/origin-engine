@@ -180,7 +180,9 @@ stages.
 4. **The characters**: another CC0 humanoid in `assets/models/` with the
    clip library retargeted onto it (`src/anim.ts`), the graphs' thresholds.
 5. **Words**: `assets/strings/*.ogt`; a new Chinese string needs the script
-   run again to subset the font.
+   run again to subset the font (with fontTools and the project template's
+   Noto Sans SC; without them the script fails naming the characters the
+   committed font lacks).
 
 ## Commands (for scripts and agents)
 
