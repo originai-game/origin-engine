@@ -568,13 +568,16 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
     ibl_scale *= mix(1.0, ssao_sample, fx.ao.y);
   }
   var ibl = kd_ibl * diffuse_ibl + specular_ibl;
-  if (s.coat > 0.0) {
+  // Branch on the material itself, not on `s`: Tint's uniformity analysis
+  // takes all of `s` as varying once a member comes from a texture, and the
+  // LUT is read without derivatives (it has one level).
+  if (material.coat.x > 0.0) {
     // The coat's reflection of the environment, and what it takes from the base.
     let c_dot_v = max(dot(s.coat_normal, v), 1e-4);
     let fc = f_schlick(c_dot_v, vec3<f32>(0.04)).x * s.coat;
     let rc = reflect(-v, s.coat_normal);
     let coat_env = textureSampleLevel(prefiltered_map, ibl_sampler, rc, s.coat_roughness * frame.params.y).rgb;
-    let coat_lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(c_dot_v, s.coat_roughness)).rg;
+    let coat_lut = textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(c_dot_v, s.coat_roughness), 0.0).rg;
     ibl = ibl * (1.0 - fc) + coat_env * (0.04 * coat_lut.x + coat_lut.y) * s.coat;
   }
   color += ibl * ibl_scale;
