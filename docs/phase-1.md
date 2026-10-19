@@ -7,6 +7,62 @@ the platform can run it in an `engine`-class sandbox. Spike findings
 (`docs/spike-results.md`) are the baseline; the spike crate is the seed
 of `og-render` and is deleted once its code has moved.
 
+## Status 2026-10-19, Phase 2, archetypes round
+
+The four Discover archetypes still owed are built on the engine (branch
+`p2-archetypes`): `templates/archetypes/tower-defense` (Path Guard),
+`roguelike` (Lamp Dive), `idle` (Spark Orb) and `rhythm` (Three-Lane Beat).
+Each is a complete small game with a title, pause, settings (volumes,
+language, reduced motion; the rhythm's offset), an end card, keyboard,
+gamepad and touch, safe areas and a phone layout, an og-ui HUD on a
+recoloured style pack, en and zh-CN tables, synthesised sounds (CC0, by
+its `tools/make-assets.py`, byte-for-byte deterministic, as is the cook),
+Metal reference frames and a README naming the skill sections it
+exercises. The create CLI scaffolds all seven archetypes
+(`--archetype`), and the knowledge skills (og-ai, og-audio, og-feel,
+og-game, og-i18n, og-platform-sdk) point at them.
+
+| Archetype | Playtests (`og test`) | `og polish` taste / feel | Publish archive (zip) | The game's own content |
+|---|---|---|---|---|
+| tower-defense | 9 of 9 | 99 / 100 | 5,738,666 B | 1,386,864 B |
+| roguelike | 9 of 9 | 99 / 100 | 5,620,824 B | 1,295,752 B |
+| idle | 9 of 9 | 97 / 94 | 6,151,017 B | 1,803,759 B |
+| rhythm | 10 of 10 | 99 / 99 | 6,039,807 B | 1,822,905 B |
+
+The archive is `og build . --publish`'s `dist/` zipped, most of it the
+engine's wasm and web runtime; the game's own content (`cooked/` and
+`game.js`) is under the Discover prototypes' 2 MB asset budget in each.
+The polish reports (`tests/evidence/P2/archetypes/<name>/`) were made with
+og and the native addon built release from this checkout: on this machine
+(load 15 to 70 from other agents' work) frame time's p95 follows the load,
+not the games, whose median step and render are 1–3 ms
+(`tests/evidence/P2/archetypes/frame-time.md`, with a per-tick series).
+`tests/evidence/P2/archetypes/break-and-restore.md` breaks one check of
+each.
+
+Gate: `OG_GATE_JOBS=2 scripts/check.sh --all` on 3c5c7d4 with this
+commit's documents and skill pointers, 2026-10-19, load 11–35: **PASSED,
+9 of 9 steps in 99 s** (fmt 1 s, clippy 0 s, wasm-build 6 s, test 59 s,
+wasm-opt 62 s, size-gate 28 s, drift 1 s, bun-test 22 s, determinism
+1 s; the publish wasm 2,943,180 B brotli, 70 % of the budget). The four
+archetypes' `og test` runs (9, 9, 9 and 10 suites) pass beside it.
+
+Engine gaps the games work around, each in its README's Known limits:
+og.platform's answers carry no time, so the idle game cannot know how long
+it was closed (`relaunch:<seconds>` stands in for the host); og.audio
+reports no output latency and og.Input no time within the tick, so the
+rhythm game calibrates the whole chain from the player's taps; an
+AudioSource cannot start part-way (a resume restarts the two-bar phrase);
+og.ui's `settingsScreen`, `resultsScreen` and `idleHud` carry English
+words and number formats of their own, so the settings, end cards and the
+idle HUD are built from widgets; `og polish` reads og.ui's phone title
+menu (a bottom sheet) as HUD. Two engine defects met on the way: a system
+with `og.Rng` in `reads` only gets streams that answer NaN
+(`world.resource(og.Rng).value.fork("x").next()`; declared in `writes`
+it answers 0.6868…), so the roguelike's systems declare it written; and a
+system that reads a resource it did not declare gets a refusal it can
+only notice by checking `ok`.
+
 ## Status 2026-10-19, E7 round
 
 Phase 1 is closed by the E7 round (tag `phase1-e7`). Against
