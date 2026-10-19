@@ -39,15 +39,15 @@ export function shopScreen(id: string, desc: Api.ShopDesc = {}): Api.ShopResult 
       }
       capsule("Balance", () => {
         if (desc.currencyIcon) iconOr("Icon", desc.currencyIcon, 18, token("accent"));
-        kit.counter("Amount", balance, { font: "mono" });
-        kit.label("Unit", desc.currency ?? "coins", { step: "meta", color: token("fgMuted"), nowrap: true });
+        kit.counter("Amount", balance, { font: "mono", step: "base" });
+        kit.label("Unit", desc.currency ?? "coins", { step: "base", color: token("fgMuted"), nowrap: true });
       });
     });
     const body = (): void => {
       const g = kit.grid("Items", { count: items.length, cellWidth: phone ? 96 : 112, cellHeight: phone ? 112 : 124, height: fit(0, phone ? 260 : 320), width: grow(), selected: sel }, (i) => {
         const it = items[i]!;
         picture("Picture", it.icon, it.name ?? "", 36);
-        kit.label("Name", it.name ?? "", { step: "caption", nowrap: true });
+        kit.label("Name", it.name ?? "", { step: "base", nowrap: true });
         if (it.owned) kit.badge("Owned", "Owned", "success");
         else kit.label("Price", fmt(it.price ?? 0), { step: "meta", font: "mono", color: token(balance >= (it.price ?? 0) ? "accentInk" : "fgSubtle"), nowrap: true });
       });
