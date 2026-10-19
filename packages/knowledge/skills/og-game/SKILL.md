@@ -202,6 +202,30 @@ target after the clips, `og.Blendshapes` weighs morph targets, and
 `og.AnimationEvent` reports a clip's named frames. Root motion is a
 `Skeleton` field. `templates/fx-showcase`'s walker is the pattern.
 
+**Retargeting** — one clip on characters of other proportions and bone
+names. Keep shared clips in an animation library (a glTF with a skeleton
+and clips, no mesh). At cook time, a character's import settings
+(`models/hero.glb.ogt`, `type import`) pull them in:
+
+```text
+animation {
+  library "anims/humanoid-clips.glb"   # its clips land in hero's #anim, retargeted
+  rig "rigs/hero.ogt"                  # optional: how hero's bones are named
+}
+```
+
+At run time, `og.anim.retarget(world, { clip, source, target })` answers a
+new clip for `target` (both skeletons from `og.load.animation`). The bones
+are found from the node names (Mixamo, VRM, Unity, Rigify, Unreal, Blender);
+when they are not, write a `type rig` .ogt (`scheme mixamo`, or
+`hips "Root_Pelvis"` per bone), load it with `og.load.rig` and pass it as
+`sourceRig`/`targetRig`. `og.anim.humanoid(world, { skeleton })` says which
+bones were found. The target keeps its bone lengths, its hips travel the
+source's distance scaled by the leg ratio (so root motion matches its
+stride), and its legs are solved so planted feet stay on the ground
+(`footIk`, on by default). The fx-showcase `retarget` station is the
+pattern.
+
 ## 10. Effects
 
 Every effect is off until the game turns it on, as data:

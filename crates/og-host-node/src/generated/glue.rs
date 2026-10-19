@@ -729,6 +729,12 @@ pub fn og_load_animation(env: Env, world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_animation(&Host, world, path)
 }
 
+#[napi(js_name = "og_load_rig")]
+pub fn og_load_rig(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_rig(&Host, world, path)
+}
+
 #[napi(js_name = "og_load_flipbook")]
 pub fn og_load_flipbook(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -823,6 +829,18 @@ pub fn og_atmosphere_time_of_day(env: Env, world: u32) -> f64 {
 pub fn og_anim_graph(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as AnimApi>::og_anim_graph(&Host, world, desc)
+}
+
+#[napi(js_name = "og_anim_humanoid")]
+pub fn og_anim_humanoid(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as AnimApi>::og_anim_humanoid(&Host, world, desc)
+}
+
+#[napi(js_name = "og_anim_retarget")]
+pub fn og_anim_retarget(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as AnimApi>::og_anim_retarget(&Host, world, desc)
 }
 
 #[napi(js_name = "og_tween_to")]

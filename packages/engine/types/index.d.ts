@@ -4569,6 +4569,7 @@ export interface Model {
 
 
 
+
 /**
  * A load completed.
  *
@@ -7142,7 +7143,7 @@ export interface Water2D {
 // ── anim ────────────────────────────────────────────────────────
 // Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics.
 // Game code owns the components and sets players, graph parameters and IK targets; og.anim writes the pose (kept as world state in the `og.anim` state block, so snapshots, restore and the world hash cover it), the joint palette, root motion into og.Transform and the fields marked written. Asset handles are what og.load.animation and og.anim.graph answer; 0 is none.
-// Clips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names. Assets are not world state: a hot reload registers them again.
+// Clips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names; a rig with other names or proportions plays it retargeted (og.anim.retarget at run time, or a model's `animation { library }` import setting at cook time). Assets are not world state: a hot reload registers them again.
 
 /**
  * A rig: a glTF's nodes in topological order with their rest transforms, and its skins (joints and inverse bind matrices).
@@ -7651,6 +7652,99 @@ export interface GraphDesc {
    * @default []
    */
   readonly clips?: readonly ClipInfo[];
+}
+
+
+/**
+ * A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow and the standard bones it names outright.
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type Rig = number & { readonly [handleType]: "Rig" };
+
+/** One standard humanoid bone of a skeleton. */
+export interface HumanBone {
+  /**
+   * The standard bone: hips, spine, chest, upperChest, neck, head, then leftShoulder, leftUpperArm, leftLowerArm, leftHand, the right arm, leftUpperLeg, leftLowerLeg, leftFoot, leftToes and the right leg.
+   */
+  readonly bone: string;
+  /** The skeleton node that is that bone. */
+  readonly node: string;
+}
+
+/** Which node of a skeleton is each standard humanoid bone (what retargeting maps). */
+export interface Humanoid {
+  /**
+   * The naming scheme the bones were read in: mixamo, vrm, unity, rigify, ue or blender; custom when a rig named them, none when nothing matched.
+   */
+  readonly scheme: string;
+  /** The bones found, in the standard order (hips first). */
+  readonly bones: readonly HumanBone[];
+}
+
+/**
+ * A skeleton and, optionally, the rig that says how its bones are named.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface HumanoidDesc {
+  /**
+   * The skeleton (og.load.animation's `skeleton`).
+   *
+   * @default 0
+   */
+  readonly skeleton?: SkeletonAsset;
+  /**
+   * A humanoid map from og.load.rig; 0 detects the bones from the node names (Mixamo, VRM, Unity, Rigify, Unreal or Blender names).
+   *
+   * @default 0
+   */
+  readonly rig?: Rig;
+}
+
+
+/**
+ * A clip made for one skeleton, to play on another (other proportions, rest pose or bone names).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RetargetDesc {
+  /**
+   * The clip, made for `source`.
+   *
+   * @default 0
+   */
+  readonly clip?: ClipAsset;
+  /**
+   * The skeleton the clip was made for (og.load.animation's `skeleton`: a character's, or an animation library's).
+   *
+   * @default 0
+   */
+  readonly source?: SkeletonAsset;
+  /**
+   * The skeleton that will play it.
+   *
+   * @default 0
+   */
+  readonly target?: SkeletonAsset;
+  /**
+   * How the source's bones are named (og.load.rig); 0 detects them.
+   *
+   * @default 0
+   */
+  readonly sourceRig?: Rig;
+  /**
+   * How the target's bones are named; 0 detects them.
+   *
+   * @default 0
+   */
+  readonly targetRig?: Rig;
+  /**
+   * Solve the legs so a planted foot stays planted on the target's ground (and the hips lower when a leg cannot reach).
+   *
+   * @default true
+   */
+  readonly footIk?: boolean;
 }
 
 
@@ -14869,6 +14963,14 @@ export declare namespace og {
      */
     function animation(world: World, path: string): Result<Animation>;
     /**
+     * Load a cooked humanoid map (an `.ogt` of `type rig`: a naming scheme and bones named outright) for og.anim.retarget and og.anim.humanoid. Loading the same path again answers the same handle.
+     *
+     * @param world The world whose animation uses it.
+     * @param path The rig's asset id, such as `rigs/strider.ogt`.
+     * @returns Refused for a path not in the bundle (run og cook) or a cook stamp mismatch.
+     */
+    function rig(world: World, path: string): Result<Rig>;
+    /**
      * Load a cooked flipbook sheet (an `.ogt` of `type flipbook`, with its Aseprite or TexturePacker atlas resolved by the cook) and its texture, and register it with og.flipbook. Loading the same path again answers the same handles.
      *
      * @param world The world whose animation and renderer own it.
@@ -15140,7 +15242,7 @@ export declare namespace og {
   /**
    * Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics.
    * Game code owns the components and sets players, graph parameters and IK targets; og.anim writes the pose (kept as world state in the `og.anim` state block, so snapshots, restore and the world hash cover it), the joint palette, root motion into og.Transform and the fields marked written. Asset handles are what og.load.animation and og.anim.graph answer; 0 is none.
-   * Clips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names. Assets are not world state: a hot reload registers them again.
+   * Clips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names; a rig with other names or proportions plays it retargeted (og.anim.retarget at run time, or a model's `animation { library }` import setting at cook time). Assets are not world state: a hot reload registers them again.
    */
   namespace anim {
     /**
@@ -15151,6 +15253,22 @@ export declare namespace og {
      * @returns Refused for a parse error (the reason names the line), a clip name `clips` lacks, or an invalid graph.
      */
     function graph(world: World, desc?: GraphDesc): Result<GraphAsset>;
+    /**
+     * The standard humanoid bones of a skeleton, as retargeting sees them: to check a rig before retargeting onto it.
+     *
+     * @param world The world whose animation owns the skeleton.
+     * @param desc The skeleton and its rig.
+     * @returns Refused for an unregistered skeleton or rig, or a rig naming a node the skeleton lacks.
+     */
+    function humanoid(world: World, desc?: HumanoidDesc): Result<Humanoid>;
+    /**
+     * A new clip for `target` from a clip of `source`: each animated humanoid bone turns as the source's does from its rest pose (after a rest correction, so a T-pose drives an A-pose and other bone frames agree), the target keeps its bone lengths, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled. Same name, duration and markers. The cook does the same for a model's `animation { library }` import setting; this is for clips chosen at run time.
+     *
+     * @param world The world whose animation owns the skeletons and the clip.
+     * @param desc The clip, the two skeletons and their rigs.
+     * @returns The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip, skeleton or rig, a skeleton without recognisable hips (name them in a `type rig` file), or a rig naming a missing node.
+     */
+    function retarget(world: World, desc?: RetargetDesc): Result<ClipInfo>;
     /**
      * The index of a flipbook clip by name, for Flipbook.clip: `og.anim.clip(hero, "walk_down")`. -1 when the sheet has no such clip.
      *

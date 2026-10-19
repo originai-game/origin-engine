@@ -310,6 +310,8 @@ pub trait LoadApi: Wire {
     fn og_load_gltf_info(&self, world: u32, asset: f64) -> String;
     /// `og.load.animation`
     fn og_load_animation(&self, world: u32, path: String) -> String;
+    /// `og.load.rig`
+    fn og_load_rig(&self, world: u32, path: String) -> String;
     /// `og.load.flipbook`
     fn og_load_flipbook(&self, world: u32, path: String) -> String;
     /// `og.load.tilemap`
@@ -354,6 +356,10 @@ pub trait AtmosphereApi: Wire {
 pub trait AnimApi: Wire {
     /// `og.anim.graph`
     fn og_anim_graph(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.anim.humanoid`
+    fn og_anim_humanoid(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.anim.retarget`
+    fn og_anim_retarget(&self, world: u32, desc: Option<String>) -> String;
 }
 
 /// `tween`: packages/knowledge/wiki/tween.md.
@@ -787,6 +793,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_load_error",
     "og_load_gltf_info",
     "og_load_animation",
+    "og_load_rig",
     "og_load_flipbook",
     "og_load_tilemap",
     "og_physics_raycast",
@@ -803,6 +810,8 @@ pub const SYMBOLS: &[&str] = &[
     "og_physics_ragdoll_pose",
     "og_atmosphere_time_of_day",
     "og_anim_graph",
+    "og_anim_humanoid",
+    "og_anim_retarget",
     "og_tween_to",
     "og_tween_sequence",
     "og_tween_parallel",
