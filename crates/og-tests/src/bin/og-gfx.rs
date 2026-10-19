@@ -450,20 +450,26 @@ fn effect_table(frames: u32, only: Option<&str>) -> Result<String, String> {
             },
         ),
         // Phase 2: terrain and water.
-        ("terrain-near", "P2: terrain from 1.7 m (2 km, 4 layers, clipmap)", |g| {
-            g.scene.terrains.clear()
-        }),
+        (
+            "terrain-near",
+            "P2: terrain from 1.7 m (2 km, 4 layers, clipmap)",
+            |g| g.scene.terrains.clear(),
+        ),
         ("terrain-mid", "P2: terrain from 120 m", |g| {
             g.scene.terrains.clear()
         }),
         ("terrain-far", "P2: terrain from 1.5 km", |g| {
             g.scene.terrains.clear()
         }),
-        ("terrain-mid", "P2: terrain casting shadows (its shadow passes)", |g| {
-            for t in &mut g.scene.terrains {
-                t.cast_shadows = false;
-            }
-        }),
+        (
+            "terrain-mid",
+            "P2: terrain casting shadows (its shadow passes)",
+            |g| {
+                for t in &mut g.scene.terrains {
+                    t.cast_shadows = false;
+                }
+            },
+        ),
         (
             "water-planar",
             "P2: planar reflection (half resolution)",
@@ -488,11 +494,15 @@ fn effect_table(frames: u32, only: Option<&str>) -> Result<String, String> {
             "P2: underwater view (fog, the surface from below; vs no water)",
             |g| g.scene.water.clear(),
         ),
-        ("terrain-grass", "P2: grass scatter (36,000 tufts, shadowed)", |g| {
-            // The tufts are the last mesh the scene added.
-            let tuft = g.scene.instances.last().map(|i| i.mesh);
-            g.scene.instances.retain(|i| Some(i.mesh) != tuft);
-        }),
+        (
+            "terrain-grass",
+            "P2: grass scatter (36,000 tufts, shadowed)",
+            |g| {
+                // The tufts are the last mesh the scene added.
+                let tuft = g.scene.instances.last().map(|i| i.mesh);
+                g.scene.instances.retain(|i| Some(i.mesh) != tuft);
+            },
+        ),
     ];
     for (scene, label, strip) in effect_rows {
         if only.is_some_and(|round| !label.starts_with(round)) {

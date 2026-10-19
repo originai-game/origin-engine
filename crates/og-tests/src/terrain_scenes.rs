@@ -11,8 +11,8 @@ use crate::scenes::texture;
 use glam::{Mat4, Vec2, Vec3};
 use og_render::{
     Background, Camera, ColorSpace, DirectionalLight, Environment, Exposure, Fog, Material,
-    ProceduralSky, Projection, RenderScene, Terrain, TerrainControl, TerrainData, TerrainLayer,
-    TerrainLod, TerrainScatter, Vertex, MeshData, Water, shapes,
+    MeshData, ProceduralSky, Projection, RenderScene, Terrain, TerrainControl, TerrainData,
+    TerrainLayer, TerrainLod, TerrainScatter, Vertex, Water, shapes,
 };
 use std::sync::{Arc, OnceLock};
 

@@ -486,8 +486,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             continue;
         };
         let Some(t) = rs.terrain.loaded.get(i) else {
-            rs.notes
-                .push(format!("og.TerrainScatter on entity {e} names no loaded terrain"));
+            rs.notes.push(format!(
+                "og.TerrainScatter on entity {e} names no loaded terrain"
+            ));
             continue;
         };
         let index = |key: &str| (v[key].as_f64().unwrap_or(0.0) as u64 & 0xffff_ffff) as usize;

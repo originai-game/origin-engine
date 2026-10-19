@@ -699,9 +699,15 @@ fn scatter_follows_its_layer_distance_and_stays_put() {
         let (scale, _, at) = m.to_scale_rotation_translation();
         let local = Vec2::new(at.x, at.z);
         let w = terrain.layer_weights(&data, local)[0];
-        assert!(w > 0.0, "an instance at {at} where the grass layer's weight is 0");
+        assert!(
+            w > 0.0,
+            "an instance at {at} where the grass layer's weight is 0"
+        );
         assert!(flat(at) <= s.distance + 1e-3, "{at} beyond the distance");
-        assert!((at.y - data.height(local)).abs() < 1e-3, "{at} off the ground");
+        assert!(
+            (at.y - data.height(local)).abs() < 1e-3,
+            "{at} off the ground"
+        );
         let shrink = 1.0 - smooth(fade_from, s.distance, flat(at));
         assert!(
             scale.x <= s.scale[1] * shrink + 1e-4 && scale.x >= s.scale[0] * shrink - 1e-4,
@@ -717,7 +723,10 @@ fn scatter_follows_its_layer_distance_and_stays_put() {
         .filter(|(_, _, at)| flat(*at) > s.distance * 0.97)
         .map(|(sc, _, _)| sc.x)
         .collect();
-    assert!(!edge.is_empty() && edge.iter().all(|&x| x < s.scale[1] * 0.1), "{edge:?}");
+    assert!(
+        !edge.is_empty() && edge.iter().all(|&x| x < s.scale[1] * 0.1),
+        "{edge:?}"
+    );
     // The camera moves 7 m: instances well inside both circles are the same.
     let moved = eye + Vec3::new(5.0, 0.0, -5.0);
     let again: std::collections::HashMap<u32, Mat4> =
@@ -741,7 +750,11 @@ fn scatter_follows_its_layer_distance_and_stays_put() {
     for (_, m) in &stones {
         let at = m.w_axis.truncate();
         let n = data.normal(Vec2::new(at.x, at.z));
-        assert!(n.y.acos().to_degrees() > 30.0 - 6.0, "a stone on a {:.0} degree slope", n.y.acos().to_degrees());
+        assert!(
+            n.y.acos().to_degrees() > 30.0 - 6.0,
+            "a stone on a {:.0} degree slope",
+            n.y.acos().to_degrees()
+        );
         // Leaning with the ground: the stone's up is the normal.
         let up = m.transform_vector3(Vec3::Y).normalize();
         assert!(up.dot(n) > 0.999, "up {up} normal {n}");
@@ -761,8 +774,16 @@ fn scatter_follows_its_layer_distance_and_stays_put() {
         "grass on the track"
     );
     // A layer the terrain does not have, or no density, places nothing.
-    assert!(terrain.scatter(&data, &TerrainScatter { layer: 7, ..s }, eye).is_empty());
-    assert!(terrain.scatter(&data, &TerrainScatter { density: 0.0, ..s }, eye).is_empty());
+    assert!(
+        terrain
+            .scatter(&data, &TerrainScatter { layer: 7, ..s }, eye)
+            .is_empty()
+    );
+    assert!(
+        terrain
+            .scatter(&data, &TerrainScatter { density: 0.0, ..s }, eye)
+            .is_empty()
+    );
 }
 
 fn smooth(e0: f32, e1: f32, x: f32) -> f32 {

@@ -1372,11 +1372,18 @@ impl Terrain {
     /// (stable while the cell is in range: for per-object motion) and its
     /// local-to-world transform, at most [`MAX_SCATTER_INSTANCES`], nearest
     /// rows first. `data` is this terrain's data.
-    pub fn scatter(&self, data: &TerrainData, s: &TerrainScatter, camera: Vec3) -> Vec<(u32, Mat4)> {
+    pub fn scatter(
+        &self,
+        data: &TerrainData,
+        s: &TerrainScatter,
+        camera: Vec3,
+    ) -> Vec<(u32, Mat4)> {
         let mut out = Vec::new();
         if (s.layer as usize) >= self.layers.len().min(MAX_TERRAIN_LAYERS)
-            || !(s.density > 0.0)
-            || !(s.distance > 0.0)
+            || s.density.is_nan()
+            || s.density <= 0.0
+            || s.distance.is_nan()
+            || s.distance <= 0.0
         {
             return out;
         }
@@ -1393,12 +1400,20 @@ impl Terrain {
         let fade_from = s.distance * (1.0 - s.fade.clamp(0.0, 1.0));
         let seed = hash(s.seed ^ 0x9e37_79b9);
         // Rows outwards from the camera's, so the cap drops the farthest.
-        let centre = (((eye.y + half.y) / cell).floor() as i64).clamp(z0 as i64, z1 as i64 - 1) as u32;
+        let centre =
+            (((eye.y + half.y) / cell).floor() as i64).clamp(z0 as i64, z1 as i64 - 1) as u32;
         let rows = (0..(z1 - z0)).map(|k| {
             let step = (k as i64 + 1) / 2;
-            if k % 2 == 0 { centre as i64 + step } else { centre as i64 - step }
+            if k % 2 == 0 {
+                centre as i64 + step
+            } else {
+                centre as i64 - step
+            }
         });
-        for z in rows.filter(|&z| z >= z0 as i64 && z < z1 as i64).map(|z| z as u32) {
+        for z in rows
+            .filter(|&z| z >= z0 as i64 && z < z1 as i64)
+            .map(|z| z as u32)
+        {
             for x in x0..x1 {
                 let key = z.wrapping_mul(cells.x as u32).wrapping_add(x);
                 let h0 = hash(key ^ seed);
@@ -1421,11 +1436,16 @@ impl Terrain {
                 }
                 let t = unit(h4);
                 let size = (s.scale[0] + (s.scale[1] - s.scale[0]) * t) * shrink;
-                let up = Vec3::Y.lerp(data.normal(p), s.align.clamp(0.0, 1.0)).normalize_or(Vec3::Y);
+                let up = Vec3::Y
+                    .lerp(data.normal(p), s.align.clamp(0.0, 1.0))
+                    .normalize_or(Vec3::Y);
                 let turn = glam::Quat::from_rotation_y(unit(hash(h0 ^ 4)) * std::f32::consts::TAU);
                 let rotation = glam::Quat::from_rotation_arc(Vec3::Y, up) * turn;
                 let at = self.origin + Vec3::new(p.x, data.height(p), p.y);
-                out.push((key, Mat4::from_scale_rotation_translation(Vec3::splat(size), rotation, at)));
+                out.push((
+                    key,
+                    Mat4::from_scale_rotation_translation(Vec3::splat(size), rotation, at),
+                ));
                 if out.len() >= MAX_SCATTER_INSTANCES {
                     return out;
                 }
