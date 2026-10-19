@@ -23,9 +23,9 @@
 # none of its inputs changed since: the GPU reference tests (og-tests,
 # og-ui, og-render and the crates they build on, templates/ui-kit/assets),
 # the wasm steps (crates/), drift (the IDL, og-idl, og and the generated
-# files), web-reference (og-host-web's crates, packages/engine,
-# templates/fx-showcase). A change to scripts/, Cargo.toml, Cargo.lock,
-# rust-toolchain.toml, .cargo/ or .config/ reruns all of them. Each skip is
+# files), web-reference (og-host-web's and og-tests-web's crates,
+# packages/engine, templates/fx-showcase). A change to scripts/, Cargo.toml,
+# Cargo.lock, rust-toolchain.toml, .cargo/ or .config/ reruns all of them. Each skip is
 # printed with its reason. --all, or CI set in the environment, runs
 # everything.
 #
@@ -76,7 +76,7 @@ packages/engine/types packages/engine/schema packages/engine/src/generated \
 crates/og-host-web/src/generated crates/og-host-node/src/generated packages/knowledge/wiki $RULE_COMMON"
 }
 rule_web() {
-  echo "$(og_crate_dirs -p og-host-web --target "$WASM_TRIPLE" -e normal,build | og_words) packages/engine templates/fx-showcase $RULE_COMMON"
+  echo "$(og_crate_dirs -p og-host-web -p og-tests-web --target "$WASM_TRIPLE" -e normal,build | og_words) packages/engine templates/fx-showcase $RULE_COMMON"
 }
 
 # skip_unchanged KEY WHAT RULE...: true (and prints why) when KEY may be
@@ -400,11 +400,12 @@ step_bun_quick() {
   bun_test_packages $BUN_QUICK_PACKAGES
 }
 
-# The webgpu and webgl2 tiers of templates/fx-showcase in headless Chrome
-# (docs/ci.md §Browser reference tiers; `make web-reference`). In no lane:
-# CI has no Chrome for Testing.
+# The webgpu and webgl2 tiers of templates/fx-showcase and of og-tests' own
+# gfx scenes (crates/og-tests-web) in headless Chrome (docs/ci.md §Browser
+# reference tiers; `make web-reference`). In no lane: CI has no Chrome for
+# Testing.
 step_web_reference() {
-  local a b
+  local a b c d e f
   if skip_unchanged web-reference "web-reference" "$(rule_web)"; then return $SKIP; fi
   og_need bun || return 1
   (cd packages/engine && bun tests/web/reference.ts); a=$?
@@ -412,7 +413,10 @@ step_web_reference() {
   # The E5 stations, each a fresh run like its playtest.
   (cd packages/engine && bun tests/web/reference-e5.ts); c=$?
   (cd packages/engine && bun tests/web/reference-e5.ts --webgl); d=$?
-  return $((a | b | c | d))
+  # og-tests' scenes against their tier's reference, else metal's.
+  (cd packages/engine && bun tests/web/reference-gfx.ts); e=$?
+  (cd packages/engine && bun tests/web/reference-gfx.ts --webgl); f=$?
+  return $((a | b | c | d | e | f))
 }
 
 # --- Scheduling ---------------------------------------------------------------
