@@ -6,8 +6,9 @@
 // into a scene: scenes/main.ogt (cooked from assets/scenes/main.ogt) spawns
 // the ground, the dropship and the trickster before the first tick; `start`
 // gives the ground its mesh and collider, drops a crate above it, puts the
-// camera and the UI font in place. The Start button of the menu panel (or S
-// or Enter) starts the trickster spinning and lets the crate fall.
+// camera, the UI font and the string table (assets/strings/en.ogt) in
+// place. The Start button of the menu panel (or S or Enter) starts the
+// trickster spinning and lets the crate fall.
 //
 // A guard walks the yard: a state machine in assets/ai/guard.ogt (og.ai)
 // patrols its post on the navmesh baked from assets/nav/yard.ogt (og.nav),
@@ -61,9 +62,9 @@ export const Menu = defineSystem("Menu", { reads: [Spin, og.Input], writes: [Run
   for (const a of q.archetypes()) if (a.count > 0) speed = a.column(Spin).speed[0]!;
   const started = run.value.started;
   og.ui.column("Hud", { padding: { left: 24, top: 24, right: 24, bottom: 24 } }, () => og.ui.panel("Menu", { padding: { left: 20, top: 16, right: 20, bottom: 16 } }, () => {
-    og.ui.label("Title", "Origin Engine", { step: "displaySm" });
-    og.ui.label("Status", started ? `开始游戏  ${speed.toFixed(1)} rad/s` : "Press Start to begin", { color: { token: started ? "accentInk" : "fgMuted" } });
-    const start = og.ui.button("Start", started ? "Started" : "Start", { variant: "primary", size: "large", disabled: started });
+    og.ui.label("Title", og.i18n.t(world, "menu.title"), { step: "displaySm" });
+    og.ui.label("Status", started ? og.i18n.t(world, "menu.spinning", { speed: speed.toFixed(1) }) : og.i18n.t(world, "menu.prompt"), { color: { token: started ? "accentInk" : "fgMuted" } });
+    const start = og.ui.button("Start", og.i18n.t(world, started ? "menu.started" : "menu.start"), { variant: "primary", size: "large", disabled: started });
     if (!started && (start.clicked || input.value.pressed("KeyS") || input.value.pressed("Enter"))) run.value.started = true;
   }));
 });
@@ -194,6 +195,8 @@ export default og.game({
     world.insert(guard, og.AiAgent, { behaviour: mind.behaviour });
     world.insert(guard, og.Perception, { sight: 9, fov: 120, eyeHeight: 1.6, team: 2 });
     world.insert(guard, Alarm);
+    // Every string the menu shows (og-i18n §1): load each locale's table here.
+    must(og.i18n.load(world, "strings/en.ogt"));
     const font = og.load.font(world, "fonts/NotoSansSC-Regular-subset.ttf");
     // A press answers with a sound as well as its look (og-taste §6): the `click` preset, synthesised by og cook.
     const click = og.load.sound(world, "audio/click.ogt");

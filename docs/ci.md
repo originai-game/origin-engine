@@ -361,9 +361,15 @@ Chrome for Testing (a missing Chrome is an error, never a skip).
 The same runner takes another project's playtest frames: `--project
 templates/archetypes/topdown --script "<the frames playtest's commands
 without screenshot and quit>" --shots start@30,crit@131,dash@168,east@216`
-compares (or with `--record` writes) `<project>/references/<tier>/`. The
-topdown archetype's four frames matched `metal` at RMSE ≤ 0.00009 on WebGPU
-and ≤ 0.00005 on WebGL2 (2026-10-18) and are committed for both tiers.
+compares (or with `--record` writes) `<project>/references/<tier>/`. What
+each template commits under `references/`: `metal` alone for idle, rhythm,
+roguelike and tower-defense; `metal` and `vulkan-cpu` for match3 and
+runner; `metal` and a WebGL2 `beacon` for third-person (below); all four
+tiers for fx-showcase and topdown. Topdown's `webgpu` and `webgl2` frames
+were recorded on those tiers (2026-10-18) and sit within RMSE 0.00009
+(WebGPU) and 0.00005 (WebGL2) of `metal`, three of the WebGL2 four byte for
+byte `metal`'s: they record no difference the tier makes, so they are
+redundant with `metal` under the rule below.
 
 A tier's references are looked up frame by frame: a frame with no file
 under `references/<tier>/` (or a tier with no directory at all) is judged
