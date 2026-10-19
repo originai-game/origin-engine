@@ -39,6 +39,7 @@ mod extract;
 mod feel;
 mod fx;
 mod i18n;
+mod lanes;
 mod modules;
 mod nav;
 mod physics_ext;

@@ -209,6 +209,7 @@ pub(crate) fn retire(engine: u32) {
 /// and the probe's `listen`, over the engine's audio link.
 pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine: u32) {
     super::polish::register(probe, engine);
+    super::lanes::register(probe, engine);
     probe.set_listen(move |seconds| {
         let link = og_audio::link(engine)?;
         let (pcm, rate) = link.listen().last(seconds)?;
