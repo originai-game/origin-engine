@@ -90,8 +90,10 @@ if [ -n "$report" ]; then
     printf 'glam is built with `scalar-math`; the math digest covers `og_core::math`\n'
     printf 'and glam Vec3A/Vec4/Quat/Mat4 arithmetic (1.4M results); the world is\n'
     printf '`crates/og-ecs/tests/support/bouncing_boxes.rs`, seed 42, 3600 ticks.\n'
-    printf 'The host release runs with lanes off and on (crates/og-lanes: og-anim and\n'
-    printf 'the rapier step on a four-thread pool); the wasm builds are single-threaded.\n\n'
+    printf 'The host release runs with lanes off and on (crates/og-lanes: the rapier\n'
+    printf "step on a four-thread pool; the walk's few skeletons stay below og-anim's\n"
+    printf 'grain, so animation runs serially either way); the wasm builds are\n'
+    printf 'single-threaded.\n\n'
     printf '| build | math digest | bouncing boxes world_hash | physics world hashes | anim world hash and retarget |\n|---|---|---|---|---|\n'
     printf '%s' "$results" | awk -F '|' '{ printf "| %s | %s | %s | %s | %s |\n", $1, $2, $3, $4, $5 }'
     printf '\n'
