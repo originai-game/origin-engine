@@ -1,0 +1,42 @@
+type terrain
+version 1
+---
+# Ember Vale (tools/make-assets.py makes the maps): 128 m square, one sample
+# a metre, a lake in the middle (og.Water at y 1 fills it), a knoll under
+# each beacon and cliffs all round.
+heightmap "vale.png"
+height -4 20
+size 128 128
+control "vale-control.png"
+heightBlend 0.15
+# Meadow grass above the shore (control R).
+layer {
+  albedo "textures/terrain-grass.png"
+  tile 5
+  slope 0 30
+  slopeFade 6
+  altitude 1.6 1000
+  altitudeFade 0.6
+}
+# The beacon path round the lake and the spur from the south (control G).
+layer {
+  albedo "textures/terrain-path.png"
+  tile 3
+  slope 0 45
+}
+# Rock on every slope steeper than 30 degrees, projected three ways (control B).
+layer {
+  albedo "textures/terrain-rock.png"
+  tile 9
+  triplanar true
+  slope 30 90
+  slopeFade 6
+}
+# Sand on the lake's shore and bed (control A).
+layer {
+  albedo "textures/terrain-sand.png"
+  tile 4
+  slope 0 36
+  altitude -100 1.8
+  altitudeFade 0.6
+}
