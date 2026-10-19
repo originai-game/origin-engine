@@ -156,8 +156,15 @@ export class Received {
   }
 }
 
+/**
+ * How long one file's fetch may take, its body included, before it fails:
+ * generous, since a pack can be large on a slow network; only a fetch that
+ * hangs reaches it.
+ */
+export const FETCH_DEADLINE_MS = 300_000;
+
 async function bytesOf(url: string, received?: Received, onChunk?: () => void): Promise<Uint8Array> {
-  const r = await fetch(url);
+  const r = await fetch(url, typeof AbortSignal?.timeout === "function" ? { signal: AbortSignal.timeout(FETCH_DEADLINE_MS) } : {});
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   if (!received || !r.body) {
     const bytes = new Uint8Array(await r.arrayBuffer());
@@ -324,10 +331,18 @@ export function installFetcher(glue: WebExtras, manifest: string, basis: { js: s
   const put = async (path: string, bytes: Uint8Array) => {
     const triples = /\/stream\/[^/]+\.ogb$/.test(path) && glue.og_web_pack_ktx2 ? glue.og_web_pack_ktx2(engine() ?? undefined, manifest, bytes) : [];
     for (let i = 0; i + 2 < triples.length; i += 3) {
-      transcoder ??= basis ? loadBasisTranscoder(basis.js, basis.wasm) : loadBasisTranscoder();
+      let loading = transcoder;
+      if (!loading) {
+        const started = basis ? loadBasisTranscoder(basis.js, basis.wasm) : loadBasisTranscoder();
+        transcoder = loading = started;
+        // A load that failed is not kept: the next pack tries again.
+        started.catch(() => {
+          if (transcoder === started) transcoder = null;
+        });
+      }
       const id = triples[i] as string;
       const target = triples[i + 2] as string;
-      const out = transcodeKtx2(await transcoder, triples[i + 1] as Uint8Array, isTextureFormat(target) ? target : "rgba8");
+      const out = transcodeKtx2(await loading, triples[i + 1] as Uint8Array, isTextureFormat(target) ? target : "rgba8");
       if (out.format === "rgba8") {
         glue.og_web_put_texture(id, out.width, out.height, out.levels[0]!, out.srgb);
       } else {
@@ -465,21 +480,26 @@ export function startWorker(game: GameToken): void {
     if (!viaRing || !rpc || !writeFrame(rpc.answers, frame)) self.postMessage({ type: "rpc", frame });
   };
 
+  /** A JSON-RPC error answer to a request frame (its id, or null when it has none). */
+  const refusal = (frame: string, message: string) => {
+    const id = (() => {
+      try {
+        return (JSON.parse(frame) as { id?: unknown }).id ?? null;
+      } catch {
+        return null;
+      }
+    })();
+    return JSON.stringify({ jsonrpc: "2.0", id, error: { code: -32603, message } });
+  };
+
   /** One request frame: answered now, or kept for a retry when it is a capture whose readback has not landed. */
   const serve = (frame: string, viaRing: boolean) => {
-    if (!engine) return;
+    if (!engine) return answer(refusal(frame, "the engine has not started"), viaRing);
     let out: string;
     try {
       out = engine.call(frame);
     } catch (e) {
-      const id = (() => {
-        try {
-          return (JSON.parse(frame) as { id?: unknown }).id ?? null;
-        } catch {
-          return null;
-        }
-      })();
-      answer(JSON.stringify({ jsonrpc: "2.0", id, error: { code: -32603, message: e instanceof Error ? e.message : String(e) } }), viaRing);
+      answer(refusal(frame, e instanceof Error ? e.message : String(e)), viaRing);
       crash(e instanceof Error ? e.message : String(e));
       return;
     }
@@ -728,7 +748,13 @@ export function startWorker(game: GameToken): void {
       }
       return;
     }
-    if (!engine || crashed) return;
+    if (!engine || crashed) {
+      // A request is answered even now, so that nothing on the page waits for an answer that never comes.
+      const why = crashed ? "the engine stopped" : "the engine has not started";
+      if (data.type === "call") self.postMessage({ type: "result", id: data.id, error: why });
+      if (data.type === "rpc") answer(refusal(data.frame, why), false);
+      return;
+    }
     if (data.type === "input") engine.probe.input(stamped(data.event, performance.now()));
     if (data.type === "viewport" && glueRef) glueRef.og_web_set_viewport(engine.id, JSON.stringify(data.viewport));
     if (data.type === "resize" && glueRef) {

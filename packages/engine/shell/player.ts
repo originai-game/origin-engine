@@ -85,6 +85,8 @@ export function connectPlayer(events: PlayerEvents) {
   const origin = w.location.origin;
   let lastValue = -1;
   let readySent = false;
+  // After fail or crash the session is over: a late ready is not sent.
+  let ended = false;
   let heard = false;
   let started = false;
   let paused = false;
@@ -197,16 +199,18 @@ export function connectPlayer(events: PlayerEvents) {
       } else post("loading", { value: null });
     },
     ready() {
-      if (readySent) return;
+      if (readySent || ended) return;
       readySent = true;
       post("ready");
     },
     fail(code: string, message: string, retryable: boolean) {
       if (readySent) return;
+      ended = true;
       post("fail", { code, message: message.slice(0, 400), retryable });
       lastValue = -1;
     },
     crash(name: string, message: string) {
+      ended = true;
       post("crash", { name: /^[A-Za-z][A-Za-z0-9_.-]{0,63}$/.test(name) ? name : "Error", fingerprint: fingerprint(message) });
     },
     sample(fields: { renderer?: string; timings?: Record<string, number> }) {

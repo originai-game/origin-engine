@@ -13,7 +13,10 @@
 // its revision; an offline score is lost or answered as delivered, or is
 // delivered out of order; a report goes out before start, or with ids the
 // platform refuses; a call answers anything but protocol 2's result; the
-// keyed store does not reach og.platform with the HTTP hello's capabilities.
+// keyed store does not reach og.platform with the HTTP hello's capabilities;
+// a report exceeds 20 messages or 64 KiB (the end's keepalive included), or
+// one the play origin refuses (400) or cannot take (413) is sent again for
+// ever and blocks the rest; a ready goes out after a crash.
 import { expect, test } from "bun:test";
 import { playerPlatform } from "../shell/platform.ts";
 import { connectPage, type StorageLike, type TransportEnv } from "../shell/transport.ts";
@@ -268,4 +271,67 @@ test("og.platform's keyed store, telemetry and scores through the page transport
   await page.flush();
   const event = origin.reports.find((m) => m["kind"] === "event")!;
   expect([event["name"], event["attrs"]]).toEqual(["game.custom.level.done", { n: 1 }]);
+});
+
+test("reports stay within 20 messages and 64 KiB; one answered 400 or 413 is dropped and the rest still arrive, the end included", async () => {
+  const origin = playOrigin();
+  const LIMIT = 64 * 1024;
+  const sent: Array<{ count: number; bytes: number; status: number; keepalive: boolean; last: unknown }> = [];
+  // The play origin's report limits: more than 20 messages or an invalid one is 400, a body over 64 KiB is 413.
+  const fetch = async (url: string, init: RequestInit): Promise<Response> => {
+    if (!url.endsWith("/report")) return origin.fetch(url, init);
+    if (origin.state.offline) throw new TypeError("Failed to fetch");
+    const bytes = new TextEncoder().encode(String(init.body)).length;
+    const messages = (JSON.parse(String(init.body)) as { messages: Array<Record<string, unknown>> }).messages;
+    const refused = bytes > LIMIT ? 413 : messages.length > 20 || messages.some((m) => m["name"] === "game.custom.poison") ? 400 : 0;
+    sent.push({ count: messages.length, bytes, status: refused || 202, keepalive: init.keepalive === true, last: messages.at(-1)?.["kind"] });
+    if (refused) return new Response(JSON.stringify({ error: { code: refused === 413 ? "too_large" : "invalid" } }), { status: refused });
+    return origin.fetch(url, init);
+  };
+  const pad = "x".repeat(6000);
+  const page = connectPage(GAME, { ...env(origin, memoryStorage({ og_token_runner01: "ogp_g" })), fetch });
+  page.start();
+  await page.flush();
+  page.event("game.custom.poison");
+  page.event("game.custom.lost", { n: 1 });
+  await page.flush();
+  page.event("game.custom.huge", { pad: "x".repeat(70_000) });
+  for (let n = 0; n < 30; n++) page.event("game.custom.big", { n, pad });
+  await page.flush();
+  for (let n = 0; n < 25; n++) page.event("game.custom.small", { n });
+  await page.flush();
+  const names = origin.reports.map((m) => String(m["name"] ?? m["kind"]));
+  expect(names).toEqual(["start", ...Array(30).fill("game.custom.big"), ...Array(25).fill("game.custom.small")]);
+  expect(origin.reports.filter((m) => m["name"] === "game.custom.big").map((m) => (m["attrs"] as { n: number }).n)).toEqual([...Array(30).keys()]);
+  expect(sent.filter((r) => r.status === 400).map((r) => r.count)).toEqual([2]);
+  expect(sent.filter((r) => r.status === 413).map((r) => r.count)).toEqual([1]);
+  expect(sent.every((r) => r.status !== 202 || (r.count <= 20 && r.bytes <= LIMIT))).toBeTrue();
+  const before = sent.length;
+  await page.flush();
+  expect(sent.length).toBe(before);
+
+  // Unsent when the page goes: the end's keepalive report is the newest messages that fit, the end last.
+  const going = connectPage(GAME, { ...env(origin, memoryStorage({ og_token_runner01: "ogp_g" })), fetch });
+  going.start();
+  for (let n = 0; n < 25; n++) going.event("game.custom.big", { n, pad });
+  origin.state.offline = true;
+  await going.flush();
+  origin.state.offline = false;
+  going.end({ ready: true, failed: false });
+  await new Promise((r) => setTimeout(r, 5));
+  const end = sent.at(-1)!;
+  expect([end.keepalive, end.status, end.last]).toEqual([true, 202, "end"]);
+  expect(end.count).toBeGreaterThan(1);
+  expect(end.bytes <= LIMIT).toBeTrue();
+});
+
+test("after a crash the session is over: a late ready is not reported", async () => {
+  const origin = playOrigin();
+  const page = connectPage(GAME, env(origin, memoryStorage({ og_token_runner01: "ogp_g" })));
+  page.start();
+  page.crash("EngineCrash", "unreachable executed");
+  page.ready();
+  await page.flush();
+  await page.flush();
+  expect(origin.reports.map((m) => m["kind"])).toEqual(["start", "crash"]);
 });
