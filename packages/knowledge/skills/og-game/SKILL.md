@@ -250,11 +250,14 @@ damage number or a pickup that rises and fades by itself (amounts: og-feel
   the glow looking into the sun, `sky` for how much of the sky it covers.
 - **Sky** — `og.Sky { enabled, zenith, horizon, ground, sunDirection,
   sunColor, sunSize, glow, stars }` draws the sky per pixel and lights the
-  scene by it.
-- **Day and night** — `og.DayNight { enabled, start, speed, tilt, azimuth }`:
-  the clock is `start + seconds × speed` hours from the tick, so it replays;
-  it drives the first `og.DirectionalLight` (the sun by day, a dim moon by
-  night), the sky, the ambient light and the fog's tint. Read the clock with
+  scene by it; `moonSize` (degrees, 0 none), `moonPhase` (0 new, 0.25 first
+  quarter, 0.5 full, 0.75 last quarter), `moonIntensity`, `moonColor` and
+  `moonDirection` (zero: opposite the sun) add a moon disc over the stars.
+- **Day and night** — `og.DayNight { enabled, start, speed, tilt, azimuth,
+  moonSize, moonPhase }`: the clock is `start + seconds × speed` hours from
+  the tick, so it replays; it drives the first `og.DirectionalLight` (the
+  sun by day, a dim moon by night, where the moon disc hangs), the sky, the
+  ambient light and the fog's tint. Read the clock with
   `og.atmosphere.timeOfDay(world)` (declare `og.DayNight` among the system's
   reads) to light lamps at dusk.
 - **Weather** — `og.Weather { kind: WEATHER_RAIN | WEATHER_SNOW |

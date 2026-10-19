@@ -14245,6 +14245,49 @@
           "default": 1.1,
           "minimum": 0,
           "x-og-tunable": true
+        },
+        "moonSize": {
+          "type": "number",
+          "description": "The moon disc's angular radius (0: no moon). It sets below the horizon and hides the stars behind it.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 20,
+          "x-og-unit": "deg",
+          "x-og-tunable": true
+        },
+        "moonPhase": {
+          "type": "number",
+          "description": "How much of the moon is lit: 0 new, 0.25 the first quarter (its right half), 0.5 full, 0.75 the last quarter (its left half).",
+          "default": 0.5,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "moonIntensity": {
+          "type": "number",
+          "description": "The lit moon's brightness.",
+          "default": 1.4,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "moonColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The moon's colour.",
+          "default": {
+            "r": 0.9,
+            "g": 0.92,
+            "b": 1
+          }
+        },
+        "moonDirection": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Towards the moon; zero puts it opposite sunDirection.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
         }
       },
       "additionalProperties": false
@@ -14252,7 +14295,7 @@
     "DayNight": {
       "x-og-kind": "resource",
       "x-og-module": "atmosphere",
-      "description": "A day-night cycle: the time of day drives the sun's direction, the sky's colours and stars, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly.",
+      "description": "A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly.",
       "type": "object",
       "properties": {
         "enabled": {
@@ -14311,6 +14354,24 @@
           "default": 10,
           "minimum": 1,
           "maximum": 120,
+          "x-og-tunable": true
+        },
+        "moonSize": {
+          "type": "number",
+          "description": "The moon disc's angular radius, opposite the sun so it rises as the sun sets (0: no moon).",
+          "default": 1.6,
+          "minimum": 0,
+          "maximum": 20,
+          "x-og-unit": "deg",
+          "x-og-tunable": true
+        },
+        "moonPhase": {
+          "type": "number",
+          "description": "How much of the moon is lit: 0 new, 0.25 the first quarter, 0.5 full, 0.75 the last quarter.",
+          "default": 0.5,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
           "x-og-tunable": true
         }
       },

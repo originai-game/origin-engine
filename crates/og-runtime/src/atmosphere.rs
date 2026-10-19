@@ -124,6 +124,11 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             glow_power: f(&s, "glowPower", 24.0),
             stars: f(&s, "stars", 0.0),
             brightness: f(&s, "brightness", 1.1),
+            moon_size: f(&s, "moonSize", 0.0),
+            moon_phase: f(&s, "moonPhase", 0.5),
+            moon_intensity: f(&s, "moonIntensity", 1.4),
+            moon_color: color(&s["moonColor"], Vec3::new(0.9, 0.92, 1.0)),
+            moon_direction: super::fx::vec3(&s["moonDirection"]),
         };
         let dir = super::fx::vec3(&s["sunDirection"]).normalize_or(Vec3::Y);
         let sun = color(&s["sunColor"], Vec3::new(1.0, 0.95, 0.88));
@@ -148,7 +153,10 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         let look = og_render::day_night(now, tilt, azimuth);
         // The image-based light steps every `step` game minutes.
         let step = f(&d, "step", 10.0).clamp(1.0, 120.0) / 60.0;
-        let stepped = og_render::day_night((now / step).floor() * step, tilt, azimuth);
+        let mut stepped = og_render::day_night((now / step).floor() * step, tilt, azimuth);
+        // The moon opposite the sun drawn this frame (moon_direction zero).
+        stepped.sky.moon_size = f(&d, "moonSize", 1.6);
+        stepped.sky.moon_phase = f(&d, "moonPhase", 0.5);
         let scale = f(&d, "lightIntensity", 1.0).max(0.0);
         scene.light.direction_to_light = look.light_direction;
         scene.light.color = look.light_color;

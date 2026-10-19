@@ -5120,6 +5120,42 @@
           "column": "f32",
           "default": 1.1,
           "tunable": true
+        },
+        {
+          "name": "moonSize",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "moonPhase",
+          "column": "f32",
+          "default": 0.5,
+          "tunable": true
+        },
+        {
+          "name": "moonIntensity",
+          "column": "f32",
+          "default": 1.4,
+          "tunable": true
+        },
+        {
+          "name": "moonColor",
+          "column": "Color",
+          "default": {
+            "r": 0.9,
+            "g": 0.92,
+            "b": 1
+          }
+        },
+        {
+          "name": "moonDirection",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
         }
       ]
     },
@@ -5173,6 +5209,18 @@
           "name": "step",
           "column": "f32",
           "default": 10,
+          "tunable": true
+        },
+        {
+          "name": "moonSize",
+          "column": "f32",
+          "default": 1.6,
+          "tunable": true
+        },
+        {
+          "name": "moonPhase",
+          "column": "f32",
+          "default": 0.5,
           "tunable": true
         }
       ]

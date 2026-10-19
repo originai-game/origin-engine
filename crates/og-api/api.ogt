@@ -4373,10 +4373,32 @@ module atmosphere {
       min 0
       tunable true
     }
+    field moonSize f32 "The moon disc's angular radius (0: no moon). It sets below the horizon and hides the stars behind it." {
+      min 0
+      max 20
+      unit deg
+      tunable true
+    }
+    field moonPhase f32 "How much of the moon is lit: 0 new, 0.25 the first quarter (its right half), 0.5 full, 0.75 the last quarter (its left half)." {
+      default 0.5
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field moonIntensity f32 "The lit moon's brightness." {
+      default 1.4
+      min 0
+      tunable true
+    }
+    field moonColor Color "The moon's colour." {
+      default 0.9 0.92 1
+    }
+    field moonDirection Vector3 "Towards the moon; zero puts it opposite sunDirection."
   }
 
   resource DayNight {
-    doc "A day-night cycle: the time of day drives the sun's direction, the sky's colours and stars, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly."
+    doc "A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly."
     field enabled bool "Run the cycle."
     field start f32 "The time of day at tick 0, in hours (6 sunrise, 12 noon, 18 sunset)." {
       default 9
@@ -4414,6 +4436,20 @@ module atmosphere {
       default 10
       min 1
       max 120
+      tunable true
+    }
+    field moonSize f32 "The moon disc's angular radius, opposite the sun so it rises as the sun sets (0: no moon)." {
+      default 1.6
+      min 0
+      max 20
+      unit deg
+      tunable true
+    }
+    field moonPhase f32 "How much of the moon is lit: 0 new, 0.25 the first quarter, 0.5 full, 0.75 the last quarter." {
+      default 0.5
+      min 0
+      max 1
+      unit ratio
       tunable true
     }
   }
