@@ -453,6 +453,18 @@ every earlier reference frame is unchanged.
   volume) and receives them; its bounds join `ShadowBounds::Auto`.
 - **Prepass.** Drawn into the depth-normal prepass (water's depth below,
   AO, outlines, depth of field, particles' collision).
+- **Scatter.** `Terrain::scatter(data, TerrainScatter, camera)` answers
+  the transforms of detail meshes (grass, stones) for the caller to add
+  as instances: one candidate per cell of a grid fixed to the terrain
+  (`1 / sqrt(density)` m), jittered, turned and sized by a hash of the
+  cell and the seed, kept with the probability of its layer's weight there
+  (`layer_weights`: the shader's weights before the height blend), within
+  `distance` of the camera along x and z, shrinking to nothing over the
+  outer `fade`, upright or leaning with the ground by `align`; nearest
+  rows first, at most 65,536. A copy keeps its place, size and turn while
+  its cell is in range, and its key (the cell) lets motion vectors follow
+  it. CPU only: the instances are drawn, shadowed and batched like any
+  others.
 
 Cost: `tests/evidence/P2/terrain-water/feature-costs.md`.
 

@@ -71,3 +71,13 @@ The character test was first written expecting x > -12 after 240 ticks at 3 m/s 
 | Broken | Edit | Failed |
 |---|---|---|
 | the hero stands on the terrain | `src/p2.ts`: the valley's SHAPE_HEIGHTFIELD collider not inserted | `it stands on the terrain`, `its feet are on the sampled ground (y -111.77, ground 7.98)`: it fell through |
+
+## The scatter layer (`crates/og-tests/tests/terrain.rs`, og-render's `Terrain::scatter`)
+
+| Broken | Edit | Failed |
+|---|---|---|
+| the layer's weight places copies | `scatter`: every cell grows one (weight ignored) | `scatter_follows_its_layer_distance_and_stays_put`: the count against the layer's summed weight |
+| the fade | `scatter`: copies keep their full size to the edge | the same test (scale against the shrink at 61 m) and `the_grass_scene_matches_its_reference` |
+| copies stay put | `scatter`: cells keyed from the camera's corner, not the terrain's | the same test: `cell 491589 moved` after a 7 m step; and the reference |
+| align | `scatter`: always upright | the same test (a stone's up against the slope's normal) and the reference |
+| the control map | `layer_weights`: every channel 1 | the same test: grass weight on the sand track the control map paints (the first version of the test passed this break: it checked only the meadow, so the track check was added) |

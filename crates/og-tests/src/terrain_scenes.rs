@@ -2,8 +2,9 @@
 //! §Terrain, §Water): a 2 km island (hills, a ridge of mountains to the
 //! north, a lake, beaches into the sea) drawn as a clipmap with four
 //! layers (grass, rock on slopes, sand by the water, snow on the peaks)
-//! seen from three distances, and the water's planar reflection, its
-//! shadows and the view from under the lake. Everything is generated here.
+//! seen from three distances, grass scattered over its meadow, and the
+//! water's planar reflection, its shadows and the view from under the
+//! lake. Everything is generated here.
 
 use crate::fx_scenes::{noise2, smooth, tiling_fbm};
 use crate::scenes::texture;
@@ -11,7 +12,7 @@ use glam::{Mat4, Vec2, Vec3};
 use og_render::{
     Background, Camera, ColorSpace, DirectionalLight, Environment, Exposure, Fog, Material,
     ProceduralSky, Projection, RenderScene, Terrain, TerrainControl, TerrainData, TerrainLayer,
-    TerrainLod, Water, shapes,
+    TerrainLod, TerrainScatter, Vertex, MeshData, Water, shapes,
 };
 use std::sync::{Arc, OnceLock};
 
@@ -441,6 +442,90 @@ pub fn water_underwater_scene() -> RenderScene {
     );
     scene.tick = 90;
     scene
+}
+
+/// A tuft of five grass blades, 0.5 m tall: each a tapered quad drawn on
+/// both sides, darker at the root, its normals leaning up so the tuft
+/// shades like the meadow under it.
+pub fn grass_tuft() -> MeshData {
+    let mut m = MeshData::default();
+    for b in 0..5u32 {
+        let yaw = b as f32 * 2.4 + 0.3;
+        let (s, c) = yaw.sin_cos();
+        let lean = Vec3::new(c, 0.0, s) * (0.08 + 0.03 * b as f32);
+        let side = Vec3::new(-s, 0.0, c) * 0.035;
+        let root = Vec3::new(c, 0.0, s) * 0.04;
+        let tall = 0.38 + 0.05 * (b % 3) as f32;
+        let tip = root + lean + Vec3::Y * tall;
+        let n = (Vec3::Y * 2.0 + Vec3::new(c, 0.0, s)).normalize();
+        for face in [1.0f32, -1.0] {
+            let at = m.vertices.len() as u32;
+            for (p, u, v, shade) in [
+                (root - side, 0.0, 0.0, 0.45),
+                (root + side, 1.0, 0.0, 0.45),
+                (tip, 0.5, 1.0, 1.0),
+            ] {
+                m.vertices.push(Vertex {
+                    position: p.into(),
+                    normal: (n * face.max(0.6)).normalize().into(),
+                    uv: [u, v],
+                    color: [shade, shade, shade, 1.0],
+                });
+            }
+            if face > 0.0 {
+                m.indices.extend([at, at + 2, at + 1]);
+            } else {
+                m.indices.extend([at, at + 1, at + 2]);
+            }
+        }
+    }
+    m
+}
+
+/// The near view with grass on the meadow (the grass layer, 4 tufts a
+/// square metre within 60 m, shrinking away over its last third), placed
+/// by `Terrain::scatter`.
+pub fn grass_scene() -> RenderScene {
+    let mut scene = island_view("near");
+    let tuft = scene.add_mesh(grass_tuft());
+    let grass = scene.add_material(Material {
+        base_color: [0.2, 0.33, 0.08, 1.0],
+        roughness: 0.85,
+        ..Default::default()
+    });
+    let data = island();
+    let terrain = scene.terrains[0].clone();
+    let eye = scene.camera.position;
+    for (_, m) in terrain.scatter(&data, &grass_scatter(), eye) {
+        scene.add_instance(tuft, grass, m);
+    }
+    scene
+}
+
+/// The grass scene's grass: layer 0 (grass).
+pub fn grass_scatter() -> TerrainScatter {
+    TerrainScatter {
+        layer: 0,
+        density: 4.0,
+        distance: 60.0,
+        fade: 0.35,
+        scale: [0.8, 1.4],
+        align: 0.3,
+        seed: 3,
+    }
+}
+
+/// Stones on layer 1 (rock), leaning with the slope (a test's scatter).
+pub fn stone_scatter() -> TerrainScatter {
+    TerrainScatter {
+        layer: 1,
+        density: 0.4,
+        distance: 120.0,
+        fade: 0.2,
+        scale: [0.6, 2.2],
+        align: 1.0,
+        seed: 9,
+    }
 }
 
 /// The island's terrain at the lod a scene asks for (a test helper).

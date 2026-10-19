@@ -58,6 +58,7 @@ pub const SCENES: &[&str] = &[
     "water-planar",
     "water-shadows",
     "water-underwater",
+    "terrain-grass",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -273,6 +274,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "water-planar" => g.scene = crate::terrain_scenes::water_planar_scene(),
         "water-shadows" => g.scene = crate::terrain_scenes::water_shadows_scene(),
         "water-underwater" => g.scene = crate::terrain_scenes::water_underwater_scene(),
+        "terrain-grass" => g.scene = crate::terrain_scenes::grass_scene(),
         other => {
             return Err(format!(
                 "unknown gfx scene '{other}' (known: {})",

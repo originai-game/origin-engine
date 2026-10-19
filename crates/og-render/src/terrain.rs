@@ -1251,3 +1251,186 @@ mod tests {
         }
     }
 }
+
+// ── scatter ─────────────────────────────────────────────────────────────────
+
+/// The most instances one [`TerrainScatter`] places in a frame.
+pub const MAX_SCATTER_INSTANCES: usize = 65_536;
+
+/// Detail meshes (grass, flowers, stones) scattered over a terrain where
+/// one of its layers shows, near the camera: [`Terrain::scatter`] places
+/// them on a jittered grid fixed to the terrain, so an instance keeps its
+/// place, size and turn as the camera moves, and each cell grows one with
+/// the probability of the layer's weight there. Instances shrink away over
+/// the outer `fade` of `distance`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TerrainScatter {
+    /// The layer whose weight (control map, slope and altitude rules,
+    /// normalised over the layers) places the instances.
+    pub layer: u32,
+    /// Instances per square metre where the layer's weight is 1.
+    pub density: f32,
+    /// How far from the camera (along x and z) instances are placed.
+    pub distance: f32,
+    /// The outer part of `distance` over which they shrink to nothing (0..1).
+    pub fade: f32,
+    /// The range of their uniform scale.
+    pub scale: [f32; 2],
+    /// How far they lean with the ground: 0 upright, 1 along its normal.
+    pub align: f32,
+    pub seed: u32,
+}
+
+impl Default for TerrainScatter {
+    fn default() -> Self {
+        TerrainScatter {
+            layer: 0,
+            density: 2.0,
+            distance: 40.0,
+            fade: 0.3,
+            scale: [0.8, 1.2],
+            align: 0.0,
+            seed: 1,
+        }
+    }
+}
+
+fn smoothstep(e0: f32, e1: f32, x: f32) -> f32 {
+    let t = ((x - e0) / (e1 - e0)).clamp(0.0, 1.0);
+    t * t * (3.0 - 2.0 * t)
+}
+
+/// `band` in terrain_lit.wgsl.
+fn band(x: f32, lo: f32, hi: f32, fade: f32) -> f32 {
+    let f = fade.max(1e-4);
+    smoothstep(lo - f, lo, x) * (1.0 - smoothstep(hi, hi + f, x))
+}
+
+/// A 32-bit integer hash (lowbias32).
+fn hash(mut x: u32) -> u32 {
+    x ^= x >> 16;
+    x = x.wrapping_mul(0x7feb_352d);
+    x ^= x >> 15;
+    x = x.wrapping_mul(0x846c_a68b);
+    x ^ (x >> 16)
+}
+
+fn unit(x: u32) -> f32 {
+    (x >> 8) as f32 / 16_777_216.0
+}
+
+impl TerrainData {
+    /// The control map's RGBA at `local`, bilinear between texel centres
+    /// (as the renderer's linear sampler reads it), 0..1; all 1 without one.
+    pub fn control_at(&self, local: Vec2) -> [f32; 4] {
+        let Some(c) = &self.control else {
+            return [1.0; 4];
+        };
+        let uv = ((local + self.size * 0.5) / self.size).clamp(Vec2::ZERO, Vec2::ONE);
+        let t = uv * Vec2::new(c.width as f32, c.height as f32) - 0.5;
+        let i = t.floor();
+        let f = t - i;
+        let texel = |x: f32, y: f32| {
+            let x = (x as i64).clamp(0, c.width as i64 - 1) as usize;
+            let y = (y as i64).clamp(0, c.height as i64 - 1) as usize;
+            let at = (y * c.width as usize + x) * 4;
+            [0, 1, 2, 3].map(|k| c.rgba[at + k] as f32 / 255.0)
+        };
+        let (a, b) = (texel(i.x, i.y), texel(i.x + 1.0, i.y));
+        let (d, e) = (texel(i.x, i.y + 1.0), texel(i.x + 1.0, i.y + 1.0));
+        [0, 1, 2, 3].map(|k| {
+            let lo = a[k] + (b[k] - a[k]) * f.x;
+            let hi = d[k] + (e[k] - d[k]) * f.x;
+            lo + (hi - lo) * f.y
+        })
+    }
+}
+
+impl Terrain {
+    /// The layers' weights at `local` (summing to 1), as the renderer weighs
+    /// them before the height blend: control map times the slope and
+    /// altitude rules; the first layer where every weight is 0.
+    pub fn layer_weights(&self, data: &TerrainData, local: Vec2) -> [f32; MAX_TERRAIN_LAYERS] {
+        let c = data.control_at(local);
+        let n = data.normal(local);
+        let angle = n.y.clamp(-1.0, 1.0).acos().to_degrees();
+        let altitude = data.height(local);
+        let mut w = [0.0f32; MAX_TERRAIN_LAYERS];
+        for (i, l) in self.layers.iter().take(MAX_TERRAIN_LAYERS).enumerate() {
+            w[i] = c[i]
+                * band(angle, l.slope[0], l.slope[1], l.slope_fade)
+                * band(altitude, l.altitude[0], l.altitude[1], l.altitude_fade);
+        }
+        let sum: f32 = w.iter().sum();
+        if sum < 1e-4 {
+            return [1.0, 0.0, 0.0, 0.0];
+        }
+        w.map(|x| x / sum)
+    }
+
+    /// Places `s`'s instances for a camera at `camera`: each a cell key
+    /// (stable while the cell is in range: for per-object motion) and its
+    /// local-to-world transform, at most [`MAX_SCATTER_INSTANCES`], nearest
+    /// rows first. `data` is this terrain's data.
+    pub fn scatter(&self, data: &TerrainData, s: &TerrainScatter, camera: Vec3) -> Vec<(u32, Mat4)> {
+        let mut out = Vec::new();
+        if (s.layer as usize) >= self.layers.len().min(MAX_TERRAIN_LAYERS)
+            || !(s.density > 0.0)
+            || !(s.distance > 0.0)
+        {
+            return out;
+        }
+        let cell = 1.0 / s.density.clamp(1e-4, 400.0).sqrt();
+        let half = data.size * 0.5;
+        let eye = Vec2::new(camera.x - self.origin.x, camera.z - self.origin.z);
+        let cells = (data.size / cell).ceil();
+        let lo = ((eye - s.distance + half) / cell).floor().max(Vec2::ZERO);
+        let hi = ((eye + s.distance + half) / cell).ceil().min(cells);
+        if lo.x >= hi.x || lo.y >= hi.y {
+            return out;
+        }
+        let (x0, x1, z0, z1) = (lo.x as u32, hi.x as u32, lo.y as u32, hi.y as u32);
+        let fade_from = s.distance * (1.0 - s.fade.clamp(0.0, 1.0));
+        let seed = hash(s.seed ^ 0x9e37_79b9);
+        // Rows outwards from the camera's, so the cap drops the farthest.
+        let centre = (((eye.y + half.y) / cell).floor() as i64).clamp(z0 as i64, z1 as i64 - 1) as u32;
+        let rows = (0..(z1 - z0)).map(|k| {
+            let step = (k as i64 + 1) / 2;
+            if k % 2 == 0 { centre as i64 + step } else { centre as i64 - step }
+        });
+        for z in rows.filter(|&z| z >= z0 as i64 && z < z1 as i64).map(|z| z as u32) {
+            for x in x0..x1 {
+                let key = z.wrapping_mul(cells.x as u32).wrapping_add(x);
+                let h0 = hash(key ^ seed);
+                let (h1, h2, h3, h4) = (hash(h0), hash(h0 ^ 1), hash(h0 ^ 2), hash(h0 ^ 3));
+                let p = Vec2::new(x as f32 + unit(h1), z as f32 + unit(h2)) * cell - half;
+                if p.x > half.x || p.y > half.y {
+                    continue;
+                }
+                let d = (p - eye).length();
+                if d > s.distance {
+                    continue;
+                }
+                let shrink = if s.distance > fade_from {
+                    1.0 - smoothstep(fade_from, s.distance, d)
+                } else {
+                    1.0
+                };
+                if shrink <= 0.01 || unit(h3) >= self.layer_weights(data, p)[s.layer as usize] {
+                    continue;
+                }
+                let t = unit(h4);
+                let size = (s.scale[0] + (s.scale[1] - s.scale[0]) * t) * shrink;
+                let up = Vec3::Y.lerp(data.normal(p), s.align.clamp(0.0, 1.0)).normalize_or(Vec3::Y);
+                let turn = glam::Quat::from_rotation_y(unit(hash(h0 ^ 4)) * std::f32::consts::TAU);
+                let rotation = glam::Quat::from_rotation_arc(Vec3::Y, up) * turn;
+                let at = self.origin + Vec3::new(p.x, data.height(p), p.y);
+                out.push((key, Mat4::from_scale_rotation_translation(Vec3::splat(size), rotation, at)));
+                if out.len() >= MAX_SCATTER_INSTANCES {
+                    return out;
+                }
+            }
+        }
+        out
+    }
+}

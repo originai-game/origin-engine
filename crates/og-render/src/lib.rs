@@ -80,8 +80,8 @@ pub use skin::{
     JointPalette, MAX_JOINTS, MAX_MORPH_TARGETS, MorphTargets, SkinData, SkinnedInstance,
 };
 pub use terrain::{
-    MAX_TERRAIN_LAYERS, MAX_TERRAIN_LEVELS, Terrain, TerrainControl, TerrainData, TerrainLayer,
-    TerrainLod,
+    MAX_SCATTER_INSTANCES, MAX_TERRAIN_LAYERS, MAX_TERRAIN_LEVELS, Terrain, TerrainControl,
+    TerrainData, TerrainLayer, TerrainLod, TerrainScatter,
 };
 pub use texture::{TextureCompression, TextureDesc, TextureFormat, TextureFormats, TextureUpload};
 pub use water::{Water, Water2d, WaterHeights};
