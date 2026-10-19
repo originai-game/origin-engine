@@ -10,8 +10,8 @@
 //!   transform, composed from `og.Transform` down the `og.Parent` chain;
 //! - entities with `og.Mesh` (geometry and material handles), when og-core
 //!   can register its bool fields;
-//! - the first `og.DirectionalLight` (else the renderer's default sun), up to
-//!   `MAX_LIGHTS` `og.PointLight` / `og.SpotLight`;
+//! - the first `og.DirectionalLight` (else the renderer's default sun), the
+//!   `og.PointLight` / `og.SpotLight` (og-render culls and clusters them);
 //! - the `og.Camera` and `og.RenderSettings` resources;
 //! - the text `og.render.text` queued during the tick, with cooked
 //!   multi-page MSDF fonts mapped to one `MsdfFont` per page.
@@ -461,7 +461,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         }
     }
     // Lights: the first directional light, then point and spot lights in
-    // entity order (deterministic), at most MAX_LIGHTS of them drawn.
+    // entity order (deterministic); og-render culls them to the view and
+    // keeps at most MAX_LIGHTS.
     let forward = |m: Mat4| m.transform_vector3(Vec3::NEG_Z).normalize_or_zero();
     let layouts = &rs.draw;
     if let Some(dl) = &layouts.directional

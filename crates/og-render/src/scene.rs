@@ -362,9 +362,10 @@ impl Default for DirectionalLight {
     }
 }
 
-/// The most local lights one frame draws ([`RenderScene::lights`] beyond this
-/// are ignored and counted in [`crate::FrameStats::lights_dropped`]).
-pub const MAX_LIGHTS: usize = 8;
+/// The most local lights one frame draws, after those outside the view are
+/// culled: past it the least important are dropped (the radiance at the
+/// camera; `clusters.rs`) and counted in [`crate::FrameStats::lights_dropped`].
+pub const MAX_LIGHTS: usize = 256;
 /// How many local lights can cast shadows in one frame: the first ones in
 /// [`RenderScene::lights`] with `cast_shadows` set.
 pub const MAX_SHADOWED_LIGHTS: usize = 2;

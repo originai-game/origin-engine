@@ -25,7 +25,7 @@ the world → scene extraction belongs to the layer above.
 | `Camera` | `position`, `target`, `up`, `projection` (`Perspective { fov_y_degrees }`, `Orthographic { height }`), `near`, `far`, `exposure`. `Camera::orthographic_2d(center, height)` is the 2D camera (looking down −z at the z = 0 plane). |
 | `Exposure` | `Manual { ev }` (×2^ev; `Exposure::linear(k)` from a multiplier) or `Auto { compensation, min_ev, max_ev }`: the frame's log-average luminance brought to 0.18, from the current frame only, so the same frame always gets the same exposure. |
 | `DirectionalLight` | `direction_to_light`, `color`, `intensity`, `cast_shadows`, `shadow_bounds` (`Auto`: the instances' bounds; `Sphere`), `max_shadow_distance` (default 200 m; shadows fade over its last tenth). Three cascades. |
-| `Light`, `LightKind` | Point and spot lights (`Point`; `Spot { direction, angle_degrees, penumbra }`) with `position`, `color`, `intensity` (radiance at 1 m), `range`, `cast_shadows`. `MAX_LIGHTS` = 8 per frame (the rest are counted in `FrameStats::lights_dropped`); the first `MAX_SHADOWED_LIGHTS` = 2 with `cast_shadows` get shadows. |
+| `Light`, `LightKind` | Point and spot lights (`Point`; `Spot { direction, angle_degrees, penumbra }`) with `position`, `color`, `intensity` (radiance at 1 m), `range`, `cast_shadows`. Clustered (see [Forward+](#forward-phase-2)): lights whose range misses the view are culled (`FrameStats::lights_culled`), up to `MAX_LIGHTS` = 256 in view are drawn (past it the brightest at the camera are kept, the rest counted in `lights_dropped`); the first `MAX_SHADOWED_LIGHTS` = 2 in view with `cast_shadows` get shadows. |
 | `PostEffects`, `Bloom`, `Tonemap` | `bloom: Option<Bloom { threshold, knee, intensity }>` (threshold in exposed units: 1.0 is display white), `tonemap: Aces` (default) or `None` (clamp: authored 2D colours come out exact). |
 | `Sprite` | A textured quad in the world xy plane facing +z: `texture` (`None` = solid), `position`, `size`, `anchor`, `rotation`, `color` (linear RGBA), `uv_rect` (v down; a flipped region swaps u0/u1 or v0/v1), `layer`, `clip` (an index into the overlay's clip rectangles; ignored in the world). Sorted by (layer, sort key, texture); within those, submission order. |
 | `SpriteOrder`, `TextOutline`, `TextureFilter` | Per-frame side lists by index, so `Sprite` and `Text` keep their fields: `sprite_order` gives a sprite a sort key within its layer (top-down y sorting: `-y` of the feet; default 0), `text_outlines` an outline (width as a fraction of half the font's distance range, linear colour) to a world text; `set_texture_filter(texture, Nearest)` samples a texture by its nearest texel wherever sprites, tiles and particles draw it (pixel art). |
@@ -34,7 +34,7 @@ the world → scene extraction belongs to the layer above.
 | `MsdfFont`, `Glyph`, `Text` | An MSDF atlas (`TextureHandle`, linear, no mips) plus `distance_range`, `line_height` and the glyph table (`advance`, `plane_bounds` in em y up, `atlas_bounds` in pixels y down: msdf-atlas-gen's layout). `Text { font, text, position, size, rotation, color, layer, clip }` lays out left to right with `\n`; missing characters are counted in `FrameStats::missing_glyphs`. Text sorts with the sprites. |
 | `Overlay` | The screen-space layer drawn last (`RenderScene::overlay: Option<Overlay>`): `sprites` and `texts` in CSS pixels, origin top left, y down; `width`, `height` (the CSS viewport) and `scale` (device pixels per CSS pixel; 0 fits the height); `clips` (`add_clip([x, y, w, h])` → the index a sprite or text names in `clip`). See [The overlay](#the-overlay). |
 | `DebugView` | `None`, `Cascades` (red/green/blue per cascade, black beyond). |
-| `FrameStats` | `draw_calls` (every pass), `batches`, `instances`, `culled`, `triangles` (main pass), `shadow_passes`, `shadow_casters`, `lights`, `lights_dropped`, `sprites`, `glyphs`, `sprite_draws`, `missing_glyphs` (overlay ones included), `overlay_sprites`, `overlay_glyphs`, `overlay_draws`, `frame`. |
+| `FrameStats` | `draw_calls` (every pass), `batches`, `instances`, `culled`, `triangles` (main pass), `shadow_passes`, `shadow_casters`, `lights`, `lights_dropped`, `lights_culled`, `cluster_lights`, `cluster_lights_dropped`, `sprites`, `glyphs`, `sprite_draws`, `missing_glyphs` (overlay ones included), `overlay_sprites`, `overlay_glyphs`, `overlay_draws`, `frame`. |
 | `RenderInfo` | Adapter, backend, device type, `Tier` (`Full`, `NoCompute`), `antialias`, `backend_tier()`: the reference-frame directory name. |
 | `RenderError` | `NoAdapter`, `NoDevice`, `Surface`, `InvalidHandle`, `Readback`, `Unsupported`, `InvalidData`. |
 | `shapes` | `sphere`, `plane`, `cuboid(size)`, `checker`. |
@@ -75,8 +75,9 @@ object; see below). Passes whose feature is off are not recorded.
 5. **Main pass** into the `Rgba16Float` HDR target (4× multisampled with a
    resolve when MSAA is on): forward PBR (`pbr.wgsl`) with the directional
    light, its cascade picked by view depth (the same slices its casters were
-   culled to), up to eight point/spot lights in a per-fragment loop
-   (inverse square windowed to the range, smooth spot cone), split-sum IBL,
+   culled to), the point and spot lights of the fragment's cluster
+   (Forward+, below; inverse square windowed to the range, smooth spot
+   cone), split-sum IBL,
    emissive, alpha mask, derivative normal maps. Shadow lookups are bilinear
    PCF with explicit compares on `textureLoad` (the WebGL2-safe path).
    **Shadow bias works at any scale:** the normal offset and the depth bias
@@ -108,6 +109,38 @@ object; see below). Passes whose feature is off are not recorded.
    windows).
 10. **Overlay** (when `scene.overlay` is set; `overlay.rs`, `overlay.wgsl`):
     after the graph, straight into the output or its sRGB view (see below).
+
+## Forward+ (phase 2)
+
+Point and spot lights are clustered (`src/clusters.rs`, owed row 30 of
+`docs/phase-1.md`). The view is cut into `CLUSTER_GRID` = 16 × 9 screen
+tiles × 24 depth slices (logarithmic between the camera's near and far
+planes; even for an orthographic camera). Each frame the CPU culls the
+lights whose sphere (`range`) misses the view frustum, keeps up to
+`MAX_LIGHTS` = 256 (past it the ones with the most radiance at the camera:
+intensity times the colour's brightest channel over the squared distance,
+at least 1 m), and assigns each to the clusters its sphere can touch: the
+view-space box of the sphere, clipped to the near plane and projected,
+widened by a pixel for the TAA jitter, and the slices of its depth range.
+A cluster holds at most `MAX_CLUSTER_LIGHTS` = 64; past it (and on WebGL2
+past `UNIFORM_LIGHT_REFS` = 16,384 references in all) the busiest
+clusters keep their most important lights. The lit shader finds its
+cluster from the pixel and the view depth and shades that cluster's lights
+in scene order, so every frame of up to eight lights is byte for byte the
+frame of the old per-fragment loop (every reference passes at RMSE 0), and
+a frame of 243 lights is the frame of the same lights brute-forced over
+every pixel (RMSE 0) in a tenth of the time.
+
+The tables are three buffers in the frame group (bindings 7 to 9: the light
+records, one word per cluster with its first reference and count, and the
+references as bytes): storage buffers on the full tier, uniform buffers of
+at most 16 KiB on WebGL2. A tile table texture, as first planned for
+WebGL2, would need a seventeenth texture slot in the skinned lit pipeline
+(below). The build runs on the CPU on both tiers: tens of microseconds for
+256 lights (`tests/evidence/P2/render/forward-plus.md`), less than a
+compute dispatch would cost. Stats: `lights` (drawn), `lights_culled`,
+`lights_dropped`, `cluster_lights` (references stored),
+`cluster_lights_dropped`.
 
 ## The overlay
 
@@ -173,7 +206,9 @@ a page needs no `preserveDrawingBuffer`; a probe capture renders a frame to
 | `NoCompute` | WebGL2 (wgpu GL), native GL | `webgl2`, `gl` | 4× MSAA |
 
 Both tiers request `Limits::downlevel_webgl2_defaults()` at the adapter's
-resolution; nothing uses compute yet, so both run the same passes. The
+resolution; both tiers run the same passes (the full tier adds GPU
+particles), and the frame group's light tables are storage buffers on the
+full tier and uniform buffers on the no-compute one. The
 WebGL2 constraints stay designed in: shadow maps are `R32Float` colour
 arrays read with `textureLoad` and compared explicitly (WebGL2 can neither
 filter, `textureLod` nor gather a depth texture), the HDR target is
@@ -219,6 +254,7 @@ the full tier) asserts the tier's antialiasing choice instead.
 | `text-msdf` | Latin and CJK MSDF text from 0.32 to 4.5 world units, rotated. | all |
 | `sky-only` | The sky with the sun in view: 2 draws. | all |
 | `showcase` | Models, CSM, a shadowed spot and point light, bloom, auto exposure, world-space text and sprites, the tier's antialiasing. | all |
+| `lights-256` | Night over a plaza lit by 256 point and spot lights (Forward+; 243 in view). | all |
 
 Behaviour tests in `tests/gfx.rs` read frames rather than code: the cascade
 debug view puts cascade 0 at the camera's feet and cascade 2 at the horizon;
@@ -418,8 +454,8 @@ with their mips, chosen per tier and reported in
 `RenderDesc::mobile()` (two 1024² cascades, ASTC/ETC2 first). Evidence:
 `tests/evidence/M6/render-*`.
 
-- **Render graph**: a depth prepass; Forward+ clustered lights (CPU tile
-  table on WebGL2) beyond the 8-light uniform loop.
+- **Render graph**: a depth prepass for every frame (it runs only when an
+  effect reads it).
 - **GL-tier references**: the og-tests scenes (`msaa` among them) have no
   `gl` / `webgl2` references: native GL needs wgpu's
   `gles`/`angle` features (Cargo.lock change, ANGLE dylibs on macOS) and was

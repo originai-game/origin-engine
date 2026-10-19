@@ -1,11 +1,11 @@
 // Per-frame bindings shared by the passes that draw into the HDR target
 // (pbr.wgsl, sky.wgsl, sprite.wgsl): the camera, the directional light and
-// its cascades, the local lights, the shadow maps and the image-based
-// lighting. The renderer prepends this file to those shaders; the Rust side
-// is `FrameUniform` in frame.rs.
+// its cascades, the shadow maps and the image-based lighting. The renderer
+// prepends this file to those shaders; the Rust side is `FrameUniform` in
+// frame.rs. The local lights and their clusters (bindings 7 to 9) are
+// declared after it in the lit shader only (clusters.rs).
 
 const CASCADES: u32 = 3u;
-const MAX_LIGHTS: u32 = 8u;
 const LOCAL_SHADOW_LAYERS: u32 = 12u;
 
 struct LocalLight {
@@ -21,11 +21,11 @@ struct Frame {
   view_pos: vec4<f32>,        // xyz: camera position, w: 1 orthographic, 0 perspective
   light_dir: vec4<f32>,       // xyz: towards the light, w: cascades in use (0: no shadows)
   light_color: vec4<f32>,     // rgb: radiance, w: debug view (1: cascades)
-  params: vec4<f32>,          // x: ibl intensity, y: prefiltered mips - 1, z: local lights, w: 1 / cascade map size
+  params: vec4<f32>,          // x: ibl intensity, y: prefiltered mips - 1, z: local lights drawn, w: 1 / cascade map size
   view_forward: vec4<f32>,    // xyz: camera forward, w: 1 / local shadow map size
   cascade_view_proj: array<mat4x4<f32>, 3>,
   cascade_bias: array<vec4<f32>, 3>,    // x: normal offset (world), y: depth bias (normalized), z: slice far (view depth), w: unused
-  lights: array<LocalLight, 8>,
+  cluster: vec4<f32>,         // x, y: clusters per pixel across and down, z, w: depth slice scale and bias (of log2 depth in perspective)
   local_view_proj: array<mat4x4<f32>, 12>,
   // The atmosphere (`AtmosphereGpu` in atmosphere.rs).
   fog_color: vec4<f32>,       // rgb: colour, w: 1 when fog is on

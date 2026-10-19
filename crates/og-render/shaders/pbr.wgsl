@@ -1,8 +1,9 @@
-// Forward PBR (metallic-roughness): the directional light with 3 cascaded
-// shadow maps, up to 8 point/spot lights (the first two shadowed) in a
-// per-fragment loop, split-sum IBL. Linear HDR output; the post passes
-// tonemap. Prepended by frame.wgsl, noise.wgsl and material.wgsl;
-// skin_*.wgsl supplies `joint_matrix` for the skinned entry points.
+// Forward+ PBR (metallic-roughness): the directional light with 3 cascaded
+// shadow maps, the point and spot lights of the fragment's cluster (the
+// first two shadowed; clusters.rs), split-sum IBL. Linear HDR output; the
+// post passes tonemap. Prepended by frame.wgsl, the light tables
+// (clusters.rs), noise.wgsl and material.wgsl; skin_*.wgsl supplies
+// `joint_matrix` for the skinned entry points.
 //
 // Effects (each behind a branch, so a material or frame without it shades
 // exactly as before): projected decals before lighting, screen-space
@@ -503,10 +504,14 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
     color = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
   }
 
-  // Point and spot lights.
-  let light_count = u32(frame.params.z);
-  for (var i = 0u; i < light_count; i++) {
-    color += local_light(frame.lights[i], s, in.world_pos, n, v);
+  // Point and spot lights: those of this fragment's cluster, in scene order.
+  if (frame.params.z > 0.5) {
+    let word = cluster_word(cluster_at(in.clip.xy, in.world_pos));
+    let first = word & 0xffffffu;
+    let count = word >> 24u;
+    for (var k = 0u; k < count; k++) {
+      color += local_light(light_list[cluster_ref(first + k)], s, in.world_pos, n, v);
+    }
   }
 
   // Image-based light (split sum).

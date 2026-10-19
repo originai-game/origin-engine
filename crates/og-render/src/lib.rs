@@ -1,8 +1,8 @@
 //! Origin Engine renderer (`docs/design.md` §2.6, `crates/og-render/README.md`).
 //!
-//! A wgpu forward renderer: PBR metallic-roughness, one directional light with
-//! three cascaded shadow maps, up to eight point and spot lights (two of them
-//! shadowed), split-sum image-based lighting generated from a procedural sky,
+//! A wgpu Forward+ renderer: PBR metallic-roughness, one directional light
+//! with three cascaded shadow maps, up to 256 point and spot lights in view,
+//! clustered (`clusters.rs`; two of them shadowed), split-sum image-based lighting generated from a procedural sky,
 //! antialiasing by tier (TAA on WebGPU-class backends, 4x MSAA on WebGL2),
 //! bloom, manual or metered exposure, ACES tonemapping, and a 2D batch of
 //! sprites and MSDF text. It runs natively (Metal, Vulkan; headless for
@@ -29,6 +29,7 @@
 
 mod atmosphere;
 mod capture;
+mod clusters;
 mod effects;
 mod frame;
 mod fx;
@@ -59,6 +60,7 @@ mod headless;
 
 pub use atmosphere::{DayNightLook, Fog, SkyLook, day_night};
 pub use capture::{CAPTURE_TIMEOUT, CaptureRequest};
+pub use clusters::{CLUSTER_GRID, MAX_CLUSTER_LIGHTS, UNIFORM_LIGHT_REFS};
 pub use effects::*;
 pub use graph::{GraphError, GraphPlan, RenderGraph, TargetDesc};
 #[cfg(not(target_arch = "wasm32"))]
@@ -114,26 +116,37 @@ pub const MSAA_SAMPLES: u32 = 4;
 const FRAME_WGSL: &str = include_str!("../shaders/frame.wgsl");
 const PBR_WGSL: &str = include_str!("../shaders/pbr.wgsl");
 
-/// The lit shader's source with `hooks` (`hooks.rs`) and the joint palette
-/// read as `palette`.
-fn lit_source_with(hooks: &str, palette: skin::PaletteMode) -> String {
+/// The lit shader's source with `hooks` (`hooks.rs`), the joint palette
+/// read as `palette` and the light tables as `tables`.
+fn lit_source_with(
+    hooks: &str,
+    palette: skin::PaletteMode,
+    tables: clusters::LightTables,
+) -> String {
     format!(
-        "{FRAME_WGSL}{}{MATERIAL_WGSL}{}{hooks}{PBR_WGSL}",
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{}{hooks}{PBR_WGSL}",
+        tables.wgsl(),
         particles_gpu::NOISE_WGSL,
         palette.wgsl(3)
     )
 }
 
-/// [`lit_source_with`] for a tier (`full`: the storage-buffer palette).
+/// [`lit_source_with`] for a tier (`full`: storage buffers for the palette
+/// and the light tables).
 pub(crate) fn lit_source(hooks: &str, full: bool) -> String {
-    lit_source_with(
-        hooks,
-        if full {
-            skin::PaletteMode::Storage
-        } else {
-            skin::PaletteMode::Texture
-        },
-    )
+    if full {
+        lit_source_with(
+            hooks,
+            skin::PaletteMode::Storage,
+            clusters::LightTables::Storage,
+        )
+    } else {
+        lit_source_with(
+            hooks,
+            skin::PaletteMode::Texture,
+            clusters::LightTables::Uniform,
+        )
+    }
 }
 const SHADOW_WGSL: &str = include_str!("../shaders/shadow.wgsl");
 const SKY_WGSL: &str = include_str!("../shaders/sky.wgsl");
@@ -374,9 +387,16 @@ pub struct FrameStats {
     pub shadow_casters: u32,
     /// Shadow passes (cascades plus local light faces).
     pub shadow_passes: u32,
-    /// Local lights drawn, and those beyond [`MAX_LIGHTS`] that were not.
+    /// Local lights drawn; those in view beyond [`MAX_LIGHTS`] that were
+    /// not (the least important); those outside the view.
     pub lights: u32,
     pub lights_dropped: u32,
+    pub lights_culled: u32,
+    /// Light references the clusters held, and those dropped from clusters
+    /// past [`MAX_CLUSTER_LIGHTS`] (or the tier's total, [`UNIFORM_LIGHT_REFS`]
+    /// on WebGL2).
+    pub cluster_lights: u32,
+    pub cluster_lights_dropped: u32,
     /// Sprites and glyphs drawn, and the draws they took.
     pub sprites: u32,
     pub glyphs: u32,
@@ -650,6 +670,10 @@ pub struct Renderer {
     material_layout: wgpu::BindGroupLayout,
     sprite_layout: wgpu::BindGroupLayout,
     frame_buffer: wgpu::Buffer,
+    /// The local lights, the cluster table and its light references (`clusters.rs`).
+    light_tables: clusters::LightTables,
+    light_buffers: [wgpu::Buffer; 3],
+    clusters: clusters::ClusterBuilder,
     shadow_buffer: wgpu::Buffer,
     shadow_bind_group: wgpu::BindGroup,
     pbr_layout: wgpu::PipelineLayout,
@@ -1204,6 +1228,11 @@ impl Renderer {
         } else {
             skin::PaletteMode::Texture
         };
+        let light_tables = if tier == Tier::Full {
+            clusters::LightTables::Storage
+        } else {
+            clusters::LightTables::Uniform
+        };
         let shadow_size = desc
             .shadow_map_size
             .clamp(64, limits.max_texture_dimension_2d.max(64));
@@ -1247,6 +1276,7 @@ impl Renderer {
         let (width, height) = (desc.width.max(1), desc.height.max(1));
 
         // Layouts.
+        let [lights_entry, table_entry, refs_entry] = light_tables.layout_entries();
         let frame_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("frame"),
             entries: &[
@@ -1257,6 +1287,11 @@ impl Renderer {
                 texture_entry(4, true, wgpu::TextureViewDimension::Cube),
                 tex2d(5),
                 sampler_entry(6, wgpu::SamplerBindingType::Filtering),
+                // The local lights and their clusters: buffers, so WebGL2's
+                // skinned lit pipeline keeps its sixteen texture slots.
+                lights_entry,
+                table_entry,
+                refs_entry,
             ],
         });
         // The sky cube, bound by the sky pass alone: in the frame group it
@@ -1369,6 +1404,7 @@ impl Renderer {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
+        let light_buffers = light_tables.buffers(&device);
         let shadow_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("shadow passes"),
             size: SHADOW_SLOT_STRIDE * SHADOW_SLOTS as u64,
@@ -1392,7 +1428,7 @@ impl Renderer {
         let pbr_shader = shader(
             &device,
             "pbr",
-            lit_source_with(&hooks::default_hooks(), palette_mode),
+            lit_source_with(&hooks::default_hooks(), palette_mode, light_tables),
         );
         let sky_shader = shader(&device, "sky", format!("{FRAME_WGSL}{SKY_WGSL}"));
         let sprite_shader = shader(&device, "sprite", format!("{FRAME_WGSL}{SPRITE_WGSL}"));
@@ -1652,6 +1688,9 @@ impl Renderer {
             material_layout,
             sprite_layout,
             frame_buffer,
+            light_tables,
+            light_buffers,
+            clusters: clusters::ClusterBuilder::default(),
             shadow_buffer,
             shadow_bind_group,
             pbr_layout,
@@ -1768,7 +1807,7 @@ impl Renderer {
             let module = shader(
                 &self.device,
                 "pbr (material shader)",
-                lit_source_with(&hooks, self.palette.mode()),
+                lit_source_with(&hooks, self.palette.mode(), self.light_tables),
             );
             self.cache.shaders.push(module);
         }
@@ -2206,6 +2245,9 @@ impl Renderer {
             wgpu::BindingResource::TextureView(&ibl.prefiltered),
             wgpu::BindingResource::TextureView(&ibl.brdf_lut),
             wgpu::BindingResource::Sampler(&ibl.sampler),
+            self.light_buffers[0].as_entire_binding(),
+            self.light_buffers[1].as_entire_binding(),
+            self.light_buffers[2].as_entire_binding(),
         ];
         let group = bind_group(&self.device, "frame", &self.frame_layout, &entries);
         let sky_group = bind_group(
@@ -2884,8 +2926,36 @@ impl Renderer {
             })
             .collect();
 
-        // Local lights and their shadow faces.
-        let (lights_gpu, local_shadows) = frame::local_lights(&scene.lights, LOCAL_SHADOW_SIZE);
+        // Local lights: the clusters they reach, their records, their shadow faces.
+        self.clusters.build(
+            &scene.lights,
+            &clusters::ClusterView {
+                camera: &cam,
+                frustum: &view_frustum,
+                position: camera.position,
+                near: camera.near,
+                far: camera.far,
+                width: self.width,
+                height: self.height,
+            },
+            self.light_tables.ref_capacity(),
+        );
+        let (lights_gpu, local_shadows) =
+            frame::local_lights(&scene.lights, &self.clusters.kept, LOCAL_SHADOW_SIZE);
+        if !lights_gpu.is_empty() {
+            self.queue
+                .write_buffer(&self.light_buffers[0], 0, bytemuck::cast_slice(&lights_gpu));
+            self.queue.write_buffer(
+                &self.light_buffers[1],
+                0,
+                bytemuck::cast_slice(&self.clusters.table),
+            );
+            self.queue.write_buffer(
+                &self.light_buffers[2],
+                0,
+                bytemuck::cast_slice(&self.clusters.ref_words()),
+            );
+        }
         let mut local_lists: Vec<Option<DrawList>> =
             (0..LOCAL_SHADOW_LAYERS).map(|_| None).collect();
         for ls in &local_shadows {
@@ -3001,7 +3071,7 @@ impl Renderer {
             params: [
                 scene.environment.intensity,
                 (ibl::PREFILTER_MIPS - 1) as f32,
-                scene.lights.len().min(MAX_LIGHTS) as f32,
+                lights_gpu.len() as f32,
                 1.0 / shadow_size as f32,
             ],
             view_forward: cam
@@ -3010,7 +3080,7 @@ impl Renderer {
                 .to_array(),
             cascade_view_proj: [[[0.0; 4]; 4]; CASCADES],
             cascade_bias: [[0.0; 4]; CASCADES],
-            lights: lights_gpu,
+            cluster: self.clusters.params,
             local_view_proj: [[[0.0; 4]; 4]; LOCAL_SHADOW_LAYERS],
             atmosphere: atmosphere::AtmosphereGpu::new(
                 scene.fog.as_ref(),
@@ -3321,14 +3391,17 @@ impl Renderer {
             RenderTarget::View(_) => None,
         };
 
-        let lights = scene.lights.len().min(MAX_LIGHTS) as u32;
+        let cluster_stats = &self.clusters.stats;
         let mut stats = FrameStats {
             batches: batches.len() as u32,
             instances: scene.instances.len() as u32,
             culled,
             triangles: main_list.triangles + blended_list.triangles,
-            lights,
-            lights_dropped: scene.lights.len() as u32 - lights,
+            lights: self.clusters.kept.len() as u32,
+            lights_dropped: cluster_stats.dropped,
+            lights_culled: cluster_stats.culled,
+            cluster_lights: cluster_stats.refs,
+            cluster_lights_dropped: cluster_stats.refs_dropped,
             sprites: sprite_frame.sprites,
             tiles: sprite_frame.tiles,
             tile_chunks: sprite_frame.tile_chunks,
