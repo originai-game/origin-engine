@@ -383,9 +383,12 @@ and `--shots title@54,beacon@204,dawn@432` (each at its screenshot's tick,
 `metal` (2026-10-19) title is at RMSE 0.00131, beacon 0.00475 with
 0.060 % outliers, dawn 0.00067. On WebGL2 title (0.00428) and dawn
 (0.00180) are judged against `metal` too; the beacon keeps a WebGL2
-reference (RMSE 0.0181 against `metal`: the ember sparks are drawn as
-longer, wider streaks, about 1 % of the pixels) while an investigation
-decides whether that is the tier's design or a defect.
+reference by design (RMSE 0.0181 with 0.902 % outliers against `metal`):
+particle collision against the depth buffer runs only with compute
+shaders, so on WebGL2 the ember sparks fall through instead of bouncing
+(the unmatched sparks are 48.5 % of the squared error), and WebGL2's 4×
+MSAA against the full tier's TAA leaves the rest (RMSE 0.0130 without the
+unmatched sparks; docs/phase-1.md, showcase round, Evidence).
 
 `bun tests/web/archetype-hashes.ts [--webgl]` compares the three
 archetypes' world hashes across hosts: each replay playtest's script runs

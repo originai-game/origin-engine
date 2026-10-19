@@ -146,16 +146,27 @@ glob (row 12).
   `dist/web`) matches the same three frames against `references/webgpu/`
   and `references/webgl2/` at 0.000 %. Against the metal references:
   webgpu RMSE 0.00131 (title), 0.00475 with 0.060 % outliers (beacon),
-  0.00067 (dawn); webgl2 RMSE 0.00428, 0.0181 and 0.00180. Frame read of
-  the webgl2 beacon, the one over the harness's 0.01 against metal: the
-  same scene, the hand in the bowl, fire, smoke and light alike; WebGL2
-  draws the ember sparks as longer, wider streaks (about 1 % of the
-  pixels), so it keeps its own reference. On 2026-10-20 the webgpu
-  references and the webgl2 title and dawn were dropped as duplicates of
-  metal (each within the tolerance against it; docs/ci.md: a tier gets its
-  own reference only for a difference it makes by design), so both tiers
-  are judged against `references/metal/` except the webgl2 beacon, whose
-  reference is under investigation (the tier's design or a defect).
+  0.00067 (dawn); webgl2 RMSE 0.00428, 0.0181 and 0.00180. The webgl2
+  beacon, the one over the harness's 0.01 against metal, is the same scene
+  (the hand in the bowl, fire, smoke and light alike), and a per-spark
+  read of the three beacon captures against `references/metal/beacon.png`
+  (2026-10-20) finds the difference by design on two counts. Particle
+  collision against the depth buffer runs only with compute shaders, which
+  WebGL2 lacks, so its ember sparks fall through the ground instead of
+  bouncing: of metal's 75 sparks 61 match a webgl2 spark, and the 17
+  metal-only and 12 webgl2-only sparks are 48.5 % of the squared error
+  (0.419 % of the pixels as outliers). The full tier antialiases with TAA
+  and WebGL2 with 4× MSAA: matched sparks differ by about half a pixel
+  (median +0.60 px long, +0.70 px wide, centres 1.91 px apart) and are
+  29.6 % of the error, the rest of the frame 21.9 %. Without the unmatched
+  sparks webgl2 would be at RMSE 0.0130, still over 0.01 for the MSAA
+  against TAA difference alone; webgpu matches metal spark for spark (75
+  matched, median shift 0.18 px). On 2026-10-20 the webgpu references and
+  the webgl2 title and dawn were dropped as duplicates of metal (each
+  within the tolerance against it; docs/ci.md: a tier gets its own
+  reference only for a difference it makes by design), so both tiers are
+  judged against `references/metal/` except the webgl2 beacon, which
+  keeps `references/webgl2/beacon.png` by design.
   `scripts/check.sh web-reference` now runs these frames on both tiers.
 - **vulkan-cpu**: not recorded (the gate does not run templates on it).
 - **og polish** (`tests/evidence/P2/showcase/`, metal, release addon):
@@ -1340,7 +1351,7 @@ resource only the owner can give.
 | 44 | A publish wasm per profile (measured 63.3 % 3D, 59.5 % 2D at opt-level 3): two shipping variants, `og build --publish` choosing by the game's profile, and the size budget read per download instead of as the sum of every wasm the gate builds | E7 | M | owner (the budget's meaning), then engine | open |
 | 45 | `og.ui.shake` shown in a template (ui-kit's shop refusing a purchase) | E7 | S | engine, P2 UI | done, d00f20c |
 | 46 | runner: a press during the game-over card's hold is silent (og polish: 1 of 3 inputs in `flow`) | E7 | S | engine, P2 UI | done, 54b59df |
-| 47 | vulkan-cpu references for the third-person archetype (metal recorded; webgpu and webgl2 judged against metal except the webgl2 beacon, under investigation) | P2 showcase | S | engine, phase 2 | open |
+| 47 | vulkan-cpu references for the third-person archetype (metal recorded; webgpu and webgl2 judged against metal except the webgl2 beacon, which keeps its own reference by design: compute-only particle collision, MSAA against TAA) | P2 showcase | S | engine, phase 2 | open |
 | 48 | The fantasy pack's labels under 4.5:1 (Set out 3.36, footer 3.5, Resume 3.84, Again 3.99, 完成 4.41, 语言 4.43 in Ember Vale's polish) and third-person's HUD Jump and Kindle without a ui-bus sound | P2 showcase | S | engine, phase 2 | open |
 | 49 | The IDL's og.IkChain docs: a `"world"` target is in the skeleton body's Transform parent's frame, not true world | P2 showcase | S | engine, phase 2 | open |
 
