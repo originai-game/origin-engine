@@ -12099,12 +12099,11 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt.",
+          "description": "PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt. Set the other one at run time to change profile: the next step builds that profile's simulation from the components (contacts, joints' warm starts, ropes, cloth, fluids and ragdoll bodies start again), so a 3D game can play a 2D scene and back.",
           "default": 3,
           "minimum": 2,
           "maximum": 3,
-          "x-og-label": "Profile",
-          "readOnly": true
+          "x-og-label": "Profile"
         },
         "gravity": {
           "$ref": "#/$defs/Vector3",

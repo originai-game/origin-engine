@@ -4845,14 +4845,13 @@ export interface Velocity {
  */
 export interface Physics {
   /**
-   * PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt.
+   * PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt. Set the other one at run time to change profile: the next step builds that profile's simulation from the components (contacts, joints' warm starts, ropes, cloth, fluids and ragdoll bodies start again), so a 3D game can play a 2D scene and back.
    *
    * @default 3
    * @range 2..3
    * @label Profile
-   * @readonly written by the engine
    */
-  readonly profile: number;
+  profile: number;
   /**
    * The acceleration of every dynamic body, times its gravityScale; 2D uses x and y.
    *

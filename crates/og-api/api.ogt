@@ -3120,12 +3120,11 @@ module physics {
 
   resource Physics {
     doc "The physics settings of the world. The profile is the project's; the same components serve both profiles."
-    field profile u32 "PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt." {
+    field profile u32 "PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt. Set the other one at run time to change profile: the next step builds that profile's simulation from the components (contacts, joints' warm starts, ropes, cloth, fluids and ragdoll bodies start again), so a 3D game can play a 2D scene and back." {
       default 3
       min 2
       max 3
       label "Profile"
-      readonly true
     }
     field gravity Vector3 "The acceleration of every dynamic body, times its gravityScale; 2D uses x and y." {
       default 0 -9.81 0

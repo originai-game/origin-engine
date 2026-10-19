@@ -297,7 +297,9 @@ pub const PROFILE_3D: u32 = 3;
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
 #[reflect(name = "og.Physics")]
 pub struct Physics {
-    /// 2 for the 2D profile (rapier2d: xy plane, rotation about z), 3 for 3D (rapier3d).
+    /// 2 for the 2D profile (rapier2d: xy plane, rotation about z), 3 for 3D
+    /// (rapier3d). Changed at run time, the next step builds the other
+    /// profile's simulation from the components.
     #[reflect(min = 2, max = 3, default = 3, label = "Profile")]
     pub profile: u32,
     /// Acceleration of every dynamic body (times its gravity_scale); 2D uses x and y.
