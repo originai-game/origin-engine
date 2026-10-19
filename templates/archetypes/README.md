@@ -25,8 +25,8 @@ commands its playtests use and what a Maker changes first.
 ## What they share (and what each owns)
 
 - **Pixel-art sprites, flipbooks and tilemaps.** `tools/make-assets.py`
-  draws every sheet texel by texel (standard library only, through the
-  copied `tools/oglite.py`) and writes its `type flipbook` sheet (clips,
+  draws every sheet texel by texel (standard library only, through its
+  `tools/oglite.py`, the same file in every archetype) and writes its `type flipbook` sheet (clips,
   modes, frame events), the tilesets and maps, and a `texture { kind pixel }`
   import for each PNG; two runs give the same bytes. Drawn entities carry
   `og.Sprite` (y-sorted, blob shadows) and play `og.Flipbook` clips; the

@@ -50,9 +50,10 @@ needs a browser or a Rust toolchain. The command channel is
    change so the next run is the same run.
 
 A game's own actions (`GameDesc.commands`, og-game §3) join the list; give
-each its usage and one sentence in `GameDesc.commandHelp`
-(`{ spawn_wave: { usage: "spawn_wave:<count>", doc: "Spawns a wave now." } }`)
-so `help` explains it. An entry naming no action is logged when the game
+each its argument form and one sentence in `GameDesc.commandHelp`
+(`{ spawn_wave: { usage: "<count>", doc: "Spawns a wave now." } }`)
+so `help` explains it (it lists `spawn_wave:<count>`: the name, then the
+usage). An entry naming no action is logged when the game
 starts.
 
 ## 2. Live sessions: the probe and hot reload

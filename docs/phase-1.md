@@ -510,7 +510,7 @@ desktop and phone sizes, and a silent overlay that never answers). Each
 fails when its code is broken: without the echo filter, the `time`
 pass-through, the source and origin check, the `self` peer, the `__OG_GAME`
 precedence or the page's memory store. Transcripts, screenshots and
-receipts: `tests/evidence/P2/shell-self/`.
+receipts: `packages/engine/tests/evidence/P2/shell-self/`.
 
 ## Status 2026-10-19, phase 2, tooling round
 

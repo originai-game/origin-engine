@@ -215,8 +215,8 @@ ranges. From it the build generates:
 
 - Rust trait impls checked at compile time (`og-host-web`, `og-host-node`),
 - the TypeScript `.d.ts` and the runtime binding tables,
-- the wiki pages (`docs/wiki/`), one page per module, with the signatures
-  quoted from the IDL so they cannot drift,
+- the wiki pages (`packages/knowledge/wiki/`), one page per module, with
+  the signatures quoted from the IDL so they cannot drift,
 - the JSON schema the platform's knowledge package consumes.
 
 ### 3.2 Shape of the TypeScript API

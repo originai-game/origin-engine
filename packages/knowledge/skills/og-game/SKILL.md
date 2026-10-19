@@ -63,7 +63,7 @@ export default og.game({
   scenes: { main: "scenes/main.ogt" },
   systems: [Move],
   commands: { spawn_wave: (world, args) => spawnWave(world, Number(args[0])) },
-  commandHelp: { spawn_wave: { usage: "spawn_wave:<count>", doc: "Spawns a wave of <count> enemies now." } },
+  commandHelp: { spawn_wave: { usage: "<count>", doc: "Spawns a wave of <count> enemies now." } },
 });
 ```
 
