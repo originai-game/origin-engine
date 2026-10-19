@@ -142,33 +142,44 @@ body { position: fixed; inset: 0; overflow: hidden; height: 100dvh; }
 #og-made-with[data-playing] { opacity: 0.3; }
 #og-made-with[data-playing] span { display: none; }
 .og-engine-mark { width: 14px; height: 14px; }
-/* Back to the Portal page that opened the game: full on boot, gate and error, a small handle while playing. */
+/* Back to the Portal page that opened the game: the platform Player's Back
+   (a dark capsule with a light rim and a full-strength glyph, legible over
+   any frame). It says its name on boot, gate and error and for the first
+   seconds of play, then keeps only its glyph; it never fades while playing,
+   since players who cannot see it cannot leave. */
 #og-back {
   position: absolute;
   z-index: 2;
-  left: max(10px, env(safe-area-inset-left));
-  top: max(10px, env(safe-area-inset-top));
+  left: max(12px, env(safe-area-inset-left));
+  top: max(12px, env(safe-area-inset-top));
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  height: 40px;
+  min-width: 40px;
   appearance: none;
-  border: 1px solid rgb(255 255 255 / 0.18);
-  background: rgb(20 22 27 / 0.55);
+  border: 1px solid rgb(255 255 255 / 0.28);
+  background: rgb(20 20 22 / 0.78);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.45);
   color: var(--og-paper);
-  font: 500 13px/1 var(--font-sans);
-  padding: 8px 12px 8px 8px;
+  font: 600 14px/1 var(--font-sans);
+  padding: 0 14px 0 9px;
   border-radius: var(--radius-button);
   cursor: pointer;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  transition: opacity 240ms var(--ease-out);
+  transition: background-color 180ms var(--ease-out);
 }
 #og-back[hidden] { display: none; }
-#og-back svg { width: 18px; height: 18px; }
+#og-back svg { width: 20px; height: 20px; flex: none; }
+#og-back span { display: block; max-width: 6em; margin-left: 4px; overflow: hidden; white-space: nowrap; }
+#og-back:hover { background: rgb(58 58 60 / 0.92); }
 #og-back:focus-visible { outline: 2px solid var(--og-paper); outline-offset: 2px; }
-#og-back[data-playing] { opacity: 0.35; padding: 6px; }
-#og-back[data-playing] span { display: none; }
-#og-back[data-playing]:hover, #og-back[data-playing]:focus-visible { opacity: 0.9; }
+#og-back[data-playing] { animation: og-back-tuck 240ms var(--ease-out) 4s forwards; }
+#og-back[data-playing] span { animation: og-back-label 240ms var(--ease-out) 4s forwards; }
+@keyframes og-back-tuck { to { padding: 0 9px; } }
+@keyframes og-back-label { to { max-width: 0; margin-left: 0; opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
   #og-boot, #og-made-with, #og-backdrop, #og-back { transition: none; }
+  #og-back[data-playing], #og-back[data-playing] span { animation-duration: 1ms; }
 }
