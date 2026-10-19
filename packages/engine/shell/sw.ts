@@ -9,13 +9,21 @@
 // to this file's bundle.
 //
 // The engine comes in two variants (docs/web-export.md §Lanes) and a page
-// boots one: the lanes variant when it is cross-origin isolated, else the
-// single-threaded one. The worker precaches the variant its own scope
-// predicts (it is isolated when sw.js got the page's COEP, which `_headers`
-// sends to every file) and caches the other on first use, like a pack; a
-// wrong guess costs one download, never a failed boot (the engine Worker
-// falls back to the single-threaded variant).
+// boots one by the shell's rule (src/web/lanes.ts `laneChoice`: the build
+// ships lanes, the page is cross-origin isolated, more than two cores). The
+// worker precaches the variant the same rule picks in its own scope (it is
+// isolated when sw.js got the page's COEP, which `_headers` sends to every
+// file; a worker sees the page's core count) and caches the other on first
+// use, like a pack; a wrong guess costs one download, never a failed boot
+// (the engine Worker falls back to the single-threaded variant). Once the
+// engine is ready, the page names the variant it booted (`og-cache`), and
+// the worker caches whichever of that variant's files it lacks, so the
+// variant the page runs plays offline even when the guess was wrong or the
+// lanes pool failed and the page fell back.
 //
+// - message `{ type: "og-cache", files }`: files of one variant (absolute
+//   URLs); each names its whole variant (the lanes variant includes
+//   snippets/), and only the build's own variant files are cached.
 // - install: fetch every precached file into `og-<version>`; a failure keeps the old build.
 // - activate: delete the other `og-*` caches of this scope, take the clients.
 // - fetch: the page (a navigation, index.html) from the network first, so
@@ -43,7 +51,7 @@ declare const OG_SW: {
   readonly lanes?: readonly string[];
 };
 
-export {};
+import { laneChoice } from "../src/web/lanes.ts";
 
 interface SwScope {
   readonly registration: { readonly scope: string; readonly navigationPreload?: { enable(): Promise<void> } };
@@ -51,13 +59,16 @@ interface SwScope {
   skipWaiting(): Promise<void>;
   addEventListener(type: "install" | "activate", fn: (e: { waitUntil(p: Promise<unknown>): void }) => void): void;
   addEventListener(type: "fetch", fn: (e: { request: Request; preloadResponse?: Promise<Response | undefined>; respondWith(r: Promise<Response>): void }) => void): void;
+  addEventListener(type: "message", fn: (e: { data: unknown; waitUntil(p: Promise<unknown>): void }) => void): void;
 }
 const scope = globalThis as unknown as SwScope;
 
 const CACHE = `og-${OG_SW.version}`;
 const base = new URL(scope.registration.scope);
-const isolated = (globalThis as { crossOriginIsolated?: boolean }).crossOriginIsolated === true && (OG_SW.lanes ?? []).length > 0;
-const [mine, other] = isolated ? [OG_SW.lanes ?? [], OG_SW.single ?? []] : [OG_SW.single ?? [], OG_SW.lanes ?? []];
+const variants = { single: OG_SW.single ?? [], lanes: OG_SW.lanes ?? [] };
+const cores = (globalThis as { navigator?: { hardwareConcurrency?: number } }).navigator?.hardwareConcurrency ?? 0;
+const choice = laneChoice(variants.lanes.length > 0, (globalThis as { crossOriginIsolated?: boolean }).crossOriginIsolated === true, cores);
+const [mine, other] = "threads" in choice ? [variants.lanes, variants.single] : [variants.single, variants.lanes];
 const urls = new Set([...OG_SW.files, ...mine].map((f) => new URL(f, base).href));
 const lazy = new Set([...(OG_SW.lazy ?? []), ...other].map((f) => new URL(f, base).href));
 const index = new URL("index.html", base).href;
@@ -68,6 +79,33 @@ scope.addEventListener("install", (e) => {
       .open(CACHE)
       .then((cache) => cache.addAll([...urls]))
       .then(() => scope.skipWaiting()),
+  );
+});
+
+// The variant the page booted, cached whole: each of its files names its variant.
+const variantOf = new Map<string, readonly string[]>();
+for (const files of [variants.single, variants.lanes]) {
+  const hrefs = files.map((f) => new URL(f, base).href);
+  for (const h of hrefs) variantOf.set(h, hrefs);
+}
+scope.addEventListener("message", (e) => {
+  const m = e.data as { type?: unknown; files?: unknown } | null;
+  if (!m || m.type !== "og-cache" || !Array.isArray(m.files)) return;
+  const wanted = new Set<string>();
+  for (const f of m.files) {
+    if (typeof f !== "string") continue;
+    for (const h of variantOf.get(f) ?? []) wanted.add(h);
+  }
+  if (wanted.size === 0) return;
+  e.waitUntil(
+    caches
+      .open(CACHE)
+      .then(async (cache) => {
+        const missing: string[] = [];
+        for (const h of wanted) if (!(await cache.match(h))) missing.push(h);
+        if (missing.length > 0) await cache.addAll(missing);
+      })
+      .catch(() => {}),
   );
 });
 

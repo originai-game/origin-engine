@@ -596,12 +596,20 @@ export async function play(): Promise<PlayHandle> {
 
   // ── PWA ──────────────────────────────────────────────────────────────
   // The shared Stage origin installs no service worker.
-  if (config.serviceWorker && !harness && !stageSelf) void installPwa(player.framed, log);
+  if (config.serviceWorker && !harness && !stageSelf) {
+    // The variant the engine booted, which the service worker caches whole (sw.ts `og-cache`).
+    const booted = lanes.on ? ["./origin-engine-lanes.js", "./origin-engine-lanes_bg.wasm"] : ["./origin-engine.js", "./origin-engine_bg.wasm"];
+    void installPwa(player.framed, log, booted.map((f) => new URL(f, location.href).href));
+  }
   return { shell, config };
 }
 
-/** Register the service worker; show the install hint only when the criteria hold. */
-async function installPwa(framed: boolean, log: LogTail): Promise<void> {
+/**
+ * Register the service worker and, once it is active, have it cache the
+ * engine variant this page booted (`booted`: its files' URLs), whatever it
+ * guessed when it installed; show the install hint only when the criteria hold.
+ */
+async function installPwa(framed: boolean, log: LogTail, booted: readonly string[]): Promise<void> {
   if (!("serviceWorker" in navigator) || !isSecureContext) return;
   try {
     await navigator.serviceWorker.register("./sw.js", { scope: "./" });
@@ -609,6 +617,9 @@ async function installPwa(framed: boolean, log: LogTail): Promise<void> {
     log.push([`warn: service worker: ${e instanceof Error ? e.message : String(e)}`]);
     return;
   }
+  void navigator.serviceWorker.ready
+    .then((reg) => reg.active?.postMessage({ type: "og-cache", files: booted }))
+    .catch(() => {});
   const standalone = matchMedia?.("(display-mode: standalone)").matches || (navigator as { standalone?: boolean }).standalone === true;
   const manifest = document.querySelector('link[rel="manifest"]');
   let dismissed = false;
