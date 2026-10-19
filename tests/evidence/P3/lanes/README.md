@@ -69,18 +69,21 @@ covers per-tick hashes, pixels and replays.
 
 ## Verdict on §7
 
-The 16.7 ms budget held at p99 in every mode in these runs. The worst p99
-is 17.598 ms natively with lanes off, above the budget by 0.9 ms; with lanes
-on the same scene's p99 is 10.3 ms. The native tail is GPU-wait under host
-load, not CPU (cpu p99 3.8 ms off, 2.3 ms on). Earlier runs of the same build
-at 1-minute load 75 to 220 had native p95/p99 of 23 to 59 ms in both modes,
-so the result depends on the host being otherwise quiet; a dedicated machine
+Against the 16.7 ms budget: p95 held in every run, and p99 in every run
+but one, the native reference scene with lanes off at 17.598 ms (0.9 ms
+over); with lanes on the same scene's p99 is 10.3 ms. Single frames went
+over in some runs (native max 19.7 ms off and 20.6 ms on; Chrome not
+isolated max 33.1 ms). The native tail is the GPU wait under host load, not
+CPU (cpu p99 3.8 ms off, 2.3 ms on). Earlier runs of the same build at
+1-minute load 75 to 220 had native p95/p99 of 23 to 59 ms in both modes, so
+the result depends on the host being otherwise quiet; a dedicated machine
 should repeat it before the budget is called held.
 
 In Chrome lanes change nothing measurable for the reference scene: no work
 crosses the grains, and rapier's step is serial on the web (its parallel
 feature is native only), so the isolated lanes page runs the same serial
-code on the lanes module, about 0.07 ms slower a frame (the atomics build).
+code on the lanes module: 0.07 ms slower a frame at the mean, which is
+either noise at this load or the cost of the atomics build (not separated).
 The Chrome crowd has not been measured.
 
 The Three.js comparison of §7 is an owner measurement and was not done.
