@@ -7,6 +7,54 @@ the platform can run it in an `engine`-class sandbox. Spike findings
 (`docs/spike-results.md`) are the baseline; the spike crate is the seed
 of `og-render` and is deleted once its code has moved.
 
+## Status 2026-10-19, phase 2, render round
+
+Branch `p2-render`; it closes owed rows 23, 28, 30, 31 and 32 (the table
+below says which commits). Evidence: `tests/evidence/P2/render/`
+(`forward-plus.md`, `materials-and-hooks.md`, `compressed-textures.md`,
+`break-and-restore.md`, before and after frames).
+
+- **Forward+** (30): point and spot lights are clustered on the CPU into 16
+  x 9 tiles by 24 logarithmic slices (10-40 us for 256 lights), storage
+  buffers on the full tier and 16 KiB uniform tables on WebGL2; up to
+  `MAX_LIGHTS` 256 in view, 64 per cluster, the brightest at the camera kept
+  past either cap. Frame time, 8-light loop against clustered: metal
+  `lights-256` 0.24 ms (8 lights drawn) against 0.58 ms (243 drawn; drawing
+  them all per pixel costs 5.8 ms), `point-spot-lights` 0.42-0.66 against
+  0.46-0.56 ms; Chrome's lights station 1.0-1.2 against 1.7-2.0 ms on
+  WebGPU and 1.8-1.9 against 2.2-2.4 ms on WebGL2, its fx station unchanged.
+  The phase 1 lighting line, the one not met as written, is met.
+- **The moon** (28): a disc in the procedural sky with its phase, size,
+  intensity, colour and direction (`og.Sky`, `og.DayNight`).
+- **Materials** (31): normals by the cofactor matrix under non-uniform
+  scale, vertex tangents in glTF's frame (file, cook or generated; normal
+  maps had read inverted), clearcoat, and the `materials` gfx scene.
+- **Material shaders** (23): on skinned meshes, and in the shadow passes and
+  the depth prepass; `og.render.setMaterialShader` for a loaded model's
+  materials.
+- **Compressed textures** (32): cooked textures reach the GPU as BC7/BC5,
+  ASTC 4x4 or ETC2/EAC with their mips (the template's: 2.5 MB instead of
+  10.1 MB, load time unchanged); normal maps now cook with y in alpha.
+- **vulkan-cpu**: the probe, `og.render.capabilities`, `og polish` and the
+  reference directories name a CPU Vulkan adapter (lavapipe, llvmpipe,
+  SwiftShader) `vulkan-cpu`, a GPU one `vulkan`.
+
+Gate: `OG_GATE_JOBS=2 scripts/check.sh --all` on 872b002 (this commit adds
+documents only), with other agents' builds on the machine (load 75):
+**PASSED, 9 of 9 steps in 173 s**: fmt 5 s, clippy 14 s, wasm-build 37 s,
+test 107 s, wasm-opt 102 s, size-gate 27 s, drift 9 s, bun-test 23 s,
+determinism 3 s. `scripts/check.sh web-reference` (Chrome for Testing 150)
+matches fx-showcase's five frames and twelve stations on WebGPU and WebGL2;
+`og test` passes fx-showcase (13 suites) on metal and on lavapipe and the
+game template (2). The publish wasm is **2,958,860 B brotli, 70.5 %** of the
+budget (2,943,180 B before the round, +15,680 B).
+
+Left out: clearcoat maps (WebGL2's skinned lit pipeline has no texture slot
+left), a compute cluster build (the CPU build costs tens of microseconds),
+upload timings in the browser (the Worker's transcoding is timed, the GPU
+upload natively), and ASTC and ETC2 frames off Apple silicon (lavapipe and
+desktop Chrome take BC).
+
 ## Status 2026-10-19, E7 round
 
 Phase 1 is closed by the E7 round (tag `phase1-e7`). Against
@@ -108,16 +156,16 @@ resource only the owner can give.
 | 20 | `vulkan-cpu` and browser references for og-ui's scenes, the UI kit, the skin packs and the locale screens (metal only) | E2, E3, E6 | M | engine, phase 2 | open |
 | 21 | Pads beyond the first in og-ui | E2 | M | engine, phase 2 | open |
 | 22 | Browser runs of og-tests' own gfx scenes (a wasm harness) and GL-tier references (`msaa` among them) | M3, E2 | M | engine, phase 2 | open |
-| 23 | Shader hooks on skinned meshes; shadows and the depth prepass displaced by `vertex_offset` | E5 | M | engine, phase 2 | open |
+| 23 | Shader hooks on skinned meshes; shadows and the depth prepass displaced by `vertex_offset` | E5 | M | engine, phase 2 | done, 12e93b5, 49dfd0d (`og.render.setMaterialShader`), aa81258 |
 | 24 | Planar water reflection, shadowed water, an underwater view | E5 | L | engine, phase 2 | open |
 | 25 | More than four metaball fluids a frame, fluids that interact | E5 | M | engine, phase 2 | open |
 | 26 | Cloth self-collision | E5 | M | engine, phase 2 | open |
 | 27 | 2D ragdolls | E5 | M | engine, phase 2 | open |
-| 28 | A moon disc in the night sky | E5 | S | engine, phase 2 | open |
+| 28 | A moon disc in the night sky | E5 | S | engine, phase 2 | done, 1df9797, 9037875, a5cdb89 |
 | 29 | 3D SPH (3D water is the height field) | E5 | L | engine, phase 2 | open |
-| 30 | Forward+ clustered lights beyond the 8-light uniform loop (CPU tile table on WebGL2) | M3, M6 | L | engine, phase 2 | open |
-| 31 | A normal matrix for non-uniform scale, vertex tangents, clearcoat, and a gfx scene of the M6 material features | M6 | M | engine, phase 2 | open |
-| 32 | The runtime loaders transcode to the tier's compressed texture format and upload it (RGBA8 today) | M4, M6 | M | engine, phase 2 | open |
+| 30 | Forward+ clustered lights beyond the 8-light uniform loop (CPU tile table on WebGL2) | M3, M6 | L | engine, phase 2 | done, a061113, 1296a02, f381a66 |
+| 31 | A normal matrix for non-uniform scale, vertex tangents, clearcoat, and a gfx scene of the M6 material features | M6 | M | engine, phase 2 | done, 12e93b5, 49dfd0d, eb869b8, aa81258 |
+| 32 | The runtime loaders transcode to the tier's compressed texture format and upload it (RGBA8 today) | M4, M6 | M | engine, phase 2 | done, 028c2fc |
 | 33 | og-ui's rich text, accessibility tree, glass, two-axis scrolling (`crates/og-ui/README.md` §What phase 2 owes) | M6 | L | engine, phase 2 | open |
 | 34 | The M4 "glTF edit to reload in 300 ms" run and the M5 timed 8-frame `sweep`, filed as evidence (`og dev` prints the first) | M4, M5 | S | engine, phase 2 | open |
 | 35 | wgpu and naga 31 when published, kept only if every reference frame passes unchanged | Toolchain | S | engine, phase 2 | open |
