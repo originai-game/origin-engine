@@ -12,7 +12,11 @@
 //!   never switches, never ends, or draws movement under reduced motion;
 //! - a count-up runs on the wall clock, jumps, or differs after a restore;
 //! - a refused press does not shake, or UI events with a sound never reach
-//!   the host's queue.
+//!   the host's queue;
+//! - a panel's staggered controls refuse presses until their own cascade
+//!   ends, long after the panel has arrived (a title screen that ignores
+//!   the first half second of taps), or take presses while the panel
+//!   itself is still popping in.
 
 mod support;
 
@@ -867,5 +871,96 @@ fn a_glass_part_draws_the_blurred_frame_under_its_thinned_nine_slice() {
     assert!(
         (thin - solid * 0.5).abs() < 1e-3,
         "the frame is drawn at the line's fill: {thin} against {solid}"
+    );
+}
+
+/// One tick of a skinned screen panel: a title and four buttons. Answers
+/// whether `Last` was clicked.
+fn menu_step(ui: &mut Ui, input: InputFrame) -> bool {
+    ui.begin(input, Viewport::new(800.0, 600.0));
+    let mut clicked = false;
+    ui.anchor(
+        "Menu",
+        AnchorDesc {
+            anchor: Anchor::Center,
+            direction: Direction::Column,
+            gap: 8.0,
+            background: Some(Srgba::rgb(32, 48, 64)),
+            ..AnchorDesc::default()
+        },
+        |ui| {
+            ui.label("Title", "Menu", LabelDesc::default());
+            for id in ["First", "Second", "Third"] {
+                ui.button(id, id, ButtonDesc::default());
+            }
+            clicked = ui.button("Last", "Last", ButtonDesc::default()).clicked;
+        },
+    );
+    ui.end();
+    clicked
+}
+
+fn rect_of(ui: &Ui, id: &str) -> (f32, f32, f32, f32) {
+    let e = ui.frame().element(id).expect("the element");
+    (e.x, e.y, e.width, e.height)
+}
+
+#[test]
+fn a_staggered_panels_controls_take_presses_once_the_panel_has_arrived() {
+    // Ways it could fail: the stagger holds each control inert until its
+    // own place in the cascade has played (the last button of a title
+    // screen ignores taps for twice the entrance), or no control is
+    // inert even while the panel pops in.
+    let (mut settled, _) = skinned_ui();
+    for _ in 0..120 {
+        menu_step(&mut settled, InputFrame::default());
+    }
+    let (panel_end, last_end) = (rect_of(&settled, "Menu"), rect_of(&settled, "Last"));
+    // The first tick the panel stands where it ends while `Last` is still
+    // moving into place: the cascade outlasts the panel's own entrance.
+    let (mut ui, _) = skinned_ui();
+    let mut arrived = None;
+    for tick in 0..120 {
+        menu_step(&mut ui, InputFrame::default());
+        if rect_of(&ui, "Menu") == panel_end {
+            arrived = Some((tick, rect_of(&ui, "Last")));
+            break;
+        }
+    }
+    let (tick, last_now) = arrived.expect("the panel arrives");
+    assert!(
+        last_now != last_end,
+        "the cascade is still moving Last when the panel has arrived (tick {tick}): {last_now:?}"
+    );
+    // A press on Last there, released a tick later, is a click.
+    let (x, y) = (last_now.0 + last_now.2 / 2.0, last_now.1 + last_now.3 / 2.0);
+    let release = InputFrame {
+        pointer: Vec2::new(x, y),
+        pointer_inside: true,
+        released: true,
+        ..InputFrame::default()
+    };
+    assert!(
+        !menu_step(&mut ui, press_at(x, y)) && menu_step(&mut ui, release),
+        "a press on Last right after the panel arrived (tick {tick}) clicks it"
+    );
+    // While the panel itself pops in, the same press is refused.
+    let (mut early, _) = skinned_ui();
+    menu_step(&mut early, InputFrame::default());
+    let r = rect_of(&early, "Last");
+    let (x, y) = (r.0 + r.2 / 2.0, r.1 + r.3 / 2.0);
+    let pressed = menu_step(&mut early, press_at(x, y));
+    let clicked = menu_step(
+        &mut early,
+        InputFrame {
+            pointer: Vec2::new(x, y),
+            pointer_inside: true,
+            released: true,
+            ..InputFrame::default()
+        },
+    );
+    assert!(
+        rect_of(&early, "Menu") != panel_end && !pressed && !clicked,
+        "a press on Last while the panel pops in is not taken"
     );
 }
