@@ -39,3 +39,9 @@ before left, after right; the bottom row the meadow at full size).
 `scatter_follows_its_layer_distance_and_stays_put` now asserts the copies
 near the edge keep their full size where it asserted they had shrunk
 (the behaviour asked for changed); every other assertion is unchanged.
+
+## Terrain edits as world state (`packages/engine/tests/terrain.test.ts`)
+
+| Broken | Edit | Failed |
+|---|---|---|
+| the replay | `og-runtime/src/terrain.rs` `TerrainBlock::apply`: `log.replay = false` (the restored log kept, the ground not rebuilt) | "terrain edits are world state ...": after restoring the raised snapshot, sample expected 6.10 and received 1.10 (the later edits stayed) |

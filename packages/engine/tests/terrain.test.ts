@@ -215,6 +215,39 @@ test("an edit raises the ground for sample, physics and the renderer", () => {
   expect(must(og.terrain.sample(w, spot)).height).toBeCloseTo(h0, 1);
 });
 
+test("terrain edits are world state: a snapshot keeps them and a restore brings the ground back", () => {
+  const { engine, info } = start();
+  const w = engine.world;
+  const data = info.data as never;
+  const spot = { data, origin: { x: 0, y: 0, z: 0 }, x: 20, z: 20 };
+  const ray = () => must(og.physics.raycast(w, { origin: { x: 20, y: 50, z: 20 }, direction: { x: 0, y: -1, z: 0 } }))?.point.y ?? NaN;
+  const h0 = must(og.terrain.sample(w, spot)).height;
+  const untouched = engine.probe.snapshot() as { id: string; hash: string };
+  must(og.terrain.edit(w, data, { mode: "raise" as never, center: { x: 20, y: 0, z: 20 }, radius: 6, strength: 3 }));
+  expect(engine.hash()).not.toBe(untouched.hash); // the edit is in the world's state
+  const raised = engine.probe.snapshot() as { id: string; hash: string };
+  expect(must(og.terrain.sample(w, spot)).height).toBeCloseTo(h0 + 3, 1);
+  // More edits, then back to the raised ground.
+  must(og.terrain.edit(w, data, { mode: "lower" as never, center: { x: 20, y: 0, z: 20 }, radius: 6, strength: 5 }));
+  must(og.terrain.edit(w, data, { mode: "paint" as never, layer: 0, center: { x: 0, y: 0, z: 0 }, radius: 4 }));
+  expect(engine.advance(2).ok).toBeTrue();
+  expect(must(og.terrain.sample(w, spot)).height).toBeCloseTo(h0 - 2, 1);
+  expect(engine.probe.restore(raised.id)).toBeTrue();
+  expect(engine.hash()).toBe(raised.hash);
+  expect(must(og.terrain.sample(w, spot)).height).toBeCloseTo(h0 + 3, 1);
+  expect(engine.advance(1).ok).toBeTrue();
+  expect(ray()).toBeCloseTo(h0 + 3, 1); // physics stands on the restored ground too
+  // Before any edit: the ground as cooked.
+  expect(engine.probe.restore(untouched.id)).toBeTrue();
+  expect(engine.advance(1).ok).toBeTrue();
+  expect(must(og.terrain.sample(w, spot)).height).toBeCloseTo(h0, 3);
+  expect(ray()).toBeCloseTo(h0, 1);
+  // The same edits on two runs give the same world.
+  const replay = start();
+  must(og.terrain.edit(replay.engine.world, replay.info.data as never, { mode: "raise" as never, center: { x: 20, y: 0, z: 20 }, radius: 6, strength: 3 }));
+  expect(replay.engine.hash()).toBe(raised.hash);
+});
+
 test("og.Terrain draws the terrain, and a layer reads back and retunes", () => {
   const { engine, info } = start({ x: 0, y: 0, z: 0 }, [160, 90]);
   const w = engine.world;

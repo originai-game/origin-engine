@@ -788,7 +788,6 @@ fn scatter_follows_its_layer_distance_and_stays_put() {
     );
 }
 
-
 /// A 64 × 16 m strip with a 6 m bump at its centre, one red layer, drawn
 /// against a magenta background without fog or shadows; looked at from
 /// 120 m straight above, or from the side at the bump.

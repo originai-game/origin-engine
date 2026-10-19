@@ -10,6 +10,12 @@
 //! collider; `og.terrain.sample` decodes the level-0 tiles it reads. The
 //! first edit decodes the whole field (heights and control map), and from
 //! then on the renderer draws that field in memory.
+//!
+//! Edits are world state (phase 3): every edit joins an edit log kept in
+//! the world's `og.terrain` state block, so a snapshot saves them, the
+//! world hash covers them, and a restore puts every terrain back as cooked
+//! and replays the restored log (before the next tick's systems, or the
+//! next og.terrain call, whichever comes first).
 
 use super::engine::{Engine, engine};
 use super::extract::{Hierarchy, RenderState};
@@ -43,6 +49,163 @@ pub(crate) struct LoadedTerrain {
     pub lod: TerrainLod,
     pub cast_shadows: bool,
     pub collision: bool,
+}
+
+/// The edits made since the world began, in order: (terrain asset id, the
+/// brush as JSON). `replay`: a restore changed them, and the terrains must
+/// be rebuilt from their cook.
+#[derive(Default)]
+pub(crate) struct EditLog {
+    pub edits: Vec<(String, String)>,
+    pub replay: bool,
+}
+
+pub(crate) type SharedLog = Arc<std::sync::Mutex<EditLog>>;
+
+thread_local! {
+    /// Each engine's edit log (its worlds' og.terrain blocks share it).
+    static LOGS: std::cell::RefCell<BTreeMap<u32, SharedLog>> = const { std::cell::RefCell::new(BTreeMap::new()) };
+}
+
+/// Engine `id`'s edit log.
+pub(crate) fn log_of(id: u32) -> SharedLog {
+    LOGS.with(|l| l.borrow_mut().entry(id).or_default().clone())
+}
+
+/// The engine is gone.
+pub(crate) fn retire(id: u32) {
+    LOGS.with(|l| l.borrow_mut().remove(&id));
+}
+
+/// The edit log as world state.
+struct TerrainBlock(SharedLog);
+
+fn put_str(out: &mut Vec<u8>, s: &str) {
+    out.extend_from_slice(&(s.len() as u32).to_le_bytes());
+    out.extend_from_slice(s.as_bytes());
+}
+
+fn take_str(bytes: &[u8], at: &mut usize) -> Option<String> {
+    let n = u32::from_le_bytes(bytes.get(*at..*at + 4)?.try_into().ok()?) as usize;
+    let s = std::str::from_utf8(bytes.get(*at + 4..*at + 4 + n)?).ok()?;
+    *at += 4 + n;
+    Some(s.to_string())
+}
+
+impl og_ecs::StateBlock for TerrainBlock {
+    fn save(&self, out: &mut Vec<u8>) {
+        let log = self.0.lock().expect("the edit log");
+        out.extend_from_slice(&(log.edits.len() as u32).to_le_bytes());
+        for (id, brush) in &log.edits {
+            put_str(out, id);
+            put_str(out, brush);
+        }
+    }
+
+    fn decode(&self, bytes: &[u8]) -> og_core::Result<Box<dyn std::any::Any + Send>> {
+        let bad = || og_core::Error::new(og_core::ErrorKind::Parse, "a damaged terrain edit log");
+        let n = u32::from_le_bytes(
+            bytes
+                .get(..4)
+                .ok_or_else(bad)?
+                .try_into()
+                .map_err(|_| bad())?,
+        );
+        let mut at = 4;
+        let mut edits = Vec::with_capacity(n.min(1 << 16) as usize);
+        for _ in 0..n {
+            let id = take_str(bytes, &mut at).ok_or_else(bad)?;
+            let brush = take_str(bytes, &mut at).ok_or_else(bad)?;
+            edits.push((id, brush));
+        }
+        if at != bytes.len() {
+            return Err(bad());
+        }
+        Ok(Box::new(edits))
+    }
+
+    fn apply(&mut self, decoded: Option<Box<dyn std::any::Any + Send>>) {
+        let edits = decoded
+            .and_then(|d| d.downcast::<Vec<(String, String)>>().ok())
+            .map(|b| *b)
+            .unwrap_or_default();
+        let mut log = self.0.lock().expect("the edit log");
+        log.edits = edits;
+        log.replay = true;
+    }
+}
+
+const TERRAIN_SYSTEM: &str = "og.terrain";
+
+/// The og.terrain system (front: before physics steps) and the edit log's
+/// state block.
+pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
+    let log = log_of(engine_id);
+    world
+        .add_state_block(TERRAIN_SYSTEM, Box::new(TerrainBlock(log)))
+        .map_err(|e| e.reason().to_string())?;
+    world
+        .add_system(og_ecs::SystemDesc::new(TERRAIN_SYSTEM), move |_ctx| {
+            if let Ok(eng) = engine(engine_id) {
+                replay_if_restored(&eng)
+                    .map_err(|e| og_core::Error::new(og_core::ErrorKind::Invalid, e))?;
+            }
+            Ok(())
+        })
+        .map_err(|e| e.reason().to_string())
+}
+
+/// After a restore: every terrain back as cooked, then the restored edits.
+pub(crate) fn replay_if_restored(eng: &Engine) -> Result<(), String> {
+    let edits = {
+        let shared = log_of(eng.id);
+        let mut log = shared.lock().expect("the edit log");
+        if !log.replay {
+            return Ok(());
+        }
+        log.replay = false;
+        log.edits.clone()
+    };
+    let count = eng.render.borrow().terrain.loaded.len();
+    for i in 0..count {
+        let (render, layout, range, collision, field) = {
+            let mut rs = eng.render.borrow_mut();
+            let t = &mut rs.terrain.loaded[i];
+            if !t.edited {
+                continue;
+            }
+            t.edited = false;
+            t.tiles.borrow_mut().clear();
+            t.field = if t.collision {
+                Some(t.cooked.field().map_err(|e| e.to_string())?)
+            } else {
+                None
+            };
+            (
+                t.render,
+                t.cooked.layout,
+                t.cooked.range,
+                t.collision,
+                t.field.clone(),
+            )
+        };
+        {
+            let mut rs = eng.render.borrow_mut();
+            rs.scene.set_terrain_stream(render, layout, range);
+            rs.terrain.streamer.forget(i);
+        }
+        if let (true, Some(f)) = (collision, field) {
+            set_heightfield(eng, GEOMETRY_BASE + i as u64, &f)?;
+        }
+    }
+    for (id, brush) in edits {
+        let Some(&i) = eng.render.borrow().terrain.by_id.get(&id) else {
+            continue;
+        };
+        let b: Value = serde_json::from_str(&brush).map_err(|e| e.to_string())?;
+        edit_loaded(eng, i, &b, false)?;
+    }
+    Ok(())
 }
 
 /// Every terrain an engine loaded, by load index, and the og.Terrain
@@ -284,6 +447,7 @@ fn local(size: Vec2, m: Mat4, x: f32, z: f32) -> (Vec2, bool) {
 pub fn og_terrain_sample(world: u32, desc: Option<String>) -> String {
     wire((|| {
         let eng = engine(world)?;
+        replay_if_restored(&eng)?;
         let d = parse(desc.as_deref())?;
         let i = index_of(&eng, d["data"].as_f64().unwrap_or(0.0))?;
         let rs = eng.render.borrow();
@@ -507,18 +671,31 @@ fn paint(
     touched
 }
 
-pub fn og_terrain_edit(world: u32, data: f64, brush: Option<String>) -> String {
-    wire((|| {
-        let eng = engine(world)?;
-        let i = index_of(&eng, data)?;
-        let b = parse(brush.as_deref())?;
+/// Applies a brush to loaded terrain `i` (and logs it, unless replaying).
+fn edit_loaded(eng: &Engine, i: usize, b: &Value, log: bool) -> Result<Value, String> {
+    {
         let (touched, snapshot, collision) = {
             let mut rs = eng.render.borrow_mut();
             let t = &mut rs.terrain.loaded[i];
-            let n = apply(t, &b)?;
+            let n = apply(t, b)?;
             let snapshot = (t.render, t.field.clone().expect("edited"));
             (n, snapshot, t.collision)
         };
+        if log {
+            let rs = eng.render.borrow();
+            let id = rs
+                .terrain
+                .by_id
+                .iter()
+                .find(|(_, k)| **k == i)
+                .map(|(id, _)| id.clone())
+                .unwrap_or_default();
+            log_of(eng.id)
+                .lock()
+                .expect("the edit log")
+                .edits
+                .push((id, b.to_string()));
+        }
         let (render, data) = snapshot;
         {
             let mut rs = eng.render.borrow_mut();
@@ -530,6 +707,16 @@ pub fn og_terrain_edit(world: u32, data: f64, brush: Option<String>) -> String {
         }
         let (lo, hi) = data.range();
         Ok(json!({ "samples": touched, "minHeight": lo, "maxHeight": hi }))
+    }
+}
+
+pub fn og_terrain_edit(world: u32, data: f64, brush: Option<String>) -> String {
+    wire((|| {
+        let eng = engine(world)?;
+        replay_if_restored(&eng)?;
+        let i = index_of(&eng, data)?;
+        let b = parse(brush.as_deref())?;
+        edit_loaded(&eng, i, &b, true)
     })())
 }
 

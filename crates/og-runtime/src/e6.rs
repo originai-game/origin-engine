@@ -199,6 +199,7 @@ pub(crate) fn take_warnings(engine: u32) -> Vec<String> {
 pub(crate) fn retire(engine: u32) {
     MODULES.with(|m| m.borrow_mut().remove(&engine));
     super::platform::retire(engine);
+    super::terrain::retire(engine);
     super::i18n::retire(engine);
 }
 

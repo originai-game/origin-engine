@@ -728,6 +728,7 @@ pub(crate) fn assemble(
     let ui = super::modules::new_ui(game.tick, previous.as_ref().map(|p| p.0));
     let physics = super::modules::mount_front(&mut world, engine_id, profile, &ui)?;
     let record_names: Vec<String> = layouts.keys().cloned().collect();
+    super::terrain::mount(&mut world, engine_id)?;
     super::e6::mount_front(&mut world, engine_id, profile, &physics, &record_names)?;
 
     // Systems: the game's, ordered.
