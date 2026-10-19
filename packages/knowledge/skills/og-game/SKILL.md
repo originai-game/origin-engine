@@ -351,6 +351,12 @@ draws (share geometry and one material per look), particle systems (cap
 per-tick TypeScript over many entities (iterate archetype columns, never
 `world.get` per entity; spread expensive work over ticks, as og.ai's
 `thinkEvery` does), and loads in the middle of play (load in `start`).
+Point and spot lights are clustered (Forward+): a pixel shades only the
+lights whose `distance` reaches it, so a few hundred lamps, torches or
+neon signs cost little; keep each `distance` as short as the look allows.
+Up to `MAX_LIGHTS` (256) in view are drawn, the brightest kept past that,
+and the first two in view with `castShadow` cast shadows (shadows are the
+expensive part).
 
 ## 15. Where to look things up
 

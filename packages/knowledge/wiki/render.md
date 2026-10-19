@@ -75,7 +75,8 @@ module render {
 | [`og.render.boxGeometry`](#fn-boxGeometry) | function | Make a box geometry for og.Mesh. Physics can use it as a convex or triangle-mesh Collider.mesh too. |
 | [`og.render.planeGeometry`](#fn-planeGeometry) | function | Make a plane geometry for og.Mesh. Physics can use it as a triangle-mesh Collider.mesh too. |
 | [`og.render.sphereGeometry`](#fn-sphereGeometry) | function | Make a sphere geometry for og.Mesh (give its body a sphere Collider, not this mesh). |
-| [`MAX_LIGHTS`](#const-MAX_LIGHTS) | constant | The most point and spot lights one frame draws. |
+| [`MAX_LIGHTS`](#const-MAX_LIGHTS) | constant | The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept. |
+| [`MAX_CLUSTER_LIGHTS`](#const-MAX_CLUSTER_LIGHTS) | constant | The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there. |
 | [`RenderCapabilities`](#type-RenderCapabilities) | struct | What the renderer can do on this device. Backend limits are reported here, never by missing members. |
 | [`og.render.standardMaterial`](#fn-standardMaterial) | function | Create a standard material. |
 | [`og.render.updateMaterial`](#fn-updateMaterial) | function | Change some parameters of a standard material. |
@@ -325,7 +326,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 2689</sub>
+<sub>`api.ogt` line 2690</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -357,7 +358,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 2696</sub>
+<sub>`api.ogt` line 2697</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -389,7 +390,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 2706</sub>
+<sub>`api.ogt` line 2707</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -423,7 +424,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 2714</sub>
+<sub>`api.ogt` line 2715</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -451,7 +452,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 2723</sub>
+<sub>`api.ogt` line 2724</sub>
 
 <a id="fn-text"></a>
 
@@ -481,7 +482,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 2729</sub>
+<sub>`api.ogt` line 2730</sub>
 
 ## Components, resources and events
 
@@ -577,7 +578,7 @@ component DirectionalLight {
 
 A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance.
 
-Up to MAX_LIGHTS point and spot lights are drawn per frame (the rest are counted, not drawn); the first two with castShadow get cube shadows.
+Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. The first two in view with castShadow get cube shadows.
 
 Token `og.PointLight`, registered under the schema name `og.PointLight`; its value type is `PointLight`.
 
@@ -591,7 +592,7 @@ Token `og.PointLight`, registered under the schema name `og.PointLight`; its val
 ```ogt
 component PointLight {
   doc "A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance."
-  doc "Up to MAX_LIGHTS point and spot lights are drawn per frame (the rest are counted, not drawn); the first two with castShadow get cube shadows."
+  doc "Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. The first two in view with castShadow get cube shadows."
   field color Color "The light's linear colour." {
     default 1 1 1
   }
@@ -2372,7 +2373,7 @@ What the renderer can do on this device. Backend limits are reported here, never
 | `tier` | `RenderTier` | `"webgpu"` | — | — | — | The backend. |
 | `compute` | `boolean` | `false` | — | — | — | Whether compute passes run (GPU culling, GPU particles). |
 | `antialias` | `Antialias` | `"tier"` | — | — | — | The antialiasing the device resolved RenderOptions.antialias to. |
-| `maxLights` | `number` | `0` | — | — | — | How many point and spot lights one frame draws. |
+| `maxLights` | `number` | `0` | — | — | — | How many point and spot lights one frame draws (MAX_LIGHTS on every tier). |
 | `maxShadowedLights` | `number` | `0` | — | — | — | How many point and spot lights may cast shadows. |
 | `width` | `number` | `0` | — | — | — | The render target width in device pixels. |
 | `height` | `number` | `0` | — | — | — | The render target height in device pixels. |
@@ -2383,14 +2384,14 @@ struct RenderCapabilities {
   field tier RenderTier "The backend."
   field compute bool "Whether compute passes run (GPU culling, GPU particles)."
   field antialias Antialias "The antialiasing the device resolved RenderOptions.antialias to."
-  field maxLights u32 "How many point and spot lights one frame draws."
+  field maxLights u32 "How many point and spot lights one frame draws (MAX_LIGHTS on every tier)."
   field maxShadowedLights u32 "How many point and spot lights may cast shadows."
   field width u32 "The render target width in device pixels."
   field height u32 "The render target height in device pixels."
 }
 ```
 
-<sub>`api.ogt` line 2678</sub>
+<sub>`api.ogt` line 2679</sub>
 
 <a id="type-Shader"></a>
 
@@ -2404,7 +2405,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read."
 ```
 
-<sub>`api.ogt` line 2704</sub>
+<sub>`api.ogt` line 2705</sub>
 
 ## Column kinds
 
@@ -2525,10 +2526,17 @@ column StripBlend {
 
 | Constant | Type | Value | Doc |
 |---|---|---|---|
-| <a id="const-MAX_LIGHTS"></a>`MAX_LIGHTS` | `number` | `8` | The most point and spot lights one frame draws. |
+| <a id="const-MAX_LIGHTS"></a>`MAX_LIGHTS` | `number` | `256` | The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept. |
+| <a id="const-MAX_CLUSTER_LIGHTS"></a>`MAX_CLUSTER_LIGHTS` | `number` | `64` | The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there. |
 
 ```ogt
-const MAX_LIGHTS u32 8 "The most point and spot lights one frame draws."
+const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
 <sub>`api.ogt` line 2676</sub>
+
+```ogt
+const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
+```
+
+<sub>`api.ogt` line 2677</sub>

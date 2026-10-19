@@ -1745,7 +1745,7 @@ module render {
 
   component PointLight {
     doc "A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance."
-    doc "Up to MAX_LIGHTS point and spot lights are drawn per frame (the rest are counted, not drawn); the first two with castShadow get cube shadows."
+    doc "Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. The first two in view with castShadow get cube shadows."
     field color Color "The light's linear colour." {
       default 1 1 1
     }
@@ -2673,14 +2673,15 @@ module render {
     returns Result.Geometry
   }
 
-  const MAX_LIGHTS u32 8 "The most point and spot lights one frame draws."
+  const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
+  const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 
   struct RenderCapabilities {
     doc "What the renderer can do on this device. Backend limits are reported here, never by missing members."
     field tier RenderTier "The backend."
     field compute bool "Whether compute passes run (GPU culling, GPU particles)."
     field antialias Antialias "The antialiasing the device resolved RenderOptions.antialias to."
-    field maxLights u32 "How many point and spot lights one frame draws."
+    field maxLights u32 "How many point and spot lights one frame draws (MAX_LIGHTS on every tier)."
     field maxShadowedLights u32 "How many point and spot lights may cast shadows."
     field width u32 "The render target width in device pixels."
     field height u32 "The render target height in device pixels."

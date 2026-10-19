@@ -110,7 +110,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-789 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+790 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -337,6 +337,7 @@ Field units the docs and Tune use.
 | [`Material()`](render.md#column-Material) | column kind | render | — |
 | [`Matrix4`](math.md#type-Matrix4) | struct | math | — |
 | [`Matrix4()`](reflect.md#column-Matrix4) | column kind | reflect | — |
+| [`MAX_CLUSTER_LIGHTS`](render.md#const-MAX_CLUSTER_LIGHTS) | constant | render | — |
 | [`MAX_GAMEPADS`](input.md#const-MAX_GAMEPADS) | constant | input | — |
 | [`MAX_LIGHTS`](render.md#const-MAX_LIGHTS) | constant | render | — |
 | [`MAX_POINTERS`](input.md#const-MAX_POINTERS) | constant | input | — |

@@ -2764,7 +2764,7 @@ export interface DirectionalLight {
 
 /**
  * A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance.
- * Up to MAX_LIGHTS point and spot lights are drawn per frame (the rest are counted, not drawn); the first two with castShadow get cube shadows.
+ * Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. The first two in view with castShadow get cube shadows.
  *
  * The value of the `PointLight` component (token `og.PointLight`).
  */
@@ -4356,8 +4356,15 @@ export interface SphereGeometryDesc {
 
 
 
-/** The most point and spot lights one frame draws. */
-export declare const MAX_LIGHTS: 8;
+/**
+ * The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept.
+ */
+export declare const MAX_LIGHTS: 256;
+
+/**
+ * The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there.
+ */
+export declare const MAX_CLUSTER_LIGHTS: 64;
 
 /**
  * What the renderer can do on this device. Backend limits are reported here, never by missing members.
@@ -4369,7 +4376,7 @@ export interface RenderCapabilities {
   readonly compute: boolean;
   /** The antialiasing the device resolved RenderOptions.antialias to. */
   readonly antialias: Antialias;
-  /** How many point and spot lights one frame draws. */
+  /** How many point and spot lights one frame draws (MAX_LIGHTS on every tier). */
   readonly maxLights: number;
   /** How many point and spot lights may cast shadows. */
   readonly maxShadowedLights: number;
@@ -14557,7 +14564,7 @@ export declare namespace og {
   const DirectionalLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool">; readonly shadowDistance: FieldSpec<"f32"> }, DirectionalLight>;
   /**
    * A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance.
-   * Up to MAX_LIGHTS point and spot lights are drawn per frame (the rest are counted, not drawn); the first two with castShadow get cube shadows.
+   * Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. The first two in view with castShadow get cube shadows.
    */
   const PointLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool"> }, PointLight>;
   /** A cone of light along the entity's local -Z, as three.js SpotLight. */
