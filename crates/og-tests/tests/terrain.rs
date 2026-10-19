@@ -660,15 +660,18 @@ fn the_cpu_height_and_normal_follow_the_field() {
 #[test]
 fn the_grass_scene_matches_its_reference() {
     let r = check("terrain-grass");
-    let tufts = ts::grass_scene().instances.len() - ts::island_view("near").instances.len();
-    assert!(tufts > 5_000, "{tufts} instances scattered");
-    assert!(r.stats.draw_calls > 0);
+    assert!(
+        r.stats.scatter_copies > 5_000,
+        "{} copies drawn",
+        r.stats.scatter_copies
+    );
+    assert!(r.stats.scatter_draws > 0 && r.stats.scatter_built > 0);
 }
 
 /// `Terrain::scatter` places instances only where its layer shows, about
 /// as many as the density and the layer's weight ask for, never beyond its
-/// distance, shrinking over the fade; each keeps its cell's place and turn
-/// as the camera moves.
+/// distance, at full size even where they fade; each keeps its cell's place
+/// and turn as the camera moves.
 #[test]
 fn scatter_follows_its_layer_distance_and_stays_put() {
     let scene = ts::grass_scene();
@@ -678,7 +681,7 @@ fn scatter_follows_its_layer_distance_and_stays_put() {
     let s = ts::grass_scatter();
     let placed = terrain.scatter(&data, &s, eye);
     let flat = |p: Vec3| Vec2::new(p.x - eye.x, p.z - eye.z).length();
-    let fade_from = s.distance * (1.0 - s.fade);
+    let fade_from = s.fade_from();
     let mut expected = 0.0;
     // The layer's weight summed over a 1 m grid inside the distance.
     let r = s.distance as i32;
@@ -708,15 +711,14 @@ fn scatter_follows_its_layer_distance_and_stays_put() {
             (at.y - data.height(local)).abs() < 1e-3,
             "{at} off the ground"
         );
-        let shrink = 1.0 - smooth(fade_from, s.distance, flat(at));
         assert!(
-            scale.x <= s.scale[1] * shrink + 1e-4 && scale.x >= s.scale[0] * shrink - 1e-4,
-            "scale {} at {:.1} m (shrink {shrink:.2})",
+            scale.x <= s.scale[1] + 1e-4 && scale.x >= s.scale[0] - 1e-4,
+            "scale {} at {:.1} m",
             scale.x,
             flat(at)
         );
     }
-    // Some near the edge, shrunk to under a third.
+    // Near the edge, inside the fade, at full size (the renderer fades them).
     let edge: Vec<f32> = placed
         .iter()
         .map(|(_, m)| m.to_scale_rotation_translation())
@@ -724,7 +726,7 @@ fn scatter_follows_its_layer_distance_and_stays_put() {
         .map(|(sc, _, _)| sc.x)
         .collect();
     assert!(
-        !edge.is_empty() && edge.iter().all(|&x| x < s.scale[1] * 0.1),
+        !edge.is_empty() && edge.iter().all(|&x| x >= s.scale[0] - 1e-4),
         "{edge:?}"
     );
     // The camera moves 7 m: instances well inside both circles are the same.
@@ -786,10 +788,6 @@ fn scatter_follows_its_layer_distance_and_stays_put() {
     );
 }
 
-fn smooth(e0: f32, e1: f32, x: f32) -> f32 {
-    let t = ((x - e0) / (e1 - e0)).clamp(0.0, 1.0);
-    t * t * (3.0 - 2.0 * t)
-}
 
 /// A 64 × 16 m strip with a 6 m bump at its centre, one red layer, drawn
 /// against a magenta background without fog or shadows; looked at from
@@ -1190,4 +1188,152 @@ fn a_streamed_terrain_draws_what_has_arrived() {
     let half = rs.read_offscreen().expect("capture");
     keep("stream-half", &half);
     assert_eq!(holes(&half, 260), 0, "background through half the tiles");
+}
+
+/// The renderer draws scattered copies from cached chunks: the copies a
+/// frame draws are the CPU's placement (each 4 m cube where
+/// `Terrain::scatter` puts it, at full size), none beyond the distance, and
+/// over the fade a copy thins out by a dither across its whole footprint
+/// rather than shrinking. A second frame builds no chunk; moving on builds
+/// only the chunks that came into range.
+#[test]
+fn scattered_copies_are_drawn_from_chunks_and_fade_by_dither() {
+    let n = 257u32;
+    let size = 1024.0f32;
+    let mut scene = RenderScene::new();
+    let h = scene.add_terrain(TerrainData::flat(Vec2::splat(size), n, n));
+    scene.terrains.push(Terrain {
+        layers: vec![TerrainLayer {
+            color: Vec3::splat(0.05),
+            ..Default::default()
+        }],
+        cast_shadows: false,
+        ..Terrain::new(h)
+    });
+    let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
+    let red = scene.add_material(Material {
+        base_color: [0.0, 0.0, 0.0, 1.0],
+        emissive: [8.0, 0.0, 0.0],
+        ..Default::default()
+    });
+    let s = TerrainScatter {
+        density: 0.03,
+        distance: 90.0,
+        fade: 0.5,
+        scale: [3.0, 3.0],
+        seed: 5,
+        ..TerrainScatter::default()
+    };
+    scene.scatters.push(og_render::ScatterDraw {
+        terrain: 0,
+        mesh: cube,
+        material: red,
+        scatter: s,
+    });
+    scene.fog = None;
+    scene.post.tonemap = Tonemap::None;
+    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.light.cast_shadows = false;
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 100.0, 0.001),
+        target: Vec3::ZERO,
+        near: 1.0,
+        far: 500.0,
+        projection: Projection::Orthographic { height: 200.0 },
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let first = r.render(&scene, &RenderTarget::Offscreen).expect("render");
+    let img = r.read_offscreen().expect("capture");
+    keep("scatter-fade", &img);
+    assert!(first.scatter_built >= 4, "{first:?}");
+    let again = r.render(&scene, &RenderTarget::Offscreen).expect("render");
+    assert_eq!(again.scatter_built, 0, "a second frame builds nothing");
+    assert_eq!(again.scatter_copies, first.scatter_copies);
+    // Where each copy is: 3.6 pixels a metre (720 px over 200 m).
+    let px_of = |p: Vec3| (640.0 + p.x * 720.0 / 200.0, 360.0 + p.z * 720.0 / 200.0);
+    let red_at = |x: f32, y: f32| {
+        let (x, y) = (x.round() as i64, y.round() as i64);
+        if x < 0 || y < 0 || x >= 1280 || y >= 720 {
+            return false;
+        }
+        let p = px(&img, x as u32, y as u32);
+        p[0] > 150.0 && p[1] < 60.0
+    };
+    let placed = scene.terrains[0].scatter(
+        &TerrainData::flat(Vec2::splat(size), n, n),
+        &s,
+        scene.camera.position,
+    );
+    let (mut solid, mut thinned, mut gone) = (0, 0, 0);
+    let at_of = |m: &Mat4| m.w_axis.truncate();
+    for (_, m) in &placed {
+        let at = at_of(m);
+        // Copies with a neighbour within 4 m would mix their pixels: skip them.
+        if placed
+            .iter()
+            .any(|(_, o)| o != m && at_of(o).distance(at) < 4.0)
+        {
+            continue;
+        }
+        let d = Vec2::new(at.x, at.z).length();
+        let (cx, cy) = px_of(at);
+        // A disc of 4 px inside the 3 m (10.8 px) cube's top, and its outer ring from 2.5 px.
+        let (mut inside, mut hit, mut ring) = (0, 0, 0);
+        for dy in -4i32..=4 {
+            for dx in -4i32..=4 {
+                let r2 = (dx * dx + dy * dy) as f32;
+                if r2 > 16.0 {
+                    continue;
+                }
+                inside += 1;
+                if red_at(cx + dx as f32, cy + dy as f32) {
+                    hit += 1;
+                    if r2 >= 6.25 {
+                        ring += 1;
+                    }
+                }
+            }
+        }
+        let fill = hit as f32 / inside as f32;
+        if d < s.fade_from() - 3.0 {
+            assert!(fill > 0.97, "a copy {d:.1} m out is filled {fill:.2}");
+            solid += 1;
+        } else if d > 60.0 && d < 74.0 {
+            // Fading (about 0.25 to 0.6 kept): thinned across the footprint, its rim still drawn.
+            assert!(
+                fill > 0.05 && fill < 0.85,
+                "a copy {d:.1} m out is filled {fill:.2}"
+            );
+            assert!(
+                ring > 0,
+                "a copy {d:.1} m out has lost its rim: shrunk, not dithered"
+            );
+            thinned += 1;
+        }
+    }
+    assert!(solid > 5 && thinned > 3, "{solid} solid, {thinned} thinned");
+    // Nothing past the distance: no red in the corners' ring beyond 92 m.
+    for (x, y) in [(0u32, 0u32), (1279, 0), (0, 719), (1279, 719)] {
+        let p = px(&img, x, y);
+        assert!(p[0] < 100.0, "red at the corner {x},{y}");
+    }
+    for (_, m) in &placed {
+        let at = m.w_axis.truncate();
+        if Vec2::new(at.x, at.z).length() > 92.0 {
+            gone += 1;
+        }
+    }
+    assert_eq!(gone, 0, "the CPU placement keeps to the distance");
+    // Moving 150 m east builds only the chunks that came into range.
+    scene.camera.position.x += 150.0;
+    scene.camera.target.x += 150.0;
+    let moved = r.render(&scene, &RenderTarget::Offscreen).expect("render");
+    assert!(
+        moved.scatter_built > 0 && moved.scatter_built < first.scatter_built,
+        "{} chunks built moving, {} at first",
+        moved.scatter_built,
+        first.scatter_built
+    );
 }

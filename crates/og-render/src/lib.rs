@@ -44,6 +44,7 @@ pub mod particles;
 mod particles_gpu;
 mod post;
 mod ribbons;
+mod scatter;
 mod scene;
 pub mod shapes;
 mod skin;
@@ -76,6 +77,7 @@ pub use particles::{
     ParticleSimulation, ParticleState, ParticleSystem, SheetMode, SimulationSpace, SpriteSheet,
 };
 pub use ribbons::{Beam, Ribbon, RibbonPoint, RibbonUv, Trail, TrailStyle, TrailStyleHandle};
+pub use scatter::ScatterDraw;
 pub use scene::*;
 pub use skin::{
     JointPalette, MAX_JOINTS, MAX_MORPH_TARGETS, MorphTargets, SkinData, SkinnedInstance,
@@ -437,6 +439,12 @@ pub struct FrameStats {
     /// uploaded for it (phase 3 streaming).
     pub terrain_tiles: u32,
     pub terrain_uploads: u32,
+    /// Scattered copies' chunk draws in the main pass, the copies in them
+    /// (before the distance drops the farthest) and the chunks built for
+    /// this frame.
+    pub scatter_draws: u32,
+    pub scatter_copies: u32,
+    pub scatter_built: u32,
     /// Draws of the planar reflection pass (0: it did not run).
     pub reflection_draws: u32,
     /// Frames rendered by this renderer before this one (drives the TAA jitter).
@@ -695,6 +703,7 @@ pub struct Renderer {
     sky_look_pipeline: wgpu::RenderPipeline,
     water: water::WaterRenderer,
     terrain: terrain::TerrainRenderer,
+    scatter: scatter::ScatterRenderer,
     metaballs: metaballs::MetaballRenderer,
     /// The image-based light, regenerated into the same textures for a new sky.
     ibl: ibl::IblGenerator,
@@ -1649,6 +1658,27 @@ impl Renderer {
                 flat_normal: default_normal.clone(),
             },
         );
+        let scatter = scatter::ScatterRenderer::new(
+            &device,
+            scatter::ScatterPipelines {
+                frame_layout: &frame_layout,
+                material_layout: &material_layout,
+                shadow_layout: &shadow_bind_layout,
+                lit_wgsl: format!(
+                    "{FRAME_WGSL}{}{MATERIAL_WGSL}{LIGHTING_WGSL}{}{}",
+                    particles_gpu::NOISE_WGSL,
+                    include_str!("../shaders/scatter_common.wgsl"),
+                    include_str!("../shaders/scatter.wgsl")
+                ),
+                shadow_wgsl: format!(
+                    "{}{MATERIAL_WGSL}{}{}",
+                    particles_gpu::NOISE_WGSL,
+                    include_str!("../shaders/scatter_common.wgsl"),
+                    include_str!("../shaders/scatter_shadow.wgsl")
+                ),
+                samples,
+            },
+        );
         let vertex_buffer = |label: &str, size: u64| {
             device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some(label),
@@ -1727,6 +1757,7 @@ impl Renderer {
             sky_look_pipeline,
             water,
             terrain,
+            scatter,
             metaballs,
             ibl,
             sprite_pipeline,
@@ -2962,6 +2993,33 @@ impl Renderer {
             |h| textures.get(h.index()).map(|t| &t.view),
         )?;
         let terrain_casters = terrain_draws.iter().any(|d| d.cast_shadows);
+        // Scattered copies: the chunks this frame needs built, what to draw.
+        let scatter_batches = {
+            let materials = &self.cache.materials;
+            let meshes = &self.cache.meshes;
+            self.scatter.prepare(
+                &self.device,
+                &self.queue,
+                scene,
+                camera.position,
+                cam.view_proj,
+                prev_view_proj,
+                |m| materials.get(m).map(|g| g.side),
+                |m| {
+                    meshes
+                        .get(m)
+                        .filter(|g| g.index_count > 0)
+                        .map(|g| g.bounds.map_or(1.0, |(c, e)| c.length() + e.length()))
+                },
+            )
+        };
+        let scatter_material = |m: usize| self.cache.materials.get(m).map(|g| &g.bind_group);
+        let scatter_mesh = |m: usize| {
+            self.cache
+                .meshes
+                .get(m)
+                .map(|g| (&g.vertices, &g.indices, g.index_count))
+        };
 
         // The directional light's cascades.
         let light = &scene.light;
@@ -3480,6 +3538,7 @@ impl Renderer {
         let mut stats = FrameStats {
             terrain_tiles: self.terrain.resident,
             terrain_uploads: self.terrain.uploads,
+            scatter_built: self.scatter.built,
             batches: batches.len() as u32,
             instances: scene.instances.len() as u32,
             culled,
@@ -3822,6 +3881,15 @@ impl Renderer {
                 stats.draw_calls += n;
                 stats.terrain_shadow_draws += n;
             }
+            let (n, _) = self.scatter.draw(
+                &mut pass,
+                scatter::ScatterPass::Shadow,
+                &scatter_batches,
+                scatter_material,
+                scatter_mesh,
+                |c, r| frustum.intersects_sphere(c, r),
+            );
+            stats.draw_calls += n;
         };
         for &pass in self.graph.order() {
             match pass {
@@ -3918,6 +3986,15 @@ impl Renderer {
                             });
                         stats.prepass_draws += n;
                     }
+                    let (n, _) = self.scatter.draw(
+                        &mut p,
+                        scatter::ScatterPass::Prepass,
+                        &scatter_batches,
+                        scatter_material,
+                        scatter_mesh,
+                        |c, r| view_frustum.intersects_sphere(c, r),
+                    );
+                    stats.prepass_draws += n;
                     stats.draw_calls += stats.prepass_draws;
                 }
                 FramePass::Particles => {
@@ -4133,6 +4210,21 @@ impl Renderer {
                         stats.terrain_triangles += tris;
                         stats.triangles += tris;
                     }
+                    let (n, copies) = self.scatter.draw(
+                        &mut pass,
+                        scatter::ScatterPass::Lit,
+                        &scatter_batches,
+                        scatter_material,
+                        scatter_mesh,
+                        |c, r| view_frustum.intersects_sphere(c, r),
+                    );
+                    if n > 0 {
+                        // The copies' group 2 is theirs: the effects' back for what follows.
+                        pass.set_bind_group(2, fx_group, &[]);
+                    }
+                    stats.draw_calls += n;
+                    stats.scatter_draws += n;
+                    stats.scatter_copies += copies;
                     let sky = match scene.environment.background {
                         Background::Sky => Some(&self.sky_pipeline),
                         Background::Procedural { .. } => Some(&self.sky_look_pipeline),

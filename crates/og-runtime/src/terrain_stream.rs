@@ -107,6 +107,8 @@ pub(crate) struct Drawn<'a> {
     pub render: TerrainHandle,
     pub cooked: &'a CookedTerrain,
     pub terrain: &'a og_render::Terrain,
+    /// Metres around the camera where copies scattered over it need its finest tiles.
+    pub detail: f32,
 }
 
 fn tile_bytes(t: &TerrainTile) -> u64 {
@@ -297,6 +299,10 @@ impl Streamer {
                 .clamp(8, 256)
                 .min(layout.tile_count() as u64) as usize;
             budget_tiles += capacity;
+            let view = TerrainView {
+                detail: d.detail,
+                ..view
+            };
             let wanted = og_render::terrain_tiles_wanted(
                 &layout,
                 d.terrain,

@@ -13083,7 +13083,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "ratio",
                 label: "",
-                doc: "The outer part of `distance` over which copies shrink to nothing.",
+                doc: "The outer part of `distance` over which copies thin out to nothing.",
                 variants: &[],
             },
             FieldDecl {

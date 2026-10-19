@@ -474,18 +474,28 @@ unchanged.
   volume) and receives them; its bounds join `ShadowBounds::Auto`.
 - **Prepass.** Drawn into the depth-normal prepass (water's depth below,
   AO, outlines, depth of field, particles' collision).
-- **Scatter.** `Terrain::scatter(data, TerrainScatter, camera)` answers
-  the transforms of detail meshes (grass, stones) for the caller to add
-  as instances: one candidate per cell of a grid fixed to the terrain
+- **Scatter.** Detail meshes (grass, stones) over a terrain where a layer
+  shows: one candidate per cell of a grid fixed to the terrain
   (`1 / sqrt(density)` m), jittered, turned and sized by a hash of the
   cell and the seed, kept with the probability of its layer's weight there
-  (`layer_weights`: the shader's weights before the height blend), within
-  `distance` of the camera along x and z, shrinking to nothing over the
-  outer `fade`, upright or leaning with the ground by `align`; nearest
-  rows first, at most 65,536. A copy keeps its place, size and turn while
-  its cell is in range, and its key (the cell) lets motion vectors follow
-  it. CPU only: the instances are drawn, shadowed and batched like any
-  others.
+  (`layer_weights`: the shader's weights before the height blend), upright
+  or leaning with the ground by `align`. `RenderScene::scatters`
+  (`ScatterDraw { terrain, mesh, material, scatter }`, phase 3) has the
+  renderer place them itself (`src/scatter.rs`, `shaders/scatter*.wgsl`),
+  32 × 32 cells at a time: a chunk's transforms are built once when it
+  comes within `distance` (again only when its terrain data, placement,
+  layers or settings change; a streamed terrain's once its level-0 tiles
+  are resident, sixteen a frame), kept in an instance buffer of its own
+  while in use, culled per pass and drawn with one instanced draw. The
+  vertex shader drops copies past `distance` and the fragment shader thins
+  them out over the outer `fade` with an interleaved-gradient dither, at
+  full size, in the lit, prepass and shadow passes alike. The copies take
+  their StandardMaterial's colour (factor, texture, vertex colours),
+  cut-off, metalness, roughness, emissive, unlit and flat modes; not its
+  normal map or effects. `Terrain::scatter(data, TerrainScatter, camera)`
+  answers the same copies within `distance` on the CPU (tests, tools):
+  nearest rows first, at most 65,536. `FrameStats::scatter_draws`,
+  `scatter_copies`, `scatter_built`.
 
 Cost: `tests/evidence/P2/terrain-water/feature-costs.md`.
 

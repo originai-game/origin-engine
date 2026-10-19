@@ -789,6 +789,9 @@ pub struct RenderScene {
     pub water: Vec<crate::Water>,
     /// Terrains drawn this frame (clipmaps of [`RenderScene::add_terrain`] data).
     pub terrains: Vec<crate::Terrain>,
+    /// Copies scattered over this frame's terrains, placed and drawn by
+    /// the renderer from cached chunks.
+    pub scatters: Vec<crate::ScatterDraw>,
     /// Side-on 2D water bodies, drawn in the sprite order.
     pub water_2d: Vec<crate::Water2d>,
     /// 2D fluids drawn as metaballs in the sprite order (the first
@@ -865,6 +868,7 @@ impl RenderScene {
             fog: None,
             water: Vec::new(),
             terrains: Vec::new(),
+            scatters: Vec::new(),
             water_2d: Vec::new(),
             metaballs: Vec::new(),
             sprite_order: Vec::new(),
@@ -1056,8 +1060,12 @@ impl RenderScene {
 
     /// How far from the camera terrain `index` (of [`RenderScene::terrains`])
     /// needs its finest tiles for the copies scattered over it.
-    pub(crate) fn scatter_detail(&self, _index: usize) -> f32 {
-        0.0
+    pub fn scatter_detail(&self, index: usize) -> f32 {
+        self.scatters
+            .iter()
+            .filter(|s| s.terrain == index)
+            .map(|s| s.scatter.distance)
+            .fold(0.0, f32::max)
     }
 
     /// Adds a particle emitter description (an asset).

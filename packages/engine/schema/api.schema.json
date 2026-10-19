@@ -24844,7 +24844,7 @@
     "TerrainScatter": {
       "x-og-kind": "component",
       "x-og-module": "terrain",
-      "description": "Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies shrink to nothing over the outer `fade` of `distance`. The entity stands where the terrain does: the og.Terrain's entity itself, or a child of it at its origin. Drawn only: no colliders, and the copies are not entities.",
+      "description": "Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies keep their size and thin out (dithered) over the outer `fade` of `distance`. The renderer places them itself, a chunk of the grid at a time, once, and draws the chunks in range: copies cost about nothing per frame while the camera stays. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities.",
       "type": "object",
       "properties": {
         "data": {
@@ -24889,7 +24889,7 @@
         },
         "fade": {
           "type": "number",
-          "description": "The outer part of `distance` over which copies shrink to nothing.",
+          "description": "The outer part of `distance` over which copies thin out to nothing.",
           "default": 0.3,
           "minimum": 0,
           "maximum": 1,

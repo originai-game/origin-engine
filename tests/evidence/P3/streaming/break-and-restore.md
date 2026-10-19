@@ -25,3 +25,17 @@ named test run, and the file put back.
 | Broken | Edit | Failed |
 |---|---|---|
 | zlib, not raw deflate | `worker.ts` `installInflater`: `DecompressionStream("deflate-raw")` | "the Worker's inflater answers each zlib stream ...": key 7 received nothing where 34,322 bytes were expected |
+
+## Scattered copies from chunks (`crates/og-tests/tests/terrain.rs`)
+
+| Broken | Edit | Failed |
+|---|---|---|
+| the dithered fade | `scatter_common.wgsl` `scatter_dropped`: never drops a pixel | `scattered_copies_are_drawn_from_chunks_and_fade_by_dither`: "a copy 70.5 m out is filled 1.00" |
+
+`terrain-grass` (metal) was re-recorded for this change: the 36,000 tufts
+now thin out by a dither over the outer third of their 60 m instead of
+shrinking, and are shaded by the scatter shader (`terrain-grass-before-after.png`:
+before left, after right; the bottom row the meadow at full size).
+`scatter_follows_its_layer_distance_and_stays_put` now asserts the copies
+near the edge keep their full size where it asserted they had shrunk
+(the behaviour asked for changed); every other assertion is unchanged.

@@ -594,10 +594,9 @@ pub fn og_terrain_set_layer(world: u32, data: f64, index: u32, layer: Option<Str
     }
 }
 
-/// og.Terrain components into `rs.scene.terrains`: each terrain at its
-/// entity's world position with its layers; then og.TerrainScatter
-/// components into instances around the camera, answering their keys
-/// (entity, terrain cell) in the order they were added.
+/// og.Terrain components into `rs.scene.terrains`: each terrain placed by
+/// its entity's world transform with its layers; og.TerrainScatter
+/// components into `rs.scene.scatters`; then the streamed terrains' tiles.
 pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) -> Vec<(u64, u32)> {
     rs.scene.terrains.clear();
     let layout = rs.draw.terrain.clone();
@@ -637,6 +636,45 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             streamed.push((i, rs.scene.terrains.len() - 1));
         }
     }
+    // og.TerrainScatter: copies over the drawn terrain of the same data,
+    // placed and drawn by the renderer.
+    rs.scene.scatters.clear();
+    let layout = rs.draw.scatter.clone();
+    for (e, v) in rows(world, layout.as_ref()) {
+        let Some(i) = super::assets::index_of(v["data"].as_f64().unwrap_or(0.0)) else {
+            continue;
+        };
+        let Some(t) = rs.terrain.loaded.get(i) else {
+            rs.notes.push(format!(
+                "og.TerrainScatter on entity {e} names no loaded terrain"
+            ));
+            continue;
+        };
+        let Some(terrain) = rs.scene.terrains.iter().position(|d| d.terrain == t.render) else {
+            continue;
+        };
+        let index = |key: &str| (v[key].as_f64().unwrap_or(0.0) as u64 & 0xffff_ffff) as usize;
+        let (Some(&mesh), Some(&material)) = (
+            rs.geometries.get(index("geometry")),
+            rs.materials.get(index("material")),
+        ) else {
+            continue;
+        };
+        rs.scene.scatters.push(og_render::ScatterDraw {
+            terrain,
+            mesh,
+            material,
+            scatter: og_render::TerrainScatter {
+                layer: u(&v, "layer", 0),
+                density: f(&v, "density", 2.0),
+                distance: f(&v, "distance", 40.0),
+                fade: f(&v, "fade", 0.3),
+                scale: [f(&v, "minScale", 0.8), f(&v, "maxScale", 1.2)],
+                align: f(&v, "align", 0.0),
+                seed: u(&v, "seed", 1),
+            },
+        });
+    }
     // The unedited terrains' tiles, as the camera needs them.
     if !streamed.is_empty() {
         let height = match rs.backend.as_ref().map(|b| b.size()) {
@@ -645,6 +683,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         };
         let view = og_render::TerrainView::of(&rs.scene.camera, height);
         let terrains = rs.scene.terrains.clone();
+        let details: Vec<f32> = (0..terrains.len())
+            .map(|k| rs.scene.scatter_detail(k))
+            .collect();
         let st = &mut rs.terrain;
         let drawn: Vec<super::terrain_stream::Drawn> = streamed
             .iter()
@@ -653,6 +694,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 render: st.loaded[i].render,
                 cooked: &st.loaded[i].cooked,
                 terrain: &terrains[k],
+                detail: details[k],
             })
             .collect();
         let hooks = super::engine::hooks();
@@ -665,54 +707,5 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             &mut rs.notes,
         );
     }
-    let mut keys = Vec::new();
-    let layout = rs.draw.scatter.clone();
-    let eye = rs.scene.camera.position;
-    for (e, v) in rows(world, layout.as_ref()) {
-        let Some(i) = super::assets::index_of(v["data"].as_f64().unwrap_or(0.0)) else {
-            continue;
-        };
-        let Some(t) = rs.terrain.loaded.get_mut(i) else {
-            rs.notes.push(format!(
-                "og.TerrainScatter on entity {e} names no loaded terrain"
-            ));
-            continue;
-        };
-        if t.field.is_none() {
-            match t.cooked.field() {
-                Ok(f) => t.field = Some(f),
-                Err(err) => {
-                    rs.notes.push(err.to_string());
-                    continue;
-                }
-            }
-        }
-        let t = &rs.terrain.loaded[i];
-        let index = |key: &str| (v[key].as_f64().unwrap_or(0.0) as u64 & 0xffff_ffff) as usize;
-        let (Some(&mesh), Some(&material)) = (
-            rs.geometries.get(index("geometry")),
-            rs.materials.get(index("material")),
-        ) else {
-            continue;
-        };
-        let terrain = og_render::Terrain {
-            transform: h.world_of(e),
-            layers: t.layers.clone(),
-            ..og_render::Terrain::new(t.render)
-        };
-        let scatter = og_render::TerrainScatter {
-            layer: u(&v, "layer", 0),
-            density: f(&v, "density", 2.0),
-            distance: f(&v, "distance", 40.0),
-            fade: f(&v, "fade", 0.3),
-            scale: [f(&v, "minScale", 0.8), f(&v, "maxScale", 1.2)],
-            align: f(&v, "align", 0.0),
-            seed: u(&v, "seed", 1),
-        };
-        for (cell, m) in terrain.scatter(t.field.as_ref().expect("decoded above"), &scatter, eye) {
-            rs.scene.add_instance(mesh, material, m);
-            keys.push((e, cell));
-        }
-    }
-    keys
+    Vec::new()
 }

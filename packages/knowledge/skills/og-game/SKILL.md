@@ -319,7 +319,7 @@ asset changes, not world state: a restored snapshot keeps the edited
 ground. Grass, flowers and stones are an `og.TerrainScatter` on the
 terrain's entity: `{ data, geometry, material, layer, density, distance }`
 grows copies of the mesh where that layer shows, within `distance` of the
-camera (they shrink away over its outer `fade`), each fixed to its spot
+camera (thinning out over its outer `fade`, never shrinking), each fixed to its spot
 as the camera moves. Keep `density × distance²` modest: 4 a square metre
 within 60 m is about 36,000 copies. A navmesh .ogt's `terrain "terrain/island.ogt" { step 4 }` bakes
 the walkable slopes for og-ai. Lower `lodRing` on og.Terrain to trade
