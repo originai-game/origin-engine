@@ -21,7 +21,7 @@
 //   of the new bundle.
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, watch, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { loadNativeHost, native } from "./index.ts";
@@ -151,7 +151,16 @@ function decode(base64: string): Uint8Array {
 
 function drain(): void {
   for (const o of engine.takeOutputs()) {
+    // A script names its output relative to --out; one that would land
+    // outside it (an absolute path or `..`) is refused, never written.
     const path = resolve(out, o.file);
+    const inside = relative(resolve(out), path);
+    if (inside === "" || inside === ".." || inside.startsWith(".." + sep) || isAbsolute(inside)) {
+      const line = `WARN tick ${o.tick} ${o.action}: output path '${o.file}' leaves --out ${out}; not written`;
+      warnings.push(line);
+      process.stderr.write(line + "\n");
+      continue;
+    }
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, o.kind === "png" || o.kind === "wav" ? decode(o.data) : o.data);
     outputs.push(path);

@@ -170,6 +170,22 @@ pub struct Heard {
 /// The host's `listen` hook.
 pub type ListenFn = Box<dyn Fn(f32) -> Option<Heard>>;
 
+/// A script's output path, relative to wherever the host writes outputs:
+/// an absolute path or a `..` component is refused, so a script (or a
+/// caller of the probe) cannot write outside the output directory.
+fn output_path(arg: Option<&String>) -> Result<Option<String>, String> {
+    let Some(path) = arg.filter(|p| !p.is_empty()) else {
+        return Ok(None);
+    };
+    let absolute = path.starts_with('/') || path.starts_with('\\');
+    if absolute || path.split(['/', '\\']).any(|part| part == "..") {
+        return Err(format!(
+            "output path '{path}' leaves the output directory; write a relative path without '..'"
+        ));
+    }
+    Ok(Some(path.clone()))
+}
+
 fn fault(context: &str, err: Error) -> Error {
     err.context(context)
 }
@@ -615,7 +631,7 @@ impl Probe {
                     } else if let Ok(n) = a.parse::<u32>() {
                         edge = Some(n.clamp(1, MAX_CAPTURE_EDGE));
                     } else if path.is_none() && !a.is_empty() {
-                        path = Some(a.clone());
+                        path = output_path(Some(a))?;
                     } else {
                         return Err(format!(
                             "unexpected argument '{a}'; write `screenshot[:path][:full|:N]`"
@@ -660,7 +676,7 @@ impl Probe {
                     if let Ok(s) = a.parse::<f32>() {
                         seconds = s.clamp(0.0, 2.0);
                     } else if path.is_none() && !a.is_empty() {
-                        path = Some(a.clone());
+                        path = output_path(Some(a))?;
                     }
                 }
                 let listen = self
@@ -968,7 +984,7 @@ impl Probe {
                 self.outputs.push(Output {
                     tick,
                     action: step.action.clone(),
-                    path: args.first().filter(|p| !p.is_empty()).cloned(),
+                    path: output_path(args.first())?,
                     payload: Payload::Json(dump),
                 });
                 Ok(())
@@ -980,7 +996,7 @@ impl Probe {
                 self.outputs.push(Output {
                     tick,
                     action: step.action.clone(),
-                    path: args.get(1).filter(|p| !p.is_empty()).cloned(),
+                    path: output_path(args.get(1))?,
                     payload: Payload::Json(dump),
                 });
                 Ok(())
@@ -1030,7 +1046,7 @@ impl Probe {
                 self.outputs.push(Output {
                     tick,
                     action: "get".into(),
-                    path: args.get(1).filter(|p| !p.is_empty()).cloned(),
+                    path: output_path(args.get(1))?,
                     payload: Payload::Json(json!({
                         "kind": "get",
                         "target": target,
@@ -1085,7 +1101,7 @@ impl Probe {
                 self.outputs.push(Output {
                     tick,
                     action: "help".into(),
-                    path: args.first().filter(|p| !p.is_empty()).cloned(),
+                    path: output_path(args.first())?,
                     payload: Payload::Text(text),
                 });
                 Ok(())
@@ -1100,10 +1116,7 @@ impl Probe {
                     Handler::Act(handler) => handler(world, args),
                     Handler::Dump(handler, path_arg) => {
                         let (head, path) = if args.len() > path_arg {
-                            (
-                                &args[..path_arg],
-                                args.get(path_arg).filter(|p| !p.is_empty()).cloned(),
-                            )
+                            (&args[..path_arg], output_path(args.get(path_arg))?)
                         } else {
                             (&args[..], None)
                         };

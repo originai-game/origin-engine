@@ -17,7 +17,7 @@ only: frames, the UI tree and bundle swaps come in through traits.
 | command channel | `schedule(world, script) -> CommandsReport`, `register_command(name, CommandDesc, handler)`, `register_dump(name, CommandDesc, path_arg, handler)` (a module's dump: its JSON becomes an output like `dump_entity`'s), `inbox()` (an `Inbox` modules push actions into from inside a tick; the next tick runs them before its scheduled steps), `help()`, `command::parse`, `command::CORE_ACTIONS` |
 | probe members | `hello`, `tick`, `state`, `advance`, `pause`, `resume`, `input`, `accepted`, `pick`, `entity`, `bounds`, `patch`, `run`, `capture`, `sweep`, `reload`, `snapshot`, `restore`, `dump`, `commands` as typed methods; `invoke(world, method, params)` by name |
 | JSON-RPC | `Probe::call(world, frame) -> frame`, `Probe::answer(world, &Call)`, `rpc::parse`, `rpc::{PARSE_ERROR, INVALID_REQUEST, METHOD_NOT_FOUND, INVALID_PARAMS, INTERNAL_ERROR}` |
-| WebSocket (feature `ws`, native) | `server::ProbeServer::start(port)` (`None` for 0), `bind(addr)`, `poll()`, `Probe::serve(world, &server)`, `DEFAULT_PORT = 47800`, `PATH = "/probe"` |
+| WebSocket (feature `ws`, native) | `server::ProbeServer::start(port)` (`None` for 0), `bind(addr)`, `poll()`, `Probe::serve(world, &server)`, `DEFAULT_PORT = 47800`, `PATH = "/probe"`; a handshake carrying an `Origin` header (every browser page sends one) is refused with 403, so only native clients (`og probe`, the runner) connect |
 | hooks | `Capture` (`tier`, `target_size`, `capture`, `pick`), `UiTree` (`elements`) + `StaticUi`, `Reloader` (`rebuild -> Rebuilt { world, ms }`), `InputSink` + `WorldInput`, `set_listen(seconds -> Heard)` (the last seconds of the mix: a WAV with its rate, frames, peak and RMS) |
 | ids | `Names`: an entity's probe id is its name, or `#<index>.<generation>` |
 
@@ -37,7 +37,9 @@ only: frames, the UI tree and bundle swaps come in through traits.
 3. **Outputs.** The probe writes no files: `take_outputs()` yields
    `Output { tick, action, path, payload }` (`Png`, `Json`, `Text`, `Wav`) with
    `file_name()` (the script's path or `<action>-<tick:06>.<ext>`) and
-   `bytes()`; `take_log()` yields warnings, each naming the fix.
+   `bytes()`; `take_log()` yields warnings, each naming the fix. A script's
+   path is relative to the host's output directory: an absolute path or a
+   `..` component is refused with a warning and nothing is output.
 4. **Hooks, when it has them.** `Capture` over og-render (render the world
    as of the current tick offscreen, PNG bytes; `pick` defaults to `None`
    until the renderer picks), `UiTree` from the UI module, `Reloader` for the

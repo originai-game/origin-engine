@@ -169,6 +169,11 @@ async function runOne(file: string, entry: string, root: string, out: string): P
         if (o.file.startsWith("polish-input-")) markers.set(o.file, (JSON.parse(o.data) as Pulse).tick);
         else samples.push(JSON.parse(o.data) as Pulse);
       } else if (o.action === "dump_ui" && o.file.startsWith("polish-ui-")) {
+        // Only a plain file name under out: `polish-ui-../x` would escape it.
+        if (o.file !== basename(o.file)) {
+          warnings.push(`tick ${o.tick}: output path '${o.file}' leaves ${out}; not written`);
+          continue;
+        }
         writeFileSync(join(out, o.file), o.data);
         uiDumps.set(o.file, o.file);
       } else if (o.kind === "png") {
