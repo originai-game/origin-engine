@@ -223,7 +223,9 @@ pub struct Glow {
 }
 
 /// What a press does to a button: its fill scales by `sx`, `sy` and the
-/// button moves down `dy` CSS px.
+/// button moves down `dy` CSS px, on the skin's press spring
+/// (`motion.pressSpring`): in while held, back (past rest when the spring
+/// bounces) on release.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Press {
     pub sx: f32,
@@ -231,8 +233,9 @@ pub struct Press {
     pub dy: f32,
 }
 
-/// What hovering does to a button, eased in over `motion.duration.instant`:
-/// it moves `dy` CSS px (negative lifts) and scales by `scale`.
+/// What hovering does to a button, moving on the skin's hover spring
+/// (`motion.hoverSpring`): it moves `dy` CSS px (negative lifts) and
+/// scales by `scale`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Hover {
     pub dy: f32,
@@ -255,6 +258,12 @@ pub struct SkinMotion {
     pub shake: f32,
     /// Counters pop by this fraction when they finish (0: no pop).
     pub pop: f32,
+    /// The spring the hover lift moves on (`None`: `motion.spring.default`
+    /// of the tokens, damping 1 and 350 ms: it settles without overshoot).
+    pub hover_spring: Option<crate::theme::Spring>,
+    /// The spring the press squash moves on (`None`: damping 0.55 over
+    /// `motion.duration.instant`: in at once, a small bounce on release).
+    pub press_spring: Option<crate::theme::Spring>,
 }
 
 /// The UI events a skin can sound.
@@ -664,7 +673,7 @@ fn role_index(p: &P, w: &str) -> Result<usize, String> {
 /// textShadow display 0 2 0 "#000000a0"        # role dx dy blur colour
 /// textGlow display 3 accent 0.6
 /// press 1.04 0.92 2                           # sx sy dy
-/// hover -2 1.02                               # dy scale
+/// hover -2 1.02                               # dy scale (both move on springs: motion below)
 /// motion {
 ///   enter pop                                 # dialogs and screen panels
 ///   stagger 40                                # ms between their controls
@@ -672,6 +681,8 @@ fn role_index(p: &P, w: &str) -> Result<usize, String> {
 ///   progress 400                              # ms progress bars ease over
 ///   shake 6                                   # CSS px a refused press shakes
 ///   pop 0.12                                  # a landing count-up's bump
+///   hoverSpring 1 350                         # the hover lift's spring: damping ratio, response ms
+///   pressSpring 0.55 120                      # the press squash's
 /// }
 /// sound press "audio/ui/press.wav"
 /// ```
@@ -989,8 +1000,19 @@ pub fn parse_skin(text: &str) -> Result<SkinFile, String> {
                         "progress" => m.progress_ms = q.num(0)?.max(0.0),
                         "shake" => m.shake = q.num(0)?.max(0.0),
                         "pop" => m.pop = q.num(0)?.clamp(0.0, 1.0),
+                        "hoverSpring" | "pressSpring" => {
+                            let spring = Some(crate::theme::Spring {
+                                damping: q.num(0)?.clamp(0.05, 4.0),
+                                response_ms: q.num(1)?.clamp(16.0, 4000.0),
+                            });
+                            if c.key == "hoverSpring" {
+                                m.hover_spring = spring;
+                            } else {
+                                m.press_spring = spring;
+                            }
+                        }
                         _ => return Err(q.err(
-                            "is a motion setting: enter, stagger, toast, progress, shake or pop",
+                            "is a motion setting: enter, stagger, toast, progress, shake, pop, hoverSpring or pressSpring",
                         )),
                     }
                 }

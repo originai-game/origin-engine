@@ -381,12 +381,16 @@ fn keyboard_and_gamepad_focus_moves_sound_as_the_pointer_does() {
     for _ in 0..3 {
         build(&mut ui, InputFrame::default());
     }
-    assert!(ui.take_sounds().is_empty(), "nothing sounds before an input");
+    assert!(
+        ui.take_sounds().is_empty(),
+        "nothing sounds before an input"
+    );
     let key = |k: UiKey| InputFrame {
         keys: vec![k],
         ..InputFrame::default()
     };
-    let heard = |ui: &mut Ui| -> Vec<UiSound> { ui.take_sounds().into_iter().map(|(e, _)| e).collect() };
+    let heard =
+        |ui: &mut Ui| -> Vec<UiSound> { ui.take_sounds().into_iter().map(|(e, _)| e).collect() };
     build(&mut ui, key(UiKey::Tab));
     assert_eq!(heard(&mut ui), vec![UiSound::Hover], "Tab onto A sounds");
     build(&mut ui, key(UiKey::Down));
@@ -399,11 +403,23 @@ fn keyboard_and_gamepad_focus_moves_sound_as_the_pointer_does() {
         ..InputFrame::default()
     };
     build(&mut ui, pad(GamepadFrame::UP));
-    assert_eq!(heard(&mut ui), vec![UiSound::Hover], "the d-pad onto A sounds");
+    assert_eq!(
+        heard(&mut ui),
+        vec![UiSound::Hover],
+        "the d-pad onto A sounds"
+    );
     build(&mut ui, key(UiKey::Enter));
-    assert_eq!(heard(&mut ui), vec![UiSound::Press], "Enter presses A and sounds");
+    assert_eq!(
+        heard(&mut ui),
+        vec![UiSound::Press],
+        "Enter presses A and sounds"
+    );
     build(&mut ui, pad(GamepadFrame::A));
-    assert_eq!(heard(&mut ui), vec![UiSound::Press], "the pad's A presses and sounds");
+    assert_eq!(
+        heard(&mut ui),
+        vec![UiSound::Press],
+        "the pad's A presses and sounds"
+    );
     // One focusable control: a move that lands where focus already is stays silent.
     let lone = |ui: &mut Ui, input: InputFrame| {
         ui.begin(input, Viewport::new(800.0, 600.0));
@@ -416,7 +432,148 @@ fn keyboard_and_gamepad_focus_moves_sound_as_the_pointer_does() {
     lone(&mut ui, key(UiKey::Tab));
     heard(&mut ui);
     lone(&mut ui, key(UiKey::Tab));
-    assert!(heard(&mut ui).is_empty(), "Tab on the only control moves nothing and is silent");
+    assert!(
+        heard(&mut ui).is_empty(),
+        "Tab on the only control moves nothing and is silent"
+    );
+}
+
+/// The `Go` button's top edge over `n` ticks of `input` under `skin`.
+fn tops(ui: &mut Ui, input: &InputFrame, n: usize) -> Vec<f32> {
+    (0..n)
+        .map(|_| {
+            step(ui, input.clone(), false);
+            ui.frame().element("Go").expect("the button").y
+        })
+        .collect()
+}
+
+#[test]
+fn the_hover_lift_and_the_press_move_on_springs() {
+    // Ways it could fail: the lift jumps to its end in a tick (no motion),
+    // eases on a curve that ignores the skin's spring (no overshoot at a
+    // low damping), never settles exactly, settles somewhere else, or
+    // differs after a restore; the press squash does not spring back past
+    // rest on release.
+    let springy = SKIN.replace("  pop 0.12\n", "  pop 0.12\n  hoverSpring 0.3 300\n");
+    for (text, bounces) in [(SKIN.to_string(), false), (springy, true)] {
+        let file = parse_skin(&text).expect("the skin parses");
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.set_theme(file.theme(Some(atlas()), [0; 6]));
+        for _ in 0..30 {
+            step(&mut ui, InputFrame::default(), false);
+        }
+        let rest = ui.frame().element("Go").unwrap().clone();
+        let (x, y) = rest.center();
+        let over = InputFrame::hover(x, y);
+        let ys = tops(&mut ui, &over, 150);
+        let end = ys[149];
+        assert!(
+            end < rest.y - 1.5,
+            "it lifts by the skin's 2 px: {} to {end}",
+            rest.y
+        );
+        assert_eq!(ys[148], end, "and settles exactly: {ys:?}");
+        assert!(
+            ys[1] > end + 0.5 && ys[1] < rest.y,
+            "moving over several ticks, not at once: {ys:?}"
+        );
+        let lowest = ys.iter().copied().fold(f32::INFINITY, f32::min);
+        if bounces {
+            assert!(
+                lowest < end - 0.3,
+                "a damping of 0.3 overshoots the lift: {ys:?}"
+            );
+        } else {
+            assert!(lowest >= end - 1e-4, "damping 1 never overshoots: {ys:?}");
+        }
+        // A restore mid-motion replays the same positions.
+        step(&mut ui, InputFrame::hover(0.0, 0.0), false);
+        let saved = ui.save_state();
+        let a = tops(&mut ui, &over, 12);
+        ui.restore_state(&saved).unwrap();
+        let b = tops(&mut ui, &over, 12);
+        assert_eq!(a, b, "the spring is UI state");
+    }
+    // The press: held, the frame squashes towards sy 0.92; released, it
+    // springs back past its rest height before settling.
+    let file = parse_skin(SKIN).unwrap();
+    let mut ui = ui_with_font(test_font_metrics());
+    let tex = atlas();
+    ui.set_theme(file.theme(Some(tex), [0; 6]));
+    for _ in 0..30 {
+        step(&mut ui, InputFrame::default(), false);
+    }
+    let (x, y) = ui.frame().element("Go").unwrap().center();
+    // The button's frame: the nine pieces cut from the atlas's button
+    // region (u 0.25 to 0.5 of the test atlas); their extent is its height.
+    let frame_h = |ui: &Ui| {
+        let (mut top, mut bottom) = (f32::INFINITY, f32::NEG_INFINITY);
+        for item in &ui.frame().items {
+            if let DrawCmd::Image {
+                rect,
+                texture: Some(t),
+                uv,
+                ..
+            } = &item.cmd
+                && *t == tex
+                && uv[0] >= 0.25
+                && uv[2] <= 0.5
+            {
+                top = top.min(rect.y);
+                bottom = bottom.max(rect.bottom());
+            }
+        }
+        bottom - top
+    };
+    // Hovered until the lift has settled: the rest height under the pointer.
+    for _ in 0..120 {
+        step(&mut ui, InputFrame::hover(x, y), false);
+    }
+    let rest_h = frame_h(&ui);
+    step(&mut ui, press_at(x, y), false);
+    let first = frame_h(&ui);
+    let held = InputFrame {
+        pointer: Vec2::new(x, y),
+        pointer_inside: true,
+        down: true,
+        ..InputFrame::default()
+    };
+    let mut hs = vec![first];
+    for _ in 0..20 {
+        step(&mut ui, held.clone(), false);
+        hs.push(frame_h(&ui));
+    }
+    assert!(
+        first < rest_h && first > rest_h * 0.92 + 0.1,
+        "the press starts squashing at once: {rest_h} then {hs:?}"
+    );
+    let squashed = *hs.last().unwrap();
+    assert!(
+        (squashed - rest_h * 0.92).abs() < 0.2,
+        "and reaches sy 0.92 while held: {hs:?}"
+    );
+    let release = InputFrame {
+        pointer: Vec2::new(x, y),
+        pointer_inside: true,
+        released: true,
+        ..InputFrame::default()
+    };
+    step(&mut ui, release, false);
+    let mut back = vec![frame_h(&ui)];
+    for _ in 0..30 {
+        step(&mut ui, InputFrame::hover(x, y), false);
+        back.push(frame_h(&ui));
+    }
+    let tallest = back.iter().copied().fold(0.0, f32::max);
+    assert!(
+        tallest > rest_h + 0.1,
+        "released, it springs past its rest height: {rest_h} then {back:?}"
+    );
+    assert!(
+        (back[30] - rest_h).abs() < 0.01,
+        "and settles at rest: {back:?}"
+    );
 }
 
 fn press_at(x: f32, y: f32) -> InputFrame {

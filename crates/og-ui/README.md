@@ -7,8 +7,8 @@ Clay-style, themed by the platform's design tokens
 MSDF text batches, and addressable by the probe through stable string ids
 (`touch_move_to`, `move_to_text`, `dump_ui`).
 
-It depends on og-core, og-ecs, og-input, og-render and og-probe (no
-default features) only. No layout or GUI library: the layout is ~600 lines in `src/layout.rs`.
+It depends on og-core, og-ecs, og-input, og-render, og-probe (no
+default features), og-tween (its spring), og-i18n and rustybuzz only. No layout or GUI library: the layout is ~600 lines in `src/layout.rs`.
 
 ![The sample screen](references/metal/sample-screen.png)
 
@@ -186,9 +186,9 @@ comment; og-cook validates it and cooks it as an `og.UiSkin` blob,
 | `tile x y w h <tw> <th> <alpha> [inset] <parts>` | a texture tiled over the parts' fill (parchment, scanlines, grain) |
 | `shadow <part> dx dy blur spread "#rrggbbaa"`, `glow <part> size ink alpha` | per class (button states share the button's); blur 0 is a hard shadow |
 | `textShadow <role> dx dy blur colour`, `textGlow <role> size ink alpha` | per font role (`body`, `display`, `numeric`) |
-| `press sx sy dy`, `hover dy scale` | the press squash and sink, the hover lift (eased over `instant`) |
+| `press sx sy dy`, `hover dy scale` | the press squash and sink, the hover lift, each on a damped spring (og-tween's `Spring`, arithmetic only, in the UI state): the hover on `motion.hoverSpring` (default the tokens' `motion.spring.default`, damping 1 and 350 ms: no overshoot), the press on `motion.pressSpring` (default damping 0.55 over `motion.duration.instant`: in at once, a small bounce past rest on release) |
 | `fonts { body display numeric fallback }`, `icons "<id>" cols rows { names … }` | fonts per role (numeric is the `Mono` role) and the CJK `fallback`: a text whose role font lacks one of its characters is measured and drawn in the fallback (`Fonts::for_text`); the icon set |
-| `motion { enter stagger toast progress shake pop }` | dialog and panel entrance (`pop` springs past 1 and settles), the stagger of a panel's controls (shortened so a long list ends within one more entrance), the toast arrival, eased progress bars, the refused-press shake, the count-up landing pop |
+| `motion { enter stagger toast progress shake pop hoverSpring pressSpring }` | dialog and panel entrance (`pop` springs past 1 and settles), the stagger of a panel's controls (shortened so a long list ends within one more entrance), the toast arrival, eased progress bars, the refused-press shake, the count-up landing pop, and the hover and press springs (`<damping ratio> <response ms>`) |
 | `sound <event> "<id>"` | UI sounds (below) |
 
 Six packs to start from live in `templates/ui-kit/assets/skins/` (pixel,
@@ -484,8 +484,8 @@ font is og-tests' committed MSDF atlas (Noto Sans SC subset, OFL).
   (needs per-glyph spacing in og-render's `Text`); kerning and shaping
   (rustybuzz, with og-render); RTL; ellipsis truncation; selection in fields;
   multi-line text areas; IME composition.
-- **Animations**: springs (`SPRING_DEFAULT`) for the skin's hover and press
-  (eased curves today); momentum scrolling on `SPRING_MOMENTUM`; caret blink.
+- **Animations**: caret blink. (The skin's hover and press move on springs
+  since the phase 2 UI round.)
 - **Skins**: per-glyph tracking from a skin's ramp; text glows are four
   offset copies (a real blur needs an MSDF outline in og-render).
   (Overlay entry and exit, toasts, meters and typing run on the token

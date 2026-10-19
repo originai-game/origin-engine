@@ -2924,7 +2924,10 @@ impl Ui {
         };
         let n = &mut self.nodes[i];
         n.el.background = Some(bg);
-        n.widget = Widget::Button { pressed: r.pressed };
+        n.widget = Widget::Button {
+            pressed: r.pressed,
+            press: if r.pressed { 1.0 } else { 0.0 },
+        };
         n.probe_text = text.to_owned();
         match icon {
             Some(s) => n.shapes.push(s),

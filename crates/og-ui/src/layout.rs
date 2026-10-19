@@ -496,6 +496,8 @@ pub(crate) enum Widget {
     None,
     Button {
         pressed: bool,
+        /// How far in the press is on the skin's spring (0 rest, 1 held).
+        press: f32,
     },
     Progress {
         value: f32,

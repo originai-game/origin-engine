@@ -163,7 +163,8 @@ Motion and juice, all by the tick and in the UI state:
 | A wrong answer, a locked door, a refused purchase | `og.ui.shake({ sound: true })` right after the element, once, on the tick it happens: it swings three times and comes to rest by itself (the skin's `motion.shake`, else 6 px), with the `error` sound |
 
 Skins add the rest themselves: dialog and panel entrances with staggered
-controls, hover lift and press squash, eased progress bars, toasts flying in,
+controls, hover lift and press squash on springs (the `hoverSpring 1 350` and `pressSpring 0.55 120` lines of a
+skin's `motion` block: damping ratio and response in ms; below 1 bounces), eased progress bars, toasts flying in,
 a shake and the error sound on a press of a disabled button. Reduced motion
 keeps every shake still and turns the rest into fades. How long and how
 much is og-taste §5 and §6; camera shake is never for UI (og-feel §4).

@@ -1128,12 +1128,15 @@ impl Ui {
         } else {
             SkinPart::Button
         };
-        self.button_motion(i, r, refused);
+        let press = self.button_motion(i, r, refused);
         let n = &mut self.nodes[i];
         n.el.background = bg;
         n.el.skin = Some(part);
         n.content = Content::Text(content);
-        n.widget = Widget::Button { pressed: r.pressed };
+        n.widget = Widget::Button {
+            pressed: r.pressed,
+            press,
+        };
         n.probe_text = text.to_owned();
         r
     }
@@ -1194,22 +1197,67 @@ impl Ui {
         self.nodes[i].widget = Widget::Progress { value: v };
     }
 
-    /// A button's skin motion: the hover lift eased in and out, the press
-    /// sink, and the shake of a refused press (`motion.duration.slow`).
-    fn button_motion(&mut self, i: usize, r: Response, refused: bool) {
+    /// A button's skin motion: the hover lift and the press squash on the
+    /// skin's springs (`motion.hoverSpring`, `motion.pressSpring`), and the shake of a refused press (`motion.duration.slow`). Answers
+    /// how far in the press is (0 at rest, 1 held; past either while the
+    /// spring overshoots).
+    fn button_motion(&mut self, i: usize, r: Response, refused: bool) -> f32 {
         let t = self.theme;
         let skin = t.skin;
         if skin.hover.is_none() && skin.press.is_none() && skin.motion.shake <= 0.0 {
-            return;
+            return if r.pressed { 1.0 } else { 0.0 };
         }
-        let key = child_key(self.nodes[i].key, "motion");
-        let mut a = self.anim(key);
-        let step = 1.0 / self.ticks_for(t.durations_ms.instant) as f32;
-        a.a = if r.hovered {
-            (a.a + step).min(1.0)
-        } else {
-            (a.a - step).max(0.0)
+        let key = self.nodes[i].key;
+        let hover_spring = skin
+            .motion
+            .hover_spring
+            .unwrap_or(crate::theme::SPRING_DEFAULT);
+        let press_spring = skin.motion.press_spring.unwrap_or(crate::theme::Spring {
+            damping: 0.55,
+            response_ms: t.durations_ms.instant,
+        });
+        let dt = 1.0 / self.ticks_per_second as f32;
+        // Each spring keeps its value in `a` and its velocity in `b`.
+        let step = |ui: &mut Ui, name: &str, spring: crate::theme::Spring, target: f32| -> f32 {
+            let spring = og_tween::Spring {
+                damping: spring.damping,
+                response_ms: spring.response_ms,
+            };
+            let k = child_key(key, name);
+            let fresh = !ui.has_anim(k);
+            let mut a = ui.anim(k);
+            if t.reduced_motion || (fresh && target == 0.0) {
+                a.a = target;
+                a.b = 0.0;
+            } else {
+                let s = spring.step(
+                    og_tween::SpringState {
+                        value: a.a,
+                        velocity: a.b,
+                    },
+                    target,
+                    dt,
+                );
+                a.a = s.value;
+                a.b = s.velocity;
+            }
+            ui.set_anim(k, a);
+            a.a
         };
+        let hover = step(
+            self,
+            "hover",
+            hover_spring,
+            if r.hovered { 1.0 } else { 0.0 },
+        );
+        let press = step(
+            self,
+            "press",
+            press_spring,
+            if r.pressed { 1.0 } else { 0.0 },
+        );
+        let key = child_key(key, "motion");
+        let mut a = self.anim(key);
         let now = self.state.tick;
         if refused {
             a.t = now;
@@ -1218,18 +1266,15 @@ impl Ui {
         }
         self.set_anim(key, a);
         if t.reduced_motion {
-            return;
+            return if r.pressed { 1.0 } else { 0.0 };
         }
-        let e = crate::motion::ease_out(a.a);
         let mut f = Fx::default();
         if let Some(h) = skin.hover {
-            f.dy += h.dy * e;
-            f.scale = 1.0 + (h.scale - 1.0) * e;
+            f.dy += h.dy * hover;
+            f.scale = 1.0 + (h.scale - 1.0) * hover;
         }
-        if r.pressed
-            && let Some(p) = skin.press
-        {
-            f.dy += p.dy;
+        if let Some(p) = skin.press {
+            f.dy += p.dy * press;
         }
         if a.b > 0.0 {
             let k = (now - a.t) as f32 / self.ticks_for(t.durations_ms.slow) as f32;
@@ -1243,6 +1288,7 @@ impl Ui {
         if f != Fx::default() {
             self.nodes[i].fx = Some(f);
         }
+        press
     }
 
     /// Queues a UI event's sound when the skin has one for it.
@@ -2087,16 +2133,24 @@ impl Ui {
             }
         }
         if let Some(bg) = n.el.background {
-            let pressed = matches!(n.widget, Widget::Button { pressed: true });
+            let (pressed, press) = match n.widget {
+                Widget::Button { pressed, press } => (pressed, press),
+                _ => (false, 0.0),
+            };
             match n
                 .el
                 .skin
                 .and_then(|part| t.skin.slice(part).map(|s| (part, s)))
             {
                 Some((part, slice)) => {
-                    let r = match (pressed, t.skin.press) {
-                        (true, Some(pr)) => scaled_xy(rect, pr.sx, pr.sy),
-                        (true, None) => rect.scaled(t.press_scale),
+                    let r = match (t.skin.press, pressed) {
+                        // The squash follows the spring, in and back out.
+                        (Some(pr), _) if press != 0.0 => scaled_xy(
+                            rect,
+                            1.0 + (pr.sx - 1.0) * press,
+                            1.0 + (pr.sy - 1.0) * press,
+                        ),
+                        (None, true) => rect.scaled(t.press_scale),
                         _ => rect,
                     };
                     self.dress(part, slice, r, n.el.radius, bg, alpha, clip, cmds);
