@@ -16,20 +16,24 @@ cross-origin isolated, COOP/COEP/CORP on `/` and every wasm, no finding.
 
     OG_ENGINE_PACKAGE=$PWD/packages/engine target/debug/og run --device chrome templates/game --webgl --out tests/evidence/P3/device/chrome-webgl2
 
-fails, exit 1, `chrome-webgl2-failure.txt`: on the WebGL2 fallback the engine
-panics creating the `overlay glass` pipeline, because `fs_glass` in
-crates/og-render/shaders/overlay.wgsl calls `textureNumLevels`, which GLSL ES
-3.0 lacks (`Features(TEXTURE_LEVELS)`), since 42d7294. Every WebGL2 page fails
-to start until that shader stops asking for the level count (for example a
-uniform carrying it). The test's webgl2 case stays red until then.
+`chrome-webgl2/report.md` and `chrome-webgl2/device.json`, re-run on the
+p3-culling branch after main's overlay glass fix (cf6aeaf) was merged in:
+webgl2 (ANGLE Metal, Apple M4 Pro), first frame 1125 ms, display interval
+p50 8.34 / p95 37.27 / p99 50 ms over 338 frames, engine work p95 1.41 ms,
+cross-origin isolated, COOP/COEP/CORP on `/` and every wasm. The one finding
+(p95 frame time) is the machine, not the page: the run shared it at a load
+average of 74, and the engine work stayed under 1.7 ms every frame. Before
+that fix this run failed, exit 1: the `overlay glass` pipeline panicked on
+WebGL2 because `fs_glass` called `textureNumLevels`, which GLSL ES 3.0 lacks.
 
 The test, outside the bun-test gate like every tests/web script (it needs
 Chrome; a missing Chrome is an error, never a skip):
 
     cd packages/engine && bun tests/web/device.ts [--out <dir>] [--chrome <path>]
 
-`device-result.json` is its last run: 15 of 18 checks, the three failures all
-the webgl2 case above; the webgpu case and the missing-Chrome refusal pass.
+`device-result.json` is its last run, on p3-culling after the merge: 27 of 27
+checks, the webgl2 case included (it was 15 of 18 before the glass fix, the
+three failures all the webgl2 case).
 Broken once: with the play-gate tap removed from src/node/device.ts the webgpu
 case failed ("a tap on the play gate did not start play"), restored, passed.
 
