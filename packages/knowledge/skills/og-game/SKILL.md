@@ -358,6 +358,12 @@ as the camera moves. Keep `density × distance²` modest: 4 a square metre
 within 60 m is about 36,000 copies. A navmesh .ogt's `terrain "terrain/island.ogt" { step 4 }` bakes
 the walkable slopes for og-ai. Lower `lodRing` on og.Terrain to trade
 detail for frame time.
+Its tiles stream: only the tiles the camera needs are on the GPU (16 MiB a
+terrain by default), decoded off the frame, the coarser level standing in
+until each arrives, and nothing a tick reads changes with it. In a probe
+script `terrain_stream:resident` decodes every wanted tile each frame (for
+captures to compare), `terrain_stream:stream:<MiB>` streams within that
+budget, and `dump_stream` gives the terrain's tiles.
 
 Which look for which mood is og-taste §8.
 

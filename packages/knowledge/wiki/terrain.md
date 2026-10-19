@@ -6,6 +6,8 @@ Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `
 
 Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it placed by the entity's world transform (centred on its position, turned and scaled with it), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere (pass it the entity's position, quaternion and scale); og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are world state: a snapshot keeps them, the world hash covers them, and a restore brings the ground back as it was (rebuilt from the cook with the restored edits replayed, for the renderer, physics and sample alike).
 
+Its tiles stream (phase 3): the cook stores the field as a pyramid of tiles, each compressed on its own, and every frame the renderer keeps on the GPU only the tiles the camera's clipmap wants, within each terrain's tile budget (16 MiB by default), decoded off the frame (a worker thread natively, the browser's DecompressionStream on the Web) a few at a time, the most needed first; until a tile arrives its area draws from the coarser level that holds it, then fades in. Nothing a tick reads depends on which tiles are resident (collision and og.terrain.sample read the whole field), so a run's world hash is the same streamed or not. The probe's `terrain_stream:resident` decodes every wanted tile before each frame instead (`terrain_stream:stream[:<MiB>]` streams again, within that budget), and `dump_stream`'s `terrain` gives the tiles resident, waiting, decoding and cached.
+
 - **TypeScript**: functions are the namespace `og.terrain`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
 - **Skill**: `og-game`, which teaches the module (how much of it to use, and how to prove it).
@@ -71,7 +73,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 9624</sub>
+<sub>`api.ogt` line 9625</sub>
 
 <a id="fn-sample"></a>
 
@@ -101,7 +103,7 @@ fn sample {
 }
 ```
 
-<sub>`api.ogt` line 9631</sub>
+<sub>`api.ogt` line 9632</sub>
 
 <a id="fn-bounds"></a>
 
@@ -143,7 +145,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 9638</sub>
+<sub>`api.ogt` line 9639</sub>
 
 <a id="fn-edit"></a>
 
@@ -175,7 +177,7 @@ fn edit {
 }
 ```
 
-<sub>`api.ogt` line 9654</sub>
+<sub>`api.ogt` line 9655</sub>
 
 <a id="fn-layer"></a>
 
@@ -207,7 +209,7 @@ fn layer {
 }
 ```
 
-<sub>`api.ogt` line 9662</sub>
+<sub>`api.ogt` line 9663</sub>
 
 <a id="fn-setLayer"></a>
 
@@ -241,7 +243,7 @@ fn setLayer {
 }
 ```
 
-<sub>`api.ogt` line 9670</sub>
+<sub>`api.ogt` line 9671</sub>
 
 ## Components, resources and events
 
@@ -280,7 +282,7 @@ component Terrain {
 }
 ```
 
-<sub>`api.ogt` line 9396</sub>
+<sub>`api.ogt` line 9397</sub>
 
 <a id="record-TerrainScatter"></a>
 
@@ -355,7 +357,7 @@ component TerrainScatter {
 }
 ```
 
-<sub>`api.ogt` line 9414</sub>
+<sub>`api.ogt` line 9415</sub>
 
 ## Types
 
@@ -371,7 +373,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TerrainData "A loaded terrain: its heights, control map and layers."
 ```
 
-<sub>`api.ogt` line 9378</sub>
+<sub>`api.ogt` line 9379</sub>
 
 <a id="type-TerrainBrushMode"></a>
 
@@ -400,7 +402,7 @@ enum TerrainBrushMode {
 }
 ```
 
-<sub>`api.ogt` line 9387</sub>
+<sub>`api.ogt` line 9388</sub>
 
 <a id="type-TerrainInfo"></a>
 
@@ -443,7 +445,7 @@ struct TerrainInfo {
 }
 ```
 
-<sub>`api.ogt` line 9463</sub>
+<sub>`api.ogt` line 9464</sub>
 
 <a id="type-TerrainSampleDesc"></a>
 
@@ -483,7 +485,7 @@ struct TerrainSampleDesc {
 }
 ```
 
-<sub>`api.ogt` line 9483</sub>
+<sub>`api.ogt` line 9484</sub>
 
 <a id="type-TerrainSample"></a>
 
@@ -512,7 +514,7 @@ struct TerrainSample {
 }
 ```
 
-<sub>`api.ogt` line 9502</sub>
+<sub>`api.ogt` line 9503</sub>
 
 <a id="type-TerrainBounds"></a>
 
@@ -537,7 +539,7 @@ struct TerrainBounds {
 }
 ```
 
-<sub>`api.ogt` line 9514</sub>
+<sub>`api.ogt` line 9515</sub>
 
 <a id="type-TerrainBrush"></a>
 
@@ -595,7 +597,7 @@ struct TerrainBrush {
 }
 ```
 
-<sub>`api.ogt` line 9524</sub>
+<sub>`api.ogt` line 9525</sub>
 
 <a id="type-TerrainEdit"></a>
 
@@ -622,7 +624,7 @@ struct TerrainEdit {
 }
 ```
 
-<sub>`api.ogt` line 9558</sub>
+<sub>`api.ogt` line 9559</sub>
 
 <a id="type-TerrainLayerDesc"></a>
 
@@ -703,7 +705,7 @@ struct TerrainLayerDesc {
 }
 ```
 
-<sub>`api.ogt` line 9569</sub>
+<sub>`api.ogt` line 9570</sub>
 
 ## Column kinds
 
@@ -722,4 +724,4 @@ column TerrainData {
 }
 ```
 
-<sub>`api.ogt` line 9380</sub>
+<sub>`api.ogt` line 9381</sub>

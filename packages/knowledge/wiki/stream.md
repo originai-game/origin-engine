@@ -6,7 +6,7 @@ Asset streaming groups (phase 3): a scene's `stream "<name>" { asset ...; distan
 
 At every tick boundary the engine decides which groups are wanted, admits them by priority (then name) within the memory budget (256 MiB by default; GPU textures and meshes and decoded audio, as the cook measured them), evicting lower-priority resident groups to make room for a higher one, and reads and puts in place at most one group's assets per boundary. A group that cannot fit waits, queued; one larger than the whole budget fails. Until its group is resident, a model draws its proxy (its coarsest LOD, untextured), a texture is a 1x1 grey placeholder and a sound plays as silence of its own length; then the real ones take over the same handles. Physics always collides with the proxy's meshes and a sound's length never changes, so nothing a tick reads depends on what is resident: a run's world hash is the same streamed or not.
 
-Every change of a group's state sends StreamEvent at the start of the next tick; og.stream.status and og.stream.budget answer at once, and the probe's `dump_stream` lists the budget, the memory used and its peak, every group (trigger, state, why, since which tick) and the recent changes.
+Every change of a group's state sends StreamEvent at the start of the next tick; og.stream.status and og.stream.budget answer at once, and the probe's `dump_stream` lists the budget, the memory used and its peak, every group (trigger, state, why, since which tick), the recent changes and the terrain streamer's tiles.
 
 - **TypeScript**: functions are the namespace `og.stream`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
@@ -18,7 +18,7 @@ module stream {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 9682</sub>
+<sub>`api.ogt` line 9683</sub>
 
 ## Contents
 
@@ -69,7 +69,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 9744</sub>
+<sub>`api.ogt` line 9745</sub>
 
 <a id="fn-request"></a>
 
@@ -99,7 +99,7 @@ fn request {
 }
 ```
 
-<sub>`api.ogt` line 9751</sub>
+<sub>`api.ogt` line 9752</sub>
 
 <a id="fn-release"></a>
 
@@ -129,7 +129,7 @@ fn release {
 }
 ```
 
-<sub>`api.ogt` line 9758</sub>
+<sub>`api.ogt` line 9759</sub>
 
 <a id="fn-budget"></a>
 
@@ -157,7 +157,7 @@ fn budget {
 }
 ```
 
-<sub>`api.ogt` line 9765</sub>
+<sub>`api.ogt` line 9766</sub>
 
 <a id="fn-setBudget"></a>
 
@@ -187,7 +187,7 @@ fn setBudget {
 }
 ```
 
-<sub>`api.ogt` line 9771</sub>
+<sub>`api.ogt` line 9772</sub>
 
 ## Components, resources and events
 
@@ -212,7 +212,7 @@ event StreamEvent {
 }
 ```
 
-<sub>`api.ogt` line 9703</sub>
+<sub>`api.ogt` line 9704</sub>
 
 ## Types
 
@@ -243,7 +243,7 @@ enum StreamState {
 }
 ```
 
-<sub>`api.ogt` line 9688</sub>
+<sub>`api.ogt` line 9689</sub>
 
 <a id="type-StreamStatus"></a>
 
@@ -290,7 +290,7 @@ struct StreamStatus {
 }
 ```
 
-<sub>`api.ogt` line 9709</sub>
+<sub>`api.ogt` line 9710</sub>
 
 <a id="type-StreamBudget"></a>
 
@@ -321,7 +321,7 @@ struct StreamBudget {
 }
 ```
 
-<sub>`api.ogt` line 9730</sub>
+<sub>`api.ogt` line 9731</sub>
 
 ## Constants
 
@@ -337,28 +337,28 @@ struct StreamBudget {
 const STREAM_UNLOADED u32 0 "`StreamEvent.state`: the group is unloaded (StreamState unloaded)."
 ```
 
-<sub>`api.ogt` line 9697</sub>
+<sub>`api.ogt` line 9698</sub>
 
 ```ogt
 const STREAM_QUEUED u32 1 "`StreamEvent.state`: the group waits for room in the budget (StreamState queued)."
 ```
 
-<sub>`api.ogt` line 9698</sub>
+<sub>`api.ogt` line 9699</sub>
 
 ```ogt
 const STREAM_LOADING u32 2 "`StreamEvent.state`: the group's pack is being read (StreamState loading)."
 ```
 
-<sub>`api.ogt` line 9699</sub>
+<sub>`api.ogt` line 9700</sub>
 
 ```ogt
 const STREAM_RESIDENT u32 3 "`StreamEvent.state`: the group's assets are in place (StreamState resident)."
 ```
 
-<sub>`api.ogt` line 9700</sub>
+<sub>`api.ogt` line 9701</sub>
 
 ```ogt
 const STREAM_FAILED u32 4 "`StreamEvent.state`: the group failed (StreamState failed; og.stream.status says why)."
 ```
 
-<sub>`api.ogt` line 9701</sub>
+<sub>`api.ogt` line 9702</sub>
