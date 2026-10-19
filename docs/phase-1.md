@@ -19,7 +19,8 @@ and the §7 reference scene measured with lanes off and on. Evidence:
   library) behind one switch, `OG_LANES` (`off`, `0` or `1` serial, `N`
   threads, unset the cores up to 8) and the probe's `lanes:<on|off>`;
   `dump_lanes` and `og_web_lanes` report threads, pool and the parallel
-  calls that ran. On lanes: og-anim's graph evaluation and palettes (64
+  calls that ran, in total and per site (`anim`, `extract`, `cull`,
+  `physics`; lanes.test.ts needs the first three to split). On lanes: og-anim's graph evaluation and palettes (64
   skeletons a task), extraction's row decoding (512 rows a task), og-render's
   frustum cull (1024 bounds a task; scheduling only, recording stays on the
   engine thread) and rapier's solver natively. A call splits only from two

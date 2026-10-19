@@ -29,7 +29,7 @@ pub(crate) fn register(probe: &mut og_probe::Probe, engine: u32) {
         "dump_lanes",
         og_probe::CommandDesc {
             usage: "dump_lanes[:path]".into(),
-            doc: "the lanes the engine got: on, threads, the pool (native, web-workers or none), why they are serial, the parallel calls and items so far, and the last step and render times".into(),
+            doc: "the lanes the engine got: on, threads, the pool (native, web-workers or none), why they are serial, the parallel calls and items so far (in all and per site: anim, extract, cull, physics), and the last step and render times".into(),
         },
         0,
         move |_world, _args| {
@@ -45,9 +45,20 @@ pub(crate) fn register(probe: &mut og_probe::Probe, engine: u32) {
 
 /// The lanes the process got (og_lanes::report) as the probe and the web
 /// host's `og_web_lanes` report them: on, threads, pool, why, parallelCalls,
-/// parallelItems.
+/// parallelItems, and `sites`: the same calls and items per call site
+/// (`anim`, `extract`, `cull`, `physics`).
 pub fn report() -> serde_json::Value {
     let r = og_lanes::report();
+    let sites: serde_json::Map<String, serde_json::Value> = og_lanes::Site::ALL
+        .iter()
+        .map(|&s| {
+            let c = r.sites[s as usize];
+            (
+                s.name().to_string(),
+                json!({ "calls": c.calls, "items": c.items }),
+            )
+        })
+        .collect();
     json!({
         "on": r.on,
         "threads": r.threads,
@@ -55,5 +66,6 @@ pub fn report() -> serde_json::Value {
         "why": r.why,
         "parallelCalls": r.parallel_calls,
         "parallelItems": r.parallel_items,
+        "sites": sites,
     })
 }

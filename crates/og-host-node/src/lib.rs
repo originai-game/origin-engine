@@ -16,7 +16,8 @@
 //!   ArrayBuffer (kept the same way) as the view is made and writable ones
 //!   are copied back when the system call ends.
 //! - `og_node_attach_offscreen` gives an engine an offscreen renderer
-//!   (`GameDesc.render` picks the antialiasing); the probe's `capture` and
+//!   (`GameDesc.render` picks the antialiasing, `OG_GFX_CULLING=cpu` forces
+//!   the CPU cull); the probe's `capture` and
 //!   the `screenshot` command render offscreen at the asked size and read it
 //!   back blocking (`og_render::Renderer::read_offscreen`);
 //!   `og_node_wait_gpu` waits for its GPU work, for benches that time a frame.
@@ -433,6 +434,13 @@ pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) 
         width: width.max(1),
         height: height.max(1),
         antialias: antialias(options["antialias"].as_str().unwrap_or("tier")),
+        // OG_GFX_CULLING=cpu culls on the CPU, as og-gfx does: lanes.test.ts
+        // needs the CPU cull, which GPU culling skips.
+        culling: if std::env::var("OG_GFX_CULLING").is_ok_and(|v| v == "cpu") {
+            og_render::Culling::Cpu
+        } else {
+            og_render::Culling::Auto
+        },
         ..og_render::RenderDesc::default()
     };
     let answer = og_render::Renderer::new_blocking(&desc)

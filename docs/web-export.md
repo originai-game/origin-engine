@@ -131,8 +131,10 @@ textures transcoded, and the visited groups loading offline.
 Parallel systems (docs/design.md §2.2, phase 3 lanes round). Rayon runs the
 engine's data-parallel work on a pool of threads: one a core up to 8
 natively (the addon and `og`), Workers sharing the wasm memory on the web.
-What runs on lanes (`crates/og-lanes`, `og_lanes::map` and `for_each_mut`,
-both keeping the input order): the animation graph's evaluation and
+What runs on lanes (`crates/og-lanes`, `og_lanes::map`, `for_each_mut` and
+`for_each_indexed`, all keeping the input order; each caller names its site,
+and the report counts the parallel calls and items per site: `anim`,
+`extract`, `cull`, `physics`): the animation graph's evaluation and
 skinning palettes per character (og-anim, 64 skeletons a task),
 extraction's per-row decoding (og-runtime, 512 rows a task) and frustum
 culling per view (og-render, 1024 bounds a task; scheduling only: the

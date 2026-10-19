@@ -798,6 +798,9 @@ pub struct Renderer {
     samples: u32,
     persistent: post::Persistent,
     graph: post::FrameGraph,
+    /// The CPU cull's per-instance scratch ([`Renderer::cull`]), kept
+    /// between frames so no pass allocates it.
+    cull_inside: Vec<bool>,
     post: post::PostPasses,
     cascade_map: ShadowMap,
     local_map: ShadowMap,
@@ -1914,6 +1917,7 @@ impl Renderer {
             samples,
             persistent,
             graph: post::FrameGraph::default(),
+            cull_inside: Vec::new(),
             post,
             cascade_map,
             local_map,
@@ -2670,22 +2674,35 @@ impl Renderer {
     /// whose sphere touches `frustum`. A batch that loses less than a tenth
     /// of its instances is drawn whole (cheaper than copying its
     /// transforms); otherwise its visible instances are appended to
-    /// `transforms`.
+    /// `transforms`. `inside` is the caller's scratch, reused across the
+    /// frame's passes.
+    #[allow(clippy::too_many_arguments)]
     fn cull(
         &self,
         batches: &[Batch],
         spheres: &[(Vec3, f32)],
         transforms: &mut Vec<[[f32; 4]; 4]>,
         origins: &mut Vec<u32>,
+        inside: &mut Vec<bool>,
         frustum: &Frustum,
         include: impl Fn(&Batch) -> bool,
     ) -> (DrawList, u32) {
         let mut list = DrawList::default();
         let mut culled = 0;
         let mut visible = Vec::new();
-        // The sphere tests are lanes (og-lanes) once there are thousands.
-        let inside = og_lanes::map(spheres, CULL_GRAIN, |&(c, r)| {
-            frustum.intersects_sphere(c, r)
+        // Only the included batches' spheres are tested: they are marked
+        // first, and a lane leaves an unmarked one alone (no read of it
+        // follows). The tests are lanes (og-lanes) once there are thousands.
+        inside.clear();
+        inside.resize(spheres.len(), false);
+        for b in batches.iter().filter(|b| include(b)) {
+            inside[b.first as usize..(b.first + b.count) as usize].fill(true);
+        }
+        og_lanes::for_each_indexed(og_lanes::Site::Cull, inside, CULL_GRAIN, |k, v| {
+            if *v {
+                let (c, r) = spheres[k];
+                *v = frustum.intersects_sphere(c, r);
+            }
         });
         for (b_index, b) in batches.iter().enumerate() {
             if !include(b) {
@@ -3305,6 +3322,8 @@ impl Renderer {
             });
             cull_passes.len() as u32 - 1
         };
+        // Lent to every CPU cull of this frame, given back after the last.
+        let mut cull_inside = std::mem::take(&mut self.cull_inside);
         let (main_list, mut culled) = if gpu_cull {
             let g = gpu_pass(cull_gpu::PassKind::Main, &view_frustum);
             gpu_pass(cull_gpu::PassKind::Occluders, &view_frustum);
@@ -3315,6 +3334,7 @@ impl Renderer {
                 &spheres,
                 &mut transforms,
                 &mut origins,
+                &mut cull_inside,
                 &view_frustum,
                 |b| !b.transparent,
             )
@@ -3341,6 +3361,7 @@ impl Renderer {
                     &spheres,
                     &mut transforms,
                     &mut origins,
+                    &mut cull_inside,
                     &frustum,
                     |b| !b.transparent,
                 )
@@ -3436,6 +3457,7 @@ impl Renderer {
                         &spheres,
                         &mut transforms,
                         &mut origins,
+                        &mut cull_inside,
                         &c.frustum,
                         |_| true,
                     )
@@ -3515,14 +3537,21 @@ impl Renderer {
                     let g = gpu_pass(cull_gpu::PassKind::Shadow, f);
                     indirect_list(&batches, sorted, g, |_| true)
                 } else {
-                    self.cull(&batches, &spheres, &mut transforms, &mut origins, f, |_| {
-                        true
-                    })
+                    self.cull(
+                        &batches,
+                        &spheres,
+                        &mut transforms,
+                        &mut origins,
+                        &mut cull_inside,
+                        f,
+                        |_| true,
+                    )
                     .0
                 };
                 local_lists[ls.slot * 6 + face] = Some(list);
             }
         }
+        self.cull_inside = cull_inside;
 
         // Upload instances, previous transforms, skinned data, strips and
         // sprites. With GPU culling the sorted instances go to its buffer and

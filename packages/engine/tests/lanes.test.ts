@@ -5,7 +5,10 @@
 // same captured pixels at ticks 60, 180 and 300 (animation palettes,
 // extraction and the frustum cull reach the pixels, the physics step the
 // world hash). A replay from the tick-60 snapshot with lanes switched at run
-// time (lanes:<on|off>) reaches tick 180's hash and frame again.
+// time (lanes:<on|off>) reaches tick 180's hash and frame again. The on run
+// split animation, extraction and the cull (dump_lanes counts each site);
+// both runs cull on the CPU (OG_GFX_CULLING=cpu), since GPU culling never
+// reaches the CPU cull.
 import { expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -25,7 +28,14 @@ type Run = {
   checkpoints: Point[];
   restored: string;
   replay: Point;
-  lanes: { on: boolean; threads: number; pool: string; parallelCalls: number; parallelItems: number };
+  lanes: {
+    on: boolean;
+    threads: number;
+    pool: string;
+    parallelCalls: number;
+    parallelItems: number;
+    sites: Record<"anim" | "extract" | "cull" | "physics", { calls: number; items: number }>;
+  };
 };
 
 // Module level, not a hook: a cook on a loaded machine outlives a hook's timeout.
@@ -35,7 +45,7 @@ if (!existsSync(join(scene, "cooked", ".cook.ogt"))) {
 }
 
 function run(lanes: string, replayLanes: string): Run {
-  const r = Bun.spawnSync(["bun", "tests/support/lanes-hash.ts", "--replay-lanes", replayLanes], { cwd: pkg, env: { ...process.env, OG_LANES: lanes } });
+  const r = Bun.spawnSync(["bun", "tests/support/lanes-hash.ts", "--replay-lanes", replayLanes], { cwd: pkg, env: { ...process.env, OG_LANES: lanes, OG_GFX_CULLING: "cpu" } });
   const out = new TextDecoder().decode(r.stdout);
   if (r.exitCode !== 0) throw new Error(`OG_LANES=${lanes}: ${new TextDecoder().decode(r.stderr)}${out}`);
   return JSON.parse(out.trim().split("\n").pop()!) as Run;
@@ -48,6 +58,10 @@ test("lanes on and off give the same world hashes, the same pixels and the same 
   expect([on.lanes.threads, on.lanes.pool]).toEqual([4, "native"]);
   expect(on.lanes.parallelCalls).toBeGreaterThan(0);
   expect(off.lanes.parallelCalls).toBe(0);
+  // Each lane site of the enlarged scene split at least once, not only one of them.
+  for (const site of ["anim", "extract", "cull"] as const) {
+    expect([site, on.lanes.sites[site].calls > 0]).toEqual([site, true]);
+  }
   // The scene moves, so equal frames are not one still picture.
   expect(new Set(on.checkpoints.map((p) => p.frame)).size).toBe(3);
   expect(new Set(on.checkpoints.map((p) => p.hash)).size).toBe(3);

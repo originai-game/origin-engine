@@ -349,7 +349,7 @@ pub(crate) fn step(
     // On the lanes pool natively (rapier's parallel build), on one thread
     // when lanes are off and in the wasm; the same result either way.
     let world = &mut sim.world;
-    og_lanes::install(|| {
+    og_lanes::install(og_lanes::Site::Physics, || {
         for _ in 0..substeps {
             world.step();
         }

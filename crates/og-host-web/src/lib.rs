@@ -459,7 +459,7 @@ fn take_resize(engine: u32) -> Option<(u32, u32)> {
 }
 
 /// The lanes the module got, as JSON (og-runtime's `lanes_report`: on,
-/// threads, pool, why, parallelCalls, parallelItems): the engine Worker's
+/// threads, pool, why, parallelCalls, parallelItems, sites): the engine Worker's
 /// `lanes` call, so a publish page without the probe's commands can see them.
 #[wasm_bindgen]
 pub fn og_web_lanes() -> String {

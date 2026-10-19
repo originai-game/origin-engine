@@ -19,13 +19,57 @@
 //! - in the single-threaded wasm, nowhere: every helper runs serially.
 //!
 //! The probe's `lanes:<on|off>` switches them at run time ([`set_enabled`])
-//! and `dump_lanes` reports what the engine got ([`report`]).
+//! and `dump_lanes` reports what the engine got ([`report`]), with the
+//! parallel calls counted per [`Site`].
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 static SWITCH: AtomicBool = AtomicBool::new(true);
-static CALLS: AtomicU64 = AtomicU64::new(0);
-static ITEMS: AtomicU64 = AtomicU64::new(0);
+static CALLS: [AtomicU64; Site::COUNT] = [const { AtomicU64::new(0) }; Site::COUNT];
+static ITEMS: [AtomicU64; Site::COUNT] = [const { AtomicU64::new(0) }; Site::COUNT];
+
+/// Where a helper call comes from: each caller names its site, so the
+/// report says which systems split, not only that something did.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Site {
+    /// og-anim: clip and graph evaluation, the joint palettes.
+    Anim,
+    /// og-runtime's extraction: decoding a component's rows.
+    Extract,
+    /// og-render's CPU frustum cull.
+    Cull,
+    /// og-physics: the rapier step ([`install`]).
+    Physics,
+}
+
+impl Site {
+    /// The number of sites.
+    pub const COUNT: usize = 4;
+    /// Every site, in report order.
+    pub const ALL: [Site; Site::COUNT] = [Site::Anim, Site::Extract, Site::Cull, Site::Physics];
+
+    /// The site's name in the report (`anim`, `extract`, `cull`, `physics`).
+    pub fn name(self) -> &'static str {
+        match self {
+            Site::Anim => "anim",
+            Site::Extract => "extract",
+            Site::Cull => "cull",
+            Site::Physics => "physics",
+        }
+    }
+}
+
+/// The parallel calls of one [`Site`] since the start and the items they ran.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct SiteCount {
+    pub calls: u64,
+    pub items: u64,
+}
+
+fn count(site: Site, items: usize) {
+    CALLS[site as usize].fetch_add(1, Ordering::Relaxed);
+    ITEMS[site as usize].fetch_add(items as u64, Ordering::Relaxed);
+}
 
 /// What the engine got: whether lanes run, on how many threads, and why
 /// they do not when they do not.
@@ -46,6 +90,9 @@ pub struct Report {
     pub parallel_calls: u64,
     /// The items those calls ran.
     pub parallel_items: u64,
+    /// The same per [`Site`], indexed by `site as usize` (the totals above
+    /// are their sums).
+    pub sites: [SiteCount; Site::COUNT],
 }
 
 /// Switches lanes on or off at run time (the probe's `lanes:<on|off>`).
@@ -59,6 +106,10 @@ pub fn report() -> Report {
     let (threads, pool, why) = imp::pool();
     let switched = SWITCH.load(Ordering::Relaxed);
     let on = threads > 1 && switched && why.is_empty();
+    let sites = Site::ALL.map(|s| SiteCount {
+        calls: CALLS[s as usize].load(Ordering::Relaxed),
+        items: ITEMS[s as usize].load(Ordering::Relaxed),
+    });
     Report {
         on,
         threads,
@@ -72,12 +123,13 @@ pub fn report() -> Report {
         } else {
             ""
         },
-        parallel_calls: CALLS.load(Ordering::Relaxed),
-        parallel_items: ITEMS.load(Ordering::Relaxed),
+        parallel_calls: sites.iter().map(|s| s.calls).sum(),
+        parallel_items: sites.iter().map(|s| s.items).sum(),
+        sites,
     }
 }
 
-fn parallel(len: usize, grain: usize) -> bool {
+fn parallel(site: Site, len: usize, grain: usize) -> bool {
     if len < grain.max(1) * 2 || !SWITCH.load(Ordering::Relaxed) {
         return false;
     }
@@ -85,21 +137,21 @@ fn parallel(len: usize, grain: usize) -> bool {
     if threads <= 1 || !why.is_empty() {
         return false;
     }
-    CALLS.fetch_add(1, Ordering::Relaxed);
-    ITEMS.fetch_add(len as u64, Ordering::Relaxed);
+    count(site, len);
     true
 }
 
 /// `f` for every item, the results in item order. Runs in parallel when lanes
 /// are on and there are at least two `grain`s of items, each task taking at
-/// least `grain` of them; serially otherwise.
-pub fn map<T, R, F>(items: &[T], grain: usize, f: F) -> Vec<R>
+/// least `grain` of them; serially otherwise. `site` names the caller in the
+/// report.
+pub fn map<T, R, F>(site: Site, items: &[T], grain: usize, f: F) -> Vec<R>
 where
     T: Sync,
     R: Send,
     F: Fn(&T) -> R + Sync + Send,
 {
-    if parallel(items.len(), grain) {
+    if parallel(site, items.len(), grain) {
         imp::map(items, grain.max(1), f)
     } else {
         items.iter().map(f).collect()
@@ -107,15 +159,28 @@ where
 }
 
 /// `f` on every item in place, as [`map`] decides.
-pub fn for_each_mut<T, F>(items: &mut [T], grain: usize, f: F)
+pub fn for_each_mut<T, F>(site: Site, items: &mut [T], grain: usize, f: F)
 where
     T: Send,
     F: Fn(&mut T) + Sync + Send,
 {
-    if parallel(items.len(), grain) {
+    if parallel(site, items.len(), grain) {
         imp::for_each_mut(items, grain.max(1), f)
     } else {
         items.iter_mut().for_each(f)
+    }
+}
+
+/// `f` on every item in place with its index, as [`map`] decides.
+pub fn for_each_indexed<T, F>(site: Site, items: &mut [T], grain: usize, f: F)
+where
+    T: Send,
+    F: Fn(usize, &mut T) + Sync + Send,
+{
+    if parallel(site, items.len(), grain) {
+        imp::for_each_indexed(items, grain.max(1), f)
+    } else {
+        items.iter_mut().enumerate().for_each(|(i, t)| f(i, t))
     }
 }
 
@@ -125,15 +190,8 @@ where
 /// they are off; elsewhere on the calling thread. Such a library must give
 /// the same results on any number of threads (rapier's does under
 /// `enhanced-determinism`; the lanes determinism test checks it).
-pub fn install<R: Send>(f: impl FnOnce() -> R + Send) -> R {
-    imp::install(report().on, f)
-}
-
-/// Counts one call of one item that went to the pool ([`install`]).
-#[cfg(not(target_arch = "wasm32"))]
-fn counted() {
-    CALLS.fetch_add(1, Ordering::Relaxed);
-    ITEMS.fetch_add(1, Ordering::Relaxed);
+pub fn install<R: Send>(site: Site, f: impl FnOnce() -> R + Send) -> R {
+    imp::install(site, report().on, f)
 }
 
 #[cfg(any(not(target_arch = "wasm32"), target_feature = "atomics"))]
@@ -150,6 +208,18 @@ mod par {
 
     pub fn for_each_mut<T: Send, F: Fn(&mut T) + Sync + Send>(items: &mut [T], grain: usize, f: F) {
         items.par_iter_mut().with_min_len(grain).for_each(f)
+    }
+
+    pub fn for_each_indexed<T: Send, F: Fn(usize, &mut T) + Sync + Send>(
+        items: &mut [T],
+        grain: usize,
+        f: F,
+    ) {
+        items
+            .par_iter_mut()
+            .enumerate()
+            .with_min_len(grain)
+            .for_each(|(i, t)| f(i, t))
     }
 }
 
@@ -207,9 +277,10 @@ mod imp {
             .ok();
     }
 
-    pub fn install<R: Send>(on: bool, f: impl FnOnce() -> R + Send) -> R {
+    pub fn install<R: Send>(site: super::Site, on: bool, f: impl FnOnce() -> R + Send) -> R {
         if on && let Some(p) = &pool_of().0 {
-            super::counted();
+            // One call of one item handed to the pool.
+            super::count(site, 1);
             return p.install(f);
         }
         SERIAL.with(|serial| match serial {
@@ -235,6 +306,14 @@ mod imp {
 
     pub fn for_each_mut<T: Send, F: Fn(&mut T) + Sync + Send>(items: &mut [T], grain: usize, f: F) {
         pooled(|| super::par::for_each_mut(items, grain, f))
+    }
+
+    pub fn for_each_indexed<T: Send, F: Fn(usize, &mut T) + Sync + Send>(
+        items: &mut [T],
+        grain: usize,
+        f: F,
+    ) {
+        pooled(|| super::par::for_each_indexed(items, grain, f))
     }
 }
 
@@ -262,9 +341,9 @@ mod imp {
         }
     }
 
-    pub use super::par::{for_each_mut, map};
+    pub use super::par::{for_each_indexed, for_each_mut, map};
 
-    pub fn install<R: Send>(_on: bool, f: impl FnOnce() -> R + Send) -> R {
+    pub fn install<R: Send>(_site: super::Site, _on: bool, f: impl FnOnce() -> R + Send) -> R {
         f()
     }
 }
@@ -290,7 +369,11 @@ mod imp {
         items.iter_mut().for_each(f)
     }
 
-    pub fn install<R>(_on: bool, f: impl FnOnce() -> R) -> R {
+    pub fn for_each_indexed<T, F: Fn(usize, &mut T)>(items: &mut [T], _grain: usize, f: F) {
+        items.iter_mut().enumerate().for_each(|(i, t)| f(i, t))
+    }
+
+    pub fn install<R>(_site: super::Site, _on: bool, f: impl FnOnce() -> R) -> R {
         f()
     }
 }
