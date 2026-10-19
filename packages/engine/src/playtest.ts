@@ -37,6 +37,8 @@ export interface PlaytestRun {
   text(file: string): string;
   /** A written WAV (`listen`): its rate, frames, peak and RMS (16-bit PCM read back, both channels). */
   wav(file: string): { rate: number; frames: number; peak: number; rms: number };
+  /** The runs of PlaytestDesc.then, in order, each with its own files (empty without `then`). */
+  readonly then: readonly PlaytestRun[];
 }
 
 /** The checks a playtest makes; a playtest that made none fails. */
@@ -57,8 +59,34 @@ export interface PlaytestDesc {
   readonly size?: string;
   /** Run the script this many times in fresh processes (default 1) and report every end hash in `run.hashes`: a determinism check. The files are the first run's. */
   readonly runs?: number;
+  /**
+   * The host's clock at tick 0, UTC milliseconds (`og run --clock`): og.platform.now and the
+   * answers' times start there and move with the ticks, so a playtest is reproducible.
+   * Omitted is 1767225600000 (2026-01-01T00:00:00Z).
+   */
+  readonly clock?: number;
+  /**
+   * `keep`: every process of this playtest (the script, its `runs` and its `then` steps)
+   * answers og.platform from one local store, `<out>/platform.json`, empty when the playtest
+   * starts, so a later process sees what an earlier one saved (a relaunch). Omitted: each
+   * process has its own store in memory.
+   */
+  readonly store?: "keep";
+  /** More processes after the script, in order, each a fresh `og run` (a relaunch): their runs are `run.then`. */
+  readonly then?: readonly PlaytestStep[];
   readonly check: (run: PlaytestRun, t: PlaytestChecks) => void | Promise<void>;
 }
+
+/** A later process of a playtest (`PlaytestDesc.then`). */
+export interface PlaytestStep {
+  /** Its own script, as PlaytestDesc.commands. */
+  readonly commands: string;
+  /** Its clock at its tick 0, UTC ms; omitted is the playtest's clock. */
+  readonly clock?: number;
+}
+
+/** The clock a playtest's processes start at when it names none: 2026-01-01T00:00:00Z. */
+export const PLAYTEST_CLOCK = 1767225600000;
 
 /** Declare a playtest: the default export of a `tests/*.og.ts` file. */
 export function playtest(desc: PlaytestDesc): PlaytestDesc {

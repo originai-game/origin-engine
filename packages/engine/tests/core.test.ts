@@ -13,8 +13,14 @@
 // - og.platform.now is 0, reads the clock inside the tick (so it does not
 //   follow the ticks under a fixed clock), or an answer carries no time, or
 //   the hosts disagree → "og.platform.now and the answers' time …"
+// - `og test` forgets the store between a playtest's processes when asked to
+//   keep it, keeps it when not, ignores a step's clock, or never runs the
+//   `then` steps → "og test keeps the local store across a playtest's
+//   processes …" (tests/fixtures/relaunch)
 import { expect, test } from "bun:test";
+import { cpSync, mkdirSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { ogBin } from "./support/og-bin.ts";
 import { fileURLToPath } from "node:url";
 
 declare const Bun: {
@@ -121,3 +127,17 @@ test("og.platform.now and the answers' time follow the host's clock, as host inp
   }
   expect(web.fixed).toEqual(node.fixed);
 }, 120_000);
+
+test("og test keeps the local store across a playtest's processes with store: keep, and each its own clock", () => {
+  const repo = join(pkg, "..", "..");
+  const game = join(repo, "target", "evidence", "relaunch");
+  rmSync(game, { recursive: true, force: true });
+  mkdirSync(dirname(game), { recursive: true });
+  cpSync(join(pkg, "tests", "fixtures", "relaunch"), game, { recursive: true });
+  const r = Bun.spawnSync([ogBin(), "test", game], { cwd: repo, env: { ...process.env, OG_ENGINE_PACKAGE: pkg } });
+  const out = new TextDecoder().decode(r.stdout) + new TextDecoder().decode(r.stderr);
+  if (r.exitCode !== 0) throw new Error(out);
+  expect(out).toMatch(/PASS away \(7 checks/);
+  expect(out).toMatch(/PASS fresh \(2 checks/);
+  expect(out).toContain("2 suite(s) passed");
+}, 300_000);

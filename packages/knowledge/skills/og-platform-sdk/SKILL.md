@@ -84,7 +84,15 @@ trying.
   `templates/archetypes/roguelike/tests/win.og.ts`).
 - `og run --platform-store save.json` keeps the local store in a file, so
   a second run sees the first's save; without it the store is in memory
-  for the run.
+  for the run. `og run --clock <UTC ms>` fixes the host clock at tick 0
+  (it then moves with the ticks); a playtest runs at 2026-01-01 00:00 UTC
+  unless its `clock` says otherwise.
+- A relaunch across processes: a playtest with `store: "keep"` keeps one
+  local store for its run and its `then` steps (`{ commands, clock }`,
+  each a fresh `og run`), and `check` reads each step's run in
+  `run.then[n]` (`templates/archetypes/idle/tests/away.og.ts`: saved at
+  `clock`, launched two hours later). A command that relaunches in the
+  same process stays for tests that need no second process.
 - In the browser, `packages/engine/tests/web/player.ts` shows the Player
   side: a framed game's first calls wait for the Player's `hello`, then go
   as protocol 2 `call`s (`store.get`, `store.set`, `leaderboard.around`,
