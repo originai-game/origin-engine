@@ -13,7 +13,9 @@
 // real tap; real keyboard input reaching the engine; dev-only pause, advance,
 // bounds, patch (and their `unsupported` in a publish build); `refused`
 // and `unsupported` errors; and silence for another wire version, for a page
-// told another origin and for a page told none.
+// told another origin and for a page told none. Then the in-page host: a
+// top-level dev page told its own origin answers calls its own window posts
+// (the Stage overlay drawn in the engine's document), and told another, not.
 //
 //   bun tests/web/wire.ts [--out <transcript.json>] [--chrome <path>]
 //
@@ -183,20 +185,20 @@ async function run(kind: "dev" | "publish", isolate: boolean, browser: Browser):
     check(ents.kind === "result" && Array.isArray(items) && items.some((i) => i.id === "runner"), `${label}: entities lists the runner`, ents);
     const ent = await c("entity", { id: "runner" });
     const ev = ent.result as { id: string; params: Record<string, unknown> };
-    check(ent.kind === "result" && ev.id === "runner" && typeof ev.params["Tuning.gravity"] === "number", `${label}: entity answers {id, params}`, ent);
+    check(ent.kind === "result" && ev.id === "runner" && typeof ev.params["Tuning.speedMax"] === "number", `${label}: entity answers {id, params}`, ent);
     const nobody = await c("entity", { id: "nobody" });
     check(nobody.kind === "error" && nobody.code === "refused", `${label}: entity of an unknown id is refused`, nobody);
 
     if (kind === "dev") {
       const b = await c("bounds", { id: "runner" });
-      const g = (b.result as { items: Array<Record<string, unknown>> }).items.find((i) => i["parameter"] === "Tuning.gravity");
-      check(b.kind === "result" && g?.["min"] === 10 && g?.["max"] === 80 && typeof g?.["value"] === "number", `${label}: bounds answers {items} with the declared range and value`, g);
-      const pt = await c("patch", { id: "runner", parameter: "Tuning.gravity", value: 40 });
+      const g = (b.result as { items: Array<Record<string, unknown>> }).items.find((i) => i["parameter"] === "Tuning.speedMax");
+      check(b.kind === "result" && g?.["min"] === 4 && g?.["max"] === 20 && typeof g?.["value"] === "number", `${label}: bounds answers {items} with the declared range and value`, g);
+      const pt = await c("patch", { id: "runner", parameter: "Tuning.speedMax", value: 15 });
       const pr = pt.result as { applied: boolean; roundTripMs: number };
       check(pt.kind === "result" && pr.applied === true && typeof pr.roundTripMs === "number", `${label}: patch answers {applied, roundTripMs}`, pt);
       const after = await c("entity", { id: "runner" });
-      check((after.result as { params: Record<string, number> }).params["Tuning.gravity"] === 40, `${label}: the patch applied`, after);
-      const out = await c("patch", { id: "runner", parameter: "Tuning.gravity", value: 500 });
+      check((after.result as { params: Record<string, number> }).params["Tuning.speedMax"] === 15, `${label}: the patch applied`, after);
+      const out = await c("patch", { id: "runner", parameter: "Tuning.speedMax", value: 500 });
       check(out.kind === "error" && out.code === "refused", `${label}: a patch outside the range is refused`, out);
       const ps = await c("pause");
       check(ps.kind === "result" && (ps.result as { paused: boolean }).paused === true, `${label}: pause answers the state, paused`, ps);
@@ -209,7 +211,7 @@ async function run(kind: "dev" | "publish", isolate: boolean, browser: Browser):
       const rs = await c("resume");
       check(rs.kind === "result" && (rs.result as { paused: boolean }).paused === false, `${label}: resume answers the state, playing`, rs);
     } else {
-      for (const [m, p] of [["pause", {}], ["resume", {}], ["advance", { steps: 1 }], ["bounds", { id: "runner" }], ["patch", { id: "runner", parameter: "Tuning.gravity", value: 40 }]] as const) {
+      for (const [m, p] of [["pause", {}], ["resume", {}], ["advance", { steps: 1 }], ["bounds", { id: "runner" }], ["patch", { id: "runner", parameter: "Tuning.speedMax", value: 15 }]] as const) {
         const a = await c(m, p);
         check(a.kind === "error" && a.code === "unsupported", `${label}: ${m} is unsupported in a publish build`, a);
       }
@@ -257,9 +259,54 @@ async function run(kind: "dev" | "publish", isolate: boolean, browser: Browser):
   }
 }
 
+/**
+ * The in-page host: the Stage overlay injected into a top-level engine page
+ * (origingame docs/game-pipeline.md §3.1 The Stage page) posts to the page's
+ * own window. A page told its own origin answers it; told another, it does not.
+ */
+async function inPage(browser: Browser): Promise<void> {
+  const label = "dev in-page";
+  let told: string | null = null;
+  const live = serve({ dist: dists["dev"]!, isolate: false, told: () => told });
+  told = `http://127.0.0.1:${live.port}`;
+  const log: string[] = [];
+  const page: Page = await browser.open(`http://127.0.0.1:${live.port}/game/index.html`, log);
+  const host = `(() => { if (window.wire) return; const pending = new Map(); let n = 0; window.hellos = [];
+    addEventListener("message", (e) => { if (e.source !== window || e.origin !== location.origin) return; const m = e.data;
+      if (!m || m.og !== "probe" || m.v !== 1 || m.kind === "call") return; if (m.kind === "hello") { hellos.push(m); return; }
+      const p = pending.get(m.id); if (p) { pending.delete(m.id); p(m); } });
+    window.wire = (method, params = {}, wait = 8000) => new Promise((resolve) => { const id = "s" + (++n); pending.set(id, resolve);
+      window.postMessage({ og: "probe", v: 1, kind: "call", id, method, params }, location.origin);
+      setTimeout(() => { if (pending.has(id)) { pending.delete(id); resolve({ silent: true }); } }, wait); }); })()`;
+  try {
+    await page.until("typeof __runtime_probe__ === 'object'", 60_000);
+    await page.eval(host);
+    const h = await page.eval<Answer>("wire('hello')");
+    check(h.kind === "result" && (h.result as { protocol: number }).protocol === 5, `${label}: the page answers its own window's hello`, h);
+    check((await page.eval<number>("hellos.length")) >= 1, `${label}: and says hello to it`);
+    const st = await page.eval<Answer>("wire('state')");
+    check(st.kind === "result" && typeof (st.result as { tick: number }).tick === "number", `${label}: state answers {tick, paused, timings}`, st);
+    const pt = await page.eval<Answer>("wire('patch', { id: 'runner', parameter: 'Tuning.speedMax', value: 16 })");
+    check(pt.kind === "result" && (pt.result as { applied: boolean }).applied === true, `${label}: patch applies from the in-page host`, pt);
+    told = "http://example.invalid";
+    await page.send("Page.reload");
+    await page.until("typeof __runtime_probe__ === 'object'", 60_000);
+    await page.eval(host);
+    const silent = await page.eval<Answer>("wire('hello', {}, 1500)");
+    check(silent.silent === true, `${label}: a page told another origin does not answer itself`, silent);
+  } catch (e) {
+    check(false, `${label}: ran to the end`, String(e instanceof Error ? e.stack : e));
+    console.error(log.slice(-30).join("\n"));
+  } finally {
+    live.stop();
+    await page.send("Page.close").catch(() => {});
+  }
+}
+
 const browser = await Browser.launch({ chrome });
 try {
   for (const kind of ["dev", "publish"] as const) for (const isolate of [true, false]) await run(kind, isolate, browser);
+  await inPage(browser);
 } finally {
   await browser.close();
 }

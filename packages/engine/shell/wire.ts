@@ -46,6 +46,11 @@ export type ProbeCall = (method: string, params?: Record<string, unknown>) => Pr
 export interface WireOptions {
   /** The window allowed to call. */
   readonly host: () => Window | null | undefined;
+  /**
+   * A second caller: the page's own window, when a host in this same document (the
+   * Stage overlay injected into a top-level engine page) posts to it. Answered like the host.
+   */
+  readonly inPage?: () => Window | null | undefined;
   /** The origin allowed to call and the only target of every post; null keeps the page silent. */
   readonly hostOrigin: () => string | null;
   /** The engine's probe, or null before the engine is ready. */
@@ -261,21 +266,32 @@ export function createWire(options: WireOptions) {
     }
   }
 
-  function post(message: Record<string, unknown>): void {
+  /** The windows that may call: the host, and the page itself when an in-page host is allowed. */
+  const callers = (): Window[] => {
+    const out: Window[] = [];
     const host = options.host();
+    if (host) out.push(host);
+    const self = options.inPage?.();
+    if (self && self !== host) out.push(self);
+    return out;
+  };
+
+  function post(message: Record<string, unknown>, to?: Window): void {
     const origin = options.hostOrigin();
-    if (!host || !origin || origin === "*") return;
-    try {
-      host.postMessage({ og: PROBE_WIRE, v: PROBE_WIRE_VERSION, ...message }, origin);
-    } catch {
-      /* the host went away */
+    if (!origin || origin === "*") return;
+    for (const target of to ? [to] : callers()) {
+      try {
+        target.postMessage({ og: PROBE_WIRE, v: PROBE_WIRE_VERSION, ...message }, origin);
+      } catch {
+        /* the host went away */
+      }
     }
   }
 
   function onMessage(event: MessageEvent): void {
-    const host = options.host();
     const origin = options.hostOrigin();
-    if (!host || !origin || event.source !== host || event.origin !== origin) return;
+    const from = callers().find((w) => w === event.source);
+    if (!from || !origin || event.origin !== origin) return;
     const data = plain(event.data);
     if (!data || data["og"] !== PROBE_WIRE || data["v"] !== PROBE_WIRE_VERSION || data["kind"] !== "call") return;
     const id = data["id"];
@@ -284,10 +300,10 @@ export function createWire(options: WireOptions) {
     const received = now();
     answer(data["method"], params, received).then(
       (result) => {
-        post({ kind: "result", id, result: result === undefined ? null : result });
-        if (data["method"] === "hello") post({ kind: "hello", ...hello() });
+        post({ kind: "result", id, result: result === undefined ? null : result }, from);
+        if (data["method"] === "hello") post({ kind: "hello", ...hello() }, from);
       },
-      (error) => post({ kind: "error", id, code: error instanceof WireError ? error.code : "failed", message: String((error as Error)?.message ?? error) }),
+      (error) => post({ kind: "error", id, code: error instanceof WireError ? error.code : "failed", message: String((error as Error)?.message ?? error) }, from),
     );
   }
 
@@ -296,7 +312,7 @@ export function createWire(options: WireOptions) {
     let last: string | null = null;
     const check = () => {
       const origin = options.hostOrigin();
-      if (!options.host() || !origin) {
+      if (!callers().length || !origin) {
         last = null;
         return;
       }
@@ -314,12 +330,17 @@ export function createWire(options: WireOptions) {
   return { onMessage, watch, hello, answer };
 }
 
-/** The wire on this page: host = parent when embedded, else opener; origin = `window.__OG_STAGE_HOST__`. */
+/**
+ * The wire on this page: host = parent when embedded, else opener; origin =
+ * `window.__OG_STAGE_HOST__`. A top-level page told its own origin also answers
+ * itself: the Stage overlay drawn in this document posts to this window.
+ */
 export function mountWire(options: Omit<WireOptions, "host" | "hostOrigin">): () => void {
   const w = globalThis as unknown as Window & Record<string, unknown>;
   const wire = createWire({
     ...options,
     host: () => (w.parent && w.parent !== w ? w.parent : (w.opener as Window | null)),
+    inPage: () => (w.parent === w && w[STAGE_HOST_GLOBAL] === w.location?.origin ? w : null),
     hostOrigin: () => {
       const told = w[STAGE_HOST_GLOBAL];
       return typeof told === "string" && told && told !== "*" ? told : null;
