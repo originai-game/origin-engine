@@ -76,7 +76,7 @@ packages/engine/types packages/engine/schema packages/engine/src/generated \
 crates/og-host-web/src/generated crates/og-host-node/src/generated packages/knowledge/wiki $RULE_COMMON"
 }
 rule_web() {
-  echo "$(og_crate_dirs -p og-host-web -p og-tests-web --target "$WASM_TRIPLE" -e normal,build | og_words) packages/engine templates/fx-showcase $RULE_COMMON"
+  echo "$(og_crate_dirs -p og-host-web -p og-tests-web --target "$WASM_TRIPLE" -e normal,build | og_words) packages/engine templates/fx-showcase templates/ui-kit $RULE_COMMON"
 }
 
 # skip_unchanged KEY WHAT RULE...: true (and prints why) when KEY may be
@@ -406,12 +406,12 @@ step_bun_quick() {
   bun_test_packages $BUN_QUICK_PACKAGES
 }
 
-# The webgpu and webgl2 tiers of templates/fx-showcase and of og-tests' own
-# gfx scenes (crates/og-tests-web) in headless Chrome (docs/ci.md §Browser
-# reference tiers; `make web-reference`). In no lane: CI has no Chrome for
-# Testing.
+# The webgpu and webgl2 tiers of templates/fx-showcase, of og-tests' own
+# gfx scenes and og-ui's (crates/og-tests-web) and of og-ui's kit frames
+# (templates/ui-kit) in headless Chrome (docs/ci.md §Browser reference
+# tiers; `make web-reference`). In no lane: CI has no Chrome for Testing.
 step_web_reference() {
-  local a b c d e f
+  local a b c d e f g h
   if skip_unchanged web-reference "web-reference" "$(rule_web)"; then return $SKIP; fi
   og_need bun || return 1
   (cd packages/engine && bun tests/web/reference.ts); a=$?
@@ -422,7 +422,10 @@ step_web_reference() {
   # og-tests' scenes against their tier's reference, else metal's.
   (cd packages/engine && bun tests/web/reference-gfx.ts); e=$?
   (cd packages/engine && bun tests/web/reference-gfx.ts --webgl); f=$?
-  return $((a | b | c | d | e | f))
+  # og-ui's kit frames, each reference playtest a fresh run like its own.
+  (cd packages/engine && bun tests/web/reference-ui.ts); g=$?
+  (cd packages/engine && bun tests/web/reference-ui.ts --webgl); h=$?
+  return $((a | b | c | d | e | f | g | h))
 }
 
 # --- Scheduling ---------------------------------------------------------------

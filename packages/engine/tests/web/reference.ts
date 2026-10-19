@@ -23,7 +23,14 @@
 // Another project's playtest frames: --project <dir> (relative to the
 // repository) with --script "<og run --commands script>" and
 // --shots name@tick,... (the ticks its screenshots run at); the script runs
-// as it is and each shot is compared with <dir>/references/<tier>/<name>.png.
+// as it is and each shot is compared with <dir>/references/<tier>/<name>.png
+// (each shot falls back to metal's on its own). --size WxH drives another
+// canvas size (default 1280x720, still DPR 1), --references <dir> (relative
+// to the repository) reads and records the references somewhere else, and
+// --sheet <name>.png,<factor>,<cols> compares each shot, box-filtered by
+// <factor>, with its cell of the sheet <name>.png (shots in order, <cols>
+// cells a row; --record composes and writes the sheet): og-ui's kit in
+// reference-ui.ts.
 //
 // --time <n> then drives n more frames after the last shot and reports the
 // wall time of each `frame` call (one tick, one render submitted: median and
@@ -46,6 +53,7 @@ import { Browser, chromePath } from "./cdp.ts";
 import { serve } from "./serve.ts";
 import { ogBin } from "../support/og-bin.ts";
 import { decodePng, type Image } from "../support/png.ts";
+import { encodePng } from "../../src/node/png.ts";
 
 declare const Bun: {
   build(o: { entrypoints: string[]; target: string; format: string }): Promise<{ success: boolean; logs: unknown[]; outputs: Array<{ text(): Promise<string> }> }>;
@@ -65,8 +73,13 @@ const work = join(pkg, "dist", "test-reference");
 const out = resolve(opt("--out") ?? join(work, "out"));
 const chrome = chromePath(args);
 const TICK_RATE = 60;
-const WIDTH = 1280;
-const HEIGHT = 720;
+const [WIDTH, HEIGHT] = (opt("--size") ?? "1280x720").split("x").map(Number) as [number, number];
+if (!(WIDTH > 0 && HEIGHT > 0)) throw new Error(`--size ${opt("--size")}: write WIDTHxHEIGHT`);
+const refsRoot = opt("--references") ? join(repo, opt("--references")!) : join(project, "references");
+/** --sheet: the sheet's file, the box filter, the cells a row. */
+const SHEET = opt("--sheet")
+  ? (([name, factor, cols]) => ({ name: name!, factor: Number(factor), cols: Number(cols) }))(opt("--sheet")!.split(","))
+  : undefined;
 
 /** The playtest's stations (tests/frames.og.ts): switched at `at` seconds, captured at tick `tick`, the tick its `screenshot` runs at. */
 const SHOTS = opt("--shots");
@@ -108,6 +121,35 @@ function compare(a: Image, b: Image): { outliers: number; rmse: number; diff: Ui
   return { outliers: outliers / n, rmse: Math.sqrt(sum / (n * 3)), diff };
 }
 
+/** An n× box filter, rounded (templates/ui-kit/tests/skins.ts `shrink`). */
+function shrink(img: Image, n: number): Image {
+  const w = Math.floor(img.width / n);
+  const h = Math.floor(img.height / n);
+  const out = new Uint8Array(w * h * 4);
+  const area = n * n;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      for (let k = 0; k < 4; k++) {
+        let sum = 0;
+        for (let dy = 0; dy < n; dy++) for (let dx = 0; dx < n; dx++) sum += img.rgba[((n * y + dy) * img.width + n * x + dx) * 4 + k]!;
+        out[(y * w + x) * 4 + k] = Math.floor((sum + (area >> 1)) / area);
+      }
+    }
+  }
+  return { width: w, height: h, rgba: out };
+}
+
+/** Copies `cell` (`cw`×`ch`) into or out of cell `i` of a sheet of `cols` columns. */
+function blit(sheet: Image, cell: Image, i: number, cols: number, into: boolean): void {
+  const x0 = (i % cols) * cell.width;
+  const y0 = Math.floor(i / cols) * cell.height;
+  for (let y = 0; y < cell.height; y++) {
+    const at = ((y0 + y) * sheet.width + x0) * 4;
+    if (into) sheet.rgba.set(cell.rgba.subarray(y * cell.width * 4, (y + 1) * cell.width * 4), at);
+    else cell.rgba.set(sheet.rgba.subarray(at, at + cell.width * 4), y * cell.width * 4);
+  }
+}
+
 if (!existsSync(join(project, "cooked", ".cook.ogt"))) {
   const r = Bun.spawnSync([ogBin(), "cook", project], { cwd: repo, stdout: "ignore", stderr: "pipe" });
   if (r.exitCode !== 0) throw new Error(`cooking ${project}: ${new TextDecoder().decode(r.stderr)}`);
@@ -127,9 +169,14 @@ const browser = await Browser.launch({ chrome, width: WIDTH, height: HEIGHT });
 const log: string[] = [];
 const dir = join(out, tier);
 mkdirSync(dir, { recursive: true });
-const own = join(project, "references", tier);
-const against = record ? own : existsSync(join(own, `${STATIONS[0]!.name}.png`)) ? own : join(project, "references", "metal");
-const result: Record<string, unknown> = { tier, against: against.slice(repo.length + 1), tolerance: TOLERANCE, stations: {} as Record<string, unknown> };
+const own = join(refsRoot, tier);
+const metal = join(refsRoot, "metal");
+/** The reference a shot (or the sheet) is judged against: this tier's, else metal's. */
+const referenceOf = (file: string) => (record || existsSync(join(own, file)) ? join(own, file) : join(metal, file));
+const result: Record<string, unknown> = { tier, size: `${WIDTH}x${HEIGHT}`, tolerance: TOLERANCE, stations: {} as Record<string, unknown> };
+if (SHEET) result["sheet"] = { ...SHEET, against: referenceOf(SHEET.name).slice(repo.length + 1) };
+const sheetRef = SHEET && !record && existsSync(referenceOf(SHEET.name)) ? decodePng(new Uint8Array(readFileSync(referenceOf(SHEET.name)))) : undefined;
+const cells: Image[] = [];
 let failures = 0;
 const t0 = performance.now();
 let tab: Awaited<ReturnType<typeof browser.open>> | undefined;
@@ -196,6 +243,10 @@ try {
     console.log(`frame time (${tier}, ${timed} frames after tick ${frames}): median ${frameMs.median} ms, p95 ${frameMs.p95} ms, ${frameMs.withGpu} ms each with the GPU's work (the frames and one capture)`);
   }
   const shots = await tab.eval<Array<{ png: string; width: number; height: number; tick: number } | null>>("globalThis.__og_shots__");
+  if (sheetRef && SHEET) {
+    const need = `${SHEET.cols * Math.floor(WIDTH / SHEET.factor)}x${Math.ceil(STATIONS.length / SHEET.cols) * Math.floor(HEIGHT / SHEET.factor)}`;
+    if (`${sheetRef.width}x${sheetRef.height}` !== need) throw new Error(`${referenceOf(SHEET.name)} is ${sheetRef.width}x${sheetRef.height}, not ${need} (one cell for each of the ${STATIONS.length} shots)`);
+  }
   for (const [i, s] of STATIONS.entries()) {
     const shot = shots[i];
     if (!shot?.png) throw new Error(`${s.name}: the capture answered ${JSON.stringify(shot)?.slice(0, 200)}`);
@@ -210,13 +261,33 @@ try {
       console.log(`FAIL ${s.name}: ${row["error"]}`);
       continue;
     }
+    if (SHEET) {
+      // The shot as its cell: compared with the sheet's cell, or kept for the sheet --record writes.
+      const c = shrink(decodePng(bytes), SHEET.factor);
+      cells.push(c);
+      if (record) continue;
+      if (!sheetRef) throw new Error(`no sheet at ${referenceOf(SHEET.name)}; record it with --record`);
+      const want: Image = { width: c.width, height: c.height, rgba: new Uint8Array(c.width * c.height * 4) };
+      blit(sheetRef, want, i, SHEET.cols, false);
+      const d = compare(c, want);
+      const ok = d.outliers <= TOLERANCE.outliers && d.rmse <= TOLERANCE.rmse;
+      Object.assign(row, { cell: i, outliers: +(d.outliers * 100).toFixed(3), rmse: +d.rmse.toFixed(5), ok });
+      if (!ok) {
+        failures++;
+        writeFileSync(join(dir, `${s.name}.diff.rgba`), d.diff);
+      }
+      console.log(`${ok ? "ok  " : "FAIL"} ${s.name} (${tier}, tick ${shot.tick}): cell ${i} of ${SHEET.name}: ${(d.outliers * 100).toFixed(3)} % outliers (≤ 0.5 %), RMSE ${d.rmse.toFixed(5)} (≤ 0.01) against ${referenceOf(SHEET.name).slice(repo.length + 1)}`);
+      continue;
+    }
     if (record) {
       mkdirSync(own, { recursive: true });
       copyFileSync(file, join(own, `${s.name}.png`));
       console.log(`recorded ${join(own, `${s.name}.png`)} (tick ${shot.tick})`);
       continue;
     }
-    const d = compare(decodePng(bytes), decodePng(new Uint8Array(readFileSync(join(against, `${s.name}.png`)))));
+    const against = referenceOf(`${s.name}.png`);
+    row["against"] = against.slice(repo.length + 1);
+    const d = compare(decodePng(bytes), decodePng(new Uint8Array(readFileSync(against))));
     const ok = d.outliers <= TOLERANCE.outliers && d.rmse <= TOLERANCE.rmse;
     Object.assign(row, { outliers: +(d.outliers * 100).toFixed(3), rmse: +d.rmse.toFixed(5), ok });
     if (!ok) {
@@ -225,6 +296,16 @@ try {
       writeFileSync(join(dir, `${s.name}.diff.rgba`), d.diff);
     }
     console.log(`${ok ? "ok  " : "FAIL"} ${s.name} (${tier}, tick ${shot.tick}): ${(d.outliers * 100).toFixed(3)} % outliers (≤ 0.5 %), RMSE ${d.rmse.toFixed(5)} (≤ 0.01) against ${against.slice(repo.length + 1)}`);
+  }
+  if (SHEET && record) {
+    const cw = cells[0]!.width;
+    const ch = cells[0]!.height;
+    const sheet: Image = { width: SHEET.cols * cw, height: Math.ceil(cells.length / SHEET.cols) * ch, rgba: new Uint8Array(0) };
+    sheet.rgba = new Uint8Array(sheet.width * sheet.height * 4);
+    cells.forEach((c, i) => blit(sheet, c, i, SHEET.cols, true));
+    mkdirSync(own, { recursive: true });
+    writeFileSync(join(own, SHEET.name), encodePng(sheet));
+    console.log(`recorded ${join(own, SHEET.name)} (${cells.length} cells)`);
   }
 } catch (e) {
   failures++;
