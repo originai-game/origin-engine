@@ -282,6 +282,9 @@ pub(crate) struct State {
     pub physics_heightfields: BTreeMap<u64, og_physics::HeightfieldDesc>,
     /// UI warnings already logged, so a repeated one is logged once.
     pub ui_warned: BTreeSet<String>,
+    /// Undeclared accesses already logged (`system access name`), so each is
+    /// logged once per system (`api::undeclared`).
+    pub undeclared_logged: BTreeSet<String>,
     /// og-anim on this world, and its assets (replayed into a reload's world).
     pub anim: Option<og_anim::AnimationSystem>,
     pub anim_assets: super::anim::AnimAssets,
@@ -911,6 +914,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         physics_meshes: BTreeMap::new(),
         physics_heightfields: BTreeMap::new(),
         ui_warned: BTreeSet::new(),
+        undeclared_logged: BTreeSet::new(),
         anim: Some(a.anim.clone()),
         anim_assets: Default::default(),
         feel: Some(a.feel.clone()),
@@ -1144,10 +1148,13 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
         Err(e) => return refuse(e),
     };
     let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
+    let behind = eng.state.borrow().accumulator_ms;
     let probe = eng.probe.borrow();
+    // `behind`: real time the accumulator holds that no tick has simulated
+    // yet, so a host can place an input event within the next tick.
     json!({
         "ok": true, "ticks": ticks, "tick": tick, "rendered": rendered,
-        "paused": probe.paused(), "quit": probe.quit_requested(),
+        "paused": probe.paused(), "quit": probe.quit_requested(), "behind": behind,
     })
     .to_string()
 }
@@ -1390,6 +1397,13 @@ pub fn write_resource(world: u32, resource: &str, value: &str) -> String {
                 .find(|fl| fl.readonly && value.get(&fl.name).is_some())
             {
                 return Err(format!("{resource}.{} is read only", field.name));
+            }
+            let declared = eng.state.borrow().systems[f.system]
+                .writes
+                .iter()
+                .any(|w| w == resource);
+            if !declared {
+                return Err(super::api::undeclared(&eng, f.system, "write", resource));
             }
             // SAFETY: the frame is published while its system runs.
             let ctx = unsafe { f.ctx() };

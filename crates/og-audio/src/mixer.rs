@@ -18,7 +18,9 @@
 //!   balance for stereo). Bus gains (master × bus) fold into each voice.
 //!   A voice's low-pass (distance, occlusion, `lowpass`) is a one-pole
 //!   whose cutoff glides with its gain ramp. A play at a negative position
-//!   starts that many source frames later (a `startAt` inside a tick).
+//!   starts that many source frames later (a `startAt` inside a tick); a
+//!   `cue` after it starts it that far into the sound (`startOffset`), at
+//!   full gain from its first sample.
 //! - **Buses**: voices sum into their bus; each of music, sfx and ui runs
 //!   its inserts (high-pass, low-pass, compressor, then ducking by its key
 //!   bus's level) and sends to the shared reverb, then sums into master,
@@ -106,6 +108,8 @@ struct Voice {
     stereo: bool,
     frames: u64,
     pos: f64,
+    /// Where in the sound it starts once its delay is over (a `cue`).
+    cue: f64,
     /// Source frames per output frame at pitch 1.
     base_step: f64,
     pitch: f32,
@@ -208,6 +212,24 @@ impl Voice {
         }
     }
 
+    /// Moves the playhead to its cue (once), wrapping a loop into its region.
+    fn take_cue(&mut self) {
+        if self.cue <= 0.0 {
+            return;
+        }
+        self.pos += self.cue;
+        self.cue = 0.0;
+        self.wrap();
+    }
+
+    /// A looping playhead past its loop's end goes back into the region.
+    fn wrap(&mut self) {
+        if self.looping && self.pos >= self.loop_end as f64 && self.loop_end > self.loop_start {
+            let span = (self.loop_end - self.loop_start) as f64;
+            self.pos = self.loop_start as f64 + (self.pos - self.loop_start as f64) % span;
+        }
+    }
+
     /// Adds this voice into `out` (interleaved stereo); false once it is done.
     fn render_add(&mut self, out: &mut [f32]) -> bool {
         let step = self.base_step * f64::from(self.pitch);
@@ -217,12 +239,21 @@ impl Voice {
                 if self.pos > -1e-6 {
                     // Rounding of a start time: this is its frame.
                     self.pos = 0.0;
+                    self.take_cue();
                 } else {
                     // Scheduled later in the tick: silent, ramps held, until it starts.
                     self.pos += step;
                     if self.stopping {
                         self.done = true;
                         return false;
+                    }
+                    if self.pos >= 0.0 {
+                        // The delay is over inside this frame: the sound starts at its cue.
+                        self.take_cue();
+                        if !self.looping && self.pos >= self.frames as f64 {
+                            self.done = true;
+                            return false;
+                        }
                     }
                     continue;
                 }
@@ -605,6 +636,24 @@ impl Mixer {
                             self.reverb = Some(r);
                         }
                     }
+                    Op::Cue => {
+                        for v in self
+                            .voices
+                            .iter_mut()
+                            .filter(|v| v.id == c.voice && !v.stopping)
+                        {
+                            let at = c.position.max(0.0);
+                            if v.pos < 0.0 {
+                                v.cue = at;
+                            } else {
+                                v.pos += at;
+                                v.wrap();
+                                if !v.looping && v.pos >= v.frames as f64 {
+                                    v.done = true;
+                                }
+                            }
+                        }
+                    }
                     Op::StopAll => {
                         let buses = self.buses;
                         for v in &mut self.voices {
@@ -643,6 +692,7 @@ impl Mixer {
             frames,
             // Negative: it starts that many source frames later.
             pos: c.position,
+            cue: 0.0,
             base_step: f64::from(data.sample_rate) / f64::from(self.desc.sample_rate),
             reader: Reader::new(data),
             pitch: 1.0,

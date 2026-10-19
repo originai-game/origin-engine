@@ -1,0 +1,1122 @@
+{
+ "project": "roguelike",
+ "date": "2026-10-19",
+ "scores": {
+  "contrast": 96,
+  "textSize": 100,
+  "hud": 100,
+  "transitions": 96,
+  "uiSounds": 100,
+  "latency": 100,
+  "hitFeedback": 100,
+  "idle": 100,
+  "frameTime": 0,
+  "inputSound": 100,
+  "locale": 100,
+  "taste": 99,
+  "feel": 80
+ },
+ "findings": [
+  {
+   "measure": "contrast",
+   "where": "flow title: `play` \"Dive\"",
+   "detail": "3.62:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "flow fought: `Bar` \"17/20\"",
+   "detail": "4.33:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "frame time",
+   "where": "flow",
+   "detail": "p95 step + render 43.25 ms on metal (the frame is 16.7 ms)",
+   "fix": "og-game §14 (performance): fewer draws and particles, cheaper systems; og run --json measures"
+  },
+  {
+   "measure": "frame time",
+   "where": "foes",
+   "detail": "p95 step + render 20.37 ms on metal (the frame is 16.7 ms)",
+   "fix": "og-game §14 (performance): fewer draws and particles, cheaper systems; og run --json measures"
+  },
+  {
+   "measure": "contrast",
+   "where": "frames title: `play` \"Dive\"",
+   "detail": "3.62:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "frame time",
+   "where": "frames",
+   "detail": "p95 step + render 33.98 ms on metal (the frame is 16.7 ms)",
+   "fix": "og-game §14 (performance): fewer draws and particles, cheaper systems; og run --json measures"
+  },
+  {
+   "measure": "screen transitions",
+   "where": "lose",
+   "detail": "1 of 4 screen changes had no motion in the 20 ticks around them",
+   "fix": "og-taste §5 (screens change through a transition): og.ui.screenTransition, one kind per game"
+  },
+  {
+   "measure": "frame time",
+   "where": "lose",
+   "detail": "p95 step + render 65.49 ms on metal (the frame is 16.7 ms)",
+   "fix": "og-game §14 (performance): fewer draws and particles, cheaper systems; og run --json measures"
+  },
+  {
+   "measure": "frame time",
+   "where": "pad",
+   "detail": "p95 step + render 62.6 ms on metal (the frame is 16.7 ms)",
+   "fix": "og-game §14 (performance): fewer draws and particles, cheaper systems; og run --json measures"
+  },
+  {
+   "measure": "contrast",
+   "where": "pause pause: `resume` \"Resume\"",
+   "detail": "3.95:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "frame time",
+   "where": "pause",
+   "detail": "p95 step + render 268.8 ms on metal (the frame is 16.7 ms)",
+   "fix": "og-game §14 (performance): fewer draws and particles, cheaper systems; og run --json measures"
+  },
+  {
+   "measure": "frame time",
+   "where": "phone",
+   "detail": "p95 step + render 167.6 ms on metal (the frame is 16.7 ms)",
+   "fix": "og-game §14 (performance): fewer draws and particles, cheaper systems; og run --json measures"
+  },
+  {
+   "measure": "frame time",
+   "where": "replay",
+   "detail": "p95 step + render 146.89 ms on metal (the frame is 16.7 ms)",
+   "fix": "og-game §14 (performance): fewer draws and particles, cheaper systems; og run --json measures"
+  },
+  {
+   "measure": "frame time",
+   "where": "win",
+   "detail": "p95 step + render 187.82 ms on metal (the frame is 16.7 ms)",
+   "fix": "og-game §14 (performance): fewer draws and particles, cheaper systems; og run --json measures"
+  }
+ ],
+ "playtests": [
+  {
+   "playtest": "flow",
+   "title": "a dive from the title: steps, a bump, the lamp's light, strikes and a draught",
+   "tier": "metal",
+   "ticks": 408,
+   "shots": [
+    {
+     "name": "title",
+     "tick": 54,
+     "frame": "frames/flow-title.png",
+     "menu": true,
+     "hud": 6.13,
+     "centre": 52.83,
+     "texts": 5,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "fought",
+     "tick": 375,
+     "frame": null,
+     "menu": false,
+     "hud": 1.44,
+     "centre": 0,
+     "texts": 8,
+     "lowContrast": 1,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 13,
+    "passing": 11,
+    "worst": [
+     {
+      "shot": "title",
+      "id": "play",
+      "text": "Dive",
+      "ratio": 3.62
+     },
+     {
+      "shot": "fought",
+      "id": "Bar",
+      "text": "17/20",
+      "ratio": 4.33
+     },
+     {
+      "shot": "title",
+      "id": "Footer",
+      "text": "Arrows or WASD to move · walk into a foe",
+      "ratio": 4.91
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 13,
+    "passing": 13,
+    "smallest": [
+     {
+      "shot": "title",
+      "id": "Footer",
+      "text": "Arrows or WASD to move · walk into a foe",
+      "ink": 11
+     },
+     {
+      "shot": "fought",
+      "id": "Bar",
+      "text": "17/20",
+      "ink": 12
+     },
+     {
+      "shot": "fought",
+      "id": "Pause",
+      "text": "Pause",
+      "ink": 12
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 1,
+    "worstShare": 1.44,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 1,
+    "withMotion": 1,
+    "presses": 1,
+    "pressesWithSound": 1,
+    "motionTicks": 80
+   },
+   "latency": {
+    "inputs": 19,
+    "answered": 19,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 96.15,
+    "sound": 19
+   },
+   "damage": {
+    "moments": 5,
+    "hitStop": 5,
+    "shake": 5,
+    "floating": 5,
+    "sound": 5,
+    "flash": 5,
+    "particles": 0,
+    "facts": [
+     "hp",
+     "hits",
+     "kills"
+    ]
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 6.38,
+    "stepP95Ms": 35.24,
+    "renderMedianMs": 3.13,
+    "renderP95Ms": 15.23,
+    "frameP95Ms": 43.25,
+    "frameMaxMs": 335.22
+   },
+   "audio": {
+    "seconds": 6.8,
+    "peak": 0.29,
+    "rms": 0.0245,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "foes",
+   "title": "a rat hunts and strikes; two strikes fell it",
+   "tier": "metal",
+   "ticks": 222,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 1,
+    "withMotion": 1,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 34
+   },
+   "latency": {
+    "inputs": 7,
+    "answered": 7,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 50,
+    "sound": 7
+   },
+   "damage": {
+    "moments": 4,
+    "hitStop": 4,
+    "shake": 4,
+    "floating": 4,
+    "sound": 4,
+    "flash": 4,
+    "particles": 0,
+    "facts": [
+     "hp",
+     "hits",
+     "kills"
+    ]
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 5.78,
+    "stepP95Ms": 17.2,
+    "renderMedianMs": 2.69,
+    "renderP95Ms": 4.56,
+    "frameP95Ms": 20.37,
+    "frameMaxMs": 33.71
+   },
+   "audio": {
+    "seconds": 3.7,
+    "peak": 0.27,
+    "rms": 0.0235,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "frames",
+   "title": "the title, the lamp in the tomb and the summary match their reference frames",
+   "tier": "metal",
+   "ticks": 366,
+   "shots": [
+    {
+     "name": "title",
+     "tick": 54,
+     "frame": "frames/frames-title.png",
+     "menu": true,
+     "hud": 6.13,
+     "centre": 52.83,
+     "texts": 5,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "dive",
+     "tick": 219,
+     "frame": null,
+     "menu": false,
+     "hud": 1.44,
+     "centre": 0,
+     "texts": 8,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "over",
+     "tick": 360,
+     "frame": null,
+     "menu": true,
+     "hud": 5.75,
+     "centre": 22.45,
+     "texts": 16,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 29,
+    "passing": 28,
+    "worst": [
+     {
+      "shot": "title",
+      "id": "play",
+      "text": "Dive",
+      "ratio": 3.62
+     },
+     {
+      "shot": "dive",
+      "id": "Bar",
+      "text": "20/20",
+      "ratio": 4.51
+     },
+     {
+      "shot": "over",
+      "id": "Again",
+      "text": "Dive again",
+      "ratio": 4.56
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 29,
+    "passing": 29,
+    "smallest": [
+     {
+      "shot": "title",
+      "id": "Footer",
+      "text": "Arrows or WASD to move · walk into a foe",
+      "ink": 11
+     },
+     {
+      "shot": "dive",
+      "id": "Bar",
+      "text": "20/20",
+      "ink": 12
+     },
+     {
+      "shot": "dive",
+      "id": "Pause",
+      "text": "Pause",
+      "ink": 12
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 1,
+    "worstShare": 1.44,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 2,
+    "withMotion": 2,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 140
+   },
+   "latency": {
+    "inputs": 8,
+    "answered": 8,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 62.75,
+    "sound": 8
+   },
+   "damage": {
+    "moments": 2,
+    "hitStop": 2,
+    "shake": 2,
+    "floating": 2,
+    "sound": 2,
+    "flash": 2,
+    "particles": 0,
+    "facts": [
+     "hp"
+    ]
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 7.16,
+    "stepP95Ms": 26.55,
+    "renderMedianMs": 3.16,
+    "renderP95Ms": 6.15,
+    "frameP95Ms": 33.98,
+    "frameMaxMs": 310.09
+   },
+   "audio": {
+    "seconds": 6.1,
+    "peak": 0.3,
+    "rms": 0.0354,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "lose",
+   "title": "the lamp goes out: the summary, and the next dive starts from nothing",
+   "tier": "metal",
+   "ticks": 222,
+   "shots": [
+    {
+     "name": "lost",
+     "tick": 183,
+     "frame": "frames/lose-lost.png",
+     "menu": true,
+     "hud": 5.75,
+     "centre": 22.45,
+     "texts": 16,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 16,
+    "passing": 16,
+    "worst": [
+     {
+      "shot": "lost",
+      "id": "Again",
+      "text": "Dive again",
+      "ratio": 4.56
+     },
+     {
+      "shot": "lost",
+      "id": "Record",
+      "text": "Dives 1 · relics 0",
+      "ratio": 5.47
+     },
+     {
+      "shot": "lost",
+      "id": "Key",
+      "text": "Turns",
+      "ratio": 5.66
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 16,
+    "passing": 16,
+    "smallest": [
+     {
+      "shot": "lost",
+      "id": "Key",
+      "text": "Turns",
+      "ink": 13
+     },
+     {
+      "shot": "lost",
+      "id": "Key",
+      "text": "Felled by",
+      "ink": 13
+     },
+     {
+      "shot": "lost",
+      "id": "Value",
+      "text": "a tomb rat",
+      "ink": 13
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 4,
+    "withMotion": 3,
+    "presses": 1,
+    "pressesWithSound": 1,
+    "motionTicks": 99
+   },
+   "latency": {
+    "inputs": 4,
+    "answered": 4,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 65.29,
+    "sound": 4
+   },
+   "damage": {
+    "moments": 3,
+    "hitStop": 3,
+    "shake": 3,
+    "floating": 3,
+    "sound": 3,
+    "flash": 3,
+    "particles": 0,
+    "facts": [
+     "hp"
+    ]
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 13.45,
+    "stepP95Ms": 55.55,
+    "renderMedianMs": 5.21,
+    "renderP95Ms": 21.27,
+    "frameP95Ms": 65.49,
+    "frameMaxMs": 344.51
+   },
+   "audio": {
+    "seconds": 3.7,
+    "peak": 0.29,
+    "rms": 0.0491,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "pad",
+   "title": "the d-pad, A, X, Start and B play a dive",
+   "tier": "metal",
+   "ticks": 318,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 3,
+    "withMotion": 3,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 86
+   },
+   "latency": {
+    "inputs": 10,
+    "answered": 10,
+    "medianTicks": 0,
+    "maxTicks": 1,
+    "baselineShare": 59.04,
+    "sound": 10
+   },
+   "damage": {
+    "moments": 6,
+    "hitStop": 6,
+    "shake": 6,
+    "floating": 6,
+    "sound": 6,
+    "flash": 6,
+    "particles": 0,
+    "facts": [
+     "hp",
+     "hits",
+     "kills"
+    ]
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 11.01,
+    "stepP95Ms": 46.52,
+    "renderMedianMs": 4.71,
+    "renderP95Ms": 24.81,
+    "frameP95Ms": 62.6,
+    "frameMaxMs": 110.71
+   },
+   "audio": {
+    "seconds": 5.3,
+    "peak": 0.27,
+    "rms": 0.0441,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "pause",
+   "title": "Escape pauses, settings switch the language and save, Resume gives the turn back",
+   "tier": "metal",
+   "ticks": 312,
+   "shots": [
+    {
+     "name": "pause",
+     "tick": 102,
+     "frame": "frames/pause-pause.png",
+     "menu": true,
+     "hud": 6.24,
+     "centre": 43.46,
+     "texts": 4,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "settings-zh",
+     "tick": 192,
+     "frame": null,
+     "menu": true,
+     "hud": 7.13,
+     "centre": 46.73,
+     "texts": 12,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "play-zh",
+     "tick": 306,
+     "frame": null,
+     "menu": false,
+     "hud": 1.41,
+     "centre": 0,
+     "texts": 8,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 24,
+    "passing": 23,
+    "worst": [
+     {
+      "shot": "pause",
+      "id": "resume",
+      "text": "Resume",
+      "ratio": 3.95
+     },
+     {
+      "shot": "play-zh",
+      "id": "Bar",
+      "text": "20/20",
+      "ratio": 4.51
+     },
+     {
+      "shot": "settings-zh",
+      "id": "LanguageLabel",
+      "text": "语言",
+      "ratio": 5.46
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 24,
+    "passing": 24,
+    "smallest": [
+     {
+      "shot": "play-zh",
+      "id": "Bar",
+      "text": "20/20",
+      "ink": 12
+     },
+     {
+      "shot": "play-zh",
+      "id": "Pause",
+      "text": "暂停",
+      "ink": 12
+     },
+     {
+      "shot": "pause",
+      "id": "resume",
+      "text": "Resume",
+      "ink": 14
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 1,
+    "worstShare": 1.41,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 7,
+    "withMotion": 7,
+    "presses": 5,
+    "pressesWithSound": 5,
+    "motionTicks": 227
+   },
+   "latency": {
+    "inputs": 9,
+    "answered": 9,
+    "medianTicks": 0,
+    "maxTicks": 1,
+    "baselineShare": 83.33,
+    "sound": 9
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 24.37,
+    "stepP95Ms": 225.63,
+    "renderMedianMs": 6.27,
+    "renderP95Ms": 158.09,
+    "frameP95Ms": 268.8,
+    "frameMaxMs": 854.6
+   },
+   "audio": {
+    "seconds": 5.2,
+    "peak": 0.41,
+    "rms": 0.0366,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "phone",
+   "title": "the phone layout: a HUD inside the safe area and a d-pad that steps",
+   "tier": "metal",
+   "ticks": 180,
+   "shots": [
+    {
+     "name": "play",
+     "tick": 174,
+     "frame": "frames/phone-play.png",
+     "menu": false,
+     "hud": 3.41,
+     "centre": 0,
+     "texts": 13,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 13,
+    "passing": 13,
+    "worst": [
+     {
+      "shot": "play",
+      "id": "Bar",
+      "text": "20/20",
+      "ratio": 5.33
+     },
+     {
+      "shot": "play",
+      "id": "Attack",
+      "text": "3",
+      "ratio": 14.34
+     },
+     {
+      "shot": "play",
+      "id": "Armour",
+      "text": "0",
+      "ratio": 14.34
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 13,
+    "passing": 13,
+    "smallest": [
+     {
+      "shot": "play",
+      "id": "Up",
+      "text": "Up",
+      "ink": 10.33
+     },
+     {
+      "shot": "play",
+      "id": "Down",
+      "text": "Down",
+      "ink": 10.33
+     },
+     {
+      "shot": "play",
+      "id": "Pause",
+      "text": "Pause",
+      "ink": 10.67
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 1,
+    "worstShare": 3.41,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 1,
+    "withMotion": 1,
+    "presses": 1,
+    "pressesWithSound": 1,
+    "motionTicks": 80
+   },
+   "latency": {
+    "inputs": 3,
+    "answered": 3,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 67.57,
+    "sound": 3
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 10.59,
+    "stepP95Ms": 105.13,
+    "renderMedianMs": 4.52,
+    "renderP95Ms": 72.7,
+    "frameP95Ms": 167.6,
+    "frameMaxMs": 2704.54
+   },
+   "audio": {
+    "seconds": 3,
+    "peak": 0.19,
+    "rms": 0.0126,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "replay",
+   "title": "a dive with steps, strikes and the foes' turns replays to the same hash",
+   "tier": "metal",
+   "ticks": 246,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 1,
+    "withMotion": 1,
+    "presses": 1,
+    "pressesWithSound": 1,
+    "motionTicks": 58
+   },
+   "latency": {
+    "inputs": 12,
+    "answered": 12,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 50,
+    "sound": 12
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 17.91,
+    "stepP95Ms": 129.36,
+    "renderMedianMs": 4.45,
+    "renderP95Ms": 71.78,
+    "frameP95Ms": 146.89,
+    "frameMaxMs": 238.03
+   },
+   "audio": {
+    "seconds": 4.1,
+    "peak": 0.2,
+    "rms": 0.0368,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "win",
+   "title": "down the stairs, past the guardian, the relic, a merged record and the summary",
+   "tier": "metal",
+   "ticks": 354,
+   "shots": [
+    {
+     "name": "won",
+     "tick": 303,
+     "frame": "frames/win-won.png",
+     "menu": true,
+     "hud": 4.62,
+     "centre": 20.13,
+     "texts": 14,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 14,
+    "passing": 14,
+    "worst": [
+     {
+      "shot": "won",
+      "id": "Again",
+      "text": "Dive again",
+      "ratio": 4.56
+     },
+     {
+      "shot": "won",
+      "id": "Record",
+      "text": "Dives 7 · relics 3",
+      "ratio": 5.46
+     },
+     {
+      "shot": "won",
+      "id": "Key",
+      "text": "Turns",
+      "ratio": 5.66
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 14,
+    "passing": 14,
+    "smallest": [
+     {
+      "shot": "won",
+      "id": "Key",
+      "text": "Turns",
+      "ink": 13
+     },
+     {
+      "shot": "won",
+      "id": "Menu",
+      "text": "Title",
+      "ink": 13
+     },
+     {
+      "shot": "won",
+      "id": "Key",
+      "text": "Foes felled",
+      "ink": 14
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 4,
+    "withMotion": 4,
+    "presses": 1,
+    "pressesWithSound": 1,
+    "motionTicks": 129
+   },
+   "latency": {
+    "inputs": 10,
+    "answered": 10,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 68.75,
+    "sound": 10
+   },
+   "damage": {
+    "moments": 6,
+    "hitStop": 6,
+    "shake": 6,
+    "floating": 6,
+    "sound": 6,
+    "flash": 6,
+    "particles": 0,
+    "facts": [
+     "hits",
+     "hp",
+     "kills"
+    ]
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 22.68,
+    "stepP95Ms": 165.03,
+    "renderMedianMs": 5.71,
+    "renderP95Ms": 95.85,
+    "frameP95Ms": 187.82,
+    "frameMaxMs": 868.49
+   },
+   "audio": {
+    "seconds": 5.9,
+    "peak": 0.38,
+    "rms": 0.048,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  }
+ ],
+ "warnings": []
+}

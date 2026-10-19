@@ -6,6 +6,8 @@ Systems: functions the engine calls once per tick with their matched archetypes.
 
 A system declares what it reads and writes; a write to an undeclared component is refused at registration with the field name.
 
+Resources and events it reaches through the world must be declared too: in a dev or release build (og run, og test) an undeclared read or write throws with the system's name and the record and fails the tick; a publish build refuses it and logs it once per system in the engine log, and the game keeps running. og.Rng among the reads may fork (a fork reads the seed only and leaves the stream as it is); a draw moves the stream, so it needs og.Rng among the writes.
+
 - **TypeScript**: functions are named exports of the package: `import { … } from "@origingame/engine"`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
 - **Skill**: `og-core`, which teaches the module (how much of it to use, and how to prove it).
@@ -59,7 +61,7 @@ fn defineSystem {
 }
 ```
 
-<sub>`api.ogt` line 418</sub>
+<sub>`api.ogt` line 419</sub>
 
 ## Interfaces
 
@@ -75,7 +77,7 @@ interface System {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 411</sub>
+<sub>`api.ogt` line 412</sub>
 
 <a id="member-System-name"></a>
 
@@ -93,7 +95,7 @@ Binding symbol `og_system_get_name` · publish builds: kept
 prop name String "The system's unique name."
 ```
 
-<sub>`api.ogt` line 413</sub>
+<sub>`api.ogt` line 414</sub>
 
 <a id="member-System-reads"></a>
 
@@ -111,7 +113,7 @@ Binding symbol `og_system_get_reads` · publish builds: kept
 prop reads List.AnyReflected "What it reads."
 ```
 
-<sub>`api.ogt` line 414</sub>
+<sub>`api.ogt` line 415</sub>
 
 <a id="member-System-writes"></a>
 
@@ -129,7 +131,7 @@ Binding symbol `og_system_get_writes` · publish builds: kept
 prop writes List.AnyReflected "What it writes."
 ```
 
-<sub>`api.ogt` line 415</sub>
+<sub>`api.ogt` line 416</sub>
 
 ## Types
 
@@ -161,7 +163,7 @@ struct SystemDesc {
 }
 ```
 
-<sub>`api.ogt` line 394</sub>
+<sub>`api.ogt` line 395</sub>
 
 <a id="type-SystemRun"></a>
 
@@ -190,4 +192,4 @@ callback SystemRun {
 }
 ```
 
-<sub>`api.ogt` line 404</sub>
+<sub>`api.ogt` line 405</sub>

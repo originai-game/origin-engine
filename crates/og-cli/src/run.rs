@@ -1,6 +1,6 @@
 //! `og run [project|entry] [--headless] [--commands "t:action[:args];..."] [--seed S]
 //! [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]...
-//! [--audio null|device|<out.wav>] [--platform-store <file.json>] [--locale <tag>] [--json]`
+//! [--audio null|device|<out.wav>] [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--json]`
 //!
 //! Cooks the project, bundles its entry for the native host and runs it with
 //! `packages/engine/src/node/run.ts` under bun on the napi addon: the probe is
@@ -12,7 +12,9 @@
 //! (relative to the current directory; its SHA-256 is in `--json`'s summary,
 //! the same for two runs of the same script). og.platform's calls are
 //! answered from a local store, in memory unless `--platform-store
-//! file.json` keeps it in a file. `--locale ja` is the locale og.i18n is
+//! file.json` keeps it in a file; `og.platform.now` reads the system clock,
+//! or with `--clock <UTC ms>` a clock that starts there and moves with the
+//! ticks (reproducible, as playtests run). `--locale ja` is the locale og.i18n is
 //! asked for (default: none, the base table). Native runs
 //! are always headless: `--headless` is accepted, and without it the run is
 //! paced by the wall clock instead of as fast as it can go.
@@ -21,7 +23,7 @@ use crate::project::{self, Project};
 use std::path::Path;
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--platform-store <file.json>] [--locale <tag>] [--json]";
+const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--json]";
 
 /// What `og run` was asked.
 pub struct RunArgs {
@@ -46,7 +48,7 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
             "--headless" => r.headless = true,
             "--json" | "--no-render" => r.forward.push(args[i].into()),
             flag @ ("--ticks" | "--seed" | "--setup" | "--commands" | "--size" | "--out"
-            | "--port" | "--audio" | "--platform-store" | "--locale") => {
+            | "--port" | "--audio" | "--platform-store" | "--clock" | "--locale") => {
                 let Some(v) = args.get(i + 1) else {
                     return Err(format!("{flag} needs a value. {USAGE}"));
                 };

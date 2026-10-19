@@ -18,7 +18,7 @@ module input {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 683</sub>
+<sub>`api.ogt` line 685</sub>
 
 ## Contents
 
@@ -207,7 +207,7 @@ resource Input {
 }
 ```
 
-<sub>`api.ogt` line 824</sub>
+<sub>`api.ogt` line 836</sub>
 
 <a id="member-Input-down"></a>
 
@@ -235,7 +235,7 @@ fn down {
 }
 ```
 
-<sub>`api.ogt` line 898</sub>
+<sub>`api.ogt` line 910</sub>
 
 <a id="member-Input-pressed"></a>
 
@@ -263,7 +263,7 @@ fn pressed {
 }
 ```
 
-<sub>`api.ogt` line 903</sub>
+<sub>`api.ogt` line 915</sub>
 
 <a id="member-Input-released"></a>
 
@@ -291,7 +291,7 @@ fn released {
 }
 ```
 
-<sub>`api.ogt` line 908</sub>
+<sub>`api.ogt` line 920</sub>
 
 <a id="member-Input-axis"></a>
 
@@ -321,7 +321,7 @@ fn axis {
 }
 ```
 
-<sub>`api.ogt` line 913</sub>
+<sub>`api.ogt` line 925</sub>
 
 <a id="member-Input-axis2"></a>
 
@@ -355,7 +355,7 @@ fn axis2 {
 }
 ```
 
-<sub>`api.ogt` line 919</sub>
+<sub>`api.ogt` line 931</sub>
 
 <a id="member-Input-buttonDown"></a>
 
@@ -383,7 +383,7 @@ fn buttonDown {
 }
 ```
 
-<sub>`api.ogt` line 927</sub>
+<sub>`api.ogt` line 939</sub>
 
 <a id="member-Input-buttonPressed"></a>
 
@@ -411,7 +411,7 @@ fn buttonPressed {
 }
 ```
 
-<sub>`api.ogt` line 932</sub>
+<sub>`api.ogt` line 944</sub>
 
 <a id="member-Input-buttonReleased"></a>
 
@@ -439,7 +439,7 @@ fn buttonReleased {
 }
 ```
 
-<sub>`api.ogt` line 937</sub>
+<sub>`api.ogt` line 949</sub>
 
 <a id="record-Pointers"></a>
 
@@ -556,7 +556,7 @@ resource Pointers {
 }
 ```
 
-<sub>`api.ogt` line 944</sub>
+<sub>`api.ogt` line 956</sub>
 
 <a id="member-Pointers-down"></a>
 
@@ -584,7 +584,7 @@ fn down {
 }
 ```
 
-<sub>`api.ogt` line 999</sub>
+<sub>`api.ogt` line 1011</sub>
 
 <a id="member-Pointers-pressed"></a>
 
@@ -612,7 +612,7 @@ fn pressed {
 }
 ```
 
-<sub>`api.ogt` line 1004</sub>
+<sub>`api.ogt` line 1016</sub>
 
 <a id="member-Pointers-released"></a>
 
@@ -640,7 +640,7 @@ fn released {
 }
 ```
 
-<sub>`api.ogt` line 1009</sub>
+<sub>`api.ogt` line 1021</sub>
 
 <a id="member-Pointers-position"></a>
 
@@ -668,7 +668,7 @@ fn position {
 }
 ```
 
-<sub>`api.ogt` line 1014</sub>
+<sub>`api.ogt` line 1026</sub>
 
 <a id="member-Pointers-start"></a>
 
@@ -696,7 +696,7 @@ fn start {
 }
 ```
 
-<sub>`api.ogt` line 1019</sub>
+<sub>`api.ogt` line 1031</sub>
 
 <a id="member-Pointers-count"></a>
 
@@ -719,7 +719,7 @@ fn count {
 }
 ```
 
-<sub>`api.ogt` line 1024</sub>
+<sub>`api.ogt` line 1036</sub>
 
 <a id="record-Gamepad"></a>
 
@@ -880,7 +880,7 @@ resource Gamepad {
 }
 ```
 
-<sub>`api.ogt` line 1030</sub>
+<sub>`api.ogt` line 1042</sub>
 
 <a id="member-Gamepad-connected"></a>
 
@@ -910,7 +910,7 @@ fn connected {
 }
 ```
 
-<sub>`api.ogt` line 1108</sub>
+<sub>`api.ogt` line 1120</sub>
 
 <a id="member-Gamepad-down"></a>
 
@@ -942,7 +942,7 @@ fn down {
 }
 ```
 
-<sub>`api.ogt` line 1115</sub>
+<sub>`api.ogt` line 1127</sub>
 
 <a id="member-Gamepad-pressed"></a>
 
@@ -974,7 +974,7 @@ fn pressed {
 }
 ```
 
-<sub>`api.ogt` line 1123</sub>
+<sub>`api.ogt` line 1135</sub>
 
 <a id="member-Gamepad-released"></a>
 
@@ -1006,7 +1006,7 @@ fn released {
 }
 ```
 
-<sub>`api.ogt` line 1131</sub>
+<sub>`api.ogt` line 1143</sub>
 
 <a id="member-Gamepad-axis"></a>
 
@@ -1038,7 +1038,7 @@ fn axis {
 }
 ```
 
-<sub>`api.ogt` line 1139</sub>
+<sub>`api.ogt` line 1151</sub>
 
 <a id="record-KeyDown"></a>
 
@@ -1052,16 +1052,21 @@ Token `og.KeyDown`, registered under the schema name `og.KeyDown`; its value typ
 |---|---|---|---|---|---|---|
 | `key` | `string` | `""` | — | — | — | The physical key code. |
 | `repeat` | `boolean` | `false` | — | — | — | Whether this is an auto-repeat. |
+| `at` | `number` | `0` | -1 … 1 | — | — | When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it. |
 
 ```ogt
 event KeyDown {
   doc "A key went down (a down for a held key is a repeat and sets no edge). Input events are sent between ticks and read by the next tick's systems."
   field key String "The physical key code."
   field repeat bool "Whether this is an auto-repeat."
+  field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+    min -1
+    max 1
+  }
 }
 ```
 
-<sub>`api.ogt` line 1149</sub>
+<sub>`api.ogt` line 1161</sub>
 
 <a id="record-KeyUp"></a>
 
@@ -1074,15 +1079,20 @@ Token `og.KeyUp`, registered under the schema name `og.KeyUp`; its value type is
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `key` | `string` | `""` | — | — | — | The physical key code. |
+| `at` | `number` | `0` | -1 … 1 | — | — | When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it. |
 
 ```ogt
 event KeyUp {
   doc "A key went up."
   field key String "The physical key code."
+  field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+    min -1
+    max 1
+  }
 }
 ```
 
-<sub>`api.ogt` line 1155</sub>
+<sub>`api.ogt` line 1171</sub>
 
 <a id="record-PointerDown"></a>
 
@@ -1098,6 +1108,7 @@ Token `og.PointerDown`, registered under the schema name `og.PointerDown`; its v
 | `y` | `number` | `0` | — | — | — | Vertical position in CSS pixels. |
 | `button` | `PointerButton` | `"none"` | — | — | — | The button. |
 | `id` | `number` | `0` | — | — | — | Which pointer: 0 the primary one, 1 to 4 further touches (og.Pointers). |
+| `at` | `number` | `0` | -1 … 1 | — | — | When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it. |
 
 ```ogt
 event PointerDown {
@@ -1106,10 +1117,14 @@ event PointerDown {
   field y f32 "Vertical position in CSS pixels."
   field button PointerButton "The button."
   field id u32 "Which pointer: 0 the primary one, 1 to 4 further touches (og.Pointers)."
+  field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+    min -1
+    max 1
+  }
 }
 ```
 
-<sub>`api.ogt` line 1160</sub>
+<sub>`api.ogt` line 1180</sub>
 
 <a id="record-PointerUp"></a>
 
@@ -1125,6 +1140,7 @@ Token `og.PointerUp`, registered under the schema name `og.PointerUp`; its value
 | `y` | `number` | `0` | — | — | — | Vertical position in CSS pixels. |
 | `button` | `PointerButton` | `"none"` | — | — | — | The button. |
 | `id` | `number` | `0` | — | — | — | Which pointer: 0 the primary one, 1 to 4 further touches. |
+| `at` | `number` | `0` | -1 … 1 | — | — | When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it. |
 
 ```ogt
 event PointerUp {
@@ -1133,10 +1149,14 @@ event PointerUp {
   field y f32 "Vertical position in CSS pixels."
   field button PointerButton "The button."
   field id u32 "Which pointer: 0 the primary one, 1 to 4 further touches."
+  field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+    min -1
+    max 1
+  }
 }
 ```
 
-<sub>`api.ogt` line 1168</sub>
+<sub>`api.ogt` line 1192</sub>
 
 <a id="record-PointerMove"></a>
 
@@ -1161,7 +1181,7 @@ event PointerMove {
 }
 ```
 
-<sub>`api.ogt` line 1176</sub>
+<sub>`api.ogt` line 1204</sub>
 
 <a id="record-Wheel"></a>
 
@@ -1184,7 +1204,7 @@ event Wheel {
 }
 ```
 
-<sub>`api.ogt` line 1183</sub>
+<sub>`api.ogt` line 1211</sub>
 
 ## Types
 
@@ -1239,7 +1259,7 @@ enum GamepadButton {
 }
 ```
 
-<sub>`api.ogt` line 692</sub>
+<sub>`api.ogt` line 694</sub>
 
 <a id="type-GamepadAxis"></a>
 
@@ -1270,7 +1290,7 @@ enum GamepadAxis {
 }
 ```
 
-<sub>`api.ogt` line 713</sub>
+<sub>`api.ogt` line 715</sub>
 
 <a id="type-KeyAction"></a>
 
@@ -1295,7 +1315,7 @@ enum KeyAction {
 }
 ```
 
-<sub>`api.ogt` line 723</sub>
+<sub>`api.ogt` line 725</sub>
 
 <a id="type-PointerAction"></a>
 
@@ -1322,7 +1342,7 @@ enum PointerAction {
 }
 ```
 
-<sub>`api.ogt` line 730</sub>
+<sub>`api.ogt` line 732</sub>
 
 <a id="type-PointerButton"></a>
 
@@ -1349,7 +1369,7 @@ enum PointerButton {
 }
 ```
 
-<sub>`api.ogt` line 738</sub>
+<sub>`api.ogt` line 740</sub>
 
 <a id="type-Modifiers"></a>
 
@@ -1374,7 +1394,7 @@ struct Modifiers {
 }
 ```
 
-<sub>`api.ogt` line 746</sub>
+<sub>`api.ogt` line 748</sub>
 
 <a id="type-KeyInput"></a>
 
@@ -1387,6 +1407,7 @@ A key event. `key` names the physical key as KeyboardEvent.code does: ArrowRight
 | `key` | `string` | `""` | — | — | — | The physical key code. |
 | `action` | `KeyAction` | `"press"` | — | — | — | Press, down or up. |
 | `modifiers` | `Modifiers` | `{ alt: false, control: false, platform: false, shift: false }` | — | — | optional | Held modifiers; omitted means none. |
+| `at` | `number` | `0` | -1 … 1 | — | optional | When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5. |
 
 ```ogt
 struct KeyInput {
@@ -1396,10 +1417,15 @@ struct KeyInput {
   field modifiers Modifiers "Held modifiers; omitted means none." {
     optional true
   }
+  field at f32 "When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5." {
+    min -1
+    max 1
+    optional true
+  }
 }
 ```
 
-<sub>`api.ogt` line 754</sub>
+<sub>`api.ogt` line 756</sub>
 
 <a id="type-PointerInput"></a>
 
@@ -1414,6 +1440,7 @@ A pointer event at a point in CSS pixels of the play surface.
 | `y` | `number` | `0` | — | `cssPx` | — | Vertical position. |
 | `button` | `PointerButton` | `"none"` | — | — | — | The button; `none` for a hover move. |
 | `id` | `number` | `0` | ≤ 4 | — | optional | Which pointer: 0 the primary one (the mouse, the first touch; what protocol 5 means), 1 to 4 further touches held at the same time (an engine extension). Omitted is 0. |
+| `at` | `number` | `0` | -1 … 1 | — | optional | When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5. |
 
 ```ogt
 struct PointerInput {
@@ -1430,10 +1457,15 @@ struct PointerInput {
     max 4
     optional true
   }
+  field at f32 "When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5." {
+    min -1
+    max 1
+    optional true
+  }
 }
 ```
 
-<sub>`api.ogt` line 763</sub>
+<sub>`api.ogt` line 770</sub>
 
 <a id="type-GamepadInput"></a>
 
@@ -1471,7 +1503,7 @@ struct GamepadInput {
 }
 ```
 
-<sub>`api.ogt` line 779</sub>
+<sub>`api.ogt` line 791</sub>
 
 <a id="type-WheelInput"></a>
 
@@ -1504,7 +1536,7 @@ struct WheelInput {
 }
 ```
 
-<sub>`api.ogt` line 799</sub>
+<sub>`api.ogt` line 811</sub>
 
 <a id="type-InjectedInput"></a>
 
@@ -1532,7 +1564,7 @@ union InjectedInput {
 }
 ```
 
-<sub>`api.ogt` line 815</sub>
+<sub>`api.ogt` line 827</sub>
 
 ## Constants
 
@@ -1545,10 +1577,10 @@ union InjectedInput {
 const MAX_POINTERS u32 5 "The most pointers og.Pointers tracks at once: ids 0 (the primary pointer) to 4."
 ```
 
-<sub>`api.ogt` line 689</sub>
+<sub>`api.ogt` line 691</sub>
 
 ```ogt
 const MAX_GAMEPADS u32 4 "The most gamepads og.Gamepad reads: pads 0 to 3."
 ```
 
-<sub>`api.ogt` line 690</sub>
+<sub>`api.ogt` line 692</sub>

@@ -75,7 +75,10 @@ starts.
 script through `og run --headless --commands`. A playtest asserts on what the
 game exposes (dumps, `state()` facts, entity fields, `get` answers), never on
 how the code is written. A test that ran no checks fails. Run it before
-claiming a change works.
+claiming a change works. A playtest runs with the host clock at
+2026-01-01 00:00 UTC (`clock` to change it) and a fresh store; `store:
+"keep"` with `then: [{ commands, clock }]` runs further processes over the
+same store, for a relaunch (og-platform-sdk §4).
 
 ## 4. Evidence discipline
 

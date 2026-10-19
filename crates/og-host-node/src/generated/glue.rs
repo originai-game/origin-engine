@@ -921,6 +921,12 @@ pub fn og_tilemap_cell_center(env: Env, world: u32, entity: f64, x: u32, y: u32)
     <Host as TilemapApi>::og_tilemap_cell_center(&Host, world, entity, x, y)
 }
 
+#[napi(js_name = "og_audio_output_latency")]
+pub fn og_audio_output_latency(env: Env, world: u32) -> f64 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as AudioApi>::og_audio_output_latency(&Host, world)
+}
+
 #[napi(js_name = "og_nav_grid")]
 pub fn og_nav_grid(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -1111,6 +1117,12 @@ pub fn og_platform_result(env: Env, world: u32, request: u32) -> String {
 pub fn og_platform_info(env: Env, world: u32) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as PlatformApi>::og_platform_info(&Host, world)
+}
+
+#[napi(js_name = "og_platform_now")]
+pub fn og_platform_now(env: Env, world: u32) -> f64 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_now(&Host, world)
 }
 
 #[napi(js_name = "og_i18n_load")]

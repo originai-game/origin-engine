@@ -60,7 +60,7 @@ export const Game = defineResource("Game", {
   pendingTap: bool(false, { doc: "A tap asked for by the HUD this tick (the Orb system makes it)." }),
   pendingBuy: i32(-1, { doc: "A purchase asked for by the HUD this tick (the Economy system makes it)." }),
   pendingNova: bool(false, { doc: "The supernova confirmed this tick (the Economy system makes it)." }),
-  away: f64(0, { unit: "s", doc: "Seconds the game was closed, from the host (relaunch:<s> stands in; see the README)." }),
+  away: f64(0, { unit: "s", doc: "Seconds the game was closed: the save's answer's time (og.platform's host clock) less the time the save was written; relaunch:<s> sets it for a test." }),
   offline: f64(0, { doc: "Sparks the orb made while the game was closed (shown on the welcome-back dialog)." }),
   saveRequest: u32(0, { doc: "The store request reading `orb`." }),
   saveRevision: u32(0, { doc: "The revision `orb` was read or written at." }),

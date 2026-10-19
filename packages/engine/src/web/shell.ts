@@ -315,6 +315,8 @@ export class Shell {
       target.addEventListener(type, fn as EventListener, { passive: false });
       this.#listeners.push(() => target.removeEventListener(type, fn as EventListener));
     };
+    // When an event happened on a clock the Worker shares (its `at` within the tick, input.ts stampAt).
+    const stamp = (e: Event) => performance.timeOrigin + e.timeStamp;
     const typing = (e: KeyboardEvent) => {
       const t = e.target as { tagName?: string; isContentEditable?: boolean } | null;
       return !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable === true);
@@ -322,11 +324,11 @@ export class Shell {
     listen(globalThis as unknown as EventTarget, "keydown", (e) => {
       if (typing(e) || !e.code) return;
       if (KEPT_KEYS.has(e.code)) e.preventDefault();
-      if (!e.repeat) this.#send(ring, { kind: "key", key: e.code, action: "down" });
+      if (!e.repeat) this.#send(ring, { kind: "key", key: e.code, action: "down", time: stamp(e) });
     });
     listen(globalThis as unknown as EventTarget, "keyup", (e) => {
       if (typing(e) || !e.code) return;
-      this.#send(ring, { kind: "key", key: e.code, action: "up" });
+      this.#send(ring, { kind: "key", key: e.code, action: "up", time: stamp(e) });
     });
     // Relative to the canvas's CSS box, whichever element the event landed on.
     const at = (e: PointerEvent | WheelEvent) => {
@@ -342,6 +344,7 @@ export class Shell {
         y: p.y,
         button: action === "move" ? "none" : (BUTTONS[e.button] ?? "left"),
         ...(id > 0 ? { id } : {}),
+        time: stamp(e),
       });
     };
     listen(canvas, "pointerdown", (e) => {

@@ -98,7 +98,9 @@ struct Saved {
 }
 
 enum Queued {
-    Step(CommandStep),
+    /// A step and where in its tick it falls (its time less the tick's, in
+    /// ticks: -0.5 to 0.5), the stamp its input events carry.
+    Step(CommandStep, f32),
     /// One character of `type`, spread one press per two ticks.
     Inject(InjectedInput),
 }
@@ -151,6 +153,8 @@ pub struct Probe {
     target_missed: bool,
     inbox: Inbox,
     listen: Option<ListenFn>,
+    /// The sub-tick stamp of the input being delivered (InputSink::inject_at).
+    stamp: f32,
 }
 
 /// What the host's mixer rendered last, for `listen`: the last `seconds`
@@ -168,6 +172,16 @@ pub type ListenFn = Box<dyn Fn(f32) -> Option<Heard>>;
 
 fn fault(context: &str, err: Error) -> Error {
     err.context(context)
+}
+
+/// An injected event's `at` (KeyInput.at, PointerInput.at): finite, -1 to
+/// 1 ticks; 0 when absent.
+pub fn stamp_of(event: &Value) -> f32 {
+    event
+        .get("at")
+        .and_then(Value::as_f64)
+        .filter(|a| a.is_finite())
+        .map_or(0.0, |a| a.clamp(-1.0, 1.0) as f32)
 }
 
 fn tick_rate(world: &World) -> u32 {
@@ -235,6 +249,7 @@ impl Probe {
             reloader: None,
             facts: None,
             listen: None,
+            stamp: 0.0,
             commands: BTreeMap::new(),
             queue: BTreeMap::new(),
             seq: 0,
@@ -446,7 +461,10 @@ impl Probe {
             warnings: Vec::new(),
         };
         for step in steps {
-            let tick = now + (step.at * rate).round() as u64;
+            let exact = step.at * rate;
+            let tick = now + exact.round() as u64;
+            // Where in its tick the step falls: an input action's events carry it.
+            let within = (exact - exact.round()) as f32;
             if !self.knows(&step.action) {
                 report.warnings.push(format!(
                     "{}s: unknown action '{}'; it is skipped unless registered before tick {tick} (`help` lists the actions)",
@@ -454,7 +472,8 @@ impl Probe {
                 ));
             }
             self.seq += 1;
-            self.queue.insert((tick, self.seq), Queued::Step(step));
+            self.queue
+                .insert((tick, self.seq), Queued::Step(step, within));
             report.scheduled += 1;
             report.until_tick = tick;
         }
@@ -485,7 +504,12 @@ impl Probe {
                 break;
             }
             match self.queue.remove(&key).expect("present") {
-                Queued::Step(step) => self.execute(world, step),
+                Queued::Step(step, within) => {
+                    // A step run late happened that many ticks earlier.
+                    self.stamp = (within - (now - key.0) as f32).max(-1.0);
+                    self.execute(world, step);
+                    self.stamp = 0.0;
+                }
                 Queued::Inject(event) => {
                     if !self.deliver(world, &event) {
                         self.note(now, true, format!("type: {} was refused", event.to_json()));
@@ -524,7 +548,7 @@ impl Probe {
     }
 
     fn deliver(&mut self, world: &mut World, event: &InjectedInput) -> bool {
-        let accepted = self.input.inject(world, event);
+        let accepted = self.input.inject_at(world, event, self.stamp);
         if accepted {
             match event {
                 InjectedInput::Pointer { x, y, id: 0, .. } | InjectedInput::Wheel { x, y, .. } => {
@@ -1335,6 +1359,16 @@ impl Probe {
         self.deliver(world, event)
     }
 
+    /// `input` with the event's time within the tick that reads it (IDL
+    /// `KeyInput.at`, `PointerInput.at`: -1 to 1 ticks from its start), from
+    /// the host's event timestamp.
+    pub fn input_at(&mut self, world: &mut World, event: &InjectedInput, at: f32) -> bool {
+        self.stamp = at;
+        let accepted = self.deliver(world, event);
+        self.stamp = 0.0;
+        accepted
+    }
+
     /// `accepted`: events the input layer accepted since load.
     pub fn accepted(&self) -> u32 {
         self.input.accepted()
@@ -1416,12 +1450,10 @@ impl Probe {
                     Some(steps) => Some(json!(self.advance(world, steps)?)),
                     None => None,
                 },
-                "input" => Some(json!(
-                    operation
-                        .get("event")
-                        .and_then(InjectedInput::from_json)
-                        .is_some_and(|e| self.input(world, &e))
-                )),
+                "input" => Some(json!(operation.get("event").is_some_and(|v| {
+                    InjectedInput::from_json(v)
+                        .is_some_and(|e| self.input_at(world, &e, stamp_of(v)))
+                }))),
                 "pause" => Some(json!(self.pause())),
                 "resume" => Some(json!(self.resume())),
                 "read" => Some(json!({"tick": self.tick(world), "state": self.state(world)})),

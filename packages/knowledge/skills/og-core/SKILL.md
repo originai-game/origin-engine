@@ -27,7 +27,15 @@ is an engine feature request, not something to work around in the game.
 - Randomness comes from the `Rng` resource (`world.resource(og.Rng)`) or a
   stream forked from it with a label (`rng.fork("spawner")`). Never
   `Math.random()`. The project seed lives in `project.ogt` and `GameDesc.seed`;
-  `og run --seed` overrides it for a replay.
+  `og run --seed` overrides it for a replay. A draw (`next`, `range`,
+  `integer`, `chance`) moves the stream, so it needs `og.Rng` in `writes`;
+  `fork` reads the seed alone and moves nothing, so a system that only
+  forks declares `og.Rng` in `reads` (its forks are the same on every host
+  and in every system).
+- The wall clock reaches the game only as host input, between ticks:
+  `og.platform.now(world)` (UTC ms, the host's clock when the platform
+  attached or last answered, advanced by the ticks since) and the `time`
+  on every og.platform answer. A replay records them like a key press.
 - Rendering never feeds back into simulation: do not read camera or screen
   state to decide game logic.
 
@@ -60,6 +68,12 @@ export const Move = defineSystem("Move", { reads: [Velocity], writes: [og.Transf
 - Columns are typed arrays over engine memory. Write only components listed
   in `writes`; reading needs `reads` or `writes`. An undeclared column throws
   inside the system and fails the tick with the system's name.
+- The same holds for resources and events: `world.resource`, an event read
+  (`world.events`) and an `og.Rng` fork need the record among `reads` or
+  `writes`; a resource write, an `og.Rng` draw and `world.emit` need it in
+  `writes`. Undeclared, it throws in `og run` and `og test` (dev and
+  release builds) with the system and the record; a publish build refuses
+  it, logs it once per system and access, and the game runs on.
 - Views belong to one system call. Never keep an `ArchetypeView` or a column
   array across ticks or in module state: a stale view throws with the tick
   and the system it belonged to.

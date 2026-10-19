@@ -297,10 +297,10 @@ module world {
     }
 
     fn resource {
-      doc "A resource's live value. Inside a system, the resource must be among the system's reads or writes."
+      doc "A resource's live value. Inside a system, the resource must be among the system's reads or writes (writes to set a field): an undeclared one throws in a dev or release build, naming the system and the resource, and fails the tick; a publish build refuses it and logs it once per system in the engine log."
       generic R AnyResource
       param resource R "The resource token."
-      returns Result.Value.R "Refused for an unregistered resource or one the running system did not declare."
+      returns Result.Value.R "Refused for an unregistered resource (or, in a publish build, one the running system did not declare)."
     }
 
     fn find {
@@ -322,14 +322,14 @@ module world {
     }
 
     fn events {
-      doc "The events of one type emitted during the previous tick and this one, oldest first."
+      doc "The events of one type emitted during the previous tick and this one, oldest first. Inside a system the event must be among its reads or writes (undeclared: thrown, or in a publish build refused and logged once)."
       generic E AnyEvent
       param event E "The event token."
       returns List.Value.E
     }
 
     fn emit {
-      doc "Emit an event; readers see it this tick and the next."
+      doc "Emit an event; readers see it this tick and the next. Inside a system the event must be among its writes (undeclared: thrown, or in a publish build refused and logged once)."
       generic E AnyEvent
       param event E "The event token."
       param payload Value.E "The event's fields."
@@ -389,6 +389,7 @@ module system {
   skill og-core
   doc "Systems: functions the engine calls once per tick with their matched archetypes."
   doc "A system declares what it reads and writes; a write to an undeclared component is refused at registration with the field name."
+  doc "Resources and events it reaches through the world must be declared too: in a dev or release build (og run, og test) an undeclared read or write throws with the system's name and the record and fails the tick; a publish build refuses it and logs it once per system in the engine log, and the game keeps running. og.Rng among the reads may fork (a fork reads the seed only and leaves the stream as it is); a draw moves the stream, so it needs og.Rng among the writes."
   place top
 
   struct SystemDesc {
@@ -609,6 +610,7 @@ module time {
 module rng {
   skill og-core
   doc "Deterministic randomness. Every random draw comes from an Rng stream; the sequence for a seed is identical on every host and in the Web scaffold's rng.ts."
+  doc "Inside a system: forking needs og.Rng among the reads (a fork is derived from the seed and the label, and leaves the main stream where it is); drawing from og.Rng itself (next, range, integer, chance) moves its state, so it needs og.Rng among the writes. A stream a fork returned is the system's own to draw from."
 
   interface RngStream {
     doc "One generator stream, forked from the Rng resource for a subsystem that must not perturb the main sequence."
@@ -671,7 +673,7 @@ module rng {
       returns bool
     }
     fn fork {
-      doc "A stream for a subsystem, derived from the seed and a label, so drawing from it leaves the main sequence alone."
+      doc "A stream for a subsystem, derived from the seed and a label, so drawing from it leaves the main sequence alone. The same label gives the same stream every time, on every host, wherever the main stream is; og.Rng among a system's reads is enough."
       param label String "The subsystem's name, such as `spawner`."
       returns RngStream
     }
@@ -758,6 +760,11 @@ module input {
     field modifiers Modifiers "Held modifiers; omitted means none." {
       optional true
     }
+    field at f32 "When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5." {
+      min -1
+      max 1
+      optional true
+    }
   }
 
   struct PointerInput {
@@ -772,6 +779,11 @@ module input {
     field button PointerButton "The button; `none` for a hover move."
     field id u32 "Which pointer: 0 the primary one (the mouse, the first touch; what protocol 5 means), 1 to 4 further touches held at the same time (an engine extension). Omitted is 0." {
       max 4
+      optional true
+    }
+    field at f32 "When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5." {
+      min -1
+      max 1
       optional true
     }
   }
@@ -1150,11 +1162,19 @@ module input {
     doc "A key went down (a down for a held key is a repeat and sets no edge). Input events are sent between ticks and read by the next tick's systems."
     field key String "The physical key code."
     field repeat bool "Whether this is an auto-repeat."
+    field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+      min -1
+      max 1
+    }
   }
 
   event KeyUp {
     doc "A key went up."
     field key String "The physical key code."
+    field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+      min -1
+      max 1
+    }
   }
 
   event PointerDown {
@@ -1163,6 +1183,10 @@ module input {
     field y f32 "Vertical position in CSS pixels."
     field button PointerButton "The button."
     field id u32 "Which pointer: 0 the primary one, 1 to 4 further touches (og.Pointers)."
+    field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+      min -1
+      max 1
+    }
   }
 
   event PointerUp {
@@ -1171,6 +1195,10 @@ module input {
     field y f32 "Vertical position in CSS pixels."
     field button PointerButton "The button."
     field id u32 "Which pointer: 0 the primary one, 1 to 4 further touches."
+    field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+      min -1
+      max 1
+    }
   }
 
   event PointerMove {
@@ -5580,6 +5608,10 @@ module audio {
       min 0
       unit s
     }
+    field startOffset f64 "Where in the sound it starts, in seconds of the sound: started at startAt (or at once) from this far in, to the sample and at full gain, so a resumed phrase continues instead of restarting. Past a one-shot's end it plays nothing; a loop wraps into its region." {
+      min 0
+      unit s
+    }
     field fade f32 "Starts, stops and volume changes ramp over this long: a crossfade is one source stopped and another started with the same fade; 0 is 5 ms." {
       min 0
       max 30
@@ -5653,6 +5685,11 @@ module audio {
       min 0
       max 1
       tunable true
+    }
+    field outputLatency f64 "Seconds from a sample's world time to the speaker, as the host reports it (og.audio.outputLatency)." {
+      min 0
+      unit s
+      readonly true
     }
   }
 
@@ -5800,6 +5837,13 @@ module audio {
     field sound Sound "The sound."
     field voice u32 "The voice id in the command stream."
     field reason u32 "Why: SOUND_FINISHED (0), SOUND_STOPPED (1), SOUND_REMOVED (2), SOUND_REPLACED (3) or SOUND_CULLED (4)."
+  }
+
+  fn outputLatency {
+    doc "How long after its world time a sample leaves the speaker, as the host reports it: on the web the AudioContext's baseLatency and outputLatency and the worklet ring's buffer, natively the device's latency (cpal's playback less callback instant) and the mixer's buffer; 0 headless (the null and capture sinks are driven to the tick). Host input, written to og.Audio between ticks, so a replay carries it. A rhythm game hears a note at its time plus this: judge a press against the note's time plus the latency, then a calibrated rest (the display, the hand)."
+    doc "Inside a system og.Audio must be among its reads or writes."
+    param world World "The world."
+    returns f64 "Seconds; 0 headless."
   }
 }
 
@@ -6575,6 +6619,9 @@ module platform {
       optional true
     }
     field tick u32 "The tick it was answered at."
+    field time f64 "The host's clock when it answered, UTC milliseconds since 1970 (PlatformInfo.clock says whose); 0 when the host gave none." {
+      unit ms
+    }
   }
 
   struct PlatformInfo {
@@ -6582,6 +6629,7 @@ module platform {
     field host String "`player` (a Player frames the game), `local` (the native host's JSON store or the browser's own storage) or `none`."
     field capabilities List.String "The methods it answers: store.get, store.set, store.list, leaderboard.submit, leaderboard.top, leaderboard.around, telemetry, point, ai.mark."
     field pending u32 "Calls not answered yet."
+    field clock String "Whose clock og.platform.now and the answers' `time` read: `player` (the Player's answers carry its time), `browser` (the web host's own clock: the Player gives no time yet, docs/platform-asks.md), `system` (the native host's system clock), `fixed` (`og run --clock` and playtests: a clock that starts where it is told and moves with the ticks) or `none`."
   }
 
   fn storeGet {
@@ -6673,6 +6721,12 @@ module platform {
     doc "What answers platform calls here, and what it answers."
     param world World "The world."
     returns PlatformInfo
+  }
+
+  fn now {
+    doc "The host's wall-clock time, UTC milliseconds since 1970, as of this tick: what the host last told the engine (when it attached, and with every answer, applied at a tick's start like the answers) moved on by the ticks since. The one wall-clock read game code may make: it is host input, so a replay with the same answers gives the same values. Use it to know how long the game was closed (a save's time against a launch's), never to time play (that is og.Time)."
+    param world World "The world."
+    returns f64 "UTC milliseconds; 0 until a host has told the time (`none`)."
   }
 }
 

@@ -3,7 +3,7 @@
 //! [`InputLayer`], the engine's sink over the `og.Input` resource.
 
 use crate::event::InjectedInput;
-use crate::resource::{Gamepad, Input, Pointers, register};
+use crate::resource::{Gamepad, Input, InputEvent, Pointers, register};
 use crate::ring;
 use og_ecs::World;
 
@@ -17,6 +17,14 @@ pub trait InputSink {
     /// Deliver one event between ticks. `false` is a refusal: the layer
     /// cannot take this event (an unknown key code, a missing resource).
     fn inject(&mut self, world: &mut World, event: &InjectedInput) -> bool;
+    /// Deliver one event that happened `at` ticks after the start of the
+    /// tick that reads it (-1 to 1, from the host's event timestamp or the
+    /// command's time): the sink may stamp what it raises with it. The
+    /// default ignores the stamp.
+    fn inject_at(&mut self, world: &mut World, event: &InjectedInput, at: f32) -> bool {
+        let _ = at;
+        self.inject(world, event)
+    }
     /// Called after every tick: expire edges.
     fn end_tick(&mut self, world: &mut World);
     /// Events the input layer accepted since load.
@@ -95,6 +103,17 @@ impl InputSink for InputLayer {
     }
 
     fn inject(&mut self, world: &mut World, event: &InjectedInput) -> bool {
+        self.inject_at(world, event, 0.0)
+    }
+
+    /// The events it raises (KeyDown, KeyUp, PointerDown, PointerUp) carry
+    /// `at`, clamped to -1..1: when within the tick it happened.
+    fn inject_at(&mut self, world: &mut World, event: &InjectedInput, at: f32) -> bool {
+        let at = if at.is_finite() {
+            at.clamp(-1.0, 1.0)
+        } else {
+            0.0
+        };
         let mut events = Vec::new();
         match event {
             InjectedInput::Gamepad(state) => {
@@ -134,7 +153,14 @@ impl InputSink for InputLayer {
                 events.extend(raised);
             }
         }
-        for e in events {
+        for mut e in events {
+            match &mut e {
+                InputEvent::KeyDown(k) => k.at = at,
+                InputEvent::KeyUp(k) => k.at = at,
+                InputEvent::PointerDown(p) => p.at = at,
+                InputEvent::PointerUp(p) => p.at = at,
+                InputEvent::PointerMove(_) | InputEvent::Wheel(_) => {}
+            }
             if e.send(world).is_err() {
                 return false;
             }

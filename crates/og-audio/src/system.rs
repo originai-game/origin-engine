@@ -793,7 +793,13 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
         stream.next_voice = stream.next_voice.wrapping_add(1).max(1);
         // A start inside the tick: that many frames of the sound later.
         let position = -(delay * f64::from(rate) * f64::from(w.pitch));
-        let mut started = Vec::with_capacity(2);
+        // A start part-way into the sound (startOffset): a cue after the play.
+        let cue = if s.start_offset > 0.0 && s.start_offset.is_finite() {
+            s.start_offset * f64::from(rate)
+        } else {
+            0.0
+        };
+        let mut started = Vec::with_capacity(3);
         if s.fade > 0.0 {
             // Fade in: start silent, then ramp to the gain.
             let silent = Wanted { gain: 0.0, ..w };
@@ -816,6 +822,9 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
         } else {
             started.push(voice_command(Op::Play, tick, voice, s.sound, &w, position));
         }
+        if cue > 0.0 {
+            started.insert(1, voice_command(Op::Cue, tick, voice, s.sound, &w, cue));
+        }
         commands.extend_from_slice(&started);
         if resync {
             snapshot.extend_from_slice(&started);
@@ -825,7 +834,10 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
             sound: s.sound,
             voice,
         })?;
-        let (cursor, done) = advance(position, rate, tick_rate, &w, frames);
+        // The playhead as if it had started `cue` frames earlier: the sound
+        // reaches frame f at delay + (f - cue) / rate, so a one-shot ends on
+        // the tick its rest ends in.
+        let (cursor, done) = advance(position + cue, rate, tick_rate, &w, frames);
         if done {
             // Shorter than one tick: it starts and ends in this tick.
             ctx.send(SoundEnded {

@@ -54,6 +54,7 @@ export const platform = Object.freeze({
   saveSettings: (world: W, value: unknown) => parse(abi().og_platform_save_settings(world.id, JSON.stringify(value))),
   result: (world: W, request: number) => parse(abi().og_platform_result(world.id, request)),
   info: (world: W) => parse(abi().og_platform_info(world.id)),
+  now: (world: W) => abi().og_platform_now(world.id),
 });
 
 export const i18n = Object.freeze({

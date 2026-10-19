@@ -6,8 +6,8 @@
 // motion). Every string is a key of assets/strings/*.ogt.
 //
 // The Ui system also starts a play (the count-in, then bar 1), pauses it
-// (the band stops, the clock freezes) and resumes it on the bar line of
-// its two-bar phrase after a new count-in, ends it with the results, and
+// (the band stops, the clock freezes) and resumes it on the beat it paused
+// on after a new count-in (the stems continue part-way), ends it with the results, and
 // keeps the settings and the best score in og.platform.
 
 import { og, defineSystem } from "@origingame/engine";
@@ -68,6 +68,7 @@ export function begin(world: World, g: GameV, fromBar = 1): void {
   g.countTo = Math.ceil((now + 0.25) * 60) / 60 + t.countInBeats * len;
   g.songStart = g.countTo - from * len;
   g.bandFrom = from / 4 + 1;
+  g.bandBeat = from;
   g.scheduleUpTo = from + t.scrollBeats + 1;
 }
 
@@ -79,19 +80,19 @@ export function pause(world: World, g: GameV): void {
   g.stopBand = true;
 }
 
-/** Resume on the bar line of the two-bar phrase it was paused in, after a new count-in. */
+/** Resume on the beat it was paused on, after a new count-in: the stems sounding then continue from where they were (AudioSource.startOffset). */
 export function resume(world: World, g: GameV): void {
   if (!g.paused) return;
   const t = lazyTuning(world);
   const len = beatLength(g);
-  const at = Math.max(0, beatAt(g, g.pausedAt));
-  const from = Math.floor(at / 8) * 8;
+  const from = Math.max(0, beatAt(g, g.pausedAt));
   const now = worldTime(world);
   const countTo = Math.ceil((now + 0.25) * 60) / 60 + t.countInBeats * len;
   g.songStart = countTo - from * len;
   g.countTo = countTo;
-  g.bandFrom = from / 4 + 1;
-  g.scheduleUpTo = from + t.scrollBeats + 1;
+  g.bandFrom = Math.floor(from / 4) + 1;
+  g.bandBeat = from;
+  g.scheduleUpTo = Math.ceil(from) + t.scrollBeats + 1;
   g.countShown = -1;
   g.paused = false;
   g.pausedAt = -1;

@@ -158,6 +158,15 @@ are world state, so playtests and replays reproduce them; script them with
 `touch:<id>:<down|move|up>:<x,y>` and `gamepad:<a+b+...|->[@pad][:lx,ly][:lt,rt]`
 (og-build §1). The fields and methods are `reference/input.md`.
 
+A press happens somewhere inside a tick, and the tick reads it at its
+start: `og.KeyDown`, `og.KeyUp`, `og.PointerDown` and `og.PointerUp` carry
+`at`, when it happened in ticks from the start of the tick that reads it
+(-1 to 1; from the browser event's time in a page, from the step's time
+in a command script; 0 for the edges a tick's end raises and for gamepad
+presses, which are polled). Timing that matters to the millisecond (a
+rhythm game's judgement) uses `time.elapsed + e.at * time.dt`; everything
+else ignores it. The stamp is world state, so a replay reproduces it.
+
 ## 8. 2D: sprites, flipbooks, tilemaps
 
 - **Sprites** are components: an entity with `og.Transform` and `og.Sprite`

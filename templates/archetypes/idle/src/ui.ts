@@ -8,7 +8,8 @@
 // every number goes through src/numbers.ts's `big`.
 //
 // The Ui system also keeps the save in og.platform: read on launch (and on
-// `relaunch`), the time away credited, written every Tuning.saveEvery
+// `relaunch`), the time away (the answer's host time less the save's
+// `at`, og.platform.now when it was written) credited, written every Tuning.saveEvery
 // ticks, after a supernova and on pause, at the revision read; a write
 // refused as stale is read again and merged (the save with more lifetime
 // sparks wins) and written at the new revision.
@@ -40,9 +41,9 @@ export function say(world: World, key: string, args?: Record<string, string | nu
 const grow = { kind: "grow" } as const;
 const px = (n: number) => ({ kind: "fixed", px: n }) as const;
 
-/** The save's value: everything a relaunch restores. */
-function saveValue(g: GameV) {
-  return { v: 1, sparks: g.sparks, runEarned: g.runEarned, lifetime: g.lifetime, owned: counts(g), dust: g.dust, novas: g.novas, runTicks: g.runTicks, taps: g.taps };
+/** The save's value: everything a relaunch restores, and when it was written (the host's clock, UTC ms). */
+function saveValue(world: World, g: GameV) {
+  return { v: 1, sparks: g.sparks, runEarned: g.runEarned, lifetime: g.lifetime, owned: counts(g), dust: g.dust, novas: g.novas, runTicks: g.runTicks, taps: g.taps, at: og.platform.now(world) };
 }
 
 type Save = ReturnType<typeof saveValue>;
@@ -62,7 +63,7 @@ function restore(g: GameV, s: Save): void {
 }
 
 function writeSave(world: World, g: GameV): void {
-  const r = og.platform.storeSet(world, { key: "orb", value: saveValue(g), revision: g.saveRevision });
+  const r = og.platform.storeSet(world, { key: "orb", value: saveValue(world, g), revision: g.saveRevision });
   if (r.ok) g.saveWrite = r.value;
   g.sinceSave = 0;
   g.saveNow = false;
@@ -127,6 +128,8 @@ function platform(world: World, g: GameV, p: PrefsV): void {
         g.loaded = true;
         if (d?.value) {
           restore(g, d.value);
+          // The time away: the answer's host time less the save's (relaunch:<s> has set it instead).
+          if (g.away === 0 && d.value.at > 0 && r.time > 0) g.away = Math.max(0, (r.time - d.value.at) / 1000);
           const t = lazyTuning(world);
           const gain = offlineGain(t, totalRate(t, counts(g), g.dust), g.away);
           if (gain > 0 && g.away >= 60) {

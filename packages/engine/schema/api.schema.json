@@ -336,7 +336,7 @@
             },
             {
               "name": "resource",
-              "doc": "A resource's live value. Inside a system, the resource must be among the system's reads or writes.",
+              "doc": "A resource's live value. Inside a system, the resource must be among the system's reads or writes (writes to set a field): an undeclared one throws in a dev or release build, naming the system and the resource, and fails the tick; a publish build refuses it and logs it once per system in the engine log.",
               "generics": [
                 {
                   "name": "R",
@@ -352,7 +352,7 @@
                 }
               ],
               "returns": "Result<Value<R>>",
-              "returnsDoc": "Refused for an unregistered resource or one the running system did not declare.",
+              "returnsDoc": "Refused for an unregistered resource (or, in a publish build, one the running system did not declare).",
               "publish": true
             },
             {
@@ -401,7 +401,7 @@
             },
             {
               "name": "events",
-              "doc": "The events of one type emitted during the previous tick and this one, oldest first.",
+              "doc": "The events of one type emitted during the previous tick and this one, oldest first. Inside a system the event must be among its reads or writes (undeclared: thrown, or in a publish build refused and logged once).",
               "generics": [
                 {
                   "name": "E",
@@ -421,7 +421,7 @@
             },
             {
               "name": "emit",
-              "doc": "Emit an event; readers see it this tick and the next.",
+              "doc": "Emit an event; readers see it this tick and the next. Inside a system the event must be among its writes (undeclared: thrown, or in a publish build refused and logged once).",
               "generics": [
                 {
                   "name": "E",
@@ -571,7 +571,7 @@
     },
     {
       "name": "system",
-      "doc": "Systems: functions the engine calls once per tick with their matched archetypes.\nA system declares what it reads and writes; a write to an undeclared component is refused at registration with the field name.",
+      "doc": "Systems: functions the engine calls once per tick with their matched archetypes.\nA system declares what it reads and writes; a write to an undeclared component is refused at registration with the field name.\nResources and events it reaches through the world must be declared too: in a dev or release build (og run, og test) an undeclared read or write throws with the system's name and the record and fails the tick; a publish build refuses it and logs it once per system in the engine log, and the game keeps running. og.Rng among the reads may fork (a fork reads the seed only and leaves the stream as it is); a draw moves the stream, so it needs og.Rng among the writes.",
       "place": "top",
       "publish": true,
       "types": [
@@ -893,7 +893,7 @@
     },
     {
       "name": "rng",
-      "doc": "Deterministic randomness. Every random draw comes from an Rng stream; the sequence for a seed is identical on every host and in the Web scaffold's rng.ts.",
+      "doc": "Deterministic randomness. Every random draw comes from an Rng stream; the sequence for a seed is identical on every host and in the Web scaffold's rng.ts.\nInside a system: forking needs og.Rng among the reads (a fork is derived from the seed and the label, and leaves the main stream where it is); drawing from og.Rng itself (next, range, integer, chance) moves its state, so it needs og.Rng among the writes. A stream a fork returned is the system's own to draw from.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -3118,7 +3118,23 @@
           "doc": "SoundEnded.reason: more sources played than Audio.maxVoices and this one stood lowest (priority, then volume, then age)."
         }
       ],
-      "functions": [],
+      "functions": [
+        {
+          "name": "outputLatency",
+          "doc": "How long after its world time a sample leaves the speaker, as the host reports it: on the web the AudioContext's baseLatency and outputLatency and the worklet ring's buffer, natively the device's latency (cpal's playback less callback instant) and the mixer's buffer; 0 headless (the null and capture sinks are driven to the tick). Host input, written to og.Audio between ticks, so a replay carries it. A rhythm game hears a note at its time plus this: judge a press against the note's time plus the latency, then a calibrated rest (the display, the hand).\nInside a system og.Audio must be among its reads or writes.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "f64",
+          "returnsDoc": "Seconds; 0 headless.",
+          "publish": true
+        }
+      ],
       "interfaces": [],
       "callbacks": []
     },
@@ -3974,6 +3990,21 @@
             }
           ],
           "returns": "PlatformInfo",
+          "publish": true
+        },
+        {
+          "name": "now",
+          "doc": "The host's wall-clock time, UTC milliseconds since 1970, as of this tick: what the host last told the engine (when it attached, and with every answer, applied at a tick's start like the answers) moved on by the ticks since. The one wall-clock read game code may make: it is host input, so a replay with the same answers gives the same values. Use it to know how long the game was closed (a save's time against a launch's), never to time play (that is og.Time).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "f64",
+          "returnsDoc": "UTC milliseconds; 0 until a host has told the time (`none`).",
           "publish": true
         }
       ],
@@ -7844,6 +7875,12 @@
         "modifiers": {
           "$ref": "#/$defs/Modifiers",
           "description": "Held modifiers; omitted means none."
+        },
+        "at": {
+          "type": "number",
+          "description": "When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5.",
+          "minimum": -1,
+          "maximum": 1
         }
       },
       "required": [
@@ -7882,6 +7919,12 @@
           "maximum": 4294967295,
           "description": "Which pointer: 0 the primary one (the mouse, the first touch; what protocol 5 means), 1 to 4 further touches held at the same time (an engine extension). Omitted is 0.",
           "maximum": 4
+        },
+        "at": {
+          "type": "number",
+          "description": "When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5.",
+          "minimum": -1,
+          "maximum": 1
         }
       },
       "required": [
@@ -7992,6 +8035,12 @@
             "modifiers": {
               "$ref": "#/$defs/Modifiers",
               "description": "Held modifiers; omitted means none."
+            },
+            "at": {
+              "type": "number",
+              "description": "When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5.",
+              "minimum": -1,
+              "maximum": 1
             }
           },
           "required": [
@@ -8033,6 +8082,12 @@
               "maximum": 4294967295,
               "description": "Which pointer: 0 the primary one (the mouse, the first touch; what protocol 5 means), 1 to 4 further touches held at the same time (an engine extension). Omitted is 0.",
               "maximum": 4
+            },
+            "at": {
+              "type": "number",
+              "description": "When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5.",
+              "minimum": -1,
+              "maximum": 1
             }
           },
           "required": [
@@ -8701,11 +8756,18 @@
         "repeat": {
           "type": "boolean",
           "description": "Whether this is an auto-repeat."
+        },
+        "at": {
+          "type": "number",
+          "description": "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.",
+          "minimum": -1,
+          "maximum": 1
         }
       },
       "required": [
         "key",
-        "repeat"
+        "repeat",
+        "at"
       ],
       "additionalProperties": false
     },
@@ -8718,10 +8780,17 @@
         "key": {
           "type": "string",
           "description": "The physical key code."
+        },
+        "at": {
+          "type": "number",
+          "description": "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.",
+          "minimum": -1,
+          "maximum": 1
         }
       },
       "required": [
-        "key"
+        "key",
+        "at"
       ],
       "additionalProperties": false
     },
@@ -8748,13 +8817,20 @@
           "minimum": 0,
           "maximum": 4294967295,
           "description": "Which pointer: 0 the primary one, 1 to 4 further touches (og.Pointers)."
+        },
+        "at": {
+          "type": "number",
+          "description": "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.",
+          "minimum": -1,
+          "maximum": 1
         }
       },
       "required": [
         "x",
         "y",
         "button",
-        "id"
+        "id",
+        "at"
       ],
       "additionalProperties": false
     },
@@ -8781,13 +8857,20 @@
           "minimum": 0,
           "maximum": 4294967295,
           "description": "Which pointer: 0 the primary one, 1 to 4 further touches."
+        },
+        "at": {
+          "type": "number",
+          "description": "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.",
+          "minimum": -1,
+          "maximum": 1
         }
       },
       "required": [
         "x",
         "y",
         "button",
-        "id"
+        "id",
+        "at"
       ],
       "additionalProperties": false
     },
@@ -16775,6 +16858,13 @@
           "minimum": 0,
           "x-og-unit": "s"
         },
+        "startOffset": {
+          "type": "number",
+          "description": "Where in the sound it starts, in seconds of the sound: started at startAt (or at once) from this far in, to the sample and at full gain, so a resumed phrase continues instead of restarting. Past a one-shot's end it plays nothing; a loop wraps into its region.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
         "fade": {
           "type": "number",
           "description": "Starts, stops and volume changes ramp over this long: a crossfade is one source stopped and another started with the same fade; 0 is 5 ms.",
@@ -16883,6 +16973,14 @@
           "minimum": 0,
           "maximum": 1,
           "x-og-tunable": true
+        },
+        "outputLatency": {
+          "type": "number",
+          "description": "Seconds from a sample's world time to the speaker, as the host reports it (og.audio.outputLatency).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s",
+          "readOnly": true
         }
       },
       "additionalProperties": false
@@ -18538,6 +18636,11 @@
           "minimum": 0,
           "maximum": 4294967295,
           "description": "The tick it was answered at."
+        },
+        "time": {
+          "type": "number",
+          "description": "The host's clock when it answered, UTC milliseconds since 1970 (PlatformInfo.clock says whose); 0 when the host gave none.",
+          "x-og-unit": "ms"
         }
       },
       "required": [
@@ -18545,7 +18648,8 @@
         "method",
         "ok",
         "data",
-        "tick"
+        "tick",
+        "time"
       ],
       "additionalProperties": false
     },
@@ -18571,12 +18675,17 @@
           "minimum": 0,
           "maximum": 4294967295,
           "description": "Calls not answered yet."
+        },
+        "clock": {
+          "type": "string",
+          "description": "Whose clock og.platform.now and the answers' `time` read: `player` (the Player's answers carry its time), `browser` (the web host's own clock: the Player gives no time yet, docs/platform-asks.md), `system` (the native host's system clock), `fixed` (`og run --clock` and playtests: a clock that starts where it is told and moves with the ticks) or `none`."
         }
       },
       "required": [
         "host",
         "capabilities",
-        "pending"
+        "pending",
+        "clock"
       ],
       "additionalProperties": false
     },

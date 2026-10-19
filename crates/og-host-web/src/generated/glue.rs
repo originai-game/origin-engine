@@ -769,6 +769,11 @@ pub fn og_tilemap_cell_center(world: u32, entity: f64, x: u32, y: u32) -> String
 }
 
 #[wasm_bindgen]
+pub fn og_audio_output_latency(world: u32) -> f64 {
+    <Host as AudioApi>::og_audio_output_latency(&Host, world)
+}
+
+#[wasm_bindgen]
 pub fn og_nav_grid(world: u32, desc: Option<String>) -> String {
     <Host as NavApi>::og_nav_grid(&Host, world, desc)
 }
@@ -926,6 +931,11 @@ pub fn og_platform_result(world: u32, request: u32) -> String {
 #[wasm_bindgen]
 pub fn og_platform_info(world: u32) -> String {
     <Host as PlatformApi>::og_platform_info(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_now(world: u32) -> f64 {
+    <Host as PlatformApi>::og_platform_now(&Host, world)
 }
 
 #[wasm_bindgen]

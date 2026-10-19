@@ -89,6 +89,34 @@ pub(crate) fn running_record(
     Ok((layout, id))
 }
 
+/// A running system reached for something it did not declare (`access` is
+/// `read` or `write`, `name` the record): the reason, worded the same on
+/// every path, and one engine log line per system, access and name, so a
+/// publish build (where the TypeScript runtime refuses instead of throwing)
+/// says it once in the engine log rather than every tick.
+pub(crate) fn undeclared(eng: &Engine, system: usize, access: &str, name: &str) -> String {
+    let mut st = eng.state.borrow_mut();
+    let sys = st
+        .systems
+        .get(system)
+        .map_or_else(|| "?".to_string(), |s| s.name.clone());
+    let list = if access == "write" {
+        "writes"
+    } else {
+        "reads or writes"
+    };
+    let reason =
+        format!("system '{sys}' did not declare '{name}' among its {list} ({access} refused)");
+    if st
+        .undeclared_logged
+        .insert(format!("{sys} {access} {name}"))
+    {
+        let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
+        st.log.push(json!({ "tick": tick, "warning": true, "text": format!("{reason}; declare it in the system's {list}") }));
+    }
+    reason
+}
+
 // ── reflect ─────────────────────────────────────────────────────────────────
 
 fn define_record(name: String, fields: &str, kind: RecordKind) -> String {
@@ -470,10 +498,9 @@ pub(crate) fn resource_value(eng: &Engine, name: &str) -> Result<Value, String> 
             return Ok(time_json(ctx.time(), ctx.time_scale(), rate));
         }
         if !declared {
-            return Err(format!(
-                "system '{}' did not declare '{name}' among its reads or writes",
-                s.name
-            ));
+            let system = f.system;
+            drop(st);
+            return Err(undeclared(eng, system, "read", name));
         }
         if name == Rng::NAME {
             return ctx.resource::<Rng>().map(|r| rng_json(&r)).map_err(err);
@@ -604,7 +631,9 @@ pub fn og_world_events(world: u32, event: String) -> String {
         let bytes = if let Some(f) = running(world) {
             let (layout, id) = running_record(&eng, &event, RecordKind::Event)?;
             // SAFETY: the frame is published while its system runs.
-            let all = unsafe { f.ctx() }.events_bytes(id).map_err(err)?;
+            let all = unsafe { f.ctx() }
+                .events_bytes(id)
+                .map_err(|_| undeclared(&eng, f.system, "read", &event))?;
             (layout, all)
         } else {
             let (layout, id) = event_layout(&eng, &event)?;
@@ -621,9 +650,15 @@ pub fn og_world_emit(world: u32, event: String, payload: String) -> String {
         return result_void((|| {
             let eng = engine(world)?;
             let (layout, id) = running_record(&eng, &event, RecordKind::Event)?;
+            let declared = eng.state.borrow().systems[f.system].writes.contains(&event);
+            if !declared {
+                return Err(undeclared(&eng, f.system, "write", &event));
+            }
             let bytes = layout.encode(None, Some(&parse(Some(&payload))?))?;
             // SAFETY: the frame is published while its system runs.
-            unsafe { f.ctx() }.send_bytes(id, &bytes).map_err(err)
+            unsafe { f.ctx() }
+                .send_bytes(id, &bytes)
+                .map_err(|_| undeclared(&eng, f.system, "write", &event))
         })());
     }
     result_void((|| {
@@ -897,14 +932,20 @@ pub fn og_transform_from_axis_angle(axis: String, angle: f64) -> String {
 // ── rng ─────────────────────────────────────────────────────────────────────
 
 /// Draws from the world's Rng resource. Inside a system the resource must
-/// be among its writes; otherwise the draw is refused and answers NaN.
+/// be among its writes (a draw moves its state); otherwise the draw is
+/// refused, logged once (`undeclared`) and answers the refused value (NaN).
 fn with_rng<T>(world: u32, refused: T, f: impl FnOnce(&mut Rng) -> T) -> T {
     if let Some(frame) = running(world) {
         // SAFETY: the frame is published while its system runs.
         let ctx = unsafe { frame.ctx() };
         return match ctx.resource_mut::<Rng>() {
             Ok(mut r) => f(&mut r),
-            Err(_) => refused,
+            Err(_) => {
+                if let Ok(eng) = engine(world) {
+                    undeclared(&eng, frame.system, "write", Rng::NAME);
+                }
+                refused
+            }
         };
     }
     match engine(world).and_then(|e| {
@@ -915,6 +956,32 @@ fn with_rng<T>(world: u32, refused: T, f: impl FnOnce(&mut Rng) -> T) -> T {
         Ok(v) => v,
         Err(_) => refused,
     }
+}
+
+/// Reads the world's Rng resource without moving it: a fork derives a
+/// stream from the seed alone, so a system with og.Rng among its reads may
+/// fork (the parent is untouched and the child is the same on every host).
+fn read_rng<T>(world: u32, f: impl FnOnce(&Rng) -> T) -> Option<T> {
+    if let Some(frame) = running(world) {
+        // SAFETY: the frame is published while its system runs.
+        let ctx = unsafe { frame.ctx() };
+        return match ctx.resource::<Rng>() {
+            Ok(r) => Some(f(&r)),
+            Err(_) => {
+                if let Ok(eng) = engine(world) {
+                    undeclared(&eng, frame.system, "read", Rng::NAME);
+                }
+                None
+            }
+        };
+    }
+    engine(world)
+        .and_then(|e| {
+            e.world()
+                .and_then(|w| w.resource::<Rng>().map_err(err))
+                .map(|r| f(&r))
+        })
+        .ok()
 }
 
 fn with_stream<T>(stream: u32, refused: T, f: impl FnOnce(&mut Rng) -> T) -> T {
@@ -984,10 +1051,60 @@ pub fn og_rng_chance(world: u32, p: f64) -> bool {
     with_rng(world, false, |r| chance(r, p))
 }
 pub fn og_rng_fork(world: u32, label: String) -> u32 {
-    match with_rng(world, None, |r| Some(r.fork(&label))) {
+    match read_rng(world, |r| r.fork(&label)) {
         Some(r) => new_stream(world, r),
         None => 0,
     }
+}
+
+// ── audio ───────────────────────────────────────────────────────────────────
+
+/// `og.audio.outputLatency`: og.Audio's `outputLatency`, which the host's
+/// sink reports between ticks (`set_audio_latency`). Inside a system og.Audio
+/// must be among its reads or writes (refused and logged once otherwise: 0).
+pub fn og_audio_output_latency(world: u32) -> f64 {
+    if let Some(frame) = running(world) {
+        // SAFETY: the frame is published while its system runs.
+        return match unsafe { frame.ctx() }.resource::<og_audio::Audio>() {
+            Ok(a) => a.output_latency,
+            Err(_) => {
+                if let Ok(eng) = engine(world) {
+                    undeclared(&eng, frame.system, "read", "og.Audio");
+                }
+                0.0
+            }
+        };
+    }
+    engine(world)
+        .and_then(|e| {
+            e.world().and_then(|w| {
+                w.resource::<og_audio::Audio>()
+                    .map_err(err)
+                    .map(|a| a.output_latency)
+            })
+        })
+        .unwrap_or(0.0)
+}
+
+/// The host's sink reports its output latency (seconds from a sample's world
+/// time to the speaker: the device's own and the buffering in front of it),
+/// between ticks; it is host input, written to og.Audio like an input event.
+pub fn set_audio_latency(engine_id: u32, seconds: f64) -> Result<(), String> {
+    if running(engine_id).is_some() {
+        return Err("the audio latency is host input: report it between ticks".into());
+    }
+    let seconds = if seconds.is_finite() {
+        seconds.clamp(0.0, 10.0)
+    } else {
+        0.0
+    };
+    let eng = engine(engine_id)?;
+    let w = eng.world()?;
+    let a = w.resource_mut::<og_audio::Audio>().map_err(err)?;
+    if a.output_latency != seconds {
+        a.output_latency = seconds;
+    }
+    Ok(())
 }
 
 // ── input ───────────────────────────────────────────────────────────────────
