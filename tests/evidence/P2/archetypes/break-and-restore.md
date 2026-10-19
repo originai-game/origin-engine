@@ -57,3 +57,27 @@ Restore: the line reverted, `lose` passes again:
 ```
 PASS lose (13 checks, 17711 ms): the lamp goes out: the summary, and the next dive starts from nothing
 ```
+
+## idle (Spark Orb)
+
+Break: `offlineGain` in `templates/archetypes/idle/src/numbers.ts` credits
+the whole rate for the time away instead of `Tuning.offlineShare` of it:
+
+```diff
+-  return rate * t.offlineShare * Math.min(Math.max(0, away), t.offlineCap);
++  return rate * Math.min(Math.max(0, away), t.offlineCap);
+```
+
+`tests/offline.og.ts` failed the credit and the words of the welcome back:
+
+```
+FAIL offline (15 checks, 8174 ms): the save, two hours away credited at half the rate, a stale write merged
+  - two hours away at half of 18 a second: 64,800 (129600)
+  - and says how long and how much: expected "While you were away (2 h 0 min) the orb made 64.8K sparks.", got "While you were away (2 h 0 min) the orb made 130K sparks."
+```
+
+Restore: the line reverted, `offline` passes again:
+
+```
+PASS offline (15 checks, 5473 ms): the save, two hours away credited at half the rate, a stale write merged
+```

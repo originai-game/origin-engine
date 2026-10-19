@@ -29,7 +29,7 @@ export interface CreateOptions {
   readonly name?: string;
   readonly id?: string;
   readonly force?: boolean;
-  /** Start from an archetype (`runner`, `match3`, `topdown`, `tower-defense`, `roguelike`, ...: templates/archetypes/README.md) instead of the project template. */
+  /** Start from an archetype (`runner`, `match3`, `topdown`, `tower-defense`, `roguelike`, `idle`, ...: templates/archetypes/README.md) instead of the project template. */
   readonly archetype?: string;
   /** The template directory; found next to this file when omitted. */
   readonly template?: string;
@@ -142,7 +142,7 @@ const USAGE = `usage: create [dir] [--name "Name"] [--id slug] [--archetype name
 Scaffolds an Origin Engine game into dir (default: ./origin-game).
   --name   the game's display name (default: from the id or the directory)
   --id     the game's id, lowercase-hyphen (default: from the name)
-  --archetype  start from a complete archetype game (runner, match3, topdown, tower-defense, roguelike) instead of the template
+  --archetype  start from a complete archetype game (runner, match3, topdown, tower-defense, roguelike, idle) instead of the template
   --force  write into a directory that is not empty`;
 
 function main(argv: string[]): number {

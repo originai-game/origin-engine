@@ -38,6 +38,8 @@ The same release build gave, minutes apart:
 | roguelike | 15–18 | 6.8 ms | 100 |
 | tower-defense | 16–23 | 2.8 ms (first five playtests), 93 ms (phone, as the load rose to 23) | 80 |
 | tower-defense | 25–26 | 33 ms (frame time 48) | 89 |
+| idle | 30–45 | 214 ms (median step 2.0, render 1.6–2.2) | 74 |
+| idle | 28 | 13.0 ms (frame time 81) | 94 |
 
 Each archetype's README states the scores of its committed report and,
 where frame time held feel under 90, that this is why.

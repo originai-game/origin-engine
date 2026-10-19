@@ -14,6 +14,7 @@ and add a top-down room built for the engine's 2D and game-feel modules.
 | `topdown/` | Tomb Room | 2d | WASD or arrows, Space to strike, Shift to dash | cross two rooms of a Tiled map, beat the slime, collect the coins and the key, open the door |
 | `tower-defense/` | Path Guard | 2d | taps, or the arrows and Space, or a pad | pick a plant, set it on the lawn, watch the visitors re-route round it, hold five waves |
 | `roguelike/` | Lamp Dive | 2d | the arrows or WASD, a tap on the next cell, a pad, or the HUD's d-pad | step a turn at a time through a fresh tomb, strike what the lamp shows, take what it finds, reach the relic on floor 2 with one life |
+| `idle/` | Spark Orb | 2d | taps or Space on the orb, 1–4 or the cards to buy, a pad | tap for sparks, buy generators that make them, double each kind every tenth, collapse into a supernova for stardust, come back to what it made while away |
 
 Each archetype's README has its rules, components, systems, tunables, the
 commands its playtests use and what a Maker changes first.
