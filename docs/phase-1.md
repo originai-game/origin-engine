@@ -364,7 +364,7 @@ resource only the owner can give.
 | 35 | wgpu and naga 31 when published, kept only if every reference frame passes unchanged | Toolchain | S | engine, phase 2 | open |
 | 36 | `og polish` measures frame time on the tier it runs on (metal here), not on the executors' lavapipe | E6 | S | platform | open |
 | 37 | The eight platform asks (`docs/platform-asks.md`) | E6 | M | platform | done: landed on the platform 2026-10-19, the engine speaks it (96f4ebd) |
-| 38 | The platform side of the cutover: merge `origin-engine-cutover`, pin this revision | E1 | S | platform | open |
+| 38 | The platform side of the cutover: merge `origin-engine-cutover`, pin this revision | E1 | S | platform | done: the platform merged the cutover (origingame `7e5789d89`) and pins `cf3cb0b` (`agent-server/scripts/e2b/origin-engine.json`), with the knowledge mount, local layout, runner tests and workspace stack checked on it; the next pin bump moves to this main |
 | 39 | A third native tier beside `metal` and `vulkan-cpu` (the browser tiers stand in) | E4 | M | owner | open |
 | 40 | Mobile measurements: the iPhone first frame and frame times (Safari, WebGPU), the mid-range Android view benchmark | M6, E1 | S | owner (devices) | open |
 | 41 | og-ui plays no sound when keyboard or gamepad focus moves (ui-kit's sound on input 38 in og polish) | E7 | S | engine, phase 2 | open |
