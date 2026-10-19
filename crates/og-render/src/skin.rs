@@ -202,7 +202,16 @@ impl Vec4Array {
         if count <= self.capacity {
             return false;
         }
-        let capacity = count.next_power_of_two();
+        let mut capacity = count.next_power_of_two();
+        if mode == PaletteMode::Texture {
+            // Never more rows than the device allows (what is written was
+            // checked against it: `GpuPalette::texture_rows`).
+            let most = device
+                .limits()
+                .max_texture_dimension_2d
+                .saturating_mul(TEXTURE_ROW);
+            capacity = capacity.min(most.max(count));
+        }
         match mode {
             PaletteMode::Storage => {
                 self.buffer = Some(device.create_buffer(&wgpu::BufferDescriptor {
@@ -324,6 +333,19 @@ impl GpuPalette {
         match self.mode {
             PaletteMode::Storage => 0,
             PaletteMode::Texture => rows(morph_texels) * TEXTURE_JOINTS_PER_ROW,
+        }
+    }
+
+    /// The texture rows `joints` joint matrices and `morph_texels` morph
+    /// deltas take on the texture path (`None` on the storage path), to
+    /// check against the device's largest 2D texture before writing.
+    pub fn texture_rows(&self, morph_texels: usize, joints: usize) -> Option<u64> {
+        match self.mode {
+            PaletteMode::Storage => None,
+            PaletteMode::Texture => Some(
+                (morph_texels as u64).div_ceil(TEXTURE_ROW as u64)
+                    + (joints as u64 * 4).div_ceil(TEXTURE_ROW as u64),
+            ),
         }
     }
 
