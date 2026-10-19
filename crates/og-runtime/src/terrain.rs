@@ -703,7 +703,7 @@ fn edit_loaded(eng: &Engine, i: usize, b: &Value, log: bool) -> Result<Value, St
             rs.terrain.streamer.forget(i);
         }
         if collision {
-            set_heightfield(&eng, GEOMETRY_BASE + i as u64, &data)?;
+            set_heightfield(eng, GEOMETRY_BASE + i as u64, &data)?;
         }
         let (lo, hi) = data.range();
         Ok(json!({ "samples": touched, "minHeight": lo, "maxHeight": hi }))
