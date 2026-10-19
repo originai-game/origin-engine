@@ -48,14 +48,18 @@ use wasm_bindgen::prelude::*;
 pub struct WebHost;
 
 thread_local! {
-    /// Cooked files the Worker fetched, by path.
+    /// Cooked files the Worker fetched, by path. A streaming group's pack
+    /// stays only until the engine reads it (or lets go of it).
     static FILES: RefCell<BTreeMap<String, Result<Vec<u8>, String>>> = const { RefCell::new(BTreeMap::new()) };
     /// Transcoded textures the Worker handed over, by asset id.
     static TEXTURES: RefCell<BTreeMap<String, og_render::TextureSource>> = const { RefCell::new(BTreeMap::new()) };
     /// The encodings each engine's attached renderer takes.
     static FORMATS: RefCell<BTreeMap<u32, og_render::TextureFormats>> = const { RefCell::new(BTreeMap::new()) };
-    /// Paths handed to the fetcher, so each is asked for once.
+    /// Paths handed to the fetcher and not answered yet, so each is asked for once at a time.
     static REQUESTED: RefCell<std::collections::BTreeSet<String>> = const { RefCell::new(std::collections::BTreeSet::new()) };
+    /// Packs let go of while they were fetched, with their group's texture
+    /// ids: dropped, textures and all, when they land.
+    static ORPHANED: RefCell<BTreeMap<String, Vec<String>>> = const { RefCell::new(BTreeMap::new()) };
     /// Render-target sizes the shell asked for, by engine, applied before the next frame.
     static RESIZES: RefCell<BTreeMap<u32, (u32, u32)>> = const { RefCell::new(BTreeMap::new()) };
     /// The Worker's `fetch(path)` for files nobody fetched yet.
@@ -106,14 +110,25 @@ impl Hooks for WebHooks {
     }
 
     fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
-        let known = FILES.with(|f| f.borrow().get(path).cloned());
+        // A pack is read once per load: taken, not copied, and fetched
+        // again (a failure too) the next time its group loads.
+        let known = if is_stream_pack(path) {
+            FILES.with(|f| f.borrow_mut().remove(path))
+        } else {
+            FILES.with(|f| f.borrow().get(path).cloned())
+        };
         match known {
             Some(Ok(bytes)) => Fetch::Ready(bytes),
             Some(Err(e)) => Fetch::Failed(e),
             None => FETCHER.with(|f| match &*f.borrow() {
                 Some(fetch) => {
-                    if REQUESTED.with(|r| r.borrow_mut().insert(path.to_string())) {
-                        let _ = fetch.call1(&JsValue::NULL, &JsValue::from_str(path));
+                    // A pack let go of in flight is wanted again: kept when it lands.
+                    ORPHANED.with(|o| o.borrow_mut().remove(path));
+                    if REQUESTED.with(|r| r.borrow_mut().insert(path.to_string()))
+                        && let Err(e) = fetch.call1(&JsValue::NULL, &JsValue::from_str(path))
+                    {
+                        REQUESTED.with(|r| r.borrow_mut().remove(path));
+                        return Fetch::Failed(format!("{path}: the fetcher threw {e:?}"));
                     }
                     Fetch::Pending
                 }
@@ -151,6 +166,16 @@ impl Hooks for WebHooks {
         }
     }
 
+    fn release_stream(&self, pack: &str, textures: &[String]) {
+        FILES.with(|f| f.borrow_mut().remove(pack));
+        if REQUESTED.with(|r| r.borrow().contains(pack)) {
+            // Its textures may still be arriving: dropped when the pack lands.
+            ORPHANED.with(|o| o.borrow_mut().insert(pack.to_string(), textures.to_vec()));
+        } else {
+            drop_textures(textures);
+        }
+    }
+
     fn inflate_start(&self, key: u64, zlib: &[u8]) -> bool {
         INFLATER.with(|f| match &*f.borrow() {
             Some(inflate) => inflate
@@ -184,17 +209,45 @@ impl Hooks for WebHooks {
     }
 }
 
+/// `cooked/stream/<name>.ogb`, as the Worker's fetcher tells a pack
+/// (`/\/stream\/[^/]+\.ogb$/`).
+fn is_stream_pack(path: &str) -> bool {
+    path.rsplit_once('/').is_some_and(|(dir, name)| {
+        dir.ends_with("/stream") && name.len() > ".ogb".len() && name.ends_with(".ogb")
+    })
+}
+
+fn drop_textures(ids: &[String]) {
+    TEXTURES.with(|t| {
+        let mut t = t.borrow_mut();
+        for id in ids {
+            t.remove(id);
+        }
+    });
+}
+
+/// A fetch landed: kept for the engine, or dropped with its textures when
+/// its group let go of it meanwhile.
+fn land(path: String, file: Result<Vec<u8>, String>) {
+    REQUESTED.with(|r| r.borrow_mut().remove(&path));
+    if let Some(textures) = ORPHANED.with(|o| o.borrow_mut().remove(&path)) {
+        drop_textures(&textures);
+        return;
+    }
+    FILES.with(|f| f.borrow_mut().insert(path, file));
+}
+
 /// A cooked file the Worker fetched (`path` as the runtime asks for it:
 /// `<root>/cooked/<file>`).
 #[wasm_bindgen]
 pub fn og_web_put_file(path: String, bytes: Vec<u8>) {
-    FILES.with(|f| f.borrow_mut().insert(path, Ok(bytes)));
+    land(path, Ok(bytes));
 }
 
 /// A cooked file that could not be fetched, with the reason.
 #[wasm_bindgen]
 pub fn og_web_fail_file(path: String, reason: String) {
-    FILES.with(|f| f.borrow_mut().insert(path, Err(reason)));
+    land(path, Err(reason));
 }
 
 /// A texture the Worker transcoded to RGBA8 (level 0, rows top to bottom).

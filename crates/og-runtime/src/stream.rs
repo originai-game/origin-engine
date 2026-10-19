@@ -419,6 +419,7 @@ pub(crate) fn update(eng: &Engine) {
             .map(|(i, g)| (i, format!("{}/{}", g.dir, g.desc.file)))
             .collect()
     };
+    let mut failed = Vec::new();
     for (i, path) in loading {
         let read = match hooks() {
             Some(h) => h.read_asset(&path),
@@ -426,16 +427,23 @@ pub(crate) fn update(eng: &Engine) {
         };
         let mut a = eng.assets.borrow_mut();
         let s = &mut a.stream;
-        match read {
-            super::assets::Fetch::Pending => {}
-            super::assets::Fetch::Failed(e) => {
-                set_state(s, eng.id, i, State::Failed, tick, &format!("{path}: {e}"))
-            }
+        let why = match read {
+            super::assets::Fetch::Pending => continue,
+            super::assets::Fetch::Failed(e) => format!("{path}: {e}"),
             super::assets::Fetch::Ready(bytes) => match og_cook::runtime::unpack(&bytes) {
-                Ok(files) => s.groups[i].files = files.into_iter().collect(),
-                Err(e) => set_state(s, eng.id, i, State::Failed, tick, &format!("{path}: {e}")),
+                Ok(files) => {
+                    s.groups[i].files = files.into_iter().collect();
+                    continue;
+                }
+                Err(e) => format!("{path}: {e}"),
             },
-        }
+        };
+        set_state(s, eng.id, i, State::Failed, tick, &why);
+        failed.push(s.groups[i].desc.name.clone());
+    }
+    // Textures the host put before the pack failed go with it.
+    for name in failed {
+        release(eng, &name);
     }
     let ready: Option<String> = {
         let a = eng.assets.borrow();
@@ -652,8 +660,39 @@ pub(crate) fn placeholder() -> TextureData {
     }
 }
 
-/// Puts a group's stand-ins back and drops its pack.
+/// Tells the host that `group` let go of its pack and textures.
+fn release(eng: &Engine, group: &str) {
+    let Some(h) = hooks() else {
+        return;
+    };
+    let (pack, textures) = {
+        let a = eng.assets.borrow();
+        let Some(i) = a.stream.find(group) else {
+            return;
+        };
+        let g = &a.stream.groups[i];
+        let textures = a
+            .default_bundle
+            .and_then(|b| match &a.entries[b].payload {
+                super::assets::Payload::Bundle { bundle, .. } => Some(
+                    bundle
+                        .manifest()
+                        .outputs()
+                        .filter(|o| o.group.as_deref() == Some(group) && o.ty == "og.Texture")
+                        .map(|o| o.id.clone())
+                        .collect::<Vec<_>>(),
+                ),
+                _ => None,
+            })
+            .unwrap_or_default();
+        (format!("{}/{}", g.dir, g.desc.file), textures)
+    };
+    h.release_stream(&pack, &textures);
+}
+
+/// Puts a group's stand-ins back and drops its pack (the host's too).
 fn downgrade(eng: &Engine, group: &str) {
+    release(eng, group);
     let link = og_audio::link(eng.id);
     let mut a = eng.assets.borrow_mut();
     if let Some(i) = a.stream.find(group) {
