@@ -7,8 +7,10 @@
 //
 // Time is the world's: tick / tick rate, the clock og.music and og.audio
 // keep, so a stem started at `songStart + bar × barLength` sounds on its
-// bar line to the sample. A press is judged at its tick's time less the
-// calibrated offset (Prefs.offsetMs) against its note's exact time.
+// bar line to the sample. A press is judged at the time it happened (its
+// tick's time and its event's `at` within the tick) less the output's
+// latency (og.audio.outputLatency) and the calibrated offset
+// (Prefs.offsetMs) against its note's exact time.
 
 import { og, defineSystem } from "@origingame/engine";
 import type { Value, World } from "@origingame/engine";
@@ -89,28 +91,60 @@ export function screenToWorld(world: World, px: number, py: number): { x: number
   return { x: at.x + (px - vp.width / 2) / scale, y: at.y - (py - vp.height / 2) / scale };
 }
 
-/** The lanes pressed this tick, as a mask: keys, the pad, fingers on the highway, the HUD's zones. */
-function pressedLanes(world: World, g: GameV, inp: Value<typeof og.Input>, gp: Value<typeof og.Gamepad>, ptr: Value<typeof og.Pointers>): number {
+/** Each lane's keys and pad buttons. */
+const LANE_KEYS: readonly (readonly string[])[] = [["KeyA", "ArrowLeft", "KeyJ"], ["KeyS", "ArrowDown", "KeyK", "Space"], ["KeyD", "ArrowRight", "KeyL"]];
+const LANE_PADS: readonly (readonly string[])[] = [["left", "x"], ["down", "a"], ["right", "b"]];
+
+/** The lane a finger at a CSS pixel is on, or -1 off the highway. */
+function laneAt(world: World, g: GameV, x: number, y: number): number {
+  const w = screenToWorld(world, x, y);
+  if (w === null || w.y > g.hitY + 3.5) return -1;
+  const lane = Math.round(w.x / g.laneW) + 1;
+  return lane >= 0 && lane < LANES && Math.abs(w.x - (lane - 1) * g.laneW) <= g.laneW * 0.6 ? lane : -1;
+}
+
+/**
+ * The lanes pressed this tick, as a mask (keys, the pad, fingers on the
+ * highway, the HUD's zones), and when within the tick each lane's first
+ * press happened (`within[lane]`, in ticks: og.KeyDown's and
+ * og.PointerDown's `at`, from the host's event time; 0 for the pad, which
+ * the shell polls once a frame, and for the `hit` command).
+ */
+function pressedLanes(world: World, g: GameV, inp: Value<typeof og.Input>, gp: Value<typeof og.Gamepad>, ptr: Value<typeof og.Pointers>, within: number[]): number {
   let mask = 0;
-  const keys: string[][] = [["KeyA", "ArrowLeft", "KeyJ"], ["KeyS", "ArrowDown", "KeyK", "Space"], ["KeyD", "ArrowRight", "KeyL"]];
-  const pads: string[][] = [["left", "x"], ["down", "a"], ["right", "b"]];
+  within.fill(0);
+  const stamp = (lane: number, at: number) => {
+    within[lane] = mask & (1 << lane) ? Math.min(within[lane]!, at) : at;
+    mask |= 1 << lane;
+  };
+  for (const e of world.events(og.KeyDown)) {
+    if (e.repeat) continue;
+    const lane = LANE_KEYS.findIndex((keys) => keys.includes(e.key));
+    if (lane >= 0 && inp.pressed(e.key)) stamp(lane, e.at);
+  }
+  for (const e of world.events(og.PointerDown)) {
+    const lane = ptr.pressed(e.id) ? laneAt(world, g, e.x, e.y) : -1;
+    if (lane >= 0) stamp(lane, e.at);
+  }
   for (let lane = 0; lane < LANES; lane++) {
-    if (keys[lane]!.some((k) => inp.pressed(k)) || pads[lane]!.some((b) => gp.pressed(b as never))) mask |= 1 << lane;
+    if (mask & (1 << lane)) continue;
+    if (LANE_KEYS[lane]!.some((k) => inp.pressed(k)) || LANE_PADS[lane]!.some((b) => gp.pressed(b as never))) stamp(lane, 0);
   }
   for (let id = 0; id < ptr.count(); id++) {
     if (!ptr.pressed(id)) continue;
     const at = ptr.position(id);
-    const w = screenToWorld(world, at.x, at.y);
-    if (w === null || w.y > g.hitY + 3.5) continue;
-    const lane = Math.round(w.x / g.laneW) + 1;
-    if (lane >= 0 && lane < LANES && Math.abs(w.x - (lane - 1) * g.laneW) <= g.laneW * 0.6) mask |= 1 << lane;
+    const lane = laneAt(world, g, at.x, at.y);
+    if (lane >= 0 && !(mask & (1 << lane))) stamp(lane, 0);
   }
   if (g.padLane >= 0) {
-    mask |= 1 << g.padLane;
+    if (!(mask & (1 << g.padLane))) stamp(g.padLane, 0);
     g.padLane = -1;
   }
   return mask;
 }
+
+/** Scratch for pressedLanes: each lane's press time within the tick. */
+const within = [0, 0, 0];
 
 /**
  * The play. Each tick: the presses (the count-in's taps and a calibration's
@@ -122,7 +156,7 @@ function pressedLanes(world: World, g: GameV, inp: Value<typeof og.Input>, gp: V
  */
 export const Play = defineSystem(
   "Play",
-  { reads: [og.Input, og.Gamepad, og.Pointers, og.Camera, og.MusicBeat, Tuning, Prefs], writes: [Game, Note], after: ["Clock"] },
+  { reads: [og.Input, og.Gamepad, og.Pointers, og.KeyDown, og.PointerDown, og.Camera, og.Audio, og.MusicBeat, Tuning, Prefs], writes: [Game, Note], after: ["Clock"] },
   (q, _time, world) => {
     const game = world.resource(Game);
     const input = world.resource(og.Input);
@@ -133,10 +167,14 @@ export const Play = defineSystem(
     const g = game.value;
     const t = lazyTuning(world);
     const now = worldTime(world);
+    // What the player hears is the world's time less the output's latency (0 headless); the
+    // calibrated offset is the rest of the chain (the display, the hand).
+    const latency = og.audio.outputLatency(world);
     const offset = prefs.value.offsetMs / 1000;
     const live = g.phase === Phase.Play && !g.held && g.pausedAt < 0;
     const calibrating = g.phase === Phase.Calibrate && !g.settingsOpen;
-    const mask = live || calibrating ? pressedLanes(world, g, input.value, gamepad.value, pointers.value) : 0;
+    const mask = live || calibrating ? pressedLanes(world, g, input.value, gamepad.value, pointers.value, within) : 0;
+    const tickLength = 1 / 60;
     if (mask !== g.pressMask) g.pressMask = mask;
     if (mask !== 0) {
       g.taps += 1;
@@ -145,7 +183,10 @@ export const Play = defineSystem(
     // Calibration: each tap's error from the nearest click (every beat of the clock).
     if (calibrating && mask !== 0 && g.calTaps < 8 && now > g.songStart) {
       const len = beatLength(g);
-      const b = (now - g.songStart) / len;
+      let first = 0;
+      while (!(mask & (1 << first))) first++;
+      // The tap when it happened, against the click when it was heard.
+      const b = (now + within[first]! * tickLength - latency - g.songStart) / len;
       const err = (b - Math.round(b)) * len * 1000;
       g.calTaps += 1;
       g.calSum += err;
@@ -157,7 +198,7 @@ export const Play = defineSystem(
       for (const e of world.events(og.MusicBeat)) upTo = Math.max(upTo, (e.bar - 1) * 4 + (e.beat - 1) + 1 + t.scrollBeats);
     }
     if (g.scheduleUpTo !== -1) g.scheduleUpTo = -1;
-    const at = songNow(world, g) - offset;
+    const at = songNow(world, g) - offset - latency;
     const len = beatLength(g);
     const window = t.goodMs / 1000;
     let hitMask = 0;
@@ -190,11 +231,13 @@ export const Play = defineSystem(
       if (live) {
         for (let lane = 0; lane < LANES; lane++) {
           if (!(mask & (1 << lane))) continue;
+          // The press when it happened within the tick, not the tick's start.
+          const pressed = at + within[lane]! * tickLength;
           let best = -1;
           let bestErr = Infinity;
           for (let i = 0; i < count; i++) {
             if (!n.live[i] || n.judged[i] || n.lane[i] !== lane) continue;
-            const err = at - (g.songStart + n.beat[i]! * len);
+            const err = pressed - (g.songStart + n.beat[i]! * len);
             if (Math.abs(err) <= window && Math.abs(err) < Math.abs(bestErr)) {
               best = i;
               bestErr = err;
@@ -317,7 +360,8 @@ export const Clock = defineSystem("Clock", { reads: [Game], writes: [og.Music], 
 /**
  * The band: on the last beat of each bar og.MusicBeat brings, the stems of
  * the next bar start on its bar line (startAt, to the sample); a start or a
- * resume asks for the count-in's four clicks and its first bar; a
+ * resume asks for the count-in's four clicks and the stems sounding at the
+ * beat it starts on, each from where it would be (startOffset); a
  * calibration clicks every beat; a pause, a fail or the title stops them.
  */
 export const Band = defineSystem("Band", { reads: [og.MusicBeat, Tuning], writes: [Game, Stem, og.AudioSource], after: ["Play"] }, (q, _time, world) => {
@@ -332,20 +376,27 @@ export const Band = defineSystem("Band", { reads: [og.MusicBeat, Tuning], writes
     for (const a of q.archetypes()) a.column(og.AudioSource).playing.fill(0);
     return;
   }
-  const starts = new Map<string, number>();
+  // Each stem to start: when (world time) and how far into it (seconds).
+  const starts = new Map<string, { at: number; offset: number }>();
   if (g.bandFrom > 0) {
-    // A start or a resume: the count-in's clicks, then the bar it resumes on.
+    // A start or a resume: the count-in's clicks, then the stems sounding at Game.bandBeat, each
+    // from where it would be by then: a bar's own from its bar line, a two-bar one from the
+    // odd bar before.
     const clicks = Math.min(4, lazyTuning(world).countInBeats);
-    for (let k = 4 - clicks; k < 4; k++) starts.set(`click${k}`, g.countTo - (4 - k) * len);
-    for (const p of partsAt(g.bandFrom, g.bars)) starts.set(p, g.countTo);
-    g.nextBar = g.bandFrom + 1;
+    for (let k = 4 - clicks; k < 4; k++) starts.set(`click${k}`, { at: g.countTo - (4 - k) * len, offset: 0 });
+    const bar = g.bandFrom;
+    if (bar % 2 === 0) {
+      for (const p of partsAt(bar - 1, g.bars)) if (p !== "drums") starts.set(p, { at: g.countTo, offset: (g.bandBeat - (bar - 2) * 4) * len });
+    }
+    for (const p of partsAt(bar, g.bars)) starts.set(p, { at: g.countTo, offset: (g.bandBeat - (bar - 1) * 4) * len });
+    g.nextBar = bar + 1;
     g.bandFrom = 0;
   }
   for (const e of world.events(og.MusicBeat)) {
     if (g.phase === Phase.Calibrate) {
-      starts.set(`click${e.beat % 4}`, e.time + len);
+      starts.set(`click${e.beat % 4}`, { at: e.time + len, offset: 0 });
     } else if (g.phase === Phase.Play && g.pausedAt < 0 && e.beat === 4 && e.bar + 1 === g.nextBar) {
-      for (const p of partsAt(g.nextBar, g.bars)) starts.set(p, e.time + len);
+      for (const p of partsAt(g.nextBar, g.bars)) starts.set(p, { at: e.time + len, offset: 0 });
       g.nextBar += 1;
     }
   }
@@ -355,9 +406,10 @@ export const Band = defineSystem("Band", { reads: [og.MusicBeat, Tuning], writes
     const src = a.column(og.AudioSource);
     for (let i = 0; i < a.count; i++) {
       const part = PARTS[stem.part[i]!]!;
-      const at = starts.get(part);
-      if (at === undefined) continue;
-      src.startAt[i] = at;
+      const start = starts.get(part);
+      if (start === undefined) continue;
+      src.startAt[i] = start.at;
+      src.startOffset[i] = start.offset;
       src.playing[i] = 1;
       stem.starts[i] = stem.starts[i]! + 1;
     }
