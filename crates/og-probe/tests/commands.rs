@@ -526,3 +526,24 @@ fn set_and_get_reach_resources_entities_components_and_fields() {
     );
     assert_eq!(h.world.resource::<Stats>().unwrap().draws, 7);
 }
+
+#[test]
+fn output_paths_stay_inside_the_output_directory() {
+    let mut h = build(1, true);
+    h.probe
+        .schedule(&h.world, "0:dump_world:../escape.json;0:dump_world:/tmp/abs.json;0:dump_entity:player:a/../../b.json;0:screenshot:../src/main.ts;0:dump_world:shots/w.json")
+        .unwrap();
+    h.probe.pump(&mut h.world);
+    let log = h.probe.take_log();
+    let refused: Vec<_> = log.iter().filter(|l| l.warning).collect();
+    assert_eq!(refused.len(), 4, "{log:?}");
+    assert!(
+        refused
+            .iter()
+            .all(|l| l.text.contains("leaves the output directory")),
+        "{log:?}"
+    );
+    let outputs = h.probe.take_outputs();
+    assert_eq!(outputs.len(), 1);
+    assert_eq!(outputs[0].file_name(), "shots/w.json");
+}

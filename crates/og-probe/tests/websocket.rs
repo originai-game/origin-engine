@@ -99,3 +99,24 @@ fn other_paths_and_non_loopback_addresses_are_refused() {
     );
     assert_eq!(DEFAULT_PORT, 47800);
 }
+
+#[test]
+fn a_browser_page_is_refused_at_the_handshake() {
+    use tungstenite::client::IntoClientRequest;
+    let server = ProbeServer::bind("127.0.0.1:0".parse().unwrap()).unwrap();
+    let mut request = format!("ws://127.0.0.1:{}/probe", server.port())
+        .into_client_request()
+        .unwrap();
+    request
+        .headers_mut()
+        .insert("Origin", "https://any.example".parse().unwrap());
+    match tungstenite::connect(request) {
+        Err(tungstenite::Error::Http(response)) => {
+            assert_eq!(response.status(), 403);
+            let body = String::from_utf8(response.body().clone().unwrap_or_default()).unwrap();
+            assert!(body.contains("Origin"), "{body}");
+        }
+        Err(e) => panic!("refused, but not by the Origin check: {e}"),
+        Ok(_) => panic!("a request with an Origin header upgraded"),
+    }
+}

@@ -256,6 +256,11 @@ shown, with no aspect, icon or short name. `probe` is read and checked but
 does not choose anything today: a `--publish` build always serves the
 player members and a dev build every member, whatever it says.
 
+A build replaces its output directory (`out`, or `--out`) whole, so it
+refuses one that is the project or an ancestor of it, holds a
+`project.ogt`, or is not empty and holds no `og-build.json` from an
+earlier build; a build that fails after replacing it removes what it wrote.
+
 ## The shell
 
 - **Boot**: the brand symbol, white on ink `#14161b`, plays `genesis` once,

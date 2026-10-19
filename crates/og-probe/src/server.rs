@@ -112,17 +112,27 @@ fn accept(listener: TcpListener, calls: Sender<Pending>, stop: Arc<AtomicBool>) 
     }
 }
 
-/// The handshake callback: only `/probe` upgrades. The `Err` type is
-/// tungstenite's own handshake contract.
+/// The handshake callback: only `/probe` upgrades, and only for a client
+/// that sends no `Origin` header. Every browser sends one on a WebSocket
+/// handshake, so a page the developer happens to visit cannot drive the
+/// probe; `og probe`, the runner and other native clients send none. The
+/// `Err` type is tungstenite's own handshake contract.
 #[allow(clippy::result_large_err)]
 fn only_probe_path(request: &Request, response: Response) -> Result<Response, ErrorResponse> {
-    if request.uri().path() == PATH {
-        Ok(response)
-    } else {
+    if request.uri().path() != PATH {
         let mut refusal = ErrorResponse::new(Some(format!("the probe lives at {PATH}")));
         *refusal.status_mut() = StatusCode::NOT_FOUND;
-        Err(refusal)
+        return Err(refusal);
     }
+    if request.headers().contains_key("origin") {
+        let mut refusal = ErrorResponse::new(Some(
+            "the probe refuses browser pages (an Origin header): connect from a native client such as `og probe`"
+                .to_string(),
+        ));
+        *refusal.status_mut() = StatusCode::FORBIDDEN;
+        return Err(refusal);
+    }
+    Ok(response)
 }
 
 fn connection(stream: TcpStream, calls: Sender<Pending>, stop: Arc<AtomicBool>) {

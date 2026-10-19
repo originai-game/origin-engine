@@ -32,8 +32,8 @@
 // without the brotli CLI); with --json one JSON line:
 //   { ok, out, publish, files: [{ path, bytes, compressed, codec }], total, probe: { build, members }, manifest }
 
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { bundleGame, ENGINE_ROOT } from "./build.ts";
 import { bootMark, engineMark, motionSubset, shellTokens, SHELL_MOTIONS, BRAND_DIR } from "../../shell/brand.ts";
@@ -41,9 +41,12 @@ import { bootMark, engineMark, motionSubset, shellTokens, SHELL_MOTIONS, BRAND_D
 declare module "node:fs" {
   export function cpSync(from: string, to: string, options?: { recursive?: boolean }): void;
   export function readdirSync(path: string): string[];
+  export function realpathSync(path: string): string;
 }
 declare module "node:path" {
   export function relative(from: string, to: string): string;
+  export function isAbsolute(path: string): boolean;
+  export const sep: string;
 }
 
 declare const Bun: {
@@ -439,8 +442,35 @@ const LANES_FILES = ["origin-engine-lanes.js", "origin-engine-lanes_bg.wasm", "s
 const SINGLE_ENGINE = /^origin-engine(\.js|_bg\.wasm)$/;
 const LANES_ENGINE = /^(origin-engine-lanes(\.js|_bg\.wasm)|snippets\/.*)$/;
 
+/**
+ * Why `out` may not be wiped for a build, or null. A build replaces its
+ * output directory whole, so it refuses the project itself, any ancestor of
+ * it, a directory holding a project.ogt, and any non-empty directory that a
+ * previous build did not write (no og-build.json in it).
+ */
+function outRefusal(project: string, out: string): string | null {
+  const real = (path: string) => (existsSync(path) ? realpathSync(path) : resolve(path));
+  const root = real(project);
+  const target = real(out);
+  const up = relative(target, root);
+  if (up === "" || !(up === ".." || up.startsWith(`..${sep}`) || isAbsolute(up))) return `${out} is the project or contains it; give an output directory inside or beside the project (default dist)`;
+  if (!existsSync(target)) return null;
+  if (!statSync(target).isDirectory()) return `${out} is a file, not a directory`;
+  if (existsSync(join(target, "project.ogt"))) return `${out} holds a project.ogt; give an output directory of its own (default dist)`;
+  if (readdirSync(target).length > 0 && !existsSync(join(target, BUILD_MANIFEST))) return `${out} is not empty and holds no ${BUILD_MANIFEST} from an earlier build, so og build will not replace it; empty or remove it, or give another output directory`;
+  return null;
+}
+
 export async function webBuild(project: string, entry: string, out: string, publish: boolean, given?: ProjectSettings): Promise<WebBuild> {
-  const fail = (reason: string): WebBuild => ({ ok: false, out, publish, files: [], total: { bytes: 0, compressed: 0 }, probe: null, reason });
+  // Once the output directory is replaced, a failure removes what was half written,
+  // so the next build is not refused for a directory without og-build.json.
+  let replaced = false;
+  const fail = (reason: string): WebBuild => {
+    if (replaced) rmSync(out, { recursive: true, force: true });
+    return { ok: false, out, publish, files: [], total: { bytes: 0, compressed: 0 }, probe: null, reason };
+  };
+  const refusal = outRefusal(project, out);
+  if (refusal) return fail(refusal);
   const settings = given ?? settingsOf(project);
   const p = settings.publish;
   const cooked = join(project, "cooked");
@@ -463,6 +493,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
   }
   rmSync(out, { recursive: true, force: true });
   mkdirSync(out, { recursive: true });
+  replaced = true;
 
   const game = await bundleGame(entry, join(out, "game.js"), "web", publish);
   if (!game.ok) return fail(`bundling ${entry}: ${game.reason}`);

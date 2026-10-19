@@ -250,8 +250,15 @@ export async function play(): Promise<PlayHandle> {
         } catch {
           /* no referrer */
         }
+        // Only a web page: a `javascript:` or `data:` back would run on the play origin.
+        let web = false;
+        try {
+          web = /^https?:$/.test(new URL(target, location.href).protocol);
+        } catch {
+          /* not a URL */
+        }
         if (fromPortal && history.length > 1) history.back();
-        else location.assign(target);
+        else if (web) location.assign(target);
       };
     }
   };
