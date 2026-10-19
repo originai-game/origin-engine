@@ -349,12 +349,7 @@ impl WaterRenderer {
         for (index, (water, slot)) in waters.iter().zip(&mut self.slots).enumerate() {
             let reflection = planar.filter(|(i, _)| *i == index).map(|(_, v)| v);
             let segments = grid_segments(water);
-            let field = water.heights.as_ref().filter(|f| {
-                f.resolution >= 2
-                    && f.resolution <= MAX_RESOLUTION
-                    && f.heights.len() == (f.resolution * f.resolution) as usize
-                    && f.size > 0.0
-            });
+            let field = height_field(water);
             if let Some(f) = field {
                 if slot
                     .heights
@@ -478,14 +473,21 @@ pub(crate) fn plane(water: &Water) -> (Vec3, Vec3) {
     (up, water.transform.transform_point3(Vec3::ZERO))
 }
 
+/// The surface's height field when it is one the renderer uses: 2 to
+/// [`MAX_RESOLUTION`] heights per side, all of them, over a positive size.
+fn height_field(water: &Water) -> Option<&WaterHeights> {
+    water.heights.as_ref().filter(|f| {
+        f.resolution >= 2
+            && f.resolution <= MAX_RESOLUTION
+            && f.heights.len() == (f.resolution * f.resolution) as usize
+            && f.size > 0.0
+    })
+}
+
 /// The surface's height above its rest plane at local xz (the height
 /// field, bilinear; 0 without one).
 fn local_height(water: &Water, local: Vec2) -> f32 {
-    let Some(f) = water
-        .heights
-        .as_ref()
-        .filter(|f| f.resolution >= 2 && f.heights.len() == (f.resolution * f.resolution) as usize)
-    else {
+    let Some(f) = height_field(water) else {
         return 0.0;
     };
     let n = f.resolution as usize;
