@@ -5,7 +5,8 @@ Complete games a Maker starts from, each a project like `templates/game`
 `tsconfig.json`) that `og run`, `og test` and `og build` take as is. They
 rebuild the platform's six Godot Discover prototypes on Origin Engine,
 keeping each prototype's premise and lessons and none of its code or art,
-and add a top-down room built for the engine's 2D and game-feel modules.
+and add a top-down room built for the engine's 2D and game-feel modules
+and a third-person vale, the engine's mid-size 3D slice.
 
 | Directory | Game | Profile | Input | Core loop |
 |---|---|---|---|---|
@@ -16,6 +17,7 @@ and add a top-down room built for the engine's 2D and game-feel modules.
 | `roguelike/` | Lamp Dive | 2d | the arrows or WASD, a tap on the next cell, a pad, or the HUD's d-pad | step a turn at a time through a fresh tomb, strike what the lamp shows, take what it finds, reach the relic on floor 2 with one life |
 | `idle/` | Spark Orb | 2d | taps or Space on the orb, 1–4 or the cards to buy, a pad | tap for sparks, buy generators that make them, double each kind every tenth, collapse into a supernova for stardust, come back to what it made while away |
 | `rhythm/` | Three-Lane Beat | 2d | A S D or the arrows, fingers on the lanes, a pad | read the notes falling to the line, hit each on its time, keep the combo and the groove, clear the song |
+| `third-person/` | Ember Vale | 3d | WASD or the arrows, Shift, Space, hold F, Q and E; a pad; a touch joystick, Jump and Kindle | walk, wade and jump a lake vale at dusk, kindle four beacons before night while stone sentinels on their rounds hunt you |
 
 Each archetype's README has its rules, components, systems, tunables, the
 commands its playtests use and what a Maker changes first.
@@ -54,6 +56,11 @@ commands its playtests use and what a Maker changes first.
   `assets/strings/en.ogt` and `zh-CN.ogt`, and a phone layout inside the
   safe area. Their `og polish` reports are in the engine repository's
   `tests/evidence/P2/archetypes/`.
+- **The 3D one.** `third-person/` is the exception to the pixel-art
+  sprites: a heightmap terrain with water, the engine's CC0 humanoids on
+  og.CharacterController with blend trees and IK, navmesh sentinels on
+  og.ai, particles, decals and the post stack, on the fantasy style pack
+  (its README).
 - **Pools, not spawning in systems.** Obstacles, coins and tiles are spawned
   in `start` and recycled by systems.
 - **Tunables.** The `Tuning` block (the scene's, or the component's
