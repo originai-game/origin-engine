@@ -1,0 +1,26 @@
+{
+  "scene": "spheres-20k",
+  "tier": "webgpu",
+  "browser": "Chrome for Testing (cdp.ts)",
+  "adapter": "",
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 100,
+  "runs_ms": [
+    6.487,
+    8.702,
+    8.76,
+    8.769,
+    9.032,
+    9.898,
+    10.376
+  ],
+  "frame_ms": 6.487,
+  "submit_median_ms": 1.1,
+  "load": [
+    109.9,
+    53.5,
+    37.6
+  ],
+  "note": "each run ends in one capture (its readback waits for the GPU to finish the run's frames)"
+}
