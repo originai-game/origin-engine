@@ -1189,6 +1189,53 @@ fn a_streamed_terrain_draws_what_has_arrived() {
     assert_eq!(holes(&half, 260), 0, "background through half the tiles");
 }
 
+/// A streamed tile whose arrays are not the lengths its layout uploads is
+/// refused (`set_terrain_tile` answers false and the terrain does not hold
+/// it), so the frame after draws what the terrain holds instead of failing
+/// in the upload.
+#[test]
+fn a_streamed_tile_of_the_wrong_size_is_refused() {
+    let data = ts::island();
+    let layout = data.layout(128).expect("layout");
+    let control = og_render::ControlPyramid::new(&layout, data.control.as_ref().unwrap());
+    let top = layout.index(layout.levels - 1, 0, 0);
+    let good = data.tile(&layout, top, control.as_ref());
+    let mut scene = crack_view(ts::island_scene());
+    let h = scene.add_terrain_stream(layout, data.range());
+    scene.terrains[0].terrain = h;
+    let edit = |f: &dyn Fn(&mut og_render::TerrainTile)| {
+        let mut t = good.clone();
+        f(&mut t);
+        Arc::new(t)
+    };
+    for (what, tile) in [
+        ("heights", edit(&|t| t.heights = Arc::from(&t.heights[1..]))),
+        ("normals", edit(&|t| t.normals = Arc::from(&t.normals[2..]))),
+        (
+            "control",
+            edit(&|t| {
+                let c = t.control.clone().expect("the island has a control map");
+                t.control = Some(Arc::from(&c[4..]));
+            }),
+        ),
+    ] {
+        assert!(
+            !scene.set_terrain_tile(h, top, Some(tile)),
+            "a tile with too few {what} is refused"
+        );
+        assert!(
+            scene.terrain_tiles(h).expect("streamed").is_empty(),
+            "{what}"
+        );
+    }
+    let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let s = r.render(&scene, &RenderTarget::Offscreen).expect("render");
+    assert_eq!(s.terrain_tiles, 0, "nothing held, nothing drawn");
+    assert!(scene.set_terrain_tile(h, top, Some(Arc::new(good))));
+    let s = r.render(&scene, &RenderTarget::Offscreen).expect("render");
+    assert_eq!(s.terrain_tiles, 1);
+}
+
 /// The renderer draws scattered copies from cached chunks: the copies a
 /// frame draws are the CPU's placement (each 4 m cube where
 /// `Terrain::scatter` puts it, at full size), none beyond the distance, and

@@ -1504,10 +1504,19 @@ impl Renderer {
             })
             .await
             .map_err(|e| RenderError::NoDevice(e.to_string()))?;
-        if let Some((surface, config)) = &surface {
+        // No uncaptured-error handler on purpose: wgpu-core's default (native
+        // and WebGL2) panics on a validation error, which is how the web host
+        // ends the Worker and shows the shell's crash card and how native
+        // hosts and tests fail loudly; logging instead would leave a silently
+        // broken frame. The browser's WebGPU reports to its own console.
+        let max = device.limits().max_texture_dimension_2d;
+        let mut surface = surface;
+        if let Some((surface, config)) = &mut surface {
+            config.width = config.width.clamp(1, max);
+            config.height = config.height.clamp(1, max);
             surface.configure(&device, config);
         }
-        let (width, height) = (desc.width.max(1), desc.height.max(1));
+        let (width, height) = (desc.width.clamp(1, max), desc.height.clamp(1, max));
 
         // Layouts.
         let [lights_entry, table_entry, refs_entry] = light_tables.layout_entries();
@@ -2068,9 +2077,11 @@ impl Renderer {
     }
 
     /// Resizes every size-dependent target (and the surface, if any). TAA
-    /// history restarts.
+    /// history restarts. Each side is clamped to 1 ..= the device's largest
+    /// 2D texture.
     pub fn resize(&mut self, width: u32, height: u32) {
-        let (width, height) = (width.max(1), height.max(1));
+        let max = self.device.limits().max_texture_dimension_2d;
+        let (width, height) = (width.clamp(1, max), height.clamp(1, max));
         if (width, height) == (self.width, self.height) {
             return;
         }
@@ -2120,12 +2131,12 @@ impl Renderer {
         self.refresh_meshes(scene);
         for index in self.cache.meshes.len()..scene.meshes().len() {
             let mesh = &scene.meshes()[index];
-            let mut gpu = self.upload_mesh(mesh);
-            gpu.revision = scene.mesh_revisions()[index];
-            self.cache.meshes.push(gpu);
-            let mut range = (0u32, 0u32);
-            if let Some(m) = &scene.morphs()[index] {
-                let n = mesh.vertices.len();
+            let n = mesh.vertices.len();
+            // Checked before anything joins the cache: `meshes`, `morph_ranges`
+            // and `skins` stay the same length, and a bad mesh fails again
+            // next frame instead of shifting its neighbours' entries.
+            let morph = scene.morphs()[index].as_ref();
+            if let Some(m) = morph {
                 let targets = m.positions.len();
                 let bad = targets == 0
                     || targets > MAX_MORPH_TARGETS
@@ -2138,6 +2149,34 @@ impl Renderer {
                         "mesh {index}: {targets} morph targets (1 to {MAX_MORPH_TARGETS}, one delta per vertex each, {n} vertices)"
                     )));
                 }
+            }
+            // A morphed mesh without a skin: all-zero weights (bind pose).
+            let zero_skin;
+            let source = match &scene.skins()[index] {
+                None if morph.is_some() => {
+                    zero_skin = SkinData {
+                        joints: vec![[0; 4]; n],
+                        weights: vec![[0.0; 4]; n],
+                    };
+                    Some(&zero_skin)
+                }
+                other => other.as_ref(),
+            };
+            if let Some(skin) = source
+                && (skin.joints.len() != n || skin.weights.len() != n)
+            {
+                return Err(RenderError::InvalidData(format!(
+                    "mesh {index}: a skin of {} joints and {} weights for {n} vertices",
+                    skin.joints.len(),
+                    skin.weights.len()
+                )));
+            }
+            let mut gpu = self.upload_mesh(mesh);
+            gpu.revision = scene.mesh_revisions()[index];
+            self.cache.meshes.push(gpu);
+            let mut range = (0u32, 0u32);
+            if let Some(m) = morph {
+                let targets = m.positions.len();
                 range = (self.cache.morph_data.len() as u32, targets as u32);
                 for v in 0..n {
                     for t in 0..targets {
@@ -2151,29 +2190,9 @@ impl Renderer {
                 self.cache.morphs_dirty = true;
             }
             self.cache.morph_ranges.push(range);
-            // A morphed mesh without a skin: all-zero weights (bind pose).
-            let zero_skin;
-            let source = match &scene.skins()[index] {
-                None if range.1 > 0 => {
-                    zero_skin = SkinData {
-                        joints: vec![[0; 4]; mesh.vertices.len()],
-                        weights: vec![[0.0; 4]; mesh.vertices.len()],
-                    };
-                    Some(&zero_skin)
-                }
-                other => other.as_ref(),
-            };
             let skin = match source {
                 None => None,
                 Some(skin) => {
-                    let n = mesh.vertices.len();
-                    if skin.joints.len() != n || skin.weights.len() != n {
-                        return Err(RenderError::InvalidData(format!(
-                            "mesh {index}: a skin of {} joints and {} weights for {n} vertices",
-                            skin.joints.len(),
-                            skin.weights.len()
-                        )));
-                    }
                     let data: Vec<skin::SkinVertex> = skin
                         .joints
                         .iter()
@@ -2204,20 +2223,18 @@ impl Renderer {
             self.cache.luts.push(view);
         }
         if self.cache.textures.len() < scene.textures().len() {
+            // Every texture is checked before any is recorded: an error
+            // never drops an encoder holding earlier textures' mip passes.
+            for index in self.cache.textures.len()..scene.textures().len() {
+                self.check_texture(index, &scene.textures()[index])?;
+            }
             let mut encoder = self
                 .device
                 .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                     label: Some("texture upload"),
                 });
             for index in self.cache.textures.len()..scene.textures().len() {
-                let gpu = match &scene.textures()[index] {
-                    TextureSource::Rgba(texture) => GpuTexture {
-                        view: self.upload_texture(texture, &mut encoder)?,
-                        format: TextureFormat::Rgba8,
-                        bytes: rgba_texture_bytes(texture),
-                    },
-                    TextureSource::Encoded(upload) => self.upload_encoded(index, upload)?,
-                };
+                let gpu = self.upload_source(&scene.textures()[index], &mut encoder);
                 self.cache.textures.push(gpu);
                 self.cache
                     .texture_revisions
@@ -2234,20 +2251,16 @@ impl Renderer {
             .filter(|&i| self.cache.texture_revisions[i] != scene.texture_revisions()[i])
             .collect();
         if !replaced.is_empty() {
+            for &index in &replaced {
+                self.check_texture(index, &scene.textures()[index])?;
+            }
             let mut encoder = self
                 .device
                 .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                     label: Some("texture replace"),
                 });
             for &index in &replaced {
-                let gpu = match &scene.textures()[index] {
-                    TextureSource::Rgba(texture) => GpuTexture {
-                        view: self.upload_texture(texture, &mut encoder)?,
-                        format: TextureFormat::Rgba8,
-                        bytes: rgba_texture_bytes(texture),
-                    },
-                    TextureSource::Encoded(upload) => self.upload_encoded(index, upload)?,
-                };
+                let gpu = self.upload_source(&scene.textures()[index], &mut encoder);
                 self.cache.textures[index] = gpu;
                 self.cache.texture_revisions[index] = scene.texture_revisions()[index];
                 self.cache.sprite_groups[index] = None;
@@ -2420,20 +2433,67 @@ impl Renderer {
         }
     }
 
+    /// Checks a texture before it is uploaded: its data, its format on this
+    /// adapter and its size against the device's limit.
+    fn check_texture(&self, index: usize, source: &TextureSource) -> Result<(), RenderError> {
+        match source {
+            TextureSource::Rgba(texture) => {
+                let expected = texture.width as usize * texture.height as usize * 4;
+                if texture.width == 0 || texture.height == 0 || texture.rgba.len() != expected {
+                    return Err(RenderError::InvalidData(format!(
+                        "texture {index}: {}x{} with {} bytes (expected {expected})",
+                        texture.width,
+                        texture.height,
+                        texture.rgba.len()
+                    )));
+                }
+            }
+            TextureSource::Encoded(upload) => {
+                let desc = &upload.desc;
+                desc.validate(&upload.levels)
+                    .map_err(|e| RenderError::InvalidData(format!("texture {index}: {e}")))?;
+                if !self.info.texture_formats.supported.contains(&desc.format) {
+                    return Err(RenderError::Unsupported(format!(
+                        "texture {index}: {:?} on {} {:?} (supported: {:?}; transcode to RenderInfo::texture_formats)",
+                        desc.format,
+                        self.info.adapter,
+                        self.info.backend,
+                        self.info.texture_formats.supported
+                    )));
+                }
+            }
+        }
+        let (width, height) = source.size();
+        let max = self.device.limits().max_texture_dimension_2d;
+        if width > max || height > max {
+            return Err(RenderError::Unsupported(format!(
+                "texture {index}: {width}x{height} exceeds this device's {max}x{max} (resize it, or cook a smaller level 0)"
+            )));
+        }
+        Ok(())
+    }
+
+    /// Uploads a texture [`Renderer::check_texture`] accepted.
+    fn upload_source(
+        &mut self,
+        source: &TextureSource,
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> GpuTexture {
+        match source {
+            TextureSource::Rgba(texture) => GpuTexture {
+                view: self.upload_texture(texture, encoder),
+                format: TextureFormat::Rgba8,
+                bytes: rgba_texture_bytes(texture),
+            },
+            TextureSource::Encoded(upload) => self.upload_encoded(upload),
+        }
+    }
+
     fn upload_texture(
         &mut self,
         texture: &TextureData,
         encoder: &mut wgpu::CommandEncoder,
-    ) -> Result<wgpu::TextureView, RenderError> {
-        let expected = texture.width as usize * texture.height as usize * 4;
-        if texture.width == 0 || texture.height == 0 || texture.rgba.len() != expected {
-            return Err(RenderError::InvalidData(format!(
-                "texture {}x{} with {} bytes (expected {expected})",
-                texture.width,
-                texture.height,
-                texture.rgba.len()
-            )));
-        }
+    ) -> wgpu::TextureView {
         let format = match texture.color_space {
             ColorSpace::Srgb => wgpu::TextureFormat::Rgba8UnormSrgb,
             ColorSpace::Linear => wgpu::TextureFormat::Rgba8Unorm,
@@ -2479,28 +2539,13 @@ impl Renderer {
         if mip_level_count > 1 {
             self.mips.generate(&self.device, encoder, &tex);
         }
-        Ok(tex.create_view(&Default::default()))
+        tex.create_view(&Default::default())
     }
 
     /// A texture whose levels arrive encoded (no mip generation).
-    fn upload_encoded(
-        &self,
-        index: usize,
-        upload: &TextureUpload,
-    ) -> Result<GpuTexture, RenderError> {
+    fn upload_encoded(&self, upload: &TextureUpload) -> GpuTexture {
         let desc = &upload.desc;
-        desc.validate(&upload.levels)
-            .map_err(|e| RenderError::InvalidData(format!("texture {index}: {e}")))?;
-        if !self.info.texture_formats.supported.contains(&desc.format) {
-            return Err(RenderError::Unsupported(format!(
-                "texture {index}: {:?} on {} {:?} (supported: {:?}; transcode to RenderInfo::texture_formats)",
-                desc.format,
-                self.info.adapter,
-                self.info.backend,
-                self.info.texture_formats.supported
-            )));
-        }
-        let format = desc.format.wgpu(desc.color_space).expect("validated");
+        let format = desc.format.wgpu(desc.color_space).expect("checked");
         let texture = self.device.create_texture_with_data(
             &self.queue,
             &wgpu::TextureDescriptor {
@@ -2520,11 +2565,11 @@ impl Renderer {
             wgpu::util::TextureDataOrder::LayerMajor,
             &upload.levels.concat(),
         );
-        Ok(GpuTexture {
+        GpuTexture {
             view: texture.create_view(&Default::default()),
             format: desc.format,
             bytes: upload.levels.iter().map(|l| l.len() as u64).sum(),
-        })
+        }
     }
 
     fn material_bind_group(
@@ -2977,6 +3022,20 @@ impl Renderer {
                     "skinned instance {i}: palette {} of {}",
                     s.palette,
                     offsets.len()
+                )));
+            }
+        }
+        if !scene.skinned_instances.is_empty()
+            && let Some(rows) = self
+                .palette
+                .texture_rows(self.cache.morph_data.len(), matrices.len())
+        {
+            let max = self.device.limits().max_texture_dimension_2d;
+            if rows > max as u64 {
+                return Err(RenderError::Unsupported(format!(
+                    "{} joints and {} morph deltas take {rows} palette texture rows, this device allows {max}",
+                    matrices.len(),
+                    self.cache.morph_data.len()
                 )));
             }
         }

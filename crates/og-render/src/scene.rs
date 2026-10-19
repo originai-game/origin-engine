@@ -1126,8 +1126,9 @@ impl RenderScene {
 
     /// Hands a streamed terrain one of its tiles (`None`: drops it). The
     /// renderer draws what it holds of the tiles it wants. `false` for a
-    /// handle of another scene, a terrain in memory or a tile index beyond
-    /// its layout.
+    /// handle of another scene, a terrain in memory, a tile index beyond
+    /// its layout or a tile whose heights, normals or control texels are not
+    /// the lengths its layout uploads (the tile is not taken).
     pub fn set_terrain_tile(
         &mut self,
         handle: TerrainHandle,
@@ -1139,6 +1140,7 @@ impl RenderScene {
                 if index < layout.tile_count() =>
             {
                 match tile {
+                    Some(t) if !t.fits(layout) => return false,
                     Some(t) => {
                         tiles.insert(index, t);
                     }

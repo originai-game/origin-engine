@@ -291,6 +291,23 @@ pub(crate) fn half(v: f32) -> u16 {
 }
 
 impl TerrainTile {
+    /// Whether the tile's arrays have the lengths `layout` uploads: heights
+    /// `heights_side()²`, normals two halves per texel of every mip of
+    /// `normals_side()`, and a control map (when the layout has one and the
+    /// tile carries it) four bytes per texel of every mip of `control_side()`.
+    pub(crate) fn fits(&self, layout: &TerrainLayout) -> bool {
+        let h = layout.heights_side() as u64;
+        let control_ok = match &self.control {
+            Some(c) if layout.control != 0 => {
+                c.len() as u64 == mip_texels(layout.control_side()) * 4
+            }
+            _ => true,
+        };
+        self.heights.len() as u64 == h * h
+            && self.normals.len() as u64 == mip_texels(layout.normals_side()) * 2
+            && control_ok
+    }
+
     /// A tile from its heights (`(tile + 3)²` at its level, the border
     /// clamped at the terrain's edge) and control texels: builds the normal
     /// map (central differences, one-sided at the terrain's edge, as the

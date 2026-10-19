@@ -165,11 +165,19 @@ impl GlassPasses {
             view_formats: &[],
         });
         let source_view = source.create_view(&Default::default());
+        // Half the output, but never too small for LEVELS mips (an output
+        // under 64 pixels on its longer side): the levels are sampled by uv,
+        // so a larger pyramid only changes how much a tiny output blurs.
+        let (mut pw, mut ph) = ((width / 2).max(1), (height / 2).max(1));
+        let least = 1 << (LEVELS - 1);
+        if pw.max(ph) < least {
+            (pw, ph) = (pw.max(least), ph.max(least));
+        }
         let pyramid = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("glass pyramid"),
             size: wgpu::Extent3d {
-                width: (width / 2).max(1),
-                height: (height / 2).max(1),
+                width: pw,
+                height: ph,
                 depth_or_array_layers: 1,
             },
             mip_level_count: LEVELS,
