@@ -671,6 +671,8 @@ pub(crate) enum FramePass {
     Light2d,
     /// The 2D fluids' metaball field.
     Metaballs,
+    /// The 3D fluids' depth, thickness and smoothing (fluid3d.rs).
+    Fluid3d,
     /// The scene mirrored in a water surface (its planar reflection).
     Reflection,
     /// Opaque meshes, sky, transparent meshes, particles, strips, sprites
@@ -708,6 +710,7 @@ impl FramePass {
             FramePass::Particles => "particles".into(),
             FramePass::Light2d => "lights-2d".into(),
             FramePass::Metaballs => "metaballs".into(),
+            FramePass::Fluid3d => "fluid-3d".into(),
             FramePass::Reflection => "reflection".into(),
             FramePass::Main => "main".into(),
             FramePass::Glow => "glow".into(),
@@ -740,7 +743,8 @@ pub(crate) struct GraphConfig {
     pub lightmap: (u32, u32),
     /// GTAO (or SSAO).
     pub gtao: bool,
-    /// The main pass draws water: it copies the scene drawn so far.
+    /// The main pass draws water or a 3D fluid: it copies the scene drawn
+    /// so far.
     pub water: bool,
     /// Metaball field targets the frame's fluids need (1 to
     /// `metaballs::FIELDS` when it draws any).
@@ -893,6 +897,22 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             g.transient(*name, desc(w, h, HDR_FORMAT, 1, attach_bind));
         }
     }
+    if has(FramePass::Fluid3d) {
+        g.transient("fluid.depth", desc(w, h, LINDEPTH_FORMAT, 1, attach_bind))
+            .transient(
+                "fluid.zbuf",
+                desc(
+                    w,
+                    h,
+                    DEPTH_FORMAT,
+                    1,
+                    wgpu::TextureUsages::RENDER_ATTACHMENT,
+                ),
+            )
+            .transient("fluid.thick", desc(w, h, HDR_FORMAT, 1, attach_bind))
+            .transient("fluid.blur", desc(w, h, LINDEPTH_FORMAT, 1, attach_bind))
+            .transient("fluid.smooth", desc(w, h, LINDEPTH_FORMAT, 1, attach_bind));
+    }
     if let (true, Some((rw, rh))) = (has(FramePass::Reflection), cfg.reflection) {
         g.transient("reflection", desc(rw, rh, HDR_FORMAT, 1, attach_bind))
             .transient(
@@ -984,6 +1004,17 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             FramePass::Particles => g.pass(name, &[], &["particles"]),
             FramePass::Light2d => g.pass(name, &[], &["lightmap"]),
             FramePass::Metaballs => g.pass(name, &[], fields),
+            FramePass::Fluid3d => g.pass(
+                name,
+                &["lindepth"],
+                &[
+                    "fluid.depth",
+                    "fluid.zbuf",
+                    "fluid.thick",
+                    "fluid.blur",
+                    "fluid.smooth",
+                ],
+            ),
             FramePass::Reflection => {
                 let mut writes = vec!["reflection", "reflection-depth"];
                 if msaa {
@@ -1010,6 +1041,9 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 }
                 if has(FramePass::Reflection) {
                     reads.push("reflection");
+                }
+                if has(FramePass::Fluid3d) {
+                    reads.extend(["fluid.smooth", "fluid.thick"]);
                 }
                 let mut writes = vec!["hdr", "depth"];
                 if msaa {
@@ -1536,6 +1570,7 @@ impl FrameGraph {
             | FramePass::Particles
             | FramePass::Light2d
             | FramePass::Metaballs
+            | FramePass::Fluid3d
             | FramePass::Reflection
             | FramePass::Main
             | FramePass::Glow => 0,
@@ -1561,6 +1596,11 @@ fn transient_names(cfg: &GraphConfig) -> Vec<String> {
         "metaballs.1",
         "metaballs.2",
         "metaballs.3",
+        "fluid.depth",
+        "fluid.zbuf",
+        "fluid.thick",
+        "fluid.blur",
+        "fluid.smooth",
         "reflection",
         "reflection-depth",
         "reflection-msaa",
