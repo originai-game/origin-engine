@@ -6144,6 +6144,206 @@ export interface Fluid2D {
 }
 
 /**
+ * A 3D particle fluid (the 3D profile): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure that gives surface tension, viscosity) over a spatial hash in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider, the terrain's height field included (pushed out; they push nothing back), and stay inside `bounds` around the entity when it is set. An emitter adds particles at `emitRate` up to `maxCount`; a sink box removes those that enter it. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as a screen-space surface: the particles' depth smoothed into one surface, refracting what is behind by its thickness and reflecting the sky, lit by the scene's lights. Cost: about 0.9 ms of CPU a tick for 2000 particles at 1 substep, 1.8 ms at 2 (native and wasm alike), growing with the particles; keep a scene's fluids to a few thousand particles.
+ *
+ * The value of the `Fluid3D` component (token `og.Fluid3D`).
+ */
+export interface Fluid3D {
+  /**
+   * How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it).
+   *
+   * @default 2000
+   * @range ..32768
+   */
+  count: number;
+  /**
+   * The spawn box, centred on the entity.
+   *
+   * @default { x: 2, y: 1, z: 2 }
+   * @unit m (metres)
+   */
+  size: Vector3;
+  /**
+   * The container around the entity (0 on an axis: open on that axis; colliders and the terrain still hold it).
+   *
+   * @unit m (metres)
+   */
+  bounds: Vector3;
+  /**
+   * The interaction radius: particles closer than this push and drag each other. Cost grows with the particles, not the radius.
+   *
+   * @default 0.2
+   * @range 0.02..
+   * @unit m (metres)
+   * @tunable
+   */
+  radius: number;
+  /**
+   * The density it settles at (neighbours within radius, weighted).
+   *
+   * @default 10
+   * @range 0..
+   * @tunable
+   */
+  restDensity: number;
+  /**
+   * The pressure's strength (above about 0.05 it jitters, then springs apart).
+   *
+   * @default 0.02
+   * @range 0..
+   * @tunable
+   */
+  stiffness: number;
+  /**
+   * The near pressure's strength (keeps particles apart, gives surface tension).
+   *
+   * @default 0.4
+   * @range 0..
+   * @tunable
+   */
+  nearStiffness: number;
+  /**
+   * Linear viscosity (it also calms the surface; honey above 1).
+   *
+   * @default 0.4
+   * @range 0..4
+   * @tunable
+   */
+  viscosity: number;
+  /**
+   * Fluids sharing a group above 0 push, drag and (by `mixing`) mix with each other as one fluid, at most four to a group (in entity order; a fifth is simulated alone); 0 keeps the fluid to itself.
+   */
+  group: number;
+  /**
+   * How heavy its particles are against the group's other fluids: a heavier fluid sinks under a lighter one.
+   *
+   * @default 1
+   * @range 0.05..20
+   * @tunable
+   */
+  density: number;
+  /**
+   * How readily it mixes with the group's other fluids: 0 keeps them apart in layers (the boundary held), 1 blends them where they touch (their mix, colour and weight even out).
+   *
+   * @range 0..1
+   * @tunable
+   */
+  mixing: number;
+  /**
+   * Multiplies og.Physics.gravity.
+   *
+   * @default 1
+   * @range -10..10
+   * @tunable
+   */
+  gravityScale: number;
+  /**
+   * Simulation steps per tick (each costs a full pass over the particles).
+   *
+   * @default 2
+   * @range 1..8
+   */
+  substeps: number;
+  /** The seed of the spawn and emitter jitter. */
+  seed: number;
+  /**
+   * The most particles alive at once (the emitter stops there).
+   *
+   * @default 8192
+   * @range 1..32768
+   */
+  maxCount: number;
+  /**
+   * Particles the emitter adds per second (0: no emitter).
+   *
+   * @range 0..20000
+   * @tunable
+   */
+  emitRate: number;
+  /**
+   * Where the emitter is, from the entity (world axes).
+   *
+   * @unit m (metres)
+   */
+  emitOffset: Vector3;
+  /**
+   * The velocity emitted particles start with.
+   *
+   * @unit mps (metres per second)
+   * @tunable
+   */
+  emitVelocity: Vector3;
+  /**
+   * The half-size of the cube new particles appear in around the emitter.
+   *
+   * @default 0.1
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  emitRadius: number;
+  /**
+   * The sink's centre, from the entity (world axes).
+   *
+   * @unit m (metres)
+   */
+  sinkOffset: Vector3;
+  /**
+   * The sink box: particles that enter it are removed (0 0 0: no sink).
+   *
+   * @unit m (metres)
+   */
+  sinkSize: Vector3;
+  /**
+   * The fluid's linear colour (what light passing through it keeps).
+   *
+   * @default { x: 0.2, y: 0.55, z: 0.9 }
+   */
+  color: Vector3;
+  /**
+   * How opaque a metre of it is (0: clear as glass, 1: opaque).
+   *
+   * @default 0.6
+   * @range 0..1
+   */
+  opacity: number;
+  /**
+   * How much it reflects (scales the Fresnel term).
+   *
+   * @default 1
+   * @range 0..2
+   */
+  reflectivity: number;
+  /**
+   * How far refraction bends what is seen through it.
+   *
+   * @default 1
+   * @range 0..4
+   */
+  refraction: number;
+  /**
+   * The drawn size of each particle (times radius).
+   *
+   * @default 0.6
+   * @range 0.1..2
+   */
+  drawScale: number;
+  /**
+   * How much the surface is smoothed (0: beads, 1: one surface).
+   *
+   * @default 1
+   * @range 0..2
+   */
+  smoothing: number;
+  /**
+   * Whether the renderer draws it.
+   *
+   * @default true
+   */
+  visible: boolean;
+}
+
+/**
  * Height-field water (3D): a `resolution` × `resolution` grid of heights over a `size` square centred on the entity (its y is the rest level), waves travelling at `waveSpeed` and fading by `damping`. Dynamic bodies crossing it push waves (splashes; og.Splash events) and float by `buoyancy`. The heights are world state; an og.Water on the same entity draws them.
  *
  * The value of the `WaterSurface` component (token `og.WaterSurface`).
@@ -6714,6 +6914,7 @@ export interface BonePose {
   /** Its rotation in world space. */
   readonly rotation: Quaternion;
 }
+
 
 
 
@@ -15642,6 +15843,10 @@ export declare namespace og {
    */
   const Fluid2D: ComponentType<{ readonly count: FieldSpec<"u32">; readonly size: FieldSpec<"Vector2">; readonly bounds: FieldSpec<"Vector2">; readonly radius: FieldSpec<"f32">; readonly restDensity: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly nearStiffness: FieldSpec<"f32">; readonly viscosity: FieldSpec<"f32">; readonly group: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly mixing: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly seed: FieldSpec<"u32">; readonly color: FieldSpec<"Vector3">; readonly opacity: FieldSpec<"f32">; readonly blobScale: FieldSpec<"f32">; readonly threshold: FieldSpec<"f32">; readonly layer: FieldSpec<"i32">; readonly visible: FieldSpec<"bool"> }, Fluid2D>;
   /**
+   * A 3D particle fluid (the 3D profile): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure that gives surface tension, viscosity) over a spatial hash in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider, the terrain's height field included (pushed out; they push nothing back), and stay inside `bounds` around the entity when it is set. An emitter adds particles at `emitRate` up to `maxCount`; a sink box removes those that enter it. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as a screen-space surface: the particles' depth smoothed into one surface, refracting what is behind by its thickness and reflecting the sky, lit by the scene's lights. Cost: about 0.9 ms of CPU a tick for 2000 particles at 1 substep, 1.8 ms at 2 (native and wasm alike), growing with the particles; keep a scene's fluids to a few thousand particles.
+   */
+  const Fluid3D: ComponentType<{ readonly count: FieldSpec<"u32">; readonly size: FieldSpec<"Vector3">; readonly bounds: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly restDensity: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly nearStiffness: FieldSpec<"f32">; readonly viscosity: FieldSpec<"f32">; readonly group: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly mixing: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly seed: FieldSpec<"u32">; readonly maxCount: FieldSpec<"u32">; readonly emitRate: FieldSpec<"f32">; readonly emitOffset: FieldSpec<"Vector3">; readonly emitVelocity: FieldSpec<"Vector3">; readonly emitRadius: FieldSpec<"f32">; readonly sinkOffset: FieldSpec<"Vector3">; readonly sinkSize: FieldSpec<"Vector3">; readonly color: FieldSpec<"Vector3">; readonly opacity: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly drawScale: FieldSpec<"f32">; readonly smoothing: FieldSpec<"f32">; readonly visible: FieldSpec<"bool"> }, Fluid3D>;
+  /**
    * Height-field water (3D): a `resolution` × `resolution` grid of heights over a `size` square centred on the entity (its y is the rest level), waves travelling at `waveSpeed` and fading by `damping`. Dynamic bodies crossing it push waves (splashes; og.Splash events) and float by `buoyancy`. The heights are world state; an og.Water on the same entity draws them.
    */
   const WaterSurface: ComponentType<{ readonly resolution: FieldSpec<"u32">; readonly size: FieldSpec<"f32">; readonly waveSpeed: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly splash: FieldSpec<"f32">; readonly buoyancy: FieldSpec<"f32">; readonly drag: FieldSpec<"f32"> }, WaterSurface>;
@@ -15719,6 +15924,14 @@ export declare namespace og {
      * @returns Refused for an entity without an og.Fluid2D.
      */
     function fluidParticles(world: World, entity: Entity): Result<readonly Vector2[]>;
+    /**
+     * An og.Fluid3D's particle positions after the last step, in world space (emitted particles last, in the order they appeared).
+     *
+     * @param world The world.
+     * @param entity The fluid's entity.
+     * @returns Refused for an entity without an og.Fluid3D.
+     */
+    function fluid3dParticles(world: World, entity: Entity): Result<readonly Vector3[]>;
     /**
      * The surface height of an og.WaterSurface (world y) or an og.WaterLine (world y at `x`; `z` ignored) at a point, as the last step left it: for boats that bob and spray that starts on the surface.
      *

@@ -103,6 +103,16 @@ pub fn og_physics_fluid_particles(world: u32, e: f64) -> String {
     )
 }
 
+pub fn og_physics_fluid3d_particles(world: u32, e: f64) -> String {
+    readout(
+        world,
+        e,
+        "og.Fluid3D",
+        |p, e| p.fluid3d_particles(e),
+        |pts| json!(pts.into_iter().map(v3).collect::<Vec<_>>()),
+    )
+}
+
 pub fn og_physics_vehicle_wheels(world: u32, e: f64) -> String {
     readout(
         world,
