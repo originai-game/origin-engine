@@ -1,6 +1,6 @@
 ---
 name: og-game
-description: Building a game on Origin Engine — the project layout, components and systems on the ECS, the game entry, scenes as .ogt text, assets cooked from assets/ to cooked/, the og.load loaders, effects, fog, sky, day and night, weather and water, terrain, material shaders in WGSL, physics beyond rigid bodies (joints, character and platformer controllers, vehicles, ropes, cloth, 2D fluids, ragdolls), skeletal animation, and the performance budget; the entry point, with the map of the other nine skills and the modules each teaches. Use first, and when creating, structuring or extending a TypeScript Origin Engine game (a project with a project.ogt; not a Godot project.godot).
+description: Building a game on Origin Engine — the project layout, components and systems on the ECS, the game entry, scenes as .ogt text, assets cooked from assets/ to cooked/, the og.load loaders, effects, fog, sky, day and night, weather and water, terrain, material shaders in WGSL, physics beyond rigid bodies (joints, character and platformer controllers, vehicles, ropes, cloth, 2D and 3D fluids, ragdolls), skeletal animation, and the performance budget; the entry point, with the map of the other nine skills and the modules each teaches. Use first, and when creating, structuring or extending a TypeScript Origin Engine game (a project with a project.ogt; not a Godot project.godot).
 ---
 
 An Origin Engine project is plain files: TypeScript in `src/`, source assets
@@ -433,6 +433,22 @@ deterministic and part of snapshots (`reference/physics.md`):
   `mixing` 0 they stay in layers and by 1 they blend, colour and weight
   evening out where they touch; a group draws as one surface. Up to
   sixteen fluids draw a frame (four to a group).
+- `og.Fluid3D` — a 3D particle fluid (3D profile) drawn as one
+  screen-space surface that refracts and tints what lies behind it,
+  reflects the sky and takes the scene's lights. Give it `bounds` (a
+  container around the entity) or colliders and terrain to hold it; an
+  emitter (`emitRate`, `emitOffset`, `emitVelocity`, up to `maxCount`) pours
+  and a sink box (`sinkSize`, `sinkOffset`) drains. Groups work as in 2D:
+  `density` 3 under 1 gives honey under water, `mixing` 1 blends their
+  colours. Look: `color`, `opacity` per metre, `reflectivity`,
+  `refraction`, `smoothing` (0 shows the beads); fluids drawn in one frame
+  share one surface and the first fluid's look. Cost is the particles:
+  about 0.9 ms of CPU a tick for 2,000 at one substep and 1.8 ms at the
+  default two (native and wasm alike), 4 ms for 4,000 and 10 ms for 8,000
+  at two, roughly double that when they pile deep, so budget a scene to a
+  few thousand; the surface costs about 1.1 ms on the GPU whatever the count,
+  growing with the pixels it covers. `og.physics.fluid3dParticles` reads
+  the positions (the fx-showcase `fluids3d` station).
 - `og.Ragdoll` — give the entity a rig
   (`og.physics.setRagdollRig(world, e, must(og.physics.ragdollRigFromSkeleton(world, anim.skeleton)))`),
   then set `weight` 1 to go limp. At weight 0 its bodies follow the
@@ -442,9 +458,9 @@ deterministic and part of snapshots (`reference/physics.md`):
   side-on skinned model whose bones lie in the xy plane: the bones are
   rapier2d bodies on hinges about z (the fx-showcase `ragdoll2d` station).
 
-Readouts (`ropePoints`, `clothPoints`, `fluidParticles`, `waterHeight`,
-`vehicleWheels`, `ragdollPose`) show the last step. `templates/fx-showcase`
-has a station for each.
+Readouts (`ropePoints`, `clothPoints`, `fluidParticles`,
+`fluid3dParticles`, `waterHeight`, `vehicleWheels`, `ragdollPose`) show
+the last step. `templates/fx-showcase` has a station for each.
 
 ## 14. Performance
 
@@ -462,6 +478,9 @@ neon signs cost little; keep each `distance` as short as the look allows.
 Up to `MAX_LIGHTS` (256) in view are drawn, the brightest kept past that,
 and the first two in view with `castShadow` cast shadows (shadows are the
 expensive part).
+Simulated matter is paid for per point on the CPU every tick: a 3D fluid's
+particles (about 1 ms per 1,000 at two substeps) and a self-colliding
+cloth's points (about 1 ms per 1,000) are the ones to count (§13).
 
 ## 15. Where to look things up
 
