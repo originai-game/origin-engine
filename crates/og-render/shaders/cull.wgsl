@@ -146,7 +146,11 @@ fn occluded(m: mat4x4<f32>, center: vec3<f32>, extent: vec3<f32>) -> bool {
   var level = 0u;
   while ((1u << level) < texels) { level++; }
   if (level >= params.sizes.y) { return false; }
-  let dims = textureDimensions(pyramid, level);
+  // The level's size from the screen's (as wgpu sizes mips), not
+  // textureDimensions(pyramid, level): llvmpipe answers level 0's size for
+  // every level, so a box at the right edge read a texel past the last and
+  // got zero (nearest) depth.
+  let dims = max(vec2<u32>(1u), params.sizes.zw >> vec2<u32>(level));
   let t0 = min(vec2<u32>(x0, y0) >> vec2<u32>(level), dims - 1u);
   let t1 = min(vec2<u32>(x1, y1) >> vec2<u32>(level), dims - 1u);
   var farthest = 0.0;
