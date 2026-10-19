@@ -335,25 +335,43 @@ pub struct RenderInfo {
 
 impl RenderInfo {
     /// Whether the adapter is a software rasterizer (lavapipe, llvmpipe,
-    /// SwiftShader): the `vulkan-cpu` tier.
+    /// SwiftShader): the `vulkan-cpu` tier ([`is_software_adapter`]).
     pub fn software(&self) -> bool {
-        self.device_type == wgpu::DeviceType::Cpu
+        is_software_adapter(self.device_type, &self.adapter)
     }
 
-    /// The name gfx reference frames are filed under: `metal`, `vulkan`,
-    /// `vulkan-cpu` (lavapipe/llvmpipe), `webgpu`, `webgl2`, `gl`, `dx12`.
+    /// The name gfx reference frames are filed under, and the tier the probe
+    /// and `og polish` report ([`tier_name`]).
     pub fn backend_tier(&self) -> String {
-        let cpu = self.device_type == wgpu::DeviceType::Cpu;
-        match self.backend {
-            wgpu::Backend::Metal => "metal".into(),
-            wgpu::Backend::Vulkan if cpu => "vulkan-cpu".into(),
-            wgpu::Backend::Vulkan => "vulkan".into(),
-            wgpu::Backend::BrowserWebGpu => "webgpu".into(),
-            wgpu::Backend::Gl if cfg!(target_arch = "wasm32") => "webgl2".into(),
-            wgpu::Backend::Gl => "gl".into(),
-            wgpu::Backend::Dx12 => "dx12".into(),
-            other => format!("{other:?}").to_lowercase(),
-        }
+        tier_name(self.backend, self.device_type, &self.adapter)
+    }
+}
+
+/// Whether an adapter rasterizes on the CPU: wgpu reports a CPU device type,
+/// or its name is one of the software rasterizers (Mesa's lavapipe and
+/// llvmpipe, SwiftShader), which some drivers report as another type.
+pub fn is_software_adapter(device_type: wgpu::DeviceType, name: &str) -> bool {
+    let name = name.to_ascii_lowercase();
+    device_type == wgpu::DeviceType::Cpu
+        || ["llvmpipe", "lavapipe", "swiftshader"]
+            .iter()
+            .any(|s| name.contains(s))
+}
+
+/// The tier name of an adapter: `metal`, `vulkan`, `vulkan-cpu` (a software
+/// rasterizer), `webgpu`, `webgl2`, `gl`, `dx12`. It names the reference-frame
+/// directories and is the probe's `RenderTier`, so a frame time measured on
+/// a CPU rasterizer is never read as a GPU's.
+pub fn tier_name(backend: wgpu::Backend, device_type: wgpu::DeviceType, adapter: &str) -> String {
+    match backend {
+        wgpu::Backend::Metal => "metal".into(),
+        wgpu::Backend::Vulkan if is_software_adapter(device_type, adapter) => "vulkan-cpu".into(),
+        wgpu::Backend::Vulkan => "vulkan".into(),
+        wgpu::Backend::BrowserWebGpu => "webgpu".into(),
+        wgpu::Backend::Gl if cfg!(target_arch = "wasm32") => "webgl2".into(),
+        wgpu::Backend::Gl => "gl".into(),
+        wgpu::Backend::Dx12 => "dx12".into(),
+        other => format!("{other:?}").to_lowercase(),
     }
 }
 

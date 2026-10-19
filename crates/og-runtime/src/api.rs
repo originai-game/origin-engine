@@ -1388,7 +1388,7 @@ pub fn og_render_capabilities(world: u32) -> String {
             let tier = b.tier();
             let (w, h) = b.size();
             json!({
-                "tier": if tier == "vulkan-cpu" { "vulkan".to_string() } else { tier.clone() },
+                "tier": tier.clone(),
                 "compute": tier != "webgl2",
                 "antialias": b.antialias(),
                 "maxLights": og_render::MAX_LIGHTS,

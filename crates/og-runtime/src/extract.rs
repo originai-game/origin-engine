@@ -26,8 +26,9 @@ use std::collections::BTreeMap;
 /// A renderer the host attached to an engine (an OffscreenCanvas surface on
 /// the web, an offscreen target on native).
 pub trait RenderBackend {
-    /// The IDL `RenderTier` (`webgpu`, `webgl2`, `metal`, `vulkan`), or the
-    /// reference-frame tier name (`vulkan-cpu`).
+    /// The IDL `RenderTier` (`webgpu`, `webgl2`, `metal`, `vulkan`,
+    /// `vulkan-cpu`), og-render's `tier_name`, which also names the
+    /// reference frames.
     fn tier(&self) -> String;
     /// The render target in device pixels.
     fn size(&self) -> (u32, u32);

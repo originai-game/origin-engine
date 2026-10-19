@@ -13,3 +13,4 @@ covers, failed, and passed again once the code was restored.
 | `moon.rs` `the_phase_lights_the_disc` | the moon lit from `(-sin θ, 0, -cos θ)` | the first quarter lit the left half |
 | `moon.rs` `the_moon_sets_below_the_horizon` | the disc and halo drawn without the horizon factors | 40 pixels of the set moon showed |
 | `moon.rs` `the_size_sets_the_disc` | the disc's coordinates divided by a fixed `sin(0.04)` instead of its radius | area ratio 1.00 |
+| `og-render/tests/tier.rs` `software_rasterizers_are_known_by_name_too` | `is_software_adapter` by device type alone | llvmpipe reported as `Other` was not `vulkan-cpu` |
