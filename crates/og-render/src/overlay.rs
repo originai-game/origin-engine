@@ -262,7 +262,16 @@ impl OverlayRenderer {
         });
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("overlay"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/overlay.wgsl").into()),
+            // The glass pyramid's level count as a constant: GLSL ES 3.0
+            // (WebGL2) has no textureNumLevels.
+            source: wgpu::ShaderSource::Wgsl(
+                format!(
+                    "const GLASS_LEVELS: f32 = {}.0;\n{}",
+                    crate::glass::LEVELS,
+                    include_str!("../shaders/overlay.wgsl")
+                )
+                .into(),
+            ),
         });
         let buffers = [Some(OVERLAY_LAYOUT)];
         let pipeline = |label: &str, fs: &str, format: wgpu::TextureFormat| {

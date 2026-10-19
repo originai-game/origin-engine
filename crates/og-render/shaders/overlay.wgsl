@@ -134,8 +134,8 @@ fn fs_glass(in: OverlayOut) -> @location(0) vec4<f32> {
   let d = length(max(q, vec2<f32>(0.0))) + min(max(q.x, q.y), 0.0) - r;
   let mask = clamp(0.5 - d, 0.0, 1.0);
   // Level k of the pyramid is a blur of about 2^(k+1) device pixels.
-  let levels = f32(textureNumLevels(sprite_tex));
-  let lod = clamp(log2(max(in.effect.y, 1.0)) - 1.0, 0.0, levels - 1.0);
+  // GLASS_LEVELS is glass.rs's LEVELS, prepended by overlay.rs.
+  let lod = clamp(log2(max(in.effect.y, 1.0)) - 1.0, 0.0, GLASS_LEVELS - 1.0);
   let at = in.position.xy / overlay.output.xy;
   let behind = textureSampleLevel(sprite_tex, sprite_sampler, at, lod).rgb;
   let rgb = mix(behind, in.color.rgb, in.color.a);
