@@ -128,6 +128,11 @@ pub(crate) fn from_mesh(_shape: u32, mesh: &crate::MeshDesc, s: Vec3) -> Result<
 /// The profile's dimensions.
 pub(crate) const DIM: usize = 2;
 
+/// Height fields are 3D only.
+pub(crate) fn heightfield_surface(_c: &rp::Collider, _p: Vec3) -> Option<(Vec3, Vec3)> {
+    None
+}
+
 /// The rotation of a joint's frame whose x is `axis` in the xy plane.
 pub(crate) fn joint_frame(axis: Vec3) -> rp::Rotation {
     let len = (axis.x * axis.x + axis.y * axis.y).sqrt();
