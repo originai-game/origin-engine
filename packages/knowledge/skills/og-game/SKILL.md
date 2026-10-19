@@ -204,6 +204,30 @@ target after the clips, `og.Blendshapes` weighs morph targets, and
 `og.AnimationEvent` reports a clip's named frames. Root motion is a
 `Skeleton` field. `templates/fx-showcase`'s walker is the pattern.
 
+**Retargeting** — one clip on characters of other proportions and bone
+names. Keep shared clips in an animation library (a glTF with a skeleton
+and clips, no mesh). At cook time, a character's import settings
+(`models/hero.glb.ogt`, `type import`) pull them in:
+
+```text
+animation {
+  library "anims/humanoid-clips.glb"   # its clips land in hero's #anim, retargeted
+  rig "rigs/hero.ogt"                  # optional: how hero's bones are named
+}
+```
+
+At run time, `og.anim.retarget(world, { clip, source, target })` answers a
+new clip for `target` (both skeletons from `og.load.animation`). The bones
+are found from the node names (Mixamo, VRM, Unity, Rigify, Unreal, Blender);
+when they are not, write a `type rig` .ogt (`scheme mixamo`, or
+`hips "Root_Pelvis"` per bone), load it with `og.load.rig` and pass it as
+`sourceRig`/`targetRig`. `og.anim.humanoid(world, { skeleton })` says which
+bones were found. The target keeps its bone lengths, its hips travel the
+source's distance scaled by the leg ratio (so root motion matches its
+stride), and its legs are solved so planted feet stay on the ground
+(`footIk`, on by default). The fx-showcase `retarget` station is the
+pattern.
+
 ## 10. Effects
 
 Every effect is off until the game turns it on, as data:
@@ -384,14 +408,25 @@ deterministic and part of snapshots (`reference/physics.md`):
   `templates/archetypes/runner`'s courier is one.
 - `og.Vehicle` — a raycast car (3D, `throttle`, `steer`, `brake`; wheels
   from `og.physics.vehicleWheels`) or a car on wheel joints (2D).
-- `og.Rope` and `og.Cloth` — Verlet, drawn by the engine when `visible`;
-  `og.Fluid2D` — a particle fluid drawn as metaballs on a sprite layer.
+- `og.Rope` and `og.Cloth` — Verlet, drawn by the engine when `visible`.
+  A cloth that folds or piles up (a dropped sheet, a cape on the ground)
+  wants `thickness` about its `spacing` so it never passes through
+  itself, `substeps` 2–4 and `friction` near 1 so it lies where it lands
+  (self-collision costs about 1 ms a tick per 1,000 points).
+- `og.Fluid2D` — a particle fluid drawn as metaballs on a sprite layer.
+  Give two or more fluids the same `group` and they interact: by
+  `density` the heavier sinks under the lighter (oil on water), by
+  `mixing` 0 they stay in layers and by 1 they blend, colour and weight
+  evening out where they touch; a group draws as one surface. Up to
+  sixteen fluids draw a frame (four to a group).
 - `og.Ragdoll` — give the entity a rig
   (`og.physics.setRagdollRig(world, e, must(og.physics.ragdollRigFromSkeleton(world, anim.skeleton)))`),
   then set `weight` 1 to go limp. At weight 0 its bodies follow the
   animation's pose every tick, so the fall starts from the pose and its
   velocity; the model is drawn blended from the animation to the bones over
-  `blendTime`.
+  `blendTime`. In a 2D world (`og.Physics.profile` 2) the same works for a
+  side-on skinned model whose bones lie in the xy plane: the bones are
+  rapier2d bodies on hinges about z (the fx-showcase `ragdoll2d` station).
 
 Readouts (`ropePoints`, `clothPoints`, `fluidParticles`, `waterHeight`,
 `vehicleWheels`, `ragdollPose`) show the last step. `templates/fx-showcase`

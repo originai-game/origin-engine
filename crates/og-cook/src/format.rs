@@ -27,6 +27,7 @@
 //! | behaviour (`og.Behaviour`, an `.ogt` of `type behaviour`) | [`BehaviourMeta`] | `text` (the validated behaviour file) |
 //! | navmesh (`og.NavMesh`, an `.ogt` of `type navmesh`) | [`NavMeshMeta`] | `columns` [`NavColumnRow`], `spans` [`NavSpanRow`] (the walkable heightfield), `tiles` [`NavTileRow`], `verts` [`NavVertRow`], `polys` [`NavPolyRow`], `poly_verts` (u32) |
 //! | string table (`og.Strings`, an `.ogt` of `type strings`) | [`StringsMeta`] | `text` (the validated table) |
+//! | humanoid rig (`og.Rig`, an `.ogt` of `type rig`) | [`RigMeta`] | `text` (the canonical rig: its scheme and the bones it names) |
 //! | terrain (`og.Terrain`, an `.ogt` of `type terrain`) | [`TerrainMeta`] | `tiles` [`TerrainTileRow`], `heights` (each tile's u16 heights over its own range, zlib), `layers` [`TerrainLayerRow`], `strings` (the layers' texture ids), `control` (the control map, RGBA8, zlib) |
 
 use og_core::hash::StableHasher;
@@ -796,6 +797,24 @@ impl BlobKind for Behaviour {
     const NAME: &'static str = "og.Behaviour";
     fn schemas() -> Vec<Schema> {
         vec![BehaviourMeta::schema()]
+    }
+}
+
+row!(
+    /// The root of a rig blob (an `.ogt` of `type rig`).
+    RigMeta, "og.Rig", 1 {
+        /// Bytes of the canonical rig text in `text`.
+        text_bytes: u32,
+    }
+);
+
+/// The rig blob: `text` holds the canonical humanoid map
+/// (`og_anim::RigAsset::to_text`), parsed again at load.
+pub struct Rig;
+impl BlobKind for Rig {
+    const NAME: &'static str = "og.Rig";
+    fn schemas() -> Vec<Schema> {
+        vec![RigMeta::schema()]
     }
 }
 

@@ -1876,6 +1876,27 @@
           "publish": true
         },
         {
+          "name": "rig",
+          "doc": "Load a cooked humanoid map (an `.ogt` of `type rig`: a naming scheme and bones named outright) for og.anim.retarget and og.anim.humanoid. Loading the same path again answers the same handle.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose animation uses it."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The rig's asset id, such as `rigs/strider.ogt`."
+            }
+          ],
+          "returns": "Result<Rig>",
+          "returnsDoc": "Refused for a path not in the bundle (run og cook) or a cook stamp mismatch.",
+          "publish": true
+        },
+        {
           "name": "flipbook",
           "doc": "Load a cooked flipbook sheet (an `.ogt` of `type flipbook`, with its Aseprite or TexturePacker atlas resolved by the cook) and its texture, and register it with og.flipbook. Loading the same path again answers the same handles.",
           "params": [
@@ -2549,7 +2570,7 @@
     },
     {
       "name": "anim",
-      "doc": "Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics.\nGame code owns the components and sets players, graph parameters and IK targets; og.anim writes the pose (kept as world state in the `og.anim` state block, so snapshots, restore and the world hash cover it), the joint palette, root motion into og.Transform and the fields marked written. Asset handles are what og.load.animation and og.anim.graph answer; 0 is none.\nClips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names. Assets are not world state: a hot reload registers them again.",
+      "doc": "Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics.\nGame code owns the components and sets players, graph parameters and IK targets; og.anim writes the pose (kept as world state in the `og.anim` state block, so snapshots, restore and the world hash cover it), the joint palette, root motion into og.Transform and the fields marked written. Asset handles are what og.load.animation and og.anim.graph answer; 0 is none.\nClips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names; a rig with other names or proportions plays it retargeted (og.anim.retarget at run time, or a model's `animation { library }` import setting at cook time). Assets are not world state: a hot reload registers them again.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -2576,6 +2597,11 @@
         "ClipInfo",
         "Animation",
         "GraphDesc",
+        "Rig",
+        "HumanBone",
+        "Humanoid",
+        "HumanoidDesc",
+        "RetargetDesc",
         "FlipbookSheet",
         "FlipbookSheet",
         "FlipMode",
@@ -2605,6 +2631,48 @@
           ],
           "returns": "Result<GraphAsset>",
           "returnsDoc": "Refused for a parse error (the reason names the line), a clip name `clips` lacks, or an invalid graph.",
+          "publish": true
+        },
+        {
+          "name": "humanoid",
+          "doc": "The standard humanoid bones of a skeleton, as retargeting sees them: to check a rig before retargeting onto it.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose animation owns the skeleton."
+            },
+            {
+              "name": "desc",
+              "type": "HumanoidDesc",
+              "optional": true,
+              "doc": "The skeleton and its rig."
+            }
+          ],
+          "returns": "Result<Humanoid>",
+          "returnsDoc": "Refused for an unregistered skeleton or rig, or a rig naming a node the skeleton lacks.",
+          "publish": true
+        },
+        {
+          "name": "retarget",
+          "doc": "A new clip for `target` from a clip of `source`: each animated humanoid bone turns as the source's does from its rest pose (after a rest correction, so a T-pose drives an A-pose and other bone frames agree), the target keeps its bone lengths, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled. Same name, duration and markers. The cook does the same for a model's `animation { library }` import setting; this is for clips chosen at run time.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose animation owns the skeletons and the clip."
+            },
+            {
+              "name": "desc",
+              "type": "RetargetDesc",
+              "optional": true,
+              "doc": "The clip, the two skeletons and their rigs."
+            }
+          ],
+          "returns": "Result<ClipInfo>",
+          "returnsDoc": "The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip, skeleton or rig, a skeleton without recognisable hips (name them in a `type rig` file), or a rig naming a missing node.",
           "publish": true
         },
         {
@@ -12218,12 +12286,11 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt.",
+          "description": "PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt. Set the other one at run time to change profile: the next step builds that profile's simulation from the components (contacts, joints' warm starts, ropes, cloth, fluids and ragdoll bodies start again), so a 3D game can play a 2D scene and back.",
           "default": 3,
           "minimum": 2,
           "maximum": 3,
-          "x-og-label": "Profile",
-          "readOnly": true
+          "x-og-label": "Profile"
         },
         "gravity": {
           "$ref": "#/$defs/Vector3",
@@ -13298,7 +13365,7 @@
     "Cloth": {
       "x-og-kind": "component",
       "x-og-module": "physics",
-      "description": "A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind and collision against every solid collider. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour).",
+      "description": "A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour).",
       "type": "object",
       "properties": {
         "columns": {
@@ -13387,6 +13454,31 @@
           "x-og-unit": "m",
           "x-og-tunable": true
         },
+        "thickness": {
+          "type": "number",
+          "description": "Self-collision: how far apart its points keep from the points of the cloth that are not their near neighbours (0: none). About `spacing` keeps a cloth that folds or piles up from passing through itself.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "substeps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Simulation steps per tick, each integrating and then solving `iterations` passes; with self-collision enough that a point moves less than `thickness` per step (a point moves at most half the thickness a step).",
+          "default": 1,
+          "minimum": 1,
+          "maximum": 16
+        },
+        "friction": {
+          "type": "number",
+          "description": "How much of its sliding a point touching a solid loses each step (0: it slides freely; near 1 it sticks where it lands, so a cloth lowered onto the floor folds instead of spreading).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
         "material": {
           "$ref": "#/$defs/Material",
           "description": "The material it is drawn with (og.render.standardMaterial); 0 is a plain cloth.",
@@ -13403,7 +13495,7 @@
     "Fluid2D": {
       "x-og-kind": "component",
       "x-og-module": "physics",
-      "description": "A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`.",
+      "description": "A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`.",
       "type": "object",
       "properties": {
         "count": {
@@ -13468,6 +13560,29 @@
           "default": 0.15,
           "minimum": 0,
           "maximum": 4,
+          "x-og-tunable": true
+        },
+        "group": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Fluids sharing a group above 0 push, drag and (by `mixing`) mix with each other as one fluid, at most four to a group (in entity order; a fifth is simulated alone), and are drawn as one surface whose colour follows the mix; 0 keeps the fluid to itself.",
+          "default": 0
+        },
+        "density": {
+          "type": "number",
+          "description": "How heavy its particles are against the group's other fluids: a heavier fluid sinks under a lighter one.",
+          "default": 1,
+          "minimum": 0.05,
+          "maximum": 20,
+          "x-og-tunable": true
+        },
+        "mixing": {
+          "type": "number",
+          "description": "How readily it mixes with the group's other fluids: 0 keeps them apart in layers (the boundary held), 1 blends them where they touch (their mix, colour and weight even out).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
           "x-og-tunable": true
         },
         "gravityScale": {
@@ -13717,7 +13832,7 @@
     "Ragdoll": {
       "x-og-kind": "component",
       "x-og-module": "physics",
-      "description": "A ragdoll over an og.Skeleton (3D): a capsule body per bone with a parent, ball joints with cone limits between them, built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state (the og.physics state block), not entities.",
+      "description": "A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy plane at their animated z, for a skeleton laid out in that plane), built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state (the og.physics state block), not entities.",
       "type": "object",
       "properties": {
         "weight": {
@@ -15398,6 +15513,116 @@
           },
           "description": "The clips a `clip <motion> \"<name>\"` line may name, by ClipInfo.name: usually og.load.animation's `clips`.",
           "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "Rig": {
+      "x-og-kind": "handle",
+      "x-og-module": "anim",
+      "description": "A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow and the standard bones it names outright.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "HumanBone": {
+      "x-og-kind": "struct",
+      "x-og-module": "anim",
+      "description": "One standard humanoid bone of a skeleton.",
+      "type": "object",
+      "properties": {
+        "bone": {
+          "type": "string",
+          "description": "The standard bone: hips, spine, chest, upperChest, neck, head, then leftShoulder, leftUpperArm, leftLowerArm, leftHand, the right arm, leftUpperLeg, leftLowerLeg, leftFoot, leftToes and the right leg."
+        },
+        "node": {
+          "type": "string",
+          "description": "The skeleton node that is that bone."
+        }
+      },
+      "required": [
+        "bone",
+        "node"
+      ],
+      "additionalProperties": false
+    },
+    "Humanoid": {
+      "x-og-kind": "struct",
+      "x-og-module": "anim",
+      "description": "Which node of a skeleton is each standard humanoid bone (what retargeting maps).",
+      "type": "object",
+      "properties": {
+        "scheme": {
+          "type": "string",
+          "description": "The naming scheme the bones were read in: mixamo, vrm, unity, rigify, ue or blender; custom when a rig named them, none when nothing matched."
+        },
+        "bones": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/HumanBone"
+          },
+          "description": "The bones found, in the standard order (hips first)."
+        }
+      },
+      "required": [
+        "scheme",
+        "bones"
+      ],
+      "additionalProperties": false
+    },
+    "HumanoidDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "anim",
+      "description": "A skeleton and, optionally, the rig that says how its bones are named.",
+      "type": "object",
+      "properties": {
+        "skeleton": {
+          "$ref": "#/$defs/SkeletonAsset",
+          "description": "The skeleton (og.load.animation's `skeleton`).",
+          "default": 0
+        },
+        "rig": {
+          "$ref": "#/$defs/Rig",
+          "description": "A humanoid map from og.load.rig; 0 detects the bones from the node names (Mixamo, VRM, Unity, Rigify, Unreal or Blender names).",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "RetargetDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "anim",
+      "description": "A clip made for one skeleton, to play on another (other proportions, rest pose or bone names).",
+      "type": "object",
+      "properties": {
+        "clip": {
+          "$ref": "#/$defs/ClipAsset",
+          "description": "The clip, made for `source`.",
+          "default": 0
+        },
+        "source": {
+          "$ref": "#/$defs/SkeletonAsset",
+          "description": "The skeleton the clip was made for (og.load.animation's `skeleton`: a character's, or an animation library's).",
+          "default": 0
+        },
+        "target": {
+          "$ref": "#/$defs/SkeletonAsset",
+          "description": "The skeleton that will play it.",
+          "default": 0
+        },
+        "sourceRig": {
+          "$ref": "#/$defs/Rig",
+          "description": "How the source's bones are named (og.load.rig); 0 detects them.",
+          "default": 0
+        },
+        "targetRig": {
+          "$ref": "#/$defs/Rig",
+          "description": "How the target's bones are named; 0 detects them.",
+          "default": 0
+        },
+        "footIk": {
+          "type": "boolean",
+          "description": "Solve the legs so a planted foot stays planted on the target's ground (and the hips lower when a leg cannot reach).",
+          "default": true
         }
       },
       "additionalProperties": false
@@ -18316,7 +18541,7 @@
         "secondary": "A neutral fill (the default).",
         "primary": "The amber action: one per screen.",
         "quiet": "Text until hovered.",
-        "danger": "A destructive action: danger ink on a neutral fill."
+        "danger": "A destructive action: danger ink on the danger tint."
       }
     },
     "ControlSize": {

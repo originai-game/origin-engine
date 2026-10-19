@@ -427,6 +427,10 @@ impl LoadApi for WebHost {
     fn og_load_flipbook(&self, world: u32, path: String) -> String {
         rt::og_load_flipbook(world, path)
     }
+
+    fn og_load_rig(&self, world: u32, path: String) -> String {
+        rt::og_load_rig(world, path)
+    }
     fn og_load_tilemap(&self, world: u32, path: String) -> String {
         rt::og_load_tilemap(world, path)
     }
@@ -486,6 +490,14 @@ impl TilemapApi for WebHost {
 impl AnimApi for WebHost {
     fn og_anim_graph(&self, world: u32, desc: Option<String>) -> String {
         rt::og_anim_graph(world, desc)
+    }
+
+    fn og_anim_humanoid(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_anim_humanoid(world, desc)
+    }
+
+    fn og_anim_retarget(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_anim_retarget(world, desc)
     }
 }
 

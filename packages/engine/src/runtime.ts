@@ -902,11 +902,14 @@ export const load = Object.freeze({
   gltfInfo: (world: WorldImpl, asset: number) => parse(abi().og_load_gltf_info(world.id, asset)),
   animation: (world: WorldImpl, path: string) => parse(abi().og_load_animation(world.id, path)),
   flipbook: (world: WorldImpl, path: string) => parse(abi().og_load_flipbook(world.id, path)),
+  rig: (world: WorldImpl, path: string) => parse(abi().og_load_rig(world.id, path)),
   tilemap: (world: WorldImpl, path: string) => parse(abi().og_load_tilemap(world.id, path)),
 });
 
 export const anim = Object.freeze({
   graph: (world: WorldImpl, desc?: unknown) => parse(abi().og_anim_graph(world.id, json(desc))),
+  humanoid: (world: WorldImpl, desc?: unknown) => parse(abi().og_anim_humanoid(world.id, json(desc))),
+  retarget: (world: WorldImpl, desc?: unknown) => parse(abi().og_anim_retarget(world.id, json(desc))),
   clip: (info: { clips?: ReadonlyArray<{ clip: number; name: string }> }, name: string): number =>
     info?.clips?.find((c) => c.name === name)?.clip ?? -1,
 });

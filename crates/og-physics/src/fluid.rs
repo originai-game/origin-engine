@@ -5,6 +5,10 @@
 //! and near pressure), pushes them out of solids and the container, and
 //! takes the velocity from the displacement.
 //!
+//! Fluids of one group (`Fluid2D.group`) step together ([`step_group`]):
+//! their particles weigh their fluid's `density` and carry a mix over the
+//! group's fluids that `mixing` evens out where they touch.
+//!
 //! Determinism: neighbours come from a uniform grid of cell size `radius`
 //! whose particles are sorted by (cell, index); pairs are visited in that
 //! order and the relaxation updates positions in place in index order, so
@@ -25,6 +29,11 @@ pub(crate) struct FluidState {
     pub seed: u32,
     pub positions: Vec<Vec2>,
     pub velocities: Vec<Vec2>,
+    /// The fluid's lane in its group (`u32::MAX`: in none).
+    pub slot: u32,
+    /// In a group, each particle's mix over the group's lanes (summing to
+    /// 1; its own lane alone until it mixes); empty in none.
+    pub mix: Vec<[f32; GROUP_SIZE]>,
 }
 
 /// A hash of (seed, i, k) to 0..1: the spawn jitter.
@@ -134,6 +143,8 @@ impl FluidState {
             seed: fluid.seed,
             positions,
             velocities: vec![Vec2::ZERO; n as usize],
+            slot: u32::MAX,
+            mix: Vec::new(),
         }
     }
 
@@ -262,5 +273,251 @@ impl FluidState {
                 *v = if len > cap { u * (cap / len) } else { u };
             }
         }
+    }
+}
+
+/// The most fluids one group simulates together (the lanes of a
+/// particle's mix, and of the renderer's field).
+pub(crate) const GROUP_SIZE: usize = 4;
+
+/// How fast mixing evens out the mix of two touching particles, per tick
+/// at `mixing` 1 and full overlap.
+const MIX_RATE: f32 = 0.25;
+
+/// How strongly the boundary between unmixed fluids holds them apart (a
+/// multiple of the near pressure) at `mixing` 0.
+const TENSION: f32 = 1.0;
+
+/// One member of a group: its component, its particles, the centre of its
+/// container and its lane in the group.
+pub(crate) struct Member<'a> {
+    pub fluid: &'a Fluid2D,
+    pub state: &'a mut FluidState,
+    pub centre: Vec2,
+}
+
+impl FluidState {
+    /// Gives every particle a mix of only its own fluid (lane `slot`), when
+    /// it has none or was in another lane.
+    pub fn join(&mut self, slot: u32) {
+        if self.slot != slot || self.mix.len() != self.positions.len() {
+            let mut own = [0.0f32; GROUP_SIZE];
+            own[slot as usize] = 1.0;
+            self.mix = vec![own; self.positions.len()];
+            self.slot = slot;
+        }
+    }
+
+    /// Leaves a group: the particles keep no mix.
+    pub fn leave(&mut self) {
+        self.slot = u32::MAX;
+        self.mix.clear();
+    }
+}
+
+/// One tick of fluids that share a group: their particles push, drag and
+/// (by `mixing`) mix as one fluid whose particles weigh their fluids'
+/// `density`, so a heavier fluid sinks under a lighter one. Pressure comes
+/// from every neighbour (number density), each particle's own stiffness
+/// against its own rest density; a pair's displacement and viscous impulse
+/// are shared in inverse proportion to the particles' masses; unmixed
+/// particles of different fluids are held apart at their boundary by an
+/// extra near pressure (`TENSION`, gone at `mixing` 1); and touching
+/// particles even out their mix at `mixing × MIX_RATE` per tick, their mass
+/// following it. Members are in entity order, their lanes `0..4`.
+pub(crate) fn step_group(
+    members: &mut [Member<'_>],
+    dt: f32,
+    gravity: Vec2,
+    z: f32,
+    solids: &dyn Solids,
+) {
+    if members.is_empty() {
+        return;
+    }
+    let substeps = members
+        .iter()
+        .map(|m| m.fluid.substeps.clamp(1, 8))
+        .max()
+        .unwrap_or(1);
+    let ds = dt / substeps as f32;
+    let t = ds / TICK;
+    let h = members
+        .iter()
+        .map(|m| m.fluid.radius.max(0.01))
+        .fold(0.0f32, f32::max);
+    // The particles of every member, in member order.
+    let mut owner: Vec<u8> = Vec::new();
+    let mut positions: Vec<Vec2> = Vec::new();
+    let mut velocities: Vec<Vec2> = Vec::new();
+    let mut mix: Vec<[f32; GROUP_SIZE]> = Vec::new();
+    for (k, m) in members.iter().enumerate() {
+        owner.extend(std::iter::repeat_n(k as u8, m.state.positions.len()));
+        positions.extend_from_slice(&m.state.positions);
+        velocities.extend_from_slice(&m.state.velocities);
+        mix.extend_from_slice(&m.state.mix);
+    }
+    let n = positions.len();
+    let density: Vec<f32> = members.iter().map(|m| m.fluid.density.max(0.05)).collect();
+    let mut lane_density = [1.0f32; GROUP_SIZE];
+    for (k, m) in members.iter().enumerate() {
+        lane_density[m.state.slot as usize] = density[k];
+    }
+    let mass_of = |w: &[f32; GROUP_SIZE]| -> f32 {
+        let mut m = 0.0;
+        for l in 0..GROUP_SIZE {
+            m += w[l] * lane_density[l];
+        }
+        m.max(0.05)
+    };
+    let mixing_of = |i: usize| members[owner[i] as usize].fluid.mixing.clamp(0.0, 1.0);
+    let mut previous = vec![Vec2::ZERO; n];
+    let mut mass: Vec<f32> = mix.iter().map(mass_of).collect();
+    for _ in 0..substeps {
+        for (i, v) in velocities.iter_mut().enumerate() {
+            let f = members[owner[i] as usize].fluid;
+            *v += gravity * f.gravity_scale * ds;
+        }
+        let grid = Grid::build(&positions, h);
+        let (start, pairs) = grid.neighbours(&positions);
+        // Viscosity, shared by mass.
+        for i in 0..n {
+            let si = members[owner[i] as usize].fluid.viscosity;
+            for &j in &pairs[start[i] as usize..start[i + 1] as usize] {
+                let j = j as usize;
+                let sigma = 0.5 * (si + members[owner[j] as usize].fluid.viscosity);
+                if sigma <= 0.0 {
+                    continue;
+                }
+                let d = positions[j] - positions[i];
+                let r = d.length();
+                if r <= 1e-9 {
+                    continue;
+                }
+                let q = r / h;
+                let dir = d / r;
+                let u = (velocities[i] - velocities[j]).dot(dir);
+                if u > 0.0 {
+                    let impulse = dir * (t * (1.0 - q) * sigma * u);
+                    let total = mass[i] + mass[j];
+                    velocities[i] -= impulse * (mass[j] / total);
+                    velocities[j] += impulse * (mass[i] / total);
+                }
+            }
+        }
+        previous.copy_from_slice(&positions);
+        let cap = 0.5 * h / ds;
+        for (p, v) in positions.iter_mut().zip(velocities.iter_mut()) {
+            let len = v.length();
+            if len > cap {
+                *v *= cap / len;
+            }
+            *p += *v * ds;
+        }
+        // Number density over every neighbour.
+        let mut rho = vec![0.0f32; n];
+        let mut near = vec![0.0f32; n];
+        for i in 0..n {
+            for &j in &pairs[start[i] as usize..start[i + 1] as usize] {
+                let r = (positions[j as usize] - positions[i]).length();
+                let q = 1.0 - r / h;
+                if q > 0.0 {
+                    let (q2, q3) = (q * q, q * q * q);
+                    rho[i] += q2;
+                    rho[j as usize] += q2;
+                    near[i] += q3;
+                    near[j as usize] += q3;
+                }
+            }
+        }
+        for i in 0..n {
+            let f = members[owner[i] as usize].fluid;
+            let pressure = f.stiffness * (rho[i] - f.rest_density);
+            let near_pressure = f.near_stiffness * near[i];
+            let mut dx = Vec2::ZERO;
+            for &j in &pairs[start[i] as usize..start[i + 1] as usize] {
+                let j = j as usize;
+                let d = positions[j] - positions[i];
+                let r = d.length();
+                if r <= 1e-9 {
+                    continue;
+                }
+                let q = 1.0 - r / h;
+                if q <= 0.0 {
+                    continue;
+                }
+                // How unlike the two particles are (0: the same mix), and
+                // how much of that the boundary holds apart.
+                let same: f32 = mix[i].iter().zip(&mix[j]).map(|(a, b)| a * b).sum();
+                let unlike = (1.0 - same).clamp(0.0, 1.0);
+                let hold = unlike * (1.0 - 0.5 * (mixing_of(i) + mixing_of(j))) * TENSION;
+                let push = pressure * q + near_pressure * q * q + f.near_stiffness * hold * q;
+                let disp = (d / r) * (t * t * h * push);
+                let total = mass[i] + mass[j];
+                positions[j] += disp * (mass[i] / total);
+                dx -= disp * (mass[j] / total);
+            }
+            positions[i] += dx;
+        }
+        // Mixing: touching particles even out their mix, then their mass.
+        for i in 0..n {
+            for &j in &pairs[start[i] as usize..start[i + 1] as usize] {
+                let j = j as usize;
+                let rate = 0.5 * (mixing_of(i) + mixing_of(j)) * MIX_RATE * t;
+                if rate <= 0.0 {
+                    continue;
+                }
+                let r = (positions[j] - positions[i]).length();
+                let q = 1.0 - r / h;
+                if q <= 0.0 {
+                    continue;
+                }
+                let k = (rate * q).min(0.5);
+                // j > i: both halves of the pair, mutably.
+                let (low, high) = mix.split_at_mut(j);
+                for (a, b) in low[i].iter_mut().zip(high[0].iter_mut()) {
+                    let delta = (*b - *a) * k;
+                    *a += delta;
+                    *b -= delta;
+                }
+            }
+        }
+        for (m, w) in mass.iter_mut().zip(&mix) {
+            *m = mass_of(w);
+        }
+        // Solids and each member's container.
+        for i in 0..n {
+            let m = &members[owner[i] as usize];
+            let r_particle = m.fluid.radius.max(0.01) * 0.25;
+            let p = &mut positions[i];
+            if let Some((q, _)) = solids.push_out(Vec3::new(p.x, p.y, z), r_particle) {
+                *p = Vec2::new(q.x, q.y);
+            }
+            let half = m.fluid.bounds * 0.5;
+            if half.x > 0.0 {
+                p.x = p.x.clamp(m.centre.x - half.x, m.centre.x + half.x);
+            }
+            if half.y > 0.0 {
+                p.y = p.y.clamp(m.centre.y - half.y, m.centre.y + half.y);
+            }
+        }
+        for ((v, p), q) in velocities.iter_mut().zip(&positions).zip(&previous) {
+            let u = (*p - *q) / ds;
+            let len = u.length();
+            *v = if len > cap { u * (cap / len) } else { u };
+        }
+    }
+    // Back into each member.
+    let mut at = 0;
+    for m in members.iter_mut() {
+        let count = m.state.positions.len();
+        m.state
+            .positions
+            .copy_from_slice(&positions[at..at + count]);
+        m.state
+            .velocities
+            .copy_from_slice(&velocities[at..at + count]);
+        m.state.mix.copy_from_slice(&mix[at..at + count]);
+        at += count;
     }
 }

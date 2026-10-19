@@ -124,11 +124,12 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
             "error",
             "gltfInfo",
             "animation",
+            "rig",
             "flipbook",
             "tilemap"
         ]
     );
-    assert_eq!(fns("anim"), ["graph", "clip"]);
+    assert_eq!(fns("anim"), ["graph", "humanoid", "retarget", "clip"]);
     // E4: time scale, camera feel, tweens, tilemaps, floating text.
     assert_eq!(fns("time"), ["setScale", "hitStop"]);
     assert_eq!(fns("camera"), ["shake", "punch", "kick"]);

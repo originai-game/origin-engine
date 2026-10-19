@@ -329,7 +329,7 @@ pub enum ButtonVariant {
     Primary,
     /// Text until hovered.
     Quiet,
-    /// A destructive action: danger ink on a neutral fill.
+    /// A destructive action: danger ink on the danger tint.
     Danger,
 }
 
@@ -1106,12 +1106,16 @@ impl Ui {
                     p.fg,
                 ),
                 ButtonVariant::Quiet => ((r.hovered || r.pressed).then_some(p.fill), p.fg),
+                // The platform's danger button: danger ink on the danger
+                // tint (bg-danger/10 at rest, /15 hovered), composited in
+                // sRGB over what is behind it as browsers do, so its label
+                // reads at 4.5:1 on every ground.
                 ButtonVariant::Danger => (
-                    Some(if r.hovered || r.pressed {
-                        p.fill_strong
-                    } else {
-                        p.fill
-                    }),
+                    Some(
+                        p.danger
+                            .fade(if r.hovered || r.pressed { 0.15 } else { 0.10 })
+                            .over(self.behind(i)),
+                    ),
                     p.danger,
                 ),
             }

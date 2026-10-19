@@ -6,10 +6,18 @@
 //!   target), on inputs drawn from a fixed seed;
 //! - [`bouncing_boxes_hash`]: `World::world_hash` of the bouncing-boxes
 //!   world (`crates/og-ecs/tests/support/bouncing_boxes.rs`, the same file the
-//!   og-ecs test runs), seed 42, after 3600 ticks.
+//!   og-ecs test runs), seed 42, after 3600 ticks;
+//! - [`physics_hash`]: the world hashes of og-physics' beyond-rigid-bodies
+//!   scenario (`crates/og-physics/tests/support/beyond.rs`: joints,
+//!   controllers, cars, ropes, cloth with self-collision, water, fluids and
+//!   a fluid group, ragdolls in 3D and 2D), 3D and 2D, after 600 ticks;
+//! - [`anim_hash`]: the world hash of og-anim's walk scenario
+//!   (`crates/og-anim/tests/support/walk.rs`: graphs, players, root motion,
+//!   blendshapes, IK) after 600 ticks, with every sample of the walk
+//!   retargeted onto the tall Mixamo rig (`og_anim::retarget`).
 //!
-//! On wasm32 they are exported as `math_digest` and `bouncing_boxes_hash`
-//! (no imports; `load.mjs` instantiates the module under node).
+//! On wasm32 they are exported under the same names (no imports; `load.mjs`
+//! instantiates the module under node).
 
 use og_core::Rng;
 use og_core::hash::StableHasher;
@@ -21,6 +29,13 @@ use og_core::math::{
 #[allow(dead_code)] // `Stats` fields are read only by the og-ecs test
 #[path = "../../../crates/og-ecs/tests/support/bouncing_boxes.rs"]
 mod bouncing_boxes;
+
+#[path = "../../../crates/og-physics/tests/support/beyond.rs"]
+mod beyond;
+
+#[allow(dead_code)]
+#[path = "../../../crates/og-anim/tests/support/mod.rs"]
+mod anim_support;
 
 /// Rounds of [`math_digest`]; each hashes 28 results.
 pub const ROUNDS: u32 = 50_000;
@@ -111,6 +126,48 @@ pub fn bouncing_boxes_hash() -> u64 {
     w.world_hash()
 }
 
+/// See the crate documentation.
+pub fn physics_hash() -> u64 {
+    let mut h = StableHasher::new();
+    for profile in [og_physics::PROFILE_3D, og_physics::PROFILE_2D] {
+        let (mut w, p, cast) = beyond::build(7, profile);
+        beyond::run(&mut w, &p, &cast, 0, 600, profile);
+        h.write_u64(w.world_hash());
+    }
+    h.finish()
+}
+
+/// See the crate documentation.
+pub fn anim_hash() -> u64 {
+    let mut h = StableHasher::new();
+    let (mut w, _anim) = anim_support::walk::build(3);
+    for _ in 0..600 {
+        w.step().expect("the walk steps");
+    }
+    h.write_u64(w.world_hash());
+    let source = anim_support::skeleton();
+    let target = anim_support::tall();
+    let walk = anim_support::clips()
+        .into_iter()
+        .map(|(_, c)| c)
+        .find(|c| c.name == "walk")
+        .expect("the walk clip");
+    let out = og_anim::retarget(
+        &source,
+        &og_anim::HumanoidMap::detect(&source),
+        &target,
+        &og_anim::HumanoidMap::detect(&target),
+        &walk,
+        &og_anim::RetargetOptions::default(),
+    )
+    .expect("the walk retargets");
+    for c in &out.clip.channels {
+        h.write_u32(c.node);
+        put(&mut h, &c.samples);
+    }
+    h.finish()
+}
+
 #[cfg(target_arch = "wasm32")]
 mod wasm {
     #[unsafe(no_mangle)]
@@ -121,5 +178,15 @@ mod wasm {
     #[unsafe(no_mangle)]
     pub extern "C" fn bouncing_boxes_hash() -> u64 {
         super::bouncing_boxes_hash()
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn physics_hash() -> u64 {
+        super::physics_hash()
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn anim_hash() -> u64 {
+        super::anim_hash()
     }
 }

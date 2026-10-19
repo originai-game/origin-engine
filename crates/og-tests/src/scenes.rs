@@ -49,6 +49,7 @@ pub const SCENES: &[&str] = &[
     "water-3d",
     "water-2d",
     "fluid-2d",
+    "fluid-groups",
     "shader-hooks",
     "weather-rain",
     "weather-snow",
@@ -254,6 +255,8 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "water-3d" => g.scene = crate::atmo_scenes::water_scene(),
         "water-2d" => g.scene = crate::atmo_scenes::water_2d_scene(),
         "fluid-2d" => g.scene = crate::atmo_scenes::fluid_2d_scene(),
+        // Phase 2: ten fluids a frame, two groups (blended, layered).
+        "fluid-groups" => g.scene = crate::atmo_scenes::fluid_groups_scene(),
         // Material shader hooks: dissolve by noise, wind-swayed grass.
         "shader-hooks" => g.scene = crate::atmo_scenes::hooks_scene(45),
         // Weather presets over the colonnade: particles, fog, dimmed light.

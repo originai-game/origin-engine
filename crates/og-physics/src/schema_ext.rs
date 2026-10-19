@@ -656,7 +656,8 @@ pub const PIN_TOP_RINGS: u32 = 8;
 /// hanging from the entity's position (its top-left corner, the grid laid
 /// out along the entity's local x and down -y), pinned by `pins` (pinned
 /// points follow the entity), with stretch and shear constraints, gravity,
-/// wind and collision against every solid collider. One-way like og.Rope;
+/// wind, collision against every solid collider and, with `thickness`,
+/// against itself. One-way like og.Rope;
 /// its points are world state. Drawn as a double-sided mesh with
 /// `material` (og.render.standardMaterial; 0: a plain cloth colour).
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
@@ -692,6 +693,22 @@ pub struct Cloth {
     /// The thickness it collides at (0: no collision).
     #[reflect(min = 0, unit = "m", default = 0.04, tunable)]
     pub radius: f32,
+    /// Self-collision: how far apart its points keep from the points of the
+    /// cloth that are not their near neighbours (0: none). About `spacing`
+    /// keeps a cloth that folds or piles up from passing through itself.
+    #[reflect(min = 0, unit = "m", tunable)]
+    pub thickness: f32,
+    /// Simulation steps per tick, each integrating and then solving
+    /// `iterations` passes; with self-collision enough that a point moves
+    /// less than `thickness` per step (a point moves at most half the
+    /// thickness a step).
+    #[reflect(min = 1, max = 16, default = 1)]
+    pub substeps: u32,
+    /// How much of its sliding a point touching a solid loses each step
+    /// (0: it slides freely; near 1 it sticks where it lands, so a cloth
+    /// lowered onto the floor folds instead of spreading).
+    #[reflect(min = 0, max = 1, tunable)]
+    pub friction: f32,
     /// The material it is drawn with (og.render.standardMaterial); 0 is a plain cloth.
     pub material: u64,
     /// Whether the renderer draws it.
@@ -712,6 +729,9 @@ impl Default for Cloth {
             wind: Vec3::ZERO,
             gust: 0.6,
             radius: 0.04,
+            thickness: 0.0,
+            substeps: 1,
+            friction: 0.0,
             material: 0,
             visible: true,
         }
@@ -726,7 +746,8 @@ impl Default for Cloth {
 /// viscosity) on a fixed grid in a fixed order, so it is deterministic and
 /// part of the og.physics state block. Particles collide with every solid
 /// collider (pushed out of bodies; they push nothing back) and stay inside
-/// `bounds` around the entity when it is set. Drawn as metaballs: the
+/// `bounds` around the entity when it is set. Fluids of one `group`
+/// interact: by `density` they layer, by `mixing` they blend. Drawn as metaballs: the
 /// particles blurred into a field the renderer thresholds into one surface
 /// of `color`, on sprite layer `layer`.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
@@ -756,6 +777,20 @@ pub struct Fluid2D {
     /// Linear viscosity (honey above 1).
     #[reflect(min = 0, max = 4, default = 0.15, tunable)]
     pub viscosity: f32,
+    /// Fluids sharing a group above 0 push, drag and (by `mixing`) mix with
+    /// each other as one fluid, at most four to a group (in entity order;
+    /// a fifth is simulated alone), and are drawn as one surface whose
+    /// colour follows the mix; 0 keeps the fluid to itself.
+    pub group: u32,
+    /// How heavy its particles are against the group's other fluids:
+    /// a heavier fluid sinks under a lighter one.
+    #[reflect(min = 0.05, max = 20, default = 1, tunable)]
+    pub density: f32,
+    /// How readily it mixes with the group's other fluids: 0 keeps them
+    /// apart in layers (the boundary held), 1 blends them where they touch
+    /// (their mix, colour and weight even out).
+    #[reflect(min = 0, max = 1, tunable)]
+    pub mixing: f32,
     /// Multiplies og.Physics.gravity.
     #[reflect(name = "gravityScale", min = -10, max = 10, default = 1, tunable)]
     pub gravity_scale: f32,
@@ -794,6 +829,9 @@ impl Default for Fluid2D {
             stiffness: 0.1,
             near_stiffness: 0.5,
             viscosity: 0.15,
+            group: 0,
+            density: 1.0,
+            mixing: 0.0,
             gravity_scale: 1.0,
             substeps: 2,
             seed: 0,
@@ -926,8 +964,10 @@ pub struct Splash {
 
 // ---- ragdolls -------------------------------------------------------------
 
-/// A ragdoll over an og.Skeleton (3D): a capsule body per bone with a
-/// parent, ball joints with cone limits between them, built from the
+/// A ragdoll over an og.Skeleton: a capsule body per bone with a parent,
+/// joints with limits between them (ball joints with cone limits in 3D; in
+/// 2D hinges about z, the bones rapier2d bodies in the xy plane at their
+/// animated z, for a skeleton laid out in that plane), built from the
 /// skeleton's rest pose. `weight` is where the pose comes from: 0 the
 /// animation (the bodies follow it kinematically), 1 the physics (the
 /// bodies are dynamic, starting with the animation's velocity); the pose

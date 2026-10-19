@@ -18,7 +18,7 @@ module physics {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 2978</sub>
+<sub>`api.ogt` line 2985</sub>
 
 ## Contents
 
@@ -79,12 +79,12 @@ module physics {
 | [`PIN_TOP_CORNERS`](#const-PIN_TOP_CORNERS) | constant | `Cloth.pins` bit: the top-left and top-right corners are pinned. |
 | [`PIN_LEFT`](#const-PIN_LEFT) | constant | `Cloth.pins` bit: the whole left column is pinned (a flag on a pole). |
 | [`PIN_TOP_RINGS`](#const-PIN_TOP_RINGS) | constant | `Cloth.pins` bit: every fourth point of the top row (curtain rings). |
-| [`og.Cloth`](#record-Cloth) | component | A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind and collision against every solid collider. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour). |
-| [`og.Fluid2D`](#record-Fluid2D) | component | A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`. |
+| [`og.Cloth`](#record-Cloth) | component | A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour). |
+| [`og.Fluid2D`](#record-Fluid2D) | component | A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`. |
 | [`og.WaterSurface`](#record-WaterSurface) | component | Height-field water (3D): a `resolution` × `resolution` grid of heights over a `size` square centred on the entity (its y is the rest level), waves travelling at `waveSpeed` and fading by `damping`. Dynamic bodies crossing it push waves (splashes; og.Splash events) and float by `buoyancy`. The heights are world state; an og.Water on the same entity draws them. |
 | [`og.WaterLine`](#record-WaterLine) | component | 2D water for side-scrollers: a `width` × `depth` pool whose top edge (at the entity's y, centred on its x) is `columns` springs, each pulled to its rest height by `tension`, damped by `damping` and passing waves to its neighbours by `spread`. Bodies (and characters) crossing the surface splash it (og.Splash events) and float by `buoyancy`. The springs are world state; an og.Water2D on the same entity draws it. |
 | [`og.Splash`](#record-Splash) | event | Something crossed a water surface (og.WaterSurface or og.WaterLine): for splash particles and sounds. Read the next tick. |
-| [`og.Ragdoll`](#record-Ragdoll) | component | A ragdoll over an og.Skeleton (3D): a capsule body per bone with a parent, ball joints with cone limits between them, built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state (the og.physics state block), not entities. |
+| [`og.Ragdoll`](#record-Ragdoll) | component | A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy plane at their animated z, for a skeleton laid out in that plane), built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state (the og.physics state block), not entities. |
 | [`QueryFilter`](#type-QueryFilter) | desc struct | Which colliders a scene query considers. The zero value considers every solid collider on every layer. |
 | [`RaycastDesc`](#type-RaycastDesc) | desc struct | A ray for og.physics.raycast. |
 | [`RaycastHit`](#type-RaycastHit) | struct | The nearest collider a ray meets. |
@@ -140,7 +140,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 4115</sub>
+<sub>`api.ogt` line 4148</sub>
 
 <a id="fn-shapeCast"></a>
 
@@ -170,7 +170,7 @@ fn shapeCast {
 }
 ```
 
-<sub>`api.ogt` line 4122</sub>
+<sub>`api.ogt` line 4155</sub>
 
 <a id="fn-overlap"></a>
 
@@ -200,7 +200,7 @@ fn overlap {
 }
 ```
 
-<sub>`api.ogt` line 4129</sub>
+<sub>`api.ogt` line 4162</sub>
 
 <a id="fn-setMesh"></a>
 
@@ -232,7 +232,7 @@ fn setMesh {
 }
 ```
 
-<sub>`api.ogt` line 4136</sub>
+<sub>`api.ogt` line 4169</sub>
 
 <a id="fn-ropePoints"></a>
 
@@ -262,7 +262,7 @@ fn ropePoints {
 }
 ```
 
-<sub>`api.ogt` line 4190</sub>
+<sub>`api.ogt` line 4223</sub>
 
 <a id="fn-clothPoints"></a>
 
@@ -292,7 +292,7 @@ fn clothPoints {
 }
 ```
 
-<sub>`api.ogt` line 4197</sub>
+<sub>`api.ogt` line 4230</sub>
 
 <a id="fn-fluidParticles"></a>
 
@@ -322,7 +322,7 @@ fn fluidParticles {
 }
 ```
 
-<sub>`api.ogt` line 4204</sub>
+<sub>`api.ogt` line 4237</sub>
 
 <a id="fn-waterHeight"></a>
 
@@ -356,7 +356,7 @@ fn waterHeight {
 }
 ```
 
-<sub>`api.ogt` line 4211</sub>
+<sub>`api.ogt` line 4244</sub>
 
 <a id="fn-vehicleWheels"></a>
 
@@ -386,7 +386,7 @@ fn vehicleWheels {
 }
 ```
 
-<sub>`api.ogt` line 4220</sub>
+<sub>`api.ogt` line 4253</sub>
 
 <a id="fn-ragdollRigFromSkeleton"></a>
 
@@ -416,7 +416,7 @@ fn ragdollRigFromSkeleton {
 }
 ```
 
-<sub>`api.ogt` line 4227</sub>
+<sub>`api.ogt` line 4260</sub>
 
 <a id="fn-setRagdollRig"></a>
 
@@ -448,7 +448,7 @@ fn setRagdollRig {
 }
 ```
 
-<sub>`api.ogt` line 4234</sub>
+<sub>`api.ogt` line 4267</sub>
 
 <a id="fn-ragdollPose"></a>
 
@@ -478,7 +478,7 @@ fn ragdollPose {
 }
 ```
 
-<sub>`api.ogt` line 4242</sub>
+<sub>`api.ogt` line 4275</sub>
 
 ## Components, resources and events
 
@@ -545,7 +545,7 @@ component RigidBody {
 }
 ```
 
-<sub>`api.ogt` line 3003</sub>
+<sub>`api.ogt` line 3010</sub>
 
 <a id="record-Collider"></a>
 
@@ -632,7 +632,7 @@ component Collider {
 }
 ```
 
-<sub>`api.ogt` line 3044</sub>
+<sub>`api.ogt` line 3051</sub>
 
 <a id="record-Velocity"></a>
 
@@ -661,7 +661,7 @@ component Velocity {
 }
 ```
 
-<sub>`api.ogt` line 3103</sub>
+<sub>`api.ogt` line 3110</sub>
 
 <a id="record-Physics"></a>
 
@@ -673,7 +673,7 @@ Token `og.Physics`, registered under the schema name `og.Physics`; its value typ
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `profile` | `number` | `3` | 2 … 3 | — | read only, label “Profile” | PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt. |
+| `profile` | `number` | `3` | 2 … 3 | — | label “Profile” | PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt. Set the other one at run time to change profile: the next step builds that profile's simulation from the components (contacts, joints' warm starts, ropes, cloth, fluids and ragdoll bodies start again), so a 3D game can play a 2D scene and back. |
 | `gravity` | `Vector3` | `{ x: 0, y: -9.81, z: 0 }` | — | `mps2` | tunable | The acceleration of every dynamic body, times its gravityScale; 2D uses x and y. |
 | `substeps` | `number` | `1` | 1 … 16 | — | tunable | Physics steps per tick, each of dt / substeps: more is stiffer stacks and less tunnelling, at more cost. |
 | `solverIterations` | `number` | `4` | 1 … 32 | — | tunable | Solver iterations per step. |
@@ -682,12 +682,11 @@ Token `og.Physics`, registered under the schema name `og.Physics`; its value typ
 ```ogt
 resource Physics {
   doc "The physics settings of the world. The profile is the project's; the same components serve both profiles."
-  field profile u32 "PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt." {
+  field profile u32 "PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt. Set the other one at run time to change profile: the next step builds that profile's simulation from the components (contacts, joints' warm starts, ropes, cloth, fluids and ragdoll bodies start again), so a 3D game can play a 2D scene and back." {
     default 3
     min 2
     max 3
     label "Profile"
-    readonly true
   }
   field gravity Vector3 "The acceleration of every dynamic body, times its gravityScale; 2D uses x and y." {
     default 0 -9.81 0
@@ -716,7 +715,7 @@ resource Physics {
 }
 ```
 
-<sub>`api.ogt` line 3115</sub>
+<sub>`api.ogt` line 3122</sub>
 
 <a id="record-CollisionStarted"></a>
 
@@ -743,7 +742,7 @@ event CollisionStarted {
 }
 ```
 
-<sub>`api.ogt` line 3150</sub>
+<sub>`api.ogt` line 3156</sub>
 
 <a id="record-CollisionEnded"></a>
 
@@ -766,7 +765,7 @@ event CollisionEnded {
 }
 ```
 
-<sub>`api.ogt` line 3158</sub>
+<sub>`api.ogt` line 3164</sub>
 
 <a id="record-SensorEntered"></a>
 
@@ -789,7 +788,7 @@ event SensorEntered {
 }
 ```
 
-<sub>`api.ogt` line 3164</sub>
+<sub>`api.ogt` line 3170</sub>
 
 <a id="record-SensorExited"></a>
 
@@ -812,7 +811,7 @@ event SensorExited {
 }
 ```
 
-<sub>`api.ogt` line 3170</sub>
+<sub>`api.ogt` line 3176</sub>
 
 <a id="record-Contact"></a>
 
@@ -837,7 +836,7 @@ event Contact {
 }
 ```
 
-<sub>`api.ogt` line 3176</sub>
+<sub>`api.ogt` line 3182</sub>
 
 <a id="record-Joint"></a>
 
@@ -942,7 +941,7 @@ component Joint {
 }
 ```
 
-<sub>`api.ogt` line 3193</sub>
+<sub>`api.ogt` line 3199</sub>
 
 <a id="record-CharacterController"></a>
 
@@ -1056,7 +1055,7 @@ component CharacterController {
 }
 ```
 
-<sub>`api.ogt` line 3263</sub>
+<sub>`api.ogt` line 3269</sub>
 
 <a id="record-PlatformerController"></a>
 
@@ -1293,7 +1292,7 @@ component PlatformerController {
 }
 ```
 
-<sub>`api.ogt` line 3344</sub>
+<sub>`api.ogt` line 3350</sub>
 
 <a id="record-CharacterEvent"></a>
 
@@ -1323,7 +1322,7 @@ event CharacterEvent {
 }
 ```
 
-<sub>`api.ogt` line 3534</sub>
+<sub>`api.ogt` line 3540</sub>
 
 <a id="record-Vehicle"></a>
 
@@ -1464,7 +1463,7 @@ component Vehicle {
 }
 ```
 
-<sub>`api.ogt` line 3550</sub>
+<sub>`api.ogt` line 3556</sub>
 
 <a id="record-Rope"></a>
 
@@ -1553,13 +1552,13 @@ component Rope {
 }
 ```
 
-<sub>`api.ogt` line 3656</sub>
+<sub>`api.ogt` line 3662</sub>
 
 <a id="record-Cloth"></a>
 
 ### `og.Cloth` (component)
 
-A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind and collision against every solid collider. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour).
+A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour).
 
 Token `og.Cloth`, registered under the schema name `og.Cloth`; its value type is `Cloth`.
 
@@ -1575,12 +1574,15 @@ Token `og.Cloth`, registered under the schema name `og.Cloth`; its value type is
 | `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps2` | tunable | A steady acceleration (wind); the cloth flutters with it. |
 | `gust` | `number` | `0.6` | 0 … 2 | — | tunable | How much the wind varies over the cloth and the tick (0: steady). |
 | `radius` | `number` | `0.04` | ≥ 0 | `m` | tunable | The thickness it collides at (0: no collision). |
+| `thickness` | `number` | `0` | ≥ 0 | `m` | tunable | Self-collision: how far apart its points keep from the points of the cloth that are not their near neighbours (0: none). About `spacing` keeps a cloth that folds or piles up from passing through itself. |
+| `substeps` | `number` | `1` | 1 … 16 | — | — | Simulation steps per tick, each integrating and then solving `iterations` passes; with self-collision enough that a point moves less than `thickness` per step (a point moves at most half the thickness a step). |
+| `friction` | `number` | `0` | 0 … 1 | — | tunable | How much of its sliding a point touching a solid loses each step (0: it slides freely; near 1 it sticks where it lands, so a cloth lowered onto the floor folds instead of spreading). |
 | `material` | `Material` | `0` | — | — | — | The material it is drawn with (og.render.standardMaterial); 0 is a plain cloth. |
 | `visible` | `boolean` | `true` | — | — | — | Whether the renderer draws it. |
 
 ```ogt
 component Cloth {
-  doc "A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind and collision against every solid collider. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour)."
+  doc "A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour)."
   field columns u32 "Points across." {
     default 12
     min 2
@@ -1634,6 +1636,21 @@ component Cloth {
     unit m
     tunable true
   }
+  field thickness f32 "Self-collision: how far apart its points keep from the points of the cloth that are not their near neighbours (0: none). About `spacing` keeps a cloth that folds or piles up from passing through itself." {
+    min 0
+    unit m
+    tunable true
+  }
+  field substeps u32 "Simulation steps per tick, each integrating and then solving `iterations` passes; with self-collision enough that a point moves less than `thickness` per step (a point moves at most half the thickness a step)." {
+    default 1
+    min 1
+    max 16
+  }
+  field friction f32 "How much of its sliding a point touching a solid loses each step (0: it slides freely; near 1 it sticks where it lands, so a cloth lowered onto the floor folds instead of spreading)." {
+    min 0
+    max 1
+    tunable true
+  }
   field material Material "The material it is drawn with (og.render.standardMaterial); 0 is a plain cloth."
   field visible bool "Whether the renderer draws it." {
     default true
@@ -1641,13 +1658,13 @@ component Cloth {
 }
 ```
 
-<sub>`api.ogt` line 3722</sub>
+<sub>`api.ogt` line 3728</sub>
 
 <a id="record-Fluid2D"></a>
 
 ### `og.Fluid2D` (component)
 
-A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`.
+A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`.
 
 Token `og.Fluid2D`, registered under the schema name `og.Fluid2D`; its value type is `Fluid2D`.
 
@@ -1661,6 +1678,9 @@ Token `og.Fluid2D`, registered under the schema name `og.Fluid2D`; its value typ
 | `stiffness` | `number` | `0.1` | ≥ 0 | — | tunable | The pressure's strength (above about 0.15 it gets springy, then unstable). |
 | `nearStiffness` | `number` | `0.5` | ≥ 0 | — | tunable | The near pressure's strength (keeps particles apart, gives surface tension). |
 | `viscosity` | `number` | `0.15` | 0 … 4 | — | tunable | Linear viscosity (honey above 1). |
+| `group` | `number` | `0` | — | — | — | Fluids sharing a group above 0 push, drag and (by `mixing`) mix with each other as one fluid, at most four to a group (in entity order; a fifth is simulated alone), and are drawn as one surface whose colour follows the mix; 0 keeps the fluid to itself. |
+| `density` | `number` | `1` | 0.05 … 20 | — | tunable | How heavy its particles are against the group's other fluids: a heavier fluid sinks under a lighter one. |
+| `mixing` | `number` | `0` | 0 … 1 | — | tunable | How readily it mixes with the group's other fluids: 0 keeps them apart in layers (the boundary held), 1 blends them where they touch (their mix, colour and weight even out). |
 | `gravityScale` | `number` | `1` | -10 … 10 | — | tunable | Multiplies og.Physics.gravity. |
 | `substeps` | `number` | `2` | 1 … 8 | — | — | Simulation steps per tick. |
 | `seed` | `number` | `0` | — | — | — | The seed of the spawn jitter. |
@@ -1673,7 +1693,7 @@ Token `og.Fluid2D`, registered under the schema name `og.Fluid2D`; its value typ
 
 ```ogt
 component Fluid2D {
-  doc "A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`."
+  doc "A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`."
   field count u32 "How many particles (spawned when the component appears or count changes)." {
     default 1000
     min 1
@@ -1713,6 +1733,18 @@ component Fluid2D {
     max 4
     tunable true
   }
+  field group u32 "Fluids sharing a group above 0 push, drag and (by `mixing`) mix with each other as one fluid, at most four to a group (in entity order; a fifth is simulated alone), and are drawn as one surface whose colour follows the mix; 0 keeps the fluid to itself."
+  field density f32 "How heavy its particles are against the group's other fluids: a heavier fluid sinks under a lighter one." {
+    default 1
+    min 0.05
+    max 20
+    tunable true
+  }
+  field mixing f32 "How readily it mixes with the group's other fluids: 0 keeps them apart in layers (the boundary held), 1 blends them where they touch (their mix, colour and weight even out)." {
+    min 0
+    max 1
+    tunable true
+  }
   field gravityScale f32 "Multiplies og.Physics.gravity." {
     default 1
     min -10
@@ -1750,7 +1782,7 @@ component Fluid2D {
 }
 ```
 
-<sub>`api.ogt` line 3783</sub>
+<sub>`api.ogt` line 3804</sub>
 
 <a id="record-WaterSurface"></a>
 
@@ -1815,7 +1847,7 @@ component WaterSurface {
 }
 ```
 
-<sub>`api.ogt` line 3860</sub>
+<sub>`api.ogt` line 3893</sub>
 
 <a id="record-WaterLine"></a>
 
@@ -1892,7 +1924,7 @@ component WaterLine {
 }
 ```
 
-<sub>`api.ogt` line 3903</sub>
+<sub>`api.ogt` line 3936</sub>
 
 <a id="record-Splash"></a>
 
@@ -1923,13 +1955,13 @@ event Splash {
 }
 ```
 
-<sub>`api.ogt` line 3956</sub>
+<sub>`api.ogt` line 3989</sub>
 
 <a id="record-Ragdoll"></a>
 
 ### `og.Ragdoll` (component)
 
-A ragdoll over an og.Skeleton (3D): a capsule body per bone with a parent, ball joints with cone limits between them, built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state (the og.physics state block), not entities.
+A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy plane at their animated z, for a skeleton laid out in that plane), built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state (the og.physics state block), not entities.
 
 Token `og.Ragdoll`, registered under the schema name `og.Ragdoll`; its value type is `Ragdoll`.
 
@@ -1946,7 +1978,7 @@ Token `og.Ragdoll`, registered under the schema name `og.Ragdoll`; its value typ
 
 ```ogt
 component Ragdoll {
-  doc "A ragdoll over an og.Skeleton (3D): a capsule body per bone with a parent, ball joints with cone limits between them, built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state (the og.physics state block), not entities."
+  doc "A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy plane at their animated z, for a skeleton laid out in that plane), built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state (the og.physics state block), not entities."
   field weight f32 "0 animated, 1 ragdoll. Set it to 1 on a hit; back to 0 to recover." {
     min 0
     max 1
@@ -1991,7 +2023,7 @@ component Ragdoll {
 }
 ```
 
-<sub>`api.ogt` line 3968</sub>
+<sub>`api.ogt` line 4001</sub>
 
 ## Types
 
@@ -2019,7 +2051,7 @@ struct QueryFilter {
 }
 ```
 
-<sub>`api.ogt` line 4013</sub>
+<sub>`api.ogt` line 4046</sub>
 
 <a id="type-RaycastDesc"></a>
 
@@ -2054,7 +2086,7 @@ struct RaycastDesc {
 }
 ```
 
-<sub>`api.ogt` line 4021</sub>
+<sub>`api.ogt` line 4054</sub>
 
 <a id="type-RaycastHit"></a>
 
@@ -2081,7 +2113,7 @@ struct RaycastHit {
 }
 ```
 
-<sub>`api.ogt` line 4037</sub>
+<sub>`api.ogt` line 4070</sub>
 
 <a id="type-ShapeDesc"></a>
 
@@ -2123,7 +2155,7 @@ struct ShapeDesc {
 }
 ```
 
-<sub>`api.ogt` line 4047</sub>
+<sub>`api.ogt` line 4080</sub>
 
 <a id="type-ShapeCastDesc"></a>
 
@@ -2162,7 +2194,7 @@ struct ShapeCastDesc {
 }
 ```
 
-<sub>`api.ogt` line 4069</sub>
+<sub>`api.ogt` line 4102</sub>
 
 <a id="type-ShapeCastHit"></a>
 
@@ -2189,7 +2221,7 @@ struct ShapeCastHit {
 }
 ```
 
-<sub>`api.ogt` line 4087</sub>
+<sub>`api.ogt` line 4120</sub>
 
 <a id="type-OverlapDesc"></a>
 
@@ -2219,7 +2251,7 @@ struct OverlapDesc {
 }
 ```
 
-<sub>`api.ogt` line 4097</sub>
+<sub>`api.ogt` line 4130</sub>
 
 <a id="type-MeshDesc"></a>
 
@@ -2243,7 +2275,7 @@ struct MeshDesc {
 }
 ```
 
-<sub>`api.ogt` line 4108</sub>
+<sub>`api.ogt` line 4141</sub>
 
 <a id="type-WheelPose"></a>
 
@@ -2268,7 +2300,7 @@ struct WheelPose {
 }
 ```
 
-<sub>`api.ogt` line 4144</sub>
+<sub>`api.ogt` line 4177</sub>
 
 <a id="type-RagdollBoneDesc"></a>
 
@@ -2311,7 +2343,7 @@ struct RagdollBoneDesc {
 }
 ```
 
-<sub>`api.ogt` line 4153</sub>
+<sub>`api.ogt` line 4186</sub>
 
 <a id="type-RagdollRigDesc"></a>
 
@@ -2335,7 +2367,7 @@ struct RagdollRigDesc {
 }
 ```
 
-<sub>`api.ogt` line 4175</sub>
+<sub>`api.ogt` line 4208</sub>
 
 <a id="type-BonePose"></a>
 
@@ -2358,7 +2390,7 @@ struct BonePose {
 }
 ```
 
-<sub>`api.ogt` line 4182</sub>
+<sub>`api.ogt` line 4215</sub>
 
 ## Constants
 
@@ -2409,238 +2441,238 @@ struct BonePose {
 const BODY_DYNAMIC u32 0 "RigidBody.kind: moved by the solver; its Transform and Velocity are written back every tick."
 ```
 
-<sub>`api.ogt` line 2984</sub>
+<sub>`api.ogt` line 2991</sub>
 
 ```ogt
 const BODY_STATIC u32 1 "RigidBody.kind: never moves; collides with dynamic bodies."
 ```
 
-<sub>`api.ogt` line 2985</sub>
+<sub>`api.ogt` line 2992</sub>
 
 ```ogt
 const BODY_KINEMATIC u32 2 "RigidBody.kind: moved by game code through its Transform; its Velocity, if any, is how fast it pushes."
 ```
 
-<sub>`api.ogt` line 2986</sub>
+<sub>`api.ogt` line 2993</sub>
 
 ```ogt
 const LOCK_TRANSLATION_X u32 1 "RigidBody.lock bit: no translation along x."
 ```
 
-<sub>`api.ogt` line 2987</sub>
+<sub>`api.ogt` line 2994</sub>
 
 ```ogt
 const LOCK_TRANSLATION_Y u32 2 "RigidBody.lock bit: no translation along y."
 ```
 
-<sub>`api.ogt` line 2988</sub>
+<sub>`api.ogt` line 2995</sub>
 
 ```ogt
 const LOCK_TRANSLATION_Z u32 4 "RigidBody.lock bit: no translation along z."
 ```
 
-<sub>`api.ogt` line 2989</sub>
+<sub>`api.ogt` line 2996</sub>
 
 ```ogt
 const LOCK_ROTATION_X u32 8 "RigidBody.lock bit: no rotation about x."
 ```
 
-<sub>`api.ogt` line 2990</sub>
+<sub>`api.ogt` line 2997</sub>
 
 ```ogt
 const LOCK_ROTATION_Y u32 16 "RigidBody.lock bit: no rotation about y."
 ```
 
-<sub>`api.ogt` line 2991</sub>
+<sub>`api.ogt` line 2998</sub>
 
 ```ogt
 const LOCK_ROTATION_Z u32 32 "RigidBody.lock bit: no rotation about z (the 2D profile's only rotation)."
 ```
 
-<sub>`api.ogt` line 2992</sub>
+<sub>`api.ogt` line 2999</sub>
 
 ```ogt
 const SHAPE_BOX u32 0 "Collider.shape: a box of `size` (both profiles)."
 ```
 
-<sub>`api.ogt` line 2993</sub>
+<sub>`api.ogt` line 3000</sub>
 
 ```ogt
 const SHAPE_SPHERE u32 1 "Collider.shape: a sphere of `radius` (a circle in 2D)."
 ```
 
-<sub>`api.ogt` line 2994</sub>
+<sub>`api.ogt` line 3001</sub>
 
 ```ogt
 const SHAPE_CAPSULE u32 2 "Collider.shape: a capsule along y of `radius`, with `height` between the cap centres (both profiles)."
 ```
 
-<sub>`api.ogt` line 2995</sub>
+<sub>`api.ogt` line 3002</sub>
 
 ```ogt
 const SHAPE_CYLINDER u32 3 "Collider.shape: a cylinder along y of `radius` and `height` (3D only)."
 ```
 
-<sub>`api.ogt` line 2996</sub>
+<sub>`api.ogt` line 3003</sub>
 
 ```ogt
 const SHAPE_CONVEX u32 4 "Collider.shape: the convex hull of the vertices of `mesh` (3D), or of their xy (a convex polygon, 2D)."
 ```
 
-<sub>`api.ogt` line 2997</sub>
+<sub>`api.ogt` line 3004</sub>
 
 ```ogt
 const SHAPE_TRIMESH u32 5 "Collider.shape: the triangles of `mesh` (3D only; for static and kinematic bodies)."
 ```
 
-<sub>`api.ogt` line 2998</sub>
+<sub>`api.ogt` line 3005</sub>
 
 ```ogt
 const SHAPE_HEIGHTFIELD u32 6 "Collider.shape: the height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry)."
 ```
 
-<sub>`api.ogt` line 2999</sub>
+<sub>`api.ogt` line 3006</sub>
 
 ```ogt
 const PROFILE_2D u32 2 "Physics.profile: rapier2d, bodies in the xy plane rotating about z."
 ```
 
-<sub>`api.ogt` line 3000</sub>
+<sub>`api.ogt` line 3007</sub>
 
 ```ogt
 const PROFILE_3D u32 3 "Physics.profile: rapier3d."
 ```
 
-<sub>`api.ogt` line 3001</sub>
+<sub>`api.ogt` line 3008</sub>
 
 ```ogt
 const JOINT_FIXED u32 0 "`Joint.kind`: the two bodies move as one."
 ```
 
-<sub>`api.ogt` line 3183</sub>
+<sub>`api.ogt` line 3189</sub>
 
 ```ogt
 const JOINT_REVOLUTE u32 1 "`Joint.kind`: a hinge about `axis` (2D: about z), with optional limits and a motor."
 ```
 
-<sub>`api.ogt` line 3184</sub>
+<sub>`api.ogt` line 3190</sub>
 
 ```ogt
 const JOINT_PRISMATIC u32 2 "`Joint.kind`: a slider along `axis`, with optional limits and a motor."
 ```
 
-<sub>`api.ogt` line 3185</sub>
+<sub>`api.ogt` line 3191</sub>
 
 ```ogt
 const JOINT_SPRING u32 3 "`Joint.kind`: a damped spring pulling the anchors to `restLength` apart."
 ```
 
-<sub>`api.ogt` line 3186</sub>
+<sub>`api.ogt` line 3192</sub>
 
 ```ogt
 const JOINT_ROPE u32 4 "`Joint.kind`: a rope: the anchors stay at most `length` apart, free inside it."
 ```
 
-<sub>`api.ogt` line 3187</sub>
+<sub>`api.ogt` line 3193</sub>
 
 ```ogt
 const JOINT_BALL u32 5 "`Joint.kind`: a ball and socket (3D; the 2D profile treats it as a hinge)."
 ```
 
-<sub>`api.ogt` line 3188</sub>
+<sub>`api.ogt` line 3194</sub>
 
 ```ogt
 const MOTOR_NONE u32 0 "`Joint.motor`: no motor."
 ```
 
-<sub>`api.ogt` line 3189</sub>
+<sub>`api.ogt` line 3195</sub>
 
 ```ogt
 const MOTOR_VELOCITY u32 1 "`Joint.motor`: drive towards `motorTarget` speed (rad/s or m/s)."
 ```
 
-<sub>`api.ogt` line 3190</sub>
+<sub>`api.ogt` line 3196</sub>
 
 ```ogt
 const MOTOR_POSITION u32 2 "`Joint.motor`: spring towards `motorTarget` angle or position (a servo)."
 ```
 
-<sub>`api.ogt` line 3191</sub>
+<sub>`api.ogt` line 3197</sub>
 
 ```ogt
 const CHARACTER_JUMPED u32 1 "`CharacterEvent.kind`: a jump from the ground (or in coyote time)."
 ```
 
-<sub>`api.ogt` line 3527</sub>
+<sub>`api.ogt` line 3533</sub>
 
 ```ogt
 const CHARACTER_LANDED u32 2 "`CharacterEvent.kind`: touched the ground after being in the air."
 ```
 
-<sub>`api.ogt` line 3528</sub>
+<sub>`api.ogt` line 3534</sub>
 
 ```ogt
 const CHARACTER_WALL_JUMPED u32 3 "`CharacterEvent.kind`: a jump off a wall."
 ```
 
-<sub>`api.ogt` line 3529</sub>
+<sub>`api.ogt` line 3535</sub>
 
 ```ogt
 const CHARACTER_AIR_JUMPED u32 4 "`CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps)."
 ```
 
-<sub>`api.ogt` line 3530</sub>
+<sub>`api.ogt` line 3536</sub>
 
 ```ogt
 const CHARACTER_LEFT_GROUND u32 5 "`CharacterEvent.kind`: left the ground without jumping (ran off an edge)."
 ```
 
-<sub>`api.ogt` line 3531</sub>
+<sub>`api.ogt` line 3537</sub>
 
 ```ogt
 const CHARACTER_BUMPED u32 6 "`CharacterEvent.kind`: hit a ceiling while rising."
 ```
 
-<sub>`api.ogt` line 3532</sub>
+<sub>`api.ogt` line 3538</sub>
 
 ```ogt
 const DRIVE_REAR u32 0 "`Vehicle.drive`: the rear wheels drive."
 ```
 
-<sub>`api.ogt` line 3546</sub>
+<sub>`api.ogt` line 3552</sub>
 
 ```ogt
 const DRIVE_FRONT u32 1 "`Vehicle.drive`: the front wheels drive."
 ```
 
-<sub>`api.ogt` line 3547</sub>
+<sub>`api.ogt` line 3553</sub>
 
 ```ogt
 const DRIVE_ALL u32 2 "`Vehicle.drive`: every wheel drives."
 ```
 
-<sub>`api.ogt` line 3548</sub>
+<sub>`api.ogt` line 3554</sub>
 
 ```ogt
 const PIN_TOP u32 1 "`Cloth.pins` bit: the whole top row is pinned."
 ```
 
-<sub>`api.ogt` line 3717</sub>
+<sub>`api.ogt` line 3723</sub>
 
 ```ogt
 const PIN_TOP_CORNERS u32 2 "`Cloth.pins` bit: the top-left and top-right corners are pinned."
 ```
 
-<sub>`api.ogt` line 3718</sub>
+<sub>`api.ogt` line 3724</sub>
 
 ```ogt
 const PIN_LEFT u32 4 "`Cloth.pins` bit: the whole left column is pinned (a flag on a pole)."
 ```
 
-<sub>`api.ogt` line 3719</sub>
+<sub>`api.ogt` line 3725</sub>
 
 ```ogt
 const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
 ```
 
-<sub>`api.ogt` line 3720</sub>
+<sub>`api.ogt` line 3726</sub>

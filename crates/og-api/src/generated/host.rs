@@ -310,6 +310,8 @@ pub trait LoadApi: Wire {
     fn og_load_gltf_info(&self, world: u32, asset: f64) -> String;
     /// `og.load.animation`
     fn og_load_animation(&self, world: u32, path: String) -> String;
+    /// `og.load.rig`
+    fn og_load_rig(&self, world: u32, path: String) -> String;
     /// `og.load.flipbook`
     fn og_load_flipbook(&self, world: u32, path: String) -> String;
     /// `og.load.tilemap`
@@ -354,6 +356,10 @@ pub trait AtmosphereApi: Wire {
 pub trait AnimApi: Wire {
     /// `og.anim.graph`
     fn og_anim_graph(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.anim.humanoid`
+    fn og_anim_humanoid(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.anim.retarget`
+    fn og_anim_retarget(&self, world: u32, desc: Option<String>) -> String;
 }
 
 /// `tween`: packages/knowledge/wiki/tween.md.
@@ -803,6 +809,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_load_error",
     "og_load_gltf_info",
     "og_load_animation",
+    "og_load_rig",
     "og_load_flipbook",
     "og_load_tilemap",
     "og_physics_raycast",
@@ -819,6 +826,8 @@ pub const SYMBOLS: &[&str] = &[
     "og_physics_ragdoll_pose",
     "og_atmosphere_time_of_day",
     "og_anim_graph",
+    "og_anim_humanoid",
+    "og_anim_retarget",
     "og_tween_to",
     "og_tween_sequence",
     "og_tween_parallel",
@@ -6174,14 +6183,14 @@ pub const RECORDS: &[RecordDecl] = &[
                 name: "profile",
                 column: "u32",
                 default: "3",
-                readonly: true,
+                readonly: false,
                 tunable: false,
                 min: Some(2.0),
                 max: Some(3.0),
                 step: None,
                 unit: "",
                 label: "Profile",
-                doc: "PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt.",
+                doc: "PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt. Set the other one at run time to change profile: the next step builds that profile's simulation from the components (contacts, joints' warm starts, ropes, cloth, fluids and ragdoll bodies start again), so a 3D game can play a 2D scene and back.",
                 variants: &[],
             },
             FieldDecl {
@@ -8229,6 +8238,48 @@ pub const RECORDS: &[RecordDecl] = &[
                 variants: &[],
             },
             FieldDecl {
+                name: "thickness",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: None,
+                step: None,
+                unit: "m",
+                label: "",
+                doc: "Self-collision: how far apart its points keep from the points of the cloth that are not their near neighbours (0: none). About `spacing` keeps a cloth that folds or piles up from passing through itself.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "substeps",
+                column: "u32",
+                default: "1",
+                readonly: false,
+                tunable: false,
+                min: Some(1.0),
+                max: Some(16.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Simulation steps per tick, each integrating and then solving `iterations` passes; with self-collision enough that a point moves less than `thickness` per step (a point moves at most half the thickness a step).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "friction",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(1.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "How much of its sliding a point touching a solid loses each step (0: it slides freely; near 1 it sticks where it lands, so a cloth lowered onto the floor folds instead of spreading).",
+                variants: &[],
+            },
+            FieldDecl {
                 name: "material",
                 column: "Material",
                 default: "0",
@@ -8373,6 +8424,48 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 label: "",
                 doc: "Linear viscosity (honey above 1).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "group",
+                column: "u32",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Fluids sharing a group above 0 push, drag and (by `mixing`) mix with each other as one fluid, at most four to a group (in entity order; a fifth is simulated alone), and are drawn as one surface whose colour follows the mix; 0 keeps the fluid to itself.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "density",
+                column: "f32",
+                default: "1",
+                readonly: false,
+                tunable: true,
+                min: Some(0.05),
+                max: Some(20.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "How heavy its particles are against the group's other fluids: a heavier fluid sinks under a lighter one.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "mixing",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(1.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "How readily it mixes with the group's other fluids: 0 keeps them apart in layers (the boundary held), 1 blends them where they touch (their mix, colour and weight even out).",
                 variants: &[],
             },
             FieldDecl {

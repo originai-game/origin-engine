@@ -2,6 +2,7 @@
 //! installed, and spawning helpers.
 #![allow(dead_code)]
 
+pub mod beyond;
 pub mod pile;
 
 use og_core::glam::{Quat, Vec3};

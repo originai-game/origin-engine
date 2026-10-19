@@ -1293,6 +1293,19 @@ impl CookedAnimation {
         self.clips.iter().find(|c| c.name == name)
     }
 
+    /// Decodes an animation blob from its bytes alone, without a manifest
+    /// (the cook reads back the blobs it retargets from and onto).
+    pub fn from_bytes(id: &str, bytes: &[u8]) -> Result<CookedAnimation, LoadError> {
+        let aligned = og_blob::AlignedBytes::from_slice(bytes);
+        let expect = Expect {
+            type_hash: format::Animation::type_hash(),
+            schema_version: format::Animation::schema_version(),
+            stamp: None,
+        };
+        let blob = Blob::open(aligned.as_slice(), id, &expect)?;
+        CookedAnimation::decode(asset_id(id), &blob)
+    }
+
     fn decode(id: &str, blob: &Blob) -> Result<CookedAnimation, LoadError> {
         let bad = |r: String| invalid(blob, r);
         let meta = one::<AnimMeta>(blob)?;
@@ -1655,6 +1668,18 @@ impl Bundle {
             .and_then(|t| std::str::from_utf8(t).ok())
             .map(str::to_string)
             .ok_or_else(|| invalid(&blob, "the behaviour text is cut short or not UTF-8"))
+    }
+
+    /// The humanoid map of a rig blob (`og.Rig`).
+    pub fn rig(&self, id: &str, bytes: &[u8]) -> Result<og_anim::RigAsset, LoadError> {
+        let blob = self.blob::<format::Rig>(id, bytes)?;
+        let meta = one::<format::RigMeta>(&blob)?;
+        let text = blob
+            .raw("text")?
+            .get(..meta.text_bytes as usize)
+            .and_then(|t| std::str::from_utf8(t).ok())
+            .ok_or_else(|| invalid(&blob, "the rig text is cut short or not UTF-8"))?;
+        og_anim::RigAsset::parse(text).map_err(|e| invalid(&blob, e.reason().to_string()))
     }
 
     /// Decodes a navmesh blob (`og.NavMesh`): the heightfield and the tiles
