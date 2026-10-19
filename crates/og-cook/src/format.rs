@@ -28,6 +28,7 @@
 //! | navmesh (`og.NavMesh`, an `.ogt` of `type navmesh`) | [`NavMeshMeta`] | `columns` [`NavColumnRow`], `spans` [`NavSpanRow`] (the walkable heightfield), `tiles` [`NavTileRow`], `verts` [`NavVertRow`], `polys` [`NavPolyRow`], `poly_verts` (u32) |
 //! | string table (`og.Strings`, an `.ogt` of `type strings`) | [`StringsMeta`] | `text` (the validated table) |
 //! | terrain (`og.Terrain`, an `.ogt` of `type terrain`) | [`TerrainMeta`] | `tiles` [`TerrainTileRow`] (og-render's tile pyramid), `heights` (each tile's `(tile + 3)²` u16 heights over the terrain's range, zlib), `control` (each tile's `(control + 2)²` RGBA8 texels, zlib), `layers` [`TerrainLayerRow`], `strings` (the layers' texture ids) |
+//! | streaming group pack (`og.StreamPack`, `cooked/stream/<group>.ogb`, phase 3) | [`StreamPackMeta`] | `files` [`StreamFileRow`], `names` (paths under `cooked/`), `data` (the files, each 16-aligned) |
 
 use og_core::hash::StableHasher;
 use og_core::{Reflect, Schema};
@@ -996,5 +997,36 @@ impl BlobKind for Terrain {
             TerrainTileRow::schema(),
             TerrainLayerRow::schema(),
         ]
+    }
+}
+
+// ── phase 3: streaming groups ────────────────────────────────────────────
+
+row!(
+    /// The root of a streaming group's pack (`cooked/stream/<group>.ogb`):
+    /// the cooked files of the group's assets, one download.
+    StreamPackMeta, "og.StreamPack", 1 {
+        files: u32,
+    }
+);
+
+row!(
+    /// One file of a pack: its path under `cooked/` (a range of `names`)
+    /// and its bytes (a range of `data`, 16-aligned).
+    StreamFileRow, "og.StreamPack.file", 1 {
+        name_at: u32,
+        name_len: u32,
+        data_at: u32,
+        data_len: u32,
+    }
+);
+
+/// A streaming group's pack: `meta`, `files` naming ranges of `names` and
+/// `data`.
+pub struct StreamPack;
+impl BlobKind for StreamPack {
+    const NAME: &'static str = "og.StreamPack";
+    fn schemas() -> Vec<Schema> {
+        vec![StreamPackMeta::schema(), StreamFileRow::schema()]
     }
 }

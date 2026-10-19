@@ -45,3 +45,9 @@ near the edge keep their full size where it asserted they had shrunk
 | Broken | Edit | Failed |
 |---|---|---|
 | the replay | `og-runtime/src/terrain.rs` `TerrainBlock::apply`: `log.replay = false` (the restored log kept, the ground not rebuilt) | "terrain edits are world state ...": after restoring the raised snapshot, sample expected 6.10 and received 1.10 (the later edits stayed) |
+
+## Streaming groups through the cook (`crates/og-cook/tests/stream.rs`)
+
+| Broken | Edit | Failed |
+|---|---|---|
+| the proxy's group | `og-cook/src/cook/mod.rs` `output_group`: only `#anim` kept out of its asset's group (a `#proxy` packed with what it stands in for) | `groups_are_packed_listed_and_stood_in_for`: `models/house-a.glb#proxy` left `Some("village")`, right `None` |

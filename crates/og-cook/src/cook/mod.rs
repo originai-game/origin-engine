@@ -18,6 +18,7 @@ mod font;
 mod model;
 mod scene;
 pub mod sfx;
+mod stream;
 mod terrain;
 mod texture;
 pub mod tilemap;
@@ -437,6 +438,8 @@ struct Source {
 
 enum Work<'a> {
     Model(&'a Source, Vec<String>),
+    /// A streaming group's glTF stand-in: its coarsest LOD, no textures.
+    Proxy(&'a Source),
     Animation(&'a Source, anim::AnimSettings),
     GltfTexture(&'a Source, usize, u32),
     Texture(&'a Source, u32),
@@ -739,6 +742,8 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
     sources.retain(|s| !consumed.contains(&s.rel));
     ignored.retain(|r| !consumed.contains(r));
     let known: BTreeSet<String> = sources.iter().map(|s| s.rel.clone()).collect();
+    // Streaming groups (phase 3): every scene's, read before anything cooks.
+    let (groups, group_of) = plan_groups(&sources, &known, &mut early_errors);
     let schemas: BTreeMap<String, Schema> = options
         .schemas
         .iter()
@@ -802,6 +807,15 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     0,
                     (s.rel.clone(), format::Model::NAME, st, Work::Model(s, ids)),
                 );
+                if group_of.contains_key(&s.rel) {
+                    let st = stamp(&[b"proxy", mesh_desc.as_bytes(), &hash]);
+                    outs.push((
+                        format!("{}#proxy", s.rel),
+                        format::Model::NAME,
+                        st,
+                        Work::Proxy(s),
+                    ));
+                }
                 if anim::wanted(g) {
                     match anim_settings(s) {
                         Ok(a) => {
@@ -1051,6 +1065,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                 stamp: p.stamp,
                 hash,
                 bytes: size,
+                group: output_group(&p.id, &sources[p.source].rel, &group_of),
             },
             bytes,
             OutputReport {
@@ -1072,6 +1087,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
             ("texture".to_string(), tex_desc),
         ]),
         assets: Vec::new(),
+        streams: Vec::new(),
     };
     let mut keep: BTreeSet<String> = BTreeSet::new();
     for (si, outs) in new_outputs {
@@ -1108,12 +1124,72 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
     for r in reports.iter_mut().filter(|r| r.error.is_some()) {
         r.outputs.clear();
     }
+    // Each group's outputs, packed into one file the runtime fetches.
+    for (name, g) in &groups {
+        let mut files: Vec<(String, Vec<u8>)> = Vec::new();
+        let mut memory = 0u64;
+        let mut sounds = Vec::new();
+        for o in manifest
+            .outputs()
+            .filter(|o| o.group.as_deref() == Some(name))
+        {
+            let path = cooked_dir.join(&o.file);
+            let bytes =
+                std::fs::read(&path).map_err(|e| CookError(format!("{}: {e}", path.display())))?;
+            memory += stream::memory_of(&o.ty, &bytes);
+            if o.ty == "og.Sound" {
+                sounds.extend(stream::sound_of(&o.id, &bytes));
+            }
+            files.push((o.file.clone(), bytes));
+        }
+        files.sort_by(|a, b| a.0.cmp(&b.0));
+        let mut h = StableHasher::new();
+        h.write_str(name);
+        for (f, b) in &files {
+            h.write_str(f);
+            h.write(&hash_bytes(b).to_le_bytes());
+        }
+        let pack = stream::pack(&files, h.finish());
+        let file = format!("stream/{name}.ogb");
+        let path = cooked_dir.join(&file);
+        if std::fs::read(&path).ok().as_deref() != Some(&pack[..]) {
+            if let Some(dir) = path.parent() {
+                std::fs::create_dir_all(dir)
+                    .map_err(|e| CookError(format!("{}: {e}", dir.display())))?;
+            }
+            std::fs::write(&path, &pack)
+                .map_err(|e| CookError(format!("{}: {e}", path.display())))?;
+        }
+        keep.insert(file.clone());
+        let entry = stream::manifest_entry(
+            g,
+            file,
+            pack.len() as u64,
+            hash_bytes(&pack),
+            memory,
+            sounds,
+        );
+        if let Some(r) = reports.iter_mut().find(|r| r.source == g.scene) {
+            r.notes.push(format!(
+                "stream group '{name}': {} asset(s), {} file(s), {} bytes packed, {} bytes once loaded",
+                g.assets.len(),
+                files.len(),
+                entry.bytes,
+                memory
+            ));
+        }
+        manifest.streams.push(entry);
+    }
     let mut removed = Vec::new();
-    for o in old.outputs() {
-        if !keep.contains(&o.file) && cooked_dir.join(&o.file).exists() {
-            std::fs::remove_file(cooked_dir.join(&o.file))
-                .map_err(|e| CookError(format!("cooked/{}: {e}", o.file)))?;
-            removed.push(o.file.clone());
+    let old_files = old
+        .outputs()
+        .map(|o| &o.file)
+        .chain(old.streams.iter().map(|g| &g.file));
+    for f in old_files {
+        if !keep.contains(f) && cooked_dir.join(f).exists() {
+            std::fs::remove_file(cooked_dir.join(f))
+                .map_err(|e| CookError(format!("cooked/{f}: {e}")))?;
+            removed.push(f.clone());
         }
     }
     std::fs::create_dir_all(&cooked_dir)
@@ -1163,7 +1239,17 @@ fn run(
     match p.work.as_ref().expect("planned work") {
         Work::Model(s, ids) => {
             let g = s.gltf.as_ref().expect("loaded");
-            model::cook(g, ids, &options.mesh, p.stamp).map(|(b, n)| (b, n.notes))
+            model::cook(g, ids, &options.mesh, p.stamp, false).map(|(b, n)| (b, n.notes))
+        }
+        Work::Proxy(s) => {
+            let g = s.gltf.as_ref().expect("loaded");
+            model::cook(g, &[], &options.mesh, p.stamp, true).map(|(b, mut n)| {
+                n.notes.retain(|x| x.contains("triangles"));
+                (
+                    b,
+                    n.notes.into_iter().map(|x| format!("proxy: {x}")).collect(),
+                )
+            })
         }
         Work::Animation(s, a) => {
             let g = s.gltf.as_ref().expect("loaded");
@@ -1351,4 +1437,94 @@ fn read_sibling(s: &Source, rel: &str) -> Result<String, String> {
         return Err(format!("'{rel}' is not a path under assets/"));
     }
     std::fs::read_to_string(root.join(rel)).map_err(|e| format!("{e}"))
+}
+
+/// The group of a planned output: its asset's, except a glTF's `#proxy`
+/// and `#anim`, which stay in the first group (the proxy draws while the
+/// group is away; clips are small and bound at load).
+fn output_group(id: &str, rel: &str, group_of: &BTreeMap<String, String>) -> Option<String> {
+    if id.ends_with("#proxy") || id.ends_with("#anim") {
+        return None;
+    }
+    group_of.get(rel).cloned()
+}
+
+/// Every scene's streaming groups, checked across scenes: a group's name is
+/// taken once, an asset is in at most one group, and a group holds glTF
+/// models without skins or morph targets, textures and sounds. A refusal is
+/// the scene's error, and its scene adds none of its groups.
+fn plan_groups(
+    sources: &[Source],
+    known: &BTreeSet<String>,
+    errors: &mut Vec<(String, &'static str, String)>,
+) -> stream::Groups {
+    let mut groups: BTreeMap<String, stream::GroupDecl> = BTreeMap::new();
+    let mut group_of: BTreeMap<String, String> = BTreeMap::new();
+    for s in sources.iter().filter(|s| s.kind == Kind::Scene) {
+        let text = String::from_utf8_lossy(&s.bytes);
+        let decls = match stream::groups_of(&s.rel, &text, &|id| known.contains(id)) {
+            Ok(d) => d,
+            Err(e) => {
+                errors.push((s.rel.clone(), "scene", e));
+                continue;
+            }
+        };
+        // A scene with a refused group adds none of its groups.
+        let mut refused = None;
+        let mut mine: BTreeMap<String, stream::GroupDecl> = BTreeMap::new();
+        let mut mine_of: BTreeMap<String, String> = BTreeMap::new();
+        'groups: for g in &decls {
+            if let Some(other) = groups.get(&g.name).or_else(|| mine.get(&g.name)) {
+                refused = Some(format!(
+                    "stream \"{}\" is declared by {} too; a group's name is taken once",
+                    g.name, other.scene
+                ));
+                break;
+            }
+            for a in &g.assets {
+                if let Some(other) = group_of.get(a).or_else(|| mine_of.get(a)) {
+                    refused = Some(format!(
+                        "stream \"{}\": {a} is in stream \"{other}\" already; an asset is in one group",
+                        g.name
+                    ));
+                    break 'groups;
+                }
+                let Some(src) = sources.iter().find(|x| &x.rel == a) else {
+                    continue;
+                };
+                // A skinned or morphed mesh cannot be swapped in place.
+                let skinned = src.gltf.as_ref().is_some_and(|m| {
+                    m.doc.skins().next().is_some()
+                        || m.doc
+                            .meshes()
+                            .any(|x| x.primitives().any(|p| p.morph_targets().next().is_some()))
+                });
+                let fits = matches!(src.kind, Kind::Model | Kind::Texture | Kind::Sound);
+                if !fits || skinned {
+                    refused = Some(format!(
+                        "stream \"{}\": {a} is {}; a group holds glTF models without skins or morph targets, textures and sounds",
+                        g.name,
+                        if skinned {
+                            "a skinned or morphed model".to_string()
+                        } else {
+                            format!("a {}", src.kind.name())
+                        }
+                    ));
+                    break 'groups;
+                }
+            }
+            for a in &g.assets {
+                mine_of.insert(a.clone(), g.name.clone());
+            }
+            mine.insert(g.name.clone(), g.clone());
+        }
+        if refused.is_none() {
+            groups.append(&mut mine);
+            group_of.append(&mut mine_of);
+        }
+        if let Some(e) = refused {
+            errors.push((s.rel.clone(), "scene", e));
+        }
+    }
+    (groups, group_of)
 }

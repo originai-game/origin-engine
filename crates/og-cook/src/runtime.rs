@@ -89,6 +89,55 @@ pub struct ManifestOutput {
     /// FNV-1a of the file's bytes.
     pub hash: u64,
     pub bytes: u64,
+    /// The streaming group its asset belongs to (`None`: the first group,
+    /// loaded at boot).
+    pub group: Option<String>,
+}
+
+/// What loads a streaming group.
+#[derive(Clone, Debug, PartialEq)]
+pub enum StreamTrigger {
+    /// Only `og.stream.request`.
+    Manual,
+    /// The camera within `radius` of `anchor`; unloaded past `unload`.
+    Distance {
+        anchor: [f32; 3],
+        radius: f32,
+        unload: f32,
+    },
+    /// The camera inside the named entity's box (its position ± half its scale).
+    Volume(String),
+}
+
+/// One streaming group as the manifest records it.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ManifestStream {
+    pub name: String,
+    /// The scene that declares it.
+    pub scene: String,
+    pub trigger: StreamTrigger,
+    /// Higher loads first and unloads last.
+    pub priority: i32,
+    /// Its pack under `cooked/` (`stream/<name>.ogb`), its size and hash.
+    pub file: String,
+    pub bytes: u64,
+    pub hash: u64,
+    /// What its assets take once loaded (GPU textures and meshes, audio).
+    pub memory: u64,
+    /// Its asset ids.
+    pub assets: Vec<String>,
+    /// Its sounds' lengths, so a sound plays as silence of the same length
+    /// (and the same ticks see it end) while the group is not resident.
+    pub sounds: Vec<StreamSound>,
+}
+
+/// A grouped sound's shape: what plays as silence until its group loads.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct StreamSound {
+    pub id: String,
+    pub sample_rate: u32,
+    pub channels: u32,
+    pub frames: u64,
 }
 
 /// One source asset as the manifest records it.
@@ -104,13 +153,15 @@ pub struct ManifestAsset {
 }
 
 /// `cooked/.cook.ogt`: what was cooked from what.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Manifest {
     pub cooker: String,
     /// Per asset kind, the option text its stamps cover.
     pub options: BTreeMap<String, String>,
     /// Sorted by source path.
     pub assets: Vec<ManifestAsset>,
+    /// The streaming groups, by name.
+    pub streams: Vec<ManifestStream>,
 }
 
 fn hex(v: u64) -> String {
@@ -198,9 +249,94 @@ impl Manifest {
                     stamp: hexf(ob, "stamp", o.line)?,
                     hash: hexf(ob, "hash", o.line)?,
                     bytes: num(ob, "bytes", o.line)?,
+                    group: ob
+                        .get("group")
+                        .map(|_| field(ob, "group", o.line))
+                        .transpose()?,
                 });
             }
             m.assets.push(asset);
+        }
+        for st in doc.body.get_all("stream") {
+            let b = st
+                .block
+                .as_ref()
+                .ok_or_else(|| bad(format!("line {}: stream without a block", st.line)))?;
+            let t = b
+                .get("trigger")
+                .ok_or_else(|| bad(format!("line {}: stream without a trigger", st.line)))?;
+            let nums = |from: usize| -> Vec<f32> {
+                t.values[from.min(t.values.len())..]
+                    .iter()
+                    .filter_map(|v| v.as_number().map(|n| n.as_f32()))
+                    .collect()
+            };
+            let trigger = match t.values.first().and_then(|v| v.as_word()) {
+                Some("manual") => StreamTrigger::Manual,
+                Some("volume") => StreamTrigger::Volume(
+                    t.string(1)
+                        .map_err(|_| bad(format!("line {}: volume without a name", t.line)))?
+                        .to_string(),
+                ),
+                Some("distance") => match nums(1)[..] {
+                    [x, y, z, radius, unload] => StreamTrigger::Distance {
+                        anchor: [x, y, z],
+                        radius,
+                        unload,
+                    },
+                    _ => {
+                        return Err(bad(format!(
+                            "line {}: distance x y z radius unload",
+                            t.line
+                        )));
+                    }
+                },
+                _ => return Err(bad(format!("line {}: an unknown trigger", t.line))),
+            };
+            m.streams.push(ManifestStream {
+                name: st.string(0).map_err(|e| bad(e.to_string()))?.to_string(),
+                scene: field(b, "scene", st.line)?,
+                trigger,
+                priority: field(b, "priority", st.line)?
+                    .parse()
+                    .map_err(|_| bad(format!("line {}: 'priority' is not a number", st.line)))?,
+                file: field(b, "file", st.line)?,
+                bytes: num(b, "bytes", st.line)?,
+                hash: hexf(b, "hash", st.line)?,
+                memory: num(b, "memory", st.line)?,
+                assets: b
+                    .get_all("asset")
+                    .map(|a| {
+                        a.string(0)
+                            .map(str::to_string)
+                            .map_err(|e| bad(e.to_string()))
+                    })
+                    .collect::<Result<_, _>>()?,
+                sounds: b
+                    .get_all("sound")
+                    .map(|a| {
+                        let n = |i: usize| {
+                            a.values
+                                .get(i)
+                                .and_then(|v| v.as_number())
+                                .map(|n| n.as_f64())
+                                .filter(|v| *v >= 0.0 && v.fract() == 0.0)
+                                .ok_or_else(|| {
+                                    bad(format!(
+                                        "line {}: sound \"<id>\" rate channels frames",
+                                        a.line
+                                    ))
+                                })
+                        };
+                        Ok(StreamSound {
+                            id: a.string(0).map_err(|e| bad(e.to_string()))?.to_string(),
+                            sample_rate: n(1)? as u32,
+                            channels: n(2)? as u32,
+                            frames: n(3)? as u64,
+                        })
+                    })
+                    .collect::<Result<_, LoadError>>()?,
+            });
         }
         Ok(m)
     }
@@ -230,10 +366,54 @@ impl Manifest {
                     .with(Entry::new("stamp").with(s(&hex(o.stamp))))
                     .with(Entry::new("hash").with(s(&hex(o.hash))))
                     .with(Entry::new("bytes").with(n(o.bytes)));
+                let ob = match &o.group {
+                    Some(g) => ob.with(Entry::new("group").with(s(g))),
+                    None => ob,
+                };
                 b.push(Entry::new("output").with(s(&o.id)).with_block(ob));
             }
             doc.body
                 .push(Entry::new("asset").with(s(&a.source)).with_block(b));
+        }
+        let f = |v: f32| Value::Number(Number::from_f32(v).unwrap_or_else(|_| Number::from(0u32)));
+        for g in &self.streams {
+            let trigger = match &g.trigger {
+                StreamTrigger::Manual => Entry::new("trigger").with(w("manual")),
+                StreamTrigger::Volume(e) => Entry::new("trigger").with(w("volume")).with(s(e)),
+                StreamTrigger::Distance {
+                    anchor,
+                    radius,
+                    unload,
+                } => Entry::new("trigger")
+                    .with(w("distance"))
+                    .with(f(anchor[0]))
+                    .with(f(anchor[1]))
+                    .with(f(anchor[2]))
+                    .with(f(*radius))
+                    .with(f(*unload)),
+            };
+            let mut b = Block::new()
+                .with(Entry::new("scene").with(s(&g.scene)))
+                .with(trigger)
+                .with(Entry::new("priority").with(Value::Number(Number::from(g.priority))))
+                .with(Entry::new("file").with(s(&g.file)))
+                .with(Entry::new("bytes").with(n(g.bytes)))
+                .with(Entry::new("hash").with(s(&hex(g.hash))))
+                .with(Entry::new("memory").with(n(g.memory)));
+            for a in &g.assets {
+                b.push(Entry::new("asset").with(s(a)));
+            }
+            for x in &g.sounds {
+                b.push(
+                    Entry::new("sound")
+                        .with(s(&x.id))
+                        .with(n(u64::from(x.sample_rate)))
+                        .with(n(u64::from(x.channels)))
+                        .with(n(x.frames)),
+                );
+            }
+            doc.body
+                .push(Entry::new("stream").with(s(&g.name)).with_block(b));
         }
         doc.to_text()
             .expect("manifest keys and words are identifiers")
@@ -294,6 +474,11 @@ impl Bundle {
 
     pub fn manifest(&self) -> &Manifest {
         &self.manifest
+    }
+
+    /// The streaming groups (phase 3), by name.
+    pub fn streams(&self) -> &[ManifestStream] {
+        &self.manifest.streams
     }
 
     /// The manifest entry of an asset id.
@@ -2082,4 +2267,33 @@ impl Bundle {
     pub fn load_terrain(&self, id: &str) -> Result<CookedTerrain, LoadError> {
         self.terrain(id, &self.read(id)?)
     }
+}
+
+// ── phase 3: streaming groups ────────────────────────────────────────────
+
+/// The files of a streaming group's pack (`cooked/stream/<group>.ogb`):
+/// each path under `cooked/` with its bytes, in the pack's order.
+pub fn unpack(bytes: &[u8]) -> Result<Vec<(String, Vec<u8>)>, LoadError> {
+    let words = og_blob::AlignedBytes::from_slice(bytes);
+    let expect = Expect {
+        type_hash: format::StreamPack::type_hash(),
+        schema_version: format::StreamPack::schema_version(),
+        stamp: None,
+    };
+    let blob = Blob::open(words.as_slice(), "stream pack", &expect)?;
+    let files = table::<format::StreamFileRow>(&blob, "files")?;
+    let names = blob.raw("names")?;
+    let data = blob.raw("data")?;
+    let mut out = Vec::with_capacity(files.len());
+    for f in &files {
+        let name = names
+            .get(f.name_at as usize..(f.name_at + f.name_len) as usize)
+            .and_then(|b| std::str::from_utf8(b).ok())
+            .ok_or_else(|| invalid(&blob, "a file's name is out of range"))?;
+        let bytes = data
+            .get(f.data_at as usize..f.data_at as usize + f.data_len as usize)
+            .ok_or_else(|| invalid(&blob, "a file's bytes are out of range"))?;
+        out.push((name.to_string(), bytes.to_vec()));
+    }
+    Ok(out)
 }
