@@ -3,8 +3,10 @@
 //! A [`RenderScene`] owns its resources (meshes, textures, materials) and hands
 //! out handles for them; instances, the camera, the light and the environment
 //! are plain public fields the caller rewrites every frame. Resources are
-//! append-only: a handle stays valid for the scene's lifetime, and only
-//! materials can be replaced in place ([`RenderScene::set_material`]).
+//! append-only: a handle stays valid for the scene's lifetime; materials,
+//! unskinned meshes and textures can be replaced in place
+//! ([`RenderScene::set_material`], [`RenderScene::set_mesh`],
+//! [`RenderScene::set_texture`]).
 
 use crate::effects::{
     AmbientOcclusion, CameraShake, ChromaticAberration, ColorGrading, ColorLut, Decal,
@@ -720,6 +722,8 @@ pub struct RenderScene {
     /// Per mesh: how many times [`RenderScene::set_mesh`] replaced it.
     mesh_revisions: Vec<u64>,
     textures: Vec<TextureSource>,
+    /// Per texture: how many times [`RenderScene::set_texture`] replaced it.
+    texture_revisions: Vec<u64>,
     /// What every material draws as.
     materials: Vec<StandardMaterial>,
     /// Per material: its shader and parameters.
@@ -826,6 +830,7 @@ impl RenderScene {
             meshes: Vec::new(),
             mesh_revisions: Vec::new(),
             textures: Vec::new(),
+            texture_revisions: Vec::new(),
             materials: Vec::new(),
             material_shaders: Vec::new(),
             shaders: Vec::new(),
@@ -1146,7 +1151,35 @@ impl RenderScene {
     /// Adds an RGBA8 texture (mips generated on the GPU when asked).
     pub fn add_texture(&mut self, texture: TextureData) -> TextureHandle {
         self.textures.push(TextureSource::Rgba(texture));
+        self.texture_revisions.push(0);
         TextureHandle(self.textures.len() as u32 - 1)
+    }
+
+    /// Replaces a texture (a streamed texture over its placeholder, or back):
+    /// the renderer uploads it again before the next frame, and every
+    /// material, sprite, tile, trail, font, decal and terrain layer that
+    /// samples it draws the new one. False for a bad handle.
+    pub fn set_texture(&mut self, handle: TextureHandle, texture: TextureData) -> bool {
+        self.replace_texture(handle, TextureSource::Rgba(texture))
+    }
+
+    /// [`RenderScene::set_texture`] with mip levels already encoded.
+    pub fn set_texture_upload(&mut self, handle: TextureHandle, upload: TextureUpload) -> bool {
+        self.replace_texture(handle, TextureSource::Encoded(upload))
+    }
+
+    fn replace_texture(&mut self, handle: TextureHandle, source: TextureSource) -> bool {
+        let i = handle.index();
+        if i >= self.textures.len() {
+            return false;
+        }
+        self.textures[i] = source;
+        self.texture_revisions[i] += 1;
+        true
+    }
+
+    pub(crate) fn texture_revisions(&self) -> &[u64] {
+        &self.texture_revisions
     }
 
     /// Adds a texture whose mip levels are already encoded, in one of
@@ -1154,6 +1187,7 @@ impl RenderScene {
     /// [`crate::RenderError::InvalidData`] or `Unsupported`) when uploaded.
     pub fn add_texture_upload(&mut self, upload: TextureUpload) -> TextureHandle {
         self.textures.push(TextureSource::Encoded(upload));
+        self.texture_revisions.push(0);
         TextureHandle(self.textures.len() as u32 - 1)
     }
 

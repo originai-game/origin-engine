@@ -629,6 +629,14 @@ pub(crate) struct TerrainPipelines<'a> {
 }
 
 impl TerrainRenderer {
+    /// Drops every terrain's bind group (a layer texture was replaced):
+    /// the next prepare makes them again from the current views.
+    pub(crate) fn forget_groups(&mut self) {
+        for slot in &mut self.slots {
+            slot.group = None;
+        }
+    }
+
     pub(crate) fn new(
         device: &wgpu::Device,
         queue: &wgpu::Queue,

@@ -526,6 +526,8 @@ struct SceneCache {
     /// Their pipelines by (shader, side, blended, effects).
     hook_pipelines: HashMap<(usize, Side, bool, bool), wgpu::RenderPipeline>,
     textures: Vec<GpuTexture>,
+    /// The scene's revision of each texture when it was uploaded.
+    texture_revisions: Vec<u64>,
     materials: Vec<GpuMaterial>,
     /// Sprite bind groups per texture, made on first use.
     sprite_groups: Vec<Option<wgpu::BindGroup>>,
@@ -1966,17 +1968,56 @@ impl Renderer {
                     TextureSource::Encoded(upload) => self.upload_encoded(index, upload)?,
                 };
                 self.cache.textures.push(gpu);
+                self.cache
+                    .texture_revisions
+                    .push(scene.texture_revisions()[index]);
                 self.cache.sprite_groups.push(None);
                 self.cache.ribbon_groups.push(None);
             }
             self.queue.submit(Some(encoder.finish()));
         }
+        // Replaced textures: uploaded again, and everything bound to the old
+        // view (materials, sprite and trail groups, fonts, the effect
+        // groups' decal atlas, terrain layers) made again.
+        let replaced: Vec<usize> = (0..self.cache.textures.len())
+            .filter(|&i| self.cache.texture_revisions[i] != scene.texture_revisions()[i])
+            .collect();
+        if !replaced.is_empty() {
+            let mut encoder = self
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("texture replace"),
+                });
+            for &index in &replaced {
+                let gpu = match &scene.textures()[index] {
+                    TextureSource::Rgba(texture) => GpuTexture {
+                        view: self.upload_texture(texture, &mut encoder)?,
+                        format: TextureFormat::Rgba8,
+                    },
+                    TextureSource::Encoded(upload) => self.upload_encoded(index, upload)?,
+                };
+                self.cache.textures[index] = gpu;
+                self.cache.texture_revisions[index] = scene.texture_revisions()[index];
+                self.cache.sprite_groups[index] = None;
+                self.cache.ribbon_groups[index] = None;
+            }
+            self.queue.submit(Some(encoder.finish()));
+            self.fx_groups = None;
+            self.terrain.forget_groups();
+        }
+        let samples_replaced = |m: &StandardMaterial| {
+            m.textures()
+                .iter()
+                .flatten()
+                .any(|h| replaced.contains(&h.index()))
+        };
         for (i, (material, revision)) in scene.materials().enumerate() {
             if self
                 .cache
                 .materials
                 .get(i)
                 .is_some_and(|m| m.revision == revision)
+                && !samples_replaced(material)
             {
                 continue;
             }
@@ -2000,6 +2041,12 @@ impl Renderer {
                 self.cache.materials.push(gpu);
             }
         }
+        let stale_fonts: Vec<usize> = (0..self.cache.fonts.len())
+            .filter(|&i| replaced.contains(&scene.fonts()[i].atlas.index()))
+            .collect();
+        self.cache
+            .fonts
+            .truncate(stale_fonts.first().copied().unwrap_or(usize::MAX));
         for (i, font) in scene.fonts()[self.cache.fonts.len()..].iter().enumerate() {
             let index = self.cache.fonts.len() + i;
             let atlas = font.atlas.index();
