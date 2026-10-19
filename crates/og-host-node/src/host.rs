@@ -321,6 +321,9 @@ impl RenderApi for NodeHost {
     fn og_render_shader_material(&self, world: u32, shader: f64, desc: Option<String>) -> String {
         rt::og_render_shader_material(world, shader, desc)
     }
+    fn og_render_set_material_shader(&self, world: u32, material: f64, shader: String) -> String {
+        rt::og_render_set_material_shader(world, material, shader)
+    }
     fn og_render_set_shader_param(
         &self,
         world: u32,

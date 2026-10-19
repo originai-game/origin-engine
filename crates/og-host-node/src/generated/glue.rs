@@ -603,6 +603,12 @@ pub fn og_render_shader_material(env: Env, world: u32, shader: f64, desc: Option
     <Host as RenderApi>::og_render_shader_material(&Host, world, shader, desc)
 }
 
+#[napi(js_name = "og_render_set_material_shader")]
+pub fn og_render_set_material_shader(env: Env, world: u32, material: f64, shader: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_set_material_shader(&Host, world, material, shader)
+}
+
 #[napi(js_name = "og_render_set_shader_param")]
 pub fn og_render_set_shader_param(env: Env, world: u32, material: f64, name: String, value: String) -> String {
     let _env = crate::EnvScope::enter(&env);

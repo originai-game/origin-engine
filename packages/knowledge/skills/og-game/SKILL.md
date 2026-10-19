@@ -229,7 +229,11 @@ Every effect is off until the game turns it on, as data:
   sprites also take `flash`, `glow` and `blend`.
 - **Materials** — toon, rim, dissolve, hit flash and outline are
   `og.render.standardMaterial` fields; animate them with
-  `og.render.updateMaterial(world, material, { dissolve: t })`.
+  `og.render.updateMaterial(world, material, { dissolve: t })`. Beside
+  three.js's standard fields (metalness, roughness, emissive, `normalMap` in
+  glTF's tangent frame, `alphaTest`, `transparent`, `side: "double"`,
+  `unlit`), `clearcoat` and `clearcoatRoughness` lay a glossy lacquer over a
+  rough base (car paint, varnish). A non-uniform `scale` shades correctly.
 - **HUD** — `og.render.sprite` / `og.render.text` with `screen: true` draw
   in CSS pixels from the top-left over the finished frame, untouched by
   post effects, with an optional `clip`; `og.ui` uses the same layer.
@@ -304,10 +308,12 @@ message, its lines counted in your hooks. In the game:
 `og.render.shaderMaterial(world, must(og.load.shader(world,
 "shaders/dissolve.ogt")), { color, alphaTest: 0.5 })` makes the material,
 `og.render.setShaderParam(world, material, "amount", [0.4])` sets a
-parameter. Alpha below `alphaTest` discards the fragment (a dissolve);
-shadows and the depth prepass use the mesh undisplaced; skinned meshes draw
-without the hooks. `templates/fx-showcase/assets/shaders/` has a dissolve
-and wind-swayed grass.
+parameter, and `og.render.setMaterialShader(world, material, shader)` gives
+an existing material (a loaded model's, from `GltfInfo.materials`) the
+hooks. Alpha below `alphaTest` discards the fragment (a dissolve). Skinned
+meshes run the hooks too, and shadows and the depth prepass see the mesh
+where `vertex_offset` moved it. `templates/fx-showcase/assets/shaders/` has a
+dissolve, wind-swayed grass and a ripple on the walking walker.
 
 ## 13. Physics
 

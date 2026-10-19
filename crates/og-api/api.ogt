@@ -1611,7 +1611,8 @@ module render {
   struct StandardMaterialDesc {
     doc "A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names."
     doc "It is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front."
-    doc "The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults."
+    doc "The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults. clearcoat and clearcoatRoughness add MeshPhysicalMaterial's clear coat (no clearcoat maps)."
+    doc "normalMap is read in glTF's tangent frame: red tilts towards +u, green up the image. The tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly."
     desc true
     field color Color "The base colour." {
       default 1 1 1
@@ -1700,6 +1701,16 @@ module render {
     field outlineWidth f32 "This material's outline width in pixels; 0 is none (PostEffects.outline outlines everything)." {
       min 0
       max 31
+    }
+    field clearcoat f32 "A clear lacquer over the surface, as three.js MeshPhysicalMaterial.clearcoat: a second, 4 % reflective specular layer on the surface's normal before normalMap (car paint, varnished wood, wet plastic); 0 is none." {
+      min 0
+      max 1
+      unit ratio
+    }
+    field clearcoatRoughness f32 "How rough the clear coat is, as three.js MeshPhysicalMaterial.clearcoatRoughness." {
+      min 0
+      max 1
+      unit ratio
     }
   }
 
@@ -2706,17 +2717,25 @@ module render {
   handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read."
 
   fn shaderMaterial {
-    doc "Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. Skinned meshes draw it without the hooks; shadows and the depth prepass use the undisplaced mesh."
+    doc "Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. The hooks apply to skinned meshes too, and shadows and the depth prepass (ambient occlusion, outlines, depth of field) see the mesh where vertex_offset moved it and cut where surface_color's alpha falls below alphaTest."
     param world World "The world whose renderer owns the material."
     param shader Shader "The shader."
     param desc StandardMaterialDesc "The base material; omitted parameters take three.js defaults. A dissolve sets alphaTest so that alpha below it is cut."
     returns Result.Material "Refused for a shader not loaded in this world."
   }
 
+  fn setMaterialShader {
+    doc "Give an existing material a material shader, or take it away with null: a loaded model's material (GltfInfo.materials) draws its skinned or static meshes through the hooks, with the shader's parameters at their defaults. Every mesh drawn with that material changes."
+    param world World "The world whose renderer owns the material."
+    param material Material "The material, from og.render.standardMaterial, og.render.shaderMaterial or a loaded glTF."
+    param shader Option.Shader "The shader, or null to draw the material plain again."
+    returns Result.Void "Refused for a dead material or a shader not loaded in this world."
+  }
+
   fn setShaderParam {
     doc "Set a parameter of a shader material, by the name its shader declares: a number for float, two to four for vec2, vec3, vec4 and color."
     param world World "The world whose renderer owns the material."
-    param material Material "A material made by og.render.shaderMaterial."
+    param material Material "A material made by og.render.shaderMaterial or given a shader by og.render.setMaterialShader."
     param name String "The parameter's name."
     param value List.f32 "Its value; missing components are 0."
     returns Result.Void "Refused for a material without a shader or a parameter its shader does not declare."

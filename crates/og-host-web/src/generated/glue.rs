@@ -504,6 +504,11 @@ pub fn og_render_shader_material(world: u32, shader: f64, desc: Option<String>) 
 }
 
 #[wasm_bindgen]
+pub fn og_render_set_material_shader(world: u32, material: f64, shader: String) -> String {
+    <Host as RenderApi>::og_render_set_material_shader(&Host, world, material, shader)
+}
+
+#[wasm_bindgen]
 pub fn og_render_set_shader_param(world: u32, material: f64, name: String, value: String) -> String {
     <Host as RenderApi>::og_render_set_shader_param(&Host, world, material, name, value)
 }

@@ -264,6 +264,8 @@ pub trait RenderApi: Wire {
     fn og_render_update_material(&self, world: u32, material: f64, desc: Option<String>) -> String;
     /// `og.render.shaderMaterial`
     fn og_render_shader_material(&self, world: u32, shader: f64, desc: Option<String>) -> String;
+    /// `og.render.setMaterialShader`
+    fn og_render_set_material_shader(&self, world: u32, material: f64, shader: String) -> String;
     /// `og.render.setShaderParam`
     fn og_render_set_shader_param(&self, world: u32, material: f64, name: String, value: String) -> String;
     /// `og.render.capabilities`
@@ -766,6 +768,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_render_standard_material",
     "og_render_update_material",
     "og_render_shader_material",
+    "og_render_set_material_shader",
     "og_render_set_shader_param",
     "og_render_capabilities",
     "og_render_text",

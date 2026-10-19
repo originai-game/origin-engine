@@ -205,6 +205,8 @@ export interface HostAbi<A, V> {
   og_render_update_material(world: number, material: number, desc: string | undefined): string;
   /** `og.render.shaderMaterial` */
   og_render_shader_material(world: number, shader: number, desc: string | undefined): string;
+  /** `og.render.setMaterialShader` */
+  og_render_set_material_shader(world: number, material: number, shader: string): string;
   /** `og.render.setShaderParam` */
   og_render_set_shader_param(world: number, material: number, name: string, value: string): string;
   /** `og.render.capabilities` */
@@ -650,6 +652,7 @@ export const SYMBOLS: readonly string[] = [
   "og_render_standard_material",
   "og_render_update_material",
   "og_render_shader_material",
+  "og_render_set_material_shader",
   "og_render_set_shader_param",
   "og_render_capabilities",
   "og_render_text",

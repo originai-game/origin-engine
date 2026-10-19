@@ -2465,7 +2465,8 @@ export interface RenderOptions {
 /**
  * A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names.
  * It is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front.
- * The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults.
+ * The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults. clearcoat and clearcoatRoughness add MeshPhysicalMaterial's clear coat (no clearcoat maps).
+ * normalMap is read in glTF's tangent frame: red tilts towards +u, green up the image. The tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -2688,6 +2689,22 @@ export interface StandardMaterialDesc {
    * @range 0..31
    */
   readonly outlineWidth?: number;
+  /**
+   * A clear lacquer over the surface, as three.js MeshPhysicalMaterial.clearcoat: a second, 4 % reflective specular layer on the surface's normal before normalMap (car paint, varnished wood, wet plastic); 0 is none.
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly clearcoat?: number;
+  /**
+   * How rough the clear coat is, as three.js MeshPhysicalMaterial.clearcoatRoughness.
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly clearcoatRoughness?: number;
 }
 
 /**
@@ -4395,6 +4412,7 @@ export interface RenderCapabilities {
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
  */
 export type Shader = number & { readonly [handleType]: "Shader" };
+
 
 
 
@@ -14741,7 +14759,7 @@ export declare namespace og {
      */
     function updateMaterial(world: World, material: Material, desc?: StandardMaterialDesc): Result<void>;
     /**
-     * Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. Skinned meshes draw it without the hooks; shadows and the depth prepass use the undisplaced mesh.
+     * Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. The hooks apply to skinned meshes too, and shadows and the depth prepass (ambient occlusion, outlines, depth of field) see the mesh where vertex_offset moved it and cut where surface_color's alpha falls below alphaTest.
      *
      * @param world The world whose renderer owns the material.
      * @param shader The shader.
@@ -14750,10 +14768,19 @@ export declare namespace og {
      */
     function shaderMaterial(world: World, shader: Shader, desc?: StandardMaterialDesc): Result<Material>;
     /**
+     * Give an existing material a material shader, or take it away with null: a loaded model's material (GltfInfo.materials) draws its skinned or static meshes through the hooks, with the shader's parameters at their defaults. Every mesh drawn with that material changes.
+     *
+     * @param world The world whose renderer owns the material.
+     * @param material The material, from og.render.standardMaterial, og.render.shaderMaterial or a loaded glTF.
+     * @param shader The shader, or null to draw the material plain again.
+     * @returns Refused for a dead material or a shader not loaded in this world.
+     */
+    function setMaterialShader(world: World, material: Material, shader: Shader | null): Result<void>;
+    /**
      * Set a parameter of a shader material, by the name its shader declares: a number for float, two to four for vec2, vec3, vec4 and color.
      *
      * @param world The world whose renderer owns the material.
-     * @param material A material made by og.render.shaderMaterial.
+     * @param material A material made by og.render.shaderMaterial or given a shader by og.render.setMaterialShader.
      * @param name The parameter's name.
      * @param value Its value; missing components are 0.
      * @returns Refused for a material without a shader or a parameter its shader does not declare.

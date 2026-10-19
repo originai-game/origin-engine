@@ -878,6 +878,8 @@ export const render = Object.freeze({
   sphereGeometry: (world: WorldImpl, desc?: unknown) => parse(abi().og_render_sphere_geometry(world.id, json(desc))),
   shaderMaterial: (world: WorldImpl, shader: number, desc?: unknown) =>
     parse(abi().og_render_shader_material(world.id, shader, json(desc))),
+  setMaterialShader: (world: WorldImpl, material: number, shader: number | null) =>
+    parse(abi().og_render_set_material_shader(world.id, material, JSON.stringify(shader ?? null))),
   setShaderParam: (world: WorldImpl, material: number, name: string, value: ReadonlyArray<number>) =>
     parse(abi().og_render_set_shader_param(world.id, material, name, JSON.stringify(value))),
 });

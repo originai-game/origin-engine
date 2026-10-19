@@ -51,8 +51,8 @@ pub use anim::{og_anim_graph, og_load_animation};
 pub use api::*;
 pub use assets::Fetch;
 pub use atmosphere::{
-    og_atmosphere_time_of_day, og_load_shader, og_render_set_shader_param,
-    og_render_shader_material,
+    og_atmosphere_time_of_day, og_load_shader, og_render_set_material_shader,
+    og_render_set_shader_param, og_render_shader_material,
 };
 pub use codec::{Kind, Layout, RecordKind};
 pub use engine::{
