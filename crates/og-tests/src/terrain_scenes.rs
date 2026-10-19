@@ -11,8 +11,8 @@ use crate::scenes::texture;
 use glam::{Mat4, Vec2, Vec3};
 use og_render::{
     Background, Camera, ColorSpace, DirectionalLight, Environment, Exposure, Fog, Material,
-    MeshData, ProceduralSky, Projection, RenderScene, Terrain, TerrainControl, TerrainData,
-    TerrainLayer, TerrainLod, TerrainScatter, Vertex, Water, shapes,
+    MeshData, ProceduralSky, Projection, RenderScene, ScatterDraw, Terrain, TerrainControl,
+    TerrainData, TerrainLayer, TerrainLod, TerrainScatter, Vertex, Water, shapes,
 };
 use std::sync::{Arc, OnceLock};
 
@@ -484,8 +484,8 @@ pub fn grass_tuft() -> MeshData {
 }
 
 /// The near view with grass on the meadow (the grass layer, 4 tufts a
-/// square metre within 60 m, shrinking away over its last third), placed
-/// by `Terrain::scatter`.
+/// square metre within 60 m, fading out over its last third), placed and
+/// drawn by the renderer (`RenderScene::scatters`).
 pub fn grass_scene() -> RenderScene {
     let mut scene = island_view("near");
     let tuft = scene.add_mesh(grass_tuft());
@@ -494,12 +494,12 @@ pub fn grass_scene() -> RenderScene {
         roughness: 0.85,
         ..Default::default()
     });
-    let data = island();
-    let terrain = scene.terrains[0].clone();
-    let eye = scene.camera.position;
-    for (_, m) in terrain.scatter(&data, &grass_scatter(), eye) {
-        scene.add_instance(tuft, grass, m);
-    }
+    scene.scatters.push(ScatterDraw {
+        terrain: 0,
+        mesh: tuft,
+        material: grass,
+        scatter: grass_scatter(),
+    });
     scene
 }
 

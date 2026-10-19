@@ -37,7 +37,8 @@ needs a browser or a Rust toolchain. The command channel is
    `set:Game.coins=10`), `seed:<n>`, `pause`, `resume`, `advance:<ticks>`,
    `quit`, and `help` for the list. Modules add their own: `dump_ai` and
    `dump_nav` (og-ai §5), `dump_platform` (og-platform-sdk §4), `locale:<tag>`
-   (og-i18n §6). Unknown actions warn and the script continues; read the
+   (og-i18n §6), `dump_stream` and `terrain_stream:<stream|resident>[:<MiB>]`
+   (og-game §6 and §11). Unknown actions warn and the script continues; read the
    warnings.
 3. **Read what it wrote.** Screenshots are PNG files, dumps are JSON files
    (`<action>-<tick>.png|json` unless the step names a path); `og run`

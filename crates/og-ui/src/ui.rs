@@ -2317,7 +2317,9 @@ impl Ui {
     /// Staggered entrances: under a node with a stagger, the k-th drawn
     /// leaf (a label, a control, an icon) enters `k` steps after the first;
     /// a long list shortens the step so the cascade ends within one more
-    /// entrance.
+    /// entrance. The cascade is only seen: a control takes input as soon as
+    /// the panel's own entrance (inert while it moves) has played, where it
+    /// is drawn, not when its place in the cascade has.
     fn apply_stagger(&mut self, order: &[usize]) {
         let now = self.state.tick as f32;
         let (reduced, distance) = (self.theme.reduced_motion, self.theme.space.lg);
@@ -2350,10 +2352,12 @@ impl Ui {
                 if p >= 1.0 || self.nodes[j].fx.is_some() {
                     continue;
                 }
-                let mut f =
-                    crate::motion::fx(st.kind, crate::motion::ease_out(p), distance, reduced);
-                f.inert = true;
-                self.nodes[j].fx = Some(f);
+                self.nodes[j].fx = Some(crate::motion::fx(
+                    st.kind,
+                    crate::motion::ease_out(p),
+                    distance,
+                    reduced,
+                ));
             }
         }
     }

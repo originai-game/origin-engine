@@ -50,6 +50,7 @@ pub const SCENES: &[&str] = &[
     "water-2d",
     "fluid-2d",
     "fluid-groups",
+    "fluid-3d",
     "shader-hooks",
     "weather-rain",
     "weather-snow",
@@ -106,6 +107,38 @@ pub fn assets_dir() -> PathBuf {
         Some(dir) => PathBuf::from(dir),
         None => PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets"),
     }
+}
+
+/// The bytes of the test asset `rel` (a path under [`assets_dir`]). In the
+/// browser (og-tests-web) there is no file system: the assets the scenes
+/// read are compiled in.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn asset(rel: &str) -> Result<std::borrow::Cow<'static, [u8]>, String> {
+    let path = assets_dir().join(rel);
+    std::fs::read(&path)
+        .map(Into::into)
+        .map_err(|e| format!("{}: {e}", path.display()))
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn asset(rel: &str) -> Result<std::borrow::Cow<'static, [u8]>, String> {
+    let bytes: &'static [u8] = match rel {
+        "trickster.glb" => include_bytes!("../assets/trickster.glb"),
+        "dropship.glb" => include_bytes!("../assets/dropship.glb"),
+        "fonts/noto-sans-sc-msdf.png" => include_bytes!("../assets/fonts/noto-sans-sc-msdf.png"),
+        "fonts/noto-sans-sc-msdf.json" => include_bytes!("../assets/fonts/noto-sans-sc-msdf.json"),
+        "fonts/noto-sans-sc-msdf.csv" => include_bytes!("../assets/fonts/noto-sans-sc-msdf.csv"),
+        _ => {
+            return Err(format!(
+                "{rel}: not compiled into the wasm harness (scenes::asset)"
+            ));
+        }
+    };
+    Ok(bytes.into())
+}
+
+fn asset_text(rel: &str) -> Result<String, String> {
+    String::from_utf8(asset(rel)?.into_owned()).map_err(|e| format!("{rel}: {e}"))
 }
 
 /// The renderer description every scene starts from: 1280x720 on the
@@ -261,6 +294,8 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "fluid-2d" => g.scene = crate::atmo_scenes::fluid_2d_scene(),
         // Phase 2: ten fluids a frame, two groups (blended, layered).
         "fluid-groups" => g.scene = crate::atmo_scenes::fluid_groups_scene(),
+        // Phase 2: 3D particle fluids as a screen-space surface (row 29).
+        "fluid-3d" => g.scene = crate::p2_scenes::fluid_3d_scene(),
         // Material shader hooks: dissolve by noise, wind-swayed grass.
         "shader-hooks" => g.scene = crate::atmo_scenes::hooks_scene(45),
         // Phase 2: 256 point and spot lights over a night plaza (Forward+).
@@ -750,10 +785,9 @@ pub fn move_sprites(scene: &mut RenderScene, frame: u32) {
 /// `crates/og-render/README.md` §Testing): the atlas PNG plus the glyph CSV
 /// and metrics JSON `msdf-atlas-gen` wrote with `-yorigin top`.
 pub fn load_font(scene: &mut RenderScene) -> Result<og_render::FontHandle, String> {
-    let dir = assets_dir().join("fonts");
-    let png = dir.join("noto-sans-sc-msdf.png");
-    let img = image::open(&png)
-        .map_err(|e| format!("{}: {e}", png.display()))?
+    let png = "fonts/noto-sans-sc-msdf.png";
+    let img = image::load_from_memory(&asset(png)?)
+        .map_err(|e| format!("{png}: {e}"))?
         .to_rgba8();
     let (width, height) = img.dimensions();
     let atlas = scene.add_texture(TextureData {
@@ -763,38 +797,33 @@ pub fn load_font(scene: &mut RenderScene) -> Result<og_render::FontHandle, Strin
         color_space: ColorSpace::Linear,
         mips: Mips::None,
     });
-    let json_path = dir.join("noto-sans-sc-msdf.json");
-    let json =
-        std::fs::read_to_string(&json_path).map_err(|e| format!("{}: {e}", json_path.display()))?;
+    let json_path = "fonts/noto-sans-sc-msdf.json";
+    let json = asset_text(json_path)?;
     let number = |key: &str| -> Result<f32, String> {
         let at = json
             .find(&format!("\"{key}\":"))
-            .ok_or_else(|| format!("{}: no {key}", json_path.display()))?;
+            .ok_or_else(|| format!("{json_path}: no {key}"))?;
         let rest = &json[at + key.len() + 3..];
         let end = rest.find([',', '}']).unwrap_or(rest.len());
         rest[..end]
             .trim()
             .parse()
-            .map_err(|e| format!("{}: {key}: {e}", json_path.display()))
+            .map_err(|e| format!("{json_path}: {key}: {e}"))
     };
-    let csv_path = dir.join("noto-sans-sc-msdf.csv");
-    let csv =
-        std::fs::read_to_string(&csv_path).map_err(|e| format!("{}: {e}", csv_path.display()))?;
+    let csv_path = "fonts/noto-sans-sc-msdf.csv";
+    let csv = asset_text(csv_path)?;
     let mut glyphs = Vec::new();
     for line in csv.lines().filter(|l| !l.trim().is_empty()) {
         let f: Vec<f32> = line
             .split(',')
             .map(|v| v.trim().parse::<f32>())
             .collect::<Result<_, _>>()
-            .map_err(|e| format!("{}: {line}: {e}", csv_path.display()))?;
+            .map_err(|e| format!("{csv_path}: {line}: {e}"))?;
         if f.len() != 10 {
-            return Err(format!(
-                "{}: {line}: 10 columns expected",
-                csv_path.display()
-            ));
+            return Err(format!("{csv_path}: {line}: 10 columns expected"));
         }
         let codepoint = char::from_u32(f[0] as u32)
-            .ok_or_else(|| format!("{}: bad codepoint {}", csv_path.display(), f[0]))?;
+            .ok_or_else(|| format!("{csv_path}: bad codepoint {}", f[0]))?;
         // msdf-atlas-gen with -yorigin top: plane bounds left, top, right,
         // bottom with y down; atlas bounds left, top, right, bottom in pixels.
         glyphs.push(Glyph {
@@ -1015,9 +1044,7 @@ const SUN: Vec3 = Vec3::new(0.45, 0.8, 0.35);
 const SUN_COLOR: Vec3 = Vec3::new(1.0, 0.95, 0.85);
 
 pub(crate) fn load(name: &str) -> Result<GltfModel, String> {
-    let path = assets_dir().join(name);
-    let bytes = std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-    load_glb(&bytes).map_err(|e| format!("{}: {e}", path.display()))
+    load_glb(&asset(name)?).map_err(|e| format!("{name}: {e}"))
 }
 
 fn spike_gltf_scene() -> Result<RenderScene, String> {

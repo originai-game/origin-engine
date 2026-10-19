@@ -81,6 +81,7 @@ module physics {
 | [`PIN_TOP_RINGS`](#const-PIN_TOP_RINGS) | constant | `Cloth.pins` bit: every fourth point of the top row (curtain rings). |
 | [`og.Cloth`](#record-Cloth) | component | A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour). |
 | [`og.Fluid2D`](#record-Fluid2D) | component | A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`. |
+| [`og.Fluid3D`](#record-Fluid3D) | component | A 3D particle fluid (the 3D profile): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure that gives surface tension, viscosity) over a spatial hash in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider, the terrain's height field included (pushed out; they push nothing back), and stay inside `bounds` around the entity when it is set. An emitter adds particles at `emitRate` up to `maxCount`; a sink box removes those that enter it. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as a screen-space surface: the particles' depth smoothed into one surface, refracting what is behind by its thickness and reflecting the sky, lit by the scene's lights. Cost: about 0.9 ms of CPU a tick for 2000 particles at 1 substep, 1.8 ms at 2 (native and wasm alike), growing with the particles; keep a scene's fluids to a few thousand particles. The surface costs about 1.1 ms of GPU (an Apple M4 Pro, the fluid covering a third of a 1280×720 frame) whatever the particle count, growing with the pixels it covers. |
 | [`og.WaterSurface`](#record-WaterSurface) | component | Height-field water (3D): a `resolution` × `resolution` grid of heights over a `size` square centred on the entity (its y is the rest level), waves travelling at `waveSpeed` and fading by `damping`. Dynamic bodies crossing it push waves (splashes; og.Splash events) and float by `buoyancy`. The heights are world state; an og.Water on the same entity draws them. |
 | [`og.WaterLine`](#record-WaterLine) | component | 2D water for side-scrollers: a `width` × `depth` pool whose top edge (at the entity's y, centred on its x) is `columns` springs, each pulled to its rest height by `tension`, damped by `damping` and passing waves to its neighbours by `spread`. Bodies (and characters) crossing the surface splash it (og.Splash events) and float by `buoyancy`. The springs are world state; an og.Water2D on the same entity draws it. |
 | [`og.Splash`](#record-Splash) | event | Something crossed a water surface (og.WaterSurface or og.WaterLine): for splash particles and sounds. Read the next tick. |
@@ -104,6 +105,7 @@ module physics {
 | [`og.physics.ropePoints`](#fn-ropePoints) | function | An og.Rope's points after the last step, from its entity to its end (empty before its first step). The engine draws visible ropes itself; this is for game logic and custom drawing. |
 | [`og.physics.clothPoints`](#fn-clothPoints) | function | An og.Cloth's points after the last step, row by row (`columns` per row, rows downwards from the top edge). |
 | [`og.physics.fluidParticles`](#fn-fluidParticles) | function | An og.Fluid2D's particle positions after the last step, in world space. |
+| [`og.physics.fluid3dParticles`](#fn-fluid3dParticles) | function | An og.Fluid3D's particle positions after the last step, in world space (emitted particles last, in the order they appeared). |
 | [`og.physics.waterHeight`](#fn-waterHeight) | function | The surface height of an og.WaterSurface (world y) or an og.WaterLine (world y at `x`; `z` ignored) at a point, as the last step left it: for boats that bob and spray that starts on the surface. |
 | [`og.physics.vehicleWheels`](#fn-vehicleWheels) | function | An og.Vehicle's wheels after the last step (front left, front right, rear left, rear right), for drawing wheel models. |
 | [`og.physics.ragdollRigFromSkeleton`](#fn-ragdollRigFromSkeleton) | function | A ragdoll rig from a loaded skeleton (og.load.animation's `skeleton`): a bone per joint of its first skin, parents first, each from its joint's rest pose to its first child joint, every bone naming its joint and the rig naming the skeleton. Pass it to og.physics.setRagdollRig, edited or not. |
@@ -140,7 +142,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 4197</sub>
+<sub>`api.ogt` line 4323</sub>
 
 <a id="fn-shapeCast"></a>
 
@@ -170,7 +172,7 @@ fn shapeCast {
 }
 ```
 
-<sub>`api.ogt` line 4204</sub>
+<sub>`api.ogt` line 4330</sub>
 
 <a id="fn-overlap"></a>
 
@@ -200,7 +202,7 @@ fn overlap {
 }
 ```
 
-<sub>`api.ogt` line 4211</sub>
+<sub>`api.ogt` line 4337</sub>
 
 <a id="fn-setMesh"></a>
 
@@ -232,7 +234,7 @@ fn setMesh {
 }
 ```
 
-<sub>`api.ogt` line 4218</sub>
+<sub>`api.ogt` line 4344</sub>
 
 <a id="fn-ropePoints"></a>
 
@@ -262,7 +264,7 @@ fn ropePoints {
 }
 ```
 
-<sub>`api.ogt` line 4272</sub>
+<sub>`api.ogt` line 4398</sub>
 
 <a id="fn-clothPoints"></a>
 
@@ -292,7 +294,7 @@ fn clothPoints {
 }
 ```
 
-<sub>`api.ogt` line 4279</sub>
+<sub>`api.ogt` line 4405</sub>
 
 <a id="fn-fluidParticles"></a>
 
@@ -322,7 +324,37 @@ fn fluidParticles {
 }
 ```
 
-<sub>`api.ogt` line 4286</sub>
+<sub>`api.ogt` line 4412</sub>
+
+<a id="fn-fluid3dParticles"></a>
+
+### `og.physics.fluid3dParticles`
+
+An og.Fluid3D's particle positions after the last step, in world space (emitted particles last, in the order they appeared).
+
+```ts
+og.physics.fluid3dParticles(world: World, entity: Entity): Result<readonly Vector3[]>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `entity` | `Entity` | no | The fluid's entity. |
+
+**Returns** `Result<readonly Vector3[]>`: Refused for an entity without an og.Fluid3D.
+
+Binding symbol `og_physics_fluid3d_particles` · publish builds: kept
+
+```ogt
+fn fluid3dParticles {
+  doc "An og.Fluid3D's particle positions after the last step, in world space (emitted particles last, in the order they appeared)."
+  param world World "The world."
+  param entity Entity "The fluid's entity."
+  returns Result.List.Vector3 "Refused for an entity without an og.Fluid3D."
+}
+```
+
+<sub>`api.ogt` line 4419</sub>
 
 <a id="fn-waterHeight"></a>
 
@@ -356,7 +388,7 @@ fn waterHeight {
 }
 ```
 
-<sub>`api.ogt` line 4293</sub>
+<sub>`api.ogt` line 4426</sub>
 
 <a id="fn-vehicleWheels"></a>
 
@@ -386,7 +418,7 @@ fn vehicleWheels {
 }
 ```
 
-<sub>`api.ogt` line 4302</sub>
+<sub>`api.ogt` line 4435</sub>
 
 <a id="fn-ragdollRigFromSkeleton"></a>
 
@@ -416,7 +448,7 @@ fn ragdollRigFromSkeleton {
 }
 ```
 
-<sub>`api.ogt` line 4309</sub>
+<sub>`api.ogt` line 4442</sub>
 
 <a id="fn-setRagdollRig"></a>
 
@@ -448,7 +480,7 @@ fn setRagdollRig {
 }
 ```
 
-<sub>`api.ogt` line 4316</sub>
+<sub>`api.ogt` line 4449</sub>
 
 <a id="fn-ragdollPose"></a>
 
@@ -478,7 +510,7 @@ fn ragdollPose {
 }
 ```
 
-<sub>`api.ogt` line 4324</sub>
+<sub>`api.ogt` line 4457</sub>
 
 ## Components, resources and events
 
@@ -1784,6 +1816,175 @@ component Fluid2D {
 
 <sub>`api.ogt` line 3853</sub>
 
+<a id="record-Fluid3D"></a>
+
+### `og.Fluid3D` (component)
+
+A 3D particle fluid (the 3D profile): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure that gives surface tension, viscosity) over a spatial hash in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider, the terrain's height field included (pushed out; they push nothing back), and stay inside `bounds` around the entity when it is set. An emitter adds particles at `emitRate` up to `maxCount`; a sink box removes those that enter it. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as a screen-space surface: the particles' depth smoothed into one surface, refracting what is behind by its thickness and reflecting the sky, lit by the scene's lights. Cost: about 0.9 ms of CPU a tick for 2000 particles at 1 substep, 1.8 ms at 2 (native and wasm alike), growing with the particles; keep a scene's fluids to a few thousand particles. The surface costs about 1.1 ms of GPU (an Apple M4 Pro, the fluid covering a third of a 1280×720 frame) whatever the particle count, growing with the pixels it covers.
+
+Token `og.Fluid3D`, registered under the schema name `og.Fluid3D`; its value type is `Fluid3D`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `count` | `number` | `2000` | ≤ 32768 | — | — | How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it). |
+| `size` | `Vector3` | `{ x: 2, y: 1, z: 2 }` | — | `m` | — | The spawn box, centred on the entity. |
+| `bounds` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The container around the entity (0 on an axis: open on that axis; colliders and the terrain still hold it). |
+| `radius` | `number` | `0.2` | ≥ 0.02 | `m` | tunable | The interaction radius: particles closer than this push and drag each other. Cost grows with the particles, not the radius. |
+| `restDensity` | `number` | `10` | ≥ 0 | — | tunable | The density it settles at (neighbours within radius, weighted). |
+| `stiffness` | `number` | `0.02` | ≥ 0 | — | tunable | The pressure's strength (above about 0.05 it jitters, then springs apart). |
+| `nearStiffness` | `number` | `0.4` | ≥ 0 | — | tunable | The near pressure's strength (keeps particles apart, gives surface tension). |
+| `viscosity` | `number` | `0.4` | 0 … 4 | — | tunable | Linear viscosity (it also calms the surface; honey above 1). |
+| `group` | `number` | `0` | — | — | — | Fluids sharing a group above 0 push, drag and (by `mixing`) mix with each other as one fluid, at most four to a group (in entity order; a fifth is simulated alone); 0 keeps the fluid to itself. |
+| `density` | `number` | `1` | 0.05 … 20 | — | tunable | How heavy its particles are against the group's other fluids: a heavier fluid sinks under a lighter one. |
+| `mixing` | `number` | `0` | 0 … 1 | — | tunable | How readily it mixes with the group's other fluids: 0 keeps them apart in layers (the boundary held), 1 blends them where they touch (their mix, colour and weight even out). |
+| `gravityScale` | `number` | `1` | -10 … 10 | — | tunable | Multiplies og.Physics.gravity. |
+| `substeps` | `number` | `2` | 1 … 8 | — | — | Simulation steps per tick (each costs a full pass over the particles). |
+| `seed` | `number` | `0` | — | — | — | The seed of the spawn and emitter jitter. |
+| `maxCount` | `number` | `8192` | 1 … 32768 | — | — | The most particles alive at once (the emitter stops there). |
+| `emitRate` | `number` | `0` | 0 … 20000 | — | tunable | Particles the emitter adds per second (0: no emitter). |
+| `emitOffset` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where the emitter is, from the entity (world axes). |
+| `emitVelocity` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps` | tunable | The velocity emitted particles start with. |
+| `emitRadius` | `number` | `0.1` | ≥ 0 | `m` | tunable | The half-size of the cube new particles appear in around the emitter. |
+| `sinkOffset` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The sink's centre, from the entity (world axes). |
+| `sinkSize` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The sink box: particles that enter it are removed (0 0 0: no sink). |
+| `color` | `Vector3` | `{ x: 0.2, y: 0.55, z: 0.9 }` | — | — | — | The fluid's linear colour (what light passing through it keeps). |
+| `opacity` | `number` | `0.6` | 0 … 1 | — | — | How opaque a metre of it is (0: clear as glass, 1: opaque). |
+| `reflectivity` | `number` | `1` | 0 … 2 | — | — | How much it reflects (scales the Fresnel term). |
+| `refraction` | `number` | `1` | 0 … 4 | — | — | How far refraction bends what is seen through it. |
+| `drawScale` | `number` | `0.6` | 0.1 … 2 | — | — | The drawn size of each particle (times radius). |
+| `smoothing` | `number` | `1` | 0 … 2 | — | — | How much the surface is smoothed (0: beads, 1: one surface). |
+| `visible` | `boolean` | `true` | — | — | — | Whether the renderer draws it. |
+
+```ogt
+component Fluid3D {
+  doc "A 3D particle fluid (the 3D profile): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure that gives surface tension, viscosity) over a spatial hash in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider, the terrain's height field included (pushed out; they push nothing back), and stay inside `bounds` around the entity when it is set. An emitter adds particles at `emitRate` up to `maxCount`; a sink box removes those that enter it. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as a screen-space surface: the particles' depth smoothed into one surface, refracting what is behind by its thickness and reflecting the sky, lit by the scene's lights. Cost: about 0.9 ms of CPU a tick for 2000 particles at 1 substep, 1.8 ms at 2 (native and wasm alike), growing with the particles; keep a scene's fluids to a few thousand particles. The surface costs about 1.1 ms of GPU (an Apple M4 Pro, the fluid covering a third of a 1280×720 frame) whatever the particle count, growing with the pixels it covers."
+  field count u32 "How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it)." {
+    default 2000
+    max 32768
+  }
+  field size Vector3 "The spawn box, centred on the entity." {
+    default 2 1 2
+    unit m
+  }
+  field bounds Vector3 "The container around the entity (0 on an axis: open on that axis; colliders and the terrain still hold it)." {
+    unit m
+  }
+  field radius f32 "The interaction radius: particles closer than this push and drag each other. Cost grows with the particles, not the radius." {
+    default 0.2
+    min 0.02
+    unit m
+    tunable true
+  }
+  field restDensity f32 "The density it settles at (neighbours within radius, weighted)." {
+    default 10
+    min 0
+    tunable true
+  }
+  field stiffness f32 "The pressure's strength (above about 0.05 it jitters, then springs apart)." {
+    default 0.02
+    min 0
+    tunable true
+  }
+  field nearStiffness f32 "The near pressure's strength (keeps particles apart, gives surface tension)." {
+    default 0.4
+    min 0
+    tunable true
+  }
+  field viscosity f32 "Linear viscosity (it also calms the surface; honey above 1)." {
+    default 0.4
+    min 0
+    max 4
+    tunable true
+  }
+  field group u32 "Fluids sharing a group above 0 push, drag and (by `mixing`) mix with each other as one fluid, at most four to a group (in entity order; a fifth is simulated alone); 0 keeps the fluid to itself."
+  field density f32 "How heavy its particles are against the group's other fluids: a heavier fluid sinks under a lighter one." {
+    default 1
+    min 0.05
+    max 20
+    tunable true
+  }
+  field mixing f32 "How readily it mixes with the group's other fluids: 0 keeps them apart in layers (the boundary held), 1 blends them where they touch (their mix, colour and weight even out)." {
+    min 0
+    max 1
+    tunable true
+  }
+  field gravityScale f32 "Multiplies og.Physics.gravity." {
+    default 1
+    min -10
+    max 10
+    tunable true
+  }
+  field substeps u32 "Simulation steps per tick (each costs a full pass over the particles)." {
+    default 2
+    min 1
+    max 8
+  }
+  field seed u32 "The seed of the spawn and emitter jitter."
+  field maxCount u32 "The most particles alive at once (the emitter stops there)." {
+    default 8192
+    min 1
+    max 32768
+  }
+  field emitRate f32 "Particles the emitter adds per second (0: no emitter)." {
+    min 0
+    max 20000
+    tunable true
+  }
+  field emitOffset Vector3 "Where the emitter is, from the entity (world axes)." {
+    unit m
+  }
+  field emitVelocity Vector3 "The velocity emitted particles start with." {
+    unit mps
+    tunable true
+  }
+  field emitRadius f32 "The half-size of the cube new particles appear in around the emitter." {
+    default 0.1
+    min 0
+    unit m
+    tunable true
+  }
+  field sinkOffset Vector3 "The sink's centre, from the entity (world axes)." {
+    unit m
+  }
+  field sinkSize Vector3 "The sink box: particles that enter it are removed (0 0 0: no sink)." {
+    unit m
+  }
+  field color Vector3 "The fluid's linear colour (what light passing through it keeps)." {
+    default 0.2 0.55 0.9
+  }
+  field opacity f32 "How opaque a metre of it is (0: clear as glass, 1: opaque)." {
+    default 0.6
+    min 0
+    max 1
+  }
+  field reflectivity f32 "How much it reflects (scales the Fresnel term)." {
+    default 1
+    min 0
+    max 2
+  }
+  field refraction f32 "How far refraction bends what is seen through it." {
+    default 1
+    min 0
+    max 4
+  }
+  field drawScale f32 "The drawn size of each particle (times radius)." {
+    default 0.6
+    min 0.1
+    max 2
+  }
+  field smoothing f32 "How much the surface is smoothed (0: beads, 1: one surface)." {
+    default 1
+    min 0
+    max 2
+  }
+  field visible bool "Whether the renderer draws it." {
+    default true
+  }
+}
+```
+
+<sub>`api.ogt` line 3942</sub>
+
 <a id="record-WaterSurface"></a>
 
 ### `og.WaterSurface` (component)
@@ -1847,7 +2048,7 @@ component WaterSurface {
 }
 ```
 
-<sub>`api.ogt` line 3942</sub>
+<sub>`api.ogt` line 4068</sub>
 
 <a id="record-WaterLine"></a>
 
@@ -1924,7 +2125,7 @@ component WaterLine {
 }
 ```
 
-<sub>`api.ogt` line 3985</sub>
+<sub>`api.ogt` line 4111</sub>
 
 <a id="record-Splash"></a>
 
@@ -1955,7 +2156,7 @@ event Splash {
 }
 ```
 
-<sub>`api.ogt` line 4038</sub>
+<sub>`api.ogt` line 4164</sub>
 
 <a id="record-Ragdoll"></a>
 
@@ -2023,7 +2224,7 @@ component Ragdoll {
 }
 ```
 
-<sub>`api.ogt` line 4050</sub>
+<sub>`api.ogt` line 4176</sub>
 
 ## Types
 
@@ -2051,7 +2252,7 @@ struct QueryFilter {
 }
 ```
 
-<sub>`api.ogt` line 4095</sub>
+<sub>`api.ogt` line 4221</sub>
 
 <a id="type-RaycastDesc"></a>
 
@@ -2086,7 +2287,7 @@ struct RaycastDesc {
 }
 ```
 
-<sub>`api.ogt` line 4103</sub>
+<sub>`api.ogt` line 4229</sub>
 
 <a id="type-RaycastHit"></a>
 
@@ -2113,7 +2314,7 @@ struct RaycastHit {
 }
 ```
 
-<sub>`api.ogt` line 4119</sub>
+<sub>`api.ogt` line 4245</sub>
 
 <a id="type-ShapeDesc"></a>
 
@@ -2155,7 +2356,7 @@ struct ShapeDesc {
 }
 ```
 
-<sub>`api.ogt` line 4129</sub>
+<sub>`api.ogt` line 4255</sub>
 
 <a id="type-ShapeCastDesc"></a>
 
@@ -2194,7 +2395,7 @@ struct ShapeCastDesc {
 }
 ```
 
-<sub>`api.ogt` line 4151</sub>
+<sub>`api.ogt` line 4277</sub>
 
 <a id="type-ShapeCastHit"></a>
 
@@ -2221,7 +2422,7 @@ struct ShapeCastHit {
 }
 ```
 
-<sub>`api.ogt` line 4169</sub>
+<sub>`api.ogt` line 4295</sub>
 
 <a id="type-OverlapDesc"></a>
 
@@ -2251,7 +2452,7 @@ struct OverlapDesc {
 }
 ```
 
-<sub>`api.ogt` line 4179</sub>
+<sub>`api.ogt` line 4305</sub>
 
 <a id="type-MeshDesc"></a>
 
@@ -2275,7 +2476,7 @@ struct MeshDesc {
 }
 ```
 
-<sub>`api.ogt` line 4190</sub>
+<sub>`api.ogt` line 4316</sub>
 
 <a id="type-WheelPose"></a>
 
@@ -2300,7 +2501,7 @@ struct WheelPose {
 }
 ```
 
-<sub>`api.ogt` line 4226</sub>
+<sub>`api.ogt` line 4352</sub>
 
 <a id="type-RagdollBoneDesc"></a>
 
@@ -2343,7 +2544,7 @@ struct RagdollBoneDesc {
 }
 ```
 
-<sub>`api.ogt` line 4235</sub>
+<sub>`api.ogt` line 4361</sub>
 
 <a id="type-RagdollRigDesc"></a>
 
@@ -2367,7 +2568,7 @@ struct RagdollRigDesc {
 }
 ```
 
-<sub>`api.ogt` line 4257</sub>
+<sub>`api.ogt` line 4383</sub>
 
 <a id="type-BonePose"></a>
 
@@ -2390,7 +2591,7 @@ struct BonePose {
 }
 ```
 
-<sub>`api.ogt` line 4264</sub>
+<sub>`api.ogt` line 4390</sub>
 
 ## Constants
 

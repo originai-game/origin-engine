@@ -17,7 +17,7 @@
 // requests; it is kept in memory, and a guest's also under the Player's
 // `og_token_<game>` key. Nothing here touches og.platform's own storage.
 
-import { fingerprint, type PlayerEvents, type PlayerResult } from "./player.ts";
+import { fingerprint, timeOf, type PlayerEvents, type PlayerResult } from "./player.ts";
 
 /** `window.__OG_GAME`, written into the entry at publication. */
 export interface PageGame {
@@ -329,7 +329,7 @@ export function connectPage(game: PageGame, env: TransportEnv, events: PlayerEve
       const r = await post("call", { og: "player", protocol: 2, kind: "call", id, method, args });
       const m = r.data;
       if (m && m["kind"] === "result" && m["id"] === id) {
-        if (m["ok"] === true) return { ok: true, data: m["data"] ?? null };
+        if (m["ok"] === true) return { ok: true, data: m["data"] ?? null, ...timeOf(m) };
         const e = (m["error"] ?? {}) as Record<string, unknown>;
         const code = typeof e["code"] === "string" ? e["code"] : "failed";
         return {
@@ -341,6 +341,7 @@ export function connectPage(game: PageGame, env: TransportEnv, events: PlayerEve
             ...(typeof e["status"] === "number" ? { status: e["status"] } : {}),
             ...(typeof e["revision"] === "number" ? { revision: e["revision"] } : {}),
           },
+          ...timeOf(m),
         };
       }
       return statusError(r.status, r.status === 0 ? "the network is unreachable" : r.status < 0 ? `no answer to ${method} in ${PAGE_CALL_TIMEOUT_MS} ms` : `the play origin answered ${r.status}`);

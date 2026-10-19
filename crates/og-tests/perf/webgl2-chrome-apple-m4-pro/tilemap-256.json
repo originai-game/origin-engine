@@ -1,0 +1,26 @@
+{
+  "scene": "tilemap-256",
+  "tier": "webgl2",
+  "browser": "Chrome for Testing (cdp.ts)",
+  "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 100,
+  "runs_ms": [
+    0.228,
+    0.231,
+    0.236,
+    0.238,
+    0.26,
+    0.261,
+    0.304
+  ],
+  "frame_ms": 0.228,
+  "submit_median_ms": 0.2,
+  "load": [
+    191.5,
+    90,
+    52.5
+  ],
+  "note": "each run ends in one capture (its readback waits for the GPU to finish the run's frames)"
+}

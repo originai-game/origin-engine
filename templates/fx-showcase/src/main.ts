@@ -18,9 +18,10 @@
 // shaders, controller, joints, rope, fluid; phase 2 adds terrain (src/p2.ts),
 // the animation and physics round four (src/anim-physics.ts): retarget,
 // ragdoll2d, cloth, fluids, and the render round four (src/render.ts):
-// lights, moon, materials, skinned.
+// lights, moon, materials, skinned, and the 3D fluid station (src/sph.ts):
+// fluids3d.
 //
-// Commands: station:<name> (or station:<1-22>). `dump_entity:stage` reads
+// Commands: station:<name> (or station:<1-23>). `dump_entity:stage` reads
 // the Stage component (the station, the frame counter of the pulses);
 // `dump_entity:e5` the E5 component.
 
@@ -30,9 +31,10 @@ import { E5, E5_STATIONS, E5Show, PlatformMove, buildE5, resetE5, showE5, type E
 import { P2, P2_STATIONS, P2Show, resetP2, showP2, type P2Station } from "./p2.ts";
 import { AP_STATIONS, APShow, buildAP, resetAP, showAP, type APStation } from "./anim-physics.ts";
 import { RD_STATIONS, buildRD, resetRD, showRD, type RDStation } from "./render.ts";
+import { SPH_STATIONS, SPHShow, buildSPH, showSPH, type SPHStation } from "./sph.ts";
 
-/** The first five stations, then the E5 round's (src/e5.ts) and phase 2's (src/p2.ts, src/anim-physics.ts, src/render.ts). */
-export const STATIONS = ["post", "lens", "fx", "2d", "stylised", ...E5_STATIONS, ...P2_STATIONS, ...AP_STATIONS, ...RD_STATIONS] as const;
+/** The first five stations, then the E5 round's (src/e5.ts) and phase 2's (src/p2.ts, src/anim-physics.ts, src/render.ts, src/sph.ts). */
+export const STATIONS = ["post", "lens", "fx", "2d", "stylised", ...E5_STATIONS, ...P2_STATIONS, ...AP_STATIONS, ...RD_STATIONS, ...SPH_STATIONS] as const;
 export type Station = (typeof STATIONS)[number];
 
 /** The showcase's state, on one entity named "stage". */
@@ -187,8 +189,8 @@ function hud(world: World, font: Font, station: Station): void {
   const e5 = i - 5;
   const p2 = e5 - E5_STATIONS.length;
   // Phase 2's stations count within their own round: terrain 1/1, the
-  // animation and physics round's 1/4 to 4/4; the render round's carry no
-  // count.
+  // animation and physics round's 1/4 to 4/4; the render round's and the
+  // 3D fluid station carry no count.
   const ap = p2 - P2_STATIONS.length;
   const rd = ap - AP_STATIONS.length;
   const label = i < 5 ? `station ${i + 1}/5  ${station}` : p2 < 0 ? `E5 station ${e5 + 1}/${E5_STATIONS.length}  ${station}` : ap < 0 ? `P2 station ${p2 + 1}/${P2_STATIONS.length}  ${station}` : rd < 0 ? `P2 station ${ap + 1}/${AP_STATIONS.length}  ${station}` : `phase 2 station  ${station}`;
@@ -296,6 +298,7 @@ function show(world: World, station: Station): void {
       if ((P2_STATIONS as readonly string[]).includes(station)) showP2(world, station as P2Station);
       else if ((AP_STATIONS as readonly string[]).includes(station)) showAP(world, station as APStation);
       else if ((RD_STATIONS as readonly string[]).includes(station)) showRD(world, station as RDStation);
+      else if ((SPH_STATIONS as readonly string[]).includes(station)) showSPH(world, station as SPHStation);
       else showE5(world, station as E5Station);
   }
 }
@@ -426,6 +429,8 @@ function build(world: World): void {
   buildAP(world, { box, sphere, mat, ground: (x, c) => ground(world, x, c) }, walkerModel);
   // The phase 2 render round's stations.
   buildRD({ box, sphere, mat, ground: (x, c) => ground(world, x, c), tex, walker: walkerModel, rig });
+  // The 3D fluid station.
+  buildSPH(world, { box, mat, ground: (x, c) => ground(world, x, c) });
 
   const stage = must(world.spawn({ name: "stage" }));
   world.insert(stage, Stage, {
@@ -441,7 +446,7 @@ function build(world: World): void {
 export default og.game({
   tick: 60,
   seed: 1,
-  systems: [Orbiter, Blink, Show, E5Show, PlatformMove, P2Show, APShow],
+  systems: [Orbiter, Blink, Show, E5Show, PlatformMove, P2Show, APShow, SPHShow],
   render: { antialias: "taa" },
   start(world) {
     build(world);
@@ -453,7 +458,7 @@ export default og.game({
       show(world, STATIONS.includes(name) ? name : STATIONS[Number(name) - 1] ?? "post");
     },
   },
-  commandHelp: { station: { usage: "<name|1-22>", doc: "Show a station: post, lens, fx, 2d, stylised, then the E5 round's eight, then phase 2's terrain, the animation and physics round's four, and the render round's four (lights, moon, materials, skinned)." } },
+  commandHelp: { station: { usage: "<name|1-23>", doc: "Show a station: post, lens, fx, 2d, stylised, then the E5 round's eight, then phase 2's terrain, the animation and physics round's four, the render round's four (lights, moon, materials, skinned) and the 3D fluid station (fluids3d)." } },
   facts: (world) => {
     const e = world.find("stage");
     const s = e === null ? null : world.get(e, Stage);

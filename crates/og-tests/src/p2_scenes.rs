@@ -437,3 +437,145 @@ pub fn skinned_hooks_scene() -> RenderScene {
     scene.tick = 30;
     scene
 }
+
+/// The 3D fluid's pool (owed row 29): `spacing` apart on a jittered
+/// lattice filling a basin's floor to a gently waving surface, as
+/// og-physics' og.Fluid3D leaves particles at rest (about half its radius
+/// apart).
+pub fn fluid_3d_pool(spacing: f32) -> Vec<Vec3> {
+    let mut out = Vec::new();
+    let (nx, nz) = ((3.0 / spacing) as i32, (1.8 / spacing) as i32);
+    let mut i = 0;
+    for gx in 0..=nx {
+        for gz in 0..=nz {
+            let x = -1.5 + gx as f32 * spacing;
+            let z = -0.9 + gz as f32 * spacing;
+            let top = 0.42 + 0.06 * (x * 2.3).sin() * (z * 3.1).cos();
+            let mut y = 0.06;
+            while y <= top {
+                let j = |salt| (hash01(i, salt) - 0.5) * spacing * 0.3;
+                out.push(Vec3::new(x + j(1), y + j(2), z + j(3)));
+                y += spacing;
+                i += 1;
+            }
+        }
+    }
+    out
+}
+
+/// A falling drop of radius `r` at `centre`, `spacing` apart.
+pub fn fluid_3d_drop(centre: Vec3, r: f32, spacing: f32) -> Vec<Vec3> {
+    let n = (r / spacing).ceil() as i32;
+    let mut out = Vec::new();
+    for x in -n..=n {
+        for y in -n..=n {
+            for z in -n..=n {
+                let p = Vec3::new(x as f32, y as f32, z as f32) * spacing;
+                if p.length() <= r {
+                    out.push(centre + p);
+                }
+            }
+        }
+    }
+    out
+}
+
+/// Two 3D fluids in a stone basin: a clear blue pool over coloured tiles
+/// (refracted and tinted through it) and an orange drop falling into it
+/// (denser, its particles shading from orange to red), lit by the sun, the
+/// sky and an orange point light, the basin's walls cutting the surface.
+pub fn fluid_3d_scene() -> RenderScene {
+    let mut scene = RenderScene::new();
+    let stone = scene.add_material(Material {
+        base_color: [0.62, 0.6, 0.56, 1.0],
+        roughness: 0.85,
+        ..Default::default()
+    });
+    let slab = scene.add_mesh(shapes::cuboid(Vec3::ONE));
+    let block = |scene: &mut RenderScene, at: Vec3, size: Vec3, m| {
+        scene.add_instance(slab, m, Mat4::from_translation(at) * Mat4::from_scale(size));
+    };
+    block(
+        &mut scene,
+        Vec3::new(0.0, -0.1, 0.0),
+        Vec3::new(12.0, 0.2, 9.0),
+        stone,
+    );
+    for (at, size) in [
+        (Vec3::new(0.0, 0.45, -1.1), Vec3::new(3.6, 0.9, 0.2)),
+        (Vec3::new(-1.7, 0.45, 0.0), Vec3::new(0.2, 0.9, 2.4)),
+        (Vec3::new(1.7, 0.45, 0.0), Vec3::new(0.2, 0.9, 2.4)),
+        (Vec3::new(0.0, 0.15, 1.1), Vec3::new(3.6, 0.3, 0.2)),
+    ] {
+        block(&mut scene, at, size, stone);
+    }
+    let tiles: Vec<_> = (0..6)
+        .map(|i| {
+            let c = hue(i as f32 / 6.0).lerp(Vec3::ONE, 0.2);
+            scene.add_material(Material {
+                base_color: [c.x, c.y, c.z, 1.0],
+                roughness: 0.6,
+                ..Default::default()
+            })
+        })
+        .collect();
+    for gx in 0..6 {
+        for gz in 0..4 {
+            let at = Vec3::new(-1.25 + gx as f32 * 0.5, 0.01, -0.75 + gz as f32 * 0.5);
+            block(
+                &mut scene,
+                at,
+                Vec3::new(0.42, 0.02, 0.42),
+                tiles[(gx + gz) % 6],
+            );
+        }
+    }
+    let spacing = 0.1;
+    scene.fluids_3d.push(og_render::Fluid3d {
+        particles: fluid_3d_pool(spacing).into(),
+        color: Vec3::new(0.2, 0.55, 0.9),
+        opacity: 0.85,
+        radius: 0.12,
+        volume: spacing.powi(3),
+        ..Default::default()
+    });
+    let drop = fluid_3d_drop(Vec3::new(0.35, 1.25, 0.1), 0.3, spacing);
+    let colors: Vec<Vec3> = drop
+        .iter()
+        .map(|p| {
+            Vec3::new(0.95, 0.5, 0.08).lerp(Vec3::new(0.85, 0.1, 0.05), (1.25 - p.y) / 0.6 + 0.5)
+        })
+        .collect();
+    scene.fluids_3d.push(og_render::Fluid3d {
+        particles: drop.into(),
+        colors: Some(colors.into()),
+        color: Vec3::new(0.95, 0.45, 0.1),
+        opacity: 0.95,
+        radius: 0.12,
+        volume: spacing.powi(3),
+        ..Default::default()
+    });
+    scene.lights.push(Light {
+        position: Vec3::new(-1.0, 1.0, 0.9),
+        color: Vec3::new(1.0, 0.6, 0.3),
+        intensity: 6.0,
+        range: 4.0,
+        ..Default::default()
+    });
+    let sun = Vec3::new(-0.45, 0.7, 0.4);
+    scene.light = og_render::DirectionalLight {
+        direction_to_light: sun,
+        intensity: 3.0,
+        ..Default::default()
+    };
+    scene.environment.sky.sun_direction = sun;
+    scene.environment.intensity = 0.8;
+    scene.environment.background = Background::Sky;
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 2.4, 3.9),
+        target: Vec3::new(0.0, 0.35, 0.0),
+        exposure: Exposure::linear(0.55),
+        ..Default::default()
+    };
+    scene
+}

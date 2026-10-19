@@ -2,7 +2,7 @@
 
 # The Origin Engine API
 
-`@origingame/engine`, API version 1: 27 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
+`@origingame/engine`, API version 1: 28 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
 
 The Origin Engine API. Game code declares components and systems, and reads the world through typed views over engine memory.
 
@@ -36,6 +36,7 @@ Grouped by the skill that teaches them: the skill says how much of each to use a
 | [`anim`](anim.md) | `og.anim.*` | kept | Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics. |
 | [`tilemap`](tilemap.md) | `og.tilemap.*` | kept | Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component. |
 | [`terrain`](terrain.md) | `og.terrain.*` | kept | Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry. |
+| [`stream`](stream.md) | `og.stream.*` | kept | Asset streaming groups (phase 3): a scene's `stream "<name>" { asset ...; distance x y z r [unload d] \| volume "<entity>"; priority n }` blocks name glTF models (without skins or morph targets), textures and sounds that load and unload together, and what loads them: the camera within `r` of the anchor (kept until it is past `unload`, 1.25 r by default), the camera inside the named entity's box (its position ± half its scale, turned with it), or neither (og.stream.request only). `og cook` packs each group's files into `cooked/stream/<name>.ogb`; `og build --publish` ships the packs beside the boot bundle, which the shell and the service worker fetch first, and fetches a pack only when its group loads. |
 
 ### `og-feel`
 
@@ -111,7 +112,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-829 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+845 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -425,6 +426,7 @@ Field units the docs and Tune use.
 | [`og.Flipbook`](anim.md#record-Flipbook) | component | anim | — |
 | [`og.FlipbookEvent`](anim.md#record-FlipbookEvent) | event | anim | — |
 | [`og.Fluid2D`](physics.md#record-Fluid2D) | component | physics | — |
+| [`og.Fluid3D`](physics.md#record-Fluid3D) | component | physics | — |
 | [`og.Fog`](atmosphere.md#record-Fog) | resource | atmosphere | — |
 | [`og.Follow2D`](camera.md#record-Follow2D) | component | camera | — |
 | [`og.FollowCamera`](camera.md#record-FollowCamera) | component | camera | — |
@@ -490,6 +492,7 @@ Field units the docs and Tune use.
 | [`og.Perception`](ai.md#record-Perception) | component | ai | — |
 | [`og.Physics`](physics.md#record-Physics) | resource | physics | — |
 | [`og.physics.clothPoints`](physics.md#fn-clothPoints) | function | physics | `og_physics_cloth_points` |
+| [`og.physics.fluid3dParticles`](physics.md#fn-fluid3dParticles) | function | physics | `og_physics_fluid3d_particles` |
 | [`og.physics.fluidParticles`](physics.md#fn-fluidParticles) | function | physics | `og_physics_fluid_particles` |
 | [`og.physics.overlap`](physics.md#fn-overlap) | function | physics | `og_physics_overlap` |
 | [`og.physics.ragdollPose`](physics.md#fn-ragdollPose) | function | physics | `og_physics_ragdoll_pose` |
@@ -552,6 +555,12 @@ Field units the docs and Tune use.
 | [`og.SpotLight`](render.md#record-SpotLight) | component | render | — |
 | [`og.Sprite`](render.md#record-Sprite) | component | render | — |
 | [`og.Steering`](nav.md#record-Steering) | component | nav | — |
+| [`og.stream.budget`](stream.md#fn-budget) | function | stream | `og_stream_budget` |
+| [`og.stream.release`](stream.md#fn-release) | function | stream | `og_stream_release` |
+| [`og.stream.request`](stream.md#fn-request) | function | stream | `og_stream_request` |
+| [`og.stream.setBudget`](stream.md#fn-setBudget) | function | stream | `og_stream_set_budget` |
+| [`og.stream.status`](stream.md#fn-status) | function | stream | `og_stream_status` |
+| [`og.StreamEvent`](stream.md#record-StreamEvent) | event | stream | — |
 | [`og.systems.cameras`](systems.md#value-cameras) | value | systems | — |
 | [`og.Terrain`](terrain.md#record-Terrain) | component | terrain | — |
 | [`og.terrain.bounds`](terrain.md#fn-bounds) | function | terrain | `og_terrain_bounds` |
@@ -851,6 +860,14 @@ Field units the docs and Tune use.
 | [`StepperDesc`](ui.md#type-StepperDesc) | desc struct | ui | — |
 | [`StepperResult`](ui.md#type-StepperResult) | struct | ui | — |
 | [`StoreSetDesc`](platform.md#type-StoreSetDesc) | desc struct | platform | — |
+| [`STREAM_FAILED`](stream.md#const-STREAM_FAILED) | constant | stream | — |
+| [`STREAM_LOADING`](stream.md#const-STREAM_LOADING) | constant | stream | — |
+| [`STREAM_QUEUED`](stream.md#const-STREAM_QUEUED) | constant | stream | — |
+| [`STREAM_RESIDENT`](stream.md#const-STREAM_RESIDENT) | constant | stream | — |
+| [`STREAM_UNLOADED`](stream.md#const-STREAM_UNLOADED) | constant | stream | — |
+| [`StreamBudget`](stream.md#type-StreamBudget) | struct | stream | — |
+| [`StreamState`](stream.md#type-StreamState) | enum | stream | — |
+| [`StreamStatus`](stream.md#type-StreamStatus) | struct | stream | — |
 | [`StripBlend`](render.md#type-StripBlend) | enum | render | — |
 | [`StripBlend()`](render.md#column-StripBlend) | column kind | render | — |
 | [`SweepDesc`](probe.md#type-SweepDesc) | desc struct | probe | — |

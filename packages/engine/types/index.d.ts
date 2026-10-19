@@ -6182,6 +6182,206 @@ export interface Fluid2D {
 }
 
 /**
+ * A 3D particle fluid (the 3D profile): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure that gives surface tension, viscosity) over a spatial hash in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider, the terrain's height field included (pushed out; they push nothing back), and stay inside `bounds` around the entity when it is set. An emitter adds particles at `emitRate` up to `maxCount`; a sink box removes those that enter it. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as a screen-space surface: the particles' depth smoothed into one surface, refracting what is behind by its thickness and reflecting the sky, lit by the scene's lights. Cost: about 0.9 ms of CPU a tick for 2000 particles at 1 substep, 1.8 ms at 2 (native and wasm alike), growing with the particles; keep a scene's fluids to a few thousand particles. The surface costs about 1.1 ms of GPU (an Apple M4 Pro, the fluid covering a third of a 1280×720 frame) whatever the particle count, growing with the pixels it covers.
+ *
+ * The value of the `Fluid3D` component (token `og.Fluid3D`).
+ */
+export interface Fluid3D {
+  /**
+   * How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it).
+   *
+   * @default 2000
+   * @range ..32768
+   */
+  count: number;
+  /**
+   * The spawn box, centred on the entity.
+   *
+   * @default { x: 2, y: 1, z: 2 }
+   * @unit m (metres)
+   */
+  size: Vector3;
+  /**
+   * The container around the entity (0 on an axis: open on that axis; colliders and the terrain still hold it).
+   *
+   * @unit m (metres)
+   */
+  bounds: Vector3;
+  /**
+   * The interaction radius: particles closer than this push and drag each other. Cost grows with the particles, not the radius.
+   *
+   * @default 0.2
+   * @range 0.02..
+   * @unit m (metres)
+   * @tunable
+   */
+  radius: number;
+  /**
+   * The density it settles at (neighbours within radius, weighted).
+   *
+   * @default 10
+   * @range 0..
+   * @tunable
+   */
+  restDensity: number;
+  /**
+   * The pressure's strength (above about 0.05 it jitters, then springs apart).
+   *
+   * @default 0.02
+   * @range 0..
+   * @tunable
+   */
+  stiffness: number;
+  /**
+   * The near pressure's strength (keeps particles apart, gives surface tension).
+   *
+   * @default 0.4
+   * @range 0..
+   * @tunable
+   */
+  nearStiffness: number;
+  /**
+   * Linear viscosity (it also calms the surface; honey above 1).
+   *
+   * @default 0.4
+   * @range 0..4
+   * @tunable
+   */
+  viscosity: number;
+  /**
+   * Fluids sharing a group above 0 push, drag and (by `mixing`) mix with each other as one fluid, at most four to a group (in entity order; a fifth is simulated alone); 0 keeps the fluid to itself.
+   */
+  group: number;
+  /**
+   * How heavy its particles are against the group's other fluids: a heavier fluid sinks under a lighter one.
+   *
+   * @default 1
+   * @range 0.05..20
+   * @tunable
+   */
+  density: number;
+  /**
+   * How readily it mixes with the group's other fluids: 0 keeps them apart in layers (the boundary held), 1 blends them where they touch (their mix, colour and weight even out).
+   *
+   * @range 0..1
+   * @tunable
+   */
+  mixing: number;
+  /**
+   * Multiplies og.Physics.gravity.
+   *
+   * @default 1
+   * @range -10..10
+   * @tunable
+   */
+  gravityScale: number;
+  /**
+   * Simulation steps per tick (each costs a full pass over the particles).
+   *
+   * @default 2
+   * @range 1..8
+   */
+  substeps: number;
+  /** The seed of the spawn and emitter jitter. */
+  seed: number;
+  /**
+   * The most particles alive at once (the emitter stops there).
+   *
+   * @default 8192
+   * @range 1..32768
+   */
+  maxCount: number;
+  /**
+   * Particles the emitter adds per second (0: no emitter).
+   *
+   * @range 0..20000
+   * @tunable
+   */
+  emitRate: number;
+  /**
+   * Where the emitter is, from the entity (world axes).
+   *
+   * @unit m (metres)
+   */
+  emitOffset: Vector3;
+  /**
+   * The velocity emitted particles start with.
+   *
+   * @unit mps (metres per second)
+   * @tunable
+   */
+  emitVelocity: Vector3;
+  /**
+   * The half-size of the cube new particles appear in around the emitter.
+   *
+   * @default 0.1
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  emitRadius: number;
+  /**
+   * The sink's centre, from the entity (world axes).
+   *
+   * @unit m (metres)
+   */
+  sinkOffset: Vector3;
+  /**
+   * The sink box: particles that enter it are removed (0 0 0: no sink).
+   *
+   * @unit m (metres)
+   */
+  sinkSize: Vector3;
+  /**
+   * The fluid's linear colour (what light passing through it keeps).
+   *
+   * @default { x: 0.2, y: 0.55, z: 0.9 }
+   */
+  color: Vector3;
+  /**
+   * How opaque a metre of it is (0: clear as glass, 1: opaque).
+   *
+   * @default 0.6
+   * @range 0..1
+   */
+  opacity: number;
+  /**
+   * How much it reflects (scales the Fresnel term).
+   *
+   * @default 1
+   * @range 0..2
+   */
+  reflectivity: number;
+  /**
+   * How far refraction bends what is seen through it.
+   *
+   * @default 1
+   * @range 0..4
+   */
+  refraction: number;
+  /**
+   * The drawn size of each particle (times radius).
+   *
+   * @default 0.6
+   * @range 0.1..2
+   */
+  drawScale: number;
+  /**
+   * How much the surface is smoothed (0: beads, 1: one surface).
+   *
+   * @default 1
+   * @range 0..2
+   */
+  smoothing: number;
+  /**
+   * Whether the renderer draws it.
+   *
+   * @default true
+   */
+  visible: boolean;
+}
+
+/**
  * Height-field water (3D): a `resolution` × `resolution` grid of heights over a `size` square centred on the entity (its y is the rest level), waves travelling at `waveSpeed` and fading by `damping`. Dynamic bodies crossing it push waves (splashes; og.Splash events) and float by `buoyancy`. The heights are world state; an og.Water on the same entity draws them.
  *
  * The value of the `WaterSurface` component (token `og.WaterSurface`).
@@ -6752,6 +6952,7 @@ export interface BonePose {
   /** Its rotation in world space. */
   readonly rotation: Quaternion;
 }
+
 
 
 
@@ -14878,7 +15079,8 @@ export interface EngineProbe extends RuntimeProbe {
 
 // ── terrain ─────────────────────────────────────────────────────
 // Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.
-// Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it centred on the entity's position (rotation and scale are ignored: terrain lies along world x and z), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere; og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are asset changes, like og.physics.setMesh: they are not world state, and a restored snapshot keeps the terrain as it is.
+// Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it placed by the entity's world transform (centred on its position, turned and scaled with it), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere (pass it the entity's position, quaternion and scale); og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are world state: a snapshot keeps them, the world hash covers them, and a restore brings the ground back as it was (rebuilt from the cook with the restored edits replayed, for the renderer, physics and sample alike).
+// Its tiles stream (phase 3): the cook stores the field as a pyramid of tiles, each compressed on its own, and every frame the renderer keeps on the GPU only the tiles the camera's clipmap wants, within each terrain's tile budget (16 MiB by default), decoded off the frame (a worker thread natively, the browser's DecompressionStream on the Web) a few at a time, the most needed first; until a tile arrives its area draws from the coarser level that holds it, then fades in. Nothing a tick reads depends on which tiles are resident (collision and og.terrain.sample read the whole field), so a run's world hash is the same streamed or not. The probe's `terrain_stream:resident` decodes every wanted tile before each frame instead (`terrain_stream:stream[:<MiB>]` streams again, within that budget), and `dump_stream`'s `terrain` gives the tiles resident, waiting, decoding and cached.
 
 /**
  * A loaded terrain: its heights, control map and layers.
@@ -14907,7 +15109,7 @@ export declare function TerrainData(value?: TerrainData, options?: FieldOptions)
 export type TerrainBrushMode = "raise" | "lower" | "flatten" | "smooth" | "paint";
 
 /**
- * Draws a loaded terrain centred on the entity's position, with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.
+ * Draws a loaded terrain placed by the entity's world transform (centred on its position, turned and scaled with it), with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.
  *
  * The value of the `Terrain` component (token `og.Terrain`).
  */
@@ -14937,7 +15139,7 @@ export interface Terrain {
 }
 
 /**
- * Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies shrink to nothing over the outer `fade` of `distance`. The entity stands where the terrain does: the og.Terrain's entity itself, or a child of it at its origin. Drawn only: no colliders, and the copies are not entities.
+ * Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies keep their size and thin out (dithered) over the outer `fade` of `distance`. The renderer places them itself, a chunk of the grid at a time, once, and draws the chunks in range: copies cost about nothing per frame while the camera stays. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities.
  *
  * The value of the `TerrainScatter` component (token `og.TerrainScatter`).
  */
@@ -14972,7 +15174,7 @@ export interface TerrainScatter {
    */
   distance: number;
   /**
-   * The outer part of `distance` over which copies shrink to nothing.
+   * The outer part of `distance` over which copies thin out to nothing.
    *
    * @default 0.3
    * @range 0..1
@@ -15063,12 +15265,24 @@ export interface TerrainSampleDesc {
    */
   readonly data?: TerrainData;
   /**
-   * Where it stands: its og.Terrain entity's position.
+   * Where it stands: its og.Terrain entity's world position.
    *
    * @default { x: 0, y: 0, z: 0 }
    * @unit m (metres)
    */
   readonly origin?: Vector3;
+  /**
+   * How it is turned: its og.Terrain entity's world rotation (the zero value: along world x and z).
+   *
+   * @default { x: 0, y: 0, z: 0, w: 1 }
+   */
+  readonly quaternion?: Quaternion;
+  /**
+   * How it is scaled: its og.Terrain entity's world scale.
+   *
+   * @default { x: 1, y: 1, z: 1 }
+   */
+  readonly scale?: Vector3;
   /**
    * The world x.
    *
@@ -15088,7 +15302,7 @@ export interface TerrainSampleDesc {
 /** The terrain under a point. */
 export interface TerrainSample {
   /**
-   * The world y of the surface: the triangles drawn at the finest level and collided with.
+   * The world y of the surface (the triangles drawn at the finest level and collided with) on the terrain's up axis through (x, z): straight down for a terrain turned only about y.
    *
    * @unit m (metres)
    */
@@ -15134,12 +15348,24 @@ export interface TerrainBrush {
    */
   readonly mode?: TerrainBrushMode;
   /**
-   * Where the terrain stands: its og.Terrain entity's position.
+   * Where the terrain stands: its og.Terrain entity's world position.
    *
    * @default { x: 0, y: 0, z: 0 }
    * @unit m (metres)
    */
   readonly origin?: Vector3;
+  /**
+   * How it is turned: its og.Terrain entity's world rotation.
+   *
+   * @default { x: 0, y: 0, z: 0, w: 1 }
+   */
+  readonly quaternion?: Quaternion;
+  /**
+   * How it is scaled: its og.Terrain entity's world scale.
+   *
+   * @default { x: 1, y: 1, z: 1 }
+   */
+  readonly scale?: Vector3;
   /**
    * The brush's centre in world space; its y is flatten's target height.
    *
@@ -15148,7 +15374,7 @@ export interface TerrainBrush {
    */
   readonly center?: Vector3;
   /**
-   * The brush's radius.
+   * The brush's radius in world metres (across the terrain's surface).
    *
    * @default 8
    * @range 0.01..
@@ -15156,7 +15382,7 @@ export interface TerrainBrush {
    */
   readonly radius?: number;
   /**
-   * Metres at the centre (raise, lower), or how far to go, 0 to 1 (flatten, smooth, paint).
+   * World metres at the centre (raise, lower), or how far to go, 0 to 1 (flatten, smooth, paint).
    *
    * @default 1
    * @range 0..
@@ -15285,6 +15511,117 @@ export interface TerrainLayerDesc {
   readonly altitudeFade?: number;
 }
 
+
+
+
+
+
+
+// ── stream ──────────────────────────────────────────────────────
+// Asset streaming groups (phase 3): a scene's `stream "<name>" { asset ...; distance x y z r [unload d] | volume "<entity>"; priority n }` blocks name glTF models (without skins or morph targets), textures and sounds that load and unload together, and what loads them: the camera within `r` of the anchor (kept until it is past `unload`, 1.25 r by default), the camera inside the named entity's box (its position ± half its scale, turned with it), or neither (og.stream.request only). `og cook` packs each group's files into `cooked/stream/<name>.ogb`; `og build --publish` ships the packs beside the boot bundle, which the shell and the service worker fetch first, and fetches a pack only when its group loads.
+// At every tick boundary the engine decides which groups are wanted, admits them by priority (then name) within the memory budget (256 MiB by default; GPU textures and meshes and decoded audio, as the cook measured them), evicting lower-priority resident groups to make room for a higher one, and reads and puts in place at most one group's assets per boundary. A group that cannot fit waits, queued; one larger than the whole budget fails. Until its group is resident, a model draws its proxy (its coarsest LOD, untextured), a texture is a 1x1 grey placeholder and a sound plays as silence of its own length; then the real ones take over the same handles. Physics always collides with the proxy's meshes and a sound's length never changes, so nothing a tick reads depends on what is resident: a run's world hash is the same streamed or not.
+// Every change of a group's state sends StreamEvent at the start of the next tick; og.stream.status and og.stream.budget answer at once, and the probe's `dump_stream` lists the budget, the memory used and its peak, every group (trigger, state, why, since which tick), the recent changes and the terrain streamer's tiles.
+
+/**
+ * Where a streaming group is.
+ * - `"unloaded"`: Not wanted; its assets draw and play their stand-ins.
+ * - `"queued"`: Wanted, waiting for room in the memory budget.
+ * - `"loading"`: Admitted: its pack is being read (its memory already counts).
+ * - `"resident"`: Its assets are in place of their stand-ins.
+ * - `"failed"`: Its pack could not be read, or it alone needs more than the budget (StreamStatus.reason says which).
+ */
+export type StreamState = "unloaded" | "queued" | "loading" | "resident" | "failed";
+
+/** `StreamEvent.state`: the group is unloaded (StreamState unloaded). */
+export declare const STREAM_UNLOADED: 0;
+
+/** `StreamEvent.state`: the group waits for room in the budget (StreamState queued). */
+export declare const STREAM_QUEUED: 1;
+
+/** `StreamEvent.state`: the group's pack is being read (StreamState loading). */
+export declare const STREAM_LOADING: 2;
+
+/** `StreamEvent.state`: the group's assets are in place (StreamState resident). */
+export declare const STREAM_RESIDENT: 3;
+
+/** `StreamEvent.state`: the group failed (StreamState failed; og.stream.status says why). */
+export declare const STREAM_FAILED: 4;
+
+/**
+ * A group changed state: sent by og.stream at the start of the tick after the change.
+ *
+ * The payload of the `StreamEvent` event (token `og.StreamEvent`).
+ */
+export interface StreamEvent {
+  /** The group's name (at most 63 bytes). */
+  readonly group: string;
+  /**
+   * Its new state: STREAM_UNLOADED, STREAM_QUEUED, STREAM_LOADING, STREAM_RESIDENT or STREAM_FAILED (StreamState's order).
+   */
+  readonly state: number;
+}
+
+/** One streaming group. */
+export interface StreamStatus {
+  /** Its name. */
+  readonly name: string;
+  /** The scene that declares it. */
+  readonly scene: string;
+  /** Where it is. */
+  readonly state: StreamState;
+  /** Whether its trigger or a request wants it now. */
+  readonly wanted: boolean;
+  /** Whether og.stream.request asked for it (until og.stream.release). */
+  readonly requested: boolean;
+  /** Higher loads first and is evicted last. */
+  readonly priority: number;
+  /** manual, distance or volume. */
+  readonly trigger: string;
+  /**
+   * What its assets take once loaded, in bytes.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly memory: number;
+  /**
+   * Its pack's size, in bytes.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly bytes: number;
+  /** Its asset ids. */
+  readonly assets: readonly string[];
+  /** Why it is queued or failed; empty otherwise. */
+  readonly reason: string;
+  /** The tick of its last change. */
+  readonly since: number;
+  /** How many times it became resident. */
+  readonly loads: number;
+}
+
+/** The streaming memory budget and every group. */
+export interface StreamBudget {
+  /**
+   * The bytes resident and loading groups may take.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly budget: number;
+  /**
+   * The bytes they take now.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly used: number;
+  /**
+   * The most they ever took (never above the budget at the time).
+   *
+   * @unit bytes (bytes)
+   */
+  readonly peak: number;
+  /** Every group, by name. */
+  readonly groups: readonly StreamStatus[];
+}
 
 
 
@@ -15875,6 +16212,10 @@ export declare namespace og {
    */
   const Fluid2D: ComponentType<{ readonly count: FieldSpec<"u32">; readonly size: FieldSpec<"Vector2">; readonly bounds: FieldSpec<"Vector2">; readonly radius: FieldSpec<"f32">; readonly restDensity: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly nearStiffness: FieldSpec<"f32">; readonly viscosity: FieldSpec<"f32">; readonly group: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly mixing: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly seed: FieldSpec<"u32">; readonly color: FieldSpec<"Vector3">; readonly opacity: FieldSpec<"f32">; readonly blobScale: FieldSpec<"f32">; readonly threshold: FieldSpec<"f32">; readonly layer: FieldSpec<"i32">; readonly visible: FieldSpec<"bool"> }, Fluid2D>;
   /**
+   * A 3D particle fluid (the 3D profile): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure that gives surface tension, viscosity) over a spatial hash in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider, the terrain's height field included (pushed out; they push nothing back), and stay inside `bounds` around the entity when it is set. An emitter adds particles at `emitRate` up to `maxCount`; a sink box removes those that enter it. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as a screen-space surface: the particles' depth smoothed into one surface, refracting what is behind by its thickness and reflecting the sky, lit by the scene's lights. Cost: about 0.9 ms of CPU a tick for 2000 particles at 1 substep, 1.8 ms at 2 (native and wasm alike), growing with the particles; keep a scene's fluids to a few thousand particles. The surface costs about 1.1 ms of GPU (an Apple M4 Pro, the fluid covering a third of a 1280×720 frame) whatever the particle count, growing with the pixels it covers.
+   */
+  const Fluid3D: ComponentType<{ readonly count: FieldSpec<"u32">; readonly size: FieldSpec<"Vector3">; readonly bounds: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly restDensity: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly nearStiffness: FieldSpec<"f32">; readonly viscosity: FieldSpec<"f32">; readonly group: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly mixing: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly seed: FieldSpec<"u32">; readonly maxCount: FieldSpec<"u32">; readonly emitRate: FieldSpec<"f32">; readonly emitOffset: FieldSpec<"Vector3">; readonly emitVelocity: FieldSpec<"Vector3">; readonly emitRadius: FieldSpec<"f32">; readonly sinkOffset: FieldSpec<"Vector3">; readonly sinkSize: FieldSpec<"Vector3">; readonly color: FieldSpec<"Vector3">; readonly opacity: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly drawScale: FieldSpec<"f32">; readonly smoothing: FieldSpec<"f32">; readonly visible: FieldSpec<"bool"> }, Fluid3D>;
+  /**
    * Height-field water (3D): a `resolution` × `resolution` grid of heights over a `size` square centred on the entity (its y is the rest level), waves travelling at `waveSpeed` and fading by `damping`. Dynamic bodies crossing it push waves (splashes; og.Splash events) and float by `buoyancy`. The heights are world state; an og.Water on the same entity draws them.
    */
   const WaterSurface: ComponentType<{ readonly resolution: FieldSpec<"u32">; readonly size: FieldSpec<"f32">; readonly waveSpeed: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly splash: FieldSpec<"f32">; readonly buoyancy: FieldSpec<"f32">; readonly drag: FieldSpec<"f32"> }, WaterSurface>;
@@ -15952,6 +16293,14 @@ export declare namespace og {
      * @returns Refused for an entity without an og.Fluid2D.
      */
     function fluidParticles(world: World, entity: Entity): Result<readonly Vector2[]>;
+    /**
+     * An og.Fluid3D's particle positions after the last step, in world space (emitted particles last, in the order they appeared).
+     *
+     * @param world The world.
+     * @param entity The fluid's entity.
+     * @returns Refused for an entity without an og.Fluid3D.
+     */
+    function fluid3dParticles(world: World, entity: Entity): Result<readonly Vector3[]>;
     /**
      * The surface height of an og.WaterSurface (world y) or an og.WaterLine (world y at `x`; `z` ignored) at a point, as the last step left it: for boats that bob and spray that starts on the surface.
      *
@@ -17363,16 +17712,17 @@ export declare namespace og {
     function schedule(world: World, script: string): Result<CommandsReport>;
   }
   /**
-   * Draws a loaded terrain centred on the entity's position, with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.
+   * Draws a loaded terrain placed by the entity's world transform (centred on its position, turned and scaled with it), with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.
    */
   const Terrain: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly castShadows: FieldSpec<"bool">; readonly lodSpacing: FieldSpec<"f32">; readonly lodRing: FieldSpec<"u32"> }, Terrain>;
   /**
-   * Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies shrink to nothing over the outer `fade` of `distance`. The entity stands where the terrain does: the og.Terrain's entity itself, or a child of it at its origin. Drawn only: no colliders, and the copies are not entities.
+   * Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies keep their size and thin out (dithered) over the outer `fade` of `distance`. The renderer places them itself, a chunk of the grid at a time, once, and draws the chunks in range: copies cost about nothing per frame while the camera stays. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities.
    */
   const TerrainScatter: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly layer: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly fade: FieldSpec<"f32">; readonly minScale: FieldSpec<"f32">; readonly maxScale: FieldSpec<"f32">; readonly align: FieldSpec<"f32">; readonly seed: FieldSpec<"u32"> }, TerrainScatter>;
   /**
    * Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.
-   * Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it centred on the entity's position (rotation and scale are ignored: terrain lies along world x and z), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere; og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are asset changes, like og.physics.setMesh: they are not world state, and a restored snapshot keeps the terrain as it is.
+   * Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it placed by the entity's world transform (centred on its position, turned and scaled with it), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere (pass it the entity's position, quaternion and scale); og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are world state: a snapshot keeps them, the world hash covers them, and a restore brings the ground back as it was (rebuilt from the cook with the restored edits replayed, for the renderer, physics and sample alike).
+   * Its tiles stream (phase 3): the cook stores the field as a pyramid of tiles, each compressed on its own, and every frame the renderer keeps on the GPU only the tiles the camera's clipmap wants, within each terrain's tile budget (16 MiB by default), decoded off the frame (a worker thread natively, the browser's DecompressionStream on the Web) a few at a time, the most needed first; until a tile arrives its area draws from the coarser level that holds it, then fades in. Nothing a tick reads depends on which tiles are resident (collision and og.terrain.sample read the whole field), so a run's world hash is the same streamed or not. The probe's `terrain_stream:resident` decodes every wanted tile before each frame instead (`terrain_stream:stream[:<MiB>]` streams again, within that budget), and `dump_stream`'s `terrain` gives the tiles resident, waiting, decoding and cached.
    */
   namespace terrain {
     /**
@@ -17392,14 +17742,16 @@ export declare namespace og {
      */
     function sample(world: World, desc?: TerrainSampleDesc): Result<TerrainSample>;
     /**
-     * A terrain's box in world space when it stands at `origin`.
+     * A terrain's box in world space when it stands at `origin`, turned by `quaternion` and scaled by `scale` (its entity's world transform): the box around its turned corners.
      *
      * @param world The world.
      * @param data The terrain.
      * @param origin Where it stands.
+     * @param quaternion How it is turned.
+     * @param scale How it is scaled.
      * @returns Refused for an unknown terrain.
      */
-    function bounds(world: World, data: TerrainData, origin?: Vector3): Result<TerrainBounds>;
+    function bounds(world: World, data: TerrainData, origin?: Vector3, quaternion?: Quaternion, scale?: Vector3): Result<TerrainBounds>;
     /**
      * Change a terrain under a round brush: raise, lower, flatten or smooth its heights (the renderer, physics and og.terrain.sample see the change from the next frame and tick), or paint a layer into its control map (making one when it has none).
      *
@@ -17428,5 +17780,53 @@ export declare namespace og {
      * @returns Refused for an unknown terrain or layer.
      */
     function setLayer(world: World, data: TerrainData, index: number, layer?: TerrainLayerDesc): Result<void>;
+  }
+  /** A group changed state: sent by og.stream at the start of the tick after the change. */
+  const StreamEvent: EventType<StreamEvent>;
+  /**
+   * Asset streaming groups (phase 3): a scene's `stream "<name>" { asset ...; distance x y z r [unload d] | volume "<entity>"; priority n }` blocks name glTF models (without skins or morph targets), textures and sounds that load and unload together, and what loads them: the camera within `r` of the anchor (kept until it is past `unload`, 1.25 r by default), the camera inside the named entity's box (its position ± half its scale, turned with it), or neither (og.stream.request only). `og cook` packs each group's files into `cooked/stream/<name>.ogb`; `og build --publish` ships the packs beside the boot bundle, which the shell and the service worker fetch first, and fetches a pack only when its group loads.
+   * At every tick boundary the engine decides which groups are wanted, admits them by priority (then name) within the memory budget (256 MiB by default; GPU textures and meshes and decoded audio, as the cook measured them), evicting lower-priority resident groups to make room for a higher one, and reads and puts in place at most one group's assets per boundary. A group that cannot fit waits, queued; one larger than the whole budget fails. Until its group is resident, a model draws its proxy (its coarsest LOD, untextured), a texture is a 1x1 grey placeholder and a sound plays as silence of its own length; then the real ones take over the same handles. Physics always collides with the proxy's meshes and a sound's length never changes, so nothing a tick reads depends on what is resident: a run's world hash is the same streamed or not.
+   * Every change of a group's state sends StreamEvent at the start of the next tick; og.stream.status and og.stream.budget answer at once, and the probe's `dump_stream` lists the budget, the memory used and its peak, every group (trigger, state, why, since which tick), the recent changes and the terrain streamer's tiles.
+   */
+  namespace stream {
+    /**
+     * One streaming group's state.
+     *
+     * @param world The world.
+     * @param group The group's name, as its scene declares it.
+     * @returns Refused for a group no scene declares.
+     */
+    function status(world: World, group: string): Result<StreamStatus>;
+    /**
+     * Ask for a group (any trigger) until og.stream.release: it loads from the next tick boundary, within the budget by its priority.
+     *
+     * @param world The world.
+     * @param group The group's name.
+     * @returns Refused for a group no scene declares.
+     */
+    function request(world: World, group: string): Result<void>;
+    /**
+     * Stop asking for a group; it unloads at the next tick boundary unless its trigger still wants it.
+     *
+     * @param world The world.
+     * @param group The group's name.
+     * @returns Refused for a group no scene declares.
+     */
+    function release(world: World, group: string): Result<void>;
+    /**
+     * The memory budget, what the groups take now, the peak and every group.
+     *
+     * @param world The world.
+     * @returns The budget and the groups; refused only for a world that does not exist.
+     */
+    function budget(world: World): Result<StreamBudget>;
+    /**
+     * Set the memory budget from the next tick boundary; a lower one evicts the lowest-priority groups until the rest fit.
+     *
+     * @param world The world.
+     * @param bytes The bytes resident groups may take.
+     * @returns Refused for a negative or non-finite size.
+     */
+    function setBudget(world: World, bytes: number): Result<void>;
   }
 }

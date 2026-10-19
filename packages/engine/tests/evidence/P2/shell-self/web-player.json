@@ -1,0 +1,366 @@
+{
+ "failures": 0,
+ "checks": [
+  {
+   "check": "hello first, with substrate origin-engine",
+   "ok": true
+  },
+  {
+   "check": "loading values grow and stay in [0, 1]",
+   "ok": true
+  },
+  {
+   "check": "ready after the last loading",
+   "ok": true
+  },
+  {
+   "check": "no fail, no crash",
+   "ok": true
+  },
+  {
+   "check": "under a Player the shell draws no gate of its own",
+   "ok": true
+  },
+  {
+   "check": "before start the clock holds",
+   "ok": true
+  },
+  {
+   "check": "start plays",
+   "ok": true
+  },
+  {
+   "check": "pause holds the clock",
+   "ok": true
+  },
+  {
+   "check": "resume plays again",
+   "ok": true
+  },
+  {
+   "check": "og.platform's store.get reached the Player as its store.get call",
+   "ok": true
+  },
+  {
+   "check": "with store.* in the hello, the save is never read",
+   "ok": true
+  },
+  {
+   "check": "the store's best is the game's best score",
+   "ok": true
+  },
+  {
+   "check": "a sample with the first-frame time and the renderer",
+   "ok": true
+  },
+  {
+   "check": "desktop: the boot splash stands on the cover's backdrop",
+   "ok": true
+  },
+  {
+   "check": "desktop: the hand-off code left the address bar, the game's fragment stayed",
+   "ok": true
+  },
+  {
+   "check": "desktop: the hello carried the code in its body and no bearer",
+   "ok": true
+  },
+  {
+   "check": "desktop: no URL the browser fetched names the code",
+   "ok": true
+  },
+  {
+   "check": "desktop: og.platform's store.get went to /__player/v2/…/call with the redeemed credential",
+   "ok": true
+  },
+  {
+   "check": "desktop: the account credential is in no storage, the Player's marker is set",
+   "ok": true
+  },
+  {
+   "check": "desktop: nothing is reported before the gate",
+   "ok": true
+  },
+  {
+   "check": "desktop: the shell draws Back and the cover's backdrop; the page says og-player frame page",
+   "ok": true
+  },
+  {
+   "check": "desktop: the gate's tap starts play",
+   "ok": true
+  },
+  {
+   "check": "desktop: the play origin's stored best is the game's best",
+   "ok": true
+  },
+  {
+   "check": "desktop: start is reported first, then ready, with UUID v7 ids",
+   "ok": true
+  },
+  {
+   "check": "desktop: the release's service worker is active",
+   "ok": true
+  },
+  {
+   "check": "desktop: Back with no Portal referrer goes to the game's page",
+   "ok": true
+  },
+  {
+   "check": "desktop: the second open is under the service worker and still gets the platform's entry",
+   "ok": true
+  },
+  {
+   "check": "desktop: the second open redeems its own code and takes it out of the address",
+   "ok": true
+  },
+  {
+   "check": "phone: the boot splash stands on the cover's backdrop",
+   "ok": true
+  },
+  {
+   "check": "phone: the hand-off code left the address bar, the game's fragment stayed",
+   "ok": true
+  },
+  {
+   "check": "phone: the hello carried the code in its body and no bearer",
+   "ok": true
+  },
+  {
+   "check": "phone: no URL the browser fetched names the code",
+   "ok": true
+  },
+  {
+   "check": "phone: og.platform's store.get went to /__player/v2/…/call with the redeemed credential",
+   "ok": true
+  },
+  {
+   "check": "phone: the account credential is in no storage, the Player's marker is set",
+   "ok": true
+  },
+  {
+   "check": "phone: nothing is reported before the gate",
+   "ok": true
+  },
+  {
+   "check": "phone: the shell draws Back and the cover's backdrop; the page says og-player frame page",
+   "ok": true
+  },
+  {
+   "check": "phone: the gate's tap starts play",
+   "ok": true
+  },
+  {
+   "check": "phone: the play origin's stored best is the game's best",
+   "ok": true
+  },
+  {
+   "check": "phone: start is reported first, then ready, with UUID v7 ids",
+   "ok": true
+  },
+  {
+   "check": "phone: the release's service worker is active",
+   "ok": true
+  },
+  {
+   "check": "phone: Back with no Portal referrer goes to the game's page",
+   "ok": true
+  },
+  {
+   "check": "phone: the second open is under the service worker and still gets the platform's entry",
+   "ok": true
+  },
+  {
+   "check": "phone: the second open redeems its own code and takes it out of the address",
+   "ok": true
+  },
+  {
+   "check": "stage desktop: the shell's hello reaches the overlay in its own document",
+   "ok": true
+  },
+  {
+   "check": "stage desktop: ready reaches the overlay, no fail, no crash",
+   "ok": true
+  },
+  {
+   "check": "stage desktop: a top-level page, told its own origin, with no __OG_GAME",
+   "ok": true
+  },
+  {
+   "check": "stage desktop: the overlay owns play start: the shell draws no gate",
+   "ok": true
+  },
+  {
+   "check": "stage desktop: play runs without a tap (the overlay's hello said started)",
+   "ok": true
+  },
+  {
+   "check": "stage desktop: og.platform's store.get went to the overlay as a protocol 2 call",
+   "ok": true
+  },
+  {
+   "check": "stage desktop: the overlay's stored best is the game's best",
+   "ok": true
+  },
+  {
+   "check": "stage desktop: nothing of og.platform's is in the Stage origin's localStorage",
+   "ok": true
+  },
+  {
+   "check": "stage desktop: no service worker is installed or fetched on the Stage origin",
+   "ok": true
+  },
+  {
+   "check": "stage desktop: the og-probe wire still answers the overlay's state from the same window",
+   "ok": true
+  },
+  {
+   "check": "stage phone: the shell's hello reaches the overlay in its own document",
+   "ok": true
+  },
+  {
+   "check": "stage phone: ready reaches the overlay, no fail, no crash",
+   "ok": true
+  },
+  {
+   "check": "stage phone: a top-level page, told its own origin, with no __OG_GAME",
+   "ok": true
+  },
+  {
+   "check": "stage phone: the overlay owns play start: the shell draws no gate",
+   "ok": true
+  },
+  {
+   "check": "stage phone: play runs without a tap (the overlay's hello said started)",
+   "ok": true
+  },
+  {
+   "check": "stage phone: og.platform's store.get went to the overlay as a protocol 2 call",
+   "ok": true
+  },
+  {
+   "check": "stage phone: the overlay's stored best is the game's best",
+   "ok": true
+  },
+  {
+   "check": "stage phone: nothing of og.platform's is in the Stage origin's localStorage",
+   "ok": true
+  },
+  {
+   "check": "stage phone: no service worker is installed or fetched on the Stage origin",
+   "ok": true
+  },
+  {
+   "check": "stage phone: the og-probe wire still answers the overlay's state from the same window",
+   "ok": true
+  },
+  {
+   "check": "stage silent: the shell repeats its hello (at most six) while no overlay answers",
+   "ok": true
+  },
+  {
+   "check": "stage silent: og.platform falls back to the page's memory, never the Stage origin's localStorage",
+   "ok": true
+  }
+ ],
+ "messages": [
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "hello",
+   "substrate": "origin-engine",
+   "at": 56
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.178,
+   "at": 71
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.356,
+   "at": 72
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.535,
+   "at": 75
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.713,
+   "at": 76
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.891,
+   "at": 77
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.958,
+   "at": 78
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.959,
+   "at": 87
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.999,
+   "at": 87
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 1,
+   "at": 88
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "call",
+   "id": "oe-1",
+   "method": "store.get",
+   "args": {
+    "key": "best"
+   },
+   "at": 174
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "ready",
+   "at": 194
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "sample",
+   "substrate": "origin-engine",
+   "renderer": "webgpu",
+   "timings": {
+    "firstFrame": 176,
+    "boot": 154
+   },
+   "at": 194
+  }
+ ]
+}

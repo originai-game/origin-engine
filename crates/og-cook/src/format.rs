@@ -28,7 +28,8 @@
 //! | navmesh (`og.NavMesh`, an `.ogt` of `type navmesh`) | [`NavMeshMeta`] | `columns` [`NavColumnRow`], `spans` [`NavSpanRow`] (the walkable heightfield), `tiles` [`NavTileRow`], `verts` [`NavVertRow`], `polys` [`NavPolyRow`], `poly_verts` (u32) |
 //! | string table (`og.Strings`, an `.ogt` of `type strings`) | [`StringsMeta`] | `text` (the validated table) |
 //! | humanoid rig (`og.Rig`, an `.ogt` of `type rig`) | [`RigMeta`] | `text` (the canonical rig: its scheme and the bones it names) |
-//! | terrain (`og.Terrain`, an `.ogt` of `type terrain`) | [`TerrainMeta`] | `tiles` [`TerrainTileRow`], `heights` (each tile's u16 heights over its own range, zlib), `layers` [`TerrainLayerRow`], `strings` (the layers' texture ids), `control` (the control map, RGBA8, zlib) |
+//! | terrain (`og.Terrain`, an `.ogt` of `type terrain`) | [`TerrainMeta`] | `tiles` [`TerrainTileRow`] (og-render's tile pyramid), `heights` (each tile's `(tile + 3)²` u16 heights over the terrain's range, zlib), `control` (each tile's `(control + 2)²` RGBA8 texels, zlib), `layers` [`TerrainLayerRow`], `strings` (the layers' texture ids) |
+//! | streaming group pack (`og.StreamPack`, `cooked/stream/<group>.ogb`, phase 3) | [`StreamPackMeta`] | `files` [`StreamFileRow`], `names` (paths under `cooked/`), `data` (the files, each 16-aligned) |
 
 use og_core::hash::StableHasher;
 use og_core::{Reflect, Schema};
@@ -931,18 +932,20 @@ impl BlobKind for Strings {
 
 row!(
     /// The root of a terrain blob (an `.ogt` of `type terrain`).
-    TerrainMeta, "og.Terrain", 1 {
+    TerrainMeta, "og.Terrain", 2 {
         /// Extent along x and z in metres, centred on the terrain's origin.
         size_x: f32,
         size_z: f32,
         /// Height samples along x and z.
         columns: u32,
         rows: u32,
-        /// Samples per tile side, and the tiles along x and z.
+        /// og-render's TerrainLayout: quads per tile, control texels per
+        /// tile (0: none) and pyramid levels.
         tile: u32,
-        tiles_x: u32,
-        tiles_z: u32,
-        /// The lowest and highest height (metres above the origin).
+        control: u32,
+        levels: u32,
+        /// The lowest and highest height (metres above the origin): every
+        /// tile's 16-bit heights span this range.
         height_min: f32,
         height_max: f32,
         layers: u32,
@@ -960,17 +963,20 @@ row!(
 );
 
 row!(
-    /// One tile of heights: its first sample, its size in samples, the
-    /// range its 16-bit values span, and its zlib bytes in `heights`.
-    TerrainTileRow, "og.Terrain.tile", 1 {
-        column: u32,
-        row: u32,
-        columns: u32,
-        rows: u32,
+    /// One tile of the pyramid (in TerrainLayout's index order): its
+    /// level and place, the range of its heights, its zlib'd 16-bit
+    /// heights in `heights` and its zlib'd control texels in `control`.
+    TerrainTileRow, "og.Terrain.tile", 2 {
+        index: u32,
+        level: u32,
+        x: u32,
+        z: u32,
         min: f32,
         max: f32,
         offset: u32,
         bytes: u32,
+        control_offset: u32,
+        control_bytes: u32,
     }
 );
 
@@ -999,8 +1005,8 @@ row!(
 );
 
 /// The terrain blob: `meta`, `tiles` with their zlib'd heights in
-/// `heights`, `layers` naming textures in `strings`, and the control map
-/// (zlib'd RGBA8) in `control`.
+/// `heights` and control texels in `control`, `layers` naming textures in
+/// `strings`.
 pub struct Terrain;
 impl BlobKind for Terrain {
     const NAME: &'static str = "og.Terrain";
@@ -1010,5 +1016,36 @@ impl BlobKind for Terrain {
             TerrainTileRow::schema(),
             TerrainLayerRow::schema(),
         ]
+    }
+}
+
+// ── phase 3: streaming groups ────────────────────────────────────────────
+
+row!(
+    /// The root of a streaming group's pack (`cooked/stream/<group>.ogb`):
+    /// the cooked files of the group's assets, one download.
+    StreamPackMeta, "og.StreamPack", 1 {
+        files: u32,
+    }
+);
+
+row!(
+    /// One file of a pack: its path under `cooked/` (a range of `names`)
+    /// and its bytes (a range of `data`, 16-aligned).
+    StreamFileRow, "og.StreamPack.file", 1 {
+        name_at: u32,
+        name_len: u32,
+        data_at: u32,
+        data_len: u32,
+    }
+);
+
+/// A streaming group's pack: `meta`, `files` naming ranges of `names` and
+/// `data`.
+pub struct StreamPack;
+impl BlobKind for StreamPack {
+    const NAME: &'static str = "og.StreamPack";
+    fn schemas() -> Vec<Schema> {
+        vec![StreamPackMeta::schema(), StreamFileRow::schema()]
     }
 }

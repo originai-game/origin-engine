@@ -31,6 +31,7 @@ mod atmosphere;
 mod capture;
 mod clusters;
 mod effects;
+mod fluid3d;
 mod frame;
 mod fx;
 mod glass;
@@ -46,11 +47,13 @@ pub mod particles;
 mod particles_gpu;
 mod post;
 mod ribbons;
+mod scatter;
 mod scene;
 pub mod shapes;
 mod skin;
 mod sprites;
 mod terrain;
+mod terrain_tiles;
 mod texture;
 mod water;
 mod weather;
@@ -64,6 +67,7 @@ pub use atmosphere::{DayNightLook, Fog, SkyLook, day_night};
 pub use capture::{CAPTURE_TIMEOUT, CaptureRequest};
 pub use clusters::{CLUSTER_GRID, MAX_CLUSTER_LIGHTS, UNIFORM_LIGHT_REFS};
 pub use effects::*;
+pub use fluid3d::Fluid3d;
 pub use graph::{GraphError, GraphPlan, RenderGraph, TargetDesc};
 #[cfg(not(target_arch = "wasm32"))]
 pub use headless::render_to_rgba;
@@ -78,13 +82,18 @@ pub use particles::{
     ParticleSimulation, ParticleState, ParticleSystem, SheetMode, SimulationSpace, SpriteSheet,
 };
 pub use ribbons::{Beam, Ribbon, RibbonPoint, RibbonUv, Trail, TrailStyle, TrailStyleHandle};
+pub use scatter::ScatterDraw;
 pub use scene::*;
 pub use skin::{
     JointPalette, MAX_JOINTS, MAX_MORPH_TARGETS, MorphTargets, SkinData, SkinnedInstance,
 };
 pub use terrain::{
-    MAX_SCATTER_INSTANCES, MAX_TERRAIN_LAYERS, MAX_TERRAIN_LEVELS, Terrain, TerrainControl,
-    TerrainData, TerrainLayer, TerrainLod, TerrainScatter,
+    DEFAULT_TERRAIN_BUDGET, MAX_SCATTER_INSTANCES, MAX_TERRAIN_LAYERS, MAX_TERRAIN_LEVELS, Terrain,
+    TerrainControl, TerrainData, TerrainLayer, TerrainLod, TerrainSampler, TerrainScatter,
+};
+pub use terrain_tiles::{
+    ControlPyramid, MAX_TERRAIN_PYRAMID, MAX_TERRAIN_TILES, TERRAIN_TILE, TerrainLayout,
+    TerrainTile, TerrainView, terrain_tiles_wanted, tile_heights,
 };
 pub use texture::{TextureCompression, TextureDesc, TextureFormat, TextureFormats, TextureUpload};
 pub use water::{Water, Water2d, WaterHeights};
@@ -480,6 +489,16 @@ pub struct FrameStats {
     pub terrain_draws: u32,
     pub terrain_triangles: u64,
     pub terrain_shadow_draws: u32,
+    /// Terrain tiles resident on the GPU after this frame, and those
+    /// uploaded for it (phase 3 streaming).
+    pub terrain_tiles: u32,
+    pub terrain_uploads: u32,
+    /// Scattered copies' chunk draws in the main pass, the copies in them
+    /// (before the distance drops the farthest) and the chunks built for
+    /// this frame.
+    pub scatter_draws: u32,
+    pub scatter_copies: u32,
+    pub scatter_built: u32,
     /// Draws of the planar reflection pass (0: it did not run).
     pub reflection_draws: u32,
     /// Frames rendered by this renderer before this one (drives the TAA jitter).
@@ -550,6 +569,16 @@ struct GpuTexture {
     bytes: u64,
 }
 
+/// What an RGBA8 texture allocates on the GPU, every level.
+fn rgba_texture_bytes(texture: &TextureData) -> u64 {
+    match texture.mips {
+        Mips::Generate => (0..mips::mip_count(texture.width, texture.height))
+            .map(|l| TextureFormat::Rgba8.level_bytes(texture.width, texture.height, l) as u64)
+            .sum(),
+        Mips::None => texture.rgba.len() as u64,
+    }
+}
+
 struct GpuFont {
     layout: FontLayout,
     bind_group: wgpu::BindGroup,
@@ -570,6 +599,8 @@ struct SceneCache {
     hook_shadow_pipelines: HashMap<(usize, Side, bool), wgpu::RenderPipeline>,
     hook_prepass_pipelines: HashMap<(usize, Side, bool), wgpu::RenderPipeline>,
     textures: Vec<GpuTexture>,
+    /// The scene's revision of each texture when it was uploaded.
+    texture_revisions: Vec<u64>,
     materials: Vec<GpuMaterial>,
     /// Sprite bind groups per texture, made on first use.
     sprite_groups: Vec<Option<wgpu::BindGroup>>,
@@ -753,7 +784,9 @@ pub struct Renderer {
     /// The procedural sky of a chosen look drawn per pixel ([`Background::Procedural`]).
     sky_look_pipeline: wgpu::RenderPipeline,
     water: water::WaterRenderer,
+    fluid3d: fluid3d::Fluid3dRenderer,
     terrain: terrain::TerrainRenderer,
+    scatter: scatter::ScatterRenderer,
     metaballs: metaballs::MetaballRenderer,
     /// The image-based light, regenerated into the same textures for a new sky.
     ibl: ibl::IblGenerator,
@@ -1600,6 +1633,12 @@ impl Renderer {
             water::WaterRenderer::new(&device, &frame_layout, FRAME_WGSL, LIGHTING_WGSL, samples);
         let metaballs =
             metaballs::MetaballRenderer::new(&device, &frame_layout, FRAME_WGSL, samples);
+        let fluid3d = fluid3d::Fluid3dRenderer::new(
+            &device,
+            &frame_layout,
+            &format!("{FRAME_WGSL}{}{LIGHTING_WGSL}", light_tables.wgsl()),
+            samples,
+        );
         let additive = wgpu::BlendState {
             color: wgpu::BlendComponent {
                 src_factor: wgpu::BlendFactor::SrcAlpha,
@@ -1721,6 +1760,7 @@ impl Renderer {
         let default_normal = solid_texture(&device, &queue, [128, 128, 255, 255]);
         let terrain = terrain::TerrainRenderer::new(
             &device,
+            &queue,
             terrain::TerrainPipelines {
                 frame_layout: &frame_layout,
                 shadow_layout: &shadow_bind_layout,
@@ -1730,6 +1770,28 @@ impl Renderer {
                 samples,
                 white: default_white.clone(),
                 flat_normal: default_normal.clone(),
+            },
+        );
+        let scatter = scatter::ScatterRenderer::new(
+            &device,
+            scatter::ScatterPipelines {
+                frame_layout: &frame_layout,
+                material_layout: &material_layout,
+                shadow_layout: &shadow_bind_layout,
+                lit_wgsl: format!(
+                    "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{LIGHTING_WGSL}{}{}",
+                    light_tables.wgsl(),
+                    particles_gpu::NOISE_WGSL,
+                    include_str!("../shaders/scatter_common.wgsl"),
+                    include_str!("../shaders/scatter.wgsl")
+                ),
+                shadow_wgsl: format!(
+                    "{}{MATERIAL_WGSL}{}{}",
+                    particles_gpu::NOISE_WGSL,
+                    include_str!("../shaders/scatter_common.wgsl"),
+                    include_str!("../shaders/scatter_shadow.wgsl")
+                ),
+                samples,
             },
         );
         let vertex_buffer = |label: &str, size: u64| {
@@ -1815,7 +1877,9 @@ impl Renderer {
             sky_pipeline,
             sky_look_pipeline,
             water,
+            fluid3d,
             terrain,
+            scatter,
             metaballs,
             ibl,
             sprite_pipeline,
@@ -2028,33 +2092,62 @@ impl Renderer {
                     TextureSource::Rgba(texture) => GpuTexture {
                         view: self.upload_texture(texture, &mut encoder)?,
                         format: TextureFormat::Rgba8,
-                        bytes: match texture.mips {
-                            Mips::Generate => (0..mips::mip_count(texture.width, texture.height))
-                                .map(|l| {
-                                    TextureFormat::Rgba8.level_bytes(
-                                        texture.width,
-                                        texture.height,
-                                        l,
-                                    ) as u64
-                                })
-                                .sum(),
-                            Mips::None => texture.rgba.len() as u64,
-                        },
+                        bytes: rgba_texture_bytes(texture),
                     },
                     TextureSource::Encoded(upload) => self.upload_encoded(index, upload)?,
                 };
                 self.cache.textures.push(gpu);
+                self.cache
+                    .texture_revisions
+                    .push(scene.texture_revisions()[index]);
                 self.cache.sprite_groups.push(None);
                 self.cache.ribbon_groups.push(None);
             }
             self.queue.submit(Some(encoder.finish()));
         }
+        // Replaced textures: uploaded again, and everything bound to the old
+        // view (materials, sprite and trail groups, fonts, the effect
+        // groups' decal atlas, terrain layers) made again.
+        let replaced: Vec<usize> = (0..self.cache.textures.len())
+            .filter(|&i| self.cache.texture_revisions[i] != scene.texture_revisions()[i])
+            .collect();
+        if !replaced.is_empty() {
+            let mut encoder = self
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("texture replace"),
+                });
+            for &index in &replaced {
+                let gpu = match &scene.textures()[index] {
+                    TextureSource::Rgba(texture) => GpuTexture {
+                        view: self.upload_texture(texture, &mut encoder)?,
+                        format: TextureFormat::Rgba8,
+                        bytes: rgba_texture_bytes(texture),
+                    },
+                    TextureSource::Encoded(upload) => self.upload_encoded(index, upload)?,
+                };
+                self.cache.textures[index] = gpu;
+                self.cache.texture_revisions[index] = scene.texture_revisions()[index];
+                self.cache.sprite_groups[index] = None;
+                self.cache.ribbon_groups[index] = None;
+            }
+            self.queue.submit(Some(encoder.finish()));
+            self.fx_groups = None;
+            self.terrain.forget_groups();
+        }
+        let samples_replaced = |m: &StandardMaterial| {
+            m.textures()
+                .iter()
+                .flatten()
+                .any(|h| replaced.contains(&h.index()))
+        };
         for (i, (material, revision)) in scene.materials().enumerate() {
             if self
                 .cache
                 .materials
                 .get(i)
                 .is_some_and(|m| m.revision == revision)
+                && !samples_replaced(material)
             {
                 continue;
             }
@@ -2078,6 +2171,12 @@ impl Renderer {
                 self.cache.materials.push(gpu);
             }
         }
+        let stale_fonts: Vec<usize> = (0..self.cache.fonts.len())
+            .filter(|&i| replaced.contains(&scene.fonts()[i].atlas.index()))
+            .collect();
+        self.cache
+            .fonts
+            .truncate(stale_fonts.first().copied().unwrap_or(usize::MAX));
         for (i, font) in scene.fonts()[self.cache.fonts.len()..].iter().enumerate() {
             let index = self.cache.fonts.len() + i;
             let atlas = font.atlas.index();
@@ -2931,14 +3030,16 @@ impl Renderer {
         let dof = post_fx.depth_of_field;
         let motion_blur = post_fx.motion_blur;
         let god_rays = post_fx.god_rays;
+        let fluids_3d = scene.fluids_3d.iter().any(|f| !f.particles.is_empty());
         let prepass = ao.is_some()
             || outline
             || dof.is_some()
             || motion_blur.is_some()
             || god_rays.is_some()
             || particle_frame.needs_depth
-            // Water reads the depth below it.
-            || !scene.water.is_empty();
+            // Water and 3D fluids read the depth below them.
+            || !scene.water.is_empty()
+            || fluids_3d;
         // Decals and screen-space AO need the effect shader on every batch.
         if ao.is_some() || !scene.decals.is_empty() {
             for b in batches.iter_mut().chain(skinned_batches.iter_mut()) {
@@ -3135,15 +3236,42 @@ impl Renderer {
         let terrain_draws = self.terrain.prepare(
             &self.device,
             &self.queue,
-            &mut self.mips,
             scene,
             camera.position,
             camera.far,
+            self.height,
             cam.view_proj,
             prev_view_proj,
             |h| textures.get(h.index()).map(|t| &t.view),
         )?;
         let terrain_casters = terrain_draws.iter().any(|d| d.cast_shadows);
+        // Scattered copies: the chunks this frame needs built, what to draw.
+        let scatter_batches = {
+            let materials = &self.cache.materials;
+            let meshes = &self.cache.meshes;
+            self.scatter.prepare(
+                &self.device,
+                &self.queue,
+                scene,
+                camera.position,
+                cam.view_proj,
+                prev_view_proj,
+                |m| materials.get(m).map(|g| g.side),
+                |m| {
+                    meshes
+                        .get(m)
+                        .filter(|g| g.index_count > 0)
+                        .map(|g| g.bounds.map_or(1.0, |(c, e)| c.length() + e.length()))
+                },
+            )
+        };
+        let scatter_material = |m: usize| self.cache.materials.get(m).map(|g| &g.bind_group);
+        let scatter_mesh = |m: usize| {
+            self.cache
+                .meshes
+                .get(m)
+                .map(|g| (&g.vertices, &g.indices, g.index_count))
+        };
 
         // The directional light's cascades.
         let light = &scene.light;
@@ -3607,6 +3735,9 @@ impl Renderer {
         if fluids > 0 {
             passes.push(FramePass::Metaballs);
         }
+        if fluids_3d {
+            passes.push(FramePass::Fluid3d);
+        }
         if reflection.is_some() {
             passes.push(FramePass::Reflection);
         }
@@ -3665,7 +3796,7 @@ impl Renderer {
                         ((self.height as f32 * lightmap_scale) as u32).max(1),
                     ),
                     gtao,
-                    water: !scene.water.is_empty(),
+                    water: !scene.water.is_empty() || fluids_3d,
                     fluid_fields: fluids as u32,
                     reflection: reflection.as_ref().map(|r| r.4),
                 },
@@ -3722,6 +3853,9 @@ impl Renderer {
 
         let cluster_stats = &self.clusters.stats;
         let mut stats = FrameStats {
+            terrain_tiles: self.terrain.resident,
+            terrain_uploads: self.terrain.uploads,
+            scatter_built: self.scatter.built,
             batches: batches.len() as u32,
             instances: scene.instances.len() as u32,
             culled,
@@ -3857,6 +3991,21 @@ impl Renderer {
                 &self.post.white,
             ),
             _ => Vec::new(),
+        };
+        let fluid_frame = match fluid3d::views(&self.graph, scene_depth) {
+            Some(views) if fluids_3d => self.fluid3d.prepare(
+                &self.device,
+                &self.queue,
+                &scene.fluids_3d,
+                &fluid3d::Fluid3dCamera {
+                    view: cam.view,
+                    proj: cam.proj,
+                    orthographic: cam.orthographic,
+                },
+                (self.width, self.height),
+                &views,
+            ),
+            _ => None,
         };
         // The planar reflection's effect group: its decals, no AO.
         let reflection_fx_group = reflection.as_ref().map(|_| {
@@ -4085,6 +4234,15 @@ impl Renderer {
                 stats.draw_calls += n;
                 stats.terrain_shadow_draws += n;
             }
+            let (n, _) = self.scatter.draw(
+                &mut pass,
+                scatter::ScatterPass::Shadow,
+                &scatter_batches,
+                scatter_material,
+                scatter_mesh,
+                |c, r| frustum.intersects_sphere(c, r),
+            );
+            stats.draw_calls += n;
         };
         for &pass in self.graph.order() {
             match pass {
@@ -4186,6 +4344,15 @@ impl Renderer {
                             });
                         stats.prepass_draws += n;
                     }
+                    let (n, _) = self.scatter.draw(
+                        &mut p,
+                        scatter::ScatterPass::Prepass,
+                        &scatter_batches,
+                        scatter_material,
+                        scatter_mesh,
+                        |c, r| view_frustum.intersects_sphere(c, r),
+                    );
+                    stats.prepass_draws += n;
                     stats.draw_calls += stats.prepass_draws;
                 }
                 FramePass::Particles => {
@@ -4205,6 +4372,15 @@ impl Renderer {
                     self.metaballs
                         .encode_field(&mut encoder, &fields, frame_bind_group);
                     stats.draw_calls += fields.len() as u32;
+                }
+                FramePass::Fluid3d => {
+                    if let (Some(f), Some(views)) =
+                        (&fluid_frame, fluid3d::views(&self.graph, scene_depth))
+                    {
+                        stats.draw_calls +=
+                            self.fluid3d
+                                .encode(&mut encoder, f, frame_bind_group, &views);
+                    }
                 }
                 FramePass::Light2d => {
                     let ambient = scene.lighting_2d.map_or(Vec3::ONE, |l| l.ambient);
@@ -4316,10 +4492,10 @@ impl Renderer {
                     };
                     let hdr = self.graph.view("hdr");
                     let msaa = self.samples > 1;
-                    // With water the pass is split after the sky: the
-                    // scene so far is copied for the water to refract and
-                    // reflect, then the pass goes on over it.
-                    let split = !water_draws.is_empty();
+                    // With water or a 3D fluid the pass is split after the
+                    // sky: the scene so far is copied for them to refract
+                    // and reflect, then the pass goes on over it.
+                    let split = !water_draws.is_empty() || fluid_frame.is_some();
                     let begin = |encoder: &mut wgpu::CommandEncoder, first: bool| {
                         let (view, resolve_target, store) = if msaa {
                             (
@@ -4402,6 +4578,21 @@ impl Renderer {
                         stats.terrain_triangles += tris;
                         stats.triangles += tris;
                     }
+                    let (n, copies) = self.scatter.draw(
+                        &mut pass,
+                        scatter::ScatterPass::Lit,
+                        &scatter_batches,
+                        scatter_material,
+                        scatter_mesh,
+                        |c, r| view_frustum.intersects_sphere(c, r),
+                    );
+                    if n > 0 {
+                        // The copies' group 2 is theirs: the effects' back for what follows.
+                        pass.set_bind_group(2, fx_group, &[]);
+                    }
+                    stats.draw_calls += n;
+                    stats.scatter_draws += n;
+                    stats.scatter_copies += copies;
                     let sky = match scene.environment.background {
                         Background::Sky => Some(&self.sky_pipeline),
                         Background::Procedural { .. } => Some(&self.sky_look_pipeline),
@@ -4428,6 +4619,9 @@ impl Renderer {
                         pass = begin(&mut encoder, false);
                         pass.set_bind_group(0, frame_bind_group, &[]);
                         stats.draw_calls += self.water.draw(&mut pass, &water_draws);
+                        if let Some(f) = &fluid_frame {
+                            stats.draw_calls += self.fluid3d.draw(&mut pass, f);
+                        }
                     }
                     // Transparent meshes, back to front over the opaque scene.
                     pass.set_bind_group(2, fx_group, &[]);

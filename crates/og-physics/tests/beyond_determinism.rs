@@ -1,7 +1,7 @@
 //! Determinism of physics beyond rigid bodies, in the shape of the pile
 //! test: the scenario of `support/beyond.rs` (a 3D world with a character,
 //! joints, a car, a rope, a cloth and a self-colliding cloth, water and a
-//! ragdoll; a 2D one with a platformer, a car, a fluid and a group of two,
+//! ragdoll and two 3D fluids of a group in a terrain bowl; a 2D one with a platformer, a car, a fluid and a group of two,
 //! a water line and a 2D ragdoll), each run 1200 ticks twice to the same
 //! world hash and snapshot, and restored at tick 600 into a fresh world
 //! (another seed) to end in the same world as the uninterrupted run.
@@ -62,6 +62,12 @@ fn check(profile: u32) -> String {
         assert_eq!(pa.cloth_points(ea), pc.cloth_points(ec), "cloth {ea}");
         assert_eq!(pa.fluid_particles(ea), pc.fluid_particles(ec), "fluid {ea}");
         assert_eq!(pa.fluid_mix(ea), pc.fluid_mix(ec), "fluid mix {ea}");
+        assert_eq!(
+            pa.fluid3d_particles(ea),
+            pc.fluid3d_particles(ec),
+            "3D fluid {ea}"
+        );
+        assert_eq!(pa.fluid3d_mix(ea), pc.fluid3d_mix(ec), "3D fluid mix {ea}");
         assert_eq!(pa.water_heights(ea), pc.water_heights(ec), "water {ea}");
         assert_eq!(pa.water_line(ea), pc.water_line(ec), "water line {ea}");
         assert_eq!(pa.vehicle_wheels(ea), pc.vehicle_wheels(ec), "wheels {ea}");
@@ -81,6 +87,16 @@ fn check(profile: u32) -> String {
     );
     if let Some(r) = ca.ragdoll {
         assert!(pa.ragdoll_pose(r).is_some());
+    }
+    if let Some((heavy, light)) = ca.fluids3d {
+        let (h, l) = (
+            pa.fluid3d_particles(heavy).unwrap(),
+            pa.fluid3d_particles(light).unwrap(),
+        );
+        assert!(h.len() > 200, "the emitter added none ({})", h.len());
+        assert!(l.len() < 200, "the sink took none ({})", l.len());
+        let (_, mix) = pa.fluid3d_mix(heavy).unwrap();
+        assert!(mix.iter().any(|m| m[1] > 0.01), "the fluids never mixed");
     }
     format!(
         "{{\"profile\":{profile},\"ticks\":{TICKS},\"hash_tick_0\":\"{start:016x}\",\"hash_tick_{HALF}\":\"{half_hash:016x}\",\"hash_tick_{TICKS}\":\"{:016x}\",\"hash_tick_{TICKS}_restored\":\"{:016x}\",\"snapshot_bytes\":{},\"seconds\":{:.3}}}",

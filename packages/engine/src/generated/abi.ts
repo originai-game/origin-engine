@@ -269,6 +269,8 @@ export interface HostAbi<A, V> {
   og_physics_cloth_points(world: number, entity: number): string;
   /** `og.physics.fluidParticles` */
   og_physics_fluid_particles(world: number, entity: number): string;
+  /** `og.physics.fluid3dParticles` */
+  og_physics_fluid3d_particles(world: number, entity: number): string;
   /** `og.physics.waterHeight` */
   og_physics_water_height(world: number, entity: number, x: number, z: number): string;
   /** `og.physics.vehicleWheels` */
@@ -586,13 +588,23 @@ export interface HostAbi<A, V> {
   /** `og.terrain.sample` */
   og_terrain_sample(world: number, desc: string | undefined): string;
   /** `og.terrain.bounds` */
-  og_terrain_bounds(world: number, data: number, origin: string | undefined): string;
+  og_terrain_bounds(world: number, data: number, origin: string | undefined, quaternion: string | undefined, scale: string | undefined): string;
   /** `og.terrain.edit` */
   og_terrain_edit(world: number, data: number, brush: string | undefined): string;
   /** `og.terrain.layer` */
   og_terrain_layer(world: number, data: number, index: number): string;
   /** `og.terrain.setLayer` */
   og_terrain_set_layer(world: number, data: number, index: number, layer: string | undefined): string;
+  /** `og.stream.status` */
+  og_stream_status(world: number, group: string): string;
+  /** `og.stream.request` */
+  og_stream_request(world: number, group: string): string;
+  /** `og.stream.release` */
+  og_stream_release(world: number, group: string): string;
+  /** `og.stream.budget` */
+  og_stream_budget(world: number): string;
+  /** `og.stream.setBudget` */
+  og_stream_set_budget(world: number, bytes: number): string;
 }
 
 /** Every binding symbol, in binding-table order, then the lifecycle members. */
@@ -714,6 +726,7 @@ export const SYMBOLS: readonly string[] = [
   "og_physics_rope_points",
   "og_physics_cloth_points",
   "og_physics_fluid_particles",
+  "og_physics_fluid3d_particles",
   "og_physics_water_height",
   "og_physics_vehicle_wheels",
   "og_physics_ragdoll_rig_from_skeleton",
@@ -876,6 +889,11 @@ export const SYMBOLS: readonly string[] = [
   "og_terrain_edit",
   "og_terrain_layer",
   "og_terrain_set_layer",
+  "og_stream_status",
+  "og_stream_request",
+  "og_stream_release",
+  "og_stream_budget",
+  "og_stream_set_budget",
   "og_host_set_dispatcher",
   "og_engine_create",
   "og_engine_destroy",

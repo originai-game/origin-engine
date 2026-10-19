@@ -4,7 +4,7 @@
 //!   og-gfx --all --capture DIR [--frames N]   frames to DIR/<tier>/<scene>.png, stats to DIR/report.txt
 //!   og-gfx --costs [--frames N]               the feature-cost table (markdown)
 //!   og-gfx --costs-e5 [--frames N]            the E5 rows alone (slow tiers: lavapipe)
-//!   og-gfx --costs-p2 [--frames N]            the phase 2 rows alone (terrain, water)
+//!   og-gfx --costs-p2 [--frames N]            the phase 2 rows alone (terrain, water, 3D fluid)
 //!
 //! Prints the backend tier, the frame stats, setup, CPU-submit and frame
 //! times, and the comparison with the committed reference when one exists.
@@ -502,11 +502,12 @@ fn effect_table(frames: u32, only: Option<&str>) -> Result<String, String> {
         (
             "terrain-grass",
             "P2: grass scatter (36,000 tufts, shadowed)",
-            |g| {
-                // The tufts are the last mesh the scene added.
-                let tuft = g.scene.instances.last().map(|i| i.mesh);
-                g.scene.instances.retain(|i| Some(i.mesh) != tuft);
-            },
+            |g| g.scene.scatters.clear(),
+        ),
+        (
+            "fluid-3d",
+            "P2: 3D fluid surface (2 fluids, 2,534 particles, screen space)",
+            |g| g.scene.fluids_3d.clear(),
         ),
     ];
     for (scene, label, strip) in effect_rows {

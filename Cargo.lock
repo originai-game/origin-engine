@@ -1855,6 +1855,7 @@ dependencies = [
  "glam 0.34.1",
  "gltf",
  "log",
+ "naga",
  "og-core",
  "pollster",
  "wgpu",
@@ -1894,6 +1895,19 @@ dependencies = [
  "og-core",
  "og-render",
  "og-tilemap",
+]
+
+[[package]]
+name = "og-tests-web"
+version = "0.0.1"
+dependencies = [
+ "js-sys",
+ "og-render",
+ "og-tests",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "wgpu",
 ]
 
 [[package]]

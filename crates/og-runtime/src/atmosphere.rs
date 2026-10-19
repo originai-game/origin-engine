@@ -2,7 +2,8 @@
 //! drawing of the physics that has a look): og.Fog, og.Sky, og.DayNight
 //! and og.Weather into the scene's fog, sky, light and particles; og.Water
 //! (with an og.WaterSurface's heights), og.Water2D over an og.WaterLine,
-//! og.Fluid2D as metaballs (a group as one surface), visible og.Rope and
+//! og.Fluid2D as metaballs (a group as one surface), og.Fluid3D as a
+//! screen-space surface (a group's particles coloured by their mix), visible og.Rope and
 //! og.Cloth; and the material shaders (`og.load.shader`, `og.render.shaderMaterial`,
 //! `og.render.setShaderParam`). Like the rest of extraction it reads the
 //! world (and the physics' last step) and never writes either.
@@ -35,6 +36,7 @@ pub(crate) struct AtmoLayouts {
     water_2d: Option<Layout>,
     water_line: Option<Layout>,
     fluid: Option<Layout>,
+    fluid3d: Option<Layout>,
     rope: Option<Layout>,
     cloth: Option<Layout>,
     pub ragdoll: Option<Layout>,
@@ -55,6 +57,7 @@ impl AtmoLayouts {
             water_2d: get("og.Water2D"),
             water_line: get("og.WaterLine"),
             fluid: get("og.Fluid2D"),
+            fluid3d: get("og.Fluid3D"),
             rope: get("og.Rope"),
             cloth: get("og.Cloth"),
             ragdoll: get("og.Ragdoll"),
@@ -94,7 +97,7 @@ fn hours(d: &Value, tick: u64, dt: f32) -> f32 {
 }
 
 /// og.Fog, og.Sky, og.DayNight, og.Weather, og.Water, og.Water2D,
-/// og.Fluid2D, og.Rope and og.Cloth into `rs.scene`. Returns the keys of
+/// og.Fluid2D, og.Fluid3D, og.Rope and og.Cloth into `rs.scene`. Returns the keys of
 /// the instances it added (cloth), for per-object motion.
 pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) -> Vec<(u64, u32)> {
     let mut keys = Vec::new();
@@ -106,6 +109,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     scene.water.clear();
     scene.water_2d.clear();
     scene.metaballs.clear();
+    scene.fluids_3d.clear();
     let time = world.time();
     let tick = time.tick;
     let orthographic = matches!(scene.camera.projection, Projection::Orthographic { .. });
@@ -381,6 +385,58 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             lane,
             mix,
             ..Metaballs::default()
+        });
+    }
+    // 3D fluids as a screen-space surface. A fluid sharing a group colours
+    // its particles by their mix over the group's fluids' colours (lanes as
+    // og-physics' fluid3d_mix gives them).
+    // Fluid3D.color is a Vector3 (x, y, z are r, g, b).
+    let fluid_color = |v: &Value| match v["color"].is_object() {
+        true => super::fx::vec3(&v["color"]),
+        false => Vec3::new(0.2, 0.55, 0.9),
+    };
+    let fluids3 = rows(world, layouts.fluid3d.as_ref());
+    let mut lanes: BTreeMap<(u32, u32), Vec3> = BTreeMap::new();
+    let mut mixes = BTreeMap::new();
+    for (e, v) in &fluids3 {
+        if let Some((lane, mix)) = physics.fluid3d_mix(Entity::from_bits(*e)) {
+            let group = u(v, "group", 0);
+            lanes.insert((group, lane), fluid_color(v));
+            mixes.insert(*e, (group, mix));
+        }
+    }
+    for (e, v) in &fluids3 {
+        if !on(v, "visible", true) {
+            continue;
+        }
+        let Some(particles) = physics.fluid3d_particles(Entity::from_bits(*e)) else {
+            continue;
+        };
+        let colors = mixes
+            .get(e)
+            .filter(|(_, mix)| mix.len() == particles.len())
+            .map(|(group, mix)| {
+                mix.iter()
+                    .map(|m| {
+                        (0..4u32)
+                            .filter_map(|k| Some(*lanes.get(&(*group, k))? * m[k as usize]))
+                            .sum::<Vec3>()
+                    })
+                    .collect::<Arc<[Vec3]>>()
+            });
+        let radius = f(v, "radius", 0.2);
+        scene.fluids_3d.push(og_render::Fluid3d {
+            particles: Arc::from(particles),
+            colors,
+            color: fluid_color(v),
+            opacity: f(v, "opacity", 0.6),
+            radius: radius * f(v, "drawScale", 0.6),
+            // The share of the volume each particle stands for: at rest
+            // they sit about half the interaction radius apart.
+            volume: (radius * 0.5).powi(3),
+            reflectivity: f(v, "reflectivity", 1.0),
+            refraction: f(v, "refraction", 1.0),
+            smoothing: f(v, "smoothing", 1.0),
         });
     }
     // Ropes: a strip through their points in 3D, a sprite per segment in 2D.

@@ -1,0 +1,26 @@
+{
+  "scene": "showcase",
+  "tier": "webgpu",
+  "browser": "Chrome for Testing (cdp.ts)",
+  "adapter": "",
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 100,
+  "runs_ms": [
+    2.146,
+    2.23,
+    2.446,
+    2.661,
+    2.926,
+    3.078,
+    3.239
+  ],
+  "frame_ms": 2.146,
+  "submit_median_ms": 0.2,
+  "load": [
+    148,
+    63.6,
+    41.3
+  ],
+  "note": "each run ends in one capture (its readback waits for the GPU to finish the run's frames)"
+}

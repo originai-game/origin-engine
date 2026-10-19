@@ -18,9 +18,18 @@ const json = (value: unknown): string | undefined => (value === undefined ? unde
 export const terrain = Object.freeze({
   load: (world: W, path: string) => parse(abi().og_terrain_load(world.id, path)),
   sample: (world: W, desc?: unknown) => parse(abi().og_terrain_sample(world.id, json(desc))),
-  bounds: (world: W, data: number, origin?: unknown) => parse(abi().og_terrain_bounds(world.id, data, json(origin))),
+  bounds: (world: W, data: number, origin?: unknown, quaternion?: unknown, scale?: unknown) =>
+    parse(abi().og_terrain_bounds(world.id, data, json(origin), json(quaternion), json(scale))),
   edit: (world: W, data: number, brush?: unknown) => parse(abi().og_terrain_edit(world.id, data, json(brush))),
   layer: (world: W, data: number, index: number) => parse(abi().og_terrain_layer(world.id, data, index)),
   setLayer: (world: W, data: number, index: number, layer?: unknown) =>
     parse(abi().og_terrain_set_layer(world.id, data, index, json(layer))),
+});
+
+export const stream = Object.freeze({
+  status: (world: W, group: string) => parse(abi().og_stream_status(world.id, group)),
+  request: (world: W, group: string) => parse(abi().og_stream_request(world.id, group)),
+  release: (world: W, group: string) => parse(abi().og_stream_release(world.id, group)),
+  budget: (world: W) => parse(abi().og_stream_budget(world.id)),
+  setBudget: (world: W, bytes: number) => parse(abi().og_stream_set_budget(world.id, bytes)),
 });

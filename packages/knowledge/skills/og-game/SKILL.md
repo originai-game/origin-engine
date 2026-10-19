@@ -1,6 +1,6 @@
 ---
 name: og-game
-description: Building a game on Origin Engine — the project layout, components and systems on the ECS, the game entry, scenes as .ogt text, assets cooked from assets/ to cooked/, the og.load loaders, effects, fog, sky, day and night, weather and water, terrain, material shaders in WGSL, physics beyond rigid bodies (joints, character and platformer controllers, vehicles, ropes, cloth, 2D fluids, ragdolls), skeletal animation, and the performance budget; the entry point, with the map of the other nine skills and the modules each teaches. Use first, and when creating, structuring or extending a TypeScript Origin Engine game (a project with a project.ogt; not a Godot project.godot).
+description: Building a game on Origin Engine — the project layout, components and systems on the ECS, the game entry, scenes as .ogt text, assets cooked from assets/ to cooked/, the og.load loaders, streaming groups, effects, fog, sky, day and night, weather and water, terrain, material shaders in WGSL, physics beyond rigid bodies (joints, character and platformer controllers, vehicles, ropes, cloth, 2D and 3D fluids, ragdolls), skeletal animation, and the performance budget; the entry point, with the map of the other nine skills and the modules each teaches. Use first, and when creating, structuring or extending a TypeScript Origin Engine game (a project with a project.ogt; not a Godot project.godot).
 ---
 
 An Origin Engine project is plain files: TypeScript in `src/`, source assets
@@ -14,7 +14,7 @@ next for each part.
 | Skill | Read it for | Its modules (`reference/<module>.md`) |
 |---|---|---|
 | **og-core** | the rules every line obeys: TypeScript only, the fixed tick, Results, archetype views, reflection | math, reflect, world, system, rng |
-| **og-game** (this one) | the project, scenes, assets and loading, input, 2D, animation, effects, atmosphere, terrain, shaders, physics, performance | game, transform, input, load, render, physics, atmosphere, anim, tilemap, terrain |
+| **og-game** (this one) | the project, scenes, assets and loading, input, 2D, animation, effects, atmosphere, terrain, shaders, physics, performance | game, transform, input, load, stream, render, physics, atmosphere, anim, tilemap, terrain |
 | **og-build** | the loop: cook, run with a script, read frames and dumps, hot reload, playtests, `og polish` (§5 there: the one list of what it scores), shipping | commands, probe |
 | **og-feel** | how much: hit stop, shake, squash, easing, floating text, the camera, frame rates, sorting, parallax, controller tunables | time, tween, camera, systems |
 | **og-ui** | screens and HUDs: templates, widgets, focus, phones, skins and motion | ui |
@@ -145,6 +145,40 @@ events) before using an asset, and spawn a loaded scene or model with
 `world.instantiate(asset, { name, position })`. The scene in
 `GameDesc.scene` is spawned for you when the world starts. `reference/load.md`
 lists every loader and what each returns.
+
+**Streaming groups** (`reference/stream.md`) keep a big world's assets off
+the GPU until the player is near them. A scene names glTF models (no skins
+or morph targets), textures and sounds that load and unload together, and
+what loads them:
+
+```
+stream "harbour" {
+  asset "models/harbour.glb"
+  asset "textures/harbour-sign.png"
+  asset "audio/gulls.wav"
+  distance 0 0 -200 80     # the camera within 80 m of (0, 0, -200)
+  unload 120               # kept until past 120 m (1.25 x the radius by default)
+  priority 2               # higher loads first and is evicted last
+}
+stream "cave" {
+  asset "models/cave.glb"
+  volume "cave-mouth"      # the camera inside that entity's box
+}
+stream "boss" {
+  asset "models/boss-arena.glb"   # no trigger: og.stream.request only
+}
+```
+
+Load and spawn grouped assets as usual: until the group is resident a model
+draws its proxy (its coarsest LOD, untextured), a texture is a grey 1x1 and
+a sound plays silence of its own length; then the real ones take over the
+same handles. Physics always collides with the proxy, so the simulation and
+the world hash never depend on what is resident. Groups are admitted by
+priority within `og.stream.setBudget` (256 MiB by default); a lower-priority
+group is evicted to make room for a higher one. `og.stream.status`,
+`og.stream.budget`, `og.StreamEvent` (state `STREAM_RESIDENT` and the rest)
+and the probe's `dump_stream` say where each group is. `og build --publish`
+ships each group as its own file, fetched only when the group loads.
 
 ## 7. Input
 
@@ -353,21 +387,30 @@ world.insert(ground, og.Collider, { shape: SHAPE_HEIGHTFIELD, mesh: info.geometr
 ```
 
 It is drawn around the camera at finer detail nearby (casting and
-receiving shadows, under the fog), and `og.CharacterController` walks on it
-up to `maxSlope`. `og.terrain.sample(world, { data, origin, x, z })` gives
-the height, normal and slope anywhere (to place trees, spawn on the
-ground, or check a slope); `og.terrain.edit` raises, lowers, flattens,
+receiving shadows, under the fog), placed by its entity's world transform
+(turn or scale the entity and the terrain turns and scales with it), and
+`og.CharacterController` walks on it up to `maxSlope`.
+`og.terrain.sample(world, { data, origin, quaternion, scale, x, z })`
+(the entity's position, rotation and scale; the last two may be left out
+for an unturned, unscaled terrain) gives the height, normal and slope
+anywhere (to place trees, spawn on the ground, or check a slope); `og.terrain.edit` raises, lowers, flattens,
 smooths or paints under a round brush (craters, building pads, a paint
 tool) and `og.terrain.layer` / `setLayer` retune a layer live. Edits are
-asset changes, not world state: a restored snapshot keeps the edited
-ground. Grass, flowers and stones are an `og.TerrainScatter` on the
+world state: a snapshot keeps them and restoring it brings the ground
+back as it was then. Grass, flowers and stones are an `og.TerrainScatter` on the
 terrain's entity: `{ data, geometry, material, layer, density, distance }`
 grows copies of the mesh where that layer shows, within `distance` of the
-camera (they shrink away over its outer `fade`), each fixed to its spot
+camera (thinning out over its outer `fade`, never shrinking), each fixed to its spot
 as the camera moves. Keep `density × distance²` modest: 4 a square metre
 within 60 m is about 36,000 copies. A navmesh .ogt's `terrain "terrain/island.ogt" { step 4 }` bakes
 the walkable slopes for og-ai. Lower `lodRing` on og.Terrain to trade
 detail for frame time.
+Its tiles stream: only the tiles the camera needs are on the GPU (16 MiB a
+terrain by default), decoded off the frame, the coarser level standing in
+until each arrives, and nothing a tick reads changes with it. In a probe
+script `terrain_stream:resident` decodes every wanted tile each frame (for
+captures to compare), `terrain_stream:stream:<MiB>` streams within that
+budget, and `dump_stream` gives the terrain's tiles.
 
 Which look for which mood is og-taste §8.
 
@@ -442,6 +485,22 @@ deterministic and part of snapshots (`reference/physics.md`):
   `mixing` 0 they stay in layers and by 1 they blend, colour and weight
   evening out where they touch; a group draws as one surface. Up to
   sixteen fluids draw a frame (four to a group).
+- `og.Fluid3D` — a 3D particle fluid (3D profile) drawn as one
+  screen-space surface that refracts and tints what lies behind it,
+  reflects the sky and takes the scene's lights. Give it `bounds` (a
+  container around the entity) or colliders and terrain to hold it; an
+  emitter (`emitRate`, `emitOffset`, `emitVelocity`, up to `maxCount`) pours
+  and a sink box (`sinkSize`, `sinkOffset`) drains. Groups work as in 2D:
+  `density` 3 under 1 gives honey under water, `mixing` 1 blends their
+  colours. Look: `color`, `opacity` per metre, `reflectivity`,
+  `refraction`, `smoothing` (0 shows the beads); fluids drawn in one frame
+  share one surface and the first fluid's look. Cost is the particles:
+  about 0.9 ms of CPU a tick for 2,000 at one substep and 1.8 ms at the
+  default two (native and wasm alike), 4 ms for 4,000 and 10 ms for 8,000
+  at two, roughly double that when they pile deep, so budget a scene to a
+  few thousand; the surface costs about 1.1 ms on the GPU whatever the count,
+  growing with the pixels it covers. `og.physics.fluid3dParticles` reads
+  the positions (the fx-showcase `fluids3d` station).
 - `og.Ragdoll` — give the entity a rig
   (`og.physics.setRagdollRig(world, e, must(og.physics.ragdollRigFromSkeleton(world, anim.skeleton)))`),
   then set `weight` 1 to go limp. At weight 0 its bodies follow the
@@ -451,9 +510,9 @@ deterministic and part of snapshots (`reference/physics.md`):
   side-on skinned model whose bones lie in the xy plane: the bones are
   rapier2d bodies on hinges about z (the fx-showcase `ragdoll2d` station).
 
-Readouts (`ropePoints`, `clothPoints`, `fluidParticles`, `waterHeight`,
-`vehicleWheels`, `ragdollPose`) show the last step. `templates/fx-showcase`
-has a station for each.
+Readouts (`ropePoints`, `clothPoints`, `fluidParticles`,
+`fluid3dParticles`, `waterHeight`, `vehicleWheels`, `ragdollPose`) show
+the last step. `templates/fx-showcase` has a station for each.
 
 ## 14. Performance
 
@@ -471,6 +530,9 @@ neon signs cost little; keep each `distance` as short as the look allows.
 Up to `MAX_LIGHTS` (256) in view are drawn, the brightest kept past that,
 and the first two in view with `castShadow` cast shadows (shadows are the
 expensive part).
+Simulated matter is paid for per point on the CPU every tick: a 3D fluid's
+particles (about 1 ms per 1,000 at two substeps) and a self-colliding
+cloth's points (about 1 ms per 1,000) are the ones to count (§13).
 
 ## 15. Where to look things up
 

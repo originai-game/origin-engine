@@ -1,0 +1,149 @@
+{
+ "checks": [
+  {
+   "check": "stage desktop: the shell's hello reaches the overlay in its own document",
+   "ok": true
+  },
+  {
+   "check": "stage desktop: ready reaches the overlay, no fail, no crash",
+   "ok": true
+  },
+  {
+   "check": "stage desktop: a top-level page, told its own origin, with no __OG_GAME",
+   "ok": true
+  },
+  {
+   "check": "stage desktop: the overlay owns play start: the shell draws no gate",
+   "ok": true
+  },
+  {
+   "check": "stage desktop: play runs without a tap (the overlay's hello said started)",
+   "ok": true
+  },
+  {
+   "check": "stage desktop: og.platform's store.get went to the overlay as a protocol 2 call",
+   "ok": true
+  },
+  {
+   "check": "stage desktop: the overlay's stored best is the game's best",
+   "ok": true
+  },
+  {
+   "check": "stage desktop: nothing of og.platform's is in the Stage origin's localStorage",
+   "ok": true
+  },
+  {
+   "check": "stage desktop: no service worker is installed or fetched on the Stage origin",
+   "ok": true
+  },
+  {
+   "check": "stage desktop: the og-probe wire still answers the overlay's state from the same window",
+   "ok": true
+  },
+  {
+   "check": "stage phone: the shell's hello reaches the overlay in its own document",
+   "ok": true
+  },
+  {
+   "check": "stage phone: ready reaches the overlay, no fail, no crash",
+   "ok": true
+  },
+  {
+   "check": "stage phone: a top-level page, told its own origin, with no __OG_GAME",
+   "ok": true
+  },
+  {
+   "check": "stage phone: the overlay owns play start: the shell draws no gate",
+   "ok": true
+  },
+  {
+   "check": "stage phone: play runs without a tap (the overlay's hello said started)",
+   "ok": true
+  },
+  {
+   "check": "stage phone: og.platform's store.get went to the overlay as a protocol 2 call",
+   "ok": true
+  },
+  {
+   "check": "stage phone: the overlay's stored best is the game's best",
+   "ok": true
+  },
+  {
+   "check": "stage phone: nothing of og.platform's is in the Stage origin's localStorage",
+   "ok": true
+  },
+  {
+   "check": "stage phone: no service worker is installed or fetched on the Stage origin",
+   "ok": true
+  },
+  {
+   "check": "stage phone: the og-probe wire still answers the overlay's state from the same window",
+   "ok": true
+  },
+  {
+   "check": "stage silent: the shell repeats its hello (at most six) while no overlay answers",
+   "ok": true
+  },
+  {
+   "check": "stage silent: og.platform falls back to the page's memory, never the Stage origin's localStorage",
+   "ok": true
+  }
+ ],
+ "stage": {
+  "desktop": {
+   "heard": [
+    "hello",
+    "loading",
+    "loading",
+    "loading",
+    "loading",
+    "loading",
+    "loading",
+    "loading",
+    "loading",
+    "loading",
+    "loading",
+    "loading",
+    "loading",
+    "loading",
+    "call",
+    "ready",
+    "sample"
+   ],
+   "best": 555,
+   "t1": 49,
+   "t2": 109,
+   "keys": []
+  },
+  "phone": {
+   "heard": [
+    "hello",
+    "loading",
+    "loading",
+    "loading",
+    "loading",
+    "loading",
+    "loading",
+    "loading",
+    "loading",
+    "loading",
+    "call",
+    "ready",
+    "sample"
+   ],
+   "best": 555,
+   "t1": 48,
+   "t2": 109,
+   "keys": []
+  },
+  "silent": {
+   "hellos": 6,
+   "keys": []
+  }
+ },
+ "shots": [
+  "tests/evidence/P2/shell-self/stage-in-page-desktop-playing.png",
+  "tests/evidence/P2/shell-self/stage-in-page-phone-playing.png",
+  "tests/evidence/P2/shell-self/stage-in-page-silent-gate.png"
+ ]
+}

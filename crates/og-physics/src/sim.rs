@@ -217,6 +217,7 @@ pub(crate) struct Sim {
     pub(crate) surfaces: BTreeMap<u64, crate::water::SurfaceState>,
     pub(crate) lines: BTreeMap<u64, crate::water::LineState>,
     pub(crate) ragdolls: BTreeMap<u64, super::RagdollState>,
+    pub(crate) fluids3: BTreeMap<u64, crate::fluid3d::Fluid3State>,
 }
 
 /// Every body's pose at the start of the tick, by handle index (with the

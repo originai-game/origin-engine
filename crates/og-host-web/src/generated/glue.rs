@@ -664,6 +664,11 @@ pub fn og_physics_fluid_particles(world: u32, entity: f64) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_physics_fluid3d_particles(world: u32, entity: f64) -> String {
+    <Host as PhysicsApi>::og_physics_fluid3d_particles(&Host, world, entity)
+}
+
+#[wasm_bindgen]
 pub fn og_physics_water_height(world: u32, entity: f64, x: f64, z: f64) -> String {
     <Host as PhysicsApi>::og_physics_water_height(&Host, world, entity, x, z)
 }
@@ -1472,8 +1477,8 @@ pub fn og_terrain_sample(world: u32, desc: Option<String>) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_terrain_bounds(world: u32, data: f64, origin: Option<String>) -> String {
-    <Host as TerrainApi>::og_terrain_bounds(&Host, world, data, origin)
+pub fn og_terrain_bounds(world: u32, data: f64, origin: Option<String>, quaternion: Option<String>, scale: Option<String>) -> String {
+    <Host as TerrainApi>::og_terrain_bounds(&Host, world, data, origin, quaternion, scale)
 }
 
 #[wasm_bindgen]
@@ -1489,4 +1494,29 @@ pub fn og_terrain_layer(world: u32, data: f64, index: u32) -> String {
 #[wasm_bindgen]
 pub fn og_terrain_set_layer(world: u32, data: f64, index: u32, layer: Option<String>) -> String {
     <Host as TerrainApi>::og_terrain_set_layer(&Host, world, data, index, layer)
+}
+
+#[wasm_bindgen]
+pub fn og_stream_status(world: u32, group: String) -> String {
+    <Host as StreamApi>::og_stream_status(&Host, world, group)
+}
+
+#[wasm_bindgen]
+pub fn og_stream_request(world: u32, group: String) -> String {
+    <Host as StreamApi>::og_stream_request(&Host, world, group)
+}
+
+#[wasm_bindgen]
+pub fn og_stream_release(world: u32, group: String) -> String {
+    <Host as StreamApi>::og_stream_release(&Host, world, group)
+}
+
+#[wasm_bindgen]
+pub fn og_stream_budget(world: u32) -> String {
+    <Host as StreamApi>::og_stream_budget(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_stream_set_budget(world: u32, bytes: f64) -> String {
+    <Host as StreamApi>::og_stream_set_budget(&Host, world, bytes)
 }

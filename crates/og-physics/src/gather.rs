@@ -9,8 +9,8 @@
 use crate::StepOut;
 use crate::schema::{BODY_KINEMATIC, Collider, RigidBody, Transform, Velocity};
 use crate::schema_ext::{
-    CharacterController, Cloth, Fluid2D, Joint, PlatformerController, Ragdoll, Rope, Vehicle,
-    WaterLine, WaterSurface,
+    CharacterController, Cloth, Fluid2D, Fluid3D, Joint, PlatformerController, Ragdoll, Rope,
+    Vehicle, WaterLine, WaterSurface,
 };
 use og_core::glam::{Quat, Vec3};
 use og_core::{Layout, Reflect, Result};
@@ -68,12 +68,13 @@ const Q_FLUIDS: usize = 12;
 const Q_SURFACES: usize = 13;
 const Q_LINES: usize = 14;
 const Q_RAGDOLLS: usize = 15;
+const Q_FLUIDS3: usize = 16;
 
 const CHARACTER: &str = CharacterController::NAME;
 const PLATFORMER: &str = PlatformerController::NAME;
 
 /// The system's queries, by index.
-pub(crate) const QUERIES: [QuerySpec; 16] = [
+pub(crate) const QUERIES: [QuerySpec; 17] = [
     // Q_BODIES: every body, its transform written back.
     QuerySpec {
         read: &[RigidBody::NAME],
@@ -170,6 +171,12 @@ pub(crate) const QUERIES: [QuerySpec; 16] = [
         write: &[],
         without: &[],
     },
+    // Q_FLUIDS3
+    QuerySpec {
+        read: &[TRANSFORM, Fluid3D::NAME],
+        write: &[],
+        without: &[],
+    },
 ];
 
 /// The components a step writes back besides transforms and velocities
@@ -184,7 +191,7 @@ pub(crate) const WRITTEN: [&str; 5] = [
 ];
 
 /// Every component of physics beyond rigid bodies, which its systems read.
-pub(crate) const READ: [&str; 10] = [
+pub(crate) const READ: [&str; 11] = [
     CHARACTER,
     PLATFORMER,
     Joint::NAME,
@@ -195,6 +202,7 @@ pub(crate) const READ: [&str; 10] = [
     WaterSurface::NAME,
     WaterLine::NAME,
     Ragdoll::NAME,
+    Fluid3D::NAME,
 ];
 
 /// The fields and layout of one reflected component, for decoding rows.
@@ -234,6 +242,7 @@ pub(crate) struct Ids {
     surface: Rows,
     line: Rows,
     ragdoll: Rows,
+    fluid3: Rows,
 }
 
 fn fields_of<T: Reflect>(world: &World) -> Result<(Vec<FieldRef>, Layout)> {
@@ -271,6 +280,7 @@ impl Ids {
         world.register::<Ragdoll>()?;
         world.register::<crate::CharacterEvent>()?;
         world.register::<crate::Splash>()?;
+        world.register::<Fluid3D>()?;
         let (body_fields, body_layout) = fields_of::<RigidBody>(world)?;
         let (collider_fields, collider_layout) = fields_of::<Collider>(world)?;
         Ok(Ids {
@@ -293,6 +303,7 @@ impl Ids {
             surface: Rows::of::<WaterSurface>(world)?,
             line: Rows::of::<WaterLine>(world)?,
             ragdoll: Rows::of::<Ragdoll>(world)?,
+            fluid3: Rows::of::<Fluid3D>(world)?,
         })
     }
 }
@@ -341,6 +352,7 @@ pub(crate) struct Scene {
     pub surfaces: Vec<(Entity, Vec3, WaterSurface)>,
     pub lines: Vec<(Entity, Vec3, WaterLine)>,
     pub ragdolls: Vec<(Entity, Vec3, Quat, Ragdoll)>,
+    pub fluids3: Vec<(Entity, Vec3, Fluid3D)>,
 }
 
 /// Every row of component `T` in `a`, decoded from its columns.
@@ -534,6 +546,9 @@ pub(crate) fn gather<'w>(q: &dyn Fn(usize) -> Result<QueryIter<'w>>, ids: &Ids) 
     placed!(Q_LINES, ids.line, scene.lines, |e, p, _q, c| (e, p, c));
     placed!(Q_RAGDOLLS, ids.ragdoll, scene.ragdolls, |e, p, q, c| (
         e, p, q, c
+    ));
+    placed!(Q_FLUIDS3, ids.fluid3, scene.fluids3, |e, p, _q, c| (
+        e, p, c
     ));
     Ok(scene)
 }

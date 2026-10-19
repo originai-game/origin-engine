@@ -129,6 +129,164 @@ IDL's docs.
 - Pre-existing, not touched: the idle, rhythm, roguelike and tower-defense
   archetype playtests fail since the UI round (fixed on `p2-ui-fix`).
 
+## Phase 3, streaming round (2026-10-19)
+
+Branch `p3-streaming`, 932dc00..HEAD. Terrain streaming, asset streaming
+groups and the phase 2 terrain round's leftovers. Evidence:
+`tests/evidence/P3/streaming/` (break-and-restore notes in
+`break-and-restore.md`).
+
+- **Terrain placement** (9941ffd, 6b9221b): og-render draws a terrain
+  through a transform, and extraction hands it the entity's world matrix;
+  og.terrain.sample, bounds and edit take the entity's rotation and scale.
+- **Terrain tiles** (8c0e8bf, bc5c5ea, 8bc9174): og-render draws a
+  terrain from a pyramid of 128-quad tiles in texture arrays, choosing
+  them with `terrain_tiles_wanted` within `TerrainLod::budget` (16 MiB a
+  terrain by default), each after its parent with a fade. og cook writes
+  the pyramid (og.Terrain schema 2, every tile zlib'd on its own), and
+  og-runtime's streamer decodes the wanted tiles off the frame (a worker
+  thread natively; the browser's DecompressionStream on the web, the
+  engine finishing at most 2 ms of tiles a frame), keeps twice the budget
+  decoded and hands the renderer at most eight new tiles a frame. A
+  capture settles first. The tick reads terrains through physics and
+  og.terrain.sample only, never through what is resident.
+- **Streaming and the world hash** (27e2f62): the probe's
+  `terrain_stream:<stream|resident>[:<MiB>]` and dump_stream's `terrain`
+  section; `packages/engine/tests/terrain-stream.test.ts` runs the
+  fx-showcase terrain station 600 ticks resident and streamed at 0.25 MiB
+  and finds the same world hash on every tick
+  (`terrain/determinism.json`).
+- **Frame times** (451f376, 9c7c986): `bench/terrain-fly.ts` flies the
+  2 km island and a new 8 km terrain (4097², ridged) at 60 m on the native
+  host, timing engine.frame plus the GPU wait (`og_node_wait_gpu`). On the
+  M4 Pro at 1280x720 every run's p99 is 2.1 to 2.6 ms and no frame exceeds
+  8.2 ms; streaming the 8 km terrain decodes 473 tiles at 16 MiB and 202
+  at 4 MiB, the streamer spends at most 0.12 ms a frame, and handing eight
+  tiles costs about 1 ms (`terrain/fly/frame-times.md`, `NOTES.md`).
+- **Edits are world state** (9024a12, 6a8b6ee): every og.terrain.edit
+  joins an edit log in the world's og.terrain block; snapshots keep it,
+  the world hash covers it and a restore replays it.
+- **Scatter** (1ced372): og-render places scattered copies once per
+  32 x 32-cell chunk, caches their instances and draws each chunk with one
+  instanced draw, fading copies by a dither at full size in every pass.
+  The 36,000-tuft grass costs +0.46 ms (was +4.1 to +4.5 ms;
+  `costs-p2-after-scatter.md`, `terrain-grass-before-after.png`).
+- **Asset streaming groups** (8f19c0b, 8ae1f46, 1317314, a3d3870,
+  79e8dc7, 98db532, 5481b09): a scene's `stream` blocks (distance, volume
+  or request-only triggers, priority) are cooked into one pack per group
+  with a proxy for each grouped glTF; the runtime admits wanted groups by
+  priority within a memory budget (256 MiB by default) and swaps real
+  meshes, textures and sounds in behind the stand-ins' handles, so the
+  world hash never depends on what is resident; IDL module `stream`
+  (og.stream.status, request, release, budget, setBudget). `og build --publish`
+  ships the first group as files the shell preloads and each other group
+  as its pack, fetched on demand and cached by the service worker for
+  offline play. `packages/engine/tests/asset-stream.test.ts` flies a
+  three-group path natively and on the web, online and offline
+  (`groups/`).
+- **Shared render change**: 8ae1f46 adds a replaced-texture pass to
+  og-render's sync step (`RenderScene::set_texture`,
+  `set_texture_upload`), outside the terrain, scatter and loading paths.
+- **Gate**: `OG_GATE_JOBS=2 scripts/check.sh --all` at 58c2466,
+  2026-10-19, Apple M4 Pro shared with other agents' work: **PASSED, 9 of
+  9 steps in 134 s**: fmt 1 s, clippy 2 s, wasm-build 7 s, test 85 s (470
+  Rust tests, 5 skipped), wasm-opt 76 s, size-gate 48 s, drift 1 s,
+  bun-test 38 s, determinism 1 s.
+- **Wasm**: publish wasm 3,064,943 B brotli, 73.1 % of the 4 MiB budget
+  (+86,482 B over the terrain round's 2,978,461 B): the tile pyramid and
+  its streamer, the scatter chunks, the streaming groups and the
+  replaced-texture pass.
+- **Shore foam on vulkan-cpu**: traced to the sea's single 24 km
+  triangle, which llvmpipe interpolates metres off once the near plane
+  clips it; any tessellation brings the foam and the lake back. Left for
+  the water path (`foam/NOTES.md`, 58c2466).
+
+## Status 2026-10-19, shell own-window round
+
+A top-level Stage build with the platform's Stage overlay in its own
+document now has that overlay as its Player: when the page is not framed,
+carries no `window.__OG_GAME` and was told its own origin as the Stage host
+(`window.__OG_STAGE_HOST__ === location.origin`, the og-probe wire's own
+test, now one helper, `shell/wire.ts` `stageInPage`), the shell's Player
+bridge (`shell/player.ts`) speaks Player protocol 2 to its own window by
+`postMessage`, hears only its own window at its own origin, and ignores its
+own echo (a `hello` naming a `substrate` or listing no `capabilities`). The
+overlay's answers count as the Player's: its `hello` with `started: true`
+starts play with no gate of the shell's, og.platform's store and saves go
+to it, and nothing of og.platform's reaches the Stage origin's
+`localStorage` (the page's memory answers what the overlay does not); no
+service worker is registered there. Framed pages and `__OG_GAME` pages are
+unchanged, and any other top-level page still plays alone on the browser's
+storage. A `result`'s `time` now passes through the bridge from every
+transport (framed, HTTP, own window), so `og.platform.info().clock` reads
+`player` as soon as a Player stamps its answers. Details:
+`docs/web-export.md` §Player protocol 2; what the overlay must do to answer
+is ask 10 in `docs/platform-asks.md`.
+
+Proof: `tests/platform-stage.test.ts` (6 tests against a stand-in overlay
+answering in the same window), `tests/web/player.ts` in Chrome (65 checks,
+22 of them new: the Stage build with an in-document stand-in overlay at
+desktop and phone sizes, and a silent overlay that never answers). Each
+fails when its code is broken: without the echo filter, the `time`
+pass-through, the source and origin check, the `self` peer, the `__OG_GAME`
+precedence or the page's memory store. Transcripts, screenshots and
+receipts: `tests/evidence/P2/shell-self/`.
+
+## Status 2026-10-19, phase 2, tooling round
+
+Branch `p2-tooling`; it closes owed rows 22 and 34 and records row 35's
+stop (the table below says which commits). Evidence:
+`tests/evidence/P2/tooling/` (`web-gfx-webgpu.json`, `web-gfx-webgl2.json`,
+`m4-m5-tooling.md`, `m4-gltf-reload.json`, `m5-sweep-8-frames.json`,
+`wasm-build-relink.md`, `break-and-restore.md`, before and after frames).
+
+- **og-tests' gfx scenes in the browser** (22): `crates/og-tests-web`
+  renders every scene of og-tests on an OffscreenCanvas in headless
+  Chrome, on WebGPU and on WebGL2, and `tests/web/reference-gfx.ts`
+  compares each with its tier's reference or metal's under og-tests' RMSE
+  rule. All 47 applicable scenes pass on each tier (31 s and 52 s on the
+  Apple M4 Pro, ANGLE Metal). WebGL2 has references of its own for `msaa`
+  (only that tier renders it), `showcase` and `overlay` (GPU particles on
+  the CPU path) and `water-3d` (cubemap reflection); `taa` does not render
+  there. The web-reference step runs both tiers.
+- **Browser frame times** (22): the seven perf scenes per tier beside
+  metal's in `crates/og-tests/perf/<tier>-chrome-apple-m4-pro/`; WebGPU
+  against WebGL2, ms per frame: showcase 2.15 / 2.58, spheres-20k 6.49 /
+  6.89, sprites-20k 1.11 / 1.23, gltf-reference 1.38 / 1.64 (taken at load
+  averages 50 to 191).
+- **M4, glTF edit to reload** (34): through `og dev` on the scaffolded
+  template, eight edits of the dropship's hull colour reload in 90 to
+  113 ms (og dev's figure; 145 to 251 ms from the write). The first run met
+  the time but not the change: the reload kept the models already loaded.
+  Fixed in og-runtime (changed cooked glTF loads again into its asset
+  index) and guarded by `packages/engine/tests/reload-asset.test.ts`.
+- **M5, timed sweep** (34): `og probe sweep` over the trickster's
+  `Spin.speed`, 8 values of 30 ticks, gives 8 distinct 1280×720 frames in
+  298 to 559 ms round trip (target 1 s).
+- **wasm-build relink**: the publish variant builds in its own target dir,
+  so a rerun with nothing changed costs 0.4 and 0.5 s instead of 16.7 and
+  12.2 s (cargo 1.99 keeps one fingerprint per unit whatever its features).
+- **wgpu and naga 31** (35): not on crates.io; the newest is 30.0.1
+  (2026-08-22), which the engine already uses. The row stays open.
+
+Gate: `OG_GATE_JOBS=2 scripts/check.sh --all` on dbf3ae1 (this commit adds
+documents only), with other agents' builds on the machine (load 18 to 48):
+**PASSED, 9 of 9 steps in 115 s**: fmt 2 s, clippy 0 s, wasm-build 1 s,
+test 67 s, wasm-opt 62 s, size-gate 45 s, drift 1 s, bun-test 20 s,
+determinism 25 s. The run before it failed bun-test once: `i18n.test.ts`'s
+`beforeAll` cook passed bun's 5 s hook timeout at load 40 and passed on the
+rerun. `scripts/check.sh web-reference`'s new steps pass on both tiers
+(above). The publish wasm is **3,029,921 B brotli, 72.2 %** of the budget
+(the render round's merge recorded 3,028,729 B, +1,192 B: the model
+refresh).
+
+Left out: the wgpu 31 upgrade (unpublished); `og dev` killed by a signal
+from outside leaves its bun child running (a clean exit and Ctrl-C stop
+it; the reload test kills both); og-tests' `og-gfx` capture binary stays
+native (it reads scenes from disk; the browser harness replaces it there);
+browser frame times were taken with other agents' gates on the machine, so
+they are upper bounds.
+
 ## Status 2026-10-19, player-page round
 
 The engine's page is the play page itself (design §4): `og build` writes
@@ -398,6 +556,150 @@ metal with other rounds' builds on the machine:
 - Packs whose fonts have small x-heights still measure 7–8 px on some
   labels; a pack's ramp line for base raises them.
 
+### Fix on main (`p2-ui-fix`, from b2532cd)
+
+Four archetypes failed `og test` on main after the round:
+- idle, rhythm, roguelike and tower-defense in `frames`;
+- tower-defense in lose, pad, pause and replay, whose title refused a tap on
+  Play before 0.367 s.
+
+The cause was og-ui's stagger. It kept each staggered control inert until its
+own place in the cascade had played. The round's springs rest the hover at
+exactly zero, so skinned buttons joined the cascade for the first time.
+
+Now the cascade is only seen. A control takes input once the panel's own
+entrance, still inert, has played, and the title takes a tap from 0.267 s as
+before the round. New test: `skin.rs`
+`a_staggered_panels_controls_take_presses_once_the_panel_has_arrived`, broken
+twice (break-and-restore.md).
+
+Nine archetype frames were re-recorded for this round's text: the tokens'
+tracking on display titles and headings, and the distance-field glow of idle's
+and rhythm's `textGlow`. Each reason and the three-build attribution are in
+`tests/evidence/P2/ui/archetype-frames.md`, with before and after images in
+`rerecord/archetype-*.png`.
+
+`og test` passes:
+- the seven archetypes: idle 10, rhythm 11, roguelike 9, tower-defense 9,
+  match3 6, runner 8 and topdown 7 suites;
+- fx-showcase 18, game 2 and ui-kit 29 suites.
+
+`OG_GATE_JOBS=2 scripts/check.sh` **PASSED, 9 of 9 in 1059 s** at load 30–50.
+web-reference was not run, because no og-ui reference changed. The publish
+wasm is 3,061,786 B brotli, 72 %.
+
+### Fix on main (`p2-ui-webgl`, from 7a5e320)
+
+The tooling agent's web-reference run found two failures on main.
+
+**Every WebGL2 renderer panicked, from 42d7294 (the overlay glass).** wgpu's GL
+backend translates each shader to GLSL ES 3.0 when it creates a pipeline.
+`fs_glass` asked its pyramid for its level count with `textureNumLevels`, which
+GLSL ES 3.0 lacks (`Features(TEXTURE_LEVELS)`), so the overlay pipeline could
+not be created. fx-showcase on WebGL2 reported "engine did not start:
+unreachable", and every graphics scene failed there. The design's §8 reduced
+tier has no texture queries.
+
+Now the glass pass hands the shader the level count. The pyramid's own sprite
+params, `[0, 0, 0, LEVELS]`, are bound in place of the zero params (`glass.rs`
+`pyramid_params`), and `fs_glass` reads `sprite_params.msdf.w`. The level of
+detail is the same number as before, so the WebGPU and native images are
+unchanged. New test: `crates/og-render/tests/webgl2.rs` runs wgpu's own naga
+translation (WGSL to GLSL ES 300, WebGL flags) over every entry point of
+`overlay.wgsl` and `glass.wgsl`, so a texture query or other GLSL ES 3.0 gap
+fails natively without a browser. Broken once (break-and-restore.md).
+
+**fx-showcase on WebGPU failed every station at b2532cd, and still did on
+7a5e320.** Its start threw `models/trickster.glb#tex0: not transcoded`, so the
+scene was never built (post 99.5 % outliers, RMSE 0.75). It is not the UI round
+or the texture streaming round. Since d2bd748 (undeclared access is loud), the
+TypeScript `Engine` constructor learns the build from the probe's `hello`, and
+every probe call ran a tick boundary. With `deferStart`, the tick boundary is
+where GameDesc.start runs. So start ran inside `createEngine`, before the Worker
+attached its renderer and transcoded the bundle's Basis textures, and `og run`
+with a renderer started before its offscreen surface was attached. Now `hello`,
+which only says who is speaking, runs no tick boundary (`engine.rs`
+`answer_call`). New test: `packages/engine/tests/runtime.test.ts`, with
+deferStart, start waits for the first tick boundary and `hello` is not one.
+Written before the fix and failing on it (break-and-restore.md).
+
+`scripts/check.sh --only web-reference` **PASSED in 65 s**:
+- fx-showcase 5 of 5 stations on WebGPU and 5 of 5 on WebGL2;
+- E5 17 of 17 on each tier.
+
+No reference was re-recorded.
+
+`OG_GATE_JOBS=2 scripts/check.sh` passed fmt, clippy, wasm-build, test, wasm-opt,
+size-gate and drift. bun-test timed out once, at load 140, in web-export's
+`the same inputs give the same bytes`; that test passes alone in 0.2 s. A
+rerun, `scripts/check.sh --only bun-test`, **PASSED** with the engine package's
+108 tests. The publish wasm is 3,151,777 B brotli, 75 %.
+
+## Status 2026-10-19, phase 2, 3D SPH round
+
+Branch `p2-sph` (evidence: `tests/evidence/P2/sph/`, `NOTES.md` there
+indexes it). Owed row 29 is done.
+
+- **The simulation** (6dcdc98, 87ea4bd): `og.Fluid3D`, a 3D particle fluid
+  by double density relaxation (Clavet et al. 2005), the 2D fluid's model,
+  rather than position-based fluids: one neighbour search and two passes a
+  substep instead of PBF's solver iterations, stable at 60 Hz with two
+  substeps, and groups (four fluids at most, layering by `density`,
+  blending by `mixing`), emitters (`emitRate` up to `maxCount`) and sink
+  boxes carry over. Neighbours come from a spatial hash in a fixed order;
+  particles collide with the 3D colliders and the terrain's height field
+  and stay in optional `bounds`. All of it is og.physics state (snapshots,
+  restore, the world hash). CPU per 60 Hz tick, native and wasm32 alike:
+  about 0.9 ms for 2,000 particles at one substep, 1.8 ms at the default
+  two, 4 ms for 4,000 and 10 ms for 8,000, about double where they pile
+  deep.
+- **Determinism** (a513e20): the beyond-rigid-bodies scenario pours two 3D
+  fluids of one group into a terrain bowl through an emitter and a sink;
+  host debug and release and wasm32 scalar and simd128 agree (physics_hash
+  8301574762329360262).
+- **The public API** (71257f0): api.ogt's physics module declares
+  `og.Fluid3D` and `og.physics.fluid3dParticles`, regenerated with `og api
+  gen` into the bindings, schema, d.ts, ABI, glue and wiki.
+- **The surface** (200b6fe, 7fc64e7, 2f9e908, 792aa2b): og-render draws
+  every visible 3D fluid as one screen-space surface on all four tiers (no
+  storage buffer, no compute): sphere imposters into a depth and a
+  thickness target, a separable bilateral smoothing, and a composite in
+  the main pass that refracts and absorbs the scene behind, lights the
+  body with the sun, its cascades, the image-based light and the clustered
+  local lights, reflects the environment and writes its depth. About
+  1.1 ms of GPU on the M4 Pro for a fluid covering a third of a 720p frame,
+  whatever the particle count. Marching cubes was neither built nor
+  measured; the case against it (a density grid and a mesh rebuilt every
+  frame, on the CPU for WebGL2) is reasoning only. Shared render-graph
+  changes: `post.rs` gains `FramePass::Fluid3d` and its five transients
+  (`fluid.depth`, `fluid.zbuf`, `fluid.thick`, `fluid.blur`,
+  `fluid.smooth`), read by the main pass; `lib.rs` forces the depth
+  prepass and the split main pass while a fluid has particles.
+- **fx-showcase** station 23, fluids3d (332ec84): a blue pool and a heavy
+  orange fluid poured into it by an emitter, sinking under it, with a
+  playtest of 12 checks and references on metal, vulkan-cpu (1974892),
+  webgpu and webgl2 (829143e), all within the RMSE rule against metal.
+- **Docs** (7e63835): the og-game skill and the wiki teach og.Fluid3D and
+  its CPU and GPU cost; og-physics' and og-render's READMEs gain their
+  phase 2 sections.
+
+### Gate and wasm
+
+`OG_GATE_JOBS=2 scripts/check.sh --all` on 8658977 (this section and
+the NOTES' last edit uncommitted, documentation only), 2026-10-19, with
+other agents' gates on the machine (load average 28 to 96): **PASSED, 9 of
+9 steps in 412 s**: fmt 1 s, clippy 0 s, drift 2 s, wasm-build 27 s,
+wasm-opt 123 s, test 125 s, size-gate 47 s, bun-test 27 s, determinism
+407 s (every build agrees, physics_hash 8301574762329360262). The run
+before it (fmt 4 s, clippy 65 s, wasm-build 23 s, wasm-opt 98 s, size-gate
+64 s, drift 32 s, test 360 s) failed at bun-test at load 96 on two timeouts
+in code this round does not touch: i18n.test.ts's beforeAll (`og cook` of
+ui-kit, 5 s) and web-export.test.ts (120 s); alone they pass in 4 s, and
+the rerun passed. The publish wasm is **3,052,777 B brotli, 72.8 % of the
+4,194,304 B budget**, 24,048 B (0.57 points) more than the 3,028,729 B
+before this round. Earlier, `scripts/check.sh web-reference` passed in
+168 s (18 of 18 stations on webgpu and webgl2, fluids3d included).
+
 ## Status 2026-10-19, phase 2, render round
 
 Branch `p2-render`; it closes owed rows 23, 28, 30, 31 and 32 (the table
@@ -510,13 +812,15 @@ Branch `p2-terrain-water`, 0ee78f1..HEAD on 2dae5fa. Closes owed row 24.
 - **Wasm**: publish wasm 2,978,461 B brotli, 71.0 % of the budget
   (+35,281 B over 2,943,180). The terrain's load-time decoding lives in
   og-cook and miniz_oxide, both at opt-level z in `[profile.wasm]`.
-- **Not done**: terrains are decoded whole at load, not streamed tile by
-  tile; a terrain lies along world x and z (its entity's rotation and
-  scale are ignored); edits are asset changes and are not in snapshots;
-  scattered copies draw without per-copy alpha fade (they shrink) and the
-  scatter is rebuilt on the CPU every frame (4.3 ms for 36,000 copies; a
-  GPU placement pass would remove it); lavapipe draws no shore foam on
-  `terrain-far`'s 24 km single-quad sea (not investigated).
+- **Not done** at the round's end, since closed by the phase 3 streaming
+  round below unless noted: terrains were decoded whole at load (now
+  streamed tile by tile, bc5c5ea); a terrain lay along world x and z
+  (now turned and scaled with its entity, 9941ffd, 6b9221b); edits were
+  asset changes outside snapshots (now world state, 9024a12); scattered
+  copies shrank instead of fading and were rebuilt on the CPU every frame
+  (now dithered and placed once per cached chunk, 1ced372); lavapipe draws
+  no shore foam on `terrain-far`'s 24 km single-quad sea (cause found,
+  not fixed: `tests/evidence/P3/streaming/foam/NOTES.md`).
 
 ## Status 2026-10-19, Phase 2, archetypes round
 
@@ -713,6 +1017,8 @@ animation and physics round (cf932f8).
 After the phase 2 animation and physics round: rows 25, 26, 27 and 43 done
 too; 29 (3D SPH) still open.
 
+After the phase 2 3D SPH round: row 29 done too.
+
 After the phase 2 showcase round: three new rows open (47–49), row 12 now
 covers the archetypes' typecheck too.
 
@@ -746,20 +1052,20 @@ resource only the owner can give.
 | 19 | An atlas tool for skins drawn by hand, beyond `make-skins.py` | E3 | M | engine, P2 UI | done, f4c236b |
 | 20 | `vulkan-cpu` and browser references for og-ui's scenes, the UI kit, the skin packs and the locale screens (metal only) | E2, E3, E6 | M | engine, phase 2 | open |
 | 21 | Pads beyond the first in og-ui | E2 | M | engine, P2 UI | done, ca179c0 |
-| 22 | Browser runs of og-tests' own gfx scenes (a wasm harness) and GL-tier references (`msaa` among them) | M3, E2 | M | engine, phase 2 | open |
+| 22 | Browser runs of og-tests' own gfx scenes (a wasm harness) and GL-tier references (`msaa` among them) | M3, E2 | M | engine, phase 2 | done, 0ac7c34, c43947e, 9470fc3, eaf0517 |
 | 23 | Shader hooks on skinned meshes; shadows and the depth prepass displaced by `vertex_offset` | E5 | M | engine, phase 2 | done, 12e93b5, 49dfd0d (`og.render.setMaterialShader`), aa81258 |
 | 24 | Planar water reflection, shadowed water, an underwater view | E5 | L | engine, phase 2 | done, 0ee78f1 (og-render), 5be9281 (og.Water fields), 15ff230 (fx-showcase terrain station) |
 | 25 | More than four metaball fluids a frame, fluids that interact | E5 | M | engine, phase 2 | done, bf15ab1, 53fa607, 4a716f7 (sixteen a frame, groups that layer by density and blend by mixing) |
 | 26 | Cloth self-collision | E5 | M | engine, phase 2 | done, bf15ab1, 4a716f7 |
 | 27 | 2D ragdolls | E5 | M | engine, phase 2 | done, bf15ab1, 53331df, 4a716f7 |
 | 28 | A moon disc in the night sky | E5 | S | engine, phase 2 | done, 1df9797, 9037875, a5cdb89 |
-| 29 | 3D SPH (3D water is the height field) | E5 | L | engine, phase 2 | open (not started in the animation and physics round: left for the next) |
+| 29 | 3D SPH (3D water is the height field) | E5 | L | engine, phase 2 | done, 6dcdc98, a513e20, 71257f0, 200b6fe, 2f9e908, 792aa2b, 332ec84 (double density relaxation in 3D, a screen-space surface on all four tiers, the fluids3d station) |
 | 30 | Forward+ clustered lights beyond the 8-light uniform loop (CPU tile table on WebGL2) | M3, M6 | L | engine, phase 2 | done, a061113, 1296a02, f381a66 |
 | 31 | A normal matrix for non-uniform scale, vertex tangents, clearcoat, and a gfx scene of the M6 material features | M6 | M | engine, phase 2 | done, 12e93b5, 49dfd0d, eb869b8, aa81258 |
 | 32 | The runtime loaders transcode to the tier's compressed texture format and upload it (RGBA8 today) | M4, M6 | M | engine, phase 2 | done, 028c2fc |
 | 33 | og-ui's rich text, accessibility tree, glass, two-axis scrolling (`crates/og-ui/README.md` §What phase 2 owes) | M6 | L | engine, P2 UI | done, 79efd08, 6139efe, 38694c6, 42d7294 |
-| 34 | The M4 "glTF edit to reload in 300 ms" run and the M5 timed 8-frame `sweep`, filed as evidence (`og dev` prints the first) | M4, M5 | S | engine, phase 2 | open |
-| 35 | wgpu and naga 31 when published, kept only if every reference frame passes unchanged | Toolchain | S | engine, phase 2 | open |
+| 34 | The M4 "glTF edit to reload in 300 ms" run and the M5 timed 8-frame `sweep`, filed as evidence (`og dev` prints the first) | M4, M5 | S | engine, phase 2 | done, 3d7ad18, 5119a09 |
+| 35 | wgpu and naga 31 when published, kept only if every reference frame passes unchanged | Toolchain | S | engine, phase 2 | open: not published (2026-10-19 the newest on crates.io is 30.0.1, of 2026-08-22) |
 | 36 | `og polish` measures frame time on the tier it runs on (metal here), not on the executors' lavapipe | E6 | S | platform | open |
 | 37 | The eight platform asks (`docs/platform-asks.md`) | E6 | M | platform | done: landed on the platform 2026-10-19, the engine speaks it (96f4ebd) |
 | 38 | The platform side of the cutover: merge `origin-engine-cutover`, pin this revision | E1 | S | platform | done: the platform merged the cutover (origingame `7e5789d89`) and pins `cf3cb0b` (`agent-server/scripts/e2b/origin-engine.json`), with the knowledge mount, local layout, runner tests and workspace stack checked on it; the next pin bump moves to this main |
@@ -811,9 +1117,9 @@ resource only the owner can give.
 | M0 Scaffold | 1 | workspace with every crate stubbed, CI (fmt, clippy, test, wasm build, size gate, generated-file drift), `og` skeleton, `tests/` harness with gfx reference compare, the spike renderer moved into `og-render` behind the new crate boundary | CI green on an empty game; the spike frame reproduced from `og-render` byte-identical to `.spike-out/native.png`. **Filed** (`tests/evidence/M0/`, 2026-10-17): `spike-frame-reproduced.png` (byte-identical to the spike). CI green: the gate run at 49ed935 is `tests/evidence/M6/check-summary.md`. |
 | M1 World | 1–3 | `og-core`: `#[derive(Reflect)]` → schema JSON, `.ogt` reader/writer with round-trip, handles, rng, math; `og-ecs`: archetype storage, queries, system schedule, resources, events, snapshot/restore | logic tests: 10k-entity structural churn, snapshot→restore→identical world hash, `.ogt` round-trip on every template file; a Rust-only "bouncing boxes" world advanced 3600 ticks twice gives the same hash. **Filed** (`tests/evidence/M1/`, 2026-10-17): `cross-target-determinism.md` (bouncing boxes 3600 ticks, the same hash on host and wasm32). The churn, snapshot and `.ogt` round-trip tests run in the gate (`cargo test -p og-ecs`, `og-core`) with no file of their own. |
 | M2 API | 2–4 | `og-api`: `api.ogt` v1 (world, components, systems, resources, transform, camera, input, time, rng, load, probe), generators for Rust traits, wasm-bindgen glue, napi glue, `.d.ts`, JSON schema, wiki pages; typed views over columns with tick-stamped invalidation; `og-host-web` Worker + OffscreenCanvas; `og-host-node` | a TypeScript hello-world (spawn 10k entities, one `Move` system) runs identically on both hosts: same world hash after 600 ticks; the spike's view benchmark re-run through the real API within 2× of the raw loop. **Filed** (`tests/evidence/M2/`, 2026-10-17): `hello-world-hash-node.json`, `hello-world-hash-web.json`, `hello-world-two-hosts.md`, `view-benchmark.json`, `wasm-size.json`. |
-| M3 Renderer | 3–6 | render graph; material system from reflected material assets; automatic instancing by (mesh, material); directional + point/spot lights; 3-cascade CSM; IBL + sky pass; mip generation; MSAA (GL) / TAA (WebGPU); bloom, tonemap, exposure; 2D sprite batch and MSDF text; capture readback on both hosts | gfx reference frames for 12 scenes (committed PNGs, per backend tier); the spike's glTF scene within ±10 % of the spike's frame time; 20k moving sprites ≤ 2 ms on the M4 Pro. **Filed** (`tests/evidence/M3/`, 2026-10-17): `showcase-metal.png`, `showcase-vulkan-cpu.png`, `perf-baselines.json`, `feature-costs.md`. 11 Metal and 11 vulkan-cpu references are committed (`crates/og-tests/references/`); the `msaa` scene and the GL/WebGL2 tier have none. |
-| M4 Cook | 5–8 | `og cook`: glTF → `.ogb` (meshopt vertex/index codec, cache ordering, LOD chain, tangents), textures → KTX2 Basis (UASTC for normals, ETC1S for colour), audio → QOA, fonts → MSDF atlas, scenes `.ogt` → `.ogb`; incremental by hash; cook stamps checked at load; runtime loaders; hot reload by snapshot + bundle swap | cook of the template and archetypes is deterministic (same bytes twice); a glTF edit → `og cook` → reload shows the change in ≤ 300 ms with world state kept; cooked size of the template ≤ 60 % of its sources. **Filed** (`tests/evidence/M4/`, 2026-10-17): `cook-determinism.json`, `cook-report-template.md` (cooked 35.7 % of sources), `cooked-gltf-reference.png`, `cooked-gltf-reference-compare.json`, `texture-psnr.md`. Not filed: the glTF edit → reload ≤ 300 ms measurement (`og dev` prints it since 5c79c75; §Owed row 34). |
-| M5 Probe | 6–9 | `og-probe`: command channel (core actions of design §3.3), module-registered commands, probe protocol 5 members + `capture`, `sweep`, `reload`, `snapshot`, `restore`, `dump`, `commands`; native loopback WebSocket; in-page request ring; `publish` trim | the platform's probe conformance suite (`origin/packages/contracts`) green on both hosts; `og run --commands "0.5:touch_move_to:Start;0.6:touch_start;0.7:touch_end;2.0:screenshot;2.2:dump_world;2.5:quit"` on the template produces the frame and the dump; a `sweep` over a tunable yields 8 frames in ≤ 1 s native. **Filed** (`tests/evidence/M5/`, 2026-10-17): `probe-conformance-test-output.md`, `probe-conformance-transcript.json`, `scripted-run-dump-world.json`. Not filed: the `og run --commands` run on the template (see M6 `tools-template-*`) and the timed 8-frame `sweep` (§Owed row 34). |
+| M3 Renderer | 3–6 | render graph; material system from reflected material assets; automatic instancing by (mesh, material); directional + point/spot lights; 3-cascade CSM; IBL + sky pass; mip generation; MSAA (GL) / TAA (WebGPU); bloom, tonemap, exposure; 2D sprite batch and MSDF text; capture readback on both hosts | gfx reference frames for 12 scenes (committed PNGs, per backend tier); the spike's glTF scene within ±10 % of the spike's frame time; 20k moving sprites ≤ 2 ms on the M4 Pro. **Filed** (`tests/evidence/M3/`, 2026-10-17): `showcase-metal.png`, `showcase-vulkan-cpu.png`, `perf-baselines.json`, `feature-costs.md`. 11 Metal and 11 vulkan-cpu references are committed (`crates/og-tests/references/`); the browser tiers run og-tests' scenes since the phase 2 tooling round, with WebGL2 references for `msaa`, `showcase`, `overlay` and `water-3d` (`tests/evidence/P2/tooling/web-gfx-*.json`). |
+| M4 Cook | 5–8 | `og cook`: glTF → `.ogb` (meshopt vertex/index codec, cache ordering, LOD chain, tangents), textures → KTX2 Basis (UASTC for normals, ETC1S for colour), audio → QOA, fonts → MSDF atlas, scenes `.ogt` → `.ogb`; incremental by hash; cook stamps checked at load; runtime loaders; hot reload by snapshot + bundle swap | cook of the template and archetypes is deterministic (same bytes twice); a glTF edit → `og cook` → reload shows the change in ≤ 300 ms with world state kept; cooked size of the template ≤ 60 % of its sources. **Filed** (`tests/evidence/M4/`, 2026-10-17): `cook-determinism.json`, `cook-report-template.md` (cooked 35.7 % of sources), `cooked-gltf-reference.png`, `cooked-gltf-reference-compare.json`, `texture-psnr.md`. The glTF edit → reload run is filed in `tests/evidence/P2/tooling/m4-m5-tooling.md` (8 reloads, worst 112.8 ms in `og dev`, 251 ms from the write; the edit shows since 3d7ad18). |
+| M5 Probe | 6–9 | `og-probe`: command channel (core actions of design §3.3), module-registered commands, probe protocol 5 members + `capture`, `sweep`, `reload`, `snapshot`, `restore`, `dump`, `commands`; native loopback WebSocket; in-page request ring; `publish` trim | the platform's probe conformance suite (`origin/packages/contracts`) green on both hosts; `og run --commands "0.5:touch_move_to:Start;0.6:touch_start;0.7:touch_end;2.0:screenshot;2.2:dump_world;2.5:quit"` on the template produces the frame and the dump; a `sweep` over a tunable yields 8 frames in ≤ 1 s native. **Filed** (`tests/evidence/M5/`, 2026-10-17): `probe-conformance-test-output.md`, `probe-conformance-transcript.json`, `scripted-run-dump-world.json`. The timed 8-frame `sweep` is filed in `tests/evidence/P2/tooling/m4-m5-tooling.md` (298 to 559 ms); the `og run --commands` run on the template is M6's `tools-template-*`. |
 | M6 Games | 8–11 | input (pointer, keys, gamepad, touch), camera controllers, audio (AudioWorklet ring, cpal), 2D physics (rapier2d) and 3D rigid bodies (rapier3d, static + dynamic, no character controller yet), minimal UI (panels, buttons, text, stable ids), project template, `npm create @origingame/game`, two archetypes rebuilt (`runner` 2D, `match3`), wiki generated, skills and scaffold in `packages/knowledge` | both archetypes playable in a browser and through `og run --commands`; their playtest scripts pass headless; the knowledge package validates against the platform's `packages/game-knowledge` schema; first-frame on an iPhone and the Android view benchmark recorded. **Filed so far** (`tests/evidence/M6/`, 2026-10-17 UTC; partial, M6 is not done): Core `core-cross-target-determinism.md`, `core-input-edges-transcript.json`, `core-break-and-restore.md`; Render `render-showcase-metal.png`, `render-showcase-vulkan-cpu.png`, `render-shadow-map-256.png`, `render-shadow-map-2048.png`, `render-texture-formats.md`, `render-test-run.md`, `render-feature-costs.md`, `render-perf.md`; UI `ui-sample-screen-metal.png`, `ui-dump-ui-sample.json`, `ui-test-run.md`; Audio `audio-determinism.json`, `audio-mix-timing-release.json`, `audio-mix-timing-debug.json`, `audio-scene-waveform.png`, `audio-test-run.md`; ECS `ecs-state-blocks.md`; Physics `physics-pile-determinism.json`, `physics-pile-determinism-debug.json`, `physics-wasm-size.json`, `physics-test-run.md`; Tools `tools-template-run-frame.png`, `tools-template-dump-world.json`, `tools-template-dump-entity.json`, `tools-template-run.md`; gate `check-summary.md`, `size-gate.json`. Not yet: the archetypes, their playtests, the knowledge package against the live platform schema, the mobile numbers. |
 | M7 Platform | 11–13 | `@origingame/engine` published (wasm + native addon per platform via optionalDependencies, `.d.ts`); E2B `engine` class image (bun + engine + lavapipe); runner `og.rs` for `stage_capture`/`stage_record`/`level_report`; mode table without substrate; one Discover prototype produced end to end by a thread on the new engine | the thread's session transcript with frames; `engine` image ≤ 600 MB; `bun deploy/ovh/state.ts` shows the new class live; the platform goal's phase-1 row filled in |
 

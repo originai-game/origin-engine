@@ -1,0 +1,26 @@
+{
+  "scene": "sprites-20k",
+  "tier": "webgpu",
+  "browser": "Chrome for Testing (cdp.ts)",
+  "adapter": "",
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 100,
+  "runs_ms": [
+    1.108,
+    1.111,
+    1.164,
+    1.188,
+    1.193,
+    1.205,
+    1.21
+  ],
+  "frame_ms": 1.108,
+  "submit_median_ms": 1.1,
+  "load": [
+    148,
+    63.6,
+    41.3
+  ],
+  "note": "each run ends in one capture (its readback waits for the GPU to finish the run's frames)"
+}

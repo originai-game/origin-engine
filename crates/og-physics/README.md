@@ -95,6 +95,7 @@ reached from TypeScript through `crates/og-api/api.ogt`'s physics module):
 | `og.Vehicle` | 3D: rapier's raycast vehicle with a top-speed fade and reverse braking; 2D: wheel bodies on sprung, motorised wheel joints; `vehicle_wheels` for drawing |
 | `og.Rope`, `og.Cloth` | Verlet strands and grids with pins, wind and gusts, pushed out of every solid collider; cloth with `friction` against solids, `substeps`, and self-collision by `thickness` (below); `rope_points`, `cloth_points` |
 | `og.Fluid2D` | double density relaxation (Clavet et al.) on a grid in a fixed order, velocity capped at half the radius per substep; fluids of one `group` simulated together, layering by `density` and blending by `mixing` (below); `fluid_particles`, `fluid_mix` |
+| `og.Fluid3D` | 3D profile: the same model over a spatial hash, against 3D colliders and height fields, in optional `bounds`, with an emitter (`emitRate` up to `maxCount`) and a sink box; groups layer and mix as in 2D (below); `fluid3d_particles`, `fluid3d_mix` |
 | `og.WaterSurface`, `og.WaterLine` | a height field and a spring line splashed by crossing bodies (`og.Splash`), buoyancy and drag on dynamic bodies; `water_heights`, `water_line` |
 | `og.Ragdoll` | capsule bones from a host-registered rig (`set_ragdoll_rig`; og-runtime makes one from an og-anim skeleton) on limited ball joints in 3D and on limited hinges about z in 2D (rapier2d bodies, the bones in the xy plane at their animated z: a planar skeleton), following targets kinematically at weight 0 (og-runtime's `og.ragdollTargets` system hands it the animation's pose each tick, between og.anim and og.physics), simulated above it, `blend` moving to `weight` over `blend_time` |
 
@@ -103,10 +104,12 @@ rest), in entity order, inside the state block: `tests/beyond_determinism.rs`
 runs a 3D and a 2D world with every feature 1200 ticks twice to the same
 hash and snapshot, and a restore at tick 600 ends in the same world and the
 same ropes, cloth, fluid, water, wheels and bones. Rigs are assets like
-meshes. Not attempted: 3D SPH (the 3D water is the height field). CPU costs
+meshes. CPU costs
 per feature: `cargo run --release -p og-physics --example soft_costs`
 (`tests/evidence/E5/feature-costs.md`) and, for the phase 2 round's,
-`--example anim_physics_costs` (`tests/evidence/P2/anim-physics/costs.md`).
+`--example anim_physics_costs` (`tests/evidence/P2/anim-physics/costs.md`),
+and for the 3D fluid `--example fluid3d_costs`
+(`tests/evidence/P2/sph/costs.md`).
 
 ### Phase 2: cloth self-collision, fluid groups, 2D ragdolls
 
@@ -149,6 +152,51 @@ per feature: `cargo run --release -p og-physics --example soft_costs`
   within the limit (1.12 rad at most landing under the body's weight; 3.03
   without a limit), and it recovers.
 
+### Phase 2: 3D particle fluids (`og.Fluid3D`, `src/fluid3d.rs`)
+
+Double density relaxation (Clavet, Beaudoin and Poulin 2005) rather than
+position-based fluids: one neighbour search and two passes a substep, where
+PBF needs a solver loop of several iterations over the same pairs; it is
+stable at 60 Hz with two substeps and is the 2D fluid's model, so groups,
+layering, mixing, emitters and sinks mean the same in both.
+
+- **Step**: gravity, then per substep a prediction, the neighbour pairs
+  from a spatial hash of cells the size of `radius` (a counting sort by
+  cell; each particle searches its own cell and 13 forward ones, so every
+  pair is found once, in a fixed order), viscosity on approaching pairs,
+  the double density relaxation (pressure against `restDensity` gives
+  cohesion and surface tension, near pressure keeps particles apart), and
+  the collisions: the 3D colliders near each particle (pushed out, their
+  normal velocity taken, the slide slowed), height fields (the surface
+  from the triangle under the point, so nothing tunnels the terrain) and
+  `bounds` around the entity.
+- **Groups**: up to four fluids of one nonzero `group` step as one particle
+  set, weighted by `density` (a heavier fluid sinks under a lighter one) and
+  evening out their mix by `mixing`; the boundary between unmixed fluids is
+  held at a tenth of 2D's strength (at 2D's it traps a light layer under a
+  heavy one).
+- **Emitters and sinks**: `emitRate` particles a second appear in a cube of
+  `emitRadius` around `emitOffset` with `emitVelocity`, up to `maxCount`;
+  a `sinkSize` box at `sinkOffset` removes those that enter it.
+- **State and readouts**: everything is in the og.physics state block
+  (snapshots, restore and the world hash cover it; the cross-target check
+  pours two into a terrain bowl). `fluid3d_particles(entity)` and
+  `fluid3d_mix(entity)`; og-runtime hands the particles to og-render's
+  screen-space surface (`Scene::fluids_3d`).
+- **Cost** (`--example fluid3d_costs`, M4 Pro, ms of CPU a tick; wasm32
+  within 10 % of native except 4,000 at one substep, 18 % faster):
+  1,000 particles 0.39 at one substep and 0.60 at two; 2,000: 0.86 and
+  1.8; 4,000: 2.6 and 4.2; 8,000: 4.6 and 9.8. Particles piled deep (2,000
+  in a terrain bowl) cost about twice those on a floor, having more
+  neighbours. Keep a scene to a few thousand particles at two substeps.
+- `tests/fluid3d.rs`: a block poured into a pool settles inside its bounds,
+  a zero-gravity drop holds together and rounds, a viscous fluid spreads
+  slower than water, fluid poured into a terrain bowl and onto a box stays
+  on them, an emitter fills to `maxCount` and a sink drains it, a heavy
+  fluid layers under a light one and two with `mixing` 1 blend keeping
+  their amounts, a restore replays exactly, and the 2D profile leaves it
+  alone.
+
 ## Tests
 
 `cargo test -p og-physics`: `bodies.rs` (write-back, events, sensors,
@@ -156,7 +204,7 @@ layers, kinematic, locks, errors), `edits.rs` (component changes reaching
 the persistent world, rewinding by restore), `queries.rs`, `profile_2d.rs`,
 `pile.rs` (determinism and restore; set `OG_PHYSICS_PILE_REPORT` to write
 its JSON report), and the E5 round's `joints.rs`, `controllers.rs`,
-`vehicles.rs`, `soft.rs`, `ragdoll.rs`, `beyond_determinism.rs`. The dev profile builds og-physics and rapier at
+`vehicles.rs`, `soft.rs`, `ragdoll.rs`, `beyond_determinism.rs`, and phase 2's `fluid3d.rs`. The dev profile builds og-physics and rapier at
 `opt-level = 3`; the pile takes about 15 s.
 
 ## Status 2026-10-18 (what phase 1 still owes)

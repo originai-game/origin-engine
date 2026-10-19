@@ -357,6 +357,7 @@ pub(super) fn cook_primitive(
     material: u32,
     normal_mapped: bool,
     opts: &MeshOptions,
+    coarsest: bool,
 ) -> Result<Option<CookedPrimitive>, String> {
     let reader = prim.reader(|b| Some(&src.buffers[b.index()].0[..]));
     let Some(positions) = reader
@@ -511,6 +512,10 @@ pub(super) fn cook_primitive(
             break;
         }
         levels.push((meshopt::optimize_vertex_cache(&simplified, q.len()), error));
+    }
+    // A streaming proxy keeps only the coarsest level (and the vertices it uses).
+    if coarsest && let Some((last, _)) = levels.pop() {
+        levels = vec![(last, 0.0)];
     }
     let mut all: Vec<u32> = Vec::new();
     let mut lods = Vec::new();
@@ -691,23 +696,26 @@ pub struct ModelNotes {
 }
 
 /// Cooks a parsed glTF into a model blob. `texture_ids` are the asset ids
-/// of [`GltfSource::textures`], in order.
+/// of [`GltfSource::textures`], in order. A `proxy` (a streaming group's
+/// stand-in, `#proxy`) keeps each primitive's coarsest LOD and no textures.
 pub fn cook(
     src: &GltfSource,
     texture_ids: &[String],
     opts: &MeshOptions,
     stamp: u64,
+    proxy: bool,
 ) -> Result<(Vec<u8>, ModelNotes), CookError> {
     let doc = &src.doc;
     let mut notes = src.warnings.clone();
     let mut strings = Strings(Vec::new());
     let tex_of = |t: Option<gltf::texture::Texture>, k: u32| -> u32 {
-        t.and_then(|t| {
-            src.textures
-                .iter()
-                .position(|u| u.image == t.source().index() && u.kind == k)
-        })
-        .map_or(NONE, |i| i as u32)
+        t.filter(|_| !proxy)
+            .and_then(|t| {
+                src.textures
+                    .iter()
+                    .position(|u| u.image == t.source().index() && u.kind == k)
+            })
+            .map_or(NONE, |i| i as u32)
     };
     let mut materials = Vec::new();
     for m in doc.materials() {
@@ -789,8 +797,8 @@ pub fn cook(
                 .material()
                 .index()
                 .map_or(default_material, |i| i as u32);
-            let normal_mapped = prim.material().normal_texture().is_some();
-            match cook_primitive(src, &prim, material, normal_mapped, opts)
+            let normal_mapped = !proxy && prim.material().normal_texture().is_some();
+            match cook_primitive(src, &prim, material, normal_mapped, opts, proxy)
                 .map_err(|e| CookError(format!("{what}: {e}")))?
             {
                 Some(mut c) => {
@@ -887,7 +895,7 @@ pub fn cook(
         ));
     }
     let mut texture_refs = Vec::new();
-    for (i, u) in src.textures.iter().enumerate() {
+    for (i, u) in src.textures.iter().enumerate().filter(|_| !proxy) {
         let (id_offset, id_len) = strings.add(&texture_ids[i]);
         texture_refs.push(TextureRefRow {
             id_offset,
