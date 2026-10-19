@@ -39,3 +39,14 @@ time, so cargo rebuilds what it restored).
 | the cells' diagonal | `from_heightfield`: the zig-zag status not set (parry's other diagonal) | `heights_are_rows_along_z_split_along_the_renderers_diagonal`: the ray hits y 0 where the renderer's triangle is 1 m |
 | rows and columns | `from_heightfield`: heights copied row-major into parry's column-major array | `the_surface_follows_the_field_and_its_edits` (-1.63 at 7.3, -2.2) and `a_character_walks_up_a_field_and_a_ball_rests_on_it` |
 | edits reach the simulation | `set_heightfield`: the handle not marked stale | `the_surface_follows_the_field_and_its_edits`: the crate stays at -0.03 on the old field |
+
+## og-cook (`crates/og-cook/tests/terrain.rs`)
+
+| Broken | Edit | Failed |
+|---|---|---|
+| where tiles go | the runtime places a tile's samples with its rows and columns swapped | `a_terrain_cooks_into_tiles_and_loads_back`: (299, 0) -8.78 vs 86.27 |
+| the heights' precision | the cook quantises to 8 bits | the same test: (299, 0) 86.08 vs 86.27 |
+| the heightmap is the terrain's | the walk does not take the heightmap and control map out | the same test: `terrain/height.png` and `terrain/control.png` cooked as textures |
+| the stamp | the terrain's stamp leaves out its heightmap | `the_terrain_cook_is_deterministic_and_incremental`: the edited heightmap is not cooked again |
+| EXR heights | an EXR's default range 0 to 100 like a PNG's | `an_exr_heightmap_is_metres_as_stored`: (0, 0) 12.46 vs 0.125 |
+| a terrain in a navmesh | the terrain's triangles wound clockwise (facing down) | `a_navmesh_bakes_a_terrains_walkable_surface`: nothing walkable at x -30 |

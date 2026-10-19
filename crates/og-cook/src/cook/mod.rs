@@ -18,6 +18,7 @@ mod font;
 mod model;
 mod scene;
 pub mod sfx;
+mod terrain;
 mod texture;
 pub mod tilemap;
 
@@ -397,6 +398,7 @@ enum Kind {
     Behaviour,
     NavMesh,
     Strings,
+    Terrain,
 }
 
 impl Kind {
@@ -417,6 +419,7 @@ impl Kind {
             Kind::Behaviour => "behaviour",
             Kind::NavMesh => "navmesh",
             Kind::Strings => "strings",
+            Kind::Terrain => "terrain",
         }
     }
 }
@@ -448,6 +451,7 @@ enum Work<'a> {
     Behaviour(&'a Source),
     NavMesh(&'a Source),
     Strings(&'a Source),
+    Terrain(&'a Source),
     Font(&'a Source, FontSettings),
     Scene(&'a Source),
 }
@@ -650,12 +654,13 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     Ok(doc) if doc.ty == e6::BEHAVIOUR_TYPE => Kind::Behaviour,
                     Ok(doc) if doc.ty == og_i18n::STRINGS_TYPE => Kind::Strings,
                     Ok(doc) if doc.ty == e6::NAVMESH_TYPE => Kind::NavMesh,
+                    Ok(doc) if doc.ty == terrain::TERRAIN_TYPE => Kind::Terrain,
                     Ok(doc) => {
                         early_errors.push((
                             rel.clone(),
                             "scene",
                             format!(
-                                "an .ogt of type '{}' is not a cookable asset (scene, particles, skin, tileset, tilemap, flipbook, shader, behaviour, navmesh, sfx, strings or import)",
+                                "an .ogt of type '{}' is not a cookable asset (scene, particles, skin, tileset, tilemap, flipbook, shader, behaviour, navmesh, terrain, sfx, strings or import)",
                                 doc.ty
                             ),
                         ));
@@ -720,8 +725,19 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
         }
         s.hash = h.finish();
     }
+    // A terrain's heightmap and control map are part of the terrain.
+    for s in &sources {
+        if s.kind == Kind::Terrain {
+            consumed.extend(terrain::terrain_files(
+                &s.rel,
+                &assets_dir,
+                &String::from_utf8_lossy(&s.bytes),
+            ));
+        }
+    }
     // Files a .gltf references are part of that model, not assets of their own.
     sources.retain(|s| !consumed.contains(&s.rel));
+    ignored.retain(|r| !consumed.contains(r));
     let known: BTreeSet<String> = sources.iter().map(|s| s.rel.clone()).collect();
     let schemas: BTreeMap<String, Schema> = options
         .schemas
@@ -906,6 +922,11 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
             Kind::Strings => {
                 let st = stamp(&[b"strings", &hash]);
                 outs.push((s.rel.clone(), format::Strings::NAME, st, Work::Strings(s)));
+            }
+            Kind::Terrain => {
+                let deps = terrain::terrain_dependencies(s, &|id| known.contains(id));
+                let st = stamp(&[b"terrain", &hash, deps.as_bytes()]);
+                outs.push((s.rel.clone(), format::Terrain::NAME, st, Work::Terrain(s)));
             }
             Kind::NavMesh => {
                 let deps = e6::navmesh_dependencies(s);
@@ -1307,6 +1328,7 @@ fn run(
         Work::Behaviour(s) => e6::cook_behaviour(s, p.stamp),
         Work::Strings(s) => e6::cook_strings(s, p.stamp),
         Work::NavMesh(s) => e6::cook_navmesh(s, p.stamp),
+        Work::Terrain(s) => terrain::cook_terrain(s, &|id| known.contains(id), p.stamp),
         Work::Font(s, f) => {
             font::cook(&s.bytes, f, threads, p.stamp).map(|(b, n)| (b, vec![n.note]))
         }
