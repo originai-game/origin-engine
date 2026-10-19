@@ -1067,8 +1067,11 @@ impl TerrainRenderer {
                 .map_err(|e| crate::RenderError::InvalidData(format!("terrain {i}: {e}")))?;
             // The atlases allocate at most one spare layer beyond the slots
             // (`gl_safe_array_layers`), which must stay within `max_layers`.
+            // (`max`/`min`, not `clamp`: a device with eight layers or
+            // fewer must not panic.)
             let capacity = (t.lod.budget() / layout.slot_bytes().max(1))
-                .clamp(8, self.max_layers as u64 - 1)
+                .max(8)
+                .min((self.max_layers as u64).saturating_sub(1).max(1))
                 .min(layout.tile_count() as u64) as u32;
             let view = TerrainView {
                 detail: scene.scatter_detail(ti),
