@@ -77,6 +77,9 @@ wasm at 70.2 %, not under 65 %), and open 25 for the engine's phase 2
 (15–35, 41, 42, 45, 46), 3 for the platform (36, 38, 43) and 3 for the
 owner (39, 40, 44).
 
+After the phase 2 animation and physics round: rows 25, 26, 27 and 43 done
+too; 29 (3D SPH) still open.
+
 Every item a round's status left owed or out, in one place; the round
 sections below point here instead of repeating them. Size: S a day or
 less, M a few days, L a workstream. Owner: **engine** is this repository
@@ -110,11 +113,11 @@ resource only the owner can give.
 | 22 | Browser runs of og-tests' own gfx scenes (a wasm harness) and GL-tier references (`msaa` among them) | M3, E2 | M | engine, phase 2 | open |
 | 23 | Shader hooks on skinned meshes; shadows and the depth prepass displaced by `vertex_offset` | E5 | M | engine, phase 2 | open |
 | 24 | Planar water reflection, shadowed water, an underwater view | E5 | L | engine, phase 2 | open |
-| 25 | More than four metaball fluids a frame, fluids that interact | E5 | M | engine, phase 2 | open |
-| 26 | Cloth self-collision | E5 | M | engine, phase 2 | open |
-| 27 | 2D ragdolls | E5 | M | engine, phase 2 | open |
+| 25 | More than four metaball fluids a frame, fluids that interact | E5 | M | engine, phase 2 | done, bf15ab1, 53fa607, 4a716f7 (sixteen a frame, groups that layer by density and blend by mixing) |
+| 26 | Cloth self-collision | E5 | M | engine, phase 2 | done, bf15ab1, 4a716f7 |
+| 27 | 2D ragdolls | E5 | M | engine, phase 2 | done, bf15ab1, 53331df, 4a716f7 |
 | 28 | A moon disc in the night sky | E5 | S | engine, phase 2 | open |
-| 29 | 3D SPH (3D water is the height field) | E5 | L | engine, phase 2 | open |
+| 29 | 3D SPH (3D water is the height field) | E5 | L | engine, phase 2 | open (not started in the animation and physics round: left for the next) |
 | 30 | Forward+ clustered lights beyond the 8-light uniform loop (CPU tile table on WebGL2) | M3, M6 | L | engine, phase 2 | open |
 | 31 | A normal matrix for non-uniform scale, vertex tangents, clearcoat, and a gfx scene of the M6 material features | M6 | M | engine, phase 2 | open |
 | 32 | The runtime loaders transcode to the tier's compressed texture format and upload it (RGBA8 today) | M4, M6 | M | engine, phase 2 | open |
@@ -128,10 +131,67 @@ resource only the owner can give.
 | 40 | Mobile measurements: the iPhone first frame and frame times (Safari, WebGPU), the mid-range Android view benchmark | M6, E1 | S | owner (devices) | open |
 | 41 | og-ui plays no sound when keyboard or gamepad focus moves (ui-kit's sound on input 38 in og polish) | E7 | S | engine, phase 2 | open |
 | 42 | The kit's small type: the shop cards' item names (`caption`, 7 CSS px of ink), the idle HUD's generator names and the `meta` units, under og polish's 9 px | E7 | S | engine, phase 2 | open |
-| 43 | The default tokens' primary and danger button labels at 3.2:1 and 2.9:1 against their fill (og polish wants 4.5:1; WCAG's large text 3:1) | E7 | S | platform (the design tokens) | open |
+| 43 | The default tokens' primary and danger button labels at 3.2:1 and 2.9:1 against their fill (og polish wants 4.5:1; WCAG's large text 3:1) | E7 | S | platform (the design tokens) | done: the platform's tokens of b71ae8fac, og-ui synced with the danger tint in cf932f8 (every role 4.5:1 or more, `crates/og-ui/tests/button_contrast.rs`) |
 | 44 | A publish wasm per profile (measured 63.3 % 3D, 59.5 % 2D at opt-level 3): two shipping variants, `og build --publish` choosing by the game's profile, and the size budget read per download instead of as the sum of every wasm the gate builds | E7 | M | owner (the budget's meaning), then engine | open |
 | 45 | `og.ui.shake` shown in a template (ui-kit's shop refusing a purchase) | E7 | S | engine, phase 2 | open |
 | 46 | runner: a press during the game-over card's hold is silent (og polish: 1 of 3 inputs in `flow`) | E7 | S | engine, phase 2 | open |
+
+## Status 2026-10-19, phase 2, animation and physics round
+
+Branch `p2-anim-physics` (evidence: `tests/evidence/P2/anim-physics/`,
+`NOTES.md` there indexes it). Owed rows 25, 26 and 27 are done; 29 (3D SPH)
+was not started and is left for the next round.
+
+- **Animation retargeting** (aaea84c, 707b6b2): og-anim maps a humanoid's
+  22 bones from its names (Mixamo, VRM, Unity, Rigify, Unreal, Blender
+  detected; a `type rig` .ogt overrides the scheme or any bone) and
+  retargets a clip onto another rig: rotations moved in model space with
+  each bone's rest corrected, the hips' travel and height scaled by the
+  legs' ratio (root motion kept), planted feet held on the ground by
+  two-bone leg IK, lowering the hips where a leg cannot reach. The cook
+  writes an animation library's clips into a model retargeted
+  (`animation { rig library footIk }` in its import settings, re-cooked
+  when the rig or the library changes); `og.anim.retarget`,
+  `og.anim.humanoid` and `og.load.rig` do it at run time, cached. Feet stay
+  planted with zero height error and slide on rigs at 1.267 and 0.689 times
+  the library's legs (11.5 mm off with forward kinematics alone).
+- **2D ragdolls** (row 27; bf15ab1, 53331df): og.Ragdoll in the 2D profile,
+  rapier2d capsules on hinges about z limited by `jointLimit`, following
+  the animation at weight 0 and blending as in 3D; `og.Physics.profile` can
+  now be set at run time.
+- **Cloth self-collision** (row 26; bf15ab1): `og.Cloth.thickness` (a
+  sorted spatial hash, pairs pushed apart every pass, a point moving at
+  most half the thickness a step), `substeps` and `friction`. It costs 5 to
+  6 times the plain cloth: about 0.5 ms a tick for a 20 x 20 sheet, 2.4 ms
+  at 32 x 32.
+- **Fluids** (row 25; bf15ab1, 53fa607): up to sixteen metaball fluids a
+  frame, packed four to a field; `og.Fluid2D.group`, `density` and
+  `mixing`: fluids of one group (four at most) step as one particle set,
+  heavier ones sinking, held apart at their boundary unless they mix, their
+  mix evening out where they touch and drawn as one surface whose colour
+  follows it. A group costs one fluid of all its particles plus 7 to 14 %.
+- **fx-showcase** gains four stations, retarget, ragdoll2d, cloth and
+  fluids (4a716f7), each with a playtest and references on metal,
+  vulkan-cpu, webgpu and webgl2 (f7a0d88, f270817).
+- **Determinism**: `tools/wasm-determinism` (the gate's determinism step)
+  now hashes og-physics' beyond-rigid-bodies scenario with the new cloth,
+  fluid group and 2D ragdoll in 3D and 2D, and og-anim's walk with its
+  retargeting; host debug and release and wasm32 scalar and simd128 agree
+  (ca02ca3). f37a586 restores the E5 joints station's 3D ragdoll bit for
+  bit after the 2D ragdoll refactor.
+- **og-ui** (cf932f8, done here at the coordinator's request though it is
+  og-ui's): the platform's new danger tokens, the danger button on the
+  danger tint, a contrast test of every button role (row 43), and the og-ui
+  and ui-kit references the colour touched, re-recorded.
+
+### Gate and wasm
+
+`OG_GATE_JOBS=2 scripts/check.sh --all` on 5d982db, 2026-10-19, with other
+agents' builds on the machine: **PASSED, 9 of 9 steps in 743 s**: fmt 5 s,
+clippy 21 s, drift 5 s, determinism 46 s, wasm-build 235 s, wasm-opt
+305 s, test 347 s, size-gate 92 s, bun-test 154 s. The publish wasm is
+**2,975,644 B brotli, 70.9 % of the 4,194,304 B budget**, 32,464 B
+(0.8 points) more than the E7 round's 2,943,180 B.
 
 ## 0. Rules that shape the plan
 
