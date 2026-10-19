@@ -226,21 +226,32 @@ impl Streamer {
             };
             let Some(h) = hooks else { break };
             let job = self.inflating.get_mut(&key).expect("listed");
-            if job.got_heights.is_none()
-                && let super::Fetch::Ready(b) = h.inflate_take(job.heights)
-            {
-                job.got_heights = Some(b);
+            let mut failed = false;
+            if job.got_heights.is_none() {
+                match h.inflate_take(job.heights) {
+                    super::Fetch::Ready(b) => job.got_heights = Some(b),
+                    super::Fetch::Failed(_) => failed = true,
+                    super::Fetch::Pending => {}
+                }
             }
             if let Some(ck) = job.control
                 && job.got_control.is_none()
-                && let super::Fetch::Ready(b) = h.inflate_take(ck)
             {
-                job.got_control = Some(b);
+                match h.inflate_take(ck) {
+                    super::Fetch::Ready(b) => job.got_control = Some(b),
+                    super::Fetch::Failed(_) => failed = true,
+                    super::Fetch::Pending => {}
+                }
             }
             let ready =
                 job.got_heights.is_some() && (job.control.is_none() || job.got_control.is_some());
             let over = !wait && h.now_ms() - start > FINISH_MS;
-            if ready && !over {
+            if failed && !over {
+                // The host could not: inflate it here.
+                self.inflating.remove(&key);
+                let tile = c.tile(key.1).map_err(|e| e.to_string());
+                self.store(key, tile, notes);
+            } else if ready && !over {
                 let job = self.inflating.remove(&key).expect("listed");
                 let tile = c
                     .tile_from(

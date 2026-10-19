@@ -118,6 +118,9 @@ export interface WebExtras {
   og_web_fail_file(path: string, reason: string): void;
   og_web_put_texture(id: string, width: number, height: number, rgba: Uint8Array, srgb: boolean): void;
   og_web_set_fetcher(fetch: (path: string) => void): void;
+  og_web_set_inflater?(inflate: (key: number, bytes: Uint8Array) => void): void;
+  og_web_put_inflated?(key: number, bytes: Uint8Array): void;
+  og_web_fail_inflated?(key: number, reason: string): void;
   og_web_bundle_files(manifest: string): string;
   og_web_texture_ktx2(manifest: string, id: string, bytes: Uint8Array): Uint8Array;
   og_web_attach_canvas(engine: number, canvas: OffscreenCanvas, webgl: boolean): Promise<string>;
@@ -257,6 +260,26 @@ export async function preloadBundle(
     if (!received) progress(0.8 + 0.2 * ((i + 1) / textures.length), "transcode");
   }
   return { files: listed.length - failed, failed, textures: transcoded, textureFormat };
+}
+
+/**
+ * Gives the engine the browser's DecompressionStream for zlib bytes (terrain
+ * tiles): it inflates natively off the engine's work and answers by key; an
+ * engine without it inflates in wasm within a frame budget.
+ */
+export function installInflater(glue: Pick<WebExtras, "og_web_set_inflater" | "og_web_put_inflated" | "og_web_fail_inflated">): boolean {
+  const Stream = (globalThis as { DecompressionStream?: new (format: string) => TransformStream<Uint8Array, Uint8Array> }).DecompressionStream;
+  const { og_web_set_inflater: set, og_web_put_inflated: put, og_web_fail_inflated: fail } = glue;
+  if (!Stream || !set || !put || !fail) return false;
+  set((key: number, bytes: Uint8Array) => {
+    new Response(new Blob([bytes]).stream().pipeThrough(new Stream("deflate")))
+      .arrayBuffer()
+      .then(
+        (b) => put(key, new Uint8Array(b)),
+        (e: unknown) => fail(key, e instanceof Error ? e.message : String(e)),
+      );
+  });
+  return true;
 }
 
 /** A `capture` answered null: on the web the readback finishes on a later call. */
@@ -494,6 +517,8 @@ export function startWorker(game: GameToken): void {
           wasm = new Response(counted, { headers: { "content-type": "application/wasm" } });
         }
         await loadWebHost(glue, wasm);
+        // Terrain tiles are inflated by the browser off the engine's thread where it can.
+        installInflater(glue);
         progress(data.expect ? received.value : 0.1, "bundle");
         let loaded: Preloaded | null = null;
         if (data.root !== undefined) {

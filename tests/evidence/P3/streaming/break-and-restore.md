@@ -19,3 +19,9 @@ named test run, and the file put back.
 |---|---|---|
 | the capacity | `terrain_tiles_wanted`: `capacity.max(1000)` instead of `capacity.max(1)` | `wanted_tiles_are_ranked_and_closed_under_their_parents`: 85 tiles where 6 were asked for |
 | the fade | `sync`: a fading tile's fade never advances | `a_streamed_terrain_draws_what_has_arrived`: "streamed 0.0293 against the field in memory" (the arrived tiles never show) |
+
+## The web host's inflater (`packages/engine/tests/stream.test.ts`)
+
+| Broken | Edit | Failed |
+|---|---|---|
+| zlib, not raw deflate | `worker.ts` `installInflater`: `DecompressionStream("deflate-raw")` | "the Worker's inflater answers each zlib stream ...": key 7 received nothing where 34,322 bytes were expected |

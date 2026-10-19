@@ -54,6 +54,9 @@ thread_local! {
     static RESIZES: RefCell<BTreeMap<u32, (u32, u32)>> = const { RefCell::new(BTreeMap::new()) };
     /// The Worker's `fetch(path)` for files nobody fetched yet.
     static FETCHER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
+    /// The Worker's `inflate(key, bytes)` (DecompressionStream), and what it answered by key.
+    static INFLATER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
+    static INFLATED: RefCell<BTreeMap<u64, Result<Vec<u8>, String>>> = const { RefCell::new(BTreeMap::new()) };
     /// `performance` and its `now`, where the global has them (Workers do).
     static PERFORMANCE: Option<(JsValue, js_sys::Function)> = {
         let performance = js_sys::Reflect::get(&js_sys::global(), &JsValue::from_str("performance")).ok();
@@ -128,6 +131,27 @@ impl Hooks for WebHooks {
         }
     }
 
+    fn inflate_start(&self, key: u64, zlib: &[u8]) -> bool {
+        INFLATER.with(|f| match &*f.borrow() {
+            Some(inflate) => inflate
+                .call2(
+                    &JsValue::NULL,
+                    &JsValue::from_f64(key as f64),
+                    &js_sys::Uint8Array::from(zlib),
+                )
+                .is_ok(),
+            None => false,
+        })
+    }
+
+    fn inflate_take(&self, key: u64) -> Fetch<Vec<u8>> {
+        match INFLATED.with(|m| m.borrow_mut().remove(&key)) {
+            Some(Ok(bytes)) => Fetch::Ready(bytes),
+            Some(Err(e)) => Fetch::Failed(e),
+            None => Fetch::Pending,
+        }
+    }
+
     fn now_ms(&self) -> f64 {
         PERFORMANCE.with(|p| match p {
             Some((performance, now)) => now
@@ -168,6 +192,26 @@ pub fn og_web_put_texture(id: String, width: u32, height: u32, rgba: Vec<u8>, sr
         mips: og_render::Mips::Generate,
     };
     TEXTURES.with(|t| t.borrow_mut().insert(id, data));
+}
+
+/// The Worker's `inflate(key, zlibBytes)`, called to inflate a terrain
+/// tile away from the engine (a DecompressionStream); it answers later with
+/// `og_web_put_inflated` or `og_web_fail_inflated`.
+#[wasm_bindgen]
+pub fn og_web_set_inflater(inflate: js_sys::Function) {
+    INFLATER.with(|f| *f.borrow_mut() = Some(inflate));
+}
+
+/// What an inflate the engine started answered.
+#[wasm_bindgen]
+pub fn og_web_put_inflated(key: f64, bytes: Vec<u8>) {
+    INFLATED.with(|m| m.borrow_mut().insert(key as u64, Ok(bytes)));
+}
+
+/// An inflate that failed (the engine inflates that tile itself).
+#[wasm_bindgen]
+pub fn og_web_fail_inflated(key: f64, reason: String) {
+    INFLATED.with(|m| m.borrow_mut().insert(key as u64, Err(reason)));
 }
 
 /// The Worker's `fetch(path)`, called for a file nobody fetched yet; it
