@@ -513,6 +513,65 @@ size-gate and drift. bun-test timed out once, at load 140, in web-export's
 rerun, `scripts/check.sh --only bun-test`, **PASSED** with the engine package's
 108 tests. The publish wasm is 3,151,777 B brotli, 75 %.
 
+## Status 2026-10-19, phase 2, og-ui tiers round
+
+Branch `p2-ui-tiers` from 44d12a8 (evidence: `tests/evidence/P2/ui-tiers/`,
+`NOTES.md` there indexes it). Owed row 20 is done: every og-ui reference
+frame now exists on all four tiers.
+
+- **vulkan-cpu** (2131b15): all 74 frames (og-ui's four scenes, 22 desktop
+  and 21 phone kit screens, 15 locale screens, 12 skin sheets), recorded
+  with `OG_UI_CAPTURE=1` on lavapipe in the og-lavapipe image with
+  zigbuild Linux binaries. The scenes move into
+  `crates/og-ui/tests/support/scenes.rs` so the browser can build them too.
+- **Browser, og-ui's scenes** (de92f08): og-tests-web includes that file
+  and draws `og-ui/<name>`; `reference-gfx.ts` judges them against
+  `crates/og-ui/references/<tier>/`. Both tiers match metal exactly except
+  widget-set (RMSE 0.00046, as the native metal run).
+- **Browser, the kit** (8f1d3af): reference.ts takes `--size`,
+  `--references` and `--sheet`; `tests/web/reference-ui.ts` runs ui-kit's
+  16 reference playtests through it (the full set, 70 frames; nothing left
+  out, a tier takes 100 to 140 s) and `scripts/check.sh web-reference`
+  runs it on both tiers.
+- **Against metal** every frame is within the rule on every tier. Eleven
+  frames have outliers, the same on vulkan-cpu, webgpu and webgl2, at most
+  0.038 % (RMSE 0.0089, `kit-desktop-settings`): the large titles' edges
+  and the gallery's scrollbar thumb, a fraction of a pixel of coverage.
+  The three non-metal tiers agree there with no outliers between them, so
+  the difference is metal's. Every other frame is within RMSE 0.0040.
+- **Break and restore**: a mirrored vulkan-cpu sample-screen fails og-ui's
+  gfx test on lavapipe; a wrong webgl2 locale frame, a wrong webgpu skin
+  sheet and a mirrored webgpu glass fail the browser runners; restored,
+  all pass.
+
+### Gate
+
+`OG_GATE_JOBS=2 scripts/check.sh` on 8f1d3af (the docs and evidence of
+the next commit were uncommitted and touch no check): fmt, clippy (75 s),
+wasm-build, wasm-opt (212 s), size-gate (3,176,490 B brotli, 75 % of
+4,194,304; no crate in the wasm build changed this round), drift (186 s)
+and test (722 s) passed. bun-test failed after 506 s on five timeouts
+and no assertion, while a lavapipe container ran beside it (104 pass):
+render.test.ts "trails, beams and ribbons" and "material and sprite
+effects" at 5 s and web-export.test.ts "the same inputs give the same
+bytes" at 120 s (the known load flakes), plus asset-stream.test.ts
+"what is resident never changes the simulation" at 5 s and "og build
+--publish ships each group as its pack" at 120 s (not on the known list;
+this round changes nothing they run). This stopped determinism. Neither the `--only bun-test`
+rerun nor determinism nor `scripts/check.sh --only web-reference` ran:
+the coordinator now runs the gate on main after the merge. The browser
+kit and scene frames were checked directly instead: `reference-ui.ts`
+and `reference-gfx.ts` without `--record` reproduce every frame on
+webgpu and webgl2 at RMSE 0.
+On lavapipe, gfx 5 of 5 and kit_gfx 1 of 1 pass at RMSE 0 against
+`vulkan-cpu`; `og test templates/ui-kit` without capture passed 17 of 29
+suites (frames-desktop, frames-phone, locales, skin-cartoon,
+skin-cartoon-phone, skin-fantasy-phone and the eleven playtests without
+frames) before it was stopped for time. skin-fantasy and the neon, paper,
+pixel and scifi skin suites (nine), plus sounds, touch and tutorial,
+passed only in the recording run, so their comparison against the
+recorded `vulkan-cpu` sheets is unverified.
+
 ## Status 2026-10-19, phase 2, 3D SPH round
 
 Branch `p2-sph` (evidence: `tests/evidence/P2/sph/`, `NOTES.md` there
@@ -925,7 +984,7 @@ resource only the owner can give.
 | 17 | Per-glyph tracking from a skin's ramp (needs per-glyph spacing in og-render's text) | E3 | M | engine, P2 UI | done, 0df11b1 |
 | 18 | A real text glow (an MSDF outline in og-render; four offset copies today) | E3 | M | engine, P2 UI | done, 0df11b1 |
 | 19 | An atlas tool for skins drawn by hand, beyond `make-skins.py` | E3 | M | engine, P2 UI | done, f4c236b |
-| 20 | `vulkan-cpu` and browser references for og-ui's scenes, the UI kit, the skin packs and the locale screens (metal only) | E2, E3, E6 | M | engine, phase 2 | open |
+| 20 | `vulkan-cpu` and browser references for og-ui's scenes, the UI kit, the skin packs and the locale screens (metal only) | E2, E3, E6 | M | engine, phase 2 | done, 2131b15, de92f08, 8f1d3af (all 74 frames on vulkan-cpu, webgpu and webgl2; the browser kit runner in web-reference) |
 | 21 | Pads beyond the first in og-ui | E2 | M | engine, P2 UI | done, ca179c0 |
 | 22 | Browser runs of og-tests' own gfx scenes (a wasm harness) and GL-tier references (`msaa` among them) | M3, E2 | M | engine, phase 2 | done, 0ac7c34, c43947e, 9470fc3, eaf0517 |
 | 23 | Shader hooks on skinned meshes; shadows and the depth prepass displaced by `vertex_offset` | E5 | M | engine, phase 2 | done, 12e93b5, 49dfd0d (`og.render.setMaterialShader`), aa81258 |

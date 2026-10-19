@@ -52,8 +52,12 @@ The demo is where `crates/og-ui/references/<tier>/kit-desktop-<screen>.png`
 and `kit-phone-<screen>.png` come from: `tests/frames-desktop.og.ts` and
 `tests/frames-phone.og.ts` show each screen, wait for its entrance, take its
 frame and compare it with the reference under og-tests' rule (a channel off
-by more than 32/255 is an outlier; fail above 0.5 % outliers or RMSE 0.01). A
-tier without its own references compares with `metal` and says so.
+by more than 32/255 is an outlier; fail above 0.5 % outliers or RMSE 0.01).
+Every frame, locale screen and skin sheet is committed for `metal`,
+`vulkan-cpu`, `webgpu` and `webgl2`; a tier without its own references
+compares with `metal` and says so. The browser tiers run these same
+playtests through `packages/engine/tests/web/reference-ui.ts` (`docs/ci.md`
+§Browser reference tiers).
 
 | Playtest | Proves |
 |---|---|
@@ -113,4 +117,4 @@ with a `[link=join]` the `players` playtest taps.
 `tools/make-locale-fonts.py <NotoSansCJK-Regular.ttc> <NotoSansArabic.ttf>`
 subsets the Noto fonts to exactly the tables' characters (rerun it after
 changing a string). `tests/locales.og.ts` compares each of the three
-screens in each locale with `crates/og-ui/references/metal/kit-locale-*`.
+screens in each locale with `crates/og-ui/references/<tier>/kit-locale-*`.
