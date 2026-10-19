@@ -271,3 +271,223 @@ fn a_scroll_container_clips_everything_it_draws() {
         "the half-scrolled rows are cut at the list's edges, not dropped"
     );
 }
+
+/// A dark card of display-size labels, with or without a skin's text
+/// glow, as a scene ready to render.
+fn glow_scene(glow: bool, labels: usize) -> (RenderScene, RenderDesc) {
+    let vp = Viewport {
+        dpr: 1.0,
+        ..Viewport::new(480.0, 200.0f32.max(16.0 + 40.0 * labels as f32))
+    };
+    let mut scene = RenderScene::new();
+    let font = add_test_font(&mut scene);
+    let atlas = scene.add_texture(atlas_texture());
+    let mut ui = ui_with_font(font);
+    let mut theme = *ui.theme();
+    // Tight tracking: glyph quads overlap their neighbours.
+    theme.type_ramp.display_md.tracking_em = -0.1;
+    if glow {
+        theme.skin.text_glows[0] = Some(og_ui::skin::Glow {
+            size: 2.0,
+            ink: og_ui::skin::Ink::Accent,
+            alpha: 0.8,
+        });
+    }
+    ui.set_theme(theme);
+    for _ in 0..2 {
+        ui.begin(InputFrame::default(), vp);
+        let t = *ui.theme();
+        ui.column(
+            "Card",
+            Element {
+                width: Size::grow(),
+                height: Size::grow(),
+                padding: Insets::all(t.space.lg),
+                background: Some(t.palette.bg),
+                ..Element::default()
+            },
+            |ui| {
+                for k in 0..labels {
+                    ui.label(
+                        ui_idi("Title", k as u32),
+                        "Wall 42",
+                        LabelDesc {
+                            step: Some(t.type_ramp.display_md),
+                            ..LabelDesc::default()
+                        },
+                    );
+                }
+            },
+        );
+        ui.end();
+    }
+    let mut overlay = og_render::Overlay::new(vp.width, vp.height, vp.dpr);
+    ui.frame().emit(&EmitDesc { atlas, layer: 0 }, &mut overlay);
+    scene.overlay = Some(overlay);
+    let bg = ui.theme().palette.bg.linear();
+    scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
+    scene.post.tonemap = Tonemap::None;
+    let desc = RenderDesc {
+        width: vp.width as u32,
+        height: vp.height as u32,
+        ..RenderDesc::default()
+    };
+    (scene, desc)
+}
+
+/// A skin's text glow is one soft halo read from the font's distance field
+/// (og-render's MSDF shader), not offset copies of the text: the ink is the
+/// same with and without it, the pixels just outside the glyphs take the
+/// glow, it ends within the distance field's reach, each glyph costs two
+/// instances (its glow, then its fill), and the frame matches
+/// `references/<tier>/text-glow.png`.
+///
+/// Ways it could fail: the glow is drawn over the ink (the letters wash
+/// out), offset copies move the ink, the halo never shows, or it reaches
+/// past the distance range (where the field is flat, it would end at the
+/// glyph quad's hard edge).
+#[test]
+fn a_text_glow_is_a_halo_from_the_distance_field() {
+    let render = |glow: bool| {
+        let (scene, desc) = glow_scene(glow, 1);
+        let mut renderer = Renderer::new_blocking(&desc).expect("a headless adapter");
+        let stats = renderer
+            .render(&scene, &RenderTarget::Offscreen)
+            .expect("render");
+        let tier = renderer.info().backend_tier();
+        (renderer.read_offscreen().expect("read back"), stats, tier)
+    };
+    let (plain, plain_stats, _) = render(false);
+    let (glow, glow_stats, tier) = render(true);
+    assert_eq!(
+        glow_stats.overlay_glyphs,
+        2 * plain_stats.overlay_glyphs,
+        "a glowing glyph is two instances: its glow and its fill"
+    );
+    let (w, h) = (plain.width as usize, plain.height as usize);
+    let at = |px: &[u8], x: usize, y: usize| -> [i32; 3] {
+        let i = (y * w + x) * 4;
+        [px[i] as i32, px[i + 1] as i32, px[i + 2] as i32]
+    };
+    let bg = at(&plain.pixels, 2, 2);
+    let lum = |p: [i32; 3]| p[0] + p[1] + p[2];
+    let is_ink = |x: usize, y: usize| lum(at(&plain.pixels, x, y)) - lum(bg) > 300;
+    let (mut ink_same, mut ink, mut near, mut far) = (0usize, 0usize, 0usize, 0usize);
+    for y in 0..h {
+        for x in 0..w {
+            let p = at(&plain.pixels, x, y);
+            let g = at(&glow.pixels, x, y);
+            let solid = x > 0
+                && y > 0
+                && x + 1 < w
+                && y + 1 < h
+                && (y - 1..=y + 1).all(|yy| (x - 1..=x + 1).all(|xx| is_ink(xx, yy)));
+            if solid {
+                // Solid ink (its neighbours ink too, no antialiased edge):
+                // unchanged by the glow under it.
+                ink += 1;
+                if (0..3).all(|c| (p[c] - g[c]).abs() <= 8) {
+                    ink_same += 1;
+                }
+            } else if p == bg {
+                // Background: tinted next to the ink, untouched far from it.
+                let d = (1usize..=8)
+                    .find(|&r| {
+                        let (x0, x1) = (x.saturating_sub(r), (x + r).min(w - 1));
+                        let (y0, y1) = (y.saturating_sub(r), (y + r).min(h - 1));
+                        (y0..=y1).any(|yy| (x0..=x1).any(|xx| is_ink(xx, yy)))
+                    })
+                    .unwrap_or(99);
+                let tinted = g != bg;
+                if d <= 2 && tinted {
+                    near += 1;
+                }
+                if d > 6 && tinted {
+                    far += 1;
+                }
+            }
+        }
+    }
+    assert!(ink > 200, "the labels drew solid ink ({ink} px)");
+    assert!(
+        ink_same as f64 >= 0.95 * ink as f64,
+        "the glow lies under the ink: {ink_same} of {ink} ink pixels unchanged"
+    );
+    assert!(
+        near > 200,
+        "the background next to the ink glows ({near} px)"
+    );
+    assert_eq!(far, 0, "nothing glows past the distance field's reach");
+    let out = out_dir().join(format!("text-glow-{tier}.png"));
+    image::save_buffer(
+        &out,
+        &glow.pixels,
+        glow.width,
+        glow.height,
+        image::ColorType::Rgba8,
+    )
+    .expect("write frame");
+    let own = reference_dir(&tier).join("text-glow.png");
+    if std::env::var_os("OG_UI_CAPTURE").is_some() {
+        std::fs::create_dir_all(own.parent().expect("dir")).expect("reference dir");
+        std::fs::copy(&out, &own).expect("record reference");
+    }
+    let reference = if own.exists() {
+        own
+    } else {
+        reference_dir("metal").join("text-glow.png")
+    };
+    let expected = image::open(&reference)
+        .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", reference.display()))
+        .to_rgba8();
+    if let Err(e) = compare(&glow.pixels, expected.as_raw()) {
+        panic!(
+            "{} differs from {}: {e}",
+            out.display(),
+            reference.display()
+        );
+    }
+}
+
+/// The glow's cost on this machine's GPU: 24 display-size labels rendered
+/// 300 times with and without it (`cargo test -p og-ui --release --test gfx
+/// -- --ignored text_glow_cost --nocapture`; tests/evidence/P2/ui/text-glow-cost.md).
+#[test]
+#[ignore]
+fn text_glow_cost() {
+    let mut best = [f64::INFINITY; 2];
+    for round in 0..6 {
+        let glow = round % 2 == 1;
+        let (scene, desc) = glow_scene(glow, 24);
+        let desc = RenderDesc {
+            width: 1280,
+            height: 1040,
+            ..desc
+        };
+        let mut renderer = Renderer::new_blocking(&desc).expect("a headless adapter");
+        let mut stats = renderer
+            .render(&scene, &RenderTarget::Offscreen)
+            .expect("render");
+        renderer.read_offscreen().expect("read back");
+        let n = 600;
+        let start = std::time::Instant::now();
+        for _ in 0..n {
+            stats = renderer
+                .render(&scene, &RenderTarget::Offscreen)
+                .expect("render");
+        }
+        renderer.read_offscreen().expect("read back");
+        let ms = start.elapsed().as_secs_f64() * 1000.0 / n as f64;
+        best[usize::from(glow)] = best[usize::from(glow)].min(ms);
+        println!(
+            "glow {glow}: {} glyph instances, {ms:.4} ms per frame",
+            stats.overlay_glyphs
+        );
+    }
+    println!(
+        "best of three: {:.4} ms without, {:.4} ms with the glow ({:+.4} ms)",
+        best[0],
+        best[1],
+        best[1] - best[0]
+    );
+}

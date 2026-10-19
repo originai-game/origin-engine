@@ -909,3 +909,52 @@ fn a_press_dragged_from_one_cell_to_another_drops_there_once() {
     rig.click("Slots/Cell#3", b);
     assert_eq!(rig.state.drops.len(), 1);
 }
+
+/// A type step's tracking spaces Latin glyphs (each advance plus tracking
+/// em: the label is wider by that per character and its draw command
+/// carries it to og-render), and leaves CJK text as the font sets it.
+/// Ways it could fail: the ramp's tracking is ignored (equal widths),
+/// measured but not drawn (the text overruns its box), or applied to CJK.
+#[test]
+fn a_steps_tracking_spaces_latin_glyphs_and_not_cjk() {
+    let width = |tracking: f32, text: &str| {
+        let mut scene = og_render::RenderScene::new();
+        let mut ui = ui_with_font(add_test_font(&mut scene));
+        let mut t = *ui.theme();
+        t.type_ramp.xl.tracking_em = tracking;
+        ui.set_theme(t);
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.label(
+            "L",
+            text,
+            LabelDesc {
+                step: Some(t.type_ramp.xl),
+                nowrap: true,
+                ..LabelDesc::default()
+            },
+        );
+        ui.end();
+        let drawn = ui
+            .frame()
+            .items
+            .iter()
+            .find_map(|i| match &i.cmd {
+                DrawCmd::Text { tracking, .. } => Some(*tracking),
+                _ => None,
+            })
+            .unwrap_or(f32::NAN);
+        (ui.frame().element("L").expect("label").width, drawn)
+    };
+    let size = Theme::default().type_ramp.xl.size;
+    let (plain, _) = width(0.0, "Origin");
+    let (wide, drawn) = width(0.1, "Origin");
+    assert!(
+        (wide - plain - 6.0 * 0.1 * size).abs() < 0.75,
+        "six glyphs, each 0.1 em further: {plain} then {wide}"
+    );
+    assert_eq!(drawn, 0.1, "the draw command carries the tracking");
+    let (cjk_plain, _) = width(0.0, "原点引擎");
+    let (cjk_wide, cjk_drawn) = width(0.1, "原点引擎");
+    assert_eq!(cjk_plain, cjk_wide, "CJK keeps the font's spacing");
+    assert_eq!(cjk_drawn, 0.0);
+}

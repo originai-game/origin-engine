@@ -2122,6 +2122,9 @@ fn floating(rs: &mut RenderState, feel: &Feel, now: f64) {
                 color: [t.color.x, t.color.y, t.color.z, alpha],
                 layer: t.layer,
                 clip: None,
+                tracking: 0.0,
+                weight: 0.0,
+                glow: None,
             });
             if t.outline > 0.0 {
                 rs.scene.text_outlines.push(og_render::TextOutline {

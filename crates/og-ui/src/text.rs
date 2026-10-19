@@ -122,6 +122,16 @@ impl FontMetrics {
         }
         text.chars().map(|c| self.advance(c)).sum::<f32>() * size
     }
+
+    /// [`FontMetrics::measure`] with `tracking` em after each character the
+    /// font draws (og-render's `Text::tracking`: CSS `letter-spacing`).
+    pub fn measure_tracked(&self, text: &str, size: f32, tracking: f32) -> f32 {
+        let w = self.measure(text, size);
+        if tracking == 0.0 {
+            return w;
+        }
+        w + tracking * size * text.chars().filter(|&c| c != '\n' && self.has(c)).count() as f32
+    }
 }
 
 /// A font the UI lays out with and draws with.
@@ -350,18 +360,18 @@ fn tokens(paragraph: &str) -> Vec<(&str, bool)> {
 }
 
 /// The widest unbreakable unit: a wrapping text's minimum width.
-pub(crate) fn longest_word(text: &str, m: &FontMetrics, size: f32) -> f32 {
+pub(crate) fn longest_word(text: &str, m: &FontMetrics, size: f32, tracking: f32) -> f32 {
     text.split('\n')
         .flat_map(tokens)
         .filter(|(_, space)| !space)
-        .map(|(w, _)| m.measure(w, size))
+        .map(|(w, _)| m.measure_tracked(w, size, tracking))
         .fold(0.0, f32::max)
 }
 
 /// The widest `\n`-separated line, unwrapped.
-pub(crate) fn widest_line(text: &str, m: &FontMetrics, size: f32) -> f32 {
+pub(crate) fn widest_line(text: &str, m: &FontMetrics, size: f32, tracking: f32) -> f32 {
     text.split('\n')
-        .map(|l| m.measure(l, size))
+        .map(|l| m.measure_tracked(l, size, tracking))
         .fold(0.0, f32::max)
 }
 
@@ -371,6 +381,7 @@ pub(crate) fn break_lines(
     text: &str,
     m: &FontMetrics,
     size: f32,
+    tracking: f32,
     max_width: Option<f32>,
 ) -> Vec<Line> {
     let mut lines = Vec::new();
@@ -378,7 +389,7 @@ pub(crate) fn break_lines(
         let Some(max) = max_width else {
             lines.push(Line {
                 text: paragraph.to_owned(),
-                width: m.measure(paragraph, size),
+                width: m.measure_tracked(paragraph, size, tracking),
             });
             continue;
         };
@@ -390,10 +401,10 @@ pub(crate) fn break_lines(
         for (unit, is_space) in tokens(paragraph) {
             if is_space {
                 spaces.push_str(unit);
-                spaces_w += m.measure(unit, size);
+                spaces_w += m.measure_tracked(unit, size, tracking);
                 continue;
             }
-            let w = m.measure(unit, size);
+            let w = m.measure_tracked(unit, size, tracking);
             if !line.is_empty() && width + spaces_w + w > max {
                 lines.push(Line {
                     text: std::mem::take(&mut line),
@@ -410,7 +421,7 @@ pub(crate) fn break_lines(
             if line.is_empty() && w > max {
                 // Break the unit between characters.
                 for c in unit.chars() {
-                    let cw = m.advance(c) * size;
+                    let cw = m.measure_tracked(c.encode_utf8(&mut [0; 4]), size, tracking);
                     if !line.is_empty() && width + cw > max {
                         lines.push(Line {
                             text: std::mem::take(&mut line),

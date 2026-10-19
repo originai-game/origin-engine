@@ -185,7 +185,7 @@ comment; og-cook validates it and cooks it as an `og.UiSkin` blob,
 | `corner` + `corners <parts>`, `divider`, `flourish` | ornaments: four mirrored corners on the named parts, an ornament over `Ui::divider`, a flourish beside a heading (`LabelDesc::heading`; both sides when centred). Ink `authored`, `accent`, `fg`, `muted`, `border` or `focus` |
 | `tile x y w h <tw> <th> <alpha> [inset] <parts>` | a texture tiled over the parts' fill (parchment, scanlines, grain) |
 | `shadow <part> dx dy blur spread "#rrggbbaa"`, `glow <part> size ink alpha` | per class (button states share the button's); blur 0 is a hard shadow |
-| `textShadow <role> dx dy blur colour`, `textGlow <role> size ink alpha` | per font role (`body`, `display`, `numeric`) |
+| `textShadow <role> dx dy blur colour`, `textGlow <role> size ink alpha` | per font role (`body`, `display`, `numeric`); the text glow is og-render's distance-field halo (`Text::glow`, one instance per glyph under its ink) reaching twice `size` CSS px, as far as the font's distance range allows: cook a glowing role's font with a wider `px_range` (the neon and scifi packs' display and numeric fonts take 12) |
 | `press sx sy dy`, `hover dy scale` | the press squash and sink, the hover lift, each on a damped spring (og-tween's `Spring`, arithmetic only, in the UI state): the hover on `motion.hoverSpring` (default the tokens' `motion.spring.default`, damping 1 and 350 ms: no overshoot), the press on `motion.pressSpring` (default damping 0.55 over `motion.duration.instant`: in at once, a small bounce past rest on release) |
 | `fonts { body display numeric fallback }`, `icons "<id>" cols rows { names … }` | fonts per role (numeric is the `Mono` role) and the CJK `fallback`: a text whose role font lacks one of its characters is measured and drawn in the fallback (`Fonts::for_text`); the icon set |
 | `motion { enter stagger toast progress shake pop hoverSpring pressSpring }` | dialog and panel entrance (`pop` springs past 1 and settles), the stagger of a panel's controls (shortened so a long list ends within one more entrance), the toast arrival, eased progress bars, the refused-press shake, the count-up landing pop, and the hover and press springs (`<damping ratio> <response ms>`) |
@@ -284,6 +284,11 @@ One layout per frame, in five walks over the tree (`src/layout.rs`):
 5. positions (alignment, scroll offsets clamped to the content), clip
    rectangles (the intersection of every scrolling ancestor), and device-pixel
    snapping of every rectangle (`Viewport::dpr`).
+
+Text is measured and drawn with its type step's tracking (`tracking_em`,
+og-render's `Text::tracking`: the tokens tighten `xl` and up by 0.01 to
+0.035 em, and a skin's ramp line may set its own); tracking is Latin
+tracking, so a text with CJK characters or a shaped script takes none.
 
 Everything is in CSS pixels of the play surface (origin top left, y down),
 the unit of `og.Input` and the probe. The root is the viewport, padded by
@@ -480,16 +485,13 @@ font is og-tests' committed MSDF atlas (Noto Sans SC subset, OFL).
 ## What phase 2 owes
 
 - **Rich text**: inline runs of colour, weight and size; the display and
-  rounded faces cooked as their own atlases; tracking from the type ramp
-  (needs per-glyph spacing in og-render's `Text`); kerning and shaping
+  rounded faces cooked as their own atlases; kerning and shaping
   (rustybuzz, with og-render); RTL; ellipsis truncation; selection in fields;
   multi-line text areas; IME composition.
 - **Animations**: caret blink. (The skin's hover and press move on springs
   since the phase 2 UI round.)
-- **Skins**: per-glyph tracking from a skin's ramp; text glows are four
-  offset copies (a real blur needs an MSDF outline in og-render).
-  (Overlay entry and exit, toasts, meters and typing run on the token
-  easings by the tick since the kit round.)
+- (Skins: the ramp's tracking and a distance-field text glow landed in the
+  phase 2 UI round.)
 - **Accessibility**: an accessibility tree mirrored to the shell (roles,
   names, values, states) so screen readers and the DOM can read the canvas
   UI; `prefers-reduced-motion` and `prefers-contrast` read from the shell

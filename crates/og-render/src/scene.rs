@@ -637,6 +637,31 @@ pub struct Text {
     /// [`Overlay::clips`] the text is cut to, per pixel (`None`: the whole
     /// output). Ignored for world text.
     pub clip: Option<u32>,
+    /// Added to every glyph's advance, in em (CSS `letter-spacing`: after
+    /// each character, the last included): a type ramp's tracking. 0 is the
+    /// font's own spacing.
+    pub tracking: f32,
+    /// In [`Overlay::texts`]: thickens the glyphs by this many CSS pixels at
+    /// their edge (a faux bold from the distance field; 0 is the font's
+    /// weight). Ignored for world text.
+    pub weight: f32,
+    /// In [`Overlay::texts`]: a soft glow around the glyphs read from the
+    /// font's true distance field (MTSDF alpha), drawn under every glyph of
+    /// the text. Ignored for world text (it has [`TextOutline`]).
+    pub glow: Option<TextGlow>,
+}
+
+/// A glow around overlay text ([`Text::glow`]): `color`'s alpha at the
+/// glyph's edge, falling to nothing `radius` CSS pixels out. Its reach is
+/// capped by the font's distance range: half `distance_range` atlas pixels
+/// at the size drawn (a font cooked with `px_range 12` glows four times as
+/// far as one with 3).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TextGlow {
+    /// Linear RGBA.
+    pub color: [f32; 4],
+    /// CSS pixels.
+    pub radius: f32,
 }
 
 impl Text {
@@ -651,6 +676,9 @@ impl Text {
             color: [1.0; 4],
             layer: 0,
             clip: None,
+            tracking: 0.0,
+            weight: 0.0,
+            glow: None,
         }
     }
 }

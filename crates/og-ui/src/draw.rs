@@ -70,6 +70,12 @@ pub enum DrawCmd {
         /// The line box, for overlap.
         bounds: Rect,
         clip: Rect,
+        /// Added to each glyph's advance, em (the type step's tracking).
+        tracking: f32,
+        /// Thickening at the glyphs' edge, CSS px (a faux bold).
+        weight: f32,
+        /// A glow from the font's distance field: linear RGBA and radius, CSS px.
+        glow: Option<([f32; 4], f32)>,
     },
 }
 
@@ -332,6 +338,9 @@ pub(crate) fn emit(items: &[DrawItem], desc: &EmitDesc, overlay: &mut Overlay) {
                 color,
                 font,
                 clip,
+                tracking,
+                weight,
+                glow,
                 ..
             } => {
                 let c = clip_index(overlay, &mut known, clip);
@@ -344,6 +353,9 @@ pub(crate) fn emit(items: &[DrawItem], desc: &EmitDesc, overlay: &mut Overlay) {
                     color: *color,
                     layer,
                     clip: Some(c),
+                    tracking: *tracking,
+                    weight: *weight,
+                    glow: glow.map(|(color, radius)| og_render::TextGlow { color, radius }),
                 });
             }
         }

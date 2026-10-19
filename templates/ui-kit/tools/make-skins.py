@@ -894,13 +894,17 @@ def skin_text(s, d):
     return "\n".join(L) + "\n"
 
 
-def font_import(display):
+def font_import(display, glows=False):
     em = 48 if display else 32
+    # A role with a textGlow reads its glow from the distance field, which
+    # reaches half px_range atlas pixels: 12 lets it spread 6 (4 lets 2).
+    rng = 12 if glows else 4
+    why = "; px_range 12 for its text glow" if glows else ""
     return (
         "type import\nversion 1\n---\n"
-        f"# Latin-1 and the typographic punctuation the kit shows; {em} px per em in the atlas.\n"
+        f"# Latin-1 and the typographic punctuation the kit shows; {em} px per em in the atlas{why}.\n"
         "font {\n  charset latin punct\n"
-        f"  em_px {em}\n  px_range 4\n}}\n"
+        f"  em_px {em}\n  px_range {rng}\n}}\n"
     )
 
 
@@ -956,9 +960,10 @@ def main():
         imports = {}
         for role in ("body", "display", "numeric"):
             imports[roles[role]] = imports.get(roles[role], False) or role != "body"
+        glowing = {roles[role] for role, *_ in s["text"].get("textGlow", [])}
         for name, display in imports.items():
             with open(os.path.join(d, name + ".ogt"), "w") as f:
-                f.write(font_import(display))
+                f.write(font_import(display, name in glowing))
         print("wrote", d)
 
 

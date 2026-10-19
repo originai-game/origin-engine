@@ -470,12 +470,27 @@ pub(crate) struct TextContent {
 }
 
 impl TextContent {
+    /// The type step's tracking, in em: Latin tracking, so none for text
+    /// with CJK characters or a shaped script (whose joins it would break).
+    pub fn tracking(&self) -> f32 {
+        step_tracking(&self.step, &self.text)
+    }
+
     pub fn line_height(&self) -> f32 {
         if self.text.chars().any(is_cjk) {
             self.step.cjk_line_height
         } else {
             self.step.line_height
         }
+    }
+}
+
+/// A step's tracking for `text`: none with CJK or a shaped script.
+pub(crate) fn step_tracking(step: &TypeStep, text: &str) -> f32 {
+    if text.chars().any(|c| is_cjk(c) || og_i18n::needs_shaping(c)) {
+        0.0
+    } else {
+        step.tracking_em
     }
 }
 
@@ -770,9 +785,9 @@ fn size_w(nodes: &mut [Node], i: usize, fonts: &dyn Metrics) {
     let (pref, min) = match &n.content {
         Content::Text(t) => {
             let m = fonts.metrics_for(t.font, &t.text);
-            let pref = widest_line(&t.text, m, t.step.size);
+            let pref = widest_line(&t.text, m, t.step.size, t.tracking());
             let min = if t.wrap {
-                longest_word(&t.text, m, t.step.size)
+                longest_word(&t.text, m, t.step.size, t.tracking())
             } else {
                 pref
             };
@@ -866,7 +881,13 @@ fn distribute_w(nodes: &mut [Node], i: usize, fonts: &dyn Metrics) {
         let m = fonts.metrics_for(t.font, &t.text);
         // A fit width snapped to the device pixel may land up to half a
         // pixel under the text it was measured from: that is no reason to wrap.
-        let lines = break_lines(&t.text, m, t.step.size, t.wrap.then_some(inner + 0.5));
+        let lines = break_lines(
+            &t.text,
+            m,
+            t.step.size,
+            t.tracking(),
+            t.wrap.then_some(inner + 0.5),
+        );
         nodes[i].lines = lines;
         return;
     }

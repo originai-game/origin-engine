@@ -340,7 +340,7 @@ pub(crate) fn build<'a>(
                     },
                 ));
             }
-            pen.x += g.advance;
+            pen.x += g.advance + text.tracking;
         }
     }
     let glyphs = keyed.len() as u32 - sprites;

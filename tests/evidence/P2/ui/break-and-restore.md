@@ -15,3 +15,6 @@ was restored.
 Rows 42 (type sizes) changed no test: `og polish` is its measure (the
 reports in `polish/`), and the 16 kit references it moved were re-recorded
 (`rerecord/row42-*.png`, old left, new right).
+| `crates/og-ui/tests/gfx.rs` `a_text_glow_is_a_halo_from_the_distance_field` (row 18) | the glow's radius no longer capped at the field's reach in `overlay.wgsl` | `nothing glows past the distance field's reach`: left 6, right 0 (the halo ended at the glyph quad's edge) | passes. Swapping the passes (fills before glows) was also tried: with the test font's 2-pixel reach the glows of neighbours never reach ink, so it passed; the order is kept for wider fields and stated, not proven, by this test |
+| row 17 (tracking) | no new test: the token ramp's tracking moved 41 kit references and `sample-screen.png`, re-recorded with before and after (`rerecord/row17-*.png`) | the old references fail at 0.04 to 0.53 % outliers, RMSE 0.010 to 0.048 | the kit's 26 suites and og-ui's tests pass |
+| `crates/og-ui/tests/widgets.rs` `a_steps_tracking_spaces_latin_glyphs_and_not_cjk` (row 17) | `step_tracking` answering 0 | `six glyphs, each 0.1 em further`: equal widths | passes |

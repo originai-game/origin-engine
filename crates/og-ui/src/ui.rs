@@ -476,6 +476,10 @@ impl Default for Ui {
 
 const STATE_VERSION: u32 = 3;
 
+/// A skin's `textGlow` size is how far the old four offset copies reached;
+/// the distance-field glow fades to nothing over this many times it.
+const TEXT_GLOW_REACH: f32 = 2.0;
+
 impl Ui {
     pub fn new(desc: UiDesc) -> Ui {
         Ui {
@@ -2308,7 +2312,13 @@ impl Ui {
                             ly + (lh - (m.ascender - m.descender) * size) / 2.0 + m.ascender * size;
                         let bounds = Rect::new(x, ly, line.width * sk, lh);
                         let role = tc.font as usize;
-                        let text = |dx: f32, dy: f32, color: Srgba| DrawCmd::Text {
+                        let tracking = tc.tracking();
+                        // A skin's text glow: the font's distance field, under the glyphs.
+                        let glow = t.skin.text_glows[role].map(|g| {
+                            let c = g.ink.color(p).fade(g.alpha * tc.color.alpha * alpha);
+                            (c.linear(), TEXT_GLOW_REACH * g.size * sk)
+                        });
+                        let text = |dx: f32, dy: f32, color: Srgba, glow| DrawCmd::Text {
                             x: snap(x + dx),
                             baseline: snap(baseline + dy),
                             size,
@@ -2322,27 +2332,23 @@ impl Ui {
                                 bounds.height,
                             ),
                             clip: text_clip,
+                            tracking,
+                            weight: 0.0,
+                            glow,
                         };
-                        if let Some(g) = t.skin.text_glows[role] {
-                            let c = g.ink.color(p).fade(g.alpha * tc.color.alpha / 4.0);
-                            for (dx, dy) in
-                                [(-g.size, 0.0), (g.size, 0.0), (0.0, -g.size), (0.0, g.size)]
-                            {
-                                cmds.push(text(dx, dy, c));
-                            }
-                        }
                         if let Some(sh) = t.skin.text_shadows[role] {
                             let c = sh.color.fade(tc.color.alpha);
-                            cmds.push(text(sh.dx, sh.dy, c));
+                            cmds.push(text(sh.dx, sh.dy, c, None));
                             if sh.blur > 0.0 {
                                 cmds.push(text(
                                     sh.dx + sh.blur / 2.0,
                                     sh.dy + sh.blur / 2.0,
                                     c.fade(0.5),
+                                    None,
                                 ));
                             }
                         }
-                        cmds.push(text(0.0, 0.0, tc.color));
+                        cmds.push(text(0.0, 0.0, tc.color, glow));
                         if n.heading
                             && k == 0
                             && let Some(o) = t.skin.flourish.filter(|_| t.skin.atlas.is_some())
@@ -2367,7 +2373,7 @@ impl Ui {
                             _ => "",
                         };
                         let prefix: String = text.chars().take(c).collect();
-                        let cx = inner.x + m.measure(&prefix, size);
+                        let cx = inner.x + m.measure_tracked(&prefix, size, tc.tracking());
                         let ch = size + t.space.xxs * 2.0;
                         let caret_w = 1.0f32.max(1.0 / dpr);
                         cmds.push(DrawCmd::Quad {
@@ -2612,7 +2618,8 @@ impl Ui {
                     let m = &f.metrics;
                     let r = frame.resolve(&n.rect);
                     let size = step.size * n.scale;
-                    let w = m.measure(text, size);
+                    let tracking = crate::layout::step_tracking(step, text);
+                    let w = m.measure_tracked(text, size, tracking);
                     let lh = step.line_height * n.scale;
                     let x = r.x + (r.width - w) / 2.0;
                     let ly = r.y + (r.height - lh) / 2.0;
@@ -2632,6 +2639,9 @@ impl Ui {
                         font: handle,
                         bounds: Rect::new(x, ly, w, lh),
                         clip,
+                        tracking,
+                        weight: 0.0,
+                        glow: None,
                     });
                 }
             }

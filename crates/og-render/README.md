@@ -31,7 +31,7 @@ the world → scene extraction belongs to the layer above.
 | `SpriteOrder`, `TextOutline`, `TextureFilter` | Per-frame side lists by index, so `Sprite` and `Text` keep their fields: `sprite_order` gives a sprite a sort key within its layer (top-down y sorting: `-y` of the feet; default 0), `text_outlines` an outline (width as a fraction of half the font's distance range, linear colour) to a world text; `set_texture_filter(texture, Nearest)` samples a texture by its nearest texel wherever sprites, tiles and particles draw it (pixel art). |
 | `TileLayer`, `TileChunk`, `TileQuad`, `TileAnimation` | `tile_layers`: chunked tile quads (shared `Arc<Vec<TileChunk>>`, so an unchanged layer copies no tiles) drawn through the sprite batch before the sprites of their layer, chunks culled to an orthographic view, with `repeat` per axis (scrolling backgrounds) and animated quads cycling uvs by `time`. `FrameStats::tiles` / `tile_chunks` count what was drawn. |
 | `nine_slice(sprite, insets, texture_size, world_per_pixel)` | The nine sprites of a nine-slice panel: corners keep their size, edges stretch along one axis, the centre along both; insets clamp to half the sprite. |
-| `MsdfFont`, `Glyph`, `Text` | An MSDF atlas (`TextureHandle`, linear, no mips) plus `distance_range`, `line_height` and the glyph table (`advance`, `plane_bounds` in em y up, `atlas_bounds` in pixels y down: msdf-atlas-gen's layout). `Text { font, text, position, size, rotation, color, layer, clip }` lays out left to right with `\n`; missing characters are counted in `FrameStats::missing_glyphs`. Text sorts with the sprites. |
+| `MsdfFont`, `Glyph`, `Text` | An MSDF atlas (`TextureHandle`, linear, no mips) plus `distance_range`, `line_height` and the glyph table (`advance`, `plane_bounds` in em y up, `atlas_bounds` in pixels y down: msdf-atlas-gen's layout). `Text { font, text, position, size, rotation, color, layer, clip, tracking, weight, glow }` lays out left to right with `\n`, each glyph advancing by its advance plus `tracking` em (CSS `letter-spacing`); missing characters are counted in `FrameStats::missing_glyphs`. Text sorts with the sprites. `weight` (a faux bold, CSS px of the distance field) and `glow` (`TextGlow { color, radius }`) are the overlay's (below). |
 | `Overlay` | The screen-space layer drawn last (`RenderScene::overlay: Option<Overlay>`): `sprites` and `texts` in CSS pixels, origin top left, y down; `width`, `height` (the CSS viewport) and `scale` (device pixels per CSS pixel; 0 fits the height); `clips` (`add_clip([x, y, w, h])` → the index a sprite or text names in `clip`). See [The overlay](#the-overlay). |
 | `DebugView` | `None`, `Cascades` (red/green/blue per cascade, black beyond). |
 | `FrameStats` | `draw_calls` (every pass), `batches`, `instances`, `culled`, `triangles` (main pass), `shadow_passes`, `shadow_casters`, `lights`, `lights_dropped`, `sprites`, `glyphs`, `sprite_draws`, `missing_glyphs` (overlay ones included), `overlay_sprites`, `overlay_glyphs`, `overlay_draws`, `frame`. |
@@ -125,7 +125,19 @@ values. Positions are CSS pixels from the top-left corner, scaled by
 `Overlay::scale` (0: the output's height over `Overlay::height`). Sprites and
 text are sorted by (layer, texture or font) into instanced runs (stable
 within a run); each instance carries an optional clip rectangle tested per
-pixel, so a scrolled list cuts a glyph in half instead of dropping it. Every
+pixel, so a scrolled list cuts a glyph in half instead of dropping it.
+Overlay text also takes `weight` (the fill's edge moved out by that many CSS
+pixels of the distance field: a faux bold) and `glow`: a soft halo read from
+the font's distance field in the same MSDF pipeline, drawn as one extra
+instance per glyph, every glyph's glow before every fill so no halo lies
+over ink. The distance is the MTSDF's true field in alpha (round past
+corners), or the median for a plain MSDF; it falls off quadratically to
+`radius`, capped where the field ends (half the font's `distance_range` in
+atlas pixels at the size drawn, so a font cooked with `px_range 12` glows
+three times as far as one with 4); og-ui's skins use it for `textGlow`
+(og-ui's `tests/gfx.rs` `a_text_glow_is_a_halo_from_the_distance_field`
+and `references/<tier>/text-glow.png`; the cost is
+`tests/evidence/P2/ui/text-glow-cost.md`). Every
 tier runs it (render passes only); screenshots, `capture` and
 `read_offscreen` include it; `FrameStats` counts `overlay_sprites`,
 `overlay_glyphs` and `overlay_draws`. Tests: `tests/gfx.rs`
