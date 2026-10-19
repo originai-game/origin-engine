@@ -754,6 +754,23 @@ fn indirect_list(batches: &[Batch], n: u32, g: u32, include: impl Fn(&Batch) -> 
     }
 }
 
+/// The layers to allocate for a square 2D array texture that is to hold
+/// `layers` layers. wgpu's GL backend picks the GL texture target from the
+/// descriptor when it creates the texture: one layer makes a plain 2D
+/// texture and a multiple of six layers makes a cube map (array). A 2D-array
+/// sampler bound to either reads zero on WebGL2, with no validation error, and
+/// neither can be rendered to by layer as an array. At least two layers, and
+/// one spare when that is a multiple of six, keep it a 2D array; callers
+/// still address only the layers they asked for.
+pub(crate) fn gl_safe_array_layers(layers: u32) -> u32 {
+    let layers = layers.max(2);
+    if layers.is_multiple_of(6) {
+        layers + 1
+    } else {
+        layers
+    }
+}
+
 /// A shadow map: one R32Float array the lit shaders read, a view per layer,
 /// and the depth buffer its passes test against.
 struct ShadowMap {
@@ -764,16 +781,9 @@ struct ShadowMap {
 
 impl ShadowMap {
     fn new(device: &wgpu::Device, label: &str, size: u32, layers: u32) -> ShadowMap {
-        // wgpu's GL backend must pick a texture's target when creating it and
-        // takes a square texture of a multiple of six layers for a cube map
-        // (array), which WebGL2 then neither renders to by layer nor reads as
-        // a 2D array: the twelve local shadow layers read as zero (every
-        // shadowed light dark). One spare layer keeps it a 2D array.
-        let allocated = if layers.is_multiple_of(6) {
-            layers + 1
-        } else {
-            layers
-        };
+        // A single cascade or the twelve local shadow layers would otherwise
+        // read as zero on WebGL2 (see `gl_safe_array_layers`).
+        let allocated = gl_safe_array_layers(layers);
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some(label),
             size: wgpu::Extent3d {
@@ -1612,8 +1622,7 @@ impl Renderer {
             mipmap_filter: wgpu::MipmapFilterMode::Nearest,
             ..Default::default()
         });
-        // At least two layers: GL cannot view a single-layer texture as an array.
-        let cascade_map = ShadowMap::new(&device, "cascades", shadow_size, cascades.max(2));
+        let cascade_map = ShadowMap::new(&device, "cascades", shadow_size, cascades);
         let local_map = ShadowMap::new(
             &device,
             "local shadows",
