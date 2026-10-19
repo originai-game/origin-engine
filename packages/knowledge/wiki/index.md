@@ -110,10 +110,12 @@ Field units the docs and Tune use.
 
 ## Every name
 
-795 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+798 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
+| [`A11yNode`](ui.md#type-A11yNode) | struct | ui | — |
+| [`A11yTree`](ui.md#type-A11yTree) | struct | ui | — |
 | [`Ability`](ui.md#type-Ability) | desc struct | ui | — |
 | [`ActionButtonDesc`](ui.md#type-ActionButtonDesc) | desc struct | ui | — |
 | [`AdvanceOperation`](probe.md#type-AdvanceOperation) | struct | probe | — |
@@ -563,6 +565,7 @@ Field units the docs and Tune use.
 | [`og.tween.squash`](tween.md#fn-squash) | function | tween | `og_tween_squash` |
 | [`og.tween.to`](tween.md#fn-to) | function | tween | `og_tween_to` |
 | [`og.TweenCompleted`](tween.md#record-TweenCompleted) | event | tween | — |
+| [`og.ui.a11y`](ui.md#fn-a11y) | function | ui | `og_ui_a11y` |
 | [`og.ui.actionButton`](ui.md#fn-actionButton) | function | ui | `og_ui_action_button` |
 | [`og.ui.alertDialog`](ui.md#fn-alertDialog) | function | ui | — |
 | [`og.ui.anchor`](ui.md#fn-anchor) | function | ui | — |

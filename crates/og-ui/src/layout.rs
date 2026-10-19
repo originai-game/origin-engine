@@ -589,6 +589,8 @@ pub(crate) struct Node {
     pub aux: [f32; 3],
     /// A heading label: the skin's flourish frames it.
     pub heading: bool,
+    /// What it tells the accessibility tree beyond its kind.
+    pub a11y: crate::a11y::A11y,
     /// Its descendants enter one after another (a skin's stagger).
     pub stagger: Option<Stagger>,
     // Computed by the frame.
@@ -646,6 +648,7 @@ impl Node {
             shapes: Vec::new(),
             aux: [0.0; 3],
             heading: false,
+            a11y: crate::a11y::A11y::default(),
             stagger: None,
             alpha: 1.0,
             scale: 1.0,

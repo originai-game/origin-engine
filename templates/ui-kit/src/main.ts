@@ -131,6 +131,9 @@ export const Demo = defineComponent("Demo", {
   focus3: u32(0),
   // How many times the lobby hint's "How to join" link was followed.
   rules: u32(0),
+  // The last frame's accessibility tree (og.ui.a11y): its nodes and its focus order's length.
+  a11yNodes: u32(0),
+  a11yFocus: u32(0),
   // Look: the style pack (SKINS index), the screen transition (WIPES index), UI sounds.
   skin: u32(0),
   wipe: u32(0),
@@ -138,7 +141,7 @@ export const Demo = defineComponent("Demo", {
 });
 type DemoState = { -readonly [K in keyof ReturnType<typeof demoDefaults>]: ReturnType<typeof demoDefaults>[K] };
 function demoDefaults() {
-  return { screen: 0, paused: false, font: 0, icons: 0, backdrop: 0, hp: 72, mana: 40, coins: 128, score: 4250, lives: 2, time: 95, masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false, quality: 1, showFps: false, reducedMotion: false, highContrast: false, vibration: true, invertY: false, sensitivity: 1, language: 0, saves: 0, tab: 0, difficulty: 1, amount: 3, mode: 0, optA: true, optB: false, chip: 0, stickX: 0, stickY: 0, line: 0, step: 0, balance: 1250, owned: 0, bought: 0, refused: 0, inv0: 0, inv1: 1, inv2: 2, inv3: 5, inv4: 9, inv5: 13, moves: 0, used: 0, gold: 40, gen0: 1, gen1: 0, gen2: 0, taps: 0, scope: 0, scopeTick: 0, confirmed: 0, level: 0, pick0: 0, pick1: 0, pick2: 0, pick3: 0, focus0: 0, focus1: 0, focus2: 0, focus3: 0, rules: 0, skin: 0, wipe: 0, sounds: true };
+  return { screen: 0, paused: false, font: 0, icons: 0, backdrop: 0, hp: 72, mana: 40, coins: 128, score: 4250, lives: 2, time: 95, masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false, quality: 1, showFps: false, reducedMotion: false, highContrast: false, vibration: true, invertY: false, sensitivity: 1, language: 0, saves: 0, tab: 0, difficulty: 1, amount: 3, mode: 0, optA: true, optB: false, chip: 0, stickX: 0, stickY: 0, line: 0, step: 0, balance: 1250, owned: 0, bought: 0, refused: 0, inv0: 0, inv1: 1, inv2: 2, inv3: 5, inv4: 9, inv5: 13, moves: 0, used: 0, gold: 40, gen0: 1, gen1: 0, gen2: 0, taps: 0, scope: 0, scopeTick: 0, confirmed: 0, level: 0, pick0: 0, pick1: 0, pick2: 0, pick3: 0, focus0: 0, focus1: 0, focus2: 0, focus3: 0, rules: 0, a11yNodes: 0, a11yFocus: 0, skin: 0, wipe: 0, sounds: true };
 }
 
 export const ICONS = [
@@ -449,6 +452,10 @@ export const Kit = defineSystem("Kit", { reads: [og.Input], writes: [Demo] }, (q
 
 /** One tick of the demo's UI over its state. */
 function kitFrame(world: World, dt: number, d: DemoState): void {
+  // The last frame's accessibility tree (the a11y playtest compares it with the probe's).
+  const tree = og.ui.a11y();
+  d.a11yNodes = tree.nodes.length;
+  d.a11yFocus = tree.focusOrder.length;
   let screen: Screen = SCREENS[d.screen] ?? "gallery";
   const wipe = WIPES[d.wipe] ?? "none";
   if (wipe !== "none") {

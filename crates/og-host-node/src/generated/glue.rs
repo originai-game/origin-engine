@@ -1479,6 +1479,12 @@ pub fn og_ui_focus(env: Env, pad: u32) -> String {
     <Host as UiApi>::og_ui_focus(&Host, pad)
 }
 
+#[napi(js_name = "og_ui_a11y")]
+pub fn og_ui_a11y(env: Env) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_a11y(&Host)
+}
+
 #[napi(js_name = "og_ui_set_navigation")]
 pub fn og_ui_set_navigation(env: Env, on: bool) {
     let _env = crate::EnvScope::enter(&env);

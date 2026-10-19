@@ -12028,6 +12028,69 @@ export type UiItemBuild = (index: number) => void;
 
 
 
+/**
+ * One node of the accessibility tree: an element with a role (layout containers and spacers have none and are left out).
+ */
+export interface A11yNode {
+  /** Its path, as touch_move_to and og.ui.focus name it. */
+  readonly path: string;
+  /** The path of the nearest node above it in the tree; empty at the top. */
+  readonly parent: string;
+  /**
+   * Its role (probe.UiElement.role): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, dialog, tooltip, separator, group.
+   */
+  readonly role: string;
+  /** Its accessible name: what a screen reader says it is. */
+  readonly name: string;
+  /**
+   * Its value as text (a slider's number, a progress's percent, a field's text); empty for none.
+   */
+  readonly value: string;
+  /**
+   * Its states: disabled, focused, focusable, checked, selected, expanded, pressed, busy, offscreen (a scroll container cuts it out of view).
+   */
+  readonly states: readonly string[];
+  /**
+   * Left edge of the whole element.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly x: number;
+  /**
+   * Top edge of the whole element.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly y: number;
+  /**
+   * Width.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly width: number;
+  /**
+   * Height.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly height: number;
+}
+
+/**
+ * The last frame's accessibility tree, built from the same nodes the UI draws and takes input on.
+ */
+export interface A11yTree {
+  /** The nodes, in tree order: the page, then each layer over it (a dialog after the page). */
+  readonly nodes: readonly A11yNode[];
+  /**
+   * The paths keyboard Tab and the pads visit, in order: the nodes marked focusable, within the topmost dialog while one is open.
+   */
+  readonly focusOrder: readonly string[];
+  /** The path keyboard and pad 0's focus is on; empty for none. */
+  readonly focused: string;
+}
+
+
 
 
 
@@ -14273,6 +14336,22 @@ export interface UiElement {
   /** The text it shows, if any. */
   readonly text: string;
   /**
+   * Its accessibility role (og.ui.a11y): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, alert, dialog, tooltip, separator, group; empty for a presentational element (a layout container, a spacer).
+   */
+  readonly role: string;
+  /**
+   * Its accessible name: its text, a name the widget gives it (an icon's name, a dialog's title, Decrease and Increase for a stepper's buttons), a control's own text gathered from its children, or else its id.
+   */
+  readonly name: string;
+  /**
+   * Its value as text: a slider's or stepper's number, a progress's or meter's amount, a field's text, a select's choice; empty for none.
+   */
+  readonly value: string;
+  /**
+   * Its states: disabled, focused, focusable (keys and pads reach it now, in this order), checked, selected, expanded, pressed, busy.
+   */
+  readonly states: readonly string[];
+  /**
    * Left edge.
    *
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
@@ -16251,6 +16330,10 @@ export declare namespace og {
      * @param pad The pad, 0 to 3; past 3 answers empty.
      */
     function focus(pad: number): string;
+    /**
+     * The accessibility tree of the last frame: every element with a role, its name, value, states and bounds, and the focus order Tab walks. A shell mirrors it into the page for screen readers; a playtest reads the same fields on dump_ui's elements.
+     */
+    function a11y(): A11yTree;
     /**
      * Whether keyboard and gamepad navigation moves focus on this screen (on by default). A gameplay HUD whose keys move the player turns it off; an open dialog or menu turns it back on while it is open. Takes effect from the next tick.
      *

@@ -139,6 +139,33 @@ layer's probe path is its own id. Anchored groups sit at one of nine points of
 the safe area (`Anchor::TopLeft` … `BottomRight`, `Center`), inset by the
 density's gutter (or `margin`), moved by `offset`.
 
+## Accessibility tree (`src/a11y.rs`)
+
+Every frame builds the accessibility tree from the nodes it draws and
+takes input on, so it cannot drift from the screen. Each element has a
+**role** (`button`, `link`, `text`, `heading`, `image`, `checkbox`,
+`radio`, `switch`, `slider`, `spinbutton`, `textbox`, `combobox`,
+`listbox`, `option`, `tab`, `tablist`, `radiogroup`, `progressbar`,
+`meter`, `timer`, `status`, `dialog`, `tooltip`, `separator`, `group`; none
+for layout containers, spacers and unnamed pictures), a **name** (its text;
+or what the widget gives it: an icon's name, a dialog's title, Decrease and
+Increase for a stepper's buttons, a field's placeholder; a control showing
+no text of its own is named by the text inside it, then by its id), a
+**value** (a slider's or stepper's number, a progress's percent, a meter's
+amount, a field's text, a select's choice, a cooldown's remaining share)
+and **states** (`disabled`, `focused`, `focusable`, `checked`, `selected`,
+`expanded`, `pressed`, `busy`; `offscreen` in the tree for a control a
+scroll container cuts out of view). The probe's `dump_ui` carries them on
+every element; `Ui::a11y()` (`og.ui.a11y()`) answers the tree of the
+elements with a role, with full paths, nearest-ancestor parents, whole
+bounds, the focus order and the focused path, for a shell to mirror into
+the page. Focus order is the tree's order (the drawing order: the page,
+then each layer over it): Tab and the pads walk exactly the nodes marked
+`focusable`, within the topmost dialog while one is open.
+`tests/a11y.rs` checks the roles, names, values and states of every
+widget and that Tab walks `focus_order`; the kit's `a11y` playtest checks
+that every screen names every control and gives every text a role.
+
 ## Focus navigation (`src/nav.rs`)
 
 One focus for pointer, keyboard and gamepad. Intents come from the arrow
@@ -538,10 +565,11 @@ font is og-tests' committed MSDF atlas (Noto Sans SC subset, OFL).
   since the phase 2 UI round.)
 - (Skins: the ramp's tracking and a distance-field text glow landed in the
   phase 2 UI round.)
-- **Accessibility**: an accessibility tree mirrored to the shell (roles,
-  names, values, states) so screen readers and the DOM can read the canvas
-  UI; `prefers-reduced-motion` and `prefers-contrast` read from the shell
-  into `UiDesc` (the theme flags exist; nothing sets them from the page yet).
+- **Accessibility**: the shell mirroring `og.ui.a11y()` into the page (ARIA
+  nodes over the canvas, live regions for toasts) so screen readers can read
+  the canvas UI; `prefers-reduced-motion` and `prefers-contrast` read from
+  the shell into `UiDesc` (the theme flags exist; nothing sets them from the
+  page yet). (The tree itself landed in the phase 2 UI round.)
 - Materials: glass (blur needs a render-graph pass) and the dark edge
   light (skins have shadows and glows); icons (iconoir) as an MTSDF atlas.
 - Layout: aspect-ratio images. (Two-axis scrolling, nested handoff,

@@ -1234,6 +1234,11 @@ pub fn og_ui_focus(pad: u32) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_ui_a11y() -> String {
+    <Host as UiApi>::og_ui_a11y(&Host)
+}
+
+#[wasm_bindgen]
 pub fn og_ui_set_navigation(on: bool) {
     <Host as UiApi>::og_ui_set_navigation(&Host, on)
 }

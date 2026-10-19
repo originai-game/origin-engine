@@ -20,6 +20,7 @@
 //! the unit of `og.Input` and the probe. README.md has the widget set, the
 //! layout rules, the id grammar, the theme generation and the probe contract.
 
+mod a11y;
 mod draw;
 mod id;
 mod input;
@@ -40,6 +41,7 @@ pub mod theme;
 mod ui;
 mod widgets;
 
+pub use a11y::{A11yNode, A11yTree};
 pub use draw::{DrawCmd, DrawItem, EmitDesc, atlas_texture};
 pub use id::{Id, ui_id, ui_idi};
 pub use input::{GamepadFrame, InputFrame, InputSource, Nav, OgInput, UiKey};

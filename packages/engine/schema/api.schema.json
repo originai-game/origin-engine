@@ -4076,6 +4076,8 @@
         "DpadResult",
         "ActionButtonDesc",
         "SkeletonDesc",
+        "A11yNode",
+        "A11yTree",
         "CounterDesc",
         "BurstDesc",
         "ShakeDesc",
@@ -5631,6 +5633,13 @@
             }
           ],
           "returns": "String",
+          "publish": true
+        },
+        {
+          "name": "a11y",
+          "doc": "The accessibility tree of the last frame: every element with a role, its name, value, states and bounds, and the focus order Tab walks. A shell mirrors it into the page for screen readers; a playtest reads the same fields on dump_ui's elements.",
+          "params": [],
+          "returns": "A11yTree",
           "publish": true
         },
         {
@@ -21246,6 +21255,106 @@
       },
       "additionalProperties": false
     },
+    "A11yNode": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "One node of the accessibility tree: an element with a role (layout containers and spacers have none and are left out).",
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Its path, as touch_move_to and og.ui.focus name it."
+        },
+        "parent": {
+          "type": "string",
+          "description": "The path of the nearest node above it in the tree; empty at the top."
+        },
+        "role": {
+          "type": "string",
+          "description": "Its role (probe.UiElement.role): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, dialog, tooltip, separator, group."
+        },
+        "name": {
+          "type": "string",
+          "description": "Its accessible name: what a screen reader says it is."
+        },
+        "value": {
+          "type": "string",
+          "description": "Its value as text (a slider's number, a progress's percent, a field's text); empty for none."
+        },
+        "states": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Its states: disabled, focused, focusable, checked, selected, expanded, pressed, busy, offscreen (a scroll container cuts it out of view)."
+        },
+        "x": {
+          "type": "number",
+          "description": "Left edge of the whole element.",
+          "x-og-unit": "cssPx"
+        },
+        "y": {
+          "type": "number",
+          "description": "Top edge of the whole element.",
+          "x-og-unit": "cssPx"
+        },
+        "width": {
+          "type": "number",
+          "description": "Width.",
+          "x-og-unit": "cssPx"
+        },
+        "height": {
+          "type": "number",
+          "description": "Height.",
+          "x-og-unit": "cssPx"
+        }
+      },
+      "required": [
+        "path",
+        "parent",
+        "role",
+        "name",
+        "value",
+        "states",
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "additionalProperties": false
+    },
+    "A11yTree": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "The last frame's accessibility tree, built from the same nodes the UI draws and takes input on.",
+      "type": "object",
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/A11yNode"
+          },
+          "description": "The nodes, in tree order: the page, then each layer over it (a dialog after the page)."
+        },
+        "focusOrder": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The paths keyboard Tab and the pads visit, in order: the nodes marked focusable, within the topmost dialog while one is open."
+        },
+        "focused": {
+          "type": "string",
+          "description": "The path keyboard and pad 0's focus is on; empty for none."
+        }
+      },
+      "required": [
+        "nodes",
+        "focusOrder",
+        "focused"
+      ],
+      "additionalProperties": false
+    },
     "CounterDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
@@ -24498,6 +24607,25 @@
           "type": "string",
           "description": "The text it shows, if any."
         },
+        "role": {
+          "type": "string",
+          "description": "Its accessibility role (og.ui.a11y): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, alert, dialog, tooltip, separator, group; empty for a presentational element (a layout container, a spacer)."
+        },
+        "name": {
+          "type": "string",
+          "description": "Its accessible name: its text, a name the widget gives it (an icon's name, a dialog's title, Decrease and Increase for a stepper's buttons), a control's own text gathered from its children, or else its id."
+        },
+        "value": {
+          "type": "string",
+          "description": "Its value as text: a slider's or stepper's number, a progress's or meter's amount, a field's text, a select's choice; empty for none."
+        },
+        "states": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Its states: disabled, focused, focusable (keys and pads reach it now, in this order), checked, selected, expanded, pressed, busy."
+        },
         "x": {
           "type": "number",
           "description": "Left edge.",
@@ -24526,6 +24654,10 @@
         "disabled",
         "clipped",
         "text",
+        "role",
+        "name",
+        "value",
+        "states",
         "x",
         "y",
         "width",

@@ -95,6 +95,13 @@ the one clicked. A typo in a tag stays visible as text and warns.
 
 ## 4. Focus: keyboard and gamepad
 
+Every element carries an accessibility role, name, value and states
+(`dump_ui`'s `role`, `name`, `value`, `states`; `og.ui.a11y()` answers the
+tree with its focus order). Give every control visible text or a meaningful
+id: an icon-only button is named by its icon, a card by the text inside it,
+else by its id, and a playtest can require that no `focusable` element has
+an empty name (ui-kit's `tests/a11y.og.ts`). Tab walks the tree's order.
+
 Arrows and the d-pad move focus to the nearest control that way (wrapping at
 the edges), Tab and Shift+Tab walk reading order, Enter, Space and A press,
 Escape and B go back: the topmost dialog or menu closes, otherwise

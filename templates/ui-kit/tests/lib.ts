@@ -41,6 +41,8 @@ export interface DemoState {
   focus2: number;
   focus3: number;
   rules: number;
+  a11yNodes: number;
+  a11yFocus: number;
 }
 
 export const demo = (run: PlaytestRun, file: string): DemoState =>
@@ -49,7 +51,12 @@ export const demo = (run: PlaytestRun, file: string): DemoState =>
 export interface UiElement {
   id: string;
   parent: string;
+  kind: string;
   text: string;
+  role: string;
+  name: string;
+  value: string;
+  states: string[];
   x: number;
   y: number;
   width: number;

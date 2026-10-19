@@ -2074,6 +2074,26 @@ pub fn og_ui_focus(pad: u32) -> String {
     with_ui("og.ui.focus", |ui| ui.focus_path(pad).to_string()).unwrap_or_default()
 }
 
+pub fn og_ui_a11y() -> String {
+    with_ui("og.ui.a11y", |ui| {
+        let t = ui.a11y();
+        let nodes: Vec<serde_json::Value> = t
+            .nodes
+            .iter()
+            .map(|n| {
+                serde_json::json!({
+                    "path": n.path, "parent": n.parent, "role": n.role, "name": n.name,
+                    "value": n.value, "states": n.states,
+                    "x": n.x, "y": n.y, "width": n.width, "height": n.height,
+                })
+            })
+            .collect();
+        serde_json::json!({"nodes": nodes, "focusOrder": t.focus_order, "focused": t.focused})
+            .to_string()
+    })
+    .unwrap_or_else(|| r#"{"nodes":[],"focusOrder":[],"focused":""}"#.to_string())
+}
+
 pub fn og_ui_memory(id: String, initial: f64) -> f64 {
     with_ui("og.ui.memory", |ui| ui.memory(&id, initial)).unwrap_or(initial)
 }

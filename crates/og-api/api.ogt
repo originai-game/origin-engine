@@ -8024,6 +8024,40 @@ module ui {
     returns String
   }
 
+  struct A11yNode {
+    doc "One node of the accessibility tree: an element with a role (layout containers and spacers have none and are left out)."
+    field path String "Its path, as touch_move_to and og.ui.focus name it."
+    field parent String "The path of the nearest node above it in the tree; empty at the top."
+    field role String "Its role (probe.UiElement.role): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, dialog, tooltip, separator, group."
+    field name String "Its accessible name: what a screen reader says it is."
+    field value String "Its value as text (a slider's number, a progress's percent, a field's text); empty for none."
+    field states List.String "Its states: disabled, focused, focusable, checked, selected, expanded, pressed, busy, offscreen (a scroll container cuts it out of view)."
+    field x f32 "Left edge of the whole element." {
+      unit cssPx
+    }
+    field y f32 "Top edge of the whole element." {
+      unit cssPx
+    }
+    field width f32 "Width." {
+      unit cssPx
+    }
+    field height f32 "Height." {
+      unit cssPx
+    }
+  }
+
+  struct A11yTree {
+    doc "The last frame's accessibility tree, built from the same nodes the UI draws and takes input on."
+    field nodes List.A11yNode "The nodes, in tree order: the page, then each layer over it (a dialog after the page)."
+    field focusOrder List.String "The paths keyboard Tab and the pads visit, in order: the nodes marked focusable, within the topmost dialog while one is open."
+    field focused String "The path keyboard and pad 0's focus is on; empty for none."
+  }
+
+  fn a11y {
+    doc "The accessibility tree of the last frame: every element with a role, its name, value, states and bounds, and the focus order Tab walks. A shell mirrors it into the page for screen readers; a playtest reads the same fields on dump_ui's elements."
+    returns A11yTree
+  }
+
   fn setNavigation {
     doc "Whether keyboard and gamepad navigation moves focus on this screen (on by default). A gameplay HUD whose keys move the player turns it off; an open dialog or menu turns it back on while it is open. Takes effect from the next tick."
     param on bool "On or off."
@@ -9206,6 +9240,10 @@ module probe {
     field disabled bool "A disabled control (its text is exempt from contrast rules, as WCAG exempts inactive controls)."
     field clipped bool "Only part of it shows: a scroll container or the surface cuts it, and the bounds are the part that shows."
     field text String "The text it shows, if any."
+    field role String "Its accessibility role (og.ui.a11y): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, alert, dialog, tooltip, separator, group; empty for a presentational element (a layout container, a spacer)."
+    field name String "Its accessible name: its text, a name the widget gives it (an icon's name, a dialog's title, Decrease and Increase for a stepper's buttons), a control's own text gathered from its children, or else its id."
+    field value String "Its value as text: a slider's or stepper's number, a progress's or meter's amount, a field's text, a select's choice; empty for none."
+    field states List.String "Its states: disabled, focused, focusable (keys and pads reach it now, in this order), checked, selected, expanded, pressed, busy."
     field x f32 "Left edge." {
       unit cssPx
     }

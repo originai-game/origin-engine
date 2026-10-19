@@ -497,6 +497,8 @@ export interface HostAbi<A, V> {
   og_ui_set_players(count: number): void;
   /** `og.ui.focus` */
   og_ui_focus(pad: number): string;
+  /** `og.ui.a11y` */
+  og_ui_a11y(): string;
   /** `og.ui.setNavigation` */
   og_ui_set_navigation(on: boolean): void;
   /** `og.ui.memory` */
@@ -802,6 +804,7 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_back",
   "og_ui_set_players",
   "og_ui_focus",
+  "og_ui_a11y",
   "og_ui_set_navigation",
   "og_ui_memory",
   "og_ui_remember",

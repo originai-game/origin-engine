@@ -323,6 +323,8 @@ pub struct UiFrame {
     /// The path of the control each pad's focus is on (pad 0: the shared
     /// focus), or empty.
     pub focus_paths: [String; 4],
+    /// The accessibility tree (`crate::a11y`).
+    pub a11y: crate::a11y::A11yTree,
 }
 
 impl UiFrame {
@@ -618,6 +620,59 @@ impl Ui {
     /// tick, like [`Ui::set_navigation`], and read from the next.
     pub fn set_players(&mut self, count: u32) {
         self.players = count.clamp(1, 4);
+    }
+
+    /// The last frame's accessibility tree: each element with a role, its
+    /// name, value, states and bounds, and the focus order (`crate::a11y`).
+    pub fn a11y(&self) -> &crate::a11y::A11yTree {
+        &self.frame.a11y
+    }
+
+    /// What element `i` tells the accessibility tree: role, name, value and
+    /// its own states (the frame adds `focusable` and `focused`).
+    pub(crate) fn a11y_info(&self, i: usize) -> (&'static str, String, String, Vec<String>) {
+        let n = &self.nodes[i];
+        let (kind, anonymous) = self.kinds.get(i).copied().unwrap_or(("", true));
+        let role = crate::a11y::role_of(kind, n);
+        if role.is_empty() {
+            return ("", String::new(), String::new(), Vec::new());
+        }
+        let mut name = n.a11y.name.clone().unwrap_or_default();
+        if name.is_empty() {
+            name = n.probe_text.clone();
+        }
+        // A picture nothing names is decoration (an icon names itself).
+        if name.is_empty() && role == "image" && !n.nav {
+            return ("", String::new(), String::new(), Vec::new());
+        }
+        if name.is_empty() && (n.el.interactive || n.nav) {
+            name = crate::a11y::text_within(&self.nodes, i);
+        }
+        let labelled = role != "text" && role != "heading";
+        if name.is_empty()
+            && labelled
+            && n.parent != NONE
+            && self.nodes[n.parent].el.direction == crate::layout::Direction::Row
+        {
+            // A control without text of its own is named by the label just
+            // before it in its row (a settings row's "Master" names its slider).
+            let siblings = &self.nodes[n.parent].children;
+            if let Some(at) = siblings.iter().position(|&c| c == i)
+                && at > 0
+                && self.kinds[siblings[at - 1]].0 == "label"
+            {
+                name = self.nodes[siblings[at - 1]].probe_text.clone();
+            }
+        }
+        if name.is_empty() && !anonymous && labelled {
+            name = n.id.clone();
+        }
+        (
+            role,
+            name,
+            crate::a11y::value_of(n),
+            crate::a11y::states_of(n),
+        )
     }
 
     /// The path of the control pad `pad`'s focus is on in the last frame
@@ -1439,6 +1494,13 @@ impl Ui {
             t: if t.is_finite() { t } else { 0.0 },
             active: r.pressed,
         };
+        // Its value as people read it: the step's decimals, at most two.
+        let decimals = if desc.step >= 1.0 || (hi - lo).abs() > 20.0 {
+            0
+        } else {
+            2
+        };
+        self.nodes[i].a11y.value = Some(format!("{:.*}", decimals, *value));
         r
     }
 
@@ -1589,6 +1651,13 @@ impl Ui {
         n.content = Content::Text(content);
         n.widget = Widget::Field { focused, caret };
         n.probe_text = shown.to_owned();
+        // A field is named by its placeholder (or its id) and its value is its text.
+        n.a11y.name = Some(if desc.placeholder.is_empty() {
+            n.id.clone()
+        } else {
+            desc.placeholder.clone()
+        });
+        n.a11y.value = Some(value.clone());
         r
     }
 
@@ -1918,9 +1987,39 @@ impl Ui {
         }
         let mut hits = Vec::new();
         let mut elements = Vec::new();
+        // The accessibility tree: each element's key (for its focus states)
+        // and the nodes with a role, with the paths their children name.
+        let mut element_keys: Vec<u64> = Vec::new();
+        let mut tree: Vec<(u64, crate::a11y::A11yNode)> = Vec::new();
+        let mut tree_path: BTreeMap<usize, String> = BTreeMap::new();
         let mut top_scope = 0u64;
         for &i in &order[1..] {
             let n = &self.nodes[i];
+            let (role, name, value, states) = self.a11y_info(i);
+            let parent_path = {
+                let mut up = if n.parent == NONE { n.anchor } else { n.parent };
+                loop {
+                    if up == NONE || up == 0 {
+                        break String::new();
+                    }
+                    if let Some(p) = tree_path.get(&up) {
+                        break p.clone();
+                    }
+                    up = if self.nodes[up].parent == NONE {
+                        self.nodes[up].anchor
+                    } else {
+                        self.nodes[up].parent
+                    };
+                }
+            };
+            let path = if role.is_empty() {
+                String::new()
+            } else {
+                self.path_of(i)
+            };
+            if !role.is_empty() {
+                tree_path.insert(i, path.clone());
+            }
             if n.scope && !n.inert {
                 top_scope = n.key;
             }
@@ -1957,12 +2056,32 @@ impl Ui {
                 scope: scope_of[i],
                 scroller: scroller_of[i],
             };
+            let node = |states: Vec<String>| crate::a11y::A11yNode {
+                path: path.clone(),
+                parent: parent_path.clone(),
+                role: role.to_owned(),
+                name: name.clone(),
+                value: value.clone(),
+                states,
+                x: r.x,
+                y: r.y,
+                width: r.width,
+                height: r.height,
+            };
             if outside || (visible.is_empty() && !r.is_empty()) {
                 // Navigation can still reach a control just out of a list's view.
                 if n.nav && !n.inert && scroller_of[i] != 0 {
                     hits.push(hit(*r, (flags & (HIT_NAV | HIT_ADJUST)) | HIT_OFFSCREEN));
                 }
+                if !role.is_empty() {
+                    let mut st = states.clone();
+                    st.push("offscreen".to_owned());
+                    tree.push((n.key, node(st)));
+                }
                 continue;
+            }
+            if !role.is_empty() {
+                tree.push((n.key, node(states.clone())));
             }
             if !visible.is_empty() && flags != 0 && !n.inert {
                 hits.push(hit(visible, flags));
@@ -1976,6 +2095,7 @@ impl Ui {
             } else {
                 self.nodes[n.parent].id.clone()
             };
+            element_keys.push(n.key);
             elements.push(UiElement {
                 id: n.id.clone(),
                 parent,
@@ -1983,6 +2103,10 @@ impl Ui {
                 disabled: n.disabled,
                 clipped: visible.width + 0.01 < r.width || visible.height + 0.01 < r.height,
                 text: n.probe_text.clone(),
+                role: role.to_owned(),
+                name: name.clone(),
+                value: value.clone(),
+                states: states.clone(),
                 x: visible.x,
                 y: visible.y,
                 width: visible.width,
@@ -2014,13 +2138,34 @@ impl Ui {
                         .filter(|s| s.link.as_deref() == Some(l.as_str()))
                         .map(|s| s.text.as_str())
                         .collect();
+                    let link_path = format!("{}/{l}", self.path_of(i));
+                    tree.push((
+                        child_key(n.key, &l),
+                        crate::a11y::A11yNode {
+                            path: link_path,
+                            parent: path.clone(),
+                            role: "link".into(),
+                            name: text.clone(),
+                            value: String::new(),
+                            states: Vec::new(),
+                            x: lr.x,
+                            y: lr.y,
+                            width: lr.width,
+                            height: lr.height,
+                        },
+                    ));
+                    element_keys.push(child_key(n.key, &l));
                     elements.push(UiElement {
                         id: l,
                         parent: n.id.clone(),
                         kind: "link".into(),
                         disabled: false,
                         clipped: shown.width + 0.01 < lr.width || shown.height + 0.01 < lr.height,
+                        name: text.clone(),
                         text,
+                        role: "link".into(),
+                        value: String::new(),
+                        states: Vec::new(),
                         x: shown.x,
                         y: shown.y,
                         width: shown.width,
@@ -2088,6 +2233,45 @@ impl Ui {
         self.state.players = self.players as u8;
         self.state.scope = top_scope;
         self.state.nav_off = !self.nav_on;
+        // Focus order: the controls keys and pads reach now, in the tree's
+        // order (the order navigation walks: `nav::focusables`).
+        let reach: Vec<u64> = hits
+            .iter()
+            .filter(|h| h.has(HIT_NAV | HIT_TEXT) && (top_scope == 0 || h.scope == top_scope))
+            .map(|h| h.key)
+            .collect();
+        let mark = |key: u64, states: &mut Vec<String>| {
+            if reach.contains(&key) {
+                states.push("focusable".to_owned());
+            }
+            if key != 0 && key == self.state.focus {
+                states.push("focused".to_owned());
+            }
+        };
+        for (e, &key) in elements.iter_mut().zip(&element_keys) {
+            if !e.role.is_empty() {
+                mark(key, &mut e.states);
+            }
+        }
+        for (key, node) in &mut tree {
+            mark(*key, &mut node.states);
+        }
+        let focus_order: Vec<String> = reach
+            .iter()
+            .filter_map(|k| {
+                tree.iter()
+                    .find(|(t, _)| t == k)
+                    .map(|(_, n)| n.path.clone())
+            })
+            .collect();
+        let a11y = crate::a11y::A11yTree {
+            focused: tree
+                .iter()
+                .find(|(k, _)| *k != 0 && *k == self.state.focus)
+                .map_or(String::new(), |(_, n)| n.path.clone()),
+            nodes: tree.into_iter().map(|(_, n)| n).collect(),
+            focus_order,
+        };
         self.state.hits = hits;
 
         let mut cmds = self.commands(&order);
@@ -2121,6 +2305,7 @@ impl Ui {
             items: assign_levels(cmds),
             warnings: std::mem::take(&mut self.warnings),
             focus_paths,
+            a11y,
         };
         &self.frame
     }

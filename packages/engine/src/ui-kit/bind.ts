@@ -95,6 +95,7 @@ export const widgets = {
   setNavigation: (on: boolean): void => abi().og_ui_set_navigation(on),
   setPlayers: (count: number): void => abi().og_ui_set_players(count),
   focus: (pad: number): string => abi().og_ui_focus(pad),
+  a11y: (): Api.A11yTree => parse(abi().og_ui_a11y()),
   memory: (id: string, initial: number): number => abi().og_ui_memory(id, initial),
   remember: (id: string, value: number): void => abi().og_ui_remember(id, value),
   tick: (): number => abi().og_ui_tick(),
