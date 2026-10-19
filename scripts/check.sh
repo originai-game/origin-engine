@@ -173,12 +173,18 @@ step_test_quick() { run_tests test-quick 0 og-tests; }
 # listed in built.txt (cargo keeps one uplifted file per crate, so a second
 # feature variant would overwrite the first). Artifacts come from cargo's
 # JSON messages, so a fresh (not relinked) cdylib still counts and a stale
-# file never does.
+# file never does. A VARIANT builds in its own target dir (target/wasm-VARIANT):
+# cargo 1.99 keeps one fingerprint per unit whatever its features, so the two
+# variants sharing target/wasm32-unknown-unknown found each other's features
+# on every run and recompiled and relinked og-host-web, og-runtime and
+# og-probe both times (about 29 s on an unrelated change). The variant's
+# dependencies come from sccache (or CI's cached target/) the first time.
 wasm_build() {
   local variant="$1" features="$2"; shift 2
   local args=() c f name dest
   for c in "$@"; do args+=(-p "$c"); done
   [ -z "$features" ] || args+=(--features "$features")
+  [ -z "$variant" ] || args+=(--target-dir "$OG_TARGET_DIR/wasm-$variant")
   cargo build --profile wasm --target "$WASM_TRIPLE" "${args[@]}" --lib \
       --message-format=json-render-diagnostics > "$OG_WASM_OUT/cargo${variant:+-$variant}.json" || return 1
   mkdir -p "$OG_WASM_OUT/raw"
