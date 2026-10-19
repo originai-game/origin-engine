@@ -18,7 +18,8 @@
 //! - `og_node_attach_offscreen` gives an engine an offscreen renderer
 //!   (`GameDesc.render` picks the antialiasing); the probe's `capture` and
 //!   the `screenshot` command render offscreen at the asked size and read it
-//!   back blocking (`og_render::Renderer::read_offscreen`).
+//!   back blocking (`og_render::Renderer::read_offscreen`);
+//!   `og_node_wait_gpu` waits for its GPU work, for benches that time a frame.
 //! - og-probe is mounted by the runtime (`og_runtime`); this host adds
 //!   its loopback WebSocket (`og_node_probe_listen`, `og_node_probe_serve`,
 //!   og-probe's `ProbeServer` at `127.0.0.1:<port>/probe`), cooked files read
@@ -435,6 +436,8 @@ pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) 
         .map_err(|e| e.to_string())
         .and_then(|renderer| {
             let tier = renderer.info().backend_tier();
+            let device = renderer.device().clone();
+            DEVICES.with(|d| d.borrow_mut().insert(engine, device));
             og_runtime::set_render_backend(
                 engine,
                 Some(Box::new(OffscreenBackend {
@@ -446,6 +449,33 @@ pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) 
         });
     match answer {
         Ok(tier) => format!(r#"{{"ok":true,"value":"{tier}"}}"#),
+        Err(e) => format!(r#"{{"ok":false,"reason":{}}}"#, napi_json_string(&e)),
+    }
+}
+
+thread_local! {
+    /// Each offscreen renderer's device, for og_node_wait_gpu.
+    static DEVICES: RefCell<std::collections::BTreeMap<u32, og_render::wgpu::Device>> =
+        const { RefCell::new(std::collections::BTreeMap::new()) };
+}
+
+/// Block until the GPU has finished everything an engine's offscreen
+/// renderer submitted, so a frame's time includes its GPU work (benches).
+/// A Result of null; refused for an engine without og_node_attach_offscreen.
+#[napi(js_name = "og_node_wait_gpu")]
+pub fn og_node_wait_gpu(engine: u32) -> String {
+    let device = DEVICES.with(|d| d.borrow().get(&engine).cloned());
+    let answer = match device {
+        None => Err(format!(
+            "engine {engine} has no offscreen renderer; call og_node_attach_offscreen first"
+        )),
+        Some(device) => device
+            .poll(og_render::wgpu::PollType::wait_indefinitely())
+            .map(|_| ())
+            .map_err(|e| e.to_string()),
+    };
+    match answer {
+        Ok(()) => r#"{"ok":true,"value":null}"#.to_string(),
         Err(e) => format!(r#"{{"ok":false,"reason":{}}}"#, napi_json_string(&e)),
     }
 }
