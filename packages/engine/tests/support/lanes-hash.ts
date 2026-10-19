@@ -1,24 +1,24 @@
 // One native engine per process on the reference scene (crates/og-tests/
 // reference-scene: 500 turning objects, 20 skinned walkers, two shadowed
-// lights, post) plus 2000 small boxes on a wide grid, most of them outside
-// the view (so the frustum cull has more than two grains to split), and 48
-// boxes dropped on a floor collider. The lanes are whatever OG_LANES gave the
-// process. Prints JSON for lanes.test.ts: at ticks 60, 180 and 300 the world
-// hash and the SHA-256 of a captured frame (anim palettes, extraction and
-// cull reach the pixels, not the world hash); then a replay: restore the
-// snapshot of tick 60, switch lanes with the probe's lanes:<on|off>, advance
-// to 180 again; and the dump_lanes report.
+// lights, post) plus ./lanes-crowd.ts (2000 more boxes, 160 more walkers, 48
+// falling crates), so every lane has work to split. The lanes are whatever
+// OG_LANES gave the process. Prints JSON for lanes.test.ts: at ticks 60, 180
+// and 300 the world hash and the SHA-256 of a captured frame (anim palettes,
+// extraction and cull reach the pixels, not the world hash); then a replay:
+// restore the snapshot of tick 60, switch lanes with the probe's
+// lanes:<on|off>, advance to 180 again; and the dump_lanes report.
 //
 //   OG_LANES=off|<n> bun tests/support/lanes-hash.ts --replay-lanes on|off
 
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { og, SHAPE_BOX } from "@origingame/engine";
+import { og } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 import { createEngine, type GameToken } from "../../src/runtime.ts";
 import { loadNativeHost, native } from "../../src/node/index.ts";
 import { bundleGame } from "../../src/node/build.ts";
 import { decodeCapture } from "./png.ts";
+import { crowd } from "./lanes-crowd.ts";
 
 declare const Bun: { CryptoHasher: new (alg: string) => { update(d: Uint8Array): void; digest(enc: "hex"): string } };
 
@@ -41,33 +41,13 @@ const b = await bundleGame(join(scene, "src", "main.ts"), bundled, "native");
 if (!b.ok) throw new Error(b.reason);
 const ref = (await import(bundled)) as { build(world: World): void; Turn: unknown };
 
-function extras(world: World): void {
-  const cube = must(og.render.boxGeometry(world, { width: 0.3, height: 0.3, depth: 0.3 }));
-  const paint = must(og.render.standardMaterial(world, { color: { r: 0.2, g: 0.5, b: 0.9 }, roughness: 0.6 }));
-  for (let i = 0; i < 2000; i++) {
-    const position = { x: ((i % 50) - 24.5) * 2.4, y: 0.15, z: -Math.floor(i / 50) * 2.4 - 4 };
-    const e = must(world.spawn({ name: `far-${i}`, position }));
-    world.insert(e, og.Mesh, { geometry: cube, material: paint, castShadow: false, receiveShadow: true });
-  }
-  const ground = must(world.spawn({ name: "ground", position: { x: 0, y: -0.5, z: 0 } }));
-  world.insert(ground, og.Collider, { shape: SHAPE_BOX, size: { x: 80, y: 1, z: 80 } });
-  const crate = must(og.render.boxGeometry(world, { width: 0.6, height: 0.6, depth: 0.6 }));
-  for (let i = 0; i < 48; i++) {
-    const position = { x: ((i % 6) - 2.5) * 0.9 + (i % 3) * 0.05, y: 3 + Math.floor(i / 6) * 0.8, z: 14 + ((i * 7) % 5) * 0.2 };
-    const e = must(world.spawn({ name: `crate-${i}`, position }));
-    world.insert(e, og.RigidBody, {});
-    world.insert(e, og.Collider, { shape: SHAPE_BOX, size: { x: 0.6, y: 0.6, z: 0.6 } });
-    world.insert(e, og.Mesh, { geometry: crate, material: paint, castShadow: true, receiveShadow: true });
-  }
-}
-
 const game = og.game({
   seed: 1,
   systems: [ref.Turn as never],
   render: { antialias: "off" },
   start(world: World) {
     ref.build(world);
-    extras(world);
+    crowd(world);
   },
 }) as unknown as GameToken;
 const engine = must(createEngine(game, { root: scene }));

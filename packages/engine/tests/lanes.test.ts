@@ -1,6 +1,6 @@
 // Lanes (crates/og-lanes) change where the parallel systems run, never what
-// they produce: the reference scene with 2000 more boxes and 48 falling
-// crates, natively with lanes off (OG_LANES=off) and on four threads
+// they produce: the reference scene with 2000 more boxes, 160 more walkers
+// and 48 falling crates, natively with lanes off (OG_LANES=off) and on four threads
 // (OG_LANES=4), each in its own process, has the same world hash and the
 // same captured pixels at ticks 60, 180 and 300 (animation palettes,
 // extraction and the frustum cull reach the pixels, the physics step the
