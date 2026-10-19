@@ -1029,6 +1029,10 @@ fn supports_msaa(adapter: &wgpu::Adapter) -> bool {
         && depth.sample_count_supported(MSAA_SAMPLES)
 }
 
+/// Instances per lane task in the frustum tests: a test is a few
+/// nanoseconds, so only thousands of instances are worth a second thread.
+const CULL_GRAIN: usize = 1024;
+
 fn cull_mode(side: Side) -> Option<wgpu::Face> {
     match side {
         Side::Front => Some(wgpu::Face::Back),
@@ -2598,17 +2602,17 @@ impl Renderer {
         let mut list = DrawList::default();
         let mut culled = 0;
         let mut visible = Vec::new();
+        // The sphere tests are lanes (og-lanes) once there are thousands.
+        let inside = og_lanes::map(spheres, CULL_GRAIN, |&(c, r)| {
+            frustum.intersects_sphere(c, r)
+        });
         for (b_index, b) in batches.iter().enumerate() {
             if !include(b) {
                 continue;
             }
             let range = b.first as usize..(b.first + b.count) as usize;
             visible.clear();
-            visible.extend(
-                range
-                    .clone()
-                    .filter(|&k| frustum.intersects_sphere(spheres[k].0, spheres[k].1)),
-            );
+            visible.extend(range.clone().filter(|&k| inside[k]));
             culled += b.count - visible.len() as u32;
             let index_count = self.cache.meshes[b.mesh].index_count;
             let (first, count) = if visible.is_empty() {

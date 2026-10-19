@@ -9,4 +9,5 @@ description = "Origin Engine animation: skeletons, clips, blend graphs and state
 [dependencies]
 og-core = { path = "../og-core" }
 og-ecs = { path = "../og-ecs" }
+og-lanes = { path = "../og-lanes" }
 glam = { workspace = true }

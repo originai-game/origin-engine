@@ -14,10 +14,19 @@ physics3d = ["dep:rapier3d"]
 [dependencies]
 og-core = { path = "../og-core" }
 og-ecs = { path = "../og-ecs" }
+og-lanes = { path = "../og-lanes" }
 glam = { workspace = true, features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 bincode = "1.3.3"
 rapier2d = { version = "0.36.1", default-features = false, features = ["dim2", "f32", "std", "enhanced-determinism", "serde-serialize"], optional = true }
 rapier3d = { version = "0.36.1", default-features = false, features = ["dim3", "f32", "std", "enhanced-determinism", "serde-serialize"], optional = true }
+
+# Natively the step runs on the lanes pool (og_lanes::install): rapier's
+# `parallel` build computes bit for bit what its sequential build does under
+# `enhanced-determinism` (its tests/parallel_path_parity.rs), which the wasm
+# determinism step checks against the single-threaded wasm.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+rapier2d = { version = "0.36.1", default-features = false, features = ["parallel"], optional = true }
+rapier3d = { version = "0.36.1", default-features = false, features = ["parallel"], optional = true }
 
 [dev-dependencies]

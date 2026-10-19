@@ -21,6 +21,7 @@ og-audio = { path = "../og-audio" }
 og-ui = { path = "../og-ui" }
 og-input = { path = "../og-input" }
 og-anim = { path = "../og-anim" }
+og-lanes = { path = "../og-lanes" }
 og-tween = { path = "../og-tween" }
 og-tilemap = { path = "../og-tilemap" }
 og-nav = { path = "../og-nav" }

@@ -13,7 +13,6 @@ use og_core::glam::{Mat4, Quat, Vec3};
 use og_core::{Error, ErrorKind, Result, Str64};
 use og_ecs::{Entity, QueryDesc, StateBlock, SystemContext, SystemDesc, World};
 use std::any::Any;
-use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, Mutex, MutexGuard};
 
@@ -129,7 +128,8 @@ pub(crate) struct Shared {
     skeletons: BTreeMap<u64, Arc<SkeletonAsset>>,
     clips: BTreeMap<u64, Arc<ClipAsset>>,
     graphs: BTreeMap<u64, Arc<GraphAsset>>,
-    bindings: RefCell<Bindings>,
+    /// A cache filled by the lanes as they meet (skeleton, clip) pairs.
+    bindings: Mutex<Bindings>,
     states: BTreeMap<u64, EntityState>,
     outputs: BTreeMap<u64, AnimOutput>,
 }
@@ -138,16 +138,24 @@ fn lock(shared: &Mutex<Shared>) -> MutexGuard<'_, Shared> {
     shared.lock().unwrap_or_else(|p| p.into_inner())
 }
 
+fn lock_bindings(b: &Mutex<Bindings>) -> MutexGuard<'_, Bindings> {
+    b.lock().unwrap_or_else(|p| p.into_inner())
+}
+
 impl Shared {
     fn binding(&self, skeleton: u64, clip: u64) -> Option<Arc<Vec<u32>>> {
-        if let Some(b) = self.bindings.borrow().get(&(skeleton, clip)) {
+        if let Some(b) = lock_bindings(&self.bindings).get(&(skeleton, clip)) {
             return Some(b.clone());
         }
+        // Computed outside the lock: two lanes may both bind a pair, to the
+        // same value.
         let b = Arc::new(bind(self.skeletons.get(&skeleton)?, self.clips.get(&clip)?));
-        self.bindings
-            .borrow_mut()
-            .insert((skeleton, clip), b.clone());
-        Some(b)
+        Some(
+            lock_bindings(&self.bindings)
+                .entry((skeleton, clip))
+                .or_insert(b)
+                .clone(),
+        )
     }
 
     fn recompute_outputs(&mut self) {
@@ -235,7 +243,7 @@ impl AnimationSystem {
         asset.validate()?;
         let mut sh = lock(&self.shared);
         sh.skeletons.insert(handle, Arc::new(asset));
-        sh.bindings.borrow_mut().retain(|k, _| k.0 != handle);
+        lock_bindings(&sh.bindings).retain(|k, _| k.0 != handle);
         Ok(())
     }
 
@@ -247,7 +255,7 @@ impl AnimationSystem {
         asset.validate()?;
         let mut sh = lock(&self.shared);
         sh.clips.insert(handle, Arc::new(asset));
-        sh.bindings.borrow_mut().retain(|k, _| k.1 != handle);
+        lock_bindings(&sh.bindings).retain(|k, _| k.1 != handle);
         Ok(())
     }
 
@@ -274,13 +282,13 @@ impl AnimationSystem {
     pub fn remove_skeleton(&self, handle: u64) {
         let mut sh = lock(&self.shared);
         sh.skeletons.remove(&handle);
-        sh.bindings.borrow_mut().retain(|k, _| k.0 != handle);
+        lock_bindings(&sh.bindings).retain(|k, _| k.0 != handle);
     }
 
     pub fn remove_clip(&self, handle: u64) {
         let mut sh = lock(&self.shared);
         sh.clips.remove(&handle);
-        sh.bindings.borrow_mut().retain(|k, _| k.1 != handle);
+        lock_bindings(&sh.bindings).retain(|k, _| k.1 != handle);
     }
 
     pub fn remove_graph(&self, handle: u64) {
@@ -525,6 +533,17 @@ struct Work {
     pose: Pose,
 }
 
+/// One skeleton entity on its way through the tick: what was read (serially,
+/// from the world), then what its lane computed from that alone.
+struct Eval {
+    work: Work,
+    graph_asset: Option<Arc<GraphAsset>>,
+    root: Option<RootMotion>,
+    mesh: u32,
+    /// The lane's result: the root motion delta and the events fired.
+    out: Result<(Trs, Vec<Fired>)>,
+}
+
 fn missing(entity: Entity, what: &str, handle: u64) -> Error {
     Error::new(
         ErrorKind::DeadHandle,
@@ -534,6 +553,144 @@ fn missing(entity: Entity, what: &str, handle: u64) -> Error {
         ),
     )
 }
+
+/// Reads one skeleton entity's components and state (serial: the world is
+/// one thread's).
+#[allow(clippy::too_many_arguments)]
+fn gather(
+    ctx: &SystemContext<'_>,
+    sh: &Shared,
+    e: Entity,
+    players: &BTreeSet<u64>,
+    graphs: &BTreeSet<u64>,
+    blends: &BTreeSet<u64>,
+    transforms: &BTreeSet<u64>,
+) -> Result<Eval> {
+    let key = e.to_bits();
+    let skeleton: Skeleton = ctx.get(e)?;
+    let asset = sh
+        .skeletons
+        .get(&skeleton.asset)
+        .cloned()
+        .ok_or_else(|| missing(e, "og.Skeleton.asset", skeleton.asset))?;
+    let state = sh
+        .states
+        .get(&key)
+        .filter(|s| s.skeleton == skeleton.asset && s.pose.len() == asset.nodes.len())
+        .cloned()
+        .unwrap_or_else(|| EntityState {
+            skeleton: skeleton.asset,
+            skin: skeleton.skin,
+            mesh: NONE,
+            pose: asset.rest_pose(),
+            weights: [0.0; BLENDSHAPES],
+            player: PlayerState::default(),
+            graph: GraphState::default(),
+        });
+    let player = players
+        .contains(&key)
+        .then(|| ctx.get::<AnimationPlayer>(e))
+        .transpose()?;
+    let graph = graphs
+        .contains(&key)
+        .then(|| ctx.get::<AnimationGraph>(e))
+        .transpose()?;
+    let blend = blends
+        .contains(&key)
+        .then(|| ctx.get::<Blendshapes>(e))
+        .transpose()?;
+    let transform = transforms
+        .contains(&key)
+        .then(|| ctx.get::<Transform>(e))
+        .transpose()?;
+    let mesh = blend.map_or(NONE, |b| b.mesh);
+    let root = (skeleton.root_motion != ROOT_MOTION_OFF)
+        .then(|| asset.joint_node(skeleton.skin, skeleton.root_joint))
+        .flatten()
+        .map(|n| RootMotion::new(&asset, n, skeleton.root_motion));
+    let graph_asset = match &graph {
+        Some(g) => Some(
+            sh.graphs
+                .get(&g.asset)
+                .cloned()
+                .ok_or_else(|| missing(e, "og.AnimationGraph.asset", g.asset))?,
+        ),
+        None => None,
+    };
+    let pose = Pose::rest(&asset);
+    Ok(Eval {
+        work: Work {
+            entity: e,
+            skeleton,
+            asset,
+            player,
+            graph,
+            blend,
+            transform,
+            state,
+            pose,
+        },
+        graph_asset,
+        root,
+        mesh,
+        out: Ok((Trs::IDENTITY, Vec::new())),
+    })
+}
+
+/// One entity's lane: its graph and player evaluated into `work.pose`, from
+/// what [`gather`] read and the shared assets only.
+fn evaluate(sh: &Shared, ev: &mut Eval, dt: f32) -> Result<(Trs, Vec<Fired>)> {
+    let w = &mut ev.work;
+    let (e, skeleton) = (w.entity, w.skeleton.asset);
+    let mut events: Vec<Fired> = Vec::new();
+    let mut delta = Trs::IDENTITY;
+    match (w.graph.as_mut(), ev.graph_asset.as_ref()) {
+        (Some(g), Some(ga)) => {
+            let (gp, gd) = eval_graph(
+                sh,
+                e,
+                skeleton,
+                &w.asset,
+                ga,
+                g,
+                &mut w.state.graph,
+                ev.root.as_ref(),
+                ev.mesh,
+                dt,
+                &mut events,
+            )?;
+            w.pose.lerp_to(&gp, g.weight.clamp(0.0, 1.0));
+            delta = Trs::IDENTITY.lerp(&gd, g.weight.clamp(0.0, 1.0));
+        }
+        _ => w.state.graph = GraphState::default(),
+    }
+    match w.player.as_mut() {
+        Some(p) => {
+            if let Some((pp, pd)) = eval_player(
+                sh,
+                e,
+                skeleton,
+                &w.asset,
+                p,
+                &mut w.state.player,
+                ev.root.as_ref(),
+                ev.mesh,
+                dt,
+                &mut events,
+            )? {
+                let wt = p.weight.clamp(0.0, 1.0);
+                w.pose.lerp_to(&pp, wt);
+                delta = delta.lerp(&pd, wt);
+            }
+        }
+        None => w.state.player = PlayerState::default(),
+    }
+    Ok((delta, events))
+}
+
+/// Skeletons per lane task: an entity's graph or clip evaluation is a few
+/// microseconds, so a task takes at least four.
+const GRAIN: usize = 4;
 
 fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
     // Scaled time: slow motion plays slower, a hit stop holds the pose.
@@ -546,130 +703,51 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
     let chains = entities(ctx, 5)?;
 
     let mut sh = lock(shared);
-    let mut work: Vec<Work> = Vec::with_capacity(skeletons.len());
-    let mut fired: Vec<(Entity, Fired)> = Vec::new();
+    // Read every skeleton entity in entity order, up to the first one that
+    // fails; evaluate them in lanes; then take the results in entity order,
+    // so the first error and every write are the ones one thread doing
+    // entity after entity would have produced.
+    let mut evals: Vec<Eval> = Vec::with_capacity(skeletons.len());
+    let mut unread = None;
     for &e in &skeletons {
-        let key = e.to_bits();
-        let skeleton: Skeleton = ctx.get(e)?;
-        let asset = sh
-            .skeletons
-            .get(&skeleton.asset)
-            .cloned()
-            .ok_or_else(|| missing(e, "og.Skeleton.asset", skeleton.asset))?;
-        let mut state = sh
-            .states
-            .get(&key)
-            .filter(|s| s.skeleton == skeleton.asset && s.pose.len() == asset.nodes.len())
-            .cloned()
-            .unwrap_or_else(|| EntityState {
-                skeleton: skeleton.asset,
-                skin: skeleton.skin,
-                mesh: NONE,
-                pose: asset.rest_pose(),
-                weights: [0.0; BLENDSHAPES],
-                player: PlayerState::default(),
-                graph: GraphState::default(),
-            });
-        let mut player = players
-            .contains(&key)
-            .then(|| ctx.get::<AnimationPlayer>(e))
-            .transpose()?;
-        let mut graph = graphs
-            .contains(&key)
-            .then(|| ctx.get::<AnimationGraph>(e))
-            .transpose()?;
-        let blend = blends
-            .contains(&key)
-            .then(|| ctx.get::<Blendshapes>(e))
-            .transpose()?;
-        let mut transform = transforms
-            .contains(&key)
-            .then(|| ctx.get::<Transform>(e))
-            .transpose()?;
-        let mesh = blend.map_or(NONE, |b| b.mesh);
-        let root = (skeleton.root_motion != ROOT_MOTION_OFF)
-            .then(|| asset.joint_node(skeleton.skin, skeleton.root_joint))
-            .flatten()
-            .map(|n| RootMotion::new(&asset, n, skeleton.root_motion));
-
-        let mut events: Vec<Fired> = Vec::new();
-        let rest = Pose::rest(&asset);
-        let (mut pose, mut delta) = (rest.clone(), Trs::IDENTITY);
-        match graph.as_mut() {
-            Some(g) => {
-                let ga = sh
-                    .graphs
-                    .get(&g.asset)
-                    .cloned()
-                    .ok_or_else(|| missing(e, "og.AnimationGraph.asset", g.asset))?;
-                let (gp, gd) = eval_graph(
-                    &sh,
-                    e,
-                    skeleton.asset,
-                    &asset,
-                    &ga,
-                    g,
-                    &mut state.graph,
-                    root.as_ref(),
-                    mesh,
-                    dt,
-                    &mut events,
-                )?;
-                pose.lerp_to(&gp, g.weight.clamp(0.0, 1.0));
-                delta = Trs::IDENTITY.lerp(&gd, g.weight.clamp(0.0, 1.0));
+        match gather(ctx, &sh, e, &players, &graphs, &blends, &transforms) {
+            Ok(ev) => evals.push(ev),
+            Err(err) => {
+                unread = Some(err);
+                break;
             }
-            None => state.graph = GraphState::default(),
         }
-        match player.as_mut() {
-            Some(p) => {
-                if let Some((pp, pd)) = eval_player(
-                    &sh,
-                    e,
-                    skeleton.asset,
-                    &asset,
-                    p,
-                    &mut state.player,
-                    root.as_ref(),
-                    mesh,
-                    dt,
-                    &mut events,
-                )? {
-                    let w = p.weight.clamp(0.0, 1.0);
-                    pose.lerp_to(&pp, w);
-                    delta = delta.lerp(&pd, w);
-                }
-            }
-            None => state.player = PlayerState::default(),
-        }
-        if root.is_some()
-            && let Some(t) = transform.as_mut()
+    }
+    {
+        let sh: &Shared = &sh;
+        og_lanes::for_each_mut(&mut evals, GRAIN, |ev| ev.out = evaluate(sh, ev, dt));
+    }
+    let mut work: Vec<Work> = Vec::with_capacity(evals.len());
+    let mut fired: Vec<(Entity, Fired)> = Vec::new();
+    for ev in evals {
+        let (delta, events) = ev.out?;
+        let mut w = ev.work;
+        if ev.root.is_some()
+            && let Some(t) = w.transform.as_mut()
         {
             t.position += t.quaternion * (t.scale * delta.translation);
             t.quaternion = unit(t.quaternion * delta.rotation);
         }
-        let mut blend = blend;
-        if let Some(b) = blend.as_mut() {
+        if let Some(b) = w.blend.as_mut() {
             if b.source == BLENDSHAPES_FROM_CLIPS {
-                b.set_weights(pose.weights);
+                b.set_weights(w.pose.weights);
             }
-            pose.weights = b.weights();
+            w.pose.weights = b.weights();
         }
-        state.skin = skeleton.skin;
-        state.mesh = mesh;
+        w.state.skin = w.skeleton.skin;
+        w.state.mesh = ev.mesh;
         for f in events {
-            fired.push((e, f));
+            fired.push((w.entity, f));
         }
-        work.push(Work {
-            entity: e,
-            skeleton,
-            asset,
-            player,
-            graph,
-            blend,
-            transform,
-            state,
-            pose,
-        });
+        work.push(w);
+    }
+    if let Some(err) = unread {
+        return Err(err);
     }
 
     // IK, after every skeleton's clips and graph, in chain query order.
@@ -687,13 +765,17 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
         solved.push((c, chain));
     }
 
-    // Everything is computed: write it back.
-    let mut states = BTreeMap::new();
-    let mut outputs = BTreeMap::new();
-    for mut w in work {
+    // The joint palettes, in lanes; then everything is written back in
+    // entity order.
+    let palettes = og_lanes::map(&work, GRAIN, |w| {
         let mut palette = Vec::new();
         w.asset
             .palette(w.skeleton.skin, &w.pose.nodes, &mut palette);
+        palette
+    });
+    let mut states = BTreeMap::new();
+    let mut outputs = BTreeMap::new();
+    for (mut w, palette) in work.into_iter().zip(palettes) {
         w.skeleton.joint_count = palette.len() as u32;
         ctx.set(w.entity, w.skeleton)?;
         if let Some(p) = w.player {
