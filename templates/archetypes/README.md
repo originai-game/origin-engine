@@ -3,15 +3,16 @@
 Complete games a Maker starts from, each a project like `templates/game`
 (`project.ogt`, `src/`, `assets/`, `tests/`, `package.json`,
 `tsconfig.json`) that `og run`, `og test` and `og build` take as is. They
-rebuild two of the platform's Godot Discover prototypes on Origin Engine,
-keeping each prototype's rules and none of its code or art, and add a
-top-down room built for the engine's 2D and game-feel modules.
+rebuild the platform's six Godot Discover prototypes on Origin Engine,
+keeping each prototype's premise and lessons and none of its code or art,
+and add a top-down room built for the engine's 2D and game-feel modules.
 
 | Directory | Game | Profile | Input | Core loop |
 |---|---|---|---|---|
 | `runner/` | Rooftop Run | 2d | one button: tap to hop, hold to jump | read the next crate or fence, time the jump, keep the pace |
 | `match3/` | Tile Swap | 2d | taps or drags | spot a line, swap, chase the cascade, beat the target in the moves |
 | `topdown/` | Tomb Room | 2d | WASD or arrows, Space to strike, Shift to dash | cross two rooms of a Tiled map, beat the slime, collect the coins and the key, open the door |
+| `tower-defense/` | Path Guard | 2d | taps, or the arrows and Space, or a pad | pick a plant, set it on the lawn, watch the visitors re-route round it, hold five waves |
 
 Each archetype's README has its rules, components, systems, tunables, the
 commands its playtests use and what a Maker changes first.

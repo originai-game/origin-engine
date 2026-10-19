@@ -1,0 +1,1181 @@
+{
+ "project": "tower-defense",
+ "date": "2026-10-19",
+ "scores": {
+  "contrast": 96,
+  "textSize": 100,
+  "hud": 100,
+  "transitions": 100,
+  "uiSounds": 100,
+  "latency": 100,
+  "hitFeedback": 100,
+  "idle": 100,
+  "frameTime": 0,
+  "inputSound": 98,
+  "locale": 100,
+  "taste": 99,
+  "feel": 80
+ },
+ "findings": [
+  {
+   "measure": "hit feedback",
+   "where": "flow",
+   "detail": "5 of 5 damage moments (kills) had no shake within 8 ticks",
+   "fix": "og-feel §4 (trauma, not offsets)"
+  },
+  {
+   "measure": "contrast",
+   "where": "frames wave: `Pick` \"Frost lily\"",
+   "detail": "4.08:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "maze maze: `Pick` \"Frost lily\"",
+   "detail": "4.08:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "pause settings-zh: `Done` \"完成\"",
+   "detail": "3.46:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "pause pause-zh: `resume` \"继续\"",
+   "detail": "3.51:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "pause play-zh: `Pick` \"荆棘\"",
+   "detail": "4.2:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "phone play: `Pick` \"Hedge\"",
+   "detail": "2.51:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "frame time",
+   "where": "phone",
+   "detail": "p95 step + render 25.3 ms on metal (the frame is 16.7 ms)",
+   "fix": "og-game §14 (performance): fewer draws and particles, cheaper systems; og run --json measures"
+  },
+  {
+   "measure": "hit feedback",
+   "where": "replay",
+   "detail": "3 of 3 damage moments (kills) had no shake within 8 ticks",
+   "fix": "og-feel §4 (trauma, not offsets)"
+  },
+  {
+   "measure": "frame time",
+   "where": "replay",
+   "detail": "p95 step + render 40.47 ms on metal (the frame is 16.7 ms)",
+   "fix": "og-game §14 (performance): fewer draws and particles, cheaper systems; og run --json measures"
+  },
+  {
+   "measure": "hit feedback",
+   "where": "win",
+   "detail": "18 of 18 damage moments (kills) had no shake within 8 ticks",
+   "fix": "og-feel §4 (trauma, not offsets)"
+  },
+  {
+   "measure": "frame time",
+   "where": "win",
+   "detail": "p95 step + render 44.42 ms on metal (the frame is 16.7 ms)",
+   "fix": "og-game §14 (performance): fewer draws and particles, cheaper systems; og run --json measures"
+  }
+ ],
+ "playtests": [
+  {
+   "playtest": "flow",
+   "title": "title, plants set by tap and by keys, the first wave walks in and is shot down",
+   "tier": "metal",
+   "ticks": 786,
+   "shots": [
+    {
+     "name": "title",
+     "tick": 18,
+     "frame": "frames/flow-title.png",
+     "menu": true,
+     "hud": 4.96,
+     "centre": 44.91,
+     "texts": 5,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "play",
+     "tick": 177,
+     "frame": null,
+     "menu": false,
+     "hud": 4.4,
+     "centre": 0,
+     "texts": 12,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "wave",
+     "tick": 480,
+     "frame": null,
+     "menu": false,
+     "hud": 3.31,
+     "centre": 0,
+     "texts": 10,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 27,
+    "passing": 27,
+    "worst": [
+     {
+      "shot": "play",
+      "id": "Pick",
+      "text": "Thorn",
+      "ratio": 4.7
+     },
+     {
+      "shot": "wave",
+      "id": "Pick",
+      "text": "Thorn",
+      "ratio": 4.7
+     },
+     {
+      "shot": "title",
+      "id": "play",
+      "text": "Play",
+      "ratio": 4.84
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 27,
+    "passing": 27,
+    "smallest": [
+     {
+      "shot": "play",
+      "id": "Next",
+      "text": "Next wave 1",
+      "ink": 10
+     },
+     {
+      "shot": "title",
+      "id": "Footer",
+      "text": "Plants on the grass, visitors on the pat",
+      "ink": 13
+     },
+     {
+      "shot": "title",
+      "id": "Subtitle",
+      "text": "Hold the garden path until the night is ",
+      "ink": 15
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 2,
+    "worstShare": 4.4,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 2,
+    "withMotion": 2,
+    "presses": 3,
+    "pressesWithSound": 3,
+    "motionTicks": 784
+   },
+   "latency": {
+    "inputs": 9,
+    "answered": 9,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 9
+   },
+   "damage": {
+    "moments": 5,
+    "hitStop": 5,
+    "shake": 0,
+    "floating": 5,
+    "sound": 5,
+    "flash": 5,
+    "particles": 5,
+    "facts": [
+     "kills"
+    ]
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 2,
+    "bursts": 5
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 4.6,
+    "stepP95Ms": 7.82,
+    "renderMedianMs": 3.84,
+    "renderP95Ms": 6.16,
+    "frameP95Ms": 13.53,
+    "frameMaxMs": 397.98
+   },
+   "audio": {
+    "seconds": 13.1,
+    "peak": 0.38,
+    "rms": 0.026,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "frames",
+   "title": "the title, a wave in the maze and the end card match their reference frames",
+   "tier": "metal",
+   "ticks": 486,
+   "shots": [
+    {
+     "name": "title",
+     "tick": 30,
+     "frame": "frames/frames-title.png",
+     "menu": true,
+     "hud": 5.25,
+     "centre": 47.55,
+     "texts": 5,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "wave",
+     "tick": 360,
+     "frame": null,
+     "menu": false,
+     "hud": 3.31,
+     "centre": 0,
+     "texts": 10,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "end",
+     "tick": 480,
+     "frame": null,
+     "menu": true,
+     "hud": 6.26,
+     "centre": 37.55,
+     "texts": 12,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 27,
+    "passing": 26,
+    "worst": [
+     {
+      "shot": "wave",
+      "id": "Pick",
+      "text": "Frost lily",
+      "ratio": 4.08
+     },
+     {
+      "shot": "end",
+      "id": "Retry",
+      "text": "Play again",
+      "ratio": 4.7
+     },
+     {
+      "shot": "title",
+      "id": "play",
+      "text": "Play",
+      "ratio": 4.84
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 27,
+    "passing": 27,
+    "smallest": [
+     {
+      "shot": "end",
+      "id": "Badge",
+      "text": "New best",
+      "ink": 10
+     },
+     {
+      "shot": "end",
+      "id": "Best",
+      "text": "Best 520",
+      "ink": 11
+     },
+     {
+      "shot": "end",
+      "id": "Value",
+      "text": "0",
+      "ink": 11
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 1,
+    "worstShare": 3.31,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 3,
+    "withMotion": 3,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 484
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 1,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 4.26,
+    "stepP95Ms": 5.9,
+    "renderMedianMs": 3.61,
+    "renderP95Ms": 4.12,
+    "frameP95Ms": 9.93,
+    "frameMaxMs": 246.42
+   },
+   "audio": {
+    "seconds": 8.1,
+    "peak": 0.37,
+    "rms": 0.0351,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "lose",
+   "title": "unguarded, visitors reach the doorstep, the lantern goes out, the end card offers another round",
+   "tier": "metal",
+   "ticks": 1074,
+   "shots": [
+    {
+     "name": "lost",
+     "tick": 996,
+     "frame": "frames/lose-lost.png",
+     "menu": true,
+     "hud": 6.44,
+     "centre": 37.74,
+     "texts": 12,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 12,
+    "passing": 12,
+    "worst": [
+     {
+      "shot": "lost",
+      "id": "Retry",
+      "text": "Play again",
+      "ratio": 4.7
+     },
+     {
+      "shot": "lost",
+      "id": "Menu",
+      "text": "Title",
+      "ratio": 7.65
+     },
+     {
+      "shot": "lost",
+      "id": "Badge",
+      "text": "New best",
+      "ratio": 7.83
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 12,
+    "passing": 12,
+    "smallest": [
+     {
+      "shot": "lost",
+      "id": "Badge",
+      "text": "New best",
+      "ink": 10
+     },
+     {
+      "shot": "lost",
+      "id": "Value",
+      "text": "0",
+      "ink": 11
+     },
+     {
+      "shot": "lost",
+      "id": "Best",
+      "text": "Best 150",
+      "ink": 12
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 4,
+    "withMotion": 4,
+    "presses": 2,
+    "pressesWithSound": 2,
+    "motionTicks": 1072
+   },
+   "latency": {
+    "inputs": 2,
+    "answered": 2,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 2
+   },
+   "damage": {
+    "moments": 2,
+    "hitStop": 2,
+    "shake": 2,
+    "floating": 2,
+    "sound": 2,
+    "flash": 2,
+    "particles": 0,
+    "facts": [
+     "lives"
+    ]
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 1,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 4.36,
+    "stepP95Ms": 8.29,
+    "renderMedianMs": 3.71,
+    "renderP95Ms": 6.68,
+    "frameP95Ms": 14.64,
+    "frameMaxMs": 166.12
+   },
+   "audio": {
+    "seconds": 17.9,
+    "peak": 0.44,
+    "rms": 0.0556,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "maze",
+   "title": "hedges route the visitors through the gap; a closed path, a stone, a taken cell and an empty purse are refused",
+   "tier": "metal",
+   "ticks": 486,
+   "shots": [
+    {
+     "name": "maze",
+     "tick": 96,
+     "frame": "frames/maze-maze.png",
+     "menu": false,
+     "hud": 4.4,
+     "centre": 0,
+     "texts": 12,
+     "lowContrast": 1,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 12,
+    "passing": 11,
+    "worst": [
+     {
+      "shot": "maze",
+      "id": "Pick",
+      "text": "Frost lily",
+      "ratio": 4.08
+     },
+     {
+      "shot": "maze",
+      "id": "Next",
+      "text": "Next wave 2",
+      "ratio": 5.44
+     },
+     {
+      "shot": "maze",
+      "id": "Pick",
+      "text": "Hedge",
+      "ratio": 6.74
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 12,
+    "passing": 12,
+    "smallest": [
+     {
+      "shot": "maze",
+      "id": "Next",
+      "text": "Next wave 2",
+      "ink": 11
+     },
+     {
+      "shot": "maze",
+      "id": "Text",
+      "text": "Pick a plant, then a cell of the lawn",
+      "ink": 15
+     },
+     {
+      "shot": "maze",
+      "id": "Label",
+      "text": "Wave 1/5",
+      "ink": 16
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 1,
+    "worstShare": 4.4,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 2,
+    "withMotion": 2,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 484
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 1,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 4.21,
+    "stepP95Ms": 6.11,
+    "renderMedianMs": 3.6,
+    "renderP95Ms": 4.36,
+    "frameP95Ms": 10.23,
+    "frameMaxMs": 249.33
+   },
+   "audio": {
+    "seconds": 8.1,
+    "peak": 0.4,
+    "rms": 0.0566,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "pad",
+   "title": "the d-pad, A, X, Y, Start and B play a round",
+   "tier": "metal",
+   "ticks": 186,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 4,
+    "withMotion": 4,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 184
+   },
+   "latency": {
+    "inputs": 11,
+    "answered": 11,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 10
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 1,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 4.24,
+    "stepP95Ms": 6.08,
+    "renderMedianMs": 3.52,
+    "renderP95Ms": 4.01,
+    "frameP95Ms": 9.87,
+    "frameMaxMs": 11.25
+   },
+   "audio": {
+    "seconds": 3.1,
+    "peak": 0.36,
+    "rms": 0.0429,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "pause",
+   "title": "Escape pauses, settings switch the language and save, Resume runs the garden again",
+   "tier": "metal",
+   "ticks": 528,
+   "shots": [
+    {
+     "name": "pause",
+     "tick": 318,
+     "frame": "frames/pause-pause.png",
+     "menu": true,
+     "hud": 8.14,
+     "centre": 43.77,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "settings-zh",
+     "tick": 408,
+     "frame": null,
+     "menu": true,
+     "hud": 8.94,
+     "centre": 46.23,
+     "texts": 12,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "pause-zh",
+     "tick": 456,
+     "frame": null,
+     "menu": true,
+     "hud": 8.08,
+     "centre": 43.46,
+     "texts": 4,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "play-zh",
+     "tick": 522,
+     "frame": null,
+     "menu": false,
+     "hud": 3.28,
+     "centre": 0,
+     "texts": 10,
+     "lowContrast": 1,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 30,
+    "passing": 27,
+    "worst": [
+     {
+      "shot": "settings-zh",
+      "id": "Done",
+      "text": "完成",
+      "ratio": 3.46
+     },
+     {
+      "shot": "pause-zh",
+      "id": "resume",
+      "text": "继续",
+      "ratio": 3.51
+     },
+     {
+      "shot": "play-zh",
+      "id": "Pick",
+      "text": "荆棘",
+      "ratio": 4.2
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 30,
+    "passing": 30,
+    "smallest": [
+     {
+      "shot": "settings-zh",
+      "id": "Value",
+      "text": "100",
+      "ink": 11
+     },
+     {
+      "shot": "settings-zh",
+      "id": "Value",
+      "text": "50",
+      "ink": 11
+     },
+     {
+      "shot": "settings-zh",
+      "id": "Value",
+      "text": "100",
+      "ink": 11
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 1,
+    "worstShare": 3.28,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 8,
+    "withMotion": 8,
+    "presses": 6,
+    "pressesWithSound": 6,
+    "motionTicks": 526
+   },
+   "latency": {
+    "inputs": 7,
+    "answered": 7,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 7
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 1,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 4.34,
+    "stepP95Ms": 6.88,
+    "renderMedianMs": 3.65,
+    "renderP95Ms": 5.44,
+    "frameP95Ms": 12.35,
+    "frameMaxMs": 420.16
+   },
+   "audio": {
+    "seconds": 8.8,
+    "peak": 0.42,
+    "rms": 0.0348,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "phone",
+   "title": "the phone layout: title, HUD and a bottom tray of touch-sized buttons inside the safe area",
+   "tier": "metal",
+   "ticks": 114,
+   "shots": [
+    {
+     "name": "title",
+     "tick": 24,
+     "frame": "frames/phone-title.png",
+     "menu": false,
+     "hud": 14.21,
+     "centre": 0,
+     "texts": 5,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "play",
+     "tick": 108,
+     "frame": null,
+     "menu": false,
+     "hud": 11.61,
+     "centre": 0,
+     "texts": 11,
+     "lowContrast": 1,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 16,
+    "passing": 15,
+    "worst": [
+     {
+      "shot": "play",
+      "id": "Pick",
+      "text": "Hedge",
+      "ratio": 2.51
+     },
+     {
+      "shot": "title",
+      "id": "play",
+      "text": "Play",
+      "ratio": 5.31
+     },
+     {
+      "shot": "title",
+      "id": "settings",
+      "text": "Settings",
+      "ratio": 8.13
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 16,
+    "passing": 16,
+    "smallest": [
+     {
+      "shot": "title",
+      "id": "Footer",
+      "text": "Plants on the grass, visitors on the pat",
+      "ink": 12.33
+     },
+     {
+      "shot": "title",
+      "id": "Subtitle",
+      "text": "Hold the garden path until the night is ",
+      "ink": 14.33
+     },
+     {
+      "shot": "play",
+      "id": "Pick",
+      "text": "Hedge",
+      "ink": 15
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 2,
+    "worstShare": 14.21,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 1,
+    "withMotion": 1,
+    "presses": 2,
+    "pressesWithSound": 2,
+    "motionTicks": 112
+   },
+   "latency": {
+    "inputs": 2,
+    "answered": 2,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 2
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 1,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 6.59,
+    "stepP95Ms": 15.49,
+    "renderMedianMs": 4.7,
+    "renderP95Ms": 10.98,
+    "frameP95Ms": 25.3,
+    "frameMaxMs": 1470.57
+   },
+   "audio": {
+    "seconds": 1.9,
+    "peak": 0.34,
+    "rms": 0.0307,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "replay",
+   "title": "a round with plants, shots, pops and frost replays to the same hash",
+   "tier": "metal",
+   "ticks": 546,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 2,
+    "withMotion": 2,
+    "presses": 2,
+    "pressesWithSound": 2,
+    "motionTicks": 544
+   },
+   "latency": {
+    "inputs": 7,
+    "answered": 7,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 7
+   },
+   "damage": {
+    "moments": 3,
+    "hitStop": 3,
+    "shake": 0,
+    "floating": 3,
+    "sound": 3,
+    "flash": 3,
+    "particles": 3,
+    "facts": [
+     "kills"
+    ]
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 2,
+    "bursts": 3
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 5.28,
+    "stepP95Ms": 22.22,
+    "renderMedianMs": 4.28,
+    "renderP95Ms": 20.86,
+    "frameP95Ms": 40.47,
+    "frameMaxMs": 136.77
+   },
+   "audio": {
+    "seconds": 9.1,
+    "peak": 0.4,
+    "rms": 0.0264,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "win",
+   "title": "a strong stand holds the last wave, the end card shows the win, the best is saved and submitted",
+   "tier": "metal",
+   "ticks": 1470,
+   "shots": [
+    {
+     "name": "won",
+     "tick": 1380,
+     "frame": "frames/win-won.png",
+     "menu": true,
+     "hud": 6.32,
+     "centre": 38.11,
+     "texts": 12,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 12,
+    "passing": 12,
+    "worst": [
+     {
+      "shot": "won",
+      "id": "Retry",
+      "text": "Play again",
+      "ratio": 4.7
+     },
+     {
+      "shot": "won",
+      "id": "Menu",
+      "text": "Title",
+      "ratio": 7.65
+     },
+     {
+      "shot": "won",
+      "id": "Badge",
+      "text": "New best",
+      "ratio": 7.83
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 12,
+    "passing": 12,
+    "smallest": [
+     {
+      "shot": "won",
+      "id": "Badge",
+      "text": "New best",
+      "ink": 10
+     },
+     {
+      "shot": "won",
+      "id": "Value",
+      "text": "18",
+      "ink": 11
+     },
+     {
+      "shot": "won",
+      "id": "Key",
+      "text": "Waves held",
+      "ink": 12
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 3,
+    "withMotion": 3,
+    "presses": 1,
+    "pressesWithSound": 1,
+    "motionTicks": 1468
+   },
+   "latency": {
+    "inputs": 2,
+    "answered": 2,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 2
+   },
+   "damage": {
+    "moments": 18,
+    "hitStop": 18,
+    "shake": 0,
+    "floating": 18,
+    "sound": 18,
+    "flash": 18,
+    "particles": 18,
+    "facts": [
+     "kills"
+    ]
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 3,
+    "bursts": 18
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 6.16,
+    "stepP95Ms": 27.43,
+    "renderMedianMs": 4.76,
+    "renderP95Ms": 21.35,
+    "frameP95Ms": 44.42,
+    "frameMaxMs": 250.03
+   },
+   "audio": {
+    "seconds": 24.5,
+    "peak": 0.45,
+    "rms": 0.0301,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  }
+ ],
+ "warnings": []
+}
