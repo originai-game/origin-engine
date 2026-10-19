@@ -51,7 +51,7 @@ Grouped by the skill that teaches them: the skill says how much of each to use a
 
 | Module | TypeScript | Publish builds | Summary |
 |---|---|---|---|
-| [`audio`](audio.md) | types and tokens | kept | Sound: inside the tick, the engine's og.audio system (after the game's systems and physics) turns AudioSource changes into a deterministic, time-stamped command stream; outside the tick the host's mixer renders it (an AudioWorklet on the web, the output device, a capture or a null sink natively). |
+| [`audio`](audio.md) | `og.audio.*` | kept | Sound: inside the tick, the engine's og.audio system (after the game's systems and physics) turns AudioSource changes into a deterministic, time-stamped command stream; outside the tick the host's mixer renders it (an AudioWorklet on the web, the output device, a capture or a null sink natively). |
 
 ### `og-ai`
 
@@ -112,10 +112,12 @@ Field units the docs and Tune use.
 
 ## Every name
 
-822 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+843 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
+| [`A11yNode`](ui.md#type-A11yNode) | struct | ui | — |
+| [`A11yTree`](ui.md#type-A11yTree) | struct | ui | — |
 | [`Ability`](ui.md#type-Ability) | desc struct | ui | — |
 | [`ActionButtonDesc`](ui.md#type-ActionButtonDesc) | desc struct | ui | — |
 | [`AdvanceOperation`](probe.md#type-AdvanceOperation) | struct | probe | — |
@@ -275,6 +277,9 @@ Field units the docs and Tune use.
 | [`Hello`](probe.md#type-Hello) | struct | probe | — |
 | [`HudResult`](ui.md#type-HudResult) | struct | ui | — |
 | [`HueName`](ui.md#type-HueName) | enum | ui | — |
+| [`HumanBone`](anim.md#type-HumanBone) | struct | anim | — |
+| [`Humanoid`](anim.md#type-Humanoid) | struct | anim | — |
+| [`HumanoidDesc`](anim.md#type-HumanoidDesc) | desc struct | anim | — |
 | [`i32()`](reflect.md#column-i32) | column kind | reflect | — |
 | [`IconAtlasDesc`](ui.md#type-IconAtlasDesc) | desc struct | ui | — |
 | [`IconDesc`](ui.md#type-IconDesc) | desc struct | ui | — |
@@ -339,6 +344,7 @@ Field units the docs and Tune use.
 | [`Material()`](render.md#column-Material) | column kind | render | — |
 | [`Matrix4`](math.md#type-Matrix4) | struct | math | — |
 | [`Matrix4()`](reflect.md#column-Matrix4) | column kind | reflect | — |
+| [`MAX_CLUSTER_LIGHTS`](render.md#const-MAX_CLUSTER_LIGHTS) | constant | render | — |
 | [`MAX_GAMEPADS`](input.md#const-MAX_GAMEPADS) | constant | input | — |
 | [`MAX_LIGHTS`](render.md#const-MAX_LIGHTS) | constant | render | — |
 | [`MAX_POINTERS`](input.md#const-MAX_POINTERS) | constant | input | — |
@@ -382,6 +388,8 @@ Field units the docs and Tune use.
 | [`og.AiChanged`](ai.md#record-AiChanged) | event | ai | — |
 | [`og.anim.clip`](anim.md#fn-clip) | function | anim | — |
 | [`og.anim.graph`](anim.md#fn-graph) | function | anim | `og_anim_graph` |
+| [`og.anim.humanoid`](anim.md#fn-humanoid) | function | anim | `og_anim_humanoid` |
+| [`og.anim.retarget`](anim.md#fn-retarget) | function | anim | `og_anim_retarget` |
 | [`og.AnimationEvent`](anim.md#record-AnimationEvent) | event | anim | — |
 | [`og.AnimationGraph`](anim.md#record-AnimationGraph) | component | anim | — |
 | [`og.AnimationPlayer`](anim.md#record-AnimationPlayer) | component | anim | — |
@@ -389,6 +397,7 @@ Field units the docs and Tune use.
 | [`og.AssetReady`](load.md#record-AssetReady) | event | load | — |
 | [`og.atmosphere.timeOfDay`](atmosphere.md#fn-timeOfDay) | function | atmosphere | `og_atmosphere_time_of_day` |
 | [`og.Audio`](audio.md#record-Audio) | resource | audio | — |
+| [`og.audio.outputLatency`](audio.md#fn-outputLatency) | function | audio | `og_audio_output_latency` |
 | [`og.AudioBusFx`](audio.md#record-AudioBusFx) | component | audio | — |
 | [`og.AudioListener`](audio.md#record-AudioListener) | component | audio | — |
 | [`og.AudioSource`](audio.md#record-AudioSource) | component | audio | — |
@@ -446,6 +455,7 @@ Field units the docs and Tune use.
 | [`og.load.gltf`](load.md#fn-gltf) | function | load | `og_load_gltf` |
 | [`og.load.gltfInfo`](load.md#fn-gltfInfo) | function | load | `og_load_gltf_info` |
 | [`og.load.lut`](load.md#fn-lut) | function | load | `og_load_lut` |
+| [`og.load.rig`](load.md#fn-rig) | function | load | `og_load_rig` |
 | [`og.load.scene`](load.md#fn-scene) | function | load | `og_load_scene` |
 | [`og.load.shader`](load.md#fn-shader) | function | load | `og_load_shader` |
 | [`og.load.skin`](load.md#fn-skin) | function | load | `og_load_skin` |
@@ -498,6 +508,7 @@ Field units the docs and Tune use.
 | [`og.platform.leaderboardSubmit`](platform.md#fn-leaderboardSubmit) | function | platform | `og_platform_leaderboard_submit` |
 | [`og.platform.leaderboardTop`](platform.md#fn-leaderboardTop) | function | platform | `og_platform_leaderboard_top` |
 | [`og.platform.loadSettings`](platform.md#fn-loadSettings) | function | platform | `og_platform_load_settings` |
+| [`og.platform.now`](platform.md#fn-now) | function | platform | `og_platform_now` |
 | [`og.platform.point`](platform.md#fn-point) | function | platform | `og_platform_point` |
 | [`og.platform.result`](platform.md#fn-result) | function | platform | `og_platform_result` |
 | [`og.platform.saveSettings`](platform.md#fn-saveSettings) | function | platform | `og_platform_save_settings` |
@@ -520,6 +531,7 @@ Field units the docs and Tune use.
 | [`og.render.measureText`](render.md#fn-measureText) | function | render | `og_render_measure_text` |
 | [`og.render.planeGeometry`](render.md#fn-planeGeometry) | function | render | `og_render_plane_geometry` |
 | [`og.render.ribbon`](render.md#fn-ribbon) | function | render | `og_render_ribbon` |
+| [`og.render.setMaterialShader`](render.md#fn-setMaterialShader) | function | render | `og_render_set_material_shader` |
 | [`og.render.setShaderParam`](render.md#fn-setShaderParam) | function | render | `og_render_set_shader_param` |
 | [`og.render.shaderMaterial`](render.md#fn-shaderMaterial) | function | render | `og_render_shader_material` |
 | [`og.render.sphereGeometry`](render.md#fn-sphereGeometry) | function | render | `og_render_sphere_geometry` |
@@ -579,6 +591,7 @@ Field units the docs and Tune use.
 | [`og.tween.squash`](tween.md#fn-squash) | function | tween | `og_tween_squash` |
 | [`og.tween.to`](tween.md#fn-to) | function | tween | `og_tween_to` |
 | [`og.TweenCompleted`](tween.md#record-TweenCompleted) | event | tween | — |
+| [`og.ui.a11y`](ui.md#fn-a11y) | function | ui | `og_ui_a11y` |
 | [`og.ui.actionButton`](ui.md#fn-actionButton) | function | ui | `og_ui_action_button` |
 | [`og.ui.alertDialog`](ui.md#fn-alertDialog) | function | ui | — |
 | [`og.ui.anchor`](ui.md#fn-anchor) | function | ui | — |
@@ -605,6 +618,7 @@ Field units the docs and Tune use.
 | [`og.ui.divider`](ui.md#fn-divider) | function | ui | `og_ui_divider` |
 | [`og.ui.dpad`](ui.md#fn-dpad) | function | ui | `og_ui_dpad` |
 | [`og.ui.dragging`](ui.md#fn-dragging) | function | ui | `og_ui_dragging` |
+| [`og.ui.focus`](ui.md#fn-focus) | function | ui | `og_ui_focus` |
 | [`og.ui.frameTheme`](ui.md#fn-frameTheme) | function | ui | `og_ui_frame_theme` |
 | [`og.ui.frameViewport`](ui.md#fn-frameViewport) | function | ui | `og_ui_frame_viewport` |
 | [`og.ui.grid`](ui.md#fn-grid) | function | ui | — |
@@ -647,12 +661,14 @@ Field units the docs and Tune use.
 | [`og.ui.radio`](ui.md#fn-radio) | function | ui | `og_ui_radio` |
 | [`og.ui.remember`](ui.md#fn-remember) | function | ui | `og_ui_remember` |
 | [`og.ui.resultsScreen`](ui.md#fn-resultsScreen) | function | ui | — |
+| [`og.ui.richText`](ui.md#fn-richText) | function | ui | `og_ui_rich_text` |
 | [`og.ui.row`](ui.md#fn-row) | function | ui | — |
 | [`og.ui.screenTransition`](ui.md#fn-screenTransition) | function | ui | `og_ui_screen_transition` |
 | [`og.ui.scroll`](ui.md#fn-scroll) | function | ui | — |
 | [`og.ui.seconds`](ui.md#fn-seconds) | function | ui | `og_ui_seconds` |
 | [`og.ui.select`](ui.md#fn-select) | function | ui | `og_ui_select` |
 | [`og.ui.setNavigation`](ui.md#fn-setNavigation) | function | ui | `og_ui_set_navigation` |
+| [`og.ui.setPlayers`](ui.md#fn-setPlayers) | function | ui | `og_ui_set_players` |
 | [`og.ui.settingsScreen`](ui.md#fn-settingsScreen) | function | ui | — |
 | [`og.ui.shake`](ui.md#fn-shake) | function | ui | `og_ui_shake` |
 | [`og.ui.shooterHud`](ui.md#fn-shooterHud) | function | ui | — |
@@ -748,8 +764,12 @@ Field units the docs and Tune use.
 | [`REPLAY_SEED_PARAM`](probe.md#const-REPLAY_SEED_PARAM) | constant | probe | — |
 | [`Response`](ui.md#type-Response) | struct | ui | — |
 | [`ResultsDesc`](ui.md#type-ResultsDesc) | desc struct | ui | — |
+| [`RetargetDesc`](anim.md#type-RetargetDesc) | desc struct | anim | — |
 | [`RibbonDesc`](render.md#type-RibbonDesc) | desc struct | render | — |
 | [`RibbonPoint`](render.md#type-RibbonPoint) | desc struct | render | — |
+| [`RichTextDesc`](ui.md#type-RichTextDesc) | desc struct | ui | — |
+| [`RichTextResult`](ui.md#type-RichTextResult) | struct | ui | — |
+| [`Rig`](anim.md#type-Rig) | handle | anim | — |
 | [`Rng.chance`](rng.md#member-Rng-chance) | method | rng | `og_rng_chance` |
 | [`Rng.fork`](rng.md#member-Rng-fork) | method | rng | `og_rng_fork` |
 | [`Rng.integer`](rng.md#member-Rng-integer) | method | rng | `og_rng_integer` |
@@ -782,6 +802,7 @@ Field units the docs and Tune use.
 | [`ScreenTransitionDesc`](ui.md#type-ScreenTransitionDesc) | desc struct | ui | — |
 | [`ScreenTransitionResult`](ui.md#type-ScreenTransitionResult) | struct | ui | — |
 | [`ScreenWipe`](ui.md#type-ScreenWipe) | enum | ui | — |
+| [`ScrollAxes`](ui.md#type-ScrollAxes) | enum | ui | — |
 | [`ScrollDesc`](ui.md#type-ScrollDesc) | desc struct | ui | — |
 | [`SelectDesc`](ui.md#type-SelectDesc) | desc struct | ui | — |
 | [`SetTileDesc`](tilemap.md#type-SetTileDesc) | desc struct | tilemap | — |

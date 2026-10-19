@@ -50,12 +50,12 @@ mod terrain;
 mod terrain_stream;
 
 pub use ai::{og_ai_describe, og_ai_get, og_ai_load, og_ai_noise, og_ai_parse, og_ai_set};
-pub use anim::{og_anim_graph, og_load_animation};
+pub use anim::{og_anim_graph, og_anim_humanoid, og_anim_retarget, og_load_animation, og_load_rig};
 pub use api::*;
 pub use assets::Fetch;
 pub use atmosphere::{
-    og_atmosphere_time_of_day, og_load_shader, og_render_set_shader_param,
-    og_render_shader_material,
+    og_atmosphere_time_of_day, og_load_shader, og_render_set_material_shader,
+    og_render_set_shader_param, og_render_shader_material,
 };
 pub use codec::{Kind, Layout, RecordKind};
 pub use engine::{
@@ -73,19 +73,20 @@ pub use feel::{
 pub use i18n::{og_i18n_has, og_i18n_load, og_i18n_locale, og_i18n_set_locale, og_i18n_t};
 pub use modules::{
     THEME_COLORS, TYPE_STEPS, og_load_skin, og_physics_overlap, og_physics_raycast,
-    og_physics_set_mesh, og_physics_shape_cast, og_ui_action_button, og_ui_back, og_ui_badge,
-    og_ui_bounds, og_ui_breakpoint, og_ui_burst, og_ui_button, og_ui_checkbox, og_ui_checkbox_list,
-    og_ui_chip, og_ui_close, og_ui_close_list, og_ui_close_modal, og_ui_configure, og_ui_cooldown,
-    og_ui_counter, og_ui_dialogue, og_ui_dismiss_toast, og_ui_divider, og_ui_dpad, og_ui_dragging,
-    og_ui_frame_theme, og_ui_frame_viewport, og_ui_grid_item, og_ui_has_icon, og_ui_icon,
-    og_ui_image, og_ui_joystick, og_ui_key_value, og_ui_label, og_ui_list_item, og_ui_memory,
-    og_ui_meter, og_ui_minimap, og_ui_navigate, og_ui_open, og_ui_open_anchor, og_ui_open_grid,
-    og_ui_open_list, og_ui_open_modal, og_ui_open_panel, og_ui_open_scroll, og_ui_open_transition,
-    og_ui_preview_viewport, og_ui_progress, og_ui_radio, og_ui_remember, og_ui_screen_transition,
-    og_ui_seconds, og_ui_select, og_ui_set_navigation, og_ui_shake, og_ui_skeleton, og_ui_slider,
-    og_ui_spacer, og_ui_spinner, og_ui_spotlight, og_ui_stepper, og_ui_tabs, og_ui_text_field,
-    og_ui_theme, og_ui_tick, og_ui_toast, og_ui_toggle, og_ui_tooltip, og_ui_viewport,
-    set_viewport,
+    og_physics_set_mesh, og_physics_shape_cast, og_ui_a11y, og_ui_action_button, og_ui_back,
+    og_ui_badge, og_ui_bounds, og_ui_breakpoint, og_ui_burst, og_ui_button, og_ui_checkbox,
+    og_ui_checkbox_list, og_ui_chip, og_ui_close, og_ui_close_list, og_ui_close_modal,
+    og_ui_configure, og_ui_cooldown, og_ui_counter, og_ui_dialogue, og_ui_dismiss_toast,
+    og_ui_divider, og_ui_dpad, og_ui_dragging, og_ui_focus, og_ui_frame_theme,
+    og_ui_frame_viewport, og_ui_grid_item, og_ui_has_icon, og_ui_icon, og_ui_image, og_ui_joystick,
+    og_ui_key_value, og_ui_label, og_ui_list_item, og_ui_memory, og_ui_meter, og_ui_minimap,
+    og_ui_navigate, og_ui_open, og_ui_open_anchor, og_ui_open_grid, og_ui_open_list,
+    og_ui_open_modal, og_ui_open_panel, og_ui_open_scroll, og_ui_open_transition,
+    og_ui_preview_viewport, og_ui_progress, og_ui_radio, og_ui_remember, og_ui_rich_text,
+    og_ui_screen_transition, og_ui_seconds, og_ui_select, og_ui_set_navigation, og_ui_set_players,
+    og_ui_shake, og_ui_skeleton, og_ui_slider, og_ui_spacer, og_ui_spinner, og_ui_spotlight,
+    og_ui_stepper, og_ui_tabs, og_ui_text_field, og_ui_theme, og_ui_tick, og_ui_toast,
+    og_ui_toggle, og_ui_tooltip, og_ui_viewport, set_viewport,
 };
 pub use nav::{
     og_nav_build, og_nav_cell_at, og_nav_find_path, og_nav_flow_at, og_nav_flow_field, og_nav_grid,
@@ -100,9 +101,9 @@ pub use physics_ext::{
 pub use platform::{
     og_platform_ai_mark, og_platform_answer, og_platform_info, og_platform_leaderboard_around,
     og_platform_leaderboard_submit, og_platform_leaderboard_top, og_platform_load_settings,
-    og_platform_point, og_platform_result, og_platform_save_settings, og_platform_set_host,
-    og_platform_store_get, og_platform_store_list, og_platform_store_set, og_platform_take,
-    og_platform_telemetry,
+    og_platform_now, og_platform_point, og_platform_result, og_platform_save_settings,
+    og_platform_set_host, og_platform_store_get, og_platform_store_list, og_platform_store_set,
+    og_platform_take, og_platform_telemetry,
 };
 pub use probe::png;
 pub use stream::{

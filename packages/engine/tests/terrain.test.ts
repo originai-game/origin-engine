@@ -6,7 +6,7 @@
 // an edit raises the ground under the renderer, physics and sample alike;
 // a layer reads back and retunes; og.Terrain draws it; og.TerrainScatter
 // grows copies of a mesh over it near the camera; refusals name the fix.
-import { beforeAll, expect, test } from "bun:test";
+import { expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,12 +21,14 @@ declare const Bun: { spawnSync(cmd: string[]): { exitCode: number; stderr: Uint8
 
 const fixture = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "terrain");
 
-beforeAll(() => {
+// At module level, not in a hook: a hook's 5 s would not cover a cook on a
+// loaded machine (b2532cd's gate).
+{
   loadNativeHost();
   const cooked = Bun.spawnSync([ogBin(), "cook", fixture]);
   if (cooked.exitCode !== 0) throw new Error(new TextDecoder().decode(cooked.stderr));
   if (!existsSync(join(fixture, "cooked"))) throw new Error(`og cook ${fixture} wrote no cooked/`);
-});
+}
 
 function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
   if (!r.ok) throw new Error(r.reason);

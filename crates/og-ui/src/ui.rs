@@ -151,6 +151,12 @@ pub struct Response {
     /// A list row or grid cell a press started on was released over this
     /// one: the index of that row or cell (drag and drop).
     pub dropped: Option<u32>,
+    /// The gamepad whose A pressed it this tick (0 to 3); `None` when the
+    /// pointer or the keyboard did, or nothing.
+    pub pad: Option<u32>,
+    /// Bit `k`: pad `k`'s focus is on it (pad 0's is `focused`; pads 1 to 3
+    /// while [`Ui::set_players`] allows them).
+    pub focused_by: u32,
 }
 
 pub(crate) const HIT_SCROLL: u8 = 1;
@@ -223,6 +229,16 @@ pub(crate) struct State {
     /// The press that focused a field: where it landed, to place the caret.
     pub focus_click: Option<f32>,
     pub scroll: BTreeMap<u64, f32>,
+    /// Horizontal scroll offsets.
+    pub scroll_x: BTreeMap<u64, f32>,
+    /// Each scroll container's ranges and scrollbar lengths, last frame.
+    pub scroll_info: BTreeMap<u64, crate::scroll::ScrollInfo>,
+    /// A released drag's momentum: the container and its velocity per tick.
+    pub fling: Option<(u64, Vec2)>,
+    /// The drag's velocity so far, CSS px per tick.
+    pub drag_v: Vec2,
+    /// A scrollbar the press grabbed.
+    pub thumb: Option<crate::scroll::Thumb>,
     /// Last frame's interactive rectangles in draw order, for hit testing.
     pub hits: Vec<Hit>,
     /// Frames begun: the clock of every animation.
@@ -246,6 +262,13 @@ pub(crate) struct State {
     pub screens: BTreeMap<u64, crate::juice::ScreenState>,
     /// The host's voice entity for each UI sound (bits; 0: none).
     pub voices: [u64; 6],
+    /// Players the last frame allowed (`set_players`): pads 1 to players - 1
+    /// each move a focus of their own.
+    pub players: u8,
+    /// Pads 1 to 3: the control each one's focus is on (0: none).
+    pub pad_focus: [u64; 3],
+    /// Pads 1 to 3: the stick's held direction and since which tick.
+    pub pad_stick: [(u8, u64); 3],
 }
 
 /// What navigation decided at the start of this frame.
@@ -257,6 +280,10 @@ pub(crate) struct NavFrame {
     pub back: bool,
     /// Left (-1) and right (+1) on an adjustable control.
     pub adjust: i32,
+    /// `activate` came from pad 0's A.
+    pub pad0: bool,
+    /// The control pads 1 to 3 pressed with A (0: none).
+    pub pad_activate: [u64; 3],
 }
 
 /// The icon atlas `Ui::icon` draws from: a grid of equal cells.
@@ -293,6 +320,11 @@ pub struct UiFrame {
     pub items: Vec<DrawItem>,
     /// Problems in this frame's tree (duplicate ids, unclosed elements), each naming the fix.
     pub warnings: Vec<String>,
+    /// The path of the control each pad's focus is on (pad 0: the shared
+    /// focus), or empty.
+    pub focus_paths: [String; 4],
+    /// The accessibility tree (`crate::a11y`).
+    pub a11y: crate::a11y::A11yTree,
 }
 
 impl UiFrame {
@@ -329,7 +361,7 @@ pub enum ButtonVariant {
     Primary,
     /// Text until hovered.
     Quiet,
-    /// A destructive action: danger ink on a neutral fill.
+    /// A destructive action: danger ink on the danger tint.
     Danger,
 }
 
@@ -388,6 +420,17 @@ pub struct ScrollDesc {
     pub height: Size,
     pub padding: Insets,
     pub gap: f32,
+    /// Which ways it scrolls (vertical by default).
+    pub axes: ScrollAxes,
+}
+
+/// Which ways a scroll container scrolls.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ScrollAxes {
+    #[default]
+    Vertical,
+    Horizontal,
+    Both,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -451,6 +494,8 @@ pub struct Ui {
     pub(crate) touched: std::collections::BTreeSet<u64>,
     /// Navigation declared for this frame (`set_navigation`).
     pub(crate) nav_on: bool,
+    /// Players declared for this frame (`set_players`).
+    pub(crate) players: u32,
     /// The control a widget asked to focus this frame.
     pub(crate) request_focus: u64,
     /// Open focus scopes this frame, in build order.
@@ -474,7 +519,11 @@ impl Default for Ui {
     }
 }
 
-const STATE_VERSION: u32 = 3;
+const STATE_VERSION: u32 = 5;
+
+/// A skin's `textGlow` size is how far the old four offset copies reached;
+/// the distance-field glow fades to nothing over this many times it.
+const TEXT_GLOW_REACH: f32 = 2.0;
 
 impl Ui {
     pub fn new(desc: UiDesc) -> Ui {
@@ -500,6 +549,7 @@ impl Ui {
             nav: NavFrame::default(),
             touched: Default::default(),
             nav_on: true,
+            players: 1,
             request_focus: 0,
             scopes: Vec::new(),
             icons: IconAtlas::default(),
@@ -560,6 +610,78 @@ impl Ui {
     /// from the next tick.
     pub fn set_navigation(&mut self, on: bool) {
         self.nav_on = on;
+    }
+
+    /// Local multiplayer: how many players this screen takes. Pads 1 to
+    /// `count - 1` each move a focus of their own (a ring in their player
+    /// colour) among the same controls, and their A presses the control
+    /// under it ([`Response::pad`] says which pad); pad 0 shares the one
+    /// focus with the keyboard and the pointer. 1 by default; declared every
+    /// tick, like [`Ui::set_navigation`], and read from the next.
+    pub fn set_players(&mut self, count: u32) {
+        self.players = count.clamp(1, 4);
+    }
+
+    /// The last frame's accessibility tree: each element with a role, its
+    /// name, value, states and bounds, and the focus order (`crate::a11y`).
+    pub fn a11y(&self) -> &crate::a11y::A11yTree {
+        &self.frame.a11y
+    }
+
+    /// What element `i` tells the accessibility tree: role, name, value and
+    /// its own states (the frame adds `focusable` and `focused`).
+    pub(crate) fn a11y_info(&self, i: usize) -> (&'static str, String, String, Vec<String>) {
+        let n = &self.nodes[i];
+        let (kind, anonymous) = self.kinds.get(i).copied().unwrap_or(("", true));
+        let role = crate::a11y::role_of(kind, n);
+        if role.is_empty() {
+            return ("", String::new(), String::new(), Vec::new());
+        }
+        let mut name = n.a11y.name.clone().unwrap_or_default();
+        if name.is_empty() {
+            name = n.probe_text.clone();
+        }
+        // A picture nothing names is decoration (an icon names itself).
+        if name.is_empty() && role == "image" && !n.nav {
+            return ("", String::new(), String::new(), Vec::new());
+        }
+        if name.is_empty() && (n.el.interactive || n.nav) {
+            name = crate::a11y::text_within(&self.nodes, i);
+        }
+        let labelled = role != "text" && role != "heading";
+        if name.is_empty()
+            && labelled
+            && n.parent != NONE
+            && self.nodes[n.parent].el.direction == crate::layout::Direction::Row
+        {
+            // A control without text of its own is named by the label just
+            // before it in its row (a settings row's "Master" names its slider).
+            let siblings = &self.nodes[n.parent].children;
+            if let Some(at) = siblings.iter().position(|&c| c == i)
+                && at > 0
+                && self.kinds[siblings[at - 1]].0 == "label"
+            {
+                name = self.nodes[siblings[at - 1]].probe_text.clone();
+            }
+        }
+        if name.is_empty() && !anonymous && labelled {
+            name = n.id.clone();
+        }
+        (
+            role,
+            name,
+            crate::a11y::value_of(n),
+            crate::a11y::states_of(n),
+        )
+    }
+
+    /// The path of the control pad `pad`'s focus is on in the last frame
+    /// (pad 0: the shared focus), or `""`.
+    pub fn focus_path(&self, pad: u32) -> &str {
+        self.frame
+            .focus_paths
+            .get(pad as usize)
+            .map_or("", String::as_str)
     }
 
     /// Queues a navigation intent for the next tick (a gamepad the input
@@ -658,6 +780,8 @@ impl Ui {
     /// Starts a frame with a root of your own (its size is the viewport; the
     /// safe area is added to its padding; its background covers the whole viewport).
     pub fn begin_with(&mut self, input: InputFrame, viewport: Viewport, root: Element) {
+        // Scrolling first: a press on a scrollbar grabs it before anything under it.
+        let grabbed = self.scroll_input(&input);
         if self.building {
             self.warnings.push(
                 "begin without end: the previous frame was dropped; call ui.end() once per tick"
@@ -679,6 +803,7 @@ impl Ui {
         self.request_focus = 0;
         self.scopes.clear();
         self.nav_on = true;
+        self.players = 1;
         self.cover = None;
 
         // Hit test against last frame's rectangles, topmost first.
@@ -697,6 +822,7 @@ impl Ui {
         } else {
             0
         };
+        let hot = grabbed.unwrap_or(hot);
         self.state.hover_ticks = if hot != 0 && hot == self.state.hot {
             self.state.hover_ticks.saturating_add(1)
         } else {
@@ -705,7 +831,7 @@ impl Ui {
         if hot != 0 && hot != self.state.hot && self.hit(hot).is_some_and(|h| h.has(HIT_NAV)) {
             self.sound(crate::skin::UiSound::Hover);
         }
-        if input.pressed && self.hit(hot).is_some_and(|h| h.has(HIT_NAV)) {
+        if input.pressed && grabbed.is_none() && self.hit(hot).is_some_and(|h| h.has(HIT_NAV)) {
             self.sound(crate::skin::UiSound::Press);
         }
         self.state.hot = hot;
@@ -724,28 +850,9 @@ impl Ui {
             }
             self.state.focus_visible = false;
         }
-        // Wheel over a scroll container; drag on one that holds the press.
-        if input.wheel.y != 0.0
-            && let Some(h) = self
-                .state
-                .hits
-                .iter()
-                .rev()
-                .find(|h| h.has(HIT_SCROLL) && h.rect.contains(p.x, p.y))
-        {
-            *self.state.scroll.entry(h.key).or_insert(0.0) += input.wheel.y;
-        }
-        if input.down
-            && !input.pressed
-            && self
-                .hit(self.state.active)
-                .is_some_and(|h| h.has(HIT_SCROLL))
-        {
-            let dy = self.state.pointer.y - p.y;
-            *self.state.scroll.entry(self.state.active).or_insert(0.0) += dy;
-        }
         let intents = self.intents(&input);
         self.apply_nav(&intents);
+        self.apply_pads(&input);
         self.state.pointer = p;
         self.input = input;
 
@@ -864,12 +971,29 @@ impl Ui {
     pub(crate) fn respond(&self, key: u64) -> Response {
         let s = &self.state;
         let hovered = s.hot == key && (s.active == 0 || s.active == key);
+        let by_pad = (key != 0)
+            .then(|| self.nav.pad_activate.iter().position(|&k| k == key))
+            .flatten();
+        let pad = match by_pad {
+            Some(k) => Some(k as u32 + 1),
+            None if self.nav.activate == key && key != 0 && self.nav.pad0 => Some(0),
+            None => None,
+        };
+        let mut focused_by = u32::from(s.focus == key && key != 0);
+        for (k, &f) in s.pad_focus.iter().enumerate() {
+            if f == key && key != 0 && (k as u8) + 1 < s.players {
+                focused_by |= 2 << k;
+            }
+        }
         Response {
             hovered,
             pressed: s.active == key && self.input.down,
             clicked: (s.active == key && self.input.released && s.hot == key)
-                || (self.nav.activate == key && key != 0),
+                || (self.nav.activate == key && key != 0)
+                || by_pad.is_some(),
             focused: s.focus == key,
+            pad,
+            focused_by,
             ..Response::default()
         }
     }
@@ -878,16 +1002,18 @@ impl Ui {
     /// response; the ring shows while navigation put focus on it.
     pub(crate) fn nav_target(&mut self, i: usize, adjust: bool) -> Response {
         let key = self.nodes[i].key;
+        let r = self.respond(key);
         let n = &mut self.nodes[i];
         n.nav = true;
         n.adjust = adjust;
         n.ring = self.state.focus == key && self.state.focus_visible;
-        self.respond(key)
+        n.pad_rings = (r.focused_by >> 1) as u8;
+        r
     }
 
     /// Opens a container; children follow until [`Ui::close`].
     pub fn open(&mut self, id: impl Into<Id>, el: Element) {
-        let kind = match (el.scroll, el.direction) {
+        let kind = match (el.scroll || el.scroll_x, el.direction) {
             (true, _) => "scroll",
             (false, Direction::Row) => "row",
             (false, Direction::Column) => "column",
@@ -1000,7 +1126,8 @@ impl Ui {
                 height: desc.height,
                 padding: desc.padding,
                 gap: desc.gap,
-                scroll: true,
+                scroll: desc.axes != ScrollAxes::Horizontal,
+                scroll_x: desc.axes != ScrollAxes::Vertical,
                 ..Element::default()
             },
         );
@@ -1106,12 +1233,16 @@ impl Ui {
                     p.fg,
                 ),
                 ButtonVariant::Quiet => ((r.hovered || r.pressed).then_some(p.fill), p.fg),
+                // The platform's danger button: danger ink on the danger
+                // tint (bg-danger/10 at rest, /15 hovered), composited in
+                // sRGB over what is behind it as browsers do, so its label
+                // reads at 4.5:1 on every ground.
                 ButtonVariant::Danger => (
-                    Some(if r.hovered || r.pressed {
-                        p.fill_strong
-                    } else {
-                        p.fill
-                    }),
+                    Some(
+                        p.danger
+                            .fade(if r.hovered || r.pressed { 0.15 } else { 0.10 })
+                            .over(self.behind(i)),
+                    ),
                     p.danger,
                 ),
             }
@@ -1128,12 +1259,15 @@ impl Ui {
         } else {
             SkinPart::Button
         };
-        self.button_motion(i, r, refused);
+        let press = self.button_motion(i, r, refused);
         let n = &mut self.nodes[i];
         n.el.background = bg;
         n.el.skin = Some(part);
         n.content = Content::Text(content);
-        n.widget = Widget::Button { pressed: r.pressed };
+        n.widget = Widget::Button {
+            pressed: r.pressed,
+            press,
+        };
         n.probe_text = text.to_owned();
         r
     }
@@ -1194,22 +1328,67 @@ impl Ui {
         self.nodes[i].widget = Widget::Progress { value: v };
     }
 
-    /// A button's skin motion: the hover lift eased in and out, the press
-    /// sink, and the shake of a refused press (`motion.duration.slow`).
-    fn button_motion(&mut self, i: usize, r: Response, refused: bool) {
+    /// A button's skin motion: the hover lift and the press squash on the
+    /// skin's springs (`motion.hoverSpring`, `motion.pressSpring`), and the shake of a refused press (`motion.duration.slow`). Answers
+    /// how far in the press is (0 at rest, 1 held; past either while the
+    /// spring overshoots).
+    fn button_motion(&mut self, i: usize, r: Response, refused: bool) -> f32 {
         let t = self.theme;
         let skin = t.skin;
         if skin.hover.is_none() && skin.press.is_none() && skin.motion.shake <= 0.0 {
-            return;
+            return if r.pressed { 1.0 } else { 0.0 };
         }
-        let key = child_key(self.nodes[i].key, "motion");
-        let mut a = self.anim(key);
-        let step = 1.0 / self.ticks_for(t.durations_ms.instant) as f32;
-        a.a = if r.hovered {
-            (a.a + step).min(1.0)
-        } else {
-            (a.a - step).max(0.0)
+        let key = self.nodes[i].key;
+        let hover_spring = skin
+            .motion
+            .hover_spring
+            .unwrap_or(crate::theme::SPRING_DEFAULT);
+        let press_spring = skin.motion.press_spring.unwrap_or(crate::theme::Spring {
+            damping: 0.55,
+            response_ms: t.durations_ms.instant,
+        });
+        let dt = 1.0 / self.ticks_per_second as f32;
+        // Each spring keeps its value in `a` and its velocity in `b`.
+        let step = |ui: &mut Ui, name: &str, spring: crate::theme::Spring, target: f32| -> f32 {
+            let spring = og_tween::Spring {
+                damping: spring.damping,
+                response_ms: spring.response_ms,
+            };
+            let k = child_key(key, name);
+            let fresh = !ui.has_anim(k);
+            let mut a = ui.anim(k);
+            if t.reduced_motion || (fresh && target == 0.0) {
+                a.a = target;
+                a.b = 0.0;
+            } else {
+                let s = spring.step(
+                    og_tween::SpringState {
+                        value: a.a,
+                        velocity: a.b,
+                    },
+                    target,
+                    dt,
+                );
+                a.a = s.value;
+                a.b = s.velocity;
+            }
+            ui.set_anim(k, a);
+            a.a
         };
+        let hover = step(
+            self,
+            "hover",
+            hover_spring,
+            if r.hovered { 1.0 } else { 0.0 },
+        );
+        let press = step(
+            self,
+            "press",
+            press_spring,
+            if r.pressed { 1.0 } else { 0.0 },
+        );
+        let key = child_key(key, "motion");
+        let mut a = self.anim(key);
         let now = self.state.tick;
         if refused {
             a.t = now;
@@ -1218,18 +1397,15 @@ impl Ui {
         }
         self.set_anim(key, a);
         if t.reduced_motion {
-            return;
+            return if r.pressed { 1.0 } else { 0.0 };
         }
-        let e = crate::motion::ease_out(a.a);
         let mut f = Fx::default();
         if let Some(h) = skin.hover {
-            f.dy += h.dy * e;
-            f.scale = 1.0 + (h.scale - 1.0) * e;
+            f.dy += h.dy * hover;
+            f.scale = 1.0 + (h.scale - 1.0) * hover;
         }
-        if r.pressed
-            && let Some(p) = skin.press
-        {
-            f.dy += p.dy;
+        if let Some(p) = skin.press {
+            f.dy += p.dy * press;
         }
         if a.b > 0.0 {
             let k = (now - a.t) as f32 / self.ticks_for(t.durations_ms.slow) as f32;
@@ -1243,6 +1419,7 @@ impl Ui {
         if f != Fx::default() {
             self.nodes[i].fx = Some(f);
         }
+        press
     }
 
     /// Queues a UI event's sound when the skin has one for it.
@@ -1321,6 +1498,13 @@ impl Ui {
             t: if t.is_finite() { t } else { 0.0 },
             active: r.pressed,
         };
+        // Its value as people read it: the step's decimals, at most two.
+        let decimals = if desc.step >= 1.0 || (hi - lo).abs() > 20.0 {
+            0
+        } else {
+            2
+        };
+        self.nodes[i].a11y.value = Some(format!("{:.*}", decimals, *value));
         r
     }
 
@@ -1471,6 +1655,13 @@ impl Ui {
         n.content = Content::Text(content);
         n.widget = Widget::Field { focused, caret };
         n.probe_text = shown.to_owned();
+        // A field is named by its placeholder (or its id) and its value is its text.
+        n.a11y.name = Some(if desc.placeholder.is_empty() {
+            n.id.clone()
+        } else {
+            desc.placeholder.clone()
+        });
+        n.a11y.value = Some(value.clone());
         r
     }
 
@@ -1604,7 +1795,13 @@ impl Ui {
         let dpr = vp.dpr();
         let screen = Rect::new(0.0, 0.0, vp.width, vp.height);
         let scroll = self.state.scroll.clone();
-        let offset = |k: u64| scroll.get(&k).copied().unwrap_or(0.0);
+        let scroll_x = self.state.scroll_x.clone();
+        let offset = |k: u64| {
+            (
+                scroll_x.get(&k).copied().unwrap_or(0.0),
+                scroll.get(&k).copied().unwrap_or(0.0),
+            )
+        };
         layout(
             &mut self.nodes,
             0,
@@ -1716,12 +1913,55 @@ impl Ui {
         self.apply_fx(&order);
 
         // Interaction state for the next tick.
-        let present: BTreeMap<u64, usize> = order.iter().map(|&i| (self.nodes[i].key, i)).collect();
+        let mut present: BTreeMap<u64, usize> =
+            order.iter().map(|&i| (self.nodes[i].key, i)).collect();
+        // A rich text's links are controls of their own, inside its node.
+        for &i in &order {
+            for l in &self.nodes[i].links {
+                present.insert(child_key(self.nodes[i].key, l), i);
+            }
+        }
         self.state
             .scroll
             .retain(|k, _| present.get(k).is_some_and(|&i| self.nodes[i].el.scroll));
         for (k, v) in self.state.scroll.iter_mut() {
             *v = v.clamp(0.0, self.nodes[present[k]].max_scroll());
+        }
+        self.state
+            .scroll_x
+            .retain(|k, _| present.get(k).is_some_and(|&i| self.nodes[i].el.scroll_x));
+        for (k, v) in self.state.scroll_x.iter_mut() {
+            *v = v.clamp(0.0, self.nodes[present[k]].max_scroll_x());
+        }
+        // Each scroll container's ranges and bar lengths, as drawn.
+        let min_bar = self.theme.space.xl;
+        self.state.scroll_info = order
+            .iter()
+            .filter(|&&i| self.nodes[i].scrolls())
+            .map(|&i| {
+                let n = &self.nodes[i];
+                let range = Vec2::new(n.max_scroll_x(), n.max_scroll());
+                let bar = Vec2::new(
+                    crate::scroll::bar_len(
+                        n.rect.width,
+                        n.w - n.el.padding.horizontal(),
+                        n.content_w,
+                        min_bar,
+                    ),
+                    crate::scroll::bar_len(
+                        n.rect.height,
+                        n.h - n.el.padding.vertical(),
+                        n.content_h,
+                        min_bar,
+                    ),
+                );
+                (n.key, crate::scroll::ScrollInfo { range, bar })
+            })
+            .collect();
+        if let Some((k, _)) = self.state.fling
+            && !present.contains_key(&k)
+        {
+            self.state.fling = None;
         }
         if !self.input.down || !present.contains_key(&self.state.active) {
             self.state.active = 0;
@@ -1743,7 +1983,7 @@ impl Ui {
                 (scope_of[up], scroller_of[up])
             };
             scope_of[i] = if n.scope { n.key } else { ps };
-            scroller_of[i] = if up != NONE && self.nodes[up].el.scroll {
+            scroller_of[i] = if up != NONE && self.nodes[up].scrolls() {
                 self.nodes[up].key
             } else {
                 pr
@@ -1751,9 +1991,39 @@ impl Ui {
         }
         let mut hits = Vec::new();
         let mut elements = Vec::new();
+        // The accessibility tree: each element's key (for its focus states)
+        // and the nodes with a role, with the paths their children name.
+        let mut element_keys: Vec<u64> = Vec::new();
+        let mut tree: Vec<(u64, crate::a11y::A11yNode)> = Vec::new();
+        let mut tree_path: BTreeMap<usize, String> = BTreeMap::new();
         let mut top_scope = 0u64;
         for &i in &order[1..] {
             let n = &self.nodes[i];
+            let (role, name, value, states) = self.a11y_info(i);
+            let parent_path = {
+                let mut up = if n.parent == NONE { n.anchor } else { n.parent };
+                loop {
+                    if up == NONE || up == 0 {
+                        break String::new();
+                    }
+                    if let Some(p) = tree_path.get(&up) {
+                        break p.clone();
+                    }
+                    up = if self.nodes[up].parent == NONE {
+                        self.nodes[up].anchor
+                    } else {
+                        self.nodes[up].parent
+                    };
+                }
+            };
+            let path = if role.is_empty() {
+                String::new()
+            } else {
+                self.path_of(i)
+            };
+            if !role.is_empty() {
+                tree_path.insert(i, path.clone());
+            }
             if n.scope && !n.inert {
                 top_scope = n.key;
             }
@@ -1764,7 +2034,7 @@ impl Ui {
             let outside =
                 r.x > c.right() || r.right() < c.x || r.y > c.bottom() || r.bottom() < c.y;
             let mut flags = 0u8;
-            if n.el.scroll && !n.el.interactive {
+            if n.scrolls() && !n.el.interactive {
                 flags |= HIT_SCROLL;
             }
             if n.el.interactive || n.backdrop {
@@ -1790,12 +2060,32 @@ impl Ui {
                 scope: scope_of[i],
                 scroller: scroller_of[i],
             };
+            let node = |states: Vec<String>| crate::a11y::A11yNode {
+                path: path.clone(),
+                parent: parent_path.clone(),
+                role: role.to_owned(),
+                name: name.clone(),
+                value: value.clone(),
+                states,
+                x: r.x,
+                y: r.y,
+                width: r.width,
+                height: r.height,
+            };
             if outside || (visible.is_empty() && !r.is_empty()) {
                 // Navigation can still reach a control just out of a list's view.
                 if n.nav && !n.inert && scroller_of[i] != 0 {
                     hits.push(hit(*r, (flags & (HIT_NAV | HIT_ADJUST)) | HIT_OFFSCREEN));
                 }
+                if !role.is_empty() {
+                    let mut st = states.clone();
+                    st.push("offscreen".to_owned());
+                    tree.push((n.key, node(st)));
+                }
                 continue;
+            }
+            if !role.is_empty() {
+                tree.push((n.key, node(states.clone())));
             }
             if !visible.is_empty() && flags != 0 && !n.inert {
                 hits.push(hit(visible, flags));
@@ -1809,6 +2099,7 @@ impl Ui {
             } else {
                 self.nodes[n.parent].id.clone()
             };
+            element_keys.push(n.key);
             elements.push(UiElement {
                 id: n.id.clone(),
                 parent,
@@ -1816,11 +2107,76 @@ impl Ui {
                 disabled: n.disabled,
                 clipped: visible.width + 0.01 < r.width || visible.height + 0.01 < r.height,
                 text: n.probe_text.clone(),
+                role: role.to_owned(),
+                name: name.clone(),
+                value: value.clone(),
+                states: states.clone(),
                 x: visible.x,
                 y: visible.y,
                 width: visible.width,
                 height: visible.height,
             });
+            // A rich text's links: children for the probe, controls for input.
+            if !n.links.is_empty() {
+                let Content::Rich(rc) = &n.content else {
+                    unreachable!("links come from rich text")
+                };
+                for (l, lr) in self.rich_links(i) {
+                    let shown = lr.intersect(&n.clip);
+                    if shown.is_empty() {
+                        continue;
+                    }
+                    if !n.inert {
+                        hits.push(Hit {
+                            key: child_key(n.key, &l),
+                            rect: shown,
+                            full: lr,
+                            flags: HIT_POINTER | HIT_NAV,
+                            scope: scope_of[i],
+                            scroller: scroller_of[i],
+                        });
+                    }
+                    let text: String = rc
+                        .spans
+                        .iter()
+                        .filter(|s| s.link.as_deref() == Some(l.as_str()))
+                        .map(|s| s.text.as_str())
+                        .collect();
+                    let link_path = format!("{}/{l}", self.path_of(i));
+                    tree.push((
+                        child_key(n.key, &l),
+                        crate::a11y::A11yNode {
+                            path: link_path,
+                            parent: path.clone(),
+                            role: "link".into(),
+                            name: text.clone(),
+                            value: String::new(),
+                            states: Vec::new(),
+                            x: lr.x,
+                            y: lr.y,
+                            width: lr.width,
+                            height: lr.height,
+                        },
+                    ));
+                    element_keys.push(child_key(n.key, &l));
+                    elements.push(UiElement {
+                        id: l,
+                        parent: n.id.clone(),
+                        kind: "link".into(),
+                        disabled: false,
+                        clipped: shown.width + 0.01 < lr.width || shown.height + 0.01 < lr.height,
+                        name: text.clone(),
+                        text,
+                        role: "link".into(),
+                        value: String::new(),
+                        states: Vec::new(),
+                        x: shown.x,
+                        y: shown.y,
+                        width: shown.width,
+                        height: shown.height,
+                    });
+                }
+            }
         }
         // Focus: kept while its control is on screen (or reachable); a scope
         // that opened takes it (its first control, or the one a widget asked
@@ -1862,19 +2218,98 @@ impl Ui {
         if !alive(self.state.focus) {
             self.state.focus = 0;
         }
+        // Pads 1 to 3: a focus whose control left is dropped; one outside a
+        // scope that opened moves to its first control.
+        for k in 0..3 {
+            let f = self.state.pad_focus[k];
+            let inside =
+                |f: u64| top_scope == 0 || hits.iter().any(|h| h.key == f && h.scope == top_scope);
+            if (k as u32) + 1 >= self.players {
+                self.state.pad_focus[k] = 0;
+            } else if f != 0 && (!alive(f) || !inside(f)) {
+                self.state.pad_focus[k] = if top_scope != 0 {
+                    first_in(top_scope)
+                } else {
+                    0
+                };
+            }
+        }
+        self.state.players = self.players as u8;
         self.state.scope = top_scope;
         self.state.nav_off = !self.nav_on;
+        // Focus order: the controls keys and pads reach now, in the tree's
+        // order (the order navigation walks: `nav::focusables`).
+        let reach: Vec<u64> = hits
+            .iter()
+            .filter(|h| h.has(HIT_NAV | HIT_TEXT) && (top_scope == 0 || h.scope == top_scope))
+            .map(|h| h.key)
+            .collect();
+        let mark = |key: u64, states: &mut Vec<String>| {
+            if reach.contains(&key) {
+                states.push("focusable".to_owned());
+            }
+            if key != 0 && key == self.state.focus {
+                states.push("focused".to_owned());
+            }
+        };
+        for (e, &key) in elements.iter_mut().zip(&element_keys) {
+            if !e.role.is_empty() {
+                mark(key, &mut e.states);
+            }
+        }
+        for (key, node) in &mut tree {
+            mark(*key, &mut node.states);
+        }
+        let focus_order: Vec<String> = reach
+            .iter()
+            .filter_map(|k| {
+                tree.iter()
+                    .find(|(t, _)| t == k)
+                    .map(|(_, n)| n.path.clone())
+            })
+            .collect();
+        let a11y = crate::a11y::A11yTree {
+            focused: tree
+                .iter()
+                .find(|(k, _)| *k != 0 && *k == self.state.focus)
+                .map_or(String::new(), |(_, n)| n.path.clone()),
+            nodes: tree.into_iter().map(|(_, n)| n).collect(),
+            focus_order,
+        };
         self.state.hits = hits;
 
         let mut cmds = self.commands(&order);
         if let Some(c) = self.cover {
             self.cover_commands(&c, &mut cmds);
         }
+        let mut focus_paths: [String; 4] = Default::default();
+        let focused = [
+            self.state.focus,
+            self.state.pad_focus[0],
+            self.state.pad_focus[1],
+            self.state.pad_focus[2],
+        ];
+        for (slot, key) in focused.into_iter().enumerate() {
+            if key != 0
+                && let Some(&i) = present.get(&key)
+            {
+                focus_paths[slot] = self.path_of(i);
+                if let Some(l) = self.nodes[i]
+                    .links
+                    .iter()
+                    .find(|l| child_key(self.nodes[i].key, l) == key)
+                {
+                    focus_paths[slot] = format!("{}/{l}", focus_paths[slot]);
+                }
+            }
+        }
         self.frame = UiFrame {
             viewport: vp,
             elements,
             items: assign_levels(cmds),
             warnings: std::mem::take(&mut self.warnings),
+            focus_paths,
+            a11y,
         };
         &self.frame
     }
@@ -2012,7 +2447,7 @@ impl Ui {
             if i != 0 || n.el.background.is_some() {
                 self.node_commands(i, &mut cmds, &snap);
             }
-            if n.el.scroll {
+            if n.scrolls() {
                 leave.push((i, depth_end(i)));
             }
             while let Some(&(s, end)) = leave.last() {
@@ -2021,6 +2456,22 @@ impl Ui {
                 }
                 leave.pop();
                 let sn = &self.nodes[s];
+                let max_x = sn.max_scroll_x();
+                if max_x > 0.0 {
+                    let inner_w = sn.w - sn.el.padding.horizontal();
+                    let track = sn.rect;
+                    let bar_w =
+                        crate::scroll::bar_len(track.width, inner_w, sn.content_w, t.space.xl);
+                    let off = self.state.scroll_x.get(&sn.key).copied().unwrap_or(0.0);
+                    let x = crate::scroll::bar_start(track.x, track.width, bar_w, off, max_x);
+                    let h = t.space.xs;
+                    cmds.push(DrawCmd::Quad {
+                        rect: Rect::new(x, track.bottom() - h - t.space.xxs, bar_w, h).snapped(dpr),
+                        radius: h / 2.0,
+                        color: p.fill_strong.linear(),
+                        clip: sn.clip.intersect(&sn.rect),
+                    });
+                }
                 let max = sn.max_scroll();
                 if max > 0.0 {
                     let inner_h = sn.h - sn.el.padding.vertical();
@@ -2061,6 +2512,19 @@ impl Ui {
             color: color.fade(alpha).linear(),
             clip,
         };
+        if n.pad_rings != 0 {
+            // Pads 1 to 3: a ring each in the player's colour, outside where
+            // pad 0's ring goes, outermost first (each cut from the next by
+            // what is behind).
+            let behind = self.behind(i);
+            let w = t.space.xxs;
+            for k in (0..3).rev().filter(|k| n.pad_rings & (1 << k) != 0) {
+                let at = w * (2.0 * k as f32 + 3.0);
+                let color = [p.info, p.success, p.warn][k];
+                cmds.push(quad(rect.outset(at + w), n.el.radius + at + w, color));
+                cmds.push(quad(rect.outset(at), n.el.radius + at, behind));
+            }
+        }
         let field_ring = matches!(n.widget, Widget::Field { focused: true, .. });
         let outline = t.outline && (n.nav || n.focusable) && n.el.background.is_some();
         if field_ring || n.ring || outline {
@@ -2087,16 +2551,24 @@ impl Ui {
             }
         }
         if let Some(bg) = n.el.background {
-            let pressed = matches!(n.widget, Widget::Button { pressed: true });
+            let (pressed, press) = match n.widget {
+                Widget::Button { pressed, press } => (pressed, press),
+                _ => (false, 0.0),
+            };
             match n
                 .el
                 .skin
                 .and_then(|part| t.skin.slice(part).map(|s| (part, s)))
             {
                 Some((part, slice)) => {
-                    let r = match (pressed, t.skin.press) {
-                        (true, Some(pr)) => scaled_xy(rect, pr.sx, pr.sy),
-                        (true, None) => rect.scaled(t.press_scale),
+                    let r = match (t.skin.press, pressed) {
+                        // The squash follows the spring, in and back out.
+                        (Some(pr), _) if press != 0.0 => scaled_xy(
+                            rect,
+                            1.0 + (pr.sx - 1.0) * press,
+                            1.0 + (pr.sy - 1.0) * press,
+                        ),
+                        (None, true) => rect.scaled(t.press_scale),
                         _ => rect,
                     };
                     self.dress(part, slice, r, n.el.radius, bg, alpha, clip, cmds);
@@ -2254,7 +2726,13 @@ impl Ui {
                             ly + (lh - (m.ascender - m.descender) * size) / 2.0 + m.ascender * size;
                         let bounds = Rect::new(x, ly, line.width * sk, lh);
                         let role = tc.font as usize;
-                        let text = |dx: f32, dy: f32, color: Srgba| DrawCmd::Text {
+                        let tracking = tc.tracking();
+                        // A skin's text glow: the font's distance field, under the glyphs.
+                        let glow = t.skin.text_glows[role].map(|g| {
+                            let c = g.ink.color(p).fade(g.alpha * tc.color.alpha * alpha);
+                            (c.linear(), TEXT_GLOW_REACH * g.size * sk)
+                        });
+                        let text = |dx: f32, dy: f32, color: Srgba, glow| DrawCmd::Text {
                             x: snap(x + dx),
                             baseline: snap(baseline + dy),
                             size,
@@ -2268,27 +2746,23 @@ impl Ui {
                                 bounds.height,
                             ),
                             clip: text_clip,
+                            tracking,
+                            weight: 0.0,
+                            glow,
                         };
-                        if let Some(g) = t.skin.text_glows[role] {
-                            let c = g.ink.color(p).fade(g.alpha * tc.color.alpha / 4.0);
-                            for (dx, dy) in
-                                [(-g.size, 0.0), (g.size, 0.0), (0.0, -g.size), (0.0, g.size)]
-                            {
-                                cmds.push(text(dx, dy, c));
-                            }
-                        }
                         if let Some(sh) = t.skin.text_shadows[role] {
                             let c = sh.color.fade(tc.color.alpha);
-                            cmds.push(text(sh.dx, sh.dy, c));
+                            cmds.push(text(sh.dx, sh.dy, c, None));
                             if sh.blur > 0.0 {
                                 cmds.push(text(
                                     sh.dx + sh.blur / 2.0,
                                     sh.dy + sh.blur / 2.0,
                                     c.fade(0.5),
+                                    None,
                                 ));
                             }
                         }
-                        cmds.push(text(0.0, 0.0, tc.color));
+                        cmds.push(text(0.0, 0.0, tc.color, glow));
                         if n.heading
                             && k == 0
                             && let Some(o) = t.skin.flourish.filter(|_| t.skin.atlas.is_some())
@@ -2313,7 +2787,7 @@ impl Ui {
                             _ => "",
                         };
                         let prefix: String = text.chars().take(c).collect();
-                        let cx = inner.x + m.measure(&prefix, size);
+                        let cx = inner.x + m.measure_tracked(&prefix, size, tc.tracking());
                         let ch = size + t.space.xxs * 2.0;
                         let caret_w = 1.0f32.max(1.0 / dpr);
                         cmds.push(DrawCmd::Quad {
@@ -2326,6 +2800,7 @@ impl Ui {
                     }
                 }
             }
+            Content::Rich(rc) => self.rich_commands(i, rc, cmds),
             Content::Image { texture, uv, tint } => cmds.push(DrawCmd::Image {
                 rect,
                 texture: *texture,
@@ -2380,10 +2855,26 @@ impl Ui {
             let c = g.ink.color(p).fade(g.alpha * fade);
             nine(atlas, soft, rect.outset(g.size), c, clip, cmds);
         }
+        // Glass: the blurred frame under the part, then its own frame
+        // thinned to the glass's fill.
+        let glass = skin.glass(part);
+        if let Some(g) = glass {
+            let mut tint = bg.linear();
+            tint[3] = g.tint;
+            cmds.push(DrawCmd::Glass {
+                rect,
+                radius,
+                blur: g.blur,
+                tint,
+                alpha,
+                clip,
+            });
+        }
+        let thin = glass.map_or(1.0, |g| g.fill);
         let tint = if slice.tint {
-            bg.fade(alpha)
+            bg.fade(alpha * thin)
         } else {
-            Srgba::WHITE.fade(fade)
+            Srgba::WHITE.fade(fade * thin)
         };
         nine(atlas, slice, rect, tint, clip, cmds);
         if let Some(tile) = skin.tile(part) {
@@ -2558,7 +3049,8 @@ impl Ui {
                     let m = &f.metrics;
                     let r = frame.resolve(&n.rect);
                     let size = step.size * n.scale;
-                    let w = m.measure(text, size);
+                    let tracking = crate::layout::step_tracking(step, text);
+                    let w = m.measure_tracked(text, size, tracking);
                     let lh = step.line_height * n.scale;
                     let x = r.x + (r.width - w) / 2.0;
                     let ly = r.y + (r.height - lh) / 2.0;
@@ -2578,6 +3070,9 @@ impl Ui {
                         font: handle,
                         bounds: Rect::new(x, ly, w, lh),
                         clip,
+                        tracking,
+                        weight: 0.0,
+                        glow: None,
                     });
                 }
             }
@@ -2662,6 +3157,34 @@ impl Ui {
         for v in s.voices {
             u64_(&mut b, v);
         }
+        b.push(s.players);
+        for k in 0..3 {
+            u64_(&mut b, s.pad_focus[k]);
+            b.push(s.pad_stick[k].0);
+            u64_(&mut b, s.pad_stick[k].1);
+        }
+        u32_(&mut b, s.scroll_x.len() as u32);
+        for (k, v) in &s.scroll_x {
+            u64_(&mut b, *k);
+            f32_(&mut b, *v);
+        }
+        u32_(&mut b, s.scroll_info.len() as u32);
+        for (k, v) in &s.scroll_info {
+            u64_(&mut b, *k);
+            for x in [v.range.x, v.range.y, v.bar.x, v.bar.y] {
+                f32_(&mut b, x);
+            }
+        }
+        let (fk, fv) = s.fling.unwrap_or((0, Vec2::ZERO));
+        u64_(&mut b, fk);
+        f32_(&mut b, fv.x);
+        f32_(&mut b, fv.y);
+        f32_(&mut b, s.drag_v.x);
+        f32_(&mut b, s.drag_v.y);
+        let t = s.thumb.unwrap_or_default();
+        u64_(&mut b, t.key);
+        b.push(t.axis);
+        f32_(&mut b, t.grab);
         b
     }
 
@@ -2921,6 +3444,36 @@ impl Reader<'_> {
         for v in s.voices.iter_mut() {
             *v = self.u64()?;
         }
+        s.players = self.u8()?;
+        for k in 0..3 {
+            s.pad_focus[k] = self.u64()?;
+            s.pad_stick[k] = (self.u8()?, self.u64()?);
+        }
+        for _ in 0..self.u32()? {
+            let k = self.u64()?;
+            s.scroll_x.insert(k, self.f32()?);
+        }
+        for _ in 0..self.u32()? {
+            let k = self.u64()?;
+            let (rx, ry, bx, by) = (self.f32()?, self.f32()?, self.f32()?, self.f32()?);
+            s.scroll_info.insert(
+                k,
+                crate::scroll::ScrollInfo {
+                    range: Vec2::new(rx, ry),
+                    bar: Vec2::new(bx, by),
+                },
+            );
+        }
+        let fk = self.u64()?;
+        let fv = Vec2::new(self.f32()?, self.f32()?);
+        s.fling = (fk != 0).then_some((fk, fv));
+        s.drag_v = Vec2::new(self.f32()?, self.f32()?);
+        let t = crate::scroll::Thumb {
+            key: self.u64()?,
+            axis: self.u8()?,
+            grab: self.f32()?,
+        };
+        s.thumb = (t.key != 0).then_some(t);
         Some(s)
     }
 }

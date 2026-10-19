@@ -5,7 +5,9 @@ description: The OriginGame platform from inside an Origin Engine game — og.pl
 
 Game code never talks to the platform. It asks the engine, `og.platform.*`,
 by method name and arguments; the host answers: the web shell over the
-Player's protocol 2, falling back to the browser's own storage; `og run`
+Player's protocol 2 (to the Player framing the page, or, when the platform
+opens the published page itself at the top level, to its play origin over
+same-origin HTTP), falling back to the browser's own storage; `og run`
 from a local JSON store. No credential, URL or cookie reaches game code,
 and every call works (or answers `unavailable`) everywhere, so the game
 never branches on where it runs. The API is in `reference/platform.md`;
@@ -35,6 +37,15 @@ if (answer.ok && typeof answer.data.value === "number") run.best[i] = Math.max(r
   never in a closure.
 - Answers are host input, like key presses: a replay records them, so the
   same answers give the same world.
+- Every answer carries `time` (UTC ms): the host's clock when it was
+  answered. `og.platform.now(world)` is the host's clock at the last
+  answer (or when the platform attached) advanced by the ticks since, so
+  it is the one wall clock a game may read: the time away is a store
+  answer's `time` less the time the save wrote down
+  (`templates/archetypes/idle`, `tests/away.og.ts`). `info(world).clock`
+  says whose it is: `player`, `browser` (the web host's own, until the
+  Player sends its time), `system` (native), `fixed` (`og run --clock`,
+  playtests), `none` before the platform attaches (`now` answers 0).
 - An error has a stable `code` (`offline`, `timeout`, `invalid`,
   `unauthorized`, `not_found`, `conflict`, `too_large`, `rate_limited`,
   `unavailable`, `failed`) and `retryable`. Handle `unavailable` as
@@ -70,15 +81,30 @@ trying.
 
 - `dump_platform[:file]` lists every call with its method, arguments, tick,
   state and answer, and what answers them: assert on it in a playtest
-  (`templates/archetypes/runner/tests/records.og.ts`).
+  (`templates/archetypes/runner/tests/records.og.ts`; a stale write read
+  again and merged: `templates/archetypes/idle/tests/offline.og.ts` and
+  `templates/archetypes/roguelike/tests/win.og.ts`).
 - `og run --platform-store save.json` keeps the local store in a file, so
   a second run sees the first's save; without it the store is in memory
-  for the run.
+  for the run. `og run --clock <UTC ms>` fixes the host clock at tick 0
+  (it then moves with the ticks); a playtest runs at 2026-01-01 00:00 UTC
+  unless its `clock` says otherwise.
+- A relaunch across processes: a playtest with `store: "keep"` keeps one
+  local store for its run and its `then` steps (`{ commands, clock }`,
+  each a fresh `og run`), and `check` reads each step's run in
+  `run.then[n]` (`templates/archetypes/idle/tests/away.og.ts`: saved at
+  `clock`, launched two hours later). A command that relaunches in the
+  same process stays for tests that need no second process.
 - In the browser, `packages/engine/tests/web/player.ts` shows the Player
   side: a framed game's first calls wait for the Player's `hello`, then go
   as protocol 2 `call`s (`store.get`, `store.set`, `leaderboard.around`,
   `point.award`, `ai.mark`, as the hello lists them; `docs/web-export.md`
   §Platform services has the mapping).
+- The same file then opens the build as a top-level page with a stand-in
+  play origin: the same calls go to `/__player/v2/<game>/<release>/call`
+  with the answers unchanged, so a game behaves the same framed or not
+  (`docs/web-export.md` §The top-level page). Nothing in game code changes
+  between the two, and nothing in it can tell them apart.
 
 ## 5. When a method is missing: ask
 
@@ -87,7 +113,10 @@ The engine maps what the Player's protocol 2 offers and answers the rest
 `docs/platform-asks.md`: the keyed store with per-key revisions,
 `leaderboard.around`, the best on submit, `point.award`, `ai.mark`,
 capabilities for a verification run, telemetry names) landed on
-2026-10-19; an older Player answers what its hello lists. When a game
+2026-10-19; an older Player answers what its hello lists. One is open:
+the Player's `hello` and answers carrying its `time` (until then the web
+host's answers carry the browser's clock and `info(world).clock` says
+`browser`). When a game
 needs something none of them gives, do not work around it with a server of
 your own or by reaching the page: write the ask (the method, its arguments,
 its answer, why a game needs it) for the platform owners and keep the

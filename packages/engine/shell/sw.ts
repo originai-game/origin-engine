@@ -10,22 +10,32 @@
 // - install: fetch every precached file into `og-<version>`; a failure keeps the old build.
 // - activate: delete the other `og-*` caches of this scope, take the clients.
 // - fetch: the page (a navigation, index.html) from the network first, so
-//   whatever the host adds to it (the Stage proxy's told origin, the Player's
-//   modes) is current, and the cached index.html offline; every other
-//   precached GET from the cache; a pack from the cache, or from the network
-//   into the cache; anything else from the network. Responses
-//   keep their own headers, so COOP/COEP survive offline.
+//   whatever the host adds to it (the Stage proxy's told origin, the
+//   platform's `window.__OG_GAME`, the Player's modes) is current, and the
+//   cached index.html offline; every other precached GET from the cache; a
+//   pack from the cache, or from the network into the cache; anything else
+//   from the network. Responses keep their own headers, so COOP/COEP survive
+//   offline.
+//
+// A navigation is answered from the browser's own navigation request
+// (navigation preload, enabled on activation), never a copy the worker
+// fetches: a worker's `fetch(event.request)` of a navigation leaves as
+// `Sec-Fetch-Dest: empty`, so a host that answers a document differently
+// from a plain read (the platform serves a release's derived entry, with
+// `window.__OG_GAME`, only to a document or frame load) would hand the
+// revisiting page its stored bytes instead. Only where the browser has no
+// navigation preload does the worker fetch the page itself.
 
 declare const OG_SW: { readonly version: string; readonly files: readonly string[]; readonly lazy?: readonly string[] };
 
 export {};
 
 interface SwScope {
-  readonly registration: { readonly scope: string };
+  readonly registration: { readonly scope: string; readonly navigationPreload?: { enable(): Promise<void> } };
   readonly clients: { claim(): Promise<void> };
   skipWaiting(): Promise<void>;
   addEventListener(type: "install" | "activate", fn: (e: { waitUntil(p: Promise<unknown>): void }) => void): void;
-  addEventListener(type: "fetch", fn: (e: { request: Request; respondWith(r: Promise<Response>): void }) => void): void;
+  addEventListener(type: "fetch", fn: (e: { request: Request; preloadResponse?: Promise<Response | undefined>; respondWith(r: Promise<Response>): void }) => void): void;
 }
 const scope = globalThis as unknown as SwScope;
 
@@ -46,10 +56,11 @@ scope.addEventListener("install", (e) => {
 
 scope.addEventListener("activate", (e) => {
   e.waitUntil(
-    caches
-      .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k.startsWith("og-") && k !== CACHE).map((k) => caches.delete(k))))
-      .then(() => scope.clients.claim()),
+    Promise.all([
+      // The browser makes navigations itself (as documents), in parallel with this worker's start.
+      scope.registration.navigationPreload?.enable().catch(() => {}),
+      caches.keys().then((keys) => Promise.all(keys.filter((k) => k.startsWith("og-") && k !== CACHE).map((k) => caches.delete(k)))),
+    ]).then(() => scope.clients.claim()),
   );
 });
 
@@ -78,7 +89,8 @@ scope.addEventListener("fetch", (e) => {
       // The page from the network first (a host may add to it), the cache offline.
       if (page) {
         try {
-          return await fetch(e.request);
+          const preloaded = e.request.mode === "navigate" ? await e.preloadResponse : undefined;
+          return preloaded ?? (await fetch(e.request));
         } catch (err) {
           const hit = await cache.match(index);
           if (hit) return hit;

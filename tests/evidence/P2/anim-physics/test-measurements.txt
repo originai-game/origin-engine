@@ -1,0 +1,39 @@
+# cargo test -p og-anim --test retarget -- --nocapture
+
+test a_walk_on_longer_legs_keeps_its_planted_feet_on_the_ground ... foot IK: 9 planted frames, height error 0.00000 m, slide 0.00000 m
+forward kinematics only: height error 0.01150 m
+ok
+test a_wave_turns_the_a_posed_arm_as_the_walker_turns_its_t_posed_one ... ok
+test the_retargeted_clip_plays_on_the_tall_rig ... ok
+test the_schemes_are_detected_from_the_names ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+# cargo test -p og-cook --test retarget -- --nocapture
+
+test an_edit_of_the_rig_or_the_library_recooks_and_a_bad_rig_names_its_line ... ok
+test library_clips_are_retargeted_into_each_characters_anim_with_planted_feet ... models/strider.glb: leg ratio 1.267, 40 planted frames, height error 0.00000 m, slide 0.00000 m
+models/stout.glb: leg ratio 0.689, 40 planted frames, height error 0.00000 m, slide 0.00000 m
+ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+# cargo test -p og-physics --test fluid_groups --test self_collision --test ragdoll -- --nocapture
+
+test a_fluid_alone_carries_no_mix_and_groups_replay ... ok
+test a_heavy_fluid_poured_on_a_light_one_sinks_under_it_and_they_layer ... mixing 0 after 10 s: heavy at 0.459 m, light at 0.993 m
+397 of 400 heavy particles below the light fluid's median (1.129 m)
+ok
+test with_mixing_the_two_fluids_blend_into_one ... mixing 1 after 10 s: the heavy share spreads ±0.005, 0 pure particles
+ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.43s
+
+test a_2d_ragdoll_follows_goes_limp_on_hinges_in_its_plane_and_recovers ... ok
+test a_ragdoll_follows_its_animation_goes_limp_and_recovers_with_a_blend ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+test a_sheet_that_falls_and_folds_never_passes_through_itself ... self-collision: closest pair 0.990 × thickness over the fall; 100 points on the floor, 260 on the layers above
+without: closest pair 0.000 × thickness; 260 points on the floor, 60 above
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.40s

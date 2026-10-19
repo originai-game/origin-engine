@@ -1,0 +1,3257 @@
+{
+ "chrome": "/Users/fan/.agent-browser/browsers/chrome-150.0.7871.115/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+ "failures": 0,
+ "transcript": [
+  {
+   "check": "dev isolated: unsolicited hello",
+   "ok": true
+  },
+  {
+   "check": "dev isolated: crossOriginIsolated is true",
+   "ok": true
+  },
+  {
+   "check": "dev isolated: the game page has its canvas",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "hello",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c1",
+    "result": {
+     "protocol": 5,
+     "substrate": "origin-engine"
+    },
+    "ms": 1.2
+   }
+  },
+  {
+   "check": "dev isolated: hello answers {protocol: 5, substrate}",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c2",
+    "result": 1,
+    "ms": 2.6
+   }
+  },
+  {
+   "check": "dev isolated: tick answers a number",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "state",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c3",
+    "result": {
+     "tick": 1,
+     "paused": false,
+     "timings": {
+      "frameMs": 34
+     }
+    },
+    "ms": 1.7
+   }
+  },
+  {
+   "check": "dev isolated: state answers {tick, paused, timings: {frameMs}}",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c4",
+    "result": 1,
+    "ms": 13.8
+   }
+  },
+  {
+   "check": "dev isolated: the clock holds behind the play gate",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c5",
+    "result": 40,
+    "ms": 2.6
+   }
+  },
+  {
+   "check": "dev isolated: a tap on the gate starts the clock",
+   "ok": true
+  },
+  {
+   "check": "dev isolated: real key events reach the engine's input layer",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "input",
+   "params": {
+    "event": {
+     "kind": "key",
+     "key": "Space",
+     "action": "press"
+    }
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c6",
+    "code": "unsupported",
+    "message": "unknown method input",
+    "ms": 7
+   }
+  },
+  {
+   "check": "dev isolated: input is not a wire method (unsupported)",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "capture",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c7",
+    "result": {
+     "tick": 62,
+     "width": 800,
+     "height": 450,
+     "png": "<30028 base64 chars>"
+    },
+    "ms": 24.3
+   }
+  },
+  {
+   "check": "dev isolated: capture answers the full frame as base64 PNG",
+   "ok": true
+  },
+  {
+   "check": "dev isolated: the PNG is the size it claims",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "capture",
+   "params": {
+    "width": 320
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c8",
+    "result": {
+     "tick": 64,
+     "width": 320,
+     "height": 180,
+     "png": "<11700 base64 chars>"
+    },
+    "ms": 15.1
+   }
+  },
+  {
+   "check": "dev isolated: capture {width: 320} fits the frame",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "entities",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c9",
+    "result": {
+     "items": [
+      {
+       "id": "runner"
+      },
+      {
+       "id": "sky"
+      },
+      {
+       "id": "moon"
+      },
+      {
+       "id": "far"
+      },
+      {
+       "id": "near"
+      },
+      {
+       "id": "roofs"
+      },
+      {
+       "id": "crate-0"
+      },
+      {
+       "id": "crate-1"
+      },
+      {
+       "id": "crate-2"
+      },
+      {
+       "id": "crate-3"
+      },
+      {
+       "id": "fence-0"
+      },
+      {
+       "id": "fence-1"
+      },
+      {
+       "id": "fence-2"
+      },
+      {
+       "id": "coin-0"
+      },
+      {
+       "id": "coin-1"
+      },
+      {
+       "id": "coin-2"
+      },
+      {
+       "id": "coin-3"
+      },
+      {
+       "id": "coin-4"
+      },
+      {
+       "id": "coin-5"
+      },
+      {
+       "id": "coin-6"
+      },
+      {
+       "id": "coin-7"
+      },
+      {
+       "id": "coin-8"
+      },
+      {
+       "id": "coin-9"
+      },
+      {
+       "id": "coin-10"
+      },
+      {
+       "id": "coin-11"
+      },
+      {
+       "id": "coin-12"
+      },
+      {
+       "id": "coin-13"
+      },
+      {
+       "id": "coin-14"
+      },
+      {
+       "id": "coin-15"
+      },
+      {
+       "id": "dust-0"
+      },
+      {
+       "id": "dust-1"
+      },
+      {
+       "id": "dust-2"
+      },
+      {
+       "id": "dust-3"
+      },
+      {
+       "id": "roof-solid"
+      },
+      {
+       "id": "sfx-1"
+      },
+      {
+       "id": "sfx-2"
+      },
+      {
+       "id": "sfx-4"
+      },
+      {
+       "id": "sfx-8"
+      }
+     ]
+    },
+    "ms": 1.6
+   }
+  },
+  {
+   "check": "dev isolated: entities lists the runner",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "entity",
+   "params": {
+    "id": "runner"
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c10",
+    "result": {
+     "id": "runner",
+     "params": {
+      "Tuning.apexGravity": 0.75,
+      "Tuning.coinValue": 10,
+      "Tuning.fallGravity": 1.15,
+      "Tuning.jumpCut": 1.8,
+      "Tuning.jumpHeight": 2,
+      "Tuning.spawnInterval": 1.3,
+      "Tuning.speed": 6,
+      "Tuning.speedMax": 12,
+      "Tuning.speedRamp": 0.12,
+      "Tuning.timeToApex": 0.333,
+      "og.Afterimage.opacity": 0.4,
+      "og.Collider.density": 1,
+      "og.Collider.friction": 0.5,
+      "og.Collider.height": 1,
+      "og.Collider.radius": 0.5,
+      "og.Collider.restitution": 0,
+      "og.Collider.size": [
+       0.5,
+       1.2,
+       1
+      ],
+      "og.Flipbook.speed": 0.8639995,
+      "og.PlatformerController.acceleration": 70,
+      "og.PlatformerController.airAcceleration": 45,
+      "og.PlatformerController.airDeceleration": 25,
+      "og.PlatformerController.apexGravity": 0.75,
+      "og.PlatformerController.apexThreshold": 1.5,
+      "og.PlatformerController.cornerCorrection": 0.15,
+      "og.PlatformerController.coyoteTime": 0.08,
+      "og.PlatformerController.deceleration": 80,
+      "og.PlatformerController.fallGravity": 1.15,
+      "og.PlatformerController.jumpBuffer": 0.1,
+      "og.PlatformerController.jumpCut": 1.8,
+      "og.PlatformerController.jumpHeight": 2,
+      "og.PlatformerController.maxFallSpeed": 30,
+      "og.PlatformerController.maxSlope": 50,
+      "og.PlatformerController.maxSpeed": 8,
+      "og.PlatformerController.snapDistance": 0.1,
+      "og.PlatformerController.timeToApex": 0.333,
+      "og.PlatformerController.wallJump": [
+       8,
+       12
+      ],
+      "og.PlatformerController.wallJumpLock": 0.14,
+      "og.PlatformerController.wallSlideSpeed": 3,
+      "og.Sprite.flash": 0,
+      "og.Sprite.height": 1.625,
+      "og.Sprite.opacity": 1,
+      "og.Sprite.shadow": 0,
+      "og.Sprite.width": 1.3
+     }
+    },
+    "ms": 4.4
+   }
+  },
+  {
+   "check": "dev isolated: entity answers {id, params}",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "entity",
+   "params": {
+    "id": "nobody"
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c11",
+    "code": "refused",
+    "message": "no entity nobody",
+    "ms": 1
+   }
+  },
+  {
+   "check": "dev isolated: entity of an unknown id is refused",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "bounds",
+   "params": {
+    "id": "runner"
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c12",
+    "result": {
+     "items": [
+      {
+       "parameter": "Tuning.apexGravity",
+       "label": "Apex hang",
+       "path": "Tuning.apexGravity",
+       "min": 0.2,
+       "max": 1,
+       "value": 0.75
+      },
+      {
+       "parameter": "Tuning.coinValue",
+       "label": "Coin value",
+       "path": "Tuning.coinValue",
+       "min": 0,
+       "max": 100,
+       "value": 10
+      },
+      {
+       "parameter": "Tuning.fallGravity",
+       "label": "Fall gravity",
+       "path": "Tuning.fallGravity",
+       "min": 1,
+       "max": 3,
+       "value": 1.15
+      },
+      {
+       "parameter": "Tuning.jumpCut",
+       "label": "Jump cut",
+       "path": "Tuning.jumpCut",
+       "min": 1,
+       "max": 6,
+       "value": 1.8
+      },
+      {
+       "parameter": "Tuning.jumpHeight",
+       "label": "Jump height",
+       "path": "Tuning.jumpHeight",
+       "min": 0.5,
+       "max": 6,
+       "value": 2
+      },
+      {
+       "parameter": "Tuning.spawnInterval",
+       "label": "Spawn interval",
+       "path": "Tuning.spawnInterval",
+       "min": 0.5,
+       "max": 60,
+       "value": 1.3
+      },
+      {
+       "parameter": "Tuning.speed",
+       "label": "Start speed",
+       "path": "Tuning.speed",
+       "min": 3,
+       "max": 12,
+       "value": 6
+      },
+      {
+       "parameter": "Tuning.speedMax",
+       "label": "Top speed",
+       "path": "Tuning.speedMax",
+       "min": 4,
+       "max": 20,
+       "value": 12
+      },
+      {
+       "parameter": "Tuning.speedRamp",
+       "label": "Speed ramp",
+       "path": "Tuning.speedRamp",
+       "min": 0,
+       "max": 1,
+       "value": 0.12
+      },
+      {
+       "parameter": "Tuning.timeToApex",
+       "label": "Time to apex",
+       "path": "Tuning.timeToApex",
+       "min": 0.15,
+       "max": 1,
+       "value": 0.333
+      },
+      {
+       "parameter": "og.Afterimage.opacity",
+       "path": "og.Afterimage.opacity",
+       "min": 0,
+       "max": 1,
+       "value": 0.4
+      },
+      {
+       "parameter": "og.Collider.density",
+       "path": "og.Collider.density",
+       "value": 1
+      },
+      {
+       "parameter": "og.Collider.friction",
+       "path": "og.Collider.friction",
+       "min": 0,
+       "max": 2,
+       "value": 0.5
+      },
+      {
+       "parameter": "og.Collider.height",
+       "path": "og.Collider.height",
+       "value": 1
+      },
+      {
+       "parameter": "og.Collider.radius",
+       "path": "og.Collider.radius",
+       "value": 0.5
+      },
+      {
+       "parameter": "og.Collider.restitution",
+       "path": "og.Collider.restitution",
+       "min": 0,
+       "max": 1,
+       "value": 0
+      },
+      {
+       "parameter": "og.Collider.size",
+       "path": "og.Collider.size"
+      },
+      {
+       "parameter": "og.Flipbook.speed",
+       "path": "og.Flipbook.speed",
+       "min": 0,
+       "max": 10,
+       "value": 0.8648566
+      },
+      {
+       "parameter": "og.PlatformerController.acceleration",
+       "path": "og.PlatformerController.acceleration",
+       "value": 70
+      },
+      {
+       "parameter": "og.PlatformerController.airAcceleration",
+       "path": "og.PlatformerController.airAcceleration",
+       "value": 45
+      },
+      {
+       "parameter": "og.PlatformerController.airDeceleration",
+       "path": "og.PlatformerController.airDeceleration",
+       "value": 25
+      },
+      {
+       "parameter": "og.PlatformerController.apexGravity",
+       "path": "og.PlatformerController.apexGravity",
+       "min": 0,
+       "max": 1,
+       "value": 0.75
+      },
+      {
+       "parameter": "og.PlatformerController.apexThreshold",
+       "path": "og.PlatformerController.apexThreshold",
+       "value": 1.5
+      },
+      {
+       "parameter": "og.PlatformerController.cornerCorrection",
+       "path": "og.PlatformerController.cornerCorrection",
+       "value": 0.15
+      },
+      {
+       "parameter": "og.PlatformerController.coyoteTime",
+       "path": "og.PlatformerController.coyoteTime",
+       "value": 0.08
+      },
+      {
+       "parameter": "og.PlatformerController.deceleration",
+       "path": "og.PlatformerController.deceleration",
+       "value": 80
+      },
+      {
+       "parameter": "og.PlatformerController.fallGravity",
+       "path": "og.PlatformerController.fallGravity",
+       "value": 1.15
+      },
+      {
+       "parameter": "og.PlatformerController.jumpBuffer",
+       "path": "og.PlatformerController.jumpBuffer",
+       "value": 0.1
+      },
+      {
+       "parameter": "og.PlatformerController.jumpCut",
+       "path": "og.PlatformerController.jumpCut",
+       "value": 1.8
+      },
+      {
+       "parameter": "og.PlatformerController.jumpHeight",
+       "path": "og.PlatformerController.jumpHeight",
+       "value": 2
+      },
+      {
+       "parameter": "og.PlatformerController.maxFallSpeed",
+       "path": "og.PlatformerController.maxFallSpeed",
+       "value": 30
+      },
+      {
+       "parameter": "og.PlatformerController.maxSlope",
+       "path": "og.PlatformerController.maxSlope",
+       "min": 0,
+       "max": 89,
+       "value": 50
+      },
+      {
+       "parameter": "og.PlatformerController.maxSpeed",
+       "path": "og.PlatformerController.maxSpeed",
+       "value": 8
+      },
+      {
+       "parameter": "og.PlatformerController.snapDistance",
+       "path": "og.PlatformerController.snapDistance",
+       "value": 0.1
+      },
+      {
+       "parameter": "og.PlatformerController.timeToApex",
+       "path": "og.PlatformerController.timeToApex",
+       "value": 0.333
+      },
+      {
+       "parameter": "og.PlatformerController.wallJump",
+       "path": "og.PlatformerController.wallJump"
+      },
+      {
+       "parameter": "og.PlatformerController.wallJumpLock",
+       "path": "og.PlatformerController.wallJumpLock",
+       "value": 0.14
+      },
+      {
+       "parameter": "og.PlatformerController.wallSlideSpeed",
+       "path": "og.PlatformerController.wallSlideSpeed",
+       "value": 3
+      },
+      {
+       "parameter": "og.Sprite.flash",
+       "path": "og.Sprite.flash",
+       "min": 0,
+       "max": 1,
+       "value": 0
+      },
+      {
+       "parameter": "og.Sprite.height",
+       "path": "og.Sprite.height",
+       "value": 1.625
+      },
+      {
+       "parameter": "og.Sprite.opacity",
+       "path": "og.Sprite.opacity",
+       "min": 0,
+       "max": 1,
+       "value": 1
+      },
+      {
+       "parameter": "og.Sprite.shadow",
+       "path": "og.Sprite.shadow",
+       "min": 0,
+       "max": 1,
+       "value": 0
+      },
+      {
+       "parameter": "og.Sprite.width",
+       "path": "og.Sprite.width",
+       "value": 1.3
+      }
+     ]
+    },
+    "ms": 5.8
+   }
+  },
+  {
+   "check": "dev isolated: bounds answers {items} with the declared range and value",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "patch",
+   "params": {
+    "id": "runner",
+    "parameter": "Tuning.speedMax",
+    "value": 15
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c13",
+    "result": {
+     "applied": true,
+     "roundTripMs": 0.8
+    },
+    "ms": 1.8
+   }
+  },
+  {
+   "check": "dev isolated: patch answers {applied, roundTripMs}",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "entity",
+   "params": {
+    "id": "runner"
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c14",
+    "result": {
+     "id": "runner",
+     "params": {
+      "Tuning.apexGravity": 0.75,
+      "Tuning.coinValue": 10,
+      "Tuning.fallGravity": 1.15,
+      "Tuning.jumpCut": 1.8,
+      "Tuning.jumpHeight": 2,
+      "Tuning.spawnInterval": 1.3,
+      "Tuning.speed": 6,
+      "Tuning.speedMax": 15,
+      "Tuning.speedRamp": 0.12,
+      "Tuning.timeToApex": 0.333,
+      "og.Afterimage.opacity": 0.4,
+      "og.Collider.density": 1,
+      "og.Collider.friction": 0.5,
+      "og.Collider.height": 1,
+      "og.Collider.radius": 0.5,
+      "og.Collider.restitution": 0,
+      "og.Collider.size": [
+       0.5,
+       1.2,
+       1
+      ],
+      "og.Flipbook.speed": 0.865428,
+      "og.PlatformerController.acceleration": 70,
+      "og.PlatformerController.airAcceleration": 45,
+      "og.PlatformerController.airDeceleration": 25,
+      "og.PlatformerController.apexGravity": 0.75,
+      "og.PlatformerController.apexThreshold": 1.5,
+      "og.PlatformerController.cornerCorrection": 0.15,
+      "og.PlatformerController.coyoteTime": 0.08,
+      "og.PlatformerController.deceleration": 80,
+      "og.PlatformerController.fallGravity": 1.15,
+      "og.PlatformerController.jumpBuffer": 0.1,
+      "og.PlatformerController.jumpCut": 1.8,
+      "og.PlatformerController.jumpHeight": 2,
+      "og.PlatformerController.maxFallSpeed": 30,
+      "og.PlatformerController.maxSlope": 50,
+      "og.PlatformerController.maxSpeed": 8,
+      "og.PlatformerController.snapDistance": 0.1,
+      "og.PlatformerController.timeToApex": 0.333,
+      "og.PlatformerController.wallJump": [
+       8,
+       12
+      ],
+      "og.PlatformerController.wallJumpLock": 0.14,
+      "og.PlatformerController.wallSlideSpeed": 3,
+      "og.Sprite.flash": 0,
+      "og.Sprite.height": 1.625,
+      "og.Sprite.opacity": 1,
+      "og.Sprite.shadow": 0,
+      "og.Sprite.width": 1.3
+     }
+    },
+    "ms": 1.3
+   }
+  },
+  {
+   "check": "dev isolated: the patch applied",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "patch",
+   "params": {
+    "id": "runner",
+    "parameter": "Tuning.speedMax",
+    "value": 500
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c15",
+    "code": "refused",
+    "message": "Tuning.speedMax of runner refused",
+    "ms": 0.5
+   }
+  },
+  {
+   "check": "dev isolated: a patch outside the range is refused",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "pause",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c16",
+    "result": {
+     "tick": 71,
+     "paused": true,
+     "timings": {
+      "frameMs": 1.350000023841858
+     }
+    },
+    "ms": 2.2
+   }
+  },
+  {
+   "check": "dev isolated: pause answers the state, paused",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c17",
+    "result": 71,
+    "ms": 0.7
+   }
+  },
+  {
+   "run": "dev isolated",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c18",
+    "result": 71,
+    "ms": 0.8
+   }
+  },
+  {
+   "check": "dev isolated: paused, the clock holds",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "advance",
+   "params": {
+    "steps": 10
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c19",
+    "result": {
+     "tick": 81,
+     "paused": true,
+     "timings": {
+      "frameMs": 1.3300000429153442
+     }
+    },
+    "ms": 6.1
+   }
+  },
+  {
+   "check": "dev isolated: advance {steps: 10} takes 10 ticks",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "resume",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c20",
+    "result": {
+     "tick": 81,
+     "paused": false,
+     "timings": {
+      "frameMs": 1.3300000429153442
+     }
+    },
+    "ms": 0.6
+   }
+  },
+  {
+   "check": "dev isolated: resume answers the state, playing",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "advance",
+   "params": {
+    "steps": -1
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c21",
+    "code": "refused",
+    "message": "steps must be a whole number from 0 to 3600",
+    "ms": 0.4
+   }
+  },
+  {
+   "check": "dev isolated: advance {steps: -1} is refused",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "frobnicate",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c22",
+    "code": "unsupported",
+    "message": "unknown method frobnicate",
+    "ms": 0.8
+   }
+  },
+  {
+   "check": "dev isolated: an unknown method is unsupported",
+   "ok": true
+  },
+  {
+   "check": "dev isolated: another wire version gets no answer",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "record",
+   "params": {
+    "seconds": 1
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c24",
+    "result": {
+     "mime": "video/webm;codecs=vp8",
+     "base64": "<262720 base64 chars>",
+     "durationMs": 1019
+    },
+    "ms": 1036.8
+   }
+  },
+  {
+   "check": "dev isolated: record {seconds: 1} answers a recording (or unsupported)",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "record",
+   "params": {
+    "seconds": 16
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c25",
+    "code": "refused",
+    "message": "seconds must be within (0, 15]",
+    "ms": 9.5
+   }
+  },
+  {
+   "check": "dev isolated: record {seconds: 16} is refused",
+   "ok": true
+  },
+  {
+   "check": "dev isolated: a page told another origin answers nothing",
+   "ok": true
+  },
+  {
+   "check": "dev isolated: and posts no hello",
+   "ok": true
+  },
+  {
+   "check": "dev isolated: a page told no origin is silent",
+   "ok": true
+  },
+  {
+   "check": "dev: unsolicited hello",
+   "ok": true
+  },
+  {
+   "check": "dev: crossOriginIsolated is false",
+   "ok": true
+  },
+  {
+   "check": "dev: the game page has its canvas",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "hello",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c1",
+    "result": {
+     "protocol": 5,
+     "substrate": "origin-engine"
+    },
+    "ms": 0.9
+   }
+  },
+  {
+   "check": "dev: hello answers {protocol: 5, substrate}",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c2",
+    "result": 1,
+    "ms": 5.5
+   }
+  },
+  {
+   "check": "dev: tick answers a number",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "state",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c3",
+    "result": {
+     "tick": 1,
+     "paused": false,
+     "timings": {
+      "frameMs": 26.800000071525574
+     }
+    },
+    "ms": 5.4
+   }
+  },
+  {
+   "check": "dev: state answers {tick, paused, timings: {frameMs}}",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c4",
+    "result": 1,
+    "ms": 2
+   }
+  },
+  {
+   "check": "dev: the clock holds behind the play gate",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c5",
+    "result": 36,
+    "ms": 9.5
+   }
+  },
+  {
+   "check": "dev: a tap on the gate starts the clock",
+   "ok": true
+  },
+  {
+   "check": "dev: real key events reach the engine's input layer",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "input",
+   "params": {
+    "event": {
+     "kind": "key",
+     "key": "Space",
+     "action": "press"
+    }
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c6",
+    "code": "unsupported",
+    "message": "unknown method input",
+    "ms": 1.1
+   }
+  },
+  {
+   "check": "dev: input is not a wire method (unsupported)",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "capture",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c7",
+    "result": {
+     "tick": 60,
+     "width": 800,
+     "height": 450,
+     "png": "<29880 base64 chars>"
+    },
+    "ms": 26.1
+   }
+  },
+  {
+   "check": "dev: capture answers the full frame as base64 PNG",
+   "ok": true
+  },
+  {
+   "check": "dev: the PNG is the size it claims",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "capture",
+   "params": {
+    "width": 320
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c8",
+    "result": {
+     "tick": 63,
+     "width": 320,
+     "height": 180,
+     "png": "<11848 base64 chars>"
+    },
+    "ms": 17.4
+   }
+  },
+  {
+   "check": "dev: capture {width: 320} fits the frame",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "entities",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c9",
+    "result": {
+     "items": [
+      {
+       "id": "runner"
+      },
+      {
+       "id": "sky"
+      },
+      {
+       "id": "moon"
+      },
+      {
+       "id": "far"
+      },
+      {
+       "id": "near"
+      },
+      {
+       "id": "roofs"
+      },
+      {
+       "id": "crate-0"
+      },
+      {
+       "id": "crate-1"
+      },
+      {
+       "id": "crate-2"
+      },
+      {
+       "id": "crate-3"
+      },
+      {
+       "id": "fence-0"
+      },
+      {
+       "id": "fence-1"
+      },
+      {
+       "id": "fence-2"
+      },
+      {
+       "id": "coin-0"
+      },
+      {
+       "id": "coin-1"
+      },
+      {
+       "id": "coin-2"
+      },
+      {
+       "id": "coin-3"
+      },
+      {
+       "id": "coin-4"
+      },
+      {
+       "id": "coin-5"
+      },
+      {
+       "id": "coin-6"
+      },
+      {
+       "id": "coin-7"
+      },
+      {
+       "id": "coin-8"
+      },
+      {
+       "id": "coin-9"
+      },
+      {
+       "id": "coin-10"
+      },
+      {
+       "id": "coin-11"
+      },
+      {
+       "id": "coin-12"
+      },
+      {
+       "id": "coin-13"
+      },
+      {
+       "id": "coin-14"
+      },
+      {
+       "id": "coin-15"
+      },
+      {
+       "id": "dust-0"
+      },
+      {
+       "id": "dust-1"
+      },
+      {
+       "id": "dust-2"
+      },
+      {
+       "id": "dust-3"
+      },
+      {
+       "id": "roof-solid"
+      },
+      {
+       "id": "sfx-1"
+      },
+      {
+       "id": "sfx-2"
+      },
+      {
+       "id": "sfx-4"
+      },
+      {
+       "id": "sfx-8"
+      }
+     ]
+    },
+    "ms": 8.9
+   }
+  },
+  {
+   "check": "dev: entities lists the runner",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "entity",
+   "params": {
+    "id": "runner"
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c10",
+    "result": {
+     "id": "runner",
+     "params": {
+      "Tuning.apexGravity": 0.75,
+      "Tuning.coinValue": 10,
+      "Tuning.fallGravity": 1.15,
+      "Tuning.jumpCut": 1.8,
+      "Tuning.jumpHeight": 2,
+      "Tuning.spawnInterval": 1.3,
+      "Tuning.speed": 6,
+      "Tuning.speedMax": 12,
+      "Tuning.speedRamp": 0.12,
+      "Tuning.timeToApex": 0.333,
+      "og.Afterimage.opacity": 0.4,
+      "og.Collider.density": 1,
+      "og.Collider.friction": 0.5,
+      "og.Collider.height": 1,
+      "og.Collider.radius": 0.5,
+      "og.Collider.restitution": 0,
+      "og.Collider.size": [
+       0.5,
+       1.2,
+       1
+      ],
+      "og.Flipbook.speed": 0.8642852,
+      "og.PlatformerController.acceleration": 70,
+      "og.PlatformerController.airAcceleration": 45,
+      "og.PlatformerController.airDeceleration": 25,
+      "og.PlatformerController.apexGravity": 0.75,
+      "og.PlatformerController.apexThreshold": 1.5,
+      "og.PlatformerController.cornerCorrection": 0.15,
+      "og.PlatformerController.coyoteTime": 0.08,
+      "og.PlatformerController.deceleration": 80,
+      "og.PlatformerController.fallGravity": 1.15,
+      "og.PlatformerController.jumpBuffer": 0.1,
+      "og.PlatformerController.jumpCut": 1.8,
+      "og.PlatformerController.jumpHeight": 2,
+      "og.PlatformerController.maxFallSpeed": 30,
+      "og.PlatformerController.maxSlope": 50,
+      "og.PlatformerController.maxSpeed": 8,
+      "og.PlatformerController.snapDistance": 0.1,
+      "og.PlatformerController.timeToApex": 0.333,
+      "og.PlatformerController.wallJump": [
+       8,
+       12
+      ],
+      "og.PlatformerController.wallJumpLock": 0.14,
+      "og.PlatformerController.wallSlideSpeed": 3,
+      "og.Sprite.flash": 0,
+      "og.Sprite.height": 1.625,
+      "og.Sprite.opacity": 1,
+      "og.Sprite.shadow": 0,
+      "og.Sprite.width": 1.3
+     }
+    },
+    "ms": 2.9
+   }
+  },
+  {
+   "check": "dev: entity answers {id, params}",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "entity",
+   "params": {
+    "id": "nobody"
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c11",
+    "code": "refused",
+    "message": "no entity nobody",
+    "ms": 2.3
+   }
+  },
+  {
+   "check": "dev: entity of an unknown id is refused",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "bounds",
+   "params": {
+    "id": "runner"
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c12",
+    "result": {
+     "items": [
+      {
+       "parameter": "Tuning.apexGravity",
+       "label": "Apex hang",
+       "path": "Tuning.apexGravity",
+       "min": 0.2,
+       "max": 1,
+       "value": 0.75
+      },
+      {
+       "parameter": "Tuning.coinValue",
+       "label": "Coin value",
+       "path": "Tuning.coinValue",
+       "min": 0,
+       "max": 100,
+       "value": 10
+      },
+      {
+       "parameter": "Tuning.fallGravity",
+       "label": "Fall gravity",
+       "path": "Tuning.fallGravity",
+       "min": 1,
+       "max": 3,
+       "value": 1.15
+      },
+      {
+       "parameter": "Tuning.jumpCut",
+       "label": "Jump cut",
+       "path": "Tuning.jumpCut",
+       "min": 1,
+       "max": 6,
+       "value": 1.8
+      },
+      {
+       "parameter": "Tuning.jumpHeight",
+       "label": "Jump height",
+       "path": "Tuning.jumpHeight",
+       "min": 0.5,
+       "max": 6,
+       "value": 2
+      },
+      {
+       "parameter": "Tuning.spawnInterval",
+       "label": "Spawn interval",
+       "path": "Tuning.spawnInterval",
+       "min": 0.5,
+       "max": 60,
+       "value": 1.3
+      },
+      {
+       "parameter": "Tuning.speed",
+       "label": "Start speed",
+       "path": "Tuning.speed",
+       "min": 3,
+       "max": 12,
+       "value": 6
+      },
+      {
+       "parameter": "Tuning.speedMax",
+       "label": "Top speed",
+       "path": "Tuning.speedMax",
+       "min": 4,
+       "max": 20,
+       "value": 12
+      },
+      {
+       "parameter": "Tuning.speedRamp",
+       "label": "Speed ramp",
+       "path": "Tuning.speedRamp",
+       "min": 0,
+       "max": 1,
+       "value": 0.12
+      },
+      {
+       "parameter": "Tuning.timeToApex",
+       "label": "Time to apex",
+       "path": "Tuning.timeToApex",
+       "min": 0.15,
+       "max": 1,
+       "value": 0.333
+      },
+      {
+       "parameter": "og.Afterimage.opacity",
+       "path": "og.Afterimage.opacity",
+       "min": 0,
+       "max": 1,
+       "value": 0.4
+      },
+      {
+       "parameter": "og.Collider.density",
+       "path": "og.Collider.density",
+       "value": 1
+      },
+      {
+       "parameter": "og.Collider.friction",
+       "path": "og.Collider.friction",
+       "min": 0,
+       "max": 2,
+       "value": 0.5
+      },
+      {
+       "parameter": "og.Collider.height",
+       "path": "og.Collider.height",
+       "value": 1
+      },
+      {
+       "parameter": "og.Collider.radius",
+       "path": "og.Collider.radius",
+       "value": 0.5
+      },
+      {
+       "parameter": "og.Collider.restitution",
+       "path": "og.Collider.restitution",
+       "min": 0,
+       "max": 1,
+       "value": 0
+      },
+      {
+       "parameter": "og.Collider.size",
+       "path": "og.Collider.size"
+      },
+      {
+       "parameter": "og.Flipbook.speed",
+       "path": "og.Flipbook.speed",
+       "min": 0,
+       "max": 10,
+       "value": 0.8645709
+      },
+      {
+       "parameter": "og.PlatformerController.acceleration",
+       "path": "og.PlatformerController.acceleration",
+       "value": 70
+      },
+      {
+       "parameter": "og.PlatformerController.airAcceleration",
+       "path": "og.PlatformerController.airAcceleration",
+       "value": 45
+      },
+      {
+       "parameter": "og.PlatformerController.airDeceleration",
+       "path": "og.PlatformerController.airDeceleration",
+       "value": 25
+      },
+      {
+       "parameter": "og.PlatformerController.apexGravity",
+       "path": "og.PlatformerController.apexGravity",
+       "min": 0,
+       "max": 1,
+       "value": 0.75
+      },
+      {
+       "parameter": "og.PlatformerController.apexThreshold",
+       "path": "og.PlatformerController.apexThreshold",
+       "value": 1.5
+      },
+      {
+       "parameter": "og.PlatformerController.cornerCorrection",
+       "path": "og.PlatformerController.cornerCorrection",
+       "value": 0.15
+      },
+      {
+       "parameter": "og.PlatformerController.coyoteTime",
+       "path": "og.PlatformerController.coyoteTime",
+       "value": 0.08
+      },
+      {
+       "parameter": "og.PlatformerController.deceleration",
+       "path": "og.PlatformerController.deceleration",
+       "value": 80
+      },
+      {
+       "parameter": "og.PlatformerController.fallGravity",
+       "path": "og.PlatformerController.fallGravity",
+       "value": 1.15
+      },
+      {
+       "parameter": "og.PlatformerController.jumpBuffer",
+       "path": "og.PlatformerController.jumpBuffer",
+       "value": 0.1
+      },
+      {
+       "parameter": "og.PlatformerController.jumpCut",
+       "path": "og.PlatformerController.jumpCut",
+       "value": 1.8
+      },
+      {
+       "parameter": "og.PlatformerController.jumpHeight",
+       "path": "og.PlatformerController.jumpHeight",
+       "value": 2
+      },
+      {
+       "parameter": "og.PlatformerController.maxFallSpeed",
+       "path": "og.PlatformerController.maxFallSpeed",
+       "value": 30
+      },
+      {
+       "parameter": "og.PlatformerController.maxSlope",
+       "path": "og.PlatformerController.maxSlope",
+       "min": 0,
+       "max": 89,
+       "value": 50
+      },
+      {
+       "parameter": "og.PlatformerController.maxSpeed",
+       "path": "og.PlatformerController.maxSpeed",
+       "value": 8
+      },
+      {
+       "parameter": "og.PlatformerController.snapDistance",
+       "path": "og.PlatformerController.snapDistance",
+       "value": 0.1
+      },
+      {
+       "parameter": "og.PlatformerController.timeToApex",
+       "path": "og.PlatformerController.timeToApex",
+       "value": 0.333
+      },
+      {
+       "parameter": "og.PlatformerController.wallJump",
+       "path": "og.PlatformerController.wallJump"
+      },
+      {
+       "parameter": "og.PlatformerController.wallJumpLock",
+       "path": "og.PlatformerController.wallJumpLock",
+       "value": 0.14
+      },
+      {
+       "parameter": "og.PlatformerController.wallSlideSpeed",
+       "path": "og.PlatformerController.wallSlideSpeed",
+       "value": 3
+      },
+      {
+       "parameter": "og.Sprite.flash",
+       "path": "og.Sprite.flash",
+       "min": 0,
+       "max": 1,
+       "value": 0
+      },
+      {
+       "parameter": "og.Sprite.height",
+       "path": "og.Sprite.height",
+       "value": 1.625
+      },
+      {
+       "parameter": "og.Sprite.opacity",
+       "path": "og.Sprite.opacity",
+       "min": 0,
+       "max": 1,
+       "value": 1
+      },
+      {
+       "parameter": "og.Sprite.shadow",
+       "path": "og.Sprite.shadow",
+       "min": 0,
+       "max": 1,
+       "value": 0
+      },
+      {
+       "parameter": "og.Sprite.width",
+       "path": "og.Sprite.width",
+       "value": 1.3
+      }
+     ]
+    },
+    "ms": 2.6
+   }
+  },
+  {
+   "check": "dev: bounds answers {items} with the declared range and value",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "patch",
+   "params": {
+    "id": "runner",
+    "parameter": "Tuning.speedMax",
+    "value": 15
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c13",
+    "result": {
+     "applied": true,
+     "roundTripMs": 0.5
+    },
+    "ms": 1.3
+   }
+  },
+  {
+   "check": "dev: patch answers {applied, roundTripMs}",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "entity",
+   "params": {
+    "id": "runner"
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c14",
+    "result": {
+     "id": "runner",
+     "params": {
+      "Tuning.apexGravity": 0.75,
+      "Tuning.coinValue": 10,
+      "Tuning.fallGravity": 1.15,
+      "Tuning.jumpCut": 1.8,
+      "Tuning.jumpHeight": 2,
+      "Tuning.spawnInterval": 1.3,
+      "Tuning.speed": 6,
+      "Tuning.speedMax": 15,
+      "Tuning.speedRamp": 0.12,
+      "Tuning.timeToApex": 0.333,
+      "og.Afterimage.opacity": 0.4,
+      "og.Collider.density": 1,
+      "og.Collider.friction": 0.5,
+      "og.Collider.height": 1,
+      "og.Collider.radius": 0.5,
+      "og.Collider.restitution": 0,
+      "og.Collider.size": [
+       0.5,
+       1.2,
+       1
+      ],
+      "og.Flipbook.speed": 0.8645709,
+      "og.PlatformerController.acceleration": 70,
+      "og.PlatformerController.airAcceleration": 45,
+      "og.PlatformerController.airDeceleration": 25,
+      "og.PlatformerController.apexGravity": 0.75,
+      "og.PlatformerController.apexThreshold": 1.5,
+      "og.PlatformerController.cornerCorrection": 0.15,
+      "og.PlatformerController.coyoteTime": 0.08,
+      "og.PlatformerController.deceleration": 80,
+      "og.PlatformerController.fallGravity": 1.15,
+      "og.PlatformerController.jumpBuffer": 0.1,
+      "og.PlatformerController.jumpCut": 1.8,
+      "og.PlatformerController.jumpHeight": 2,
+      "og.PlatformerController.maxFallSpeed": 30,
+      "og.PlatformerController.maxSlope": 50,
+      "og.PlatformerController.maxSpeed": 8,
+      "og.PlatformerController.snapDistance": 0.1,
+      "og.PlatformerController.timeToApex": 0.333,
+      "og.PlatformerController.wallJump": [
+       8,
+       12
+      ],
+      "og.PlatformerController.wallJumpLock": 0.14,
+      "og.PlatformerController.wallSlideSpeed": 3,
+      "og.Sprite.flash": 0,
+      "og.Sprite.height": 1.625,
+      "og.Sprite.opacity": 1,
+      "og.Sprite.shadow": 0,
+      "og.Sprite.width": 1.3
+     }
+    },
+    "ms": 0.6
+   }
+  },
+  {
+   "check": "dev: the patch applied",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "patch",
+   "params": {
+    "id": "runner",
+    "parameter": "Tuning.speedMax",
+    "value": 500
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c15",
+    "code": "refused",
+    "message": "Tuning.speedMax of runner refused",
+    "ms": 2
+   }
+  },
+  {
+   "check": "dev: a patch outside the range is refused",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "pause",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c16",
+    "result": {
+     "tick": 66,
+     "paused": true,
+     "timings": {
+      "frameMs": 1.4000000953674316
+     }
+    },
+    "ms": 2.4
+   }
+  },
+  {
+   "check": "dev: pause answers the state, paused",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c17",
+    "result": 66,
+    "ms": 0.3
+   }
+  },
+  {
+   "run": "dev",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c18",
+    "result": 66,
+    "ms": 2.9
+   }
+  },
+  {
+   "check": "dev: paused, the clock holds",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "advance",
+   "params": {
+    "steps": 10
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c19",
+    "result": {
+     "tick": 76,
+     "paused": true,
+     "timings": {
+      "frameMs": 1.4000000953674316
+     }
+    },
+    "ms": 8.1
+   }
+  },
+  {
+   "check": "dev: advance {steps: 10} takes 10 ticks",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "resume",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c20",
+    "result": {
+     "tick": 76,
+     "paused": false,
+     "timings": {
+      "frameMs": 1.4000000953674316
+     }
+    },
+    "ms": 12.3
+   }
+  },
+  {
+   "check": "dev: resume answers the state, playing",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "advance",
+   "params": {
+    "steps": -1
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c21",
+    "code": "refused",
+    "message": "steps must be a whole number from 0 to 3600",
+    "ms": 3.5
+   }
+  },
+  {
+   "check": "dev: advance {steps: -1} is refused",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "frobnicate",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c22",
+    "code": "unsupported",
+    "message": "unknown method frobnicate",
+    "ms": 6.8
+   }
+  },
+  {
+   "check": "dev: an unknown method is unsupported",
+   "ok": true
+  },
+  {
+   "check": "dev: another wire version gets no answer",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "record",
+   "params": {
+    "seconds": 1
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c24",
+    "result": {
+     "mime": "video/webm;codecs=vp8",
+     "base64": "<206860 base64 chars>",
+     "durationMs": 1004
+    },
+    "ms": 1007.2
+   }
+  },
+  {
+   "check": "dev: record {seconds: 1} answers a recording (or unsupported)",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "recordKind": "result",
+   "recordMime": "video/webm;codecs=vp8"
+  },
+  {
+   "run": "dev",
+   "method": "record",
+   "params": {
+    "seconds": 16
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c25",
+    "code": "refused",
+    "message": "seconds must be within (0, 15]",
+    "ms": 0.5
+   }
+  },
+  {
+   "check": "dev: record {seconds: 16} is refused",
+   "ok": true
+  },
+  {
+   "check": "dev: a page told another origin answers nothing",
+   "ok": true
+  },
+  {
+   "check": "dev: and posts no hello",
+   "ok": true
+  },
+  {
+   "check": "dev: a page told no origin is silent",
+   "ok": true
+  },
+  {
+   "check": "publish isolated: unsolicited hello",
+   "ok": true
+  },
+  {
+   "check": "publish isolated: crossOriginIsolated is true",
+   "ok": true
+  },
+  {
+   "check": "publish isolated: the game page has its canvas",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "hello",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c1",
+    "result": {
+     "protocol": 5,
+     "substrate": "origin-engine"
+    },
+    "ms": 5.2
+   }
+  },
+  {
+   "check": "publish isolated: hello answers {protocol: 5, substrate}",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c2",
+    "result": 1,
+    "ms": 68.1
+   }
+  },
+  {
+   "check": "publish isolated: tick answers a number",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "state",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c3",
+    "result": {
+     "tick": 1,
+     "paused": false,
+     "timings": {
+      "frameMs": 49.644999980926514
+     }
+    },
+    "ms": 2.4
+   }
+  },
+  {
+   "check": "publish isolated: state answers {tick, paused, timings: {frameMs}}",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c4",
+    "result": 1,
+    "ms": 2.8
+   }
+  },
+  {
+   "check": "publish isolated: the clock holds behind the play gate",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c5",
+    "result": 33,
+    "ms": 1.1
+   }
+  },
+  {
+   "check": "publish isolated: a tap on the gate starts the clock",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "input",
+   "params": {
+    "event": {
+     "kind": "key",
+     "key": "Space",
+     "action": "press"
+    }
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c6",
+    "code": "unsupported",
+    "message": "unknown method input",
+    "ms": 1.1
+   }
+  },
+  {
+   "check": "publish isolated: input is not a wire method (unsupported)",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "capture",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c7",
+    "result": {
+     "tick": 34,
+     "width": 800,
+     "height": 450,
+     "png": "<30760 base64 chars>"
+    },
+    "ms": 24.5
+   }
+  },
+  {
+   "check": "publish isolated: capture answers the full frame as base64 PNG",
+   "ok": true
+  },
+  {
+   "check": "publish isolated: the PNG is the size it claims",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "capture",
+   "params": {
+    "width": 320
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c8",
+    "result": {
+     "tick": 34,
+     "width": 320,
+     "height": 180,
+     "png": "<12032 base64 chars>"
+    },
+    "ms": 5.2
+   }
+  },
+  {
+   "check": "publish isolated: capture {width: 320} fits the frame",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "entities",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c9",
+    "result": {
+     "items": [
+      {
+       "id": "runner"
+      },
+      {
+       "id": "sky"
+      },
+      {
+       "id": "moon"
+      },
+      {
+       "id": "far"
+      },
+      {
+       "id": "near"
+      },
+      {
+       "id": "roofs"
+      },
+      {
+       "id": "crate-0"
+      },
+      {
+       "id": "crate-1"
+      },
+      {
+       "id": "crate-2"
+      },
+      {
+       "id": "crate-3"
+      },
+      {
+       "id": "fence-0"
+      },
+      {
+       "id": "fence-1"
+      },
+      {
+       "id": "fence-2"
+      },
+      {
+       "id": "coin-0"
+      },
+      {
+       "id": "coin-1"
+      },
+      {
+       "id": "coin-2"
+      },
+      {
+       "id": "coin-3"
+      },
+      {
+       "id": "coin-4"
+      },
+      {
+       "id": "coin-5"
+      },
+      {
+       "id": "coin-6"
+      },
+      {
+       "id": "coin-7"
+      },
+      {
+       "id": "coin-8"
+      },
+      {
+       "id": "coin-9"
+      },
+      {
+       "id": "coin-10"
+      },
+      {
+       "id": "coin-11"
+      },
+      {
+       "id": "coin-12"
+      },
+      {
+       "id": "coin-13"
+      },
+      {
+       "id": "coin-14"
+      },
+      {
+       "id": "coin-15"
+      },
+      {
+       "id": "dust-0"
+      },
+      {
+       "id": "dust-1"
+      },
+      {
+       "id": "dust-2"
+      },
+      {
+       "id": "dust-3"
+      },
+      {
+       "id": "roof-solid"
+      },
+      {
+       "id": "sfx-1"
+      },
+      {
+       "id": "sfx-2"
+      },
+      {
+       "id": "sfx-4"
+      },
+      {
+       "id": "sfx-8"
+      }
+     ]
+    },
+    "ms": 1.2
+   }
+  },
+  {
+   "check": "publish isolated: entities lists the runner",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "entity",
+   "params": {
+    "id": "runner"
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c10",
+    "result": {
+     "id": "runner",
+     "params": {
+      "Tuning.apexGravity": 0.75,
+      "Tuning.coinValue": 10,
+      "Tuning.fallGravity": 1.15,
+      "Tuning.jumpCut": 1.8,
+      "Tuning.jumpHeight": 2,
+      "Tuning.spawnInterval": 1.3,
+      "Tuning.speed": 6,
+      "Tuning.speedMax": 12,
+      "Tuning.speedRamp": 0.12,
+      "Tuning.timeToApex": 0.333,
+      "og.Afterimage.opacity": 0.4,
+      "og.Collider.density": 1,
+      "og.Collider.friction": 0.5,
+      "og.Collider.height": 1,
+      "og.Collider.radius": 0.5,
+      "og.Collider.restitution": 0,
+      "og.Collider.size": [
+       0.5,
+       1.2,
+       1
+      ],
+      "og.Flipbook.speed": 1,
+      "og.PlatformerController.acceleration": 70,
+      "og.PlatformerController.airAcceleration": 45,
+      "og.PlatformerController.airDeceleration": 25,
+      "og.PlatformerController.apexGravity": 0.75,
+      "og.PlatformerController.apexThreshold": 1.5,
+      "og.PlatformerController.cornerCorrection": 0.15,
+      "og.PlatformerController.coyoteTime": 0.08,
+      "og.PlatformerController.deceleration": 80,
+      "og.PlatformerController.fallGravity": 1.15,
+      "og.PlatformerController.jumpBuffer": 0.1,
+      "og.PlatformerController.jumpCut": 1.8,
+      "og.PlatformerController.jumpHeight": 2,
+      "og.PlatformerController.maxFallSpeed": 30,
+      "og.PlatformerController.maxSlope": 50,
+      "og.PlatformerController.maxSpeed": 8,
+      "og.PlatformerController.snapDistance": 0.1,
+      "og.PlatformerController.timeToApex": 0.333,
+      "og.PlatformerController.wallJump": [
+       8,
+       12
+      ],
+      "og.PlatformerController.wallJumpLock": 0.14,
+      "og.PlatformerController.wallSlideSpeed": 3,
+      "og.Sprite.flash": 0,
+      "og.Sprite.height": 1.625,
+      "og.Sprite.opacity": 1,
+      "og.Sprite.shadow": 0,
+      "og.Sprite.width": 1.3
+     }
+    },
+    "ms": 0.9
+   }
+  },
+  {
+   "check": "publish isolated: entity answers {id, params}",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "entity",
+   "params": {
+    "id": "nobody"
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c11",
+    "code": "refused",
+    "message": "no entity nobody",
+    "ms": 0.5
+   }
+  },
+  {
+   "check": "publish isolated: entity of an unknown id is refused",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "pause",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c12",
+    "code": "unsupported",
+    "message": "pause is not served by this build (a publish build serves the player members only)",
+    "ms": 0.5
+   }
+  },
+  {
+   "check": "publish isolated: pause is unsupported in a publish build",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "resume",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c13",
+    "code": "unsupported",
+    "message": "resume is not served by this build (a publish build serves the player members only)",
+    "ms": 0.7
+   }
+  },
+  {
+   "check": "publish isolated: resume is unsupported in a publish build",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "advance",
+   "params": {
+    "steps": 1
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c14",
+    "code": "unsupported",
+    "message": "advance is not served by this build (a publish build serves the player members only)",
+    "ms": 0.7
+   }
+  },
+  {
+   "check": "publish isolated: advance is unsupported in a publish build",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "bounds",
+   "params": {
+    "id": "runner"
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c15",
+    "code": "unsupported",
+    "message": "bounds is not served by this build (a publish build serves the player members only)",
+    "ms": 0.7
+   }
+  },
+  {
+   "check": "publish isolated: bounds is unsupported in a publish build",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "patch",
+   "params": {
+    "id": "runner",
+    "parameter": "Tuning.speedMax",
+    "value": 15
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c16",
+    "code": "unsupported",
+    "message": "patch is not served by this build (a publish build serves the player members only)",
+    "ms": 1
+   }
+  },
+  {
+   "check": "publish isolated: patch is unsupported in a publish build",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "advance",
+   "params": {
+    "steps": -1
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c17",
+    "code": "refused",
+    "message": "steps must be a whole number from 0 to 3600",
+    "ms": 0.2
+   }
+  },
+  {
+   "check": "publish isolated: advance {steps: -1} is refused",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "frobnicate",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c18",
+    "code": "unsupported",
+    "message": "unknown method frobnicate",
+    "ms": 0.3
+   }
+  },
+  {
+   "check": "publish isolated: an unknown method is unsupported",
+   "ok": true
+  },
+  {
+   "check": "publish isolated: another wire version gets no answer",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "record",
+   "params": {
+    "seconds": 1
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c20",
+    "result": {
+     "mime": "video/webm;codecs=vp8",
+     "base64": "<236032 base64 chars>",
+     "durationMs": 1002
+    },
+    "ms": 1003.9
+   }
+  },
+  {
+   "check": "publish isolated: record {seconds: 1} answers a recording (or unsupported)",
+   "ok": true
+  },
+  {
+   "run": "publish isolated",
+   "method": "record",
+   "params": {
+    "seconds": 16
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c21",
+    "code": "refused",
+    "message": "seconds must be within (0, 15]",
+    "ms": 1
+   }
+  },
+  {
+   "check": "publish isolated: record {seconds: 16} is refused",
+   "ok": true
+  },
+  {
+   "check": "publish isolated: a page told another origin answers nothing",
+   "ok": true
+  },
+  {
+   "check": "publish isolated: and posts no hello",
+   "ok": true
+  },
+  {
+   "check": "publish isolated: a page told no origin is silent",
+   "ok": true
+  },
+  {
+   "check": "publish: unsolicited hello",
+   "ok": true
+  },
+  {
+   "check": "publish: crossOriginIsolated is false",
+   "ok": true
+  },
+  {
+   "check": "publish: the game page has its canvas",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "hello",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c1",
+    "result": {
+     "protocol": 5,
+     "substrate": "origin-engine"
+    },
+    "ms": 6.1
+   }
+  },
+  {
+   "check": "publish: hello answers {protocol: 5, substrate}",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c2",
+    "result": 1,
+    "ms": 5.6
+   }
+  },
+  {
+   "check": "publish: tick answers a number",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "state",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c3",
+    "result": {
+     "tick": 1,
+     "paused": false,
+     "timings": {
+      "frameMs": 60.10000002384186
+     }
+    },
+    "ms": 3.4
+   }
+  },
+  {
+   "check": "publish: state answers {tick, paused, timings: {frameMs}}",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c4",
+    "result": 1,
+    "ms": 0.7
+   }
+  },
+  {
+   "check": "publish: the clock holds behind the play gate",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c5",
+    "result": 37,
+    "ms": 0.6
+   }
+  },
+  {
+   "check": "publish: a tap on the gate starts the clock",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "input",
+   "params": {
+    "event": {
+     "kind": "key",
+     "key": "Space",
+     "action": "press"
+    }
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c6",
+    "code": "unsupported",
+    "message": "unknown method input",
+    "ms": 1.7
+   }
+  },
+  {
+   "check": "publish: input is not a wire method (unsupported)",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "capture",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c7",
+    "result": {
+     "tick": 39,
+     "width": 800,
+     "height": 450,
+     "png": "<30652 base64 chars>"
+    },
+    "ms": 43.1
+   }
+  },
+  {
+   "check": "publish: capture answers the full frame as base64 PNG",
+   "ok": true
+  },
+  {
+   "check": "publish: the PNG is the size it claims",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "capture",
+   "params": {
+    "width": 320
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c8",
+    "result": {
+     "tick": 41,
+     "width": 320,
+     "height": 180,
+     "png": "<12076 base64 chars>"
+    },
+    "ms": 17.5
+   }
+  },
+  {
+   "check": "publish: capture {width: 320} fits the frame",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "entities",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c9",
+    "result": {
+     "items": [
+      {
+       "id": "runner"
+      },
+      {
+       "id": "sky"
+      },
+      {
+       "id": "moon"
+      },
+      {
+       "id": "far"
+      },
+      {
+       "id": "near"
+      },
+      {
+       "id": "roofs"
+      },
+      {
+       "id": "crate-0"
+      },
+      {
+       "id": "crate-1"
+      },
+      {
+       "id": "crate-2"
+      },
+      {
+       "id": "crate-3"
+      },
+      {
+       "id": "fence-0"
+      },
+      {
+       "id": "fence-1"
+      },
+      {
+       "id": "fence-2"
+      },
+      {
+       "id": "coin-0"
+      },
+      {
+       "id": "coin-1"
+      },
+      {
+       "id": "coin-2"
+      },
+      {
+       "id": "coin-3"
+      },
+      {
+       "id": "coin-4"
+      },
+      {
+       "id": "coin-5"
+      },
+      {
+       "id": "coin-6"
+      },
+      {
+       "id": "coin-7"
+      },
+      {
+       "id": "coin-8"
+      },
+      {
+       "id": "coin-9"
+      },
+      {
+       "id": "coin-10"
+      },
+      {
+       "id": "coin-11"
+      },
+      {
+       "id": "coin-12"
+      },
+      {
+       "id": "coin-13"
+      },
+      {
+       "id": "coin-14"
+      },
+      {
+       "id": "coin-15"
+      },
+      {
+       "id": "dust-0"
+      },
+      {
+       "id": "dust-1"
+      },
+      {
+       "id": "dust-2"
+      },
+      {
+       "id": "dust-3"
+      },
+      {
+       "id": "roof-solid"
+      },
+      {
+       "id": "sfx-1"
+      },
+      {
+       "id": "sfx-2"
+      },
+      {
+       "id": "sfx-4"
+      },
+      {
+       "id": "sfx-8"
+      }
+     ]
+    },
+    "ms": 2.5
+   }
+  },
+  {
+   "check": "publish: entities lists the runner",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "entity",
+   "params": {
+    "id": "runner"
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c10",
+    "result": {
+     "id": "runner",
+     "params": {
+      "Tuning.apexGravity": 0.75,
+      "Tuning.coinValue": 10,
+      "Tuning.fallGravity": 1.15,
+      "Tuning.jumpCut": 1.8,
+      "Tuning.jumpHeight": 2,
+      "Tuning.spawnInterval": 1.3,
+      "Tuning.speed": 6,
+      "Tuning.speedMax": 12,
+      "Tuning.speedRamp": 0.12,
+      "Tuning.timeToApex": 0.333,
+      "og.Afterimage.opacity": 0.4,
+      "og.Collider.density": 1,
+      "og.Collider.friction": 0.5,
+      "og.Collider.height": 1,
+      "og.Collider.radius": 0.5,
+      "og.Collider.restitution": 0,
+      "og.Collider.size": [
+       0.5,
+       1.2,
+       1
+      ],
+      "og.Flipbook.speed": 1,
+      "og.PlatformerController.acceleration": 70,
+      "og.PlatformerController.airAcceleration": 45,
+      "og.PlatformerController.airDeceleration": 25,
+      "og.PlatformerController.apexGravity": 0.75,
+      "og.PlatformerController.apexThreshold": 1.5,
+      "og.PlatformerController.cornerCorrection": 0.15,
+      "og.PlatformerController.coyoteTime": 0.08,
+      "og.PlatformerController.deceleration": 80,
+      "og.PlatformerController.fallGravity": 1.15,
+      "og.PlatformerController.jumpBuffer": 0.1,
+      "og.PlatformerController.jumpCut": 1.8,
+      "og.PlatformerController.jumpHeight": 2,
+      "og.PlatformerController.maxFallSpeed": 30,
+      "og.PlatformerController.maxSlope": 50,
+      "og.PlatformerController.maxSpeed": 8,
+      "og.PlatformerController.snapDistance": 0.1,
+      "og.PlatformerController.timeToApex": 0.333,
+      "og.PlatformerController.wallJump": [
+       8,
+       12
+      ],
+      "og.PlatformerController.wallJumpLock": 0.14,
+      "og.PlatformerController.wallSlideSpeed": 3,
+      "og.Sprite.flash": 0,
+      "og.Sprite.height": 1.625,
+      "og.Sprite.opacity": 1,
+      "og.Sprite.shadow": 0,
+      "og.Sprite.width": 1.3
+     }
+    },
+    "ms": 2.3
+   }
+  },
+  {
+   "check": "publish: entity answers {id, params}",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "entity",
+   "params": {
+    "id": "nobody"
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c11",
+    "code": "refused",
+    "message": "no entity nobody",
+    "ms": 1.7
+   }
+  },
+  {
+   "check": "publish: entity of an unknown id is refused",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "pause",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c12",
+    "code": "unsupported",
+    "message": "pause is not served by this build (a publish build serves the player members only)",
+    "ms": 0.9
+   }
+  },
+  {
+   "check": "publish: pause is unsupported in a publish build",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "resume",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c13",
+    "code": "unsupported",
+    "message": "resume is not served by this build (a publish build serves the player members only)",
+    "ms": 0.4
+   }
+  },
+  {
+   "check": "publish: resume is unsupported in a publish build",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "advance",
+   "params": {
+    "steps": 1
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c14",
+    "code": "unsupported",
+    "message": "advance is not served by this build (a publish build serves the player members only)",
+    "ms": 0.5
+   }
+  },
+  {
+   "check": "publish: advance is unsupported in a publish build",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "bounds",
+   "params": {
+    "id": "runner"
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c15",
+    "code": "unsupported",
+    "message": "bounds is not served by this build (a publish build serves the player members only)",
+    "ms": 0.5
+   }
+  },
+  {
+   "check": "publish: bounds is unsupported in a publish build",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "patch",
+   "params": {
+    "id": "runner",
+    "parameter": "Tuning.speedMax",
+    "value": 15
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c16",
+    "code": "unsupported",
+    "message": "patch is not served by this build (a publish build serves the player members only)",
+    "ms": 0.3
+   }
+  },
+  {
+   "check": "publish: patch is unsupported in a publish build",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "advance",
+   "params": {
+    "steps": -1
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c17",
+    "code": "refused",
+    "message": "steps must be a whole number from 0 to 3600",
+    "ms": 0.3
+   }
+  },
+  {
+   "check": "publish: advance {steps: -1} is refused",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "frobnicate",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c18",
+    "code": "unsupported",
+    "message": "unknown method frobnicate",
+    "ms": 2.2
+   }
+  },
+  {
+   "check": "publish: an unknown method is unsupported",
+   "ok": true
+  },
+  {
+   "check": "publish: another wire version gets no answer",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "record",
+   "params": {
+    "seconds": 1
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c20",
+    "result": {
+     "mime": "video/webm;codecs=vp8",
+     "base64": "<245908 base64 chars>",
+     "durationMs": 1002
+    },
+    "ms": 1007.2
+   }
+  },
+  {
+   "check": "publish: record {seconds: 1} answers a recording (or unsupported)",
+   "ok": true
+  },
+  {
+   "run": "publish",
+   "method": "record",
+   "params": {
+    "seconds": 16
+   },
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "error",
+    "id": "c21",
+    "code": "refused",
+    "message": "seconds must be within (0, 15]",
+    "ms": 0.8
+   }
+  },
+  {
+   "check": "publish: record {seconds: 16} is refused",
+   "ok": true
+  },
+  {
+   "check": "publish: a page told another origin answers nothing",
+   "ok": true
+  },
+  {
+   "check": "publish: and posts no hello",
+   "ok": true
+  },
+  {
+   "check": "publish: a page told no origin is silent",
+   "ok": true
+  },
+  {
+   "check": "dev in-page: the page answers its own window's hello",
+   "ok": true
+  },
+  {
+   "check": "dev in-page: and says hello to it",
+   "ok": true
+  },
+  {
+   "check": "dev in-page: state answers {tick, paused, timings}",
+   "ok": true
+  },
+  {
+   "check": "dev in-page: patch applies from the in-page host",
+   "ok": true
+  },
+  {
+   "check": "dev in-page: a page told another origin does not answer itself",
+   "ok": true
+  }
+ ]
+}

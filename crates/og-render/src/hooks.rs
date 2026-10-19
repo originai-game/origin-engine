@@ -17,9 +17,11 @@
 //! `Params` holds the declared parameters by name (`p.amount`), at most
 //! [`MAX_SHADER_PARAMS`], read from the material's uniform; `h.time` is the
 //! scene clock in seconds. An alpha below the material's `alphaTest`
-//! discards the fragment (a dissolve). The hooks apply to the lit pass of
-//! non-skinned meshes; shadows and the depth prepass draw the mesh as it
-//! is. `og-cook` compiles every shader asset with naga for each tier
+//! discards the fragment (a dissolve). The hooks apply to static and
+//! skinned meshes alike, and the shadow passes and the depth prepass see
+//! the mesh where `vertex_offset` moved it and cut where `surface_color`'s
+//! alpha falls below the alpha test (the shadow shader is built with the
+//! same hooks, `shadow_source`). `og-cook` compiles every shader asset with naga for each tier
 //! (WGSL, SPIR-V, MSL, and GLSL ES 3.0 for WebGL2) and refuses the asset
 //! with naga's message when it does not.
 

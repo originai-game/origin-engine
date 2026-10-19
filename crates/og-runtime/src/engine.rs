@@ -65,11 +65,17 @@ pub trait Hooks {
     fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
         Fetch::Failed(format!("{path}: this host reads no files"))
     }
-    /// A cooked texture as RGBA8 for the renderer: og-cook's transcoder
-    /// (native, feature `transcode`) by default; the web host transcodes with
-    /// Binomial's Basis transcoder.
-    fn texture(&self, texture: &og_cook::runtime::CookedTexture) -> Fetch<og_render::TextureData> {
-        match texture.to_texture_data() {
+    /// A cooked texture for the renderer, in the device's encoding when
+    /// `formats` (the attached renderer's) names one: og-cook's transcoder
+    /// (native, feature `transcode`) by default, every mip level; the web
+    /// host takes what its Worker transcoded with Binomial's Basis
+    /// transcoder. RGBA8 without a renderer.
+    fn texture(
+        &self,
+        texture: &og_cook::runtime::CookedTexture,
+        formats: Option<&og_render::TextureFormats>,
+    ) -> Fetch<og_render::TextureSource> {
+        match texture.to_texture_source(formats) {
             Ok(t) => Fetch::Ready(t),
             Err(e) => Fetch::Failed(e.to_string()),
         }
@@ -288,6 +294,9 @@ pub(crate) struct State {
     pub physics_heightfields: BTreeMap<u64, og_physics::HeightfieldDesc>,
     /// UI warnings already logged, so a repeated one is logged once.
     pub ui_warned: BTreeSet<String>,
+    /// Undeclared accesses already logged (`system access name`), so each is
+    /// logged once per system (`api::undeclared`).
+    pub undeclared_logged: BTreeSet<String>,
     /// og-anim on this world, and its assets (replayed into a reload's world).
     pub anim: Option<og_anim::AnimationSystem>,
     pub anim_assets: super::anim::AnimAssets,
@@ -928,6 +937,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         physics_meshes: BTreeMap::new(),
         physics_heightfields: BTreeMap::new(),
         ui_warned: BTreeSet::new(),
+        undeclared_logged: BTreeSet::new(),
         anim: Some(a.anim.clone()),
         anim_assets: Default::default(),
         feel: Some(a.feel.clone()),
@@ -1162,10 +1172,13 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
         Err(e) => return refuse(e),
     };
     let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
+    let behind = eng.state.borrow().accumulator_ms;
     let probe = eng.probe.borrow();
+    // `behind`: real time the accumulator holds that no tick has simulated
+    // yet, so a host can place an input event within the next tick.
     json!({
         "ok": true, "ticks": ticks, "tick": tick, "rendered": rendered,
-        "paused": probe.paused(), "quit": probe.quit_requested(),
+        "paused": probe.paused(), "quit": probe.quit_requested(), "behind": behind,
     })
     .to_string()
 }
@@ -1408,6 +1421,13 @@ pub fn write_resource(world: u32, resource: &str, value: &str) -> String {
                 .find(|fl| fl.readonly && value.get(&fl.name).is_some())
             {
                 return Err(format!("{resource}.{} is read only", field.name));
+            }
+            let declared = eng.state.borrow().systems[f.system]
+                .writes
+                .iter()
+                .any(|w| w == resource);
+            if !declared {
+                return Err(super::api::undeclared(&eng, f.system, "write", resource));
             }
             // SAFETY: the frame is published while its system runs.
             let ctx = unsafe { f.ctx() };

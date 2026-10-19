@@ -27,6 +27,7 @@
 //! | behaviour (`og.Behaviour`, an `.ogt` of `type behaviour`) | [`BehaviourMeta`] | `text` (the validated behaviour file) |
 //! | navmesh (`og.NavMesh`, an `.ogt` of `type navmesh`) | [`NavMeshMeta`] | `columns` [`NavColumnRow`], `spans` [`NavSpanRow`] (the walkable heightfield), `tiles` [`NavTileRow`], `verts` [`NavVertRow`], `polys` [`NavPolyRow`], `poly_verts` (u32) |
 //! | string table (`og.Strings`, an `.ogt` of `type strings`) | [`StringsMeta`] | `text` (the validated table) |
+//! | humanoid rig (`og.Rig`, an `.ogt` of `type rig`) | [`RigMeta`] | `text` (the canonical rig: its scheme and the bones it names) |
 //! | terrain (`og.Terrain`, an `.ogt` of `type terrain`) | [`TerrainMeta`] | `tiles` [`TerrainTileRow`] (og-render's tile pyramid), `heights` (each tile's `(tile + 3)²` u16 heights over the terrain's range, zlib), `control` (each tile's `(control + 2)²` RGBA8 texels, zlib), `layers` [`TerrainLayerRow`], `strings` (the layers' texture ids) |
 //! | streaming group pack (`og.StreamPack`, `cooked/stream/<group>.ogb`, phase 3) | [`StreamPackMeta`] | `files` [`StreamFileRow`], `names` (paths under `cooked/`), `data` (the files, each 16-aligned) |
 
@@ -797,6 +798,24 @@ impl BlobKind for Behaviour {
     const NAME: &'static str = "og.Behaviour";
     fn schemas() -> Vec<Schema> {
         vec![BehaviourMeta::schema()]
+    }
+}
+
+row!(
+    /// The root of a rig blob (an `.ogt` of `type rig`).
+    RigMeta, "og.Rig", 1 {
+        /// Bytes of the canonical rig text in `text`.
+        text_bytes: u32,
+    }
+);
+
+/// The rig blob: `text` holds the canonical humanoid map
+/// (`og_anim::RigAsset::to_text`), parsed again at load.
+pub struct Rig;
+impl BlobKind for Rig {
+    const NAME: &'static str = "og.Rig";
+    fn schemas() -> Vec<Schema> {
+        vec![RigMeta::schema()]
     }
 }
 

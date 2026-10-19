@@ -29,7 +29,9 @@ use super::{ok, ok_void, refuse};
 use og_cook::runtime::{CookedSound, ManifestStream, StreamTrigger};
 use og_core::{Reflect, Str64};
 use og_ecs::{SystemDesc, World};
-use og_render::{Material, MaterialHandle, MeshData, MeshHandle, TextureData, TextureHandle};
+use og_render::{
+    Material, MaterialHandle, MeshData, MeshHandle, TextureData, TextureHandle, TextureSource,
+};
 use serde_json::{Value, json};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -490,10 +492,22 @@ enum Full {
     Model {
         meshes: Vec<MeshData>,
         model: Box<og_cook::runtime::CookedModel>,
-        textures: Vec<TextureData>,
+        textures: Vec<TextureSource>,
     },
-    Texture(TextureData, bool),
+    Texture(TextureSource, bool),
     Sound(Vec<u8>),
+}
+
+/// A texture over its stand-in, in whichever form the host decoded it to.
+fn replace_texture(
+    scene: &mut og_render::RenderScene,
+    h: og_render::TextureHandle,
+    src: TextureSource,
+) {
+    match src {
+        TextureSource::Rgba(d) => scene.set_texture(h, d),
+        TextureSource::Encoded(u) => scene.set_texture_upload(h, u),
+    };
 }
 
 fn decode_texture(
@@ -501,14 +515,15 @@ fn decode_texture(
     files: &Streams,
     group: &str,
     id: &str,
-) -> Result<Option<(TextureData, bool)>, String> {
+    formats: Option<&og_render::TextureFormats>,
+) -> Result<Option<(TextureSource, bool)>, String> {
     let out = bundle.output(id).map_err(|e| e.to_string())?;
     let bytes = super::assets::aligned(files.file(group, &out.file)?);
     let tex = bundle
         .texture(id, bytes.bytes())
         .map_err(|e| e.to_string())?;
     let pixel = tex.is_pixel_art();
-    match hooks().map(|h| h.texture(&tex)) {
+    match hooks().map(|h| h.texture(&tex, formats)) {
         Some(super::assets::Fetch::Ready(d)) => Ok(Some((d, pixel))),
         Some(super::assets::Fetch::Pending) => Ok(None),
         Some(super::assets::Fetch::Failed(e)) => Err(format!("{id}: {e}")),
@@ -519,6 +534,7 @@ fn decode_texture(
 /// Puts a resident group's assets in place of their stand-ins. `Ok(false)`:
 /// a texture is still being transcoded (nothing changed yet).
 fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
+    let formats = super::assets::texture_formats(eng);
     let fulls: Vec<(usize, Full)> = {
         let a = eng.assets.borrow();
         let Some(i) = a.default_bundle else {
@@ -541,7 +557,7 @@ fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
                     let model = bundle.model(id, bytes.bytes()).map_err(|e| e.to_string())?;
                     let mut textures = Vec::with_capacity(model.textures.len());
                     for t in &model.textures {
-                        match decode_texture(bundle, s, group, &t.id)? {
+                        match decode_texture(bundle, s, group, &t.id, formats.as_ref())? {
                             Some((d, _)) => textures.push(d),
                             None => return Ok(false),
                         }
@@ -552,10 +568,12 @@ fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
                         textures,
                     }
                 }
-                Slot::Texture { .. } => match decode_texture(bundle, s, group, id)? {
-                    Some((d, pixel)) => Full::Texture(d, pixel),
-                    None => return Ok(false),
-                },
+                Slot::Texture { .. } => {
+                    match decode_texture(bundle, s, group, id, formats.as_ref())? {
+                        Some((d, pixel)) => Full::Texture(d, pixel),
+                        None => return Ok(false),
+                    }
+                }
                 Slot::Sound { .. } => {
                     let sound = bundle.sound(id, bytes.bytes()).map_err(|e| e.to_string())?;
                     Full::Sound(sound.qoa)
@@ -590,9 +608,9 @@ fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
                 for (i, d) in data.into_iter().enumerate() {
                     match textures.get(i) {
                         Some(&h) => {
-                            rs.scene.set_texture(h, d);
+                            replace_texture(&mut rs.scene, h, d);
                         }
-                        None => textures.push(rs.scene.add_texture(d)),
+                        None => textures.push(rs.scene.add_texture_source(d)),
                     }
                 }
                 for ((h, _), m) in meshes.iter().zip(full) {
@@ -603,7 +621,7 @@ fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
                 }
             }
             (Slot::Texture { handle, .. }, Full::Texture(d, pixel)) => {
-                rs.scene.set_texture(*handle, d);
+                replace_texture(&mut rs.scene, *handle, d);
                 if pixel {
                     rs.scene
                         .set_texture_filter(*handle, og_render::TextureFilter::Nearest);

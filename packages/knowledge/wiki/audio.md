@@ -8,7 +8,7 @@ The stream, not the PCM, is world state: snapshots, restore and the world hash c
 
 Spatial gain and pan are computed in the tick from the source's og.Transform relative to the first AudioListener (three.js convention: the listener looks down -Z, +X is right; with none, the origin looking down -Z).
 
-- **TypeScript**: functions are none at module level (its members live on the types below); components, resources and events are tokens on `og`.
+- **TypeScript**: functions are the namespace `og.audio`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
 - **Skill**: `og-audio`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
@@ -18,7 +18,7 @@ module audio {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 5342</sub>
+<sub>`api.ogt` line 5508</sub>
 
 ## Contents
 
@@ -39,6 +39,40 @@ module audio {
 | [`og.MusicBeat`](#record-MusicBeat) | event | A beat of a Music clock, sent in the tick whose interval holds it (systems read it the tick after). |
 | [`og.SoundStarted`](#record-SoundStarted) | event | A source started, sent in the tick it happens (systems read it the tick after). |
 | [`og.SoundEnded`](#record-SoundEnded) | event | A sound ended, sent in the tick it happens (systems read it the tick after). |
+| [`og.audio.outputLatency`](#fn-outputLatency) | function | How long after its world time a sample leaves the speaker, as the host reports it: on the web the AudioContext's baseLatency and outputLatency and the worklet ring's buffer, natively the device's latency (cpal's playback less callback instant) and the mixer's buffer; 0 headless (the null and capture sinks are driven to the tick). Host input, written to og.Audio between ticks, so a replay carries it. A rhythm game hears a note at its time plus this: judge a press against the note's time plus the latency, then a calibrated rest (the display, the hand). |
+
+## Functions
+
+<a id="fn-outputLatency"></a>
+
+### `og.audio.outputLatency`
+
+How long after its world time a sample leaves the speaker, as the host reports it: on the web the AudioContext's baseLatency and outputLatency and the worklet ring's buffer, natively the device's latency (cpal's playback less callback instant) and the mixer's buffer; 0 headless (the null and capture sinks are driven to the tick). Host input, written to og.Audio between ticks, so a replay carries it. A rhythm game hears a note at its time plus this: judge a press against the note's time plus the latency, then a calibrated rest (the display, the hand).
+
+Inside a system og.Audio must be among its reads or writes.
+
+```ts
+og.audio.outputLatency(world: World): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+
+**Returns** `number`: Seconds; 0 headless.
+
+Binding symbol `og_audio_output_latency` · publish builds: kept
+
+```ogt
+fn outputLatency {
+  doc "How long after its world time a sample leaves the speaker, as the host reports it: on the web the AudioContext's baseLatency and outputLatency and the worklet ring's buffer, natively the device's latency (cpal's playback less callback instant) and the mixer's buffer; 0 headless (the null and capture sinks are driven to the tick). Host input, written to og.Audio between ticks, so a replay carries it. A rhythm game hears a note at its time plus this: judge a press against the note's time plus the latency, then a calibrated rest (the display, the hand)."
+  doc "Inside a system og.Audio must be among its reads or writes."
+  param world World "The world."
+  returns f64 "Seconds; 0 headless."
+}
+```
+
+<sub>`api.ogt` line 5842</sub>
 
 ## Components, resources and events
 
@@ -72,6 +106,7 @@ Token `og.AudioSource`, registered under the schema name `og.AudioSource`; its v
 | `occlude` | `boolean` | `false` | — | — | — | A spatial source behind a collider (a physics ray to the listener) plays at Audio.occlusionGain through a low-pass at Audio.occlusionCutoff. |
 | `distanceCutoff` | `number` | `0` | 0 … 20000 | `hz` | tunable | A spatial source's low-pass by distance: the cutoff at maxDistance, from 20 kHz at refDistance (log-linear between); 0 is off. |
 | `startAt` | `number` | `0` | ≥ 0 | `s` | — | Starts at this world time (seconds since tick 0), to the sample, even inside a tick; 0 or a time past starts at once. Music.nextBar and Music.nextBeat give musical times. |
+| `startOffset` | `number` | `0` | ≥ 0 | `s` | — | Where in the sound it starts, in seconds of the sound: started at startAt (or at once) from this far in, to the sample and at full gain, so a resumed phrase continues instead of restarting. Past a one-shot's end it plays nothing; a loop wraps into its region. |
 | `fade` | `number` | `0` | 0 … 30 | `s` | tunable | Starts, stops and volume changes ramp over this long: a crossfade is one source stopped and another started with the same fade; 0 is 5 ms. |
 
 ```ogt
@@ -151,6 +186,10 @@ component AudioSource {
     min 0
     unit s
   }
+  field startOffset f64 "Where in the sound it starts, in seconds of the sound: started at startAt (or at once) from this far in, to the sample and at full gain, so a resumed phrase continues instead of restarting. Past a one-shot's end it plays nothing; a loop wraps into its region." {
+    min 0
+    unit s
+  }
   field fade f32 "Starts, stops and volume changes ramp over this long: a crossfade is one source stopped and another started with the same fade; 0 is 5 ms." {
     min 0
     max 30
@@ -160,7 +199,7 @@ component AudioSource {
 }
 ```
 
-<sub>`api.ogt` line 5369</sub>
+<sub>`api.ogt` line 5535</sub>
 
 <a id="record-AudioListener"></a>
 
@@ -186,7 +225,7 @@ component AudioListener {
 }
 ```
 
-<sub>`api.ogt` line 5453</sub>
+<sub>`api.ogt` line 5623</sub>
 
 <a id="record-Audio"></a>
 
@@ -207,6 +246,7 @@ Token `og.Audio`, registered under the schema name `og.Audio`; its value type is
 | `occlusionCutoff` | `number` | `900` | 20 … 20000 | `hz` | tunable | The low-pass cutoff of an occluded source. |
 | `reverbRoom` | `number` | `0.6` | 0 … 1 | — | tunable | The shared reverb's room size (the AudioBusFx.reverb sends feed it). |
 | `reverbDamping` | `number` | `0.4` | 0 … 1 | — | tunable | The shared reverb's damping of high frequencies. |
+| `outputLatency` | `number` | `0` | ≥ 0 | `s` | read only | Seconds from a sample's world time to the speaker, as the host reports it (og.audio.outputLatency). |
 
 ```ogt
 resource Audio {
@@ -265,10 +305,15 @@ resource Audio {
     max 1
     tunable true
   }
+  field outputLatency f64 "Seconds from a sample's world time to the speaker, as the host reports it (og.audio.outputLatency)." {
+    min 0
+    unit s
+    readonly true
+  }
 }
 ```
 
-<sub>`api.ogt` line 5463</sub>
+<sub>`api.ogt` line 5633</sub>
 
 <a id="record-AudioBusFx"></a>
 
@@ -389,7 +434,7 @@ component AudioBusFx {
 }
 ```
 
-<sub>`api.ogt` line 5521</sub>
+<sub>`api.ogt` line 5696</sub>
 
 <a id="record-Music"></a>
 
@@ -445,7 +490,7 @@ component Music {
 }
 ```
 
-<sub>`api.ogt` line 5610</sub>
+<sub>`api.ogt` line 5785</sub>
 
 <a id="record-MusicBeat"></a>
 
@@ -472,7 +517,7 @@ event MusicBeat {
 }
 ```
 
-<sub>`api.ogt` line 5644</sub>
+<sub>`api.ogt` line 5819</sub>
 
 <a id="record-SoundStarted"></a>
 
@@ -497,7 +542,7 @@ event SoundStarted {
 }
 ```
 
-<sub>`api.ogt` line 5652</sub>
+<sub>`api.ogt` line 5827</sub>
 
 <a id="record-SoundEnded"></a>
 
@@ -524,7 +569,7 @@ event SoundEnded {
 }
 ```
 
-<sub>`api.ogt` line 5659</sub>
+<sub>`api.ogt` line 5834</sub>
 
 ## Types
 
@@ -553,7 +598,7 @@ enum AudioBus {
 }
 ```
 
-<sub>`api.ogt` line 5354</sub>
+<sub>`api.ogt` line 5520</sub>
 
 ## Column kinds
 
@@ -572,7 +617,7 @@ column AudioBus {
 }
 ```
 
-<sub>`api.ogt` line 5362</sub>
+<sub>`api.ogt` line 5528</sub>
 
 ## Constants
 
@@ -588,28 +633,28 @@ column AudioBus {
 const SOUND_FINISHED u32 0 "SoundEnded.reason: a one-shot played to its end."
 ```
 
-<sub>`api.ogt` line 5348</sub>
+<sub>`api.ogt` line 5514</sub>
 
 ```ogt
 const SOUND_STOPPED u32 1 "SoundEnded.reason: `playing` was set to false."
 ```
 
-<sub>`api.ogt` line 5349</sub>
+<sub>`api.ogt` line 5515</sub>
 
 ```ogt
 const SOUND_REMOVED u32 2 "SoundEnded.reason: the AudioSource was removed from a living entity."
 ```
 
-<sub>`api.ogt` line 5350</sub>
+<sub>`api.ogt` line 5516</sub>
 
 ```ogt
 const SOUND_REPLACED u32 3 "SoundEnded.reason: `sound` changed while it played."
 ```
 
-<sub>`api.ogt` line 5351</sub>
+<sub>`api.ogt` line 5517</sub>
 
 ```ogt
 const SOUND_CULLED u32 4 "SoundEnded.reason: more sources played than Audio.maxVoices and this one stood lowest (priority, then volume, then age)."
 ```
 
-<sub>`api.ogt` line 5352</sub>
+<sub>`api.ogt` line 5518</sub>

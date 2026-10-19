@@ -6,6 +6,11 @@
 //! `og.platform` system at the start of the next tick, which sends
 //! `og.PlatformAnswered`. Every call and answer stays in the engine's log
 //! for `og.platform.result` and the probe's `dump_platform`.
+//!
+//! Time: the host tells the engine its wall clock (UTC ms) when it attaches
+//! and with every answer (`time`); `og.platform.now` is the last of those,
+//! moved on by the ticks since, so game code reads a wall clock only as
+//! host input, which a replay with the same answers repeats.
 
 use super::engine::{engine, running};
 use super::{ok, ok_void, parse, refuse};
@@ -51,6 +56,12 @@ struct Platform {
     log: BTreeMap<u32, Record>,
     host: Option<String>,
     capabilities: Vec<String>,
+    /// PlatformInfo.clock: whose time `now` reads.
+    clock: Option<String>,
+    /// The host's last time (UTC ms) and the tick it held at: `now` moves
+    /// it on by the ticks since. Set when the host attaches and by every
+    /// answer that carries a time, at the tick's start the answer is applied.
+    base: Option<(f64, u64)>,
 }
 
 thread_local! {
@@ -317,6 +328,11 @@ pub fn og_platform_ai_mark(world: u32, desc: Option<String>) -> String {
     request(world, "ai.mark", args)
 }
 
+/// An answer's or a hello's time: finite UTC milliseconds above 0.
+fn time_of(v: &Value) -> Option<f64> {
+    v["time"].as_f64().filter(|t| t.is_finite() && *t > 0.0)
+}
+
 fn result_of(id: u32, r: &Record) -> Option<Value> {
     let (answer, tick) = r.answer.as_ref()?;
     let ok = answer["ok"].as_bool() == Some(true);
@@ -324,6 +340,7 @@ fn result_of(id: u32, r: &Record) -> Option<Value> {
         "request": id, "method": r.method, "ok": ok,
         "data": if ok { answer.get("data").cloned().unwrap_or(Value::Null) } else { Value::Null },
         "tick": tick,
+        "time": time_of(answer).unwrap_or(0.0),
     });
     if !ok {
         let e = &answer["error"];
@@ -354,9 +371,25 @@ pub fn og_platform_info(world: u32) -> String {
             "host": p.host.clone().unwrap_or_else(|| "none".into()),
             "capabilities": p.capabilities,
             "pending": p.log.values().filter(|r| r.answer.is_none() && !r.oneway).count(),
+            "clock": p.clock.clone().unwrap_or_else(|| "none".into()),
         })
     })
     .to_string()
+}
+
+/// The fixed tick's length in milliseconds of the engine's world.
+fn tick_ms(world: u32) -> f64 {
+    engine(world).map_or(1000.0 / 60.0, |e| {
+        1000.0 / f64::from(e.state.borrow().rate.max(1))
+    })
+}
+
+pub fn og_platform_now(world: u32) -> f64 {
+    let Some((time, at)) = with(world, |p| p.base) else {
+        return 0.0;
+    };
+    let tick = tick_now(world).unwrap_or(at);
+    time + tick.saturating_sub(at) as f64 * tick_ms(world)
 }
 
 // ── the host's side (lifecycle members) ─────────────────────────────────
@@ -399,10 +432,19 @@ pub fn og_platform_answer(engine: u32, request: u32, answer: String) -> bool {
     })
 }
 
-/// What answers this engine's calls: `{ host, capabilities }`.
+/// What answers this engine's calls: `{ host, capabilities, time?, clock? }`.
+/// The time (UTC ms) is the host's now, between ticks: `now` reads it from
+/// the current tick on.
 pub fn og_platform_set_host(engine: u32, info: String) {
     let v: Value = serde_json::from_str(&info).unwrap_or(Value::Null);
+    let tick = tick_now(engine).unwrap_or(0);
     with(engine, |p| {
+        if let Some(t) = time_of(&v) {
+            p.base = Some((t, tick));
+        }
+        if let Some(c) = v["clock"].as_str() {
+            p.clock = Some(c.to_string());
+        }
         p.host = v["host"].as_str().map(str::to_string);
         p.capabilities = v["capabilities"]
             .as_array()
@@ -434,6 +476,12 @@ pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
                         .filter_map(|(id, v)| {
                             let r = p.log.get_mut(&id)?;
                             let ok = v["ok"].as_bool() == Some(true);
+                            if let Some(t) = time_of(&v) {
+                                p.base = Some((t, tick));
+                            }
+                            if let Some(c) = v["clock"].as_str() {
+                                p.clock = Some(c.to_string());
+                            }
                             r.answer = Some((v, tick));
                             Some((id, ok))
                         })

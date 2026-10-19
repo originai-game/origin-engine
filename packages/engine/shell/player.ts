@@ -11,6 +11,11 @@
 // Player and its releases share the play origin); accept only messages from
 // `window.parent` at this origin with `og: "player", protocol: 2`. Without
 // a frame nothing is sent and nothing is heard.
+//
+// This is the `frame` transport. A top-level page the platform published
+// (`window.__OG_GAME`) speaks the same protocol to its play origin over
+// same-origin HTTP instead (`page`, ./transport.ts); og build declares both
+// in `<meta name="og-player" content="frame page">`.
 
 export const PLAYER_WIRE = "player";
 export const PLAYER_WIRE_PROTOCOL = 2;

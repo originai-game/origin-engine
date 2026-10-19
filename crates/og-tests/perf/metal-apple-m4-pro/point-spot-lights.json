@@ -1,0 +1,10 @@
+{
+  "scene": "point-spot-lights",
+  "tier": "metal",
+  "adapter": "Apple M4 Pro",
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 100,
+  "runs_ms": [0.452, 0.479, 0.493, 0.505, 0.506, 0.509, 0.775],
+  "frame_ms": 0.452
+}

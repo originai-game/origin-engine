@@ -336,7 +336,7 @@
             },
             {
               "name": "resource",
-              "doc": "A resource's live value. Inside a system, the resource must be among the system's reads or writes.",
+              "doc": "A resource's live value. Inside a system, the resource must be among the system's reads or writes (writes to set a field): an undeclared one throws in a dev or release build, naming the system and the resource, and fails the tick; a publish build refuses it and logs it once per system in the engine log.",
               "generics": [
                 {
                   "name": "R",
@@ -352,7 +352,7 @@
                 }
               ],
               "returns": "Result<Value<R>>",
-              "returnsDoc": "Refused for an unregistered resource or one the running system did not declare.",
+              "returnsDoc": "Refused for an unregistered resource (or, in a publish build, one the running system did not declare).",
               "publish": true
             },
             {
@@ -401,7 +401,7 @@
             },
             {
               "name": "events",
-              "doc": "The events of one type emitted during the previous tick and this one, oldest first.",
+              "doc": "The events of one type emitted during the previous tick and this one, oldest first. Inside a system the event must be among its reads or writes (undeclared: thrown, or in a publish build refused and logged once).",
               "generics": [
                 {
                   "name": "E",
@@ -421,7 +421,7 @@
             },
             {
               "name": "emit",
-              "doc": "Emit an event; readers see it this tick and the next.",
+              "doc": "Emit an event; readers see it this tick and the next. Inside a system the event must be among its writes (undeclared: thrown, or in a publish build refused and logged once).",
               "generics": [
                 {
                   "name": "E",
@@ -571,7 +571,7 @@
     },
     {
       "name": "system",
-      "doc": "Systems: functions the engine calls once per tick with their matched archetypes.\nA system declares what it reads and writes; a write to an undeclared component is refused at registration with the field name.",
+      "doc": "Systems: functions the engine calls once per tick with their matched archetypes.\nA system declares what it reads and writes; a write to an undeclared component is refused at registration with the field name.\nResources and events it reaches through the world must be declared too: in a dev or release build (og run, og test) an undeclared read or write throws with the system's name and the record and fails the tick; a publish build refuses it and logs it once per system in the engine log, and the game keeps running. og.Rng among the reads may fork (a fork reads the seed only and leaves the stream as it is); a draw moves the stream, so it needs og.Rng among the writes.",
       "place": "top",
       "publish": true,
       "types": [
@@ -893,7 +893,7 @@
     },
     {
       "name": "rng",
-      "doc": "Deterministic randomness. Every random draw comes from an Rng stream; the sequence for a seed is identical on every host and in the Web scaffold's rng.ts.",
+      "doc": "Deterministic randomness. Every random draw comes from an Rng stream; the sequence for a seed is identical on every host and in the Web scaffold's rng.ts.\nInside a system: forking needs og.Rng among the reads (a fork is derived from the seed and the label, and leaves the main stream where it is); drawing from og.Rng itself (next, range, integer, chance) moves its state, so it needs og.Rng among the writes. A stream a fork returned is the system's own to draw from.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -1183,8 +1183,14 @@
         {
           "name": "MAX_LIGHTS",
           "type": "u32",
-          "value": 8,
-          "doc": "The most point and spot lights one frame draws."
+          "value": 256,
+          "doc": "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
+        },
+        {
+          "name": "MAX_CLUSTER_LIGHTS",
+          "type": "u32",
+          "value": 64,
+          "doc": "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
         }
       ],
       "functions": [
@@ -1381,7 +1387,7 @@
         },
         {
           "name": "shaderMaterial",
-          "doc": "Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. Skinned meshes draw it without the hooks; shadows and the depth prepass use the undisplaced mesh.",
+          "doc": "Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. The hooks apply to skinned meshes too, and shadows and the depth prepass (ambient occlusion, outlines, depth of field) see the mesh where vertex_offset moved it and cut where surface_color's alpha falls below alphaTest.",
           "params": [
             {
               "name": "world",
@@ -1407,6 +1413,33 @@
           "publish": true
         },
         {
+          "name": "setMaterialShader",
+          "doc": "Give an existing material a material shader, or take it away with null: a loaded model's material (GltfInfo.materials) draws its skinned or static meshes through the hooks, with the shader's parameters at their defaults. Every mesh drawn with that material changes.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the material."
+            },
+            {
+              "name": "material",
+              "type": "Material",
+              "optional": false,
+              "doc": "The material, from og.render.standardMaterial, og.render.shaderMaterial or a loaded glTF."
+            },
+            {
+              "name": "shader",
+              "type": "Option<Shader>",
+              "optional": false,
+              "doc": "The shader, or null to draw the material plain again."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for a dead material or a shader not loaded in this world.",
+          "publish": true
+        },
+        {
           "name": "setShaderParam",
           "doc": "Set a parameter of a shader material, by the name its shader declares: a number for float, two to four for vec2, vec3, vec4 and color.",
           "params": [
@@ -1420,7 +1453,7 @@
               "name": "material",
               "type": "Material",
               "optional": false,
-              "doc": "A material made by og.render.shaderMaterial."
+              "doc": "A material made by og.render.shaderMaterial or given a shader by og.render.setMaterialShader."
             },
             {
               "name": "name",
@@ -1873,6 +1906,27 @@
           ],
           "returns": "Result<Animation>",
           "returnsDoc": "Refused for an uncooked path, a model the cook wrote no `#anim` blob for (no skins, clips or morph targets), a cook stamp mismatch or an invalid rig.",
+          "publish": true
+        },
+        {
+          "name": "rig",
+          "doc": "Load a cooked humanoid map (an `.ogt` of `type rig`: a naming scheme and bones named outright) for og.anim.retarget and og.anim.humanoid. Loading the same path again answers the same handle.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose animation uses it."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The rig's asset id, such as `rigs/strider.ogt`."
+            }
+          ],
+          "returns": "Result<Rig>",
+          "returnsDoc": "Refused for a path not in the bundle (run og cook) or a cook stamp mismatch.",
           "publish": true
         },
         {
@@ -2549,7 +2603,7 @@
     },
     {
       "name": "anim",
-      "doc": "Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics.\nGame code owns the components and sets players, graph parameters and IK targets; og.anim writes the pose (kept as world state in the `og.anim` state block, so snapshots, restore and the world hash cover it), the joint palette, root motion into og.Transform and the fields marked written. Asset handles are what og.load.animation and og.anim.graph answer; 0 is none.\nClips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names. Assets are not world state: a hot reload registers them again.",
+      "doc": "Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics.\nGame code owns the components and sets players, graph parameters and IK targets; og.anim writes the pose (kept as world state in the `og.anim` state block, so snapshots, restore and the world hash cover it), the joint palette, root motion into og.Transform and the fields marked written. Asset handles are what og.load.animation and og.anim.graph answer; 0 is none.\nClips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names; a rig with other names or proportions plays it retargeted (og.anim.retarget at run time, or a model's `animation { library }` import setting at cook time). Assets are not world state: a hot reload registers them again.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -2576,6 +2630,11 @@
         "ClipInfo",
         "Animation",
         "GraphDesc",
+        "Rig",
+        "HumanBone",
+        "Humanoid",
+        "HumanoidDesc",
+        "RetargetDesc",
         "FlipbookSheet",
         "FlipbookSheet",
         "FlipMode",
@@ -2605,6 +2664,48 @@
           ],
           "returns": "Result<GraphAsset>",
           "returnsDoc": "Refused for a parse error (the reason names the line), a clip name `clips` lacks, or an invalid graph.",
+          "publish": true
+        },
+        {
+          "name": "humanoid",
+          "doc": "The standard humanoid bones of a skeleton, as retargeting sees them: to check a rig before retargeting onto it.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose animation owns the skeleton."
+            },
+            {
+              "name": "desc",
+              "type": "HumanoidDesc",
+              "optional": true,
+              "doc": "The skeleton and its rig."
+            }
+          ],
+          "returns": "Result<Humanoid>",
+          "returnsDoc": "Refused for an unregistered skeleton or rig, or a rig naming a node the skeleton lacks.",
+          "publish": true
+        },
+        {
+          "name": "retarget",
+          "doc": "A new clip for `target` from a clip of `source`: each animated humanoid bone turns as the source's does from its rest pose (after a rest correction, so a T-pose drives an A-pose and other bone frames agree), the target keeps its bone lengths, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled. Same name, duration and markers. The cook does the same for a model's `animation { library }` import setting; this is for clips chosen at run time.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose animation owns the skeletons and the clip."
+            },
+            {
+              "name": "desc",
+              "type": "RetargetDesc",
+              "optional": true,
+              "doc": "The clip, the two skeletons and their rigs."
+            }
+          ],
+          "returns": "Result<ClipInfo>",
+          "returnsDoc": "The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip, skeleton or rig, a skeleton without recognisable hips (name them in a `type rig` file), or a rig naming a missing node.",
           "publish": true
         },
         {
@@ -3017,7 +3118,23 @@
           "doc": "SoundEnded.reason: more sources played than Audio.maxVoices and this one stood lowest (priority, then volume, then age)."
         }
       ],
-      "functions": [],
+      "functions": [
+        {
+          "name": "outputLatency",
+          "doc": "How long after its world time a sample leaves the speaker, as the host reports it: on the web the AudioContext's baseLatency and outputLatency and the worklet ring's buffer, natively the device's latency (cpal's playback less callback instant) and the mixer's buffer; 0 headless (the null and capture sinks are driven to the tick). Host input, written to og.Audio between ticks, so a replay carries it. A rhythm game hears a note at its time plus this: judge a press against the note's time plus the latency, then a calibrated rest (the display, the hand).\nInside a system og.Audio must be among its reads or writes.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "f64",
+          "returnsDoc": "Seconds; 0 headless.",
+          "publish": true
+        }
+      ],
       "interfaces": [],
       "callbacks": []
     },
@@ -3874,6 +3991,21 @@
           ],
           "returns": "PlatformInfo",
           "publish": true
+        },
+        {
+          "name": "now",
+          "doc": "The host's wall-clock time, UTC milliseconds since 1970, as of this tick: what the host last told the engine (when it attached, and with every answer, applied at a tick's start like the answers) moved on by the ticks since. The one wall-clock read game code may make: it is host input, so a replay with the same answers gives the same values. Use it to know how long the game was closed (a save's time against a launch's), never to time play (that is og.Time).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "f64",
+          "returnsDoc": "UTC milliseconds; 0 until a host has told the time (`none`).",
+          "publish": true
         }
       ],
       "interfaces": [],
@@ -4021,6 +4153,7 @@
         "LabelDesc",
         "ButtonDesc",
         "PanelDesc",
+        "ScrollAxes",
         "ScrollDesc",
         "ImageDesc",
         "ProgressDesc",
@@ -4037,6 +4170,8 @@
         "TypeStep",
         "ControlSizes",
         "UiTheme",
+        "RichTextDesc",
+        "RichTextResult",
         "Anchor",
         "TransitionKind",
         "Tone",
@@ -4079,6 +4214,8 @@
         "DpadResult",
         "ActionButtonDesc",
         "SkeletonDesc",
+        "A11yNode",
+        "A11yTree",
         "CounterDesc",
         "BurstDesc",
         "ShakeDesc",
@@ -4359,6 +4496,32 @@
           "returns": "Void",
           "publish": true,
           "host": false
+        },
+        {
+          "name": "richText",
+          "doc": "A paragraph of inline spans from markup, for a string-table message (og.i18n.t) so a translation carries its own emphasis: `[b]bold[/b]` (thickened in the distance field as far as it reaches, plus a second copy one device pixel right), `[color=danger]` or `[color=#ff8800]` (a ThemeColor follows the skin), `[size=xl]` (a TypeStepName), `[font=mono]`, `[icon=coin]` (a cell of the icon atlas, one em), `[link=shop]Open the shop[/link]` (accent ink, underlined, focusable by keys and pads; a child element `<id>/shop` of kind link for the probe) and per-glyph motion `[wave]`, `[shake]`, `[pulse]` (by the tick; still under reduced motion). `[[` is a literal bracket. Lines break between the spans' words (a word restyled mid-way stays whole), each as tall as its tallest span on one baseline. Markup it cannot read shows as text and logs a warning.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "markup",
+              "type": "String",
+              "optional": false,
+              "doc": "The markup."
+            },
+            {
+              "name": "desc",
+              "type": "RichTextDesc",
+              "optional": true,
+              "doc": "Defaults for its spans: type step, ink, alignment, wrapping, width and font."
+            }
+          ],
+          "returns": "RichTextResult",
+          "publish": true
         },
         {
           "name": "label",
@@ -5580,6 +5743,41 @@
           "doc": "Escape or gamepad B this tick, not taken by a dialog or menu: true once, then taken. A pause screen closes on it.",
           "params": [],
           "returns": "bool",
+          "publish": true
+        },
+        {
+          "name": "setPlayers",
+          "doc": "Local multiplayer: how many players this screen takes (1 to 4; 1 by default). Pads 1 to count - 1 each move a focus of their own among the same controls, shown as a ring in the player's colour (info, success, warn), and their A presses the control under it (Response.pad says which pad); pad 0 shares the one focus with the keyboard and the pointer, and Back and adjusting a slider stay pad 0's. Declare it every tick the screen shows; it takes effect from the next tick, and a dialog's focus scope holds every pad's focus inside it.",
+          "params": [
+            {
+              "name": "count",
+              "type": "u32",
+              "optional": false,
+              "doc": "Players, 1 to 4 (clamped)."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "focus",
+          "doc": "The path of the control pad pad's focus is on in the last frame (pad 0: the shared focus of the pointer, keyboard and pad 0), as touch_move_to resolves it; empty when it is on none.",
+          "params": [
+            {
+              "name": "pad",
+              "type": "u32",
+              "optional": false,
+              "doc": "The pad, 0 to 3; past 3 answers empty."
+            }
+          ],
+          "returns": "String",
+          "publish": true
+        },
+        {
+          "name": "a11y",
+          "doc": "The accessibility tree of the last frame: every element with a role, its name, value, states and bounds, and the focus order Tab walks. A shell mirrors it into the page for screen readers; a playtest reads the same fields on dump_ui's elements.",
+          "params": [],
+          "returns": "A11yTree",
           "publish": true
         },
         {
@@ -7836,6 +8034,12 @@
         "modifiers": {
           "$ref": "#/$defs/Modifiers",
           "description": "Held modifiers; omitted means none."
+        },
+        "at": {
+          "type": "number",
+          "description": "When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5.",
+          "minimum": -1,
+          "maximum": 1
         }
       },
       "required": [
@@ -7874,6 +8078,12 @@
           "maximum": 4294967295,
           "description": "Which pointer: 0 the primary one (the mouse, the first touch; what protocol 5 means), 1 to 4 further touches held at the same time (an engine extension). Omitted is 0.",
           "maximum": 4
+        },
+        "at": {
+          "type": "number",
+          "description": "When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5.",
+          "minimum": -1,
+          "maximum": 1
         }
       },
       "required": [
@@ -7984,6 +8194,12 @@
             "modifiers": {
               "$ref": "#/$defs/Modifiers",
               "description": "Held modifiers; omitted means none."
+            },
+            "at": {
+              "type": "number",
+              "description": "When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5.",
+              "minimum": -1,
+              "maximum": 1
             }
           },
           "required": [
@@ -8025,6 +8241,12 @@
               "maximum": 4294967295,
               "description": "Which pointer: 0 the primary one (the mouse, the first touch; what protocol 5 means), 1 to 4 further touches held at the same time (an engine extension). Omitted is 0.",
               "maximum": 4
+            },
+            "at": {
+              "type": "number",
+              "description": "When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5.",
+              "minimum": -1,
+              "maximum": 1
             }
           },
           "required": [
@@ -8693,11 +8915,18 @@
         "repeat": {
           "type": "boolean",
           "description": "Whether this is an auto-repeat."
+        },
+        "at": {
+          "type": "number",
+          "description": "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.",
+          "minimum": -1,
+          "maximum": 1
         }
       },
       "required": [
         "key",
-        "repeat"
+        "repeat",
+        "at"
       ],
       "additionalProperties": false
     },
@@ -8710,10 +8939,17 @@
         "key": {
           "type": "string",
           "description": "The physical key code."
+        },
+        "at": {
+          "type": "number",
+          "description": "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.",
+          "minimum": -1,
+          "maximum": 1
         }
       },
       "required": [
-        "key"
+        "key",
+        "at"
       ],
       "additionalProperties": false
     },
@@ -8740,13 +8976,20 @@
           "minimum": 0,
           "maximum": 4294967295,
           "description": "Which pointer: 0 the primary one, 1 to 4 further touches (og.Pointers)."
+        },
+        "at": {
+          "type": "number",
+          "description": "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.",
+          "minimum": -1,
+          "maximum": 1
         }
       },
       "required": [
         "x",
         "y",
         "button",
-        "id"
+        "id",
+        "at"
       ],
       "additionalProperties": false
     },
@@ -8773,13 +9016,20 @@
           "minimum": 0,
           "maximum": 4294967295,
           "description": "Which pointer: 0 the primary one, 1 to 4 further touches."
+        },
+        "at": {
+          "type": "number",
+          "description": "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.",
+          "minimum": -1,
+          "maximum": 1
         }
       },
       "required": [
         "x",
         "y",
         "button",
-        "id"
+        "id",
+        "at"
       ],
       "additionalProperties": false
     },
@@ -9518,13 +9768,15 @@
         "webgpu",
         "webgl2",
         "vulkan",
+        "vulkan-cpu",
         "metal",
         "none"
       ],
       "x-og-variants": {
         "webgpu": "WebGPU in a browser: the full feature set.",
         "webgl2": "The WebGL2 fallback: no compute, CPU culling and particles, tiled lights.",
-        "vulkan": "Native Vulkan, on lavapipe or a GPU.",
+        "vulkan": "Native Vulkan on a GPU.",
+        "vulkan-cpu": "Native Vulkan on a CPU rasterizer (Mesa lavapipe or llvmpipe, SwiftShader): the executors' sandboxes. Frame times there say nothing about a player's GPU.",
         "metal": "Native Metal.",
         "none": "No renderer: frames are not produced and capture refuses."
       }
@@ -9573,7 +9825,7 @@
     "StandardMaterialDesc": {
       "x-og-kind": "desc",
       "x-og-module": "render",
-      "description": "A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names.\nIt is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front.\nThe stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults.",
+      "description": "A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names.\nIt is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front.\nThe stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults. clearcoat and clearcoatRoughness add MeshPhysicalMaterial's clear coat (no clearcoat maps).\nnormalMap is read in glTF's tangent frame: red tilts towards +u, green up the image. The tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly.",
       "type": "object",
       "properties": {
         "color": {
@@ -9850,6 +10102,22 @@
           "default": 0,
           "minimum": 0,
           "maximum": 31
+        },
+        "clearcoat": {
+          "type": "number",
+          "description": "A clear lacquer over the surface, as three.js MeshPhysicalMaterial.clearcoat: a second, 4 % reflective specular layer on the surface's normal before normalMap (car paint, varnished wood, wet plastic); 0 is none.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "clearcoatRoughness": {
+          "type": "number",
+          "description": "How rough the clear coat is, as three.js MeshPhysicalMaterial.clearcoatRoughness.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
         }
       },
       "additionalProperties": false
@@ -9945,7 +10213,7 @@
     "PointLight": {
       "x-og-kind": "component",
       "x-og-module": "render",
-      "description": "A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance.\nUp to MAX_LIGHTS point and spot lights are drawn per frame (the rest are counted, not drawn); the first two with castShadow get cube shadows.",
+      "description": "A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance.\nLights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. The first two in view with castShadow get cube shadows.",
       "type": "object",
       "properties": {
         "color": {
@@ -11813,7 +12081,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "How many point and spot lights one frame draws."
+          "description": "How many point and spot lights one frame draws (MAX_LIGHTS on every tier)."
         },
         "maxShadowedLights": {
           "type": "integer",
@@ -12377,12 +12645,11 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt.",
+          "description": "PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt. Set the other one at run time to change profile: the next step builds that profile's simulation from the components (contacts, joints' warm starts, ropes, cloth, fluids and ragdoll bodies start again), so a 3D game can play a 2D scene and back.",
           "default": 3,
           "minimum": 2,
           "maximum": 3,
-          "x-og-label": "Profile",
-          "readOnly": true
+          "x-og-label": "Profile"
         },
         "gravity": {
           "$ref": "#/$defs/Vector3",
@@ -13457,7 +13724,7 @@
     "Cloth": {
       "x-og-kind": "component",
       "x-og-module": "physics",
-      "description": "A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind and collision against every solid collider. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour).",
+      "description": "A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour).",
       "type": "object",
       "properties": {
         "columns": {
@@ -13546,6 +13813,31 @@
           "x-og-unit": "m",
           "x-og-tunable": true
         },
+        "thickness": {
+          "type": "number",
+          "description": "Self-collision: how far apart its points keep from the points of the cloth that are not their near neighbours (0: none). About `spacing` keeps a cloth that folds or piles up from passing through itself.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "substeps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Simulation steps per tick, each integrating and then solving `iterations` passes; with self-collision enough that a point moves less than `thickness` per step (a point moves at most half the thickness a step).",
+          "default": 1,
+          "minimum": 1,
+          "maximum": 16
+        },
+        "friction": {
+          "type": "number",
+          "description": "How much of its sliding a point touching a solid loses each step (0: it slides freely; near 1 it sticks where it lands, so a cloth lowered onto the floor folds instead of spreading).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
         "material": {
           "$ref": "#/$defs/Material",
           "description": "The material it is drawn with (og.render.standardMaterial); 0 is a plain cloth.",
@@ -13562,7 +13854,7 @@
     "Fluid2D": {
       "x-og-kind": "component",
       "x-og-module": "physics",
-      "description": "A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`.",
+      "description": "A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`.",
       "type": "object",
       "properties": {
         "count": {
@@ -13627,6 +13919,29 @@
           "default": 0.15,
           "minimum": 0,
           "maximum": 4,
+          "x-og-tunable": true
+        },
+        "group": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Fluids sharing a group above 0 push, drag and (by `mixing`) mix with each other as one fluid, at most four to a group (in entity order; a fifth is simulated alone), and are drawn as one surface whose colour follows the mix; 0 keeps the fluid to itself.",
+          "default": 0
+        },
+        "density": {
+          "type": "number",
+          "description": "How heavy its particles are against the group's other fluids: a heavier fluid sinks under a lighter one.",
+          "default": 1,
+          "minimum": 0.05,
+          "maximum": 20,
+          "x-og-tunable": true
+        },
+        "mixing": {
+          "type": "number",
+          "description": "How readily it mixes with the group's other fluids: 0 keeps them apart in layers (the boundary held), 1 blends them where they touch (their mix, colour and weight even out).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
           "x-og-tunable": true
         },
         "gravityScale": {
@@ -13876,7 +14191,7 @@
     "Ragdoll": {
       "x-og-kind": "component",
       "x-og-module": "physics",
-      "description": "A ragdoll over an og.Skeleton (3D): a capsule body per bone with a parent, ball joints with cone limits between them, built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state (the og.physics state block), not entities.",
+      "description": "A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy plane at their animated z, for a skeleton laid out in that plane), built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state (the og.physics state block), not entities.",
       "type": "object",
       "properties": {
         "weight": {
@@ -14585,6 +14900,49 @@
           "default": 1.1,
           "minimum": 0,
           "x-og-tunable": true
+        },
+        "moonSize": {
+          "type": "number",
+          "description": "The moon disc's angular radius (0: no moon). It sets below the horizon and hides the stars behind it.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 20,
+          "x-og-unit": "deg",
+          "x-og-tunable": true
+        },
+        "moonPhase": {
+          "type": "number",
+          "description": "How much of the moon is lit: 0 new, 0.25 the first quarter (its right half), 0.5 full, 0.75 the last quarter (its left half).",
+          "default": 0.5,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "moonIntensity": {
+          "type": "number",
+          "description": "The lit moon's brightness.",
+          "default": 1.4,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "moonColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The moon's colour.",
+          "default": {
+            "r": 0.9,
+            "g": 0.92,
+            "b": 1
+          }
+        },
+        "moonDirection": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Towards the moon; zero puts it opposite sunDirection.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
         }
       },
       "additionalProperties": false
@@ -14592,7 +14950,7 @@
     "DayNight": {
       "x-og-kind": "resource",
       "x-og-module": "atmosphere",
-      "description": "A day-night cycle: the time of day drives the sun's direction, the sky's colours and stars, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly.",
+      "description": "A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly.",
       "type": "object",
       "properties": {
         "enabled": {
@@ -14651,6 +15009,24 @@
           "default": 10,
           "minimum": 1,
           "maximum": 120,
+          "x-og-tunable": true
+        },
+        "moonSize": {
+          "type": "number",
+          "description": "The moon disc's angular radius, opposite the sun so it rises as the sun sets (0: no moon).",
+          "default": 1.6,
+          "minimum": 0,
+          "maximum": 20,
+          "x-og-unit": "deg",
+          "x-og-tunable": true
+        },
+        "moonPhase": {
+          "type": "number",
+          "description": "How much of the moon is lit: 0 new, 0.25 the first quarter, 0.5 full, 0.75 the last quarter.",
+          "default": 0.5,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
           "x-og-tunable": true
         }
       },
@@ -15557,6 +15933,116 @@
           },
           "description": "The clips a `clip <motion> \"<name>\"` line may name, by ClipInfo.name: usually og.load.animation's `clips`.",
           "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "Rig": {
+      "x-og-kind": "handle",
+      "x-og-module": "anim",
+      "description": "A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow and the standard bones it names outright.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "HumanBone": {
+      "x-og-kind": "struct",
+      "x-og-module": "anim",
+      "description": "One standard humanoid bone of a skeleton.",
+      "type": "object",
+      "properties": {
+        "bone": {
+          "type": "string",
+          "description": "The standard bone: hips, spine, chest, upperChest, neck, head, then leftShoulder, leftUpperArm, leftLowerArm, leftHand, the right arm, leftUpperLeg, leftLowerLeg, leftFoot, leftToes and the right leg."
+        },
+        "node": {
+          "type": "string",
+          "description": "The skeleton node that is that bone."
+        }
+      },
+      "required": [
+        "bone",
+        "node"
+      ],
+      "additionalProperties": false
+    },
+    "Humanoid": {
+      "x-og-kind": "struct",
+      "x-og-module": "anim",
+      "description": "Which node of a skeleton is each standard humanoid bone (what retargeting maps).",
+      "type": "object",
+      "properties": {
+        "scheme": {
+          "type": "string",
+          "description": "The naming scheme the bones were read in: mixamo, vrm, unity, rigify, ue or blender; custom when a rig named them, none when nothing matched."
+        },
+        "bones": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/HumanBone"
+          },
+          "description": "The bones found, in the standard order (hips first)."
+        }
+      },
+      "required": [
+        "scheme",
+        "bones"
+      ],
+      "additionalProperties": false
+    },
+    "HumanoidDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "anim",
+      "description": "A skeleton and, optionally, the rig that says how its bones are named.",
+      "type": "object",
+      "properties": {
+        "skeleton": {
+          "$ref": "#/$defs/SkeletonAsset",
+          "description": "The skeleton (og.load.animation's `skeleton`).",
+          "default": 0
+        },
+        "rig": {
+          "$ref": "#/$defs/Rig",
+          "description": "A humanoid map from og.load.rig; 0 detects the bones from the node names (Mixamo, VRM, Unity, Rigify, Unreal or Blender names).",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "RetargetDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "anim",
+      "description": "A clip made for one skeleton, to play on another (other proportions, rest pose or bone names).",
+      "type": "object",
+      "properties": {
+        "clip": {
+          "$ref": "#/$defs/ClipAsset",
+          "description": "The clip, made for `source`.",
+          "default": 0
+        },
+        "source": {
+          "$ref": "#/$defs/SkeletonAsset",
+          "description": "The skeleton the clip was made for (og.load.animation's `skeleton`: a character's, or an animation library's).",
+          "default": 0
+        },
+        "target": {
+          "$ref": "#/$defs/SkeletonAsset",
+          "description": "The skeleton that will play it.",
+          "default": 0
+        },
+        "sourceRig": {
+          "$ref": "#/$defs/Rig",
+          "description": "How the source's bones are named (og.load.rig); 0 detects them.",
+          "default": 0
+        },
+        "targetRig": {
+          "$ref": "#/$defs/Rig",
+          "description": "How the target's bones are named; 0 detects them.",
+          "default": 0
+        },
+        "footIk": {
+          "type": "boolean",
+          "description": "Solve the legs so a planted foot stays planted on the target's ground (and the hips lower when a leg cannot reach).",
+          "default": true
         }
       },
       "additionalProperties": false
@@ -16531,6 +17017,13 @@
           "minimum": 0,
           "x-og-unit": "s"
         },
+        "startOffset": {
+          "type": "number",
+          "description": "Where in the sound it starts, in seconds of the sound: started at startAt (or at once) from this far in, to the sample and at full gain, so a resumed phrase continues instead of restarting. Past a one-shot's end it plays nothing; a loop wraps into its region.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
         "fade": {
           "type": "number",
           "description": "Starts, stops and volume changes ramp over this long: a crossfade is one source stopped and another started with the same fade; 0 is 5 ms.",
@@ -16639,6 +17132,14 @@
           "minimum": 0,
           "maximum": 1,
           "x-og-tunable": true
+        },
+        "outputLatency": {
+          "type": "number",
+          "description": "Seconds from a sample's world time to the speaker, as the host reports it (og.audio.outputLatency).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s",
+          "readOnly": true
         }
       },
       "additionalProperties": false
@@ -18294,6 +18795,11 @@
           "minimum": 0,
           "maximum": 4294967295,
           "description": "The tick it was answered at."
+        },
+        "time": {
+          "type": "number",
+          "description": "The host's clock when it answered, UTC milliseconds since 1970 (PlatformInfo.clock says whose); 0 when the host gave none.",
+          "x-og-unit": "ms"
         }
       },
       "required": [
@@ -18301,7 +18807,8 @@
         "method",
         "ok",
         "data",
-        "tick"
+        "tick",
+        "time"
       ],
       "additionalProperties": false
     },
@@ -18327,12 +18834,17 @@
           "minimum": 0,
           "maximum": 4294967295,
           "description": "Calls not answered yet."
+        },
+        "clock": {
+          "type": "string",
+          "description": "Whose clock og.platform.now and the answers' `time` read: `player` (the Player's answers carry its time), `browser` (the web host's own clock: the Player gives no time yet, docs/platform-asks.md), `system` (the native host's system clock), `fixed` (`og run --clock` and playtests: a clock that starts where it is told and moves with the ticks) or `none`."
         }
       },
       "required": [
         "host",
         "capabilities",
-        "pending"
+        "pending",
+        "clock"
       ],
       "additionalProperties": false
     },
@@ -18475,7 +18987,7 @@
         "secondary": "A neutral fill (the default).",
         "primary": "The amber action: one per screen.",
         "quiet": "Text until hovered.",
-        "danger": "A destructive action: danger ink on a neutral fill."
+        "danger": "A destructive action: danger ink on the danger tint."
       }
     },
     "ControlSize": {
@@ -18973,6 +19485,11 @@
           "description": "Scroll its content vertically and clip it.",
           "default": false
         },
+        "scrollX": {
+          "type": "boolean",
+          "description": "Scroll its content horizontally and clip it (with scroll: both ways).",
+          "default": false
+        },
         "interactive": {
           "type": "boolean",
           "description": "Report a Response from close(), as a button does.",
@@ -19196,10 +19713,26 @@
       },
       "additionalProperties": false
     },
+    "ScrollAxes": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "Which ways a scroll container scrolls.",
+      "type": "string",
+      "enum": [
+        "vertical",
+        "horizontal",
+        "both"
+      ],
+      "x-og-variants": {
+        "vertical": "Up and down (the default).",
+        "horizontal": "Left and right.",
+        "both": "Both ways."
+      }
+    },
     "ScrollDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "A vertical scroll container: the wheel or a drag scrolls it, it clips its content, a capsule indicator shows the position.",
+      "description": "A scroll container: the wheel (both axes, deltaX and deltaY) or a drag scrolls it, and a released drag keeps its momentum, slowing over motion.spring.momentum's response (none under reduced motion); it clips its content; a scrollbar on each scrolling axis shows the position, and a press on one grabs and drags it. Nested containers hand off: what the innermost under the pointer cannot take (it reached its end, or does not scroll that way) goes to the one around it.",
       "type": "object",
       "properties": {
         "width": {
@@ -19241,6 +19774,11 @@
           "description": "Space between children.",
           "default": 0,
           "x-og-unit": "cssPx"
+        },
+        "axes": {
+          "$ref": "#/$defs/ScrollAxes",
+          "description": "Which ways it scrolls.",
+          "default": "vertical"
         }
       },
       "additionalProperties": false
@@ -19452,6 +19990,25 @@
             }
           ],
           "description": "A list row or grid cell a press started on was released over this one: that row's or cell's index (drag and drop)."
+        },
+        "pad": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The gamepad (0 to 3) whose A pressed it this tick; null when the pointer or the keyboard did. Pads 1 to 3 press only while og.ui.setPlayers allows them (local multiplayer)."
+        },
+        "focusedBy": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Bit k: pad k's focus is on it (bit 0 is the shared focus of the pointer, the keyboard and pad 0; bits 1 to 3 the other players' pads)."
         }
       },
       "required": [
@@ -19461,7 +20018,9 @@
         "changed",
         "focused",
         "submitted",
-        "dropped"
+        "dropped",
+        "pad",
+        "focusedBy"
       ],
       "additionalProperties": false
     },
@@ -19724,7 +20283,7 @@
               "type": "null"
             }
           ],
-          "description": "The pointer reaches a control.",
+          "description": "The pointer reaches a control, or keyboard or gamepad focus moves to one.",
           "default": null
         },
         "press": {
@@ -19736,7 +20295,7 @@
               "type": "null"
             }
           ],
-          "description": "A control is pressed.",
+          "description": "A control is pressed: by the pointer, Enter, Space or the gamepad's A.",
           "default": null
         },
         "open": {
@@ -19966,6 +20525,106 @@
         "sizes",
         "durationsMs",
         "skin"
+      ],
+      "additionalProperties": false
+    },
+    "RichTextDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "How a rich text paragraph draws: its defaults, which its markup's spans override.",
+      "type": "object",
+      "properties": {
+        "step": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TypeStepName"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The type step; null is body.",
+          "default": null
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The ink; null is fg.",
+          "default": null
+        },
+        "align": {
+          "$ref": "#/$defs/TextAlign",
+          "description": "How the lines align.",
+          "default": "start"
+        },
+        "nowrap": {
+          "type": "boolean",
+          "description": "Keep to one line (breaking only at `\\n`).",
+          "default": false
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null fits the text.",
+          "default": null
+        },
+        "font": {
+          "$ref": "#/$defs/FontRole",
+          "description": "Which font.",
+          "default": "body"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RichTextResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a rich text's links did this tick.",
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/$defs/Response",
+          "description": "Its links together: hovered while one is, clicked when one was."
+        },
+        "link": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The link clicked this tick: its `[link=…]` id."
+        },
+        "hovered": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The link under the pointer."
+        }
+      },
+      "required": [
+        "response",
+        "link",
+        "hovered"
       ],
       "additionalProperties": false
     },
@@ -21439,6 +22098,106 @@
       },
       "additionalProperties": false
     },
+    "A11yNode": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "One node of the accessibility tree: an element with a role (layout containers and spacers have none and are left out).",
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Its path, as touch_move_to and og.ui.focus name it."
+        },
+        "parent": {
+          "type": "string",
+          "description": "The path of the nearest node above it in the tree; empty at the top."
+        },
+        "role": {
+          "type": "string",
+          "description": "Its role (probe.UiElement.role): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, dialog, tooltip, separator, group."
+        },
+        "name": {
+          "type": "string",
+          "description": "Its accessible name: what a screen reader says it is."
+        },
+        "value": {
+          "type": "string",
+          "description": "Its value as text (a slider's number, a progress's percent, a field's text); empty for none."
+        },
+        "states": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Its states: disabled, focused, focusable, checked, selected, expanded, pressed, busy, offscreen (a scroll container cuts it out of view)."
+        },
+        "x": {
+          "type": "number",
+          "description": "Left edge of the whole element.",
+          "x-og-unit": "cssPx"
+        },
+        "y": {
+          "type": "number",
+          "description": "Top edge of the whole element.",
+          "x-og-unit": "cssPx"
+        },
+        "width": {
+          "type": "number",
+          "description": "Width.",
+          "x-og-unit": "cssPx"
+        },
+        "height": {
+          "type": "number",
+          "description": "Height.",
+          "x-og-unit": "cssPx"
+        }
+      },
+      "required": [
+        "path",
+        "parent",
+        "role",
+        "name",
+        "value",
+        "states",
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "additionalProperties": false
+    },
+    "A11yTree": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "The last frame's accessibility tree, built from the same nodes the UI draws and takes input on.",
+      "type": "object",
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/A11yNode"
+          },
+          "description": "The nodes, in tree order: the page, then each layer over it (a dialog after the page)."
+        },
+        "focusOrder": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The paths keyboard Tab and the pads visit, in order: the nodes marked focusable, within the topmost dialog while one is open."
+        },
+        "focused": {
+          "type": "string",
+          "description": "The path keyboard and pad 0's focus is on; empty for none."
+        }
+      },
+      "required": [
+        "nodes",
+        "focusOrder",
+        "focused"
+      ],
+      "additionalProperties": false
+    },
     "CounterDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
@@ -22806,6 +23565,17 @@
           ],
           "description": "The item bought this tick: take the price and grant it."
         },
+        "refused": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The item whose Buy was pressed this tick while the balance was short: the button shook with the error sound (og.ui.shake) and nothing was bought."
+        },
         "closed": {
           "type": "boolean",
           "description": "Close was pressed (or Back)."
@@ -22813,6 +23583,7 @@
       },
       "required": [
         "bought",
+        "refused",
         "closed"
       ],
       "additionalProperties": false
@@ -23418,7 +24189,7 @@
         },
         "message": {
           "type": "string",
-          "description": "What will happen.",
+          "description": "What will happen, as rich text markup (og.ui.richText: [b], [color=…], [icon=…]…), so a translation carries its own emphasis.",
           "default": ""
         },
         "confirmLabel": {
@@ -23478,7 +24249,7 @@
         },
         "message": {
           "type": "string",
-          "description": "The message.",
+          "description": "The message, as rich text markup (og.ui.richText).",
           "default": ""
         },
         "okLabel": {
@@ -23531,7 +24302,7 @@
         "touch_end": "`touch_end`: release the pointer.",
         "scroll": "`scroll:dx,dy`: scroll at the pointer.",
         "touch": "`touch:<id>:<down|move|up>:<x,y | ui id>`: a further touch (pointer 1 to 4) held while the pointer is busy elsewhere.",
-        "gamepad": "`gamepad:<a+b+...|->[:lx,ly[,rx,ry]][:lt,rt]`: set pad 0's whole state; `gamepad:off` disconnects it.",
+        "gamepad": "`gamepad:<a+b+...|->[@pad][:lx,ly[,rx,ry]][:lt,rt]`: set a pad's whole state (pad 0 unless `@1` to `@3` follows the buttons); `gamepad:off` disconnects it.",
         "key_down": "`key_down:<Key>`: hold a key by its code.",
         "key_up": "`key_up:<Key>`: release a key.",
         "type": "`type:<text>`: type text, one key press per character.",
@@ -24679,6 +25450,25 @@
           "type": "string",
           "description": "The text it shows, if any."
         },
+        "role": {
+          "type": "string",
+          "description": "Its accessibility role (og.ui.a11y): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, alert, dialog, tooltip, separator, group; empty for a presentational element (a layout container, a spacer)."
+        },
+        "name": {
+          "type": "string",
+          "description": "Its accessible name: its text, a name the widget gives it (an icon's name, a dialog's title, Decrease and Increase for a stepper's buttons), a control's own text gathered from its children, or else its id."
+        },
+        "value": {
+          "type": "string",
+          "description": "Its value as text: a slider's or stepper's number, a progress's or meter's amount, a field's text, a select's choice; empty for none."
+        },
+        "states": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Its states: disabled, focused, focusable (keys and pads reach it now, in this order), checked, selected, expanded, pressed, busy."
+        },
         "x": {
           "type": "number",
           "description": "Left edge.",
@@ -24707,6 +25497,10 @@
         "disabled",
         "clipped",
         "text",
+        "role",
+        "name",
+        "value",
+        "states",
         "x",
         "y",
         "width",

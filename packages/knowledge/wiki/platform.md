@@ -18,7 +18,7 @@ module platform {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 6353</sub>
+<sub>`api.ogt` line 6535</sub>
 
 ## Contents
 
@@ -47,6 +47,7 @@ module platform {
 | [`og.platform.saveSettings`](#fn-saveSettings) | function | Save the game's settings under `og.settings` (the last save wins), with the same local fallback as loadSettings. |
 | [`og.platform.result`](#fn-result) | function | The answer to a call, once it arrived. |
 | [`og.platform.info`](#fn-info) | function | What answers platform calls here, and what it answers. |
+| [`og.platform.now`](#fn-now) | function | The host's wall-clock time, UTC milliseconds since 1970, as of this tick: what the host last told the engine (when it attached, and with every answer, applied at a tick's start like the answers) moved on by the ticks since. The one wall-clock read game code may make: it is host input, so a replay with the same answers gives the same values. Use it to know how long the game was closed (a save's time against a launch's), never to time play (that is og.Time). |
 
 ## Functions
 
@@ -78,7 +79,7 @@ fn storeGet {
 }
 ```
 
-<sub>`api.ogt` line 6449</sub>
+<sub>`api.ogt` line 6635</sub>
 
 <a id="fn-storeSet"></a>
 
@@ -108,7 +109,7 @@ fn storeSet {
 }
 ```
 
-<sub>`api.ogt` line 6456</sub>
+<sub>`api.ogt` line 6642</sub>
 
 <a id="fn-storeList"></a>
 
@@ -136,7 +137,7 @@ fn storeList {
 }
 ```
 
-<sub>`api.ogt` line 6463</sub>
+<sub>`api.ogt` line 6649</sub>
 
 <a id="fn-leaderboardSubmit"></a>
 
@@ -166,7 +167,7 @@ fn leaderboardSubmit {
 }
 ```
 
-<sub>`api.ogt` line 6469</sub>
+<sub>`api.ogt` line 6655</sub>
 
 <a id="fn-leaderboardTop"></a>
 
@@ -196,7 +197,7 @@ fn leaderboardTop {
 }
 ```
 
-<sub>`api.ogt` line 6476</sub>
+<sub>`api.ogt` line 6662</sub>
 
 <a id="fn-leaderboardAround"></a>
 
@@ -226,7 +227,7 @@ fn leaderboardAround {
 }
 ```
 
-<sub>`api.ogt` line 6483</sub>
+<sub>`api.ogt` line 6669</sub>
 
 <a id="fn-telemetry"></a>
 
@@ -260,7 +261,7 @@ fn telemetry {
 }
 ```
 
-<sub>`api.ogt` line 6490</sub>
+<sub>`api.ogt` line 6676</sub>
 
 <a id="fn-point"></a>
 
@@ -290,7 +291,7 @@ fn point {
 }
 ```
 
-<sub>`api.ogt` line 6500</sub>
+<sub>`api.ogt` line 6686</sub>
 
 <a id="fn-aiMark"></a>
 
@@ -320,7 +321,7 @@ fn aiMark {
 }
 ```
 
-<sub>`api.ogt` line 6507</sub>
+<sub>`api.ogt` line 6693</sub>
 
 <a id="fn-loadSettings"></a>
 
@@ -348,7 +349,7 @@ fn loadSettings {
 }
 ```
 
-<sub>`api.ogt` line 6514</sub>
+<sub>`api.ogt` line 6700</sub>
 
 <a id="fn-saveSettings"></a>
 
@@ -378,7 +379,7 @@ fn saveSettings {
 }
 ```
 
-<sub>`api.ogt` line 6520</sub>
+<sub>`api.ogt` line 6706</sub>
 
 <a id="fn-result"></a>
 
@@ -408,7 +409,7 @@ fn result {
 }
 ```
 
-<sub>`api.ogt` line 6527</sub>
+<sub>`api.ogt` line 6713</sub>
 
 <a id="fn-info"></a>
 
@@ -436,7 +437,35 @@ fn info {
 }
 ```
 
-<sub>`api.ogt` line 6534</sub>
+<sub>`api.ogt` line 6720</sub>
+
+<a id="fn-now"></a>
+
+### `og.platform.now`
+
+The host's wall-clock time, UTC milliseconds since 1970, as of this tick: what the host last told the engine (when it attached, and with every answer, applied at a tick's start like the answers) moved on by the ticks since. The one wall-clock read game code may make: it is host input, so a replay with the same answers gives the same values. Use it to know how long the game was closed (a save's time against a launch's), never to time play (that is og.Time).
+
+```ts
+og.platform.now(world: World): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+
+**Returns** `number`: UTC milliseconds; 0 until a host has told the time (`none`).
+
+Binding symbol `og_platform_now` · publish builds: kept
+
+```ogt
+fn now {
+  doc "The host's wall-clock time, UTC milliseconds since 1970, as of this tick: what the host last told the engine (when it attached, and with every answer, applied at a tick's start like the answers) moved on by the ticks since. The one wall-clock read game code may make: it is host input, so a replay with the same answers gives the same values. Use it to know how long the game was closed (a save's time against a launch's), never to time play (that is og.Time)."
+  param world World "The world."
+  returns f64 "UTC milliseconds; 0 until a host has told the time (`none`)."
+}
+```
+
+<sub>`api.ogt` line 6726</sub>
 
 ## Components, resources and events
 
@@ -461,7 +490,7 @@ event PlatformAnswered {
 }
 ```
 
-<sub>`api.ogt` line 6365</sub>
+<sub>`api.ogt` line 6547</sub>
 
 ## Types
 
@@ -486,7 +515,7 @@ enum PlatformOrder {
 }
 ```
 
-<sub>`api.ogt` line 6359</sub>
+<sub>`api.ogt` line 6541</sub>
 
 <a id="type-StoreSetDesc"></a>
 
@@ -514,7 +543,7 @@ struct StoreSetDesc {
 }
 ```
 
-<sub>`api.ogt` line 6371</sub>
+<sub>`api.ogt` line 6553</sub>
 
 <a id="type-LeaderboardSubmitDesc"></a>
 
@@ -542,7 +571,7 @@ struct LeaderboardSubmitDesc {
 }
 ```
 
-<sub>`api.ogt` line 6380</sub>
+<sub>`api.ogt` line 6562</sub>
 
 <a id="type-LeaderboardQueryDesc"></a>
 
@@ -572,7 +601,7 @@ struct LeaderboardQueryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6390</sub>
+<sub>`api.ogt` line 6572</sub>
 
 <a id="type-PointDesc"></a>
 
@@ -600,7 +629,7 @@ struct PointDesc {
 }
 ```
 
-<sub>`api.ogt` line 6403</sub>
+<sub>`api.ogt` line 6585</sub>
 
 <a id="type-AiMarkDesc"></a>
 
@@ -626,7 +655,7 @@ struct AiMarkDesc {
 }
 ```
 
-<sub>`api.ogt` line 6414</sub>
+<sub>`api.ogt` line 6596</sub>
 
 <a id="type-PlatformError"></a>
 
@@ -651,7 +680,7 @@ struct PlatformError {
 }
 ```
 
-<sub>`api.ogt` line 6422</sub>
+<sub>`api.ogt` line 6604</sub>
 
 <a id="type-PlatformResult"></a>
 
@@ -667,6 +696,7 @@ The answer to one call.
 | `data` | `unknown` | `null` | — | — | — | The answer (see each function); null on failure. |
 | `error` | `PlatformError` | `{ code: "", message: "", retryable: false, revision: 0 }` | — | — | optional | Why it failed. |
 | `tick` | `number` | `0` | — | — | — | The tick it was answered at. |
+| `time` | `number` | `0` | — | `ms` | — | The host's clock when it answered, UTC milliseconds since 1970 (PlatformInfo.clock says whose); 0 when the host gave none. |
 
 ```ogt
 struct PlatformResult {
@@ -679,10 +709,13 @@ struct PlatformResult {
     optional true
   }
   field tick u32 "The tick it was answered at."
+  field time f64 "The host's clock when it answered, UTC milliseconds since 1970 (PlatformInfo.clock says whose); 0 when the host gave none." {
+    unit ms
+  }
 }
 ```
 
-<sub>`api.ogt` line 6430</sub>
+<sub>`api.ogt` line 6612</sub>
 
 <a id="type-PlatformInfo"></a>
 
@@ -695,6 +728,7 @@ What answers platform calls here.
 | `host` | `string` | `""` | — | — | — | `player` (a Player frames the game), `local` (the native host's JSON store or the browser's own storage) or `none`. |
 | `capabilities` | `readonly string[]` | `[]` | — | — | — | The methods it answers: store.get, store.set, store.list, leaderboard.submit, leaderboard.top, leaderboard.around, telemetry, point, ai.mark. |
 | `pending` | `number` | `0` | — | — | — | Calls not answered yet. |
+| `clock` | `string` | `""` | — | — | — | Whose clock og.platform.now and the answers' `time` read: `player` (the Player's answers carry its time), `browser` (the web host's own clock: the Player gives no time yet, docs/platform-asks.md), `system` (the native host's system clock), `fixed` (`og run --clock` and playtests: a clock that starts where it is told and moves with the ticks) or `none`. |
 
 ```ogt
 struct PlatformInfo {
@@ -702,7 +736,8 @@ struct PlatformInfo {
   field host String "`player` (a Player frames the game), `local` (the native host's JSON store or the browser's own storage) or `none`."
   field capabilities List.String "The methods it answers: store.get, store.set, store.list, leaderboard.submit, leaderboard.top, leaderboard.around, telemetry, point, ai.mark."
   field pending u32 "Calls not answered yet."
+  field clock String "Whose clock og.platform.now and the answers' `time` read: `player` (the Player's answers carry its time), `browser` (the web host's own clock: the Player gives no time yet, docs/platform-asks.md), `system` (the native host's system clock), `fixed` (`og run --clock` and playtests: a clock that starts where it is told and moves with the ticks) or `none`."
 }
 ```
 
-<sub>`api.ogt` line 6442</sub>
+<sub>`api.ogt` line 6627</sub>

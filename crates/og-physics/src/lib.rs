@@ -15,7 +15,7 @@
 //! | [`Rope`], [`Cloth`] | Verlet ropes and cloth pinned to entities, colliding with solids; [`PhysicsSystem::rope_points`], [`PhysicsSystem::cloth_points`] |
 //! | [`Fluid2D`] | a 2D particle fluid (double density relaxation); [`PhysicsSystem::fluid_particles`] |
 //! | [`WaterSurface`], [`WaterLine`], [`Splash`] | height-field water (3D) and a 2D spring line, splashed by and floating bodies |
-//! | [`Ragdoll`], [`RagdollRig`] | capsule bones and ball joints from a host-registered rig, blended between animation and physics |
+//! | [`Ragdoll`], [`RagdollRig`] | capsule bones and joints (ball joints in 3D, hinges about z in 2D) from a host-registered rig, blended between animation and physics |
 //!
 //! Everything beyond rigid bodies lives in the same rapier world and the
 //! same state block: joints and the wheel and bone bodies in rapier's
@@ -732,6 +732,17 @@ impl PhysicsSystem {
             .map(|f| f.positions.clone()))
     }
 
+    /// The mix of the og.Fluid2D on `entity` when it shares a group: its
+    /// lane in the group (entity order) and, per particle, how much of it
+    /// is each lane's fluid (summing to 1). `None` for a fluid alone.
+    pub fn fluid_mix(&self, entity: Entity) -> Option<(u32, Vec<[f32; 4]>)> {
+        with_sim!(self.shared, |s| s
+            .fluids
+            .get(&entity.to_bits())
+            .filter(|f| f.slot != u32::MAX)
+            .map(|f| (f.slot, f.mix.clone())))
+    }
+
     /// The heights of the og.WaterSurface on `entity`.
     pub fn water_heights(&self, entity: Entity) -> Option<WaterHeights> {
         with_sim!(self.shared, |s| s.surfaces.get(&entity.to_bits()).map(
@@ -769,12 +780,17 @@ impl PhysicsSystem {
     }
 
     /// The bones of the og.Ragdoll on `entity` as the bodies hold them
-    /// (rig order, world space); `None` before its first step or in 2D.
+    /// (rig order, world space; in 2D at their targets' z); `None` before
+    /// its first step.
     pub fn ragdoll_pose(&self, entity: Entity) -> Option<Vec<(Vec3, Quat)>> {
         let shared = lock(&self.shared);
         #[cfg(feature = "physics3d")]
         if let Some(s) = shared.sim3.as_deref() {
             return dim3::ragdoll_pose(s, entity.to_bits());
+        }
+        #[cfg(feature = "physics2d")]
+        if let Some(s) = shared.sim2.as_deref() {
+            return dim2::ragdoll_pose(s, entity.to_bits());
         }
         None
     }

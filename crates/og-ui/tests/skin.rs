@@ -359,6 +359,223 @@ fn a_refused_press_shakes_the_button_and_queues_the_error_sound() {
     assert_eq!(sounds, vec![(UiSound::Press, 7)]);
 }
 
+#[test]
+fn keyboard_and_gamepad_focus_moves_sound_as_the_pointer_does() {
+    // Ways it could fail: a focus move by key or pad is silent (only the
+    // pointer reaching a control sounded), activation by Enter or A makes
+    // no press sound, or a move that lands where focus already was sounds.
+    let file = parse_skin(SKIN).expect("the test skin parses");
+    let mut ui = ui_with_font(test_font_metrics());
+    let mut sounds = [0u64; 6];
+    sounds[UiSound::Hover as usize] = 5;
+    sounds[UiSound::Press as usize] = 7;
+    ui.set_theme(file.theme(Some(atlas()), sounds));
+    let build = |ui: &mut Ui, input: InputFrame| {
+        ui.begin(input, Viewport::new(800.0, 600.0));
+        ui.column("Menu", Element::column(), |ui| {
+            ui.button("A", "A", ButtonDesc::default());
+            ui.button("B", "B", ButtonDesc::default());
+        });
+        ui.end();
+    };
+    for _ in 0..3 {
+        build(&mut ui, InputFrame::default());
+    }
+    assert!(
+        ui.take_sounds().is_empty(),
+        "nothing sounds before an input"
+    );
+    let key = |k: UiKey| InputFrame {
+        keys: vec![k],
+        ..InputFrame::default()
+    };
+    let heard =
+        |ui: &mut Ui| -> Vec<UiSound> { ui.take_sounds().into_iter().map(|(e, _)| e).collect() };
+    build(&mut ui, key(UiKey::Tab));
+    assert_eq!(heard(&mut ui), vec![UiSound::Hover], "Tab onto A sounds");
+    build(&mut ui, key(UiKey::Down));
+    assert_eq!(heard(&mut ui), vec![UiSound::Hover], "Down onto B sounds");
+    let pad = |bit: u32| InputFrame {
+        gamepad: GamepadFrame {
+            pressed: bit,
+            ..GamepadFrame::default()
+        },
+        ..InputFrame::default()
+    };
+    build(&mut ui, pad(GamepadFrame::UP));
+    assert_eq!(
+        heard(&mut ui),
+        vec![UiSound::Hover],
+        "the d-pad onto A sounds"
+    );
+    build(&mut ui, key(UiKey::Enter));
+    assert_eq!(
+        heard(&mut ui),
+        vec![UiSound::Press],
+        "Enter presses A and sounds"
+    );
+    build(&mut ui, pad(GamepadFrame::A));
+    assert_eq!(
+        heard(&mut ui),
+        vec![UiSound::Press],
+        "the pad's A presses and sounds"
+    );
+    // One focusable control: a move that lands where focus already is stays silent.
+    let lone = |ui: &mut Ui, input: InputFrame| {
+        ui.begin(input, Viewport::new(800.0, 600.0));
+        ui.button("Only", "Only", ButtonDesc::default());
+        ui.end();
+    };
+    for _ in 0..2 {
+        lone(&mut ui, InputFrame::default());
+    }
+    lone(&mut ui, key(UiKey::Tab));
+    heard(&mut ui);
+    lone(&mut ui, key(UiKey::Tab));
+    assert!(
+        heard(&mut ui).is_empty(),
+        "Tab on the only control moves nothing and is silent"
+    );
+}
+
+/// The `Go` button's top edge over `n` ticks of `input` under `skin`.
+fn tops(ui: &mut Ui, input: &InputFrame, n: usize) -> Vec<f32> {
+    (0..n)
+        .map(|_| {
+            step(ui, input.clone(), false);
+            ui.frame().element("Go").expect("the button").y
+        })
+        .collect()
+}
+
+#[test]
+fn the_hover_lift_and_the_press_move_on_springs() {
+    // Ways it could fail: the lift jumps to its end in a tick (no motion),
+    // eases on a curve that ignores the skin's spring (no overshoot at a
+    // low damping), never settles exactly, settles somewhere else, or
+    // differs after a restore; the press squash does not spring back past
+    // rest on release.
+    let springy = SKIN.replace("  pop 0.12\n", "  pop 0.12\n  hoverSpring 0.3 300\n");
+    for (text, bounces) in [(SKIN.to_string(), false), (springy, true)] {
+        let file = parse_skin(&text).expect("the skin parses");
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.set_theme(file.theme(Some(atlas()), [0; 6]));
+        for _ in 0..30 {
+            step(&mut ui, InputFrame::default(), false);
+        }
+        let rest = ui.frame().element("Go").unwrap().clone();
+        let (x, y) = rest.center();
+        let over = InputFrame::hover(x, y);
+        let ys = tops(&mut ui, &over, 150);
+        let end = ys[149];
+        assert!(
+            end < rest.y - 1.5,
+            "it lifts by the skin's 2 px: {} to {end}",
+            rest.y
+        );
+        assert_eq!(ys[148], end, "and settles exactly: {ys:?}");
+        assert!(
+            ys[1] > end + 0.5 && ys[1] < rest.y,
+            "moving over several ticks, not at once: {ys:?}"
+        );
+        let lowest = ys.iter().copied().fold(f32::INFINITY, f32::min);
+        if bounces {
+            assert!(
+                lowest < end - 0.3,
+                "a damping of 0.3 overshoots the lift: {ys:?}"
+            );
+        } else {
+            assert!(lowest >= end - 1e-4, "damping 1 never overshoots: {ys:?}");
+        }
+        // A restore mid-motion replays the same positions.
+        step(&mut ui, InputFrame::hover(0.0, 0.0), false);
+        let saved = ui.save_state();
+        let a = tops(&mut ui, &over, 12);
+        ui.restore_state(&saved).unwrap();
+        let b = tops(&mut ui, &over, 12);
+        assert_eq!(a, b, "the spring is UI state");
+    }
+    // The press: held, the frame squashes towards sy 0.92; released, it
+    // springs back past its rest height before settling.
+    let file = parse_skin(SKIN).unwrap();
+    let mut ui = ui_with_font(test_font_metrics());
+    let tex = atlas();
+    ui.set_theme(file.theme(Some(tex), [0; 6]));
+    for _ in 0..30 {
+        step(&mut ui, InputFrame::default(), false);
+    }
+    let (x, y) = ui.frame().element("Go").unwrap().center();
+    // The button's frame: the nine pieces cut from the atlas's button
+    // region (u 0.25 to 0.5 of the test atlas); their extent is its height.
+    let frame_h = |ui: &Ui| {
+        let (mut top, mut bottom) = (f32::INFINITY, f32::NEG_INFINITY);
+        for item in &ui.frame().items {
+            if let DrawCmd::Image {
+                rect,
+                texture: Some(t),
+                uv,
+                ..
+            } = &item.cmd
+                && *t == tex
+                && uv[0] >= 0.25
+                && uv[2] <= 0.5
+            {
+                top = top.min(rect.y);
+                bottom = bottom.max(rect.bottom());
+            }
+        }
+        bottom - top
+    };
+    // Hovered until the lift has settled: the rest height under the pointer.
+    for _ in 0..120 {
+        step(&mut ui, InputFrame::hover(x, y), false);
+    }
+    let rest_h = frame_h(&ui);
+    step(&mut ui, press_at(x, y), false);
+    let first = frame_h(&ui);
+    let held = InputFrame {
+        pointer: Vec2::new(x, y),
+        pointer_inside: true,
+        down: true,
+        ..InputFrame::default()
+    };
+    let mut hs = vec![first];
+    for _ in 0..20 {
+        step(&mut ui, held.clone(), false);
+        hs.push(frame_h(&ui));
+    }
+    assert!(
+        first < rest_h && first > rest_h * 0.92 + 0.1,
+        "the press starts squashing at once: {rest_h} then {hs:?}"
+    );
+    let squashed = *hs.last().unwrap();
+    assert!(
+        (squashed - rest_h * 0.92).abs() < 0.2,
+        "and reaches sy 0.92 while held: {hs:?}"
+    );
+    let release = InputFrame {
+        pointer: Vec2::new(x, y),
+        pointer_inside: true,
+        released: true,
+        ..InputFrame::default()
+    };
+    step(&mut ui, release, false);
+    let mut back = vec![frame_h(&ui)];
+    for _ in 0..30 {
+        step(&mut ui, InputFrame::hover(x, y), false);
+        back.push(frame_h(&ui));
+    }
+    let tallest = back.iter().copied().fold(0.0, f32::max);
+    assert!(
+        tallest > rest_h + 0.1,
+        "released, it springs past its rest height: {rest_h} then {back:?}"
+    );
+    assert!(
+        (back[30] - rest_h).abs() < 0.01,
+        "and settles at rest: {back:?}"
+    );
+}
+
 fn press_at(x: f32, y: f32) -> InputFrame {
     InputFrame {
         pointer: Vec2::new(x, y),
@@ -562,4 +779,93 @@ fn the_probe_names_each_elements_kind_and_a_disabled_control() {
     assert_eq!((on.kind.as_str(), on.disabled), ("button", false));
     assert_eq!(f.element("Menu/Title").unwrap().kind, "label");
     assert_eq!(f.element("Heart").unwrap().kind, "icon");
+}
+
+/// A skin's `glass <part> <blur> <fill> <tint>` line (here the card a
+/// panel is dressed as): the part draws a
+/// glass panel (og-render's blurred frame) of its own rectangle and
+/// radius under its nine-slice, tinted by its fill colour, and its
+/// nine-slice at `fill` of its opacity; a skin without it draws no glass.
+///
+/// Ways it could fail: the line is not read, the glass is drawn over the
+/// panel's frame (a later painter level) or at another rectangle, or the
+/// frame keeps its full opacity and hides the glass.
+#[test]
+fn a_glass_part_draws_the_blurred_frame_under_its_thinned_nine_slice() {
+    let frame_of = |skin: &str| {
+        let file = parse_skin(skin).expect("the skin parses");
+        let tex = atlas();
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.set_theme(file.theme(Some(tex), [0; 6]));
+        for _ in 0..30 {
+            step(&mut ui, InputFrame::default(), false);
+        }
+        let menu = ui.frame().element("Menu").expect("the panel").clone();
+        let glass: Vec<(i32, Rect, f32, f32, [f32; 4])> = ui
+            .frame()
+            .items
+            .iter()
+            .filter_map(|i| match &i.cmd {
+                DrawCmd::Glass {
+                    rect,
+                    radius,
+                    blur,
+                    tint,
+                    ..
+                } => Some((i.level, *rect, *radius, *blur, *tint)),
+                _ => None,
+            })
+            .collect();
+        // The panel's centre piece: the atlas image filling most of it, inside
+        // it (the shadow's soft centre lies 6 px lower).
+        let centre = ui
+            .frame()
+            .items
+            .iter()
+            .filter_map(|i| match &i.cmd {
+                DrawCmd::Image {
+                    rect,
+                    texture: Some(t),
+                    color,
+                    ..
+                } if *t == tex
+                    && rect.width > menu.width * 0.5
+                    && rect.height > menu.height * 0.5
+                    && rect.x >= menu.x - 0.01
+                    && rect.y >= menu.y - 0.01
+                    && rect.right() <= menu.x + menu.width + 0.01
+                    && rect.bottom() <= menu.y + menu.height + 0.01 =>
+                {
+                    Some((i.level, color[3]))
+                }
+                _ => None,
+            })
+            .next()
+            .expect("the panel's centre piece");
+        (menu, glass, centre, ui.theme().radius.card)
+    };
+    let (_, none, (_, solid), _) = frame_of(SKIN);
+    assert!(none.is_empty(), "no glass without the line");
+    let glassy = SKIN.replace("glow button", "glass card 16 0.5 0.2\nglow button");
+    let (menu, glass, (level, thin), card_radius) = frame_of(&glassy);
+    assert_eq!(glass.len(), 1, "one glass panel: {glass:?}");
+    let (glevel, rect, radius, blur, tint) = glass[0];
+    assert!(
+        (rect.x - menu.x).abs() < 0.01
+            && (rect.y - menu.y).abs() < 0.01
+            && (rect.width - menu.width).abs() < 0.01
+            && (rect.height - menu.height).abs() < 0.01,
+        "the glass is the panel's rectangle: {rect:?} against {menu:?}"
+    );
+    assert_eq!(
+        (radius, blur),
+        (card_radius, 16.0),
+        "the card's radius and the line's blur"
+    );
+    assert!((tint[3] - 0.2).abs() < 1e-6, "the line's tint share");
+    assert!(glevel < level, "the glass is under the panel's frame");
+    assert!(
+        (thin - solid * 0.5).abs() < 1e-3,
+        "the frame is drawn at the line's fill: {thin} against {solid}"
+    );
 }

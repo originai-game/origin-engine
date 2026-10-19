@@ -5,7 +5,7 @@
 //   bun src/node/run.ts --entry <game.js|.ts> [--root <project>] [--ticks N] [--seed S]
 //       [--setup action[:arg...]]... [--commands "t:action[:args];..."] [--out <dir>]
 //       [--port P] [--size WxH] [--realtime] [--watch <bundle.js>] [--no-render]
-//       [--audio null|device|<out.wav>] [--platform-store <file.json>] [--locale <tag>] [--json]
+//       [--audio null|device|<out.wav>] [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--json]
 //
 // - Without --commands, --port or --watch: advance --ticks N at once and print
 //   the world hash (M2's hello world).
@@ -27,7 +27,7 @@ import { pathToFileURL } from "node:url";
 import { loadNativeHost, native } from "./index.ts";
 import { openAudio, type AudioSink } from "./audio.ts";
 import { nativePlatform } from "./platform.ts";
-import { beginBundle, createEngine, type Engine, type GameToken } from "../runtime.ts";
+import { beginBundle, createEngine, fixedClock, type Engine, type GameToken } from "../runtime.ts";
 
 const argv = process.argv.slice(2);
 let entry = "";
@@ -45,6 +45,7 @@ let asJson = false;
 let audioOut = "null";
 let platformStore: string | undefined;
 let locale: string | undefined;
+let clock: number | undefined;
 const setup: string[] = [];
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i]!;
@@ -72,6 +73,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--audio") audioOut = next();
   else if (a === "--platform-store") platformStore = resolve(next());
   else if (a === "--locale") locale = next();
+  else if (a === "--clock") clock = Number(next());
   else if (a === "--headless") {
     // Native runs are always headless; accepted for `og run --headless`.
   } else fail(`unknown argument '${a}'`);
@@ -85,6 +87,7 @@ function fail(reason: string): never {
 if (!entry) fail("no game entry: pass --entry <file>");
 if (ticks !== undefined && (!Number.isInteger(ticks) || ticks < 0)) fail("--ticks takes a whole number of fixed steps");
 if (seed !== undefined && (!Number.isInteger(seed) || seed < 0)) fail("--seed takes a whole number");
+if (clock !== undefined && !(Number.isFinite(clock) && clock > 0)) fail("--clock takes UTC milliseconds since 1970, such as 1767225600000");
 if (port !== undefined && (!Number.isInteger(port) || port < 0 || port > 65535)) fail("--port takes 0 (a free port) to 65535");
 
 loadNativeHost();
@@ -126,7 +129,9 @@ const deferStart = probing && render;
 const created = createEngine(game, { ...(seed === undefined ? {} : { seed }), ...(root ? { root } : {}), ...(profile ? { profile } : {}), ...(locale ? { locale } : {}), ...(deferStart ? { deferStart } : {}) });
 if (!created.ok) fail(`${entry}: ${created.reason}`);
 const engine: Engine = created.value;
-// og.platform: the local store, in memory unless --platform-store names a file.
+// og.platform: the local store, in memory unless --platform-store names a file;
+// its clock the system's, or with --clock one that starts there and moves with the ticks.
+if (clock !== undefined) engine.setClock(fixedClock(engine, clock));
 engine.attachPlatform(nativePlatform(platformStore));
 // One sink per engine, pumped after every step (crates/og-audio/README.md
 // §Host contract): null keeps the stream drained, a .wav path captures it.

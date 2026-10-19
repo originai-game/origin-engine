@@ -87,6 +87,9 @@ pub struct AudioSource {
     /// Starts at this world time (seconds since tick 0), sample-accurately, even inside a tick; 0 or a time past starts at once. og.Music.nextBar gives bar-aligned times.
     #[reflect(name = "startAt", min = 0, unit = "s")]
     pub start_at: f64,
+    /// Where in the sound it starts, in seconds of the sound: a resumed phrase continues from where it was, to the sample; past a one-shot's end it plays nothing. A loop wraps into its region.
+    #[reflect(name = "startOffset", min = 0, unit = "s")]
+    pub start_offset: f64,
     /// Starts, stops and volume changes ramp over this long (crossfades, stems brought in and out); 0 is 5 ms.
     #[reflect(min = 0, max = 30, unit = "s", tunable)]
     pub fade: f32,
@@ -113,6 +116,7 @@ impl Default for AudioSource {
             occlude: false,
             distance_cutoff: 0.0,
             start_at: 0.0,
+            start_offset: 0.0,
             fade: 0.0,
         }
     }
@@ -182,6 +186,9 @@ pub struct Audio {
     /// The shared reverb's damping of high frequencies.
     #[reflect(name = "reverbDamping", min = 0, max = 1, default = 0.4, tunable)]
     pub reverb_damping: f32,
+    /// Seconds from a sample's world time to the speaker, as the host reports it between ticks (og.audio.outputLatency); 0 headless.
+    #[reflect(name = "outputLatency", min = 0, unit = "s")]
+    pub output_latency: f64,
 }
 
 impl Default for Audio {
@@ -196,6 +203,7 @@ impl Default for Audio {
             occlusion_cutoff: 900.0,
             reverb_room: 0.6,
             reverb_damping: 0.4,
+            output_latency: 0.0,
         }
     }
 }

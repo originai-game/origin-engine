@@ -14,7 +14,7 @@ module render {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1553</sub>
+<sub>`api.ogt` line 1581</sub>
 
 ## Contents
 
@@ -75,12 +75,14 @@ module render {
 | [`og.render.boxGeometry`](#fn-boxGeometry) | function | Make a box geometry for og.Mesh. Physics can use it as a convex or triangle-mesh Collider.mesh too. |
 | [`og.render.planeGeometry`](#fn-planeGeometry) | function | Make a plane geometry for og.Mesh. Physics can use it as a triangle-mesh Collider.mesh too. |
 | [`og.render.sphereGeometry`](#fn-sphereGeometry) | function | Make a sphere geometry for og.Mesh (give its body a sphere Collider, not this mesh). |
-| [`MAX_LIGHTS`](#const-MAX_LIGHTS) | constant | The most point and spot lights one frame draws. |
+| [`MAX_LIGHTS`](#const-MAX_LIGHTS) | constant | The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept. |
+| [`MAX_CLUSTER_LIGHTS`](#const-MAX_CLUSTER_LIGHTS) | constant | The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there. |
 | [`RenderCapabilities`](#type-RenderCapabilities) | struct | What the renderer can do on this device. Backend limits are reported here, never by missing members. |
 | [`og.render.standardMaterial`](#fn-standardMaterial) | function | Create a standard material. |
 | [`og.render.updateMaterial`](#fn-updateMaterial) | function | Change some parameters of a standard material. |
 | [`Shader`](#type-Shader) | handle | A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read. |
-| [`og.render.shaderMaterial`](#fn-shaderMaterial) | function | Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. Skinned meshes draw it without the hooks; shadows and the depth prepass use the undisplaced mesh. |
+| [`og.render.shaderMaterial`](#fn-shaderMaterial) | function | Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. The hooks apply to skinned meshes too, and shadows and the depth prepass (ambient occlusion, outlines, depth of field) see the mesh where vertex_offset moved it and cut where surface_color's alpha falls below alphaTest. |
+| [`og.render.setMaterialShader`](#fn-setMaterialShader) | function | Give an existing material a material shader, or take it away with null: a loaded model's material (GltfInfo.materials) draws its skinned or static meshes through the hooks, with the shader's parameters at their defaults. Every mesh drawn with that material changes. |
 | [`og.render.setShaderParam`](#fn-setShaderParam) | function | Set a parameter of a shader material, by the name its shader declares: a number for float, two to four for vec2, vec3, vec4 and color. |
 | [`og.render.capabilities`](#fn-capabilities) | function | The renderer's tier and limits on this device. |
 | [`og.render.text`](#fn-text) | function | Draw text this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the text should show. Multi-page fonts are drawn page by page with one layout. |
@@ -115,7 +117,7 @@ fn ribbon {
 }
 ```
 
-<sub>`api.ogt` line 2308</sub>
+<sub>`api.ogt` line 2348</sub>
 
 <a id="fn-sprite"></a>
 
@@ -145,7 +147,7 @@ fn sprite {
 }
 ```
 
-<sub>`api.ogt` line 2424</sub>
+<sub>`api.ogt` line 2464</sub>
 
 <a id="fn-floatingText"></a>
 
@@ -175,7 +177,7 @@ fn floatingText {
 }
 ```
 
-<sub>`api.ogt` line 2588</sub>
+<sub>`api.ogt` line 2628</sub>
 
 <a id="fn-measureText"></a>
 
@@ -205,7 +207,7 @@ fn measureText {
 }
 ```
 
-<sub>`api.ogt` line 2595</sub>
+<sub>`api.ogt` line 2635</sub>
 
 <a id="fn-boxGeometry"></a>
 
@@ -235,7 +237,7 @@ fn boxGeometry {
 }
 ```
 
-<sub>`api.ogt` line 2655</sub>
+<sub>`api.ogt` line 2695</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -265,7 +267,7 @@ fn planeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 2662</sub>
+<sub>`api.ogt` line 2702</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -295,7 +297,7 @@ fn sphereGeometry {
 }
 ```
 
-<sub>`api.ogt` line 2669</sub>
+<sub>`api.ogt` line 2709</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -325,7 +327,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 2689</sub>
+<sub>`api.ogt` line 2730</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -357,13 +359,13 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 2696</sub>
+<sub>`api.ogt` line 2737</sub>
 
 <a id="fn-shaderMaterial"></a>
 
 ### `og.render.shaderMaterial`
 
-Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. Skinned meshes draw it without the hooks; shadows and the depth prepass use the undisplaced mesh.
+Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. The hooks apply to skinned meshes too, and shadows and the depth prepass (ambient occlusion, outlines, depth of field) see the mesh where vertex_offset moved it and cut where surface_color's alpha falls below alphaTest.
 
 ```ts
 og.render.shaderMaterial(world: World, shader: Shader, desc?: StandardMaterialDesc): Result<Material>
@@ -381,7 +383,7 @@ Binding symbol `og_render_shader_material` · publish builds: kept
 
 ```ogt
 fn shaderMaterial {
-  doc "Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. Skinned meshes draw it without the hooks; shadows and the depth prepass use the undisplaced mesh."
+  doc "Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. The hooks apply to skinned meshes too, and shadows and the depth prepass (ambient occlusion, outlines, depth of field) see the mesh where vertex_offset moved it and cut where surface_color's alpha falls below alphaTest."
   param world World "The world whose renderer owns the material."
   param shader Shader "The shader."
   param desc StandardMaterialDesc "The base material; omitted parameters take three.js defaults. A dissolve sets alphaTest so that alpha below it is cut."
@@ -389,7 +391,39 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 2706</sub>
+<sub>`api.ogt` line 2747</sub>
+
+<a id="fn-setMaterialShader"></a>
+
+### `og.render.setMaterialShader`
+
+Give an existing material a material shader, or take it away with null: a loaded model's material (GltfInfo.materials) draws its skinned or static meshes through the hooks, with the shader's parameters at their defaults. Every mesh drawn with that material changes.
+
+```ts
+og.render.setMaterialShader(world: World, material: Material, shader: Shader | null): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the material. |
+| `material` | `Material` | no | The material, from og.render.standardMaterial, og.render.shaderMaterial or a loaded glTF. |
+| `shader` | `Shader \| null` | no | The shader, or null to draw the material plain again. |
+
+**Returns** `Result<void>`: Refused for a dead material or a shader not loaded in this world.
+
+Binding symbol `og_render_set_material_shader` · publish builds: kept
+
+```ogt
+fn setMaterialShader {
+  doc "Give an existing material a material shader, or take it away with null: a loaded model's material (GltfInfo.materials) draws its skinned or static meshes through the hooks, with the shader's parameters at their defaults. Every mesh drawn with that material changes."
+  param world World "The world whose renderer owns the material."
+  param material Material "The material, from og.render.standardMaterial, og.render.shaderMaterial or a loaded glTF."
+  param shader Option.Shader "The shader, or null to draw the material plain again."
+  returns Result.Void "Refused for a dead material or a shader not loaded in this world."
+}
+```
+
+<sub>`api.ogt` line 2755</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -404,7 +438,7 @@ og.render.setShaderParam(world: World, material: Material, name: string, value: 
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `world` | `World` | no | The world whose renderer owns the material. |
-| `material` | `Material` | no | A material made by og.render.shaderMaterial. |
+| `material` | `Material` | no | A material made by og.render.shaderMaterial or given a shader by og.render.setMaterialShader. |
 | `name` | `string` | no | The parameter's name. |
 | `value` | `readonly number[]` | no | Its value; missing components are 0. |
 
@@ -416,14 +450,14 @@ Binding symbol `og_render_set_shader_param` · publish builds: kept
 fn setShaderParam {
   doc "Set a parameter of a shader material, by the name its shader declares: a number for float, two to four for vec2, vec3, vec4 and color."
   param world World "The world whose renderer owns the material."
-  param material Material "A material made by og.render.shaderMaterial."
+  param material Material "A material made by og.render.shaderMaterial or given a shader by og.render.setMaterialShader."
   param name String "The parameter's name."
   param value List.f32 "Its value; missing components are 0."
   returns Result.Void "Refused for a material without a shader or a parameter its shader does not declare."
 }
 ```
 
-<sub>`api.ogt` line 2714</sub>
+<sub>`api.ogt` line 2763</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -451,7 +485,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 2723</sub>
+<sub>`api.ogt` line 2772</sub>
 
 <a id="fn-text"></a>
 
@@ -481,7 +515,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 2729</sub>
+<sub>`api.ogt` line 2778</sub>
 
 ## Components, resources and events
 
@@ -527,7 +561,7 @@ component Mesh {
 }
 ```
 
-<sub>`api.ogt` line 1705</sub>
+<sub>`api.ogt` line 1745</sub>
 
 <a id="record-DirectionalLight"></a>
 
@@ -569,7 +603,7 @@ component DirectionalLight {
 }
 ```
 
-<sub>`api.ogt` line 1725</sub>
+<sub>`api.ogt` line 1765</sub>
 
 <a id="record-PointLight"></a>
 
@@ -577,7 +611,7 @@ component DirectionalLight {
 
 A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance.
 
-Up to MAX_LIGHTS point and spot lights are drawn per frame (the rest are counted, not drawn); the first two with castShadow get cube shadows.
+Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. The first two in view with castShadow get cube shadows.
 
 Token `og.PointLight`, registered under the schema name `og.PointLight`; its value type is `PointLight`.
 
@@ -591,7 +625,7 @@ Token `og.PointLight`, registered under the schema name `og.PointLight`; its val
 ```ogt
 component PointLight {
   doc "A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance."
-  doc "Up to MAX_LIGHTS point and spot lights are drawn per frame (the rest are counted, not drawn); the first two with castShadow get cube shadows."
+  doc "Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. The first two in view with castShadow get cube shadows."
   field color Color "The light's linear colour." {
     default 1 1 1
   }
@@ -610,7 +644,7 @@ component PointLight {
 }
 ```
 
-<sub>`api.ogt` line 1746</sub>
+<sub>`api.ogt` line 1786</sub>
 
 <a id="record-SpotLight"></a>
 
@@ -662,7 +696,7 @@ component SpotLight {
 }
 ```
 
-<sub>`api.ogt` line 1766</sub>
+<sub>`api.ogt` line 1806</sub>
 
 <a id="record-RenderSettings"></a>
 
@@ -716,7 +750,7 @@ resource RenderSettings {
 }
 ```
 
-<sub>`api.ogt` line 1797</sub>
+<sub>`api.ogt` line 1837</sub>
 
 <a id="record-PostEffects"></a>
 
@@ -953,7 +987,7 @@ resource PostEffects {
 }
 ```
 
-<sub>`api.ogt` line 1906</sub>
+<sub>`api.ogt` line 1946</sub>
 
 <a id="record-Lighting2D"></a>
 
@@ -992,7 +1026,7 @@ resource Lighting2D {
 }
 ```
 
-<sub>`api.ogt` line 2081</sub>
+<sub>`api.ogt` line 2121</sub>
 
 <a id="record-Light2D"></a>
 
@@ -1043,7 +1077,7 @@ component Light2D {
 }
 ```
 
-<sub>`api.ogt` line 2100</sub>
+<sub>`api.ogt` line 2140</sub>
 
 <a id="record-Occluder2D"></a>
 
@@ -1074,7 +1108,7 @@ component Occluder2D {
 }
 ```
 
-<sub>`api.ogt` line 2130</sub>
+<sub>`api.ogt` line 2170</sub>
 
 <a id="record-Decal"></a>
 
@@ -1129,7 +1163,7 @@ component Decal {
 }
 ```
 
-<sub>`api.ogt` line 2144</sub>
+<sub>`api.ogt` line 2184</sub>
 
 <a id="record-ParticleSystem"></a>
 
@@ -1160,7 +1194,7 @@ component ParticleSystem {
 }
 ```
 
-<sub>`api.ogt` line 2176</sub>
+<sub>`api.ogt` line 2216</sub>
 
 <a id="record-Trail"></a>
 
@@ -1236,7 +1270,7 @@ component Trail {
 }
 ```
 
-<sub>`api.ogt` line 2187</sub>
+<sub>`api.ogt` line 2227</sub>
 
 <a id="record-Beam"></a>
 
@@ -1302,7 +1336,7 @@ component Beam {
 }
 ```
 
-<sub>`api.ogt` line 2235</sub>
+<sub>`api.ogt` line 2275</sub>
 
 <a id="record-Sprite"></a>
 
@@ -1415,7 +1449,7 @@ component Sprite {
 }
 ```
 
-<sub>`api.ogt` line 2431</sub>
+<sub>`api.ogt` line 2471</sub>
 
 <a id="record-Afterimage"></a>
 
@@ -1463,7 +1497,7 @@ component Afterimage {
 }
 ```
 
-<sub>`api.ogt` line 2503</sub>
+<sub>`api.ogt` line 2543</sub>
 
 ## Types
 
@@ -1479,7 +1513,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Geometry "Vertex and index data, as three.js BufferGeometry. Comes from a loaded glTF."
 ```
 
-<sub>`api.ogt` line 1557</sub>
+<sub>`api.ogt` line 1585</sub>
 
 <a id="type-Material"></a>
 
@@ -1493,7 +1527,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Material "A material instance."
 ```
 
-<sub>`api.ogt` line 1558</sub>
+<sub>`api.ogt` line 1586</sub>
 
 <a id="type-Texture"></a>
 
@@ -1507,7 +1541,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Texture "A cooked texture."
 ```
 
-<sub>`api.ogt` line 1559</sub>
+<sub>`api.ogt` line 1587</sub>
 
 <a id="type-Side"></a>
 
@@ -1532,7 +1566,7 @@ enum Side {
 }
 ```
 
-<sub>`api.ogt` line 1575</sub>
+<sub>`api.ogt` line 1603</sub>
 
 <a id="type-RenderTier"></a>
 
@@ -1546,7 +1580,8 @@ A string: one of the variants below. The zero value is `"webgpu"`.
 |---|---|
 | `"webgpu"` | WebGPU in a browser: the full feature set. |
 | `"webgl2"` | The WebGL2 fallback: no compute, CPU culling and particles, tiled lights. |
-| `"vulkan"` | Native Vulkan, on lavapipe or a GPU. |
+| `"vulkan"` | Native Vulkan on a GPU. |
+| `"vulkan-cpu"` | Native Vulkan on a CPU rasterizer (Mesa lavapipe or llvmpipe, SwiftShader): the executors' sandboxes. Frame times there say nothing about a player's GPU. |
 | `"metal"` | Native Metal. |
 | `"none"` | No renderer: frames are not produced and capture refuses. |
 
@@ -1555,13 +1590,14 @@ enum RenderTier {
   doc "The backend the renderer runs on; the probe's hello reports it."
   variant webgpu "WebGPU in a browser: the full feature set."
   variant webgl2 "The WebGL2 fallback: no compute, CPU culling and particles, tiled lights."
-  variant vulkan "Native Vulkan, on lavapipe or a GPU."
+  variant vulkan "Native Vulkan on a GPU."
+  variant vulkan-cpu "Native Vulkan on a CPU rasterizer (Mesa lavapipe or llvmpipe, SwiftShader): the executors' sandboxes. Frame times there say nothing about a player's GPU."
   variant metal "Native Metal."
   variant none "No renderer: frames are not produced and capture refuses."
 }
 ```
 
-<sub>`api.ogt` line 1582</sub>
+<sub>`api.ogt` line 1610</sub>
 
 <a id="type-Antialias"></a>
 
@@ -1588,7 +1624,7 @@ enum Antialias {
 }
 ```
 
-<sub>`api.ogt` line 1591</sub>
+<sub>`api.ogt` line 1620</sub>
 
 <a id="type-RenderOptions"></a>
 
@@ -1616,7 +1652,7 @@ struct RenderOptions {
 }
 ```
 
-<sub>`api.ogt` line 1599</sub>
+<sub>`api.ogt` line 1628</sub>
 
 <a id="type-StandardMaterialDesc"></a>
 
@@ -1626,7 +1662,9 @@ A physically based metallic-roughness material with three.js MeshStandardMateria
 
 It is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front.
 
-The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults.
+The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults. clearcoat and clearcoatRoughness add MeshPhysicalMaterial's clear coat (no clearcoat maps).
+
+normalMap is read in glTF's tangent frame: red tilts towards +u, green up the image. The tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -1666,12 +1704,15 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `dissolveScale` | `number` | `4` | ≥ 0 | — | — | The frequency of the built-in noise (cells per object-space unit). |
 | `outlineColor` | `Color` | `{ r: 0, g: 0, b: 0 }` | — | — | — | This material's outline colour (linear). |
 | `outlineWidth` | `number` | `0` | 0 … 31 | — | — | This material's outline width in pixels; 0 is none (PostEffects.outline outlines everything). |
+| `clearcoat` | `number` | `0` | 0 … 1 | `ratio` | — | A clear lacquer over the surface, as three.js MeshPhysicalMaterial.clearcoat: a second, 4 % reflective specular layer on the surface's normal before normalMap (car paint, varnished wood, wet plastic); 0 is none. |
+| `clearcoatRoughness` | `number` | `0` | 0 … 1 | `ratio` | — | How rough the clear coat is, as three.js MeshPhysicalMaterial.clearcoatRoughness. |
 
 ```ogt
 struct StandardMaterialDesc {
   doc "A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names."
   doc "It is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front."
-  doc "The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults."
+  doc "The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults. clearcoat and clearcoatRoughness add MeshPhysicalMaterial's clear coat (no clearcoat maps)."
+  doc "normalMap is read in glTF's tangent frame: red tilts towards +u, green up the image. The tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly."
   desc true
   field color Color "The base colour." {
     default 1 1 1
@@ -1761,10 +1802,20 @@ struct StandardMaterialDesc {
     min 0
     max 31
   }
+  field clearcoat f32 "A clear lacquer over the surface, as three.js MeshPhysicalMaterial.clearcoat: a second, 4 % reflective specular layer on the surface's normal before normalMap (car paint, varnished wood, wet plastic); 0 is none." {
+    min 0
+    max 1
+    unit ratio
+  }
+  field clearcoatRoughness f32 "How rough the clear coat is, as three.js MeshPhysicalMaterial.clearcoatRoughness." {
+    min 0
+    max 1
+    unit ratio
+  }
 }
 ```
 
-<sub>`api.ogt` line 1610</sub>
+<sub>`api.ogt` line 1639</sub>
 
 <a id="type-Lut"></a>
 
@@ -1778,7 +1829,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Lut "A colour lookup table for PostEffects.lut, from og.load.lut (a `.cube` file)."
 ```
 
-<sub>`api.ogt` line 1829</sub>
+<sub>`api.ogt` line 1869</sub>
 
 <a id="type-ParticleEmitter"></a>
 
@@ -1792,7 +1843,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle ParticleEmitter "A particle emitter asset for ParticleSystem.emitter, from og.load.emitter (an `.ogt` of `type particles`)."
 ```
 
-<sub>`api.ogt` line 1830</sub>
+<sub>`api.ogt` line 1870</sub>
 
 <a id="type-AoMethod"></a>
 
@@ -1817,7 +1868,7 @@ enum AoMethod {
 }
 ```
 
-<sub>`api.ogt` line 1853</sub>
+<sub>`api.ogt` line 1893</sub>
 
 <a id="type-DofQuality"></a>
 
@@ -1840,7 +1891,7 @@ enum DofQuality {
 }
 ```
 
-<sub>`api.ogt` line 1867</sub>
+<sub>`api.ogt` line 1907</sub>
 
 <a id="type-SpriteBlend"></a>
 
@@ -1863,7 +1914,7 @@ enum SpriteBlend {
 }
 ```
 
-<sub>`api.ogt` line 1880</sub>
+<sub>`api.ogt` line 1920</sub>
 
 <a id="type-StripBlend"></a>
 
@@ -1886,7 +1937,7 @@ enum StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 1893</sub>
+<sub>`api.ogt` line 1933</sub>
 
 <a id="type-RibbonPoint"></a>
 
@@ -1926,7 +1977,7 @@ struct RibbonPoint {
 }
 ```
 
-<sub>`api.ogt` line 2275</sub>
+<sub>`api.ogt` line 2315</sub>
 
 <a id="type-RibbonDesc"></a>
 
@@ -1957,7 +2008,7 @@ struct RibbonDesc {
 }
 ```
 
-<sub>`api.ogt` line 2296</sub>
+<sub>`api.ogt` line 2336</sub>
 
 <a id="type-TextDesc"></a>
 
@@ -2019,7 +2070,7 @@ struct TextDesc {
 }
 ```
 
-<sub>`api.ogt` line 2315</sub>
+<sub>`api.ogt` line 2355</sub>
 
 <a id="type-TextMeasureDesc"></a>
 
@@ -2048,7 +2099,7 @@ struct TextMeasureDesc {
 }
 ```
 
-<sub>`api.ogt` line 2349</sub>
+<sub>`api.ogt` line 2389</sub>
 
 <a id="type-TextMetrics"></a>
 
@@ -2071,7 +2122,7 @@ struct TextMetrics {
 }
 ```
 
-<sub>`api.ogt` line 2360</sub>
+<sub>`api.ogt` line 2400</sub>
 
 <a id="type-SpriteDesc"></a>
 
@@ -2165,7 +2216,7 @@ struct SpriteDesc {
 }
 ```
 
-<sub>`api.ogt` line 2367</sub>
+<sub>`api.ogt` line 2407</sub>
 
 <a id="type-FloatingTextDesc"></a>
 
@@ -2253,7 +2304,7 @@ struct FloatingTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 2530</sub>
+<sub>`api.ogt` line 2570</sub>
 
 <a id="type-BoxGeometryDesc"></a>
 
@@ -2291,7 +2342,7 @@ struct BoxGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 2602</sub>
+<sub>`api.ogt` line 2642</sub>
 
 <a id="type-PlaneGeometryDesc"></a>
 
@@ -2323,7 +2374,7 @@ struct PlaneGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 2622</sub>
+<sub>`api.ogt` line 2662</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -2359,7 +2410,7 @@ struct SphereGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 2637</sub>
+<sub>`api.ogt` line 2677</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -2372,7 +2423,7 @@ What the renderer can do on this device. Backend limits are reported here, never
 | `tier` | `RenderTier` | `"webgpu"` | — | — | — | The backend. |
 | `compute` | `boolean` | `false` | — | — | — | Whether compute passes run (GPU culling, GPU particles). |
 | `antialias` | `Antialias` | `"tier"` | — | — | — | The antialiasing the device resolved RenderOptions.antialias to. |
-| `maxLights` | `number` | `0` | — | — | — | How many point and spot lights one frame draws. |
+| `maxLights` | `number` | `0` | — | — | — | How many point and spot lights one frame draws (MAX_LIGHTS on every tier). |
 | `maxShadowedLights` | `number` | `0` | — | — | — | How many point and spot lights may cast shadows. |
 | `width` | `number` | `0` | — | — | — | The render target width in device pixels. |
 | `height` | `number` | `0` | — | — | — | The render target height in device pixels. |
@@ -2383,14 +2434,14 @@ struct RenderCapabilities {
   field tier RenderTier "The backend."
   field compute bool "Whether compute passes run (GPU culling, GPU particles)."
   field antialias Antialias "The antialiasing the device resolved RenderOptions.antialias to."
-  field maxLights u32 "How many point and spot lights one frame draws."
+  field maxLights u32 "How many point and spot lights one frame draws (MAX_LIGHTS on every tier)."
   field maxShadowedLights u32 "How many point and spot lights may cast shadows."
   field width u32 "The render target width in device pixels."
   field height u32 "The render target height in device pixels."
 }
 ```
 
-<sub>`api.ogt` line 2678</sub>
+<sub>`api.ogt` line 2719</sub>
 
 <a id="type-Shader"></a>
 
@@ -2404,7 +2455,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read."
 ```
 
-<sub>`api.ogt` line 2704</sub>
+<sub>`api.ogt` line 2745</sub>
 
 ## Column kinds
 
@@ -2431,7 +2482,7 @@ column Geometry {
 }
 ```
 
-<sub>`api.ogt` line 1561</sub>
+<sub>`api.ogt` line 1589</sub>
 
 ```ogt
 column Material {
@@ -2442,7 +2493,7 @@ column Material {
 }
 ```
 
-<sub>`api.ogt` line 1568</sub>
+<sub>`api.ogt` line 1596</sub>
 
 ```ogt
 column Texture {
@@ -2453,7 +2504,7 @@ column Texture {
 }
 ```
 
-<sub>`api.ogt` line 1832</sub>
+<sub>`api.ogt` line 1872</sub>
 
 ```ogt
 column Lut {
@@ -2464,7 +2515,7 @@ column Lut {
 }
 ```
 
-<sub>`api.ogt` line 1839</sub>
+<sub>`api.ogt` line 1879</sub>
 
 ```ogt
 column ParticleEmitter {
@@ -2475,7 +2526,7 @@ column ParticleEmitter {
 }
 ```
 
-<sub>`api.ogt` line 1846</sub>
+<sub>`api.ogt` line 1886</sub>
 
 ```ogt
 column AoMethod {
@@ -2486,7 +2537,7 @@ column AoMethod {
 }
 ```
 
-<sub>`api.ogt` line 1860</sub>
+<sub>`api.ogt` line 1900</sub>
 
 ```ogt
 column DofQuality {
@@ -2497,7 +2548,7 @@ column DofQuality {
 }
 ```
 
-<sub>`api.ogt` line 1873</sub>
+<sub>`api.ogt` line 1913</sub>
 
 ```ogt
 column SpriteBlend {
@@ -2508,7 +2559,7 @@ column SpriteBlend {
 }
 ```
 
-<sub>`api.ogt` line 1886</sub>
+<sub>`api.ogt` line 1926</sub>
 
 ```ogt
 column StripBlend {
@@ -2519,16 +2570,23 @@ column StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 1899</sub>
+<sub>`api.ogt` line 1939</sub>
 
 ## Constants
 
 | Constant | Type | Value | Doc |
 |---|---|---|---|
-| <a id="const-MAX_LIGHTS"></a>`MAX_LIGHTS` | `number` | `8` | The most point and spot lights one frame draws. |
+| <a id="const-MAX_LIGHTS"></a>`MAX_LIGHTS` | `number` | `256` | The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept. |
+| <a id="const-MAX_CLUSTER_LIGHTS"></a>`MAX_CLUSTER_LIGHTS` | `number` | `64` | The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there. |
 
 ```ogt
-const MAX_LIGHTS u32 8 "The most point and spot lights one frame draws."
+const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 2676</sub>
+<sub>`api.ogt` line 2716</sub>
+
+```ogt
+const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
+```
+
+<sub>`api.ogt` line 2717</sub>

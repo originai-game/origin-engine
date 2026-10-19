@@ -112,7 +112,7 @@ become a resource or the runner's alone and the systems keep their shape.
 
 | System | Reads | Writes | Job |
 |---|---|---|---|
-| `Director` | `og.Input`, `Tuning` | `Run`, `Actor`, `og.Transform`, `og.Sprite` | phases; the speed ramp, distance and score; a new round (pools retired, the courier stood up) |
+| `Director` | `og.Input`, `Tuning` | `Run`, `Actor`, `og.Transform`, `og.Sprite` | phases; the speed ramp, distance and score; a new round (pools retired, the courier stood up); a press during the card's hold answered by the hold tick |
 | `Jump` | `og.Input`, `Tuning`, `og.CharacterEvent` | `Run`, `Actor`, `og.PlatformerController` | the controller's jump held while the press is, its tunables from `Tuning`; its take-off (a stretch and the sound) and landing (a squash) events |
 | `Scroll` | `Run` | `Actor`, `og.Transform` | everything left at speed × parallax; scenery wraps by its span; pooled rows retire past x = −13 |
 | `Spawn` | `Tuning` | `og.Rng`, `Run`, `Actor`, `og.Transform`, `og.Sprite` | the next pattern at x = 13 from the dice |
@@ -209,9 +209,11 @@ with `metal` and says so).
 `tools/make-assets.py` regenerates every asset byte for byte (sheets,
 tileset, maps, sounds, the font subset); `LICENSES.md` lists them. The
 sounds play through one `og.AudioSource` voice each: Director (a round
-starts), Jump and Collide (a coin, a crash) set bits of the `Sounds`
-resource and Voices plays each once (`og polish` found the archetype
-silent, no input answered by a sound; tests/sounds.og.ts holds it).
+starts, and a quiet tick, og sfx's `click` preset in `assets/audio/hold.ogt`,
+for a press while the game-over card holds), Jump and Collide (a coin, a
+crash) set bits of the `Sounds` resource and Voices plays each once
+(`og polish` found the archetype silent, no input answered by a sound;
+tests/sounds.og.ts holds it, and tests/flow.og.ts the held press's tick).
 
 ## Known limits
 

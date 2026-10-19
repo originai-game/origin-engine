@@ -2,14 +2,24 @@
 //! [`Metaballs`]: the particles of a fluid (og-physics' `og.Fluid2D`) are
 //! added into one channel of a field target as soft kernels before the
 //! main pass, then composited in the sprite order at the fluid's layer by a
-//! threshold over that channel. Up to [`MAX_FLUIDS`] fluids a frame; more
-//! are not drawn.
+//! threshold over that channel.
+//!
+//! Fluids of one `group` (phase 2) are one surface: each takes the channel
+//! of its `lane` in a run of the field's four, a particle adds its kernel
+//! into its lanes' channels by its `mix`, and the group is composited once,
+//! thresholded on the sum of its channels and coloured by their weights, so
+//! where two fluids blend the colour blends. Fields hold four channels
+//! each; groups (and lone fluids) are packed into [`FIELDS`] of them, so up
+//! to [`MAX_FLUIDS`] fluids are drawn a frame; more are not drawn.
 
 use glam::{Vec2, Vec3, Vec4};
 use std::sync::Arc;
 
+/// Field targets a frame can use (four channels each).
+pub const FIELDS: usize = 4;
+
 /// The most fluids drawn in a frame (one field channel each).
-pub const MAX_FLUIDS: usize = 4;
+pub const MAX_FLUIDS: usize = FIELDS * 4;
 
 /// A 2D fluid drawn as metaballs. See the module documentation.
 #[derive(Clone, Debug, PartialEq)]
@@ -30,6 +40,16 @@ pub struct Metaballs {
     pub layer: i32,
     /// World z of the particles.
     pub z: f32,
+    /// Fluids sharing a group above 0 are one surface (the threshold, rim
+    /// and layer of its lowest lane's fluid; each one's colour); 0 draws it
+    /// alone.
+    pub group: u32,
+    /// Its lane in the group (0..4): the channel it adds to, from the run of
+    /// four its group takes.
+    pub lane: u32,
+    /// Per particle, how much of it is each lane's fluid (summing to 1);
+    /// empty: every particle is all this fluid.
+    pub mix: Arc<[[f32; 4]]>,
 }
 
 impl Default for Metaballs {
@@ -43,10 +63,71 @@ impl Default for Metaballs {
             rim_width: 0.35,
             layer: 0,
             z: 0.0,
+            group: 0,
+            lane: 0,
+            mix: Arc::from(Vec::new()),
         }
     }
 }
 
+/// One surface to composite: a lone fluid or a group, its field and the
+/// first channel of its run.
+#[derive(Clone, Debug, PartialEq)]
+struct Surface {
+    /// Indices into the frame's fluids, by lane (`None`: no fluid in that lane).
+    lanes: [Option<usize>; 4],
+    field: usize,
+    first: usize,
+    width: usize,
+}
+
+/// Packs the frame's fluids into surfaces and fields: in order of first
+/// appearance, a group's run as wide as its highest lane, a new field when
+/// the current one has no room; what does not fit in [`FIELDS`] is left out.
+fn pack(fluids: &[Metaballs]) -> Vec<Surface> {
+    let mut surfaces: Vec<Surface> = Vec::new();
+    let mut by_group: Vec<(u32, usize)> = Vec::new();
+    let (mut field, mut used) = (0usize, 0usize);
+    for (i, f) in fluids.iter().enumerate() {
+        let lane = if f.group == 0 {
+            0
+        } else {
+            (f.lane as usize).min(3)
+        };
+        if f.group != 0
+            && let Some(&(_, s)) = by_group.iter().find(|(g, _)| *g == f.group)
+        {
+            let surface = &mut surfaces[s];
+            if lane < surface.width && surface.lanes[lane].is_none() {
+                surface.lanes[lane] = Some(i);
+            }
+            continue;
+        }
+        // A new surface: a group reserves its four lanes' run (its members
+        // can appear in any order), a lone fluid one channel.
+        let width = if f.group == 0 { 1 } else { 4 };
+        if used + width > 4 {
+            field += 1;
+            used = 0;
+        }
+        if field >= FIELDS {
+            break;
+        }
+        let mut lanes = [None; 4];
+        lanes[lane] = Some(i);
+        surfaces.push(Surface {
+            lanes,
+            field,
+            first: used,
+            width,
+        });
+        if f.group != 0 {
+            by_group.push((f.group, surfaces.len() - 1));
+        }
+        used += width;
+    }
+    surfaces
+}
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct Blob {
@@ -57,9 +138,12 @@ struct Blob {
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct FluidGpu {
-    color: [f32; 4],
+    /// Per channel of the field, the colour of the fluid in it.
+    colors: [[f32; 4]; 4],
     rim: [f32; 4],
+    /// The surface's channels (1 each).
     channel: [f32; 4],
+    /// x: threshold, y: 1/w, z: 1/h, w: 1 when one fluid (its colour is colors[0]).
     params: [f32; 4],
 }
 
@@ -77,7 +161,10 @@ pub(crate) struct MetaballRenderer {
     layout: wgpu::BindGroupLayout,
     blobs: wgpu::Buffer,
     params: wgpu::Buffer,
-    count: u32,
+    /// Per field, its blobs' range in `blobs`.
+    ranges: Vec<std::ops::Range<u32>>,
+    /// Per surface (what [`layers`] numbers), its field.
+    fields_of: Vec<usize>,
 }
 
 impl MetaballRenderer {
@@ -200,12 +287,13 @@ impl MetaballRenderer {
             layout,
             blobs,
             params,
-            count: 0,
+            ranges: Vec::new(),
+            fields_of: Vec::new(),
         }
     }
 
-    /// Writes the frame's kernels and fluid parameters. Returns the number
-    /// of fluids drawn.
+    /// Writes the frame's kernels and surface parameters. Returns the
+    /// number of field targets the frame needs (0: no fluid).
     pub(crate) fn prepare(
         &mut self,
         device: &wgpu::Device,
@@ -213,28 +301,66 @@ impl MetaballRenderer {
         fluids: &[Metaballs],
         screen: (u32, u32),
     ) -> usize {
-        let n = fluids.len().min(MAX_FLUIDS);
+        let surfaces = pack(fluids);
+        let fields = surfaces.iter().map(|s| s.field + 1).max().unwrap_or(0);
         let mut blobs = Vec::new();
-        for (i, f) in fluids[..n].iter().enumerate() {
+        self.ranges.clear();
+        self.fields_of.clear();
+        for field in 0..fields {
+            let start = blobs.len() as u32;
+            for s in surfaces.iter().filter(|s| s.field == field) {
+                for (lane, &i) in s.lanes.iter().enumerate() {
+                    let Some(i) = i else { continue };
+                    let f = &fluids[i];
+                    let radius = f.radius.max(1e-4);
+                    let mut own = [0.0; 4];
+                    own[s.first + lane] = 1.0;
+                    for (k, p) in f.particles.iter().enumerate() {
+                        if !p.is_finite() {
+                            continue;
+                        }
+                        let channel = match f.mix.get(k) {
+                            Some(m) if s.width == 4 => {
+                                let mut c = [0.0; 4];
+                                c.copy_from_slice(m);
+                                c
+                            }
+                            _ => own,
+                        };
+                        blobs.push(Blob {
+                            position_radius: [p.x, p.y, f.z, radius],
+                            channel,
+                        });
+                    }
+                }
+            }
+            self.ranges.push(start..blobs.len() as u32);
+        }
+        for (k, s) in surfaces.iter().enumerate() {
+            let lead = s.lanes.iter().flatten().next().map(|&i| &fluids[i]);
+            let Some(lead) = lead else { continue };
+            let mut colors = [[0.0; 4]; 4];
             let mut channel = [0.0; 4];
-            channel[i] = 1.0;
-            let radius = f.radius.max(1e-4);
-            blobs.extend(f.particles.iter().filter(|p| p.is_finite()).map(|p| Blob {
-                position_radius: [p.x, p.y, f.z, radius],
-                channel,
-            }));
+            let single = s.width == 1;
+            for (lane, i) in s.lanes.iter().enumerate().take(s.width) {
+                channel[s.first + lane] = 1.0;
+                if let Some(&i) = i.as_ref() {
+                    colors[if single { 0 } else { s.first + lane }] = fluids[i].color.to_array();
+                }
+            }
             let gpu = FluidGpu {
-                color: f.color.to_array(),
-                rim: f.rim.extend(f.rim_width.max(0.0)).to_array(),
+                colors,
+                rim: lead.rim.extend(lead.rim_width.max(0.0)).to_array(),
                 channel,
                 params: [
-                    f.threshold.max(1e-3),
+                    lead.threshold.max(1e-3),
                     1.0 / screen.0.max(1) as f32,
                     1.0 / screen.1.max(1) as f32,
-                    0.0,
+                    if single { 1.0 } else { 0.0 },
                 ],
             };
-            queue.write_buffer(&self.params, i as u64 * SLOT, bytemuck::bytes_of(&gpu));
+            queue.write_buffer(&self.params, k as u64 * SLOT, bytemuck::bytes_of(&gpu));
+            self.fields_of.push(s.field);
         }
         let bytes: &[u8] = bytemuck::cast_slice(&blobs);
         if bytes.len() as u64 > self.blobs.size() {
@@ -248,40 +374,47 @@ impl MetaballRenderer {
         if !bytes.is_empty() {
             queue.write_buffer(&self.blobs, 0, bytes);
         }
-        self.count = blobs.len() as u32;
-        n
+        fields
     }
 
-    /// The field pass: every kernel into `field`.
+    /// The field passes: every kernel into its field (`fields[k]` is field
+    /// `k`'s target).
     pub(crate) fn encode_field(
         &self,
         encoder: &mut wgpu::CommandEncoder,
-        field: &wgpu::TextureView,
+        fields: &[&wgpu::TextureView],
         frame_group: &wgpu::BindGroup,
     ) {
-        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("metaball field"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: field,
-                depth_slice: None,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                    store: wgpu::StoreOp::Store,
-                },
-            })],
-            depth_stencil_attachment: None,
-            timestamp_writes: None,
-            occlusion_query_set: None,
-            multiview_mask: None,
-        });
-        if self.count == 0 {
-            return;
+        for (field, range) in fields.iter().zip(&self.ranges) {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("metaball field"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: field,
+                    depth_slice: None,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
+            if range.is_empty() {
+                continue;
+            }
+            pass.set_pipeline(&self.field_pipeline);
+            pass.set_bind_group(0, frame_group, &[]);
+            pass.set_vertex_buffer(0, self.blobs.slice(..));
+            pass.draw(0..6, range.clone());
         }
-        pass.set_pipeline(&self.field_pipeline);
-        pass.set_bind_group(0, frame_group, &[]);
-        pass.set_vertex_buffer(0, self.blobs.slice(..));
-        pass.draw(0..6, 0..self.count);
+    }
+
+    /// The field surface `surface` composites from.
+    pub(crate) fn field_of(&self, surface: u8) -> Option<usize> {
+        self.fields_of.get(surface as usize).copied()
     }
 
     /// The bind group the composite reads the field through.
@@ -310,7 +443,7 @@ impl MetaballRenderer {
         })
     }
 
-    /// Composites fluid `i` (group 0: the frame).
+    /// Composites surface `i` (group 0: the frame) from its field's group.
     pub(crate) fn composite(&self, pass: &mut wgpu::RenderPass, group: &wgpu::BindGroup, i: u8) {
         pass.set_pipeline(&self.composite_pipeline);
         pass.set_bind_group(1, group, &[(i as u64 * SLOT) as u32]);
@@ -318,11 +451,70 @@ impl MetaballRenderer {
     }
 }
 
-/// Where fluid `i` sits in the sprite order.
-pub(crate) fn layers(fluids: &[Metaballs]) -> impl Iterator<Item = (usize, i32)> + '_ {
-    fluids
+/// Where each surface (a lone fluid or a group, numbered as composited)
+/// sits in the sprite order: its lowest lane's fluid's layer.
+pub(crate) fn layers(fluids: &[Metaballs]) -> Vec<(usize, i32)> {
+    pack(fluids)
         .iter()
-        .take(MAX_FLUIDS)
         .enumerate()
-        .map(|(i, f)| (i, f.layer))
+        .filter_map(|(k, s)| {
+            let lead = s.lanes.iter().flatten().next()?;
+            Some((k, fluids[*lead].layer))
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn fluid(group: u32, lane: u32, layer: i32) -> Metaballs {
+        Metaballs {
+            group,
+            lane,
+            layer,
+            ..Metaballs::default()
+        }
+    }
+
+    #[test]
+    fn fluids_pack_into_fields_of_four_channels_and_groups_stay_together() {
+        // Five lone fluids (four fill the first field, the fifth starts the
+        // second), a group of two (lanes 1 and 0, out of order) that takes a
+        // field's whole run of four (the third), and one more lone fluid (in
+        // a fourth: packing only goes forward).
+        let fluids = [
+            fluid(0, 0, 1),
+            fluid(0, 0, 2),
+            fluid(0, 0, 3),
+            fluid(0, 0, 4),
+            fluid(0, 0, 5),
+            fluid(7, 1, 6),
+            fluid(7, 0, 9),
+            fluid(0, 0, 7),
+        ];
+        let s = pack(&fluids);
+        let fields: Vec<(usize, usize, usize)> =
+            s.iter().map(|s| (s.field, s.first, s.width)).collect();
+        assert_eq!(
+            fields,
+            [
+                (0, 0, 1),
+                (0, 1, 1),
+                (0, 2, 1),
+                (0, 3, 1),
+                (1, 0, 1),
+                (2, 0, 4),
+                (3, 0, 1)
+            ]
+        );
+        assert_eq!(s[5].lanes, [Some(6), Some(5), None, None]);
+        // The group is drawn once, at the layer of its lane 0 fluid.
+        let l = layers(&fluids);
+        assert_eq!(l.len(), 7);
+        assert_eq!(l[5], (5, 9));
+        // Past the fields' room, fluids are left out.
+        let many: Vec<Metaballs> = (0..20).map(|i| fluid(0, 0, i)).collect();
+        assert_eq!(pack(&many).len(), MAX_FLUIDS);
+    }
 }

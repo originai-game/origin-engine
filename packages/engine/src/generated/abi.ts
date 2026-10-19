@@ -205,6 +205,8 @@ export interface HostAbi<A, V> {
   og_render_update_material(world: number, material: number, desc: string | undefined): string;
   /** `og.render.shaderMaterial` */
   og_render_shader_material(world: number, shader: number, desc: string | undefined): string;
+  /** `og.render.setMaterialShader` */
+  og_render_set_material_shader(world: number, material: number, shader: string): string;
   /** `og.render.setShaderParam` */
   og_render_set_shader_param(world: number, material: number, name: string, value: string): string;
   /** `og.render.capabilities` */
@@ -247,6 +249,8 @@ export interface HostAbi<A, V> {
   og_load_gltf_info(world: number, asset: number): string;
   /** `og.load.animation` */
   og_load_animation(world: number, path: string): string;
+  /** `og.load.rig` */
+  og_load_rig(world: number, path: string): string;
   /** `og.load.flipbook` */
   og_load_flipbook(world: number, path: string): string;
   /** `og.load.tilemap` */
@@ -279,6 +283,10 @@ export interface HostAbi<A, V> {
   og_atmosphere_time_of_day(world: number): number;
   /** `og.anim.graph` */
   og_anim_graph(world: number, desc: string | undefined): string;
+  /** `og.anim.humanoid` */
+  og_anim_humanoid(world: number, desc: string | undefined): string;
+  /** `og.anim.retarget` */
+  og_anim_retarget(world: number, desc: string | undefined): string;
   /** `og.tween.to` */
   og_tween_to(world: number, desc: string | undefined): string;
   /** `og.tween.sequence` */
@@ -303,6 +311,8 @@ export interface HostAbi<A, V> {
   og_tilemap_cell_at(world: number, entity: number, point: string): string;
   /** `og.tilemap.cellCenter` */
   og_tilemap_cell_center(world: number, entity: number, x: number, y: number): string;
+  /** `og.audio.outputLatency` */
+  og_audio_output_latency(world: number): number;
   /** `og.nav.grid` */
   og_nav_grid(world: number, desc: string | undefined): string;
   /** `og.nav.gridFromTilemap` */
@@ -367,6 +377,8 @@ export interface HostAbi<A, V> {
   og_platform_result(world: number, request: number): string;
   /** `og.platform.info` */
   og_platform_info(world: number): string;
+  /** `og.platform.now` */
+  og_platform_now(world: number): number;
   /** `og.i18n.load` */
   og_i18n_load(world: number, path: string): string;
   /** `og.i18n.setLocale` */
@@ -391,6 +403,8 @@ export interface HostAbi<A, V> {
   og_ui_open_scroll(id: string, desc: string | undefined): void;
   /** `og.ui.close` */
   og_ui_close(): string;
+  /** `og.ui.richText` */
+  og_ui_rich_text(id: string, markup: string, desc: string | undefined): string;
   /** `og.ui.label` */
   og_ui_label(id: string, text: string, desc: string | undefined): void;
   /** `og.ui.button` */
@@ -491,6 +505,12 @@ export interface HostAbi<A, V> {
   og_ui_navigate(world: number, intent: string): void;
   /** `og.ui.back` */
   og_ui_back(): boolean;
+  /** `og.ui.setPlayers` */
+  og_ui_set_players(count: number): void;
+  /** `og.ui.focus` */
+  og_ui_focus(pad: number): string;
+  /** `og.ui.a11y` */
+  og_ui_a11y(): string;
   /** `og.ui.setNavigation` */
   og_ui_set_navigation(on: boolean): void;
   /** `og.ui.memory` */
@@ -672,6 +692,7 @@ export const SYMBOLS: readonly string[] = [
   "og_render_standard_material",
   "og_render_update_material",
   "og_render_shader_material",
+  "og_render_set_material_shader",
   "og_render_set_shader_param",
   "og_render_capabilities",
   "og_render_text",
@@ -693,6 +714,7 @@ export const SYMBOLS: readonly string[] = [
   "og_load_error",
   "og_load_gltf_info",
   "og_load_animation",
+  "og_load_rig",
   "og_load_flipbook",
   "og_load_tilemap",
   "og_physics_raycast",
@@ -709,6 +731,8 @@ export const SYMBOLS: readonly string[] = [
   "og_physics_ragdoll_pose",
   "og_atmosphere_time_of_day",
   "og_anim_graph",
+  "og_anim_humanoid",
+  "og_anim_retarget",
   "og_tween_to",
   "og_tween_sequence",
   "og_tween_parallel",
@@ -721,6 +745,7 @@ export const SYMBOLS: readonly string[] = [
   "og_tilemap_get_tile",
   "og_tilemap_cell_at",
   "og_tilemap_cell_center",
+  "og_audio_output_latency",
   "og_nav_grid",
   "og_nav_grid_from_tilemap",
   "og_nav_set_cost",
@@ -753,6 +778,7 @@ export const SYMBOLS: readonly string[] = [
   "og_platform_save_settings",
   "og_platform_result",
   "og_platform_info",
+  "og_platform_now",
   "og_i18n_load",
   "og_i18n_set_locale",
   "og_i18n_locale",
@@ -765,6 +791,7 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_open_panel",
   "og_ui_open_scroll",
   "og_ui_close",
+  "og_ui_rich_text",
   "og_ui_label",
   "og_ui_button",
   "og_ui_image",
@@ -815,6 +842,9 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_dismiss_toast",
   "og_ui_navigate",
   "og_ui_back",
+  "og_ui_set_players",
+  "og_ui_focus",
+  "og_ui_a11y",
   "og_ui_set_navigation",
   "og_ui_memory",
   "og_ui_remember",

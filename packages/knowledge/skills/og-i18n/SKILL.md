@@ -46,12 +46,21 @@ string "results.time" "タイム {time}"
 | select | `"{g, select, f {She won} m {He won} other {They won}}"` |
 | a literal brace or quote | `'{'`, `''` |
 
+- Big numbers in a locale's own units (K, M, B in English; 万, 亿 in
+  Chinese) are table data too: a key for how many digits a unit spans and
+  a key per unit, read by one formatter (`templates/archetypes/idle`'s
+  `big` in `src/numbers.ts`).
 - Whole sentences per key, never concatenated pieces: word order differs
   (Japanese puts the verb last, Arabic reads right to left).
 - Plurals in every table, even where the language has one form
   (`{n, plural, other {コイン#枚}}`): the argument names stay the same in
   every locale, and `og cook` checks they do.
 - Numbers, times and prices go through arguments, not string building.
+- Emphasis inside a sentence is rich-text markup in the message itself
+  (`"Your progress in slot [b]{slot}[/b] will be lost."`, shown with
+  `og.ui.richText`): each translation bolds or colours its own words, in
+  its own order, instead of the code splitting the sentence into styled
+  pieces.
 
 ## 3. Fonts for every script
 

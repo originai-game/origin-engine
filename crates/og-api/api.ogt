@@ -297,10 +297,10 @@ module world {
     }
 
     fn resource {
-      doc "A resource's live value. Inside a system, the resource must be among the system's reads or writes."
+      doc "A resource's live value. Inside a system, the resource must be among the system's reads or writes (writes to set a field): an undeclared one throws in a dev or release build, naming the system and the resource, and fails the tick; a publish build refuses it and logs it once per system in the engine log."
       generic R AnyResource
       param resource R "The resource token."
-      returns Result.Value.R "Refused for an unregistered resource or one the running system did not declare."
+      returns Result.Value.R "Refused for an unregistered resource (or, in a publish build, one the running system did not declare)."
     }
 
     fn find {
@@ -322,14 +322,14 @@ module world {
     }
 
     fn events {
-      doc "The events of one type emitted during the previous tick and this one, oldest first."
+      doc "The events of one type emitted during the previous tick and this one, oldest first. Inside a system the event must be among its reads or writes (undeclared: thrown, or in a publish build refused and logged once)."
       generic E AnyEvent
       param event E "The event token."
       returns List.Value.E
     }
 
     fn emit {
-      doc "Emit an event; readers see it this tick and the next."
+      doc "Emit an event; readers see it this tick and the next. Inside a system the event must be among its writes (undeclared: thrown, or in a publish build refused and logged once)."
       generic E AnyEvent
       param event E "The event token."
       param payload Value.E "The event's fields."
@@ -389,6 +389,7 @@ module system {
   skill og-core
   doc "Systems: functions the engine calls once per tick with their matched archetypes."
   doc "A system declares what it reads and writes; a write to an undeclared component is refused at registration with the field name."
+  doc "Resources and events it reaches through the world must be declared too: in a dev or release build (og run, og test) an undeclared read or write throws with the system's name and the record and fails the tick; a publish build refuses it and logs it once per system in the engine log, and the game keeps running. og.Rng among the reads may fork (a fork reads the seed only and leaves the stream as it is); a draw moves the stream, so it needs og.Rng among the writes."
   place top
 
   struct SystemDesc {
@@ -609,6 +610,7 @@ module time {
 module rng {
   skill og-core
   doc "Deterministic randomness. Every random draw comes from an Rng stream; the sequence for a seed is identical on every host and in the Web scaffold's rng.ts."
+  doc "Inside a system: forking needs og.Rng among the reads (a fork is derived from the seed and the label, and leaves the main stream where it is); drawing from og.Rng itself (next, range, integer, chance) moves its state, so it needs og.Rng among the writes. A stream a fork returned is the system's own to draw from."
 
   interface RngStream {
     doc "One generator stream, forked from the Rng resource for a subsystem that must not perturb the main sequence."
@@ -671,7 +673,7 @@ module rng {
       returns bool
     }
     fn fork {
-      doc "A stream for a subsystem, derived from the seed and a label, so drawing from it leaves the main sequence alone."
+      doc "A stream for a subsystem, derived from the seed and a label, so drawing from it leaves the main sequence alone. The same label gives the same stream every time, on every host, wherever the main stream is; og.Rng among a system's reads is enough."
       param label String "The subsystem's name, such as `spawner`."
       returns RngStream
     }
@@ -758,6 +760,11 @@ module input {
     field modifiers Modifiers "Held modifiers; omitted means none." {
       optional true
     }
+    field at f32 "When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5." {
+      min -1
+      max 1
+      optional true
+    }
   }
 
   struct PointerInput {
@@ -772,6 +779,11 @@ module input {
     field button PointerButton "The button; `none` for a hover move."
     field id u32 "Which pointer: 0 the primary one (the mouse, the first touch; what protocol 5 means), 1 to 4 further touches held at the same time (an engine extension). Omitted is 0." {
       max 4
+      optional true
+    }
+    field at f32 "When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5." {
+      min -1
+      max 1
       optional true
     }
   }
@@ -1150,11 +1162,19 @@ module input {
     doc "A key went down (a down for a held key is a repeat and sets no edge). Input events are sent between ticks and read by the next tick's systems."
     field key String "The physical key code."
     field repeat bool "Whether this is an auto-repeat."
+    field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+      min -1
+      max 1
+    }
   }
 
   event KeyUp {
     doc "A key went up."
     field key String "The physical key code."
+    field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+      min -1
+      max 1
+    }
   }
 
   event PointerDown {
@@ -1163,6 +1183,10 @@ module input {
     field y f32 "Vertical position in CSS pixels."
     field button PointerButton "The button."
     field id u32 "Which pointer: 0 the primary one, 1 to 4 further touches (og.Pointers)."
+    field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+      min -1
+      max 1
+    }
   }
 
   event PointerUp {
@@ -1171,6 +1195,10 @@ module input {
     field y f32 "Vertical position in CSS pixels."
     field button PointerButton "The button."
     field id u32 "Which pointer: 0 the primary one, 1 to 4 further touches."
+    field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+      min -1
+      max 1
+    }
   }
 
   event PointerMove {
@@ -1583,7 +1611,8 @@ module render {
     doc "The backend the renderer runs on; the probe's hello reports it."
     variant webgpu "WebGPU in a browser: the full feature set."
     variant webgl2 "The WebGL2 fallback: no compute, CPU culling and particles, tiled lights."
-    variant vulkan "Native Vulkan, on lavapipe or a GPU."
+    variant vulkan "Native Vulkan on a GPU."
+    variant vulkan-cpu "Native Vulkan on a CPU rasterizer (Mesa lavapipe or llvmpipe, SwiftShader): the executors' sandboxes. Frame times there say nothing about a player's GPU."
     variant metal "Native Metal."
     variant none "No renderer: frames are not produced and capture refuses."
   }
@@ -1610,7 +1639,8 @@ module render {
   struct StandardMaterialDesc {
     doc "A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names."
     doc "It is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front."
-    doc "The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults."
+    doc "The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults. clearcoat and clearcoatRoughness add MeshPhysicalMaterial's clear coat (no clearcoat maps)."
+    doc "normalMap is read in glTF's tangent frame: red tilts towards +u, green up the image. The tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly."
     desc true
     field color Color "The base colour." {
       default 1 1 1
@@ -1700,6 +1730,16 @@ module render {
       min 0
       max 31
     }
+    field clearcoat f32 "A clear lacquer over the surface, as three.js MeshPhysicalMaterial.clearcoat: a second, 4 % reflective specular layer on the surface's normal before normalMap (car paint, varnished wood, wet plastic); 0 is none." {
+      min 0
+      max 1
+      unit ratio
+    }
+    field clearcoatRoughness f32 "How rough the clear coat is, as three.js MeshPhysicalMaterial.clearcoatRoughness." {
+      min 0
+      max 1
+      unit ratio
+    }
   }
 
   component Mesh {
@@ -1745,7 +1785,7 @@ module render {
 
   component PointLight {
     doc "A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance."
-    doc "Up to MAX_LIGHTS point and spot lights are drawn per frame (the rest are counted, not drawn); the first two with castShadow get cube shadows."
+    doc "Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. The first two in view with castShadow get cube shadows."
     field color Color "The light's linear colour." {
       default 1 1 1
     }
@@ -2673,14 +2713,15 @@ module render {
     returns Result.Geometry
   }
 
-  const MAX_LIGHTS u32 8 "The most point and spot lights one frame draws."
+  const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
+  const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 
   struct RenderCapabilities {
     doc "What the renderer can do on this device. Backend limits are reported here, never by missing members."
     field tier RenderTier "The backend."
     field compute bool "Whether compute passes run (GPU culling, GPU particles)."
     field antialias Antialias "The antialiasing the device resolved RenderOptions.antialias to."
-    field maxLights u32 "How many point and spot lights one frame draws."
+    field maxLights u32 "How many point and spot lights one frame draws (MAX_LIGHTS on every tier)."
     field maxShadowedLights u32 "How many point and spot lights may cast shadows."
     field width u32 "The render target width in device pixels."
     field height u32 "The render target height in device pixels."
@@ -2704,17 +2745,25 @@ module render {
   handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read."
 
   fn shaderMaterial {
-    doc "Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. Skinned meshes draw it without the hooks; shadows and the depth prepass use the undisplaced mesh."
+    doc "Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. The hooks apply to skinned meshes too, and shadows and the depth prepass (ambient occlusion, outlines, depth of field) see the mesh where vertex_offset moved it and cut where surface_color's alpha falls below alphaTest."
     param world World "The world whose renderer owns the material."
     param shader Shader "The shader."
     param desc StandardMaterialDesc "The base material; omitted parameters take three.js defaults. A dissolve sets alphaTest so that alpha below it is cut."
     returns Result.Material "Refused for a shader not loaded in this world."
   }
 
+  fn setMaterialShader {
+    doc "Give an existing material a material shader, or take it away with null: a loaded model's material (GltfInfo.materials) draws its skinned or static meshes through the hooks, with the shader's parameters at their defaults. Every mesh drawn with that material changes."
+    param world World "The world whose renderer owns the material."
+    param material Material "The material, from og.render.standardMaterial, og.render.shaderMaterial or a loaded glTF."
+    param shader Option.Shader "The shader, or null to draw the material plain again."
+    returns Result.Void "Refused for a dead material or a shader not loaded in this world."
+  }
+
   fn setShaderParam {
     doc "Set a parameter of a shader material, by the name its shader declares: a number for float, two to four for vec2, vec3, vec4 and color."
     param world World "The world whose renderer owns the material."
-    param material Material "A material made by og.render.shaderMaterial."
+    param material Material "A material made by og.render.shaderMaterial or given a shader by og.render.setMaterialShader."
     param name String "The parameter's name."
     param value List.f32 "Its value; missing components are 0."
     returns Result.Void "Refused for a material without a shader or a parameter its shader does not declare."
@@ -2945,6 +2994,13 @@ module load {
     returns Result.Animation "Refused for an uncooked path, a model the cook wrote no `#anim` blob for (no skins, clips or morph targets), a cook stamp mismatch or an invalid rig."
   }
 
+  fn rig {
+    doc "Load a cooked humanoid map (an `.ogt` of `type rig`: a naming scheme and bones named outright) for og.anim.retarget and og.anim.humanoid. Loading the same path again answers the same handle."
+    param world World "The world whose animation uses it."
+    param path String "The rig's asset id, such as `rigs/strider.ogt`."
+    returns Result.Rig "Refused for a path not in the bundle (run og cook) or a cook stamp mismatch."
+  }
+
   fn flipbook {
     doc "Load a cooked flipbook sheet (an `.ogt` of `type flipbook`, with its Aseprite or TexturePacker atlas resolved by the cook) and its texture, and register it with og.flipbook. Loading the same path again answers the same handles."
     param world World "The world whose animation and renderer own it."
@@ -3114,12 +3170,11 @@ module physics {
 
   resource Physics {
     doc "The physics settings of the world. The profile is the project's; the same components serve both profiles."
-    field profile u32 "PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt." {
+    field profile u32 "PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt. Set the other one at run time to change profile: the next step builds that profile's simulation from the components (contacts, joints' warm starts, ropes, cloth, fluids and ragdoll bodies start again), so a 3D game can play a 2D scene and back." {
       default 3
       min 2
       max 3
       label "Profile"
-      readonly true
     }
     field gravity Vector3 "The acceleration of every dynamic body, times its gravityScale; 2D uses x and y." {
       default 0 -9.81 0
@@ -3720,7 +3775,7 @@ module physics {
   const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
 
   component Cloth {
-    doc "A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind and collision against every solid collider. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour)."
+    doc "A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour)."
     field columns u32 "Points across." {
       default 12
       min 2
@@ -3774,6 +3829,21 @@ module physics {
       unit m
       tunable true
     }
+    field thickness f32 "Self-collision: how far apart its points keep from the points of the cloth that are not their near neighbours (0: none). About `spacing` keeps a cloth that folds or piles up from passing through itself." {
+      min 0
+      unit m
+      tunable true
+    }
+    field substeps u32 "Simulation steps per tick, each integrating and then solving `iterations` passes; with self-collision enough that a point moves less than `thickness` per step (a point moves at most half the thickness a step)." {
+      default 1
+      min 1
+      max 16
+    }
+    field friction f32 "How much of its sliding a point touching a solid loses each step (0: it slides freely; near 1 it sticks where it lands, so a cloth lowered onto the floor folds instead of spreading)." {
+      min 0
+      max 1
+      tunable true
+    }
     field material Material "The material it is drawn with (og.render.standardMaterial); 0 is a plain cloth."
     field visible bool "Whether the renderer draws it." {
       default true
@@ -3781,7 +3851,7 @@ module physics {
   }
 
   component Fluid2D {
-    doc "A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`."
+    doc "A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`."
     field count u32 "How many particles (spawned when the component appears or count changes)." {
       default 1000
       min 1
@@ -3819,6 +3889,18 @@ module physics {
       default 0.15
       min 0
       max 4
+      tunable true
+    }
+    field group u32 "Fluids sharing a group above 0 push, drag and (by `mixing`) mix with each other as one fluid, at most four to a group (in entity order; a fifth is simulated alone), and are drawn as one surface whose colour follows the mix; 0 keeps the fluid to itself."
+    field density f32 "How heavy its particles are against the group's other fluids: a heavier fluid sinks under a lighter one." {
+      default 1
+      min 0.05
+      max 20
+      tunable true
+    }
+    field mixing f32 "How readily it mixes with the group's other fluids: 0 keeps them apart in layers (the boundary held), 1 blends them where they touch (their mix, colour and weight even out)." {
+      min 0
+      max 1
       tunable true
     }
     field gravityScale f32 "Multiplies og.Physics.gravity." {
@@ -3966,7 +4048,7 @@ module physics {
   }
 
   component Ragdoll {
-    doc "A ragdoll over an og.Skeleton (3D): a capsule body per bone with a parent, ball joints with cone limits between them, built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state (the og.physics state block), not entities."
+    doc "A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy plane at their animated z, for a skeleton laid out in that plane), built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state (the og.physics state block), not entities."
     field weight f32 "0 animated, 1 ragdoll. Set it to 1 on a hit; back to 0 to recover." {
       min 0
       max 1
@@ -4373,10 +4455,32 @@ module atmosphere {
       min 0
       tunable true
     }
+    field moonSize f32 "The moon disc's angular radius (0: no moon). It sets below the horizon and hides the stars behind it." {
+      min 0
+      max 20
+      unit deg
+      tunable true
+    }
+    field moonPhase f32 "How much of the moon is lit: 0 new, 0.25 the first quarter (its right half), 0.5 full, 0.75 the last quarter (its left half)." {
+      default 0.5
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field moonIntensity f32 "The lit moon's brightness." {
+      default 1.4
+      min 0
+      tunable true
+    }
+    field moonColor Color "The moon's colour." {
+      default 0.9 0.92 1
+    }
+    field moonDirection Vector3 "Towards the moon; zero puts it opposite sunDirection."
   }
 
   resource DayNight {
-    doc "A day-night cycle: the time of day drives the sun's direction, the sky's colours and stars, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly."
+    doc "A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly."
     field enabled bool "Run the cycle."
     field start f32 "The time of day at tick 0, in hours (6 sunrise, 12 noon, 18 sunset)." {
       default 9
@@ -4414,6 +4518,20 @@ module atmosphere {
       default 10
       min 1
       max 120
+      tunable true
+    }
+    field moonSize f32 "The moon disc's angular radius, opposite the sun so it rises as the sun sets (0: no moon)." {
+      default 1.6
+      min 0
+      max 20
+      unit deg
+      tunable true
+    }
+    field moonPhase f32 "How much of the moon is lit: 0 new, 0.25 the first quarter, 0.5 full, 0.75 the last quarter." {
+      default 0.5
+      min 0
+      max 1
+      unit ratio
       tunable true
     }
   }
@@ -4603,7 +4721,7 @@ module anim {
   skill og-game
   doc "Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics."
   doc "Game code owns the components and sets players, graph parameters and IK targets; og.anim writes the pose (kept as world state in the `og.anim` state block, so snapshots, restore and the world hash cover it), the joint palette, root motion into og.Transform and the fields marked written. Asset handles are what og.load.animation and og.anim.graph answer; 0 is none."
-  doc "Clips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names. Assets are not world state: a hot reload registers them again."
+  doc "Clips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names; a rig with other names or proportions plays it retargeted (og.anim.retarget at run time, or a model's `animation { library }` import setting at cook time). Assets are not world state: a hot reload registers them again."
 
   handle SkeletonAsset "A rig: a glTF's nodes in topological order with their rest transforms, and its skins (joints and inverse bind matrices)."
   handle ClipAsset "An animation clip, resampled at the cook's rate, with its markers."
@@ -4914,6 +5032,54 @@ module anim {
     param world World "The world whose animation owns the graph."
     param desc GraphDesc "The text and the clips it may name."
     returns Result.GraphAsset "Refused for a parse error (the reason names the line), a clip name `clips` lacks, or an invalid graph."
+  }
+
+  handle Rig "A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow and the standard bones it names outright."
+
+  struct HumanBone {
+    doc "One standard humanoid bone of a skeleton."
+    field bone String "The standard bone: hips, spine, chest, upperChest, neck, head, then leftShoulder, leftUpperArm, leftLowerArm, leftHand, the right arm, leftUpperLeg, leftLowerLeg, leftFoot, leftToes and the right leg."
+    field node String "The skeleton node that is that bone."
+  }
+
+  struct Humanoid {
+    doc "Which node of a skeleton is each standard humanoid bone (what retargeting maps)."
+    field scheme String "The naming scheme the bones were read in: mixamo, vrm, unity, rigify, ue or blender; custom when a rig named them, none when nothing matched."
+    field bones List.HumanBone "The bones found, in the standard order (hips first)."
+  }
+
+  struct HumanoidDesc {
+    doc "A skeleton and, optionally, the rig that says how its bones are named."
+    desc true
+    field skeleton SkeletonAsset "The skeleton (og.load.animation's `skeleton`)."
+    field rig Rig "A humanoid map from og.load.rig; 0 detects the bones from the node names (Mixamo, VRM, Unity, Rigify, Unreal or Blender names)."
+  }
+
+  fn humanoid {
+    doc "The standard humanoid bones of a skeleton, as retargeting sees them: to check a rig before retargeting onto it."
+    param world World "The world whose animation owns the skeleton."
+    param desc HumanoidDesc "The skeleton and its rig."
+    returns Result.Humanoid "Refused for an unregistered skeleton or rig, or a rig naming a node the skeleton lacks."
+  }
+
+  struct RetargetDesc {
+    doc "A clip made for one skeleton, to play on another (other proportions, rest pose or bone names)."
+    desc true
+    field clip ClipAsset "The clip, made for `source`."
+    field source SkeletonAsset "The skeleton the clip was made for (og.load.animation's `skeleton`: a character's, or an animation library's)."
+    field target SkeletonAsset "The skeleton that will play it."
+    field sourceRig Rig "How the source's bones are named (og.load.rig); 0 detects them."
+    field targetRig Rig "How the target's bones are named; 0 detects them."
+    field footIk bool "Solve the legs so a planted foot stays planted on the target's ground (and the hips lower when a leg cannot reach)." {
+      default true
+    }
+  }
+
+  fn retarget {
+    doc "A new clip for `target` from a clip of `source`: each animated humanoid bone turns as the source's does from its rest pose (after a rest correction, so a T-pose drives an A-pose and other bone frames agree), the target keeps its bone lengths, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled. Same name, duration and markers. The cook does the same for a model's `animation { library }` import setting; this is for clips chosen at run time."
+    param world World "The world whose animation owns the skeletons and the clip."
+    param desc RetargetDesc "The clip, the two skeletons and their rigs."
+    returns Result.ClipInfo "The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip, skeleton or rig, a skeleton without recognisable hips (name them in a `type rig` file), or a rig naming a missing node."
   }
 
   handle FlipbookSheet "A sprite sheet's frames and clips (a cooked `.ogt` of `type flipbook`), from og.load.flipbook."
@@ -5442,6 +5608,10 @@ module audio {
       min 0
       unit s
     }
+    field startOffset f64 "Where in the sound it starts, in seconds of the sound: started at startAt (or at once) from this far in, to the sample and at full gain, so a resumed phrase continues instead of restarting. Past a one-shot's end it plays nothing; a loop wraps into its region." {
+      min 0
+      unit s
+    }
     field fade f32 "Starts, stops and volume changes ramp over this long: a crossfade is one source stopped and another started with the same fade; 0 is 5 ms." {
       min 0
       max 30
@@ -5515,6 +5685,11 @@ module audio {
       min 0
       max 1
       tunable true
+    }
+    field outputLatency f64 "Seconds from a sample's world time to the speaker, as the host reports it (og.audio.outputLatency)." {
+      min 0
+      unit s
+      readonly true
     }
   }
 
@@ -5662,6 +5837,13 @@ module audio {
     field sound Sound "The sound."
     field voice u32 "The voice id in the command stream."
     field reason u32 "Why: SOUND_FINISHED (0), SOUND_STOPPED (1), SOUND_REMOVED (2), SOUND_REPLACED (3) or SOUND_CULLED (4)."
+  }
+
+  fn outputLatency {
+    doc "How long after its world time a sample leaves the speaker, as the host reports it: on the web the AudioContext's baseLatency and outputLatency and the worklet ring's buffer, natively the device's latency (cpal's playback less callback instant) and the mixer's buffer; 0 headless (the null and capture sinks are driven to the tick). Host input, written to og.Audio between ticks, so a replay carries it. A rhythm game hears a note at its time plus this: judge a press against the note's time plus the latency, then a calibrated rest (the display, the hand)."
+    doc "Inside a system og.Audio must be among its reads or writes."
+    param world World "The world."
+    returns f64 "Seconds; 0 headless."
   }
 }
 
@@ -6437,6 +6619,9 @@ module platform {
       optional true
     }
     field tick u32 "The tick it was answered at."
+    field time f64 "The host's clock when it answered, UTC milliseconds since 1970 (PlatformInfo.clock says whose); 0 when the host gave none." {
+      unit ms
+    }
   }
 
   struct PlatformInfo {
@@ -6444,6 +6629,7 @@ module platform {
     field host String "`player` (a Player frames the game), `local` (the native host's JSON store or the browser's own storage) or `none`."
     field capabilities List.String "The methods it answers: store.get, store.set, store.list, leaderboard.submit, leaderboard.top, leaderboard.around, telemetry, point, ai.mark."
     field pending u32 "Calls not answered yet."
+    field clock String "Whose clock og.platform.now and the answers' `time` read: `player` (the Player's answers carry its time), `browser` (the web host's own clock: the Player gives no time yet, docs/platform-asks.md), `system` (the native host's system clock), `fixed` (`og run --clock` and playtests: a clock that starts where it is told and moves with the ticks) or `none`."
   }
 
   fn storeGet {
@@ -6535,6 +6721,12 @@ module platform {
     doc "What answers platform calls here, and what it answers."
     param world World "The world."
     returns PlatformInfo
+  }
+
+  fn now {
+    doc "The host's wall-clock time, UTC milliseconds since 1970, as of this tick: what the host last told the engine (when it attached, and with every answer, applied at a tick's start like the answers) moved on by the ticks since. The one wall-clock read game code may make: it is host input, so a replay with the same answers gives the same values. Use it to know how long the game was closed (a save's time against a launch's), never to time play (that is og.Time)."
+    param world World "The world."
+    returns f64 "UTC milliseconds; 0 until a host has told the time (`none`)."
   }
 }
 
@@ -6641,7 +6833,7 @@ module ui {
     variant secondary "A neutral fill (the default)."
     variant primary "The amber action: one per screen."
     variant quiet "Text until hovered."
-    variant danger "A destructive action: danger ink on a neutral fill."
+    variant danger "A destructive action: danger ink on the danger tint."
   }
 
   enum ControlSize {
@@ -6816,6 +7008,7 @@ module ui {
     field cross Cross "Where children sit across it."
     field wrap bool "Break a row into lines at its inner width."
     field scroll bool "Scroll its content vertically and clip it."
+    field scrollX bool "Scroll its content horizontally and clip it (with scroll: both ways)."
     field interactive bool "Report a Response from close(), as a button does."
     field background Option.Paint "Its fill; null draws none."
     field radius f32 "Corner radius." {
@@ -6858,8 +7051,15 @@ module ui {
     field background Option.Paint "Its fill; null is surface."
   }
 
+  enum ScrollAxes {
+    doc "Which ways a scroll container scrolls."
+    variant vertical "Up and down (the default)."
+    variant horizontal "Left and right."
+    variant both "Both ways."
+  }
+
   struct ScrollDesc {
-    doc "A vertical scroll container: the wheel or a drag scrolls it, it clips its content, a capsule indicator shows the position."
+    doc "A scroll container: the wheel (both axes, deltaX and deltaY) or a drag scrolls it, and a released drag keeps its momentum, slowing over motion.spring.momentum's response (none under reduced motion); it clips its content; a scrollbar on each scrolling axis shows the position, and a press on one grabs and drags it. Nested containers hand off: what the innermost under the pointer cannot take (it reached its end, or does not scroll that way) goes to the one around it."
     desc true
     field width Option.Size "Its width; null fits the content."
     field height Option.Size "Its height; null fits the content."
@@ -6867,6 +7067,7 @@ module ui {
     field gap f32 "Space between children." {
       unit cssPx
     }
+    field axes ScrollAxes "Which ways it scrolls."
   }
 
   struct ImageDesc {
@@ -6913,6 +7114,8 @@ module ui {
     field focused bool "It has focus: a text field being edited, or the control keyboard and gamepad navigation landed on."
     field submitted bool "Enter was pressed in it (text field)."
     field dropped Option.u32 "A list row or grid cell a press started on was released over this one: that row's or cell's index (drag and drop)."
+    field pad Option.u32 "The gamepad (0 to 3) whose A pressed it this tick; null when the pointer or the keyboard did. Pads 1 to 3 press only while og.ui.setPlayers allows them (local multiplayer)."
+    field focusedBy u32 "Bit k: pad k's focus is on it (bit 0 is the shared focus of the pointer, the keyboard and pad 0; bits 1 to 3 the other players' pads)."
   }
 
   struct SliderResult {
@@ -6970,8 +7173,8 @@ module ui {
   struct UiSounds {
     doc "Sounds the UI plays through og-audio (the ui bus) on its events; null is silent."
     desc true
-    field hover Option.Sound "The pointer reaches a control."
-    field press Option.Sound "A control is pressed."
+    field hover Option.Sound "The pointer reaches a control, or keyboard or gamepad focus moves to one."
+    field press Option.Sound "A control is pressed: by the pointer, Enter, Space or the gamepad's A."
     field open Option.Sound "A dialog opens."
     field close Option.Sound "A dialog closes."
     field success Option.Sound "A success toast."
@@ -7124,6 +7327,32 @@ module ui {
     param desc ScrollDesc "Its size and spacing."
     param build UiBuild "Makes its children."
     returns Void
+  }
+
+  struct RichTextDesc {
+    doc "How a rich text paragraph draws: its defaults, which its markup's spans override."
+    desc true
+    field step Option.TypeStepName "The type step; null is body."
+    field color Option.Paint "The ink; null is fg."
+    field align TextAlign "How the lines align."
+    field nowrap bool "Keep to one line (breaking only at `\\n`)."
+    field width Option.Size "Its width; null fits the text."
+    field font FontRole "Which font."
+  }
+
+  struct RichTextResult {
+    doc "What a rich text's links did this tick."
+    field response Response "Its links together: hovered while one is, clicked when one was."
+    field link Option.String "The link clicked this tick: its `[link=…]` id."
+    field hovered Option.String "The link under the pointer."
+  }
+
+  fn richText {
+    doc "A paragraph of inline spans from markup, for a string-table message (og.i18n.t) so a translation carries its own emphasis: `[b]bold[/b]` (thickened in the distance field as far as it reaches, plus a second copy one device pixel right), `[color=danger]` or `[color=#ff8800]` (a ThemeColor follows the skin), `[size=xl]` (a TypeStepName), `[font=mono]`, `[icon=coin]` (a cell of the icon atlas, one em), `[link=shop]Open the shop[/link]` (accent ink, underlined, focusable by keys and pads; a child element `<id>/shop` of kind link for the probe) and per-glyph motion `[wave]`, `[shake]`, `[pulse]` (by the tick; still under reduced motion). `[[` is a literal bracket. Lines break between the spans' words (a word restyled mid-way stays whole), each as tall as its tallest span on one baseline. Markup it cannot read shows as text and logs a warning."
+    param id String "Its id."
+    param markup String "The markup."
+    param desc RichTextDesc "Defaults for its spans: type step, ink, alignment, wrapping, width and font."
+    returns RichTextResult
   }
 
   fn label {
@@ -8008,6 +8237,52 @@ module ui {
     returns bool
   }
 
+  fn setPlayers {
+    doc "Local multiplayer: how many players this screen takes (1 to 4; 1 by default). Pads 1 to count - 1 each move a focus of their own among the same controls, shown as a ring in the player's colour (info, success, warn), and their A presses the control under it (Response.pad says which pad); pad 0 shares the one focus with the keyboard and the pointer, and Back and adjusting a slider stay pad 0's. Declare it every tick the screen shows; it takes effect from the next tick, and a dialog's focus scope holds every pad's focus inside it."
+    param count u32 "Players, 1 to 4 (clamped)."
+    returns Void
+  }
+
+  fn focus {
+    doc "The path of the control pad pad's focus is on in the last frame (pad 0: the shared focus of the pointer, keyboard and pad 0), as touch_move_to resolves it; empty when it is on none."
+    param pad u32 "The pad, 0 to 3; past 3 answers empty."
+    returns String
+  }
+
+  struct A11yNode {
+    doc "One node of the accessibility tree: an element with a role (layout containers and spacers have none and are left out)."
+    field path String "Its path, as touch_move_to and og.ui.focus name it."
+    field parent String "The path of the nearest node above it in the tree; empty at the top."
+    field role String "Its role (probe.UiElement.role): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, dialog, tooltip, separator, group."
+    field name String "Its accessible name: what a screen reader says it is."
+    field value String "Its value as text (a slider's number, a progress's percent, a field's text); empty for none."
+    field states List.String "Its states: disabled, focused, focusable, checked, selected, expanded, pressed, busy, offscreen (a scroll container cuts it out of view)."
+    field x f32 "Left edge of the whole element." {
+      unit cssPx
+    }
+    field y f32 "Top edge of the whole element." {
+      unit cssPx
+    }
+    field width f32 "Width." {
+      unit cssPx
+    }
+    field height f32 "Height." {
+      unit cssPx
+    }
+  }
+
+  struct A11yTree {
+    doc "The last frame's accessibility tree, built from the same nodes the UI draws and takes input on."
+    field nodes List.A11yNode "The nodes, in tree order: the page, then each layer over it (a dialog after the page)."
+    field focusOrder List.String "The paths keyboard Tab and the pads visit, in order: the nodes marked focusable, within the topmost dialog while one is open."
+    field focused String "The path keyboard and pad 0's focus is on; empty for none."
+  }
+
+  fn a11y {
+    doc "The accessibility tree of the last frame: every element with a role, its name, value, states and bounds, and the focus order Tab walks. A shell mirrors it into the page for screen readers; a playtest reads the same fields on dump_ui's elements."
+    returns A11yTree
+  }
+
   fn setNavigation {
     doc "Whether keyboard and gamepad navigation moves focus on this screen (on by default). A gameplay HUD whose keys move the player turns it off; an open dialog or menu turns it back on while it is open. Takes effect from the next tick."
     param on bool "On or off."
@@ -8482,6 +8757,7 @@ module ui {
   struct ShopResult {
     doc "A shop's answer this tick."
     field bought Option.String "The item bought this tick: take the price and grant it."
+    field refused Option.String "The item whose Buy was pressed this tick while the balance was short: the button shook with the error sound (og.ui.shake) and nothing was bought."
     field closed bool "Close was pressed (or Back)."
   }
 
@@ -8652,7 +8928,7 @@ module ui {
     desc true
     field open bool "Whether it is open."
     field title String "The question."
-    field message String "What will happen."
+    field message String "What will happen, as rich text markup (og.ui.richText: [b], [color=…], [icon=…]…), so a translation carries its own emphasis."
     field confirmLabel String "The action's label." {
       default "Confirm"
     }
@@ -8673,7 +8949,7 @@ module ui {
     desc true
     field open bool "Whether it is open."
     field title String "The title."
-    field message String "The message."
+    field message String "The message, as rich text markup (og.ui.richText)."
     field okLabel String "The button's label." {
       default "OK"
     }
@@ -8851,7 +9127,7 @@ module commands {
     variant touch_end "`touch_end`: release the pointer."
     variant scroll "`scroll:dx,dy`: scroll at the pointer."
     variant touch "`touch:<id>:<down|move|up>:<x,y | ui id>`: a further touch (pointer 1 to 4) held while the pointer is busy elsewhere."
-    variant gamepad "`gamepad:<a+b+...|->[:lx,ly[,rx,ry]][:lt,rt]`: set pad 0's whole state; `gamepad:off` disconnects it."
+    variant gamepad "`gamepad:<a+b+...|->[@pad][:lx,ly[,rx,ry]][:lt,rt]`: set a pad's whole state (pad 0 unless `@1` to `@3` follows the buttons); `gamepad:off` disconnects it."
     variant key_down "`key_down:<Key>`: hold a key by its code."
     variant key_up "`key_up:<Key>`: release a key."
     variant type "`type:<text>`: type text, one key press per character."
@@ -9189,6 +9465,10 @@ module probe {
     field disabled bool "A disabled control (its text is exempt from contrast rules, as WCAG exempts inactive controls)."
     field clipped bool "Only part of it shows: a scroll container or the surface cuts it, and the bounds are the part that shows."
     field text String "The text it shows, if any."
+    field role String "Its accessibility role (og.ui.a11y): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, alert, dialog, tooltip, separator, group; empty for a presentational element (a layout container, a spacer)."
+    field name String "Its accessible name: its text, a name the widget gives it (an icon's name, a dialog's title, Decrease and Increase for a stepper's buttons), a control's own text gathered from its children, or else its id."
+    field value String "Its value as text: a slider's or stepper's number, a progress's or meter's amount, a field's text, a select's choice; empty for none."
+    field states List.String "Its states: disabled, focused, focusable (keys and pads reach it now, in this order), checked, selected, expanded, pressed, busy."
     field x f32 "Left edge." {
       unit cssPx
     }

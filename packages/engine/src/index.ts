@@ -14,6 +14,7 @@ import {
   load,
   physics,
   atmosphere,
+  audio,
   render,
   transform,
   ui,
@@ -76,7 +77,8 @@ export const PROBE_WIRE_VERSION: typeof Api.PROBE_WIRE_VERSION = 1;
 export const REPLAY_SEED_PARAM: typeof Api.REPLAY_SEED_PARAM = "replay-seed";
 export const PLAYTEST_MAX_TICKS: typeof Api.PLAYTEST_MAX_TICKS = 3600;
 export const PROBE_PROGRAM_MAX_OPERATIONS: typeof Api.PROBE_PROGRAM_MAX_OPERATIONS = 256;
-export const MAX_LIGHTS: typeof Api.MAX_LIGHTS = 8;
+export const MAX_LIGHTS: typeof Api.MAX_LIGHTS = 256;
+export const MAX_CLUSTER_LIGHTS: typeof Api.MAX_CLUSTER_LIGHTS = 64;
 export const BODY_DYNAMIC: typeof Api.BODY_DYNAMIC = 0;
 export const BODY_STATIC: typeof Api.BODY_STATIC = 1;
 export const BODY_KINEMATIC: typeof Api.BODY_KINEMATIC = 2;
@@ -151,6 +153,7 @@ export const og: typeof Api.og = Object.freeze({
   commands,
   physics,
   atmosphere,
+  audio,
   anim,
   time,
   camera,

@@ -1,5 +1,5 @@
 // The scattered copies' lit and prepass passes. Prepended by frame.wgsl,
-// noise.wgsl, material.wgsl (group 1: the copies' StandardMaterial),
+// the light tables (clusters.rs), noise.wgsl, material.wgsl (group 1: the copies' StandardMaterial),
 // lighting.wgsl and scatter_common.wgsl (group 2).
 //
 // Shading: the material's colour (factor, texture and the mesh's vertex
@@ -85,9 +85,14 @@ fn fs(in: ScatterOut) -> @location(0) vec4<f32> {
   if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) { shadow = cascade_shadow(in.world, n, n_dot_l); }
   var color = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
   color += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(in.world);
-  let light_count = u32(frame.params.z);
-  for (var i = 0u; i < light_count; i++) {
-    color += scatter_local_light(frame.lights[i], s, in.world, n, v);
+  // Point and spot lights: those of this fragment's cluster (clusters.rs).
+  if (frame.params.z > 0.5) {
+    let word = cluster_word(cluster_at(in.clip.xy, in.world));
+    let first = word & 0xffffffu;
+    let light_count = word >> 24u;
+    for (var k = 0u; k < light_count; k++) {
+      color += scatter_local_light(light_list[cluster_ref(first + k)], s, in.world, n, v);
+    }
   }
   let n_dot_v = max(dot(n, v), 1e-4);
   let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);

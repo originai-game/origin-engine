@@ -141,10 +141,9 @@ fn encode_toktx(img: &Image, k: u32, opts: &TextureOptions) -> Result<Vec<u8>, S
         if opts.zstd {
             cmd.args(["--zcmp", "3"]);
         }
+        // Not --normal_mode, which would keep only x (in RGB) and y (in
+        // alpha): `cook` has already copied y into alpha and kept xyz.
         cmd.args(["--assign_oetf", "linear"]);
-        if k == kind::NORMAL {
-            cmd.arg("--normal_mode");
-        }
     }
     if opts.mipmaps {
         cmd.arg("--genmipmap");
@@ -200,6 +199,25 @@ pub fn cook(img: &Image, k: u32, opts: &TextureOptions, stamp: u64) -> Result<Ve
         return Ok(w.finish());
     }
     let srgb = k == kind::COLOR;
+    // A normal map keeps x, y, z in RGB (RGBA8, BC7, ASTC and ETC2 read
+    // them) and y again in alpha, where Basis transcoders take a
+    // two-channel format's second channel from (BC5 and EAC RG11 are R and
+    // A): `has_alpha` then says the map carries y there.
+    let normal;
+    let (img, alpha) = if k == kind::NORMAL {
+        let mut rgba = img.rgba.clone();
+        for p in rgba.as_chunks_mut::<4>().0 {
+            p[3] = p[1];
+        }
+        normal = Image {
+            width: img.width,
+            height: img.height,
+            rgba,
+        };
+        (&normal, true)
+    } else {
+        (img, alpha)
+    };
     #[cfg(feature = "basis")]
     let ktx = if opts.force_toktx {
         encode_toktx(img, k, opts)

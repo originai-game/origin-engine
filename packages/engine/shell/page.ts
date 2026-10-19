@@ -28,6 +28,7 @@ import { AudioShell } from "../src/web/audio.ts";
 import { pollGamepads } from "../src/web/gamepad.ts";
 import { mountWire } from "./wire.ts";
 import { connectPlayer } from "./player.ts";
+import { connectPage, pageGame, type PageConnection, type PageInfo } from "./transport.ts";
 import { deferredPlatform, HELLO_WAIT_MS, playerPlatform, storagePersistence } from "./platform.ts";
 import { localPlatform, type PlatformHost } from "../src/platform-local.ts";
 
@@ -91,8 +92,8 @@ export function probeParams(member: string, args: unknown[]): Record<string, unk
 
 const zh = /^zh\b/i.test(globalThis.navigator?.language ?? "");
 const T = zh
-  ? { loading: "正在加载", play: "点击开始", tapToPlay: "点击开始", startFailed: "游戏无法启动", stopped: "游戏已停止", reload: "重新加载", copy: "复制报告", copied: "已复制", log: "日志", dump: "世界快照", install: "添加到主屏幕", installIos: "点按分享，再选“添加到主屏幕”", dismiss: "不用了", madeWith: "Made with Origin Engine" }
-  : { loading: "Loading", play: "Play", tapToPlay: "Tap to play", startFailed: "The game could not start", stopped: "The game stopped", reload: "Reload", copy: "Copy report", copied: "Copied", log: "Log", dump: "World", install: "Install", installIos: "Tap Share, then Add to Home Screen", dismiss: "Not now", madeWith: "Made with Origin Engine" };
+  ? { loading: "正在加载", play: "点击开始", tapToPlay: "点击开始", startFailed: "游戏无法启动", stopped: "游戏已停止", reload: "重新加载", copy: "复制报告", copied: "已复制", log: "日志", dump: "世界快照", install: "添加到主屏幕", installIos: "点按分享，再选“添加到主屏幕”", dismiss: "不用了", back: "返回", madeWith: "Made with Origin Engine" }
+  : { loading: "Loading", play: "Play", tapToPlay: "Tap to play", startFailed: "The game could not start", stopped: "The game stopped", reload: "Reload", copy: "Copy report", copied: "Copied", log: "Log", dump: "World", install: "Install", installIos: "Tap Share, then Add to Home Screen", dismiss: "Not now", back: "Back", madeWith: "Made with Origin Engine" };
 
 export function readConfig(doc: Document = document): ShellConfig {
   const text = doc.getElementById("og-config")?.textContent ?? "{}";
@@ -170,13 +171,82 @@ export async function play(): Promise<PlayHandle> {
   const t0 = performance.now();
   const log = new LogTail();
   const playerEvents: import("./player.ts").PlayerEvents = {};
-  const player = connectPlayer(playerEvents);
+  // A top-level page the platform published (`window.__OG_GAME`) speaks Player protocol 2 to
+  // its play origin over HTTP (./transport.ts); a framed page to its Player over postMessage;
+  // any other page plays alone.
+  const top = (() => {
+    try {
+      return window.parent === window;
+    } catch {
+      return false;
+    }
+  })();
+  const game = top ? pageGame((globalThis as { __OG_GAME?: unknown }).__OG_GAME) : null;
+  const page: PageConnection | null = game
+    ? connectPage(game, {
+        fetch: (url, init) => fetch(url, init),
+        storage: (() => {
+          try {
+            return localStorage;
+          } catch {
+            return null;
+          }
+        })(),
+        location,
+        replaceUrl: (url) => {
+          try {
+            history.replaceState(history.state, "", url);
+          } catch {
+            /* sandboxed */
+          }
+        },
+        now: () => Date.now(),
+        clock: () => performance.now(),
+        random: (n) => crypto.getRandomValues(new Uint8Array(n)),
+      }, playerEvents)
+    : null;
+  const player = page ?? connectPlayer(playerEvents);
   const canvas = $<HTMLCanvasElement>("og-canvas") ?? document.body.appendChild(document.createElement("canvas"));
   const boot = $("og-boot");
   const mark = boot?.querySelector<SVGSVGElement>(".og-mark") ?? null;
   const label = $("og-boot-label");
   const badge = $("og-made-with");
   if (badge) badge.hidden = !config.madeWith;
+  const back = $<HTMLButtonElement>("og-back");
+  // What the Player page drew around the game, drawn by the page itself: the cover's
+  // backdrop behind the boot splash and Back to the Portal page that opened the game.
+  const paintPage = (info: PageInfo) => {
+    const backdrop = $("og-backdrop");
+    const image = info.backdrop ?? info.cover;
+    if (backdrop && image) {
+      const img = document.createElement("img");
+      img.alt = "";
+      img.decoding = "async";
+      // An isolated page (COEP require-corp) loads the Portal's image through CORS.
+      if (globalThis.crossOriginIsolated) img.crossOrigin = "anonymous";
+      img.addEventListener("load", () => backdrop.setAttribute("data-shown", ""), { once: true });
+      img.src = image;
+      backdrop.replaceChildren(img);
+    }
+    if (back && info.back) {
+      const target = info.back;
+      back.setAttribute("aria-label", T.back);
+      back.title = T.back;
+      const text = back.querySelector("span");
+      if (text) text.textContent = T.back;
+      back.hidden = false;
+      back.onclick = () => {
+        let fromPortal = false;
+        try {
+          fromPortal = !!info.portal && new URL(document.referrer).origin === info.portal;
+        } catch {
+          /* no referrer */
+        }
+        if (fromPortal && history.length > 1) history.back();
+        else location.assign(target);
+      };
+    }
+  };
 
   // ── boot: genesis once, then progress with the real value ────────────
   let progress = 0;
@@ -229,6 +299,7 @@ export async function play(): Promise<PlayHandle> {
     }
     boot?.removeAttribute("data-done");
     if (boot) boot.hidden = false;
+    back?.removeAttribute("data-playing");
     $("og-gate")?.setAttribute("hidden", "");
     card.querySelector("h1")!.textContent = title;
     card.querySelector("p")!.textContent = message;
@@ -297,7 +368,15 @@ export async function play(): Promise<PlayHandle> {
   playerEvents.hello = helloForPlatform;
   if (player.hosted) helloForPlatform();
   else if (player.framed) setTimeout(() => platformReady(localPlatform(platformStore)), HELLO_WAIT_MS);
-  const platform = player.framed ? deferredPlatform(hostReady, ["store.get", "store.set", "store.list", "telemetry"]) : localPlatform(platformStore);
+  // A top-level platform page's calls wait for its play origin's hello; without one, the browser's storage.
+  if (page)
+    void page.hello.then((ok) => {
+      if (!ok) return platformReady(localPlatform(platformStore));
+      helloForPlatform();
+      // The cover and Back as soon as the play origin names them, while the engine still loads.
+      if (page.page) paintPage(page.page);
+    });
+  const platform = player.framed || page ? deferredPlatform(hostReady, ["store.get", "store.set", "store.list", "telemetry"]) : localPlatform(platformStore);
 
   let firstFrameAt = 0;
   let shell: Shell;
@@ -395,6 +474,8 @@ export async function play(): Promise<PlayHandle> {
     wanted = true;
     $("og-gate")?.setAttribute("hidden", "");
     badge?.setAttribute("data-playing", "");
+    back?.setAttribute("data-playing", "");
+    page?.start();
     if (!harness) shell.play(!pausedByPlayer && document.visibilityState === "visible");
     void lockWake();
   };
@@ -411,12 +492,22 @@ export async function play(): Promise<PlayHandle> {
     }
   };
   document.addEventListener("visibilitychange", () => pauseFor(document.visibilityState !== "visible"));
-  addEventListener("pagehide", () => pauseFor(true));
+  addEventListener("pagehide", () => {
+    pauseFor(true);
+    page?.end({ ready: firstFrameAt > 0, failed: phase === "failed" });
+  });
   pollGamepads((e) => shell.inject(e));
 
   // A Player owns the gate: start on its `start` (or a hello that says play began).
-  let byPlayer = player.hosted;
-  playerEvents.hello = (m) => {
+  // A top-level page owns its own gate; its hello only names what its play origin answers.
+  let byPlayer = player.hosted && !page;
+  if (page) {
+    playerEvents.hello = () => {
+      helloForPlatform();
+      shell.setPlatform(playerPlatform(player, platformStore));
+    };
+    if (page.hosted) playerEvents.hello({ started: false, paused: false, capabilities: page.capabilities });
+  } else playerEvents.hello = (m) => {
     byPlayer = true;
     helloForPlatform();
     // What it answers may have changed with this hello.

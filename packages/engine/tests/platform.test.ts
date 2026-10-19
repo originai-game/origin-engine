@@ -65,7 +65,7 @@ test("og.platform: a game's calls are answered by the local platform at the next
   const engine = start(og.game({ resources: [Calls], systems: [Caller] }));
   engine.attachPlatform(local);
   const w = engine.world;
-  const info = og.platform.info(w) as { host: string; capabilities: string[]; pending: number };
+  const info = og.platform.info(w);
   expect([info.host, info.pending]).toEqual(["local", 0]);
   for (const m of ["store.get", "leaderboard.around", "ai.mark"]) expect(info.capabilities.includes(m)).toBeTrue();
   engine.advance(2); // tick 0, tick 1 (the calls), then pumped

@@ -5,7 +5,7 @@
 //! (a dissolve by noise and wind-swayed grass), and weather presets.
 
 use crate::fx_scenes::terrain;
-use glam::{Mat4, Vec2, Vec3};
+use glam::{Mat4, Vec2, Vec3, Vec4};
 use og_render::{
     Background, Bloom, Camera, DirectionalLight, Environment, Exposure, Fog, Material,
     MaterialShader, MeshData, Metaballs, ParamKind, ProceduralSky, RenderScene, ShaderParam,
@@ -14,7 +14,7 @@ use og_render::{
 use std::sync::Arc;
 
 /// Pillars and boulders receding into the distance, for fog to swallow.
-fn colonnade(scene: &mut RenderScene) {
+pub(crate) fn colonnade(scene: &mut RenderScene) {
     terrain(scene, 400.0);
     let pillar = scene.add_mesh(shapes::cuboid(Vec3::new(1.0, 8.0, 1.0)));
     let rock = scene.add_mesh(shapes::sphere(20, 14));
@@ -46,7 +46,7 @@ fn colonnade(scene: &mut RenderScene) {
     }
 }
 
-fn colonnade_camera() -> Camera {
+pub(crate) fn colonnade_camera() -> Camera {
     Camera {
         position: Vec3::new(0.0, 2.2, 4.0),
         target: Vec3::new(0.0, 3.4, -40.0),
@@ -352,6 +352,150 @@ pub fn fluid_2d_scene() -> RenderScene {
     scene
 }
 
+/// A disc of particles on a jittered hex grid, `spacing` apart.
+fn disc(centre: Vec2, radius: f32, spacing: f32, seed: u32) -> Vec<Vec2> {
+    let jitter = |i: u32| {
+        let mut h = i.wrapping_mul(0x9e37_79b9) ^ seed;
+        h = (h ^ (h >> 15)).wrapping_mul(0x85eb_ca6b);
+        ((h & 0xffff) as f32 / 65535.0 - 0.5) * 0.04
+    };
+    let n = (radius / spacing).ceil() as i32 + 1;
+    let mut out = Vec::new();
+    let mut k = 0;
+    for row in -n..=n {
+        for col in -n..=n {
+            let x = col as f32 * spacing + if row % 2 != 0 { spacing * 0.5 } else { 0.0 };
+            let y = row as f32 * spacing * 0.87;
+            if x * x + y * y <= radius * radius {
+                out.push(centre + Vec2::new(x + jitter(k), y + jitter(k + 1)));
+            }
+            k += 2;
+        }
+    }
+    out
+}
+
+/// Ten fluids in one frame (phase 2: more than four, packed four channels
+/// to a field): six lone pools in a row, each its own colour; a group of two
+/// (blue water and orange oil) drawn as one surface, a band where their
+/// particles are half and half blended between them; and a group of two
+/// unmixed (green over purple), layered with a sharp colour boundary.
+pub fn fluid_groups_scene() -> RenderScene {
+    let mut scene = RenderScene::new();
+    let colors = [
+        Vec4::new(0.9, 0.2, 0.2, 0.9),
+        Vec4::new(0.95, 0.65, 0.1, 0.9),
+        Vec4::new(0.3, 0.8, 0.25, 0.9),
+        Vec4::new(0.15, 0.6, 0.9, 0.9),
+        Vec4::new(0.55, 0.3, 0.9, 0.9),
+        Vec4::new(0.9, 0.35, 0.7, 0.9),
+    ];
+    for (i, c) in colors.iter().enumerate() {
+        scene.metaballs.push(Metaballs {
+            particles: Arc::from(disc(
+                Vec2::new(-5.0 + i as f32 * 2.0, 2.4),
+                0.7,
+                0.14,
+                i as u32,
+            )),
+            radius: 0.24,
+            color: *c,
+            rim: Vec3::new(1.0, 1.0, 1.0),
+            layer: 1,
+            ..Default::default()
+        });
+    }
+    // The blend: a pool from x -5.8 to 0.9, water on the left, oil on the
+    // right, their mix ramping from x -3.5 to -1.5.
+    let pool: Vec<Vec2> = (0..40)
+        .flat_map(|col| (0..8).map(move |row| (col, row)))
+        .map(|(col, row)| {
+            Vec2::new(
+                -5.8 + col as f32 * 0.17 + if row % 2 == 1 { 0.085 } else { 0.0 },
+                -1.6 + row as f32 * 0.15,
+            )
+        })
+        .collect();
+    let share = |p: &Vec2| ((p.x + 3.5) / 2.0).clamp(0.0, 1.0);
+    let (left, right): (Vec<Vec2>, Vec<Vec2>) = pool.iter().partition(|p| share(p) < 0.5);
+    let mix_of = |ps: &[Vec2]| -> Arc<[[f32; 4]]> {
+        ps.iter()
+            .map(|p| [1.0 - share(p), share(p), 0.0, 0.0])
+            .collect()
+    };
+    scene.metaballs.push(Metaballs {
+        particles: Arc::from(left.clone()),
+        radius: 0.24,
+        color: Vec4::new(0.12, 0.45, 0.9, 0.9),
+        group: 1,
+        lane: 0,
+        mix: mix_of(&left),
+        layer: 1,
+        ..Default::default()
+    });
+    scene.metaballs.push(Metaballs {
+        particles: Arc::from(right.clone()),
+        radius: 0.24,
+        color: Vec4::new(1.0, 0.55, 0.1, 0.9),
+        group: 1,
+        lane: 1,
+        mix: mix_of(&right),
+        layer: 1,
+        ..Default::default()
+    });
+    // The layers: green (light) over purple (heavy), each pure.
+    let tank = |y0: f32, rows: i32| -> Vec<Vec2> {
+        (0..16)
+            .flat_map(|col| (0..rows).map(move |row| (col, row)))
+            .map(|(col, row)| {
+                Vec2::new(
+                    2.4 + col as f32 * 0.17 + if row % 2 == 1 { 0.085 } else { 0.0 },
+                    y0 + row as f32 * 0.15,
+                )
+            })
+            .collect()
+    };
+    let (heavy, light) = (tank(-1.6, 5), tank(-0.85, 4));
+    for (lane, (ps, c)) in [
+        (heavy, Vec4::new(0.5, 0.15, 0.6, 0.9)),
+        (light, Vec4::new(0.35, 0.85, 0.3, 0.9)),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let n = ps.len();
+        let mut m = [0.0; 4];
+        m[lane] = 1.0;
+        scene.metaballs.push(Metaballs {
+            particles: Arc::from(ps),
+            radius: 0.24,
+            color: c,
+            group: 2,
+            lane: lane as u32,
+            mix: Arc::from(vec![m; n]),
+            layer: 1,
+            ..Default::default()
+        });
+    }
+    let stone = [0.32, 0.3, 0.34, 1.0];
+    for (p, size) in [
+        (Vec2::new(-1.0, -2.1), Vec2::new(11.6, 0.4)),
+        (Vec2::new(5.4, -2.1), Vec2::new(1.0, 0.4)),
+    ] {
+        scene.add_sprite(Sprite {
+            position: p.extend(0.0),
+            size,
+            color: stone,
+            layer: 2,
+            ..Default::default()
+        });
+    }
+    scene.camera = Camera::orthographic_2d(Vec2::new(-0.4, 0.4), 7.0);
+    scene.environment.background = Background::Color(Vec3::new(0.08, 0.08, 0.1));
+    scene.post.tonemap = Tonemap::None;
+    scene
+}
+
 /// The dissolve hooks (`assets/shaders/dissolve.wgsl`).
 pub const DISSOLVE_WGSL: &str = include_str!("../assets/shaders/dissolve.wgsl");
 /// The grass hooks (`assets/shaders/grass.wgsl`).
@@ -407,6 +551,7 @@ pub fn blade(height: f32, width: f32) -> MeshData {
         let w = width * (1.0 - t * 0.85) * 0.5;
         for side in [-1.0f32, 1.0] {
             vertices.push(Vertex {
+                tangent: [0.0; 4],
                 position: [side * w, t * height, 0.0],
                 normal: [0.0, 0.3, 1.0],
                 uv: [side * 0.5 + 0.5, 1.0 - t],

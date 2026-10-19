@@ -2,8 +2,8 @@
 //! drawing of the physics that has a look): og.Fog, og.Sky, og.DayNight
 //! and og.Weather into the scene's fog, sky, light and particles; og.Water
 //! (with an og.WaterSurface's heights), og.Water2D over an og.WaterLine,
-//! og.Fluid2D as metaballs, visible og.Rope and og.Cloth; and the material
-//! shaders (`og.load.shader`, `og.render.shaderMaterial`,
+//! og.Fluid2D as metaballs (a group as one surface), visible og.Rope and
+//! og.Cloth; and the material shaders (`og.load.shader`, `og.render.shaderMaterial`,
 //! `og.render.setShaderParam`). Like the rest of extraction it reads the
 //! world (and the physics' last step) and never writes either.
 
@@ -124,6 +124,11 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             glow_power: f(&s, "glowPower", 24.0),
             stars: f(&s, "stars", 0.0),
             brightness: f(&s, "brightness", 1.1),
+            moon_size: f(&s, "moonSize", 0.0),
+            moon_phase: f(&s, "moonPhase", 0.5),
+            moon_intensity: f(&s, "moonIntensity", 1.4),
+            moon_color: color(&s["moonColor"], Vec3::new(0.9, 0.92, 1.0)),
+            moon_direction: super::fx::vec3(&s["moonDirection"]),
         };
         let dir = super::fx::vec3(&s["sunDirection"]).normalize_or(Vec3::Y);
         let sun = color(&s["sunColor"], Vec3::new(1.0, 0.95, 0.88));
@@ -148,7 +153,10 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         let look = og_render::day_night(now, tilt, azimuth);
         // The image-based light steps every `step` game minutes.
         let step = f(&d, "step", 10.0).clamp(1.0, 120.0) / 60.0;
-        let stepped = og_render::day_night((now / step).floor() * step, tilt, azimuth);
+        let mut stepped = og_render::day_night((now / step).floor() * step, tilt, azimuth);
+        // The moon opposite the sun drawn this frame (moon_direction zero).
+        stepped.sky.moon_size = f(&d, "moonSize", 1.6);
+        stepped.sky.moon_phase = f(&d, "moonPhase", 0.5);
         let scale = f(&d, "lightIntensity", 1.0).max(0.0);
         scene.light.direction_to_light = look.light_direction;
         scene.light.color = look.light_color;
@@ -351,6 +359,16 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         let Some(particles) = physics.fluid_particles(Entity::from_bits(e)) else {
             continue;
         };
+        // A fluid sharing its group is drawn with the group as one surface,
+        // its particles by their mix (og-physics' fluid_mix: its lane).
+        let (group, lane, mix) = match physics.fluid_mix(Entity::from_bits(e)) {
+            Some((lane, mix)) => (
+                v["group"].as_u64().unwrap_or(0) as u32,
+                lane,
+                Arc::from(mix),
+            ),
+            None => (0, 0, Arc::from(Vec::new())),
+        };
         scene.metaballs.push(Metaballs {
             particles: Arc::from(particles),
             radius: f(&v, "radius", 0.18) * f(&v, "blobScale", 1.6),
@@ -359,6 +377,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             color: super::fx::vec3(&v["color"]).extend(f(&v, "opacity", 0.9)),
             layer: v["layer"].as_i64().unwrap_or(0) as i32,
             z: h.world_of(e).transform_point3(Vec3::ZERO).z,
+            group,
+            lane,
+            mix,
             ..Metaballs::default()
         });
     }
@@ -457,6 +478,7 @@ fn cloth_mesh(columns: u32, rows: u32, points: &[Vec3]) -> MeshData {
             let dy = at(x, (y + 1).min(ht - 1)) - at(x, y.saturating_sub(1));
             let n = dy.cross(dx).normalize_or(Vec3::Z);
             vertices.push(Vertex {
+                tangent: [0.0; 4],
                 position: at(x, y).to_array(),
                 normal: n.to_array(),
                 uv: [x as f32 / (w - 1) as f32, y as f32 / (ht - 1) as f32],
@@ -552,6 +574,34 @@ pub fn og_render_shader_material(world: u32, shader: f64, desc: Option<String>) 
     }
 }
 
+/// og.render.setMaterialShader: `shader` is the JSON of a shader handle or null.
+pub fn og_render_set_material_shader(world: u32, material: f64, shader: String) -> String {
+    let r = (|| -> Result<(), String> {
+        let eng = engine(world)?;
+        let shader: Value = serde_json::from_str(&shader).unwrap_or(Value::Null);
+        let mut rs = eng.render.borrow_mut();
+        let h = super::assets::index_of(material)
+            .and_then(|i| rs.materials.get(i).copied())
+            .ok_or_else(|| format!("material {material} is not alive"))?;
+        let s = match shader.as_f64() {
+            None => None,
+            Some(handle) => Some(
+                super::assets::index_of(handle)
+                    .and_then(|i| rs.atmo.shaders.get(i).copied())
+                    .ok_or_else(|| format!("shader {handle} is not loaded in this world"))?,
+            ),
+        };
+        if !rs.scene.set_material_shader(h, s) {
+            return Err(format!("material {material} is not a standard material"));
+        }
+        Ok(())
+    })();
+    match r {
+        Ok(()) => ok_void(),
+        Err(e) => refuse(e),
+    }
+}
+
 pub fn og_render_set_shader_param(
     world: u32,
     material: f64,
@@ -571,7 +621,7 @@ pub fn og_render_set_shader_param(
             .ok_or_else(|| format!("material {material} is not alive"))?;
         if rs.scene.material_shader(h).is_none() {
             return Err(format!(
-                "material {material} has no shader (make it with og.render.shaderMaterial)"
+                "material {material} has no shader (make it with og.render.shaderMaterial or give it one with og.render.setMaterialShader)"
             ));
         }
         if !rs.scene.set_shader_param(h, &name, &value) {

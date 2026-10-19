@@ -1,5 +1,5 @@
 // The terrain's lit, prepass and normal-map passes. Prepended by
-// frame.wgsl, lighting.wgsl and terrain.wgsl.
+// frame.wgsl, the light tables (clusters.rs), lighting.wgsl and terrain.wgsl.
 //
 // Shading: the normal from the terrain's normal map (built from the
 // heights on the GPU, mipmapped), up to four layers weighted by the
@@ -218,9 +218,14 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) { shadow = cascade_shadow(p, n_geo, n_dot_l); }
   var color = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
   color += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(p);
-  let light_count = u32(frame.params.z);
-  for (var i = 0u; i < light_count; i++) {
-    color += terrain_local_light(frame.lights[i], s, p, n, v);
+  // Point and spot lights: those of this fragment's cluster (clusters.rs).
+  if (frame.params.z > 0.5) {
+    let word = cluster_word(cluster_at(in.clip.xy, p));
+    let first = word & 0xffffffu;
+    let light_count = word >> 24u;
+    for (var k = 0u; k < light_count; k++) {
+      color += terrain_local_light(light_list[cluster_ref(first + k)], s, p, n, v);
+    }
   }
   let n_dot_v = max(dot(n, v), 1e-4);
   let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);

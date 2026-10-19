@@ -504,6 +504,11 @@ pub fn og_render_shader_material(world: u32, shader: f64, desc: Option<String>) 
 }
 
 #[wasm_bindgen]
+pub fn og_render_set_material_shader(world: u32, material: f64, shader: String) -> String {
+    <Host as RenderApi>::og_render_set_material_shader(&Host, world, material, shader)
+}
+
+#[wasm_bindgen]
 pub fn og_render_set_shader_param(world: u32, material: f64, name: String, value: String) -> String {
     <Host as RenderApi>::og_render_set_shader_param(&Host, world, material, name, value)
 }
@@ -609,6 +614,11 @@ pub fn og_load_animation(world: u32, path: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_load_rig(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_rig(&Host, world, path)
+}
+
+#[wasm_bindgen]
 pub fn og_load_flipbook(world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_flipbook(&Host, world, path)
 }
@@ -689,6 +699,16 @@ pub fn og_anim_graph(world: u32, desc: Option<String>) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_anim_humanoid(world: u32, desc: Option<String>) -> String {
+    <Host as AnimApi>::og_anim_humanoid(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_anim_retarget(world: u32, desc: Option<String>) -> String {
+    <Host as AnimApi>::og_anim_retarget(&Host, world, desc)
+}
+
+#[wasm_bindgen]
 pub fn og_tween_to(world: u32, desc: Option<String>) -> String {
     <Host as TweenApi>::og_tween_to(&Host, world, desc)
 }
@@ -746,6 +766,11 @@ pub fn og_tilemap_cell_at(world: u32, entity: f64, point: String) -> String {
 #[wasm_bindgen]
 pub fn og_tilemap_cell_center(world: u32, entity: f64, x: u32, y: u32) -> String {
     <Host as TilemapApi>::og_tilemap_cell_center(&Host, world, entity, x, y)
+}
+
+#[wasm_bindgen]
+pub fn og_audio_output_latency(world: u32) -> f64 {
+    <Host as AudioApi>::og_audio_output_latency(&Host, world)
 }
 
 #[wasm_bindgen]
@@ -909,6 +934,11 @@ pub fn og_platform_info(world: u32) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_platform_now(world: u32) -> f64 {
+    <Host as PlatformApi>::og_platform_now(&Host, world)
+}
+
+#[wasm_bindgen]
 pub fn og_i18n_load(world: u32, path: String) -> String {
     <Host as I18nApi>::og_i18n_load(&Host, world, path)
 }
@@ -966,6 +996,11 @@ pub fn og_ui_open_scroll(id: String, desc: Option<String>) {
 #[wasm_bindgen]
 pub fn og_ui_close() -> String {
     <Host as UiApi>::og_ui_close(&Host)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_rich_text(id: String, markup: String, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_rich_text(&Host, id, markup, desc)
 }
 
 #[wasm_bindgen]
@@ -1216,6 +1251,21 @@ pub fn og_ui_navigate(world: u32, intent: String) {
 #[wasm_bindgen]
 pub fn og_ui_back() -> bool {
     <Host as UiApi>::og_ui_back(&Host)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_set_players(count: u32) {
+    <Host as UiApi>::og_ui_set_players(&Host, count)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_focus(pad: u32) -> String {
+    <Host as UiApi>::og_ui_focus(&Host, pad)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_a11y() -> String {
+    <Host as UiApi>::og_ui_a11y(&Host)
 }
 
 #[wasm_bindgen]

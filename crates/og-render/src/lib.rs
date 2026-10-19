@@ -1,8 +1,8 @@
 //! Origin Engine renderer (`docs/design.md` §2.6, `crates/og-render/README.md`).
 //!
-//! A wgpu forward renderer: PBR metallic-roughness, one directional light with
-//! three cascaded shadow maps, up to eight point and spot lights (two of them
-//! shadowed), split-sum image-based lighting generated from a procedural sky,
+//! A wgpu Forward+ renderer: PBR metallic-roughness, one directional light
+//! with three cascaded shadow maps, up to 256 point and spot lights in view,
+//! clustered (`clusters.rs`; two of them shadowed), split-sum image-based lighting generated from a procedural sky,
 //! antialiasing by tier (TAA on WebGPU-class backends, 4x MSAA on WebGL2),
 //! bloom, manual or metered exposure, ACES tonemapping, and a 2D batch of
 //! sprites and MSDF text. It runs natively (Metal, Vulkan; headless for
@@ -29,9 +29,11 @@
 
 mod atmosphere;
 mod capture;
+mod clusters;
 mod effects;
 mod frame;
 mod fx;
+mod glass;
 pub mod graph;
 mod hooks;
 mod ibl;
@@ -62,6 +64,7 @@ mod headless;
 
 pub use atmosphere::{DayNightLook, Fog, SkyLook, day_night};
 pub use capture::{CAPTURE_TIMEOUT, CaptureRequest};
+pub use clusters::{CLUSTER_GRID, MAX_CLUSTER_LIGHTS, UNIFORM_LIGHT_REFS};
 pub use effects::*;
 pub use graph::{GraphError, GraphPlan, RenderGraph, TargetDesc};
 #[cfg(not(target_arch = "wasm32"))]
@@ -70,7 +73,7 @@ pub use hooks::{
     MAX_SHADER_PARAMS, MaterialShader, ParamKind, SHADER_HOOKS, ShaderParam, lit_module_source,
 };
 pub use material::{Side, StandardMaterial};
-pub use metaballs::{MAX_FLUIDS, Metaballs};
+pub use metaballs::{FIELDS, MAX_FLUIDS, Metaballs};
 pub use particles::{
     Burst, ColorCurve, Curve, EmitterHandle, EmitterShape, MAX_CURVE_KEYS, ParticleAlign,
     ParticleBlend, ParticleCollision, ParticleEmitter, ParticleNoise, ParticleRender,
@@ -128,28 +131,49 @@ const PBR_WGSL: &str = include_str!("../shaders/pbr.wgsl");
 /// The BRDF and the shadow lookups the lit passes share (pbr, terrain, water).
 pub(crate) const LIGHTING_WGSL: &str = include_str!("../shaders/lighting.wgsl");
 
-/// The lit shader's source with `hooks` (`hooks.rs`) and the joint palette
-/// read as `palette`.
-fn lit_source_with(hooks: &str, palette: skin::PaletteMode) -> String {
+/// The lit shader's source with `hooks` (`hooks.rs`), the joint palette
+/// read as `palette` and the light tables as `tables`.
+fn lit_source_with(
+    hooks: &str,
+    palette: skin::PaletteMode,
+    tables: clusters::LightTables,
+) -> String {
     format!(
-        "{FRAME_WGSL}{}{MATERIAL_WGSL}{}{hooks}{LIGHTING_WGSL}{PBR_WGSL}",
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{}{hooks}{LIGHTING_WGSL}{PBR_WGSL}",
+        tables.wgsl(),
         particles_gpu::NOISE_WGSL,
         palette.wgsl(3)
     )
 }
 
-/// [`lit_source_with`] for a tier (`full`: the storage-buffer palette).
+/// [`lit_source_with`] for a tier (`full`: storage buffers for the palette
+/// and the light tables).
 pub(crate) fn lit_source(hooks: &str, full: bool) -> String {
-    lit_source_with(
-        hooks,
-        if full {
-            skin::PaletteMode::Storage
-        } else {
-            skin::PaletteMode::Texture
-        },
-    )
+    if full {
+        lit_source_with(
+            hooks,
+            skin::PaletteMode::Storage,
+            clusters::LightTables::Storage,
+        )
+    } else {
+        lit_source_with(
+            hooks,
+            skin::PaletteMode::Texture,
+            clusters::LightTables::Uniform,
+        )
+    }
 }
 const SHADOW_WGSL: &str = include_str!("../shaders/shadow.wgsl");
+
+/// The shadow shader's source with `hooks` (a material shader's, or the
+/// built-in identities) and the joint palette read as `palette`.
+fn shadow_source(hooks: &str, palette: skin::PaletteMode) -> String {
+    format!(
+        "{}{MATERIAL_WGSL}{}{hooks}{SHADOW_WGSL}",
+        particles_gpu::NOISE_WGSL,
+        palette.wgsl(2)
+    )
+}
 const SKY_WGSL: &str = include_str!("../shaders/sky.wgsl");
 const SPRITE_WGSL: &str = include_str!("../shaders/sprite.wgsl");
 const MATERIAL_WGSL: &str = include_str!("../shaders/material.wgsl");
@@ -336,25 +360,43 @@ pub struct RenderInfo {
 
 impl RenderInfo {
     /// Whether the adapter is a software rasterizer (lavapipe, llvmpipe,
-    /// SwiftShader): the `vulkan-cpu` tier.
+    /// SwiftShader): the `vulkan-cpu` tier ([`is_software_adapter`]).
     pub fn software(&self) -> bool {
-        self.device_type == wgpu::DeviceType::Cpu
+        is_software_adapter(self.device_type, &self.adapter)
     }
 
-    /// The name gfx reference frames are filed under: `metal`, `vulkan`,
-    /// `vulkan-cpu` (lavapipe/llvmpipe), `webgpu`, `webgl2`, `gl`, `dx12`.
+    /// The name gfx reference frames are filed under, and the tier the probe
+    /// and `og polish` report ([`tier_name`]).
     pub fn backend_tier(&self) -> String {
-        let cpu = self.device_type == wgpu::DeviceType::Cpu;
-        match self.backend {
-            wgpu::Backend::Metal => "metal".into(),
-            wgpu::Backend::Vulkan if cpu => "vulkan-cpu".into(),
-            wgpu::Backend::Vulkan => "vulkan".into(),
-            wgpu::Backend::BrowserWebGpu => "webgpu".into(),
-            wgpu::Backend::Gl if cfg!(target_arch = "wasm32") => "webgl2".into(),
-            wgpu::Backend::Gl => "gl".into(),
-            wgpu::Backend::Dx12 => "dx12".into(),
-            other => format!("{other:?}").to_lowercase(),
-        }
+        tier_name(self.backend, self.device_type, &self.adapter)
+    }
+}
+
+/// Whether an adapter rasterizes on the CPU: wgpu reports a CPU device type,
+/// or its name is one of the software rasterizers (Mesa's lavapipe and
+/// llvmpipe, SwiftShader), which some drivers report as another type.
+pub fn is_software_adapter(device_type: wgpu::DeviceType, name: &str) -> bool {
+    let name = name.to_ascii_lowercase();
+    device_type == wgpu::DeviceType::Cpu
+        || ["llvmpipe", "lavapipe", "swiftshader"]
+            .iter()
+            .any(|s| name.contains(s))
+}
+
+/// The tier name of an adapter: `metal`, `vulkan`, `vulkan-cpu` (a software
+/// rasterizer), `webgpu`, `webgl2`, `gl`, `dx12`. It names the reference-frame
+/// directories and is the probe's `RenderTier`, so a frame time measured on
+/// a CPU rasterizer is never read as a GPU's.
+pub fn tier_name(backend: wgpu::Backend, device_type: wgpu::DeviceType, adapter: &str) -> String {
+    match backend {
+        wgpu::Backend::Metal => "metal".into(),
+        wgpu::Backend::Vulkan if is_software_adapter(device_type, adapter) => "vulkan-cpu".into(),
+        wgpu::Backend::Vulkan => "vulkan".into(),
+        wgpu::Backend::BrowserWebGpu => "webgpu".into(),
+        wgpu::Backend::Gl if cfg!(target_arch = "wasm32") => "webgl2".into(),
+        wgpu::Backend::Gl => "gl".into(),
+        wgpu::Backend::Dx12 => "dx12".into(),
+        other => format!("{other:?}").to_lowercase(),
     }
 }
 
@@ -388,9 +430,16 @@ pub struct FrameStats {
     pub shadow_casters: u32,
     /// Shadow passes (cascades plus local light faces).
     pub shadow_passes: u32,
-    /// Local lights drawn, and those beyond [`MAX_LIGHTS`] that were not.
+    /// Local lights drawn; those in view beyond [`MAX_LIGHTS`] that were
+    /// not (the least important); those outside the view.
     pub lights: u32,
     pub lights_dropped: u32,
+    pub lights_culled: u32,
+    /// Light references the clusters held, and those dropped from clusters
+    /// past [`MAX_CLUSTER_LIGHTS`] (or the tier's total, [`UNIFORM_LIGHT_REFS`]
+    /// on WebGL2).
+    pub cluster_lights: u32,
+    pub cluster_lights_dropped: u32,
     /// Sprites and glyphs drawn, and the draws they took.
     pub sprites: u32,
     pub glyphs: u32,
@@ -430,6 +479,9 @@ pub struct FrameStats {
     /// Skinned instances drawn and the joints of the frame's palettes.
     pub skinned_instances: u32,
     pub joints: u32,
+    /// GPU memory of the scene's textures (every mip level, as allocated:
+    /// RGBA8 with its generated chain, or the encoded levels as uploaded).
+    pub texture_bytes: u64,
     /// Terrain clipmap levels drawn in the main pass, their triangles
     /// (also in `triangles`), and the levels drawn into shadow maps.
     pub terrain_draws: u32,
@@ -464,7 +516,9 @@ pub struct RgbaImage {
 struct ShadowPassUniform {
     view_proj: [[f32; 4]; 4],
     light: [f32; 4],
-    pad: [f32; 44],
+    /// x: the scene clock in seconds (a material shader's `h.time`).
+    time: [f32; 4],
+    pad: [f32; 40],
 }
 
 const INSTANCE_STRIDE: u64 = std::mem::size_of::<[[f32; 4]; 4]>() as u64;
@@ -472,7 +526,7 @@ const INSTANCE_STRIDE: u64 = std::mem::size_of::<[[f32; 4]; 4]>() as u64;
 const VERTEX_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
     array_stride: std::mem::size_of::<Vertex>() as u64,
     step_mode: wgpu::VertexStepMode::Vertex,
-    attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x4],
+    attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x4, 15 => Float32x4],
 };
 
 const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
@@ -509,6 +563,18 @@ struct GpuMaterial {
 struct GpuTexture {
     view: wgpu::TextureView,
     format: TextureFormat,
+    /// Bytes allocated, every level.
+    bytes: u64,
+}
+
+/// What an RGBA8 texture allocates on the GPU, every level.
+fn rgba_texture_bytes(texture: &TextureData) -> u64 {
+    match texture.mips {
+        Mips::Generate => (0..mips::mip_count(texture.width, texture.height))
+            .map(|l| TextureFormat::Rgba8.level_bytes(texture.width, texture.height, l) as u64)
+            .sum(),
+        Mips::None => texture.rgba.len() as u64,
+    }
 }
 
 struct GpuFont {
@@ -523,8 +589,13 @@ struct SceneCache {
     meshes: Vec<GpuMesh>,
     /// The lit shader with each of the scene's material shaders.
     shaders: Vec<wgpu::ShaderModule>,
-    /// Their pipelines by (shader, side, blended, effects).
-    hook_pipelines: HashMap<(usize, Side, bool, bool), wgpu::RenderPipeline>,
+    /// The shadow shader with each of them.
+    shadow_shaders: Vec<wgpu::ShaderModule>,
+    /// Their lit pipelines by (shader, side, blended, effects, skinned).
+    hook_pipelines: HashMap<(usize, Side, bool, bool, bool), wgpu::RenderPipeline>,
+    /// Their shadow and prepass pipelines by (shader, side, skinned).
+    hook_shadow_pipelines: HashMap<(usize, Side, bool), wgpu::RenderPipeline>,
+    hook_prepass_pipelines: HashMap<(usize, Side, bool), wgpu::RenderPipeline>,
     textures: Vec<GpuTexture>,
     /// The scene's revision of each texture when it was uploaded.
     texture_revisions: Vec<u64>,
@@ -558,7 +629,7 @@ struct Batch {
     dissolve: bool,
     /// Needs the effect shader (its material's or the frame's effects).
     effects: bool,
-    /// Its material's shader (never for skinned batches).
+    /// Its material's shader.
     shader: Option<usize>,
 }
 
@@ -683,10 +754,17 @@ pub struct Renderer {
     material_layout: wgpu::BindGroupLayout,
     sprite_layout: wgpu::BindGroupLayout,
     frame_buffer: wgpu::Buffer,
+    /// The local lights, the cluster table and its light references (`clusters.rs`).
+    light_tables: clusters::LightTables,
+    light_buffers: [wgpu::Buffer; 3],
+    clusters: clusters::ClusterBuilder,
     /// The frame uniform of the planar reflection's mirrored camera.
     reflection_buffer: wgpu::Buffer,
     /// Its effect uniform (decals; no screen-space AO).
     reflection_fx_buffer: wgpu::Buffer,
+    /// Its cluster table and references, over the main view's light records.
+    reflection_light_buffers: [wgpu::Buffer; 3],
+    reflection_clusters: clusters::ClusterBuilder,
     shadow_buffer: wgpu::Buffer,
     shadow_bind_group: wgpu::BindGroup,
     pbr_layout: wgpu::PipelineLayout,
@@ -745,6 +823,9 @@ pub struct Renderer {
     instance_buffer: wgpu::Buffer,
     sprite_buffer: wgpu::Buffer,
     overlay: overlay::OverlayRenderer,
+    /// The overlay's glass: its passes, and its textures for the output's size.
+    glass: glass::GlassPasses,
+    glass_targets: Option<glass::GlassTargets>,
     cache: SceneCache,
     /// Frames rendered so far.
     frame_index: u64,
@@ -1063,12 +1144,15 @@ fn prepass_pipeline(
     })
 }
 
-/// The shadow pipeline for casters drawn with (side, skinned, dissolve).
+/// The shadow pipeline for casters drawn with (side, skinned, dissolve);
+/// `hooked`: with the module's material shader (its vertex offset and
+/// surface colour, the material bound).
 fn shadow_pipeline(
     device: &wgpu::Device,
     layouts: &[wgpu::PipelineLayout; 3],
     module: &wgpu::ShaderModule,
     (side, skinned, dissolve): ShadowKey,
+    hooked: bool,
 ) -> wgpu::RenderPipeline {
     let plain = [Some(VERTEX_LAYOUT), Some(INSTANCE_LAYOUT)];
     let skin = [
@@ -1076,7 +1160,7 @@ fn shadow_pipeline(
         Some(skin::SKINNED_INSTANCE_LAYOUT),
         Some(skin::SKIN_VERTEX_LAYOUT),
     ];
-    let layout = match (skinned, dissolve) {
+    let layout = match (skinned, dissolve || hooked) {
         (true, _) => &layouts[2],
         (false, true) => &layouts[1],
         (false, false) => &layouts[0],
@@ -1086,7 +1170,12 @@ fn shadow_pipeline(
         layout: Some(layout),
         vertex: wgpu::VertexState {
             module,
-            entry_point: Some(if skinned { "vs_skinned" } else { "vs" }),
+            entry_point: Some(match (skinned, hooked) {
+                (true, true) => "vs_skinned_hooked",
+                (true, false) => "vs_skinned",
+                (false, true) => "vs_hooked",
+                (false, false) => "vs",
+            }),
             compilation_options: Default::default(),
             buffers: if skinned { &skin } else { &plain },
         },
@@ -1112,7 +1201,11 @@ fn shadow_pipeline(
         multisample: Default::default(),
         fragment: Some(wgpu::FragmentState {
             module,
-            entry_point: Some(if dissolve { "fs_dissolve" } else { "fs" }),
+            entry_point: Some(match (hooked, dissolve) {
+                (true, _) => "fs_hooked",
+                (false, true) => "fs_dissolve",
+                (false, false) => "fs",
+            }),
             compilation_options: Default::default(),
             targets: &[Some(wgpu::ColorTargetState {
                 format: wgpu::TextureFormat::R32Float,
@@ -1248,6 +1341,11 @@ impl Renderer {
         } else {
             skin::PaletteMode::Texture
         };
+        let light_tables = if tier == Tier::Full {
+            clusters::LightTables::Storage
+        } else {
+            clusters::LightTables::Uniform
+        };
         let shadow_size = desc
             .shadow_map_size
             .clamp(64, limits.max_texture_dimension_2d.max(64));
@@ -1291,6 +1389,7 @@ impl Renderer {
         let (width, height) = (desc.width.max(1), desc.height.max(1));
 
         // Layouts.
+        let [lights_entry, table_entry, refs_entry] = light_tables.layout_entries();
         let frame_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("frame"),
             entries: &[
@@ -1301,6 +1400,11 @@ impl Renderer {
                 texture_entry(4, true, wgpu::TextureViewDimension::Cube),
                 tex2d(5),
                 sampler_entry(6, wgpu::SamplerBindingType::Filtering),
+                // The local lights and their clusters: buffers, so WebGL2's
+                // skinned lit pipeline keeps its sixteen texture slots.
+                lights_entry,
+                table_entry,
+                refs_entry,
             ],
         });
         // The sky cube, bound by the sky pass alone: in the frame group it
@@ -1413,6 +1517,8 @@ impl Renderer {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
+        let light_buffers = light_tables.buffers(&device);
+        let reflection_light_buffers = light_tables.buffers(&device);
         let reflection_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("frame (planar reflection)"),
             size: std::mem::size_of::<frame::FrameUniform>() as u64,
@@ -1448,7 +1554,7 @@ impl Renderer {
         let pbr_shader = shader(
             &device,
             "pbr",
-            lit_source_with(&hooks::default_hooks(), palette_mode),
+            lit_source_with(&hooks::default_hooks(), palette_mode, light_tables),
         );
         let sky_shader = shader(&device, "sky", format!("{FRAME_WGSL}{SKY_WGSL}"));
         let sprite_shader = shader(&device, "sprite", format!("{FRAME_WGSL}{SPRITE_WGSL}"));
@@ -1456,11 +1562,7 @@ impl Renderer {
         let shadow_shader = shader(
             &device,
             "shadow",
-            format!(
-                "{}{MATERIAL_WGSL}{}{SHADOW_WGSL}",
-                particles_gpu::NOISE_WGSL,
-                palette_mode.wgsl(2)
-            ),
+            shadow_source(&hooks::default_hooks(), palette_mode),
         );
         let pipeline_layout = |label: &str, layouts: &[&wgpu::BindGroupLayout]| {
             let layouts: Vec<_> = layouts.iter().map(|l| Some(*l)).collect();
@@ -1505,7 +1607,7 @@ impl Renderer {
         let key = (Side::Front, false, false);
         shadow_pipelines.insert(
             key,
-            shadow_pipeline(&device, &shadow_layouts, &shadow_shader, key),
+            shadow_pipeline(&device, &shadow_layouts, &shadow_shader, key, false),
         );
         // At the far plane, after the opaque batches: only uncovered pixels pass.
         let sky_state = |fs| HdrPipeline {
@@ -1655,6 +1757,7 @@ impl Renderer {
                 shadow_layout: &shadow_bind_layout,
                 frame_wgsl: FRAME_WGSL,
                 lighting_wgsl: LIGHTING_WGSL,
+                light_tables_wgsl: &light_tables.wgsl(),
                 samples,
                 white: default_white.clone(),
                 flat_normal: default_normal.clone(),
@@ -1667,7 +1770,8 @@ impl Renderer {
                 material_layout: &material_layout,
                 shadow_layout: &shadow_bind_layout,
                 lit_wgsl: format!(
-                    "{FRAME_WGSL}{}{MATERIAL_WGSL}{LIGHTING_WGSL}{}{}",
+                    "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{LIGHTING_WGSL}{}{}",
+                    light_tables.wgsl(),
                     particles_gpu::NOISE_WGSL,
                     include_str!("../shaders/scatter_common.wgsl"),
                     include_str!("../shaders/scatter.wgsl")
@@ -1719,6 +1823,7 @@ impl Renderer {
             offscreen_linear.or(surface_linear),
             &sprite_layout,
         );
+        let glass = glass::GlassPasses::new(&device, output_format);
 
         Ok(Renderer {
             device,
@@ -1743,8 +1848,13 @@ impl Renderer {
             material_layout,
             sprite_layout,
             frame_buffer,
+            light_tables,
+            light_buffers,
+            clusters: clusters::ClusterBuilder::default(),
             reflection_buffer,
             reflection_fx_buffer,
+            reflection_light_buffers,
+            reflection_clusters: clusters::ClusterBuilder::default(),
             shadow_buffer,
             shadow_bind_group,
             pbr_layout,
@@ -1790,6 +1900,8 @@ impl Renderer {
             instance_buffer,
             sprite_buffer,
             overlay,
+            glass,
+            glass_targets: None,
             cache: SceneCache::default(),
             frame_index: 0,
             desc_particles: desc.particles,
@@ -1863,9 +1975,15 @@ impl Renderer {
             let module = shader(
                 &self.device,
                 "pbr (material shader)",
-                lit_source_with(&hooks, self.palette.mode()),
+                lit_source_with(&hooks, self.palette.mode(), self.light_tables),
             );
             self.cache.shaders.push(module);
+            let module = shader(
+                &self.device,
+                "shadow (material shader)",
+                shadow_source(&hooks, self.palette.mode()),
+            );
+            self.cache.shadow_shaders.push(module);
         }
         self.refresh_meshes(scene);
         for index in self.cache.meshes.len()..scene.meshes().len() {
@@ -1964,6 +2082,7 @@ impl Renderer {
                     TextureSource::Rgba(texture) => GpuTexture {
                         view: self.upload_texture(texture, &mut encoder)?,
                         format: TextureFormat::Rgba8,
+                        bytes: rgba_texture_bytes(texture),
                     },
                     TextureSource::Encoded(upload) => self.upload_encoded(index, upload)?,
                 };
@@ -1993,6 +2112,7 @@ impl Renderer {
                     TextureSource::Rgba(texture) => GpuTexture {
                         view: self.upload_texture(texture, &mut encoder)?,
                         format: TextureFormat::Rgba8,
+                        bytes: rgba_texture_bytes(texture),
                     },
                     TextureSource::Encoded(upload) => self.upload_encoded(index, upload)?,
                 };
@@ -2075,6 +2195,15 @@ impl Renderer {
     }
 
     fn upload_mesh(&self, mesh: &MeshData) -> GpuMesh {
+        let tangents;
+        let mesh = if mesh.lacks_tangents() {
+            let mut m = mesh.clone();
+            m.generate_tangents();
+            tangents = m;
+            &tangents
+        } else {
+            mesh
+        };
         // Never create an empty buffer: an empty mesh keeps a 16-byte placeholder and draws nothing.
         let bytes = |b: &[u8]| {
             if b.is_empty() {
@@ -2123,7 +2252,16 @@ impl Renderer {
             if gpu.revision == revision {
                 continue;
             }
-            let mesh = &scene.meshes()[i];
+            let source = &scene.meshes()[i];
+            let tangents;
+            let mesh = if source.lacks_tangents() {
+                let mut m = source.clone();
+                m.generate_tangents();
+                tangents = m;
+                &tangents
+            } else {
+                source
+            };
             let vb: &[u8] = bytemuck::cast_slice(&mesh.vertices);
             let ib: &[u8] = bytemuck::cast_slice(&mesh.indices);
             if !vb.is_empty()
@@ -2249,6 +2387,7 @@ impl Renderer {
         Ok(GpuTexture {
             view: texture.create_view(&Default::default()),
             format: desc.format,
+            bytes: upload.levels.iter().map(|l| l.len() as u64).sum(),
         })
     }
 
@@ -2346,10 +2485,15 @@ impl Renderer {
             wgpu::BindingResource::TextureView(&ibl.prefiltered),
             wgpu::BindingResource::TextureView(&ibl.brdf_lut),
             wgpu::BindingResource::Sampler(&ibl.sampler),
+            self.light_buffers[0].as_entire_binding(),
+            self.light_buffers[1].as_entire_binding(),
+            self.light_buffers[2].as_entire_binding(),
         ];
         let group = bind_group(&self.device, "frame", &self.frame_layout, &entries);
         let mut reflected = entries.clone();
         reflected[0] = self.reflection_buffer.as_entire_binding();
+        reflected[8] = self.reflection_light_buffers[1].as_entire_binding();
+        reflected[9] = self.reflection_light_buffers[2].as_entire_binding();
         let reflection_group = bind_group(
             &self.device,
             "frame (planar reflection)",
@@ -2574,16 +2718,41 @@ impl Renderer {
             .chain(skinned.iter().map(|b| (b, true)));
         for (b, is_skinned) in all {
             if let Some(sh) = b.shader {
-                let key = (sh, b.side, b.transparent, b.effects);
+                let key = (sh, b.side, b.transparent, b.effects, is_skinned);
                 if !self.cache.hook_pipelines.contains_key(&key) {
                     let p = pbr_pipeline(
                         &self.device,
                         (&self.pbr_layout, &self.pbr_skinned_layout),
                         &self.cache.shaders[sh],
-                        (b.side, b.transparent, false, b.effects),
+                        (b.side, b.transparent, is_skinned, b.effects),
                         self.samples,
                     );
                     self.cache.hook_pipelines.insert(key, p);
+                }
+                // Shadows and the prepass see the material shader's offset.
+                let key = (sh, b.side, is_skinned);
+                if !self.cache.hook_shadow_pipelines.contains_key(&key) {
+                    let p = shadow_pipeline(
+                        &self.device,
+                        &self.shadow_layouts,
+                        &self.cache.shadow_shaders[sh],
+                        (b.side, is_skinned, b.dissolve),
+                        true,
+                    );
+                    self.cache.hook_shadow_pipelines.insert(key, p);
+                }
+                if prepass
+                    && !b.transparent
+                    && !self.cache.hook_prepass_pipelines.contains_key(&key)
+                {
+                    let p = prepass_pipeline(
+                        &self.device,
+                        (&self.pbr_layout, &self.pbr_skinned_layout),
+                        &self.cache.shaders[sh],
+                        b.side,
+                        is_skinned,
+                    );
+                    self.cache.hook_prepass_pipelines.insert(key, p);
                 }
             }
             let key = (b.side, b.transparent, is_skinned, b.effects);
@@ -2599,8 +2768,13 @@ impl Renderer {
             }
             let key = (b.side, is_skinned, b.dissolve);
             if !self.shadow_pipelines.contains_key(&key) {
-                let p =
-                    shadow_pipeline(&self.device, &self.shadow_layouts, &self.shadow_shader, key);
+                let p = shadow_pipeline(
+                    &self.device,
+                    &self.shadow_layouts,
+                    &self.shadow_shader,
+                    key,
+                    false,
+                );
                 self.shadow_pipelines.insert(key, p);
             }
             if prepass
@@ -2684,7 +2858,7 @@ impl Renderer {
                         transparent: m.transparent,
                         dissolve: m.dissolve,
                         effects: m.effects,
-                        shader: None,
+                        shader: m.shader,
                     });
                 }
             }
@@ -2881,6 +3055,23 @@ impl Renderer {
                 self.sprite_group(t);
             }
         }
+        // Glass: the tonemap renders into the glass source, which becomes
+        // the output and the blur pyramid after the post passes.
+        let glass_on = scene.overlay.as_ref().is_some_and(|o| !o.glass.is_empty());
+        if glass_on
+            && self
+                .glass_targets
+                .as_ref()
+                .is_none_or(|g| g.size != (self.width, self.height))
+        {
+            self.glass_targets = Some(self.glass.targets(
+                &self.device,
+                self.output_format,
+                self.width,
+                self.height,
+                &self.sprite_layout,
+            ));
+        }
         let mut ribbon_frame = self
             .trails
             .build(
@@ -2950,14 +3141,16 @@ impl Renderer {
             &scene.metaballs,
             (self.width, self.height),
         );
-        layered.extend(metaballs::layers(&scene.metaballs).map(|(i, layer)| {
-            sprites::LayeredStrip {
-                layer,
-                source: RunSource::Metaballs(i as u8),
-                first: 0,
-                count: 1,
-            }
-        }));
+        layered.extend(
+            metaballs::layers(&scene.metaballs)
+                .into_iter()
+                .map(|(i, layer)| sprites::LayeredStrip {
+                    layer,
+                    source: RunSource::Metaballs(i as u8),
+                    first: 0,
+                    count: 1,
+                }),
+        );
         let fonts = &self.cache.fonts;
         let sprite_frame = sprites::build(
             scene,
@@ -3116,8 +3309,66 @@ impl Renderer {
             })
             .collect();
 
-        // Local lights and their shadow faces.
-        let (lights_gpu, local_shadows) = frame::local_lights(&scene.lights, LOCAL_SHADOW_SIZE);
+        // Local lights: the clusters they reach, their records, their shadow faces.
+        self.clusters.build(
+            &scene.lights,
+            &clusters::ClusterView {
+                camera: &cam,
+                frustum: &view_frustum,
+                position: camera.position,
+                near: camera.near,
+                far: camera.far,
+                width: self.width,
+                height: self.height,
+            },
+            self.light_tables.ref_capacity(),
+        );
+        let (lights_gpu, local_shadows) =
+            frame::local_lights(&scene.lights, &self.clusters.kept, LOCAL_SHADOW_SIZE);
+        if !lights_gpu.is_empty() {
+            self.queue
+                .write_buffer(&self.light_buffers[0], 0, bytemuck::cast_slice(&lights_gpu));
+            self.queue.write_buffer(
+                &self.light_buffers[1],
+                0,
+                bytemuck::cast_slice(&self.clusters.table),
+            );
+            self.queue.write_buffer(
+                &self.light_buffers[2],
+                0,
+                bytemuck::cast_slice(&self.clusters.ref_words()),
+            );
+        }
+        // The planar reflection's clusters: the same light records seen by
+        // the mirrored camera (its oblique projection moves only depth).
+        if let Some((_, mirrored, f, _, (rw, rh))) = &reflection {
+            self.reflection_clusters.build_kept(
+                &scene.lights,
+                &self.clusters.kept,
+                &clusters::ClusterView {
+                    camera: f,
+                    frustum: &Frustum::from_view_proj(f.view_proj),
+                    position: mirrored.position,
+                    near: mirrored.near,
+                    far: mirrored.far,
+                    width: *rw,
+                    height: *rh,
+                },
+                self.light_tables.ref_capacity(),
+            );
+            if !lights_gpu.is_empty() {
+                self.queue.write_buffer(
+                    &self.reflection_light_buffers[1],
+                    0,
+                    bytemuck::cast_slice(&self.reflection_clusters.table),
+                );
+                self.queue.write_buffer(
+                    &self.reflection_light_buffers[2],
+                    0,
+                    bytemuck::cast_slice(&self.reflection_clusters.ref_words()),
+                );
+            }
+        }
         let mut local_lists: Vec<Option<DrawList>> =
             (0..LOCAL_SHADOW_LAYERS).map(|_| None).collect();
         let mut local_frustums: Vec<Option<Frustum>> =
@@ -3236,7 +3487,7 @@ impl Renderer {
             params: [
                 scene.environment.intensity,
                 (ibl::PREFILTER_MIPS - 1) as f32,
-                scene.lights.len().min(MAX_LIGHTS) as f32,
+                lights_gpu.len() as f32,
                 1.0 / shadow_size as f32,
             ],
             view_forward: cam
@@ -3245,7 +3496,7 @@ impl Renderer {
                 .to_array(),
             cascade_view_proj: [[[0.0; 4]; 4]; CASCADES],
             cascade_bias: [[0.0; 4]; CASCADES],
-            lights: lights_gpu,
+            cluster: self.clusters.params,
             local_view_proj: [[[0.0; 4]; 4]; LOCAL_SHADOW_LAYERS],
             atmosphere: atmosphere::AtmosphereGpu::new(
                 frame_fog.as_ref(),
@@ -3277,7 +3528,8 @@ impl Renderer {
             shadow_slots[i] = ShadowPassUniform {
                 view_proj: c.view_proj.to_cols_array_2d(),
                 light: [0.0; 4],
-                pad: [0.0; 44],
+                time: uniform.atmosphere.time,
+                pad: [0.0; 40],
             };
         }
         for ls in &local_shadows {
@@ -3287,7 +3539,8 @@ impl Renderer {
                 shadow_slots[CASCADES + layer] = ShadowPassUniform {
                     view_proj: vp.to_cols_array_2d(),
                     light: ls.position.extend(ls.range).to_array(),
-                    pad: [0.0; 44],
+                    time: uniform.atmosphere.time,
+                    pad: [0.0; 40],
                 };
             }
         }
@@ -3302,6 +3555,7 @@ impl Renderer {
             u.view_pos = mirrored.position.extend(0.0).to_array();
             u.view_forward = f.forward.extend(u.view_forward[3]).to_array();
             u.caustics = [[0.0; 4]; 2];
+            u.cluster = self.reflection_clusters.params;
             self.queue
                 .write_buffer(&self.reflection_buffer, 0, bytemuck::bytes_of(&u));
         }
@@ -3528,6 +3782,7 @@ impl Renderer {
                     ),
                     gtao,
                     water: !scene.water.is_empty(),
+                    fluid_fields: fluids as u32,
                     reflection: reflection.as_ref().map(|r| r.4),
                 },
                 &self.post,
@@ -3581,7 +3836,7 @@ impl Renderer {
             RenderTarget::View(_) => None,
         };
 
-        let lights = scene.lights.len().min(MAX_LIGHTS) as u32;
+        let cluster_stats = &self.clusters.stats;
         let mut stats = FrameStats {
             terrain_tiles: self.terrain.resident,
             terrain_uploads: self.terrain.uploads,
@@ -3590,8 +3845,12 @@ impl Renderer {
             instances: scene.instances.len() as u32,
             culled,
             triangles: main_list.triangles + blended_list.triangles,
-            lights,
-            lights_dropped: scene.lights.len() as u32 - lights,
+            lights: self.clusters.kept.len() as u32,
+            lights_dropped: cluster_stats.dropped,
+            lights_culled: cluster_stats.culled,
+            cluster_lights: cluster_stats.refs,
+            cluster_lights_dropped: cluster_stats.refs_dropped,
+            texture_bytes: self.cache.textures.iter().map(|t| t.bytes).sum(),
             sprites: sprite_frame.sprites,
             tiles: sprite_frame.tiles,
             tile_chunks: sprite_frame.tile_chunks,
@@ -3698,10 +3957,11 @@ impl Renderer {
             .unwrap_or(&self.post.far_depth);
         let particle_group = (!particle_frame.systems.is_empty())
             .then(|| self.particles.draw_group(&self.device, scene_depth));
-        let metaball_group = self
-            .graph
-            .try_view("metaballs")
-            .map(|v| self.metaballs.group(&self.device, v));
+        let metaball_groups: Vec<wgpu::BindGroup> = post::FIELD_NAMES
+            .iter()
+            .map_while(|name| self.graph.try_view(name))
+            .map(|v| self.metaballs.group(&self.device, v))
+            .collect();
         let reflection_view = self.graph.try_view("reflection");
         let water_draws = match self.graph.try_view("scene-copy") {
             Some(copy) if !scene.water.is_empty() => self.water.prepare(
@@ -3742,18 +4002,29 @@ impl Renderer {
         let palette_group = self.palette.bind_group.as_ref();
         let lit_skinned: Vec<&wgpu::RenderPipeline> = skinned_visible
             .iter()
-            .map(|b| &self.pbr_pipelines[&(b.side, b.transparent, true, b.effects)])
+            .map(|b| match b.shader {
+                Some(sh) => {
+                    &self.cache.hook_pipelines[&(sh, b.side, b.transparent, b.effects, true)]
+                }
+                None => &self.pbr_pipelines[&(b.side, b.transparent, true, b.effects)],
+            })
             .collect();
         let shadow_skinned: Vec<&wgpu::RenderPipeline> = skinned_batches
             .iter()
-            .map(|b| &self.shadow_pipelines[&(b.side, true, b.dissolve)])
+            .map(|b| match b.shader {
+                Some(sh) => &self.cache.hook_shadow_pipelines[&(sh, b.side, true)],
+                None => &self.shadow_pipelines[&(b.side, true, b.dissolve)],
+            })
             .collect();
         let prepass_skinned: Vec<&wgpu::RenderPipeline> = if prepass {
             skinned_visible
                 .iter()
                 .map(|b| {
-                    self.prepass_pipelines
-                        .get(&(b.side, true))
+                    let hooked = b
+                        .shader
+                        .and_then(|sh| self.cache.hook_prepass_pipelines.get(&(sh, b.side, true)));
+                    hooked
+                        .or_else(|| self.prepass_pipelines.get(&(b.side, true)))
                         .unwrap_or(lit_skinned[0])
                 })
                 .collect()
@@ -3768,7 +4039,7 @@ impl Renderer {
              list: &DrawList,
              lit: bool,
              current: &mut Option<(Side, bool, bool, Option<usize>)>| {
-                let mut shadow_key: Option<ShadowKey> = None;
+                let mut shadow_key: Option<(ShadowKey, Option<usize>)> = None;
                 for &(b, first, count) in &list.ranges {
                     let batch = &batches[b as usize];
                     if lit {
@@ -3777,7 +4048,7 @@ impl Renderer {
                             pass.set_pipeline(match batch.shader {
                                 Some(sh) => {
                                     &self.cache.hook_pipelines
-                                        [&(sh, batch.side, batch.transparent, batch.effects)]
+                                        [&(sh, batch.side, batch.transparent, batch.effects, false)]
                                 }
                                 None => {
                                     &self.pbr_pipelines
@@ -3792,12 +4063,17 @@ impl Renderer {
                             &[],
                         );
                     } else {
-                        let key = (batch.side, false, batch.dissolve);
+                        let key = ((batch.side, false, batch.dissolve), batch.shader);
                         if shadow_key != Some(key) {
-                            pass.set_pipeline(&self.shadow_pipelines[&key]);
+                            pass.set_pipeline(match batch.shader {
+                                Some(sh) => {
+                                    &self.cache.hook_shadow_pipelines[&(sh, batch.side, false)]
+                                }
+                                None => &self.shadow_pipelines[&key.0],
+                            });
                             shadow_key = Some(key);
                         }
-                        if batch.dissolve {
+                        if batch.dissolve || batch.shader.is_some() {
                             pass.set_bind_group(
                                 1,
                                 &self.cache.materials[batch.material].bind_group,
@@ -4008,9 +4284,14 @@ impl Renderer {
                     let mut current = None;
                     for &(b, first, count) in &main_list.ranges {
                         let batch = &batches[b as usize];
-                        if current != Some(batch.side) {
-                            p.set_pipeline(&self.prepass_pipelines[&(batch.side, false)]);
-                            current = Some(batch.side);
+                        if current != Some((batch.side, batch.shader)) {
+                            p.set_pipeline(match batch.shader {
+                                Some(sh) => {
+                                    &self.cache.hook_prepass_pipelines[&(sh, batch.side, false)]
+                                }
+                                None => &self.prepass_pipelines[&(batch.side, false)],
+                            });
+                            current = Some((batch.side, batch.shader));
                         }
                         p.set_bind_group(1, &self.cache.materials[batch.material].bind_group, &[]);
                         let mesh = &self.cache.meshes[batch.mesh];
@@ -4054,12 +4335,13 @@ impl Renderer {
                     );
                 }
                 FramePass::Metaballs => {
-                    self.metaballs.encode_field(
-                        &mut encoder,
-                        self.graph.view("metaballs"),
-                        frame_bind_group,
-                    );
-                    stats.draw_calls += 1;
+                    let fields: Vec<&wgpu::TextureView> = post::FIELD_NAMES
+                        .iter()
+                        .map_while(|name| self.graph.try_view(name))
+                        .collect();
+                    self.metaballs
+                        .encode_field(&mut encoder, &fields, frame_bind_group);
+                    stats.draw_calls += fields.len() as u32;
                 }
                 FramePass::Light2d => {
                     let ambient = scene.lighting_2d.map_or(Vec3::ONE, |l| l.ambient);
@@ -4354,8 +4636,11 @@ impl Renderer {
                     pass.set_bind_group(2, sprite_fx_group, &[]);
                     let mut current: Option<(bool, SpriteBlend)> = None;
                     for run in &sprite_frame.runs {
-                        if let (RunSource::Metaballs(i), Some(group)) =
-                            (run.source, &metaball_group)
+                        if let RunSource::Metaballs(i) = run.source
+                            && let Some(group) = self
+                                .metaballs
+                                .field_of(i)
+                                .and_then(|f| metaball_groups.get(f))
                         {
                             self.metaballs.composite(&mut pass, group, i);
                             stats.draw_calls += 1;
@@ -4396,6 +4681,7 @@ impl Renderer {
                             RunSource::Strip(..) | RunSource::Metaballs(_) => {
                                 unreachable!("drawn above")
                             }
+                            RunSource::Glass => unreachable!("glass is the overlay's only"),
                             RunSource::Sprite(blend, None) => {
                                 (false, blend, &self.white_sprite_group)
                             }
@@ -4470,17 +4756,30 @@ impl Renderer {
                     }
                 }
                 post_pass => {
+                    let post_output = match (&self.glass_targets, glass_on) {
+                        (Some(g), true) => &g.source_view,
+                        _ => output,
+                    };
                     stats.draw_calls += self.graph.encode_post(
                         &mut encoder,
                         &self.post,
                         &self.persistent,
                         post_pass,
                         slot,
-                        output,
+                        post_output,
                         gtao,
                     );
                 }
             }
+        }
+        if let (Some(g), true) = (&self.glass_targets, glass_on) {
+            stats.draw_calls += self.glass.encode(
+                &self.queue,
+                &mut encoder,
+                g,
+                output,
+                !self.output_format.is_srgb(),
+            );
         }
         // The overlay: over the finished frame, in the output (or its sRGB view).
         if let Some(of) = overlay_frame.as_ref().filter(|f| !f.runs.is_empty()) {
@@ -4509,28 +4808,37 @@ impl Renderer {
                 multiview_mask: None,
             });
             pass.set_bind_group(0, &self.overlay.group, &[]);
-            let mut msdf_bound: Option<bool> = None;
+            let mut bound: Option<u8> = None;
             for run in &of.runs {
-                let (msdf, group) = match run.source {
-                    RunSource::Sprite(_, None) => (false, &self.white_sprite_group),
+                // 0 sprite, 1 MSDF text, 2 glass.
+                let (kind, group) = match run.source {
+                    RunSource::Sprite(_, None) => (0u8, &self.white_sprite_group),
                     RunSource::Sprite(_, Some(t)) => (
-                        false,
+                        0,
                         self.cache.sprite_groups[t.index()]
                             .as_ref()
                             .expect("made before the pass"),
                     ),
-                    RunSource::Font(f) => (true, &self.cache.fonts[f.index()].bind_group),
+                    RunSource::Font(f) => (1, &self.cache.fonts[f.index()].bind_group),
+                    RunSource::Glass => (
+                        2,
+                        &self
+                            .glass_targets
+                            .as_ref()
+                            .expect("made with the overlay's glass")
+                            .overlay_group,
+                    ),
                     RunSource::Strip(..) | RunSource::Metaballs(_) => {
                         unreachable!("the overlay has no strips or fluids")
                     }
                 };
-                if msdf_bound != Some(msdf) {
-                    pass.set_pipeline(if msdf {
-                        &pipelines.msdf
-                    } else {
-                        &pipelines.sprite
+                if bound != Some(kind) {
+                    pass.set_pipeline(match kind {
+                        0 => &pipelines.sprite,
+                        1 => &pipelines.msdf,
+                        _ => &pipelines.glass,
                     });
-                    msdf_bound = Some(msdf);
+                    bound = Some(kind);
                 }
                 pass.set_bind_group(1, group, &[]);
                 let start = run.first as u64 * overlay::OVERLAY_STRIDE;

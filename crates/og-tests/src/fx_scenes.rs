@@ -1399,6 +1399,7 @@ fn torus(major: f32, minor: f32, segments: u32, sides: u32) -> MeshData {
             let n = Vec3::new(u.cos() * v.cos(), v.sin(), u.sin() * v.cos());
             let c = Vec3::new(u.cos(), 0.0, u.sin()) * major;
             vertices.push(Vertex {
+                tangent: [0.0; 4],
                 position: (c + n * minor).to_array(),
                 normal: n.to_array(),
                 uv: [i as f32 / segments as f32, j as f32 / sides as f32],
@@ -1572,6 +1573,7 @@ pub fn skinned_cylinder(radius: f32, rings: u32, sides: u32) -> (MeshData, SkinD
             let a = s as f32 / sides as f32 * std::f32::consts::TAU;
             let n = Vec3::new(a.cos(), 0.0, a.sin());
             vertices.push(Vertex {
+                tangent: [0.0; 4],
                 position: [n.x * radius, y, n.z * radius],
                 normal: n.to_array(),
                 uv: [s as f32 / sides as f32, 1.0 - r as f32 / rings as f32],
@@ -1593,6 +1595,7 @@ pub fn skinned_cylinder(radius: f32, rings: u32, sides: u32) -> (MeshData, SkinD
     for (y, up) in [(0.0f32, -1.0f32), (CYLINDER_HEIGHT, 1.0)] {
         let center = vertices.len() as u32;
         vertices.push(Vertex {
+            tangent: [0.0; 4],
             position: [0.0, y, 0.0],
             normal: [0.0, up, 0.0],
             uv: [0.5, 0.5],
@@ -1604,6 +1607,7 @@ pub fn skinned_cylinder(radius: f32, rings: u32, sides: u32) -> (MeshData, SkinD
         for s in 0..=sides {
             let a = s as f32 / sides as f32 * std::f32::consts::TAU;
             vertices.push(Vertex {
+                tangent: [0.0; 4],
                 position: [a.cos() * radius, y, a.sin() * radius],
                 normal: [0.0, up, 0.0],
                 uv: [0.5 + a.cos() * 0.5, 0.5 + a.sin() * 0.5],

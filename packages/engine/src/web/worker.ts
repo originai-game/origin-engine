@@ -8,9 +8,11 @@
 //
 // The shell (shell.ts) sends `start`, then `call`s. With `root`, the Worker
 // fetches the game's cooked bundle before the engine starts (the manifest,
-// then every blob in parallel), transcodes its Basis textures with the
-// vendored transcoder (basis.ts) and hands everything to the wasm, so every
-// load of the bundle completes at once; later files are fetched on request.
+// then every blob in parallel) and hands it to the wasm; once the renderer is
+// attached it transcodes the Basis textures with the vendored transcoder
+// (basis.ts) to the block format the renderer takes for each kind (BC7/BC5,
+// ASTC 4x4 or ETC2/EAC, else RGBA8), so every load of the bundle completes at
+// once, before the game starts; later files are fetched on request.
 // Probe frames arrive through the request ring (rpc-ring.ts) when the page is
 // cross-origin isolated, else as `rpc` messages; input arrives through the
 // input ring, else as `input` messages. Ticks follow the display frame
@@ -34,22 +36,13 @@
 // Worker's animation frames while the clock played, so isolated pages never
 // answered.
 
-import { createEngine, type Engine, type GameToken } from "../runtime.ts";
+import { createEngine, systemClock, type Engine, type GameToken } from "../runtime.ts";
 import type { PlatformAnswer, PlatformHost } from "../platform-local.ts";
 import { loadWebHost, type WebGlue } from "./host.ts";
-import { drainRing, type InjectedInput } from "./input.ts";
-import { WorkerAudio, type AudioMessage, type WebAudioGlue } from "./audio.ts";
+import { drainRing, stampAt, type InjectedInput } from "./input.ts";
+import { WorkerAudio, type AudioLatencyMessage, type AudioMessage, type WebAudioGlue } from "./audio.ts";
 import { readFrames, waitForFrames, writeFrame, type RpcRings } from "./rpc-ring.ts";
-import {
-  compressionsFromWebGl2,
-  compressionsFromWebGpu,
-  loadBasisTranscoder,
-  pickFormat,
-  transcodeKtx2,
-  type BasisTranscoder,
-  type Compression,
-  type TextureFormat,
-} from "./basis.ts";
+import { loadBasisTranscoder, transcodeKtx2, TEXTURE_FORMATS, type BasisTranscoder, type TextureFormat } from "./basis.ts";
 
 interface Start {
   type: "start";
@@ -96,7 +89,8 @@ type Message =
   | { type: "resize"; width: number; height: number; viewport: Viewport }
   | { type: "platform-answer"; request: number; answer: PlatformAnswer }
   | { type: "platform-host"; host: string; capabilities: string[] }
-  | AudioMessage;
+  | AudioMessage
+  | AudioLatencyMessage;
 
 /** og.platform's host in the Worker: the calls go to the page, whose answers come back as `platform-answer`. */
 function toPage(host: string, capabilities: readonly string[]): PlatformHost {
@@ -117,13 +111,15 @@ export interface WebExtras {
   og_web_put_file(path: string, bytes: Uint8Array): void;
   og_web_fail_file(path: string, reason: string): void;
   og_web_put_texture(id: string, width: number, height: number, rgba: Uint8Array, srgb: boolean): void;
+  og_web_put_texture_encoded(id: string, format: string, width: number, height: number, srgb: boolean, levels: Uint8Array): string;
+  og_web_texture_target(engine: number, manifest: string, id: string, bytes: Uint8Array): string;
   og_web_set_fetcher(fetch: (path: string) => void): void;
   og_web_set_inflater?(inflate: (key: number, bytes: Uint8Array) => void): void;
   og_web_put_inflated?(key: number, bytes: Uint8Array): void;
   og_web_fail_inflated?(key: number, reason: string): void;
   og_web_bundle_files(manifest: string): string;
   og_web_texture_ktx2(manifest: string, id: string, bytes: Uint8Array): Uint8Array;
-  og_web_pack_ktx2?(manifest: string, pack: Uint8Array): Array<string | Uint8Array>;
+  og_web_pack_ktx2?(engine: number | undefined, manifest: string, pack: Uint8Array): Array<string | Uint8Array>;
   og_web_attach_canvas(engine: number, canvas: OffscreenCanvas, webgl: boolean): Promise<string>;
   og_web_set_viewport(engine: number, viewport: string): string;
   og_web_resize?(engine: number, width: number, height: number): void;
@@ -177,50 +173,44 @@ async function bytesOf(url: string, received?: Received, onChunk?: () => void): 
   return out;
 }
 
-/** The block compressions this device's GPU takes (for the format a texture would be transcoded to). */
-async function deviceCompressions(webgl: boolean): Promise<Set<Compression>> {
-  try {
-    if (!webgl) {
-      const gpu = (globalThis as { navigator?: { gpu?: { requestAdapter(): Promise<{ features: { has(f: string): boolean } } | null> } } }).navigator?.gpu;
-      const adapter = gpu ? await gpu.requestAdapter() : null;
-      if (adapter) return compressionsFromWebGpu(adapter.features);
-    }
-    const Canvas = (globalThis as { OffscreenCanvas?: new (w: number, h: number) => { getContext(k: string): { getSupportedExtensions(): string[] | null } | null } }).OffscreenCanvas;
-    const gl = Canvas ? new Canvas(1, 1).getContext("webgl2") : null;
-    return compressionsFromWebGl2(gl?.getSupportedExtensions() ?? []);
-  } catch {
-    return new Set();
-  }
-}
-
 export interface Preloaded {
   readonly files: number;
   readonly failed: number;
   /** Basis textures transcoded and handed to the wasm. */
   readonly textures: number;
-  /** The GPU format this device would take; RGBA8 is what is uploaded until og-render accepts compressed formats. */
-  readonly textureFormat: TextureFormat;
+  /**
+   * The encodings they reached the renderer in, joined by `+` in the order
+   * first used (`bc7+bc5` on desktop, `astc4x4` on Apple and most Android,
+   * `etc2+eacrg11` elsewhere, `rgba8` without a renderer or compression).
+   */
+  readonly textureFormat: string;
+}
+
+/** A fetched bundle whose Basis textures wait for the renderer's formats. */
+export interface Fetched {
+  readonly files: number;
+  readonly failed: number;
+  readonly manifest: string | null;
+  /** Texture blobs by asset id. */
+  readonly textures: ReadonlyArray<{ readonly id: string; readonly bytes: Uint8Array }>;
   /** Outputs of streaming groups, left for their packs (fetched when a group loads). */
   readonly streamed: number;
-  /** The bundle's manifest text (empty when it could not be fetched). */
-  readonly manifest: string;
 }
 
 /**
- * Fetch the bundle under `root` into the wasm: the manifest, every blob of
- * the first group (everything no streaming group holds, the proxies
- * included), and every Basis texture transcoded to RGBA8 (level 0). A
- * streaming group's outputs are not fetched: the engine reads its pack
+ * Fetch the bundle under `root` into the wasm: the manifest and every blob
+ * of the first group (everything no streaming group holds, the proxies
+ * included). Its textures are transcoded by `transcodeBundle` once the
+ * renderer is attached, to the encoding the renderer takes. A streaming
+ * group's outputs are not fetched: the engine reads its pack
  * (`cooked/stream/<name>.ogb`) through the fetcher when the group loads.
  */
 export async function preloadBundle(
   glue: WebExtras,
   root: string,
-  basis: { js: string; wasm: string } | undefined,
-  compressions: ReadonlySet<Compression>,
   progress: (value: number, stage: string) => void,
   received?: Received,
-): Promise<Preloaded> {
+): Promise<Fetched> {
   const dir = cookedDir(root);
   const manifestPath = `${dir}/.cook.ogt`;
   let manifest: string;
@@ -228,7 +218,7 @@ export async function preloadBundle(
     manifest = new TextDecoder().decode(await bytesOf(manifestPath));
   } catch (e) {
     glue.og_web_fail_file(manifestPath, `cannot fetch ${manifestPath} (${e instanceof Error ? e.message : String(e)}); run og cook and serve cooked/ next to the page`);
-    return { files: 0, failed: 1, textures: 0, textureFormat: pickFormat(compressions), streamed: 0, manifest: "" };
+    return { files: 0, failed: 1, manifest: null, textures: [], streamed: 0 };
   }
   glue.og_web_put_file(manifestPath, new TextEncoder().encode(manifest));
   const all = JSON.parse(glue.og_web_bundle_files(manifest)) as Array<{ id: string; file: string; type: string; group?: string }> | { error: string };
@@ -252,39 +242,86 @@ export async function preloadBundle(
       if (!received) progress(0.1 + 0.7 * (fetched / Math.max(1, listed.length)), "fetch");
     }),
   );
-  const textures = listed.filter((o) => o.type === "og.Texture" && blobs.has(o.id));
+  const textures = listed.filter((o) => o.type === "og.Texture" && blobs.has(o.id)).map((o) => ({ id: o.id, bytes: blobs.get(o.id)! }));
+  return { files: listed.length - failed, failed, manifest, textures, streamed: all.length - listed.length };
+}
+
+/**
+ * Transcode a fetched bundle's Basis textures for `engine`'s renderer
+ * (`null`: none attached, RGBA8): each to the encoding the wasm names for
+ * its kind on this device (`og_web_texture_target`: BC7 and BC5 on desktop
+ * GPUs, ASTC 4x4 on Apple and most Android, ETC2 and EAC RG11 elsewhere,
+ * RGBA8 last), every mip level handed over; RGBA8 hands level 0 and the GPU
+ * builds the mips.
+ */
+export async function transcodeBundle(
+  glue: WebExtras,
+  engine: number | null,
+  fetched: Fetched,
+  basis: { js: string; wasm: string } | undefined,
+  progress: (value: number, stage: string) => void,
+  received?: Received,
+): Promise<Preloaded> {
+  const used: string[] = [];
   let transcoder: BasisTranscoder | null = null;
-  let textureFormat: TextureFormat = pickFormat(compressions);
   let transcoded = 0;
-  for (const [i, t] of textures.entries()) {
-    const ktx2 = glue.og_web_texture_ktx2(manifest, t.id, blobs.get(t.id)!);
+  const manifest = fetched.manifest;
+  for (const [i, t] of fetched.textures.entries()) {
+    const ktx2 = manifest === null ? new Uint8Array() : glue.og_web_texture_ktx2(manifest, t.id, t.bytes);
     if (ktx2.length > 0) {
       transcoder ??= basis ? await loadBasisTranscoder(basis.js, basis.wasm) : await loadBasisTranscoder();
-      // og-render uploads RGBA8 today: transcode to it; report what the device would take.
-      const out = transcodeKtx2(transcoder, ktx2, "rgba8");
-      textureFormat = pickFormat(compressions, out.kind);
-      glue.og_web_put_texture(t.id, out.width, out.height, out.levels[0]!, out.srgb);
+      const target = engine === null ? "rgba8" : glue.og_web_texture_target(engine, manifest!, t.id, t.bytes);
+      const out = transcodeKtx2(transcoder, ktx2, isTextureFormat(target) ? target : "rgba8");
+      if (out.format === "rgba8") {
+        glue.og_web_put_texture(t.id, out.width, out.height, out.levels[0]!, out.srgb);
+      } else {
+        const refused = glue.og_web_put_texture_encoded(t.id, out.format, out.width, out.height, out.srgb, concat(out.levels));
+        if (refused) throw new Error(refused);
+      }
+      if (!used.includes(out.format)) used.push(out.format);
       transcoded++;
     }
-    if (!received) progress(0.8 + 0.2 * ((i + 1) / textures.length), "transcode");
+    if (!received) progress(0.8 + 0.2 * ((i + 1) / fetched.textures.length), "transcode");
   }
-  return { files: listed.length - failed, failed, textures: transcoded, textureFormat, streamed: all.length - listed.length, manifest };
+  return { files: fetched.files, failed: fetched.failed, textures: transcoded, textureFormat: used.length ? used.join("+") : "rgba8" };
+}
+
+function isTextureFormat(name: string): name is TextureFormat {
+  return (TEXTURE_FORMATS as readonly string[]).includes(name);
+}
+
+function concat(parts: readonly Uint8Array[]): Uint8Array {
+  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  let at = 0;
+  for (const p of parts) {
+    out.set(p, at);
+    at += p.length;
+  }
+  return out;
 }
 
 /**
  * What the engine's fetcher does with a file it asks for after the boot: a
- * streaming group's pack has its Basis textures transcoded and handed over
+ * streaming group's pack has its Basis textures transcoded, to the encoding
+ * `engine()`'s renderer takes for each (RGBA8 without one), and handed over
  * first, so that every texture in it is ready when the engine reads the
  * pack; any other file is handed over as fetched.
  */
-export function installFetcher(glue: WebExtras, manifest: string, basis: { js: string; wasm: string } | undefined): void {
+export function installFetcher(glue: WebExtras, manifest: string, basis: { js: string; wasm: string } | undefined, engine: () => number | null): void {
   let transcoder: Promise<BasisTranscoder> | null = null;
   const put = async (path: string, bytes: Uint8Array) => {
-    const pairs = /\/stream\/[^/]+\.ogb$/.test(path) && glue.og_web_pack_ktx2 ? glue.og_web_pack_ktx2(manifest, bytes) : [];
-    for (let i = 0; i + 1 < pairs.length; i += 2) {
+    const triples = /\/stream\/[^/]+\.ogb$/.test(path) && glue.og_web_pack_ktx2 ? glue.og_web_pack_ktx2(engine() ?? undefined, manifest, bytes) : [];
+    for (let i = 0; i + 2 < triples.length; i += 3) {
       transcoder ??= basis ? loadBasisTranscoder(basis.js, basis.wasm) : loadBasisTranscoder();
-      const out = transcodeKtx2(await transcoder, pairs[i + 1] as Uint8Array, "rgba8");
-      glue.og_web_put_texture(pairs[i] as string, out.width, out.height, out.levels[0]!, out.srgb);
+      const id = triples[i] as string;
+      const target = triples[i + 2] as string;
+      const out = transcodeKtx2(await transcoder, triples[i + 1] as Uint8Array, isTextureFormat(target) ? target : "rgba8");
+      if (out.format === "rgba8") {
+        glue.og_web_put_texture(id, out.width, out.height, out.levels[0]!, out.srgb);
+      } else {
+        const refused = glue.og_web_put_texture_encoded(id, out.format, out.width, out.height, out.srgb, concat(out.levels));
+        if (refused) throw new Error(refused);
+      }
     }
     glue.og_web_put_file(path, bytes);
   };
@@ -383,8 +420,21 @@ export function startWorker(game: GameToken): void {
   self.addEventListener?.("error", (e) => crash(e.message ?? String(e.error)));
   self.addEventListener?.("unhandledrejection", (e) => crash(e.reason instanceof Error ? e.reason.message : String(e.reason)));
 
-  const pumpInput = () => {
-    if (engine && ring) for (const event of drainRing(ring)) engine.probe.input(event);
+  /** Real time not yet simulated after the last frame (its answer's `behind`), ms. */
+  let behind = 0;
+  /**
+   * An event with the page's time becomes one with its `at` within the tick
+   * that reads it (input.ts stampAt): `now` is this Worker's clock now (a
+   * frame's timestamp, or a message's arrival), on the same timeline as `last`.
+   */
+  const stamped = (event: InjectedInput, now: number): InjectedInput => {
+    if (!engine || !("time" in event) || event.time === undefined) return event;
+    const { time, ...rest } = event;
+    const ahead = behind + (last ? Math.max(0, now - last) : 0);
+    return { ...rest, at: stampAt(time, performance.timeOrigin + now, ahead, 1000 / engine.game.tick) } as InjectedInput;
+  };
+  const pumpInput = (now: number) => {
+    if (engine && ring) for (const event of drainRing(ring)) engine.probe.input(stamped(event, now));
   };
 
   const answer = (frame: string, viaRing: boolean) => {
@@ -436,7 +486,7 @@ export function startWorker(game: GameToken): void {
     scheduled = false;
     if (!engine || crashed) return;
     try {
-      pumpInput();
+      pumpInput(now);
       // Retries first: a capture asked this frame is requested now and answered on a later frame.
       retry();
       drainRpc();
@@ -447,6 +497,7 @@ export function startWorker(game: GameToken): void {
           crash(answered.reason ?? "the engine refused a frame");
           return;
         }
+        behind = answered.behind ?? 0;
         if (!firstFrame && answered.rendered !== false) {
           firstFrame = true;
           self.postMessage({ type: "frame", first: true });
@@ -485,7 +536,7 @@ export function startWorker(game: GameToken): void {
       await waitForFrames(rpc.requests, 1000);
       if (!engine) continue;
       try {
-        pumpInput();
+        pumpInput(performance.now());
         drainRpc();
       } catch (e) {
         crash(e instanceof Error ? e.message : String(e));
@@ -553,11 +604,10 @@ export function startWorker(game: GameToken): void {
         // Terrain tiles are inflated by the browser off the engine's thread where it can.
         installInflater(glue);
         progress(data.expect ? received.value : 0.1, "bundle");
-        let loaded: Preloaded | null = null;
+        let fetched: Fetched | null = null;
         if (data.root !== undefined) {
-          const compressions = await deviceCompressions(!!data.webgl);
-          loaded = await preloadBundle(glue, data.root, data.basis, compressions, progress, data.expect ? received : undefined);
-          installFetcher(glue, loaded.manifest, data.basis);
+          fetched = await preloadBundle(glue, data.root, progress, data.expect ? received : undefined);
+          installFetcher(glue, fetched.manifest ?? "", data.basis, () => (rendering && engine ? engine.id : null));
         }
         const created = createEngine(game, {
           ...(data.seed === undefined ? {} : { seed: data.seed }),
@@ -569,6 +619,8 @@ export function startWorker(game: GameToken): void {
         if (!created.ok) throw new Error(created.reason);
         engine = created.value;
         // og.platform: calls go to the page, which answers them (the Player, or the browser's storage).
+        // The time is the browser's until the Player's answers carry its own (docs/platform-asks.md).
+        engine.setClock(systemClock("browser"));
         engine.attachPlatform(toPage("none", []));
         if (data.viewport) glue.og_web_set_viewport(engine.id, JSON.stringify(data.viewport));
         ring = data.ring;
@@ -579,6 +631,8 @@ export function startWorker(game: GameToken): void {
           tier = await glue.og_web_attach_canvas(engine.id, data.canvas, !!data.webgl);
           rendering = true;
         }
+        // The textures go to the renderer's encodings, so after it is attached (the game starts later).
+        const loaded = fetched ? await transcodeBundle(glue, rendering ? engine.id : null, fetched, data.basis, progress, data.expect ? received : undefined) : null;
         progress(1, "ready");
         ready = true;
         self.postMessage({
@@ -608,7 +662,7 @@ export function startWorker(game: GameToken): void {
       return;
     }
     if (!engine || crashed) return;
-    if (data.type === "input") engine.probe.input(data.event);
+    if (data.type === "input") engine.probe.input(stamped(data.event, performance.now()));
     if (data.type === "viewport" && glueRef) glueRef.og_web_set_viewport(engine.id, JSON.stringify(data.viewport));
     if (data.type === "resize" && glueRef) {
       if (canvas) {
@@ -619,6 +673,7 @@ export function startWorker(game: GameToken): void {
       glueRef.og_web_set_viewport(engine.id, JSON.stringify(data.viewport));
       if (!playing) present();
     }
+    if (data.type === "audio-latency") audio?.latency(data.latency);
     if (data.type === "audio" && glueRef && !audio) {
       const attached = WorkerAudio.attach(glueRef, engine.id, data);
       if (attached.ok) audio = attached.value;
@@ -634,7 +689,7 @@ export function startWorker(game: GameToken): void {
     }
     if (data.type === "call") {
       try {
-        pumpInput();
+        pumpInput(performance.now());
         const call = calls[data.method];
         if (!call) throw new Error(`unknown call '${data.method}'`);
         self.postMessage({ type: "result", id: data.id, value: call(engine, data.args) });

@@ -325,6 +325,9 @@ impl RenderApi for WebHost {
     fn og_render_shader_material(&self, world: u32, shader: f64, desc: Option<String>) -> String {
         rt::og_render_shader_material(world, shader, desc)
     }
+    fn og_render_set_material_shader(&self, world: u32, material: f64, shader: String) -> String {
+        rt::og_render_set_material_shader(world, material, shader)
+    }
     fn og_render_set_shader_param(
         &self,
         world: u32,
@@ -427,6 +430,10 @@ impl LoadApi for WebHost {
     fn og_load_flipbook(&self, world: u32, path: String) -> String {
         rt::og_load_flipbook(world, path)
     }
+
+    fn og_load_rig(&self, world: u32, path: String) -> String {
+        rt::og_load_rig(world, path)
+    }
     fn og_load_tilemap(&self, world: u32, path: String) -> String {
         rt::og_load_tilemap(world, path)
     }
@@ -486,6 +493,14 @@ impl TilemapApi for WebHost {
 impl AnimApi for WebHost {
     fn og_anim_graph(&self, world: u32, desc: Option<String>) -> String {
         rt::og_anim_graph(world, desc)
+    }
+
+    fn og_anim_humanoid(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_anim_humanoid(world, desc)
+    }
+
+    fn og_anim_retarget(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_anim_retarget(world, desc)
     }
 }
 
@@ -732,6 +747,19 @@ impl UiApi for WebHost {
     }
     fn og_ui_set_navigation(&self, on: bool) {
         rt::og_ui_set_navigation(on)
+    }
+    fn og_ui_rich_text(&self, id: String, markup: String, desc: Option<String>) -> String {
+        rt::og_ui_rich_text(id, markup, desc)
+    }
+    fn og_ui_set_players(&self, count: u32) {
+        rt::og_ui_set_players(count)
+    }
+    fn og_ui_focus(&self, pad: u32) -> String {
+        rt::og_ui_focus(pad)
+    }
+
+    fn og_ui_a11y(&self) -> String {
+        rt::og_ui_a11y()
     }
     fn og_ui_memory(&self, id: String, initial: f64) -> f64 {
         rt::og_ui_memory(id, initial)

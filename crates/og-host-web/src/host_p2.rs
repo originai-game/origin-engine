@@ -1,4 +1,4 @@
-//! Phase 2's modules' trait implementations (TerrainApi, StreamApi): every member is
+//! Phase 2's modules' trait implementations (TerrainApi, StreamApi, AudioApi): every member is
 //! the host-neutral runtime's.
 
 use crate::WebHost;
@@ -54,5 +54,11 @@ impl StreamApi for WebHost {
     }
     fn og_stream_set_budget(&self, world: u32, bytes: f64) -> String {
         rt::og_stream_set_budget(world, bytes)
+    }
+}
+
+impl AudioApi for WebHost {
+    fn og_audio_output_latency(&self, world: u32) -> f64 {
+        rt::og_audio_output_latency(world)
     }
 }

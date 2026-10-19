@@ -238,8 +238,12 @@ impl mikktspace::Geometry for Tangents<'_> {
     fn normal(&self, f: usize, i: usize) -> [f32; 3] {
         self.v[f * 3 + i].n
     }
+    // glTF's uvs run down the image, its normal maps' green up it: MikkTSpace
+    // sees v flipped so the bitangent (cross(normal, tangent) × w) points up
+    // the image, as exporters' tangents and the renderer's generated ones do.
     fn tex_coord(&self, f: usize, i: usize) -> [f32; 2] {
-        self.v[f * 3 + i].uv
+        let [u, v] = self.v[f * 3 + i].uv;
+        [u, 1.0 - v]
     }
     fn set_tangent_encoded(&mut self, t: [f32; 4], f: usize, i: usize) {
         self.v[f * 3 + i].t = t;
