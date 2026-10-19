@@ -84,10 +84,17 @@ if [ "${OG_GATE:-}" = 1 ] && [ -f "$gate_wasm/opt/og_host_web-publish.wasm" ] &&
   cp "$gate_wasm/bindgen/og_host_web-publish/"* "$here/dist/web-publish/"
   cp "$gate_wasm/opt/og_host_web-publish.wasm" "$here/dist/web-publish/origin-engine_bg.wasm"
   cp "$gate_wasm/bindgen/og_host_web/"* "$here/dist/web/"
+  # The gate builds the lanes variant whenever scripts/wasm-crates.txt marks
+  # og-host-web `lanes`; without it every publish build here would quietly
+  # ship single-threaded, so a missing one stops the build.
+  lanes_expected="$(awk '{ sub(/#.*/, "") } $1 == "og-host-web" && $3 == "publish" && $4 == "lanes" { print 1 }' "$root/scripts/wasm-crates.txt")"
   if [ -f "$gate_wasm/opt/og_host_web-lanes.wasm" ]; then
     cp "$gate_wasm/bindgen/og_host_web-lanes/origin-engine-lanes.js" "$here/dist/web-publish/"
     cp -R "$gate_wasm/bindgen/og_host_web-lanes/snippets" "$here/dist/web-publish/"
     cp "$gate_wasm/opt/og_host_web-lanes.wasm" "$here/dist/web-publish/origin-engine-lanes_bg.wasm"
+  elif [ -n "$lanes_expected" ]; then
+    echo "build.sh: $gate_wasm/opt/og_host_web-lanes.wasm is missing, but scripts/wasm-crates.txt marks og-host-web lanes: dist/web-publish would ship single-threaded; run the gate's wasm-build and wasm-opt steps again (docs/ci.md §The lanes wasm)" >&2
+    exit 1
   fi
   exit 0
 fi
