@@ -502,11 +502,7 @@ fn effect_table(frames: u32, only: Option<&str>) -> Result<String, String> {
         (
             "terrain-grass",
             "P2: grass scatter (36,000 tufts, shadowed)",
-            |g| {
-                // The tufts are the last mesh the scene added.
-                let tuft = g.scene.instances.last().map(|i| i.mesh);
-                g.scene.instances.retain(|i| Some(i.mesh) != tuft);
-            },
+            |g| g.scene.scatters.clear(),
         ),
     ];
     for (scene, label, strip) in effect_rows {

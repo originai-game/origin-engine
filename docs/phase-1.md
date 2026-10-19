@@ -7,6 +7,78 @@ the platform can run it in an `engine`-class sandbox. Spike findings
 (`docs/spike-results.md`) are the baseline; the spike crate is the seed
 of `og-render` and is deleted once its code has moved.
 
+## Phase 3, streaming round (2026-10-19)
+
+Branch `p3-streaming`, 932dc00..HEAD. Terrain streaming, asset streaming
+groups and the phase 2 terrain round's leftovers. Evidence:
+`tests/evidence/P3/streaming/` (break-and-restore notes in
+`break-and-restore.md`).
+
+- **Terrain placement** (9941ffd, 6b9221b): og-render draws a terrain
+  through a transform, and extraction hands it the entity's world matrix;
+  og.terrain.sample, bounds and edit take the entity's rotation and scale.
+- **Terrain tiles** (8c0e8bf, bc5c5ea, 8bc9174): og-render draws a
+  terrain from a pyramid of 128-quad tiles in texture arrays, choosing
+  them with `terrain_tiles_wanted` within `TerrainLod::budget` (16 MiB a
+  terrain by default), each after its parent with a fade. og cook writes
+  the pyramid (og.Terrain schema 2, every tile zlib'd on its own), and
+  og-runtime's streamer decodes the wanted tiles off the frame (a worker
+  thread natively; the browser's DecompressionStream on the web, the
+  engine finishing at most 2 ms of tiles a frame), keeps twice the budget
+  decoded and hands the renderer at most eight new tiles a frame. A
+  capture settles first. The tick reads terrains through physics and
+  og.terrain.sample only, never through what is resident.
+- **Streaming and the world hash** (27e2f62): the probe's
+  `terrain_stream:<stream|resident>[:<MiB>]` and dump_stream's `terrain`
+  section; `packages/engine/tests/terrain-stream.test.ts` runs the
+  fx-showcase terrain station 600 ticks resident and streamed at 0.25 MiB
+  and finds the same world hash on every tick
+  (`terrain/determinism.json`).
+- **Frame times** (451f376, 9c7c986): `bench/terrain-fly.ts` flies the
+  2 km island and a new 8 km terrain (4097², ridged) at 60 m on the native
+  host, timing engine.frame plus the GPU wait (`og_node_wait_gpu`). On the
+  M4 Pro at 1280x720 every run's p99 is 2.1 to 2.6 ms and no frame exceeds
+  8.2 ms; streaming the 8 km terrain decodes 473 tiles at 16 MiB and 202
+  at 4 MiB, the streamer spends at most 0.12 ms a frame, and handing eight
+  tiles costs about 1 ms (`terrain/fly/frame-times.md`, `NOTES.md`).
+- **Edits are world state** (9024a12, 6a8b6ee): every og.terrain.edit
+  joins an edit log in the world's og.terrain block; snapshots keep it,
+  the world hash covers it and a restore replays it.
+- **Scatter** (1ced372): og-render places scattered copies once per
+  32 x 32-cell chunk, caches their instances and draws each chunk with one
+  instanced draw, fading copies by a dither at full size in every pass.
+  The 36,000-tuft grass costs +0.46 ms (was +4.1 to +4.5 ms;
+  `costs-p2-after-scatter.md`, `terrain-grass-before-after.png`).
+- **Asset streaming groups** (8f19c0b, 8ae1f46, 1317314, a3d3870,
+  79e8dc7, 98db532, 5481b09): a scene's `stream` blocks (distance, volume
+  or request-only triggers, priority) are cooked into one pack per group
+  with a proxy for each grouped glTF; the runtime admits wanted groups by
+  priority within a memory budget (256 MiB by default) and swaps real
+  meshes, textures and sounds in behind the stand-ins' handles, so the
+  world hash never depends on what is resident; IDL module `stream`
+  (og.stream.status, request, release, budget, setBudget). `og build --publish`
+  ships the first group as files the shell preloads and each other group
+  as its pack, fetched on demand and cached by the service worker for
+  offline play. `packages/engine/tests/asset-stream.test.ts` flies a
+  three-group path natively and on the web, online and offline
+  (`groups/`).
+- **Shared render change**: 8ae1f46 adds a replaced-texture pass to
+  og-render's sync step (`RenderScene::set_texture`,
+  `set_texture_upload`), outside the terrain, scatter and loading paths.
+- **Gate**: `OG_GATE_JOBS=2 scripts/check.sh --all` at 58c2466,
+  2026-10-19, Apple M4 Pro shared with other agents' work: **PASSED, 9 of
+  9 steps in 134 s**: fmt 1 s, clippy 2 s, wasm-build 7 s, test 85 s (470
+  Rust tests, 5 skipped), wasm-opt 76 s, size-gate 48 s, drift 1 s,
+  bun-test 38 s, determinism 1 s.
+- **Wasm**: publish wasm 3,064,943 B brotli, 73.1 % of the 4 MiB budget
+  (+86,482 B over the terrain round's 2,978,461 B): the tile pyramid and
+  its streamer, the scatter chunks, the streaming groups and the
+  replaced-texture pass.
+- **Shore foam on vulkan-cpu**: traced to the sea's single 24 km
+  triangle, which llvmpipe interpolates metres off once the near plane
+  clips it; any tessellation brings the foam and the lake back. Left for
+  the water path (`foam/NOTES.md`, 58c2466).
+
 ## Status 2026-10-19, shell own-window round
 
 A top-level Stage build with the platform's Stage overlay in its own
@@ -419,13 +491,15 @@ Branch `p2-terrain-water`, 0ee78f1..HEAD on 2dae5fa. Closes owed row 24.
 - **Wasm**: publish wasm 2,978,461 B brotli, 71.0 % of the budget
   (+35,281 B over 2,943,180). The terrain's load-time decoding lives in
   og-cook and miniz_oxide, both at opt-level z in `[profile.wasm]`.
-- **Not done**: terrains are decoded whole at load, not streamed tile by
-  tile; a terrain lies along world x and z (its entity's rotation and
-  scale are ignored); edits are asset changes and are not in snapshots;
-  scattered copies draw without per-copy alpha fade (they shrink) and the
-  scatter is rebuilt on the CPU every frame (4.3 ms for 36,000 copies; a
-  GPU placement pass would remove it); lavapipe draws no shore foam on
-  `terrain-far`'s 24 km single-quad sea (not investigated).
+- **Not done** at the round's end, since closed by the phase 3 streaming
+  round below unless noted: terrains were decoded whole at load (now
+  streamed tile by tile, bc5c5ea); a terrain lay along world x and z
+  (now turned and scaled with its entity, 9941ffd, 6b9221b); edits were
+  asset changes outside snapshots (now world state, 9024a12); scattered
+  copies shrank instead of fading and were rebuilt on the CPU every frame
+  (now dithered and placed once per cached chunk, 1ced372); lavapipe draws
+  no shore foam on `terrain-far`'s 24 km single-quad sea (cause found,
+  not fixed: `tests/evidence/P3/streaming/foam/NOTES.md`).
 
 ## Status 2026-10-19, Phase 2, archetypes round
 

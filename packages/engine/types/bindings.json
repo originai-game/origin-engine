@@ -6095,6 +6095,24 @@
           "default": false
         }
       ]
+    },
+    {
+      "id": 23,
+      "name": "StreamEvent",
+      "schema": "og.StreamEvent",
+      "module": "stream",
+      "fields": [
+        {
+          "name": "group",
+          "type": "String",
+          "default": ""
+        },
+        {
+          "name": "state",
+          "type": "u32",
+          "default": 0
+        }
+      ]
     }
   ],
   "calls": [
@@ -12001,6 +12019,16 @@
           "name": "origin",
           "type": "Vector3",
           "optional": true
+        },
+        {
+          "name": "quaternion",
+          "type": "Quaternion",
+          "optional": true
+        },
+        {
+          "name": "scale",
+          "type": "Vector3",
+          "optional": true
         }
       ],
       "returns": "Result<TerrainBounds>",
@@ -12087,6 +12115,111 @@
           "name": "layer",
           "type": "TerrainLayerDesc",
           "optional": true
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 279,
+      "kind": "fn",
+      "path": "og.stream.status",
+      "symbol": "og_stream_status",
+      "module": "stream",
+      "name": "status",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "group",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<StreamStatus>",
+      "publish": true
+    },
+    {
+      "id": 280,
+      "kind": "fn",
+      "path": "og.stream.request",
+      "symbol": "og_stream_request",
+      "module": "stream",
+      "name": "request",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "group",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 281,
+      "kind": "fn",
+      "path": "og.stream.release",
+      "symbol": "og_stream_release",
+      "module": "stream",
+      "name": "release",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "group",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 282,
+      "kind": "fn",
+      "path": "og.stream.budget",
+      "symbol": "og_stream_budget",
+      "module": "stream",
+      "name": "budget",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        }
+      ],
+      "returns": "Result<StreamBudget>",
+      "publish": true
+    },
+    {
+      "id": 283,
+      "kind": "fn",
+      "path": "og.stream.setBudget",
+      "symbol": "og_stream_set_budget",
+      "module": "stream",
+      "name": "setBudget",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "bytes",
+          "type": "f64",
+          "optional": false
         }
       ],
       "returns": "Result<Void>",

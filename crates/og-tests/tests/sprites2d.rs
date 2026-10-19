@@ -395,3 +395,38 @@ fn a_layered_trail_draws_in_the_sprite_order() {
         at(&shown, 0.0, 0.0)
     );
 }
+
+/// A streamed texture replaces its placeholder in place: the same handle,
+/// drawn by the same renderer, shows the new pixels on the next frame
+/// (and the old ones again when it is put back). Ways this could fail:
+/// the cached sprite group keeps the first upload, or a replacement of
+/// another size is refused.
+#[test]
+fn a_replaced_texture_reaches_the_sprites_that_draw_it() {
+    let mut scene = flat();
+    let tex = scene.add_texture(solid([255, 0, 0, 255], 1, 1));
+    scene.add_sprite(Sprite {
+        texture: Some(tex),
+        size: Vec2::splat(4.0),
+        ..Default::default()
+    });
+    let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let mut draw = |scene: &RenderScene| {
+        renderer
+            .render(scene, &RenderTarget::Offscreen)
+            .expect("render");
+        at(&renderer.read_offscreen().expect("capture"), 0.0, 0.0)
+    };
+    assert_eq!(draw(&scene), [255, 0, 0]);
+    assert!(scene.set_texture(tex, solid([0, 0, 255, 255], 8, 8)));
+    assert_eq!(draw(&scene), [0, 0, 255], "the replacement is drawn");
+    assert!(scene.set_texture(tex, solid([255, 0, 0, 255], 1, 1)));
+    assert_eq!(draw(&scene), [255, 0, 0], "and the placeholder again");
+    let mut other = flat();
+    other.add_texture(solid([0; 4], 1, 1));
+    let foreign = other.add_texture(solid([0; 4], 1, 1));
+    assert!(
+        !scene.set_texture(foreign, solid([0; 4], 1, 1)),
+        "no such texture"
+    );
+}

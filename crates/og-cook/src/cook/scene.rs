@@ -240,9 +240,11 @@ pub fn cook(
                     .to_string()
             }
             "entity" => {}
+            // Streaming groups: read by the cook's planner (cook/stream.rs).
+            "stream" => {}
             k => {
                 return Err(CookError(format!(
-                    "line {}: unknown scene entry '{k}' (expected name or entity)",
+                    "line {}: unknown scene entry '{k}' (expected name, entity or stream)",
                     e.line
                 )));
             }

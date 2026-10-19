@@ -80,6 +80,18 @@ pub trait Hooks {
             Err(e) => Fetch::Failed(e.to_string()),
         }
     }
+    /// Starts inflating zlib bytes away from the engine's thread (the web
+    /// host's DecompressionStream), answered later by
+    /// [`Hooks::inflate_take`] under `key`. `false`: this host cannot, and
+    /// the runtime inflates on its own (a worker thread natively).
+    fn inflate_start(&self, key: u64, zlib: &[u8]) -> bool {
+        let _ = (key, zlib);
+        false
+    }
+    /// The bytes a started inflate answered, once (`Pending` until then).
+    fn inflate_take(&self, key: u64) -> Fetch<Vec<u8>> {
+        Fetch::Failed(format!("inflate {key} was never started"))
+    }
 }
 
 pub use super::extract::RenderBackend;
@@ -650,6 +662,7 @@ pub(crate) fn assemble(
             || REGISTERED_BY_MODULES.contains(&decl.schema)
             || super::anim::REGISTERED_BY_ANIM.contains(&decl.schema)
             || super::feel::REGISTERED_BY_FEEL.contains(&decl.schema)
+            || decl.schema == super::stream::EVENT
         {
             continue;
         }
@@ -676,6 +689,15 @@ pub(crate) fn assemble(
     {
         world.register::<og_anim::FlipbookEvent>().map_err(err)?;
         let id = world.id_by_name("og.FlipbookEvent").map_err(err)?;
+        let layout = Layout::from_schema(world.schema(id).map_err(err)?, RecordKind::Event);
+        layouts.insert(layout.schema.clone(), layout);
+    }
+    // og.stream's event (its group is a str64), registered as it is sent.
+    {
+        world
+            .register::<super::stream::StreamEvent>()
+            .map_err(err)?;
+        let id = world.id_by_name(super::stream::EVENT).map_err(err)?;
         let layout = Layout::from_schema(world.schema(id).map_err(err)?, RecordKind::Event);
         layouts.insert(layout.schema.clone(), layout);
     }
@@ -725,6 +747,7 @@ pub(crate) fn assemble(
     let ui = super::modules::new_ui(game.tick, previous.as_ref().map(|p| p.0));
     let physics = super::modules::mount_front(&mut world, engine_id, profile, &ui)?;
     let record_names: Vec<String> = layouts.keys().cloned().collect();
+    super::terrain::mount(&mut world, engine_id)?;
     super::e6::mount_front(&mut world, engine_id, profile, &physics, &record_names)?;
 
     // Systems: the game's, ordered.
@@ -1061,6 +1084,7 @@ pub fn render_options(id: u32) -> Value {
 /// At a tick boundary: pending bundles, a scene waiting for its bundle.
 fn tick_boundary(eng: &Engine) {
     eng.assets.borrow_mut().poll();
+    super::stream::update(eng);
     if eng.state.borrow().boot_scene.is_some() {
         boot_scene(eng);
     }

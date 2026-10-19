@@ -3,8 +3,10 @@
 //! A [`RenderScene`] owns its resources (meshes, textures, materials) and hands
 //! out handles for them; instances, the camera, the light and the environment
 //! are plain public fields the caller rewrites every frame. Resources are
-//! append-only: a handle stays valid for the scene's lifetime, and only
-//! materials can be replaced in place ([`RenderScene::set_material`]).
+//! append-only: a handle stays valid for the scene's lifetime; materials,
+//! unskinned meshes and textures can be replaced in place
+//! ([`RenderScene::set_material`], [`RenderScene::set_mesh`],
+//! [`RenderScene::set_texture`]).
 
 use crate::effects::{
     AmbientOcclusion, CameraShake, ChromaticAberration, ColorGrading, ColorLut, Decal,
@@ -849,6 +851,8 @@ pub struct RenderScene {
     /// Per mesh: how many times [`RenderScene::set_mesh`] replaced it.
     mesh_revisions: Vec<u64>,
     textures: Vec<TextureSource>,
+    /// Per texture: how many times [`RenderScene::set_texture`] replaced it.
+    texture_revisions: Vec<u64>,
     /// What every material draws as.
     materials: Vec<StandardMaterial>,
     /// Per material: its shader and parameters.
@@ -865,7 +869,7 @@ pub struct RenderScene {
     emitters: Vec<ParticleEmitter>,
     luts: Vec<ColorLut>,
     trail_styles: Vec<TrailStyle>,
-    terrain_data: Vec<crate::TerrainData>,
+    terrain_data: Vec<crate::terrain::TerrainSource>,
     /// Per terrain: how many times [`RenderScene::set_terrain`] replaced it.
     terrain_revisions: Vec<u64>,
     /// Objects to draw this frame, in any order.
@@ -918,6 +922,9 @@ pub struct RenderScene {
     pub water: Vec<crate::Water>,
     /// Terrains drawn this frame (clipmaps of [`RenderScene::add_terrain`] data).
     pub terrains: Vec<crate::Terrain>,
+    /// Copies scattered over this frame's terrains, placed and drawn by
+    /// the renderer from cached chunks.
+    pub scatters: Vec<crate::ScatterDraw>,
     /// Side-on 2D water bodies, drawn in the sprite order.
     pub water_2d: Vec<crate::Water2d>,
     /// 2D fluids drawn as metaballs in the sprite order (the first
@@ -952,6 +959,7 @@ impl RenderScene {
             meshes: Vec::new(),
             mesh_revisions: Vec::new(),
             textures: Vec::new(),
+            texture_revisions: Vec::new(),
             materials: Vec::new(),
             material_shaders: Vec::new(),
             shaders: Vec::new(),
@@ -994,6 +1002,7 @@ impl RenderScene {
             fog: None,
             water: Vec::new(),
             terrains: Vec::new(),
+            scatters: Vec::new(),
             water_2d: Vec::new(),
             metaballs: Vec::new(),
             sprite_order: Vec::new(),
@@ -1063,9 +1072,98 @@ impl RenderScene {
     /// with a [`crate::Terrain`] in [`RenderScene::terrains`]. Checked at
     /// its first frame ([`crate::RenderError::InvalidData`]).
     pub fn add_terrain(&mut self, data: crate::TerrainData) -> TerrainHandle {
-        self.terrain_data.push(data);
+        self.terrain_data
+            .push(crate::terrain::TerrainSource::Data(data));
         self.terrain_revisions.push(0);
         TerrainHandle(self.terrain_data.len() as u32 - 1)
+    }
+
+    /// Adds a streamed terrain: its tiles arrive one by one with
+    /// [`RenderScene::set_terrain_tile`] (the top level's before it draws),
+    /// `range` the lowest and highest height. A tile that has not arrived
+    /// shows its parent's.
+    pub fn add_terrain_stream(
+        &mut self,
+        layout: crate::TerrainLayout,
+        range: (f32, f32),
+    ) -> TerrainHandle {
+        self.terrain_data
+            .push(crate::terrain::TerrainSource::Stream {
+                layout,
+                range,
+                tiles: Default::default(),
+            });
+        self.terrain_revisions.push(0);
+        TerrainHandle(self.terrain_data.len() as u32 - 1)
+    }
+
+    /// Makes a terrain streamed again from the start (no tile resident),
+    /// as after [`RenderScene::add_terrain_stream`]. `false` for a handle
+    /// of another scene.
+    pub fn set_terrain_stream(
+        &mut self,
+        handle: TerrainHandle,
+        layout: crate::TerrainLayout,
+        range: (f32, f32),
+    ) -> bool {
+        match self.terrain_data.get_mut(handle.index()) {
+            Some(d) => {
+                *d = crate::terrain::TerrainSource::Stream {
+                    layout,
+                    range,
+                    tiles: Default::default(),
+                };
+                self.terrain_revisions[handle.index()] += 1;
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// Hands a streamed terrain one of its tiles (`None`: drops it). The
+    /// renderer draws what it holds of the tiles it wants. `false` for a
+    /// handle of another scene, a terrain in memory or a tile index beyond
+    /// its layout.
+    pub fn set_terrain_tile(
+        &mut self,
+        handle: TerrainHandle,
+        index: u32,
+        tile: Option<std::sync::Arc<crate::TerrainTile>>,
+    ) -> bool {
+        match self.terrain_data.get_mut(handle.index()) {
+            Some(crate::terrain::TerrainSource::Stream { layout, tiles, .. })
+                if index < layout.tile_count() =>
+            {
+                match tile {
+                    Some(t) => {
+                        tiles.insert(index, t);
+                    }
+                    None => {
+                        tiles.remove(&index);
+                    }
+                }
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// The tiles a streamed terrain holds now (`None` for a terrain in
+    /// memory).
+    pub fn terrain_tiles(
+        &self,
+        handle: TerrainHandle,
+    ) -> Option<&std::collections::BTreeMap<u32, std::sync::Arc<crate::TerrainTile>>> {
+        match self.terrain_data.get(handle.index())? {
+            crate::terrain::TerrainSource::Stream { tiles, .. } => Some(tiles),
+            crate::terrain::TerrainSource::Data(_) => None,
+        }
+    }
+
+    /// The layout a terrain is drawn with (a field in memory's is chosen
+    /// by the renderer: tiles of [`crate::TERRAIN_TILE`] quads, or larger).
+    pub fn terrain_layout(&self, handle: TerrainHandle) -> Option<crate::TerrainLayout> {
+        self.terrain_data.get(handle.index())?.layout().ok()
     }
 
     /// Replaces a terrain's data (a runtime edit of its heights or its
@@ -1074,7 +1172,7 @@ impl RenderScene {
     pub fn set_terrain(&mut self, handle: TerrainHandle, data: crate::TerrainData) -> bool {
         match self.terrain_data.get_mut(handle.index()) {
             Some(d) => {
-                *d = data;
+                *d = crate::terrain::TerrainSource::Data(data);
                 self.terrain_revisions[handle.index()] += 1;
                 true
             }
@@ -1082,12 +1180,26 @@ impl RenderScene {
         }
     }
 
+    /// A terrain's field in memory (`None` for a streamed one).
     pub fn terrain(&self, handle: TerrainHandle) -> Option<&crate::TerrainData> {
-        self.terrain_data.get(handle.index())
+        match self.terrain_data.get(handle.index())? {
+            crate::terrain::TerrainSource::Data(d) => Some(d),
+            crate::terrain::TerrainSource::Stream { .. } => None,
+        }
     }
 
-    pub(crate) fn terrain_datas(&self) -> (&[crate::TerrainData], &[u64]) {
+    pub(crate) fn terrain_sources(&self) -> (&[crate::terrain::TerrainSource], &[u64]) {
         (&self.terrain_data, &self.terrain_revisions)
+    }
+
+    /// How far from the camera terrain `index` (of [`RenderScene::terrains`])
+    /// needs its finest tiles for the copies scattered over it.
+    pub fn scatter_detail(&self, index: usize) -> f32 {
+        self.scatters
+            .iter()
+            .filter(|s| s.terrain == index)
+            .map(|s| s.scatter.distance)
+            .fold(0.0, f32::max)
     }
 
     /// Adds a particle emitter description (an asset).
@@ -1168,7 +1280,35 @@ impl RenderScene {
     /// Adds an RGBA8 texture (mips generated on the GPU when asked).
     pub fn add_texture(&mut self, texture: TextureData) -> TextureHandle {
         self.textures.push(TextureSource::Rgba(texture));
+        self.texture_revisions.push(0);
         TextureHandle(self.textures.len() as u32 - 1)
+    }
+
+    /// Replaces a texture (a streamed texture over its placeholder, or back):
+    /// the renderer uploads it again before the next frame, and every
+    /// material, sprite, tile, trail, font, decal and terrain layer that
+    /// samples it draws the new one. False for a bad handle.
+    pub fn set_texture(&mut self, handle: TextureHandle, texture: TextureData) -> bool {
+        self.replace_texture(handle, TextureSource::Rgba(texture))
+    }
+
+    /// [`RenderScene::set_texture`] with mip levels already encoded.
+    pub fn set_texture_upload(&mut self, handle: TextureHandle, upload: TextureUpload) -> bool {
+        self.replace_texture(handle, TextureSource::Encoded(upload))
+    }
+
+    fn replace_texture(&mut self, handle: TextureHandle, source: TextureSource) -> bool {
+        let i = handle.index();
+        if i >= self.textures.len() {
+            return false;
+        }
+        self.textures[i] = source;
+        self.texture_revisions[i] += 1;
+        true
+    }
+
+    pub(crate) fn texture_revisions(&self) -> &[u64] {
+        &self.texture_revisions
     }
 
     /// Adds a texture whose mip levels are already encoded, in one of
@@ -1176,12 +1316,14 @@ impl RenderScene {
     /// [`crate::RenderError::InvalidData`] or `Unsupported`) when uploaded.
     pub fn add_texture_upload(&mut self, upload: TextureUpload) -> TextureHandle {
         self.textures.push(TextureSource::Encoded(upload));
+        self.texture_revisions.push(0);
         TextureHandle(self.textures.len() as u32 - 1)
     }
 
     /// Adds a texture of either kind ([`TextureSource`]).
     pub fn add_texture_source(&mut self, source: TextureSource) -> TextureHandle {
         self.textures.push(source);
+        self.texture_revisions.push(0);
         TextureHandle(self.textures.len() as u32 - 1)
     }
 

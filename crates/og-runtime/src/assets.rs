@@ -83,6 +83,8 @@ pub(crate) struct Assets {
     /// og.load.skin's skins, by handle index.
     pub skins: Vec<super::modules::LoadedSkin>,
     pub warnings: Vec<String>,
+    /// The game bundle's streaming groups.
+    pub stream: super::stream::Streams,
 }
 
 pub(crate) fn handle(index: usize) -> u64 {
@@ -199,6 +201,10 @@ impl Assets {
     pub(crate) fn blob(&self, id: &str) -> Result<(og_blob_bytes::Aligned, &Bundle), String> {
         let (bundle, dir) = self.bundle_for(id)?;
         let out = bundle.output(id).map_err(|e| e.to_string())?;
+        if let Some(group) = &out.group {
+            // A streamed output is read from its group's pack, once resident.
+            return Ok((aligned(self.stream.file(group, &out.file)?), bundle));
+        }
         let path = format!("{dir}/{}", out.file);
         match read(&path) {
             Fetch::Ready(bytes) => Ok((og_blob_bytes::Aligned::new(bytes), bundle)),
@@ -208,10 +214,21 @@ impl Assets {
             Fetch::Failed(e) => Err(format!("{path}: {e}")),
         }
     }
+
+    /// The streaming group of a cooked output (`None`: loaded at boot).
+    pub(crate) fn group_of(&self, id: &str) -> Option<String> {
+        let (bundle, _) = self.bundle_for(id).ok()?;
+        bundle.output(id).ok()?.group.clone()
+    }
+}
+
+/// Bytes copied 16-aligned, for blob views.
+pub(crate) fn aligned(bytes: &[u8]) -> og_blob_bytes::Aligned {
+    og_blob_bytes::Aligned::new(bytes.to_vec())
 }
 
 /// 16-aligned bytes for blob views.
-mod og_blob_bytes {
+pub(crate) mod og_blob_bytes {
     pub struct Aligned {
         words: Vec<u128>,
         len: usize,
@@ -241,12 +258,18 @@ pub(crate) fn load_gltf(eng: &Engine, path: &str) -> Result<usize, String> {
     if let Some(&i) = eng.assets.borrow().by_path.get(&format!("gltf:{id}")) {
         return Ok(i);
     }
+    // A streamed model draws its proxy until its group is resident.
+    let group = eng.assets.borrow().group_of(&id);
+    let source = match &group {
+        Some(_) => format!("{id}#proxy"),
+        None => id.clone(),
+    };
     let formats = texture_formats(eng);
     let (model, textures) = {
         let assets = eng.assets.borrow();
-        let (bytes, bundle) = assets.blob(&id)?;
+        let (bytes, bundle) = assets.blob(&source)?;
         let model = bundle
-            .model(&id, bytes.bytes())
+            .model(&source, bytes.bytes())
             .map_err(|e| e.to_string())?;
         let mut textures = Vec::with_capacity(model.textures.len());
         for t in &model.textures {
@@ -277,7 +300,24 @@ pub(crate) fn load_gltf(eng: &Engine, path: &str) -> Result<usize, String> {
             }
         }
     }
+    let material_base = rs.scene.material_count();
     let parts = model.add_to_with(&mut rs.scene, &textures);
+    let stand_in = group.as_ref().map(|_| {
+        let meshes: Vec<_> = (0..model.primitives.len())
+            .filter_map(|p| {
+                let h = rs.scene.mesh_handle(base + p)?;
+                Some((h, rs.scene.mesh(h)?.clone()))
+            })
+            .collect();
+        let materials: Vec<_> = rs
+            .scene
+            .material_handles()
+            .skip(material_base)
+            .take(model.materials.len())
+            .filter_map(|h| Some((h, rs.scene.material(h)?.clone())))
+            .collect();
+        (meshes, materials)
+    });
     let mut geometries = Vec::new();
     let mut materials = Vec::new();
     for &(mesh, material, _) in &parts.parts {
@@ -335,6 +375,11 @@ pub(crate) fn load_gltf(eng: &Engine, path: &str) -> Result<usize, String> {
             let _ = super::modules::set_mesh(eng, h, mesh);
         }
     }
+    // Physics keeps the proxy's meshes; the renderer's take the full model
+    // whenever its group is resident.
+    if let (Some(group), Some((meshes, materials))) = (group, stand_in) {
+        super::stream::add_model(eng, &group, &id, meshes, materials);
+    }
     Ok(index)
 }
 
@@ -390,7 +435,7 @@ pub(crate) fn load_font(eng: &Engine, path: &str) -> Result<usize, String> {
 
 /// The encodings the attached renderer takes (`None` before one is attached:
 /// textures then load as RGBA8).
-fn texture_formats(eng: &Engine) -> Option<og_render::TextureFormats> {
+pub(crate) fn texture_formats(eng: &Engine) -> Option<og_render::TextureFormats> {
     eng.render
         .borrow()
         .backend
@@ -403,6 +448,21 @@ fn texture_formats(eng: &Engine) -> Option<og_render::TextureFormats> {
 pub(crate) fn load_texture(eng: &Engine, path: &str) -> Result<usize, String> {
     let id = og_cook::runtime::asset_id(path).to_string();
     if let Some(&i) = eng.assets.borrow().by_path.get(&format!("texture:{id}")) {
+        return Ok(i);
+    }
+    let group = eng.assets.borrow().group_of(&id);
+    if let Some(group) = group {
+        // A placeholder until its group is resident, then the texture.
+        let mut rs = eng.render.borrow_mut();
+        let handle = rs.scene.add_texture(super::stream::placeholder());
+        rs.textures.push(handle);
+        let i = rs.textures.len() - 1;
+        drop(rs);
+        eng.assets
+            .borrow_mut()
+            .by_path
+            .insert(format!("texture:{id}"), i);
+        super::stream::add_texture(eng, &group, &id, handle);
         return Ok(i);
     }
     let pixel;
@@ -442,6 +502,15 @@ pub(crate) fn load_sound(eng: &Engine, path: &str) -> Result<usize, String> {
     let id = og_cook::runtime::asset_id(path).to_string();
     if let Some(i) = eng.assets.borrow().sounds.iter().position(|s| s.id == id) {
         return Ok(i);
+    }
+    let group = eng.assets.borrow().group_of(&id);
+    if let Some(group) = group {
+        // Silence of its shape until its group is resident.
+        let (sound, handle) = super::stream::add_sound(eng, &group, &id)?;
+        let mut assets = eng.assets.borrow_mut();
+        assets.sounds.push(sound);
+        assets.sound_handles.push(handle);
+        return Ok(assets.sounds.len() - 1);
     }
     let sound = {
         let assets = eng.assets.borrow();

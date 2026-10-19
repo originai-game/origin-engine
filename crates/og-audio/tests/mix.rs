@@ -710,6 +710,61 @@ fn the_mix_is_the_same_twice_and_listen_returns_its_last_second() {
     .unwrap();
 }
 
+/// A streamed sound's stand-in: silent until its group arrives, with the
+/// real sound's rate and length from the start (the tick side never sees
+/// residency), then the real samples in the voice that was already
+/// playing, and silent again when the group unloads. Ways this could fail:
+/// the stand-in plays noise, a voice keeps the silence it started with,
+/// a replacement of another shape is accepted (and would move SoundEnded),
+/// or a silenced handle stops existing.
+#[test]
+fn a_silent_stand_in_becomes_its_sound_in_the_voice_already_playing() {
+    let bank = SoundBank::new();
+    let samples = synth(RATE as usize, 1, sine(440.0, 0.5));
+    let qoa_bytes = og_audio::qoa::encode(&samples, 1, RATE).expect("encode");
+    let stand = bank
+        .insert_silent("ambience", RATE, 1, RATE as u64)
+        .expect("stand-in");
+    assert_eq!(bank.info(stand), Some((RATE, RATE as u64)));
+    assert!(!bank.audible(stand));
+    let (mut world, link) = world_with(&bank, |_| {});
+    world.spawn((looped(stand, Bus::Sfx, 1.0),)).unwrap();
+    let mut sink = capture(&mut world, &link);
+    step(&mut world, &mut sink, 30);
+    let silent = window(sink.pcm(), 12_000, 24_000);
+    assert!(silent.iter().all(|&x| x == 0.0), "the stand-in is silent");
+
+    let short = og_audio::qoa::encode(&samples[..RATE as usize / 2], 1, RATE).expect("encode");
+    assert!(
+        bank.replace_qoa(stand, "ambience", &short).is_err(),
+        "another length is refused"
+    );
+    assert!(
+        bank.replace_qoa(stand, "ambience", &qoa_bytes)
+            .expect("replace")
+    );
+    assert!(bank.audible(stand));
+    assert_eq!(bank.info(stand), Some((RATE, RATE as u64)));
+    step(&mut world, &mut sink, 30);
+    let loud = window(sink.pcm(), 36_000, 48_000);
+    assert!(
+        tone(&loud, 440.0) > 0.2,
+        "the playing voice continues with the samples: {}",
+        tone(&loud, 440.0)
+    );
+
+    assert!(bank.silence(stand));
+    assert!(!bank.audible(stand));
+    assert_eq!(bank.info(stand), Some((RATE, RATE as u64)));
+    let missing = bank.insert_pcm("gone", RATE, 1, &[0; 4]).expect("pcm");
+    assert!(bank.remove(missing));
+    assert!(
+        !bank
+            .replace_qoa(missing, "gone", &qoa_bytes)
+            .expect("no handle")
+    );
+}
+
 /// A capture of `source` alone for `ticks` ticks: the PCM and the tick its SoundEnded was sent in.
 fn render_alone(bank: &SoundBank, source: AudioSource, ticks: u64) -> (Vec<f32>, Option<u64>) {
     let (mut world, link) = world_with(bank, |_| {});

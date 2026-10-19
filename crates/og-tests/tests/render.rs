@@ -163,6 +163,41 @@ fn a_reflected_material_edit_reaches_the_frame() {
     assert_eq!(after, [255, 0, 0], "the edit is drawn");
 }
 
+/// A material's texture replaced in place (a streamed group upgrading its
+/// placeholder) is drawn by the next frame of the same renderer; a
+/// material without that texture is untouched. Ways this could fail: the
+/// material's bind group keeps the old view because its own revision did
+/// not change.
+#[test]
+fn a_replaced_texture_reaches_the_materials_that_sample_it() {
+    let solid = |rgba: [u8; 4], side: u32| og_render::TextureData {
+        width: side,
+        height: side,
+        rgba: rgba.repeat((side * side) as usize),
+        color_space: ColorSpace::Srgb,
+        mips: og_render::Mips::None,
+    };
+    let mut scene = flat_scene();
+    let plane = scene.add_mesh(shapes::plane(4.0, 1.0));
+    let tex = scene.add_texture(solid([255, 0, 0, 255], 1));
+    let material = scene.add_standard_material(StandardMaterial {
+        map: tex.slot(),
+        unlit: 1,
+        ..Default::default()
+    });
+    scene.add_instance(plane, material, Mat4::IDENTITY);
+    let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let mut draw = |scene: &RenderScene| {
+        renderer
+            .render(scene, &RenderTarget::Offscreen)
+            .expect("render");
+        center(&renderer.read_offscreen().expect("capture"))
+    };
+    assert_eq!(draw(&scene), [255, 0, 0]);
+    assert!(scene.set_texture(tex, solid([0, 255, 0, 255], 16)));
+    assert_eq!(draw(&scene), [0, 255, 0], "the replacement is sampled");
+}
+
 fn bytemuck_bytes(v: &[f32; 3]) -> &[u8] {
     og_core::bytemuck::cast_slice(v)
 }

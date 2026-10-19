@@ -3,7 +3,8 @@
 // content types, and two test-only knobs: `throttle` streams the wasm and
 // the cooked files slowly so the boot's splash and progress can be seen,
 // and `told` injects `window.__OG_STAGE_HOST__` (what the Stage proxy does)
-// into index.html. Also serves `extra` pages by path and a `/result` sink.
+// into index.html. Also serves `extra` pages by path and a `/result` sink,
+// and tells `onRequest` every path asked for.
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -40,6 +41,8 @@ export interface ServeOptions {
   /** Other pages by path (with the same isolation headers). */
   readonly extra?: Record<string, string>;
   readonly onResult?: (body: unknown) => void;
+  /** Called with the path of every request the server answers. */
+  readonly onRequest?: (path: string) => void;
 }
 
 /** The `_headers` of a build, as path pattern → headers (Netlify/Cloudflare format, `*` suffixes). */
@@ -68,6 +71,7 @@ export function serve(o: ServeOptions): { port: number; stop(): void } {
     hostname: "127.0.0.1",
     async fetch(req) {
       const url = new URL(req.url);
+      o.onRequest?.(url.pathname);
       const headers: Record<string, string> = { "cache-control": "no-store" };
       const isolation = o.isolate
         ? { "cross-origin-opener-policy": "same-origin", "cross-origin-embedder-policy": "require-corp", "cross-origin-resource-policy": "cross-origin" }

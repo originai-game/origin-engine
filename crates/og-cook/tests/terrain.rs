@@ -87,14 +87,25 @@ layer {
 }
 "#;
 
+fn control_texel(x: u32, y: u32) -> [u8; 4] {
+    [x as u8 * 4, y as u8 * 8, 7, 255 - x as u8]
+}
+
+fn rgba_pixels(w: u32, h: u32, f: impl Fn(u32, u32) -> [u8; 4]) -> Vec<u8> {
+    let mut out = Vec::new();
+    for y in 0..h {
+        for x in 0..w {
+            out.extend_from_slice(&f(x, y));
+        }
+    }
+    out
+}
+
 fn island_files() -> Vec<(&'static str, Vec<u8>)> {
     vec![
         ("terrain/island.ogt", TERRAIN.as_bytes().to_vec()),
         ("terrain/height.png", png16(300, 200, sample)),
-        (
-            "terrain/control.png",
-            rgba(64, 32, |x, y| [x as u8 * 4, y as u8 * 8, 7, 255 - x as u8]),
-        ),
+        ("terrain/control.png", rgba(64, 32, control_texel)),
         ("textures/grass.png", rgba(8, 8, |_, _| [40, 160, 40, 255])),
         ("textures/rock.png", rgba(8, 8, |_, _| [120, 120, 120, 255])),
         (
@@ -140,9 +151,11 @@ fn a_terrain_cooks_into_tiles_and_loads_back() {
 
     let bundle = Bundle::open(&root.join("cooked")).unwrap();
     let t = bundle.load_terrain("terrain/island.ogt").unwrap();
-    assert_eq!((t.data.columns, t.data.rows), (300, 200));
-    assert_eq!(t.tiles, (3, 2), "300 × 200 in tiles of 128");
-    assert_eq!(t.data.size, glam::Vec2::new(600.0, 400.0));
+    let data = t.field().unwrap();
+    assert_eq!((data.columns, data.rows), (300, 200));
+    assert_eq!(t.layout.tiles(0), (3, 2), "299 × 199 quads in tiles of 128");
+    assert_eq!(t.layout.levels, 3, "3 × 2, 2 × 1 and 1 × 1 tiles");
+    assert_eq!(data.size, glam::Vec2::new(600.0, 400.0));
     // Every sample at its place, within the source's own 16-bit step.
     let step = 100.0 / 65535.0;
     for (x, y) in [
@@ -155,24 +168,54 @@ fn a_terrain_cooks_into_tiles_and_loads_back() {
         (17, 191),
     ] {
         let want = -10.0 + sample(x, y) as f32 / 65535.0 * 100.0;
-        let got = t.data.heights[(y * 300 + x) as usize];
+        let got = data.heights[(y * 300 + x) as usize];
         assert!((got - want).abs() <= step, "({x}, {y}): {got} vs {want}");
     }
     let worst = (0..200u32)
         .flat_map(|y| (0..300u32).map(move |x| (x, y)))
         .map(|(x, y)| {
             let want = -10.0 + sample(x, y) as f32 / 65535.0 * 100.0;
-            (t.data.heights[(y * 300 + x) as usize] - want).abs()
+            (data.heights[(y * 300 + x) as usize] - want).abs()
         })
         .fold(0.0f32, f32::max);
     assert!(worst <= step, "the worst sample is off by {worst}");
-    // The control map, byte for byte.
-    let c = t.data.control.as_ref().expect("a control map");
-    assert_eq!((c.width, c.height), (64, 32));
+    // Every tile decodes on its own, its heights the field's under its
+    // level's samples (level 1 every second one).
+    for index in [0, 4, t.layout.index(1, 1, 0), t.layout.index(2, 0, 0)] {
+        let tile = t.tile_heights(index).unwrap();
+        assert_eq!(tile, data.tile_heights(&t.layout, index), "tile {index}");
+    }
+    let tile = t.tile(t.layout.index(1, 0, 0)).unwrap();
     assert_eq!(
-        &c.rgba[(5 * 64 + 9) * 4..(5 * 64 + 9) * 4 + 4],
-        &[36, 40, 7, 246]
+        tile.heights[(1 + 3) * 131 + 1 + 5],
+        data.heights[6 * 300 + 10]
     );
+    // The control map, resampled for the tiles: what the renderer reads
+    // anywhere is the source's within a step or two.
+    let c = data.control.as_ref().expect("a control map");
+    assert_eq!(
+        (c.width, c.height),
+        (63, 42),
+        "27 texels per 128 quads over 299 × 199"
+    );
+    let source = og_render::TerrainData {
+        control: Some(og_render::TerrainControl {
+            width: 64,
+            height: 32,
+            rgba: rgba_pixels(64, 32, control_texel).into(),
+        }),
+        ..data.clone()
+    };
+    for p in [
+        glam::Vec2::new(-200.0, -150.0),
+        glam::Vec2::new(10.0, 33.0),
+        glam::Vec2::new(250.0, 120.0),
+    ] {
+        let (a, b) = (data.control_at(p), source.control_at(p));
+        for k in 0..4 {
+            assert!((a[k] - b[k]).abs() < 0.07, "{p}: {a:?} vs {b:?}");
+        }
+    }
     // The layers and settings.
     assert_eq!(t.layers.len(), 2);
     assert_eq!(t.layers[0].albedo.as_deref(), Some("textures/grass.png"));
@@ -243,11 +286,12 @@ fn an_exr_heightmap_is_metres_as_stored() {
         .unwrap()
         .load_terrain("t/flat.ogt")
         .unwrap();
-    assert_eq!((t.data.columns, t.data.rows), (33, 17));
+    let data = t.field().unwrap();
+    assert_eq!((data.columns, data.rows), (33, 17));
     let span = 24.0 + 40.0;
     for (x, y) in [(0u32, 0u32), (32, 0), (5, 16), (20, 9)] {
         let want = x as f32 * 0.75 - y as f32 * 2.5 + 0.125;
-        let got = t.data.heights[(y * 33 + x) as usize];
+        let got = data.heights[(y * 33 + x) as usize];
         assert!(
             (got - want).abs() < span / 65535.0,
             "({x}, {y}): {got} vs {want}"

@@ -1,0 +1,59 @@
+{
+ "firstGroup": {
+  "files": 5,
+  "bytes": 29611
+ },
+ "groups": [
+  {
+   "name": "cave",
+   "file": "cooked/stream/cave.ogb",
+   "bytes": 44768,
+   "sha256": "c66eacdd26ac7f40e9fb8c8a1dac3485557065b6a64f7b31512eaa961f35bf54",
+   "priority": 2,
+   "memory": 277949,
+   "assets": [
+    "models/hut-b.glb",
+    "audio/blip.wav"
+   ]
+  },
+  {
+   "name": "meadow",
+   "file": "cooked/stream/meadow.ogb",
+   "bytes": 36648,
+   "sha256": "d04430836999667eb57fa369f569e57728e8688904b3699a4f2008d014d0c0f7",
+   "priority": 1,
+   "memory": 583374,
+   "assets": [
+    "models/hut-a.glb",
+    "textures/sign.png"
+   ]
+  },
+  {
+   "name": "tower",
+   "file": "cooked/stream/tower.ogb",
+   "bytes": 35585,
+   "sha256": "1265eecca6718a1b3cb9bda5e5b23b9165ae54d0e31d9658498e4cfee8246aaf",
+   "priority": 0,
+   "memory": 233849,
+   "assets": [
+    "models/hut-c.glb"
+   ]
+  }
+ ],
+ "precachedCooked": [
+  "cooked/.cook.ogt",
+  "cooked/models/hut-a.glb.proxy.ogb",
+  "cooked/models/hut-b.glb.proxy.ogb",
+  "cooked/models/hut-c.glb.proxy.ogb",
+  "cooked/scenes/path.ogt.ogb"
+ ],
+ "lazy": [
+  "cooked/stream/cave.ogb",
+  "cooked/stream/meadow.ogb",
+  "cooked/stream/tower.ogb"
+ ],
+ "total": {
+  "bytes": 12600967,
+  "compressed": 3472030
+ }
+}

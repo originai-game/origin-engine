@@ -6884,7 +6884,7 @@
     },
     {
       "name": "terrain",
-      "doc": "Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.\nLoad it with og.terrain.load, then place it: an og.Terrain on an entity draws it centred on the entity's position (rotation and scale are ignored: terrain lies along world x and z), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere; og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are asset changes, like og.physics.setMesh: they are not world state, and a restored snapshot keeps the terrain as it is.",
+      "doc": "Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.\nLoad it with og.terrain.load, then place it: an og.Terrain on an entity draws it placed by the entity's world transform (centred on its position, turned and scaled with it), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere (pass it the entity's position, quaternion and scale); og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are world state: a snapshot keeps them, the world hash covers them, and a restore brings the ground back as it was (rebuilt from the cook with the restored edits replayed, for the renderer, physics and sample alike).\nIts tiles stream (phase 3): the cook stores the field as a pyramid of tiles, each compressed on its own, and every frame the renderer keeps on the GPU only the tiles the camera's clipmap wants, within each terrain's tile budget (16 MiB by default), decoded off the frame (a worker thread natively, the browser's DecompressionStream on the Web) a few at a time, the most needed first; until a tile arrives its area draws from the coarser level that holds it, then fades in. Nothing a tick reads depends on which tiles are resident (collision and og.terrain.sample read the whole field), so a run's world hash is the same streamed or not. The probe's `terrain_stream:resident` decodes every wanted tile before each frame instead (`terrain_stream:stream[:<MiB>]` streams again, within that budget), and `dump_stream`'s `terrain` gives the tiles resident, waiting, decoding and cached.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -6947,7 +6947,7 @@
         },
         {
           "name": "bounds",
-          "doc": "A terrain's box in world space when it stands at `origin`.",
+          "doc": "A terrain's box in world space when it stands at `origin`, turned by `quaternion` and scaled by `scale` (its entity's world transform): the box around its turned corners.",
           "params": [
             {
               "name": "world",
@@ -6966,6 +6966,18 @@
               "type": "Vector3",
               "optional": true,
               "doc": "Where it stands."
+            },
+            {
+              "name": "quaternion",
+              "type": "Quaternion",
+              "optional": true,
+              "doc": "How it is turned."
+            },
+            {
+              "name": "scale",
+              "type": "Vector3",
+              "optional": true,
+              "doc": "How it is scaled."
             }
           ],
           "returns": "Result<TerrainBounds>",
@@ -7057,6 +7069,153 @@
           ],
           "returns": "Result<Void>",
           "returnsDoc": "Refused for an unknown terrain or layer.",
+          "publish": true
+        }
+      ],
+      "interfaces": [],
+      "callbacks": []
+    },
+    {
+      "name": "stream",
+      "doc": "Asset streaming groups (phase 3): a scene's `stream \"<name>\" { asset ...; distance x y z r [unload d] | volume \"<entity>\"; priority n }` blocks name glTF models (without skins or morph targets), textures and sounds that load and unload together, and what loads them: the camera within `r` of the anchor (kept until it is past `unload`, 1.25 r by default), the camera inside the named entity's box (its position ± half its scale, turned with it), or neither (og.stream.request only). `og cook` packs each group's files into `cooked/stream/<name>.ogb`; `og build --publish` ships the packs beside the boot bundle, which the shell and the service worker fetch first, and fetches a pack only when its group loads.\nAt every tick boundary the engine decides which groups are wanted, admits them by priority (then name) within the memory budget (256 MiB by default; GPU textures and meshes and decoded audio, as the cook measured them), evicting lower-priority resident groups to make room for a higher one, and reads and puts in place at most one group's assets per boundary. A group that cannot fit waits, queued; one larger than the whole budget fails. Until its group is resident, a model draws its proxy (its coarsest LOD, untextured), a texture is a 1x1 grey placeholder and a sound plays as silence of its own length; then the real ones take over the same handles. Physics always collides with the proxy's meshes and a sound's length never changes, so nothing a tick reads depends on what is resident: a run's world hash is the same streamed or not.\nEvery change of a group's state sends StreamEvent at the start of the next tick; og.stream.status and og.stream.budget answer at once, and the probe's `dump_stream` lists the budget, the memory used and its peak, every group (trigger, state, why, since which tick), the recent changes and the terrain streamer's tiles.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "StreamState",
+        "StreamEvent",
+        "StreamStatus",
+        "StreamBudget"
+      ],
+      "consts": [
+        {
+          "name": "STREAM_UNLOADED",
+          "type": "u32",
+          "value": 0,
+          "doc": "`StreamEvent.state`: the group is unloaded (StreamState unloaded)."
+        },
+        {
+          "name": "STREAM_QUEUED",
+          "type": "u32",
+          "value": 1,
+          "doc": "`StreamEvent.state`: the group waits for room in the budget (StreamState queued)."
+        },
+        {
+          "name": "STREAM_LOADING",
+          "type": "u32",
+          "value": 2,
+          "doc": "`StreamEvent.state`: the group's pack is being read (StreamState loading)."
+        },
+        {
+          "name": "STREAM_RESIDENT",
+          "type": "u32",
+          "value": 3,
+          "doc": "`StreamEvent.state`: the group's assets are in place (StreamState resident)."
+        },
+        {
+          "name": "STREAM_FAILED",
+          "type": "u32",
+          "value": 4,
+          "doc": "`StreamEvent.state`: the group failed (StreamState failed; og.stream.status says why)."
+        }
+      ],
+      "functions": [
+        {
+          "name": "status",
+          "doc": "One streaming group's state.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "group",
+              "type": "String",
+              "optional": false,
+              "doc": "The group's name, as its scene declares it."
+            }
+          ],
+          "returns": "Result<StreamStatus>",
+          "returnsDoc": "Refused for a group no scene declares.",
+          "publish": true
+        },
+        {
+          "name": "request",
+          "doc": "Ask for a group (any trigger) until og.stream.release: it loads from the next tick boundary, within the budget by its priority.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "group",
+              "type": "String",
+              "optional": false,
+              "doc": "The group's name."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for a group no scene declares.",
+          "publish": true
+        },
+        {
+          "name": "release",
+          "doc": "Stop asking for a group; it unloads at the next tick boundary unless its trigger still wants it.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "group",
+              "type": "String",
+              "optional": false,
+              "doc": "The group's name."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for a group no scene declares.",
+          "publish": true
+        },
+        {
+          "name": "budget",
+          "doc": "The memory budget, what the groups take now, the peak and every group.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "Result<StreamBudget>",
+          "returnsDoc": "The budget and the groups; refused only for a world that does not exist.",
+          "publish": true
+        },
+        {
+          "name": "setBudget",
+          "doc": "Set the memory budget from the next tick boundary; a lower one evicts the lowest-priority groups until the rest fit.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "bytes",
+              "type": "f64",
+              "optional": false,
+              "doc": "The bytes resident groups may take."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for a negative or non-finite size.",
           "publish": true
         }
       ],
@@ -25589,7 +25748,7 @@
     "Terrain": {
       "x-og-kind": "component",
       "x-og-module": "terrain",
-      "description": "Draws a loaded terrain centred on the entity's position, with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.",
+      "description": "Draws a loaded terrain placed by the entity's world transform (centred on its position, turned and scaled with it), with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.",
       "type": "object",
       "properties": {
         "data": {
@@ -25626,7 +25785,7 @@
     "TerrainScatter": {
       "x-og-kind": "component",
       "x-og-module": "terrain",
-      "description": "Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies shrink to nothing over the outer `fade` of `distance`. The entity stands where the terrain does: the og.Terrain's entity itself, or a child of it at its origin. Drawn only: no colliders, and the copies are not entities.",
+      "description": "Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies keep their size and thin out (dithered) over the outer `fade` of `distance`. The renderer places them itself, a chunk of the grid at a time, once, and draws the chunks in range: copies cost about nothing per frame while the camera stays. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities.",
       "type": "object",
       "properties": {
         "data": {
@@ -25671,7 +25830,7 @@
         },
         "fade": {
           "type": "number",
-          "description": "The outer part of `distance` over which copies shrink to nothing.",
+          "description": "The outer part of `distance` over which copies thin out to nothing.",
           "default": 0.3,
           "minimum": 0,
           "maximum": 1,
@@ -25794,13 +25953,32 @@
         },
         "origin": {
           "$ref": "#/$defs/Vector3",
-          "description": "Where it stands: its og.Terrain entity's position.",
+          "description": "Where it stands: its og.Terrain entity's world position.",
           "default": {
             "x": 0,
             "y": 0,
             "z": 0
           },
           "x-og-unit": "m"
+        },
+        "quaternion": {
+          "$ref": "#/$defs/Quaternion",
+          "description": "How it is turned: its og.Terrain entity's world rotation (the zero value: along world x and z).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scale": {
+          "$ref": "#/$defs/Vector3",
+          "description": "How it is scaled: its og.Terrain entity's world scale.",
+          "default": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
         },
         "x": {
           "type": "number",
@@ -25825,7 +26003,7 @@
       "properties": {
         "height": {
           "type": "number",
-          "description": "The world y of the surface: the triangles drawn at the finest level and collided with.",
+          "description": "The world y of the surface (the triangles drawn at the finest level and collided with) on the terrain's up axis through (x, z): straight down for a terrain turned only about y.",
           "x-og-unit": "m"
         },
         "normal": {
@@ -25886,13 +26064,32 @@
         },
         "origin": {
           "$ref": "#/$defs/Vector3",
-          "description": "Where the terrain stands: its og.Terrain entity's position.",
+          "description": "Where the terrain stands: its og.Terrain entity's world position.",
           "default": {
             "x": 0,
             "y": 0,
             "z": 0
           },
           "x-og-unit": "m"
+        },
+        "quaternion": {
+          "$ref": "#/$defs/Quaternion",
+          "description": "How it is turned: its og.Terrain entity's world rotation.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scale": {
+          "$ref": "#/$defs/Vector3",
+          "description": "How it is scaled: its og.Terrain entity's world scale.",
+          "default": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
         },
         "center": {
           "$ref": "#/$defs/Vector3",
@@ -25906,14 +26103,14 @@
         },
         "radius": {
           "type": "number",
-          "description": "The brush's radius.",
+          "description": "The brush's radius in world metres (across the terrain's surface).",
           "default": 8,
           "minimum": 0.01,
           "x-og-unit": "m"
         },
         "strength": {
           "type": "number",
-          "description": "Metres at the centre (raise, lower), or how far to go, 0 to 1 (flatten, smooth, paint).",
+          "description": "World metres at the centre (raise, lower), or how far to go, 0 to 1 (flatten, smooth, paint).",
           "default": 1,
           "minimum": 0
         },
@@ -26052,6 +26249,171 @@
           "x-og-unit": "m"
         }
       },
+      "additionalProperties": false
+    },
+    "StreamState": {
+      "x-og-kind": "enum",
+      "x-og-module": "stream",
+      "description": "Where a streaming group is.",
+      "type": "string",
+      "enum": [
+        "unloaded",
+        "queued",
+        "loading",
+        "resident",
+        "failed"
+      ],
+      "x-og-variants": {
+        "unloaded": "Not wanted; its assets draw and play their stand-ins.",
+        "queued": "Wanted, waiting for room in the memory budget.",
+        "loading": "Admitted: its pack is being read (its memory already counts).",
+        "resident": "Its assets are in place of their stand-ins.",
+        "failed": "Its pack could not be read, or it alone needs more than the budget (StreamStatus.reason says which)."
+      }
+    },
+    "StreamEvent": {
+      "x-og-kind": "event",
+      "x-og-module": "stream",
+      "description": "A group changed state: sent by og.stream at the start of the tick after the change.",
+      "type": "object",
+      "properties": {
+        "group": {
+          "type": "string",
+          "description": "The group's name (at most 63 bytes)."
+        },
+        "state": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its new state: STREAM_UNLOADED, STREAM_QUEUED, STREAM_LOADING, STREAM_RESIDENT or STREAM_FAILED (StreamState's order)."
+        }
+      },
+      "required": [
+        "group",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "StreamStatus": {
+      "x-og-kind": "struct",
+      "x-og-module": "stream",
+      "description": "One streaming group.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Its name."
+        },
+        "scene": {
+          "type": "string",
+          "description": "The scene that declares it."
+        },
+        "state": {
+          "$ref": "#/$defs/StreamState",
+          "description": "Where it is."
+        },
+        "wanted": {
+          "type": "boolean",
+          "description": "Whether its trigger or a request wants it now."
+        },
+        "requested": {
+          "type": "boolean",
+          "description": "Whether og.stream.request asked for it (until og.stream.release)."
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Higher loads first and is evicted last."
+        },
+        "trigger": {
+          "type": "string",
+          "description": "manual, distance or volume."
+        },
+        "memory": {
+          "type": "number",
+          "description": "What its assets take once loaded, in bytes.",
+          "x-og-unit": "bytes"
+        },
+        "bytes": {
+          "type": "number",
+          "description": "Its pack's size, in bytes.",
+          "x-og-unit": "bytes"
+        },
+        "assets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Its asset ids."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why it is queued or failed; empty otherwise."
+        },
+        "since": {
+          "type": "number",
+          "description": "The tick of its last change."
+        },
+        "loads": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many times it became resident."
+        }
+      },
+      "required": [
+        "name",
+        "scene",
+        "state",
+        "wanted",
+        "requested",
+        "priority",
+        "trigger",
+        "memory",
+        "bytes",
+        "assets",
+        "reason",
+        "since",
+        "loads"
+      ],
+      "additionalProperties": false
+    },
+    "StreamBudget": {
+      "x-og-kind": "struct",
+      "x-og-module": "stream",
+      "description": "The streaming memory budget and every group.",
+      "type": "object",
+      "properties": {
+        "budget": {
+          "type": "number",
+          "description": "The bytes resident and loading groups may take.",
+          "x-og-unit": "bytes"
+        },
+        "used": {
+          "type": "number",
+          "description": "The bytes they take now.",
+          "x-og-unit": "bytes"
+        },
+        "peak": {
+          "type": "number",
+          "description": "The most they ever took (never above the budget at the time).",
+          "x-og-unit": "bytes"
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StreamStatus"
+          },
+          "description": "Every group, by name."
+        }
+      },
+      "required": [
+        "budget",
+        "used",
+        "peak",
+        "groups"
+      ],
       "additionalProperties": false
     }
   }

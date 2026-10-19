@@ -1762,9 +1762,9 @@ pub fn og_terrain_sample(env: Env, world: u32, desc: Option<String>) -> String {
 }
 
 #[napi(js_name = "og_terrain_bounds")]
-pub fn og_terrain_bounds(env: Env, world: u32, data: f64, origin: Option<String>) -> String {
+pub fn og_terrain_bounds(env: Env, world: u32, data: f64, origin: Option<String>, quaternion: Option<String>, scale: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as TerrainApi>::og_terrain_bounds(&Host, world, data, origin)
+    <Host as TerrainApi>::og_terrain_bounds(&Host, world, data, origin, quaternion, scale)
 }
 
 #[napi(js_name = "og_terrain_edit")]
@@ -1783,4 +1783,34 @@ pub fn og_terrain_layer(env: Env, world: u32, data: f64, index: u32) -> String {
 pub fn og_terrain_set_layer(env: Env, world: u32, data: f64, index: u32, layer: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as TerrainApi>::og_terrain_set_layer(&Host, world, data, index, layer)
+}
+
+#[napi(js_name = "og_stream_status")]
+pub fn og_stream_status(env: Env, world: u32, group: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StreamApi>::og_stream_status(&Host, world, group)
+}
+
+#[napi(js_name = "og_stream_request")]
+pub fn og_stream_request(env: Env, world: u32, group: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StreamApi>::og_stream_request(&Host, world, group)
+}
+
+#[napi(js_name = "og_stream_release")]
+pub fn og_stream_release(env: Env, world: u32, group: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StreamApi>::og_stream_release(&Host, world, group)
+}
+
+#[napi(js_name = "og_stream_budget")]
+pub fn og_stream_budget(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StreamApi>::og_stream_budget(&Host, world)
+}
+
+#[napi(js_name = "og_stream_set_budget")]
+pub fn og_stream_set_budget(env: Env, world: u32, bytes: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StreamApi>::og_stream_set_budget(&Host, world, bytes)
 }

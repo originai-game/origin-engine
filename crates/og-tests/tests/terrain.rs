@@ -660,15 +660,18 @@ fn the_cpu_height_and_normal_follow_the_field() {
 #[test]
 fn the_grass_scene_matches_its_reference() {
     let r = check("terrain-grass");
-    let tufts = ts::grass_scene().instances.len() - ts::island_view("near").instances.len();
-    assert!(tufts > 5_000, "{tufts} instances scattered");
-    assert!(r.stats.draw_calls > 0);
+    assert!(
+        r.stats.scatter_copies > 5_000,
+        "{} copies drawn",
+        r.stats.scatter_copies
+    );
+    assert!(r.stats.scatter_draws > 0 && r.stats.scatter_built > 0);
 }
 
 /// `Terrain::scatter` places instances only where its layer shows, about
 /// as many as the density and the layer's weight ask for, never beyond its
-/// distance, shrinking over the fade; each keeps its cell's place and turn
-/// as the camera moves.
+/// distance, at full size even where they fade; each keeps its cell's place
+/// and turn as the camera moves.
 #[test]
 fn scatter_follows_its_layer_distance_and_stays_put() {
     let scene = ts::grass_scene();
@@ -678,7 +681,7 @@ fn scatter_follows_its_layer_distance_and_stays_put() {
     let s = ts::grass_scatter();
     let placed = terrain.scatter(&data, &s, eye);
     let flat = |p: Vec3| Vec2::new(p.x - eye.x, p.z - eye.z).length();
-    let fade_from = s.distance * (1.0 - s.fade);
+    let fade_from = s.fade_from();
     let mut expected = 0.0;
     // The layer's weight summed over a 1 m grid inside the distance.
     let r = s.distance as i32;
@@ -708,15 +711,14 @@ fn scatter_follows_its_layer_distance_and_stays_put() {
             (at.y - data.height(local)).abs() < 1e-3,
             "{at} off the ground"
         );
-        let shrink = 1.0 - smooth(fade_from, s.distance, flat(at));
         assert!(
-            scale.x <= s.scale[1] * shrink + 1e-4 && scale.x >= s.scale[0] * shrink - 1e-4,
-            "scale {} at {:.1} m (shrink {shrink:.2})",
+            scale.x <= s.scale[1] + 1e-4 && scale.x >= s.scale[0] - 1e-4,
+            "scale {} at {:.1} m",
             scale.x,
             flat(at)
         );
     }
-    // Some near the edge, shrunk to under a third.
+    // Near the edge, inside the fade, at full size (the renderer fades them).
     let edge: Vec<f32> = placed
         .iter()
         .map(|(_, m)| m.to_scale_rotation_translation())
@@ -724,7 +726,7 @@ fn scatter_follows_its_layer_distance_and_stays_put() {
         .map(|(sc, _, _)| sc.x)
         .collect();
     assert!(
-        !edge.is_empty() && edge.iter().all(|&x| x < s.scale[1] * 0.1),
+        !edge.is_empty() && edge.iter().all(|&x| x >= s.scale[0] - 1e-4),
         "{edge:?}"
     );
     // The camera moves 7 m: instances well inside both circles are the same.
@@ -786,7 +788,551 @@ fn scatter_follows_its_layer_distance_and_stays_put() {
     );
 }
 
-fn smooth(e0: f32, e1: f32, x: f32) -> f32 {
-    let t = ((x - e0) / (e1 - e0)).clamp(0.0, 1.0);
-    t * t * (3.0 - 2.0 * t)
+/// A 64 × 16 m strip with a 6 m bump at its centre, one red layer, drawn
+/// against a magenta background without fog or shadows; looked at from
+/// 120 m straight above, or from the side at the bump.
+fn strip_scene(transform: Mat4, from_side: bool) -> RenderScene {
+    let (cols, rows) = (65u32, 17u32);
+    let size = Vec2::new(64.0, 16.0);
+    let mut heights = Vec::new();
+    for r in 0..rows {
+        for c in 0..cols {
+            let x = -size.x * 0.5 + c as f32;
+            let z = -size.y * 0.5 + r as f32;
+            heights.push(6.0 * (-(x * x + z * z) / 8.0).exp());
+        }
+    }
+    let mut scene = RenderScene::new();
+    let h = scene.add_terrain(TerrainData {
+        size,
+        columns: cols,
+        rows,
+        heights: Arc::from(heights),
+        control: None,
+    });
+    scene.terrains.push(Terrain {
+        transform,
+        layers: vec![TerrainLayer {
+            color: Vec3::new(0.8, 0.05, 0.05),
+            roughness: 1.0,
+            ..Default::default()
+        }],
+        cast_shadows: false,
+        ..Terrain::new(h)
+    });
+    scene.fog = None;
+    scene.environment.background = Background::Color(Vec3::new(1.0, 0.0, 1.0));
+    scene.post.tonemap = Tonemap::None;
+    scene.light = DirectionalLight {
+        direction_to_light: Vec3::new(0.3, 1.0, 0.2),
+        cast_shadows: false,
+        ..Default::default()
+    };
+    scene.camera = Camera {
+        position: if from_side {
+            Vec3::new(0.0, 6.0, 80.0)
+        } else {
+            Vec3::new(0.0, 120.0, 0.01)
+        },
+        target: if from_side {
+            Vec3::new(0.0, 6.0, 0.0)
+        } else {
+            Vec3::ZERO
+        },
+        near: 0.5,
+        far: 1000.0,
+        projection: Projection::Perspective {
+            fov_y_degrees: 55.0,
+        },
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    scene
+}
+
+fn is_background(img: &RgbaImage, at: (u32, u32)) -> bool {
+    let p = color_at(img, at);
+    p[0] > 220.0 && p[1] < 40.0 && p[2] > 220.0
+}
+
+/// A terrain is drawn where its transform puts it: turned a quarter about
+/// y its strip runs along world z, scaled twice along x it reaches twice as
+/// far, scaled three times along y its bump stands three times as tall,
+/// and a translation moves all of it; its flat part shades the same turned
+/// or not (normals follow the transform). Scattered copies stand on the
+/// transformed surface.
+#[test]
+fn a_terrain_honours_its_transform() {
+    let quarter = Mat4::from_rotation_y(std::f32::consts::FRAC_PI_2);
+    let cases: [(&str, Mat4, Vec3, bool); 7] = [
+        (
+            "identity along x",
+            Mat4::IDENTITY,
+            Vec3::new(24.0, 0.0, 0.0),
+            true,
+        ),
+        (
+            "identity not along z",
+            Mat4::IDENTITY,
+            Vec3::new(0.0, 0.0, 24.0),
+            false,
+        ),
+        ("turned along z", quarter, Vec3::new(0.0, 0.0, 24.0), true),
+        (
+            "turned not along x",
+            quarter,
+            Vec3::new(24.0, 0.0, 0.0),
+            false,
+        ),
+        (
+            "scaled along x",
+            Mat4::from_scale(Vec3::new(2.0, 1.0, 1.0)),
+            Vec3::new(48.0, 0.0, 0.0),
+            true,
+        ),
+        (
+            "unscaled not that far",
+            Mat4::IDENTITY,
+            Vec3::new(48.0, 0.0, 0.0),
+            false,
+        ),
+        (
+            "moved",
+            Mat4::from_translation(Vec3::new(0.0, 0.0, 30.0)),
+            Vec3::new(20.0, 0.0, 30.0),
+            true,
+        ),
+    ];
+    let mut flat = Vec::new();
+    for (label, transform, at, covered) in cases {
+        let scene = strip_scene(transform, false);
+        let (img, _) = render(&scene);
+        keep(&format!("transform-{}", label.replace(' ', "-")), &img);
+        let pixel = project(&scene.camera, at);
+        assert_eq!(
+            !is_background(&img, pixel),
+            covered,
+            "{label}: {at} at {pixel:?} is {:?}",
+            color_at(&img, pixel)
+        );
+        if covered && label != "moved" {
+            flat.push((label, color_at(&img, pixel)));
+        }
+    }
+    for (label, c) in &flat {
+        let d = (0..3)
+            .map(|i| (c[i] - flat[0].1[i]).abs())
+            .fold(0.0, f32::max);
+        assert!(
+            d < 6.0,
+            "{label}: the flat ground shades {c:?}, not {:?}",
+            flat[0].1
+        );
+    }
+    // From the side: the bump's top (6 m) is under 12 m, three times taller is over it.
+    let probe = Vec3::new(0.0, 12.0, 0.0);
+    let plain = strip_scene(Mat4::IDENTITY, true);
+    let (img, _) = render(&plain);
+    assert!(
+        is_background(&img, project(&plain.camera, probe)),
+        "6 m bump under 12 m"
+    );
+    let tall = strip_scene(Mat4::from_scale(Vec3::new(1.0, 3.0, 1.0)), true);
+    let (img, _) = render(&tall);
+    keep("transform-tall", &img);
+    assert!(
+        !is_background(&img, project(&tall.camera, probe)),
+        "18 m bump over 12 m"
+    );
+    // Scattered copies on the turned, raised and doubled strip lie on it.
+    let placed_transform = Mat4::from_scale_rotation_translation(
+        Vec3::new(2.0, 1.5, 2.0),
+        glam::Quat::from_rotation_y(0.7),
+        Vec3::new(5.0, 3.0, -4.0),
+    );
+    let scene = strip_scene(placed_transform, false);
+    let terrain = scene.terrains[0].clone();
+    let data = scene.terrain(terrain.terrain).cloned().expect("data");
+    let s = TerrainScatter {
+        density: 1.0,
+        distance: 300.0,
+        ..TerrainScatter::default()
+    };
+    let placed = terrain.scatter(&data, &s, Vec3::new(5.0, 50.0, -4.0));
+    assert!(placed.len() > 1_000, "{} copies", placed.len());
+    let back = placed_transform.inverse();
+    for (_, m) in &placed {
+        let local = back.transform_point3(m.w_axis.truncate());
+        assert!(
+            local.x.abs() <= 32.0 + 1e-3 && local.z.abs() <= 8.0 + 1e-3,
+            "{local}"
+        );
+        let ground = data.height(Vec2::new(local.x, local.z));
+        assert!(
+            (local.y - ground).abs() < 1e-3,
+            "{local} off the ground {ground}"
+        );
+    }
+}
+
+/// The root-mean-square difference of two frames' colours, 0 to 1.
+fn rmse(a: &RgbaImage, b: &RgbaImage) -> f32 {
+    let mut sum = 0.0f64;
+    for (x, y) in a.pixels.chunks(4).zip(b.pixels.chunks(4)) {
+        for k in 0..3 {
+            let d = (x[k] as f64 - y[k] as f64) / 255.0;
+            sum += d * d;
+        }
+    }
+    (sum / (a.pixels.len() / 4 * 3) as f64).sqrt() as f32
+}
+
+/// Counts magenta background pixels below row `from` (the terrain covers them).
+fn holes(img: &RgbaImage, from: u32) -> u32 {
+    let mut n = 0;
+    for y in from..img.height {
+        for x in 0..img.width {
+            let p = px(img, x, y);
+            if p[0] > 220.0 && p[1] < 40.0 && p[2] > 220.0 {
+                n += 1;
+            }
+        }
+    }
+    n
+}
+
+/// The island over magenta, unfogged, from 300 m over its mountains.
+fn crack_view(mut scene: RenderScene) -> RenderScene {
+    scene.fog = None;
+    scene.environment.background = Background::Color(Vec3::new(1.0, 0.0, 1.0));
+    scene.post.tonemap = Tonemap::None;
+    scene.camera = Camera {
+        position: Vec3::new(-150.0, 300.0, 110.0),
+        target: Vec3::new(-150.0, 40.0, -270.0),
+        near: 0.5,
+        far: 6000.0,
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    scene
+}
+
+/// The tiles a frame wants come best first and every one after its parent;
+/// the top level is always first; the capacity caps them; a camera far
+/// above wants fewer than one on the ground; the detail distance brings
+/// the finest tiles around the camera whatever their size on screen.
+#[test]
+fn wanted_tiles_are_ranked_and_closed_under_their_parents() {
+    let data = ts::island();
+    let layout = data.layout(128).expect("layout");
+    assert_eq!(
+        layout.levels, 4,
+        "1024 quads in tiles of 128: 8, 4, 2, 1 per side"
+    );
+    let scene = ts::island_view("near");
+    let t = &scene.terrains[0];
+    let view = og_render::TerrainView::of(&scene.camera, 720);
+    let near = og_render::terrain_tiles_wanted(&layout, t, data.range(), &view, 1000);
+    let top = layout.index(layout.levels - 1, 0, 0);
+    assert_eq!(near[0], top);
+    for (i, tile) in near.iter().enumerate() {
+        if let Some(p) = layout.parent(*tile) {
+            let at = near.iter().position(|x| *x == p).expect("parent wanted");
+            assert!(at < i, "tile {tile} before its parent {p}");
+        }
+    }
+    let unique: std::collections::HashSet<_> = near.iter().collect();
+    assert_eq!(unique.len(), near.len(), "a tile twice");
+    // The camera's own level-0 tile is wanted.
+    let eye = Vec2::new(scene.camera.position.x, scene.camera.position.z) + layout.size * 0.5;
+    let own = (eye / (layout.cell() * 128.0)).floor();
+    assert!(near.contains(&layout.index(0, own.x as u32, own.y as u32)));
+    let capped = og_render::terrain_tiles_wanted(&layout, t, data.range(), &view, 6);
+    assert_eq!(capped.len(), 6);
+    assert_eq!(&capped[..], &near[..6], "the cap keeps the best");
+    let mut high = view;
+    high.camera = Vec3::new(0.0, 4000.0, 0.0);
+    let from_high = og_render::terrain_tiles_wanted(&layout, t, data.range(), &high, 1000);
+    assert!(
+        from_high.len() < near.len(),
+        "{} from 4 km, {} on the ground",
+        from_high.len(),
+        near.len()
+    );
+    // 300 m of detail from 4 km up: the level-0 tiles under the camera come too.
+    high.detail = 300.0;
+    let detailed = og_render::terrain_tiles_wanted(&layout, t, data.range(), &high, 1000);
+    let level0 = |l: &[u32]| {
+        l.iter()
+            .filter(|i| layout.locate(**i).unwrap().0 == 0)
+            .count()
+    };
+    assert!(level0(&detailed) >= 4 && level0(&detailed) > level0(&from_high));
+}
+
+/// The renderer keeps the tiles a frame wants within its terrain's budget,
+/// and with fewer than it wants (eight slots) the terrain still covers the
+/// view without a crack: what has no tile reads its parent's.
+#[test]
+fn a_tile_budget_keeps_the_terrain_whole() {
+    let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let full = crack_view(ts::island_scene());
+    let s_full = r.render(&full, &RenderTarget::Offscreen).expect("render");
+    let img_full = r.read_offscreen().expect("capture");
+    assert_eq!(holes(&img_full, 260), 0);
+    let mut tight = crack_view(ts::island_scene());
+    tight.terrains[0].lod.budget = 8 * ts::island().layout(128).unwrap().slot_bytes();
+    let mut r2 = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let s_tight = r2.render(&tight, &RenderTarget::Offscreen).expect("render");
+    let img_tight = r2.read_offscreen().expect("capture");
+    keep("budget-8", &img_tight);
+    assert_eq!(s_tight.terrain_tiles, 8, "{s_tight:?}");
+    assert!(s_full.terrain_tiles > 8, "{s_full:?}");
+    assert_eq!(
+        holes(&img_tight, 260),
+        0,
+        "background through the terrain on 8 tiles"
+    );
+    // Moving on, tiles are swapped in place: never more than the budget.
+    for step in 1..5 {
+        tight.camera.position.x += 60.0;
+        tight.camera.target.x += 60.0;
+        let s = r2.render(&tight, &RenderTarget::Offscreen).expect("render");
+        assert_eq!(s.terrain_tiles, 8);
+        assert_eq!(holes(&r2.read_offscreen().unwrap(), 260), 0, "step {step}");
+    }
+}
+
+/// A streamed terrain draws what has arrived: with only its top tile it
+/// covers the view at the coarse level; tiles handed over later fade in
+/// over a dozen frames and then draw exactly what the field in memory
+/// draws; a tile dropped falls back to its parent. Half the tiles at random
+/// (each with its parent) leave no crack.
+#[test]
+fn a_streamed_terrain_draws_what_has_arrived() {
+    let data = ts::island();
+    let layout = data.layout(128).expect("layout");
+    let control = og_render::ControlPyramid::new(&layout, data.control.as_ref().unwrap());
+    let tile = |i: u32| Arc::new(data.tile(&layout, i, control.as_ref()));
+    let memory = crack_view(ts::island_scene());
+    let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    r.render(&memory, &RenderTarget::Offscreen).expect("render");
+    let reference = r.read_offscreen().expect("capture");
+
+    let mut streamed = crack_view(ts::island_scene());
+    let h = streamed.add_terrain_stream(layout, data.range());
+    streamed.terrains[0].terrain = h;
+    let top = layout.index(layout.levels - 1, 0, 0);
+    assert!(streamed.set_terrain_tile(h, top, Some(tile(top))));
+    let mut rs = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let s = rs
+        .render(&streamed, &RenderTarget::Offscreen)
+        .expect("render");
+    let coarse = rs.read_offscreen().expect("capture");
+    keep("stream-top-only", &coarse);
+    assert_eq!(s.terrain_tiles, 1);
+    assert_eq!(holes(&coarse, 260), 0, "the top tile alone covers the view");
+    assert!(
+        rmse(&coarse, &reference) > 0.005,
+        "the top tile alone is coarser"
+    );
+    // Everything it wants arrives: a few frames in it is fading.
+    let view = og_render::TerrainView::of(&streamed.camera, 720);
+    let wanted =
+        og_render::terrain_tiles_wanted(&layout, &streamed.terrains[0], data.range(), &view, 1000);
+    for &i in wanted.iter().filter(|i| **i != top) {
+        streamed.set_terrain_tile(h, i, Some(tile(i)));
+    }
+    let s = rs
+        .render(&streamed, &RenderTarget::Offscreen)
+        .expect("render");
+    assert_eq!(
+        s.terrain_uploads as usize,
+        wanted.len() - 1,
+        "one upload per new tile"
+    );
+    for _ in 0..3 {
+        rs.render(&streamed, &RenderTarget::Offscreen)
+            .expect("render");
+    }
+    let fading = rs.read_offscreen().expect("capture");
+    assert_eq!(holes(&fading, 260), 0, "no crack while fading");
+    for _ in 0..60 {
+        let s = rs
+            .render(&streamed, &RenderTarget::Offscreen)
+            .expect("render");
+        assert_eq!(s.terrain_uploads, 0, "nothing uploaded twice");
+    }
+    let arrived = rs.read_offscreen().expect("capture");
+    keep("stream-arrived", &arrived);
+    let e = rmse(&arrived, &reference);
+    assert!(e < 1e-4, "streamed {e} against the field in memory");
+    assert!(rmse(&fading, &reference) > rmse(&arrived, &reference));
+    // Half the tiles at random, each with its parent: no crack.
+    let mut kept = std::collections::HashSet::new();
+    let mut seed = 7u32;
+    for &i in &wanted {
+        seed = seed.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+        let parent_in = layout.parent(i).is_none_or(|p| kept.contains(&p));
+        if parent_in && (seed >> 16).is_multiple_of(2) || i == top {
+            kept.insert(i);
+        } else {
+            streamed.set_terrain_tile(h, i, None);
+        }
+    }
+    for _ in 0..2 {
+        rs.render(&streamed, &RenderTarget::Offscreen)
+            .expect("render");
+    }
+    let half = rs.read_offscreen().expect("capture");
+    keep("stream-half", &half);
+    assert_eq!(holes(&half, 260), 0, "background through half the tiles");
+}
+
+/// The renderer draws scattered copies from cached chunks: the copies a
+/// frame draws are the CPU's placement (each 4 m cube where
+/// `Terrain::scatter` puts it, at full size), none beyond the distance, and
+/// over the fade a copy thins out by a dither across its whole footprint
+/// rather than shrinking. A second frame builds no chunk; moving on builds
+/// only the chunks that came into range.
+#[test]
+fn scattered_copies_are_drawn_from_chunks_and_fade_by_dither() {
+    let n = 257u32;
+    let size = 1024.0f32;
+    let mut scene = RenderScene::new();
+    let h = scene.add_terrain(TerrainData::flat(Vec2::splat(size), n, n));
+    scene.terrains.push(Terrain {
+        layers: vec![TerrainLayer {
+            color: Vec3::splat(0.05),
+            ..Default::default()
+        }],
+        cast_shadows: false,
+        ..Terrain::new(h)
+    });
+    let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
+    let red = scene.add_material(Material {
+        base_color: [0.0, 0.0, 0.0, 1.0],
+        emissive: [8.0, 0.0, 0.0],
+        ..Default::default()
+    });
+    let s = TerrainScatter {
+        density: 0.03,
+        distance: 90.0,
+        fade: 0.5,
+        scale: [3.0, 3.0],
+        seed: 5,
+        ..TerrainScatter::default()
+    };
+    scene.scatters.push(og_render::ScatterDraw {
+        terrain: 0,
+        mesh: cube,
+        material: red,
+        scatter: s,
+    });
+    scene.fog = None;
+    scene.post.tonemap = Tonemap::None;
+    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.light.cast_shadows = false;
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 100.0, 0.001),
+        target: Vec3::ZERO,
+        near: 1.0,
+        far: 500.0,
+        projection: Projection::Orthographic { height: 200.0 },
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let first = r.render(&scene, &RenderTarget::Offscreen).expect("render");
+    let img = r.read_offscreen().expect("capture");
+    keep("scatter-fade", &img);
+    assert!(first.scatter_built >= 4, "{first:?}");
+    let again = r.render(&scene, &RenderTarget::Offscreen).expect("render");
+    assert_eq!(again.scatter_built, 0, "a second frame builds nothing");
+    assert_eq!(again.scatter_copies, first.scatter_copies);
+    // Where each copy is: 3.6 pixels a metre (720 px over 200 m).
+    let px_of = |p: Vec3| (640.0 + p.x * 720.0 / 200.0, 360.0 + p.z * 720.0 / 200.0);
+    let red_at = |x: f32, y: f32| {
+        let (x, y) = (x.round() as i64, y.round() as i64);
+        if x < 0 || y < 0 || x >= 1280 || y >= 720 {
+            return false;
+        }
+        let p = px(&img, x as u32, y as u32);
+        p[0] > 150.0 && p[1] < 60.0
+    };
+    let placed = scene.terrains[0].scatter(
+        &TerrainData::flat(Vec2::splat(size), n, n),
+        &s,
+        scene.camera.position,
+    );
+    let (mut solid, mut thinned, mut gone) = (0, 0, 0);
+    let at_of = |m: &Mat4| m.w_axis.truncate();
+    for (_, m) in &placed {
+        let at = at_of(m);
+        // Copies with a neighbour within 4 m would mix their pixels: skip them.
+        if placed
+            .iter()
+            .any(|(_, o)| o != m && at_of(o).distance(at) < 4.0)
+        {
+            continue;
+        }
+        let d = Vec2::new(at.x, at.z).length();
+        let (cx, cy) = px_of(at);
+        // A disc of 4 px inside the 3 m (10.8 px) cube's top, and its outer ring from 2.5 px.
+        let (mut inside, mut hit, mut ring) = (0, 0, 0);
+        for dy in -4i32..=4 {
+            for dx in -4i32..=4 {
+                let r2 = (dx * dx + dy * dy) as f32;
+                if r2 > 16.0 {
+                    continue;
+                }
+                inside += 1;
+                if red_at(cx + dx as f32, cy + dy as f32) {
+                    hit += 1;
+                    if r2 >= 6.25 {
+                        ring += 1;
+                    }
+                }
+            }
+        }
+        let fill = hit as f32 / inside as f32;
+        if d < s.fade_from() - 3.0 {
+            assert!(fill > 0.97, "a copy {d:.1} m out is filled {fill:.2}");
+            solid += 1;
+        } else if d > 60.0 && d < 74.0 {
+            // Fading (about 0.25 to 0.6 kept): thinned across the footprint, its rim still drawn.
+            assert!(
+                fill > 0.05 && fill < 0.85,
+                "a copy {d:.1} m out is filled {fill:.2}"
+            );
+            assert!(
+                ring > 0,
+                "a copy {d:.1} m out has lost its rim: shrunk, not dithered"
+            );
+            thinned += 1;
+        }
+    }
+    assert!(solid > 5 && thinned > 3, "{solid} solid, {thinned} thinned");
+    // Nothing past the distance: no red in the corners' ring beyond 92 m.
+    for (x, y) in [(0u32, 0u32), (1279, 0), (0, 719), (1279, 719)] {
+        let p = px(&img, x, y);
+        assert!(p[0] < 100.0, "red at the corner {x},{y}");
+    }
+    for (_, m) in &placed {
+        let at = m.w_axis.truncate();
+        if Vec2::new(at.x, at.z).length() > 92.0 {
+            gone += 1;
+        }
+    }
+    assert_eq!(gone, 0, "the CPU placement keeps to the distance");
+    // Moving 150 m east builds only the chunks that came into range.
+    scene.camera.position.x += 150.0;
+    scene.camera.target.x += 150.0;
+    let moved = r.render(&scene, &RenderTarget::Offscreen).expect("render");
+    assert!(
+        moved.scatter_built > 0 && moved.scatter_built < first.scatter_built,
+        "{} chunks built moving, {} at first",
+        moved.scatter_built,
+        first.scatter_built
+    );
 }

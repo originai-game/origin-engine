@@ -23,7 +23,7 @@ og build . --publish    # what ships: the player probe members, minified, the PW
 | `audio-worklet.js` | The AudioWorklet, loaded on the first gesture. |
 | `origin-engine.js`, `origin-engine_bg.wasm` | The web host. `--publish` takes `dist/web-publish` (probe trimmed to hello, tick, state, pick, entity, input, capture; `wasm-opt -Oz`). |
 | `basis/` | Binomial's Basis transcoder and its licence. |
-| `cooked/` | The project's cooked bundle (`og cook`, run by `og build`). |
+| `cooked/` | The project's cooked bundle (`og cook`, run by `og build`), split by streaming group: the first group (everything no scene's `stream` block holds, the `#proxy` stand-ins included) and one pack per streaming group, `cooked/stream/<name>.ogb`. A grouped output's own file is left out, because the engine reads it from its pack. |
 | `icons/` | `publish.icon` as `icons/icon.png`, or the brand tile at 192 and 512 px. |
 | `og-build.json` | The build manifest (below). |
 | `_headers` | For static hosts (Netlify and Cloudflare Pages format): `Cross-Origin-Resource-Policy: cross-origin` and `X-Content-Type-Options: nosniff` on everything, COOP `same-origin` and COEP `require-corp` unless `isolation off`, `Cache-Control: no-cache` on `/`, `index.html`, `sw.js` and `og-build.json`, and the `.wasm` and `manifest.webmanifest` content types. |
@@ -56,7 +56,8 @@ dates, no absolute paths, files in sorted order
   "player": { "protocol": 2, "transports": ["frame", "page"] },
   "version": "<sha256 over every file's path and sha256>",
   "files": [{ "path": "index.html", "bytes": 12519, "sha256": "…" }],
-  "total": { "files": 45, "bytes": 12477811 }
+  "total": { "files": 45, "bytes": 12477811 },
+  "stream": null
 }
 ```
 
@@ -80,6 +81,29 @@ dates, no absolute paths, files in sorted order
 - `probe.build` is what the copied wasm's `hello` reports: `publish` for a
   `--publish` build, `release` for a dev build (the web host is a release
   wasm either way; the top-level `build` is what says `dev`).
+- `stream` is `null` for a bundle without streaming groups. Otherwise it is
+  `{ "first": { "files", "bytes" }, "groups": [{ "name", "file", "bytes",
+  "sha256", "priority", "memory", "assets" }] }`. `first` is what the boot
+  fetches and the service worker precaches (the cooked manifest included).
+  Each group is its pack under `cooked/stream/`, with the memory its assets
+  take once loaded (what `og.stream`'s budget counts) and its asset ids.
+  The packs are in `files` too.
+
+### Streaming groups
+
+The Worker fetches the first group before the engine starts: the manifest,
+every output no group holds, and their Basis textures transcoded. A
+streaming group's pack is fetched only when the runtime admits the group
+(its trigger wants it and it fits the budget, IDL module `stream`). Before
+the pack is handed to the engine, the Worker transcodes its Basis textures
+to the encodings the renderer takes, as for the first group
+(`og_web_pack_ktx2`), so the whole group goes in place at once. Until then
+its models draw their proxies, its textures are 1x1 placeholders and its
+sounds play as silence of their own length. The boot's progress (`expect.cooked`) counts
+only the first group. `packages/engine/tests/asset-stream.test.ts` checks
+the split, and `packages/engine/tests/web/stream.ts` plays it in Chrome: no
+pack at boot, each pack fetched once when its group is wanted, the
+textures transcoded, and the visited groups loading offline.
 
 ## Hosting
 
@@ -167,9 +191,9 @@ player members and a dev build every member, whatever it says.
   Reload and Copy report; the brand symbol switches to `drift`.
 - **PWA** (publish builds, in a secure context): the service worker
   precaches `./` and every file of the build except `og-build.json`,
-  `_headers`, `origingame.runtime.json`, licence and README files and itself
-  under `og-<version>` (a failed install keeps the old build), drops the
-  scope's other `og-*` caches on activation,
+  `_headers`, `origingame.runtime.json`, licence and README files, the
+  streaming groups' packs and itself under `og-<version>` (a failed install
+  keeps the old build), drops the scope's other `og-*` caches on activation,
   serves the page from the network first (so a host's additions to it are
   current) and from the cache offline, and every other file from the cache.
   The network page is the browser's own navigation request (navigation
@@ -179,6 +203,9 @@ player members and a dev build every member, whatever it says.
   derived entry, with `window.__OG_GAME`, only to a document or frame load)
   would hand a revisit its stored bytes; the worker fetches the page itself
   only where the browser has no navigation preload.
+  A pack is not precached. It comes from the cache, or from the network into
+  the same cache the first time the engine fetches it, so a place the player
+  has already visited also plays offline.
   The install hint appears only when the criteria hold: not framed, not
   installed, a manifest and a service worker, and either Chromium's
   `beforeinstallprompt` (an Install button) or iOS Safari (Share, then Add to
