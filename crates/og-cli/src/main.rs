@@ -38,10 +38,12 @@ commands:
                       cook, bundle and run the game on the native host with the probe; outputs of
                       screenshot/dump_* land in --out (default <project>/og-out)
   run --device chrome|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR]
-      [--size WxH] [--headed] [--webgl] [--chrome <path>] [--cert <pem> --key <pem>] [--json]
-                      play the publish build in a real browser (served on 0.0.0.0 with COOP/COEP,
-                      the LAN URL printed), pass the play gate and time the first frame and the
-                      frames; report.md and device.json in --out (default <project>/og-out/device)
+      [--size WxH] [--headed] [--webgl] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>]
+      [--json]
+                      play the publish build in a real browser (served with COOP/COEP on 127.0.0.1,
+                      or for the iPhone on 0.0.0.0 with the LAN URL printed; --host names the
+                      address), pass the play gate and time the first frame and the frames;
+                      report.md and device.json in --out (default <project>/og-out/device)
   probe <method> [params-json] [--port P] [--out file.png] [--raw]
                       one probe call to a running `og run --port P` / `og dev` (JSON-RPC over WebSocket)
   dev [project] [--port P] [--exit-after N] [--json]

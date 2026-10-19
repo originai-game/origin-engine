@@ -2,12 +2,13 @@
 //
 //   bun src/node/device.ts --dist <publish build> --project <root> --device <target> --out <dir>
 //       [--seconds N (default 5)] [--port P] [--headed] [--webgl] [--chrome <path>]
-//       [--cert <pem> --key <pem>] [--size WxH] [--json]
+//       [--cert <pem> --key <pem>] [--host <ip>] [--size WxH] [--json]
 //   bun src/node/device.ts --preflight --device <target> [options]   (og runs it before the build:
 //       the options and the target's tools only)
 //
-// The build (og build --publish, which og made) is served on 0.0.0.0 with its
-// `_headers` and COOP/COEP/CORP, and the LAN URL is printed. `<target>`:
+// The build (og build --publish, which og made) is served with its `_headers`
+// and COOP/COEP/CORP on 127.0.0.1, or on 0.0.0.0 for the iPhone, the one
+// target that reaches it over the network; the URLs are printed. `<target>`:
 //
 //   chrome            this machine's Chrome (--chrome, $CHROME, $CHROME_PATH, the
 //                     agent-browser install, /Applications, PATH), headless unless
@@ -17,10 +18,15 @@
 //                     `adb forward ... localabstract:chrome_devtools_remote` reaches
 //                     its DevTools; the same driver, with touch
 //   iphone[:udid]     Safari on an iPhone over WebDriver (safaridriver, macOS), at the
-//   ios[:udid]        LAN URL; isolation and WebGPU need a secure context there, so
-//                     pass --cert/--key (mkcert) to serve HTTPS
+//   ios[:udid]        LAN URL (a private address on en*/eth*/wlan* first; --host <ip>
+//                     names another); isolation and WebGPU need a secure context
+//                     there, so pass --cert/--key (mkcert) to serve HTTPS
 //
-// The page is opened cold, the play gate passed with a real tap or click,
+// chrome and android open the page at localhost, already a secure context, so
+// --cert/--key (and --host) are the iPhone's only.
+//
+// The page is opened cold (no-store, no sw.js served, and on a DevTools target
+// the origin's storage cleared first), the play gate passed with a real tap or click,
 // and the engine's own telemetry read: `og:first-frame` (ms from navigation
 // to the first frame drawn behind the gate), `__runtime_probe__.hello()`
 // (the tier), and after a second of warm-up `__og_timings__` (the Worker's
@@ -29,7 +35,9 @@
 // findings with a fix each, then the measures) and prints one line (or one
 // JSON line with --json). A missing prerequisite exits 1 with one line
 // naming the fix; a page that fails (error card, no first frame, the gate
-// not passing) exits 1 with what it saw.
+// not passing) exits 1 with what it saw. SIGINT and SIGTERM undo what the
+// run set up (adb reverse/forward, the Chrome profile, the WebDriver
+// session, the server) and exit 130 or 143.
 
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
@@ -40,9 +48,9 @@ declare module "node:fs" {
   export function readdirSync(path: string): string[];
 }
 declare module "node:path" {
-  export function normalize(path: string): string;
+  export const posix: { normalize(path: string): string };
 }
-import { normalize } from "node:path";
+import { posix } from "node:path";
 
 interface Proc {
   kill(): void;
@@ -52,6 +60,7 @@ declare const Bun: {
   serve(o: {
     port: number;
     hostname: string;
+    development?: boolean;
     tls?: { cert: string; key: string };
     fetch(req: Request): Response | Promise<Response>;
   }): { port: number; stop(force?: boolean): void };
@@ -77,6 +86,32 @@ const refuse = (line: string): never => {
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 const decode = (b: Uint8Array) => new TextDecoder().decode(b);
+
+/** How long one call to a browser (a DevTools command, a WebDriver request) may take unless it says otherwise. */
+const CALL_MS = 30_000;
+
+/** What the run set up, newest last: undone newest first by cleanUp (main's end, SIGINT, SIGTERM). */
+const undo: Array<() => Promise<void>> = [];
+let cleaning: Promise<void> | null = null;
+
+/** Register `f` to run once on the way out; the returned function runs it now (still once). */
+function onExit(f: () => unknown): () => Promise<void> {
+  let done: Promise<void> | null = null;
+  const once = () =>
+    (done ??= Promise.resolve()
+      .then(f)
+      .then(
+        () => {},
+        () => {},
+      ));
+  undo.push(once);
+  return once;
+}
+
+const cleanUp = () =>
+  (cleaning ??= (async () => {
+    while (undo.length) await undo.pop()!();
+  })());
 
 // ── serving ───────────────────────────────────────────────────────────
 
@@ -125,25 +160,38 @@ interface Served {
   stop(): void;
 }
 
-function serveBuild(dist: string, port: number, tls: { cert: string; key: string } | null): Served {
+function serveBuild(dist: string, port: number, tls: { cert: string; key: string } | null, hostname: string): Served {
   const rules = readHeaders(dist);
   const sent: Record<string, Record<string, string>> = {};
   const paths: string[] = [];
+  const answer = (status: number, body: string) => new Response(body, { status, headers: { "cache-control": "no-store", ...ISOLATION } });
   const server = Bun.serve({
     port,
-    hostname: "0.0.0.0",
+    hostname,
+    // A bad request never shows Bun's development error page (with this machine's paths).
+    development: false,
     ...(tls ? { tls } : {}),
     async fetch(req) {
       const url = new URL(req.url);
-      let rel = normalize(decodeURIComponent(url.pathname));
+      let rel: string;
+      try {
+        rel = posix.normalize(decodeURIComponent(url.pathname));
+      } catch {
+        return answer(400, "bad request");
+      }
       if (rel.endsWith("/")) rel += "index.html";
       const path = join(dist, rel);
       if (paths.length < 400) paths.push(url.pathname);
-      if (!path.startsWith(dist) || !(await Bun.file(path).exists())) return new Response("not found", { status: 404, headers: { "cache-control": "no-store", ...ISOLATION } });
+      // No service worker: on a secure context (Android's localhost, the iPhone
+      // over HTTPS) the shell registers sw.js, which answers game.js, the wasm
+      // and the packs from its cache, so a later run on the same --port would
+      // be timed warm and could pair a new index.html with an old build's
+      // files. Its registration fails on the 404 and the page plays on.
+      if (rel === "/sw.js" || !path.startsWith(dist) || !(await Bun.file(path).exists())) return answer(404, "not found");
       const headers: Record<string, string> = {};
       for (const r of rules) if (matches(r.pattern, rel)) Object.assign(headers, r.headers);
       Object.assign(headers, ISOLATION);
-      // Every load is a cold one: the device's HTTP cache never answers.
+      // The device's HTTP cache never answers (and with no sw.js, no service worker does).
       headers["cache-control"] = "no-store";
       headers["content-type"] = TYPES[rel.slice(rel.lastIndexOf("."))] ?? "application/octet-stream";
       if (rel === "/index.html" || rel.endsWith(".wasm")) sent[rel === "/index.html" ? "/" : rel] = { ...headers };
@@ -153,11 +201,28 @@ function serveBuild(dist: string, port: number, tls: { cert: string; key: string
   return { port: server.port, scheme: tls ? "https" : "http", sent, paths, stop: () => server.stop(true) };
 }
 
-/** This machine's LAN IPv4 addresses (what a phone on the same network opens). */
-function lanAddresses(): string[] {
-  const out: string[] = [];
-  for (const list of Object.values(networkInterfaces())) for (const a of list ?? []) if (!a.internal && (a.family === "IPv4" || a.family === 4)) out.push(a.address);
-  return out;
+/** Interfaces a phone's Wi-Fi is not on: VPN tunnels, bridges, VMs, containers. */
+const VIRTUAL = /^(utun|tun|tap|ppp|ipsec|gif|stf|bridge|br-|virbr|vmnet|vboxnet|docker|veth|awdl|llw|anpi|zt|tailscale|wg)/;
+/** Ethernet and Wi-Fi interface names (macOS en*, Linux eth*, en*, wlan*, wl*). */
+const PHYSICAL = /^(en|eth|wlan|wl)/;
+/** 10/8, 172.16/12, 192.168/16. */
+const isPrivate = (address: string) => {
+  const [a, b] = address.split(".").map(Number);
+  return a === 10 || (a === 172 && b! >= 16 && b! <= 31) || (a === 192 && b === 168);
+};
+
+/**
+ * This machine's LAN IPv4 addresses, the likeliest for a phone on the same
+ * Wi-Fi first: link-local 169.254/16 dropped, tunnels, bridges and VM or
+ * container interfaces last, private (RFC 1918) addresses before public
+ * ones, and Ethernet or Wi-Fi interface names before others.
+ */
+function lanAddresses(): Array<{ address: string; iface: string }> {
+  const out: Array<{ address: string; iface: string }> = [];
+  for (const [iface, list] of Object.entries(networkInterfaces()))
+    for (const a of list ?? []) if (!a.internal && (a.family === "IPv4" || a.family === 4) && !a.address.startsWith("169.254.")) out.push({ address: a.address, iface });
+  const rank = (x: { address: string; iface: string }) => (VIRTUAL.test(x.iface) ? 4 : 0) + (isPrivate(x.address) ? 0 : 2) + (PHYSICAL.test(x.iface) ? 0 : 1);
+  return out.sort((x, y) => rank(x) - rank(y));
 }
 
 // ── drivers ───────────────────────────────────────────────────────────
@@ -166,8 +231,8 @@ function lanAddresses(): string[] {
 interface Driver {
   readonly name: string;
   open(url: string): Promise<void>;
-  /** An expression's value (Promises awaited), by value. */
-  eval<T>(expression: string): Promise<T>;
+  /** An expression's value (Promises awaited), by value; rejected after `ms` (default CALL_MS). */
+  eval<T>(expression: string, ms?: number): Promise<T>;
   /** A real tap (or click) on the element `selector` matches. */
   tap(selector: string): Promise<void>;
   /** Console errors and uncaught exceptions seen so far (CDP only). */
@@ -179,7 +244,9 @@ interface Driver {
 class Cdp implements Driver {
   readonly name: string;
   readonly #ws: WebSocket;
-  readonly #pending = new Map<number, { resolve(v: unknown): void; reject(e: Error): void }>();
+  readonly #pending = new Map<number, { method: string; timer: ReturnType<typeof setTimeout>; resolve(v: unknown): void; reject(e: Error): void }>();
+  /** Why the connection is gone (every later call is refused with it), or null while it is open. */
+  #lost: string | null = null;
   readonly #errors: string[] = [];
   readonly #touch: boolean;
   readonly #onClose: () => Promise<void>;
@@ -192,11 +259,24 @@ class Cdp implements Driver {
     this.#ws = ws;
     this.#touch = touch;
     this.#onClose = onClose;
+    // A closed or failed connection answers every call still waiting, and every later one.
+    const lose = (how: string) => {
+      if (this.#lost) return;
+      this.#lost = `the DevTools connection to ${name} ${how}`;
+      for (const p of this.#pending.values()) {
+        clearTimeout(p.timer);
+        p.reject(new Error(`${p.method}: ${this.#lost}`));
+      }
+      this.#pending.clear();
+    };
+    ws.addEventListener("close", () => lose("closed"));
+    ws.addEventListener("error", () => lose("failed"));
     ws.addEventListener("message", (e) => {
       const m = JSON.parse(String((e as MessageEvent).data)) as { id?: number; result?: unknown; error?: { message: string }; method?: string; params?: Record<string, unknown>; sessionId?: string };
       if (m.id !== undefined) {
         const p = this.#pending.get(m.id);
         this.#pending.delete(m.id);
+        if (p) clearTimeout(p.timer);
         if (m.error) p?.reject(new Error(m.error.message));
         else p?.resolve(m.result);
         return;
@@ -215,16 +295,40 @@ class Cdp implements Driver {
   static async connect(name: string, url: string, touch: boolean, onClose: () => Promise<void>): Promise<Cdp> {
     const ws = new WebSocket(url);
     await new Promise<void>((ok, fail) => {
-      ws.addEventListener("open", () => ok());
-      ws.addEventListener("error", () => fail(new Error(`could not connect to DevTools at ${url}`)));
+      const timer = setTimeout(() => {
+        fail(new Error(`DevTools at ${url} did not answer in 15 s`));
+        ws.close();
+      }, 15_000);
+      ws.addEventListener("open", () => {
+        clearTimeout(timer);
+        ok();
+      });
+      ws.addEventListener("error", () => {
+        clearTimeout(timer);
+        fail(new Error(`could not connect to DevTools at ${url}`));
+      });
     });
     return new Cdp(name, ws, touch, onClose);
   }
 
-  send<T = unknown>(method: string, params: Record<string, unknown> = {}, session: string | null = this.#session): Promise<T> {
+  /** One command; rejected when no answer comes in `ms` or the connection goes. */
+  send<T = unknown>(method: string, params: Record<string, unknown> = {}, session: string | null = this.#session, ms = CALL_MS): Promise<T> {
+    if (this.#lost) return Promise.reject(new Error(`${method}: ${this.#lost}`));
     const id = this.#next++;
-    this.#ws.send(JSON.stringify({ id, method, params, ...(session ? { sessionId: session } : {}) }));
-    return new Promise<T>((resolve, reject) => this.#pending.set(id, { resolve: resolve as (v: unknown) => void, reject }));
+    return new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.#pending.delete(id);
+        reject(new Error(`${method}: ${this.name} did not answer in ${ms / 1000} s`));
+      }, ms);
+      this.#pending.set(id, { method, timer, resolve: resolve as (v: unknown) => void, reject });
+      try {
+        this.#ws.send(JSON.stringify({ id, method, params, ...(session ? { sessionId: session } : {}) }));
+      } catch (e) {
+        clearTimeout(timer);
+        this.#pending.delete(id);
+        reject(e instanceof Error ? e : new Error(String(e)));
+      }
+    });
   }
 
   async open(url: string): Promise<void> {
@@ -235,16 +339,30 @@ class Cdp implements Driver {
     await this.send("Page.enable");
     await this.send("Runtime.enable");
     await this.send("Page.bringToFront");
+    // Cold means cold on a browser that has seen this origin before (a phone's
+    // Chrome, an earlier run on the same --port): its service worker, caches
+    // and storage go first.
+    const origin = new URL(url).origin;
+    try {
+      await this.send("Storage.clearDataForOrigin", { origin, storageTypes: "all" });
+    } catch (e) {
+      refuse(`could not clear ${origin}'s storage before the cold load (${(e as Error).message})`);
+    }
     await this.send("Page.navigate", { url });
   }
 
-  async eval<T>(expression: string): Promise<T> {
-    const r = await this.send<{ result: { value?: T }; exceptionDetails?: { text: string; exception?: { description?: string } } }>("Runtime.evaluate", {
-      expression,
-      awaitPromise: true,
-      returnByValue: true,
-      userGesture: false,
-    });
+  async eval<T>(expression: string, ms = CALL_MS): Promise<T> {
+    const r = await this.send<{ result: { value?: T }; exceptionDetails?: { text: string; exception?: { description?: string } } }>(
+      "Runtime.evaluate",
+      {
+        expression,
+        awaitPromise: true,
+        returnByValue: true,
+        userGesture: false,
+      },
+      this.#session,
+      ms,
+    );
     if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description ?? r.exceptionDetails.text);
     return r.result.value as T;
   }
@@ -272,7 +390,7 @@ class Cdp implements Driver {
   }
 
   async close(): Promise<void> {
-    if (this.#target) await this.send("Target.closeTarget", { targetId: this.#target }, null).catch(() => {});
+    if (this.#target) await this.send("Target.closeTarget", { targetId: this.#target }, null, 5_000).catch(() => {});
     this.#ws.close();
     await this.#onClose();
   }
@@ -312,7 +430,15 @@ function findChrome(): string {
 async function launchChrome(width: number, height: number): Promise<Driver> {
   const chrome = findChrome();
   const profile = mkdtempSync(join(tmpdir(), "og-device-"));
-  const proc = Bun.spawn(
+  let proc: Proc | null = null;
+  const quit = onExit(async () => {
+    if (proc) {
+      proc.kill();
+      await proc.exited;
+    }
+    rmSync(profile, { recursive: true, force: true });
+  });
+  proc = Bun.spawn(
     [
       chrome,
       ...(flag("--headed") ? [] : ["--headless=new"]),
@@ -335,18 +461,11 @@ async function launchChrome(width: number, height: number): Promise<Driver> {
   const portFile = join(profile, "DevToolsActivePort");
   const t0 = performance.now();
   while (!existsSync(portFile) || readFileSync(portFile, "utf8").split("\n").length < 2) {
-    if (performance.now() - t0 > 20_000) {
-      proc.kill();
-      refuse(`${chrome} did not open its DevTools port in 20 s: is it a Chrome (or Chromium) executable?`);
-    }
+    if (performance.now() - t0 > 20_000) refuse(`${chrome} did not open its DevTools port in 20 s: is it a Chrome (or Chromium) executable?`);
     await sleep(50);
   }
   const [port, path] = readFileSync(portFile, "utf8").trim().split("\n");
-  return Cdp.connect(`chrome (${basename(chrome)}${flag("--headed") ? ", headed" : ", headless"})`, `ws://127.0.0.1:${port}${path}`, false, async () => {
-    proc.kill();
-    await proc.exited;
-    rmSync(profile, { recursive: true, force: true });
-  });
+  return Cdp.connect(`chrome (${basename(chrome)}${flag("--headed") ? ", headed" : ", headless"})`, `ws://127.0.0.1:${port}${path}`, false, quit);
 }
 
 const NO_ADB = "no adb on PATH: install Android platform-tools (`brew install android-platform-tools`, or the SDK's platform-tools)";
@@ -359,7 +478,7 @@ function adb(serial: string | null, ...args: string[]): string {
 }
 
 /** Chrome on an Android phone: the page at its own localhost (adb reverse), DevTools forwarded to this machine. */
-async function connectAndroid(wanted: string | null, port: number): Promise<{ driver: Driver; url: string }> {
+async function connectAndroid(wanted: string | null, port: number, scheme: string): Promise<{ driver: Driver; url: string }> {
   if (!Bun.which("adb")) refuse(NO_ADB);
   const devices = adb(null, "devices")
     .split("\n")
@@ -371,28 +490,26 @@ async function connectAndroid(wanted: string | null, port: number): Promise<{ dr
   if (wanted && !devices.includes(wanted)) refuse(`no Android device ${wanted}: adb lists ${devices.join(", ")}`);
   if (!wanted && devices.length > 1) refuse(`several Android devices (${devices.join(", ")}): pass --device android:<serial>`);
   const serial = wanted ?? devices[0]!;
+  let forwarded = 0;
+  const cleanup = onExit(() => {
+    if (forwarded) Bun.spawnSync(["adb", "-s", serial, "forward", "--remove", `tcp:${forwarded}`], { stdout: "ignore", stderr: "ignore" });
+    Bun.spawnSync(["adb", "-s", serial, "reverse", "--remove", `tcp:${port}`], { stdout: "ignore", stderr: "ignore" });
+  });
   adb(serial, "reverse", `tcp:${port}`, `tcp:${port}`);
   adb(serial, "shell", "am", "start", "-n", "com.android.chrome/com.google.android.apps.chrome.Main", "-d", "about:blank");
-  const forwarded = Number(adb(serial, "forward", "tcp:0", "localabstract:chrome_devtools_remote"));
+  forwarded = Number(adb(serial, "forward", "tcp:0", "localabstract:chrome_devtools_remote"));
   let ws: string | null = null;
   for (let i = 0; i < 50 && !ws; i++) {
     try {
-      ws = ((await (await fetch(`http://127.0.0.1:${forwarded}/json/version`)).json()) as { webSocketDebuggerUrl?: string }).webSocketDebuggerUrl ?? null;
+      ws = ((await (await fetch(`http://127.0.0.1:${forwarded}/json/version`, { signal: AbortSignal.timeout(2000) })).json()) as { webSocketDebuggerUrl?: string }).webSocketDebuggerUrl ?? null;
     } catch {
       await sleep(200);
     }
   }
-  const cleanup = async () => {
-    Bun.spawnSync(["adb", "-s", serial, "forward", "--remove", `tcp:${forwarded}`]);
-    Bun.spawnSync(["adb", "-s", serial, "reverse", "--remove", `tcp:${port}`]);
-  };
-  if (!ws) {
-    await cleanup();
-    refuse(`Chrome on ${serial} does not answer DevTools: open Chrome on the phone once, and allow USB debugging`);
-  }
+  if (!ws) refuse(`Chrome on ${serial} does not answer DevTools: open Chrome on the phone once, and allow USB debugging`);
   const model = adb(serial, "shell", "getprop", "ro.product.model");
   const driver = await Cdp.connect(`android ${model} (${serial})`, ws!.replace(/^ws:\/\/[^/]+/, `ws://127.0.0.1:${forwarded}`), true, cleanup);
-  return { driver, url: `http://localhost:${port}/` };
+  return { driver, url: `${scheme}://localhost:${port}/` };
 }
 
 const ELEMENT = "element-6066-11e4-a52e-4f735466cecf";
@@ -405,8 +522,34 @@ async function connectIphone(udid: string | null): Promise<Driver> {
   const probe = Bun.serve({ port: 0, hostname: "127.0.0.1", fetch: () => new Response("") });
   const port = probe.port;
   probe.stop(true);
-  const proc = Bun.spawn(["safaridriver", "-p", String(port)], { stdout: "ignore", stderr: "ignore" });
   const base = `http://127.0.0.1:${port}`;
+  /** One WebDriver request; rejected when safaridriver does not answer in `ms`. */
+  const call = async <T>(method: string, path: string, body?: unknown, ms = CALL_MS): Promise<T> => {
+    let r: Response;
+    try {
+      r = await fetch(`${base}${path}`, {
+        method,
+        headers: { "content-type": "application/json" },
+        signal: AbortSignal.timeout(ms),
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+    } catch (e) {
+      throw new Error((e as Error).name === "TimeoutError" ? `${method} ${path}: safaridriver did not answer in ${ms / 1000} s` : `${method} ${path}: ${(e as Error).message}`);
+    }
+    const j = (await r.json()) as { value: T & { error?: string; message?: string } };
+    if (!r.ok) throw new Error(`${j.value.error ?? r.status}: ${j.value.message ?? ""}`);
+    return j.value;
+  };
+  let session: string | null = null;
+  let proc: Proc | null = null;
+  const quit = onExit(async () => {
+    if (session) await call("DELETE", `/session/${session}`, undefined, 10_000).catch(() => {});
+    if (proc) {
+      proc.kill();
+      await proc.exited;
+    }
+  });
+  proc = Bun.spawn(["safaridriver", "-p", String(port)], { stdout: "ignore", stderr: "ignore" });
   let up = false;
   for (let i = 0; i < 50 && !up; i++) {
     try {
@@ -415,35 +558,32 @@ async function connectIphone(udid: string | null): Promise<Driver> {
       await sleep(100);
     }
   }
-  if (!up) {
-    proc.kill();
-    refuse(`safaridriver did not start: ${IPHONE_FIX}`);
-  }
-  const call = async <T>(method: string, path: string, body?: unknown): Promise<T> => {
-    const r = await fetch(`${base}${path}`, { method, headers: { "content-type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
-    const j = (await r.json()) as { value: T & { error?: string; message?: string } };
-    if (!r.ok) throw new Error(`${j.value.error ?? r.status}: ${j.value.message ?? ""}`);
-    return j.value;
-  };
-  let session: string;
+  if (!up) refuse(`safaridriver did not start: ${IPHONE_FIX}`);
   try {
-    const s = await call<{ sessionId: string }>("POST", "/session", {
-      capabilities: { alwaysMatch: { browserName: "safari", platformName: "iOS", ...(udid ? { "safari:deviceUDID": udid } : {}) } },
-    });
+    const s = await call<{ sessionId: string }>(
+      "POST",
+      "/session",
+      { capabilities: { alwaysMatch: { browserName: "safari", platformName: "iOS", ...(udid ? { "safari:deviceUDID": udid } : {}) } } },
+      120_000,
+    );
     session = s.sessionId;
   } catch (e) {
-    proc.kill();
     return refuse(`safaridriver could not open Safari on the iPhone (${(e as Error).message.split("\n")[0]}): ${IPHONE_FIX}`);
   }
   await call("POST", `/session/${session}/timeouts`, { script: 120_000, pageLoad: 120_000 });
   return {
     name: `iphone${udid ? ` (${udid})` : ""}`,
-    open: async (url) => void (await call("POST", `/session/${session}/url`, { url })),
-    eval: async <T>(expression: string) => {
-      const r = await call<{ ok?: T; err?: string }>("POST", `/session/${session}/execute/async`, {
-        script: `const done = arguments[arguments.length - 1]; Promise.resolve().then(() => (${expression})).then((v) => done({ ok: v }), (e) => done({ err: String(e && e.stack || e) }));`,
-        args: [],
-      });
+    open: async (url) => void (await call("POST", `/session/${session}/url`, { url }, 130_000)),
+    eval: async <T>(expression: string, ms = CALL_MS) => {
+      const r = await call<{ ok?: T; err?: string }>(
+        "POST",
+        `/session/${session}/execute/async`,
+        {
+          script: `const done = arguments[arguments.length - 1]; Promise.resolve().then(() => (${expression})).then((v) => done({ ok: v }), (e) => done({ err: String(e && e.stack || e) }));`,
+          args: [],
+        },
+        ms,
+      );
       if (r.err !== undefined) throw new Error(r.err);
       return r.ok as T;
     },
@@ -452,11 +592,7 @@ async function connectIphone(udid: string | null): Promise<Driver> {
       await call("POST", `/session/${session}/element/${el[ELEMENT]}/click`, {});
     },
     errors: () => [],
-    close: async () => {
-      await call("DELETE", `/session/${session}`).catch(() => {});
-      proc.kill();
-      await proc.exited;
-    },
+    close: quit,
   };
 }
 
@@ -532,15 +668,15 @@ const DEVICE_INFO = `(async () => {
   };
 })()`;
 
-/** Poll `expression` until it is truthy (its value) or `ms` pass (null). */
+/** Poll `expression` until it is truthy (its value) or `ms` pass (null); a stuck evaluation counts against `ms`. */
 async function until<T>(d: Driver, expression: string, ms: number): Promise<T | null> {
   const t0 = performance.now();
   for (;;) {
     let v: T | null = null;
     try {
-      v = await d.eval<T>(expression);
+      v = await d.eval<T>(expression, Math.max(1000, Math.min(CALL_MS, ms - (performance.now() - t0))));
     } catch {
-      // The page is navigating; ask again.
+      // The page is navigating (or did not answer in time); ask again.
     }
     if (v) return v;
     if (performance.now() - t0 > ms) return null;
@@ -729,7 +865,7 @@ async function main(): Promise<void> {
   const out = opt("--out");
   const preflight = flag("--preflight");
   if (!target || (!preflight && (!dist || !project || !out)))
-    refuse("usage: bun src/node/device.ts --dist <build> --project <root> --device chrome|android[:serial]|iphone[:udid] --out <dir> [--seconds N] [--port P] [--headed] [--webgl] [--chrome <path>] [--cert <pem> --key <pem>] [--size WxH] [--json] (--preflight: only check the options and the target's tools)");
+    refuse("usage: bun src/node/device.ts --dist <build> --project <root> --device chrome|android[:serial]|iphone[:udid] --out <dir> [--seconds N] [--port P] [--headed] [--webgl] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--size WxH] [--json] (--preflight: only check the options and the target's tools)");
   const [kindRaw, ...rest] = target!.split(":");
   const kind = kindRaw === "ios" ? "iphone" : kindRaw!;
   if (!(kind in BUDGET_MS)) refuse(`--device ${target}: the targets are chrome, android[:serial] and iphone[:udid] (or ios[:udid])`);
@@ -741,6 +877,10 @@ async function main(): Promise<void> {
   const cert = opt("--cert");
   const key = opt("--key");
   if (!!cert !== !!key) refuse("--cert and --key go together: a PEM certificate and its key (mkcert <LAN address> makes both)");
+  if (cert && kind !== "iphone") refuse(`--cert/--key serve HTTPS to the iPhone; --device ${kind} opens the page at localhost, already a secure context`);
+  const host = opt("--host");
+  if (host !== undefined && kind !== "iphone") refuse(`--host is the address the iPhone opens; --device ${kind} opens the page at localhost`);
+  if (host !== undefined && !/^[A-Za-z0-9.:-]+$/.test(host)) refuse(`--host ${host}: an IP address (or a host name) of this machine`);
   for (const f of [cert, key]) if (f && !existsSync(f)) refuse(`no file ${f}`);
   const tls = cert && key ? { cert: readFileSync(cert, "utf8"), key: readFileSync(key, "utf8") } : null;
   // The target's tools, before og spends a build on it.
@@ -750,8 +890,12 @@ async function main(): Promise<void> {
   if (preflight) return;
   if (!existsSync(join(dist!, "index.html"))) refuse(`${dist} has no index.html: og run --device builds it with og build --publish`);
 
-  const served = serveBuild(resolve(dist!), Number(opt("--port") ?? 0), tls);
-  const lan = lanAddresses();
+  // Only the iPhone reaches the server over the network; chrome opens it at
+  // 127.0.0.1 and android at its own localhost, which adb reverse brings here.
+  const served = serveBuild(resolve(dist!), Number(opt("--port") ?? 0), tls, kind === "iphone" ? "0.0.0.0" : "127.0.0.1");
+  onExit(() => served.stop());
+  const lanFound = kind === "iphone" ? lanAddresses() : [];
+  const lan = lanFound.map((a) => a.address);
   const query = flag("--webgl") ? "?webgl=1" : "";
   process.stderr.write(`og run --device: serving ${dist} at ${served.scheme}://127.0.0.1:${served.port}/${lan.map((a) => `, ${served.scheme}://${a}:${served.port}/`).join("")} (COOP/COEP)\n`);
   let driver: Driver | null = null;
@@ -759,15 +903,21 @@ async function main(): Promise<void> {
     let url = `${served.scheme}://127.0.0.1:${served.port}/${query}`;
     if (kind === "chrome") driver = await launchChrome(w!, h!);
     else if (kind === "android") {
-      const a = await connectAndroid(id, served.port);
+      const a = await connectAndroid(id, served.port, served.scheme);
       driver = a.driver;
       url = a.url + query;
     } else {
-      if (lan.length === 0) refuse("no LAN address: join the iPhone's Wi-Fi network");
-      driver = await connectIphone(id);
-      url = `${served.scheme}://${lan[0]}:${served.port}/${query}`;
+      const chosen = host ?? lanFound[0]?.address;
+      if (!chosen) refuse("no LAN address: join the iPhone's Wi-Fi network, or pass --host <ip>");
+      url = `${served.scheme}://${chosen}:${served.port}/${query}`;
+      process.stderr.write(
+        `og run --device: the iPhone opens ${url} (${host ? "--host" : `${lanFound[0]!.iface}; --host <ip> names another`})${tls ? `; the certificate has to name ${chosen}` : ""}\n`,
+      );
       if (!tls) process.stderr.write("og run --device: an http LAN page is not a secure context on the iPhone (no isolation, WebGL2 only); --cert/--key serve HTTPS\n");
+      driver = await connectIphone(id);
     }
+    const opened = driver;
+    onExit(() => opened.close());
     const m = await measure(driver, url, seconds);
     const { scores, findings } = judge(kind, m, served);
     const report: Report = {
@@ -797,17 +947,34 @@ async function main(): Promise<void> {
         `og run --device ${target}: ${m.tier}, first frame ${m.firstFrameMs} ms, frame p50 ${m.interval.p50} / p95 ${m.interval.p95} / p99 ${m.interval.p99} ms; ${findings.length} finding(s); ${join(dir, "report.md")}\n`,
       );
   } finally {
-    await driver?.close().catch(() => {});
-    served.stop();
+    await cleanUp();
   }
 }
 
 if (import.meta.main) {
+  // The signal's exit code (130 SIGINT, 143 SIGTERM) once one came: the run's
+  // own failure, which the cleanup provokes, is not reported over it.
+  let signalled = 0;
+  const leave = (code: number) => void cleanUp().then(() => process.exit(signalled || code));
+  const signals = process as unknown as { on(event: "SIGINT" | "SIGTERM", listener: () => void): void };
+  for (const [sig, code] of [
+    ["SIGINT", 130],
+    ["SIGTERM", 143],
+  ] as const)
+    signals.on(sig, () => {
+      // A second one (og passes on the terminal's Ctrl-C, which reached this
+      // process too) waits for the same cleanup; 20 s is its limit.
+      if (signalled) return;
+      signalled = code;
+      process.stderr.write(`og run --device: ${sig}, undoing the run's setup\n`);
+      setTimeout(() => process.exit(code), 20_000);
+      leave(code);
+    });
   main().then(
-    () => process.exit(0),
+    () => leave(0),
     (e) => {
-      process.stderr.write(`og run --device: ${e instanceof Refusal ? e.message : e instanceof Error ? (e.stack ?? e.message) : String(e)}\n`);
-      process.exit(1);
+      if (!signalled) process.stderr.write(`og run --device: ${e instanceof Refusal ? e.message : e instanceof Error ? (e.stack ?? e.message) : String(e)}\n`);
+      leave(1);
     },
   );
 }

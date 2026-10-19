@@ -192,8 +192,9 @@ cores up to 8); no isolation is involved. A browser page of a build is
 isolated when its server sends the build's `_headers` (the browser tests'
 `tests/web/serve.ts` does, as the platform's play origin does for a
 release with `origingame.runtime.json`); `og run --device`, which serves a
-build to a phone, is on another branch this round and has to send them
-too (docs/phase-1.md, lanes round, left).
+build to a browser or a phone, sends the build's `_headers` and forces
+COOP `same-origin`, COEP `require-corp` and CORP `cross-origin` on every
+response, so its page is isolated wherever it is a secure context.
 
 ## project.ogt `publish`
 
@@ -541,18 +542,28 @@ icons) is.
   (128 + the signal).
 - `og run --device chrome|android[:serial]|iphone[:udid] [project]
   [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--webgl]
-  [--chrome <path>] [--cert <pem> --key <pem>] [--json]` exports the
-  publish build into `<project>/.og/device`, serves it on 0.0.0.0 with its
-  `_headers` and COOP/COEP/CORP (no-store, so every load is cold), prints
-  the LAN URL, opens it in the target, passes the play gate with a real
-  tap and times the page. `chrome` is this machine's Chrome over the
-  DevTools protocol (`--chrome`, `CHROME`, `CHROME_PATH`, the agent-browser
-  install, /Applications, PATH; headless unless `--headed`); `android` is
-  Chrome on a phone over adb (`adb reverse` puts the page at the phone's own
-  localhost, a secure context, and `adb forward` reaches its DevTools);
+  [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]`
+  exports the publish build into `<project>/.og/device`, serves it with its
+  `_headers` and COOP/COEP/CORP on 127.0.0.1 (on 0.0.0.0 only for the
+  iPhone, which reaches it over the LAN), opens it in the target, passes
+  the play gate with a real tap and times the page. Every load is cold:
+  responses are no-store, `sw.js` is answered 404 so no service worker
+  caches the build, and on a DevTools target (`chrome`, `android`) the
+  origin's storage is cleared before the page opens. `chrome` is this
+  machine's Chrome over the DevTools protocol (`--chrome`, `CHROME`,
+  `CHROME_PATH`, the agent-browser install, /Applications, PATH; headless
+  unless `--headed`); `android` is Chrome on a phone over adb (`adb
+  reverse` puts the page at the phone's own localhost, a secure context,
+  and `adb forward` reaches its DevTools);
   `iphone` (or `ios`) is Safari over safaridriver at the LAN URL, which is
-  a secure context only over HTTPS (`--cert`/`--key`, from mkcert). It
-  reads `og:first-frame` (navigation to the first frame behind the gate),
+  a secure context only over HTTPS (`--cert`/`--key`, from mkcert; they
+  are refused for `chrome` and `android`, whose localhost is one already).
+  The LAN address is a private (RFC 1918) one on an Ethernet or Wi-Fi
+  interface before tunnels, bridges and VM interfaces, never link-local;
+  `--host <ip>` names it instead, and the address used is printed so a
+  certificate can be checked against it. SIGINT and SIGTERM undo the run's
+  adb forwards, Chrome profile, WebDriver session and server, then exit
+  130 or 143. It reads `og:first-frame` (navigation to the first frame behind the gate),
   `__runtime_probe__.hello()`'s tier and, after a second of play,
   `__og_timings__` over `--seconds` (default 5): the Worker's display
   interval and engine work per played frame as count, mean, p50, p95, p99

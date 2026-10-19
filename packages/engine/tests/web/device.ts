@@ -1,13 +1,14 @@
 // `og run --device chrome` end to end: the og binary cooks and exports
-// templates/game's publish build, serves it with COOP/COEP on 0.0.0.0, opens
+// templates/game's publish build, serves it with COOP/COEP on 127.0.0.1, opens
 // it in headless Chrome over the DevTools protocol, taps the play gate and
 // times the first frame and the played frames. Checked: the report and
 // device.json exist; the first frame is after navigation; the display
 // interval and engine work percentiles are positive and ordered; the device
 // section has the user agent, DPR, viewport, cores and the tier; the page
 // was cross-origin isolated and the server sent COOP/COEP on the page and
-// the wasm. A second run with --webgl lands on the WebGL2 fallback. A
-// Chrome path that does not exist is refused in one line, exit 1.
+// the wasm. The first run lands on WebGPU, a second with --webgl on the
+// WebGL2 fallback. A Chrome path that does not exist is refused in one
+// line, exit 1.
 //
 //   bun tests/web/device.ts [--out <dir>] [--chrome <path>] [--seconds N]
 //
@@ -84,7 +85,7 @@ const ordered = (s: Stats) => s.count > 0 && s.p50 > 0 && s.p50 <= s.p95 && s.p9
 
 const results: Record<string, unknown> = {};
 for (const [name, extra, tiers] of [
-  ["webgpu", [] as string[], ["webgpu", "webgl2"]],
+  ["webgpu", [] as string[], ["webgpu"]],
   ["webgl2", ["--webgl"], ["webgl2"]],
 ] as const) {
   const dir = join(out, name);

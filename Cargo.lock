@@ -1719,6 +1719,7 @@ name = "og-cli"
 version = "0.0.1"
 dependencies = [
  "image",
+ "libc",
  "og-api",
  "og-cook",
  "og-core",

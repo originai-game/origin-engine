@@ -21,15 +21,15 @@
 //!
 //! `og run --device chrome|android[:serial]|iphone[:udid] [project]
 //! [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--webgl]
-//! [--chrome <path>] [--cert <pem> --key <pem>] [--json]` plays the publish
-//! build in a real browser instead and reports its first frame and frame
-//! times (`device.rs`).
+//! [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]`
+//! plays the publish build in a real browser instead and reports its first
+//! frame and frame times (`device.rs`).
 
 use crate::project::{self, Project};
 use std::path::Path;
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--json]\n       og run --device chrome|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--webgl] [--chrome <path>] [--cert <pem> --key <pem>] [--json]";
+const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--json]\n       og run --device chrome|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--webgl] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]";
 
 /// What `og run` was asked.
 pub struct RunArgs {
@@ -71,7 +71,7 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
                 r.native.push(args[i].into());
             }
             f @ ("--headed" | "--webgl") => device_forward.push(f.to_string()),
-            flag @ ("--device" | "--seconds" | "--chrome" | "--cert" | "--key") => {
+            flag @ ("--device" | "--seconds" | "--host" | "--chrome" | "--cert" | "--key") => {
                 let Some(v) = args.get(i + 1) else {
                     return Err(format!("{flag} needs a value. {USAGE}"));
                 };
@@ -82,7 +82,9 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
                             forward: Vec::new(),
                         })
                     }
-                    "--seconds" => device_forward.extend([flag.to_string(), v.to_string()]),
+                    "--seconds" | "--host" => {
+                        device_forward.extend([flag.to_string(), v.to_string()])
+                    }
                     _ => device_forward.extend([
                         flag.to_string(),
                         std::path::absolute(v)
@@ -137,7 +139,7 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
         Some(d) => {
             if let Some(f) = r.native.first() {
                 return Err(format!(
-                    "{f} is a native run's option; og run --device takes --seconds, --port, --out, --size, --headed, --webgl, --chrome, --cert, --key and --json"
+                    "{f} is a native run's option; og run --device takes --seconds, --port, --out, --size, --headed, --webgl, --chrome, --cert, --key, --host and --json"
                 ));
             }
             d.forward = device_forward;
