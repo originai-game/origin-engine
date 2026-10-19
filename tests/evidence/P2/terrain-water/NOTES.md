@@ -63,3 +63,11 @@ further; a finer sea mesh would test it.
   every output byte-identical (28 outputs, 1,826,637 bytes; the valley's
   `terrain/valley.ogt.ogb` is 126,125 bytes, sha256 `71871f7c…4c2e0`).
 - `tools/make-terrain.py` run twice: its six images are byte-identical.
+
+## Wasm
+
+The publish wasm (`og_host_web-publish`, the gate's size-gate step):
+2,943,180 B brotli before the round (2dae5fa), 2,964,497 B after the
+renderer (0ee78f1, +21,317 B), 2,975,446 B after the og.terrain module
+(5be9281), 2,978,461 B at ad06e6e (+35,281 B over the round, 71.0 % of the
+4,194,304 B budget).

@@ -7,6 +7,64 @@ the platform can run it in an `engine`-class sandbox. Spike findings
 (`docs/spike-results.md`) are the baseline; the spike crate is the seed
 of `og-render` and is deleted once its code has moved.
 
+## Phase 2, terrain and water round (2026-10-19)
+
+Branch `p2-terrain-water`, 0ee78f1..HEAD on 2dae5fa. Closes owed row 24.
+
+- **Terrain** (0ee78f1, 290f4a4, 9a9d6da, 5be9281): a `type terrain`
+  .ogt (a 16-bit grey PNG or an EXR heightmap, an RGBA control map, up to
+  four layers with slope and altitude rules) cooked into zlib'd 16-bit
+  tiles of 128 samples, deterministically; drawn by og-render as a
+  geometry clipmap (nested `ring` × `ring` levels snapped to twice their
+  spacing, the finer level's hole cut from one index buffer, CDLOD's morph
+  at the edges: no cracks at six camera positions, fewer levels from afar),
+  normals built on the GPU, layers planar or triplanar weighted by control
+  map × slope × altitude and sharpened by their heights, casting and
+  receiving cascaded and local shadows under the fog; a rapier height
+  field (SHAPE_HEIGHTFIELD, split along the renderer's diagonal) that the
+  character controller walks on; a navmesh `.ogt`'s `terrain` entry bakes
+  its walkable slopes. IDL module `terrain`: og.Terrain, og.terrain.load,
+  sample, bounds, edit (raise, lower, flatten, smooth, paint, seen by the
+  renderer, physics and sample), layer, setLayer; og-game §11 and
+  `wiki/terrain.md`.
+- **Water** (row 24; 0ee78f1, 5be9281): og.Water's planarReflection (the
+  camera mirrored in the surface, an oblique near plane at the water,
+  0.25 to 1 of the resolution, cheaper than the screen-space march it
+  replaces), shadows (0 to 1), caustics on what lies below, and the
+  underwater view (the water's fog, Snell's window from below).
+- **Scatter** (b35a73b, fd4456d): og.TerrainScatter grows instanced copies
+  of a mesh over a layer near the camera, fixed to a grid on the terrain,
+  shrinking away with distance; og-tests' terrain-grass scene.
+- **fx-showcase** (15ff230): the `terrain` station, a 256 m valley with a
+  path painted in the control map, a lake with a planar reflection of the
+  mountain, and a character walking up a knoll, on all four tiers.
+- **References**: og-tests terrain-near, -mid, -far, -grass,
+  water-planar, -shadows, -underwater on metal and vulkan-cpu (reproduced
+  at RMSE 0; every earlier vulkan-cpu reference still passes); the
+  fx-showcase station on metal, vulkan-cpu, webgpu and webgl2.
+- **Costs and frame times** (`tests/evidence/P2/terrain-water/`): terrain
+  +0.1 to +0.55 ms on the M4 Pro, its shadow passes +0.2 to +0.35 ms,
+  water shadows and caustics within noise, the underwater view +0.4 ms,
+  the 36,000-tuft grass +4.1 to +4.5 ms, all CPU submit. Every scene draws
+  in under 2.5 ms on metal (grass 4.3 ms); the terrain station's median
+  frame is 1.34 ms on Chrome WebGPU and 2.43 ms on WebGL2, under the
+  8.3 ms desktop budget.
+- **Gate**: `OG_GATE_JOBS=2 scripts/check.sh --all` at ad06e6e,
+  2026-10-19, Apple M4 Pro shared with four other agents' work:
+  **PASSED, 9 of 9 steps in 559 s** (9 min 19 s): fmt 3 s, clippy 14 s,
+  wasm-build 184 s, test 219 s, wasm-opt 200 s, size-gate 61 s, drift 6 s,
+  bun-test 150 s, determinism 2 s.
+- **Wasm**: publish wasm 2,978,461 B brotli, 71.0 % of the budget
+  (+35,281 B over 2,943,180). The terrain's load-time decoding lives in
+  og-cook and miniz_oxide, both at opt-level z in `[profile.wasm]`.
+- **Not done**: terrains are decoded whole at load, not streamed tile by
+  tile; a terrain lies along world x and z (its entity's rotation and
+  scale are ignored); edits are asset changes and are not in snapshots;
+  scattered copies draw without per-copy alpha fade (they shrink) and the
+  scatter is rebuilt on the CPU every frame (4.3 ms for 36,000 copies; a
+  GPU placement pass would remove it); lavapipe draws no shore foam on
+  `terrain-far`'s 24 km single-quad sea (not investigated).
+
 ## Status 2026-10-19, E7 round
 
 Phase 1 is closed by the E7 round (tag `phase1-e7`). Against
@@ -109,7 +167,7 @@ resource only the owner can give.
 | 21 | Pads beyond the first in og-ui | E2 | M | engine, phase 2 | open |
 | 22 | Browser runs of og-tests' own gfx scenes (a wasm harness) and GL-tier references (`msaa` among them) | M3, E2 | M | engine, phase 2 | open |
 | 23 | Shader hooks on skinned meshes; shadows and the depth prepass displaced by `vertex_offset` | E5 | M | engine, phase 2 | open |
-| 24 | Planar water reflection, shadowed water, an underwater view | E5 | L | engine, phase 2 | open |
+| 24 | Planar water reflection, shadowed water, an underwater view | E5 | L | engine, phase 2 | done, 0ee78f1 (og-render), 5be9281 (og.Water fields), 15ff230 (fx-showcase terrain station) |
 | 25 | More than four metaball fluids a frame, fluids that interact | E5 | M | engine, phase 2 | open |
 | 26 | Cloth self-collision | E5 | M | engine, phase 2 | open |
 | 27 | 2D ragdolls | E5 | M | engine, phase 2 | open |
