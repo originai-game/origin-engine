@@ -123,6 +123,7 @@ export interface WebExtras {
   og_web_fail_inflated?(key: number, reason: string): void;
   og_web_bundle_files(manifest: string): string;
   og_web_texture_ktx2(manifest: string, id: string, bytes: Uint8Array): Uint8Array;
+  og_web_pack_ktx2?(manifest: string, pack: Uint8Array): Array<string | Uint8Array>;
   og_web_attach_canvas(engine: number, canvas: OffscreenCanvas, webgl: boolean): Promise<string>;
   og_web_set_viewport(engine: number, viewport: string): string;
   og_web_resize?(engine: number, width: number, height: number): void;
@@ -199,11 +200,18 @@ export interface Preloaded {
   readonly textures: number;
   /** The GPU format this device would take; RGBA8 is what is uploaded until og-render accepts compressed formats. */
   readonly textureFormat: TextureFormat;
+  /** Outputs of streaming groups, left for their packs (fetched when a group loads). */
+  readonly streamed: number;
+  /** The bundle's manifest text (empty when it could not be fetched). */
+  readonly manifest: string;
 }
 
 /**
- * Fetch the bundle under `root` into the wasm: the manifest, every blob, and
- * every Basis texture transcoded to RGBA8 (level 0).
+ * Fetch the bundle under `root` into the wasm: the manifest, every blob of
+ * the first group (everything no streaming group holds, the proxies
+ * included), and every Basis texture transcoded to RGBA8 (level 0). A
+ * streaming group's outputs are not fetched: the engine reads its pack
+ * (`cooked/stream/<name>.ogb`) through the fetcher when the group loads.
  */
 export async function preloadBundle(
   glue: WebExtras,
@@ -220,11 +228,12 @@ export async function preloadBundle(
     manifest = new TextDecoder().decode(await bytesOf(manifestPath));
   } catch (e) {
     glue.og_web_fail_file(manifestPath, `cannot fetch ${manifestPath} (${e instanceof Error ? e.message : String(e)}); run og cook and serve cooked/ next to the page`);
-    return { files: 0, failed: 1, textures: 0, textureFormat: pickFormat(compressions) };
+    return { files: 0, failed: 1, textures: 0, textureFormat: pickFormat(compressions), streamed: 0, manifest: "" };
   }
   glue.og_web_put_file(manifestPath, new TextEncoder().encode(manifest));
-  const listed = JSON.parse(glue.og_web_bundle_files(manifest)) as Array<{ id: string; file: string; type: string }> | { error: string };
-  if (!Array.isArray(listed)) throw new Error(`${manifestPath}: ${listed.error}`);
+  const all = JSON.parse(glue.og_web_bundle_files(manifest)) as Array<{ id: string; file: string; type: string; group?: string }> | { error: string };
+  if (!Array.isArray(all)) throw new Error(`${manifestPath}: ${all.error}`);
+  const listed = all.filter((o) => o.group === undefined);
   let fetched = 0;
   let failed = 0;
   const blobs = new Map<string, Uint8Array>();
@@ -259,7 +268,31 @@ export async function preloadBundle(
     }
     if (!received) progress(0.8 + 0.2 * ((i + 1) / textures.length), "transcode");
   }
-  return { files: listed.length - failed, failed, textures: transcoded, textureFormat };
+  return { files: listed.length - failed, failed, textures: transcoded, textureFormat, streamed: all.length - listed.length, manifest };
+}
+
+/**
+ * What the engine's fetcher does with a file it asks for after the boot: a
+ * streaming group's pack has its Basis textures transcoded and handed over
+ * first, so that every texture in it is ready when the engine reads the
+ * pack; any other file is handed over as fetched.
+ */
+export function installFetcher(glue: WebExtras, manifest: string, basis: { js: string; wasm: string } | undefined): void {
+  let transcoder: Promise<BasisTranscoder> | null = null;
+  const put = async (path: string, bytes: Uint8Array) => {
+    const pairs = /\/stream\/[^/]+\.ogb$/.test(path) && glue.og_web_pack_ktx2 ? glue.og_web_pack_ktx2(manifest, bytes) : [];
+    for (let i = 0; i + 1 < pairs.length; i += 2) {
+      transcoder ??= basis ? loadBasisTranscoder(basis.js, basis.wasm) : loadBasisTranscoder();
+      const out = transcodeKtx2(await transcoder, pairs[i + 1] as Uint8Array, "rgba8");
+      glue.og_web_put_texture(pairs[i] as string, out.width, out.height, out.levels[0]!, out.srgb);
+    }
+    glue.og_web_put_file(path, bytes);
+  };
+  glue.og_web_set_fetcher((path: string) => {
+    bytesOf(path)
+      .then((bytes) => put(path, bytes))
+      .catch((e: unknown) => glue.og_web_fail_file(path, `cannot fetch ${path} (${e instanceof Error ? e.message : String(e)})`));
+  });
 }
 
 /**
@@ -524,12 +557,7 @@ export function startWorker(game: GameToken): void {
         if (data.root !== undefined) {
           const compressions = await deviceCompressions(!!data.webgl);
           loaded = await preloadBundle(glue, data.root, data.basis, compressions, progress, data.expect ? received : undefined);
-          glue.og_web_set_fetcher((path: string) => {
-            bytesOf(path).then(
-              (bytes) => glue.og_web_put_file(path, bytes),
-              (e) => glue.og_web_fail_file(path, `cannot fetch ${path} (${e instanceof Error ? e.message : String(e)})`),
-            );
-          });
+          installFetcher(glue, loaded.manifest, data.basis);
         }
         const created = createEngine(game, {
           ...(data.seed === undefined ? {} : { seed: data.seed }),

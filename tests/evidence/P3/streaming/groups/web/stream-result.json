@@ -1,0 +1,341 @@
+{
+ "failures": 0,
+ "checks": [
+  {
+   "check": "the first frame draws the proxy before any group is wanted",
+   "ok": true,
+   "detail": {
+    "tick": 3,
+    "hue": "grey",
+    "shot": "online-00-start.png"
+   }
+  },
+  {
+   "check": "each zone draws its group's own texture (transcoded from the pack) once it is resident",
+   "ok": true,
+   "detail": {
+    "start": {
+     "tick": 3,
+     "hue": "grey",
+     "shot": "online-00-start.png"
+    },
+    "meadow": {
+     "tick": 120,
+     "hue": "red",
+     "shot": "online-01-meadow.png"
+    },
+    "cave": {
+     "tick": 340,
+     "hue": "green",
+     "shot": "online-02-cave.png"
+    },
+    "tower": {
+     "tick": 500,
+     "hue": "blue",
+     "shot": "online-03-tower.png"
+    }
+   }
+  },
+  {
+   "check": "the boot fetches no pack and no grouped output's own file",
+   "ok": true,
+   "detail": [
+    "/game/index.html",
+    "/game/play.js",
+    "/game/manifest.webmanifest",
+    "/game/icons/icon-512.png",
+    "/game/game.js",
+    "/game/icons/icon-192.png",
+    "/game/origin-engine.js",
+    "/game/origin-engine_bg.wasm",
+    "/game/cooked/.cook.ogt",
+    "/game/cooked/models/hut-a.glb.proxy.ogb",
+    "/game/cooked/models/hut-b.glb.proxy.ogb",
+    "/game/cooked/models/hut-c.glb.proxy.ogb",
+    "/game/cooked/scenes/path.ogt.ogb",
+    "/game/sw.js",
+    "/game/",
+    "/game/audio-worklet.js",
+    "/game/basis/basis_transcoder.js",
+    "/game/basis/basis_transcoder.wasm",
+    "/game/cooked/.cook.ogt",
+    "/game/cooked/models/hut-a.glb.proxy.ogb",
+    "/game/cooked/models/hut-b.glb.proxy.ogb",
+    "/game/cooked/models/hut-c.glb.proxy.ogb",
+    "/game/cooked/scenes/path.ogt.ogb",
+    "/game/game.js",
+    "/game/icons/icon-192.png",
+    "/game/icons/icon-512.png",
+    "/game/index.html",
+    "/game/manifest.webmanifest",
+    "/game/origin-engine.js",
+    "/game/origin-engine_bg.wasm",
+    "/game/play.js"
+   ]
+  },
+  {
+   "check": "no grouped output's own file is ever fetched",
+   "ok": true,
+   "detail": []
+  },
+  {
+   "check": "each pack is fetched once, when its group loads",
+   "ok": true,
+   "detail": [
+    [
+     {
+      "path": "/game/cooked/stream/cave.ogb",
+      "tick": 321
+     }
+    ],
+    [
+     {
+      "path": "/game/cooked/stream/meadow.ogb",
+      "tick": 60
+     }
+    ],
+    [
+     {
+      "path": "/game/cooked/stream/tower.ogb",
+      "tick": 460
+     }
+    ]
+   ]
+  },
+  {
+   "check": "no pack is fetched before its trigger wants its group",
+   "ok": true,
+   "detail": {
+    "meadow": 60,
+    "cave": 321,
+    "tower": 460
+   }
+  },
+  {
+   "check": "the service worker keeps every pack the engine fetched",
+   "ok": true,
+   "detail": [
+    "/game/cooked/stream/meadow.ogb",
+    "/game/cooked/stream/cave.ogb",
+    "/game/cooked/stream/tower.ogb"
+   ]
+  },
+  {
+   "check": "the service worker holds no grouped output's own file",
+   "ok": true,
+   "detail": []
+  },
+  {
+   "check": "sw.js precaches no pack",
+   "ok": true,
+   "detail": []
+  },
+  {
+   "check": "offline, every group the player has been to loads from the service worker's cache",
+   "ok": true,
+   "detail": {
+    "start": {
+     "tick": 19,
+     "hue": "grey",
+     "shot": "offline-00-start.png"
+    },
+    "meadow": {
+     "tick": 121,
+     "hue": "red",
+     "shot": "offline-01-meadow.png"
+    },
+    "cave": {
+     "tick": 340,
+     "hue": "green",
+     "shot": "offline-02-cave.png"
+    },
+    "tower": {
+     "tick": 500,
+     "hue": "blue",
+     "shot": "offline-03-tower.png"
+    }
+   }
+  },
+  {
+   "check": "offline, nothing reached the server",
+   "ok": true,
+   "detail": []
+  },
+  {
+   "check": "no console errors",
+   "ok": true,
+   "detail": []
+  }
+ ],
+ "results": {
+  "online": {
+   "start": {
+    "tick": 3,
+    "hue": "grey",
+    "shot": "online-00-start.png"
+   },
+   "meadow": {
+    "tick": 120,
+    "hue": "red",
+    "shot": "online-01-meadow.png"
+   },
+   "cave": {
+    "tick": 340,
+    "hue": "green",
+    "shot": "online-02-cave.png"
+   },
+   "tower": {
+    "tick": 500,
+    "hue": "blue",
+    "shot": "online-03-tower.png"
+   }
+  },
+  "cached": [
+   "/game/",
+   "/game/audio-worklet.js",
+   "/game/basis/basis_transcoder.js",
+   "/game/basis/basis_transcoder.wasm",
+   "/game/cooked/.cook.ogt",
+   "/game/cooked/models/hut-a.glb.proxy.ogb",
+   "/game/cooked/models/hut-b.glb.proxy.ogb",
+   "/game/cooked/models/hut-c.glb.proxy.ogb",
+   "/game/cooked/scenes/path.ogt.ogb",
+   "/game/game.js",
+   "/game/icons/icon-192.png",
+   "/game/icons/icon-512.png",
+   "/game/index.html",
+   "/game/manifest.webmanifest",
+   "/game/origin-engine.js",
+   "/game/origin-engine_bg.wasm",
+   "/game/play.js",
+   "/game/cooked/stream/meadow.ogb",
+   "/game/cooked/stream/cave.ogb",
+   "/game/cooked/stream/tower.ogb"
+  ],
+  "offline": {
+   "start": {
+    "tick": 19,
+    "hue": "grey",
+    "shot": "offline-00-start.png"
+   },
+   "meadow": {
+    "tick": 121,
+    "hue": "red",
+    "shot": "offline-01-meadow.png"
+   },
+   "cave": {
+    "tick": 340,
+    "hue": "green",
+    "shot": "offline-02-cave.png"
+   },
+   "tower": {
+    "tick": 500,
+    "hue": "blue",
+    "shot": "offline-03-tower.png"
+   }
+  },
+  "requests": [
+   {
+    "path": "/game/cooked/.cook.ogt",
+    "tick": 0
+   },
+   {
+    "path": "/game/cooked/models/hut-a.glb.proxy.ogb",
+    "tick": 0
+   },
+   {
+    "path": "/game/cooked/models/hut-b.glb.proxy.ogb",
+    "tick": 0
+   },
+   {
+    "path": "/game/cooked/models/hut-c.glb.proxy.ogb",
+    "tick": 0
+   },
+   {
+    "path": "/game/cooked/scenes/path.ogt.ogb",
+    "tick": 0
+   },
+   {
+    "path": "/game/cooked/.cook.ogt",
+    "tick": 1
+   },
+   {
+    "path": "/game/cooked/models/hut-a.glb.proxy.ogb",
+    "tick": 1
+   },
+   {
+    "path": "/game/cooked/models/hut-b.glb.proxy.ogb",
+    "tick": 1
+   },
+   {
+    "path": "/game/cooked/models/hut-c.glb.proxy.ogb",
+    "tick": 1
+   },
+   {
+    "path": "/game/cooked/scenes/path.ogt.ogb",
+    "tick": 1
+   },
+   {
+    "path": "/game/cooked/stream/meadow.ogb",
+    "tick": 60
+   },
+   {
+    "path": "/game/cooked/stream/cave.ogb",
+    "tick": 321
+   },
+   {
+    "path": "/game/cooked/stream/tower.ogb",
+    "tick": 460
+   }
+  ],
+  "build": {
+   "stream": {
+    "first": {
+     "files": 5,
+     "bytes": 29611
+    },
+    "groups": [
+     {
+      "name": "cave",
+      "file": "cooked/stream/cave.ogb",
+      "bytes": 44768,
+      "sha256": "c66eacdd26ac7f40e9fb8c8a1dac3485557065b6a64f7b31512eaa961f35bf54",
+      "priority": 2,
+      "memory": 277949,
+      "assets": [
+       "models/hut-b.glb",
+       "audio/blip.wav"
+      ]
+     },
+     {
+      "name": "meadow",
+      "file": "cooked/stream/meadow.ogb",
+      "bytes": 36648,
+      "sha256": "d04430836999667eb57fa369f569e57728e8688904b3699a4f2008d014d0c0f7",
+      "priority": 1,
+      "memory": 583374,
+      "assets": [
+       "models/hut-a.glb",
+       "textures/sign.png"
+      ]
+     },
+     {
+      "name": "tower",
+      "file": "cooked/stream/tower.ogb",
+      "bytes": 35585,
+      "sha256": "1265eecca6718a1b3cb9bda5e5b23b9165ae54d0e31d9658498e4cfee8246aaf",
+      "priority": 0,
+      "memory": 233849,
+      "assets": [
+       "models/hut-c.glb"
+      ]
+     }
+    ]
+   },
+   "total": {
+    "bytes": 12600967,
+    "compressed": 3472030
+   }
+  }
+ }
+}

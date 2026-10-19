@@ -238,8 +238,10 @@ fn json_str(s: &str) -> String {
 }
 
 /// The cooked outputs a bundle's manifest lists, for the Worker's preload:
-/// JSON `[{ "id", "file", "type" }]` in manifest order, or
-/// `{ "error": reason }` for a manifest that does not parse.
+/// JSON `[{ "id", "file", "type" }]` in manifest order, with `"group"` on an
+/// output of a streaming group (it is read from the group's pack, not from
+/// its own file), or `{ "error": reason }` for a manifest that does not
+/// parse.
 #[wasm_bindgen]
 pub fn og_web_bundle_files(manifest: String) -> String {
     match og_cook::runtime::Bundle::from_manifest(&manifest) {
@@ -248,8 +250,13 @@ pub fn og_web_bundle_files(manifest: String) -> String {
                 .manifest()
                 .outputs()
                 .map(|o| {
+                    let group = o
+                        .group
+                        .as_deref()
+                        .map(|g| format!(",\"group\":{}", json_str(g)))
+                        .unwrap_or_default();
                     format!(
-                        "{{\"id\":{},\"file\":{},\"type\":{}}}",
+                        "{{\"id\":{},\"file\":{},\"type\":{}{group}}}",
                         json_str(&o.id),
                         json_str(&o.file),
                         json_str(&o.ty)
@@ -289,6 +296,40 @@ pub fn og_web_texture_ktx2(manifest: String, id: String, bytes: Vec<u8>) -> Vec<
         Ok(t) if t.meta.codec != og_cook::format::codec::RGBA8 => t.ktx2,
         _ => Vec::new(),
     }
+}
+
+/// The Basis-coded textures of a streaming group's pack, for the Worker's
+/// transcoder before it hands the pack to the engine: `[id, ktx2, ...]`
+/// (pairs). Empty for a pack or manifest that does not read (the runtime
+/// then fails the group with the reason) and for RGBA8-coded textures.
+#[wasm_bindgen]
+pub fn og_web_pack_ktx2(manifest: String, pack: Vec<u8>) -> js_sys::Array {
+    let out = js_sys::Array::new();
+    let (Ok(bundle), Ok(files)) = (
+        og_cook::runtime::Bundle::from_manifest(&manifest),
+        og_cook::runtime::unpack(&pack),
+    ) else {
+        return out;
+    };
+    for (file, bytes) in files {
+        let Some(o) = bundle
+            .manifest()
+            .outputs()
+            .find(|o| o.file == file && o.ty == "og.Texture")
+        else {
+            continue;
+        };
+        let words = aligned(&bytes);
+        // SAFETY: the words hold `bytes.len()` initialised bytes.
+        let view = unsafe { std::slice::from_raw_parts(words.as_ptr().cast::<u8>(), bytes.len()) };
+        if let Ok(t) = bundle.texture(&o.id, view)
+            && t.meta.codec != og_cook::format::codec::RGBA8
+        {
+            out.push(&JsValue::from_str(&o.id));
+            out.push(&js_sys::Uint8Array::from(t.ktx2.as_slice()));
+        }
+    }
+    out
 }
 
 /// The play surface the UI lays out in: `{ width, height, dpr, safeArea?,

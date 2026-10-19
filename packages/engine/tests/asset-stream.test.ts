@@ -18,7 +18,7 @@
 // changes the simulation (the world hash); dump_stream misses the groups or
 // the peak.
 import { beforeAll, expect, test } from "bun:test";
-import { copyFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { og, defineSystem } from "@origingame/engine";
@@ -28,8 +28,12 @@ import { encodePng } from "../src/node/png.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 import { decodeCapture, pixel, type Image } from "./support/png.ts";
 import { ogBin } from "./support/og-bin.ts";
+import { DEFAULT_PUBLISH, settingsOf, webBuild } from "../src/node/web-build.ts";
 
-declare const Bun: { spawnSync(cmd: string[]): { exitCode: number; stderr: Uint8Array } };
+declare const Bun: {
+  spawnSync(cmd: string[]): { exitCode: number; stderr: Uint8Array };
+  CryptoHasher: new (a: string) => { update(d: Uint8Array): unknown; digest(e: "hex"): string };
+};
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
 const repo = join(pkg, "..", "..");
@@ -67,6 +71,46 @@ entity "cave-mouth" {
     scale 40 20 40
   }
 }
+`;
+
+/**
+ * The staged project's game, for its web build (tests/web/stream.ts plays
+ * it in Chrome): the scene, the three huts and a sun, and a camera that
+ * flies the path at 0.5 m a tick from z = 20 to z = -320.
+ */
+const MAIN = `import { og, defineSystem, type World } from "@origingame/engine";
+
+function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
+  if (!r.ok) throw new Error(r.reason);
+  return r.value;
+}
+
+const Fly = defineSystem("Fly", { writes: [og.Camera] }, (_q, _t, world: World) => {
+  const cam = world.resource(og.Camera);
+  if (!cam.ok) return;
+  const z = Math.max(-320, 20 - 0.5 * world.tick);
+  cam.value.position = { x: 0, y: 0, z };
+  cam.value.quaternion = og.transform.lookAt({ x: 0, y: 0, z }, { x: 0, y: 0, z: z - 1 });
+  cam.value.fov = 50;
+  cam.value.far = 500;
+});
+
+export default og.game({
+  tick: 60,
+  seed: 1,
+  systems: [Fly],
+  start(world: World) {
+    world.instantiate(must(og.load.scene(world, "scenes/path.ogt")));
+    for (const [name, z] of [["hut-a", -60], ["hut-b", -160], ["hut-c", -260]] as const) {
+      must(world.instantiate(must(og.load.gltf(world, \`models/\${name}.glb\`)), { name, position: { x: 0, y: 0, z } }));
+    }
+    must(og.load.texture(world, "textures/sign.png"));
+    must(og.load.sound(world, "audio/blip.wav"));
+    const sun = must(world.spawn({ name: "sun" }));
+    world.insert(sun, og.DirectionalLight, { intensity: 2 });
+    world.set(sun, og.Transform, { quaternion: og.transform.lookAt({ x: 0, y: 0, z: 0 }, { x: 0.3, y: -0.5, z: -1 }) });
+  },
+});
 `;
 
 /** A solid-colour RGBA image. */
@@ -167,7 +211,7 @@ beforeAll(() => {
     join(root, "project.ogt"),
     'type project\nversion 1\n---\nname "Asset stream fixture"\nid "asset-stream-fixture"\nengine "0.0.1"\nentry "main.ts"\nprofile "3d"\ntick 60\nseed 1\n',
   );
-  writeFileSync(join(root, "main.ts"), "export {};\n");
+  writeFileSync(join(root, "main.ts"), MAIN);
   const colours: Array<[string, [number, number, number]]> = [
     ["hut-a", [230, 20, 20]],
     ["hut-b", [20, 230, 20]],
@@ -386,3 +430,45 @@ test("what is resident never changes the simulation: the same flight hashes the 
   };
   expect(fly(0)).toBe(fly(undefined));
 });
+
+test("og build --publish ships each group as its pack beside the first group, and precaches only the first group", async () => {
+  // What each group takes once loaded, from the runtime, to hold the build's manifest to.
+  const engine = start(false);
+  const runtime = Object.fromEntries(budget(engine).groups.map((g) => [g.name, g.memory]));
+  const dist = join(evidence, "publish");
+  const settings = { ...settingsOf(root), publish: { ...DEFAULT_PUBLISH, gate: "none" as const } };
+  const b = await webBuild(root, join(root, "main.ts"), dist, true, settings);
+  if (!b.ok) throw new Error(b.reason);
+  const sha = (f: string) => {
+    const h = new Bun.CryptoHasher("sha256");
+    h.update(new Uint8Array(readFileSync(join(dist, f))));
+    return h.digest("hex");
+  };
+  // A grouped output is in its pack only; the proxies, the scene and the manifest stay in the first group.
+  const grouped = ["models/hut-a.glb.ogb", "models/hut-a.glb.tex0.ogb", "textures/sign.png.ogb", "models/hut-b.glb.ogb", "models/hut-b.glb.tex0.ogb", "audio/blip.wav.ogb", "models/hut-c.glb.ogb", "models/hut-c.glb.tex0.ogb"];
+  for (const f of grouped) expect([f, existsSync(join(dist, "cooked", f))]).toEqual([f, false]);
+  const first = [".cook.ogt", "models/hut-a.glb.proxy.ogb", "models/hut-b.glb.proxy.ogb", "models/hut-c.glb.proxy.ogb", "scenes/path.ogt.ogb"];
+  for (const f of first) expect([f, existsSync(join(dist, "cooked", f))]).toEqual([f, true]);
+  const packs = ["cooked/stream/cave.ogb", "cooked/stream/meadow.ogb", "cooked/stream/tower.ogb"];
+  // og-build.json lists the groups' packs with their bytes, hashes and what they take.
+  const m = JSON.parse(readFileSync(join(dist, "og-build.json"), "utf8")) as { files: Array<{ path: string }>; stream: { first: { files: number; bytes: number }; groups: Array<{ name: string; file: string; bytes: number; sha256: string; priority: number; memory: number; assets: string[] }> } };
+  expect(m.stream.groups.map((g) => [g.name, g.file, g.priority, g.memory, g.assets])).toEqual([
+    ["cave", packs[0], 2, runtime.cave, ["models/hut-b.glb", "audio/blip.wav"]],
+    ["meadow", packs[1], 1, runtime.meadow, ["models/hut-a.glb", "textures/sign.png"]],
+    ["tower", packs[2], 0, runtime.tower, ["models/hut-c.glb"]],
+  ]);
+  for (const g of m.stream.groups) expect([g.file, g.bytes, g.sha256]).toEqual([g.file, statSync(join(dist, g.file)).size, sha(g.file)]);
+  for (const p of packs) expect(m.files.some((f) => f.path === p)).toBeTrue();
+  const firstBytes = first.reduce((n, f) => n + statSync(join(dist, "cooked", f)).size, 0);
+  expect(m.stream.first).toEqual({ files: first.length, bytes: firstBytes });
+  // The service worker precaches the first group and caches a pack when it is fetched.
+  const sw = readFileSync(join(dist, "sw.js"), "utf8");
+  const config = JSON.parse(/^const OG_SW=(.*);$/m.exec(sw)![1]!) as { files: string[]; lazy: string[] };
+  const cooked = config.files.filter((f) => f.startsWith("cooked/")).sort();
+  expect(cooked).toEqual(first.map((f) => `cooked/${f}`).sort());
+  expect(config.lazy).toEqual(packs);
+  // The shell's boot progress expects the first group's bytes only (the manifest is not counted).
+  const html = readFileSync(join(dist, "index.html"), "utf8");
+  expect(html).toContain(`"cooked":${firstBytes - statSync(join(dist, "cooked", ".cook.ogt")).size}`);
+  writeFileSync(join(evidence, "publish.json"), JSON.stringify({ firstGroup: m.stream.first, groups: m.stream.groups, precachedCooked: cooked, lazy: config.lazy, total: b.total }, null, 1) + "\n");
+}, 120_000);

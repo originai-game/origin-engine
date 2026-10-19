@@ -64,3 +64,10 @@ near the edge keep their full size where it asserted they had shrunk
 | Broken | Edit | Failed |
 |---|---|---|
 | a resident model's materials | `og-runtime/src/stream.rs` `upgrade`: the full model's materials never set (`set_material` skipped), so the proxy's untextured materials stay | `three groups load and unload along the path...`: the frames at z -40, -150 and -230 read `grey` where `red`, `green` and `blue` were expected |
+| the publish split | `packages/engine/src/node/web-build.ts`: the first group's precache list no longer leaves out the packs (`&& !packs.has(f)` removed) | `og build --publish ships each group as its pack beside the first group...`: the OG_SW precached files equal the first group (the three packs were in it) |
+
+## Streaming groups in Chrome (`packages/engine/tests/web/stream.ts`)
+
+| Broken | Edit | Failed |
+|---|---|---|
+| the service worker's lazy cache | `packages/engine/shell/sw.ts` fetch: a fetched pack never put in the cache (`cache.put` removed) | "the service worker keeps every pack the engine fetched" (no pack cached) and "offline, every group the player has been to loads from the service worker's cache" (every zone `grey`, its proxy) |

@@ -15,7 +15,9 @@
 //   audio-worklet.js           the AudioWorklet the shell loads on the first gesture
 //   origin-engine.js, origin-engine_bg.wasm   the web host (dist/web, or dist/web-publish with --publish)
 //   basis/                     Binomial's Basis transcoder and its licence
-//   cooked/                    the project's cooked bundle
+//   cooked/                    the project's cooked bundle: the first group (everything no streaming
+//                              group holds, the proxies included) and each streaming group's pack,
+//                              cooked/stream/<name>.ogb; a grouped output's own file is left out
 //   icons/                     the project's icon, or the brand tile at 192 and 512 px
 //   og-build.json              the build manifest (the Player's contract; shape in docs/web-export.md)
 //   _headers                   COOP/COEP/CORP and caching for static hosts (Netlify/Cloudflare Pages format)
@@ -150,6 +152,59 @@ export interface BuildManifest {
   readonly version: string;
   readonly files: readonly BuildFile[];
   readonly total: { readonly files: number; readonly bytes: number };
+  /**
+   * The bundle split by streaming group: the first group is what the boot
+   * fetches and the service worker precaches; each other group is one pack
+   * the engine fetches when the group loads (and the service worker caches
+   * then). Null for a bundle without streaming groups.
+   */
+  readonly stream: {
+    readonly first: { readonly files: number; readonly bytes: number };
+    readonly groups: ReadonlyArray<StreamGroupFile>;
+  } | null;
+}
+
+/** One streaming group's pack in og-build.json. */
+export interface StreamGroupFile {
+  readonly name: string;
+  /** Its pack, a path of `files`. */
+  readonly file: string;
+  readonly bytes: number;
+  readonly sha256: string;
+  readonly priority: number;
+  /** What its assets take once loaded. */
+  readonly memory: number;
+  readonly assets: readonly string[];
+}
+
+/** A cooked manifest's streaming groups and the files of their outputs (written by og cook; crates/og-cook/src/runtime.rs). */
+function streamGroupsOf(manifest: string): { groups: Array<{ name: string; file: string; priority: number; memory: number; assets: string[] }>; grouped: string[] } {
+  const groups: Array<{ name: string; file: string; priority: number; memory: number; assets: string[] }> = [];
+  const grouped: string[] = [];
+  let output: { file?: string; group?: boolean } | null = null;
+  let group: (typeof groups)[number] | null = null;
+  const unquote = (v: string) => JSON.parse(v) as string;
+  for (const line of manifest.split("\n")) {
+    let m: RegExpExecArray | null;
+    if ((m = /^stream ("(?:[^"\\]|\\.)*") \{$/.exec(line))) {
+      group = { name: unquote(m[1]!), file: "", priority: 0, memory: 0, assets: [] };
+      groups.push(group);
+    } else if (/^\S/.test(line)) group = null;
+    if (group) {
+      if ((m = /^  file ("(?:[^"\\]|\\.)*")$/.exec(line))) group.file = unquote(m[1]!);
+      else if ((m = /^  priority (-?\d+)$/.exec(line))) group.priority = Number(m[1]);
+      else if ((m = /^  memory (\d+)$/.exec(line))) group.memory = Number(m[1]);
+      else if ((m = /^  asset ("(?:[^"\\]|\\.)*")$/.exec(line))) group.assets.push(unquote(m[1]!));
+      continue;
+    }
+    if (/^  output /.test(line)) output = {};
+    else if (output && /^  \}$/.test(line)) {
+      if (output.group && output.file) grouped.push(output.file);
+      output = null;
+    } else if (output && (m = /^    file ("(?:[^"\\]|\\.)*")$/.exec(line))) output.file = unquote(m[1]!);
+    else if (output && /^    group "/.test(line)) output.group = true;
+  }
+  return { groups, grouped };
 }
 
 export interface WebBuild {
@@ -394,6 +449,10 @@ export async function webBuild(project: string, entry: string, out: string, publ
   for (const f of ["origin-engine.js", "origin-engine_bg.wasm"]) cpSync(join(host, f), join(out, f));
   cpSync(vendor, join(out, "basis"), { recursive: true });
   cpSync(cooked, join(out, "cooked"), { recursive: true });
+  // Streaming groups: a grouped output is read from its group's pack, so its own file is not shipped.
+  const split = streamGroupsOf(readFileSync(join(cooked, ".cook.ogt"), "utf8"));
+  for (const f of split.grouped) rmSync(join(out, "cooked", f), { force: true });
+  const packs = new Set(split.groups.map((g) => `cooked/${g.file}`));
 
   // Icons: the project's, or the brand tile (shell/brand, from the platform's packages/brand).
   mkdirSync(join(out, "icons"), { recursive: true });
@@ -411,9 +470,8 @@ export async function webBuild(project: string, entry: string, out: string, publ
 
   // What the boot fetches, so its progress is the bytes received.
   const wasmBytes = statSync(join(out, "origin-engine_bg.wasm")).size;
-  const cookedBytes = walk(join(out, "cooked"))
-    .filter((f) => !f.endsWith(".cook.ogt"))
-    .reduce((n, f) => n + statSync(f).size, 0);
+  const firstGroup = walk(join(out, "cooked")).filter((f) => !packs.has(relative(out, f).split("\\").join("/")));
+  const cookedBytes = firstGroup.filter((f) => !f.endsWith(".cook.ogt")).reduce((n, f) => n + statSync(f).size, 0);
   const config = {
     engine: ENGINE_VERSION,
     build: publish ? "publish" : "dev",
@@ -462,8 +520,9 @@ export async function webBuild(project: string, entry: string, out: string, publ
   if (publish) {
     const sw = await bundleScript(join(SHELL_DIR, "sw.ts"), true);
     if (typeof sw !== "string") return fail(`bundling sw.js: ${sw.error}`);
-    const precache = fileRows().map((f) => f.path).filter((f) => !NOT_PRECACHED.test(f));
-    writeFileSync(join(out, "sw.js"), `const OG_SW=${JSON.stringify({ version: version.slice(0, 16), files: ["./", ...precache] })};\n${sw}`);
+    // The first group is precached; a streaming group's pack is cached when the engine fetches it.
+    const precache = fileRows().map((f) => f.path).filter((f) => !NOT_PRECACHED.test(f) && !packs.has(f));
+    writeFileSync(join(out, "sw.js"), `const OG_SW=${JSON.stringify({ version: version.slice(0, 16), files: ["./", ...precache], lazy: [...packs].sort() })};\n${sw}`);
     version = identity(fileRows());
   }
 
@@ -485,6 +544,16 @@ export async function webBuild(project: string, entry: string, out: string, publ
     version,
     files: rows,
     total: { files: rows.length, bytes: rows.reduce((n, f) => n + f.bytes, 0) },
+    stream:
+      split.groups.length === 0
+        ? null
+        : {
+            first: { files: firstGroup.length, bytes: firstGroup.reduce((n, f) => n + statSync(f).size, 0) },
+            groups: split.groups.map((g) => {
+              const row = rows.find((f) => f.path === `cooked/${g.file}`);
+              return { name: g.name, file: `cooked/${g.file}`, bytes: row?.bytes ?? 0, sha256: row?.sha256 ?? "", priority: g.priority, memory: g.memory, assets: g.assets };
+            }),
+          },
   };
   writeFileSync(join(out, BUILD_MANIFEST), JSON.stringify(manifest, null, 2) + "\n");
 
