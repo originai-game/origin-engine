@@ -28,6 +28,7 @@ mod layout;
 mod motion;
 mod nav;
 mod probe;
+mod scroll;
 pub mod shape;
 pub mod skin;
 mod style;
@@ -57,7 +58,8 @@ pub use style::{
 pub use text::{FontMetrics, UiFont};
 pub use ui::{
     ButtonDesc, ButtonVariant, ControlSize, FieldDesc, Fonts, IconAtlas, ImageDesc, LabelDesc,
-    PanelDesc, ProgressDesc, Response, ScrollDesc, SliderDesc, Ui, UiDesc, UiFrame, Viewport,
+    PanelDesc, ProgressDesc, Response, ScrollAxes, ScrollDesc, SliderDesc, Ui, UiDesc, UiFrame,
+    Viewport,
 };
 pub use widgets::{
     ActionButtonDesc, AnchorDesc, ChipDesc, CooldownDesc, DialogueDesc, DialogueResponse, DpadDesc,

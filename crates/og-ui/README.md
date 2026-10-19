@@ -47,7 +47,7 @@ resolves against, so a scripted `touch_move_to` and a click agree.
 |---|---|---|
 | `open(id, Element)` / `close() -> Response` | a container (`row`, `column`, `container` take a closure) | — |
 | `panel(id, PanelDesc, f)` | a card: `surface`, `radius.card`, `space.lg` padding, `space.md` gap, a column unless `row` | — |
-| `scroll(id, ScrollDesc, f)` | a vertical scroll column: wheel or drag scrolls it, it clips its content, a capsule indicator shows the position | — |
+| `scroll(id, ScrollDesc, f)` | a scroll column, vertical by default, horizontal or both ways by `ScrollDesc::axes` (`Element::scroll_x` for any container): the wheel (both axes) or a drag scrolls it, a released drag keeps its momentum, it clips its content, a capsule scrollbar per scrolling axis shows the position and a press on one grabs it; nested containers hand off (§Scrolling) | — |
 | `label(id, text, LabelDesc)` | MSDF text; wraps at its width (word breaks; between CJK characters under kinsoku, so no line starts with closing punctuation, a small kana or `ー` nor ends with an opening bracket, and a katakana word stays whole; long words between characters) unless `nowrap`; `align` start/center/end; type step from the ramp | the text |
 | `button(id, text, ButtonDesc) -> Response` | a capsule of `h-control-sm/md/lg`; `Secondary` (neutral fill, default), `Primary` (amber, one per screen), `Quiet`, `Danger`; `disabled` turns neutral and inert; pressed shrinks by `press-scale` | the label |
 | `image(id, ImageDesc)` | a texture region (`uv`, `tint`), or a solid rectangle without a texture | — |
@@ -97,6 +97,35 @@ focus scope are all in `save_state`, so a restored world replays the UI.
 release over another row or cell answers `Response::dropped = Some(source)`
 there, and `dragging(id)` answers the source while the press is held; the
 cell under a drag shows the focus ring.
+
+## Scrolling (`src/scroll.rs`)
+
+A container scrolls vertically (`Element::scroll`), horizontally
+(`Element::scroll_x`; a horizontal scroller never shrinks its children) or
+both ways. Its offsets are UI state, clamped by the layout to its content.
+
+- **The wheel** (`InputFrame::wheel`, both axes) goes to the innermost
+  scroll container under the pointer; what it cannot take, because it has
+  reached its end or does not scroll that way, goes to the container
+  around it, and so on outwards (nested scroll handoff). A drag on a
+  container that holds the press (one started on it, not on a control)
+  moves it the same way, so a sideways strip in a vertical page scrolls the
+  page when dragged up and down.
+- **Momentum.** A drag released while moving keeps its velocity (a running
+  average of the last ticks' movement) as a fling, which slows by
+  `1 − 1/(ticks per second × motion.spring.momentum's response)` a tick
+  (arithmetic only) and stops below 0.1 px a tick, on an axis as it reaches
+  the content's end, or at the next press. Not under reduced motion.
+- **Scrollbars.** A capsule on each scrolling axis (`fill-strong`, at the
+  right edge and the bottom), as long as the view is of the content
+  (at least `space.xl`); a press within 12 px of the edge grabs the bar
+  (the press goes to no control under it) and dragging moves it through
+  the range.
+- Keyboard and gamepad focus moving to a control outside a container's view
+  scrolls it in on both axes.
+
+`tests/widgets.rs` `scroll_views_scroll_both_ways_hand_off_fling_and_grab`
+covers each (and a restore).
 
 ## Layers
 
@@ -514,8 +543,8 @@ font is og-tests' committed MSDF atlas (Noto Sans SC subset, OFL).
   into `UiDesc` (the theme flags exist; nothing sets them from the page yet).
 - Materials: glass (blur needs a render-graph pass) and the dark edge
   light (skins have shadows and glows); icons (iconoir) as an MTSDF atlas.
-- Layout: horizontal and two-axis scrolling, nested scroll chaining,
-  aspect-ratio images.
+- Layout: aspect-ratio images. (Two-axis scrolling, nested handoff,
+  momentum and draggable scrollbars landed in the phase 2 UI round.)
 - **Input**: several touches for widgets other than the touch controls
   (two-finger scroll, pinch). (Pads beyond the first landed in the phase 2
   UI round.)

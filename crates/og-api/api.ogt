@@ -6783,6 +6783,7 @@ module ui {
     field cross Cross "Where children sit across it."
     field wrap bool "Break a row into lines at its inner width."
     field scroll bool "Scroll its content vertically and clip it."
+    field scrollX bool "Scroll its content horizontally and clip it (with scroll: both ways)."
     field interactive bool "Report a Response from close(), as a button does."
     field background Option.Paint "Its fill; null draws none."
     field radius f32 "Corner radius." {
@@ -6825,8 +6826,15 @@ module ui {
     field background Option.Paint "Its fill; null is surface."
   }
 
+  enum ScrollAxes {
+    doc "Which ways a scroll container scrolls."
+    variant vertical "Up and down (the default)."
+    variant horizontal "Left and right."
+    variant both "Both ways."
+  }
+
   struct ScrollDesc {
-    doc "A vertical scroll container: the wheel or a drag scrolls it, it clips its content, a capsule indicator shows the position."
+    doc "A scroll container: the wheel (both axes, deltaX and deltaY) or a drag scrolls it, and a released drag keeps its momentum, slowing over motion.spring.momentum's response (none under reduced motion); it clips its content; a scrollbar on each scrolling axis shows the position, and a press on one grabs and drags it. Nested containers hand off: what the innermost under the pointer cannot take (it reached its end, or does not scroll that way) goes to the one around it."
     desc true
     field width Option.Size "Its width; null fits the content."
     field height Option.Size "Its height; null fits the content."
@@ -6834,6 +6842,7 @@ module ui {
     field gap f32 "Space between children." {
       unit cssPx
     }
+    field axes ScrollAxes "Which ways it scrolls."
   }
 
   struct ImageDesc {

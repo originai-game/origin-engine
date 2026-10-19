@@ -229,6 +229,16 @@ pub(crate) struct State {
     /// The press that focused a field: where it landed, to place the caret.
     pub focus_click: Option<f32>,
     pub scroll: BTreeMap<u64, f32>,
+    /// Horizontal scroll offsets.
+    pub scroll_x: BTreeMap<u64, f32>,
+    /// Each scroll container's ranges and scrollbar lengths, last frame.
+    pub scroll_info: BTreeMap<u64, crate::scroll::ScrollInfo>,
+    /// A released drag's momentum: the container and its velocity per tick.
+    pub fling: Option<(u64, Vec2)>,
+    /// The drag's velocity so far, CSS px per tick.
+    pub drag_v: Vec2,
+    /// A scrollbar the press grabbed.
+    pub thumb: Option<crate::scroll::Thumb>,
     /// Last frame's interactive rectangles in draw order, for hit testing.
     pub hits: Vec<Hit>,
     /// Frames begun: the clock of every animation.
@@ -408,6 +418,17 @@ pub struct ScrollDesc {
     pub height: Size,
     pub padding: Insets,
     pub gap: f32,
+    /// Which ways it scrolls (vertical by default).
+    pub axes: ScrollAxes,
+}
+
+/// Which ways a scroll container scrolls.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ScrollAxes {
+    #[default]
+    Vertical,
+    Horizontal,
+    Both,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -496,7 +517,7 @@ impl Default for Ui {
     }
 }
 
-const STATE_VERSION: u32 = 4;
+const STATE_VERSION: u32 = 5;
 
 /// A skin's `textGlow` size is how far the old four offset copies reached;
 /// the distance-field glow fades to nothing over this many times it.
@@ -704,6 +725,8 @@ impl Ui {
     /// Starts a frame with a root of your own (its size is the viewport; the
     /// safe area is added to its padding; its background covers the whole viewport).
     pub fn begin_with(&mut self, input: InputFrame, viewport: Viewport, root: Element) {
+        // Scrolling first: a press on a scrollbar grabs it before anything under it.
+        let grabbed = self.scroll_input(&input);
         if self.building {
             self.warnings.push(
                 "begin without end: the previous frame was dropped; call ui.end() once per tick"
@@ -744,6 +767,7 @@ impl Ui {
         } else {
             0
         };
+        let hot = grabbed.unwrap_or(hot);
         self.state.hover_ticks = if hot != 0 && hot == self.state.hot {
             self.state.hover_ticks.saturating_add(1)
         } else {
@@ -752,7 +776,7 @@ impl Ui {
         if hot != 0 && hot != self.state.hot && self.hit(hot).is_some_and(|h| h.has(HIT_NAV)) {
             self.sound(crate::skin::UiSound::Hover);
         }
-        if input.pressed && self.hit(hot).is_some_and(|h| h.has(HIT_NAV)) {
+        if input.pressed && grabbed.is_none() && self.hit(hot).is_some_and(|h| h.has(HIT_NAV)) {
             self.sound(crate::skin::UiSound::Press);
         }
         self.state.hot = hot;
@@ -770,26 +794,6 @@ impl Ui {
                 self.state.focus = 0;
             }
             self.state.focus_visible = false;
-        }
-        // Wheel over a scroll container; drag on one that holds the press.
-        if input.wheel.y != 0.0
-            && let Some(h) = self
-                .state
-                .hits
-                .iter()
-                .rev()
-                .find(|h| h.has(HIT_SCROLL) && h.rect.contains(p.x, p.y))
-        {
-            *self.state.scroll.entry(h.key).or_insert(0.0) += input.wheel.y;
-        }
-        if input.down
-            && !input.pressed
-            && self
-                .hit(self.state.active)
-                .is_some_and(|h| h.has(HIT_SCROLL))
-        {
-            let dy = self.state.pointer.y - p.y;
-            *self.state.scroll.entry(self.state.active).or_insert(0.0) += dy;
         }
         let intents = self.intents(&input);
         self.apply_nav(&intents);
@@ -954,7 +958,7 @@ impl Ui {
 
     /// Opens a container; children follow until [`Ui::close`].
     pub fn open(&mut self, id: impl Into<Id>, el: Element) {
-        let kind = match (el.scroll, el.direction) {
+        let kind = match (el.scroll || el.scroll_x, el.direction) {
             (true, _) => "scroll",
             (false, Direction::Row) => "row",
             (false, Direction::Column) => "column",
@@ -1067,7 +1071,8 @@ impl Ui {
                 height: desc.height,
                 padding: desc.padding,
                 gap: desc.gap,
-                scroll: true,
+                scroll: desc.axes != ScrollAxes::Horizontal,
+                scroll_x: desc.axes != ScrollAxes::Vertical,
                 ..Element::default()
             },
         );
@@ -1717,7 +1722,13 @@ impl Ui {
         let dpr = vp.dpr();
         let screen = Rect::new(0.0, 0.0, vp.width, vp.height);
         let scroll = self.state.scroll.clone();
-        let offset = |k: u64| scroll.get(&k).copied().unwrap_or(0.0);
+        let scroll_x = self.state.scroll_x.clone();
+        let offset = |k: u64| {
+            (
+                scroll_x.get(&k).copied().unwrap_or(0.0),
+                scroll.get(&k).copied().unwrap_or(0.0),
+            )
+        };
         layout(
             &mut self.nodes,
             0,
@@ -1836,6 +1847,42 @@ impl Ui {
         for (k, v) in self.state.scroll.iter_mut() {
             *v = v.clamp(0.0, self.nodes[present[k]].max_scroll());
         }
+        self.state
+            .scroll_x
+            .retain(|k, _| present.get(k).is_some_and(|&i| self.nodes[i].el.scroll_x));
+        for (k, v) in self.state.scroll_x.iter_mut() {
+            *v = v.clamp(0.0, self.nodes[present[k]].max_scroll_x());
+        }
+        // Each scroll container's ranges and bar lengths, as drawn.
+        let min_bar = self.theme.space.xl;
+        self.state.scroll_info = order
+            .iter()
+            .filter(|&&i| self.nodes[i].scrolls())
+            .map(|&i| {
+                let n = &self.nodes[i];
+                let range = Vec2::new(n.max_scroll_x(), n.max_scroll());
+                let bar = Vec2::new(
+                    crate::scroll::bar_len(
+                        n.rect.width,
+                        n.w - n.el.padding.horizontal(),
+                        n.content_w,
+                        min_bar,
+                    ),
+                    crate::scroll::bar_len(
+                        n.rect.height,
+                        n.h - n.el.padding.vertical(),
+                        n.content_h,
+                        min_bar,
+                    ),
+                );
+                (n.key, crate::scroll::ScrollInfo { range, bar })
+            })
+            .collect();
+        if let Some((k, _)) = self.state.fling
+            && !present.contains_key(&k)
+        {
+            self.state.fling = None;
+        }
         if !self.input.down || !present.contains_key(&self.state.active) {
             self.state.active = 0;
         }
@@ -1856,7 +1903,7 @@ impl Ui {
                 (scope_of[up], scroller_of[up])
             };
             scope_of[i] = if n.scope { n.key } else { ps };
-            scroller_of[i] = if up != NONE && self.nodes[up].el.scroll {
+            scroller_of[i] = if up != NONE && self.nodes[up].scrolls() {
                 self.nodes[up].key
             } else {
                 pr
@@ -1877,7 +1924,7 @@ impl Ui {
             let outside =
                 r.x > c.right() || r.right() < c.x || r.y > c.bottom() || r.bottom() < c.y;
             let mut flags = 0u8;
-            if n.el.scroll && !n.el.interactive {
+            if n.scrolls() && !n.el.interactive {
                 flags |= HIT_SCROLL;
             }
             if n.el.interactive || n.backdrop {
@@ -2157,7 +2204,7 @@ impl Ui {
             if i != 0 || n.el.background.is_some() {
                 self.node_commands(i, &mut cmds, &snap);
             }
-            if n.el.scroll {
+            if n.scrolls() {
                 leave.push((i, depth_end(i)));
             }
             while let Some(&(s, end)) = leave.last() {
@@ -2166,6 +2213,22 @@ impl Ui {
                 }
                 leave.pop();
                 let sn = &self.nodes[s];
+                let max_x = sn.max_scroll_x();
+                if max_x > 0.0 {
+                    let inner_w = sn.w - sn.el.padding.horizontal();
+                    let track = sn.rect;
+                    let bar_w =
+                        crate::scroll::bar_len(track.width, inner_w, sn.content_w, t.space.xl);
+                    let off = self.state.scroll_x.get(&sn.key).copied().unwrap_or(0.0);
+                    let x = crate::scroll::bar_start(track.x, track.width, bar_w, off, max_x);
+                    let h = t.space.xs;
+                    cmds.push(DrawCmd::Quad {
+                        rect: Rect::new(x, track.bottom() - h - t.space.xxs, bar_w, h).snapped(dpr),
+                        radius: h / 2.0,
+                        color: p.fill_strong.linear(),
+                        clip: sn.clip.intersect(&sn.rect),
+                    });
+                }
                 let max = sn.max_scroll();
                 if max > 0.0 {
                     let inner_h = sn.h - sn.el.padding.vertical();
@@ -2840,6 +2903,28 @@ impl Ui {
             b.push(s.pad_stick[k].0);
             u64_(&mut b, s.pad_stick[k].1);
         }
+        u32_(&mut b, s.scroll_x.len() as u32);
+        for (k, v) in &s.scroll_x {
+            u64_(&mut b, *k);
+            f32_(&mut b, *v);
+        }
+        u32_(&mut b, s.scroll_info.len() as u32);
+        for (k, v) in &s.scroll_info {
+            u64_(&mut b, *k);
+            for x in [v.range.x, v.range.y, v.bar.x, v.bar.y] {
+                f32_(&mut b, x);
+            }
+        }
+        let (fk, fv) = s.fling.unwrap_or((0, Vec2::ZERO));
+        u64_(&mut b, fk);
+        f32_(&mut b, fv.x);
+        f32_(&mut b, fv.y);
+        f32_(&mut b, s.drag_v.x);
+        f32_(&mut b, s.drag_v.y);
+        let t = s.thumb.unwrap_or_default();
+        u64_(&mut b, t.key);
+        b.push(t.axis);
+        f32_(&mut b, t.grab);
         b
     }
 
@@ -3104,6 +3189,31 @@ impl Reader<'_> {
             s.pad_focus[k] = self.u64()?;
             s.pad_stick[k] = (self.u8()?, self.u64()?);
         }
+        for _ in 0..self.u32()? {
+            let k = self.u64()?;
+            s.scroll_x.insert(k, self.f32()?);
+        }
+        for _ in 0..self.u32()? {
+            let k = self.u64()?;
+            let (rx, ry, bx, by) = (self.f32()?, self.f32()?, self.f32()?, self.f32()?);
+            s.scroll_info.insert(
+                k,
+                crate::scroll::ScrollInfo {
+                    range: Vec2::new(rx, ry),
+                    bar: Vec2::new(bx, by),
+                },
+            );
+        }
+        let fk = self.u64()?;
+        let fv = Vec2::new(self.f32()?, self.f32()?);
+        s.fling = (fk != 0).then_some((fk, fv));
+        s.drag_v = Vec2::new(self.f32()?, self.f32()?);
+        let t = crate::scroll::Thumb {
+            key: self.u64()?,
+            axis: self.u8()?,
+            grab: self.f32()?,
+        };
+        s.thumb = (t.key != 0).then_some(t);
         Some(s)
     }
 }

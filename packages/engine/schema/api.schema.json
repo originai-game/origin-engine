@@ -4015,6 +4015,7 @@
         "LabelDesc",
         "ButtonDesc",
         "PanelDesc",
+        "ScrollAxes",
         "ScrollDesc",
         "ImageDesc",
         "ProgressDesc",
@@ -18604,6 +18605,11 @@
           "description": "Scroll its content vertically and clip it.",
           "default": false
         },
+        "scrollX": {
+          "type": "boolean",
+          "description": "Scroll its content horizontally and clip it (with scroll: both ways).",
+          "default": false
+        },
         "interactive": {
           "type": "boolean",
           "description": "Report a Response from close(), as a button does.",
@@ -18827,10 +18833,26 @@
       },
       "additionalProperties": false
     },
+    "ScrollAxes": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "Which ways a scroll container scrolls.",
+      "type": "string",
+      "enum": [
+        "vertical",
+        "horizontal",
+        "both"
+      ],
+      "x-og-variants": {
+        "vertical": "Up and down (the default).",
+        "horizontal": "Left and right.",
+        "both": "Both ways."
+      }
+    },
     "ScrollDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "A vertical scroll container: the wheel or a drag scrolls it, it clips its content, a capsule indicator shows the position.",
+      "description": "A scroll container: the wheel (both axes, deltaX and deltaY) or a drag scrolls it, and a released drag keeps its momentum, slowing over motion.spring.momentum's response (none under reduced motion); it clips its content; a scrollbar on each scrolling axis shows the position, and a press on one grabs and drags it. Nested containers hand off: what the innermost under the pointer cannot take (it reached its end, or does not scroll that way) goes to the one around it.",
       "type": "object",
       "properties": {
         "width": {
@@ -18872,6 +18894,11 @@
           "description": "Space between children.",
           "default": 0,
           "x-og-unit": "cssPx"
+        },
+        "axes": {
+          "$ref": "#/$defs/ScrollAxes",
+          "description": "Which ways it scrolls.",
+          "default": "vertical"
         }
       },
       "additionalProperties": false

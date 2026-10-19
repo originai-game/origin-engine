@@ -255,6 +255,8 @@ pub struct Element {
     pub wrap: bool,
     /// Scrolls its content vertically and clips it.
     pub scroll: bool,
+    /// Scrolls its content horizontally and clips it (with `scroll`: both ways).
+    pub scroll_x: bool,
     /// Reports hover, press and click through `Ui::close`.
     pub interactive: bool,
     pub background: Option<Srgba>,
@@ -603,6 +605,8 @@ pub(crate) struct Node {
     pub x: f32,
     pub y: f32,
     pub content_h: f32,
+    /// The content's width (its children's extent), for horizontal scrolling.
+    pub content_w: f32,
     pub lines: Vec<Line>,
     /// A wrapping row's lines: ranges of `children`.
     pub rows: Vec<(usize, usize)>,
@@ -650,6 +654,7 @@ impl Node {
             x: 0.0,
             y: 0.0,
             content_h: 0.0,
+            content_w: 0.0,
             lines: Vec::new(),
             rows: Vec::new(),
             clip: Rect::default(),
@@ -659,7 +664,23 @@ impl Node {
 
     /// The scroll range: how far the content overflows the inner height.
     pub fn max_scroll(&self) -> f32 {
+        if !self.el.scroll {
+            return 0.0;
+        }
         (self.content_h - (self.h - self.el.padding.vertical())).max(0.0)
+    }
+
+    /// The horizontal scroll range: how far the content overflows the inner width.
+    pub fn max_scroll_x(&self) -> f32 {
+        if !self.el.scroll_x {
+            return 0.0;
+        }
+        (self.content_w - (self.w - self.el.padding.horizontal())).max(0.0)
+    }
+
+    /// Scrolls either way.
+    pub fn scrolls(&self) -> bool {
+        self.el.scroll || self.el.scroll_x
     }
 }
 
@@ -818,6 +839,8 @@ fn size_w(nodes: &mut [Node], i: usize, fonts: &dyn Metrics) {
         }
     };
     let pad = n.el.padding.horizontal();
+    // A horizontal scroller never shrinks its content: it overflows and scrolls.
+    let min = if n.el.scroll_x { 0.0 } else { min };
     let (p, m) = apply_size(n.el.width, pad + pref, pad + min);
     nodes[i].pref_w = p;
     nodes[i].min_w = m;
@@ -910,12 +933,17 @@ fn distribute_w(nodes: &mut [Node], i: usize, fonts: &dyn Metrics) {
                     inner,
                     el.cross == Cross::Stretch,
                 );
+                // In a horizontal scroller a fitting child keeps its width.
+                let w = match n.el.width {
+                    Size::Fit { .. } if el.scroll_x => w.max(n.pref_w),
+                    _ => w,
+                };
                 nodes[c].w = w;
             }
         }
         Direction::Row if !el.wrap => {
             let avail = inner - gaps(el.gap, kids.len());
-            let sizes = main_sizes(nodes, &kids, true, inner, avail, true);
+            let sizes = main_sizes(nodes, &kids, true, inner, avail, !el.scroll_x);
             for (&c, w) in kids.iter().zip(sizes) {
                 nodes[c].w = w;
             }
@@ -1094,15 +1122,42 @@ fn cross_offset(cross: Cross, room: f32, size: f32) -> f32 {
     }
 }
 
-fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> f32) {
+fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f32)) {
+    // The content's extent along x, before the offsets (the horizontal range).
+    let content_w = {
+        let n = &nodes[i];
+        let kids = &n.children;
+        match n.el.direction {
+            Direction::Column => kids.iter().map(|&c| nodes[c].w).fold(0.0, f32::max),
+            Direction::Row if n.el.wrap && !n.rows.is_empty() => n
+                .rows
+                .iter()
+                .map(|&(s, e)| {
+                    kids[s..e].iter().map(|&c| nodes[c].w).sum::<f32>() + gaps(n.el.gap, e - s)
+                })
+                .fold(0.0, f32::max),
+            Direction::Row => {
+                kids.iter().map(|&c| nodes[c].w).sum::<f32>() + gaps(n.el.gap, kids.len())
+            }
+        }
+    };
+    nodes[i].content_w = content_w;
     let n = &nodes[i];
     let el = n.el;
     let inner_w = n.w - el.padding.horizontal();
     let inner_h = n.h - el.padding.vertical();
-    let x0 = n.x + el.padding.left;
+    let mut x0 = n.x + el.padding.left;
     let mut y0 = n.y + el.padding.top;
+    let (sx, sy) = if el.scroll || el.scroll_x {
+        scroll(n.key)
+    } else {
+        (0.0, 0.0)
+    };
     if el.scroll {
-        y0 -= scroll(n.key).clamp(0.0, n.max_scroll());
+        y0 -= sy.clamp(0.0, n.max_scroll());
+    }
+    if el.scroll_x {
+        x0 -= sx.clamp(0.0, n.max_scroll_x());
     }
     let kids = n.children.clone();
     let rows = if el.direction == Direction::Row && el.wrap && !n.rows.is_empty() {
@@ -1117,7 +1172,11 @@ fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> f32) {
         match el.direction {
             Direction::Row => {
                 let used: f32 = line.iter().map(|&c| nodes[c].w).sum::<f32>() + gaps(el.gap, k);
-                let (start, between) = main_offsets(el.align, inner_w - used, k);
+                let mut free = inner_w - used;
+                if el.scroll_x {
+                    free = free.max(0.0);
+                }
+                let (start, between) = main_offsets(el.align, free, k);
                 let room = if el.wrap {
                     line.iter().map(|&c| nodes[c].h).fold(0.0, f32::max)
                 } else {
@@ -1143,7 +1202,8 @@ fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> f32) {
                 for &c in line {
                     let (w, h) = (nodes[c].w, nodes[c].h);
                     nodes[c].y = y;
-                    nodes[c].x = x0 + cross_offset(el.cross, inner_w, w);
+                    nodes[c].x = x0
+                        + cross_offset(el.cross, inner_w.max(if el.scroll_x { w } else { 0.0 }), w);
                     y += h + el.gap + between;
                 }
             }
@@ -1158,7 +1218,7 @@ pub(crate) fn layout(
     root: usize,
     area: Rect,
     fonts: &dyn Metrics,
-    scroll: &dyn Fn(u64) -> f32,
+    scroll: &dyn Fn(u64) -> (f32, f32),
     dpr: f32,
     clip: Rect,
 ) {
@@ -1206,7 +1266,7 @@ pub(crate) fn layout(
             (clip, NONE)
         } else {
             let p = &nodes[n.parent];
-            if p.el.scroll {
+            if p.el.scroll || p.el.scroll_x {
                 (p.clip.intersect(&p.rect), n.parent)
             } else {
                 (p.clip, p.clip_src)

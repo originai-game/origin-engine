@@ -322,5 +322,19 @@ impl Ui {
             *off += h.full.bottom() - view.bottom() + pad;
         }
         *off = off.max(0.0);
+        let scrolls_x = self
+            .state
+            .scroll_info
+            .get(&h.scroller)
+            .is_some_and(|i| i.range.x > 0.0);
+        if scrolls_x {
+            let off = self.state.scroll_x.entry(h.scroller).or_insert(0.0);
+            if h.full.x < view.x {
+                *off -= view.x - h.full.x + pad;
+            } else if h.full.right() > view.right() {
+                *off += h.full.right() - view.right() + pad;
+            }
+            *off = off.max(0.0);
+        }
     }
 }

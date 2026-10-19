@@ -10214,6 +10214,12 @@ export interface ElementDesc {
    */
   readonly scroll?: boolean;
   /**
+   * Scroll its content horizontally and clip it (with scroll: both ways).
+   *
+   * @default false
+   */
+  readonly scrollX?: boolean;
+  /**
    * Report a Response from close(), as a button does.
    *
    * @default false
@@ -10379,7 +10385,15 @@ export interface PanelDesc {
 }
 
 /**
- * A vertical scroll container: the wheel or a drag scrolls it, it clips its content, a capsule indicator shows the position.
+ * Which ways a scroll container scrolls.
+ * - `"vertical"`: Up and down (the default).
+ * - `"horizontal"`: Left and right.
+ * - `"both"`: Both ways.
+ */
+export type ScrollAxes = "vertical" | "horizontal" | "both";
+
+/**
+ * A scroll container: the wheel (both axes, deltaX and deltaY) or a drag scrolls it, and a released drag keeps its momentum, slowing over motion.spring.momentum's response (none under reduced motion); it clips its content; a scrollbar on each scrolling axis shows the position, and a press on one grabs and drags it. Nested containers hand off: what the innermost under the pointer cannot take (it reached its end, or does not scroll that way) goes to the one around it.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -10409,6 +10423,12 @@ export interface ScrollDesc {
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
    */
   readonly gap?: number;
+  /**
+   * Which ways it scrolls.
+   *
+   * @default "vertical"
+   */
+  readonly axes?: ScrollAxes;
 }
 
 /**

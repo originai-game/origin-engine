@@ -75,7 +75,10 @@ Layout (`row`, `column`, `panel`, `scroll`, `anchor`), text and controls
 follows a drop; `cooldown` rings; `minimap`; `dialogue` with typed text),
 touch (`joystick`, `dpad`, `actionButton`, each at least 44 CSS px), lists
 (`list` and `grid`, virtualised: only rows in view are built; items report
-drag and drop), layers (`anchor` for HUD corners, `modal` for dialogs,
+drag and drop; `scroll` with `axes: "horizontal"` or `"both"` for a strip
+of cards or a map, which hands the wheel and drags it cannot use to the
+scroller around it, keeps a flick's momentum and has grabbable
+scrollbars), layers (`anchor` for HUD corners, `modal` for dialogs,
 `transition` for fade, slide and scale by the tick, `spotlight`) and
 `toast`. Ids are stable strings: give every control a meaningful id so a
 playtest can `touch_move_to` it (`Shop/Panel/Detail/Buy` resolves as

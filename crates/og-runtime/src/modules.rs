@@ -721,6 +721,7 @@ fn element(theme: &Theme, d: &Value) -> Element {
         cross: cross(&d["cross"]),
         wrap: d["wrap"].as_bool().unwrap_or(false),
         scroll: d["scroll"].as_bool().unwrap_or(false),
+        scroll_x: d["scrollX"].as_bool().unwrap_or(false),
         interactive: d["interactive"].as_bool().unwrap_or(false),
         background: paint(theme, &d["background"]),
         radius: f(d, "radius", 0.0),
@@ -1150,6 +1151,11 @@ pub fn og_ui_open_scroll(id: String, desc: Option<String>) {
             height: size_or(&d["height"], Size::fit()),
             padding: insets(&d["padding"]),
             gap: f(&d, "gap", 0.0),
+            axes: match d["axes"].as_str() {
+                Some("horizontal") => og_ui::ScrollAxes::Horizontal,
+                Some("both") => og_ui::ScrollAxes::Both,
+                _ => og_ui::ScrollAxes::Vertical,
+            },
         };
         ui.open_scroll(id.as_str(), s)
     });
