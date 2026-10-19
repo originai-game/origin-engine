@@ -24,10 +24,12 @@
 //! every pass against its planes in one compute pass.
 //!
 //! The counts the CPU path knows at once (culled, occluded, triangles,
-//! shadow casters) come back through a small readback ring: a frame's
+//! shadow casters) come back through a small readback ring, for the frames
+//! after [`crate::Renderer::request_culling_counts`] only: a frame's
 //! [`crate::FrameStats`] carries those of the newest frame that has
 //! landed (`counts_lag` frames old), and [`crate::Renderer::finish_stats`]
-//! waits for the frame's own natively.
+//! waits for the frame's own natively (copying them late for the last
+//! frame encoded).
 
 use crate::{Batch, DEPTH_FORMAT, GpuMaterial, GpuMesh, INSTANCE_STRIDE, Side, cull_mode};
 use glam::{Mat4, Vec4};
@@ -510,6 +512,11 @@ impl GpuCulling {
         self.primed
     }
 
+    /// Whether a readback holds a frame's counts not yet read.
+    pub fn in_flight(&self) -> bool {
+        self.readbacks.iter().any(|r| r.layout.is_some())
+    }
+
     /// Takes every landed readback; the newest frame's counts are kept.
     pub fn poll_counts(&mut self) -> Option<GpuCounts> {
         for r in &mut self.readbacks {
@@ -791,8 +798,10 @@ impl GpuCulling {
     /// table, and encodes both stages, the occluders' depth and the
     /// pyramid. Without an `Occluders` pass (see [`Self::primed`]) the
     /// occluders' depth and the pyramid are skipped and the camera pass is
-    /// tested against its frustum alone. Returns the commands to submit
-    /// before the frame's own and the occluder depth pass's draws.
+    /// tested against its frustum alone. With `copy_counts` the counts
+    /// are copied to a free readback (`stats_given`: those the frame's
+    /// stats carry in their place). Returns the commands to submit before
+    /// the frame's own and the occluder depth pass's draws.
     #[allow(clippy::too_many_arguments)]
     pub fn encode(
         &mut self,
@@ -807,6 +816,7 @@ impl GpuCulling {
         (width, height, samples): (u32, u32, u32),
         frame: u64,
         stats_given: GpuCounts,
+        copy_counts: bool,
     ) -> (wgpu::CommandBuffer, u32) {
         let n = transforms.len() as u32;
         let b = batches.len() as u32;
@@ -1100,7 +1110,7 @@ impl GpuCulling {
             }
         }
         self.primed |= !main.is_empty();
-        // The counts, when a readback is free.
+        // The counts, when asked for and a readback is free.
         let layout = CountLayout {
             frame,
             batches: b,
@@ -1116,7 +1126,8 @@ impl GpuCulling {
                 .sum(),
         };
         if let Some(r) = self.readbacks.iter_mut().find(|r| {
-            r.layout.is_none()
+            copy_counts
+                && r.layout.is_none()
                 && r.buffer.size() >= count_bytes
                 && r.mapped.lock().map(|m| m.is_none()).unwrap_or(false)
         }) {

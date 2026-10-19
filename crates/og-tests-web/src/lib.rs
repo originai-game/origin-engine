@@ -158,7 +158,7 @@ mod web {
     /// Draws `n` frames of the open scene, each after its update (frame
     /// indices continue across calls). Returns the last frame's counts as
     /// JSON; with GPU culling they are `counts_lag` frames old (the browser
-    /// cannot wait for the frame's own).
+    /// cannot wait for the frame's own; every frame asks for its counts).
     #[wasm_bindgen]
     pub fn og_gfx_render(n: u32) -> Result<String, JsValue> {
         OPEN.with(|o| {
@@ -171,6 +171,7 @@ mod web {
                     update(&mut open.built.scene, open.frame);
                 }
                 open.frame += 1;
+                renderer.request_culling_counts();
                 stats = renderer
                     .render(&open.built.scene, &RenderTarget::Offscreen)
                     .map_err(err)?;

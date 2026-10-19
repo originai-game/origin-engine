@@ -532,7 +532,8 @@ pub struct FrameStats {
     pub occluder_draws: u32,
     /// With GPU culling, `culled`, `occluded`, `triangles` and
     /// `shadow_casters` hold the GPU's counts of the newest frame read back
-    /// by then, this many frames old (`u32::MAX`: none yet); natively
+    /// by then, this many frames old (`u32::MAX`: none yet). Only frames
+    /// after [`Renderer::request_culling_counts`] are read back; natively
     /// [`Renderer::finish_stats`] puts the frame's own in their place (0).
     /// 0 on the CPU path. While they lag, `culled`, `occluded` and the
     /// instances drawn come from different frames and need not add up to
@@ -896,6 +897,9 @@ pub struct Renderer {
     desc_culling: Culling,
     indirect: bool,
     gpu_cull: Option<cull_gpu::GpuCulling>,
+    /// Whether the next frame's GPU culling counts are read back
+    /// ([`Renderer::request_culling_counts`]).
+    culling_counts: bool,
     /// The previous frame's unjittered view-projection, when TAA history is valid.
     taa_history: Option<Mat4>,
 }
@@ -1989,6 +1993,7 @@ impl Renderer {
             desc_culling: desc.culling,
             indirect,
             gpu_cull: None,
+            culling_counts: false,
             taa_history: None,
         })
     }
@@ -3562,12 +3567,15 @@ impl Renderer {
         // sprites. With GPU culling the sorted instances go to its buffer and
         // this one holds only the transparent draws.
         let mut gpu_counts = None;
+        let copy_counts = std::mem::take(&mut self.culling_counts);
         let cull_commands = if gpu_cull {
-            let _ = self.device.poll(wgpu::PollType::Poll);
             let gc = self
                 .gpu_cull
                 .as_mut()
                 .expect("made when gpu_cull was decided");
+            if gc.in_flight() {
+                let _ = self.device.poll(wgpu::PollType::Poll);
+            }
             let lagged = gc.poll_counts();
             debug_assert!(cull_passes.len() <= max_passes);
             let (commands, occluder_draws) = gc.encode(
@@ -3582,6 +3590,7 @@ impl Renderer {
                 (self.width, self.height, self.samples),
                 self.frame_index,
                 lagged.unwrap_or_default(),
+                copy_counts,
             );
             gpu_counts = Some((lagged, occluder_draws));
             for r in &mut blended_list.ranges {
@@ -5134,9 +5143,20 @@ impl Renderer {
         Ok(stats)
     }
 
+    /// Reads the next frame's GPU culling counts back (`culled`,
+    /// `occluded`, `triangles` and `shadow_casters`; see
+    /// [`FrameStats::counts_lag`]), for one frame: a frame rendered
+    /// without a request copies none, so the stats keep the newest
+    /// requested frame's. Natively [`Renderer::finish_stats`] needs no
+    /// request for the last frame rendered.
+    pub fn request_culling_counts(&mut self) {
+        self.culling_counts = true;
+    }
+
     /// Natively: waits for the GPU culling counts of the frame `stats` came
     /// from and puts them in place of the older ones it was given
-    /// ([`FrameStats::counts_lag`] becomes 0). Whether it could: false on
+    /// ([`FrameStats::counts_lag`] becomes 0); for the last frame rendered
+    /// they are copied now when it copied none. Whether it could: false on
     /// the CPU path, or for a frame that found no readback free and was
     /// not the last one rendered.
     #[cfg(not(target_arch = "wasm32"))]
