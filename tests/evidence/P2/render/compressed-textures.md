@@ -7,7 +7,7 @@ encoding the attached renderer takes for its kind
 
 | GPU family | colour, linear data | normal maps | where |
 |---|---|---|---|
-| BC | BC7 | BC5 (z rebuilt in the shader) | desktop GPUs, Apple silicon |
+| BC | BC7 | BC5 (z rebuilt in the shader) | desktop GPUs, Apple silicon, lavapipe (its only family) |
 | ASTC | ASTC 4x4 | ASTC 4x4 | Apple and most Android (and `RenderDesc::mobile()`) |
 | ETC2 | ETC2 RGBA8 | EAC RG11 | other OpenGL ES 3 / WebGL2 devices |
 | none | RGBA8 level 0, mips built on the GPU | | also pixel art, MSDF, lossless cooks, sizes not in whole 4x4 blocks |

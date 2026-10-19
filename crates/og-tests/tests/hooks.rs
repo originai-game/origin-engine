@@ -56,16 +56,21 @@ fn stage() -> RenderScene {
 }
 
 /// A material with the ripple shader (no ripple), outlined, moved by `offset`.
+/// Its stripes are the material's own colour: the cylinders' caps lie on a
+/// band edge, where the band flips with the last bit of the position and
+/// lavapipe's rounding differs between the two placements.
 fn rippled(scene: &mut RenderScene, offset: Vec3) -> MaterialHandle {
+    let color = Vec3::new(0.8, 0.35, 0.2);
     let shader = scene.add_shader(p2_scenes::ripple_shader());
     let m = scene.add_standard_material(StandardMaterial {
-        color: Vec3::new(0.8, 0.35, 0.2),
+        color,
         roughness: 0.5,
         outlineWidth: 2.0,
         ..Default::default()
     });
     scene.set_material_shader(m, Some(shader));
     scene.set_shader_param(m, "offset", &offset.to_array());
+    scene.set_shader_param(m, "stripe", &color.to_array());
     m
 }
 
