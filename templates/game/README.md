@@ -21,6 +21,7 @@ og build .   # the play page
 | Components, a resource, systems over archetype columns, one job each | `Health`, `Velocity`, `Spin`, `Run`; `Move`, `StartSpin`, `Drop`, `Rotate` | og-core §4, §5; og-game §3 |
 | A text scene spawned before the first tick, a glTF model, a font, a box with a collider that falls | `assets/scenes/main.ogt`, `start` | og-game §4, §6, §13 |
 | A menu panel whose button answers with a look and a sound (og sfx's click preset) | `Menu`, `assets/audio/click.ogt` | og-ui §1, §3; og-taste §6; og-audio §2, §3 |
+| Every word the menu shows from a string table, the base one in the source language | `assets/strings/en.ogt`, `Menu` | og-i18n §1, §2 |
 | A guard as data: a state machine on og.ai, a navmesh cooked from the yard, sight cones against the wall | `assets/ai/guard.ogt`, `assets/nav/yard.ogt` | og-ai §1–§5 |
 | Commands with their usage in `help`, facts for playtests | `commands`, `commandHelp`, `facts` | og-game §3; og-build §1 |
 | Playtests that assert on dumps and facts, never on the code | `tests/` | og-build §3, §4 |
