@@ -85,11 +85,17 @@ fn measured(ui: &Ui, label: &str, ground: [f32; 3]) -> ([f32; 3], [f32; 3]) {
         .enumerate()
         .find_map(|(k, it)| match &it.cmd {
             DrawCmd::Text {
-                text, color, bounds, ..
+                text,
+                color,
+                bounds,
+                ..
             } if text == label => Some((
                 k,
                 *color,
-                (bounds.x + bounds.width / 2.0, bounds.y + bounds.height / 2.0),
+                (
+                    bounds.x + bounds.width / 2.0,
+                    bounds.y + bounds.height / 2.0,
+                ),
             )),
             _ => None,
         })

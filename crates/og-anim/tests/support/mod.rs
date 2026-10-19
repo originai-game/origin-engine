@@ -463,4 +463,3 @@ pub fn tall() -> SkeletonAsset {
 pub fn rotation_to(dir: Vec3) -> Quat {
     og_anim::rotation_arc(Vec3::Y, dir)
 }
-
