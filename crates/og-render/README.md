@@ -386,8 +386,17 @@ it drew before (every earlier reference is unchanged).
   strips in the sprite order.
 - **Metaballs** (`RenderScene::metaballs`, `src/metaballs.rs`): a fluid's
   particles added as kernels into one channel of a field target before the
-  main pass (up to `MAX_FLUIDS`), composited at the fluid's sprite layer by a
-  threshold with an antialiased edge and a rim.
+  main pass, composited at the fluid's sprite layer by a threshold with an
+  antialiased edge and a rim. Phase 2: fluids sharing a `group` are one
+  surface: the group takes a field's run of four channels (one per `lane`),
+  a particle adds its kernel into its lanes' channels by its `mix`, and the
+  surface is thresholded on the sum and coloured by the channels' shares,
+  so blended particles draw blended colours. Lone fluids take one channel.
+  Surfaces are packed into up to `FIELDS` (4) field targets
+  (`metaballs`, `metaballs.1`…; one field pass each, all read by the main
+  pass), so up to `MAX_FLUIDS` (16) fluids draw a frame; a lone fluid draws
+  exactly as before (`fluid-2d` at RMSE 0). og-tests' `fluid-groups` scene:
+  six lone pools, a group blending water into oil, a group layered.
 - **Material shaders** (`MaterialShader`, `src/hooks.rs`): a WGSL snippet
   defining any of `vertex_offset`, `surface_color`, `surface_normal`,
   `surface_emissive`, with up to eight declared parameters read from the

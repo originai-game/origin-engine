@@ -15,3 +15,4 @@ was changed to make it pass.
 | `og-physics` `tests/self_collision.rs` `a_sheet_that_falls_and_folds_never_passes_through_itself` | the spatial hash searching only a point's own cell (not the 26 around it) | "two layers came within 0.0445386 × the thickness: one passed through the other" |
 | `og-physics` `tests/fluid_groups.rs` `a_heavy_fluid_poured_on_a_light_one_sinks_under_it_and_they_layer` | every particle of a group weighing 1 whatever its fluid's density | "the heavy fluid sank under the light one (heavy 0.79051924, light 0.54000825)" |
 | `og-physics` `tests/fluid_groups.rs` `with_mixing_the_two_fluids_blend_into_one` | the mixing rate 0 | "the mix evened out (±0.5)" |
+| `og-tests` `tests/atmosphere.rs` `ten_fluids_draw_in_one_frame_and_a_group_blends_its_colours` | a group's particles drawn into their own fluid's channel instead of by their mix | the frame against its reference: "RMSE 0.02016 > 0.01000; 17517 pixels (1.901%) differ by more than 32" |

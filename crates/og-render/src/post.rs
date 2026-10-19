@@ -739,7 +739,14 @@ pub(crate) struct GraphConfig {
     pub gtao: bool,
     /// The main pass draws water: it copies the scene drawn so far.
     pub water: bool,
+    /// Metaball field targets the frame's fluids need (1 to
+    /// `metaballs::FIELDS` when it draws any).
+    pub fluid_fields: u32,
 }
+
+/// The metaball field targets, by field.
+pub(crate) const FIELD_NAMES: [&str; crate::FIELDS] =
+    ["metaballs", "metaballs.1", "metaballs.2", "metaballs.3"];
 
 fn luminance_name(i: u32) -> String {
     format!("luminance.{i}")
@@ -875,8 +882,11 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
         let (lw, lh) = cfg.lightmap;
         g.transient("lightmap", desc(lw, lh, HDR_FORMAT, 1, attach_bind));
     }
+    let fields = &FIELD_NAMES[..(cfg.fluid_fields as usize).clamp(1, FIELD_NAMES.len())];
     if has(FramePass::Metaballs) {
-        g.transient("metaballs", desc(w, h, HDR_FORMAT, 1, attach_bind));
+        for name in fields {
+            g.transient(*name, desc(w, h, HDR_FORMAT, 1, attach_bind));
+        }
     }
     if has(FramePass::Glow) {
         g.transient("glow", desc(hw, hh, HDR_FORMAT, 1, attach_bind));
@@ -943,7 +953,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             }
             FramePass::Particles => g.pass(name, &[], &["particles"]),
             FramePass::Light2d => g.pass(name, &[], &["lightmap"]),
-            FramePass::Metaballs => g.pass(name, &[], &["metaballs"]),
+            FramePass::Metaballs => g.pass(name, &[], fields),
             FramePass::Main => {
                 let mut reads = vec!["cascades", "local-shadows"];
                 if has(FramePass::AoBlur) {
@@ -959,7 +969,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                     reads.push("lightmap");
                 }
                 if has(FramePass::Metaballs) {
-                    reads.push("metaballs");
+                    reads.extend_from_slice(fields);
                 }
                 let mut writes = vec!["hdr", "depth"];
                 if msaa {
@@ -1507,6 +1517,9 @@ fn transient_names(cfg: &GraphConfig) -> Vec<String> {
         "ao",
         "lightmap",
         "metaballs",
+        "metaballs.1",
+        "metaballs.2",
+        "metaballs.3",
         "glow",
         "hdr.outline",
         "hdr.dof",

@@ -783,7 +783,7 @@ pub struct RenderScene {
     /// Side-on 2D water bodies, drawn in the sprite order.
     pub water_2d: Vec<crate::Water2d>,
     /// 2D fluids drawn as metaballs in the sprite order (the first
-    /// [`crate::MAX_FLUIDS`]).
+    /// [`crate::MAX_FLUIDS`]; fluids of one group are one surface).
     pub metaballs: Vec<crate::Metaballs>,
     /// Sort keys of single sprites within their layer (top-down y sorting):
     /// a layer draws its sprites by ascending key, then texture, then

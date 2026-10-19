@@ -67,7 +67,7 @@ pub use hooks::{
     MAX_SHADER_PARAMS, MaterialShader, ParamKind, SHADER_HOOKS, ShaderParam, lit_module_source,
 };
 pub use material::{Side, StandardMaterial};
-pub use metaballs::{MAX_FLUIDS, Metaballs};
+pub use metaballs::{FIELDS, MAX_FLUIDS, Metaballs};
 pub use particles::{
     Burst, ColorCurve, Curve, EmitterHandle, EmitterShape, MAX_CURVE_KEYS, ParticleAlign,
     ParticleBlend, ParticleCollision, ParticleEmitter, ParticleNoise, ParticleRender,
@@ -2773,14 +2773,16 @@ impl Renderer {
             &scene.metaballs,
             (self.width, self.height),
         );
-        layered.extend(metaballs::layers(&scene.metaballs).map(|(i, layer)| {
-            sprites::LayeredStrip {
-                layer,
-                source: RunSource::Metaballs(i as u8),
-                first: 0,
-                count: 1,
-            }
-        }));
+        layered.extend(
+            metaballs::layers(&scene.metaballs)
+                .into_iter()
+                .map(|(i, layer)| sprites::LayeredStrip {
+                    layer,
+                    source: RunSource::Metaballs(i as u8),
+                    first: 0,
+                    count: 1,
+                }),
+        );
         let fonts = &self.cache.fonts;
         let sprite_frame = sprites::build(
             scene,
@@ -3269,6 +3271,7 @@ impl Renderer {
                     ),
                     gtao,
                     water: !scene.water.is_empty(),
+                    fluid_fields: fluids as u32,
                 },
                 &self.post,
                 &self.persistent,
@@ -3435,10 +3438,11 @@ impl Renderer {
             .unwrap_or(&self.post.far_depth);
         let particle_group = (!particle_frame.systems.is_empty())
             .then(|| self.particles.draw_group(&self.device, scene_depth));
-        let metaball_group = self
-            .graph
-            .try_view("metaballs")
-            .map(|v| self.metaballs.group(&self.device, v));
+        let metaball_groups: Vec<wgpu::BindGroup> = post::FIELD_NAMES
+            .iter()
+            .map_while(|name| self.graph.try_view(name))
+            .map(|v| self.metaballs.group(&self.device, v))
+            .collect();
         let water_draws = match self.graph.try_view("scene-copy") {
             Some(copy) if !scene.water.is_empty() => self.water.prepare(
                 &self.device,
@@ -3727,12 +3731,13 @@ impl Renderer {
                     );
                 }
                 FramePass::Metaballs => {
-                    self.metaballs.encode_field(
-                        &mut encoder,
-                        self.graph.view("metaballs"),
-                        frame_bind_group,
-                    );
-                    stats.draw_calls += 1;
+                    let fields: Vec<&wgpu::TextureView> = post::FIELD_NAMES
+                        .iter()
+                        .map_while(|name| self.graph.try_view(name))
+                        .collect();
+                    self.metaballs
+                        .encode_field(&mut encoder, &fields, frame_bind_group);
+                    stats.draw_calls += fields.len() as u32;
                 }
                 FramePass::Light2d => {
                     let ambient = scene.lighting_2d.map_or(Vec3::ONE, |l| l.ambient);
@@ -3906,8 +3911,11 @@ impl Renderer {
                     pass.set_bind_group(2, sprite_fx_group, &[]);
                     let mut current: Option<(bool, SpriteBlend)> = None;
                     for run in &sprite_frame.runs {
-                        if let (RunSource::Metaballs(i), Some(group)) =
-                            (run.source, &metaball_group)
+                        if let RunSource::Metaballs(i) = run.source
+                            && let Some(group) = self
+                                .metaballs
+                                .field_of(i)
+                                .and_then(|f| metaball_groups.get(f))
                         {
                             self.metaballs.composite(&mut pass, group, i);
                             stats.draw_calls += 1;
