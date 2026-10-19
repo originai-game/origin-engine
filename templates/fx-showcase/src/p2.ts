@@ -6,17 +6,26 @@
 //            on WebGL2)
 //   moon     og.DayNight at 21:00: a waxing moon rising over the rooftops,
 //            moonlit, with stars
+//   materials every StandardMaterialDesc feature on one board: metalness and
+//            roughness rows, emissive, a normal map, clearcoat, alphaTest,
+//            transparent glass, a double-sided panel, unlit, a squashed
+//            sphere (normals under a non-uniform scale)
+//   skinned  the walker walking with a material shader (shaders/ripple.ogt,
+//            set on its model's material with og.render.setMaterialShader):
+//            rippling and banded, its shadow rippling with it
 
 import { og } from "@origingame/engine";
-import type { Geometry, Material, Vector3 as Vec3, World } from "@origingame/engine";
+import type { Asset, ClipAsset, Geometry, Material, SkeletonAsset, Texture, Vector3 as Vec3, World } from "@origingame/engine";
 
-export const P2_STATIONS = ["lights", "moon"] as const;
+export const P2_STATIONS = ["lights", "moon", "materials", "skinned"] as const;
 export type P2Station = (typeof P2_STATIONS)[number];
 
 /** Where each station lives along x. */
 export const P2_ORIGIN: Record<P2Station, number> = {
   lights: 1400,
   moon: 1500,
+  materials: 1600,
+  skinned: 1700,
 };
 
 export interface P2Kit {
@@ -24,7 +33,13 @@ export interface P2Kit {
   sphere: Geometry;
   mat: (d: Parameters<typeof og.render.standardMaterial>[1]) => Material;
   ground: (x: number, color: Vec3) => void;
+  tex: (path: string) => Texture;
+  walker: Asset;
+  rig: { skeleton: SkeletonAsset; clips: ReadonlyArray<{ clip: ClipAsset; name: string }> };
 }
+
+/** The walker's materials while the skinned station gives them its shader. */
+let walkerMaterials: Material[] = [];
 
 function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
   if (!r.ok) throw new Error(r.reason);
@@ -57,8 +72,11 @@ export const PLAZA_LIGHTS = 256;
 
 let builders: Partial<Record<P2Station, (world: World) => void>> = {};
 
+let k: P2Kit;
+
 /** Prepares the stations; each is built when first shown (showP2). */
-export function buildP2(k: P2Kit): void {
+export function buildP2(kit: P2Kit): void {
+  k = kit;
   builders = {
     lights: (world: World) => {
       const x0 = P2_ORIGIN.lights;
@@ -116,7 +134,57 @@ export function buildP2(k: P2Kit): void {
       world.set(well, og.Transform, { scale: { x: 1.6, y: 1, z: 1.6 } });
       world.insert(well, og.Mesh, { geometry: k.sphere, material: wall, castShadow: true, receiveShadow: true });
     },
+    materials: (world: World) => {
+      const x0 = P2_ORIGIN.materials;
+      k.ground(x0, { x: 0.42, y: 0.43, z: 0.45 });
+      const put = (name: string, geometry: Geometry, d: Parameters<typeof og.render.standardMaterial>[1], at: Vec3, extra?: { scale?: Vec3; quaternion?: ReturnType<typeof og.transform.fromAxisAngle> }) => {
+        const e = must(world.spawn({ name, position: at, ...(extra?.quaternion ? { quaternion: extra.quaternion } : {}) }));
+        if (extra?.scale) world.set(e, og.Transform, { scale: extra.scale });
+        world.insert(e, og.Mesh, { geometry, material: k.mat(d), castShadow: true, receiveShadow: true });
+      };
+      const at = (col: number, row: number, y = 0.5) => ({ x: x0 + col * 1.3 - 2.6, y, z: 1.6 - row * 1.6 });
+      const gold = { r: 1, g: 0.78, b: 0.34 };
+      for (let i = 0; i < 5; i++) {
+        const f = i / 4;
+        put(`metal-${i}`, k.sphere, { color: gold, metalness: f, roughness: 0.3 }, at(i, 0));
+        put(`rough-${i}`, k.sphere, { color: { r: 0.12, g: 0.3, b: 0.75 }, roughness: 0.05 + 0.95 * f }, at(i, 1));
+      }
+      put("emissive", k.sphere, { color: { r: 0.05, g: 0.05, b: 0.05 }, emissive: { r: 1, g: 0.45, b: 0.1 }, emissiveIntensity: 3 }, at(0, 2));
+      const bumpy = { color: { r: 0.75, g: 0.72, b: 0.68 }, roughness: 0.45, normalMap: k.tex("textures/bumps.png") };
+      put("bumps-sphere", k.sphere, bumpy, at(1, 2));
+      put("bumps-box", k.box, bumpy, at(2, 2, 0.4), { scale: { x: 0.8, y: 0.8, z: 0.8 }, quaternion: og.transform.fromAxisAngle({ x: 0, y: 1, z: 0 }, 0.6) });
+      put("coat-glossy", k.sphere, { color: { r: 0.7, g: 0.06, b: 0.05 }, roughness: 0.75, clearcoat: 1, clearcoatRoughness: 0.03 }, at(3, 2));
+      put("coat-rough", k.sphere, { color: { r: 0.7, g: 0.06, b: 0.05 }, roughness: 0.75, clearcoat: 1, clearcoatRoughness: 0.35 }, at(4, 2));
+      const panel = must(og.render.planeGeometry(world, { width: 1, height: 1 }));
+      put("grille", panel, { map: k.tex("textures/grille.png"), alphaTest: 0.5, side: "double", roughness: 0.6 }, at(0, 3, 0.6));
+      put("glass", k.sphere, { color: { r: 0.6, g: 0.9, b: 0.8 }, opacity: 0.35, transparent: true, roughness: 0.05 }, at(1, 3));
+      put("two-sided", panel, { map: k.tex("textures/tile.png"), side: "double", roughness: 0.7 }, at(2, 3, 0.6), { quaternion: og.transform.fromAxisAngle({ x: 0, y: 1, z: 0 }, 2.6) });
+      put("unlit", k.box, { color: { r: 0.95, g: 0.3, b: 0.7 }, unlit: true }, at(3, 3, 0.4), { scale: { x: 0.8, y: 0.8, z: 0.8 }, quaternion: og.transform.fromAxisAngle({ x: 0, y: 1, z: 0 }, 0.4) });
+      put("squashed", k.sphere, { color: { r: 0.85, g: 0.85, b: 0.82 }, roughness: 0.2 }, at(4, 3, 0.25), { scale: { x: 1.15, y: 0.45, z: 1.15 } });
+    },
+    skinned: (world: World) => {
+      const x0 = P2_ORIGIN.skinned;
+      k.ground(x0, { x: 0.36, y: 0.38, z: 0.34 });
+      const walk = k.rig.clips.find((c) => c.name === "walk") ?? k.rig.clips[0]!;
+      const walker = must(world.instantiate(k.walker, { name: "rippling-walker", position: { x: x0, y: 0, z: 0 }, quaternion: og.transform.fromAxisAngle({ x: 0, y: 1, z: 0 }, 0.5) }));
+      world.insert(walker, og.Skeleton, { asset: k.rig.skeleton, rootMotion: "off" });
+      world.insert(walker, og.AnimationPlayer, { clip: walk.clip, speed: 1, loop: true });
+      for (const [i, x] of [[0, -2.2], [1, 2.2]] as const) {
+        const e = must(world.spawn({ name: `skinned-post-${i}`, position: { x: x0 + x, y: 1, z: -1.2 } }));
+        world.set(e, og.Transform, { scale: { x: 0.3, y: 2, z: 0.3 } });
+        world.insert(e, og.Mesh, { geometry: k.box, material: k.mat({ color: { r: 0.5, g: 0.5, b: 0.55 }, roughness: 0.8 }), castShadow: true, receiveShadow: true });
+      }
+    },
   };
+}
+
+/**
+ * Puts the walker's own look back (the stylised and joints stations draw
+ * it): the skinned station gives its materials the ripple shader.
+ */
+export function resetP2(world: World): void {
+  for (const m of walkerMaterials) must(og.render.setMaterialShader(world, m, null));
+  walkerMaterials = [];
 }
 
 /** Shows a P2 station: builds it the first time, then its camera and look. */
@@ -144,6 +212,35 @@ export function showP2(world: World, station: P2Station): void {
       cam.background = { r: 0.003, g: 0.004, b: 0.01 };
       cam.exposure = 1.4;
       break;
+    case "materials":
+      look({ x: x, y: 7.4, z: 5.4 }, { x: x, y: 0, z: -1.3 });
+      if (sun !== null) {
+        world.set(sun, og.Transform, { quaternion: og.transform.lookAt({ x: 0, y: 0, z: 0 }, { x: 0.55, y: -0.6, z: -0.5 }) });
+        world.set(sun, og.DirectionalLight, { intensity: 3.2 });
+      }
+      settings.sky = true;
+      settings.environmentIntensity = 0.8;
+      settings.bloom = false;
+      cam.exposure = 0.7;
+      break;
+    case "skinned": {
+      look({ x: x + 0.4, y: 2.2, z: 5.2 }, { x: x, y: 0.9, z: 0 });
+      if (sun !== null) {
+        world.set(sun, og.Transform, { quaternion: og.transform.lookAt({ x: 0, y: 0, z: 0 }, { x: 0.6, y: -0.55, z: -0.35 }) });
+        world.set(sun, og.DirectionalLight, { intensity: 3 });
+      }
+      settings.sky = true;
+      settings.environmentIntensity = 0.5;
+      settings.bloom = false;
+      // The walker's materials draw through the ripple shader while shown.
+      const ripple = must(og.load.shader(world, "shaders/ripple.ogt"));
+      walkerMaterials = [...must(og.load.gltfInfo(world, k.walker)).materials];
+      for (const m of walkerMaterials) {
+        must(og.render.setMaterialShader(world, m, ripple));
+        must(og.render.setShaderParam(world, m, "bulge", [0.03]));
+      }
+      break;
+    }
     case "moon": {
       // At 21:00 on this path, turned 63.4° about +y, the moon (opposite
       // the sun) stands 38° up straight down -z; the camera looks up at it

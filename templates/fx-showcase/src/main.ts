@@ -16,16 +16,16 @@
 //
 // The E5 round adds eight stations (src/e5.ts): sky, weather, water,
 // shaders, controller, joints, rope, fluid; the phase 2 render round its
-// own (src/p2.ts): lights, moon.
+// own (src/p2.ts): lights, moon, materials, skinned.
 //
-// Commands: station:<name> (or station:<1-15>). `dump_entity:stage` reads
+// Commands: station:<name> (or station:<1-17>). `dump_entity:stage` reads
 // the Stage component (the station, the frame counter of the pulses);
 // `dump_entity:e5` the E5 component.
 
 import { og, defineComponent, defineSystem, f32, f64, u32, Vector3 } from "@origingame/engine";
 import type { Entity, Font, Geometry, Material, Quaternion, Texture, Vector3 as Vec3, World } from "@origingame/engine";
 import { E5, E5_STATIONS, E5Show, PlatformMove, buildE5, resetE5, showE5, type E5Station } from "./e5.ts";
-import { P2_STATIONS, buildP2, showP2, type P2Station } from "./p2.ts";
+import { P2_STATIONS, buildP2, resetP2, showP2, type P2Station } from "./p2.ts";
 
 /** The first five stations, then the E5 round's (src/e5.ts) and phase 2's (src/p2.ts). */
 export const STATIONS = ["post", "lens", "fx", "2d", "stylised", ...E5_STATIONS, ...P2_STATIONS] as const;
@@ -205,6 +205,7 @@ function show(world: World, station: Station): void {
   });
   l2d.enabled = false;
   resetE5(world);
+  resetP2(world);
   cam.orthographic = false;
   cam.fov = 50;
   settings.toneMapped = true;
@@ -407,7 +408,7 @@ function build(world: World): void {
   world.insert(e5, E5);
   buildE5(world, { box, sphere, mat, ground: (x, c) => ground(world, x, c) }, walkerModel, rig, tex("textures/tile.png"));
   // The phase 2 render round's stations.
-  buildP2({ box, sphere, mat, ground: (x, c) => ground(world, x, c) });
+  buildP2({ box, sphere, mat, ground: (x, c) => ground(world, x, c), tex, walker: walkerModel, rig });
 
   const stage = must(world.spawn({ name: "stage" }));
   world.insert(stage, Stage, {
@@ -435,7 +436,7 @@ export default og.game({
       show(world, STATIONS.includes(name) ? name : STATIONS[Number(name) - 1] ?? "post");
     },
   },
-  commandHelp: { station: { usage: "<name|1-15>", doc: "Show a station: post, lens, fx, 2d, stylised, the E5 round's eight, then phase 2's (lights, moon)." } },
+  commandHelp: { station: { usage: "<name|1-17>", doc: "Show a station: post, lens, fx, 2d, stylised, the E5 round's eight, then phase 2's (lights, moon, materials, skinned)." } },
   facts: (world) => {
     const e = world.find("stage");
     const s = e === null ? null : world.get(e, Stage);

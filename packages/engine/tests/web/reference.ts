@@ -170,6 +170,8 @@ try {
     return tick;
   })()`);
   result["ticks"] = frames;
+  // The engine's own log (wgpu's validation errors land there).
+  result["engine"] = (await tab.eval<string[]>("globalThis.__og_log__ ?? []")).slice(-40);
   if (TIME > 0) {
     const timing = await tab.eval<{ perFrameMs: number; medianCallMs: number; frames: number }>(`(async () => {
       const shell = globalThis.__og_shell__;

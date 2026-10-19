@@ -11,6 +11,10 @@
 - textures/beam.png: bright stripes for the scrolling beam.
 - textures/toon.png: a 4-band toon ramp (Material.gradientMap).
 - textures/crate.png, textures/tile.png: 2D sprites for the lit 2D station.
+- textures/bumps.png: a tangent-space normal map of round bumps, glTF's
+  convention (green up the image), imported as `kind normal`
+  (bumps.png.ogt); the phase 2 materials station.
+- textures/grille.png: opaque bars and holes of alpha 0 (alphaTest).
 - luts/teal-orange.cube: a 17^3 grading table, shadows to teal, highlights
   to orange.
 
@@ -126,6 +130,31 @@ for y in range(64):
         edge = x % 32 < 2 or y % 32 < 2
         px[x, y] = (g - 30, g - 20, g, 255) if not edge else (60, 60, 70, 255)
 save(tile, "tile.png")
+
+# Bumps: a dome per cell of 6 x 6, its normal encoded RGB (z up, green up the image).
+bumps = Image.new("RGB", (256, 256))
+px = bumps.load()
+for y in range(256):
+    for x in range(256):
+        u = ((x + 0.5) / 256 * 6) % 1 - 0.5
+        v = ((y + 0.5) / 256 * 6) % 1 - 0.5
+        d2 = u * u + v * v
+        if d2 < 0.16:
+            h = max(math.sqrt(0.16 - d2), 0.05)
+            n = (u / h, -v / h, 1.0)
+        else:
+            n = (0.0, 0.0, 1.0)
+        l = math.sqrt(n[0] ** 2 + n[1] ** 2 + n[2] ** 2)
+        px[x, y] = tuple(int(round((c / l * 0.5 + 0.5) * 255)) for c in n)
+save(bumps, "bumps.png")
+
+grille = Image.new("RGBA", (128, 128), (0, 0, 0, 0))
+px = grille.load()
+for y in range(128):
+    for x in range(128):
+        if x % 32 < 10 or y % 32 < 10:
+            px[x, y] = (230, 200, 120, 255)
+save(grille, "grille.png")
 
 # Teal-orange: shadows lean teal, highlights orange, saturation kept.
 n = 17
