@@ -101,6 +101,60 @@ test("og.terrain.load answers the terrain, and sample its surface", () => {
   expect(box.max.y).toBeCloseTo(7.02, 1);
 });
 
+test("a turned and scaled terrain: sample, bounds, edit and physics follow its entity's transform", () => {
+  // A quarter turn about y and (3, 1.5, 1): the hill's x runs along world -z, three times as long, half again as tall.
+  const turn = { x: 0, y: Math.SQRT1_2, z: 0, w: Math.SQRT1_2 };
+  const place = { origin: { x: 5, y: 1, z: -3 }, quaternion: turn, scale: { x: 3, y: 1.5, z: 1 } };
+  let info: Info | undefined;
+  const game = og.game({
+    start(world: World) {
+      info = must(og.terrain.load(world, "terrain/hill.ogt")) as unknown as Info;
+      const e = must(world.spawn({ name: "hill", position: place.origin, quaternion: turn, scale: place.scale }));
+      world.insert(e, og.Terrain, { data: info.data as never });
+      world.insert(e, og.Collider, { shape: SHAPE_HEIGHTFIELD, mesh: info.geometry as never });
+    },
+  });
+  const r = createEngine(game as GameToken, { root: fixture });
+  if (!r.ok) throw new Error(r.reason);
+  const engine = r.value;
+  expect(engine.advance(1).ok).toBeTrue();
+  const w = engine.world;
+  const data = info!.data as never;
+  // World (x, z) to the terrain's own space: undo the turn, then the scale.
+  const local = (x: number, z: number) => ({ x: -(z - place.origin.z) / 3, z: x - place.origin.x });
+  const expected = (x: number, z: number) => {
+    const l = local(x, z);
+    return place.origin.y + 1.5 * ground(l.x, l.z);
+  };
+  const at = (x: number, z: number) => must(og.terrain.sample(w, { data, ...place, x, z }));
+  expect(at(5, -3).height).toBeCloseTo(expected(5, -3), 1);
+  // 60 m along world -z is 20 m along the hill's x: on it, turned; 60 m along world x is off it.
+  const along = at(5, -63);
+  expect(along.inside).toBeTrue();
+  expect(along.height).toBeCloseTo(expected(5, -63), 1);
+  expect(at(65, -3).inside).toBeFalse();
+  // The flank 7 m along the hill's x falls away towards it: in the world, towards -z.
+  const flank = at(5 + 3, -3 - 21);
+  expect(flank.height).toBeCloseTo(expected(5 + 3, -3 - 21), 1);
+  expect(flank.normal.z).toBeLessThan(-0.05);
+  // The box around the turned corners.
+  const box = must(og.terrain.bounds(w, data, place.origin, turn, place.scale));
+  expect(box.min.x).toBeCloseTo(-27, 3);
+  expect(box.max.x).toBeCloseTo(37, 3);
+  expect(box.min.z).toBeCloseTo(-99, 3);
+  expect(box.max.z).toBeCloseTo(93, 3);
+  expect(box.max.y).toBeCloseTo(1 + 1.5 * info!.maxHeight, 2);
+  // Physics collides with the same turned and scaled surface.
+  const hit = must(og.physics.raycast(w, { origin: { x: 5, y: 50, z: -63 }, direction: { x: 0, y: -1, z: 0 } }));
+  expect(hit?.point.y).toBeCloseTo(expected(5, -63), 1);
+  // An edit raises 3 world metres at a world point.
+  must(og.terrain.edit(w, data, { ...place, mode: "raise" as never, center: { x: 5, y: 0, z: -63 }, radius: 6, strength: 3, falloff: 0.5 }));
+  expect(at(5, -63).height).toBeCloseTo(expected(5, -63) + 3, 1);
+  expect(engine.advance(1).ok).toBeTrue();
+  const raised = must(og.physics.raycast(w, { origin: { x: 5, y: 50, z: -63 }, direction: { x: 0, y: -1, z: 0 } }));
+  expect(raised?.point.y).toBeCloseTo(expected(5, -63) + 3, 1);
+});
+
 test("a ball rests on the terrain and a character walks up the hill", () => {
   const { engine } = start();
   const w = engine.world;

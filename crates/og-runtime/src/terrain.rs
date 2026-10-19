@@ -9,7 +9,7 @@ use super::engine::{Engine, engine};
 use super::extract::{Hierarchy, RenderState};
 use super::fx::{color, f, on, rows, u};
 use super::{ok, parse, refuse};
-use glam::{Vec2, Vec3};
+use glam::{Mat3, Mat4, Quat, Vec2, Vec3};
 use og_ecs::World;
 use og_render::{TerrainData, TerrainLayer, TerrainLod};
 use serde_json::{Value, json};
@@ -63,6 +63,36 @@ fn v3(v: &Value) -> Vec3 {
 
 fn j3(v: Vec3) -> Value {
     json!({ "x": v.x, "y": v.y, "z": v.z })
+}
+
+/// A terrain's placement from its entity's world position, rotation and
+/// scale as game code passes them (a missing or zero quaternion is the
+/// identity, a missing scale is 1).
+pub(crate) fn placement(origin: &Value, quaternion: &Value, scale: &Value) -> Mat4 {
+    let q = Quat::from_xyzw(
+        f(quaternion, "x", 0.0),
+        f(quaternion, "y", 0.0),
+        f(quaternion, "z", 0.0),
+        f(quaternion, "w", 0.0),
+    );
+    let q = if q.length_squared() > 1e-12 {
+        q.normalize()
+    } else {
+        Quat::IDENTITY
+    };
+    let s = if scale.is_object() {
+        Vec3::new(f(scale, "x", 1.0), f(scale, "y", 1.0), f(scale, "z", 1.0))
+    } else {
+        Vec3::ONE
+    };
+    Mat4::from_scale_rotation_translation(s, q, v3(origin))
+}
+
+/// Metres across the terrain's surface per metre of its own space (the mean
+/// of its x and z scales) and up its y.
+fn scales(m: Mat4) -> (f32, f32) {
+    let along = (m.x_axis.truncate().length() + m.z_axis.truncate().length()) * 0.5;
+    (along.max(1e-6), m.y_axis.truncate().length().max(1e-6))
 }
 
 fn heightfield(d: &TerrainData) -> og_physics::HeightfieldDesc {
@@ -158,10 +188,12 @@ pub fn og_terrain_load(world: u32, path: String) -> String {
     wire(engine(world).and_then(|eng| load(&eng, &path)))
 }
 
-/// The local point (relative to the terrain's centre) of world `x`, `z`
-/// for a terrain standing at `origin`, and whether it is over the terrain.
-fn local(d: &TerrainData, origin: Vec3, x: f32, z: f32) -> (Vec2, bool) {
-    let p = Vec2::new(x - origin.x, z - origin.z);
+/// The point in the terrain's space (relative to its centre) of world `x`,
+/// `z` for a terrain placed by `m` (taken at the terrain's centre height, so
+/// along its up axis), and whether it is over the terrain.
+fn local(d: &TerrainData, m: Mat4, x: f32, z: f32) -> (Vec2, bool) {
+    let l = m.inverse().transform_point3(Vec3::new(x, m.w_axis.y, z));
+    let p = Vec2::new(l.x, l.z);
     let half = d.size * 0.5;
     (p, p.x.abs() <= half.x && p.y.abs() <= half.y)
 }
@@ -173,11 +205,12 @@ pub fn og_terrain_sample(world: u32, desc: Option<String>) -> String {
         let i = index_of(&eng, d["data"].as_f64().unwrap_or(0.0))?;
         let rs = eng.render.borrow();
         let t = &rs.terrain.loaded[i].data;
-        let origin = v3(&d["origin"]);
-        let (p, inside) = local(t, origin, f(&d, "x", 0.0), f(&d, "z", 0.0));
-        let n = t.normal(p);
+        let m = placement(&d["origin"], &d["quaternion"], &d["scale"]);
+        let (p, inside) = local(t, m, f(&d, "x", 0.0), f(&d, "z", 0.0));
+        let n = (Mat3::from_mat4(m).inverse().transpose() * t.normal(p)).normalize_or(Vec3::Y);
+        let surface = m.transform_point3(Vec3::new(p.x, t.height(p), p.y));
         Ok(json!({
-            "height": origin.y + t.height(p),
+            "height": surface.y,
             "normal": j3(n),
             "slope": n.y.clamp(-1.0, 1.0).acos().to_degrees(),
             "inside": inside,
@@ -185,19 +218,36 @@ pub fn og_terrain_sample(world: u32, desc: Option<String>) -> String {
     })())
 }
 
-pub fn og_terrain_bounds(world: u32, data: f64, origin: Option<String>) -> String {
+pub fn og_terrain_bounds(
+    world: u32,
+    data: f64,
+    origin: Option<String>,
+    quaternion: Option<String>,
+    scale: Option<String>,
+) -> String {
     wire((|| {
         let eng = engine(world)?;
         let i = index_of(&eng, data)?;
-        let origin = v3(&parse(origin.as_deref())?);
+        let m = placement(
+            &parse(origin.as_deref())?,
+            &parse(quaternion.as_deref())?,
+            &parse(scale.as_deref())?,
+        );
         let rs = eng.render.borrow();
         let t = &rs.terrain.loaded[i].data;
         let (lo, hi) = t.range();
         let half = t.size * 0.5;
-        Ok(json!({
-            "min": j3(origin + Vec3::new(-half.x, lo, -half.y)),
-            "max": j3(origin + Vec3::new(half.x, hi, half.y)),
-        }))
+        let (mut min, mut max) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
+        for k in 0..8 {
+            let corner = m.transform_point3(Vec3::new(
+                if k & 1 == 0 { -half.x } else { half.x },
+                if k & 2 == 0 { lo } else { hi },
+                if k & 4 == 0 { -half.y } else { half.y },
+            ));
+            min = min.min(corner);
+            max = max.max(corner);
+        }
+        Ok(json!({ "min": j3(min), "max": j3(max) }))
     })())
 }
 
@@ -228,16 +278,26 @@ pub(crate) fn apply(t: &mut LoadedTerrain, brush: &Value) -> Result<u32, String>
         Value::Null => 0,
         other => return Err(format!("TerrainBrush.mode {other} is not a mode")),
     };
-    let origin = v3(&brush["origin"]);
-    let center = v3(&brush["center"]);
-    let radius = f(brush, "radius", 8.0);
-    let strength = f(brush, "strength", 1.0);
+    let m = placement(&brush["origin"], &brush["quaternion"], &brush["scale"]);
+    let (along, up) = scales(m);
+    let world_center = v3(&brush["center"]);
+    let center = m.inverse().transform_point3(world_center);
+    let world_radius = f(brush, "radius", 8.0);
+    let world_strength = f(brush, "strength", 1.0);
+    // In the terrain's space: the radius across it, raise and lower up it.
+    let radius = world_radius / along;
+    let strength = if mode <= 1 {
+        world_strength / up
+    } else {
+        world_strength
+    };
     let falloff = f(brush, "falloff", 0.5);
-    if !(radius > 0.0 && radius.is_finite() && strength >= 0.0 && strength.is_finite()) {
+    if !(world_radius > 0.0 && radius.is_finite() && world_strength >= 0.0 && strength.is_finite())
+    {
         return Err("TerrainBrush.radius must be positive and strength at least 0".into());
     }
     let d = &mut t.data;
-    let c = Vec2::new(center.x - origin.x, center.z - origin.z);
+    let c = Vec2::new(center.x, center.z);
     let half = d.size * 0.5;
     if c.x + radius < -half.x
         || c.x - radius > half.x
@@ -245,8 +305,8 @@ pub(crate) fn apply(t: &mut LoadedTerrain, brush: &Value) -> Result<u32, String>
         || c.y - radius > half.y
     {
         return Err(format!(
-            "the brush at ({}, {}) with radius {radius} misses the terrain ({} × {} m around ({}, {}))",
-            center.x, center.z, d.size.x, d.size.y, origin.x, origin.z
+            "the brush at ({}, {}) with radius {world_radius} misses the terrain ({} × {} m of its own space around ({}, {}))",
+            world_center.x, world_center.z, d.size.x, d.size.y, m.w_axis.x, m.w_axis.z
         ));
     }
     if mode == 4 {
@@ -282,7 +342,7 @@ pub(crate) fn apply(t: &mut LoadedTerrain, brush: &Value) -> Result<u32, String>
     let old: Vec<f32> = d.heights.to_vec();
     let mut heights = old.clone();
     let mut touched = 0;
-    let target = center.y - origin.y;
+    let target = center.y;
     for r in r0..=r1 {
         for col in c0..=c1 {
             let p = Vec2::new(col as f32, r as f32) * cell - half;
@@ -459,12 +519,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 .push(format!("og.Terrain on entity {e} names no loaded terrain"));
             continue;
         };
-        let origin = h.world_of(e).transform_point3(Vec3::ZERO);
+        let world = h.world_of(e);
         let spacing = f(&v, "lodSpacing", 0.0);
         let ring = u(&v, "lodRing", 0);
         rs.scene.terrains.push(og_render::Terrain {
             terrain: t.render,
-            transform: glam::Mat4::from_translation(origin),
+            transform: world,
             layers: t.layers.clone(),
             height_blend: t.height_blend,
             cast_shadows: on(&v, "castShadows", true) && t.cast_shadows,
@@ -499,7 +559,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             continue;
         };
         let terrain = og_render::Terrain {
-            transform: glam::Mat4::from_translation(h.world_of(e).transform_point3(Vec3::ZERO)),
+            transform: h.world_of(e),
             layers: t.layers.clone(),
             ..og_render::Terrain::new(t.render)
         };

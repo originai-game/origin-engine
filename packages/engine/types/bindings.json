@@ -11690,6 +11690,16 @@
           "name": "origin",
           "type": "Vector3",
           "optional": true
+        },
+        {
+          "name": "quaternion",
+          "type": "Quaternion",
+          "optional": true
+        },
+        {
+          "name": "scale",
+          "type": "Vector3",
+          "optional": true
         }
       ],
       "returns": "Result<TerrainBounds>",

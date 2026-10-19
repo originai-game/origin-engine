@@ -566,7 +566,7 @@ export interface HostAbi<A, V> {
   /** `og.terrain.sample` */
   og_terrain_sample(world: number, desc: string | undefined): string;
   /** `og.terrain.bounds` */
-  og_terrain_bounds(world: number, data: number, origin: string | undefined): string;
+  og_terrain_bounds(world: number, data: number, origin: string | undefined, quaternion: string | undefined, scale: string | undefined): string;
   /** `og.terrain.edit` */
   og_terrain_edit(world: number, data: number, brush: string | undefined): string;
   /** `og.terrain.layer` */

@@ -14434,7 +14434,7 @@ export interface EngineProbe extends RuntimeProbe {
 
 // ── terrain ─────────────────────────────────────────────────────
 // Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.
-// Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it centred on the entity's position (rotation and scale are ignored: terrain lies along world x and z), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere; og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are asset changes, like og.physics.setMesh: they are not world state, and a restored snapshot keeps the terrain as it is.
+// Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it placed by the entity's world transform (centred on its position, turned and scaled with it), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere (pass it the entity's position, quaternion and scale); og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are asset changes, like og.physics.setMesh: they are not world state, and a restored snapshot keeps the terrain as it is.
 
 /**
  * A loaded terrain: its heights, control map and layers.
@@ -14463,7 +14463,7 @@ export declare function TerrainData(value?: TerrainData, options?: FieldOptions)
 export type TerrainBrushMode = "raise" | "lower" | "flatten" | "smooth" | "paint";
 
 /**
- * Draws a loaded terrain centred on the entity's position, with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.
+ * Draws a loaded terrain placed by the entity's world transform (centred on its position, turned and scaled with it), with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.
  *
  * The value of the `Terrain` component (token `og.Terrain`).
  */
@@ -14619,12 +14619,24 @@ export interface TerrainSampleDesc {
    */
   readonly data?: TerrainData;
   /**
-   * Where it stands: its og.Terrain entity's position.
+   * Where it stands: its og.Terrain entity's world position.
    *
    * @default { x: 0, y: 0, z: 0 }
    * @unit m (metres)
    */
   readonly origin?: Vector3;
+  /**
+   * How it is turned: its og.Terrain entity's world rotation (the zero value: along world x and z).
+   *
+   * @default { x: 0, y: 0, z: 0, w: 1 }
+   */
+  readonly quaternion?: Quaternion;
+  /**
+   * How it is scaled: its og.Terrain entity's world scale.
+   *
+   * @default { x: 1, y: 1, z: 1 }
+   */
+  readonly scale?: Vector3;
   /**
    * The world x.
    *
@@ -14644,7 +14656,7 @@ export interface TerrainSampleDesc {
 /** The terrain under a point. */
 export interface TerrainSample {
   /**
-   * The world y of the surface: the triangles drawn at the finest level and collided with.
+   * The world y of the surface (the triangles drawn at the finest level and collided with) on the terrain's up axis through (x, z): straight down for a terrain turned only about y.
    *
    * @unit m (metres)
    */
@@ -14690,12 +14702,24 @@ export interface TerrainBrush {
    */
   readonly mode?: TerrainBrushMode;
   /**
-   * Where the terrain stands: its og.Terrain entity's position.
+   * Where the terrain stands: its og.Terrain entity's world position.
    *
    * @default { x: 0, y: 0, z: 0 }
    * @unit m (metres)
    */
   readonly origin?: Vector3;
+  /**
+   * How it is turned: its og.Terrain entity's world rotation.
+   *
+   * @default { x: 0, y: 0, z: 0, w: 1 }
+   */
+  readonly quaternion?: Quaternion;
+  /**
+   * How it is scaled: its og.Terrain entity's world scale.
+   *
+   * @default { x: 1, y: 1, z: 1 }
+   */
+  readonly scale?: Vector3;
   /**
    * The brush's centre in world space; its y is flatten's target height.
    *
@@ -14704,7 +14728,7 @@ export interface TerrainBrush {
    */
   readonly center?: Vector3;
   /**
-   * The brush's radius.
+   * The brush's radius in world metres (across the terrain's surface).
    *
    * @default 8
    * @range 0.01..
@@ -14712,7 +14736,7 @@ export interface TerrainBrush {
    */
   readonly radius?: number;
   /**
-   * Metres at the centre (raise, lower), or how far to go, 0 to 1 (flatten, smooth, paint).
+   * World metres at the centre (raise, lower), or how far to go, 0 to 1 (flatten, smooth, paint).
    *
    * @default 1
    * @range 0..
@@ -16840,7 +16864,7 @@ export declare namespace og {
     function schedule(world: World, script: string): Result<CommandsReport>;
   }
   /**
-   * Draws a loaded terrain centred on the entity's position, with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.
+   * Draws a loaded terrain placed by the entity's world transform (centred on its position, turned and scaled with it), with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.
    */
   const Terrain: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly castShadows: FieldSpec<"bool">; readonly lodSpacing: FieldSpec<"f32">; readonly lodRing: FieldSpec<"u32"> }, Terrain>;
   /**
@@ -16849,7 +16873,7 @@ export declare namespace og {
   const TerrainScatter: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly layer: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly fade: FieldSpec<"f32">; readonly minScale: FieldSpec<"f32">; readonly maxScale: FieldSpec<"f32">; readonly align: FieldSpec<"f32">; readonly seed: FieldSpec<"u32"> }, TerrainScatter>;
   /**
    * Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.
-   * Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it centred on the entity's position (rotation and scale are ignored: terrain lies along world x and z), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere; og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are asset changes, like og.physics.setMesh: they are not world state, and a restored snapshot keeps the terrain as it is.
+   * Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it placed by the entity's world transform (centred on its position, turned and scaled with it), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere (pass it the entity's position, quaternion and scale); og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are asset changes, like og.physics.setMesh: they are not world state, and a restored snapshot keeps the terrain as it is.
    */
   namespace terrain {
     /**
@@ -16869,14 +16893,16 @@ export declare namespace og {
      */
     function sample(world: World, desc?: TerrainSampleDesc): Result<TerrainSample>;
     /**
-     * A terrain's box in world space when it stands at `origin`.
+     * A terrain's box in world space when it stands at `origin`, turned by `quaternion` and scaled by `scale` (its entity's world transform): the box around its turned corners.
      *
      * @param world The world.
      * @param data The terrain.
      * @param origin Where it stands.
+     * @param quaternion How it is turned.
+     * @param scale How it is scaled.
      * @returns Refused for an unknown terrain.
      */
-    function bounds(world: World, data: TerrainData, origin?: Vector3): Result<TerrainBounds>;
+    function bounds(world: World, data: TerrainData, origin?: Vector3, quaternion?: Quaternion, scale?: Vector3): Result<TerrainBounds>;
     /**
      * Change a terrain under a round brush: raise, lower, flatten or smooth its heights (the renderer, physics and og.terrain.sample see the change from the next frame and tick), or paint a layer into its control map (making one when it has none).
      *

@@ -681,7 +681,7 @@ pub trait TerrainApi: Wire {
     /// `og.terrain.sample`
     fn og_terrain_sample(&self, world: u32, desc: Option<String>) -> String;
     /// `og.terrain.bounds`
-    fn og_terrain_bounds(&self, world: u32, data: f64, origin: Option<String>) -> String;
+    fn og_terrain_bounds(&self, world: u32, data: f64, origin: Option<String>, quaternion: Option<String>, scale: Option<String>) -> String;
     /// `og.terrain.edit`
     fn og_terrain_edit(&self, world: u32, data: f64, brush: Option<String>) -> String;
     /// `og.terrain.layer`

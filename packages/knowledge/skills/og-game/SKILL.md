@@ -306,10 +306,13 @@ world.insert(ground, og.Collider, { shape: SHAPE_HEIGHTFIELD, mesh: info.geometr
 ```
 
 It is drawn around the camera at finer detail nearby (casting and
-receiving shadows, under the fog), and `og.CharacterController` walks on it
-up to `maxSlope`. `og.terrain.sample(world, { data, origin, x, z })` gives
-the height, normal and slope anywhere (to place trees, spawn on the
-ground, or check a slope); `og.terrain.edit` raises, lowers, flattens,
+receiving shadows, under the fog), placed by its entity's world transform
+(turn or scale the entity and the terrain turns and scales with it), and
+`og.CharacterController` walks on it up to `maxSlope`.
+`og.terrain.sample(world, { data, origin, quaternion, scale, x, z })`
+(the entity's position, rotation and scale; the last two may be left out
+for an unturned, unscaled terrain) gives the height, normal and slope
+anywhere (to place trees, spawn on the ground, or check a slope); `og.terrain.edit` raises, lowers, flattens,
 smooths or paints under a round brush (craters, building pads, a paint
 tool) and `og.terrain.layer` / `setLayer` retune a layer live. Edits are
 asset changes, not world state: a restored snapshot keeps the edited

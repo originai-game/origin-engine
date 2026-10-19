@@ -12,8 +12,15 @@ impl TerrainApi for WebHost {
     fn og_terrain_sample(&self, world: u32, desc: Option<String>) -> String {
         rt::og_terrain_sample(world, desc)
     }
-    fn og_terrain_bounds(&self, world: u32, data: f64, origin: Option<String>) -> String {
-        rt::og_terrain_bounds(world, data, origin)
+    fn og_terrain_bounds(
+        &self,
+        world: u32,
+        data: f64,
+        origin: Option<String>,
+        quaternion: Option<String>,
+        scale: Option<String>,
+    ) -> String {
+        rt::og_terrain_bounds(world, data, origin, quaternion, scale)
     }
     fn og_terrain_edit(&self, world: u32, data: f64, brush: Option<String>) -> String {
         rt::og_terrain_edit(world, data, brush)

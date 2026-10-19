@@ -9373,7 +9373,7 @@ module probe {
 module terrain {
   skill og-game
   doc "Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry."
-  doc "Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it centred on the entity's position (rotation and scale are ignored: terrain lies along world x and z), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere; og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are asset changes, like og.physics.setMesh: they are not world state, and a restored snapshot keeps the terrain as it is."
+  doc "Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it placed by the entity's world transform (centred on its position, turned and scaled with it), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere (pass it the entity's position, quaternion and scale); og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are asset changes, like og.physics.setMesh: they are not world state, and a restored snapshot keeps the terrain as it is."
 
   handle TerrainData "A loaded terrain: its heights, control map and layers."
 
@@ -9394,7 +9394,7 @@ module terrain {
   }
 
   component Terrain {
-    doc "Draws a loaded terrain centred on the entity's position, with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to."
+    doc "Draws a loaded terrain placed by the entity's world transform (centred on its position, turned and scaled with it), with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to."
     field data TerrainData "The terrain (og.terrain.load's TerrainInfo.data)."
     field castShadows bool "Cast the directional and local lights' shadows (it always receives them)." {
       default true
@@ -9484,8 +9484,12 @@ module terrain {
     doc "Where og.terrain.sample looks."
     desc true
     field data TerrainData "The terrain."
-    field origin Vector3 "Where it stands: its og.Terrain entity's position." {
+    field origin Vector3 "Where it stands: its og.Terrain entity's world position." {
       unit m
+    }
+    field quaternion Quaternion "How it is turned: its og.Terrain entity's world rotation (the zero value: along world x and z)."
+    field scale Vector3 "How it is scaled: its og.Terrain entity's world scale." {
+      default 1 1 1
     }
     field x f32 "The world x." {
       unit m
@@ -9497,7 +9501,7 @@ module terrain {
 
   struct TerrainSample {
     doc "The terrain under a point."
-    field height f32 "The world y of the surface: the triangles drawn at the finest level and collided with." {
+    field height f32 "The world y of the surface (the triangles drawn at the finest level and collided with) on the terrain's up axis through (x, z): straight down for a terrain turned only about y." {
       unit m
     }
     field normal Vector3 "The surface normal, smoothed between samples as the renderer shades it."
@@ -9521,18 +9525,22 @@ module terrain {
     doc "One runtime edit of a terrain (og.terrain.edit)."
     desc true
     field mode TerrainBrushMode "What it does."
-    field origin Vector3 "Where the terrain stands: its og.Terrain entity's position." {
+    field origin Vector3 "Where the terrain stands: its og.Terrain entity's world position." {
       unit m
+    }
+    field quaternion Quaternion "How it is turned: its og.Terrain entity's world rotation."
+    field scale Vector3 "How it is scaled: its og.Terrain entity's world scale." {
+      default 1 1 1
     }
     field center Vector3 "The brush's centre in world space; its y is flatten's target height." {
       unit m
     }
-    field radius f32 "The brush's radius." {
+    field radius f32 "The brush's radius in world metres (across the terrain's surface)." {
       default 8
       min 0.01
       unit m
     }
-    field strength f32 "Metres at the centre (raise, lower), or how far to go, 0 to 1 (flatten, smooth, paint)." {
+    field strength f32 "World metres at the centre (raise, lower), or how far to go, 0 to 1 (flatten, smooth, paint)." {
       default 1
       min 0
     }
@@ -9628,10 +9636,16 @@ module terrain {
   }
 
   fn bounds {
-    doc "A terrain's box in world space when it stands at `origin`."
+    doc "A terrain's box in world space when it stands at `origin`, turned by `quaternion` and scaled by `scale` (its entity's world transform): the box around its turned corners."
     param world World "The world."
     param data TerrainData "The terrain."
     param origin Vector3 "Where it stands." {
+      optional true
+    }
+    param quaternion Quaternion "How it is turned." {
+      optional true
+    }
+    param scale Vector3 "How it is scaled." {
       optional true
     }
     returns Result.TerrainBounds "Refused for an unknown terrain."

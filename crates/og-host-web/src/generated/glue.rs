@@ -1422,8 +1422,8 @@ pub fn og_terrain_sample(world: u32, desc: Option<String>) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_terrain_bounds(world: u32, data: f64, origin: Option<String>) -> String {
-    <Host as TerrainApi>::og_terrain_bounds(&Host, world, data, origin)
+pub fn og_terrain_bounds(world: u32, data: f64, origin: Option<String>, quaternion: Option<String>, scale: Option<String>) -> String {
+    <Host as TerrainApi>::og_terrain_bounds(&Host, world, data, origin, quaternion, scale)
 }
 
 #[wasm_bindgen]

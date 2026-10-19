@@ -6686,7 +6686,7 @@
     },
     {
       "name": "terrain",
-      "doc": "Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.\nLoad it with og.terrain.load, then place it: an og.Terrain on an entity draws it centred on the entity's position (rotation and scale are ignored: terrain lies along world x and z), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere; og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are asset changes, like og.physics.setMesh: they are not world state, and a restored snapshot keeps the terrain as it is.",
+      "doc": "Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.\nLoad it with og.terrain.load, then place it: an og.Terrain on an entity draws it placed by the entity's world transform (centred on its position, turned and scaled with it), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere (pass it the entity's position, quaternion and scale); og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are asset changes, like og.physics.setMesh: they are not world state, and a restored snapshot keeps the terrain as it is.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -6749,7 +6749,7 @@
         },
         {
           "name": "bounds",
-          "doc": "A terrain's box in world space when it stands at `origin`.",
+          "doc": "A terrain's box in world space when it stands at `origin`, turned by `quaternion` and scaled by `scale` (its entity's world transform): the box around its turned corners.",
           "params": [
             {
               "name": "world",
@@ -6768,6 +6768,18 @@
               "type": "Vector3",
               "optional": true,
               "doc": "Where it stands."
+            },
+            {
+              "name": "quaternion",
+              "type": "Quaternion",
+              "optional": true,
+              "doc": "How it is turned."
+            },
+            {
+              "name": "scale",
+              "type": "Vector3",
+              "optional": true,
+              "doc": "How it is scaled."
             }
           ],
           "returns": "Result<TerrainBounds>",
@@ -24795,7 +24807,7 @@
     "Terrain": {
       "x-og-kind": "component",
       "x-og-module": "terrain",
-      "description": "Draws a loaded terrain centred on the entity's position, with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.",
+      "description": "Draws a loaded terrain placed by the entity's world transform (centred on its position, turned and scaled with it), with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.",
       "type": "object",
       "properties": {
         "data": {
@@ -25000,13 +25012,32 @@
         },
         "origin": {
           "$ref": "#/$defs/Vector3",
-          "description": "Where it stands: its og.Terrain entity's position.",
+          "description": "Where it stands: its og.Terrain entity's world position.",
           "default": {
             "x": 0,
             "y": 0,
             "z": 0
           },
           "x-og-unit": "m"
+        },
+        "quaternion": {
+          "$ref": "#/$defs/Quaternion",
+          "description": "How it is turned: its og.Terrain entity's world rotation (the zero value: along world x and z).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scale": {
+          "$ref": "#/$defs/Vector3",
+          "description": "How it is scaled: its og.Terrain entity's world scale.",
+          "default": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
         },
         "x": {
           "type": "number",
@@ -25031,7 +25062,7 @@
       "properties": {
         "height": {
           "type": "number",
-          "description": "The world y of the surface: the triangles drawn at the finest level and collided with.",
+          "description": "The world y of the surface (the triangles drawn at the finest level and collided with) on the terrain's up axis through (x, z): straight down for a terrain turned only about y.",
           "x-og-unit": "m"
         },
         "normal": {
@@ -25092,13 +25123,32 @@
         },
         "origin": {
           "$ref": "#/$defs/Vector3",
-          "description": "Where the terrain stands: its og.Terrain entity's position.",
+          "description": "Where the terrain stands: its og.Terrain entity's world position.",
           "default": {
             "x": 0,
             "y": 0,
             "z": 0
           },
           "x-og-unit": "m"
+        },
+        "quaternion": {
+          "$ref": "#/$defs/Quaternion",
+          "description": "How it is turned: its og.Terrain entity's world rotation.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scale": {
+          "$ref": "#/$defs/Vector3",
+          "description": "How it is scaled: its og.Terrain entity's world scale.",
+          "default": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
         },
         "center": {
           "$ref": "#/$defs/Vector3",
@@ -25112,14 +25162,14 @@
         },
         "radius": {
           "type": "number",
-          "description": "The brush's radius.",
+          "description": "The brush's radius in world metres (across the terrain's surface).",
           "default": 8,
           "minimum": 0.01,
           "x-og-unit": "m"
         },
         "strength": {
           "type": "number",
-          "description": "Metres at the centre (raise, lower), or how far to go, 0 to 1 (flatten, smooth, paint).",
+          "description": "World metres at the centre (raise, lower), or how far to go, 0 to 1 (flatten, smooth, paint).",
           "default": 1,
           "minimum": 0
         },

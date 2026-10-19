@@ -1702,9 +1702,9 @@ pub fn og_terrain_sample(env: Env, world: u32, desc: Option<String>) -> String {
 }
 
 #[napi(js_name = "og_terrain_bounds")]
-pub fn og_terrain_bounds(env: Env, world: u32, data: f64, origin: Option<String>) -> String {
+pub fn og_terrain_bounds(env: Env, world: u32, data: f64, origin: Option<String>, quaternion: Option<String>, scale: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as TerrainApi>::og_terrain_bounds(&Host, world, data, origin)
+    <Host as TerrainApi>::og_terrain_bounds(&Host, world, data, origin, quaternion, scale)
 }
 
 #[napi(js_name = "og_terrain_edit")]
