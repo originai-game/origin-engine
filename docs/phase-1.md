@@ -177,6 +177,11 @@ clippy 21 s, drift 5 s, determinism 46 s, wasm-build 235 s, wasm-opt
 305 s, test 347 s, size-gate 92 s, bun-test 154 s. The publish wasm is
 **2,975,644 B brotli, 70.9 % of the 4,194,304 B budget**, 32,464 B
 (0.8 points) more than the E7 round's 2,943,180 B.
+After merging main (11d6820, the terrain and water round and the
+archetypes) in 00238f6, `OG_GATE_JOBS=2 scripts/check.sh --all` on 00238f6
+**PASSED, 9 of 9 steps in 123 s** (incremental after the path-aware run),
+with the publish wasm at **3,013,367 B brotli, 71.8 %** for both rounds
+together.
 
 ## Status 2026-10-19, E7 round
 
