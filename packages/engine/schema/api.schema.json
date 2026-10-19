@@ -1998,6 +1998,7 @@
         "Rope",
         "Cloth",
         "Fluid2D",
+        "Fluid3D",
         "WaterSurface",
         "WaterLine",
         "Splash",
@@ -2408,6 +2409,27 @@
           ],
           "returns": "Result<List<Vector2>>",
           "returnsDoc": "Refused for an entity without an og.Fluid2D.",
+          "publish": true
+        },
+        {
+          "name": "fluid3dParticles",
+          "doc": "An og.Fluid3D's particle positions after the last step, in world space (emitted particles last, in the order they appeared).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The fluid's entity."
+            }
+          ],
+          "returns": "Result<List<Vector3>>",
+          "returnsDoc": "Refused for an entity without an og.Fluid3D.",
           "publish": true
         },
         {
@@ -14004,6 +14026,242 @@
           "maximum": 2147483647,
           "description": "The sprite layer it is drawn on.",
           "default": 0
+        },
+        "visible": {
+          "type": "boolean",
+          "description": "Whether the renderer draws it.",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Fluid3D": {
+      "x-og-kind": "component",
+      "x-og-module": "physics",
+      "description": "A 3D particle fluid (the 3D profile): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure that gives surface tension, viscosity) over a spatial hash in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider, the terrain's height field included (pushed out; they push nothing back), and stay inside `bounds` around the entity when it is set. An emitter adds particles at `emitRate` up to `maxCount`; a sink box removes those that enter it. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as a screen-space surface: the particles' depth smoothed into one surface, refracting what is behind by its thickness and reflecting the sky, lit by the scene's lights. Cost: about 0.9 ms of CPU a tick for 2000 particles at 1 substep, 1.8 ms at 2 (native and wasm alike), growing with the particles; keep a scene's fluids to a few thousand particles. The surface costs about 1.1 ms of GPU (an Apple M4 Pro, the fluid covering a third of a 1280×720 frame) whatever the particle count, growing with the pixels it covers.",
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it).",
+          "default": 2000,
+          "maximum": 32768
+        },
+        "size": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The spawn box, centred on the entity.",
+          "default": {
+            "x": 2,
+            "y": 1,
+            "z": 2
+          },
+          "x-og-unit": "m"
+        },
+        "bounds": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The container around the entity (0 on an axis: open on that axis; colliders and the terrain still hold it).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "radius": {
+          "type": "number",
+          "description": "The interaction radius: particles closer than this push and drag each other. Cost grows with the particles, not the radius.",
+          "default": 0.2,
+          "minimum": 0.02,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "restDensity": {
+          "type": "number",
+          "description": "The density it settles at (neighbours within radius, weighted).",
+          "default": 10,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "stiffness": {
+          "type": "number",
+          "description": "The pressure's strength (above about 0.05 it jitters, then springs apart).",
+          "default": 0.02,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "nearStiffness": {
+          "type": "number",
+          "description": "The near pressure's strength (keeps particles apart, gives surface tension).",
+          "default": 0.4,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "viscosity": {
+          "type": "number",
+          "description": "Linear viscosity (it also calms the surface; honey above 1).",
+          "default": 0.4,
+          "minimum": 0,
+          "maximum": 4,
+          "x-og-tunable": true
+        },
+        "group": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Fluids sharing a group above 0 push, drag and (by `mixing`) mix with each other as one fluid, at most four to a group (in entity order; a fifth is simulated alone); 0 keeps the fluid to itself.",
+          "default": 0
+        },
+        "density": {
+          "type": "number",
+          "description": "How heavy its particles are against the group's other fluids: a heavier fluid sinks under a lighter one.",
+          "default": 1,
+          "minimum": 0.05,
+          "maximum": 20,
+          "x-og-tunable": true
+        },
+        "mixing": {
+          "type": "number",
+          "description": "How readily it mixes with the group's other fluids: 0 keeps them apart in layers (the boundary held), 1 blends them where they touch (their mix, colour and weight even out).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "gravityScale": {
+          "type": "number",
+          "description": "Multiplies og.Physics.gravity.",
+          "default": 1,
+          "minimum": -10,
+          "maximum": 10,
+          "x-og-tunable": true
+        },
+        "substeps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Simulation steps per tick (each costs a full pass over the particles).",
+          "default": 2,
+          "minimum": 1,
+          "maximum": 8
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The seed of the spawn and emitter jitter.",
+          "default": 0
+        },
+        "maxCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most particles alive at once (the emitter stops there).",
+          "default": 8192,
+          "minimum": 1,
+          "maximum": 32768
+        },
+        "emitRate": {
+          "type": "number",
+          "description": "Particles the emitter adds per second (0: no emitter).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 20000,
+          "x-og-tunable": true
+        },
+        "emitOffset": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where the emitter is, from the entity (world axes).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "emitVelocity": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The velocity emitted particles start with.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "mps",
+          "x-og-tunable": true
+        },
+        "emitRadius": {
+          "type": "number",
+          "description": "The half-size of the cube new particles appear in around the emitter.",
+          "default": 0.1,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "sinkOffset": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The sink's centre, from the entity (world axes).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "sinkSize": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The sink box: particles that enter it are removed (0 0 0: no sink).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "color": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The fluid's linear colour (what light passing through it keeps).",
+          "default": {
+            "x": 0.2,
+            "y": 0.55,
+            "z": 0.9
+          }
+        },
+        "opacity": {
+          "type": "number",
+          "description": "How opaque a metre of it is (0: clear as glass, 1: opaque).",
+          "default": 0.6,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "reflectivity": {
+          "type": "number",
+          "description": "How much it reflects (scales the Fresnel term).",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 2
+        },
+        "refraction": {
+          "type": "number",
+          "description": "How far refraction bends what is seen through it.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 4
+        },
+        "drawScale": {
+          "type": "number",
+          "description": "The drawn size of each particle (times radius).",
+          "default": 0.6,
+          "minimum": 0.1,
+          "maximum": 2
+        },
+        "smoothing": {
+          "type": "number",
+          "description": "How much the surface is smoothed (0: beads, 1: one surface).",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 2
         },
         "visible": {
           "type": "boolean",

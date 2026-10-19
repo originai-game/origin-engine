@@ -77,6 +77,8 @@ object; see below). Passes whose feature is off are not recorded.
    With terrain, each of its clipmap levels that reaches into the face's
    or cascade's volume is drawn too; with a planar water reflection the
    **reflection pass** follows the shadows (§Phase 2: water).
+   While a 3D fluid has particles the **fluid-3d pass** follows
+   (§Phase 2: 3D fluids).
 5. **Main pass** into the `Rgba16Float` HDR target (4× multisampled with a
    resolve when MSAA is on): forward PBR (`pbr.wgsl`) with the directional
    light, its cascade picked by view depth (the same slices its casters were
@@ -657,6 +659,55 @@ and the scenes `terrain-near`, `terrain-mid`, `terrain-far` (the 2 km
 island of `og_tests::terrain_scenes` from 2 m, 150 m and 700 m), and
 `water-planar`, `water-shadows`, `water-underwater`; each test was broken
 once (`tests/evidence/P2/terrain-water/break-and-restore.md`).
+
+## Phase 2: 3D fluids
+
+`Scene::fluids_3d` (`src/fluid3d.rs`, `shaders/fluid3d.wgsl`,
+`shaders/fluid3d_blur.wgsl`; og-runtime fills it from every visible
+`og.Fluid3D`) draws particle fluids as one screen-space surface. The CPU
+uploads each frame's particles as instances (their positions come from
+og-physics' CPU solver anyway), so every tier, WebGL2 included, runs the
+same passes with no storage buffer or compute. The frame pass `fluid-3d`
+runs after the depth prepass and before the main pass, while a fluid has
+particles (the prepass and the split main pass are then forced on):
+
+1. sphere imposters write the nearest view depth into `fluid.depth`
+   (`fluid.zbuf` for the depth test), discarded behind the prepass's depth;
+2. the same spheres add up their chords through each pixel, clamped where
+   they pass behind the scene and times the fluid's optical density, and
+   their colours, into `fluid.thick`;
+3. a separable bilateral filter (two passes, `fluid.blur` then
+   `fluid.smooth`, 12 taps each side, at most 24 px) smooths the depth over
+   the drawn radius times `smoothing` as seen at that depth;
+4. the composite, in the main pass after the scene copy and water, rebuilds
+   normals from the smoothed depth, refracts the copied scene by
+   `refraction` and absorbs it by the thickness (the exponential of the
+   optical depth, what passes taking the particles' colour), lights the body with the sun and its cascades, the
+   image-based light and the clustered local lights, reflects the
+   environment by Schlick's Fresnel times `reflectivity`, fogs, and writes
+   its depth, so later transparent draws and the frame's effects see it.
+
+All the frame's fluids share one surface: they merge where they meet, each
+particle carrying its own colour (a group's mix colours them, so poured
+fluids blend), but the look (reflectivity, refraction, smoothing) is the
+first fluid's. Marching cubes was not built (nor measured): the
+screen-space passes cost two blur passes and a composite over the pixels
+the fluid covers plus two instanced draws, whatever the particle count, where a polygonised
+surface needs a density grid and a mesh rebuilt every frame, on the CPU for
+WebGL2.
+
+Cost (`og-gfx --costs-p2`, the `fluid-3d` scene: two fluids, 2,534
+particles, about a third of a 1280×720 frame): about 1.1 ms of GPU on an Apple M4 Pro
+(metal: +1.08 to +1.17 ms over three runs of 36 draws, 0.5 to 1.3 ms
+without it) and +144 ms on lavapipe (`vulkan-cpu`, a CPU rasteriser, 219
+vs 75 ms). The CPU's
+part is og-physics' step (`crates/og-physics/README.md`).
+
+Tests and references (`metal`, `vulkan-cpu`): `og-tests/tests/fluids3d.rs`
+and the scene `fluid-3d` (a blue pool in a tiled basin with an orange drop
+above it, lit by the sun and an orange point light); each check was broken
+once (`tests/evidence/P2/sph/break-and-restore.md`). fx-showcase's
+`fluids3d` station has references on all four tiers.
 
 ## What phase 2 owes
 

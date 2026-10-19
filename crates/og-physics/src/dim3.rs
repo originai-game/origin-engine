@@ -118,6 +118,49 @@ pub(crate) fn from_mesh(shape: u32, mesh: &crate::MeshDesc, s: Vec3) -> Result<r
 /// The profile's dimensions.
 pub(crate) const DIM: usize = 3;
 
+/// For a height-field collider with `p` over it: the point of its surface
+/// straight above or below `p` (along the field's up) and the surface's
+/// unit normal there, pointing out of the ground. `None` for other shapes
+/// and off the field's edges. Parry projects a point onto the nearest
+/// triangle and never says it is inside, so a point that fell below the
+/// surface would be pushed further down; this tells which side it is on.
+pub(crate) fn heightfield_surface(c: &rp::Collider, p: Vec3) -> Option<(Vec3, Vec3)> {
+    let field = c.shape().as_heightfield()?;
+    let pose = c.position();
+    let local = pose.inverse_transform_point(v(p));
+    let (i, j) = field.cell_at_point(local)?;
+    let (first, second) = field.triangles_at(i, j);
+    // The triangle under `local` in xz (or the nearer one, at an edge).
+    let mut best: Option<(f32, rp::Vector, rp::Vector)> = None;
+    for t in [first, second].into_iter().flatten() {
+        let n = (t.b - t.a).cross(t.c - t.a);
+        if n.y.abs() <= 1e-12 {
+            continue;
+        }
+        let n = if n.y < 0.0 { -n } else { n };
+        let (e1x, e1z) = (t.b.x - t.a.x, t.b.z - t.a.z);
+        let (e2x, e2z) = (t.c.x - t.a.x, t.c.z - t.a.z);
+        let det = e1x * e2z - e2x * e1z;
+        if det.abs() <= 1e-12 {
+            continue;
+        }
+        let (px, pz) = (local.x - t.a.x, local.z - t.a.z);
+        let u = (px * e2z - e2x * pz) / det;
+        let w = (e1x * pz - px * e1z) / det;
+        let outside = (-u).max(-w).max(u + w - 1.0).max(0.0);
+        if best.is_none_or(|(o, ..)| outside < o) {
+            let y = t.a.y - (n.x * px + n.z * pz) / n.y;
+            best = Some((
+                outside,
+                rp::Vector::new(local.x, y, local.z),
+                n / n.length(),
+            ));
+        }
+    }
+    let (_, q, up) = best?;
+    Some((unv(pose.transform_point(q)), unv(pose.rotation * up)))
+}
+
 /// The rotation of a joint's frame whose x is `axis` (the hinge or slide axis).
 pub(crate) fn joint_frame(axis: Vec3) -> rp::Rotation {
     let q = crate::arc(Vec3::X, axis.normalize_or(Vec3::X));

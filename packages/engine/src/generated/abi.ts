@@ -269,6 +269,8 @@ export interface HostAbi<A, V> {
   og_physics_cloth_points(world: number, entity: number): string;
   /** `og.physics.fluidParticles` */
   og_physics_fluid_particles(world: number, entity: number): string;
+  /** `og.physics.fluid3dParticles` */
+  og_physics_fluid3d_particles(world: number, entity: number): string;
   /** `og.physics.waterHeight` */
   og_physics_water_height(world: number, entity: number, x: number, z: number): string;
   /** `og.physics.vehicleWheels` */
@@ -724,6 +726,7 @@ export const SYMBOLS: readonly string[] = [
   "og_physics_rope_points",
   "og_physics_cloth_points",
   "og_physics_fluid_particles",
+  "og_physics_fluid3d_particles",
   "og_physics_water_height",
   "og_physics_vehicle_wheels",
   "og_physics_ragdoll_rig_from_skeleton",

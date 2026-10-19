@@ -513,6 +513,71 @@ size-gate and drift. bun-test timed out once, at load 140, in web-export's
 rerun, `scripts/check.sh --only bun-test`, **PASSED** with the engine package's
 108 tests. The publish wasm is 3,151,777 B brotli, 75 %.
 
+## Status 2026-10-19, phase 2, 3D SPH round
+
+Branch `p2-sph` (evidence: `tests/evidence/P2/sph/`, `NOTES.md` there
+indexes it). Owed row 29 is done.
+
+- **The simulation** (6dcdc98, 87ea4bd): `og.Fluid3D`, a 3D particle fluid
+  by double density relaxation (Clavet et al. 2005), the 2D fluid's model,
+  rather than position-based fluids: one neighbour search and two passes a
+  substep instead of PBF's solver iterations, stable at 60 Hz with two
+  substeps, and groups (four fluids at most, layering by `density`,
+  blending by `mixing`), emitters (`emitRate` up to `maxCount`) and sink
+  boxes carry over. Neighbours come from a spatial hash in a fixed order;
+  particles collide with the 3D colliders and the terrain's height field
+  and stay in optional `bounds`. All of it is og.physics state (snapshots,
+  restore, the world hash). CPU per 60 Hz tick, native and wasm32 alike:
+  about 0.9 ms for 2,000 particles at one substep, 1.8 ms at the default
+  two, 4 ms for 4,000 and 10 ms for 8,000, about double where they pile
+  deep.
+- **Determinism** (a513e20): the beyond-rigid-bodies scenario pours two 3D
+  fluids of one group into a terrain bowl through an emitter and a sink;
+  host debug and release and wasm32 scalar and simd128 agree (physics_hash
+  8301574762329360262).
+- **The public API** (71257f0): api.ogt's physics module declares
+  `og.Fluid3D` and `og.physics.fluid3dParticles`, regenerated with `og api
+  gen` into the bindings, schema, d.ts, ABI, glue and wiki.
+- **The surface** (200b6fe, 7fc64e7, 2f9e908, 792aa2b): og-render draws
+  every visible 3D fluid as one screen-space surface on all four tiers (no
+  storage buffer, no compute): sphere imposters into a depth and a
+  thickness target, a separable bilateral smoothing, and a composite in
+  the main pass that refracts and absorbs the scene behind, lights the
+  body with the sun, its cascades, the image-based light and the clustered
+  local lights, reflects the environment and writes its depth. About
+  1.1 ms of GPU on the M4 Pro for a fluid covering a third of a 720p frame,
+  whatever the particle count. Marching cubes was neither built nor
+  measured; the case against it (a density grid and a mesh rebuilt every
+  frame, on the CPU for WebGL2) is reasoning only. Shared render-graph
+  changes: `post.rs` gains `FramePass::Fluid3d` and its five transients
+  (`fluid.depth`, `fluid.zbuf`, `fluid.thick`, `fluid.blur`,
+  `fluid.smooth`), read by the main pass; `lib.rs` forces the depth
+  prepass and the split main pass while a fluid has particles.
+- **fx-showcase** station 23, fluids3d (332ec84): a blue pool and a heavy
+  orange fluid poured into it by an emitter, sinking under it, with a
+  playtest of 12 checks and references on metal, vulkan-cpu (1974892),
+  webgpu and webgl2 (829143e), all within the RMSE rule against metal.
+- **Docs** (7e63835): the og-game skill and the wiki teach og.Fluid3D and
+  its CPU and GPU cost; og-physics' and og-render's READMEs gain their
+  phase 2 sections.
+
+### Gate and wasm
+
+`OG_GATE_JOBS=2 scripts/check.sh --all` on 8658977 (this section and
+the NOTES' last edit uncommitted, documentation only), 2026-10-19, with
+other agents' gates on the machine (load average 28 to 96): **PASSED, 9 of
+9 steps in 412 s**: fmt 1 s, clippy 0 s, drift 2 s, wasm-build 27 s,
+wasm-opt 123 s, test 125 s, size-gate 47 s, bun-test 27 s, determinism
+407 s (every build agrees, physics_hash 8301574762329360262). The run
+before it (fmt 4 s, clippy 65 s, wasm-build 23 s, wasm-opt 98 s, size-gate
+64 s, drift 32 s, test 360 s) failed at bun-test at load 96 on two timeouts
+in code this round does not touch: i18n.test.ts's beforeAll (`og cook` of
+ui-kit, 5 s) and web-export.test.ts (120 s); alone they pass in 4 s, and
+the rerun passed. The publish wasm is **3,052,777 B brotli, 72.8 % of the
+4,194,304 B budget**, 24,048 B (0.57 points) more than the 3,028,729 B
+before this round. Earlier, `scripts/check.sh web-reference` passed in
+168 s (18 of 18 stations on webgpu and webgl2, fluids3d included).
+
 ## Status 2026-10-19, phase 2, render round
 
 Branch `p2-render`; it closes owed rows 23, 28, 30, 31 and 32 (the table
@@ -830,6 +895,8 @@ animation and physics round (cf932f8).
 After the phase 2 animation and physics round: rows 25, 26, 27 and 43 done
 too; 29 (3D SPH) still open.
 
+After the phase 2 3D SPH round: row 29 done too.
+
 Every item a round's status left owed or out, in one place; the round
 sections below point here instead of repeating them. Size: S a day or
 less, M a few days, L a workstream. Owner: **engine** is this repository
@@ -867,7 +934,7 @@ resource only the owner can give.
 | 26 | Cloth self-collision | E5 | M | engine, phase 2 | done, bf15ab1, 4a716f7 |
 | 27 | 2D ragdolls | E5 | M | engine, phase 2 | done, bf15ab1, 53331df, 4a716f7 |
 | 28 | A moon disc in the night sky | E5 | S | engine, phase 2 | done, 1df9797, 9037875, a5cdb89 |
-| 29 | 3D SPH (3D water is the height field) | E5 | L | engine, phase 2 | open (not started in the animation and physics round: left for the next) |
+| 29 | 3D SPH (3D water is the height field) | E5 | L | engine, phase 2 | done, 6dcdc98, a513e20, 71257f0, 200b6fe, 2f9e908, 792aa2b, 332ec84 (double density relaxation in 3D, a screen-space surface on all four tiers, the fluids3d station) |
 | 30 | Forward+ clustered lights beyond the 8-light uniform loop (CPU tile table on WebGL2) | M3, M6 | L | engine, phase 2 | done, a061113, 1296a02, f381a66 |
 | 31 | A normal matrix for non-uniform scale, vertex tangents, clearcoat, and a gfx scene of the M6 material features | M6 | M | engine, phase 2 | done, 12e93b5, 49dfd0d, eb869b8, aa81258 |
 | 32 | The runtime loaders transcode to the tier's compressed texture format and upload it (RGBA8 today) | M4, M6 | M | engine, phase 2 | done, 028c2fc |

@@ -795,6 +795,12 @@ pub fn og_physics_fluid_particles(env: Env, world: u32, entity: f64) -> String {
     <Host as PhysicsApi>::og_physics_fluid_particles(&Host, world, entity)
 }
 
+#[napi(js_name = "og_physics_fluid3d_particles")]
+pub fn og_physics_fluid3d_particles(env: Env, world: u32, entity: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_fluid3d_particles(&Host, world, entity)
+}
+
 #[napi(js_name = "og_physics_water_height")]
 pub fn og_physics_water_height(env: Env, world: u32, entity: f64, x: f64, z: f64) -> String {
     let _env = crate::EnvScope::enter(&env);

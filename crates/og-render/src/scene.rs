@@ -930,6 +930,9 @@ pub struct RenderScene {
     /// 2D fluids drawn as metaballs in the sprite order (the first
     /// [`crate::MAX_FLUIDS`]; fluids of one group are one surface).
     pub metaballs: Vec<crate::Metaballs>,
+    /// 3D particle fluids, drawn as one screen-space surface after the
+    /// opaque scene, the sky and water.
+    pub fluids_3d: Vec<crate::Fluid3d>,
     /// Sort keys of single sprites within their layer (top-down y sorting):
     /// a layer draws its sprites by ascending key, then texture, then
     /// submission order; a sprite without one has key 0.
@@ -1005,6 +1008,7 @@ impl RenderScene {
             scatters: Vec::new(),
             water_2d: Vec::new(),
             metaballs: Vec::new(),
+            fluids_3d: Vec::new(),
             sprite_order: Vec::new(),
             text_outlines: Vec::new(),
             tile_layers: Vec::new(),

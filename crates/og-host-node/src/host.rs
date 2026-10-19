@@ -516,6 +516,9 @@ impl PhysicsApi for NodeHost {
     fn og_physics_fluid_particles(&self, world: u32, entity: f64) -> String {
         rt::og_physics_fluid_particles(world, entity)
     }
+    fn og_physics_fluid3d_particles(&self, world: u32, entity: f64) -> String {
+        rt::og_physics_fluid3d_particles(world, entity)
+    }
     fn og_physics_water_height(&self, world: u32, entity: f64, x: f64, z: f64) -> String {
         rt::og_physics_water_height(world, entity, x, z)
     }

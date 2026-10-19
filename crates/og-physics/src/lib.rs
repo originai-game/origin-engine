@@ -14,6 +14,7 @@
 //! | [`Vehicle`], [`WheelPose`] | the 3D raycast car and the 2D wheel-joint car; [`PhysicsSystem::vehicle_wheels`] |
 //! | [`Rope`], [`Cloth`] | Verlet ropes and cloth pinned to entities, colliding with solids; [`PhysicsSystem::rope_points`], [`PhysicsSystem::cloth_points`] |
 //! | [`Fluid2D`] | a 2D particle fluid (double density relaxation); [`PhysicsSystem::fluid_particles`] |
+//! | [`Fluid3D`] | a 3D particle fluid (double density relaxation, spatial hash); [`PhysicsSystem::fluid3d_particles`] |
 //! | [`WaterSurface`], [`WaterLine`], [`Splash`] | height-field water (3D) and a 2D spring line, splashed by and floating bodies |
 //! | [`Ragdoll`], [`RagdollRig`] | capsule bones and joints (ball joints in 3D, hinges about z in 2D) from a host-registered rig, blended between animation and physics |
 //!
@@ -47,6 +48,7 @@
 compile_error!("og-physics needs the `physics2d` or the `physics3d` feature (both are default)");
 
 mod fluid;
+mod fluid3d;
 mod gather;
 mod schema;
 mod schema_ext;
@@ -738,6 +740,24 @@ impl PhysicsSystem {
     pub fn fluid_mix(&self, entity: Entity) -> Option<(u32, Vec<[f32; 4]>)> {
         with_sim!(self.shared, |s| s
             .fluids
+            .get(&entity.to_bits())
+            .filter(|f| f.slot != u32::MAX)
+            .map(|f| (f.slot, f.mix.clone())))
+    }
+
+    /// The particle positions of the og.Fluid3D on `entity` (world space).
+    pub fn fluid3d_particles(&self, entity: Entity) -> Option<Vec<Vec3>> {
+        with_sim!(self.shared, |s| s
+            .fluids3
+            .get(&entity.to_bits())
+            .map(|f| f.positions.clone()))
+    }
+
+    /// The mix of the og.Fluid3D on `entity` when it shares a group, as
+    /// [`Self::fluid_mix`] is for og.Fluid2D. `None` for a fluid alone.
+    pub fn fluid3d_mix(&self, entity: Entity) -> Option<(u32, Vec<[f32; 4]>)> {
+        with_sim!(self.shared, |s| s
+            .fluids3
             .get(&entity.to_bits())
             .filter(|f| f.slot != u32::MAX)
             .map(|f| (f.slot, f.mix.clone())))

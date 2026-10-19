@@ -86,6 +86,7 @@ fn physics_audio_animation_and_input_records_have_the_idl_layouts() {
     check::<og_physics::SensorEntered>(&mut failures);
     check::<og_physics::SensorExited>(&mut failures);
     check::<og_physics::Contact>(&mut failures);
+    check::<og_physics::Fluid3D>(&mut failures);
     check::<og_audio::AudioSource>(&mut failures);
     check::<og_audio::AudioListener>(&mut failures);
     check::<og_audio::Audio>(&mut failures);

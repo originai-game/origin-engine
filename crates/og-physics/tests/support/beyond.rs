@@ -2,7 +2,8 @@
 //! a moving platform, a motor hinge, a chain of ball joints, a raycast car,
 //! a Verlet rope and two cloths, one piling up on itself with
 //! self-collision, height-field water with crates dropped in, a ragdoll that
-//! goes limp and recovers) and a 2D one (a platformer, a wheel-joint car, a
+//! goes limp and recovers, two 3D fluids of one group poured into a terrain
+//! bowl, one fed by an emitter, the other drained by a sink) and a 2D one (a platformer, a wheel-joint car, a
 //! particle fluid, two fluids of one group layering and mixing, a water
 //! line, a 2D ragdoll knocked over and recovering), every input derived from
 //! the tick. `tests/beyond_determinism.rs` runs it twice and across a
@@ -88,6 +89,8 @@ pub struct Cast {
     pub ragdoll: Option<Entity>,
     /// The self-colliding cloth (3D), its top row lowered onto the floor.
     pub folding: Option<Entity>,
+    /// The 3D fluids: the emitting one and the draining one.
+    pub fluids3d: Option<(Entity, Entity)>,
 }
 
 /// Where the 3D folding cloth's top row is at `tick`: lowered from 1.4 m
@@ -254,12 +257,80 @@ pub fn scene3d(w: &mut World, physics: &PhysicsSystem) -> Cast {
             },
         ),
     );
+    // Two 3D fluids of one group in a terrain bowl: the heavy one fed by
+    // an emitter over the rim, the light one drained by a sink at the
+    // bottom.
+    let (n, size) = (17u32, 6.0f32);
+    let mut heights = Vec::new();
+    for r in 0..n {
+        for c in 0..n {
+            let x = -size * 0.5 + c as f32 * size / (n - 1) as f32;
+            let z = -size * 0.5 + r as f32 * size / (n - 1) as f32;
+            heights.push(0.2 * (x * x + z * z));
+        }
+    }
+    physics
+        .set_heightfield(
+            9,
+            HeightfieldDesc {
+                columns: n,
+                rows: n,
+                size: Vec2::splat(size),
+                heights: std::sync::Arc::from(heights),
+            },
+        )
+        .unwrap();
+    spawn(
+        w,
+        (
+            at(-20.0, 0.0, -20.0),
+            Collider {
+                shape: SHAPE_HEIGHTFIELD,
+                mesh: 9,
+                ..Collider::default()
+            },
+        ),
+    );
+    let fluid = |density: f32, seed: u32| Fluid3D {
+        count: 200,
+        size: Vec3::new(0.8, 0.6, 0.8),
+        group: 1,
+        density,
+        mixing: 0.3,
+        seed,
+        ..Fluid3D::default()
+    };
+    let heavy = spawn(
+        w,
+        (
+            at(-21.0, 2.0, -20.0),
+            Fluid3D {
+                max_count: 400,
+                emit_rate: 30.0,
+                emit_offset: Vec3::new(0.0, 0.5, 0.0),
+                emit_velocity: Vec3::new(1.0, 0.0, 0.0),
+                ..fluid(2.0, 21)
+            },
+        ),
+    );
+    let light = spawn(
+        w,
+        (
+            at(-19.0, 1.5, -20.0),
+            Fluid3D {
+                sink_offset: Vec3::new(-1.0, -1.4, 0.0),
+                sink_size: Vec3::splat(0.4),
+                ..fluid(1.0, 22)
+            },
+        ),
+    );
     Cast {
         walker,
         platform,
         car,
         ragdoll: Some(ragdoll),
         folding: Some(folding),
+        fluids3d: Some((heavy, light)),
     }
 }
 
@@ -447,6 +518,7 @@ pub fn scene2d(w: &mut World, physics: &PhysicsSystem) -> Cast {
         car,
         ragdoll: Some(ragdoll),
         folding: None,
+        fluids3d: None,
     }
 }
 

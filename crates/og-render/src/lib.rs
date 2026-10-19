@@ -31,6 +31,7 @@ mod atmosphere;
 mod capture;
 mod clusters;
 mod effects;
+mod fluid3d;
 mod frame;
 mod fx;
 mod glass;
@@ -66,6 +67,7 @@ pub use atmosphere::{DayNightLook, Fog, SkyLook, day_night};
 pub use capture::{CAPTURE_TIMEOUT, CaptureRequest};
 pub use clusters::{CLUSTER_GRID, MAX_CLUSTER_LIGHTS, UNIFORM_LIGHT_REFS};
 pub use effects::*;
+pub use fluid3d::Fluid3d;
 pub use graph::{GraphError, GraphPlan, RenderGraph, TargetDesc};
 #[cfg(not(target_arch = "wasm32"))]
 pub use headless::render_to_rgba;
@@ -782,6 +784,7 @@ pub struct Renderer {
     /// The procedural sky of a chosen look drawn per pixel ([`Background::Procedural`]).
     sky_look_pipeline: wgpu::RenderPipeline,
     water: water::WaterRenderer,
+    fluid3d: fluid3d::Fluid3dRenderer,
     terrain: terrain::TerrainRenderer,
     scatter: scatter::ScatterRenderer,
     metaballs: metaballs::MetaballRenderer,
@@ -1630,6 +1633,12 @@ impl Renderer {
             water::WaterRenderer::new(&device, &frame_layout, FRAME_WGSL, LIGHTING_WGSL, samples);
         let metaballs =
             metaballs::MetaballRenderer::new(&device, &frame_layout, FRAME_WGSL, samples);
+        let fluid3d = fluid3d::Fluid3dRenderer::new(
+            &device,
+            &frame_layout,
+            &format!("{FRAME_WGSL}{}{LIGHTING_WGSL}", light_tables.wgsl()),
+            samples,
+        );
         let additive = wgpu::BlendState {
             color: wgpu::BlendComponent {
                 src_factor: wgpu::BlendFactor::SrcAlpha,
@@ -1868,6 +1877,7 @@ impl Renderer {
             sky_pipeline,
             sky_look_pipeline,
             water,
+            fluid3d,
             terrain,
             scatter,
             metaballs,
@@ -3020,14 +3030,16 @@ impl Renderer {
         let dof = post_fx.depth_of_field;
         let motion_blur = post_fx.motion_blur;
         let god_rays = post_fx.god_rays;
+        let fluids_3d = scene.fluids_3d.iter().any(|f| !f.particles.is_empty());
         let prepass = ao.is_some()
             || outline
             || dof.is_some()
             || motion_blur.is_some()
             || god_rays.is_some()
             || particle_frame.needs_depth
-            // Water reads the depth below it.
-            || !scene.water.is_empty();
+            // Water and 3D fluids read the depth below them.
+            || !scene.water.is_empty()
+            || fluids_3d;
         // Decals and screen-space AO need the effect shader on every batch.
         if ao.is_some() || !scene.decals.is_empty() {
             for b in batches.iter_mut().chain(skinned_batches.iter_mut()) {
@@ -3723,6 +3735,9 @@ impl Renderer {
         if fluids > 0 {
             passes.push(FramePass::Metaballs);
         }
+        if fluids_3d {
+            passes.push(FramePass::Fluid3d);
+        }
         if reflection.is_some() {
             passes.push(FramePass::Reflection);
         }
@@ -3781,7 +3796,7 @@ impl Renderer {
                         ((self.height as f32 * lightmap_scale) as u32).max(1),
                     ),
                     gtao,
-                    water: !scene.water.is_empty(),
+                    water: !scene.water.is_empty() || fluids_3d,
                     fluid_fields: fluids as u32,
                     reflection: reflection.as_ref().map(|r| r.4),
                 },
@@ -3976,6 +3991,21 @@ impl Renderer {
                 &self.post.white,
             ),
             _ => Vec::new(),
+        };
+        let fluid_frame = match fluid3d::views(&self.graph, scene_depth) {
+            Some(views) if fluids_3d => self.fluid3d.prepare(
+                &self.device,
+                &self.queue,
+                &scene.fluids_3d,
+                &fluid3d::Fluid3dCamera {
+                    view: cam.view,
+                    proj: cam.proj,
+                    orthographic: cam.orthographic,
+                },
+                (self.width, self.height),
+                &views,
+            ),
+            _ => None,
         };
         // The planar reflection's effect group: its decals, no AO.
         let reflection_fx_group = reflection.as_ref().map(|_| {
@@ -4343,6 +4373,15 @@ impl Renderer {
                         .encode_field(&mut encoder, &fields, frame_bind_group);
                     stats.draw_calls += fields.len() as u32;
                 }
+                FramePass::Fluid3d => {
+                    if let (Some(f), Some(views)) =
+                        (&fluid_frame, fluid3d::views(&self.graph, scene_depth))
+                    {
+                        stats.draw_calls +=
+                            self.fluid3d
+                                .encode(&mut encoder, f, frame_bind_group, &views);
+                    }
+                }
                 FramePass::Light2d => {
                     let ambient = scene.lighting_2d.map_or(Vec3::ONE, |l| l.ambient);
                     self.lights_2d
@@ -4453,10 +4492,10 @@ impl Renderer {
                     };
                     let hdr = self.graph.view("hdr");
                     let msaa = self.samples > 1;
-                    // With water the pass is split after the sky: the
-                    // scene so far is copied for the water to refract and
-                    // reflect, then the pass goes on over it.
-                    let split = !water_draws.is_empty();
+                    // With water or a 3D fluid the pass is split after the
+                    // sky: the scene so far is copied for them to refract
+                    // and reflect, then the pass goes on over it.
+                    let split = !water_draws.is_empty() || fluid_frame.is_some();
                     let begin = |encoder: &mut wgpu::CommandEncoder, first: bool| {
                         let (view, resolve_target, store) = if msaa {
                             (
@@ -4580,6 +4619,9 @@ impl Renderer {
                         pass = begin(&mut encoder, false);
                         pass.set_bind_group(0, frame_bind_group, &[]);
                         stats.draw_calls += self.water.draw(&mut pass, &water_draws);
+                        if let Some(f) = &fluid_frame {
+                            stats.draw_calls += self.fluid3d.draw(&mut pass, f);
+                        }
                     }
                     // Transparent meshes, back to front over the opaque scene.
                     pass.set_bind_group(2, fx_group, &[]);

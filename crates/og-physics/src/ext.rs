@@ -5,7 +5,7 @@
 //! `ragdoll.rs` (both profiles, through each one's joint) hold what the profiles do differently.
 
 use super::sim::{BodyPoses, Sim};
-use super::{DIM, flat, joint_frame, pose, rp, unpose, unv, v};
+use super::{DIM, flat, heightfield_surface, joint_frame, pose, rp, unpose, unv, v};
 use crate::fluid::FluidState;
 use crate::gather::Scene;
 use crate::schema::*;
@@ -61,6 +61,19 @@ impl Solids for Near<'_> {
         let mut hit = None;
         for &h in &self.near {
             let c = &self.colliders[h];
+            if let Some((q, n)) = heightfield_surface(c, at) {
+                // Over a height field: below its surface (or within
+                // `radius` above it) goes up to `radius` above it.
+                let depth = (at - q).dot(n);
+                if depth < radius {
+                    at += n * (radius - depth);
+                    hit = Some(n);
+                }
+                continue;
+            }
+            if c.shape().as_heightfield().is_some() {
+                continue;
+            }
             let proj = c.shape().project_point(c.position(), v(at), false);
             let q = unv(proj.point);
             let d = flat(at) - q;
@@ -814,7 +827,111 @@ pub(crate) fn soft(
         );
         state.step(fluid, dt, g, centre, position.z, &near);
     }
+    fluids3(scene, settings, dt, sim);
     Ok(())
+}
+
+/// Steps the 3D fluids (the 3D profile only: the 2D one keeps none), each
+/// alone or with the others of its group, as the 2D fluids are grouped.
+fn fluids3(scene: &Scene, settings: &Physics, dt: f32, sim: &mut Sim) {
+    use crate::fluid3d::{Fluid3State, Member, step};
+    if DIM != 3 {
+        sim.fluids3.clear();
+        return;
+    }
+    let live: BTreeSet<u64> = scene.fluids3.iter().map(|f| f.0.to_bits()).collect();
+    sim.fluids3.retain(|e, _| live.contains(e));
+    // Each fluid's set: its group's first four (entity order), or itself.
+    let mut sets: BTreeMap<(u32, u64), Vec<usize>> = BTreeMap::new();
+    let mut groups: BTreeMap<u32, Vec<usize>> = BTreeMap::new();
+    for (k, (e, position, fluid)) in scene.fluids3.iter().enumerate() {
+        let key = e.to_bits();
+        let rebuild = sim
+            .fluids3
+            .get(&key)
+            .is_none_or(|s| s.count != fluid.count || s.seed != fluid.seed);
+        if rebuild {
+            sim.fluids3.insert(key, Fluid3State::new(fluid, *position));
+        }
+        if fluid.group != 0 {
+            groups.entry(fluid.group).or_default().push(k);
+        } else {
+            sets.insert((0, key), vec![k]);
+        }
+    }
+    for (group, mut members) in groups {
+        members.sort_by_key(|&k| scene.fluids3[k].0.to_bits());
+        for (rank, &k) in members.iter().enumerate() {
+            if rank >= crate::fluid::GROUP_SIZE {
+                sets.insert((0, scene.fluids3[k].0.to_bits()), vec![k]);
+            }
+        }
+        members.truncate(crate::fluid::GROUP_SIZE);
+        if members.len() == 1 {
+            sets.insert((0, scene.fluids3[members[0]].0.to_bits()), members);
+        } else {
+            sets.insert((group, 0), members);
+        }
+    }
+    for members in sets.values() {
+        let grouped = members.len() > 1;
+        let mut taken: Vec<(u64, Fluid3State)> = Vec::with_capacity(members.len());
+        let (mut min, mut max) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
+        let mut reach = 0.0f32;
+        for (slot, &k) in members.iter().enumerate() {
+            let (e, position, fluid) = &scene.fluids3[k];
+            let mut state = sim.fluids3.remove(&e.to_bits()).expect("built above");
+            if grouped {
+                state.join(slot as u32);
+            } else {
+                state.leave();
+            }
+            for p in &state.positions {
+                min = min.min(*p);
+                max = max.max(*p);
+            }
+            // The emitter's particles appear this tick: its cube too.
+            if fluid.emit_rate > 0.0 {
+                let at = *position + fluid.emit_offset;
+                let r = Vec3::splat(fluid.emit_radius.max(0.0));
+                min = min.min(at - r);
+                max = max.max(at + r);
+            }
+            reach = reach.max(fluid.radius.max(0.02) * 2.0);
+            taken.push((e.to_bits(), state));
+        }
+        if min.x > max.x {
+            for (key, state) in taken {
+                sim.fluids3.insert(key, state);
+            }
+            continue;
+        }
+        // A particle moves at most half the radius a substep.
+        let substeps = members
+            .iter()
+            .map(|&k| scene.fluids3[k].2.substeps.clamp(1, 8))
+            .max()
+            .unwrap_or(1) as f32;
+        let near = Near::around(&sim.world, min, max, reach * (1.0 + substeps * 0.25));
+        {
+            let mut list: Vec<Member<'_>> = taken
+                .iter_mut()
+                .zip(members.iter())
+                .map(|((_, state), &k)| {
+                    let (_, position, fluid) = &scene.fluids3[k];
+                    Member {
+                        fluid,
+                        state,
+                        centre: *position,
+                    }
+                })
+                .collect();
+            step(&mut list, dt, flat(settings.gravity), &near);
+        }
+        for (key, state) in taken {
+            sim.fluids3.insert(key, state);
+        }
+    }
 }
 
 fn flat_keep(p: Vec3, z: f32, flat2: bool) -> Vec3 {
