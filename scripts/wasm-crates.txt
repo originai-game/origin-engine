@@ -9,5 +9,9 @@
 # A third word `publish` builds the crate a second time with its `publish`
 # feature (the shipping variant: what the size gate measures and what
 # build.sh puts in dist/web-publish).
+# A fourth word `lanes` builds the publish variant a third time with wasm
+# atomics through scripts/wasm-lanes.sh (the lanes variant, out-name
+# origin-engine-lanes: docs/web-export.md §Lanes); the size gate measures it
+# as its own download.
 og-render   required
-og-host-web required publish
+og-host-web required publish lanes

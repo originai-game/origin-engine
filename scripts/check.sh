@@ -173,13 +173,15 @@ step_test_quick() { run_tests test-quick 0 og-tests; }
 # listed in built.txt (cargo keeps one uplifted file per crate, so a second
 # feature variant would overwrite the first). Artifacts come from cargo's
 # JSON messages, so a fresh (not relinked) cdylib still counts and a stale
-# file never does.
+# file never does. VARIANT lanes builds through scripts/wasm-lanes.sh (wasm
+# atomics, std rebuilt, its own target directory).
 wasm_build() {
   local variant="$1" features="$2"; shift 2
-  local args=() c f name dest
+  local args=() c f name dest cargo=(cargo build --target "$WASM_TRIPLE")
   for c in "$@"; do args+=(-p "$c"); done
   [ -z "$features" ] || args+=(--features "$features")
-  cargo build --profile wasm --target "$WASM_TRIPLE" "${args[@]}" --lib \
+  [ "$variant" != lanes ] || cargo=("$OG_ROOT/scripts/wasm-lanes.sh")
+  "${cargo[@]}" --profile wasm "${args[@]}" --lib \
       --message-format=json-render-diagnostics > "$OG_WASM_OUT/cargo${variant:+-$variant}.json" || return 1
   mkdir -p "$OG_WASM_OUT/raw"
   for f in $(grep '"reason":"compiler-artifact"' "$OG_WASM_OUT/cargo${variant:+-$variant}.json" \
@@ -225,6 +227,10 @@ step_wasm_build() {
     og_say "publish variant: $c (--features $c/publish)"
     wasm_build publish "$c/publish" "$c" || return 1
   done
+  for c in $(og_wasm_lanes_crates); do
+    og_say "lanes variant: $c (--features $c/publish, wasm atomics: scripts/wasm-lanes.sh)"
+    wasm_build lanes "$c/publish" "$c" || return 1
+  done
   for c in $pending; do
     og_say "pending: $c"
     if wasm_build "" "" "$c"; then
@@ -244,18 +250,19 @@ step_wasm_build() {
 # wasm-bindgen (when the module uses it, at the Cargo.lock version, out-name
 # origin-engine as packages/engine ships it) then wasm-opt -Oz; writes
 # target/og-wasm/opt/<name>.wasm for every variant (opt-all.txt) and lists
-# the shipping ones in opt.txt: the -publish variants when any were built,
-# else all. size-gate reads opt.txt; build.sh under OG_GATE=1 reads both.
+# the shipping ones in opt.txt: the -publish and -lanes variants when any
+# were built, else all. A -lanes module is bindgen'd as origin-engine-lanes
+# and optimised with --threads. size-gate reads opt.txt; build.sh under OG_GATE=1 reads both.
 # wasm_opt_one RAW NAME: wasm-bindgen (when the module uses it) then wasm-opt
 # into $OG_WASM_OUT/opt/NAME.wasm.
 # The flags are scripts/wasm-opt.sh's, the one invocation build.sh ships with.
-WASM_OPT_FLAGS="$("$OG_ROOT/scripts/wasm-opt.sh" --flags)"
 wasm_opt_one() {
-  local raw="$1" name="$2" input="$1" lock have key cache
+  local raw="$1" name="$2" input="$1" lock have key cache out=origin-engine threads=()
+  case "$name" in *-lanes) out=origin-engine-lanes; threads=(--threads) ;; esac
   # A raw module byte-identical to one already optimised (an edit that does
   # not reach the wasm: a test, a comment, native-only code) takes the
   # earlier result: same input, tools and flags, same output.
-  key="$(og_sha256 "$raw") $(wasm-bindgen --version 2>/dev/null) $(wasm-opt --version 2>/dev/null) $WASM_OPT_FLAGS"
+  key="$(og_sha256 "$raw") $(wasm-bindgen --version 2>/dev/null) $(wasm-opt --version 2>/dev/null) $("$OG_ROOT/scripts/wasm-opt.sh" --flags ${threads[@]+"${threads[@]}"}) $out"
   cache="$OG_CONTENT_CACHE/opt/$name"
   if [ "$FORCE_ALL" != 1 ] && [ -f "$cache/key" ] && [ "$(cat "$cache/key")" = "$key" ] && [ -f "$cache/opt.wasm" ]; then
     rm -rf "$OG_WASM_OUT/bindgen/$name"
@@ -273,11 +280,11 @@ wasm_opt_one() {
       return 1
     fi
     rm -rf "$OG_WASM_OUT/bindgen/$name"
-    wasm-bindgen --target web --out-dir "$OG_WASM_OUT/bindgen/$name" --out-name origin-engine "$raw" || return 1
-    input="$OG_WASM_OUT/bindgen/$name/origin-engine_bg.wasm"
+    wasm-bindgen --target web --out-dir "$OG_WASM_OUT/bindgen/$name" --out-name "$out" "$raw" || return 1
+    input="$OG_WASM_OUT/bindgen/$name/${out}_bg.wasm"
   fi
   # The flags and why: scripts/wasm-opt.sh.
-  "$OG_ROOT/scripts/wasm-opt.sh" "$input" "$OG_WASM_OUT/opt/$name.wasm" || return 1
+  "$OG_ROOT/scripts/wasm-opt.sh" ${threads[@]+"${threads[@]}"} "$input" "$OG_WASM_OUT/opt/$name.wasm" || return 1
   og_say "$name: $(og_bytes "$raw") B raw -> $(og_bytes "$input") B bindgen -> $(og_bytes "$OG_WASM_OUT/opt/$name.wasm") B wasm-opt -Oz"
   rm -rf "$cache"; mkdir -p "$cache"
   [ ! -d "$OG_WASM_OUT/bindgen/$name" ] || cp -R "$OG_WASM_OUT/bindgen/$name" "$cache/bindgen"
@@ -312,7 +319,7 @@ step_wasm_opt() {
   cat "$OG_WASM_OUT"/opt/*.log
   [ "$rc" -eq 0 ] || return 1
   if grep -q -- '-publish\.wasm$' "$OG_WASM_OUT/opt-all.txt"; then
-    grep -- '-publish\.wasm$' "$OG_WASM_OUT/opt-all.txt" > "$OG_WASM_OUT/opt.txt"
+    grep -E -- '-(publish|lanes)\.wasm$' "$OG_WASM_OUT/opt-all.txt" > "$OG_WASM_OUT/opt.txt"
     og_say "size-gate measures the publish variant(s): $(og_words < "$OG_WASM_OUT/opt.txt")"
   else
     cp "$OG_WASM_OUT/opt-all.txt" "$OG_WASM_OUT/opt.txt"

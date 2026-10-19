@@ -263,7 +263,11 @@ fn engine_checks(cwd: &Path) -> usize {
         },
         "install the package for this platform (npm installs @origingame/engine-<platform>-<arch> through optionalDependencies), or in a checkout run `bun run build` in packages/engine",
     );
-    for (key, what) in [("wasm", "wasm"), ("publishWasm", "wasm-publish")] {
+    for (key, what) in [
+        ("wasm", "wasm"),
+        ("publishWasm", "wasm-publish"),
+        ("lanesWasm", "wasm-lanes"),
+    ] {
         let w = &report[key];
         line(
             what,

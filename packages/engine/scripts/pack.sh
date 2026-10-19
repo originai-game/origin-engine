@@ -27,7 +27,7 @@ if [ "$(cat "$here/native/build-profile" 2>/dev/null)" != release ]; then
 fi
 rm -rf "$out"
 mkdir -p "$out/stage"
-for f in dist/web/origin-engine_bg.wasm dist/web-publish/origin-engine_bg.wasm; do
+for f in dist/web/origin-engine_bg.wasm dist/web-publish/origin-engine_bg.wasm dist/web-publish/origin-engine-lanes_bg.wasm dist/web-publish/origin-engine-lanes.js; do
   [ -f "$here/$f" ] || { echo "pack: $here/$f is missing; run OG_RELEASE=1 sh scripts/build.sh first" >&2; exit 1; }
 done
 sum() { if command -v sha256sum >/dev/null; then sha256sum "$1" | awk '{print $1}'; else shasum -a 256 "$1" | awk '{print $1}'; fi; }

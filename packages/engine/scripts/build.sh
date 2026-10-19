@@ -2,7 +2,10 @@
 # Builds both hosts for this package: the native addon and the og tool for
 # this machine into native/origin-engine.<platform>-<arch>.node and
 # native/og.<platform>-<arch>, and the web host (wasm-bindgen --target web)
-# into dist/web/ and dist/web-publish/. Honours CARGO_TARGET_DIR. Incremental.
+# into dist/web/ and dist/web-publish/, the latter with the lanes variant
+# beside it (origin-engine-lanes.js, origin-engine-lanes_bg.wasm, snippets/:
+# wasm atomics, scripts/wasm-lanes.sh, docs/web-export.md §Lanes). Honours
+# CARGO_TARGET_DIR. Incremental.
 #
 #   sh scripts/build.sh                     dev when the gate has built, else release
 #   OG_RELEASE=1 sh scripts/build.sh        release: what ships (scripts/pack.sh sets it)
@@ -81,6 +84,11 @@ if [ "${OG_GATE:-}" = 1 ] && [ -f "$gate_wasm/opt/og_host_web-publish.wasm" ] &&
   cp "$gate_wasm/bindgen/og_host_web-publish/"* "$here/dist/web-publish/"
   cp "$gate_wasm/opt/og_host_web-publish.wasm" "$here/dist/web-publish/origin-engine_bg.wasm"
   cp "$gate_wasm/bindgen/og_host_web/"* "$here/dist/web/"
+  if [ -f "$gate_wasm/opt/og_host_web-lanes.wasm" ]; then
+    cp "$gate_wasm/bindgen/og_host_web-lanes/origin-engine-lanes.js" "$here/dist/web-publish/"
+    cp -R "$gate_wasm/bindgen/og_host_web-lanes/snippets" "$here/dist/web-publish/"
+    cp "$gate_wasm/opt/og_host_web-lanes.wasm" "$here/dist/web-publish/origin-engine-lanes_bg.wasm"
+  fi
   exit 0
 fi
 # From here on the wasm compiles (the wasm profile, release-based): never beside a running gate.
@@ -95,6 +103,17 @@ if command -v wasm-opt >/dev/null 2>&1; then
   "$root/scripts/wasm-opt.sh" "$here/dist/web-publish/origin-engine_bg.wasm" "$here/dist/web-publish/origin-engine_bg.wasm"
 else
   echo "build.sh: no wasm-opt; dist/web-publish is not size-optimised (scripts/install-tools.sh installs it)" >&2
+fi
+# The lanes variant: the publish build again with wasm atomics, in its own
+# target directory (scripts/wasm-lanes.sh), bound as origin-engine-lanes and
+# optimised with --enable-threads.
+rm -rf "$here/dist/web-publish/snippets" "$here/dist/web-publish/origin-engine-lanes"*
+"$root/scripts/wasm-lanes.sh" --profile wasm -q -p og-host-web --lib --features publish
+lanes="$("$root/scripts/wasm-lanes.sh" --target-dir)/wasm32-unknown-unknown/wasm/og_host_web.wasm"
+wasm-bindgen --target web --out-dir "$here/dist/web-publish" --out-name origin-engine-lanes "$lanes"
+rm -f "$here/dist/web-publish/origin-engine-lanes"*.d.ts
+if command -v wasm-opt >/dev/null 2>&1; then
+  "$root/scripts/wasm-opt.sh" --threads "$here/dist/web-publish/origin-engine-lanes_bg.wasm" "$here/dist/web-publish/origin-engine-lanes_bg.wasm"
 fi
 cargo build --profile wasm -q --target wasm32-unknown-unknown -p og-host-web --lib
 wasm-bindgen --target web --out-dir "$here/dist/web" --out-name origin-engine "$wasm"

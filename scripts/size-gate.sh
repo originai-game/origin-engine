@@ -5,8 +5,10 @@
 #   scripts/size-gate.sh [file.wasm ...]
 #
 # With no arguments it measures every file listed in target/og-wasm/opt.txt,
-# which scripts/check.sh's wasm-opt step writes. The budget applies to the sum
-# of all measured files. Writes $OG_EVIDENCE_DIR/size-gate.json. A module
+# which scripts/check.sh's wasm-opt step writes. The budget applies to each
+# measured file: a page downloads one engine module, the single-threaded
+# publish variant or the lanes variant (docs/web-export.md §Lanes), never
+# both. Writes $OG_EVIDENCE_DIR/size-gate.json. A module
 # measured before (same SHA-256 and brotli) takes its recorded size, unless
 # OG_SIZE_GATE_FRESH is set (scripts/check.sh --all sets it).
 set -u -o pipefail
@@ -27,7 +29,7 @@ mkdir -p "$OG_EVIDENCE_DIR"
 report="$OG_EVIDENCE_DIR/size-gate.json"
 
 if [ "${#files[@]}" -eq 0 ]; then
-  printf '{"budget_brotli_bytes":%s,"total_brotli_bytes":0,"files":[]}\n' "$budget" > "$report"
+  printf '{"budget_brotli_bytes":%s,"total_brotli_bytes":0,"max_brotli_bytes":0,"files":[]}\n' "$budget" > "$report"
   if [ "$artifacts" = required ]; then
     og_err "size-gate: no wasm to measure, and budgets.txt says 'wasm_artifacts required'"
     exit 1
@@ -39,6 +41,8 @@ fi
 og_need brotli || exit 1
 
 total=0
+max=0
+over=""
 entries=""
 printf '%-28s %12s %12s\n' "wasm" "bytes" "brotli-q11"
 for f in "${files[@]}"; do
@@ -55,14 +59,16 @@ for f in "${files[@]}"; do
   fi
   total=$((total + br))
   name="$(basename "$f")"
+  [ "$br" -le "$max" ] || max="$br"
+  [ "$br" -le "$budget" ] || over="${over}${over:+, }$name ${br} B (+$((br - budget)) B)"
   printf '%-28s %12s %12s\n' "$name" "$raw" "$br"
   entries="${entries}${entries:+,}{\"file\":\"$name\",\"bytes\":$raw,\"brotli_bytes\":$br}"
 done
-pct=$((total * 100 / budget))
-printf '%-28s %12s %12s  (%s%% of budget %s)\n' "total" "" "$total" "$pct" "$budget"
-printf '{"budget_brotli_bytes":%s,"total_brotli_bytes":%s,"files":[%s]}\n' "$budget" "$total" "$entries" > "$report"
+pct=$((max * 100 / budget))
+printf '%-28s %12s %12s  (largest download, %s%% of budget %s)\n' "max" "" "$max" "$pct" "$budget"
+printf '{"budget_brotli_bytes":%s,"total_brotli_bytes":%s,"max_brotli_bytes":%s,"files":[%s]}\n' "$budget" "$total" "$max" "$entries" > "$report"
 
-if [ "$total" -gt "$budget" ]; then
-  og_err "size-gate: ${total} B brotli exceeds wasm_core_brotli_bytes ${budget} B by $((total - budget)) B (docs/ci.md §When the size gate fails)"
+if [ -n "$over" ]; then
+  og_err "size-gate: over wasm_core_brotli_bytes ${budget} B: $over (docs/ci.md §When the size gate fails)"
   exit 1
 fi
