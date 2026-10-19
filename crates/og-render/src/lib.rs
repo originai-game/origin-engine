@@ -3329,9 +3329,19 @@ impl Renderer {
             });
             cull_passes.len() as u32 - 1
         };
+        // Occlusion needs a batch that can occlude and an earlier frame's
+        // camera visibility (its visible occluders); without them the
+        // occluders' depth, the pyramid and the occlusion test are skipped.
+        let occlusion = gpu_cull
+            && self.gpu_cull.as_ref().is_some_and(|gc| gc.primed())
+            && batches
+                .iter()
+                .any(|b| self.cache.materials[b.material].occluder);
         let (main_list, mut culled) = if gpu_cull {
             let g = gpu_pass(cull_gpu::PassKind::Main, &view_frustum);
-            gpu_pass(cull_gpu::PassKind::Occluders, &view_frustum);
+            if occlusion {
+                gpu_pass(cull_gpu::PassKind::Occluders, &view_frustum);
+            }
             (indirect_list(&batches, sorted, g, |b| !b.transparent), 0)
         } else {
             self.cull(
