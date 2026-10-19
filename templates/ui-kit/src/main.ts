@@ -417,7 +417,7 @@ function widgetsScreen(world: World, d: DemoState): void {
     d.stickX = j.x;
     d.stickY = j.y;
     if (!phone) og.ui.dpad("Dpad", {});
-    if (og.ui.actionButton("Hit", "Hit", { primary: true }).clicked) d.hp = Math.max(0, d.hp - 15);
+    if (og.ui.actionButton("Hit", "Hit", { primary: true }).clicked) hurt(world, d, 15);
   });
   void world;
 }
@@ -438,6 +438,32 @@ function writeRow(cols: Record<string, { [n: number]: number }>, i: number, d: D
     if (col) col[i] = typeof v === "boolean" ? (v ? 1 : 0) : (v as number);
   }
 }
+
+/** A hit this tick, for the Thud system (set and taken within one tick). */
+let thud = false;
+
+/**
+ * A hit the HUDs show: the health drops and the hit is felt (og-feel §3,
+ * §4 and §7; og-audio §1): a short hit stop, a shake, the number floating
+ * up from the health bar and a thud on the sfx bus, on the hit's tick.
+ */
+function hurt(world: World, d: DemoState, n: number): void {
+  d.hp = Math.max(0, d.hp - n);
+  og.time.hitStop(world, 3);
+  og.camera.shake(world, 0.3);
+  og.render.floatingText(world, { text: `-${n}`, position: { x: -232, y: 128, z: 5 }, size: 22, color: { r: 1, g: 0.36, b: 0.33 }, rise: 36, spread: 6, lifetime: 0.7, pop: 0.5 });
+  thud = true;
+}
+
+/** Plays the hit's thud: the only og.AudioSource is the hit voice (spawned at start). */
+export const Thud = defineSystem("Thud", { writes: [og.AudioSource], after: ["Kit"] }, (q) => {
+  if (!thud) return;
+  thud = false;
+  for (const a of q.archetypes()) {
+    const src = a.column(og.AudioSource);
+    for (let i = 0; i < a.count; i++) src.playing[i] = 1;
+  }
+});
 
 export const Kit = defineSystem("Kit", { reads: [og.Input], writes: [Demo] }, (q, time, world) => {
   for (const a of q.archetypes()) {
@@ -572,7 +598,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
         touch: true,
       });
       if (h.paused) d.screen = 0;
-      if (h.action === "fire") d.hp = Math.max(0, d.hp - 5);
+      if (h.action === "fire") hurt(world, d, 5);
       break;
     }
     case "puzzle": {
@@ -775,7 +801,7 @@ function current(world: World): DemoState | null {
 export default og.game({
   tick: 60,
   seed: 1,
-  systems: [Kit],
+  systems: [Kit, Thud],
   render: { antialias: "msaa4" },
   start(world) {
     const camera = world.resource(og.Camera);
@@ -795,6 +821,10 @@ export default og.game({
     }
     const e = world.spawn({ name: "demo" });
     if (!e.ok) throw new Error(e.reason);
+    // A hit's thud (og sfx's hit preset), on the sfx bus.
+    const sound = og.load.sound(world, "audio/hit.ogt");
+    const voice = world.spawn({ name: "hit" });
+    if (sound.ok && voice.ok) world.insert(voice.value, og.AudioSource, { sound: sound.value, bus: "sfx", playing: false, volume: 0.5 });
     // Every locale's strings; the active one is the host's (the browser's language, og run --locale).
     for (const l of LOCALES) {
       const loaded = og.i18n.load(world, `strings/${l}.ogt`);
@@ -817,7 +847,9 @@ export default og.game({
     },
     damage: (world, args) => {
       const d = current(world);
-      if (d) update(world, { hp: Math.max(0, d.hp - Number(args[0] ?? 10)) });
+      if (!d) return;
+      hurt(world, d, Number(args[0] ?? 10));
+      update(world, { hp: d.hp });
     },
     skin: (world, args) => {
       update(world, { skin: Math.max(0, SKINS.indexOf((args[0] ?? "tokens") as (typeof SKINS)[number])) });

@@ -62,6 +62,7 @@ tier without its own references compares with `metal` and says so.
 | `keys` | Tab, Tab, Enter opens the second row; in Settings, Down reaches the Master slider, Left twice steps it to 0.9, Escape closes and the save hook runs once |
 | `pad` | gamepad intents: down ×4 and A open Settings, B closes; Tab order reaches the select, A opens its menu, down and A choose Hard |
 | `a11y` | every screen's accessibility tree (`dump_ui`'s role, name, value and states; `og.ui.a11y()`): every control keys and pads reach has a role and a name, every element showing text has a role, Tab walks the focusable elements in the tree's order and wraps, and `og.ui.a11y()` counts the same nodes and focus order as the probe |
+| `hit` | the touch HUD's Hit is felt on its tick: a 3-tick hit stop, camera trauma, the number floating up from the health bar and a thud on the sfx bus (`assets/audio/hit.ogt`, og sfx's hit preset; og-feel §3, §4, §7) |
 | `players` | `og.ui.setPlayers(4)`: pads 1 and 2 (`gamepad:right@1`…) move rings of their own from the hero nearest the centre and pick Mage and Rogue for P2 and P3 with A, a touch picks Thief for P1, a tap on the hint's rich-text link (`Hint/join`) follows it, and the frame with both rings matches `kit-desktop-players.png` |
 | `refuse` | the Crown (2,400) with 1,250 coins: Buy reads "Not enough", a press shakes it three times back to rest with the error sound on the ui bus (`og.ui.shake`), spends nothing and reports `refused` |
 | `drag` | a press on slot 0 dragged to slot 7 moves the potion; Use runs for it |
