@@ -1901,9 +1901,13 @@ dependencies = [
 name = "og-tests-web"
 version = "0.0.1"
 dependencies = [
+ "image",
  "js-sys",
+ "og-core",
  "og-render",
  "og-tests",
+ "og-ui",
+ "serde_json",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",

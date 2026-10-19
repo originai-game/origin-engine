@@ -1,4 +1,6 @@
-//! og-tests' gfx scenes in a browser (docs/ci.md §Browser reference tiers).
+//! og-tests' gfx scenes, and og-ui's reference scenes (`og-ui/<name>`,
+//! crates/og-ui/tests/support/scenes.rs, the file og-ui's own gfx tests
+//! build them with), in a browser (docs/ci.md §Browser reference tiers).
 //!
 //! One scene at a time: [`og_gfx_open`] builds it and a renderer on WebGPU
 //! or WebGL2 (an OffscreenCanvas, which WebGL2 needs for its context),
@@ -9,9 +11,15 @@
 //! (`packages/engine/tests/web/reference-gfx.ts`).
 
 #[cfg(target_arch = "wasm32")]
+#[allow(dead_code)]
+#[path = "../../og-ui/tests/support/scenes.rs"]
+mod ui_scenes;
+
+#[cfg(target_arch = "wasm32")]
 mod web {
     use og_render::{Backend, RenderTarget, Renderer};
-    use og_tests::scenes::{self, GfxScene};
+    use og_tests::compare::Tolerance;
+    use og_tests::scenes::{self, Applies, GfxScene};
     use std::cell::RefCell;
     use wasm_bindgen::prelude::*;
 
@@ -35,7 +43,40 @@ mod web {
         scenes::SCENES.iter().map(|s| s.to_string()).collect()
     }
 
-    /// Builds `scene` and its renderer (WebGL2 when `webgl`, on `canvas`; else
+    /// og-ui's reference scenes, as `og-ui/<name>` (`<name>.png` under
+    /// crates/og-ui/references/<tier>/).
+    #[wasm_bindgen]
+    pub fn og_gfx_ui_scenes() -> Vec<String> {
+        super::ui_scenes::REFERENCE_SCENES
+            .iter()
+            .map(|s| format!("og-ui/{s}"))
+            .collect()
+    }
+
+    /// og-ui's reference scene `name` as a gfx scene: one frame, og-tests'
+    /// default tolerance (og-ui's rule), every tier, the test font compiled in.
+    fn ui_scene(name: &str) -> Result<GfxScene, String> {
+        let text = |rel: &str| scenes::asset(rel).map(|b| String::from_utf8_lossy(&b).into_owned());
+        let png = scenes::asset("fonts/noto-sans-sc-msdf.png")?;
+        let json = text("fonts/noto-sans-sc-msdf.json")?;
+        let csv = text("fonts/noto-sans-sc-msdf.csv")?;
+        let font = super::ui_scenes::FontFiles {
+            png: &png,
+            json: &json,
+            csv: &csv,
+        };
+        let (scene, desc) = super::ui_scenes::reference_scene(name, &font)?;
+        Ok(GfxScene {
+            desc,
+            scene,
+            tolerance: Tolerance::default(),
+            frames: 1,
+            update: None,
+            applies: Applies::Every,
+        })
+    }
+
+    /// Builds `scene` (an og-tests scene, or `og-ui/<name>`) and its renderer (WebGL2 when `webgl`, on `canvas`; else
     /// WebGPU, headless). Resolves to a JSON description: tier, adapter,
     /// antialiasing, whether the scene has a reference on this tier, the
     /// frames it renders before its capture and its tolerance.
@@ -54,7 +95,11 @@ mod web {
             }))
         });
         OPEN.with(|o| o.borrow_mut().take());
-        let mut built = scenes::build(&scene).map_err(err)?;
+        let mut built = match scene.strip_prefix("og-ui/") {
+            Some(name) => ui_scene(name),
+            None => scenes::build(&scene),
+        }
+        .map_err(err)?;
         built.desc.backend = if webgl {
             Backend::WebGl2
         } else {
