@@ -305,24 +305,40 @@ pub struct RenderDesc {
     /// everywhere ([`ParticleSimulation::Cpu`]).
     pub particles: ParticleSimulation,
     /// Where instances are culled: in compute with indirect draws on the
-    /// full tier (frustum and occlusion), or the CPU path everywhere
-    /// ([`Culling::Cpu`], the no-compute tier's).
+    /// full tier for large scenes (frustum and occlusion), or the CPU path
+    /// ([`Culling`]).
     pub culling: Culling,
 }
 
 /// Where instances are culled ([`RenderDesc::culling`]).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Culling {
-    /// On the GPU where the adapter has compute and indirect draws (each
-    /// pass's frustum, and for the camera the depth of last frame's
-    /// visible occluders), else on the CPU. A frame with object motion
-    /// blur, or more instances than one storage binding holds, is culled
-    /// on the CPU.
+    /// As [`Culling::Gpu`] for a frame of at least
+    /// [`GPU_CULLING_MIN_INSTANCES`] instances (not skinned), else on the
+    /// CPU: a small frame's CPU culling costs less than the GPU path's
+    /// fixed per-frame work.
     #[default]
     Auto,
+    /// On the GPU where the adapter has compute and indirect draws (each
+    /// pass's frustum, and for the camera the depth of last frame's
+    /// visible occluders), whatever the frame's size, else on the CPU. A
+    /// frame with object motion blur, or more instances than one storage
+    /// binding holds, is culled on the CPU.
+    Gpu,
     /// Always on the CPU (frustum only; the no-compute tier's path).
     Cpu,
 }
+
+/// The instances (not skinned) from which [`Culling::Auto`] culls a frame
+/// on the GPU. Measured on an M4 Pro (tests/evidence/P3/culling/NOTES.md):
+/// at 40,000 instances the GPU path saved about 1.1 ms of `render` per
+/// frame natively (city-street, median 6.40 to 5.27 ms) and 0.6 ms on
+/// WebGPU, while on scenes of tens of instances it cost 0.4 to 1 ms more
+/// per frame (point-spot-lights 1.0 to 1.6 ms against 0.6 ms, showcase
+/// 3.5 to 6.1 against 3.2). The CPU test costs about 40 ns per instance
+/// at that size, so the fixed cost breaks even between about 10,000 and
+/// 25,000 instances; 16,384 sits between, below the city's 40,000.
+pub const GPU_CULLING_MIN_INSTANCES: u32 = 16_384;
 
 impl Default for RenderDesc {
     fn default() -> Self {
@@ -3311,7 +3327,11 @@ impl Renderer {
                 .sum::<usize>()
                 .min(LOCAL_SHADOW_LAYERS);
         let gpu_cull = self.indirect
-            && self.desc_culling == Culling::Auto
+            && match self.desc_culling {
+                Culling::Auto => sorted >= GPU_CULLING_MIN_INSTANCES,
+                Culling::Gpu => true,
+                Culling::Cpu => false,
+            }
             && !object_motion
             && !batches.is_empty()
             && {

@@ -1,6 +1,8 @@
 //! GPU-driven culling (og-render's cull_gpu.rs) against the CPU path it
 //! replaces on the full tier: the same scene rendered for several frames
-//! with `Culling::Auto` and with `Culling::Cpu` gives the same picture
+//! with `Culling::Gpu` (the GPU path whatever the scene's size, so the
+//! small scenes cover every culled pass) and with `Culling::Cpu` gives the
+//! same picture
 //! (the gfx references' tolerance), the same frustum counts, and on the
 //! street, where the nearest blocks hide most of the city, the occlusion
 //! test hides most of what is in view. The frames and a stats line per
@@ -60,7 +62,7 @@ fn gpu_culling_draws_the_cpu_paths_frame() {
     let mut log = String::new();
     let mut failures = Vec::new();
     for &(name, frames) in SCENES {
-        let (gpu, g, tier) = render(name, Culling::Auto, frames);
+        let (gpu, g, tier) = render(name, Culling::Gpu, frames);
         let (cpu, c, _) = render(name, Culling::Cpu, frames);
         gfx::save_png(&dir.join(format!("{name}.gpu.png")), &gpu).expect("save");
         gfx::save_png(&dir.join(format!("{name}.cpu.png")), &cpu).expect("save");
@@ -70,7 +72,7 @@ fn gpu_culling_draws_the_cpu_paths_frame() {
         assert_eq!(
             g.gpu_culling,
             tier == Tier::Full,
-            "{name}: Culling::Auto culls on the GPU exactly on the full tier"
+            "{name}: Culling::Gpu culls on the GPU exactly on the full tier"
         );
         let tolerance = Tolerance::default();
         let diff = compare(&gpu.pixels, &cpu.pixels, cpu.width, cpu.height, &tolerance)
@@ -121,4 +123,26 @@ fn gpu_culling_draws_the_cpu_paths_frame() {
     std::fs::write(dir.join("report.txt"), &log).expect("report");
     print!("{log}");
     assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// `Culling::Auto` takes the GPU path on the full tier for the city's
+/// 40,000 instances and the CPU path for the showcase's few dozen
+/// (`og_render::GPU_CULLING_MIN_INSTANCES`).
+#[test]
+fn auto_culls_only_large_scenes_on_the_gpu() {
+    for (name, large) in [("city-street", true), ("showcase", false)] {
+        let (_, stats, tier) = render(name, Culling::Auto, 1);
+        assert_eq!(
+            stats.instances >= og_render::GPU_CULLING_MIN_INSTANCES,
+            large,
+            "{name}: {} instances",
+            stats.instances
+        );
+        assert_eq!(
+            stats.gpu_culling,
+            large && tier == Tier::Full,
+            "{name}: Culling::Auto culls {} instances on the GPU only on the full tier and from the threshold",
+            stats.instances
+        );
+    }
 }
