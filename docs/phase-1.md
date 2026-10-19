@@ -60,74 +60,58 @@ glob (row 12).
   answer on sfx). Frame time 67: the phone playtest at 1170×2532 (render
   p95 14.6 ms) under a load average of 20–30; 6.8 ms p95 or less at
   1280×720.
-- **Wasm**: the publish wasm is **3,061,324 B brotli, 73.0 % of
-  4,194,304 B** (main 3,061,522 B, 73.0 %): the game adds nothing to the
-  engine and the two fixes below cost nothing.
+- **Wasm**: the publish wasm is **3,176,490 B brotli, 75.7 % of
+  4,194,304 B** after merging main at 44d12a8 (3,061,324 B, 73.0 %,
+  before it, against main's 3,061,522 B then): the game adds nothing to the
+  engine; the growth is main's (3D SPH and the rounds before it).
 
 ### Engine fixes
 
 - **og-nav** (d947221): a bake panicked on a triangle wholly above the
   bake box (the vale's cliffs over the navmesh bounds); such cells are
   skipped like those below it, with a test.
-- **og-runtime, deferred start** (f58417a): since d2bd748 the runtime asks
-  the probe's `hello` in the Engine constructor (`learnBuild`), and every
-  probe call crossed the tick boundary, so `GameDesc.start` ran at
-  creation even with `deferStart`. On the web it ran before the Worker
-  attached the renderer and transcoded the bundle's textures: a textured
-  game's start failed ("not transcoded"; fx-showcase's trickster and this
-  game's skin atlas). Natively, `og run` with a render and `og polish`
-  started before attaching again, undoing 85c2bd0. `hello` no longer
-  crosses the boundary; `tests/core.test.ts` checks a deferred and an
-  undeferred start on the dev addon, the release wasm and the publish wasm
-  (it fails on the old `answer_call`). Ember Vale's metal references were
-  recorded after it: the start after the attach moves them towards webgpu
-  (beacon 0.268 % to 0.060 % outliers against it).
-- **og-render, glass on WebGL2** (c5ab008): fs_glass read
-  `textureNumLevels`, which GLSL ES 3.0 lacks, so any overlay panicked
-  creating its pipeline on WebGL2 since the UI round's glass (42d7294).
-  The pyramid's level count is glass.rs's `LEVELS`, prepended as a
-  constant; metal and webgpu frames are unchanged and fx-showcase's webgl2
-  references pass again.
+- This round also found and fixed the deferred start that the probe's
+  `hello` broke since d2bd748 (f58417a) and the WebGL2 glass panic since
+  42d7294 (c5ab008). Main fixed both the same day (4c2079a, merged in
+  cf6aeaf, with `runtime.test.ts` and `crates/og-render/tests/webgl2.rs`);
+  the merge f728a2a keeps main's code and tests and drops this branch's
+  variants and its `core.test.ts` `defer` case. Ember Vale's metal
+  references were recorded with the start after the renderer attaches, as
+  main's fix also does: after the merge they pass at 0.000 % outliers
+  (RMSE at most 0.0004, main's other render changes), not re-recorded.
 
 A documentation gap, left as is: an og.IkChain target in `"world"` space
 is in the frame of the skeleton body's Transform parent (here the hero's
 unrotated capsule), not true world; `src/hero.ts` subtracts the hero's
 position.
 
-### Gate
+### Checks
 
-`OG_GATE_JOBS=2 scripts/check.sh --all` on b74ba1b's code (484f2e0 adds
-evidence and this commit documents only), 2026-10-19, Apple M4 Pro with
-other rounds building (load average 60 to 230): 313 s, fmt 2 s, clippy
-1 s, wasm-build 22 s, test 174 s, wasm-opt 159 s, drift 2 s, determinism
-18 s; bun-test failed on one test, `tests/render.test.ts`'s "trails, beams
-and ribbons draw strips" at 5,566 ms against bun's 5,000 ms timeout under
-twelve workers, and cancelled size-gate. `--only bun-test` then passed (58 s,
-93 engine tests) and `--all size-gate` passed (40 s, 3,061,324 B). The
-path-aware run before it passed every step but bun-test, whose i18n hook
-(`og cook` of ui-kit) timed out at 5 s the same way; its rerun with
-determinism passed (55 s and 704 s at load 78). `scripts/check.sh
-web-reference` (in no lane) **PASSED in 384 s**: fx-showcase's five frames
-on WebGPU and WebGL2 and the 17 E5 stations, with both fixes in.
-
-`og test` on metal with the release addon: third-person 8 suites, ui-kit
-29, fx-showcase 18, runner 8, match3 6, topdown 7, game 2, every
-reference frame passing with the deferred start fix; only Ember Vale's
-were recorded after it. idle, rhythm
-and roguelike fail their `frames` suite and tower-defense five suites
-(frames, lose, pad, pause, replay), the same suites with the addon built
-without the fix (idle's title 0.397 % outliers and RMSE 0.0283 with it,
-0.387 % and 0.0282 without): pre-existing, left to `p2-ui-fix`.
+On f728a2a (the merge of main 44d12a8), 2026-10-19, load average 50 to
+220: `OG_GATE_JOBS=2 scripts/check.sh` **PASSED, 9 of 9 in 830 s** (fmt
+2 s, clippy 17 s, wasm-build 2 s, test 190 s with 551 tests, wasm-opt
+135 s, size-gate 42 s, drift 2 s, bun-test 199 s with 109 engine tests,
+determinism 630 s). `og test` on metal with the release addon:
+third-person 8 suites, idle 10, rhythm 11, roguelike 9, tower-defense 9
+(the four failed on this branch before the merge and pass with main's
+re-recorded frames, 7a5e320). `scripts/check.sh --only web-reference`
+was stopped by the coordinator partway: fx-showcase's webgpu frames and
+the 18 E5 stations (fluids3d among them) on WebGPU passed; on WebGL2
+cloth, controller and fluid passed before it stopped, the rest of WebGL2
+and the og-tests gfx scenes did not run. Ember Vale's own webgpu and
+webgl2 references were last verified (0.000 %) before the merge, on
+484f2e0. Before the merge, on 484f2e0, `--all` passed every step but a
+bun-test load timeout (rerun alone, passed) and web-reference passed in
+384 s.
 
 ### Not done
 
 Owed rows 47–49: vulkan-cpu references for Ember Vale, the polish findings
 above (the fantasy pack's palette is shared by every game that uses it;
 the HUD buttons' bus is the template's), the IkChain space note in the
-IDL's docs.
-
-- Pre-existing, not touched: the idle, rhythm, roguelike and tower-defense
-  archetype playtests fail since the UI round (fixed on `p2-ui-fix`).
+IDL's docs. Unverified after the merge: the rest of web-reference's
+WebGL2 run, Ember Vale on webgpu and webgl2, and `og test` of ui-kit,
+fx-showcase, runner, match3, topdown and game (all passed before it).
 
 ## Phase 3, streaming round (2026-10-19)
 
