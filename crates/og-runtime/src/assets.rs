@@ -241,6 +241,13 @@ pub(crate) fn load_gltf(eng: &Engine, path: &str) -> Result<usize, String> {
     if let Some(&i) = eng.assets.borrow().by_path.get(&format!("gltf:{id}")) {
         return Ok(i);
     }
+    add_gltf(eng, &id, None)
+}
+
+/// Adds glTF `id` to the renderer as a new asset, or `into` an existing
+/// asset index (a refresh: its handle then names the new meshes).
+fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String> {
+    let id = id.to_string();
     let formats = texture_formats(eng);
     let (model, textures) = {
         let assets = eng.assets.borrow();
@@ -301,15 +308,19 @@ pub(crate) fn load_gltf(eng: &Engine, path: &str) -> Result<usize, String> {
         }
     }
     let mut assets = eng.assets.borrow_mut();
-    let index = assets.push(
-        &id,
-        Status::Ready,
-        Payload::Gltf {
-            scenes: model.scenes.len() as u32,
-            geometries,
-            materials,
-        },
-    );
+    let payload = Payload::Gltf {
+        scenes: model.scenes.len() as u32,
+        geometries,
+        materials,
+    };
+    let index = match into {
+        Some(i) => {
+            assets.entries[i].status = Status::Ready;
+            assets.entries[i].payload = payload;
+            i
+        }
+        None => assets.push(&id, Status::Ready, payload),
+    };
     rs.models.insert(handle(index), parts.parts);
     rs.fx.models.insert(
         handle(index),
@@ -336,6 +347,73 @@ pub(crate) fn load_gltf(eng: &Engine, path: &str) -> Result<usize, String> {
         }
     }
     Ok(index)
+}
+
+/// After a hot reload (`og dev` cooks before it rebuilds the bundle): every
+/// open bundle's manifest is read again, and each glTF whose cooked outputs
+/// changed (the model or its `#` textures, by hash) loads again into its own
+/// asset index, so Model components keep their handle and draw the edit.
+/// The old version's meshes and materials stay in the render scene, unused.
+/// A manifest the host cannot read at once (a web fetch in flight) keeps its
+/// bundle as it was. Answers the ids loaded again, and why any failed.
+pub(crate) fn refresh(eng: &Engine) -> (Vec<String>, Vec<String>) {
+    fn outputs(assets: &Assets, id: &str) -> Vec<u64> {
+        let Ok((bundle, _)) = assets.bundle_for(id) else {
+            return Vec::new();
+        };
+        bundle
+            .manifest()
+            .outputs()
+            .filter(|o| {
+                o.id == id
+                    || o.id
+                        .strip_prefix(id)
+                        .is_some_and(|rest| rest.starts_with('#'))
+            })
+            .map(|o| o.hash)
+            .collect()
+    }
+    let models: Vec<(usize, String, Vec<u64>)> = {
+        let assets = eng.assets.borrow();
+        assets
+            .by_path
+            .iter()
+            .filter_map(|(key, &i)| {
+                let id = key.strip_prefix("gltf:")?;
+                Some((i, id.to_string(), outputs(&assets, id)))
+            })
+            .collect()
+    };
+    if models.is_empty() {
+        return (Vec::new(), Vec::new());
+    }
+    {
+        let mut assets = eng.assets.borrow_mut();
+        for entry in &mut assets.entries {
+            let Payload::Bundle { bundle, dir } = &mut entry.payload else {
+                continue;
+            };
+            if let Fetch::Ready(bytes) = read(&format!("{dir}/{MANIFEST}"))
+                && let Ok(fresh) = String::from_utf8(bytes)
+                    .map_err(|e| e.to_string())
+                    .and_then(|t| Bundle::from_manifest(&t).map_err(|e| e.to_string()))
+            {
+                **bundle = fresh;
+            }
+        }
+    }
+    let (mut loaded, mut failed) = (Vec::new(), Vec::new());
+    for (index, id, before) in models {
+        let now = outputs(&eng.assets.borrow(), &id);
+        if now.is_empty() || now == before {
+            continue;
+        }
+        match add_gltf(eng, &id, Some(index)) {
+            Ok(_) => loaded.push(id),
+            Err(e) => failed.push(format!("{id}: {e}")),
+        }
+    }
+    (loaded, failed)
 }
 
 /// `og.load.scene`: decoded and kept; `instantiate` spawns it.
