@@ -5,7 +5,9 @@ description: The OriginGame platform from inside an Origin Engine game — og.pl
 
 Game code never talks to the platform. It asks the engine, `og.platform.*`,
 by method name and arguments; the host answers: the web shell over the
-Player's protocol 2, falling back to the browser's own storage; `og run`
+Player's protocol 2 (to the Player framing the page, or, when the platform
+opens the published page itself at the top level, to its play origin over
+same-origin HTTP), falling back to the browser's own storage; `og run`
 from a local JSON store. No credential, URL or cookie reaches game code,
 and every call works (or answers `unavailable`) everywhere, so the game
 never branches on where it runs. The API is in `reference/platform.md`;
@@ -79,6 +81,11 @@ trying.
   as protocol 2 `call`s (`store.get`, `store.set`, `leaderboard.around`,
   `point.award`, `ai.mark`, as the hello lists them; `docs/web-export.md`
   §Platform services has the mapping).
+- The same file then opens the build as a top-level page with a stand-in
+  play origin: the same calls go to `/__player/v2/<game>/<release>/call`
+  with the answers unchanged, so a game behaves the same framed or not
+  (`docs/web-export.md` §The top-level page). Nothing in game code changes
+  between the two, and nothing in it can tell them apart.
 
 ## 5. When a method is missing: ask
 

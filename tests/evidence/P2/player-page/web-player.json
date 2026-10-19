@@ -1,0 +1,254 @@
+{
+ "failures": 0,
+ "checks": [
+  {
+   "check": "hello first, with substrate origin-engine",
+   "ok": true
+  },
+  {
+   "check": "loading values grow and stay in [0, 1]",
+   "ok": true
+  },
+  {
+   "check": "ready after the last loading",
+   "ok": true
+  },
+  {
+   "check": "no fail, no crash",
+   "ok": true
+  },
+  {
+   "check": "under a Player the shell draws no gate of its own",
+   "ok": true
+  },
+  {
+   "check": "before start the clock holds",
+   "ok": true
+  },
+  {
+   "check": "start plays",
+   "ok": true
+  },
+  {
+   "check": "pause holds the clock",
+   "ok": true
+  },
+  {
+   "check": "resume plays again",
+   "ok": true
+  },
+  {
+   "check": "og.platform's store.get reached the Player as its store.get call",
+   "ok": true
+  },
+  {
+   "check": "with store.* in the hello, the save is never read",
+   "ok": true
+  },
+  {
+   "check": "the store's best is the game's best score",
+   "ok": true
+  },
+  {
+   "check": "a sample with the first-frame time and the renderer",
+   "ok": true
+  },
+  {
+   "check": "desktop: the boot splash stands on the cover's backdrop",
+   "ok": true
+  },
+  {
+   "check": "desktop: the hand-off code left the address bar, the game's fragment stayed",
+   "ok": true
+  },
+  {
+   "check": "desktop: the hello carried the code in its body and no bearer",
+   "ok": true
+  },
+  {
+   "check": "desktop: no URL the browser fetched names the code",
+   "ok": true
+  },
+  {
+   "check": "desktop: og.platform's store.get went to /__player/v2/…/call with the redeemed credential",
+   "ok": true
+  },
+  {
+   "check": "desktop: the account credential is in no storage, the Player's marker is set",
+   "ok": true
+  },
+  {
+   "check": "desktop: nothing is reported before the gate",
+   "ok": true
+  },
+  {
+   "check": "desktop: the shell draws Back and the cover's backdrop; the page says og-player frame page",
+   "ok": true
+  },
+  {
+   "check": "desktop: the gate's tap starts play",
+   "ok": true
+  },
+  {
+   "check": "desktop: the play origin's stored best is the game's best",
+   "ok": true
+  },
+  {
+   "check": "desktop: start is reported first, then ready, with UUID v7 ids",
+   "ok": true
+  },
+  {
+   "check": "desktop: Back with no Portal referrer goes to the game's page",
+   "ok": true
+  },
+  {
+   "check": "phone: the boot splash stands on the cover's backdrop",
+   "ok": true
+  },
+  {
+   "check": "phone: the hand-off code left the address bar, the game's fragment stayed",
+   "ok": true
+  },
+  {
+   "check": "phone: the hello carried the code in its body and no bearer",
+   "ok": true
+  },
+  {
+   "check": "phone: no URL the browser fetched names the code",
+   "ok": true
+  },
+  {
+   "check": "phone: og.platform's store.get went to /__player/v2/…/call with the redeemed credential",
+   "ok": true
+  },
+  {
+   "check": "phone: the account credential is in no storage, the Player's marker is set",
+   "ok": true
+  },
+  {
+   "check": "phone: nothing is reported before the gate",
+   "ok": true
+  },
+  {
+   "check": "phone: the shell draws Back and the cover's backdrop; the page says og-player frame page",
+   "ok": true
+  },
+  {
+   "check": "phone: the gate's tap starts play",
+   "ok": true
+  },
+  {
+   "check": "phone: the play origin's stored best is the game's best",
+   "ok": true
+  },
+  {
+   "check": "phone: start is reported first, then ready, with UUID v7 ids",
+   "ok": true
+  },
+  {
+   "check": "phone: Back with no Portal referrer goes to the game's page",
+   "ok": true
+  }
+ ],
+ "messages": [
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "hello",
+   "substrate": "origin-engine",
+   "at": 141
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.186,
+   "at": 241
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.371,
+   "at": 244
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.557,
+   "at": 248
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.742,
+   "at": 251
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.928,
+   "at": 254
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.956,
+   "at": 256
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.957,
+   "at": 280
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 0.999,
+   "at": 283
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "loading",
+   "value": 1,
+   "at": 284
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "call",
+   "id": "oe-1",
+   "method": "store.get",
+   "args": {
+    "key": "best"
+   },
+   "at": 410
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "ready",
+   "at": 439
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "sample",
+   "substrate": "origin-engine",
+   "renderer": "webgpu",
+   "timings": {
+    "firstFrame": 396,
+    "boot": 304
+   },
+   "at": 439
+  }
+ ]
+}

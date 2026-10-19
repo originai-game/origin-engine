@@ -7,6 +7,43 @@ the platform can run it in an `engine`-class sandbox. Spike findings
 (`docs/spike-results.md`) are the baseline; the spike crate is the seed
 of `og-render` and is deleted once its code has moved.
 
+## Status 2026-10-19, player-page round
+
+The engine's page is the play page itself (design §4): `og build` writes
+`<meta name="og-player" content="frame page">` and og-build.json's
+`player { protocol: 2, transports: [frame, page] }` into every build, and a
+top-level page the platform published (`window.__OG_GAME`) speaks Player
+protocol 2 to its play origin over same-origin HTTP (`shell/transport.ts`:
+`/__player/v2/<game>/<release>/{hello,call,report}`, the hand-off code from
+the fragment redeemed in the hello's body, the Player's credential keys and
+outbox, session reports from the person's start), as origingame
+`docs/player-protocol.md` §The top-level engine page specifies. Framed pages
+keep the `postMessage` path unchanged, so a release built now plays under
+today's Player too. At the top level the shell draws what the Player page
+drew: the cover's backdrop behind the boot splash and Back (with its own
+gate, `100dvh`, the safe areas, one audio unlock, fullscreen on the gesture
+and the PWA hint, which it already had). The og-probe wire also answers the
+page's own window when told its own origin, for the Stage overlay the
+platform injects into a top-level Stage build. Details:
+`docs/web-export.md` §The top-level page; the platform's side is ask 9 in
+`docs/platform-asks.md`.
+
+Proof: `tests/platform-page.test.ts` (6 tests against a stand-in play
+origin), `tests/web/player.ts` (37 checks in Chrome: the framed Player, then
+the top-level page at desktop and phone sizes), `tests/web/wire.ts` (125,
+with the in-page host; its Tune checks moved off `Tuning.gravity`, which
+the runner dropped in E7), `tests/web/export.ts` (40). Transcripts,
+screenshots and receipts: `tests/evidence/P2/player-page/`.
+
+What the platform's pin round must do: move
+`agent-server/scripts/e2b/origin-engine.json` to this round's merge,
+rebuild the layout and remount the knowledge (`og-platform-sdk` changed),
+and have the platform's player-page work live first: the
+`/__player/v2/` routes on game hosts, the game-host ingress admitting `POST`
+with `Authorization` there, Play's 307 to a `page` release's entry, and the
+Stage page's in-document mode. Until then a release built from this shell
+is framed exactly as before.
+
 ## Status 2026-10-19, E7 round
 
 Phase 1 is closed by the E7 round (tag `phase1-e7`). Against
