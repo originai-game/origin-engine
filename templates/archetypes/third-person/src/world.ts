@@ -43,8 +43,6 @@ const ATLAS = {
   rune: { uvMin: { x: 0.5, y: 0 }, uvMax: { x: 1, y: 0.5 } },
 } as const;
 
-const DOWN: Quaternion = og.transform.fromAxisAngle({ x: 1, y: 0, z: 0 }, -Math.PI / 2);
-
 /** The terrain's height and normal at a point. */
 export function ground(world: World, g: { terrain: number }, x: number, z: number): { height: number; normal: Vector3 } {
   const s = og.terrain.sample(world, { data: g.terrain as unknown as TerrainData, origin: { x: 0, y: 0, z: 0 }, x, z });
@@ -162,7 +160,7 @@ function buildBeacons(world: World, terrain: number): void {
     const light = child("light", { x: 0, y: top + BOWL.height + 1.2, z: 0 });
     must(world.insert(light, og.PointLight, { color: { r: 1, g: 0.56, b: 0.24 }, intensity: 0, distance: 16, castShadow: false }));
     // The scorch on the knoll, projected down; shown once the beacon burns.
-    const scorch = child("scorch", { x: 0, y: h - y, z: 0 }, DOWN);
+    const scorch = child("scorch", { x: 0, y: h - y, z: 0 }, og.transform.fromAxisAngle({ x: 1, y: 0, z: 0 }, -Math.PI / 2));
     must(world.set(scorch, og.Transform, { scale: { x: 4.6, y: 4.6, z: 2.4 } }));
     must(world.insert(scorch, og.Decal, { ...ATLAS.scorch, color: { r: 0.25, g: 0.2, b: 0.18 }, opacity: 0.85, visible: false }));
     // The rune on the face towards the lake: dark stone, then glowing once lit.
