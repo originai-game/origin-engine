@@ -98,9 +98,10 @@ pub(crate) fn joint_frame(axis: Vec3) -> rp::Rotation {
     rp::Rotation::from_xyzw(q.x, q.y, q.z, q.w)
 }
 
-/// A rotation as the profile's: here the quaternion itself.
+/// A rotation as the profile's: here the quaternion itself, as it is (a
+/// capsule's frame from `arc`, already unit: renormalising it would move
+/// its last bits, and the E5 ragdolls with them).
 pub(crate) fn rot(q: Quat) -> rp::Rotation {
-    let q = crate::unit(q);
     rp::Rotation::from_xyzw(q.x, q.y, q.z, q.w)
 }
 
