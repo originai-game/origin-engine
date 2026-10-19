@@ -11,7 +11,7 @@
 // Every frame is also compared with its metal reference, reported and kept
 // in the JSON whether or not it is the frame the run is judged against.
 //
-//   bun tests/web/reference-gfx.ts [--webgl] [--record] [--scene a,b] [--time <frames>] [--out <dir>] [--chrome <path>]
+//   bun tests/web/reference-gfx.ts [--webgl] [--record] [--scene a,b] [--time <frames>] [--cpu-culling] [--perf-out <dir>] [--out <dir>] [--chrome <path>]
 //
 // A scene with no reference on the tier (`taa` on WebGL2, `msaa` on
 // WebGPU: scenes::Applies) is listed as not applying, not rendered.
@@ -21,7 +21,12 @@
 // each run ending in a capture whose readback waits for the GPU to finish
 // them; the best run per frame lands in
 // crates/og-tests/perf/<tier>-chrome-<adapter>/<scene>.json beside the
-// native baselines, with the median wall time of one render call.
+// native baselines, with the median wall time of one render call (the CPU
+// cost of encoding and submitting a frame) and the last frame's counts.
+// The perf-only city scenes (CITY: city-street, city-aerial) are timed only
+// when --scene names them. --cpu-culling culls on the CPU on WebGPU too
+// (og-render's Culling::Cpu; WebGL2 always does); --perf-out writes the
+// timing JSON to <dir>/<tier>[-cpu-culling]/ instead (evidence runs).
 // Writes <out>/<tier>/<scene>.png, <scene>.diff.png on a mismatch and
 // reference-gfx-<tier>.json (default dist/test-gfx/out). Exits 1 when a
 // scene does not match or does not render. Needs Chrome (cdp.ts),
@@ -59,6 +64,10 @@ const refs = join(repo, "crates", "og-tests", "references");
 // built for timing only, not in scenes::SCENES), timed the same way: 7 runs.
 const PERF = ["gltf-reference", "spheres-20k", "point-spot-lights", "showcase", "sprites-20k", "lights-256", "tilemap-256"];
 const RUNS = 7;
+/** Perf-only scenes (scenes::build, not SCENES), timed when --scene names them. */
+const CITY = ["city-street", "city-aerial"];
+const cpuCulling = args.includes("--cpu-culling");
+const perfOut = opt("--perf-out");
 
 function run(cmd: string[]): string {
   const r = Bun.spawnSync(cmd, { cwd: repo, stdout: "pipe", stderr: "pipe" });
@@ -150,6 +159,7 @@ async function page() {
   await t.until("globalThis.__gfx || globalThis.__gfx_error", 60_000);
   const failed = await t.eval<string | undefined>("globalThis.__gfx_error");
   if (failed) throw new Error(`the module did not load: ${failed}`);
+  if (cpuCulling) await t.eval("globalThis.__gfx.og_gfx_cpu_culling(true)");
   return t;
 }
 try {
@@ -158,7 +168,7 @@ try {
   const only = opt("--scene")?.split(",");
   const timed = Number(opt("--time") ?? 0);
   const scenes = only ?? (timed > 0 ? [...all, ...PERF.filter((p) => !all.includes(p))] : all);
-  for (const s of scenes) if (!all.includes(s) && !PERF.includes(s)) throw new Error(`no scene ${s} (og-tests knows ${all.join(", ")})`);
+  for (const s of scenes) if (!all.includes(s) && !PERF.includes(s) && !CITY.includes(s)) throw new Error(`no scene ${s} (og-tests knows ${all.join(", ")})`);
   for (const scene of scenes) {
     const row: Record<string, unknown> = {};
     rows[scene] = row;
@@ -219,23 +229,24 @@ try {
             (against !== metal && row["metal"] ? `; metal: RMSE ${(row["metal"] as { rmse: number }).rmse}` : ""),
         );
       }
-      if (timed > 0 && PERF.includes(scene)) {
-        const t = await bounded(tab.eval<{ runs: number[]; each: number[] }>(`(async () => {
+      if (timed > 0 && (PERF.includes(scene) || CITY.includes(scene))) {
+        const t = await bounded(tab.eval<{ runs: number[]; each: number[]; stats: Record<string, unknown> }>(`(async () => {
           const gfx = globalThis.__gfx;
           const runs = [], each = [];
+          let stats = "{}";
           gfx.og_gfx_render(10);
           await gfx.og_gfx_capture();
           for (let r = 0; r < ${RUNS}; r++) {
             const start = performance.now();
             for (let i = 0; i < ${timed}; i++) {
               const t = performance.now();
-              gfx.og_gfx_render(1);
+              stats = gfx.og_gfx_render(1);
               each.push(performance.now() - t);
             }
             await gfx.og_gfx_capture();
             runs.push((performance.now() - start) / ${timed});
           }
-          return { runs, each };
+          return { runs, each, stats: JSON.parse(stats) };
         })()`), `timing ${scene}`);
         const runs = [...t.runs].sort((a, b) => a - b).map((v) => +v.toFixed(3));
         const each = [...t.each].sort((a, b) => a - b);
@@ -244,6 +255,8 @@ try {
           tier,
           browser: "Chrome for Testing (cdp.ts)",
           adapter: o.adapter,
+          culling: cpuCulling || webgl ? "cpu" : "auto",
+          last_frame: t.stats,
           width: o.width,
           height: o.height,
           frames_per_run: timed,
@@ -256,11 +269,13 @@ try {
         // Chrome names no WebGPU adapter and ANGLE's string is long: the
         // directory names the machine (its CPU, which on Apple silicon is
         // the GPU's name too), the adapter string stays in the file.
-        const pdir = join(repo, "crates", "og-tests", "perf", `${tier}-chrome-${slug(cpus()[0]?.model ?? "") || "unknown"}`);
+        const pdir = perfOut
+          ? join(resolve(perfOut), `${tier}${cpuCulling && !webgl ? "-cpu-culling" : ""}`)
+          : join(repo, "crates", "og-tests", "perf", `${tier}-chrome-${slug(cpus()[0]?.model ?? "") || "unknown"}`);
         mkdirSync(pdir, { recursive: true });
         writeFileSync(join(pdir, `${scene}.json`), JSON.stringify(perf, null, 2) + "\n");
         row["frameMs"] = perf.frame_ms;
-        console.log(`time ${scene} (${tier}): ${perf.frame_ms} ms per frame with the GPU (best of ${RUNS} x ${timed}), submit median ${perf.submit_median_ms} ms -> ${pdir.slice(repo.length + 1)}`);
+        console.log(`time ${scene} (${tier}): ${perf.frame_ms} ms per frame with the GPU (best of ${RUNS} x ${timed}), submit median ${perf.submit_median_ms} ms, last frame ${JSON.stringify(t.stats)} -> ${pdir.slice(repo.length + 1)}`);
       }
       await tab.eval("globalThis.__gfx.og_gfx_close()");
     } catch (e) {
