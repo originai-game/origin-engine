@@ -17,7 +17,7 @@ use og_blob::{Blob, BlobError, Expect};
 use og_core::ogt::{Block, Document};
 use og_render::{
     AlphaMode, ColorSpace, Material, MaterialHandle, MeshData, MeshHandle, Mips, RenderScene,
-    TextureData, Vertex,
+    TextureData, TextureDesc, TextureFormat, TextureFormats, TextureSource, TextureUpload, Vertex,
 };
 use std::collections::BTreeMap;
 use std::fmt;
@@ -895,9 +895,16 @@ impl CookedModel {
     /// with the node's transform). `textures` are the decoded
     /// [`CookedModel::textures`], in order.
     pub fn add_to(&self, scene: &mut RenderScene, textures: &[TextureData]) -> ModelParts {
+        let sources: Vec<_> = textures.iter().cloned().map(TextureSource::Rgba).collect();
+        self.add_to_with(scene, &sources)
+    }
+
+    /// [`CookedModel::add_to`] with textures of either kind (transcoded to
+    /// the device's format: [`CookedTexture::to_texture_source`]).
+    pub fn add_to_with(&self, scene: &mut RenderScene, textures: &[TextureSource]) -> ModelParts {
         let handles: Vec<_> = textures
             .iter()
-            .map(|t| scene.add_texture(t.clone()))
+            .map(|t| scene.add_texture_source(t.clone()))
             .collect();
         let tex = |i: Option<usize>| i.and_then(|i| handles.get(i).copied());
         let materials: Vec<MaterialHandle> = self
@@ -1051,6 +1058,113 @@ impl CookedTexture {
             color_space,
             mips: Mips::Generate,
         })
+    }
+
+    /// The encoding this texture should reach a device that takes `formats`
+    /// in: its kind's (normal maps `normal`, or `color` for a map cooked
+    /// without y in alpha, linear data `data`, colour `color`), or RGBA8 for pixel art, distance fields, lossless cooks, a
+    /// size not in whole 4x4 blocks, or no renderer yet (`None`).
+    pub fn target_format(&self, formats: Option<&TextureFormats>) -> TextureFormat {
+        let Some(f) = formats else {
+            return TextureFormat::Rgba8;
+        };
+        let lossless = self.meta.codec == codec::RGBA8;
+        let blocks = self.meta.width.is_multiple_of(4) && self.meta.height.is_multiple_of(4);
+        if lossless || !blocks {
+            return TextureFormat::Rgba8;
+        }
+        match self.meta.kind {
+            // A two-channel format takes y from alpha: cooks before phase 2
+            // left alpha opaque there, so their maps go as colour.
+            crate::format::kind::NORMAL if f.normal.two_channel() && self.meta.has_alpha == 0 => {
+                f.color
+            }
+            crate::format::kind::NORMAL => f.normal,
+            crate::format::kind::LINEAR => f.data,
+            crate::format::kind::COLOR => f.color,
+            _ => TextureFormat::Rgba8,
+        }
+    }
+
+    /// The texture for og-render on a device that takes `formats`
+    /// (`RenderInfo::texture_formats`): every cooked mip level transcoded
+    /// to [`CookedTexture::target_format`] (BC7 and BC5 on desktop GPUs,
+    /// ASTC 4x4 on Apple and most Android, ETC2 and EAC elsewhere), or
+    /// RGBA8 level 0 as [`CookedTexture::to_texture_data`] gives it when the
+    /// target is RGBA8. Native transcoding needs the `transcode` feature.
+    pub fn to_texture_source(
+        &self,
+        formats: Option<&TextureFormats>,
+    ) -> Result<TextureSource, LoadError> {
+        let target = self.target_format(formats);
+        if target == TextureFormat::Rgba8 {
+            return self.to_texture_data().map(TextureSource::Rgba);
+        }
+        let bad = |reason: String| LoadError::Invalid {
+            path: self.id.clone(),
+            reason,
+        };
+        let levels = self.transcode_levels(target).map_err(bad)?;
+        let color_space = if self.meta.color_space == 0 && !target.two_channel() {
+            ColorSpace::Srgb
+        } else {
+            ColorSpace::Linear
+        };
+        let upload = TextureUpload {
+            desc: TextureDesc {
+                width: self.meta.width,
+                height: self.meta.height,
+                format: target,
+                mip_levels: levels.len() as u32,
+                color_space,
+            },
+            levels,
+        };
+        upload.desc.validate(&upload.levels).map_err(bad)?;
+        Ok(TextureSource::Encoded(upload))
+    }
+
+    /// Every mip level transcoded to `format` (a block format).
+    #[cfg(feature = "transcode")]
+    fn transcode_levels(&self, format: TextureFormat) -> Result<Vec<Vec<u8>>, String> {
+        use basis_universal::{TranscodeParameters, Transcoder, TranscoderTextureFormat as T};
+        let to = match format {
+            TextureFormat::Bc7 => T::BC7_RGBA,
+            TextureFormat::Bc5 => T::BC5_RG,
+            TextureFormat::Astc4x4 => T::ASTC_4x4_RGBA,
+            TextureFormat::Etc2Rgba8 => T::ETC2_RGBA,
+            TextureFormat::EacRg11 => T::ETC2_EAC_RG11,
+            TextureFormat::Rgba8 => T::RGBA32,
+        };
+        let basis = ktx2::to_basis(&self.ktx2)?;
+        let mut t = Transcoder::new();
+        t.prepare_transcoding(&basis)
+            .map_err(|_| "basisu refused the texture".to_string())?;
+        let count = t.image_level_count(&basis, 0);
+        let mut levels = Vec::with_capacity(count as usize);
+        for level_index in 0..count {
+            let data = t
+                .transcode_image_level(
+                    &basis,
+                    to,
+                    TranscodeParameters {
+                        image_index: 0,
+                        level_index,
+                        ..Default::default()
+                    },
+                )
+                .map_err(|e| format!("basisu transcode of level {level_index} failed: {e:?}"))?;
+            levels.push(data);
+        }
+        t.end_transcoding();
+        Ok(levels)
+    }
+
+    #[cfg(not(feature = "transcode"))]
+    fn transcode_levels(&self, format: TextureFormat) -> Result<Vec<Vec<u8>>, String> {
+        Err(format!(
+            "transcoding to {format:?} needs og-cook's `transcode` feature (native) or the web host's transcoder"
+        ))
     }
 
     #[cfg(feature = "transcode")]

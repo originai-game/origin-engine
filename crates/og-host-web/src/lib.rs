@@ -20,9 +20,13 @@
 //!   copy has landed (requested on tick N, answered on N + 1), so the ring's
 //!   `capture` is retried by the Worker until it answers.
 //! - Cooked files reach the runtime through `og_web_put_file` (the Worker
-//!   fetches the game's bundle before creating the engine); textures are
-//!   transcoded by the Worker with Binomial's Basis transcoder
-//!   (`src/web/basis.ts`) and handed over with `og_web_put_texture`.
+//!   fetches the game's bundle before creating the engine); once the
+//!   renderer is attached, the Worker asks `og_web_texture_target` which
+//!   encoding each Basis texture should reach this device in (the
+//!   renderer's `texture_formats`, og-cook's choice by kind), transcodes it
+//!   with Binomial's Basis transcoder (`src/web/basis.ts`) and hands it over
+//!   with `og_web_put_texture` (RGBA8 level 0) or
+//!   `og_web_put_texture_encoded` (every level of a block format).
 
 /// The exports, one per binding symbol (`og api gen`).
 #[doc(hidden)]
@@ -46,7 +50,9 @@ thread_local! {
     /// Cooked files the Worker fetched, by path.
     static FILES: RefCell<BTreeMap<String, Result<Vec<u8>, String>>> = const { RefCell::new(BTreeMap::new()) };
     /// Transcoded textures the Worker handed over, by asset id.
-    static TEXTURES: RefCell<BTreeMap<String, og_render::TextureData>> = const { RefCell::new(BTreeMap::new()) };
+    static TEXTURES: RefCell<BTreeMap<String, og_render::TextureSource>> = const { RefCell::new(BTreeMap::new()) };
+    /// The encodings each engine's attached renderer takes.
+    static FORMATS: RefCell<BTreeMap<u32, og_render::TextureFormats>> = const { RefCell::new(BTreeMap::new()) };
     /// Paths handed to the fetcher, so each is asked for once.
     static REQUESTED: RefCell<std::collections::BTreeSet<String>> = const { RefCell::new(std::collections::BTreeSet::new()) };
     /// Render-target sizes the shell asked for, by engine, applied before the next frame.
@@ -114,12 +120,26 @@ impl Hooks for WebHooks {
         }
     }
 
-    fn texture(&self, texture: &og_cook::runtime::CookedTexture) -> Fetch<og_render::TextureData> {
+    fn texture(
+        &self,
+        texture: &og_cook::runtime::CookedTexture,
+        formats: Option<&og_render::TextureFormats>,
+    ) -> Fetch<og_render::TextureSource> {
         if let Some(t) = TEXTURES.with(|t| t.borrow().get(&texture.id).cloned()) {
+            if let og_render::TextureSource::Encoded(u) = &t {
+                let format = u.desc.format;
+                if !formats.is_some_and(|f| f.supported.contains(&format)) {
+                    return Fetch::Failed(format!(
+                        "{}: transcoded to {} for another renderer than this engine's",
+                        texture.id,
+                        format.name()
+                    ));
+                }
+            }
             return Fetch::Ready(t);
         }
         match texture.to_texture_data() {
-            Ok(t) => Fetch::Ready(t),
+            Ok(t) => Fetch::Ready(og_render::TextureSource::Rgba(t)),
             Err(_) => Fetch::Failed(format!(
                 "{}: not transcoded; the Worker transcodes a bundle's Basis textures (src/web/basis.ts) before the engine starts",
                 texture.id
@@ -166,7 +186,81 @@ pub fn og_web_put_texture(id: String, width: u32, height: u32, rgba: Vec<u8>, sr
         },
         mips: og_render::Mips::Generate,
     };
-    TEXTURES.with(|t| t.borrow_mut().insert(id, data));
+    TEXTURES.with(|t| {
+        t.borrow_mut()
+            .insert(id, og_render::TextureSource::Rgba(data))
+    });
+}
+
+/// A texture the Worker transcoded to the block format `format`
+/// ([`og_web_texture_target`]'s answer): every mip level, level 0 first,
+/// back to back in `levels`. Two-channel formats are linear whatever
+/// `srgb` says. Answers `""`, or the reason the levels were refused.
+#[wasm_bindgen]
+pub fn og_web_put_texture_encoded(
+    id: String,
+    format: String,
+    width: u32,
+    height: u32,
+    srgb: bool,
+    levels: Vec<u8>,
+) -> String {
+    let Some(format) = og_render::TextureFormat::from_name(&format) else {
+        return format!("{id}: {format} is not a texture format");
+    };
+    let mut split = Vec::new();
+    let mut at = 0;
+    let mut level = 0;
+    while at < levels.len() && level < 32 {
+        let n = format.level_bytes(width, height, level);
+        let end = (at + n).min(levels.len());
+        split.push(levels[at..end].to_vec());
+        at = end;
+        level += 1;
+    }
+    let color_space = if srgb && !format.two_channel() {
+        og_render::ColorSpace::Srgb
+    } else {
+        og_render::ColorSpace::Linear
+    };
+    let upload = og_render::TextureUpload {
+        desc: og_render::TextureDesc {
+            width,
+            height,
+            format,
+            mip_levels: split.len() as u32,
+            color_space,
+        },
+        levels: split,
+    };
+    if let Err(e) = upload.desc.validate(&upload.levels) {
+        return format!("{id}: {e}");
+    }
+    TEXTURES.with(|t| {
+        t.borrow_mut()
+            .insert(id, og_render::TextureSource::Encoded(upload))
+    });
+    String::new()
+}
+
+/// The encoding a cooked texture should reach `engine`'s renderer in
+/// (og-cook's `CookedTexture::target_format` over the renderer's
+/// `texture_formats`): `rgba8`, `bc7`, `bc5`, `astc4x4`, `etc2` or
+/// `eacrg11`; `rgba8` before a renderer is attached or for a texture that
+/// does not parse.
+#[wasm_bindgen]
+pub fn og_web_texture_target(engine: u32, manifest: String, id: String, bytes: Vec<u8>) -> String {
+    let Ok(bundle) = og_cook::runtime::Bundle::from_manifest(&manifest) else {
+        return "rgba8".into();
+    };
+    let words = aligned(&bytes);
+    // SAFETY: the words hold `bytes.len()` initialised bytes.
+    let view = unsafe { std::slice::from_raw_parts(words.as_ptr().cast::<u8>(), bytes.len()) };
+    let formats = FORMATS.with(|f| f.borrow().get(&engine).cloned());
+    match bundle.texture(&id, view) {
+        Ok(t) => t.target_format(formats.as_ref()).name().into(),
+        Err(_) => "rgba8".into(),
+    }
 }
 
 /// The Worker's `fetch(path)`, called for a file nobody fetched yet; it
@@ -307,6 +401,9 @@ mod canvas {
         fn tier(&self) -> String {
             self.tier.clone()
         }
+        fn texture_formats(&self) -> Option<og_render::TextureFormats> {
+            Some(self.renderer.info().texture_formats.clone())
+        }
         fn size(&self) -> (u32, u32) {
             self.renderer.size()
         }
@@ -405,6 +502,8 @@ mod canvas {
             .await
             .map_err(|e| JsValue::from_str(&e.to_string()))?;
         let tier = renderer.info().backend_tier();
+        let formats = renderer.info().texture_formats.clone();
+        super::FORMATS.with(|f| f.borrow_mut().insert(engine, formats));
         set_render_backend(
             engine,
             Some(Box::new(CanvasBackend {

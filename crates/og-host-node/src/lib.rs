@@ -364,6 +364,9 @@ impl RenderBackend for OffscreenBackend {
     fn tier(&self) -> String {
         self.tier.clone()
     }
+    fn texture_formats(&self) -> Option<og_render::TextureFormats> {
+        Some(self.renderer.info().texture_formats.clone())
+    }
     fn size(&self) -> (u32, u32) {
         self.renderer.size()
     }

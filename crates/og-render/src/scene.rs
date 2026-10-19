@@ -156,15 +156,18 @@ pub struct TextureData {
     pub mips: Mips,
 }
 
-/// A texture as added: RGBA8 or pre-encoded.
+/// A texture as a host hands it over: RGBA8 (mips generated on the GPU) or
+/// pre-encoded in one of [`crate::RenderInfo::texture_formats`]
+/// ([`RenderScene::add_texture_source`]).
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum TextureSource {
+pub enum TextureSource {
     Rgba(TextureData),
     Encoded(TextureUpload),
 }
 
 impl TextureSource {
-    pub(crate) fn size(&self) -> (u32, u32) {
+    /// Width and height of level 0.
+    pub fn size(&self) -> (u32, u32) {
         match self {
             TextureSource::Rgba(t) => (t.width, t.height),
             TextureSource::Encoded(t) => (t.desc.width, t.desc.height),
@@ -1074,6 +1077,12 @@ impl RenderScene {
     /// [`crate::RenderError::InvalidData`] or `Unsupported`) when uploaded.
     pub fn add_texture_upload(&mut self, upload: TextureUpload) -> TextureHandle {
         self.textures.push(TextureSource::Encoded(upload));
+        TextureHandle(self.textures.len() as u32 - 1)
+    }
+
+    /// Adds a texture of either kind ([`TextureSource`]).
+    pub fn add_texture_source(&mut self, source: TextureSource) -> TextureHandle {
+        self.textures.push(source);
         TextureHandle(self.textures.len() as u32 - 1)
     }
 

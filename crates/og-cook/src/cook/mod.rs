@@ -116,7 +116,7 @@ impl Default for TextureOptions {
 impl TextureOptions {
     fn describe(&self) -> String {
         format!(
-            "etc1s {} uastc {} rdo {} zstd {} mips {}",
+            "etc1s {} uastc {} rdo {} zstd {} mips {} normal y in alpha",
             self.etc1s_quality,
             self.uastc_level,
             self.uastc_rdo.map_or("off".to_string(), |r| r.to_string()),

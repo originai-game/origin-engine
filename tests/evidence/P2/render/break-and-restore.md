@@ -23,3 +23,7 @@ covers, failed, and passed again once the code was restored.
 | the same two | hooked batches drawn by the plain prepass (no offset in the depth, AO and outline) | 3,937 and 12,926 pixels apart |
 | `hooks.rs` `an_offset_skinned_mesh_…`, `skinned_hooks_match_their_reference` | skinned batches without their material shader (the old behaviour) | 70,545 pixels apart; the reference off by RMSE 0.087 |
 | fx-showcase `tests/skinned.og.ts` | `og.render.setMaterialShader` answering ok without giving the material its shader | no gold bands; the frame off its reference |
+| og-cook `compressed.rs` `each_kind_reaches_its_familys_format` | `target_format` sending normal maps to the colour format | stone_n.png went BC7 where BC5 was wanted |
+| og-cook `compressed.rs` `compressed_textures_draw_as_their_rgba8_decode` | the cook leaving a normal map's alpha opaque (y not copied there) | BC5 read y = 1: RMSE 0.076, 137,135 outliers (also the failure that found the bug) |
+| og-cook `compressed.rs` `cooked_models_with_compressed_textures_render_the_gltf_reference_scene` | every transcoded texture uploaded linear (sRGB lost on colour) | RMSE 0.063 against gltf-reference, 59,308 outliers |
+| packages/engine `basis.test.ts` "a normal map's BC5 holds its x and y" | the same cook break, through `og cook` and the vendored JS transcoder | y at 5.9 dB against the RGBA8 decode's green |

@@ -39,6 +39,24 @@ impl TextureFormat {
         TextureFormat::EacRg11,
     ];
 
+    /// The format's short name, as hosts and transcoders name it: `rgba8`,
+    /// `bc7`, `bc5`, `astc4x4`, `etc2`, `eacrg11`.
+    pub fn name(self) -> &'static str {
+        match self {
+            TextureFormat::Rgba8 => "rgba8",
+            TextureFormat::Bc7 => "bc7",
+            TextureFormat::Bc5 => "bc5",
+            TextureFormat::Astc4x4 => "astc4x4",
+            TextureFormat::Etc2Rgba8 => "etc2",
+            TextureFormat::EacRg11 => "eacrg11",
+        }
+    }
+
+    /// The format [`TextureFormat::name`] names.
+    pub fn from_name(name: &str) -> Option<TextureFormat> {
+        TextureFormat::ALL.into_iter().find(|f| f.name() == name)
+    }
+
     /// Texels per block side (1 for RGBA8, 4 for the block formats).
     pub fn block_dim(self) -> u32 {
         match self {

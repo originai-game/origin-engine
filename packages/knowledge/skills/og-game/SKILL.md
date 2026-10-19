@@ -125,6 +125,11 @@ registered schema and refuses a model path that does not exist.
   into MSDF atlases, scenes into component tables. Import settings live next
   to the source as `<file>.ogt` (`texture { kind normal }`,
   `font { charset latin chars "开始游戏" }`).
+- At load a cooked texture reaches the GPU block-compressed in the device's
+  format with its mips (BC7, and BC5 for normal maps, on desktop GPUs; ASTC
+  on Apple and most Android; ETC2 and EAC elsewhere), a quarter of RGBA8's
+  memory. Give textures sizes in multiples of 4 (powers of two are best): a
+  size that is not, pixel art (`kind pixel`) and fonts stay RGBA8.
 - Declare the characters a font must show (`chars`) rather than cooking a
   whole CJK charset: the full set is several times the size of the font.
 - Reusable production assets come through the platform's asset catalog into

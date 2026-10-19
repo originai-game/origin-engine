@@ -464,6 +464,9 @@ pub struct FrameStats {
     /// Skinned instances drawn and the joints of the frame's palettes.
     pub skinned_instances: u32,
     pub joints: u32,
+    /// GPU memory of the scene's textures (every mip level, as allocated:
+    /// RGBA8 with its generated chain, or the encoded levels as uploaded).
+    pub texture_bytes: u64,
     /// Frames rendered by this renderer before this one (drives the TAA jitter).
     pub frame: u64,
 }
@@ -528,6 +531,8 @@ struct GpuMaterial {
 struct GpuTexture {
     view: wgpu::TextureView,
     format: TextureFormat,
+    /// Bytes allocated, every level.
+    bytes: u64,
 }
 
 struct GpuFont {
@@ -1957,6 +1962,18 @@ impl Renderer {
                     TextureSource::Rgba(texture) => GpuTexture {
                         view: self.upload_texture(texture, &mut encoder)?,
                         format: TextureFormat::Rgba8,
+                        bytes: match texture.mips {
+                            Mips::Generate => (0..mips::mip_count(texture.width, texture.height))
+                                .map(|l| {
+                                    TextureFormat::Rgba8.level_bytes(
+                                        texture.width,
+                                        texture.height,
+                                        l,
+                                    ) as u64
+                                })
+                                .sum(),
+                            Mips::None => texture.rgba.len() as u64,
+                        },
                     },
                     TextureSource::Encoded(upload) => self.upload_encoded(index, upload)?,
                 };
@@ -2215,6 +2232,7 @@ impl Renderer {
         Ok(GpuTexture {
             view: texture.create_view(&Default::default()),
             format: desc.format,
+            bytes: upload.levels.iter().map(|l| l.len() as u64).sum(),
         })
     }
 
@@ -3501,6 +3519,7 @@ impl Renderer {
             lights_culled: cluster_stats.culled,
             cluster_lights: cluster_stats.refs,
             cluster_lights_dropped: cluster_stats.refs_dropped,
+            texture_bytes: self.cache.textures.iter().map(|t| t.bytes).sum(),
             sprites: sprite_frame.sprites,
             tiles: sprite_frame.tiles,
             tile_chunks: sprite_frame.tile_chunks,

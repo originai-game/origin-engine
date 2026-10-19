@@ -65,11 +65,17 @@ pub trait Hooks {
     fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
         Fetch::Failed(format!("{path}: this host reads no files"))
     }
-    /// A cooked texture as RGBA8 for the renderer: og-cook's transcoder
-    /// (native, feature `transcode`) by default; the web host transcodes with
-    /// Binomial's Basis transcoder.
-    fn texture(&self, texture: &og_cook::runtime::CookedTexture) -> Fetch<og_render::TextureData> {
-        match texture.to_texture_data() {
+    /// A cooked texture for the renderer, in the device's encoding when
+    /// `formats` (the attached renderer's) names one: og-cook's transcoder
+    /// (native, feature `transcode`) by default, every mip level; the web
+    /// host takes what its Worker transcoded with Binomial's Basis
+    /// transcoder. RGBA8 without a renderer.
+    fn texture(
+        &self,
+        texture: &og_cook::runtime::CookedTexture,
+        formats: Option<&og_render::TextureFormats>,
+    ) -> Fetch<og_render::TextureSource> {
+        match texture.to_texture_source(formats) {
             Ok(t) => Fetch::Ready(t),
             Err(e) => Fetch::Failed(e.to_string()),
         }

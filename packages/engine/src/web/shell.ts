@@ -70,7 +70,7 @@ export interface Ready {
   readonly tier: string;
   readonly transport: "ring" | "message";
   readonly rpc: "ring" | "message";
-  /** The GPU texture format this device would take (`rgba8` is uploaded today), or null without a bundle. */
+  /** The encodings the bundle's Basis textures reached the renderer in (`bc7+bc5`, `astc4x4`, `etc2+eacrg11`, `rgba8`), or null without a bundle. */
   readonly textureFormat: string | null;
   readonly files: number;
   readonly textures: number;

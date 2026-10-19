@@ -476,6 +476,19 @@ Owed row 31 (`og-tests/tests/materials.rs`, the `materials` reference):
   image-based light. No clearcoat maps: WebGL2's skinned lit pipeline has no
   texture slot left.
 
+## Compressed textures at runtime
+
+Owed row 32. The renderer still does not transcode: hosts hand it a
+`TextureSource` (`RenderScene::add_texture_source`), RGBA8 level 0 with mips
+built on the GPU, or every level pre-encoded in one of
+`RenderInfo::texture_formats`. og-runtime's loaders pass the attached
+backend's formats to the host's texture hook, so cooked Basis textures now
+reach the GPU as BC7/BC5 on desktop GPUs, ASTC 4x4 on Apple and most Android,
+ETC2/EAC RG11 elsewhere (og-cook's README §KTX2 says which kind gets which).
+`FrameStats::texture_bytes` is the GPU memory of the scene's textures, every
+level as allocated. Measured on the template's textures:
+`tests/evidence/P2/render/compressed-textures.md`.
+
 ## What phase 2 owes
 
 Delivered since M3 (8d160fe, M6): the render graph object (`src/graph.rs`:
@@ -510,7 +523,5 @@ with their mips, chosen per tier and reported in
   RTL shaping (rustybuzz), CJK fallback atlases.
 - Instance upload is the whole buffer every frame; dirty tracking, GPU
   culling on the full tier. Resources cannot be removed. No anisotropy.
-  The runtime loaders do not upload the tier's compressed format yet (the
-  cook's native runtime transcodes Basis to RGBA8; see og-cook's README).
   Shaders are WGSL compiled by naga at pipeline creation; cooking per
   backend at build time is still to do.

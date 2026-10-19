@@ -36,6 +36,11 @@ pub trait RenderBackend {
     fn antialias(&self) -> String {
         "off".into()
     }
+    /// The texture encodings the device takes (og-render's
+    /// `RenderInfo::texture_formats`): loads transcode to them. `None`: RGBA8.
+    fn texture_formats(&self) -> Option<og_render::TextureFormats> {
+        None
+    }
     /// Draw one frame of the scene to the display target.
     fn render(&mut self, scene: &RenderScene) -> Result<(), String>;
     /// Draw the scene offscreen at `width`×`height` (0×0: the target's size)
