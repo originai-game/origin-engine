@@ -62,16 +62,22 @@ struct BatchGpu {
 // entries; then per pass `blocks` workgroup sums.
 @group(0) @binding(3) var<storage, read_write> scan: array<u32>;
 // Per (pass, batch) five words of DrawIndexedIndirect, then per pass the
-// instances inside its planes (statistics).
+// instances inside its planes, then per batch the camera pass's instances
+// the occluders hid (statistics).
 @group(0) @binding(4) var<storage, read_write> args: array<atomic<u32>>;
 @group(0) @binding(5) var pyramid: texture_2d<f32>;
 
 var<workgroup> shared_sum: array<u32, 256>;
 var<workgroup> shared_inside: atomic<u32>;
+// The camera pass's hidden instances of the workgroup's first two batches
+// (the instances are sorted by batch), and the first one's index.
+var<workgroup> shared_hidden: array<atomic<u32>, 2>;
+var<workgroup> first_batch: u32;
 
 fn n_instances() -> u32 { return params.counts.x; }
 fn prefix_at(g: u32) -> u32 { return n_instances() + g * (n_instances() + 1u); }
 fn blocks_at(g: u32) -> u32 { return n_instances() + params.counts.w * (n_instances() + 1u) + g * params.sizes.x; }
+fn hidden_at(bi: u32) -> u32 { return params.counts.w * params.counts.y * 5u + params.counts.w + bi; }
 
 // The batch holding sorted instance k (batches cover 0..N in order).
 fn batch_of(k: u32) -> u32 {
@@ -171,11 +177,17 @@ fn visibility(@builtin(global_invocation_id) gid: vec3<u32>,
   let kind = pass_info.x;
   let g = pass_info.z;
   let k = gid.x;
-  if (li == 0u) { atomicStore(&shared_inside, 0u); }
+  if (li == 0u) {
+    atomicStore(&shared_inside, 0u);
+    atomicStore(&shared_hidden[0], 0u);
+    atomicStore(&shared_hidden[1], 0u);
+    first_batch = batch_of(min(wid.x * WG, n_instances() - 1u));
+  }
   workgroupBarrier();
   var visible = 0u;
   if (k < n_instances()) {
-    let b = batches[batch_of(k)];
+    let bi = batch_of(k);
+    let b = batches[bi];
     let m = instances[k];
     let center = (m * vec4<f32>(b.bounds.xyz, 1.0)).xyz;
     let scale = max(length(m[0].xyz), max(length(m[1].xyz), length(m[2].xyz)));
@@ -201,6 +213,14 @@ fn visibility(@builtin(global_invocation_id) gid: vec3<u32>,
           && occluded(m, b.bounds.xyz, b.extent.xyz * (1.0 + 1e-5) + vec3<f32>(1e-6));
         visible = u32(inside && !hidden);
         scan[k] = visible;
+        if (hidden) {
+          let slot = bi - first_batch;
+          if (slot < 2u) {
+            atomicAdd(&shared_hidden[slot], 1u);
+          } else {
+            atomicAdd(&args[hidden_at(bi)], 1u);
+          }
+        }
       }
       default: { visible = u32(inside); }
     }
@@ -218,6 +238,10 @@ fn visibility(@builtin(global_invocation_id) gid: vec3<u32>,
     if (inside > 0u) {
       atomicAdd(&args[params.counts.w * params.counts.y * 5u + g], inside);
     }
+  }
+  if (li < 2u && first_batch + li < params.counts.y) {
+    let hidden = atomicLoad(&shared_hidden[li]);
+    if (hidden > 0u) { atomicAdd(&args[hidden_at(first_batch + li)], hidden); }
   }
 }
 

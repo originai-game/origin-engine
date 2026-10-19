@@ -24,7 +24,9 @@
 //! every pass against its planes in one compute pass.
 //!
 //! The counts the CPU path knows at once (culled, occluded, triangles,
-//! shadow casters) come back through a small readback ring, for the frames
+//! shadow casters), and the triangles of the instances the occluders hid
+//! (counted per instance, so the camera pass's drawn and hidden triangles
+//! can be checked against the CPU path's in view), come back through a small readback ring, for the frames
 //! after [`crate::Renderer::request_culling_counts`] only: a frame's
 //! [`crate::FrameStats`] carries those of the newest frame that has
 //! landed (`counts_lag` frames old), and [`crate::Renderer::finish_stats`]
@@ -127,6 +129,9 @@ pub(crate) struct GpuCounts {
     pub occluded: u32,
     /// Triangles of the camera pass's instance draws.
     pub triangles: u64,
+    /// Triangles of the instances counted in `occluded`, counted on their
+    /// own (not as the difference of two other counts).
+    pub occluded_triangles: u64,
     /// Instance draws across the shadow passes.
     pub shadow_casters: u32,
 }
@@ -143,10 +148,18 @@ struct CountLayout {
 }
 
 impl CountLayout {
+    /// The words of the draws buffer the counts are read from: per (pass,
+    /// batch) a draw, per pass its inside count, per batch its hidden count.
+    fn words(passes: usize, batches: u32) -> u64 {
+        passes as u64 * (batches as u64 * 5 + 1) + batches as u64
+    }
+
     fn counts(&self, words: &[u32]) -> GpuCounts {
         let b = self.batches as usize;
+        let p = self.kinds.len();
         let draws = |g: usize| (0..b).map(move |i| (i, words[(g * b + i) * 5 + 1]));
-        let inside = |g: usize| words[self.kinds.len() * b * 5 + g];
+        let inside = |g: usize| words[p * b * 5 + g];
+        let hidden = |i: usize| words[p * b * 5 + p + i];
         let mut c = GpuCounts {
             frame: self.frame,
             ..GpuCounts::default()
@@ -161,6 +174,8 @@ impl CountLayout {
                     c.triangles = draws(g).map(|(i, n)| self.triangles[i] * n as u64).sum();
                     c.culled = self.opaque.saturating_sub(inside(g));
                     c.occluded = inside(g).saturating_sub(drawn);
+                    c.occluded_triangles =
+                        (0..b).map(|i| self.triangles[i] * hidden(i) as u64).sum();
                 }
                 PassKind::Reflection | PassKind::Occluders => {}
             }
@@ -567,7 +582,7 @@ impl GpuCulling {
                 // Every readback in flight lands and is taken.
                 device.poll(wgpu::PollType::wait_indefinitely()).ok()?;
                 self.poll_counts();
-                let words = layout.kinds.len() as u64 * (layout.batches as u64 * 5 + 1);
+                let words = CountLayout::words(layout.kinds.len(), layout.batches);
                 let r = self
                     .readbacks
                     .iter_mut()
@@ -845,7 +860,7 @@ impl GpuCulling {
         // Buffers (grown as needed; new ones start zeroed: nothing was
         // visible last frame).
         let blocks = n.div_ceil(WORKGROUP);
-        let args_words = (p as u64 * b as u64 * 5) + p as u64;
+        let args_words = CountLayout::words(p, b);
         Self::grow(
             device,
             &mut self.instances,
@@ -1009,8 +1024,12 @@ impl GpuCulling {
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("cull"),
         });
-        // The inside counters start at zero.
-        encoder.clear_buffer(&self.args, p as u64 * b as u64 * 20, Some(p as u64 * 4));
+        // The inside and hidden counters start at zero.
+        encoder.clear_buffer(
+            &self.args,
+            p as u64 * b as u64 * 20,
+            Some((p as u64 + b as u64) * 4),
+        );
         let run = |pass: &mut wgpu::ComputePass, group: &wgpu::BindGroup, stage_passes: u32| {
             pass.set_bind_group(0, group, &[]);
             pass.set_pipeline(&self.visibility);

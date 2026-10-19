@@ -544,10 +544,21 @@ pub struct FrameStats {
     pub gpu_culling: bool,
     /// Opaque instances in view that nearer occluders hid (GPU culling).
     pub occluded: u32,
+    /// Their triangles, counted on the GPU per hidden instance (GPU
+    /// culling; 0 on the CPU path).
+    pub occluded_triangles: u64,
+    /// Triangles of the opaque instances inside the camera's view, before
+    /// occlusion: every one is drawn in the main pass or counted in
+    /// `occluded_triangles`. The CPU path counts the instances in view
+    /// (it may draw a whole batch, so `triangles` can exceed it); GPU
+    /// culling adds its main-pass instance triangles and
+    /// `occluded_triangles`.
+    pub in_view_triangles: u64,
     /// Draws of the GPU culling's occluder depth pass (also in `draw_calls`).
     pub occluder_draws: u32,
-    /// With GPU culling, `culled`, `occluded`, `triangles` and
-    /// `shadow_casters` hold the GPU's counts of the newest frame read back
+    /// With GPU culling, `culled`, `occluded`, `occluded_triangles`,
+    /// `in_view_triangles`, `triangles` and `shadow_casters` hold the
+    /// GPU's counts of the newest frame read back
     /// by then, this many frames old (`u32::MAX`: none yet). Only frames
     /// after [`Renderer::request_culling_counts`] are read back; natively
     /// [`Renderer::finish_stats`] puts the frame's own in their place (0).
@@ -720,6 +731,9 @@ struct DrawList {
     ranges: Vec<(u32, u32, u32)>,
     instances: u32,
     triangles: u64,
+    /// Triangles of the instances inside the planes ([`Renderer::cull`];
+    /// `triangles` counts whole batches drawn past 90 % in view).
+    in_view_triangles: u64,
     /// GPU culling's pass: the ranges are in its `instances` and each draw's
     /// count is in its `args` (`instances` and `triangles` are 0 here).
     indirect: Option<u32>,
@@ -2720,6 +2734,7 @@ impl Renderer {
             visible.extend(range.clone().filter(|&k| inside[k]));
             culled += b.count - visible.len() as u32;
             let index_count = self.cache.meshes[b.mesh].index_count;
+            list.in_view_triangles += (index_count / 3) as u64 * visible.len() as u64;
             let (first, count) = if visible.is_empty() {
                 continue;
             } else if visible.len() as u32 * 10 >= b.count * 9 {
@@ -4084,6 +4099,7 @@ impl Renderer {
             instances: scene.instances.len() as u32,
             culled,
             triangles: main_list.triangles + blended_list.triangles,
+            in_view_triangles: main_list.in_view_triangles,
             lights: self.clusters.kept.len() as u32,
             lights_dropped: cluster_stats.dropped,
             lights_culled: cluster_stats.culled,
@@ -4121,6 +4137,8 @@ impl Renderer {
             stats.gpu_culling = true;
             stats.culled += c.culled;
             stats.occluded = c.occluded;
+            stats.occluded_triangles = c.occluded_triangles;
+            stats.in_view_triangles = c.triangles + c.occluded_triangles;
             stats.triangles += c.triangles;
             stats.shadow_casters += c.shadow_casters;
             stats.counts_lag = lagged.map_or(u32::MAX, |l| (self.frame_index - l.frame) as u32);
@@ -5164,7 +5182,8 @@ impl Renderer {
     }
 
     /// Reads the next frame's GPU culling counts back (`culled`,
-    /// `occluded`, `triangles` and `shadow_casters`; see
+    /// `occluded`, `triangles`, `shadow_casters` and the triangle counts
+    /// in and out of view; see
     /// [`FrameStats::counts_lag`]), for one frame: a frame rendered
     /// without a request copies none, so the stats keep the newest
     /// requested frame's. Natively [`Renderer::finish_stats`] needs no
@@ -5193,6 +5212,8 @@ impl Renderer {
         };
         stats.culled = stats.culled - given.culled + exact.culled;
         stats.occluded = exact.occluded;
+        stats.occluded_triangles = exact.occluded_triangles;
+        stats.in_view_triangles = exact.triangles + exact.occluded_triangles;
         stats.triangles = stats.triangles - given.triangles + exact.triangles;
         stats.shadow_casters = stats.shadow_casters - given.shadow_casters + exact.shadow_casters;
         stats.counts_lag = 0;
