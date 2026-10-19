@@ -276,6 +276,38 @@ metal with other rounds' builds on the machine:
 - Packs whose fonts have small x-heights still measure 7–8 px on some
   labels; a pack's ramp line for base raises them.
 
+### Fix on main (`p2-ui-fix`, from b2532cd)
+
+Four archetypes failed `og test` on main after the round:
+- idle, rhythm, roguelike and tower-defense in `frames`;
+- tower-defense in lose, pad, pause and replay, whose title refused a tap on
+  Play before 0.367 s.
+
+The cause was og-ui's stagger. It kept each staggered control inert until its
+own place in the cascade had played. The round's springs rest the hover at
+exactly zero, so skinned buttons joined the cascade for the first time.
+
+Now the cascade is only seen. A control takes input once the panel's own
+entrance, still inert, has played, and the title takes a tap from 0.267 s as
+before the round. New test: `skin.rs`
+`a_staggered_panels_controls_take_presses_once_the_panel_has_arrived`, broken
+twice (break-and-restore.md).
+
+Nine archetype frames were re-recorded for this round's text: the tokens'
+tracking on display titles and headings, and the distance-field glow of idle's
+and rhythm's `textGlow`. Each reason and the three-build attribution are in
+`tests/evidence/P2/ui/archetype-frames.md`, with before and after images in
+`rerecord/archetype-*.png`.
+
+`og test` passes:
+- the seven archetypes: idle 10, rhythm 11, roguelike 9, tower-defense 9,
+  match3 6, runner 8 and topdown 7 suites;
+- fx-showcase 18, game 2 and ui-kit 29 suites.
+
+`OG_GATE_JOBS=2 scripts/check.sh` **PASSED, 9 of 9 in 1059 s** at load 30–50.
+web-reference was not run, because no og-ui reference changed. The publish
+wasm is 3,061,786 B brotli, 72 %.
+
 ## Status 2026-10-19, phase 2, render round
 
 Branch `p2-render`; it closes owed rows 23, 28, 30, 31 and 32 (the table
