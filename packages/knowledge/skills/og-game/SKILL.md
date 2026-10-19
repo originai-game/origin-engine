@@ -187,7 +187,9 @@ with auto-tiled walls and collision, a four-direction flipbook hero on a
 top-down character controller, an enemy with a hurt flash and knockback,
 pickups with floating text, a door to a second room the camera scrolls to),
 `templates/archetypes/runner` and `templates/archetypes/match3` use all of
-this.
+this; `templates/archetypes/roguelike` carves a tilemap at run time from
+og.Rng and keeps its fog of war on a layer, and
+`templates/archetypes/tower-defense` writes placements to a map's layer.
 
 ## 9. Animation
 
