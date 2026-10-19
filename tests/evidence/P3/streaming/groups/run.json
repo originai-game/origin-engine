@@ -1,0 +1,6185 @@
+{
+ "budget": 861322,
+ "peak": 583374,
+ "memory": {
+  "cave": 277949,
+  "meadow": 583374,
+  "tower": 233849
+ },
+ "ticks": 680,
+ "advanceMs": {
+  "p50": 0.15174999999999272,
+  "p95": 3.4040839999997843,
+  "p99": 31.24041699999998,
+  "max": 213.3529169999997
+ },
+ "events": [
+  {
+   "tick": 61,
+   "group": "meadow",
+   "state": "loading"
+  },
+  {
+   "tick": 61,
+   "group": "meadow",
+   "state": "resident"
+  },
+  {
+   "tick": 321,
+   "group": "meadow",
+   "state": "queued"
+  },
+  {
+   "tick": 321,
+   "group": "cave",
+   "state": "loading"
+  },
+  {
+   "tick": 321,
+   "group": "cave",
+   "state": "resident"
+  },
+  {
+   "tick": 382,
+   "group": "meadow",
+   "state": "unloaded"
+  },
+  {
+   "tick": 402,
+   "group": "cave",
+   "state": "unloaded"
+  },
+  {
+   "tick": 461,
+   "group": "tower",
+   "state": "loading"
+  },
+  {
+   "tick": 461,
+   "group": "tower",
+   "state": "resident"
+  }
+ ],
+ "rows": [
+  {
+   "tick": 2,
+   "z": 19.5,
+   "ms": 0.27604199999996126,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 3,
+   "z": 19,
+   "ms": 0.21445799999992232,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 4,
+   "z": 18.5,
+   "ms": 0.1748330000000351,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 5,
+   "z": 18,
+   "ms": 0.33104199999979755,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 6,
+   "z": 17.5,
+   "ms": 0.21233399999982794,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 7,
+   "z": 17,
+   "ms": 0.19433299999991505,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 8,
+   "z": 16.5,
+   "ms": 0.5982089999997697,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 9,
+   "z": 16,
+   "ms": 0.5034579999996822,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 10,
+   "z": 15.5,
+   "ms": 0.2804999999998472,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 11,
+   "z": 15,
+   "ms": 0.23116700000036872,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 12,
+   "z": 14.5,
+   "ms": 0.3386249999998654,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 13,
+   "z": 14,
+   "ms": 0.18379200000026685,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 14,
+   "z": 13.5,
+   "ms": 0.16112500000008367,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 15,
+   "z": 13,
+   "ms": 0.15262500000017099,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 16,
+   "z": 12.5,
+   "ms": 0.1492920000000595,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 17,
+   "z": 12,
+   "ms": 0.14699999999993452,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 18,
+   "z": 11.5,
+   "ms": 0.1437500000001819,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 19,
+   "z": 11,
+   "ms": 0.1446249999999054,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 20,
+   "z": 10.5,
+   "ms": 0.1432079999999587,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 21,
+   "z": 10,
+   "ms": 0.22479199999997945,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 22,
+   "z": 9.5,
+   "ms": 0.18600000000014916,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 23,
+   "z": 9,
+   "ms": 0.3048749999998108,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 24,
+   "z": 8.5,
+   "ms": 4.861499999999978,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 25,
+   "z": 8,
+   "ms": 19.119458000000122,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 26,
+   "z": 7.5,
+   "ms": 0.31637499999987995,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 27,
+   "z": 7,
+   "ms": 0.1786669999996775,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 28,
+   "z": 6.5,
+   "ms": 0.16350000000011278,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 29,
+   "z": 6,
+   "ms": 0.1560829999998532,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 30,
+   "z": 5.5,
+   "ms": 0.15383299999984956,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 31,
+   "z": 5,
+   "ms": 0.1453750000000582,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 32,
+   "z": 4.5,
+   "ms": 0.15212500000006912,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 33,
+   "z": 4,
+   "ms": 0.14704200000005585,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 34,
+   "z": 3.5,
+   "ms": 0.1501659999998992,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 35,
+   "z": 3,
+   "ms": 0.150916000000052,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 36,
+   "z": 2.5,
+   "ms": 0.1577500000003056,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 37,
+   "z": 2,
+   "ms": 0.14179199999989578,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 38,
+   "z": 1.5,
+   "ms": 0.1411670000002232,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 39,
+   "z": 1,
+   "ms": 0.13970900000003894,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 40,
+   "z": 0.5,
+   "ms": 0.13916699999981574,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 41,
+   "z": 0,
+   "ms": 0.14279099999976097,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 42,
+   "z": -0.5,
+   "ms": 0.13716699999986304,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 43,
+   "z": -1,
+   "ms": 0.13812499999994543,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 44,
+   "z": -1.5,
+   "ms": 0.1377079999997477,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 45,
+   "z": -2,
+   "ms": 0.13766700000041965,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 46,
+   "z": -2.5,
+   "ms": 0.13762500000029831,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 47,
+   "z": -3,
+   "ms": 0.14462500000036016,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 48,
+   "z": -3.5,
+   "ms": 0.1380829999998241,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 49,
+   "z": -4,
+   "ms": 0.1374999999998181,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 50,
+   "z": -4.5,
+   "ms": 0.13725000000022192,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 51,
+   "z": -5,
+   "ms": 0.1387920000001941,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 52,
+   "z": -5.5,
+   "ms": 0.13799999999991996,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 53,
+   "z": -6,
+   "ms": 0.13699999999971624,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 54,
+   "z": -6.5,
+   "ms": 0.1384579999999005,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 55,
+   "z": -7,
+   "ms": 0.14012500000035288,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 56,
+   "z": -7.5,
+   "ms": 0.248833999999988,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 57,
+   "z": -8,
+   "ms": 0.17341699999997218,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 58,
+   "z": -8.5,
+   "ms": 31.24041699999998,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 59,
+   "z": -9,
+   "ms": 0.24399999999968713,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 60,
+   "z": -9.5,
+   "ms": 0.16679199999998673,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 61,
+   "z": -10,
+   "ms": 213.3529169999997,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 62,
+   "z": -10.5,
+   "ms": 3.5995419999999285,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 63,
+   "z": -11,
+   "ms": 0.2882079999999405,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 64,
+   "z": -11.5,
+   "ms": 0.31404099999963364,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 65,
+   "z": -12,
+   "ms": 0.1797910000000229,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 66,
+   "z": -12.5,
+   "ms": 0.1601250000003347,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 67,
+   "z": -13,
+   "ms": 0.15137500000037107,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 68,
+   "z": -13.5,
+   "ms": 1.9585000000001855,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 69,
+   "z": -14,
+   "ms": 0.8541660000000775,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 70,
+   "z": -14.5,
+   "ms": 0.20062500000040018,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 71,
+   "z": -15,
+   "ms": 0.1542909999998301,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 72,
+   "z": -15.5,
+   "ms": 0.1538749999999709,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 73,
+   "z": -16,
+   "ms": 0.14525000000003274,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 74,
+   "z": -16.5,
+   "ms": 0.14270799999985684,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 75,
+   "z": -17,
+   "ms": 0.42275000000017826,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 76,
+   "z": -17.5,
+   "ms": 0.22616699999980483,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 77,
+   "z": -18,
+   "ms": 0.17129100000011022,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 78,
+   "z": -18.5,
+   "ms": 0.15579200000001947,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 79,
+   "z": -19,
+   "ms": 0.15154200000006313,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 80,
+   "z": -19.5,
+   "ms": 0.14612499999975626,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 81,
+   "z": -20,
+   "ms": 0.14800000000013824,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 82,
+   "z": -20.5,
+   "ms": 0.14233400000011898,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 83,
+   "z": -21,
+   "ms": 0.14162500000020373,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 84,
+   "z": -21.5,
+   "ms": 0.14033400000016627,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 85,
+   "z": -22,
+   "ms": 0.1414159999999356,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 86,
+   "z": -22.5,
+   "ms": 0.14016700000001947,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 87,
+   "z": -23,
+   "ms": 0.13929099999995742,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 88,
+   "z": -23.5,
+   "ms": 0.13929200000029596,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 89,
+   "z": -24,
+   "ms": 0.1493329999998423,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 90,
+   "z": -24.5,
+   "ms": 0.15075000000024374,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 91,
+   "z": -25,
+   "ms": 0.14933399999972607,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 92,
+   "z": -25.5,
+   "ms": 0.13912500000014916,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 93,
+   "z": -26,
+   "ms": 0.13879199999973935,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 94,
+   "z": -26.5,
+   "ms": 0.13833299999987503,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 95,
+   "z": -27,
+   "ms": 56.142917000000125,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 96,
+   "z": -27.5,
+   "ms": 0.6201670000000377,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 97,
+   "z": -28,
+   "ms": 0.3272919999999431,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 98,
+   "z": -28.5,
+   "ms": 0.21099999999978536,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 99,
+   "z": -29,
+   "ms": 0.160584000000199,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 100,
+   "z": -29.5,
+   "ms": 0.15245800000002419,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 101,
+   "z": -30,
+   "ms": 0.15529099999957907,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 102,
+   "z": -30.5,
+   "ms": 0.15283300000010058,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 103,
+   "z": -31,
+   "ms": 0.14470799999980954,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 104,
+   "z": -31.5,
+   "ms": 0.14379199999984849,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 105,
+   "z": -32,
+   "ms": 0.14350000000013097,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 106,
+   "z": -32.5,
+   "ms": 0.14154199999984485,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 107,
+   "z": -33,
+   "ms": 0.1417500000002292,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 108,
+   "z": -33.5,
+   "ms": 0.14154199999984485,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 109,
+   "z": -34,
+   "ms": 0.1394999999997708,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 110,
+   "z": -34.5,
+   "ms": 0.13966600000003382,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 111,
+   "z": -35,
+   "ms": 0.14029200000004494,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 112,
+   "z": -35.5,
+   "ms": 0.13958400000001348,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 113,
+   "z": -36,
+   "ms": 0.13962500000025102,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 114,
+   "z": -36.5,
+   "ms": 0.13966600000003382,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 115,
+   "z": -37,
+   "ms": 0.13791700000001583,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 116,
+   "z": -37.5,
+   "ms": 0.13833299999987503,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 117,
+   "z": -38,
+   "ms": 0.1386659999998301,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 118,
+   "z": -38.5,
+   "ms": 0.1384160000002339,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 119,
+   "z": -39,
+   "ms": 0.14191699999992125,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 120,
+   "z": -39.5,
+   "ms": 0.1377089999996315,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 121,
+   "z": -40,
+   "ms": 1.116291999999703,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 122,
+   "z": -40.5,
+   "ms": 0.26216699999986304,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 123,
+   "z": -41,
+   "ms": 0.17591600000014296,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 124,
+   "z": -41.5,
+   "ms": 0.15833299999985684,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 125,
+   "z": -42,
+   "ms": 0.15675000000010186,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 126,
+   "z": -42.5,
+   "ms": 0.14629100000001927,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 127,
+   "z": -43,
+   "ms": 0.14724999999998545,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 128,
+   "z": -43.5,
+   "ms": 0.2260420000002341,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 129,
+   "z": -44,
+   "ms": 0.20970900000020265,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 130,
+   "z": -44.5,
+   "ms": 0.7970420000001468,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 131,
+   "z": -45,
+   "ms": 0.7501670000001468,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 132,
+   "z": -45.5,
+   "ms": 0.6234169999997903,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 133,
+   "z": -46,
+   "ms": 0.6040419999999358,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 134,
+   "z": -46.5,
+   "ms": 0.6930420000003323,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 135,
+   "z": -47,
+   "ms": 0.24954100000013568,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 136,
+   "z": -47.5,
+   "ms": 0.17308300000013332,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 137,
+   "z": -48,
+   "ms": 0.15675000000010186,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 138,
+   "z": -48.5,
+   "ms": 0.15195800000037707,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 139,
+   "z": -49,
+   "ms": 0.15133300000024974,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 140,
+   "z": -49.5,
+   "ms": 0.14629100000001927,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 141,
+   "z": -50,
+   "ms": 0.14583300000003874,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 142,
+   "z": -50.5,
+   "ms": 0.1426249999999527,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 143,
+   "z": -51,
+   "ms": 0.14291600000024118,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 144,
+   "z": -51.5,
+   "ms": 0.14233400000011898,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 145,
+   "z": -52,
+   "ms": 0.13979199999994307,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 146,
+   "z": -52.5,
+   "ms": 0.14054200000009587,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 147,
+   "z": -53,
+   "ms": 0.13958299999967494,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 148,
+   "z": -53.5,
+   "ms": 0.1391249999996944,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 149,
+   "z": -54,
+   "ms": 0.1392080000000533,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 150,
+   "z": -54.5,
+   "ms": 0.13962500000025102,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 151,
+   "z": -55,
+   "ms": 0.16954100000020844,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 152,
+   "z": -55.5,
+   "ms": 0.15366699999958655,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 153,
+   "z": -56,
+   "ms": 0.15754100000003746,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 154,
+   "z": -56.5,
+   "ms": 0.1422909999996591,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 155,
+   "z": -57,
+   "ms": 0.14754199999970297,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 156,
+   "z": -57.5,
+   "ms": 0.1391249999996944,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 157,
+   "z": -58,
+   "ms": 0.3084169999997357,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 158,
+   "z": -58.5,
+   "ms": 0.5142080000000533,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 159,
+   "z": -59,
+   "ms": 17.692041999999674,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 160,
+   "z": -59.5,
+   "ms": 2.8739999999997963,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 161,
+   "z": -60,
+   "ms": 0.7440409999999247,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 162,
+   "z": -60.5,
+   "ms": 4.031583999999839,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 163,
+   "z": -61,
+   "ms": 1.1032500000001164,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 164,
+   "z": -61.5,
+   "ms": 0.4027499999997417,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 165,
+   "z": -62,
+   "ms": 0.3297080000002097,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 166,
+   "z": -62.5,
+   "ms": 0.18058400000018082,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 167,
+   "z": -63,
+   "ms": 0.16962499999999636,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 168,
+   "z": -63.5,
+   "ms": 0.1579580000002352,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 169,
+   "z": -64,
+   "ms": 0.15412500000002183,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 170,
+   "z": -64.5,
+   "ms": 0.5061249999998836,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 171,
+   "z": -65,
+   "ms": 0.26016699999991033,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 172,
+   "z": -65.5,
+   "ms": 0.18004100000007384,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 173,
+   "z": -66,
+   "ms": 0.162166999999954,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 174,
+   "z": -66.5,
+   "ms": 0.15974999999980355,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 175,
+   "z": -67,
+   "ms": 0.15200000000004366,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 176,
+   "z": -67.5,
+   "ms": 0.15004199999975754,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 177,
+   "z": -68,
+   "ms": 0.14795900000035545,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 178,
+   "z": -68.5,
+   "ms": 0.14737500000001091,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 179,
+   "z": -69,
+   "ms": 0.14658400000007532,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 180,
+   "z": -69.5,
+   "ms": 0.14600000000018554,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 181,
+   "z": -70,
+   "ms": 0.14750000000003638,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 182,
+   "z": -70.5,
+   "ms": 0.14666600000009566,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 183,
+   "z": -71,
+   "ms": 0.14512500000000728,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 184,
+   "z": -71.5,
+   "ms": 0.14454200000000128,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 185,
+   "z": -72,
+   "ms": 2.1841660000000047,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 186,
+   "z": -72.5,
+   "ms": 12.02670900000021,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 187,
+   "z": -73,
+   "ms": 0.23195799999984956,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 188,
+   "z": -73.5,
+   "ms": 0.5845410000001721,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 189,
+   "z": -74,
+   "ms": 4.5516249999996035,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 190,
+   "z": -74.5,
+   "ms": 0.2117920000000595,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 191,
+   "z": -75,
+   "ms": 0.4412080000001879,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 192,
+   "z": -75.5,
+   "ms": 0.5661669999999503,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 193,
+   "z": -76,
+   "ms": 0.9762500000001637,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 194,
+   "z": -76.5,
+   "ms": 0.24241600000004837,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 195,
+   "z": -77,
+   "ms": 0.2758330000001479,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 196,
+   "z": -77.5,
+   "ms": 0.21683299999995143,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 197,
+   "z": -78,
+   "ms": 1.1788750000000618,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 198,
+   "z": -78.5,
+   "ms": 0.5632080000000315,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 199,
+   "z": -79,
+   "ms": 0.21866699999964112,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 200,
+   "z": -79.5,
+   "ms": 1.2849999999998545,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 201,
+   "z": -80,
+   "ms": 0.5230830000000424,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 202,
+   "z": -80.5,
+   "ms": 1.6173749999998108,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 203,
+   "z": -81,
+   "ms": 0.7554169999998521,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 204,
+   "z": -81.5,
+   "ms": 0.7675830000002861,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 205,
+   "z": -82,
+   "ms": 0.5462090000000899,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 206,
+   "z": -82.5,
+   "ms": 2.4137080000000424,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 207,
+   "z": -83,
+   "ms": 0.5040420000000267,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 208,
+   "z": -83.5,
+   "ms": 0.19399999999995998,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 209,
+   "z": -84,
+   "ms": 1.9602500000000873,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 210,
+   "z": -84.5,
+   "ms": 0.18975000000000364,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 211,
+   "z": -85,
+   "ms": 0.5684999999998581,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 212,
+   "z": -85.5,
+   "ms": 0.20641599999999016,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 213,
+   "z": -86,
+   "ms": 0.17237500000010186,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 214,
+   "z": -86.5,
+   "ms": 0.16087500000003274,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 215,
+   "z": -87,
+   "ms": 0.15491700000029596,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 216,
+   "z": -87.5,
+   "ms": 0.18187499999976353,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 217,
+   "z": -88,
+   "ms": 0.27979199999981574,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 218,
+   "z": -88.5,
+   "ms": 0.19295800000008967,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 219,
+   "z": -89,
+   "ms": 0.1760420000000522,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 220,
+   "z": -89.5,
+   "ms": 0.18174999999973807,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 221,
+   "z": -90,
+   "ms": 0.15399999999999636,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 222,
+   "z": -90.5,
+   "ms": 0.7052499999999782,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 223,
+   "z": -91,
+   "ms": 0.5225829999999405,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 224,
+   "z": -91.5,
+   "ms": 0.5125840000000608,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 225,
+   "z": -92,
+   "ms": 0.208625000000211,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 226,
+   "z": -92.5,
+   "ms": 0.16079100000024482,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 227,
+   "z": -93,
+   "ms": 0.15162499999996726,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 228,
+   "z": -93.5,
+   "ms": 0.15025000000014188,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 229,
+   "z": -94,
+   "ms": 0.1490840000001299,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 230,
+   "z": -94.5,
+   "ms": 0.15491700000029596,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 231,
+   "z": -95,
+   "ms": 0.45720899999969333,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 232,
+   "z": -95.5,
+   "ms": 0.6596249999997781,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 233,
+   "z": -96,
+   "ms": 0.27912500000002183,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 234,
+   "z": -96.5,
+   "ms": 0.2331659999999829,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 235,
+   "z": -97,
+   "ms": 0.18537500000002183,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 236,
+   "z": -97.5,
+   "ms": 0.16354099999989558,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 237,
+   "z": -98,
+   "ms": 0.15962500000023283,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 238,
+   "z": -98.5,
+   "ms": 0.19000000000005457,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 239,
+   "z": -99,
+   "ms": 0.1965410000002521,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 240,
+   "z": -99.5,
+   "ms": 0.7087089999999989,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 241,
+   "z": -100,
+   "ms": 0.4798329999998714,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 242,
+   "z": -100.5,
+   "ms": 0.3712500000001455,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 243,
+   "z": -101,
+   "ms": 0.18737499999997453,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 244,
+   "z": -101.5,
+   "ms": 0.16883300000017698,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 245,
+   "z": -102,
+   "ms": 0.15779199999997218,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 246,
+   "z": -102.5,
+   "ms": 0.1531249999998181,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 247,
+   "z": -103,
+   "ms": 3.8671250000002146,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 248,
+   "z": -103.5,
+   "ms": 0.27791700000034325,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 249,
+   "z": -104,
+   "ms": 0.19070800000008603,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 250,
+   "z": -104.5,
+   "ms": 12.680083000000195,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 251,
+   "z": -105,
+   "ms": 2.652165999999852,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 252,
+   "z": -105.5,
+   "ms": 0.2849590000000717,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 253,
+   "z": -106,
+   "ms": 1.4827080000000024,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 254,
+   "z": -106.5,
+   "ms": 0.5671250000000327,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 255,
+   "z": -107,
+   "ms": 4.752250000000004,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 256,
+   "z": -107.5,
+   "ms": 1.3947920000000522,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 257,
+   "z": -108,
+   "ms": 0.4014580000002752,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 258,
+   "z": -108.5,
+   "ms": 0.8137919999999212,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 259,
+   "z": -109,
+   "ms": 0.19283299999960946,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 260,
+   "z": -109.5,
+   "ms": 0.5777079999998023,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 261,
+   "z": -110,
+   "ms": 0.8643750000001091,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 262,
+   "z": -110.5,
+   "ms": 0.6561670000000959,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 263,
+   "z": -111,
+   "ms": 0.33912499999996726,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 264,
+   "z": -111.5,
+   "ms": 0.20691699999997581,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 265,
+   "z": -112,
+   "ms": 0.1740829999998823,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 266,
+   "z": -112.5,
+   "ms": 0.16066600000021936,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 267,
+   "z": -113,
+   "ms": 0.15533400000003894,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 268,
+   "z": -113.5,
+   "ms": 0.1531659999996009,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 269,
+   "z": -114,
+   "ms": 0.15362499999991996,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 270,
+   "z": -114.5,
+   "ms": 0.15020899999990434,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 271,
+   "z": -115,
+   "ms": 0.14820899999995163,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 272,
+   "z": -115.5,
+   "ms": 0.14695900000015172,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 273,
+   "z": -116,
+   "ms": 0.14566599999989194,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 274,
+   "z": -116.5,
+   "ms": 0.1447080000002643,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 275,
+   "z": -117,
+   "ms": 0.14529099999981554,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 276,
+   "z": -117.5,
+   "ms": 0.1444579999997586,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 277,
+   "z": -118,
+   "ms": 0.14420900000004622,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 278,
+   "z": -118.5,
+   "ms": 0.14404100000001563,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 279,
+   "z": -119,
+   "ms": 0.14479199999959746,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 280,
+   "z": -119.5,
+   "ms": 0.1437909999999647,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 281,
+   "z": -120,
+   "ms": 0.1479589999999007,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 282,
+   "z": -120.5,
+   "ms": 0.1510830000001988,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 283,
+   "z": -121,
+   "ms": 0.14291599999978644,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 284,
+   "z": -121.5,
+   "ms": 0.14387500000020736,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 285,
+   "z": -122,
+   "ms": 0.14400000000023283,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 286,
+   "z": -122.5,
+   "ms": 0.14437500000030923,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 287,
+   "z": -123,
+   "ms": 0.14362500000015643,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 288,
+   "z": -123.5,
+   "ms": 0.1430000000000291,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 289,
+   "z": -124,
+   "ms": 0.14295899999979156,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 290,
+   "z": -124.5,
+   "ms": 0.14341600000034305,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 291,
+   "z": -125,
+   "ms": 0.14291699999967022,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 292,
+   "z": -125.5,
+   "ms": 0.14270900000019537,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 293,
+   "z": -126,
+   "ms": 0.1429590000002463,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 294,
+   "z": -126.5,
+   "ms": 0.1453750000000582,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 295,
+   "z": -127,
+   "ms": 27.350832999999966,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 296,
+   "z": -127.5,
+   "ms": 17.561290999999983,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 297,
+   "z": -128,
+   "ms": 15.125125000000025,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 298,
+   "z": -128.5,
+   "ms": 0.2982910000000629,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 299,
+   "z": -129,
+   "ms": 0.19087499999977808,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 300,
+   "z": -129.5,
+   "ms": 0.9227080000000569,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 301,
+   "z": -130,
+   "ms": 0.5825829999998859,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 302,
+   "z": -130.5,
+   "ms": 0.36391699999967386,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 303,
+   "z": -131,
+   "ms": 2.7876249999999345,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 304,
+   "z": -131.5,
+   "ms": 0.7049580000002607,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 305,
+   "z": -132,
+   "ms": 22.491207999999915,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 306,
+   "z": -132.5,
+   "ms": 7.593249999999898,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 307,
+   "z": -133,
+   "ms": 0.3649169999998776,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 308,
+   "z": -133.5,
+   "ms": 0.18704200000001947,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 309,
+   "z": -134,
+   "ms": 0.16699999999991633,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 310,
+   "z": -134.5,
+   "ms": 0.15887500000008004,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 311,
+   "z": -135,
+   "ms": 0.1531249999998181,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 312,
+   "z": -135.5,
+   "ms": 0.15029199999980847,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 313,
+   "z": -136,
+   "ms": 0.14987500000006548,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 314,
+   "z": -136.5,
+   "ms": 0.1479580000000169,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 315,
+   "z": -137,
+   "ms": 0.14754100000027393,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 316,
+   "z": -137.5,
+   "ms": 0.14654200000040873,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 317,
+   "z": -138,
+   "ms": 0.14716600000019753,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 318,
+   "z": -138.5,
+   "ms": 0.14550000000008367,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 319,
+   "z": -139,
+   "ms": 0.14541700000017954,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 320,
+   "z": -139.5,
+   "ms": 0.14574999999967986,
+   "used": 583374,
+   "meadow": "resident",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 321,
+   "z": -140,
+   "ms": 4.418832999999722,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 322,
+   "z": -140.5,
+   "ms": 0.1871659999997064,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 323,
+   "z": -141,
+   "ms": 0.14658299999973678,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 324,
+   "z": -141.5,
+   "ms": 0.14495799999986048,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 325,
+   "z": -142,
+   "ms": 0.14879199999995762,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 326,
+   "z": -142.5,
+   "ms": 0.14383399999996982,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 327,
+   "z": -143,
+   "ms": 0.14424999999982901,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 328,
+   "z": -143.5,
+   "ms": 0.1453340000002754,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 329,
+   "z": -144,
+   "ms": 0.14387499999975262,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 330,
+   "z": -144.5,
+   "ms": 0.14304200000015044,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 331,
+   "z": -145,
+   "ms": 0.1433750000001055,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 332,
+   "z": -145.5,
+   "ms": 0.14254100000016479,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 333,
+   "z": -146,
+   "ms": 0.1430000000000291,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 334,
+   "z": -146.5,
+   "ms": 0.14258299999983137,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 335,
+   "z": -147,
+   "ms": 0.14270799999985684,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 336,
+   "z": -147.5,
+   "ms": 0.1427920000000995,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 337,
+   "z": -148,
+   "ms": 0.14199999999982538,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 338,
+   "z": -148.5,
+   "ms": 0.14237500000035652,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 339,
+   "z": -149,
+   "ms": 0.14291699999967022,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 340,
+   "z": -149.5,
+   "ms": 12.352124999999887,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 341,
+   "z": -150,
+   "ms": 0.3277499999999236,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 342,
+   "z": -150.5,
+   "ms": 0.3045000000001892,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 343,
+   "z": -151,
+   "ms": 0.1875,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 344,
+   "z": -151.5,
+   "ms": 0.16400000000021464,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 345,
+   "z": -152,
+   "ms": 0.1604589999997188,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 346,
+   "z": -152.5,
+   "ms": 0.1522500000000946,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 347,
+   "z": -153,
+   "ms": 0.15012500000011642,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 348,
+   "z": -153.5,
+   "ms": 0.14737500000001091,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 349,
+   "z": -154,
+   "ms": 0.147291000000223,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 350,
+   "z": -154.5,
+   "ms": 0.14591599999994287,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 351,
+   "z": -155,
+   "ms": 0.14558400000032634,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 352,
+   "z": -155.5,
+   "ms": 0.1463340000000244,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 353,
+   "z": -156,
+   "ms": 0.14566599999989194,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 354,
+   "z": -156.5,
+   "ms": 0.14674999999988358,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 355,
+   "z": -157,
+   "ms": 0.14454200000000128,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 356,
+   "z": -157.5,
+   "ms": 0.1449160000001939,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 357,
+   "z": -158,
+   "ms": 0.14379199999984849,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 358,
+   "z": -158.5,
+   "ms": 0.14762500000006185,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 359,
+   "z": -159,
+   "ms": 0.14391599999999016,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 360,
+   "z": -159.5,
+   "ms": 0.14341700000022684,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 361,
+   "z": -160,
+   "ms": 0.1435830000000351,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 362,
+   "z": -160.5,
+   "ms": 0.14800000000013824,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 363,
+   "z": -161,
+   "ms": 0.14325000000008004,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 364,
+   "z": -161.5,
+   "ms": 0.14254100000016479,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 365,
+   "z": -162,
+   "ms": 0.1430000000000291,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 366,
+   "z": -162.5,
+   "ms": 0.14379199999984849,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 367,
+   "z": -163,
+   "ms": 0.1432499999996253,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 368,
+   "z": -163.5,
+   "ms": 0.1424589999996897,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 369,
+   "z": -164,
+   "ms": 0.14266600000019025,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 370,
+   "z": -164.5,
+   "ms": 0.14287500000000364,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 371,
+   "z": -165,
+   "ms": 0.1422499999998763,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 372,
+   "z": -165.5,
+   "ms": 0.1455829999999878,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 373,
+   "z": -166,
+   "ms": 0.14270800000031159,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 374,
+   "z": -166.5,
+   "ms": 0.1426249999999527,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 375,
+   "z": -167,
+   "ms": 0.14341700000022684,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 376,
+   "z": -167.5,
+   "ms": 0.1422499999998763,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 377,
+   "z": -168,
+   "ms": 0.14229100000011385,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 378,
+   "z": -168.5,
+   "ms": 0.14308299999993324,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 379,
+   "z": -169,
+   "ms": 0.14237499999990177,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 380,
+   "z": -169.5,
+   "ms": 0.14325000000008004,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 381,
+   "z": -170,
+   "ms": 0.14200000000028012,
+   "used": 277949,
+   "meadow": "queued",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 382,
+   "z": -170.5,
+   "ms": 0.1540420000001177,
+   "used": 277949,
+   "meadow": "unloaded",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 383,
+   "z": -171,
+   "ms": 0.15179200000011406,
+   "used": 277949,
+   "meadow": "unloaded",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 384,
+   "z": -171.5,
+   "ms": 0.14183300000013332,
+   "used": 277949,
+   "meadow": "unloaded",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 385,
+   "z": -172,
+   "ms": 0.14212499999985084,
+   "used": 277949,
+   "meadow": "unloaded",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 386,
+   "z": -172.5,
+   "ms": 0.1419580000001588,
+   "used": 277949,
+   "meadow": "unloaded",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 387,
+   "z": -173,
+   "ms": 0.14174999999977445,
+   "used": 277949,
+   "meadow": "unloaded",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 388,
+   "z": -173.5,
+   "ms": 0.14229199999999764,
+   "used": 277949,
+   "meadow": "unloaded",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 389,
+   "z": -174,
+   "ms": 0.14145800000005693,
+   "used": 277949,
+   "meadow": "unloaded",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 390,
+   "z": -174.5,
+   "ms": 0.14200000000028012,
+   "used": 277949,
+   "meadow": "unloaded",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 391,
+   "z": -175,
+   "ms": 0.14187500000025466,
+   "used": 277949,
+   "meadow": "unloaded",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 392,
+   "z": -175.5,
+   "ms": 0.14266700000007404,
+   "used": 277949,
+   "meadow": "unloaded",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 393,
+   "z": -176,
+   "ms": 0.1422909999996591,
+   "used": 277949,
+   "meadow": "unloaded",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 394,
+   "z": -176.5,
+   "ms": 0.1416669999998703,
+   "used": 277949,
+   "meadow": "unloaded",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 395,
+   "z": -177,
+   "ms": 0.1416669999998703,
+   "used": 277949,
+   "meadow": "unloaded",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 396,
+   "z": -177.5,
+   "ms": 0.14216599999963364,
+   "used": 277949,
+   "meadow": "unloaded",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 397,
+   "z": -178,
+   "ms": 0.14170800000010786,
+   "used": 277949,
+   "meadow": "unloaded",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 398,
+   "z": -178.5,
+   "ms": 0.14150000000017826,
+   "used": 277949,
+   "meadow": "unloaded",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 399,
+   "z": -179,
+   "ms": 0.14170800000010786,
+   "used": 277949,
+   "meadow": "unloaded",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 400,
+   "z": -179.5,
+   "ms": 0.14170800000010786,
+   "used": 277949,
+   "meadow": "unloaded",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 401,
+   "z": -180,
+   "ms": 0.14145900000039546,
+   "used": 277949,
+   "meadow": "unloaded",
+   "cave": "resident",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 402,
+   "z": -180.5,
+   "ms": 0.17495800000006057,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 403,
+   "z": -181,
+   "ms": 0.14904200000000856,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 404,
+   "z": -181.5,
+   "ms": 0.14216699999997218,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 405,
+   "z": -182,
+   "ms": 0.14199999999982538,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 406,
+   "z": -182.5,
+   "ms": 0.1417500000002292,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 407,
+   "z": -183,
+   "ms": 0.1414999999997235,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 408,
+   "z": -183.5,
+   "ms": 0.14191699999992125,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 409,
+   "z": -184,
+   "ms": 0.1419580000001588,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 410,
+   "z": -184.5,
+   "ms": 0.1417079999996531,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 411,
+   "z": -185,
+   "ms": 0.14191699999992125,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 412,
+   "z": -185.5,
+   "ms": 0.1414159999999356,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 413,
+   "z": -186,
+   "ms": 0.141791000000012,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 414,
+   "z": -186.5,
+   "ms": 0.14162499999974898,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 415,
+   "z": -187,
+   "ms": 0.14179200000035053,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 416,
+   "z": -187.5,
+   "ms": 0.1413750000001528,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 417,
+   "z": -188,
+   "ms": 0.144666999999572,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 418,
+   "z": -188.5,
+   "ms": 0.14125000000012733,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 419,
+   "z": -189,
+   "ms": 0.14199999999982538,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 420,
+   "z": -189.5,
+   "ms": 0.14225000000033106,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 421,
+   "z": -190,
+   "ms": 0.14333399999986796,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 422,
+   "z": -190.5,
+   "ms": 42.72383300000001,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 423,
+   "z": -191,
+   "ms": 0.3361249999998108,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 424,
+   "z": -191.5,
+   "ms": 0.1896670000000995,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 425,
+   "z": -192,
+   "ms": 0.16649999999981446,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 426,
+   "z": -192.5,
+   "ms": 0.15999999999985448,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 427,
+   "z": -193,
+   "ms": 0.15516699999989214,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 428,
+   "z": -193.5,
+   "ms": 0.1509169999999358,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 429,
+   "z": -194,
+   "ms": 0.15437500000007276,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 430,
+   "z": -194.5,
+   "ms": 0.16004199999997581,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 431,
+   "z": -195,
+   "ms": 1.1934579999997368,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 432,
+   "z": -195.5,
+   "ms": 0.2470839999996315,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 433,
+   "z": -196,
+   "ms": 0.43487499999991996,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 434,
+   "z": -196.5,
+   "ms": 4.31237499999952,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 435,
+   "z": -197,
+   "ms": 0.9841249999999491,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 436,
+   "z": -197.5,
+   "ms": 1.5722500000001673,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 437,
+   "z": -198,
+   "ms": 0.17920800000047166,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 438,
+   "z": -198.5,
+   "ms": 2.1581249999999272,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 439,
+   "z": -199,
+   "ms": 0.4442089999993186,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 440,
+   "z": -199.5,
+   "ms": 0.2224580000001879,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 441,
+   "z": -200,
+   "ms": 0.1794579999996131,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 442,
+   "z": -200.5,
+   "ms": 0.1633750000000873,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 443,
+   "z": -201,
+   "ms": 0.15762499999982538,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 444,
+   "z": -201.5,
+   "ms": 0.1540000000004511,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 445,
+   "z": -202,
+   "ms": 2.4290409999994154,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 446,
+   "z": -202.5,
+   "ms": 0.560207999999875,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 447,
+   "z": -203,
+   "ms": 0.5271249999996144,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 448,
+   "z": -203.5,
+   "ms": 0.5864169999995283,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 449,
+   "z": -204,
+   "ms": 0.9677919999994629,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 450,
+   "z": -204.5,
+   "ms": 0.5086250000003929,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 451,
+   "z": -205,
+   "ms": 3.2729159999998956,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 452,
+   "z": -205.5,
+   "ms": 0.5017080000006899,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 453,
+   "z": -206,
+   "ms": 0.248833999999988,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 454,
+   "z": -206.5,
+   "ms": 0.5081669999999576,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 455,
+   "z": -207,
+   "ms": 0.20100000000002183,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 456,
+   "z": -207.5,
+   "ms": 0.17016700000021956,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 457,
+   "z": -208,
+   "ms": 0.16033400000014808,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 458,
+   "z": -208.5,
+   "ms": 0.1579169999995429,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 459,
+   "z": -209,
+   "ms": 0.15195800000037707,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 460,
+   "z": -209.5,
+   "ms": 0.14912500000082218,
+   "used": 0,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "unloaded"
+  },
+  {
+   "tick": 461,
+   "z": -210,
+   "ms": 10.571584000000257,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 462,
+   "z": -210.5,
+   "ms": 0.2141670000000886,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 463,
+   "z": -211,
+   "ms": 0.16629199999988487,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 464,
+   "z": -211.5,
+   "ms": 0.15720799999962765,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 465,
+   "z": -212,
+   "ms": 0.15408299999944575,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 466,
+   "z": -212.5,
+   "ms": 0.1499999999996362,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 467,
+   "z": -213,
+   "ms": 63.87316699999974,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 468,
+   "z": -213.5,
+   "ms": 0.2942910000001575,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 469,
+   "z": -214,
+   "ms": 5.739125000000058,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 470,
+   "z": -214.5,
+   "ms": 13.76154200000019,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 471,
+   "z": -215,
+   "ms": 0.3189170000005106,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 472,
+   "z": -215.5,
+   "ms": 0.18254200000046694,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 473,
+   "z": -216,
+   "ms": 0.16391600000042672,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 474,
+   "z": -216.5,
+   "ms": 0.15808300000026065,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 475,
+   "z": -217,
+   "ms": 0.15262500000062573,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 476,
+   "z": -217.5,
+   "ms": 0.15037499999925785,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 477,
+   "z": -218,
+   "ms": 0.14800000000013824,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 478,
+   "z": -218.5,
+   "ms": 0.14737499999955617,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 479,
+   "z": -219,
+   "ms": 0.15170899999975518,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 480,
+   "z": -219.5,
+   "ms": 0.14920800000072632,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 481,
+   "z": -220,
+   "ms": 0.15350000000034925,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 482,
+   "z": -220.5,
+   "ms": 0.14562500000010914,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 483,
+   "z": -221,
+   "ms": 0.14499999999952706,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 484,
+   "z": -221.5,
+   "ms": 0.14766700000018318,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 485,
+   "z": -222,
+   "ms": 0.14362499999970169,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 486,
+   "z": -222.5,
+   "ms": 0.14400000000023283,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 487,
+   "z": -223,
+   "ms": 0.14441700000043056,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 488,
+   "z": -223.5,
+   "ms": 0.14754199999970297,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 489,
+   "z": -224,
+   "ms": 0.14570800000001327,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 490,
+   "z": -224.5,
+   "ms": 0.15174999999999272,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 491,
+   "z": -225,
+   "ms": 0.14383400000042457,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 492,
+   "z": -225.5,
+   "ms": 6.595582999999351,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 493,
+   "z": -226,
+   "ms": 0.2541659999997137,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 494,
+   "z": -226.5,
+   "ms": 0.186916999999994,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 495,
+   "z": -227,
+   "ms": 0.16545899999982794,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 496,
+   "z": -227.5,
+   "ms": 0.1569580000004862,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 497,
+   "z": -228,
+   "ms": 2.462792000000263,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 498,
+   "z": -228.5,
+   "ms": 0.24391599999944447,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 499,
+   "z": -229,
+   "ms": 0.17416700000012497,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 500,
+   "z": -229.5,
+   "ms": 0.16212499999983265,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 501,
+   "z": -230,
+   "ms": 0.16295799999988958,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 502,
+   "z": -230.5,
+   "ms": 0.28158299999995506,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 503,
+   "z": -231,
+   "ms": 0.1757080000006681,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 504,
+   "z": -231.5,
+   "ms": 0.16108299999996234,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 505,
+   "z": -232,
+   "ms": 0.15483300000050804,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 506,
+   "z": -232.5,
+   "ms": 0.15100000000074942,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 507,
+   "z": -233,
+   "ms": 0.14933399999972607,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 508,
+   "z": -233.5,
+   "ms": 0.1477919999997539,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 509,
+   "z": -234,
+   "ms": 0.15087499999935972,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 510,
+   "z": -234.5,
+   "ms": 0.1465410000000702,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 511,
+   "z": -235,
+   "ms": 0.1457909999999174,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 512,
+   "z": -235.5,
+   "ms": 0.14491699999962293,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 513,
+   "z": -236,
+   "ms": 0.14425000000028376,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 514,
+   "z": -236.5,
+   "ms": 0.14916700000048877,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 515,
+   "z": -237,
+   "ms": 0.14479099999971368,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 516,
+   "z": -237.5,
+   "ms": 0.14645799999925657,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 517,
+   "z": -238,
+   "ms": 0.1462920000003578,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 518,
+   "z": -238.5,
+   "ms": 0.1492500000003929,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 519,
+   "z": -239,
+   "ms": 0.14804199999980483,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 520,
+   "z": -239.5,
+   "ms": 0.14662499999940337,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 521,
+   "z": -240,
+   "ms": 0.1444999999994252,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 522,
+   "z": -240.5,
+   "ms": 0.145249999999578,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 523,
+   "z": -241,
+   "ms": 0.15354200000001583,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 524,
+   "z": -241.5,
+   "ms": 0.1457909999999174,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 525,
+   "z": -242,
+   "ms": 0.14500000000043656,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 526,
+   "z": -242.5,
+   "ms": 0.14966699999968114,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 527,
+   "z": -243,
+   "ms": 0.14620800000011513,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 528,
+   "z": -243.5,
+   "ms": 0.1489160000000993,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 529,
+   "z": -244,
+   "ms": 0.144959000000199,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 530,
+   "z": -244.5,
+   "ms": 0.15083300000060262,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 531,
+   "z": -245,
+   "ms": 0.14437499999985448,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 532,
+   "z": -245.5,
+   "ms": 0.1450830000003407,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 533,
+   "z": -246,
+   "ms": 0.1447920000000522,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 534,
+   "z": -246.5,
+   "ms": 0.14737500000046566,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 535,
+   "z": -247,
+   "ms": 0.14329200000065612,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 536,
+   "z": -247.5,
+   "ms": 0.14379199999984849,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 537,
+   "z": -248,
+   "ms": 0.14979099999982282,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 538,
+   "z": -248.5,
+   "ms": 0.14383300000008603,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 539,
+   "z": -249,
+   "ms": 0.14354199999979755,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 540,
+   "z": -249.5,
+   "ms": 5.002540999999837,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 541,
+   "z": -250,
+   "ms": 88.86470800000006,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 542,
+   "z": -250.5,
+   "ms": 0.7917919999999867,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 543,
+   "z": -251,
+   "ms": 0.21916700000019773,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 544,
+   "z": -251.5,
+   "ms": 0.1959999999999127,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 545,
+   "z": -252,
+   "ms": 9.619332999999642,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 546,
+   "z": -252.5,
+   "ms": 2.492583000000195,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 547,
+   "z": -253,
+   "ms": 1.093417000000045,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 548,
+   "z": -253.5,
+   "ms": 0.5175829999998314,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 549,
+   "z": -254,
+   "ms": 0.3242500000005748,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 550,
+   "z": -254.5,
+   "ms": 0.3042909999994663,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 551,
+   "z": -255,
+   "ms": 0.4931670000005397,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 552,
+   "z": -255.5,
+   "ms": 0.2183340000001408,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 553,
+   "z": -256,
+   "ms": 0.16704200000003766,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 554,
+   "z": -256.5,
+   "ms": 0.157416000000012,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 555,
+   "z": -257,
+   "ms": 0.15333400000054098,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 556,
+   "z": -257.5,
+   "ms": 0.15008299999954033,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 557,
+   "z": -258,
+   "ms": 0.14774999999917782,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 558,
+   "z": -258.5,
+   "ms": 0.15287499999976717,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 559,
+   "z": -259,
+   "ms": 0.14841700000033597,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 560,
+   "z": -259.5,
+   "ms": 0.1476250000005166,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 561,
+   "z": -260,
+   "ms": 0.14649999999983265,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 562,
+   "z": -260.5,
+   "ms": 0.15275000000019645,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 563,
+   "z": -261,
+   "ms": 0.31833300000016607,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 564,
+   "z": -261.5,
+   "ms": 12.237750000000233,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 565,
+   "z": -262,
+   "ms": 0.2666669999998703,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 566,
+   "z": -262.5,
+   "ms": 0.2268340000000535,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 567,
+   "z": -263,
+   "ms": 0.5086670000000595,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 568,
+   "z": -263.5,
+   "ms": 1.2084169999998267,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 569,
+   "z": -264,
+   "ms": 0.33866699999998673,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 570,
+   "z": -264.5,
+   "ms": 0.19400000000041473,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 571,
+   "z": -265,
+   "ms": 0.8491670000003069,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 572,
+   "z": -265.5,
+   "ms": 2.068292000000838,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 573,
+   "z": -266,
+   "ms": 0.35291700000016135,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 574,
+   "z": -266.5,
+   "ms": 0.3757080000004862,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 575,
+   "z": -267,
+   "ms": 1.3870830000005299,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 576,
+   "z": -267.5,
+   "ms": 0.33283400000073016,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 577,
+   "z": -268,
+   "ms": 0.20604199999979755,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 578,
+   "z": -268.5,
+   "ms": 0.47162500000013097,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 579,
+   "z": -269,
+   "ms": 1.4517079999995985,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 580,
+   "z": -269.5,
+   "ms": 3.4040839999997843,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 581,
+   "z": -270,
+   "ms": 0.22325000000000728,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 582,
+   "z": -270.5,
+   "ms": 1.1121250000005602,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 583,
+   "z": -271,
+   "ms": 0.24329200000011042,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 584,
+   "z": -271.5,
+   "ms": 0.18120799999996962,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 585,
+   "z": -272,
+   "ms": 0.16379200000028504,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 586,
+   "z": -272.5,
+   "ms": 0.1706659999999829,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 587,
+   "z": -273,
+   "ms": 0.1561249999995198,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 588,
+   "z": -273.5,
+   "ms": 0.1516670000000886,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 589,
+   "z": -274,
+   "ms": 0.14900000000034197,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 590,
+   "z": -274.5,
+   "ms": 0.14750000000003638,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 591,
+   "z": -275,
+   "ms": 0.1524170000002414,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 592,
+   "z": -275.5,
+   "ms": 0.15012500000011642,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 593,
+   "z": -276,
+   "ms": 0.15420799999992596,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 594,
+   "z": -276.5,
+   "ms": 0.14712500000041473,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 595,
+   "z": -277,
+   "ms": 0.14600000000064028,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 596,
+   "z": -277.5,
+   "ms": 0.14562500000010914,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 597,
+   "z": -278,
+   "ms": 0.1437500000001819,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 598,
+   "z": -278.5,
+   "ms": 0.14474999999947613,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 599,
+   "z": -279,
+   "ms": 0.1461669999998776,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 600,
+   "z": -279.5,
+   "ms": 0.14833399999952235,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 601,
+   "z": -280,
+   "ms": 0.14954200000011042,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 602,
+   "z": -280.5,
+   "ms": 0.1465410000000702,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 603,
+   "z": -281,
+   "ms": 0.14345800000046438,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 604,
+   "z": -281.5,
+   "ms": 0.14316599999983737,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 605,
+   "z": -282,
+   "ms": 0.1474160000007032,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 606,
+   "z": -282.5,
+   "ms": 0.14341700000022684,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 607,
+   "z": -283,
+   "ms": 0.14358400000037363,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 608,
+   "z": -283.5,
+   "ms": 0.1422499999998763,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 609,
+   "z": -284,
+   "ms": 0.14274999999997817,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 610,
+   "z": -284.5,
+   "ms": 0.14245800000026065,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 611,
+   "z": -285,
+   "ms": 0.14679200000045967,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 612,
+   "z": -285.5,
+   "ms": 0.14295799999945302,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 613,
+   "z": -286,
+   "ms": 0.14187500000025466,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 614,
+   "z": -286.5,
+   "ms": 0.14658299999973678,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 615,
+   "z": -287,
+   "ms": 0.1419580000001588,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 616,
+   "z": -287.5,
+   "ms": 0.1419579999992493,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 617,
+   "z": -288,
+   "ms": 0.14237500000035652,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 618,
+   "z": -288.5,
+   "ms": 0.14216699999997218,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 619,
+   "z": -289,
+   "ms": 0.14233299999978044,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 620,
+   "z": -289.5,
+   "ms": 0.14249999999992724,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 621,
+   "z": -290,
+   "ms": 0.14608300000054442,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 622,
+   "z": -290.5,
+   "ms": 0.142083000000639,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 623,
+   "z": -291,
+   "ms": 0.14204200000040146,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 624,
+   "z": -291.5,
+   "ms": 0.14174999999977445,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 625,
+   "z": -292,
+   "ms": 0.14175000000068394,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 626,
+   "z": -292.5,
+   "ms": 0.14237500000035652,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 627,
+   "z": -293,
+   "ms": 0.14199999999982538,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 628,
+   "z": -293.5,
+   "ms": 0.1455839999998716,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 629,
+   "z": -294,
+   "ms": 0.1431669999992664,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 630,
+   "z": -294.5,
+   "ms": 0.14216699999997218,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 631,
+   "z": -295,
+   "ms": 0.141500000000633,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 632,
+   "z": -295.5,
+   "ms": 0.14162500000020373,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 633,
+   "z": -296,
+   "ms": 0.14158399999996618,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 634,
+   "z": -296.5,
+   "ms": 0.14204200000040146,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 635,
+   "z": -297,
+   "ms": 0.1465410000000702,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 636,
+   "z": -297.5,
+   "ms": 0.14174999999977445,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 637,
+   "z": -298,
+   "ms": 0.14237500000035652,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 638,
+   "z": -298.5,
+   "ms": 0.14162500000020373,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 639,
+   "z": -299,
+   "ms": 0.14533300000039162,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 640,
+   "z": -299.5,
+   "ms": 0.14466600000014296,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 641,
+   "z": -300,
+   "ms": 0.14216699999997218,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 642,
+   "z": -300.5,
+   "ms": 0.14575000000058935,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 643,
+   "z": -301,
+   "ms": 0.14170800000010786,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 644,
+   "z": -301.5,
+   "ms": 0.14124999999967258,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 645,
+   "z": -302,
+   "ms": 0.14187499999934516,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 646,
+   "z": -302.5,
+   "ms": 0.14166600000044127,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 647,
+   "z": -303,
+   "ms": 0.14204199999949196,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 648,
+   "z": -303.5,
+   "ms": 42.304167000000234,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 649,
+   "z": -304,
+   "ms": 0.3013750000000073,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 650,
+   "z": -304.5,
+   "ms": 0.17912500000056752,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 651,
+   "z": -305,
+   "ms": 0.1633750000000873,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 652,
+   "z": -305.5,
+   "ms": 0.1580420000000231,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 653,
+   "z": -306,
+   "ms": 0.15749999999934516,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 654,
+   "z": -306.5,
+   "ms": 0.1536660000001575,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 655,
+   "z": -307,
+   "ms": 0.1552080000001297,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 656,
+   "z": -307.5,
+   "ms": 0.15070899999955145,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 657,
+   "z": -308,
+   "ms": 0.14729199999965203,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 658,
+   "z": -308.5,
+   "ms": 0.1464589999995951,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 659,
+   "z": -309,
+   "ms": 0.14679199999955017,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 660,
+   "z": -309.5,
+   "ms": 0.14595900000040274,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 661,
+   "z": -310,
+   "ms": 0.14512500000000728,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 662,
+   "z": -310.5,
+   "ms": 0.559041999999863,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 663,
+   "z": -311,
+   "ms": 0.2940420000004451,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 664,
+   "z": -311.5,
+   "ms": 0.1797919999999067,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 665,
+   "z": -312,
+   "ms": 0.6212080000004789,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 666,
+   "z": -312.5,
+   "ms": 0.5379590000002281,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 667,
+   "z": -313,
+   "ms": 16.73700000000008,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 668,
+   "z": -313.5,
+   "ms": 0.2735839999995733,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 669,
+   "z": -314,
+   "ms": 0.39308400000027177,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 670,
+   "z": -314.5,
+   "ms": 0.188375000000633,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 671,
+   "z": -315,
+   "ms": 0.16662499999983993,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 672,
+   "z": -315.5,
+   "ms": 0.15979199999947014,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 673,
+   "z": -316,
+   "ms": 0.1722089999993841,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 674,
+   "z": -316.5,
+   "ms": 0.23695799999950395,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 675,
+   "z": -317,
+   "ms": 0.16187499999978172,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 676,
+   "z": -317.5,
+   "ms": 0.15275000000019645,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 677,
+   "z": -318,
+   "ms": 0.15612500000042928,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 678,
+   "z": -318.5,
+   "ms": 0.1444579999997586,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 679,
+   "z": -319,
+   "ms": 0.14362500000061118,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 680,
+   "z": -319.5,
+   "ms": 0.1435410000003685,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  },
+  {
+   "tick": 681,
+   "z": -320,
+   "ms": 0.14733300000079907,
+   "used": 233849,
+   "meadow": "unloaded",
+   "cave": "unloaded",
+   "tower": "resident"
+  }
+ ]
+}
