@@ -14,7 +14,7 @@ id defaults to the name in lowercase-hyphen form (or the directory's name);
 a directory that is not empty is refused unless `--force` is given.
 `--archetype` starts from a complete game of `templates/archetypes/`
 instead of the template: `runner`, `match3`, `topdown`, `tower-defense`,
-`roguelike`, `idle` or `rhythm` (the published package carries them under
+`roguelike`, `idle`, `rhythm` or `third-person` (the published package carries them under
 `archetypes/`).
 
 The published package carries the template under `template/`, copied by the

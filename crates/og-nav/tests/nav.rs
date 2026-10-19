@@ -344,6 +344,26 @@ fn a_baked_navmesh_routes_around_walls_up_ramps_and_stays_on_the_surface() {
 }
 
 #[test]
+fn geometry_wholly_above_the_bounds_is_left_out_of_the_bake() {
+    // A floor, and a slab floating above the box the bake is bounded by
+    // (a terrain's peaks above a navmesh's bounds): the slab is outside the
+    // box, so the floor under it stays walkable and nothing else changes.
+    let mut level = box_triangles(Vec3::new(0.0, -0.1, 0.0), Vec3::new(10.0, 0.1, 10.0));
+    level.extend(box_triangles(
+        Vec3::new(4.0, 6.0, 4.0),
+        Vec3::new(2.0, 0.5, 2.0),
+    ));
+    let bounds = Some((Vec3::new(-10.0, -0.5, -10.0), Vec3::new(10.0, 1.0, 10.0)));
+    let mesh = NavMesh::build(bake(&level, &params(), bounds).expect("bake"));
+    assert!(
+        on_mesh(&mesh, Vec3::new(4.0, 0.0, 4.0)),
+        "the floor under the slab"
+    );
+    let floor = NavMesh::build(bake(&level[..12], &params(), bounds).expect("bake"));
+    assert_eq!(mesh.tiles, floor.tiles);
+}
+
+#[test]
 fn an_obstacle_rebuilds_only_its_tiles_and_removing_it_restores_them() {
     let field = bake(&level(), &params(), None).expect("bake");
     let mut mesh = NavMesh::build(field);

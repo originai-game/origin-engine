@@ -1,0 +1,878 @@
+{
+ "project": "third-person",
+ "date": "2026-10-19",
+ "scores": {
+  "contrast": 87,
+  "textSize": 100,
+  "hud": 100,
+  "transitions": 100,
+  "uiSounds": 85,
+  "latency": 100,
+  "hitFeedback": null,
+  "idle": 100,
+  "frameTime": 67,
+  "inputSound": 71,
+  "locale": 100,
+  "taste": 95,
+  "feel": 85
+ },
+ "findings": [
+  {
+   "measure": "contrast",
+   "where": "frames title: `play` \"Set out\"",
+   "detail": "3.36:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "frames title: `Footer` \"WASD to move · Shift runs · Space jumps \"",
+   "detail": "3.5:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "frames dawn: `Again` \"Again\"",
+   "detail": "3.99:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "pause pause: `resume` \"Resume\"",
+   "detail": "3.84:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "pause settings-zh: `Done` \"完成\"",
+   "detail": "4.41:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "pause settings-zh: `LanguageLabel` \"语言\"",
+   "detail": "4.43:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "UI sounds",
+   "where": "phone",
+   "detail": "2 of 3 UI presses played no sound on the ui bus",
+   "fix": "og-taste §6 (feedback) and og-audio §3: give the skin or og.ui.configure its press and open sounds"
+  }
+ ],
+ "playtests": [
+  {
+   "playtest": "flow",
+   "title": "Set out, walk, run and wade on the terrain, kindle a beacon with the hand in the bowl",
+   "tier": "metal",
+   "ticks": 636,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 3,
+    "withMotion": 3,
+    "presses": 1,
+    "pressesWithSound": 1,
+    "motionTicks": 182
+   },
+   "latency": {
+    "inputs": 4,
+    "answered": 4,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 33.91,
+    "sound": 2
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 12,
+    "bursts": 2
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.93,
+    "stepP95Ms": 1.52,
+    "renderMedianMs": 1.55,
+    "renderP95Ms": 5.74,
+    "frameP95Ms": 6.83,
+    "frameMaxMs": 24.65
+   },
+   "audio": {
+    "seconds": 10.6,
+    "peak": 0.32,
+    "rms": 0.023,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "frames",
+   "title": "the title, a beacon catching and the dawn summary match their reference frames",
+   "tier": "metal",
+   "ticks": 438,
+   "shots": [
+    {
+     "name": "title",
+     "tick": 54,
+     "frame": "frames/frames-title.png",
+     "menu": true,
+     "hud": 5.83,
+     "centre": 52.83,
+     "texts": 5,
+     "lowContrast": 3,
+     "small": 0
+    },
+    {
+     "name": "beacon",
+     "tick": 204,
+     "frame": null,
+     "menu": false,
+     "hud": 1.44,
+     "centre": 0,
+     "texts": 5,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "dawn",
+     "tick": 432,
+     "frame": null,
+     "menu": true,
+     "hud": 4.95,
+     "centre": 30.69,
+     "texts": 12,
+     "lowContrast": 1,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 22,
+    "passing": 18,
+    "worst": [
+     {
+      "shot": "title",
+      "id": "play",
+      "text": "Set out",
+      "ratio": 3.36
+     },
+     {
+      "shot": "title",
+      "id": "Footer",
+      "text": "WASD to move · Shift runs · Space jumps ",
+      "ratio": 3.5
+     },
+     {
+      "shot": "dawn",
+      "id": "Again",
+      "text": "Again",
+      "ratio": 3.99
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 22,
+    "passing": 22,
+    "smallest": [
+     {
+      "shot": "beacon",
+      "id": "Toast#1",
+      "text": "Beacon 1 of 4 burns",
+      "ink": 11
+     },
+     {
+      "shot": "beacon",
+      "id": "Text",
+      "text": "Beacon 1 of 4 burns",
+      "ink": 11
+     },
+     {
+      "shot": "dawn",
+      "id": "Value",
+      "text": "0:02",
+      "ink": 11
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 1,
+    "worstShare": 1.44,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 4,
+    "withMotion": 4,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 407
+   },
+   "latency": {
+    "inputs": 1,
+    "answered": 1,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 93.45,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 12,
+    "bursts": 4
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.87,
+    "stepP95Ms": 1.76,
+    "renderMedianMs": 1.27,
+    "renderP95Ms": 2.21,
+    "frameP95Ms": 3.42,
+    "frameMaxMs": 452.83
+   },
+   "audio": {
+    "seconds": 7.3,
+    "peak": 0.44,
+    "rms": 0.0493,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "lose",
+   "title": "caught with no hearts left, night at dusk's end, Again and Title",
+   "tier": "metal",
+   "ticks": 522,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 5,
+    "withMotion": 5,
+    "presses": 2,
+    "pressesWithSound": 2,
+    "motionTicks": 288
+   },
+   "latency": {
+    "inputs": 2,
+    "answered": 2,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 54.26,
+    "sound": 2
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 12,
+    "bursts": 1
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.05,
+    "stepP95Ms": 2.14,
+    "renderMedianMs": 1.81,
+    "renderP95Ms": 5.7,
+    "frameP95Ms": 6.81,
+    "frameMaxMs": 28.24
+   },
+   "audio": {
+    "seconds": 8.7,
+    "peak": 0.23,
+    "rms": 0.0371,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "pause",
+   "title": "Escape pauses, settings switch the language and save, Resume gives the run back",
+   "tier": "metal",
+   "ticks": 312,
+   "shots": [
+    {
+     "name": "pause",
+     "tick": 105,
+     "frame": "frames/pause-pause.png",
+     "menu": true,
+     "hud": 5.81,
+     "centre": 43.77,
+     "texts": 4,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "settings-zh",
+     "tick": 192,
+     "frame": null,
+     "menu": true,
+     "hud": 6.63,
+     "centre": 46.23,
+     "texts": 12,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "play-zh",
+     "tick": 306,
+     "frame": null,
+     "menu": false,
+     "hud": 1.42,
+     "centre": 0,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 20,
+    "passing": 17,
+    "worst": [
+     {
+      "shot": "pause",
+      "id": "resume",
+      "text": "Resume",
+      "ratio": 3.84
+     },
+     {
+      "shot": "settings-zh",
+      "id": "Done",
+      "text": "完成",
+      "ratio": 4.41
+     },
+     {
+      "shot": "settings-zh",
+      "id": "LanguageLabel",
+      "text": "语言",
+      "ratio": 4.43
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 20,
+    "passing": 20,
+    "smallest": [
+     {
+      "shot": "pause",
+      "id": "resume",
+      "text": "Resume",
+      "ink": 11
+     },
+     {
+      "shot": "settings-zh",
+      "id": "Value",
+      "text": "100",
+      "ink": 11
+     },
+     {
+      "shot": "pause",
+      "id": "quit",
+      "text": "Leave the vale",
+      "ink": 12
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 1,
+    "worstShare": 1.42,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 8,
+    "withMotion": 8,
+    "presses": 5,
+    "pressesWithSound": 5,
+    "motionTicks": 297
+   },
+   "latency": {
+    "inputs": 7,
+    "answered": 7,
+    "medianTicks": 0,
+    "maxTicks": 1,
+    "baselineShare": 89.62,
+    "sound": 6
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 12,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.94,
+    "stepP95Ms": 1.97,
+    "renderMedianMs": 1.31,
+    "renderP95Ms": 2.2,
+    "frameP95Ms": 3.38,
+    "frameMaxMs": 329.78
+   },
+   "audio": {
+    "seconds": 5.2,
+    "peak": 0.42,
+    "rms": 0.0363,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "phone",
+   "title": "the phone layout: a HUD inside the safe area, a joystick that walks, Jump and Kindle",
+   "tier": "metal",
+   "ticks": 408,
+   "shots": [
+    {
+     "name": "play",
+     "tick": 405,
+     "frame": "frames/phone-play.png",
+     "menu": false,
+     "hud": 3.7,
+     "centre": 0,
+     "texts": 7,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 7,
+    "passing": 7,
+    "worst": [
+     {
+      "shot": "play",
+      "id": "Count",
+      "text": "1/4",
+      "ratio": 10.67
+     },
+     {
+      "shot": "play",
+      "id": "Hour",
+      "text": "15:39",
+      "ratio": 10.67
+     },
+     {
+      "shot": "play",
+      "id": "Toast#1",
+      "text": "Beacon 1 of 4 burns",
+      "ratio": 10.67
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 7,
+    "passing": 7,
+    "smallest": [
+     {
+      "shot": "play",
+      "id": "Toast#1",
+      "text": "Beacon 1 of 4 burns",
+      "ink": 11
+     },
+     {
+      "shot": "play",
+      "id": "Text",
+      "text": "Beacon 1 of 4 burns",
+      "ink": 11
+     },
+     {
+      "shot": "play",
+      "id": "Hour",
+      "text": "15:39",
+      "ink": 12
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 1,
+    "worstShare": 3.7,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 2,
+    "withMotion": 2,
+    "presses": 3,
+    "pressesWithSound": 1,
+    "motionTicks": 201
+   },
+   "latency": {
+    "inputs": 4,
+    "answered": 4,
+    "medianTicks": 0,
+    "maxTicks": 5,
+    "baselineShare": 78.99,
+    "sound": 3
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 12,
+    "bursts": 1
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.25,
+    "stepP95Ms": 2.05,
+    "renderMedianMs": 11.96,
+    "renderP95Ms": 14.61,
+    "frameP95Ms": 16.43,
+    "frameMaxMs": 1487.74
+   },
+   "audio": {
+    "seconds": 6.8,
+    "peak": 0.32,
+    "rms": 0.024,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "replay",
+   "title": "a run with movement, a jump, kindling and a sentinel's grab replays to the same hash",
+   "tier": "metal",
+   "ticks": 486,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 4,
+    "withMotion": 4,
+    "presses": 1,
+    "pressesWithSound": 1,
+    "motionTicks": 193
+   },
+   "latency": {
+    "inputs": 5,
+    "answered": 5,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 60.94,
+    "sound": 3
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 12,
+    "bursts": 1
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.9,
+    "stepP95Ms": 1.53,
+    "renderMedianMs": 1.42,
+    "renderP95Ms": 4.59,
+    "frameP95Ms": 5.56,
+    "frameMaxMs": 8.9
+   },
+   "audio": {
+    "seconds": 8.1,
+    "peak": 0.32,
+    "rms": 0.0277,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "sentinels",
+   "title": "a sentinel on its round sees the hero, raises the alarm, chases and grabs a heart",
+   "tier": "metal",
+   "ticks": 462,
+   "shots": [
+    {
+     "name": "alarm",
+     "tick": 195,
+     "frame": "frames/sentinels-alarm.png",
+     "menu": false,
+     "hud": 0.97,
+     "centre": 0,
+     "texts": 3,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 3,
+    "passing": 3,
+    "worst": [
+     {
+      "shot": "alarm",
+      "id": "Pause",
+      "text": "Pause",
+      "ratio": 7.54
+     },
+     {
+      "shot": "alarm",
+      "id": "Count",
+      "text": "0/4",
+      "ratio": 10.14
+     },
+     {
+      "shot": "alarm",
+      "id": "Hour",
+      "text": "15:34",
+      "ratio": 10.53
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 3,
+    "passing": 3,
+    "smallest": [
+     {
+      "shot": "alarm",
+      "id": "Hour",
+      "text": "15:34",
+      "ink": 12
+     },
+     {
+      "shot": "alarm",
+      "id": "Count",
+      "text": "0/4",
+      "ink": 15
+     },
+     {
+      "shot": "alarm",
+      "id": "Pause",
+      "text": "Pause",
+      "ink": 38
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 1,
+    "worstShare": 0.97,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 1,
+    "withMotion": 1,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 34
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 29.2,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 12,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 0.82,
+    "stepP95Ms": 1.5,
+    "renderMedianMs": 1.37,
+    "renderP95Ms": 2.23,
+    "frameP95Ms": 3.23,
+    "frameMaxMs": 285.24
+   },
+   "audio": {
+    "seconds": 7.7,
+    "peak": 0.26,
+    "rms": 0.0184,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "win",
+   "title": "four beacons lit: dawn, a merged record, the summary, then Again from nothing",
+   "tier": "metal",
+   "ticks": 263,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 5,
+    "withMotion": 5,
+    "presses": 1,
+    "pressesWithSound": 1,
+    "motionTicks": 250
+   },
+   "latency": {
+    "inputs": 1,
+    "answered": 1,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 97.32,
+    "sound": 1
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 12,
+    "bursts": 4
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1,
+    "stepP95Ms": 1.97,
+    "renderMedianMs": 1.49,
+    "renderP95Ms": 2.26,
+    "frameP95Ms": 3.36,
+    "frameMaxMs": 8.93
+   },
+   "audio": {
+    "seconds": 4.4,
+    "peak": 0.44,
+    "rms": 0.0615,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  }
+ ],
+ "warnings": []
+}
