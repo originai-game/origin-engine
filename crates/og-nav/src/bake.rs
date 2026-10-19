@@ -101,10 +101,11 @@ pub fn bake(
                 }
                 let ylo = cell.iter().fold(f32::MAX, |m, v| m.min(v.y)) - min.y;
                 let yhi = cell.iter().fold(f32::MIN, |m, v| m.max(v.y)) - min.y;
-                if yhi < 0.0 {
+                let smin = (ylo / ch).floor().max(0.0) as u32;
+                if yhi < 0.0 || smin >= top {
+                    // Below or wholly above the box.
                     continue;
                 }
-                let smin = ((ylo / ch).floor().max(0.0) as u32).min(top);
                 let smax = ((yhi / ch).ceil().max(0.0) as u32).clamp(smin + 1, top);
                 add_span(
                     &mut cols[(z as u32 * width + x as u32) as usize],
