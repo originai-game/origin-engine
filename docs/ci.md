@@ -425,7 +425,9 @@ The perf-only city scenes (`city-street`, `city-aerial`) are timed only when
 (`Culling::Cpu`; WebGL2 always does). `--perf-out <dir>` writes the timing
 JSON to `<dir>/<tier>[-cpu-culling]/` instead, with the last frame's culling
 counts (`tests/evidence/P3/culling/`). The native counterpart is
-`og-gfx <scene> --frames <n>`, with `OG_GFX_CULLING=cpu` for the CPU path. It
+`og-gfx <scene> --frames <n>`, with `OG_GFX_CULLING=cpu|gpu|auto` for the
+CPU path, the GPU path at any size, or the default (the GPU path from
+16,384 instances). It
 builds in `target/wasm-gfx` so the gate's og-render artifacts stay put.
 
 On 2026-10-19 (Chrome for Testing 150, ANGLE Metal on the Apple M4 Pro,

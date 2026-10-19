@@ -231,6 +231,27 @@ the streaming round left. Evidence is in `tests/evidence/P3/culling/`,
     as the CPU path does. That needed one fix first, 53cdc86: llvmpipe
     reports level 0's size for every pyramid level, so each level's size is
     now computed from the screen's.
+- **Culling review fixes** (branch `fix-culling`):
+  - `Culling::Auto` takes the GPU path only from
+    `GPU_CULLING_MIN_INSTANCES` (16,384) instances, from the measurements
+    below: about 1.1 ms saved at 40,000 instances, 0.4 to 1 ms lost on
+    scenes of tens. `Culling::Gpu` forces the GPU path, and `og-gfx` takes
+    `OG_GFX_CULLING=gpu|cpu|auto`. The 47 gfx scenes are small, so under
+    `Auto` they now cull on the CPU; `culling.rs` covers the GPU path with
+    `Culling::Gpu`.
+  - A frame with no occluder material, or no earlier camera visibility
+    (the first frame, after the scan buffer grew), skips the occluders'
+    pass, their depth and the pyramid, and culls in one compute pass.
+  - The counts are copied back only after
+    `Renderer::request_culling_counts` (og-tests-web asks every frame;
+    natively `finish_stats` copies the last frame's late).
+  - The buffers are sized for the frame's passes; a readback ring buffer
+    in flight is kept when they regrow.
+  - `culling.rs` compares the two paths at channel 2, 0.01 % outliers and
+    RMSE 0.002, checks `gpu_culling` on every frame, and checks that the
+    triangles drawn plus those hidden (`FrameStats::occluded_triangles`,
+    counted on the GPU per hidden instance) cover the CPU's
+    `in_view_triangles`.
 - **Culling measured** (1f94224, b026d89, 757eca0) on og-gfx's perf-only
   city scenes, 40,000 instanced buildings at 1280x720.
   - **Metal**: over 40 interleaved rounds, `Renderer::render` takes 5.27 ms
@@ -305,8 +326,9 @@ the streaming round left. Evidence is in `tests/evidence/P3/culling/`,
   - In a browser loop that never yields, the GPU counts arrive late
     (`counts_lag` 237 in the timing loop). The frame is unaffected.
   - The phone paths of `og run --device` have not been run on a phone.
-  - On small scenes the GPU path costs more per frame than the CPU path.
-    A threshold that sends small frames to the CPU path is still to do.
+  - The 16,384-instance threshold comes from the round's measurements,
+    taken before the review fixes cut the GPU path's fixed per-frame cost;
+    it has not been measured again.
   - `vulkan-cpu` `terrain-grass` fails at RMSE 0.01488, on main as well as
     here. It predates this round.
 
