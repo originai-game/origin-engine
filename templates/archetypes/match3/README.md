@@ -154,6 +154,7 @@ Written in `assets/scenes/main.ogt` (the board's `Tuning` block), live with
 |---|---|
 | `deal:<rows>` | lays out the board: 7 lines of 7 colour digits joined by `/`, the top row first; needs an idle board |
 | `swap:<col>,<row>:<col>,<row>` | swaps two neighbouring cells on the next tick, as two taps would |
+| `viewport:<desktop\|2x>` | reports the play surface as 640×360 CSS px at 2× (a high-DPR screen; the render target stays 1280×720), or the host's again |
 
 `facts` reports `phase`, `score`, `movesLeft`, `cleared`, `maxChain`,
 `best`, `rounds` and the pointer mapping. A cell's CSS pixel is
@@ -165,6 +166,7 @@ Written in `assets/scenes/main.ogt` (the board's `Tuning` block), live with
 | File | Proves |
 |---|---|
 | `tests/swap.og.ts` | on an authored board, real taps: a swap that makes nothing goes back for free; the swap that makes a line clears it, spends a move, scores, and the fall cascades (chain 2, both lines scored); every system matches its rows |
+| `tests/hidpi.og.ts` | on a 2× surface (640×360 CSS px over the 1280×720 target) the pointer mapping is in CSS pixels and a tap lands on its cell |
 | `tests/drag.og.ts` | a drag shorter than half a cell does nothing; past it, the swap happens and clears |
 | `tests/endings.og.ts` | target 30: the first line wins; one move and an unreachable target: that move loses; a tap after the card deals the next round with the tuned moves; best kept |
 | `tests/frames.og.ts` | at 1280×720 the dealt board, the swap's line mid-clear (burst, squash, `+30`) and the cascade mid-clear (gold crit `+60`, shake) match `references/<tier>/` (og-tests' tolerance, `tests/frames.ts`); away from the board the frame is the brand ink |
@@ -196,9 +198,8 @@ and the loss) set bits of the `Sounds` resource and Voices plays each once
 - Systems cannot read other entities or the camera (a game resource they
   declare, `Sounds`, they can), so
   `Match` and `Tuning` ride on every row, and `Pick` maps the pointer from
-  `og.render.capabilities` (device pixels) assuming a device pixel ratio of
-  1: on a high-DPR phone taps land at the wrong cell until a system can
-  read the surface in CSS pixels.
+  the view it set in `start` over `og.ui.viewport` (the play surface in
+  CSS pixels, as the pointer is).
 - The camera is set once in `start`; on the web the renderer is not
   attached then, so the view assumes 16:9 and a portrait phone clips the
   board's sides.

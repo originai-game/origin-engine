@@ -163,6 +163,12 @@ function swapCommand(world: World, args: readonly string[]): void {
   must(world.set(board, Match, { swapA: a, swapB: b, selected: -1, dragFrom: -1 }));
 }
 
+/** `viewport:<desktop|2x>`: report the play surface as 640×360 CSS px at 2× (a high-DPR screen; the render target stays 1280×720), or the host's again. */
+function viewportCommand(world: World, args: readonly string[]): void {
+  const hiDpi = { width: 640, height: 360, dpr: 2, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: false, breakpoint: "desktop" } as const;
+  og.ui.previewViewport(world, args[0] === "2x" ? hiDpi : null);
+}
+
 export default og.game({
   tick: 60,
   seed: 1,
@@ -171,10 +177,11 @@ export default og.game({
   systems: [Flow, Pick, Resolve, Voices, Animate, HudText],
   render: { antialias: "msaa4" },
   start,
-  commands: { deal: dealCommand, swap: swapCommand },
+  commands: { deal: dealCommand, swap: swapCommand, viewport: viewportCommand },
   commandHelp: {
     deal: { usage: "<rows>", doc: "Lay out the board: 7 lines of 7 colour digits joined by /, the top row first; needs an idle board." },
     swap: { usage: "<col>,<row>:<col>,<row>", doc: "Swap two neighbouring cells on the next tick, as two taps would." },
+    viewport: { usage: "<desktop|2x>", doc: "Report the play surface as 640×360 CSS px at 2× (the render target stays 1280×720), or the host's again." },
   },
   facts: (world) => {
     const { match: m } = matchOf(world);
