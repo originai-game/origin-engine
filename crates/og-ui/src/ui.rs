@@ -1840,7 +1840,14 @@ impl Ui {
         self.apply_fx(&order);
 
         // Interaction state for the next tick.
-        let present: BTreeMap<u64, usize> = order.iter().map(|&i| (self.nodes[i].key, i)).collect();
+        let mut present: BTreeMap<u64, usize> =
+            order.iter().map(|&i| (self.nodes[i].key, i)).collect();
+        // A rich text's links are controls of their own, inside its node.
+        for &i in &order {
+            for l in &self.nodes[i].links {
+                present.insert(child_key(self.nodes[i].key, l), i);
+            }
+        }
         self.state
             .scroll
             .retain(|k, _| present.get(k).is_some_and(|&i| self.nodes[i].el.scroll));
@@ -1981,6 +1988,46 @@ impl Ui {
                 width: visible.width,
                 height: visible.height,
             });
+            // A rich text's links: children for the probe, controls for input.
+            if !n.links.is_empty() {
+                let Content::Rich(rc) = &n.content else {
+                    unreachable!("links come from rich text")
+                };
+                for (l, lr) in self.rich_links(i) {
+                    let shown = lr.intersect(&n.clip);
+                    if shown.is_empty() {
+                        continue;
+                    }
+                    if !n.inert {
+                        hits.push(Hit {
+                            key: child_key(n.key, &l),
+                            rect: shown,
+                            full: lr,
+                            flags: HIT_POINTER | HIT_NAV,
+                            scope: scope_of[i],
+                            scroller: scroller_of[i],
+                        });
+                    }
+                    let text: String = rc
+                        .spans
+                        .iter()
+                        .filter(|s| s.link.as_deref() == Some(l.as_str()))
+                        .map(|s| s.text.as_str())
+                        .collect();
+                    elements.push(UiElement {
+                        id: l,
+                        parent: n.id.clone(),
+                        kind: "link".into(),
+                        disabled: false,
+                        clipped: shown.width + 0.01 < lr.width || shown.height + 0.01 < lr.height,
+                        text,
+                        x: shown.x,
+                        y: shown.y,
+                        width: shown.width,
+                        height: shown.height,
+                    });
+                }
+            }
         }
         // Focus: kept while its control is on screen (or reachable); a scope
         // that opened takes it (its first control, or the one a widget asked
@@ -2059,6 +2106,13 @@ impl Ui {
                 && let Some(&i) = present.get(&key)
             {
                 focus_paths[slot] = self.path_of(i);
+                if let Some(l) = self.nodes[i]
+                    .links
+                    .iter()
+                    .find(|l| child_key(self.nodes[i].key, l) == key)
+                {
+                    focus_paths[slot] = format!("{}/{l}", focus_paths[slot]);
+                }
             }
         }
         self.frame = UiFrame {
@@ -2557,6 +2611,7 @@ impl Ui {
                     }
                 }
             }
+            Content::Rich(rc) => self.rich_commands(i, rc, cmds),
             Content::Image { texture, uv, tint } => cmds.push(DrawCmd::Image {
                 rect,
                 texture: *texture,

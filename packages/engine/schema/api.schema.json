@@ -4032,6 +4032,8 @@
         "TypeStep",
         "ControlSizes",
         "UiTheme",
+        "RichTextDesc",
+        "RichTextResult",
         "Anchor",
         "TransitionKind",
         "Tone",
@@ -4354,6 +4356,32 @@
           "returns": "Void",
           "publish": true,
           "host": false
+        },
+        {
+          "name": "richText",
+          "doc": "A paragraph of inline spans from markup, for a string-table message (og.i18n.t) so a translation carries its own emphasis: `[b]bold[/b]` (thickened in the distance field as far as it reaches, plus a second copy one device pixel right), `[color=danger]` or `[color=#ff8800]` (a ThemeColor follows the skin), `[size=xl]` (a TypeStepName), `[font=mono]`, `[icon=coin]` (a cell of the icon atlas, one em), `[link=shop]Open the shop[/link]` (accent ink, underlined, focusable by keys and pads; a child element `<id>/shop` of kind link for the probe) and per-glyph motion `[wave]`, `[shake]`, `[pulse]` (by the tick; still under reduced motion). `[[` is a literal bracket. Lines break between the spans' words (a word restyled mid-way stays whole), each as tall as its tallest span on one baseline. Markup it cannot read shows as text and logs a warning.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "markup",
+              "type": "String",
+              "optional": false,
+              "doc": "The markup."
+            },
+            {
+              "name": "desc",
+              "type": "RichTextDesc",
+              "optional": true,
+              "doc": "Defaults for its spans: type step, ink, alignment, wrapping, width and font."
+            }
+          ],
+          "returns": "RichTextResult",
+          "publish": true
         },
         {
           "name": "label",
@@ -19648,6 +19676,106 @@
       ],
       "additionalProperties": false
     },
+    "RichTextDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "How a rich text paragraph draws: its defaults, which its markup's spans override.",
+      "type": "object",
+      "properties": {
+        "step": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TypeStepName"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The type step; null is body.",
+          "default": null
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The ink; null is fg.",
+          "default": null
+        },
+        "align": {
+          "$ref": "#/$defs/TextAlign",
+          "description": "How the lines align.",
+          "default": "start"
+        },
+        "nowrap": {
+          "type": "boolean",
+          "description": "Keep to one line (breaking only at `\\n`).",
+          "default": false
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null fits the text.",
+          "default": null
+        },
+        "font": {
+          "$ref": "#/$defs/FontRole",
+          "description": "Which font.",
+          "default": "body"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RichTextResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a rich text's links did this tick.",
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/$defs/Response",
+          "description": "Its links together: hovered while one is, clicked when one was."
+        },
+        "link": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The link clicked this tick: its `[link=…]` id."
+        },
+        "hovered": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The link under the pointer."
+        }
+      },
+      "required": [
+        "response",
+        "link",
+        "hovered"
+      ],
+      "additionalProperties": false
+    },
     "Anchor": {
       "x-og-kind": "enum",
       "x-og-module": "ui",
@@ -23109,7 +23237,7 @@
         },
         "message": {
           "type": "string",
-          "description": "What will happen.",
+          "description": "What will happen, as rich text markup (og.ui.richText: [b], [color=…], [icon=…]…), so a translation carries its own emphasis.",
           "default": ""
         },
         "confirmLabel": {
@@ -23169,7 +23297,7 @@
         },
         "message": {
           "type": "string",
-          "description": "The message.",
+          "description": "The message, as rich text markup (og.ui.richText).",
           "default": ""
         },
         "okLabel": {

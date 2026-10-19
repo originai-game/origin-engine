@@ -55,6 +55,7 @@ resolves against, so a scripted `touch_move_to` and a click agree.
 | `slider(id, &mut f32, SliderDesc) -> Response` | track, amber fill, thumb; a press anywhere on it sets the value, dragging follows; `min`/`max`/`step` | — |
 | `toggle(id, &mut bool, label) -> Response` | a switch (amber on) with a label; a click flips it | the label |
 | `text_field(id, &mut String, &FieldDesc) -> Response` | one line: a press focuses it with the caret at the press, typed text inserts at the caret, Backspace/Delete/←/→/Home/End edit, Enter submits and leaves, Escape leaves, a press elsewhere blurs; placeholder; `max_chars`; focus ring in `focus` | the text, or the placeholder while empty |
+| `rich_text(id, markup, RichTextDesc) -> RichTextResponse` | one paragraph of inline spans from markup (`src/markup.rs`: `[b]`, `[color=…]`, `[size=…]`, `[font=…]`, `[icon=…]`, `[link=…]`, `[wave]`, `[shake]`, `[pulse]`; `[[` is a literal `[`): lines break between the spans' words (a word split across spans stays whole), every span on one baseline, each line as tall as its tallest span; bold thickens the glyphs in the MSDF shader (as far as the field reaches) and draws a second copy a device pixel right; links are child elements (kind `link`) that focus and press like buttons; shaped and right-to-left pieces are drawn shaped in visual order; a bad tag stays as text and warns | the plain text (links: their text) |
 | `tooltip(text)` | for the element just built: shown below it (above without room, clamped to the safe area) once the pointer has rested on it for `motion.duration.slow`; drawn over everything | the text |
 
 Any container with `interactive: true` reports its response from `close()`.
@@ -529,10 +530,10 @@ font is og-tests' committed MSDF atlas (Noto Sans SC subset, OFL).
 
 ## What phase 2 owes
 
-- **Rich text**: inline runs of colour, weight and size; the display and
-  rounded faces cooked as their own atlases; kerning and shaping
-  (rustybuzz, with og-render); RTL; ellipsis truncation; selection in fields;
-  multi-line text areas; IME composition.
+- **Text**: the display and rounded faces cooked as their own atlases;
+  kerning; bidirectional runs inside one rich-text span; ellipsis
+  truncation; selection in fields; multi-line text areas; IME composition.
+  (Rich text, inline spans from markup, landed in the phase 2 UI round.)
 - **Animations**: caret blink. (The skin's hover and press move on springs
   since the phase 2 UI round.)
 - (Skins: the ramp's tracking and a distance-field text glow landed in the

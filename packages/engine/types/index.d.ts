@@ -10877,6 +10877,61 @@ export type UiBuild = () => void;
 
 
 
+/**
+ * How a rich text paragraph draws: its defaults, which its markup's spans override.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RichTextDesc {
+  /**
+   * The type step; null is body.
+   *
+   * @default null
+   */
+  readonly step?: TypeStepName | null;
+  /**
+   * The ink; null is fg.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+  /**
+   * How the lines align.
+   *
+   * @default "start"
+   */
+  readonly align?: TextAlign;
+  /**
+   * Keep to one line (breaking only at `\n`).
+   *
+   * @default false
+   */
+  readonly nowrap?: boolean;
+  /**
+   * Its width; null fits the text.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Which font.
+   *
+   * @default "body"
+   */
+  readonly font?: FontRole;
+}
+
+/** What a rich text's links did this tick. */
+export interface RichTextResult {
+  /** Its links together: hovered while one is, clicked when one was. */
+  readonly response: Response;
+  /** The link clicked this tick: its `[link=…]` id. */
+  readonly link: string | null;
+  /** The link under the pointer. */
+  readonly hovered: string | null;
+}
+
+
 
 
 
@@ -13605,7 +13660,7 @@ export interface ConfirmDesc {
    */
   readonly title?: string;
   /**
-   * What will happen.
+   * What will happen, as rich text markup (og.ui.richText: [b], [color=…], [icon=…]…), so a translation carries its own emphasis.
    *
    * @default ""
    */
@@ -13657,7 +13712,7 @@ export interface AlertDesc {
    */
   readonly title?: string;
   /**
-   * The message.
+   * The message, as rich text markup (og.ui.richText).
    *
    * @default ""
    */
@@ -15777,6 +15832,14 @@ export declare namespace og {
      * @param build Makes its children.
      */
     function scroll(id: string, desc: ScrollDesc, build: UiBuild): void;
+    /**
+     * A paragraph of inline spans from markup, for a string-table message (og.i18n.t) so a translation carries its own emphasis: `[b]bold[/b]` (thickened in the distance field as far as it reaches, plus a second copy one device pixel right), `[color=danger]` or `[color=#ff8800]` (a ThemeColor follows the skin), `[size=xl]` (a TypeStepName), `[font=mono]`, `[icon=coin]` (a cell of the icon atlas, one em), `[link=shop]Open the shop[/link]` (accent ink, underlined, focusable by keys and pads; a child element `<id>/shop` of kind link for the probe) and per-glyph motion `[wave]`, `[shake]`, `[pulse]` (by the tick; still under reduced motion). `[[` is a literal bracket. Lines break between the spans' words (a word restyled mid-way stays whole), each as tall as its tallest span on one baseline. Markup it cannot read shows as text and logs a warning.
+     *
+     * @param id Its id.
+     * @param markup The markup.
+     * @param desc Defaults for its spans: type step, ink, alignment, wrapping, width and font.
+     */
+    function richText(id: string, markup: string, desc?: RichTextDesc): RichTextResult;
     /**
      * MSDF text that wraps at its width (word breaks; between CJK characters under kinsoku, katakana words kept whole; long words between characters) unless nowrap. The probe reads its text.
      *

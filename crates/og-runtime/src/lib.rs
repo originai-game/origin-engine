@@ -79,10 +79,10 @@ pub use modules::{
     og_ui_memory, og_ui_meter, og_ui_minimap, og_ui_navigate, og_ui_open, og_ui_open_anchor,
     og_ui_open_grid, og_ui_open_list, og_ui_open_modal, og_ui_open_panel, og_ui_open_scroll,
     og_ui_open_transition, og_ui_preview_viewport, og_ui_progress, og_ui_radio, og_ui_remember,
-    og_ui_screen_transition, og_ui_seconds, og_ui_select, og_ui_set_navigation, og_ui_set_players,
-    og_ui_shake, og_ui_skeleton, og_ui_slider, og_ui_spacer, og_ui_spinner, og_ui_spotlight,
-    og_ui_stepper, og_ui_tabs, og_ui_text_field, og_ui_theme, og_ui_tick, og_ui_toast,
-    og_ui_toggle, og_ui_tooltip, og_ui_viewport, set_viewport,
+    og_ui_rich_text, og_ui_screen_transition, og_ui_seconds, og_ui_select, og_ui_set_navigation,
+    og_ui_set_players, og_ui_shake, og_ui_skeleton, og_ui_slider, og_ui_spacer, og_ui_spinner,
+    og_ui_spotlight, og_ui_stepper, og_ui_tabs, og_ui_text_field, og_ui_theme, og_ui_tick,
+    og_ui_toast, og_ui_toggle, og_ui_tooltip, og_ui_viewport, set_viewport,
 };
 pub use nav::{
     og_nav_build, og_nav_cell_at, og_nav_find_path, og_nav_flow_at, og_nav_flow_field, og_nav_grid,

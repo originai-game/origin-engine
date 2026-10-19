@@ -84,6 +84,15 @@ scrollbars), layers (`anchor` for HUD corners, `modal` for dialogs,
 playtest can `touch_move_to` it (`Shop/Panel/Detail/Buy` resolves as
 `Detail/Buy`).
 
+Mixed styles in one paragraph are `richText(id, markup)`: `[b]`,
+`[color=danger]` (a token, or `#rrggbb`), `[size=lg]`, `[font=mono]`,
+`[icon=coin]`, `[link=shop]…[/link]` and the per-glyph `[wave]`, `[shake]`,
+`[pulse]`. Write the markup in the string table, not in code, so each
+translation places its own emphasis (`confirmDialog` and `alertDialog`
+messages are markup). A link is a child element (`Hint/shop`, kind `link`)
+that keys, pads and touch reach like a button; the result's `link` names
+the one clicked. A typo in a tag stays visible as text and warns.
+
 ## 4. Focus: keyboard and gamepad
 
 Arrows and the d-pad move focus to the nearest control that way (wrapping at

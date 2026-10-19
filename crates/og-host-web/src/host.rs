@@ -733,6 +733,9 @@ impl UiApi for WebHost {
     fn og_ui_set_navigation(&self, on: bool) {
         rt::og_ui_set_navigation(on)
     }
+    fn og_ui_rich_text(&self, id: String, markup: String, desc: Option<String>) -> String {
+        rt::og_ui_rich_text(id, markup, desc)
+    }
     fn og_ui_set_players(&self, count: u32) {
         rt::og_ui_set_players(count)
     }

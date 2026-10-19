@@ -494,6 +494,8 @@ pub trait UiApi: Wire {
     fn og_ui_open_scroll(&self, id: String, desc: Option<String>);
     /// `og.ui.close`
     fn og_ui_close(&self) -> String;
+    /// `og.ui.richText`
+    fn og_ui_rich_text(&self, id: String, markup: String, desc: Option<String>) -> String;
     /// `og.ui.label`
     fn og_ui_label(&self, id: String, text: String, desc: Option<String>);
     /// `og.ui.button`
@@ -863,6 +865,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_open_panel",
     "og_ui_open_scroll",
     "og_ui_close",
+    "og_ui_rich_text",
     "og_ui_label",
     "og_ui_button",
     "og_ui_image",

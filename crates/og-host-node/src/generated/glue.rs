@@ -1161,6 +1161,12 @@ pub fn og_ui_close(env: Env) -> String {
     <Host as UiApi>::og_ui_close(&Host)
 }
 
+#[napi(js_name = "og_ui_rich_text")]
+pub fn og_ui_rich_text(env: Env, id: String, markup: String, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_rich_text(&Host, id, markup, desc)
+}
+
 #[napi(js_name = "og_ui_label")]
 pub fn og_ui_label(env: Env, id: String, text: String, desc: Option<String>) {
     let _env = crate::EnvScope::enter(&env);

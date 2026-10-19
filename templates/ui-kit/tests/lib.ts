@@ -40,6 +40,7 @@ export interface DemoState {
   focus1: number;
   focus2: number;
   focus3: number;
+  rules: number;
 }
 
 export const demo = (run: PlaytestRun, file: string): DemoState =>

@@ -449,6 +449,124 @@ fn a_text_glow_is_a_halo_from_the_distance_field() {
     }
 }
 
+/// A type step of the ramp.
+type StepOf = fn(&TypeRamp) -> TypeStep;
+
+/// One line of rich text rendered through og-render at a type step.
+fn rich_frame(markup: &str, step: StepOf) -> (Vec<u8>, usize, usize, [u8; 3]) {
+    let vp = Viewport {
+        dpr: 1.0,
+        ..Viewport::new(360.0, 120.0)
+    };
+    let mut scene = RenderScene::new();
+    let font = add_test_font(&mut scene);
+    let atlas = scene.add_texture(atlas_texture());
+    let mut ui = ui_with_font(font);
+    for _ in 0..2 {
+        ui.begin(InputFrame::default(), vp);
+        let t = *ui.theme();
+        ui.column(
+            "Card",
+            Element {
+                width: Size::grow(),
+                height: Size::grow(),
+                padding: Insets::all(t.space.md),
+                gap: t.space.md,
+                background: Some(t.palette.bg),
+                ..Element::default()
+            },
+            |ui| {
+                let step = step(&t.type_ramp);
+                ui.rich_text(
+                    "Line",
+                    markup,
+                    RichTextDesc {
+                        step: Some(step),
+                        ..RichTextDesc::default()
+                    },
+                );
+            },
+        );
+        ui.end();
+    }
+    let mut overlay = og_render::Overlay::new(vp.width, vp.height, vp.dpr);
+    ui.frame().emit(&EmitDesc { atlas, layer: 0 }, &mut overlay);
+    scene.overlay = Some(overlay);
+    let bg = ui.theme().palette.bg.linear();
+    scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
+    scene.post.tonemap = Tonemap::None;
+    let desc = RenderDesc {
+        width: vp.width as u32,
+        height: vp.height as u32,
+        ..RenderDesc::default()
+    };
+    let mut renderer = Renderer::new_blocking(&desc).expect("a headless adapter");
+    renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("render");
+    let img = renderer.read_offscreen().expect("read back");
+    let bg = [img.pixels[0], img.pixels[1], img.pixels[2]];
+    (img.pixels, img.width as usize, img.height as usize, bg)
+}
+
+/// `[b]` is heavier ink around the same glyphs at every size: never the
+/// glyph quads filled. Small text from a narrow distance range (the test
+/// font's 4 px at 32 px: at `text-xs` the field is too thin to thicken)
+/// still turns bold: bold also draws a second copy a device pixel to the
+/// right.
+///
+/// Ways it could fail: the weight runs past the field's reach and fills
+/// each glyph's quad (a box behind the digit, as the first cut drew at
+/// the reading size), bold draws nothing heavier at small sizes (no
+/// second copy), or it moves the glyphs.
+#[test]
+fn bold_rich_text_is_heavier_ink_never_a_box() {
+    let steps: [(&str, StepOf); 3] = [
+        ("xs", |r| r.xs),
+        ("reading", |r| r.reading),
+        ("display", |r| r.display_md),
+    ];
+    for (name, step) in steps {
+        let (plain, w, h, bg) = rich_frame("Slot 42 W", step);
+        let (bold, ..) = rich_frame("[b]Slot 42 W[/b]", step);
+        let ink = |px: &[u8], x: usize, y: usize| {
+            let i = (y * w + x) * 4;
+            (0..3)
+                .map(|c| (px[i + c] as i32 - bg[c] as i32).abs())
+                .sum::<i32>()
+                > 120
+        };
+        let count = |px: &[u8]| {
+            (0..h)
+                .flat_map(|y| (0..w).map(move |x| (x, y)))
+                .filter(|&(x, y)| ink(px, x, y))
+                .count()
+        };
+        let (p, b) = (count(&plain), count(&bold));
+        assert!(p > 40, "the {name} line drew ink ({p} px)");
+        assert!(
+            b as f64 >= 1.15 * p as f64,
+            "bold is heavier at the {name} size: {b} against {p} px"
+        );
+        // Every bold ink pixel lies within three pixels of the plain ink
+        // (the weight, at most 0.045 em, and the one-pixel second copy).
+        let mut stray = 0;
+        for y in 0..h {
+            for x in 0..w {
+                if ink(&bold, x, y) {
+                    let near = (y.saturating_sub(3)..=(y + 3).min(h - 1)).any(|yy| {
+                        (x.saturating_sub(3)..=(x + 3).min(w - 1)).any(|xx| ink(&plain, xx, yy))
+                    });
+                    if !near {
+                        stray += 1;
+                    }
+                }
+            }
+        }
+        assert_eq!(stray, 0, "bold ink at the {name} size stays on its glyphs");
+    }
+}
+
 /// The glow's cost on this machine's GPU: 24 display-size labels rendered
 /// 300 times with and without it (`cargo test -p og-ui --release --test gfx
 /// -- --ignored text_glow_cost --nocapture`; tests/evidence/P2/ui/text-glow-cost.md).

@@ -500,6 +500,8 @@ pub(crate) fn step_tracking(step: &TypeStep, text: &str) -> f32 {
 pub(crate) enum Content {
     None,
     Text(TextContent),
+    /// A paragraph of rich text spans (`crate::rich`).
+    Rich(crate::rich::RichContent),
     Image {
         texture: Option<TextureHandle>,
         uv: [f32; 4],
@@ -608,6 +610,10 @@ pub(crate) struct Node {
     /// The content's width (its children's extent), for horizontal scrolling.
     pub content_w: f32,
     pub lines: Vec<Line>,
+    /// A rich text's lines.
+    pub rich_lines: Vec<crate::rich::RichLine>,
+    /// A rich text's links, by id, in order.
+    pub links: Vec<String>,
     /// A wrapping row's lines: ranges of `children`.
     pub rows: Vec<(usize, usize)>,
     pub clip: Rect,
@@ -656,6 +662,8 @@ impl Node {
             content_h: 0.0,
             content_w: 0.0,
             lines: Vec::new(),
+            rich_lines: Vec::new(),
+            links: Vec::new(),
             rows: Vec::new(),
             clip: Rect::default(),
             rect: Rect::default(),
@@ -817,6 +825,7 @@ fn size_w(nodes: &mut [Node], i: usize, fonts: &dyn Metrics) {
             };
             (pref, min)
         }
+        Content::Rich(rc) => crate::rich::rich_widths(rc, fonts),
         Content::Image { .. } => (0.0, 0.0),
         Content::None => {
             let k = n.children.len();
@@ -917,6 +926,11 @@ fn distribute_w(nodes: &mut [Node], i: usize, fonts: &dyn Metrics) {
         nodes[i].lines = lines;
         return;
     }
+    if let Content::Rich(rc) = &nodes[i].content {
+        let lines = crate::rich::rich_lines(rc, fonts, rc.wrap.then_some(inner + 0.5));
+        nodes[i].rich_lines = lines;
+        return;
+    }
     let el = nodes[i].el;
     let kids = nodes[i].children.clone();
     if kids.is_empty() {
@@ -998,6 +1012,10 @@ fn size_h(nodes: &mut [Node], i: usize) {
     let (pref, min) = match &n.content {
         Content::Text(t) => {
             let h = n.lines.len().max(1) as f32 * t.line_height();
+            (h, h)
+        }
+        Content::Rich(_) => {
+            let h: f32 = n.rich_lines.iter().map(|l| l.height).sum();
             (h, h)
         }
         Content::Image { .. } => (0.0, 0.0),

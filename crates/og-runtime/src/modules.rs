@@ -1190,6 +1190,32 @@ pub fn og_ui_label(id: String, text: String, desc: Option<String>) {
     });
 }
 
+pub fn og_ui_rich_text(id: String, markup: String, desc: Option<String>) -> String {
+    let d = desc_of(desc);
+    let r = with_ui("og.ui.richText", |ui| {
+        let t = *ui.theme();
+        let desc = og_ui::RichTextDesc {
+            step: d["step"].as_str().and_then(|s| step(&t, s)),
+            color: paint(&t, &d["color"]),
+            align: match d["align"].as_str() {
+                Some("center") => TextAlign::Center,
+                Some("end") => TextAlign::End,
+                _ => TextAlign::Start,
+            },
+            nowrap: d["nowrap"].as_bool().unwrap_or(false),
+            width: size_or(&d["width"], Size::fit()),
+            font: match d["font"].as_str() {
+                Some("display") => FontRole::Display,
+                Some("mono") => FontRole::Mono,
+                _ => FontRole::Body,
+            },
+        };
+        ui.rich_text(id.as_str(), &markup, desc)
+    })
+    .unwrap_or_default();
+    json!({ "response": response(r.response), "link": r.link, "hovered": r.hovered }).to_string()
+}
+
 pub fn og_ui_button(id: String, text: String, desc: Option<String>) -> String {
     let d = desc_of(desc);
     let r = with_ui("og.ui.button", |ui| {

@@ -52,6 +52,11 @@ string "results.time" "タイム {time}"
   (`{n, plural, other {コイン#枚}}`): the argument names stay the same in
   every locale, and `og cook` checks they do.
 - Numbers, times and prices go through arguments, not string building.
+- Emphasis inside a sentence is rich-text markup in the message itself
+  (`"Your progress in slot [b]{slot}[/b] will be lost."`, shown with
+  `og.ui.richText`): each translation bolds or colours its own words, in
+  its own order, instead of the code splitting the sentence into styled
+  pieces.
 
 ## 3. Fonts for every script
 

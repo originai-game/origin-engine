@@ -25,9 +25,11 @@ mod id;
 mod input;
 mod juice;
 mod layout;
+pub mod markup;
 mod motion;
 mod nav;
 mod probe;
+mod rich;
 mod scroll;
 pub mod shape;
 pub mod skin;
@@ -50,6 +52,7 @@ pub use layout::{
 };
 pub use motion::{TransitionKind, cubic_bezier, ease_exit, ease_out};
 pub use probe::{SharedUi, UiProbe};
+pub use rich::{RichTextDesc, RichTextResponse};
 pub use skin::{Skin, SkinFile, SkinPart, Slice, SliceFill, UiSound, parse_skin};
 pub use style::{
     Breakpoint, Contrast, Density, DensityMode, Durations, HueName, Hues, Palette, Radius, Scheme,

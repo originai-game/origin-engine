@@ -110,7 +110,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-792 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+795 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -632,6 +632,7 @@ Field units the docs and Tune use.
 | [`og.ui.radio`](ui.md#fn-radio) | function | ui | `og_ui_radio` |
 | [`og.ui.remember`](ui.md#fn-remember) | function | ui | `og_ui_remember` |
 | [`og.ui.resultsScreen`](ui.md#fn-resultsScreen) | function | ui | — |
+| [`og.ui.richText`](ui.md#fn-richText) | function | ui | `og_ui_rich_text` |
 | [`og.ui.row`](ui.md#fn-row) | function | ui | — |
 | [`og.ui.screenTransition`](ui.md#fn-screenTransition) | function | ui | `og_ui_screen_transition` |
 | [`og.ui.scroll`](ui.md#fn-scroll) | function | ui | — |
@@ -736,6 +737,8 @@ Field units the docs and Tune use.
 | [`ResultsDesc`](ui.md#type-ResultsDesc) | desc struct | ui | — |
 | [`RibbonDesc`](render.md#type-RibbonDesc) | desc struct | render | — |
 | [`RibbonPoint`](render.md#type-RibbonPoint) | desc struct | render | — |
+| [`RichTextDesc`](ui.md#type-RichTextDesc) | desc struct | ui | — |
+| [`RichTextResult`](ui.md#type-RichTextResult) | struct | ui | — |
 | [`Rng.chance`](rng.md#member-Rng-chance) | method | rng | `og_rng_chance` |
 | [`Rng.fork`](rng.md#member-Rng-fork) | method | rng | `og_rng_fork` |
 | [`Rng.integer`](rng.md#member-Rng-integer) | method | rng | `og_rng_integer` |

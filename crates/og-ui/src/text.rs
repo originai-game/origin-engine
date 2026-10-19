@@ -297,7 +297,7 @@ fn katakana(c: char) -> bool {
 /// of katakana is one, and kinsoku glues a character that may not start a
 /// line to the unit before it and one that may not end a line to the unit
 /// after it.
-fn tokens(paragraph: &str) -> Vec<(&str, bool)> {
+pub(crate) fn tokens(paragraph: &str) -> Vec<(&str, bool)> {
     let mut raw: Vec<(usize, usize, bool)> = Vec::new();
     let mut start = 0;
     let mut kind: Option<u8> = None; // 0 word, 1 space, 2 katakana

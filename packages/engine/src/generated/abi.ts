@@ -391,6 +391,8 @@ export interface HostAbi<A, V> {
   og_ui_open_scroll(id: string, desc: string | undefined): void;
   /** `og.ui.close` */
   og_ui_close(): string;
+  /** `og.ui.richText` */
+  og_ui_rich_text(id: string, markup: string, desc: string | undefined): string;
   /** `og.ui.label` */
   og_ui_label(id: string, text: string, desc: string | undefined): void;
   /** `og.ui.button` */
@@ -747,6 +749,7 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_open_panel",
   "og_ui_open_scroll",
   "og_ui_close",
+  "og_ui_rich_text",
   "og_ui_label",
   "og_ui_button",
   "og_ui_image",

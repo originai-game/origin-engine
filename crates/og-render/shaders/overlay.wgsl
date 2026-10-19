@@ -97,8 +97,11 @@ fn fs_msdf(in: OverlayOut) -> @location(0) vec4<f32> {
   let screen_tex_size = vec2<f32>(1.0) / fwidth(in.uv);
   let screen_px_range = max(0.5 * dot(unit_range, screen_tex_size), 1.0);
   // Signed distance to the glyph's edge in device pixels, inside positive,
-  // thickened by the weight.
-  let distance = screen_px_range * (median(m.r, m.g, m.b) - 0.5) + in.effect.y;
+  // thickened by the weight. The field is flat past half its range, so the
+  // weight stays inside that reach (a heavier one would fill the glyph's
+  // whole quad where the field is thin: small text from a narrow range).
+  let weight = min(in.effect.y, max(0.5 * screen_px_range - 0.75, 0.0));
+  let distance = screen_px_range * (median(m.r, m.g, m.b) - 0.5) + weight;
   let fill = clamp(distance + 0.5, 0.0, 1.0);
   if (in.effect.z > 0.5) {
     // The glow pass: the distance outside the ink, falling off
@@ -106,7 +109,7 @@ fn fs_msdf(in: OverlayOut) -> @location(0) vec4<f32> {
     // (round past corners, where the median runs on along the edges); a
     // plain MSDF's alpha is 1, so the smaller of the two is the median there.
     let sd = min(median(m.r, m.g, m.b), m.a) - 0.5;
-    let outside = max(-(screen_px_range * sd + in.effect.y), 0.0);
+    let outside = max(-(screen_px_range * sd + weight), 0.0);
     // The field holds distances up to half its range: past that it is flat,
     // so the glow ends inside it (never at the glyph quad's hard edge).
     let reach = 0.5 * screen_px_range - 0.5;

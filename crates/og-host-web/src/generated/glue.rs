@@ -969,6 +969,11 @@ pub fn og_ui_close() -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_ui_rich_text(id: String, markup: String, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_rich_text(&Host, id, markup, desc)
+}
+
+#[wasm_bindgen]
 pub fn og_ui_label(id: String, text: String, desc: Option<String>) {
     <Host as UiApi>::og_ui_label(&Host, id, text, desc)
 }
