@@ -15,7 +15,7 @@ declare const Bun: {
   spawn(
     cmd: string[],
     o: { cwd: string; env?: Record<string, string | undefined>; stdout: "pipe"; stderr: "pipe" },
-  ): { stdout: ReadableStream<Uint8Array>; exited: Promise<number>; kill(): void };
+  ): { stdout: ReadableStream<Uint8Array>; stderr: ReadableStream<Uint8Array>; exited: Promise<number>; kill(): void };
   spawnSync(
     cmd: string[],
     o: { cwd: string; env?: Record<string, string | undefined> },
@@ -34,9 +34,9 @@ const RED = "[0.94000000059604645,0.04499999582767487,0.05000000596046448,1]";
 
 function swap(file: string, from: string, to: string): void {
   const bytes = readFileSync(file);
-  const at = bytes.indexOf(from);
+  const at = new TextDecoder("latin1").decode(bytes).indexOf(from);
   expect(at).toBeGreaterThan(0);
-  bytes.write(to, at, "latin1");
+  bytes.set(new TextEncoder().encode(to), at);
   writeFileSync(file, bytes);
 }
 
@@ -56,7 +56,8 @@ test("og dev shows a glTF edit after the reload", async () => {
   const port = String(47_000 + (process.pid % 700));
   const dev = Bun.spawn([ogBin(), "dev", game, "--port", port, "--exit-after", "2", "--json"], { cwd: repo, env, stdout: "pipe", stderr: "pipe" });
   const lines: string[] = [];
-  const reader = dev.stdout.pipeThrough(new TextDecoderStream()).getReader();
+  const reader = dev.stdout.getReader();
+  const decoder = new TextDecoder();
   let buffered = "";
   const until = async (match: (l: string) => boolean) => {
     for (;;) {
@@ -64,7 +65,7 @@ test("og dev shows a glTF edit after the reload", async () => {
       if (hit) return hit;
       const { value, done } = await reader.read();
       if (done) throw new Error(`og dev ended first:\n${lines.join("\n")}\n${await new Response(dev.stderr).text()}`);
-      buffered += value;
+      buffered += decoder.decode(value, { stream: true });
       const parts = buffered.split("\n");
       buffered = parts.pop()!;
       lines.push(...parts);

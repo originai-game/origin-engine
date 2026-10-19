@@ -28,12 +28,14 @@
 // wasm-bindgen at the Cargo.lock version and the wasm32 target.
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { cpus, loadavg } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Browser, chromePath } from "./cdp.ts";
 import { serve } from "./serve.ts";
 import { decodePng, encodePng, type Image } from "../../src/node/png.ts";
+import { createRequire } from "node:module";
+
+const { cpus, loadavg } = createRequire(import.meta.url)("node:os") as { cpus(): { model: string }[]; loadavg(): number[] };
 
 declare const Bun: {
   spawnSync(cmd: string[], o?: { cwd?: string; stdout?: string; stderr?: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
