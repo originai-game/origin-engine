@@ -40,6 +40,9 @@ export const Game = defineResource("Game", {
   recordRuns: u32(0, { doc: "Runs in the record as last read or written: Game.runs less this is what this device adds." }),
   recordWins: u32(0, { doc: "Wins in the record as last read or written." }),
   recordConflicts: u32(0, { doc: "Record writes refused as stale (another device or tab wrote first)." }),
+  recordDirty: bool(false, { doc: "The record changed while a read or write of it was in flight: written when that answers." }),
+  recordSentRuns: u32(0, { doc: "Runs in the record write in flight (what the store holds once it answers ok)." }),
+  recordSentWins: u32(0, { doc: "Wins in the record write in flight." }),
   newBest: bool(false),
   hearts: i32(HEARTS),
   hurts: u32(0, { doc: "Hearts lost this run." }),
@@ -67,6 +70,9 @@ export const Game = defineResource("Game", {
   padKindle: bool(false, { doc: "The HUD's Kindle is held." }),
   stickX: f32(0, { doc: "The HUD joystick (written by Ui)." }),
   stickY: f32(0),
+  lookId: i32(-1, { doc: "The finger turning the view on a touch screen (an og.Pointers id; -1 none)." }),
+  lookX: f32(0, { unit: "cssPx", doc: "Where that finger was last tick." }),
+  lookTurn: f32(0, { unit: "rad", doc: "How far the finger turned the view this tick (written by Ui, applied by View)." }),
   overTicks: u32(0, { unit: "ticks", doc: "Ticks since the run ended; the summary comes after a beat." }),
   start: bool(false, { doc: "Every system resets its part of the vale this tick (a new run or the title)." }),
   sfx: u32(0),
@@ -127,6 +133,8 @@ export const Sentinel = defineComponent("Sentinel", {
   alarms: u32(0),
   speed: f32(0, { unit: "m/s", doc: "Its speed across the ground (the graph's p0)." }),
   alert: bool(false, { doc: "It is chasing or grabbing (its eye burns red)." }),
+  mind: f64(0, { doc: "The behaviour its og.AiAgent runs (og.ai.load's handle)." }),
+  spare: f64(0, { doc: "A second load of the same behaviour: swapped in to start the machine afresh (a new run)." }),
 });
 
 /** One voice: plays its sound once when Game.sfx asks for its bit. */

@@ -82,18 +82,21 @@ og build . --publish         # dist/: the play page as it ships (behind "tap to 
   table's characters.
 - **The platform** (og-platform-sdk): settings through
   `loadSettings`/`saveSettings`; the record (`{runs, wins, best}`) read on
-  the first ticks and written at the revision read; a write refused as
-  stale (another device played meanwhile) is read again, merged (the
-  stored counts plus what this device added, the better best time) and
-  written at the new revision; a `run.over` telemetry event.
+  the first ticks and written at the revision read; one call at a time
+  (a newer record waits for the read or write in flight and goes out at
+  the revision its answer gives); a write refused as stale (another
+  device played meanwhile) is read again, merged (the stored counts plus
+  what this device added, the better best time) and written at the new
+  revision; a `run.over` telemetry event.
 - **The tap gate**: `og build . --publish` ships behind the default
   `gate: "tap"`, so audio starts on the player's first tap.
 
 ## Rules
 
 - **Moving.** Walk 3 m/s, run 6 m/s, wade at 0.45 of either. The view
-  turns with Q and E (the right stick) and swings slowly behind a walking
-  hero.
+  turns with Q and E (the right stick, or on a touch screen a finger
+  dragged sideways across the right half, between the clock and Jump)
+  and swings slowly behind a walking hero.
 - **Kindling.** Within reach of a dark beacon the prompt shows; holding F
   (X, Kindle) walks the hero to the plinth and reaches into the bowl;
   1.6 s of reaching lights it. Letting go lets the kindling cool at twice
@@ -102,6 +105,7 @@ og build . --publish         # dist/: the play page as it ships (behind "tap to 
   cone (not through the terrain or the plinths), chases at 4.2 m/s and
   grabs within 1.5 m: a heart, a knock-back and 1.6 s spared. It cannot
   follow into the lake; out of sight it searches for 4 s, then goes back.
+  A new run puts each back at the start of its round, on patrol.
 - **The end.** All four lit: dawn will find the vale lit (a win; the best
   time is kept). The hearts gone: caught. 150 s of play (the hour reaching
   19:30): night. 1.5 s later the summary; Again starts a run from nothing,
@@ -213,6 +217,8 @@ language. The playtests read the same values from the `Game` resource with
 | `tests/sentinels.og.ts` | the west sentinel walks its round calm; the hero in its view: the alarm, its eye's light, a chase and a grab that costs a heart |
 | `tests/win.og.ts` | four beacons lit: dawn, the record merged after a stale write (runs, wins, the best time) with a `run.over` event, the summary, then Again from nothing |
 | `tests/lose.og.ts` | caught with no hearts left, Again, night at dusk's end, Title |
+| `tests/hitstop.og.ts` | Escape pressed during a grab's hit-stop still pauses |
+| `tests/restart.og.ts` | a sentinel chasing when the run restarts is back on patrol, its eye calm |
 | `tests/pause.og.ts` | Escape holds the run (time scale 0, the clock stopped, keys move nothing); settings switch to 简体中文 and move the music; Done saves through og.platform; Resume |
 | `tests/phone.og.ts` | 1170 × 2532 (390 × 844 at 3×): the HUD inside the safe area, touch-sized controls, the joystick walks, Jump jumps, Kindle held lights a beacon |
 | `tests/frames.og.ts` | the title, a beacon catching and the dawn summary match `references/<tier>/` (`OG_FX_CAPTURE=1 og test .` records them) |

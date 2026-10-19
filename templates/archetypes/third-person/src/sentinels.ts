@@ -26,6 +26,8 @@ const SPARED = 1.6;
 const ROUND_STARTS = [{ x: -27, z: 12 }, { x: -20, z: -31 }, { x: 27, z: -22 }];
 /** The behaviours' `alert` and `grab` states: indexes into BehaviourInfo.states, the same in all three. */
 const ALERT_STATES = [1, 2];
+/** Their first state, `patrol`. */
+const PATROL = 0;
 
 export function spawnSentinels(world: World): void {
   const g = must(world.resource(Game));
@@ -33,15 +35,19 @@ export function spawnSentinels(world: World): void {
   const model = must(og.load.gltf(world, "models/stout.glb"));
   const eyeLight = { color: { r: 1, g: 0.18, b: 0.08 }, intensity: 0, distance: 6, castShadow: false };
   SENTINELS.forEach((name, i) => {
+    // Loaded twice: og.AiAgent starts a machine afresh (its first state, its
+    // timers, its blackboard) when its behaviour changes, so a new run swaps
+    // in the other handle (reset).
     const mind = must(og.ai.load(world, `ai/sentinel-${name}.ogt`));
-    if (mind.states[1] !== "alert" || mind.states[2] !== "grab") throw new Error(`ai/sentinel-${name}.ogt: states ${mind.states.join(", ")}`);
+    const spare = must(og.ai.load(world, `ai/sentinel-${name}.ogt`));
+    if (mind.states[PATROL] !== "patrol" || mind.states[1] !== "alert" || mind.states[2] !== "grab") throw new Error(`ai/sentinel-${name}.ogt: states ${mind.states.join(", ")}`);
     const first = ROUND_STARTS[i]!;
     const at = { x: first.x, y: ground(world, g, first.x, first.z).height, z: first.z };
     const s = must(world.spawn({ name: `sentinel-${i}`, position: at }));
     must(world.insert(s, og.NavAgent, { nav: g.nav as never, target: at, seeking: false, speed: 1.6, acceleration: 12, radius: 0.45, stopDistance: 0.3, faceMovement: true, turnSpeed: 6 }));
     must(world.insert(s, og.AiAgent, { behaviour: mind.behaviour, active: true, thinkEvery: 2 }));
     must(world.insert(s, og.Perception, { sight: 13, fov: 120, eyeHeight: 1.6, occlude: true, team: 2, memory: 3 }));
-    must(world.insert(s, Sentinel, { index: i }));
+    must(world.insert(s, Sentinel, { index: i, mind: mind.behaviour as never, spare: spare.behaviour as never }));
     const body = must(world.instantiate(model, { name: `sentinel-${i}-body`, parent: s, scale: { x: BODY_SCALE, y: BODY_SCALE, z: BODY_SCALE } }));
     must(world.insert(body, og.Skeleton, { asset: rig.skeleton, rootMotion: "off" }));
     must(world.insert(body, og.AnimationGraph, { asset: rig.graph, speed: 1 }));
@@ -50,7 +56,12 @@ export function spawnSentinels(world: World): void {
   });
 }
 
-/** Puts the sentinels back at the start of their rounds, calm (a new run or the title). */
+/**
+ * Puts the sentinels back at the start of their rounds, calm (a new run or
+ * the title). One that left its patrol (alert, grabbing or searching) gets
+ * its other behaviour handle, so og.ai starts its machine afresh in
+ * `patrol`; one still patrolling keeps its machine.
+ */
 function reset(world: World, g: { terrain: number }): void {
   SENTINELS.forEach((_, i) => {
     const s = entity(world, `sentinel-${i}`);
@@ -58,7 +69,11 @@ function reset(world: World, g: { terrain: number }): void {
     const at = { x: first.x, y: ground(world, g, first.x, first.z).height, z: first.z };
     must(world.set(s, og.Transform, { position: at }));
     must(world.set(s, og.NavAgent, { target: at, seeking: false }));
-    must(world.set(s, Sentinel, { alert: false }));
+    const me = must(world.get(s, Sentinel));
+    if (must(world.get(s, og.AiAgent)).state !== PATROL) {
+      must(world.set(s, og.AiAgent, { behaviour: me.spare as never }));
+      must(world.set(s, Sentinel, { alert: false, mind: me.spare, spare: me.mind }));
+    } else must(world.set(s, Sentinel, { alert: false }));
   });
 }
 
@@ -69,7 +84,7 @@ function reset(world: World, g: { terrain: number }): void {
  */
 export const Sentinels = defineSystem(
   "Sentinels",
-  { reads: [Tuning, og.AiAgent], writes: [Game, Sentinel, og.NavAgent, og.Transform, og.Perception, og.AnimationGraph, og.PointLight], after: ["Hero"] },
+  { reads: [Tuning], writes: [Game, Sentinel, og.AiAgent, og.NavAgent, og.Transform, og.Perception, og.AnimationGraph, og.PointLight], after: ["Hero"] },
   (_q, time, world) => {
     const g = must(world.resource(Game));
     const t = must(world.resource(Tuning));

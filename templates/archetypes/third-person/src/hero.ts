@@ -5,8 +5,9 @@
 // holding F (X, Kindle) by a beacon walks up to it and reaches into the
 // bowl with the right hand (an og.IkChain on the arm) until it catches.
 // Wading in the lake slows the hero and splashes; the sentinels cannot
-// follow there. Q and E (the right stick) turn the view; walking swings it
-// slowly behind the hero.
+// follow there. Q and E (the right stick, a finger dragged across the
+// touch HUD's look zone) turn the view; walking swings it slowly behind
+// the hero.
 
 import { og, defineSystem, SHAPE_CAPSULE } from "@origingame/engine";
 import type { Entity, Value, Vector3, World } from "@origingame/engine";
@@ -104,17 +105,20 @@ export const HeroMove = defineSystem(
     const t = lazyTuning(world);
     const hero = g.hero as unknown as Entity;
     if (g.start) reset(world, g, hero);
-    const dt = time.scaledDt;
-    if (dt === 0) return;
     const inp = must(world.resource(og.Input));
     const gp = must(world.resource(og.Gamepad));
+    const playing = g.phase === Phase.Play && g.ending === Ending.None;
+    // Pause before the time gate: a press during a hit-stop (scaledDt 0)
+    // still pauses. Not while held: the press that resumed from the menu
+    // this tick (Ui runs first) would open it again.
+    if (playing && !g.held && (inp.pressed("Escape") || inp.pressed("KeyP") || gp.pressed("start"))) g.paused = true;
+    const dt = time.scaledDt;
+    if (dt === 0) return;
     const body = entity(world, "hero-body");
     const reach = entity(world, "hero-reach");
     const cc = must(world.get(hero, og.CharacterController));
     const me = must(world.get(hero, Hero));
     const p = must(world.get(hero, og.Transform)).position;
-    const playing = g.phase === Phase.Play && g.ending === Ending.None;
-    if (playing && (inp.pressed("Escape") || inp.pressed("KeyP") || gp.pressed("start"))) g.paused = true;
 
     // The controls, relative to the view: forward is where the camera looks.
     let ix = inp.axis("KeyA", "KeyD") + inp.axis("ArrowLeft", "ArrowRight");
@@ -261,10 +265,12 @@ export const View = defineSystem("View", { reads: [og.Input, og.Gamepad, og.Tran
     const p = must(world.get(g.hero as unknown as Entity, og.Transform)).position;
     if (time.scaledDt > 0) {
       let turnBy = inp.axis("KeyQ", "KeyE") * 2.2 + (Math.abs(gp.axis("rightX")) > 0.2 ? gp.axis("rightX") * 2.6 : 0);
-      // Swing behind a walking hero (not one walking at the camera).
+      // Swing behind a walking hero (not one walking at the camera), unless a finger holds the view.
       const behind = g.facing + Math.PI;
-      if (turnBy === 0 && g.speed > 0.5 && Math.abs(wrap(behind - g.yaw)) < 2.2) turnBy = (wrap(behind - g.yaw) * Math.min(1, g.speed / 6)) * 0.9;
-      g.yaw = wrap(g.yaw + turnBy * dt);
+      if (turnBy === 0 && g.lookId < 0 && g.speed > 0.5 && Math.abs(wrap(behind - g.yaw)) < 2.2) turnBy = (wrap(behind - g.yaw) * Math.min(1, g.speed / 6)) * 0.9;
+      // A finger dragging across the look zone (Ui's touch turn): dragging right turns the view right.
+      g.yaw = wrap(g.yaw + turnBy * dt - g.lookTurn);
+      if (g.lookTurn !== 0) g.lookTurn = 0;
     }
     const d = t.cameraDistance;
     focus = { x: p.x, y: p.y + 0.9, z: p.z };
