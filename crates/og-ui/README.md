@@ -219,8 +219,9 @@ art really under the text.
 ## UI sounds
 
 The UI queues an event when the skin (or `UiDesc.sounds` through the host)
-has a sound for it: `Hover` (the pointer reaches a navigable control),
-`Press`, `Open` and `Close` (a dialog's first tick each way), `Success`
+has a sound for it: `Hover` (the pointer reaches a navigable control, or
+keyboard or gamepad focus moves to one), `Press` (by the pointer, Enter,
+Space or the pad's A), `Open` and `Close` (a dialog's first tick each way), `Success`
 (a success toast), `Error` (a danger toast or a refused press).
 `Ui::take_sounds()` hands them to the host; the runtime's `og.ui.sound`
 system (after the physics step, before `og.audio`) plays each through

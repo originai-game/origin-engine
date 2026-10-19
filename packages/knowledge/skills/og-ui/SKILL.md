@@ -90,7 +90,9 @@ Escape and B go back: the topmost dialog or menu closes, otherwise
 move the player calls `og.ui.setNavigation(false)` (the HUD templates do);
 dialogs turn navigation back on while open. The UI reads pad 0 from
 `og.Gamepad` itself (d-pad, A, B, the left stick); for a custom binding,
-queue intents with `og.ui.navigate(world, intent)`. Script a pad in a
+queue intents with `og.ui.navigate(world, intent)`. A focus move plays the
+`hover` sound and Enter, Space or A the `press` sound, as the pointer does
+(og-audio §3). Script a pad in a
 playtest with `gamepad:a` then `gamepad:-` (release), or `gamepad:-:0,0.9`
 for the stick.
 

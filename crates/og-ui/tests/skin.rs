@@ -359,6 +359,66 @@ fn a_refused_press_shakes_the_button_and_queues_the_error_sound() {
     assert_eq!(sounds, vec![(UiSound::Press, 7)]);
 }
 
+#[test]
+fn keyboard_and_gamepad_focus_moves_sound_as_the_pointer_does() {
+    // Ways it could fail: a focus move by key or pad is silent (only the
+    // pointer reaching a control sounded), activation by Enter or A makes
+    // no press sound, or a move that lands where focus already was sounds.
+    let file = parse_skin(SKIN).expect("the test skin parses");
+    let mut ui = ui_with_font(test_font_metrics());
+    let mut sounds = [0u64; 6];
+    sounds[UiSound::Hover as usize] = 5;
+    sounds[UiSound::Press as usize] = 7;
+    ui.set_theme(file.theme(Some(atlas()), sounds));
+    let build = |ui: &mut Ui, input: InputFrame| {
+        ui.begin(input, Viewport::new(800.0, 600.0));
+        ui.column("Menu", Element::column(), |ui| {
+            ui.button("A", "A", ButtonDesc::default());
+            ui.button("B", "B", ButtonDesc::default());
+        });
+        ui.end();
+    };
+    for _ in 0..3 {
+        build(&mut ui, InputFrame::default());
+    }
+    assert!(ui.take_sounds().is_empty(), "nothing sounds before an input");
+    let key = |k: UiKey| InputFrame {
+        keys: vec![k],
+        ..InputFrame::default()
+    };
+    let heard = |ui: &mut Ui| -> Vec<UiSound> { ui.take_sounds().into_iter().map(|(e, _)| e).collect() };
+    build(&mut ui, key(UiKey::Tab));
+    assert_eq!(heard(&mut ui), vec![UiSound::Hover], "Tab onto A sounds");
+    build(&mut ui, key(UiKey::Down));
+    assert_eq!(heard(&mut ui), vec![UiSound::Hover], "Down onto B sounds");
+    let pad = |bit: u32| InputFrame {
+        gamepad: GamepadFrame {
+            pressed: bit,
+            ..GamepadFrame::default()
+        },
+        ..InputFrame::default()
+    };
+    build(&mut ui, pad(GamepadFrame::UP));
+    assert_eq!(heard(&mut ui), vec![UiSound::Hover], "the d-pad onto A sounds");
+    build(&mut ui, key(UiKey::Enter));
+    assert_eq!(heard(&mut ui), vec![UiSound::Press], "Enter presses A and sounds");
+    build(&mut ui, pad(GamepadFrame::A));
+    assert_eq!(heard(&mut ui), vec![UiSound::Press], "the pad's A presses and sounds");
+    // One focusable control: a move that lands where focus already is stays silent.
+    let lone = |ui: &mut Ui, input: InputFrame| {
+        ui.begin(input, Viewport::new(800.0, 600.0));
+        ui.button("Only", "Only", ButtonDesc::default());
+        ui.end();
+    };
+    for _ in 0..2 {
+        lone(&mut ui, InputFrame::default());
+    }
+    lone(&mut ui, key(UiKey::Tab));
+    heard(&mut ui);
+    lone(&mut ui, key(UiKey::Tab));
+    assert!(heard(&mut ui).is_empty(), "Tab on the only control moves nothing and is silent");
+}
+
 fn press_at(x: f32, y: f32) -> InputFrame {
     InputFrame {
         pointer: Vec2::new(x, y),

@@ -10691,13 +10691,13 @@ export interface UiDesc {
  */
 export interface UiSounds {
   /**
-   * The pointer reaches a control.
+   * The pointer reaches a control, or keyboard or gamepad focus moves to one.
    *
    * @default null
    */
   readonly hover?: Sound | null;
   /**
-   * A control is pressed.
+   * A control is pressed: by the pointer, Enter, Space or the gamepad's A.
    *
    * @default null
    */

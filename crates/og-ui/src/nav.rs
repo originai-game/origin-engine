@@ -146,6 +146,8 @@ impl Ui {
                     if self.hit(self.state.focus).is_some_and(|h| h.has(HIT_NAV)) {
                         self.nav.activate = self.state.focus;
                         self.state.focus_visible = true;
+                        // A key or the pad's A presses as a pointer does, and sounds the same.
+                        self.sound(crate::skin::UiSound::Press);
                     }
                     continue;
                 }
@@ -156,6 +158,7 @@ impl Ui {
                 continue;
             }
             self.state.focus_visible = true;
+            let before = self.state.focus;
             let current = cands.iter().position(|h| h.key == self.state.focus);
             let adjustable = current.is_some_and(|i| cands[i].has(HIT_ADJUST));
             let next = match (nav, current) {
@@ -181,6 +184,10 @@ impl Ui {
             if let Some(k) = next {
                 self.state.focus = k;
                 moved = true;
+                if k != before {
+                    // Focus reaching a control by key or pad sounds as the pointer reaching it.
+                    self.sound(crate::skin::UiSound::Hover);
+                }
             }
         }
         if moved {

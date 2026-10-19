@@ -19327,7 +19327,7 @@
               "type": "null"
             }
           ],
-          "description": "The pointer reaches a control.",
+          "description": "The pointer reaches a control, or keyboard or gamepad focus moves to one.",
           "default": null
         },
         "press": {
@@ -19339,7 +19339,7 @@
               "type": "null"
             }
           ],
-          "description": "A control is pressed.",
+          "description": "A control is pressed: by the pointer, Enter, Space or the gamepad's A.",
           "default": null
         },
         "open": {
