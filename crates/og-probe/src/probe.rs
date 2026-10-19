@@ -34,6 +34,9 @@ pub const MAX_SWEEP_VALUES: usize = 64;
 pub const MAX_CAPTURE_EDGE: u32 = 4096;
 /// Snapshots kept by `snapshot`; the oldest is dropped beyond this.
 pub const MAX_SNAPSHOTS: usize = 16;
+/// The most calls a `screenshot` or `sweep` value waits for a frame that
+/// lands on a later call (the web's readback) before it gives up.
+const MAX_CAPTURE_POLLS: u32 = 120;
 /// `hello.engine` unless the host says otherwise.
 pub const ENGINE_VERSION: &str = concat!("origin-engine ", env!("CARGO_PKG_VERSION"));
 
@@ -97,6 +100,30 @@ struct Saved {
     hash: u64,
 }
 
+/// A `screenshot` step whose frame is in flight: written when it lands,
+/// at the tick it was asked at.
+struct Shot {
+    tick: u64,
+    /// The step's time, for the warning when it never lands.
+    at: f64,
+    path: Option<String>,
+    width: u32,
+    height: u32,
+    polls: u32,
+}
+
+/// A `sweep` whose frames land on later calls: asked again with the same
+/// description on the same world, it goes on from the frames it has.
+struct SweepJob {
+    desc: SweepDesc,
+    /// The tick and hash of the world it started from.
+    from: (u64, u64),
+    frames: Vec<Value>,
+    /// The next value's world, patched and advanced, while its frame is in flight.
+    waiting: Option<Saved>,
+    polls: u32,
+}
+
 enum Queued {
     /// A step and where in its tick it falls (its time less the tick's, in
     /// ticks: -0.5 to 0.5), the stamp its input events carry.
@@ -155,6 +182,9 @@ pub struct Probe {
     listen: Option<ListenFn>,
     /// The sub-tick stamp of the input being delivered (InputSink::inject_at).
     stamp: f32,
+    /// A screenshot waiting on its frame: it holds the clock and later steps.
+    shot: Option<Shot>,
+    sweeping: Option<SweepJob>,
 }
 
 /// What the host's mixer rendered last, for `listen`: the last `seconds`
@@ -280,6 +310,8 @@ impl Probe {
             pointer: (0.0, 0.0),
             target_missed: false,
             inbox: Inbox::default(),
+            shot: None,
+            sweeping: None,
         })
     }
 
@@ -496,12 +528,18 @@ impl Probe {
         Ok(report)
     }
 
-    /// Run the steps due at the current tick (and earlier), in order.
+    /// Run the steps due at the current tick (and earlier), in order. A
+    /// `screenshot` whose frame lands on a later call (the web) holds the
+    /// steps after it until it lands.
     pub fn pump(&mut self, world: &mut World) {
-        for (action, args) in self.inbox.take() {
-            if self.quit {
+        if self.shot_waits(world) {
+            return;
+        }
+        let mut inbox = self.inbox.take().into_iter();
+        while !self.quit && self.shot.is_none() {
+            let Some((action, args)) = inbox.next() else {
                 break;
-            }
+            };
             self.execute(
                 world,
                 CommandStep {
@@ -511,7 +549,10 @@ impl Probe {
                 },
             );
         }
-        while !self.quit {
+        if !self.quit {
+            self.inbox.requeue(inbox.collect());
+        }
+        while !self.quit && self.shot.is_none() {
             let now = world.time().tick;
             let Some((&key, _)) = self.queue.first_key_value() else {
                 break;
@@ -536,25 +577,65 @@ impl Probe {
     }
 
     /// One tick through the probe: due steps, then the world's step, then
-    /// input edges expire. After `quit` it takes no tick.
+    /// input edges expire. After `quit`, and while a screenshot waits for
+    /// its frame, it takes no tick.
     pub fn step(&mut self, world: &mut World) -> og_core::Result<()> {
         self.pump(world);
-        if self.quit {
+        if self.quit || self.shot.is_some() {
             return Ok(());
         }
         self.tick_once(world)
     }
 
     /// One frame of the host's loop: due steps, then `due` ticks unless the
-    /// clock is held or the run has quit. Returns the ticks taken.
+    /// clock is held, a screenshot waits for its frame, or the run has
+    /// quit. Returns the ticks taken.
     pub fn frame(&mut self, world: &mut World, due: u32) -> og_core::Result<u32> {
         self.pump(world);
         let mut taken = 0;
-        while taken < due && !self.paused && !self.quit {
+        while taken < due && !self.paused && !self.quit && self.shot.is_none() {
             self.step(world)?;
             taken += 1;
         }
         Ok(taken)
+    }
+
+    /// Polls a screenshot whose frame is in flight and writes it when it
+    /// lands; true while it still waits.
+    fn shot_waits(&mut self, world: &World) -> bool {
+        let Some(shot) = self.shot.as_mut() else {
+            return false;
+        };
+        let frame = match self.capture.as_mut() {
+            Some(capture) => capture.capture(world, shot.width, shot.height),
+            None => None,
+        };
+        shot.polls += 1;
+        if frame.is_none() && shot.polls < MAX_CAPTURE_POLLS {
+            return true;
+        }
+        let shot = self.shot.take().expect("waiting");
+        match frame {
+            Some(frame) => self.outputs.push(Output {
+                tick: shot.tick,
+                action: "screenshot".into(),
+                path: shot.path,
+                payload: Payload::Png {
+                    width: frame.width,
+                    height: frame.height,
+                    bytes: frame.png,
+                },
+            }),
+            None => self.note(
+                shot.tick,
+                true,
+                format!(
+                    "{}s screenshot: the renderer produced no frame in {MAX_CAPTURE_POLLS} frames",
+                    shot.at
+                ),
+            ),
+        }
+        false
     }
 
     fn tick_once(&mut self, world: &mut World) -> og_core::Result<()> {
@@ -654,9 +735,22 @@ impl Probe {
                         }
                     }
                 };
-                let frame = capture
-                    .capture(world, width, height)
-                    .ok_or("the renderer produced no frame")?;
+                let frame = capture.capture(world, width, height);
+                let Some(frame) = frame else {
+                    if !capture.deferred() {
+                        return Err("the renderer produced no frame".into());
+                    }
+                    // Its frame lands on a later call: written then.
+                    self.shot = Some(Shot {
+                        tick,
+                        at: step.at,
+                        path,
+                        width,
+                        height,
+                        polls: 0,
+                    });
+                    return Ok(());
+                };
                 self.outputs.push(Output {
                     tick,
                     action: step.action.clone(),
@@ -1343,10 +1437,14 @@ impl Probe {
 
     /// `advance`: take whole fixed steps regardless of the wall clock,
     /// running the command steps that come due on the way. `Err` is a system
-    /// that failed; the world stops at that tick.
+    /// that failed; the world stops at that tick. A screenshot waiting for
+    /// its frame (which cannot land during the call) holds the steps, not
+    /// the ticks: they run late, once it has landed.
     pub fn advance(&mut self, world: &mut World, steps: u64) -> og_core::Result<u64> {
         for _ in 0..steps {
-            self.pump(world);
+            if self.shot.is_none() {
+                self.pump(world);
+            }
             if self.quit {
                 break;
             }
@@ -1536,6 +1634,10 @@ impl Probe {
     /// advance (no command steps run) and capture; the world is restored
     /// afterwards. `None` for an unknown entity or parameter, a refused
     /// value, or no renderer. `Err` is a system that failed.
+    ///
+    /// Where frames land on a later call (the web), `None` also means "ask
+    /// again": each call with the same description on the same world goes
+    /// on from the frames it has, and the last answers them all.
     pub fn sweep(&mut self, world: &mut World, desc: &SweepDesc) -> og_core::Result<Option<Value>> {
         if self.capture.is_none() {
             return Ok(None);
@@ -1549,8 +1651,17 @@ impl Probe {
         if !tunable {
             return Ok(None);
         }
+        let deferred = self.capture.as_ref().is_some_and(|c| c.deferred());
+        // A screenshot's frame in flight goes first: they may share a size.
+        if deferred && self.shot_waits(world) {
+            return Ok(None);
+        }
         let saved = self.save(world);
-        let result = self.sweep_values(world, e, desc, &saved);
+        let result = if deferred {
+            self.sweep_deferred(world, e, desc, &saved)
+        } else {
+            self.sweep_values(world, e, desc, &saved)
+        };
         self.load(world, &saved)
             .map_err(|err| fault("sweep could not restore the world", err))?;
         result
@@ -1586,6 +1697,65 @@ impl Probe {
             }));
         }
         Ok(Some(json!({ "frames": frames })))
+    }
+
+    fn sweep_deferred(
+        &mut self,
+        world: &mut World,
+        e: Entity,
+        desc: &SweepDesc,
+        saved: &Saved,
+    ) -> og_core::Result<Option<Value>> {
+        let from = (saved.tick, saved.hash);
+        let mut job = match self.sweeping.take() {
+            Some(job) if job.desc == *desc && job.from == from => job,
+            _ => SweepJob {
+                desc: desc.clone(),
+                from,
+                frames: Vec::with_capacity(desc.values.len()),
+                waiting: None,
+                polls: 0,
+            },
+        };
+        loop {
+            let Some(value) = desc.values.get(job.frames.len()) else {
+                return Ok(Some(json!({ "frames": job.frames })));
+            };
+            match &job.waiting {
+                Some(at) => self.load(world, at)?,
+                None => {
+                    self.load(world, saved)?;
+                    if self
+                        .write_field(world, e, &desc.parameter, value, true)
+                        .is_err()
+                    {
+                        return Ok(None);
+                    }
+                    for _ in 0..desc.steps {
+                        self.tick_once(world)?;
+                    }
+                    job.waiting = Some(self.save(world));
+                    job.polls = 0;
+                }
+            }
+            let capture = self.capture.as_mut().expect("checked");
+            match capture.capture(world, desc.width, desc.height) {
+                Some(frame) => {
+                    job.frames.push(json!({
+                        "value": value,
+                        "tick": world.time().tick,
+                        "png": base64::encode(&frame.png),
+                    }));
+                    job.waiting = None;
+                }
+                None if job.polls < MAX_CAPTURE_POLLS => {
+                    job.polls += 1;
+                    self.sweeping = Some(job);
+                    return Ok(None);
+                }
+                None => return Ok(None),
+            }
+        }
     }
 
     /// `reload`: snapshot, swap the bundle through the [`Reloader`],

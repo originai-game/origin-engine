@@ -87,6 +87,10 @@ struct Inflating {
     control: Option<u64>,
     got_heights: Option<Vec<u8>>,
     got_control: Option<Vec<u8>>,
+    /// The host answered a part as failed. Kept across frames: the host
+    /// forgets a key once it has answered it, so a failure seen while the
+    /// frame's budget is spent is decoded locally on a later frame.
+    failed: bool,
 }
 
 #[derive(Default)]
@@ -149,6 +153,7 @@ impl Streamer {
                         control,
                         got_heights: None,
                         got_control: None,
+                        failed: false,
                     },
                 );
                 self.in_flight.insert(key);
@@ -228,25 +233,26 @@ impl Streamer {
             };
             let Some(h) = hooks else { break };
             let job = self.inflating.get_mut(&key).expect("listed");
-            let mut failed = false;
-            if job.got_heights.is_none() {
+            if !job.failed && job.got_heights.is_none() {
                 match h.inflate_take(job.heights) {
                     super::Fetch::Ready(b) => job.got_heights = Some(b),
-                    super::Fetch::Failed(_) => failed = true,
+                    super::Fetch::Failed(_) => job.failed = true,
                     super::Fetch::Pending => {}
                 }
             }
+            // Taken even after the heights failed, so the host lets go of it.
             if let Some(ck) = job.control
                 && job.got_control.is_none()
             {
                 match h.inflate_take(ck) {
                     super::Fetch::Ready(b) => job.got_control = Some(b),
-                    super::Fetch::Failed(_) => failed = true,
+                    super::Fetch::Failed(_) => job.failed = true,
                     super::Fetch::Pending => {}
                 }
             }
             let ready =
                 job.got_heights.is_some() && (job.control.is_none() || job.got_control.is_some());
+            let failed = job.failed;
             let over = !wait && h.now_ms() - start > FINISH_MS;
             if failed && !over {
                 // The host could not: inflate it here.

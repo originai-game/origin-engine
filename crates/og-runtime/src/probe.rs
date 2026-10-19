@@ -41,6 +41,14 @@ impl Capture for RuntimeCapture {
             .map_or((0, 0), |b| b.size())
     }
 
+    fn deferred(&self) -> bool {
+        self.render
+            .try_borrow()
+            .ok()
+            .and_then(|rs| rs.backend.as_ref().map(|b| b.deferred()))
+            .unwrap_or(false)
+    }
+
     fn capture(&mut self, world: &World, width: u32, height: u32) -> Option<Frame> {
         let mut rs = self.render.try_borrow_mut().ok()?;
         // Captured frames show every wanted terrain tile, whatever the decode timing.

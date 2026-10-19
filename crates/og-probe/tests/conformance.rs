@@ -12,7 +12,7 @@ mod support;
 use og_ecs::SystemDesc;
 use og_probe::{MEMBERS, Rebuilt, Reloader};
 use serde_json::{Value, json};
-use support::{Harness, base64_decode, build, bundle};
+use support::{Harness, ReadbackCapture, base64_decode, build, bundle};
 
 const PARSE_ERROR: i64 = -32700;
 const INVALID_REQUEST: i64 = -32600;
@@ -580,6 +580,34 @@ fn every_member_answers_as_protocol_5_says() {
             "checks": t.checks,
             "exchanges": t.log,
         }),
+    );
+}
+
+#[test]
+fn a_sweep_whose_frames_land_later_answers_them_all_on_a_later_call() {
+    let mut h = build(7, true);
+    let params = json!({"id": "player", "parameter": "Mover.speed", "values": [1, 2, 3], "steps": 30, "width": 32, "height": 18});
+    let want = h.result("sweep", params.clone());
+    let before = h.world.world_hash();
+    h.probe.set_capture(Box::new(ReadbackCapture::default()));
+    let mut calls = 0;
+    let got = loop {
+        calls += 1;
+        let answer = h.result("sweep", params.clone());
+        assert_eq!(
+            h.world.world_hash(),
+            before,
+            "the world is restored after every call"
+        );
+        if !answer.is_null() {
+            break answer;
+        }
+        assert!(calls < 10, "the sweep never answered its frames");
+    };
+    assert_eq!(got, want, "the frames of a host that reads back at once");
+    assert_eq!(
+        calls, 4,
+        "each call takes the frame in flight and asks for the next"
     );
 }
 

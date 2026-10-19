@@ -134,6 +134,32 @@ impl Capture for FakeCapture {
     }
 }
 
+/// The web's readback over [`FakeCapture`]: the first call at a size draws
+/// the world as it is then and answers `None`; the next call at that size
+/// answers that frame.
+#[derive(Default)]
+pub struct ReadbackCapture(Vec<((u32, u32), Frame)>);
+
+impl Capture for ReadbackCapture {
+    fn tier(&self) -> &str {
+        "webgpu"
+    }
+    fn target_size(&self) -> (u32, u32) {
+        (64, 36)
+    }
+    fn capture(&mut self, world: &World, width: u32, height: u32) -> Option<Frame> {
+        if let Some(i) = self.0.iter().position(|(size, _)| *size == (width, height)) {
+            return Some(self.0.remove(i).1);
+        }
+        let frame = FakeCapture.capture(world, width, height)?;
+        self.0.push(((width, height), frame));
+        None
+    }
+    fn deferred(&self) -> bool {
+        true
+    }
+}
+
 /// The game's types and systems in a fresh world: what a bundle declares.
 /// `with_health: false` is a bundle that dropped the Health component.
 pub fn bundle(seed: u32, with_health: bool, declare: &mut dyn FnMut(&SystemDesc)) -> World {

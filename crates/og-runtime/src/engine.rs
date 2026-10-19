@@ -62,8 +62,17 @@ pub trait Hooks {
     }
     /// The bytes of a cooked file (`<root>/cooked/...`): read now (native),
     /// answered from what was fetched (web), or `Pending` while it is fetched.
+    /// A streaming group's pack (`cooked/stream/<name>.ogb`) is read once
+    /// per load: a host may hand it over and forget it.
     fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
         Fetch::Failed(format!("{path}: this host reads no files"))
+    }
+    /// A streaming group let go of its pack `pack` (it was unloaded, or the
+    /// pack failed): a host that keeps fetched packs and transcoded
+    /// textures drops the pack and the group's `textures` (asset ids) now,
+    /// and fetches them again when the group loads again.
+    fn release_stream(&self, pack: &str, textures: &[String]) {
+        let _ = (pack, textures);
     }
     /// A cooked texture for the renderer, in the device's encoding when
     /// `formats` (the attached renderer's) names one: og-cook's transcoder
