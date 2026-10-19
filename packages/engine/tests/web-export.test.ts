@@ -75,9 +75,19 @@ test("og-build.json names every file beside it, with bytes and sha256, and the P
   expect(html).toContain("Made with Origin Engine");
   // The service worker precaches what the page fetches, under a cache named by content.
   const sw = read(dir, "sw.js");
-  const precache = JSON.parse(/^const OG_SW=(\{.*?\});/.exec(sw)![1]!) as { version: string; files: string[] };
-  expect(precache.files).toContain("origin-engine_bg.wasm");
+  const precache = JSON.parse(/^const OG_SW=(\{.*?\});/.exec(sw)![1]!) as { version: string; files: string[]; single: string[]; lanes: string[] };
   expect(precache.files).toContain("cooked/.cook.ogt");
+  // The two engine variants: the worker precaches the one its page boots, never both.
+  expect(precache.single).toEqual(["origin-engine.js", "origin-engine_bg.wasm"]);
+  expect(precache.lanes).toContain("origin-engine-lanes.js");
+  expect(precache.lanes).toContain("origin-engine-lanes_bg.wasm");
+  expect(precache.lanes.some((f) => f.startsWith("snippets/"))).toBe(true);
+  for (const f of [...precache.single, ...precache.lanes]) expect(precache.files).not.toContain(f);
+  // The lanes variant ships beside the single-threaded engine, and the page knows its size.
+  expect(m.lanes).toEqual({ glue: "origin-engine-lanes.js", wasm: "origin-engine-lanes_bg.wasm" });
+  for (const p of ["origin-engine-lanes.js", "origin-engine-lanes_bg.wasm"]) expect(paths).toContain(p);
+  const config = JSON.parse(/<script type="application\/json" id="og-config">(.*?)<\/script>/.exec(html)![1]!);
+  expect(config.expect.lanes).toBe(m.files.find((f: { path: string }) => f.path === "origin-engine-lanes_bg.wasm").bytes);
   expect(precache.files).not.toContain("_headers");
   expect(precache.files).not.toContain("og-build.json");
   const web = JSON.parse(read(dir, "manifest.webmanifest"));
@@ -91,6 +101,11 @@ test("publish settings: isolation, the badge and the service worker's version", 
   expect(existsSync(join(work, "off", "origingame.runtime.json"))).toBe(false);
   expect(read(join(work, "off"), "_headers")).not.toContain("Cross-Origin-Embedder-Policy");
   expect(read(join(work, "off"), "index.html")).toMatch(/id="og-made-with"[^>]* hidden/);
+  // Without isolation the page can never share memory: no lanes variant.
+  expect(off.manifest!.lanes).toBeNull();
+  expect(existsSync(join(work, "off", "origin-engine-lanes_bg.wasm"))).toBe(false);
+  expect(existsSync(join(work, "off", "snippets"))).toBe(false);
+  expect(JSON.parse(/<script type="application\/json" id="og-config">(.*?)<\/script>/.exec(read(join(work, "off"), "index.html"))![1]!).expect.lanes).toBe(0);
   const swVersion = (d: string) => /"version":"([0-9a-f]+)"/.exec(read(join(work, d), "sw.js"))![1];
   expect(swVersion("off")).not.toBe(swVersion("a"));
   const req = await webBuild(project, entry, join(work, "req"), false, settings({ isolation: "required", fit: "letterbox", aspect: "16:9" }));
@@ -100,6 +115,7 @@ test("publish settings: isolation, the badge and the service worker's version", 
   // A dev build: every probe member, no service worker.
   expect(req.manifest!.build).toBe("dev");
   expect(req.manifest!.probe.members).toContain("commands");
+  expect(req.manifest!.lanes).toBeNull();
   expect(existsSync(join(work, "req", "sw.js"))).toBe(false);
   // A dev (Stage) build declares the same transports: the Stage page reads them too.
   expect(req.manifest!.player).toEqual({ protocol: 2, transports: ["frame", "page"] });

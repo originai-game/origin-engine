@@ -48,7 +48,8 @@ export interface ShellConfig {
   readonly gate: "tap" | "none";
   readonly madeWith: boolean;
   readonly serviceWorker: boolean;
-  readonly expect: { readonly wasm: number; readonly cooked: number };
+  /** Bytes the boot fetches; `lanes` is the lanes variant's module, 0 when the build ships none. */
+  readonly expect: { readonly wasm: number; readonly cooked: number; readonly lanes: number };
 }
 
 const PROBE_GLOBAL = "__runtime_probe__";
@@ -112,7 +113,7 @@ export function readConfig(doc: Document = document): ShellConfig {
     gate: c.gate === "none" ? "none" : "tap",
     madeWith: c.madeWith !== false,
     serviceWorker: c.serviceWorker === true,
-    expect: { wasm: c.expect?.wasm ?? 0, cooked: c.expect?.cooked ?? 0 },
+    expect: { wasm: c.expect?.wasm ?? 0, cooked: c.expect?.cooked ?? 0, lanes: c.expect?.lanes ?? 0 },
   };
 }
 
@@ -394,6 +395,9 @@ export async function play(): Promise<PlayHandle> {
       worker: new Worker(new URL("./game.js", location.href), { type: "module" }),
       glue: new URL("./origin-engine.js", location.href).href,
       wasm: new URL("./origin-engine_bg.wasm", location.href).href,
+      ...(config.expect.lanes > 0
+        ? { lanes: { glue: new URL("./origin-engine-lanes.js", location.href).href, wasm: new URL("./origin-engine-lanes_bg.wasm", location.href).href, bytes: config.expect.lanes } }
+        : {}),
       root: new URL(".", location.href).href.replace(/\/$/, ""),
       basis: { js: new URL("./basis/basis_transcoder.js", location.href).href, wasm: new URL("./basis/basis_transcoder.wasm", location.href).href },
       webgl,
@@ -420,6 +424,8 @@ export async function play(): Promise<PlayHandle> {
   }
   shellRef = shell;
   performance.mark?.("og:ready");
+  const lanes = shell.ready.lanes;
+  log.push([lanes.on ? `lanes: on, ${lanes.threads} Workers` : `lanes: off (${lanes.why})`]);
   const resize = () => {
     box = place();
     shell.resize(box.width, box.height, box.safeArea);
@@ -439,7 +445,8 @@ export async function play(): Promise<PlayHandle> {
   shell.resize(box.width, box.height, box.safeArea);
 
   // ── the probe: in-page and over the og-probe wire ────────────────────
-  const probe: Record<string, unknown> = { version: 5, substrate: "origin-engine" };
+  // `lanes`: the mode the engine got at boot (on with its Workers, or why it runs single-threaded).
+  const probe: Record<string, unknown> = { version: 5, substrate: "origin-engine", lanes: Object.freeze({ ...lanes }) };
   for (const m of MEMBERS) probe[m] = (...args: unknown[]) => shell.probe(m, probeParams(m, args));
   (globalThis as Record<string, unknown>)[PROBE_GLOBAL] = Object.freeze(probe);
   mountWire({

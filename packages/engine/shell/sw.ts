@@ -4,8 +4,17 @@
 // build replaces the old one atomically. A streaming group's pack is not
 // precached: it is cached in the same cache when the engine first fetches it,
 // so a place the player has been plays offline too. `og build` prepends
-// `const OG_SW = { version, files, lazy }` (the hash, the precached relative
-// paths and the packs) to this file's bundle.
+// `const OG_SW = { version, files, lazy, single, lanes }` (the hash, the
+// precached relative paths, the packs, and the two engine variants' files)
+// to this file's bundle.
+//
+// The engine comes in two variants (docs/web-export.md §Lanes) and a page
+// boots one: the lanes variant when it is cross-origin isolated, else the
+// single-threaded one. The worker precaches the variant its own scope
+// predicts (it is isolated when sw.js got the page's COEP, which `_headers`
+// sends to every file) and caches the other on first use, like a pack; a
+// wrong guess costs one download, never a failed boot (the engine Worker
+// falls back to the single-threaded variant).
 //
 // - install: fetch every precached file into `og-<version>`; a failure keeps the old build.
 // - activate: delete the other `og-*` caches of this scope, take the clients.
@@ -26,7 +35,13 @@
 // revisiting page its stored bytes instead. Only where the browser has no
 // navigation preload does the worker fetch the page itself.
 
-declare const OG_SW: { readonly version: string; readonly files: readonly string[]; readonly lazy?: readonly string[] };
+declare const OG_SW: {
+  readonly version: string;
+  readonly files: readonly string[];
+  readonly lazy?: readonly string[];
+  readonly single?: readonly string[];
+  readonly lanes?: readonly string[];
+};
 
 export {};
 
@@ -41,8 +56,10 @@ const scope = globalThis as unknown as SwScope;
 
 const CACHE = `og-${OG_SW.version}`;
 const base = new URL(scope.registration.scope);
-const urls = new Set(OG_SW.files.map((f) => new URL(f, base).href));
-const lazy = new Set((OG_SW.lazy ?? []).map((f) => new URL(f, base).href));
+const isolated = (globalThis as { crossOriginIsolated?: boolean }).crossOriginIsolated === true && (OG_SW.lanes ?? []).length > 0;
+const [mine, other] = isolated ? [OG_SW.lanes ?? [], OG_SW.single ?? []] : [OG_SW.single ?? [], OG_SW.lanes ?? []];
+const urls = new Set([...OG_SW.files, ...mine].map((f) => new URL(f, base).href));
+const lazy = new Set([...(OG_SW.lazy ?? []), ...other].map((f) => new URL(f, base).href));
 const index = new URL("index.html", base).href;
 
 scope.addEventListener("install", (e) => {

@@ -40,6 +40,7 @@ mod feel;
 mod fx;
 mod i18n;
 mod lanes;
+pub use lanes::report as lanes_report;
 mod modules;
 mod nav;
 mod physics_ext;

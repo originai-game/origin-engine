@@ -43,13 +43,27 @@ export function withPublishRefusals(glue: Record<string, unknown>): Record<strin
 export interface WebGlue extends Record<string, unknown> {
   default(input?: { module_or_path: unknown }): Promise<{ memory: WebAssembly.Memory }>;
   og_web_init(): void;
+  /** The lanes variant only (wasm-bindgen-rayon): starts `threads` Workers sharing the module's memory. */
+  initThreadPool?(threads: number): Promise<unknown>;
+  /** The lanes variant only: lanes run on the pool from now on (crates/og-lanes). */
+  og_lanes_ready?(threads: number): void;
 }
 
-/** Initialise the glue with the wasm (a URL, a Response or the bytes) and bind the runtime to it. */
-export async function loadWebHost(glue: WebGlue, wasm?: unknown): Promise<HostBinding> {
+/**
+ * Initialise the glue with the wasm (a URL, a Response or the bytes) and bind
+ * the runtime to it. With `threads`, the glue is the lanes variant and its
+ * Worker pool starts first; a failure there throws before anything is bound,
+ * so the caller can load the single-threaded variant instead.
+ */
+export async function loadWebHost(glue: WebGlue, wasm?: unknown, threads?: number): Promise<HostBinding> {
   const bound = boundHost();
   if (bound) return bound;
   const exports = await glue.default(wasm === undefined ? undefined : { module_or_path: wasm });
+  if (threads !== undefined) {
+    if (!glue.initThreadPool || !glue.og_lanes_ready) throw new Error("the module is not the lanes variant (no initThreadPool)");
+    await glue.initThreadPool(threads);
+    glue.og_lanes_ready(threads);
+  }
   glue.og_web_init();
   const memory = exports.memory;
   // Arrays by (offset, length, kind) over the current buffer: a system's

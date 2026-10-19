@@ -14,6 +14,9 @@
 //   game.js                    the engine Worker: startWorker(game), the runtime, the game
 //   audio-worklet.js           the AudioWorklet the shell loads on the first gesture
 //   origin-engine.js, origin-engine_bg.wasm   the web host (dist/web, or dist/web-publish with --publish)
+//   origin-engine-lanes.js, origin-engine-lanes_bg.wasm, snippets/
+//                              (--publish, isolation not "off") the lanes variant: wasm atomics,
+//                              rayon on a pool of Workers when the page is cross-origin isolated
 //   basis/                     Binomial's Basis transcoder and its licence
 //   cooked/                    the project's cooked bundle: the first group (everything no streaming
 //                              group holds, the proxies included) and each streaming group's pack,
@@ -141,6 +144,12 @@ export interface BuildManifest {
   readonly entry: "index.html";
   readonly worker: "game.js";
   readonly wasm: "origin-engine_bg.wasm";
+  /**
+   * The lanes variant (docs/web-export.md §Lanes): the same engine built with
+   * wasm atomics, which the shell boots instead when the page is cross-origin
+   * isolated. Null when the build has none (a dev build, isolation "off").
+   */
+  readonly lanes: { readonly glue: "origin-engine-lanes.js"; readonly wasm: "origin-engine-lanes_bg.wasm" } | null;
   readonly probe: { readonly protocol: 5; readonly wire: 1; readonly build: string; readonly members: readonly string[] };
   readonly crossOriginIsolation: "required" | "preferred" | "off";
   readonly display: {
@@ -424,6 +433,11 @@ async function bundleScript(entry: string, minify: boolean): Promise<string | { 
 
 /** Files that never go into the service worker's precache (not fetched by the page). */
 const NOT_PRECACHED = /(^|\/)(LICENSE|NOTICE|README\.md|_headers|origingame\.runtime\.json|og-build\.json|sw\.js)$/;
+/** The lanes variant's files in dist/web-publish (scripts/build.sh); snippets/ holds wasm-bindgen-rayon's Worker module. */
+const LANES_FILES = ["origin-engine-lanes.js", "origin-engine-lanes_bg.wasm", "snippets"] as const;
+/** Each engine variant's own files: the service worker precaches the one its page boots. */
+const SINGLE_ENGINE = /^origin-engine(\.js|_bg\.wasm)$/;
+const LANES_ENGINE = /^(origin-engine-lanes(\.js|_bg\.wasm)|snippets\/.*)$/;
 
 export async function webBuild(project: string, entry: string, out: string, publish: boolean, given?: ProjectSettings): Promise<WebBuild> {
   const fail = (reason: string): WebBuild => ({ ok: false, out, publish, files: [], total: { bytes: 0, compressed: 0 }, probe: null, reason });
@@ -458,6 +472,11 @@ export async function webBuild(project: string, entry: string, out: string, publ
     writeFileSync(join(out, file), text);
   }
   for (const f of ["origin-engine.js", "origin-engine_bg.wasm"]) cpSync(join(host, f), join(out, f));
+  // The lanes variant needs cross-origin isolation, which only a build that declares it can get.
+  const lanes = publish && p.isolation !== "off" && LANES_FILES.every((f) => existsSync(join(host, f)));
+  if (lanes) {
+    for (const f of LANES_FILES) cpSync(join(host, f), join(out, f), { recursive: true });
+  }
   cpSync(vendor, join(out, "basis"), { recursive: true });
   cpSync(cooked, join(out, "cooked"), { recursive: true });
   // Streaming groups: a grouped output is read from its group's pack, so its own file is not shipped.
@@ -497,7 +516,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
     gate: p.gate,
     madeWith: p.madeWith,
     serviceWorker: publish,
-    expect: { wasm: wasmBytes, cooked: cookedBytes },
+    expect: { wasm: wasmBytes, cooked: cookedBytes, lanes: lanes ? statSync(join(out, "origin-engine-lanes_bg.wasm")).size : 0 },
   };
   writeFileSync(join(out, "index.html"), pageHtml({ settings, publish, config, icon, pwa: publish }));
   writeFileSync(join(out, "_headers"), headersFile(p.isolation));
@@ -533,7 +552,9 @@ export async function webBuild(project: string, entry: string, out: string, publ
     if (typeof sw !== "string") return fail(`bundling sw.js: ${sw.error}`);
     // The first group is precached; a streaming group's pack is cached when the engine fetches it.
     const precache = fileRows().map((f) => f.path).filter((f) => !NOT_PRECACHED.test(f) && !packs.has(f));
-    writeFileSync(join(out, "sw.js"), `const OG_SW=${JSON.stringify({ version: version.slice(0, 16), files: ["./", ...precache], lazy: [...packs].sort() })};\n${sw}`);
+    const common = precache.filter((f) => !SINGLE_ENGINE.test(f) && !LANES_ENGINE.test(f));
+    const variants = { single: precache.filter((f) => SINGLE_ENGINE.test(f)), lanes: precache.filter((f) => LANES_ENGINE.test(f)) };
+    writeFileSync(join(out, "sw.js"), `const OG_SW=${JSON.stringify({ version: version.slice(0, 16), files: ["./", ...common], lazy: [...packs].sort(), ...variants })};\n${sw}`);
     version = identity(fileRows());
   }
 
@@ -547,6 +568,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
     entry: "index.html",
     worker: "game.js",
     wasm: "origin-engine_bg.wasm",
+    lanes: lanes ? { glue: "origin-engine-lanes.js", wasm: "origin-engine-lanes_bg.wasm" } : null,
     probe: { protocol: 5, wire: 1, build: probe?.build ?? (publish ? "publish" : "release"), members: probe?.members ?? [] },
     crossOriginIsolation: p.isolation,
     display: { fit: p.fit, aspect: p.aspect, orientation: p.orientation, dprCap: p.dprCap, fullscreen: p.fullscreen, gate: p.gate, madeWith: p.madeWith },

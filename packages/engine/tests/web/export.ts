@@ -11,6 +11,10 @@
 // its icons; registers the service worker and reloads offline (the game must
 // start from the cache); and lays the page out at phone width (390×844, DPR
 // 3: the canvas fills the viewport and is drawn at the DPR cap of 2).
+// Lanes: served with the build's COOP/COEP the page is cross-origin isolated
+// and boots the lanes variant (`__runtime_probe__.lanes.on`, Workers beside
+// the engine's), offline too from the service worker's precache; served
+// without them it runs the single-threaded engine and says why.
 //
 //   bun tests/web/export.ts [--out <dir>] [--chrome <path>]
 //
@@ -80,12 +84,14 @@ for (const game of ["runner", "match3"]) {
 const results: Record<string, unknown> = {};
 const browser = await Browser.launch({ chrome });
 
-async function load(page: Page): Promise<{ firstFrame: number; ready: number; tier: string }> {
+type Lanes = { on: boolean; threads: number; why: string };
+async function load(page: Page): Promise<{ firstFrame: number; ready: number; tier: string; lanes: Lanes }> {
   await page.until("window.__runtime_probe__", 60_000);
   const firstFrame = await page.until<number>("performance.getEntriesByName('og:first-frame')[0]?.startTime", 30_000);
   const ready = await page.eval<number>("performance.getEntriesByName('og:ready')[0]?.startTime ?? 0");
   const hello = await page.eval<{ tier: string }>("__runtime_probe__.hello()");
-  return { firstFrame: Math.round(firstFrame), ready: Math.round(ready), tier: hello.tier };
+  const lanes = await page.eval<Lanes>("__runtime_probe__.lanes");
+  return { firstFrame: Math.round(firstFrame), ready: Math.round(ready), tier: hello.tier, lanes };
 }
 
 try {
@@ -109,6 +115,7 @@ try {
         const after = await page.eval<number>("__runtime_probe__.tick()");
         check(after > before + 30, `${label}: a tap on the gate starts the clock`, { before, after });
         const isolated = await page.eval<boolean>("crossOriginIsolated");
+        check(isolated && t.lanes.on && t.lanes.threads > 1, `${label}: isolated, the engine runs the lanes variant on ${t.lanes.threads} Workers`, t.lanes);
         const playShot = save(`${game}-${backend}-play.png`, await page.screenshot());
         const errors = log.filter((l) => /^(error|exception)/.test(l));
         check(errors.length === 0, `${label}: no console errors`, errors.slice(0, 5));
@@ -163,6 +170,7 @@ try {
       await wait(500);
       const offline = await load(page);
       check(offline.firstFrame > 0, "offline: the game starts from the service worker's cache", offline);
+      check(offline.lanes.on, "offline: the lanes variant boots from the service worker's precache", offline.lanes);
       boot.offline = { ...offline, shot: save("runner-offline.png", await page.screenshot()) };
       await page.send("Network.emulateNetworkConditions", { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
     } catch (e) {
@@ -181,7 +189,8 @@ try {
       await page.send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 3, mobile: true });
       await page.send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
       await page.send("Page.navigate", { url: `http://127.0.0.1:${server.port}/game/index.html` });
-      await load(page);
+      const phone = await load(page);
+      check(!phone.lanes.on && /not cross-origin isolated/.test(phone.lanes.why), "phone: without isolation, the single-threaded engine says why", phone.lanes);
       const size = await page.eval<{ cssW: number; cssH: number; w: number; h: number; iso: boolean; button: string }>(
         "({ cssW: document.getElementById('og-canvas').getBoundingClientRect().width, cssH: document.getElementById('og-canvas').getBoundingClientRect().height, w: document.getElementById('og-canvas').width, h: document.getElementById('og-canvas').height, iso: crossOriginIsolated, button: document.querySelector('#og-gate button').textContent })",
       );

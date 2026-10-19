@@ -458,6 +458,14 @@ fn take_resize(engine: u32) -> Option<(u32, u32)> {
     RESIZES.with(|r| r.borrow_mut().remove(&engine))
 }
 
+/// The lanes the module got, as JSON (og-runtime's `lanes_report`: on,
+/// threads, pool, why, parallelCalls, parallelItems): the engine Worker's
+/// `lanes` call, so a publish page without the probe's commands can see them.
+#[wasm_bindgen]
+pub fn og_web_lanes() -> String {
+    og_runtime::lanes_report().to_string()
+}
+
 /// Routes Rust panics to the console instead of an opaque `unreachable`.
 #[wasm_bindgen]
 pub fn og_web_init() {

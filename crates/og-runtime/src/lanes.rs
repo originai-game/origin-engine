@@ -33,19 +33,27 @@ pub(crate) fn register(probe: &mut og_probe::Probe, engine: u32) {
         },
         0,
         move |_world, _args| {
-            let r = og_lanes::report();
             let eng = super::engine::engine(engine)?;
             let st = eng.state.borrow();
-            Ok(json!({
-                "on": r.on,
-                "threads": r.threads,
-                "pool": r.pool,
-                "why": r.why,
-                "parallelCalls": r.parallel_calls,
-                "parallelItems": r.parallel_items,
-                "stepMs": (st.step_ms * 1000.0).round() / 1000.0,
-                "renderMs": (st.render_ms * 1000.0).round() / 1000.0,
-            }))
+            let mut out = report();
+            out["stepMs"] = json!((st.step_ms * 1000.0).round() / 1000.0);
+            out["renderMs"] = json!((st.render_ms * 1000.0).round() / 1000.0);
+            Ok(out)
         },
     );
+}
+
+/// The lanes the process got (og_lanes::report) as the probe and the web
+/// host's `og_web_lanes` report them: on, threads, pool, why, parallelCalls,
+/// parallelItems.
+pub fn report() -> serde_json::Value {
+    let r = og_lanes::report();
+    json!({
+        "on": r.on,
+        "threads": r.threads,
+        "pool": r.pool,
+        "why": r.why,
+        "parallelCalls": r.parallel_calls,
+        "parallelItems": r.parallel_items,
+    })
 }
