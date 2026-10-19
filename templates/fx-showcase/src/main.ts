@@ -15,18 +15,24 @@
 //             skinned walker with a blendshape, screen flash and camera shake
 //
 // The E5 round adds eight stations (src/e5.ts): sky, weather, water,
-// shaders, controller, joints, rope, fluid.
+// shaders, controller, joints, rope, fluid; phase 2 adds terrain (src/p2.ts),
+// the animation and physics round four (src/anim-physics.ts): retarget,
+// ragdoll2d, cloth, fluids, and the render round four (src/render.ts):
+// lights, moon, materials, skinned.
 //
-// Commands: station:<name> (or station:<1-13>). `dump_entity:stage` reads
+// Commands: station:<name> (or station:<1-22>). `dump_entity:stage` reads
 // the Stage component (the station, the frame counter of the pulses);
 // `dump_entity:e5` the E5 component.
 
 import { og, defineComponent, defineSystem, f32, f64, u32, Vector3 } from "@origingame/engine";
 import type { Entity, Font, Geometry, Material, Quaternion, Texture, Vector3 as Vec3, World } from "@origingame/engine";
 import { E5, E5_STATIONS, E5Show, PlatformMove, buildE5, resetE5, showE5, type E5Station } from "./e5.ts";
+import { P2, P2_STATIONS, P2Show, resetP2, showP2, type P2Station } from "./p2.ts";
+import { AP_STATIONS, APShow, buildAP, resetAP, showAP, type APStation } from "./anim-physics.ts";
+import { RD_STATIONS, buildRD, resetRD, showRD, type RDStation } from "./render.ts";
 
-/** The first five stations, then the E5 round's (src/e5.ts). */
-export const STATIONS = ["post", "lens", "fx", "2d", "stylised", ...E5_STATIONS] as const;
+/** The first five stations, then the E5 round's (src/e5.ts) and phase 2's (src/p2.ts, src/anim-physics.ts, src/render.ts). */
+export const STATIONS = ["post", "lens", "fx", "2d", "stylised", ...E5_STATIONS, ...P2_STATIONS, ...AP_STATIONS, ...RD_STATIONS] as const;
 export type Station = (typeof STATIONS)[number];
 
 /** The showcase's state, on one entity named "stage". */
@@ -178,7 +184,14 @@ function hud(world: World, font: Font, station: Station): void {
   og.render.sprite(world, { screen: true, position: { x: 16, y: 16, z: 0 }, width: 6, height: 76, anchor: { x: 0, y: 0 }, color: { r: 1, g: 0.62, b: 0.08 }, layer: 1 });
   og.render.text(world, { font, text: "Origin Engine effects", position: { x: 34, y: 46, z: 0 }, size: 24, screen: true, layer: 2 });
   const i = STATIONS.indexOf(station);
-  const label = i < 5 ? `station ${i + 1}/5  ${station}` : `E5 station ${i - 4}/${E5_STATIONS.length}  ${station}`;
+  const e5 = i - 5;
+  const p2 = e5 - E5_STATIONS.length;
+  // Phase 2's stations count within their own round: terrain 1/1, the
+  // animation and physics round's 1/4 to 4/4; the render round's carry no
+  // count.
+  const ap = p2 - P2_STATIONS.length;
+  const rd = ap - AP_STATIONS.length;
+  const label = i < 5 ? `station ${i + 1}/5  ${station}` : p2 < 0 ? `E5 station ${e5 + 1}/${E5_STATIONS.length}  ${station}` : ap < 0 ? `P2 station ${p2 + 1}/${P2_STATIONS.length}  ${station}` : rd < 0 ? `P2 station ${ap + 1}/${AP_STATIONS.length}  ${station}` : `phase 2 station  ${station}`;
   og.render.text(world, { font, text: label, position: { x: 34, y: 76, z: 0 }, size: 18, color: { r: 1, g: 0.72, b: 0.3 }, screen: true, layer: 2 });
   og.ui.anchor("Badge", { anchor: "bottomRight" }, () => og.ui.panel("BadgePanel", { padding: { left: 12, top: 8, right: 12, bottom: 8 } }, () => og.ui.label("BadgeText", "og.ui over the frame", {})));
 }
@@ -202,6 +215,9 @@ function show(world: World, station: Station): void {
   });
   l2d.enabled = false;
   resetE5(world);
+  resetP2(world);
+  resetAP(world);
+  resetRD(world);
   cam.orthographic = false;
   cam.fov = 50;
   settings.toneMapped = true;
@@ -277,7 +293,10 @@ function show(world: World, station: Station): void {
       settings.bloomIntensity = 0.6;
       break;
     default:
-      showE5(world, station as E5Station);
+      if ((P2_STATIONS as readonly string[]).includes(station)) showP2(world, station as P2Station);
+      else if ((AP_STATIONS as readonly string[]).includes(station)) showAP(world, station as APStation);
+      else if ((RD_STATIONS as readonly string[]).includes(station)) showRD(world, station as RDStation);
+      else showE5(world, station as E5Station);
   }
 }
 
@@ -401,7 +420,12 @@ function build(world: World): void {
   // The E5 round's stations.
   const e5 = must(world.spawn({ name: "e5" }));
   world.insert(e5, E5);
+  world.insert(must(world.spawn({ name: "p2" })), P2);
   buildE5(world, { box, sphere, mat, ground: (x, c) => ground(world, x, c) }, walkerModel, rig, tex("textures/tile.png"));
+  // The phase 2 animation and physics round's stations.
+  buildAP(world, { box, sphere, mat, ground: (x, c) => ground(world, x, c) }, walkerModel);
+  // The phase 2 render round's stations.
+  buildRD({ box, sphere, mat, ground: (x, c) => ground(world, x, c), tex, walker: walkerModel, rig });
 
   const stage = must(world.spawn({ name: "stage" }));
   world.insert(stage, Stage, {
@@ -417,7 +441,7 @@ function build(world: World): void {
 export default og.game({
   tick: 60,
   seed: 1,
-  systems: [Orbiter, Blink, Show, E5Show, PlatformMove],
+  systems: [Orbiter, Blink, Show, E5Show, PlatformMove, P2Show, APShow],
   render: { antialias: "taa" },
   start(world) {
     build(world);
@@ -429,7 +453,7 @@ export default og.game({
       show(world, STATIONS.includes(name) ? name : STATIONS[Number(name) - 1] ?? "post");
     },
   },
-  commandHelp: { station: { usage: "<name|1-13>", doc: "Show a station: post, lens, fx, 2d, stylised, then the E5 round's eight." } },
+  commandHelp: { station: { usage: "<name|1-22>", doc: "Show a station: post, lens, fx, 2d, stylised, then the E5 round's eight, then phase 2's terrain, the animation and physics round's four, and the render round's four (lights, moon, materials, skinned)." } },
   facts: (world) => {
     const e = world.find("stage");
     const s = e === null ? null : world.get(e, Stage);

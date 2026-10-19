@@ -157,6 +157,8 @@ function start(world: World): void {
     ["audio/coin.wav", Sound.Coin, 0.5],
     ["audio/crash.wav", Sound.Crash, 0.7],
     ["audio/start.wav", Sound.Start, 0.55],
+    // A press while the game-over card holds: a quiet tick (og sfx's click).
+    ["audio/hold.ogt", Sound.Hold, 0.3],
   ];
   for (const [path, bit, volume] of voices) {
     const sound = og.load.sound(world, path);

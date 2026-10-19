@@ -8,7 +8,7 @@
 //! (straight alpha); `crate::style` converts them for the renderer.
 
 /// FNV-1a 64 of the token file this was generated from.
-pub const SOURCE_FNV1A64: u64 = 0xf4e9329d65961d3a;
+pub const SOURCE_FNV1A64: u64 = 0xe4ffc80fff9e3990;
 
 /// An sRGB colour as the tokens author it: 8-bit channels, straight alpha.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -124,7 +124,7 @@ pub const LIGHT: Palette = Palette {
     bg_subtle: Srgba { rgb: [0xe9, 0xe9, 0xee], alpha: 1.0 },
     border: Srgba { rgb: [0xdc, 0xdc, 0xe1], alpha: 1.0 },
     border_strong: Srgba { rgb: [0xc4, 0xc4, 0xc9], alpha: 1.0 },
-    danger: Srgba { rgb: [0xd7, 0x00, 0x15], alpha: 1.0 },
+    danger: Srgba { rgb: [0xb2, 0x00, 0x11], alpha: 1.0 },
     fg: Srgba { rgb: [0x18, 0x18, 0x1a], alpha: 1.0 },
     fg_inverse: Srgba { rgb: [0xfa, 0xfa, 0xfa], alpha: 1.0 },
     fg_muted: Srgba { rgb: [0x5f, 0x5f, 0x66], alpha: 1.0 },
@@ -173,7 +173,7 @@ pub const DARK: Palette = Palette {
     bg_subtle: Srgba { rgb: [0x11, 0x11, 0x13], alpha: 1.0 },
     border: Srgba { rgb: [0x38, 0x38, 0x3a], alpha: 1.0 },
     border_strong: Srgba { rgb: [0x54, 0x54, 0x58], alpha: 1.0 },
-    danger: Srgba { rgb: [0xff, 0x5a, 0x4f], alpha: 1.0 },
+    danger: Srgba { rgb: [0xff, 0x8a, 0x82], alpha: 1.0 },
     fg: Srgba { rgb: [0xf5, 0xf5, 0xf7], alpha: 1.0 },
     fg_inverse: Srgba { rgb: [0x18, 0x18, 0x1a], alpha: 1.0 },
     fg_muted: Srgba { rgb: [0xae, 0xae, 0xb2], alpha: 1.0 },

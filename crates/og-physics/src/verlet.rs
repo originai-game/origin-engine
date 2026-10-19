@@ -216,9 +216,10 @@ impl ClothState {
         dx.cross(dy).normalize_or_zero()
     }
 
-    /// One tick: integrate with gravity and a gusting wind pushed along the
-    /// local normal, then `iterations` passes of pins, links (structural
-    /// and shear, in a fixed order) and collisions.
+    /// One tick of `substeps` steps: integrate with gravity and a gusting
+    /// wind pushed along the local normal, then `iterations` passes of pins,
+    /// links (structural and shear, in a fixed order), self-collision (with
+    /// `thickness`) and collisions.
     #[allow(clippy::too_many_arguments)]
     pub fn step(
         &mut self,
@@ -233,38 +234,19 @@ impl ClothState {
     ) {
         let (cols, rows) = self.dims();
         let z = origin.z;
-        let keep = cloth.damping.clamp(0.0, 1.0);
+        let substeps = cloth.substeps.clamp(1, 16);
+        let ds = dt / substeps as f32;
+        // The velocity kept per tick, spread over the substeps.
+        let damping = cloth.damping.clamp(0.0, 1.0);
+        let keep = if substeps == 1 {
+            damping
+        } else {
+            og_core::math::pow(damping, 1.0 / substeps as f32)
+        };
         let g = gravity * cloth.gravity_scale;
         let wind = cloth.wind;
         let wind_len = wind.length();
-        let mut accel = vec![Vec3::ZERO; self.points.len()];
-        for y in 0..rows {
-            for x in 0..cols {
-                let i = (y * cols + x) as usize;
-                let mut a = g;
-                if wind_len > 0.0 {
-                    let w = wind * (1.0 + cloth.gust * gust(x, y, tick));
-                    // Wind pushes a surface along its normal, more when it faces the wind.
-                    let n = self.normal(x, y);
-                    let along = n * n.dot(w);
-                    a += along + w * 0.15;
-                }
-                accel[i] = a;
-            }
-        }
-        for y in 0..rows {
-            for x in 0..cols {
-                let i = (y * cols + x) as usize;
-                let p = self.points[i];
-                if pinned(self.pins, x, y, cols) {
-                    self.previous[i] = p;
-                    continue;
-                }
-                let v = (p - self.previous[i]) * keep;
-                self.previous[i] = p;
-                self.points[i] = planar(p + v + accel[i] * (dt * dt), flat, z);
-            }
-        }
+        let thickness = cloth.thickness.max(0.0);
         let s = cloth.spacing.max(0.001);
         let diag = s * std::f32::consts::SQRT_2;
         let radius = cloth.radius.max(0.0);
@@ -275,46 +257,203 @@ impl ClothState {
                 1.0
             }
         };
-        for _ in 0..cloth.iterations.clamp(1, 64) {
+        for _ in 0..substeps {
+            let mut accel = vec![Vec3::ZERO; self.points.len()];
             for y in 0..rows {
                 for x in 0..cols {
-                    if pinned(self.pins, x, y, cols) {
-                        self.points[(y * cols + x) as usize] =
-                            Self::rest(cloth, origin, rotation, x, y);
+                    let i = (y * cols + x) as usize;
+                    let mut a = g;
+                    if wind_len > 0.0 {
+                        let w = wind * (1.0 + cloth.gust * gust(x, y, tick));
+                        // Wind pushes a surface along its normal, more when it faces the wind.
+                        let n = self.normal(x, y);
+                        let along = n * n.dot(w);
+                        a += along + w * 0.15;
                     }
+                    accel[i] = a;
                 }
             }
             for y in 0..rows {
                 for x in 0..cols {
                     let i = (y * cols + x) as usize;
-                    if x + 1 < cols {
-                        satisfy(&mut self.points, i, i + 1, s, w(x, y), w(x + 1, y));
+                    let p = self.points[i];
+                    if pinned(self.pins, x, y, cols) {
+                        self.previous[i] = p;
+                        continue;
                     }
-                    if y + 1 < rows {
-                        let j = i + cols as usize;
-                        satisfy(&mut self.points, i, j, s, w(x, y), w(x, y + 1));
-                        if x + 1 < cols {
-                            satisfy(&mut self.points, i, j + 1, diag, w(x, y), w(x + 1, y + 1));
+                    let v = (p - self.previous[i]) * keep;
+                    self.previous[i] = p;
+                    let mut d = v + accel[i] * (ds * ds);
+                    // With self-collision a point moves at most half the
+                    // thickness a step, so it cannot jump through a layer.
+                    if thickness > 0.0 {
+                        let len = d.length();
+                        if len > thickness * 0.5 {
+                            d *= thickness * 0.5 / len;
                         }
-                        if x > 0 {
-                            satisfy(&mut self.points, i, j - 1, diag, w(x, y), w(x - 1, y + 1));
+                    }
+                    self.points[i] = planar(p + d, flat, z);
+                }
+            }
+            let near = if thickness > 0.0 {
+                self.near_pairs(thickness)
+            } else {
+                Vec::new()
+            };
+            for _ in 0..cloth.iterations.clamp(1, 64) {
+                for y in 0..rows {
+                    for x in 0..cols {
+                        if pinned(self.pins, x, y, cols) {
+                            self.points[(y * cols + x) as usize] =
+                                Self::rest(cloth, origin, rotation, x, y);
+                        }
+                    }
+                }
+                for y in 0..rows {
+                    for x in 0..cols {
+                        let i = (y * cols + x) as usize;
+                        if x + 1 < cols {
+                            satisfy(&mut self.points, i, i + 1, s, w(x, y), w(x + 1, y));
+                        }
+                        if y + 1 < rows {
+                            let j = i + cols as usize;
+                            satisfy(&mut self.points, i, j, s, w(x, y), w(x, y + 1));
+                            if x + 1 < cols {
+                                satisfy(&mut self.points, i, j + 1, diag, w(x, y), w(x + 1, y + 1));
+                            }
+                            if x > 0 {
+                                satisfy(&mut self.points, i, j - 1, diag, w(x, y), w(x - 1, y + 1));
+                            }
+                        }
+                    }
+                }
+                for &(i, j) in &near {
+                    let (xi, yi) = (i % cols, i / cols);
+                    let (xj, yj) = (j % cols, j / cols);
+                    separate(
+                        &mut self.points,
+                        i as usize,
+                        j as usize,
+                        thickness,
+                        w(xi, yi),
+                        w(xj, yj),
+                    );
+                }
+                if radius > 0.0 {
+                    for y in 0..rows {
+                        for x in 0..cols {
+                            if pinned(self.pins, x, y, cols) {
+                                continue;
+                            }
+                            let i = (y * cols + x) as usize;
+                            if let Some((p, _)) = solids.push_out(self.points[i], radius) {
+                                self.points[i] = planar(p, flat, z);
+                            }
                         }
                     }
                 }
             }
-            if radius > 0.0 {
-                for y in 0..rows {
-                    for x in 0..cols {
-                        if pinned(self.pins, x, y, cols) {
-                            continue;
-                        }
-                        let i = (y * cols + x) as usize;
-                        if let Some((p, _)) = solids.push_out(self.points[i], radius) {
-                            self.points[i] = planar(p, flat, z);
-                        }
+            // Friction: a point resting on a solid loses part of its slide.
+            let friction = cloth.friction.clamp(0.0, 1.0);
+            if friction > 0.0 && radius > 0.0 {
+                for (i, p) in self.points.iter().enumerate() {
+                    if let Some((_, n)) = solids.push_out(*p, radius * 1.05) {
+                        let v = *p - self.previous[i];
+                        let slide = v - n * n.dot(v);
+                        self.previous[i] += slide * friction;
                     }
                 }
             }
         }
     }
+
+    /// The pairs of points (i < j, in order) closer than 1.5 × `thickness`
+    /// whose rest distance is at least `thickness` (nearer neighbours are
+    /// held by the links), from a grid of cell `thickness` sorted by cell
+    /// and index.
+    fn near_pairs(&self, thickness: f32) -> Vec<(u32, u32)> {
+        let (cols, _) = self.dims();
+        let reach = thickness * 1.5;
+        let inv = 1.0 / reach;
+        let cell = |p: Vec3| {
+            (
+                (p.x * inv).floor() as i32,
+                (p.y * inv).floor() as i32,
+                (p.z * inv).floor() as i32,
+            )
+        };
+        let mut sorted: Vec<((i32, i32, i32), u32)> = self
+            .points
+            .iter()
+            .enumerate()
+            .map(|(i, p)| {
+                let (x, y, z) = cell(*p);
+                ((z, y, x), i as u32)
+            })
+            .collect();
+        sorted.sort_unstable();
+        let rest_far = |i: u32, j: u32| {
+            let (dx, dy) = (
+                (i % cols) as f32 - (j % cols) as f32,
+                (i / cols) as f32 - (j / cols) as f32,
+            );
+            self.spacing.max(0.001) * (dx * dx + dy * dy).sqrt() >= thickness
+        };
+        // The occupied cells, each a run of `sorted`; then per cell the runs
+        // of the 27 cells around it, searched once for all its points.
+        let mut cells: Vec<((i32, i32, i32), usize, usize)> = Vec::new();
+        for (k, &(key, _)) in sorted.iter().enumerate() {
+            match cells.last_mut() {
+                Some(c) if c.0 == key => c.2 = k + 1,
+                _ => cells.push((key, k, k + 1)),
+            }
+        }
+        let mut pairs = Vec::new();
+        let mut around: Vec<(usize, usize)> = Vec::with_capacity(27);
+        for &((cz, cy, cx), lo, hi) in &cells {
+            around.clear();
+            for dz in -1..=1 {
+                for dy in -1..=1 {
+                    for dx in -1..=1 {
+                        let key = (cz + dz, cy + dy, cx + dx);
+                        if let Ok(c) = cells.binary_search_by(|c| c.0.cmp(&key)) {
+                            around.push((cells[c].1, cells[c].2));
+                        }
+                    }
+                }
+            }
+            for &(_, i) in &sorted[lo..hi] {
+                let p = self.points[i as usize];
+                for &(a, b) in &around {
+                    for &(_, j) in &sorted[a..b] {
+                        if j > i
+                            && (self.points[j as usize] - p).length_squared() < reach * reach
+                            && rest_far(i, j)
+                        {
+                            pairs.push((i, j));
+                        }
+                    }
+                }
+            }
+        }
+        pairs.sort_unstable();
+        pairs
+    }
+}
+
+/// Pushes `a` and `b` apart to at least `thickness`, `wa`/`wb` their
+/// inverse masses (0 pinned).
+fn separate(points: &mut [Vec3], a: usize, b: usize, thickness: f32, wa: f32, wb: f32) {
+    let w = wa + wb;
+    if w <= 0.0 {
+        return;
+    }
+    let d = points[b] - points[a];
+    let len = d.length();
+    if len >= thickness || len <= 1e-9 {
+        return;
+    }
+    let k = (len - thickness) / (len * w);
+    points[a] += d * (k * wa);
+    points[b] -= d * (k * wb);
 }

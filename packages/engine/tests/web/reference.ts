@@ -25,6 +25,12 @@
 // --shots name@tick,... (the ticks its screenshots run at); the script runs
 // as it is and each shot is compared with <dir>/references/<tier>/<name>.png.
 //
+// --time <n> then drives n more frames after the last shot and reports the
+// wall time of each `frame` call (one tick, one render submitted: median and
+// p95) and of the n frames plus one capture, whose readback waits for the
+// GPU to finish them (the frame time with the GPU's work, amortised), in
+// reference-<tier>.json's `frameMs`.
+//
 // --record writes the frames as references/<tier>/ instead of comparing.
 // Writes <out>/<tier>/<station>.png, <station>.diff.rgba on a mismatch (raw
 // RGBA, differences x4, outliers red) and reference-<tier>.json (default
@@ -136,6 +142,9 @@ try {
   const failed = await tab.eval<string | undefined>("globalThis.__og_shell_error__");
   if (failed) throw new Error(`the engine did not start: ${failed}\n${(await tab.eval<string[]>("globalThis.__og_log__ ?? []")).slice(-20).join("\n")}`);
   result["renderer"] = await tab.eval<string>("__og_shell__.tier");
+  // The encodings the bundle's Basis textures reached the renderer in (bc7+bc5, astc4x4, etc2+eacrg11, rgba8).
+  result["textureFormat"] = await tab.eval<string | null>("__og_shell__.ready.textureFormat");
+  result["textures"] = await tab.eval<number>("__og_shell__.ready.textures");
   // A wrong argument through the Worker's call is answered with the probe's
   // error (it used to trap the wasm), and the same Worker runs the stations.
   const refused = await tab.eval<string>(`__og_shell__.call("probe", "commands", { script: ${JSON.stringify(SCRIPT)} }).then((v) => "answered " + JSON.stringify(v), (e) => String(e && e.message || e))`);
@@ -163,6 +172,29 @@ try {
     return tick;
   })()`);
   result["ticks"] = frames;
+  // The engine's own log (wgpu's validation errors land there).
+  result["engine"] = (await tab.eval<string[]>("globalThis.__og_log__ ?? []")).slice(-40);
+  const timed = Number(opt("--time") ?? 0);
+  if (timed > 0) {
+    const t = await tab.eval<{ each: number[]; total: number }>(`(async () => {
+      const shell = globalThis.__og_shell__;
+      const each = [];
+      const start = performance.now();
+      for (let i = 0; i < ${timed}; i++) {
+        const t = performance.now();
+        const answer = await shell.call("frame", 1000 / ${TICK_RATE});
+        if (!answer || answer.ok === false) throw new Error("frame refused: " + JSON.stringify(answer));
+        each.push(performance.now() - t);
+      }
+      await shell.probe("capture", { width: ${WIDTH}, height: ${HEIGHT} });
+      return { each, total: performance.now() - start };
+    })()`);
+    const sorted = [...t.each].sort((a, b) => a - b);
+    const at = (q: number) => +sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))]!.toFixed(2);
+    const frameMs = { frames: timed, median: at(0.5), p95: at(0.95), withGpu: +(t.total / timed).toFixed(2) };
+    result["frameMs"] = frameMs;
+    console.log(`frame time (${tier}, ${timed} frames after tick ${frames}): median ${frameMs.median} ms, p95 ${frameMs.p95} ms, ${frameMs.withGpu} ms each with the GPU's work (the frames and one capture)`);
+  }
   const shots = await tab.eval<Array<{ png: string; width: number; height: number; tick: number } | null>>("globalThis.__og_shots__");
   for (const [i, s] of STATIONS.entries()) {
     const shot = shots[i];

@@ -17,6 +17,7 @@ export default playtest({
     "2.2:place:crate:3",
     "3.6:dump_entity:runner:over.json",
     tap(3.65),
+    "3.69:dump_entity:sfx-16:held-sound.json",
     "3.75:dump_entity:runner:held.json",
     "4.0:screenshot:over.png",
     tap(4.6),
@@ -47,6 +48,8 @@ export default playtest({
 
     const held = runOf(run, "held.json");
     t.equal(held.phase, OVER, "a press during the card's hold does not restart");
+    const heard = run.json<{ components: Record<string, unknown> }>("held-sound.json");
+    t.ok("og.AudioPlayback" in heard.components, `but it is answered by the hold tick (sfx-16: ${Object.keys(heard.components).join(", ")})`);
 
     const again = runOf(run, "again.json");
     t.equal(again.phase, RUNNING, "a press after the hold starts round two");

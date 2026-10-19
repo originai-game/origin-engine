@@ -2,7 +2,7 @@
 //! light's stable cascades, the local lights' shadow views, frustum culling,
 //! and the frame uniform the lit shaders read (`shaders/frame.wgsl`).
 
-use crate::scene::{Camera, Light, LightKind, MAX_LIGHTS, Projection};
+use crate::scene::{Camera, Light, LightKind, Projection};
 use glam::{Mat4, Vec2, Vec3, Vec4};
 
 /// The most cascades of the directional light's shadow map (the uniform's array size).
@@ -16,10 +16,10 @@ const SPLIT_LAMBDA: f32 = 0.8;
 #[repr(C)]
 #[derive(Clone, Copy, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct LightGpu {
-    position_range: [f32; 4],
-    color_kind: [f32; 4],
-    direction_slot: [f32; 4],
-    cone: [f32; 4],
+    pub position_range: [f32; 4],
+    pub color_kind: [f32; 4],
+    pub direction_slot: [f32; 4],
+    pub cone: [f32; 4],
 }
 
 /// `struct Frame` in frame.wgsl: only vec4 and mat4 members, so the Rust and
@@ -36,15 +36,21 @@ pub(crate) struct FrameUniform {
     pub view_forward: [f32; 4],
     pub cascade_view_proj: [[[f32; 4]; 4]; CASCADES],
     pub cascade_bias: [[f32; 4]; CASCADES],
-    pub lights: [LightGpu; MAX_LIGHTS],
+    /// The light clusters' screen and depth mapping (`clusters.rs`).
+    pub cluster: [f32; 4],
     pub local_view_proj: [[[f32; 4]; 4]; LOCAL_SHADOW_LAYERS],
     /// Fog, the drawn sky's look and the clock (`atmosphere.rs`).
     pub atmosphere: crate::atmosphere::AtmosphereGpu,
+    /// The water's caustics: (height, strength, scale, fade), then the
+    /// surface's xz rectangle (`water.rs`).
+    pub caustics: [[f32; 4]; 2],
 }
 
 /// The camera's matrices for one frame.
 pub(crate) struct CameraFrame {
     pub view: Mat4,
+    /// The projection alone (no jitter).
+    pub proj: Mat4,
     /// Without jitter: culling, cascades, TAA reprojection.
     pub view_proj: Mat4,
     /// With the TAA jitter (equal to `view_proj` without TAA): rasterization.
@@ -84,6 +90,7 @@ pub(crate) fn camera_frame(cam: &Camera, aspect: f32, jitter_ndc: Vec2) -> Camer
     };
     CameraFrame {
         view,
+        proj,
         view_proj,
         jittered_view_proj,
         forward: (cam.target - cam.position).normalize_or(Vec3::NEG_Z),
@@ -311,16 +318,17 @@ fn local_near(range: f32) -> f32 {
     (range * 0.01).max(0.02)
 }
 
-/// The local lights' uniform entries and their shadow views. Lights beyond
-/// [`MAX_LIGHTS`] are dropped by the caller; the first `MAX_SHADOWED_LIGHTS`
+/// The records of the lights drawn (`kept`: scene indices, from the cluster
+/// build) and their shadow views: the first `MAX_SHADOWED_LIGHTS` of them
 /// with `cast_shadows` get a slot.
 pub(crate) fn local_lights(
     lights: &[Light],
+    kept: &[usize],
     shadow_size: u32,
-) -> ([LightGpu; MAX_LIGHTS], Vec<LocalShadow>) {
-    let mut gpu = [LightGpu::default(); MAX_LIGHTS];
+) -> (Vec<LightGpu>, Vec<LocalShadow>) {
+    let mut gpu = Vec::with_capacity(kept.len());
     let mut shadows = Vec::new();
-    for (i, light) in lights.iter().take(MAX_LIGHTS).enumerate() {
+    for light in kept.iter().map(|&i| &lights[i]) {
         let range = light.range.max(1e-3);
         let radiance = light.color * light.intensity;
         let mut slot = -1.0;
@@ -396,12 +404,12 @@ pub(crate) fn local_lights(
         // Normal offset per metre of distance: ~1.5 texels of a 90° face; the
         // depth bias in distance / range.
         let normal_offset = 3.0 / shadow_size as f32;
-        gpu[i] = LightGpu {
+        gpu.push(LightGpu {
             position_range: light.position.extend(range).to_array(),
             color_kind: radiance.extend(kind).to_array(),
             direction_slot: direction.extend(slot).to_array(),
             cone: [cone[0], cone[1], normal_offset, 0.002],
-        };
+        });
     }
     (gpu, shadows)
 }

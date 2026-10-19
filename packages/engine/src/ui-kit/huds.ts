@@ -195,7 +195,7 @@ export function idleHud(id: string, desc: Api.IdleHudDesc = {}): Api.HudResult {
         if (g.icon) iconOr("Icon", g.icon, 32, token("fg"));
         kit.column("Text", { width: grow(), gap: t.xxs }, () => {
           kit.row("Head", { gap: t.sm, cross: "center", width: grow() }, () => {
-            kit.label("Name", g.name ?? g.id ?? "", { nowrap: true, width: grow() });
+            kit.label("Name", g.name ?? g.id ?? "", { step: "lg", nowrap: true, width: grow() });
             kit.badge("Level", `Lv ${g.level ?? 0}`, "neutral");
           });
           kit.meter("Cycle", g.progress ?? 0, 1, { kind: "accent", height: 4, width: grow() });

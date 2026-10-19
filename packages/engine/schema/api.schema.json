@@ -1183,8 +1183,14 @@
         {
           "name": "MAX_LIGHTS",
           "type": "u32",
-          "value": 8,
-          "doc": "The most point and spot lights one frame draws."
+          "value": 256,
+          "doc": "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
+        },
+        {
+          "name": "MAX_CLUSTER_LIGHTS",
+          "type": "u32",
+          "value": 64,
+          "doc": "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
         }
       ],
       "functions": [
@@ -1381,7 +1387,7 @@
         },
         {
           "name": "shaderMaterial",
-          "doc": "Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. Skinned meshes draw it without the hooks; shadows and the depth prepass use the undisplaced mesh.",
+          "doc": "Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. The hooks apply to skinned meshes too, and shadows and the depth prepass (ambient occlusion, outlines, depth of field) see the mesh where vertex_offset moved it and cut where surface_color's alpha falls below alphaTest.",
           "params": [
             {
               "name": "world",
@@ -1407,6 +1413,33 @@
           "publish": true
         },
         {
+          "name": "setMaterialShader",
+          "doc": "Give an existing material a material shader, or take it away with null: a loaded model's material (GltfInfo.materials) draws its skinned or static meshes through the hooks, with the shader's parameters at their defaults. Every mesh drawn with that material changes.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the material."
+            },
+            {
+              "name": "material",
+              "type": "Material",
+              "optional": false,
+              "doc": "The material, from og.render.standardMaterial, og.render.shaderMaterial or a loaded glTF."
+            },
+            {
+              "name": "shader",
+              "type": "Option<Shader>",
+              "optional": false,
+              "doc": "The shader, or null to draw the material plain again."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for a dead material or a shader not loaded in this world.",
+          "publish": true
+        },
+        {
           "name": "setShaderParam",
           "doc": "Set a parameter of a shader material, by the name its shader declares: a number for float, two to four for vec2, vec3, vec4 and color.",
           "params": [
@@ -1420,7 +1453,7 @@
               "name": "material",
               "type": "Material",
               "optional": false,
-              "doc": "A material made by og.render.shaderMaterial."
+              "doc": "A material made by og.render.shaderMaterial or given a shader by og.render.setMaterialShader."
             },
             {
               "name": "name",
@@ -1876,6 +1909,27 @@
           "publish": true
         },
         {
+          "name": "rig",
+          "doc": "Load a cooked humanoid map (an `.ogt` of `type rig`: a naming scheme and bones named outright) for og.anim.retarget and og.anim.humanoid. Loading the same path again answers the same handle.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose animation uses it."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The rig's asset id, such as `rigs/strider.ogt`."
+            }
+          ],
+          "returns": "Result<Rig>",
+          "returnsDoc": "Refused for a path not in the bundle (run og cook) or a cook stamp mismatch.",
+          "publish": true
+        },
+        {
           "name": "flipbook",
           "doc": "Load a cooked flipbook sheet (an `.ogt` of `type flipbook`, with its Aseprite or TexturePacker atlas resolved by the cook) and its texture, and register it with og.flipbook. Loading the same path again answers the same handles.",
           "params": [
@@ -2051,6 +2105,12 @@
           "type": "u32",
           "value": 5,
           "doc": "Collider.shape: the triangles of `mesh` (3D only; for static and kinematic bodies)."
+        },
+        {
+          "name": "SHAPE_HEIGHTFIELD",
+          "type": "u32",
+          "value": 6,
+          "doc": "Collider.shape: the height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry)."
         },
         {
           "name": "PROFILE_2D",
@@ -2543,7 +2603,7 @@
     },
     {
       "name": "anim",
-      "doc": "Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics.\nGame code owns the components and sets players, graph parameters and IK targets; og.anim writes the pose (kept as world state in the `og.anim` state block, so snapshots, restore and the world hash cover it), the joint palette, root motion into og.Transform and the fields marked written. Asset handles are what og.load.animation and og.anim.graph answer; 0 is none.\nClips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names. Assets are not world state: a hot reload registers them again.",
+      "doc": "Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics.\nGame code owns the components and sets players, graph parameters and IK targets; og.anim writes the pose (kept as world state in the `og.anim` state block, so snapshots, restore and the world hash cover it), the joint palette, root motion into og.Transform and the fields marked written. Asset handles are what og.load.animation and og.anim.graph answer; 0 is none.\nClips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names; a rig with other names or proportions plays it retargeted (og.anim.retarget at run time, or a model's `animation { library }` import setting at cook time). Assets are not world state: a hot reload registers them again.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -2570,6 +2630,11 @@
         "ClipInfo",
         "Animation",
         "GraphDesc",
+        "Rig",
+        "HumanBone",
+        "Humanoid",
+        "HumanoidDesc",
+        "RetargetDesc",
         "FlipbookSheet",
         "FlipbookSheet",
         "FlipMode",
@@ -2599,6 +2664,48 @@
           ],
           "returns": "Result<GraphAsset>",
           "returnsDoc": "Refused for a parse error (the reason names the line), a clip name `clips` lacks, or an invalid graph.",
+          "publish": true
+        },
+        {
+          "name": "humanoid",
+          "doc": "The standard humanoid bones of a skeleton, as retargeting sees them: to check a rig before retargeting onto it.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose animation owns the skeleton."
+            },
+            {
+              "name": "desc",
+              "type": "HumanoidDesc",
+              "optional": true,
+              "doc": "The skeleton and its rig."
+            }
+          ],
+          "returns": "Result<Humanoid>",
+          "returnsDoc": "Refused for an unregistered skeleton or rig, or a rig naming a node the skeleton lacks.",
+          "publish": true
+        },
+        {
+          "name": "retarget",
+          "doc": "A new clip for `target` from a clip of `source`: each animated humanoid bone turns as the source's does from its rest pose (after a rest correction, so a T-pose drives an A-pose and other bone frames agree), the target keeps its bone lengths, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled. Same name, duration and markers. The cook does the same for a model's `animation { library }` import setting; this is for clips chosen at run time.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose animation owns the skeletons and the clip."
+            },
+            {
+              "name": "desc",
+              "type": "RetargetDesc",
+              "optional": true,
+              "doc": "The clip, the two skeletons and their rigs."
+            }
+          ],
+          "returns": "Result<ClipInfo>",
+          "returnsDoc": "The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip, skeleton or rig, a skeleton without recognisable hips (name them in a `type rig` file), or a rig naming a missing node.",
           "publish": true
         },
         {
@@ -4015,6 +4122,7 @@
         "LabelDesc",
         "ButtonDesc",
         "PanelDesc",
+        "ScrollAxes",
         "ScrollDesc",
         "ImageDesc",
         "ProgressDesc",
@@ -4031,6 +4139,8 @@
         "TypeStep",
         "ControlSizes",
         "UiTheme",
+        "RichTextDesc",
+        "RichTextResult",
         "Anchor",
         "TransitionKind",
         "Tone",
@@ -4073,6 +4183,8 @@
         "DpadResult",
         "ActionButtonDesc",
         "SkeletonDesc",
+        "A11yNode",
+        "A11yTree",
         "CounterDesc",
         "BurstDesc",
         "ShakeDesc",
@@ -4353,6 +4465,32 @@
           "returns": "Void",
           "publish": true,
           "host": false
+        },
+        {
+          "name": "richText",
+          "doc": "A paragraph of inline spans from markup, for a string-table message (og.i18n.t) so a translation carries its own emphasis: `[b]bold[/b]` (thickened in the distance field as far as it reaches, plus a second copy one device pixel right), `[color=danger]` or `[color=#ff8800]` (a ThemeColor follows the skin), `[size=xl]` (a TypeStepName), `[font=mono]`, `[icon=coin]` (a cell of the icon atlas, one em), `[link=shop]Open the shop[/link]` (accent ink, underlined, focusable by keys and pads; a child element `<id>/shop` of kind link for the probe) and per-glyph motion `[wave]`, `[shake]`, `[pulse]` (by the tick; still under reduced motion). `[[` is a literal bracket. Lines break between the spans' words (a word restyled mid-way stays whole), each as tall as its tallest span on one baseline. Markup it cannot read shows as text and logs a warning.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "markup",
+              "type": "String",
+              "optional": false,
+              "doc": "The markup."
+            },
+            {
+              "name": "desc",
+              "type": "RichTextDesc",
+              "optional": true,
+              "doc": "Defaults for its spans: type step, ink, alignment, wrapping, width and font."
+            }
+          ],
+          "returns": "RichTextResult",
+          "publish": true
         },
         {
           "name": "label",
@@ -5577,6 +5715,41 @@
           "publish": true
         },
         {
+          "name": "setPlayers",
+          "doc": "Local multiplayer: how many players this screen takes (1 to 4; 1 by default). Pads 1 to count - 1 each move a focus of their own among the same controls, shown as a ring in the player's colour (info, success, warn), and their A presses the control under it (Response.pad says which pad); pad 0 shares the one focus with the keyboard and the pointer, and Back and adjusting a slider stay pad 0's. Declare it every tick the screen shows; it takes effect from the next tick, and a dialog's focus scope holds every pad's focus inside it.",
+          "params": [
+            {
+              "name": "count",
+              "type": "u32",
+              "optional": false,
+              "doc": "Players, 1 to 4 (clamped)."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "focus",
+          "doc": "The path of the control pad pad's focus is on in the last frame (pad 0: the shared focus of the pointer, keyboard and pad 0), as touch_move_to resolves it; empty when it is on none.",
+          "params": [
+            {
+              "name": "pad",
+              "type": "u32",
+              "optional": false,
+              "doc": "The pad, 0 to 3; past 3 answers empty."
+            }
+          ],
+          "returns": "String",
+          "publish": true
+        },
+        {
+          "name": "a11y",
+          "doc": "The accessibility tree of the last frame: every element with a role, its name, value, states and bounds, and the focus order Tab walks. A shell mirrors it into the page for screen readers; a playtest reads the same fields on dump_ui's elements.",
+          "params": [],
+          "returns": "A11yTree",
+          "publish": true
+        },
+        {
           "name": "setNavigation",
           "doc": "Whether keyboard and gamepad navigation moves focus on this screen (on by default). A gameplay HUD whose keys move the player turns it off; an open dialog or menu turns it back on while it is open. Takes effect from the next tick.",
           "params": [
@@ -6676,6 +6849,187 @@
           ]
         }
       ],
+      "callbacks": []
+    },
+    {
+      "name": "terrain",
+      "doc": "Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.\nLoad it with og.terrain.load, then place it: an og.Terrain on an entity draws it centred on the entity's position (rotation and scale are ignored: terrain lies along world x and z), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere; og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are asset changes, like og.physics.setMesh: they are not world state, and a restored snapshot keeps the terrain as it is.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "TerrainData",
+        "TerrainData",
+        "TerrainBrushMode",
+        "Terrain",
+        "TerrainScatter",
+        "TerrainInfo",
+        "TerrainSampleDesc",
+        "TerrainSample",
+        "TerrainBounds",
+        "TerrainBrush",
+        "TerrainEdit",
+        "TerrainLayerDesc"
+      ],
+      "consts": [],
+      "functions": [
+        {
+          "name": "load",
+          "doc": "Load a cooked terrain (a `type terrain` .ogt under assets/) and its layers' textures, and register its height field with physics under TerrainInfo.geometry. Loading the same path again answers the same terrain.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The terrain file, such as `terrain/island.ogt`."
+            }
+          ],
+          "returns": "Result<TerrainInfo>",
+          "returnsDoc": "Refused for a path that is not a cooked terrain, or a layer texture that does not load.",
+          "publish": true
+        },
+        {
+          "name": "sample",
+          "doc": "The surface under a world point: its height, normal and slope. Callable inside systems (it reads the terrain, not the world).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "TerrainSampleDesc",
+              "optional": true,
+              "doc": "The terrain, where it stands and the point."
+            }
+          ],
+          "returns": "Result<TerrainSample>",
+          "returnsDoc": "Refused for an unknown terrain.",
+          "publish": true
+        },
+        {
+          "name": "bounds",
+          "doc": "A terrain's box in world space when it stands at `origin`.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "data",
+              "type": "TerrainData",
+              "optional": false,
+              "doc": "The terrain."
+            },
+            {
+              "name": "origin",
+              "type": "Vector3",
+              "optional": true,
+              "doc": "Where it stands."
+            }
+          ],
+          "returns": "Result<TerrainBounds>",
+          "returnsDoc": "Refused for an unknown terrain.",
+          "publish": true
+        },
+        {
+          "name": "edit",
+          "doc": "Change a terrain under a round brush: raise, lower, flatten or smooth its heights (the renderer, physics and og.terrain.sample see the change from the next frame and tick), or paint a layer into its control map (making one when it has none).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "data",
+              "type": "TerrainData",
+              "optional": false,
+              "doc": "The terrain."
+            },
+            {
+              "name": "brush",
+              "type": "TerrainBrush",
+              "optional": true,
+              "doc": "What to do and where."
+            }
+          ],
+          "returns": "Result<TerrainEdit>",
+          "returnsDoc": "Refused for an unknown terrain, a layer beyond its layers, or a brush that misses it.",
+          "publish": true
+        },
+        {
+          "name": "layer",
+          "doc": "A terrain's layer as it is now (for a tuning tool: read it, change it, setLayer it).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "data",
+              "type": "TerrainData",
+              "optional": false,
+              "doc": "The terrain."
+            },
+            {
+              "name": "index",
+              "type": "u32",
+              "optional": false,
+              "doc": "The layer, from 0."
+            }
+          ],
+          "returns": "Result<TerrainLayerDesc>",
+          "returnsDoc": "Refused for an unknown terrain or layer.",
+          "publish": true
+        },
+        {
+          "name": "setLayer",
+          "doc": "Replace a terrain's layer look and rules (its textures stay). Drawn from the next frame.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "data",
+              "type": "TerrainData",
+              "optional": false,
+              "doc": "The terrain."
+            },
+            {
+              "name": "index",
+              "type": "u32",
+              "optional": false,
+              "doc": "The layer, from 0."
+            },
+            {
+              "name": "layer",
+              "type": "TerrainLayerDesc",
+              "optional": true,
+              "doc": "The layer."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an unknown terrain or layer.",
+          "publish": true
+        }
+      ],
+      "interfaces": [],
       "callbacks": []
     }
   ],
@@ -9172,13 +9526,15 @@
         "webgpu",
         "webgl2",
         "vulkan",
+        "vulkan-cpu",
         "metal",
         "none"
       ],
       "x-og-variants": {
         "webgpu": "WebGPU in a browser: the full feature set.",
         "webgl2": "The WebGL2 fallback: no compute, CPU culling and particles, tiled lights.",
-        "vulkan": "Native Vulkan, on lavapipe or a GPU.",
+        "vulkan": "Native Vulkan on a GPU.",
+        "vulkan-cpu": "Native Vulkan on a CPU rasterizer (Mesa lavapipe or llvmpipe, SwiftShader): the executors' sandboxes. Frame times there say nothing about a player's GPU.",
         "metal": "Native Metal.",
         "none": "No renderer: frames are not produced and capture refuses."
       }
@@ -9227,7 +9583,7 @@
     "StandardMaterialDesc": {
       "x-og-kind": "desc",
       "x-og-module": "render",
-      "description": "A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names.\nIt is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front.\nThe stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults.",
+      "description": "A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names.\nIt is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front.\nThe stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults. clearcoat and clearcoatRoughness add MeshPhysicalMaterial's clear coat (no clearcoat maps).\nnormalMap is read in glTF's tangent frame: red tilts towards +u, green up the image. The tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly.",
       "type": "object",
       "properties": {
         "color": {
@@ -9504,6 +9860,22 @@
           "default": 0,
           "minimum": 0,
           "maximum": 31
+        },
+        "clearcoat": {
+          "type": "number",
+          "description": "A clear lacquer over the surface, as three.js MeshPhysicalMaterial.clearcoat: a second, 4 % reflective specular layer on the surface's normal before normalMap (car paint, varnished wood, wet plastic); 0 is none.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "clearcoatRoughness": {
+          "type": "number",
+          "description": "How rough the clear coat is, as three.js MeshPhysicalMaterial.clearcoatRoughness.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
         }
       },
       "additionalProperties": false
@@ -9599,7 +9971,7 @@
     "PointLight": {
       "x-og-kind": "component",
       "x-og-module": "render",
-      "description": "A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance.\nUp to MAX_LIGHTS point and spot lights are drawn per frame (the rest are counted, not drawn); the first two with castShadow get cube shadows.",
+      "description": "A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance.\nLights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. The first two in view with castShadow get cube shadows.",
       "type": "object",
       "properties": {
         "color": {
@@ -11467,7 +11839,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "How many point and spot lights one frame draws."
+          "description": "How many point and spot lights one frame draws (MAX_LIGHTS on every tier)."
         },
         "maxShadowedLights": {
           "type": "integer",
@@ -11881,10 +12253,10 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (3D).",
+          "description": "One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (3D), 6 the height field `mesh` (3D: a terrain).",
           "default": 0,
           "minimum": 0,
-          "maximum": 5,
+          "maximum": 6,
           "x-og-label": "Shape"
         },
         "size": {
@@ -11917,7 +12289,7 @@
         },
         "mesh": {
           "$ref": "#/$defs/Geometry",
-          "description": "The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh.",
+          "description": "The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh; for SHAPE_HEIGHTFIELD, a terrain's height field (og.terrain.load's TerrainInfo.geometry).",
           "default": 0
         },
         "offset": {
@@ -12031,12 +12403,11 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt.",
+          "description": "PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt. Set the other one at run time to change profile: the next step builds that profile's simulation from the components (contacts, joints' warm starts, ropes, cloth, fluids and ragdoll bodies start again), so a 3D game can play a 2D scene and back.",
           "default": 3,
           "minimum": 2,
           "maximum": 3,
-          "x-og-label": "Profile",
-          "readOnly": true
+          "x-og-label": "Profile"
         },
         "gravity": {
           "$ref": "#/$defs/Vector3",
@@ -13111,7 +13482,7 @@
     "Cloth": {
       "x-og-kind": "component",
       "x-og-module": "physics",
-      "description": "A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind and collision against every solid collider. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour).",
+      "description": "A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour).",
       "type": "object",
       "properties": {
         "columns": {
@@ -13200,6 +13571,31 @@
           "x-og-unit": "m",
           "x-og-tunable": true
         },
+        "thickness": {
+          "type": "number",
+          "description": "Self-collision: how far apart its points keep from the points of the cloth that are not their near neighbours (0: none). About `spacing` keeps a cloth that folds or piles up from passing through itself.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "substeps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Simulation steps per tick, each integrating and then solving `iterations` passes; with self-collision enough that a point moves less than `thickness` per step (a point moves at most half the thickness a step).",
+          "default": 1,
+          "minimum": 1,
+          "maximum": 16
+        },
+        "friction": {
+          "type": "number",
+          "description": "How much of its sliding a point touching a solid loses each step (0: it slides freely; near 1 it sticks where it lands, so a cloth lowered onto the floor folds instead of spreading).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
         "material": {
           "$ref": "#/$defs/Material",
           "description": "The material it is drawn with (og.render.standardMaterial); 0 is a plain cloth.",
@@ -13216,7 +13612,7 @@
     "Fluid2D": {
       "x-og-kind": "component",
       "x-og-module": "physics",
-      "description": "A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`.",
+      "description": "A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`.",
       "type": "object",
       "properties": {
         "count": {
@@ -13281,6 +13677,29 @@
           "default": 0.15,
           "minimum": 0,
           "maximum": 4,
+          "x-og-tunable": true
+        },
+        "group": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Fluids sharing a group above 0 push, drag and (by `mixing`) mix with each other as one fluid, at most four to a group (in entity order; a fifth is simulated alone), and are drawn as one surface whose colour follows the mix; 0 keeps the fluid to itself.",
+          "default": 0
+        },
+        "density": {
+          "type": "number",
+          "description": "How heavy its particles are against the group's other fluids: a heavier fluid sinks under a lighter one.",
+          "default": 1,
+          "minimum": 0.05,
+          "maximum": 20,
+          "x-og-tunable": true
+        },
+        "mixing": {
+          "type": "number",
+          "description": "How readily it mixes with the group's other fluids: 0 keeps them apart in layers (the boundary held), 1 blends them where they touch (their mix, colour and weight even out).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
           "x-og-tunable": true
         },
         "gravityScale": {
@@ -13530,7 +13949,7 @@
     "Ragdoll": {
       "x-og-kind": "component",
       "x-og-module": "physics",
-      "description": "A ragdoll over an og.Skeleton (3D): a capsule body per bone with a parent, ball joints with cone limits between them, built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state (the og.physics state block), not entities.",
+      "description": "A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy plane at their animated z, for a skeleton laid out in that plane), built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state (the og.physics state block), not entities.",
       "type": "object",
       "properties": {
         "weight": {
@@ -14239,6 +14658,49 @@
           "default": 1.1,
           "minimum": 0,
           "x-og-tunable": true
+        },
+        "moonSize": {
+          "type": "number",
+          "description": "The moon disc's angular radius (0: no moon). It sets below the horizon and hides the stars behind it.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 20,
+          "x-og-unit": "deg",
+          "x-og-tunable": true
+        },
+        "moonPhase": {
+          "type": "number",
+          "description": "How much of the moon is lit: 0 new, 0.25 the first quarter (its right half), 0.5 full, 0.75 the last quarter (its left half).",
+          "default": 0.5,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "moonIntensity": {
+          "type": "number",
+          "description": "The lit moon's brightness.",
+          "default": 1.4,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "moonColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The moon's colour.",
+          "default": {
+            "r": 0.9,
+            "g": 0.92,
+            "b": 1
+          }
+        },
+        "moonDirection": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Towards the moon; zero puts it opposite sunDirection.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
         }
       },
       "additionalProperties": false
@@ -14246,7 +14708,7 @@
     "DayNight": {
       "x-og-kind": "resource",
       "x-og-module": "atmosphere",
-      "description": "A day-night cycle: the time of day drives the sun's direction, the sky's colours and stars, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly.",
+      "description": "A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly.",
       "type": "object",
       "properties": {
         "enabled": {
@@ -14305,6 +14767,24 @@
           "default": 10,
           "minimum": 1,
           "maximum": 120,
+          "x-og-tunable": true
+        },
+        "moonSize": {
+          "type": "number",
+          "description": "The moon disc's angular radius, opposite the sun so it rises as the sun sets (0: no moon).",
+          "default": 1.6,
+          "minimum": 0,
+          "maximum": 20,
+          "x-og-unit": "deg",
+          "x-og-tunable": true
+        },
+        "moonPhase": {
+          "type": "number",
+          "description": "How much of the moon is lit: 0 new, 0.25 the first quarter, 0.5 full, 0.75 the last quarter.",
+          "default": 0.5,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
           "x-og-tunable": true
         }
       },
@@ -14385,7 +14865,7 @@
     "Water": {
       "x-og-kind": "component",
       "x-og-module": "atmosphere",
-      "description": "A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space where the tier allows, the sky's cubemap on WebGL2). With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated).",
+      "description": "A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space where the tier allows, the sky's cubemap on WebGL2, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated).",
       "type": "object",
       "properties": {
         "size": {
@@ -14493,6 +14973,57 @@
           "default": 1,
           "minimum": 0,
           "maximum": 2,
+          "x-og-tunable": true
+        },
+        "planarReflection": {
+          "type": "number",
+          "description": "Reflect the scene by drawing it again from the camera mirrored in the surface, at this fraction of the screen's resolution (0: off, the screen-space and sky reflections). One surface a frame, the first that asks; it costs about a second scene pass at that resolution.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "shadows": {
+          "type": "number",
+          "description": "How much the sun's shadows darken the surface: its highlight, foam and colour (0: none).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "underwaterColor": {
+          "$ref": "#/$defs/Color",
+          "description": "With the camera below the surface: the water's fog colour.",
+          "default": {
+            "r": 0.03,
+            "g": 0.16,
+            "b": 0.2
+          }
+        },
+        "underwaterDensity": {
+          "type": "number",
+          "description": "Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, and the surface seen from below shows the sky inside Snell's window.",
+          "default": 0.09,
+          "minimum": 0,
+          "maximum": 2,
+          "x-og-tunable": true
+        },
+        "caustics": {
+          "type": "number",
+          "description": "Caustics of the sunlight on everything below the surface (0: none). One surface a frame, the first that has them.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 4,
+          "x-og-tunable": true
+        },
+        "causticsScale": {
+          "type": "number",
+          "description": "The caustics' cells per metre.",
+          "default": 0.6,
+          "minimum": 0.01,
+          "maximum": 10,
           "x-og-tunable": true
         }
       },
@@ -15160,6 +15691,116 @@
           },
           "description": "The clips a `clip <motion> \"<name>\"` line may name, by ClipInfo.name: usually og.load.animation's `clips`.",
           "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "Rig": {
+      "x-og-kind": "handle",
+      "x-og-module": "anim",
+      "description": "A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow and the standard bones it names outright.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "HumanBone": {
+      "x-og-kind": "struct",
+      "x-og-module": "anim",
+      "description": "One standard humanoid bone of a skeleton.",
+      "type": "object",
+      "properties": {
+        "bone": {
+          "type": "string",
+          "description": "The standard bone: hips, spine, chest, upperChest, neck, head, then leftShoulder, leftUpperArm, leftLowerArm, leftHand, the right arm, leftUpperLeg, leftLowerLeg, leftFoot, leftToes and the right leg."
+        },
+        "node": {
+          "type": "string",
+          "description": "The skeleton node that is that bone."
+        }
+      },
+      "required": [
+        "bone",
+        "node"
+      ],
+      "additionalProperties": false
+    },
+    "Humanoid": {
+      "x-og-kind": "struct",
+      "x-og-module": "anim",
+      "description": "Which node of a skeleton is each standard humanoid bone (what retargeting maps).",
+      "type": "object",
+      "properties": {
+        "scheme": {
+          "type": "string",
+          "description": "The naming scheme the bones were read in: mixamo, vrm, unity, rigify, ue or blender; custom when a rig named them, none when nothing matched."
+        },
+        "bones": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/HumanBone"
+          },
+          "description": "The bones found, in the standard order (hips first)."
+        }
+      },
+      "required": [
+        "scheme",
+        "bones"
+      ],
+      "additionalProperties": false
+    },
+    "HumanoidDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "anim",
+      "description": "A skeleton and, optionally, the rig that says how its bones are named.",
+      "type": "object",
+      "properties": {
+        "skeleton": {
+          "$ref": "#/$defs/SkeletonAsset",
+          "description": "The skeleton (og.load.animation's `skeleton`).",
+          "default": 0
+        },
+        "rig": {
+          "$ref": "#/$defs/Rig",
+          "description": "A humanoid map from og.load.rig; 0 detects the bones from the node names (Mixamo, VRM, Unity, Rigify, Unreal or Blender names).",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "RetargetDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "anim",
+      "description": "A clip made for one skeleton, to play on another (other proportions, rest pose or bone names).",
+      "type": "object",
+      "properties": {
+        "clip": {
+          "$ref": "#/$defs/ClipAsset",
+          "description": "The clip, made for `source`.",
+          "default": 0
+        },
+        "source": {
+          "$ref": "#/$defs/SkeletonAsset",
+          "description": "The skeleton the clip was made for (og.load.animation's `skeleton`: a character's, or an animation library's).",
+          "default": 0
+        },
+        "target": {
+          "$ref": "#/$defs/SkeletonAsset",
+          "description": "The skeleton that will play it.",
+          "default": 0
+        },
+        "sourceRig": {
+          "$ref": "#/$defs/Rig",
+          "description": "How the source's bones are named (og.load.rig); 0 detects them.",
+          "default": 0
+        },
+        "targetRig": {
+          "$ref": "#/$defs/Rig",
+          "description": "How the target's bones are named; 0 detects them.",
+          "default": 0
+        },
+        "footIk": {
+          "type": "boolean",
+          "description": "Solve the legs so a planted foot stays planted on the target's ground (and the hips lower when a leg cannot reach).",
+          "default": true
         }
       },
       "additionalProperties": false
@@ -18078,7 +18719,7 @@
         "secondary": "A neutral fill (the default).",
         "primary": "The amber action: one per screen.",
         "quiet": "Text until hovered.",
-        "danger": "A destructive action: danger ink on a neutral fill."
+        "danger": "A destructive action: danger ink on the danger tint."
       }
     },
     "ControlSize": {
@@ -18576,6 +19217,11 @@
           "description": "Scroll its content vertically and clip it.",
           "default": false
         },
+        "scrollX": {
+          "type": "boolean",
+          "description": "Scroll its content horizontally and clip it (with scroll: both ways).",
+          "default": false
+        },
         "interactive": {
           "type": "boolean",
           "description": "Report a Response from close(), as a button does.",
@@ -18799,10 +19445,26 @@
       },
       "additionalProperties": false
     },
+    "ScrollAxes": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "Which ways a scroll container scrolls.",
+      "type": "string",
+      "enum": [
+        "vertical",
+        "horizontal",
+        "both"
+      ],
+      "x-og-variants": {
+        "vertical": "Up and down (the default).",
+        "horizontal": "Left and right.",
+        "both": "Both ways."
+      }
+    },
     "ScrollDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "A vertical scroll container: the wheel or a drag scrolls it, it clips its content, a capsule indicator shows the position.",
+      "description": "A scroll container: the wheel (both axes, deltaX and deltaY) or a drag scrolls it, and a released drag keeps its momentum, slowing over motion.spring.momentum's response (none under reduced motion); it clips its content; a scrollbar on each scrolling axis shows the position, and a press on one grabs and drags it. Nested containers hand off: what the innermost under the pointer cannot take (it reached its end, or does not scroll that way) goes to the one around it.",
       "type": "object",
       "properties": {
         "width": {
@@ -18844,6 +19506,11 @@
           "description": "Space between children.",
           "default": 0,
           "x-og-unit": "cssPx"
+        },
+        "axes": {
+          "$ref": "#/$defs/ScrollAxes",
+          "description": "Which ways it scrolls.",
+          "default": "vertical"
         }
       },
       "additionalProperties": false
@@ -19055,6 +19722,25 @@
             }
           ],
           "description": "A list row or grid cell a press started on was released over this one: that row's or cell's index (drag and drop)."
+        },
+        "pad": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The gamepad (0 to 3) whose A pressed it this tick; null when the pointer or the keyboard did. Pads 1 to 3 press only while og.ui.setPlayers allows them (local multiplayer)."
+        },
+        "focusedBy": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Bit k: pad k's focus is on it (bit 0 is the shared focus of the pointer, the keyboard and pad 0; bits 1 to 3 the other players' pads)."
         }
       },
       "required": [
@@ -19064,7 +19750,9 @@
         "changed",
         "focused",
         "submitted",
-        "dropped"
+        "dropped",
+        "pad",
+        "focusedBy"
       ],
       "additionalProperties": false
     },
@@ -19327,7 +20015,7 @@
               "type": "null"
             }
           ],
-          "description": "The pointer reaches a control.",
+          "description": "The pointer reaches a control, or keyboard or gamepad focus moves to one.",
           "default": null
         },
         "press": {
@@ -19339,7 +20027,7 @@
               "type": "null"
             }
           ],
-          "description": "A control is pressed.",
+          "description": "A control is pressed: by the pointer, Enter, Space or the gamepad's A.",
           "default": null
         },
         "open": {
@@ -19569,6 +20257,106 @@
         "sizes",
         "durationsMs",
         "skin"
+      ],
+      "additionalProperties": false
+    },
+    "RichTextDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "How a rich text paragraph draws: its defaults, which its markup's spans override.",
+      "type": "object",
+      "properties": {
+        "step": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TypeStepName"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The type step; null is body.",
+          "default": null
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The ink; null is fg.",
+          "default": null
+        },
+        "align": {
+          "$ref": "#/$defs/TextAlign",
+          "description": "How the lines align.",
+          "default": "start"
+        },
+        "nowrap": {
+          "type": "boolean",
+          "description": "Keep to one line (breaking only at `\\n`).",
+          "default": false
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null fits the text.",
+          "default": null
+        },
+        "font": {
+          "$ref": "#/$defs/FontRole",
+          "description": "Which font.",
+          "default": "body"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RichTextResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a rich text's links did this tick.",
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/$defs/Response",
+          "description": "Its links together: hovered while one is, clicked when one was."
+        },
+        "link": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The link clicked this tick: its `[link=…]` id."
+        },
+        "hovered": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The link under the pointer."
+        }
+      },
+      "required": [
+        "response",
+        "link",
+        "hovered"
       ],
       "additionalProperties": false
     },
@@ -21042,6 +21830,106 @@
       },
       "additionalProperties": false
     },
+    "A11yNode": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "One node of the accessibility tree: an element with a role (layout containers and spacers have none and are left out).",
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Its path, as touch_move_to and og.ui.focus name it."
+        },
+        "parent": {
+          "type": "string",
+          "description": "The path of the nearest node above it in the tree; empty at the top."
+        },
+        "role": {
+          "type": "string",
+          "description": "Its role (probe.UiElement.role): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, dialog, tooltip, separator, group."
+        },
+        "name": {
+          "type": "string",
+          "description": "Its accessible name: what a screen reader says it is."
+        },
+        "value": {
+          "type": "string",
+          "description": "Its value as text (a slider's number, a progress's percent, a field's text); empty for none."
+        },
+        "states": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Its states: disabled, focused, focusable, checked, selected, expanded, pressed, busy, offscreen (a scroll container cuts it out of view)."
+        },
+        "x": {
+          "type": "number",
+          "description": "Left edge of the whole element.",
+          "x-og-unit": "cssPx"
+        },
+        "y": {
+          "type": "number",
+          "description": "Top edge of the whole element.",
+          "x-og-unit": "cssPx"
+        },
+        "width": {
+          "type": "number",
+          "description": "Width.",
+          "x-og-unit": "cssPx"
+        },
+        "height": {
+          "type": "number",
+          "description": "Height.",
+          "x-og-unit": "cssPx"
+        }
+      },
+      "required": [
+        "path",
+        "parent",
+        "role",
+        "name",
+        "value",
+        "states",
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "additionalProperties": false
+    },
+    "A11yTree": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "The last frame's accessibility tree, built from the same nodes the UI draws and takes input on.",
+      "type": "object",
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/A11yNode"
+          },
+          "description": "The nodes, in tree order: the page, then each layer over it (a dialog after the page)."
+        },
+        "focusOrder": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The paths keyboard Tab and the pads visit, in order: the nodes marked focusable, within the topmost dialog while one is open."
+        },
+        "focused": {
+          "type": "string",
+          "description": "The path keyboard and pad 0's focus is on; empty for none."
+        }
+      },
+      "required": [
+        "nodes",
+        "focusOrder",
+        "focused"
+      ],
+      "additionalProperties": false
+    },
     "CounterDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
@@ -22409,6 +23297,17 @@
           ],
           "description": "The item bought this tick: take the price and grant it."
         },
+        "refused": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The item whose Buy was pressed this tick while the balance was short: the button shook with the error sound (og.ui.shake) and nothing was bought."
+        },
         "closed": {
           "type": "boolean",
           "description": "Close was pressed (or Back)."
@@ -22416,6 +23315,7 @@
       },
       "required": [
         "bought",
+        "refused",
         "closed"
       ],
       "additionalProperties": false
@@ -23021,7 +23921,7 @@
         },
         "message": {
           "type": "string",
-          "description": "What will happen.",
+          "description": "What will happen, as rich text markup (og.ui.richText: [b], [color=…], [icon=…]…), so a translation carries its own emphasis.",
           "default": ""
         },
         "confirmLabel": {
@@ -23081,7 +23981,7 @@
         },
         "message": {
           "type": "string",
-          "description": "The message.",
+          "description": "The message, as rich text markup (og.ui.richText).",
           "default": ""
         },
         "okLabel": {
@@ -23134,7 +24034,7 @@
         "touch_end": "`touch_end`: release the pointer.",
         "scroll": "`scroll:dx,dy`: scroll at the pointer.",
         "touch": "`touch:<id>:<down|move|up>:<x,y | ui id>`: a further touch (pointer 1 to 4) held while the pointer is busy elsewhere.",
-        "gamepad": "`gamepad:<a+b+...|->[:lx,ly[,rx,ry]][:lt,rt]`: set pad 0's whole state; `gamepad:off` disconnects it.",
+        "gamepad": "`gamepad:<a+b+...|->[@pad][:lx,ly[,rx,ry]][:lt,rt]`: set a pad's whole state (pad 0 unless `@1` to `@3` follows the buttons); `gamepad:off` disconnects it.",
         "key_down": "`key_down:<Key>`: hold a key by its code.",
         "key_up": "`key_up:<Key>`: release a key.",
         "type": "`type:<text>`: type text, one key press per character.",
@@ -24282,6 +25182,25 @@
           "type": "string",
           "description": "The text it shows, if any."
         },
+        "role": {
+          "type": "string",
+          "description": "Its accessibility role (og.ui.a11y): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, alert, dialog, tooltip, separator, group; empty for a presentational element (a layout container, a spacer)."
+        },
+        "name": {
+          "type": "string",
+          "description": "Its accessible name: its text, a name the widget gives it (an icon's name, a dialog's title, Decrease and Increase for a stepper's buttons), a control's own text gathered from its children, or else its id."
+        },
+        "value": {
+          "type": "string",
+          "description": "Its value as text: a slider's or stepper's number, a progress's or meter's amount, a field's text, a select's choice; empty for none."
+        },
+        "states": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Its states: disabled, focused, focusable (keys and pads reach it now, in this order), checked, selected, expanded, pressed, busy."
+        },
         "x": {
           "type": "number",
           "description": "Left edge.",
@@ -24310,6 +25229,10 @@
         "disabled",
         "clipped",
         "text",
+        "role",
+        "name",
+        "value",
+        "states",
         "x",
         "y",
         "width",
@@ -24526,6 +25449,501 @@
           "x-og-payload": "UiDump"
         }
       ]
+    },
+    "TerrainData": {
+      "x-og-kind": "handle",
+      "x-og-module": "terrain",
+      "description": "A loaded terrain: its heights, control map and layers.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "TerrainBrushMode": {
+      "x-og-kind": "enum",
+      "x-og-module": "terrain",
+      "description": "What og.terrain.edit does under its brush.",
+      "type": "string",
+      "enum": [
+        "raise",
+        "lower",
+        "flatten",
+        "smooth",
+        "paint"
+      ],
+      "x-og-variants": {
+        "raise": "Raise the heights by `strength` metres at the centre.",
+        "lower": "Lower them by `strength` metres at the centre.",
+        "flatten": "Pull them towards the brush centre's y, by `strength` (0 to 1) at the centre.",
+        "smooth": "Pull each towards its neighbours' mean, by `strength` (0 to 1) at the centre.",
+        "paint": "Paint `layer` into the control map, by `strength` (0 to 1) at the centre."
+      }
+    },
+    "Terrain": {
+      "x-og-kind": "component",
+      "x-og-module": "terrain",
+      "description": "Draws a loaded terrain centred on the entity's position, with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.",
+      "type": "object",
+      "properties": {
+        "data": {
+          "$ref": "#/$defs/TerrainData",
+          "description": "The terrain (og.terrain.load's TerrainInfo.data).",
+          "default": 0
+        },
+        "castShadows": {
+          "type": "boolean",
+          "description": "Cast the directional and local lights' shadows (it always receives them).",
+          "default": true
+        },
+        "lodSpacing": {
+          "type": "number",
+          "description": "The finest clipmap level's spacing (0: the terrain file's, or the samples' spacing).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 64,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "lodRing": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Quads per side of every clipmap level (0: the terrain file's, else 64; 16 to 256, rounded to a multiple of 4).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 256
+        }
+      },
+      "additionalProperties": false
+    },
+    "TerrainScatter": {
+      "x-og-kind": "component",
+      "x-og-module": "terrain",
+      "description": "Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies shrink to nothing over the outer `fade` of `distance`. The entity stands where the terrain does: the og.Terrain's entity itself, or a child of it at its origin. Drawn only: no colliders, and the copies are not entities.",
+      "type": "object",
+      "properties": {
+        "data": {
+          "$ref": "#/$defs/TerrainData",
+          "description": "The terrain (og.terrain.load's TerrainInfo.data).",
+          "default": 0
+        },
+        "geometry": {
+          "$ref": "#/$defs/Geometry",
+          "description": "The mesh, its origin at its root.",
+          "default": 0
+        },
+        "material": {
+          "$ref": "#/$defs/Material",
+          "description": "Its material.",
+          "default": 0
+        },
+        "layer": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The terrain layer that places it, 0 to 3.",
+          "default": 0,
+          "maximum": 3
+        },
+        "density": {
+          "type": "number",
+          "description": "Copies per square metre where the layer's weight is 1.",
+          "default": 2,
+          "minimum": 0,
+          "maximum": 400,
+          "x-og-tunable": true
+        },
+        "distance": {
+          "type": "number",
+          "description": "How far from the camera, along x and z, copies are placed.",
+          "default": 40,
+          "minimum": 0,
+          "maximum": 500,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "fade": {
+          "type": "number",
+          "description": "The outer part of `distance` over which copies shrink to nothing.",
+          "default": 0.3,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "minScale": {
+          "type": "number",
+          "description": "The smallest copy's uniform scale.",
+          "default": 0.8,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "maxScale": {
+          "type": "number",
+          "description": "The largest copy's uniform scale.",
+          "default": 1.2,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "align": {
+          "type": "number",
+          "description": "How far copies lean with the ground: 0 upright, 1 along its normal.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Another seed places the copies elsewhere.",
+          "default": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "TerrainInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "terrain",
+      "description": "A loaded terrain.",
+      "type": "object",
+      "properties": {
+        "data": {
+          "$ref": "#/$defs/TerrainData",
+          "description": "Its handle, for og.Terrain.data and this module's functions."
+        },
+        "geometry": {
+          "$ref": "#/$defs/Geometry",
+          "description": "The height field registered with physics under this handle: the mesh of an og.Collider of shape SHAPE_HEIGHTFIELD."
+        },
+        "size": {
+          "$ref": "#/$defs/Vector2",
+          "description": "Its extent along x and z, centred on its entity.",
+          "x-og-unit": "m"
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Height samples along x."
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Height samples along z."
+        },
+        "minHeight": {
+          "type": "number",
+          "description": "The lowest point above its entity.",
+          "x-og-unit": "m"
+        },
+        "maxHeight": {
+          "type": "number",
+          "description": "The highest.",
+          "x-og-unit": "m"
+        },
+        "layers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its material layers (up to 4)."
+        },
+        "collision": {
+          "type": "boolean",
+          "description": "Whether its terrain file asks for a collider (`collision`, default true)."
+        },
+        "castShadows": {
+          "type": "boolean",
+          "description": "Its terrain file's `castShadows`."
+        }
+      },
+      "required": [
+        "data",
+        "geometry",
+        "size",
+        "columns",
+        "rows",
+        "minHeight",
+        "maxHeight",
+        "layers",
+        "collision",
+        "castShadows"
+      ],
+      "additionalProperties": false
+    },
+    "TerrainSampleDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "terrain",
+      "description": "Where og.terrain.sample looks.",
+      "type": "object",
+      "properties": {
+        "data": {
+          "$ref": "#/$defs/TerrainData",
+          "description": "The terrain.",
+          "default": 0
+        },
+        "origin": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where it stands: its og.Terrain entity's position.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "x": {
+          "type": "number",
+          "description": "The world x.",
+          "default": 0,
+          "x-og-unit": "m"
+        },
+        "z": {
+          "type": "number",
+          "description": "The world z.",
+          "default": 0,
+          "x-og-unit": "m"
+        }
+      },
+      "additionalProperties": false
+    },
+    "TerrainSample": {
+      "x-og-kind": "struct",
+      "x-og-module": "terrain",
+      "description": "The terrain under a point.",
+      "type": "object",
+      "properties": {
+        "height": {
+          "type": "number",
+          "description": "The world y of the surface: the triangles drawn at the finest level and collided with.",
+          "x-og-unit": "m"
+        },
+        "normal": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The surface normal, smoothed between samples as the renderer shades it."
+        },
+        "slope": {
+          "type": "number",
+          "description": "The normal's angle from straight up.",
+          "x-og-unit": "deg"
+        },
+        "inside": {
+          "type": "boolean",
+          "description": "Whether the point is over the terrain (outside, the nearest edge answers)."
+        }
+      },
+      "required": [
+        "height",
+        "normal",
+        "slope",
+        "inside"
+      ],
+      "additionalProperties": false
+    },
+    "TerrainBounds": {
+      "x-og-kind": "struct",
+      "x-og-module": "terrain",
+      "description": "A terrain's box in world space.",
+      "type": "object",
+      "properties": {
+        "min": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The lowest corner.",
+          "x-og-unit": "m"
+        },
+        "max": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The highest corner.",
+          "x-og-unit": "m"
+        }
+      },
+      "required": [
+        "min",
+        "max"
+      ],
+      "additionalProperties": false
+    },
+    "TerrainBrush": {
+      "x-og-kind": "desc",
+      "x-og-module": "terrain",
+      "description": "One runtime edit of a terrain (og.terrain.edit).",
+      "type": "object",
+      "properties": {
+        "mode": {
+          "$ref": "#/$defs/TerrainBrushMode",
+          "description": "What it does.",
+          "default": "raise"
+        },
+        "origin": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where the terrain stands: its og.Terrain entity's position.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "center": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The brush's centre in world space; its y is flatten's target height.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "radius": {
+          "type": "number",
+          "description": "The brush's radius.",
+          "default": 8,
+          "minimum": 0.01,
+          "x-og-unit": "m"
+        },
+        "strength": {
+          "type": "number",
+          "description": "Metres at the centre (raise, lower), or how far to go, 0 to 1 (flatten, smooth, paint).",
+          "default": 1,
+          "minimum": 0
+        },
+        "falloff": {
+          "type": "number",
+          "description": "The outer part of the radius over which it fades to nothing (0: a hard edge, 1: fading from the centre).",
+          "default": 0.5,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "layer": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "paint: the layer painted, 0 to 3.",
+          "default": 0,
+          "maximum": 3
+        }
+      },
+      "additionalProperties": false
+    },
+    "TerrainEdit": {
+      "x-og-kind": "struct",
+      "x-og-module": "terrain",
+      "description": "What an edit changed.",
+      "type": "object",
+      "properties": {
+        "samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Height or control-map samples it touched."
+        },
+        "minHeight": {
+          "type": "number",
+          "description": "The terrain's lowest point now.",
+          "x-og-unit": "m"
+        },
+        "maxHeight": {
+          "type": "number",
+          "description": "Its highest now.",
+          "x-og-unit": "m"
+        }
+      },
+      "required": [
+        "samples",
+        "minHeight",
+        "maxHeight"
+      ],
+      "additionalProperties": false
+    },
+    "TerrainLayerDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "terrain",
+      "description": "One material layer of a terrain: its look and the rules that place it. A layer shows where its control-map channel (1 without a map) times its slope band times its altitude band is high; the layers' weights are normalised.",
+      "type": "object",
+      "properties": {
+        "color": {
+          "$ref": "#/$defs/Color",
+          "description": "Multiplies the layer's texture (linear).",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "roughness": {
+          "type": "number",
+          "description": "Its roughness.",
+          "default": 0.9,
+          "minimum": 0.04,
+          "maximum": 1
+        },
+        "tile": {
+          "type": "number",
+          "description": "Metres per repeat of its textures.",
+          "default": 4,
+          "minimum": 0.01,
+          "maximum": 1000,
+          "x-og-unit": "m"
+        },
+        "triplanar": {
+          "type": "boolean",
+          "description": "Sample by three projections blended by the normal (for cliffs).",
+          "default": false
+        },
+        "normalStrength": {
+          "type": "number",
+          "description": "How strongly its normal map bends the surface.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 4
+        },
+        "slopeMin": {
+          "type": "number",
+          "description": "The flattest slope it shows on.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 90,
+          "x-og-unit": "deg"
+        },
+        "slopeMax": {
+          "type": "number",
+          "description": "The steepest.",
+          "default": 90,
+          "minimum": 0,
+          "maximum": 90,
+          "x-og-unit": "deg"
+        },
+        "slopeFade": {
+          "type": "number",
+          "description": "How far past its slopes it fades out.",
+          "default": 4,
+          "minimum": 0,
+          "maximum": 90,
+          "x-og-unit": "deg"
+        },
+        "altitudeMin": {
+          "type": "number",
+          "description": "The lowest height above the terrain's origin it shows at.",
+          "default": -1000000,
+          "x-og-unit": "m"
+        },
+        "altitudeMax": {
+          "type": "number",
+          "description": "The highest.",
+          "default": 1000000,
+          "x-og-unit": "m"
+        },
+        "altitudeFade": {
+          "type": "number",
+          "description": "How far past its heights it fades out.",
+          "default": 4,
+          "minimum": 0,
+          "x-og-unit": "m"
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

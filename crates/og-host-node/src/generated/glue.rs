@@ -603,6 +603,12 @@ pub fn og_render_shader_material(env: Env, world: u32, shader: f64, desc: Option
     <Host as RenderApi>::og_render_shader_material(&Host, world, shader, desc)
 }
 
+#[napi(js_name = "og_render_set_material_shader")]
+pub fn og_render_set_material_shader(env: Env, world: u32, material: f64, shader: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_set_material_shader(&Host, world, material, shader)
+}
+
 #[napi(js_name = "og_render_set_shader_param")]
 pub fn og_render_set_shader_param(env: Env, world: u32, material: f64, name: String, value: String) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -729,6 +735,12 @@ pub fn og_load_animation(env: Env, world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_animation(&Host, world, path)
 }
 
+#[napi(js_name = "og_load_rig")]
+pub fn og_load_rig(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_rig(&Host, world, path)
+}
+
 #[napi(js_name = "og_load_flipbook")]
 pub fn og_load_flipbook(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -823,6 +835,18 @@ pub fn og_atmosphere_time_of_day(env: Env, world: u32) -> f64 {
 pub fn og_anim_graph(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as AnimApi>::og_anim_graph(&Host, world, desc)
+}
+
+#[napi(js_name = "og_anim_humanoid")]
+pub fn og_anim_humanoid(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as AnimApi>::og_anim_humanoid(&Host, world, desc)
+}
+
+#[napi(js_name = "og_anim_retarget")]
+pub fn og_anim_retarget(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as AnimApi>::og_anim_retarget(&Host, world, desc)
 }
 
 #[napi(js_name = "og_tween_to")]
@@ -1161,6 +1185,12 @@ pub fn og_ui_close(env: Env) -> String {
     <Host as UiApi>::og_ui_close(&Host)
 }
 
+#[napi(js_name = "og_ui_rich_text")]
+pub fn og_ui_rich_text(env: Env, id: String, markup: String, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_rich_text(&Host, id, markup, desc)
+}
+
 #[napi(js_name = "og_ui_label")]
 pub fn og_ui_label(env: Env, id: String, text: String, desc: Option<String>) {
     let _env = crate::EnvScope::enter(&env);
@@ -1461,6 +1491,24 @@ pub fn og_ui_back(env: Env) -> bool {
     <Host as UiApi>::og_ui_back(&Host)
 }
 
+#[napi(js_name = "og_ui_set_players")]
+pub fn og_ui_set_players(env: Env, count: u32) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_set_players(&Host, count)
+}
+
+#[napi(js_name = "og_ui_focus")]
+pub fn og_ui_focus(env: Env, pad: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_focus(&Host, pad)
+}
+
+#[napi(js_name = "og_ui_a11y")]
+pub fn og_ui_a11y(env: Env) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_a11y(&Host)
+}
+
 #[napi(js_name = "og_ui_set_navigation")]
 pub fn og_ui_set_navigation(env: Env, on: bool) {
     let _env = crate::EnvScope::enter(&env);
@@ -1687,4 +1735,40 @@ pub fn og_engine_probe_commands(env: Env, engine_probe: u32, script: String) -> 
 pub fn og_engine_probe_listen(env: Env, engine_probe: u32, seconds: Option<f64>) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as ProbeApi>::og_engine_probe_listen(&Host, engine_probe, seconds)
+}
+
+#[napi(js_name = "og_terrain_load")]
+pub fn og_terrain_load(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TerrainApi>::og_terrain_load(&Host, world, path)
+}
+
+#[napi(js_name = "og_terrain_sample")]
+pub fn og_terrain_sample(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TerrainApi>::og_terrain_sample(&Host, world, desc)
+}
+
+#[napi(js_name = "og_terrain_bounds")]
+pub fn og_terrain_bounds(env: Env, world: u32, data: f64, origin: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TerrainApi>::og_terrain_bounds(&Host, world, data, origin)
+}
+
+#[napi(js_name = "og_terrain_edit")]
+pub fn og_terrain_edit(env: Env, world: u32, data: f64, brush: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TerrainApi>::og_terrain_edit(&Host, world, data, brush)
+}
+
+#[napi(js_name = "og_terrain_layer")]
+pub fn og_terrain_layer(env: Env, world: u32, data: f64, index: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TerrainApi>::og_terrain_layer(&Host, world, data, index)
+}
+
+#[napi(js_name = "og_terrain_set_layer")]
+pub fn og_terrain_set_layer(env: Env, world: u32, data: f64, index: u32, layer: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TerrainApi>::og_terrain_set_layer(&Host, world, data, index, layer)
 }

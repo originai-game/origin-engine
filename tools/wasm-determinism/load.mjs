@@ -8,8 +8,10 @@ if (!file) {
   process.exit(2);
 }
 const { instance } = await WebAssembly.instantiate(readFileSync(file), {});
-const { math_digest, bouncing_boxes_hash } = instance.exports;
+const { math_digest, bouncing_boxes_hash, physics_hash, anim_hash } = instance.exports;
 // i64 results arrive as BigInt; printed unsigned, as Rust prints u64.
 const u64 = (v) => BigInt.asUintN(64, v).toString();
 console.log(`math_digest ${u64(math_digest())}`);
 console.log(`bouncing_boxes_hash ${u64(bouncing_boxes_hash())}`);
+console.log(`physics_hash ${u64(physics_hash())}`);
+console.log(`anim_hash ${u64(anim_hash())}`);

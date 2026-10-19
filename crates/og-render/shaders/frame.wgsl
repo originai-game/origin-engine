@@ -1,11 +1,11 @@
 // Per-frame bindings shared by the passes that draw into the HDR target
 // (pbr.wgsl, sky.wgsl, sprite.wgsl): the camera, the directional light and
-// its cascades, the local lights, the shadow maps and the image-based
-// lighting. The renderer prepends this file to those shaders; the Rust side
-// is `FrameUniform` in frame.rs.
+// its cascades, the shadow maps and the image-based lighting. The renderer
+// prepends this file to those shaders; the Rust side is `FrameUniform` in
+// frame.rs. The local lights and their clusters (bindings 7 to 9) are
+// declared after it in the lit shader only (clusters.rs).
 
 const CASCADES: u32 = 3u;
-const MAX_LIGHTS: u32 = 8u;
 const LOCAL_SHADOW_LAYERS: u32 = 12u;
 
 struct LocalLight {
@@ -21,11 +21,11 @@ struct Frame {
   view_pos: vec4<f32>,        // xyz: camera position, w: 1 orthographic, 0 perspective
   light_dir: vec4<f32>,       // xyz: towards the light, w: cascades in use (0: no shadows)
   light_color: vec4<f32>,     // rgb: radiance, w: debug view (1: cascades)
-  params: vec4<f32>,          // x: ibl intensity, y: prefiltered mips - 1, z: local lights, w: 1 / cascade map size
+  params: vec4<f32>,          // x: ibl intensity, y: prefiltered mips - 1, z: local lights drawn, w: 1 / cascade map size
   view_forward: vec4<f32>,    // xyz: camera forward, w: 1 / local shadow map size
   cascade_view_proj: array<mat4x4<f32>, 3>,
   cascade_bias: array<vec4<f32>, 3>,    // x: normal offset (world), y: depth bias (normalized), z: slice far (view depth), w: unused
-  lights: array<LocalLight, 8>,
+  cluster: vec4<f32>,         // x, y: clusters per pixel across and down, z, w: depth slice scale and bias (of log2 depth in perspective)
   local_view_proj: array<mat4x4<f32>, 12>,
   // The atmosphere (`AtmosphereGpu` in atmosphere.rs).
   fog_color: vec4<f32>,       // rgb: colour, w: 1 when fog is on
@@ -38,7 +38,12 @@ struct Frame {
   sky_sun: vec4<f32>,         // x: disc outer cos, y: inner cos, z: disc intensity, w: glow
   sky_glow: vec4<f32>,        // x: glow power, yzw: sun colour
   sky_sun_dir: vec4<f32>,     // xyz: towards the drawn sun
+  sky_moon: vec4<f32>,        // xyz: towards the moon, w: its angular radius (0: none)
+  sky_moon_look: vec4<f32>,   // rgb: the lit moon's colour, w: phase (0 new, 0.5 full)
   time: vec4<f32>,            // x: seconds, y: tick, z: ticks per second
+  // Water (`water.rs`): caustics on what lies below the first surface that has them.
+  caustics: vec4<f32>,        // x: the surface's height, y: strength (0: none), z: cells per metre, w: fade per metre of depth
+  caustics_area: vec4<f32>,   // xy: the surface's min xz, zw: its max xz
 };
 
 @group(0) @binding(0) var<uniform> frame: Frame;
@@ -93,9 +98,52 @@ fn fog_keep(p: vec3<f32>) -> f32 {
   return 1.0 - fog_amount(p).a;
 }
 
+// A darker patch of the moon (a mare) at `c` of radius `r` on the disc.
+fn moon_mare(q: vec2<f32>, c: vec2<f32>, r: f32) -> f32 {
+  return 1.0 - smoothstep(0.2 * r, r, length(q - c));
+}
+
+// The moon in direction `d`: rgb the light it adds, a its coverage (it
+// hides the stars behind it). A disc lit by its phase from the right
+// (waxing) or the left (waning), darker maria, a faint earthshine on the
+// dark side and a halo; set below the horizon.
+fn moon_at(d: vec3<f32>, up: f32) -> vec4<f32> {
+  let radius = frame.sky_moon.w;
+  if (radius <= 0.0) { return vec4<f32>(0.0); }
+  let m = normalize(frame.sky_moon.xyz);
+  let cos_m = dot(d, m);
+  if (cos_m <= 0.0) { return vec4<f32>(0.0); }
+  var right = cross(m, vec3<f32>(0.0, 1.0, 0.0));
+  if (dot(right, right) < 1e-6) { right = vec3<f32>(1.0, 0.0, 0.0); }
+  right = normalize(right);
+  let top = cross(right, m);
+  // On the disc: -1..1 across its radius.
+  let q = vec2<f32>(dot(d, right), dot(d, top)) / sin(radius);
+  let r = length(q);
+  let above = smoothstep(-0.004, 0.004, up);
+  let coverage = (1.0 - smoothstep(0.92, 1.0, r)) * above;
+  let theta = frame.sky_moon_look.w * 6.2831853;
+  let lit_fraction = 0.5 - 0.5 * cos(theta);
+  // The halo: a few radii of scattered moonlight, as bright as the moon is
+  // full, gone with the moon below the horizon.
+  let halo = exp(-max(r - 1.0, 0.0) * 1.5) * 0.012 * lit_fraction * above * smoothstep(-0.02, 0.02, m.y);
+  if (coverage <= 0.0) { return vec4<f32>(frame.sky_moon_look.rgb * halo, 0.0); }
+  // The sphere facing the viewer, lit from (sin theta, 0, -cos theta).
+  let n = vec3<f32>(q, sqrt(max(1.0 - dot(q, q), 0.0)));
+  let l = vec3<f32>(sin(theta), 0.0, -cos(theta));
+  let lit = smoothstep(-0.05, 0.05, dot(n, l)) * (0.72 + 0.28 * n.z);
+  let maria = min(0.3 * moon_mare(q, vec2<f32>(-0.32, 0.28), 0.42)
+    + 0.24 * moon_mare(q, vec2<f32>(0.2, 0.14), 0.32)
+    + 0.26 * moon_mare(q, vec2<f32>(0.02, -0.4), 0.34)
+    + 0.18 * moon_mare(q, vec2<f32>(-0.5, -0.12), 0.22)
+    + 0.16 * moon_mare(q, vec2<f32>(0.4, 0.5), 0.2), 0.42);
+  let light = frame.sky_moon_look.rgb * (lit * (1.0 - maria) + 0.012);
+  return vec4<f32>(light * coverage + frame.sky_moon_look.rgb * halo, coverage);
+}
+
 // The procedural sky of a chosen look in direction `d` (sky_* fields): a
-// zenith to horizon gradient, dark ground, the sun disc with its glow, and
-// stars where the sky is dark.
+// zenith to horizon gradient, dark ground, the sun disc with its glow,
+// stars where the sky is dark, and the moon over them.
 fn sky_look(d: vec3<f32>) -> vec3<f32> {
   let sun = normalize(frame.sky_sun_dir.xyz);
   let up = clamp(d.y, -1.0, 1.0);
@@ -105,6 +153,7 @@ fn sky_look(d: vec3<f32>) -> vec3<f32> {
   let glow = pow(max(cos_sun, 0.0), max(frame.sky_glow.x, 1.0)) * frame.sky_sun.w;
   let disc = smoothstep(frame.sky_sun.x, frame.sky_sun.y, cos_sun) * frame.sky_sun.z;
   var color = sky * frame.sky_horizon.w + frame.sky_glow.yzw * (glow + disc);
+  let moon = moon_at(d, up);
   if (frame.sky_ground.w > 0.0 && up > 0.0) {
     // Stars: a hashed grid of points on the sky, dimmed by the sky's brightness.
     let g = d * 220.0;
@@ -113,7 +162,7 @@ fn sky_look(d: vec3<f32>) -> vec3<f32> {
     let f = fract(g) - 0.5;
     let star = smoothstep(0.985, 1.0, h) * smoothstep(0.32, 0.0, length(f));
     let dark = 1.0 - clamp(dot(sky, vec3<f32>(0.2126, 0.7152, 0.0722)) * 4.0, 0.0, 1.0);
-    color += vec3<f32>(star * frame.sky_ground.w * dark * 3.0) * smoothstep(0.0, 0.15, up);
+    color += vec3<f32>(star * frame.sky_ground.w * dark * 3.0) * smoothstep(0.0, 0.15, up) * (1.0 - moon.a);
   }
-  return color;
+  return color + moon.rgb;
 }

@@ -11,12 +11,19 @@ atmosphere, weather, water, material shaders and the physics beyond rigid
 bodies, each with its own playtest. An E5 station's world is built when it
 is first shown (a marker entity `e5-<station>` records it), so a run that
 never shows one never simulates its fluid, cloth, ropes and ragdoll.
+Phase 2 adds the `terrain` station (`src/p2.ts`), built the same way, and
+the animation and physics round four more (`src/anim-physics.ts`):
+retargeting, a 2D ragdoll, cloth that folds on itself and fluids that
+layer and blend. The
+render round adds four more the same way (`src/render.ts`): lights, moon,
+materials and skinned.
 
 ```sh
 og run templates/fx-showcase                        # the window
 og test templates/fx-showcase                       # the playtest below
 OG_FX_CAPTURE=1 og test templates/fx-showcase       # re-record this tier's references
 python3 templates/fx-showcase/tools/make-assets.py templates/fx-showcase/assets   # regenerate textures and the LUT
+python3 templates/fx-showcase/tools/make-terrain.py templates/fx-showcase/assets  # regenerate the valley's maps and layer textures
 ```
 
 ## What it demonstrates, and the skills it exercises
@@ -26,7 +33,7 @@ and the physics beyond rigid bodies, each declared from TypeScript as data
 and proved by a reference frame on four tiers: og-game §9 (the walker's
 clip, blendshapes, the ragdoll that follows its walk), §10 (post, particles,
 trails and beams, decals, 2D lighting, materials, the HUD layer), §11 (fog,
-sky, day and night, weather, water), §12 (a dissolve and wind-swayed grass in
+sky, day and night, weather, water, terrain), §12 (a dissolve and wind-swayed grass in
 WGSL) and §13 (joints, a character controller, a vehicle, ropes, cloth, a 2D
 fluid, a ragdoll); og-taste §8 for the looks; og-build §3, §4 for the frames
 as evidence. `og polish .` (2026-10-19): taste 100, feel 97.
@@ -47,6 +54,15 @@ as evidence. `og polish .` (2026-10-19): taste 100, feel 97.
 | `joints` | `og.Joint`: a motorised hinge, a chain of ball joints, a spring; the walker as an `og.Ragdoll` (rig from its skeleton) going limp from its walk at 0.67 s |
 | `rope` | `og.Rope` drawn to a ball on a rope joint, a slack rope in the wind, two `og.Cloth` flags in gusts (pinned on the top edge and at the top corners) |
 | `fluid` | an orthographic view of `og.Fluid2D` water and a viscous orange fluid drawn as metaballs in a basin, and an `og.WaterLine` pond drawn by `og.Water2D` where a dropped crate floats |
+| `terrain` | `terrain/valley.ogt`, a 256 m valley loaded with `og.terrain.load` and drawn by `og.Terrain` as a clipmap: grass, a path painted in the control map, triplanar rock on every slope steeper than 32° and sand below the shore by altitude, blended by the layers' heights; a lake (`og.Water` with `planarReflection` 0.5, `shadows` and `caustics`) mirroring the mountain behind it; a character (`og.CharacterController` on a `SHAPE_HEIGHTFIELD` collider) walking the path up a knoll, its ground read with `og.terrain.sample` |
+| `retarget` | one walk from `anims/humanoid-clips.glb` on three characters of other proportions and bone names: the walker (Blender names) and the stout (Unreal names) retargeted at run time with `og.anim.retarget`, the strider (Mixamo names, `rigs/strider.ogt`) by the cook from `models/strider.glb.ogt`'s `animation { library }`; each strides at its legs' length with its feet planted (foot IK) |
+| `ragdoll2d` | a 2D world (`og.Physics.profile` 2): the side-on `models/puppet2d.glb` walks on a ledge, then goes limp as an `og.Ragdoll` of rapier2d bones on hinges about z and is knocked off it |
+| `cloth` | an `og.Cloth` sheet with `thickness` (self-collision), `substeps` and `friction`, lowered onto the floor while its bar sweeps back and forth, laid in folds layer on layer without passing through itself |
+| `fluids` | eight `og.Fluid2D` in one frame: a heavy blue fluid (`density` 3) released beside a light orange one slides under it (one `group`, `mixing` 0), red poured on yellow blends into one orange (`mixing` 1), and four cups of lone fluids |
+| `lights` | a night plaza under 256 `og.PointLight` and `og.SpotLight` entities in many hues, drawn by Forward+ clustered lighting (every light shades only its cluster's pixels) |
+| `moon` | `og.DayNight` at 21:00 with `moonSize` 2.2 and `moonPhase` 0.36: a waxing gibbous moon over the rooftops of a square, moonlit, with stars around it |
+| `materials` | every `StandardMaterialDesc` feature from TypeScript: metalness and roughness rows, emissive, `textures/bumps.png` as a normal map (glTF's frame), clearcoat glossy and rough, `textures/grille.png` cut by `alphaTest`, transparent glass, a double-sided panel, unlit, a squashed sphere (normals under a non-uniform scale) |
+| `skinned` | the walker with `shaders/ripple.ogt` set on its loaded materials by `og.render.setMaterialShader`: gold bands rippling up its skinned body as it walks |
 
 `tests/frames.og.ts` shows each station, waits for its effects (TAA,
 particles) to settle, takes its frame at 1280×720 and compares it with
@@ -59,14 +75,14 @@ on Mesa lavapipe (CI's tier), in the platform's E2B sandbox or a local linux/amd
 `dump_entity:stage` reads the `Stage` component (the station and how many
 ticks it has been shown).
 
-Each E5 station has its playtest, `tests/<station>.og.ts` (`tests/station.ts`):
+Each E5 and phase 2 station has its playtest, `tests/<station>.og.ts` (`tests/station.ts`):
 the station shown at 0.5 s in a fresh run, its frame taken after it has run
 (and one half a second earlier), compared with `references/<tier>/<station>.png`,
 and checks of what it shows from dumped entities and the two frames (the
 crate floats, the character rides the lift, the hinge turned and the ragdoll
 blended to its bones, the ball stays within its rope's reach, rain and
 flags move). `OG_FX_CAPTURE=water.png og test .` records named frames only.
-The E5 stations have references on all four tiers: `metal`, `vulkan-cpu`
+The E5 and phase 2 stations have references on all four tiers: `metal`, `vulkan-cpu`
 (lavapipe in the og-lavapipe container, reproduced at RMSE 0) and the browser
 tiers `webgpu` and `webgl2`, which come from
 `packages/engine/tests/web/reference-e5.ts` (`docs/ci.md` §Browser reference

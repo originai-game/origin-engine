@@ -1,0 +1,23 @@
+type particles
+version 1
+---
+# A tap: a handful of sparks thrown out from where the finger landed.
+maxParticles 40
+shape point
+spread 180
+burst 0 12
+duration 0.1
+lifetime 0.3 0.55
+speed 2 4.2
+size 0.1 0.2
+sizeOverLife 0 1 1 0
+colorOverLife {
+  key 0 1 0.92 0.6 1
+  key 0.5 1 0.62 0.2 0.9
+  key 1 0.9 0.3 0.1 0
+}
+gravity 0 -3 0
+drag 2.5
+texture "sprites/spark.png"
+blend additive
+render sprite 20

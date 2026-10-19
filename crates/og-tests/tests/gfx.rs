@@ -218,13 +218,16 @@ fn local_lights_cast_shadows() {
     assert!(darker > 10_000, "only {darker} shadowed pixels");
 }
 
-/// Lights beyond the eighth are not drawn and are reported.
+/// Visible lights beyond MAX_LIGHTS (256) are not drawn and are reported.
 #[test]
 fn lights_beyond_the_limit_are_counted() {
     let mut scene = scenes::dim_scene(1.0);
-    scene.lights = vec![Light::default(); 10];
+    scene.lights = vec![Light::default(); og_render::MAX_LIGHTS + 4];
     let (_, stats) = frame(&scenes::base_desc(), &scene, 1);
-    assert_eq!((stats.lights, stats.lights_dropped), (8, 2));
+    assert_eq!(
+        (stats.lights, stats.lights_dropped, stats.lights_culled),
+        (og_render::MAX_LIGHTS as u32, 4, 0)
+    );
 }
 
 #[test]

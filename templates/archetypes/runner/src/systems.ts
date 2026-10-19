@@ -112,7 +112,12 @@ export const Director = defineSystem(
     }
     // The title scrolls the city slowly; the game-over card holds the world still.
     run.speed[i] = phase === Phase.Title ? 1.5 : 0;
-    if (!go || (phase === Phase.Over && run.phaseTicks[i]! < OVER_HOLD)) return;
+    if (!go) return;
+    if (phase === Phase.Over && run.phaseTicks[i]! < OVER_HOLD) {
+      // The card holds, but the press is heard: never ignore an input silently.
+      ask(world, Sound.Hold);
+      return;
+    }
     run.phase[i] = Phase.Running;
     run.phaseTicks[i] = 0;
     run.speed[i] = tune.speed[i]!;

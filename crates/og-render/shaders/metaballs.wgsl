@@ -1,8 +1,9 @@
 // 2D fluid as metaballs (the E5 round): each particle is drawn through the
-// sprite quad as a soft kernel added into one channel of a field target
-// (up to four fluids a frame), then the fluid is composited in the sprite
-// order by a threshold over that channel: an antialiased edge, a body
-// that deepens where the field is dense, a bright rim inside the edge.
+// sprite quad as a soft kernel added into channels of a field target (its
+// fluid's, or by its mix its group's), then each surface is composited in
+// the sprite order by a threshold over the sum of its channels: an
+// antialiased edge, a body that deepens where the field is dense and takes
+// its fluids' colours by their share there, a bright rim inside the edge.
 // Prepended by frame.wgsl.
 
 struct BlobIn {
@@ -39,10 +40,10 @@ fn fs_field(in: BlobOut) -> @location(0) vec4<f32> {
 }
 
 struct Fluid {
-  color: vec4<f32>,      // linear rgba of the body
-  rim: vec4<f32>,        // rgb: rim colour, w: rim width (field units)
-  channel: vec4<f32>,
-  params: vec4<f32>,     // x: threshold, y: 1/w, z: 1/h
+  colors: array<vec4<f32>, 4>,  // per channel, the linear rgba of its fluid's body
+  rim: vec4<f32>,               // rgb: rim colour, w: rim width (field units)
+  channel: vec4<f32>,           // the surface's channels
+  params: vec4<f32>,            // x: threshold, y: 1/w, z: 1/h, w: 1 for one fluid (colors[0])
 };
 
 @group(1) @binding(0) var field: texture_2d<f32>;
@@ -62,14 +63,21 @@ fn vs_composite(@builtin(vertex_index) vi: u32) -> FullOut {
 
 @fragment
 fn fs_composite(in: FullOut) -> @location(0) vec4<f32> {
-  let f = dot(textureLoad(field, vec2<i32>(in.clip.xy), 0), fluid.channel);
+  let raw = textureLoad(field, vec2<i32>(in.clip.xy), 0) * fluid.channel;
+  let f = raw.x + raw.y + raw.z + raw.w;
   let th = fluid.params.x;
   let aa = max(fwidth(f), 1e-4);
   let alpha = smoothstep(th - aa, th + aa, f);
   if (alpha <= 0.0) { discard; }
   let depth = clamp((f - th) / max(th * 3.0, 1e-4), 0.0, 1.0);
-  var c = fluid.color.rgb * (1.15 - 0.4 * depth);
+  // One fluid: its colour; a group: its fluids' colours by their share.
+  var body = fluid.colors[0];
+  if (fluid.params.w < 0.5) {
+    body = (fluid.colors[0] * raw.x + fluid.colors[1] * raw.y + fluid.colors[2] * raw.z
+      + fluid.colors[3] * raw.w) / max(f, 1e-6);
+  }
+  var c = body.rgb * (1.15 - 0.4 * depth);
   let rim = 1.0 - smoothstep(th, th + fluid.rim.w, f);
   c = mix(c, fluid.rim.rgb, rim * 0.85);
-  return vec4<f32>(c, alpha * fluid.color.a);
+  return vec4<f32>(c, alpha * body.a);
 }

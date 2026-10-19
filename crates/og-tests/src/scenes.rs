@@ -49,9 +49,21 @@ pub const SCENES: &[&str] = &[
     "water-3d",
     "water-2d",
     "fluid-2d",
+    "fluid-groups",
     "shader-hooks",
     "weather-rain",
     "weather-snow",
+    "terrain-near",
+    "terrain-mid",
+    "terrain-far",
+    "water-planar",
+    "water-shadows",
+    "water-underwater",
+    "terrain-grass",
+    "lights-256",
+    "atmosphere-moon",
+    "materials",
+    "skinned-hooks",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -247,8 +259,21 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "water-3d" => g.scene = crate::atmo_scenes::water_scene(),
         "water-2d" => g.scene = crate::atmo_scenes::water_2d_scene(),
         "fluid-2d" => g.scene = crate::atmo_scenes::fluid_2d_scene(),
+        // Phase 2: ten fluids a frame, two groups (blended, layered).
+        "fluid-groups" => g.scene = crate::atmo_scenes::fluid_groups_scene(),
         // Material shader hooks: dissolve by noise, wind-swayed grass.
         "shader-hooks" => g.scene = crate::atmo_scenes::hooks_scene(45),
+        // Phase 2: 256 point and spot lights over a night plaza (Forward+).
+        "lights-256" => g.scene = crate::p2_scenes::many_lights(256),
+        // Phase 2: the night colonnade with a waxing gibbous moon in view.
+        "atmosphere-moon" => g.scene = crate::p2_scenes::moon_scene(0.35, 2.4),
+        // Phase 2: every M6 material feature (metalness, roughness,
+        // emissive, normal maps, clearcoat, alpha mask and blend,
+        // double-sided, unlit, a non-uniformly scaled ellipsoid).
+        "materials" => g.scene = crate::p2_scenes::materials_scene(),
+        // Phase 2: skinned meshes drawn with a material shader that ripples,
+        // bands and lifts them, their shadows and prepass displaced too.
+        "skinned-hooks" => g.scene = crate::p2_scenes::skinned_hooks_scene(),
         // Weather presets over the colonnade: particles, fog, dimmed light.
         "weather-rain" | "weather-snow" => {
             g.scene = crate::atmo_scenes::weather_scene(if name == "weather-rain" {
@@ -259,6 +284,15 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.frames = crate::atmo_scenes::WEATHER_FRAMES;
             g.update = Some(fx::tick_update);
         }
+        // Phase 2: the 2 km island from three distances, and the lake's
+        // planar reflection, shadows and underwater view.
+        "terrain-near" => g.scene = crate::terrain_scenes::island_view("near"),
+        "terrain-mid" => g.scene = crate::terrain_scenes::island_view("mid"),
+        "terrain-far" => g.scene = crate::terrain_scenes::island_view("far"),
+        "water-planar" => g.scene = crate::terrain_scenes::water_planar_scene(),
+        "water-shadows" => g.scene = crate::terrain_scenes::water_shadows_scene(),
+        "water-underwater" => g.scene = crate::terrain_scenes::water_underwater_scene(),
+        "terrain-grass" => g.scene = crate::terrain_scenes::grass_scene(),
         other => {
             return Err(format!(
                 "unknown gfx scene '{other}' (known: {})",

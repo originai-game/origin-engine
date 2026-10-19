@@ -16,6 +16,7 @@ parts.instance(&mut render_scene, transform);
 let scene = bundle.load_scene("scenes/main.ogt")?;                             // plain data for the host to spawn
 let anim = bundle.load_animation("assets/models/walker.glb")?;                 // og_anim::SkeletonAsset, ClipAssets, skin and morph streams
 let map = bundle.load_tilemap("maps/room.tmj")?;                              // og_tilemap::TilemapAsset; its TilesetRef::Asset ids through bundle.load_tileset
+let terrain = bundle.load_terrain("terrain/island.ogt")?;                     // CookedTerrain: og_render::TerrainData, layers naming their textures
 ```
 
 `og-cook <project> [--threads N] [--report out.md] [--json out.json] [--schemas schema.json]`
@@ -27,7 +28,7 @@ calls `cook_project`.
 | Feature | Default | What it adds | Targets |
 |---|---|---|---|
 | `runtime` | via `cook` | `runtime` (Bundle, loaders), `ktx2`, `meshopt_codec`, `qoa`. Pure Rust: og-blob, og-core, og-render, glam, bytemuck, miniz_oxide | every target; `cargo check -p og-cook --no-default-features --features runtime --target wasm32-unknown-unknown` |
-| `transcode` | yes | `CookedTexture::to_texture_data` for Basis textures (basisu's C++ transcoder, ruzstd) | native |
+| `transcode` | yes | `CookedTexture::to_texture_data` (RGBA8 level 0) and `to_texture_source` (every level in the device's block format) for Basis textures (basisu's C++ transcoder, ruzstd) | native |
 | `cook` | yes | `cook_project` and the importers (gltf, image, meshopt, mikktspace, fdsm, ttf-parser, hound, ruzstd) | native |
 | `basis` | yes | the basis-universal crate (basisu 1.16) as the texture encoder; without it the cook uses `toktx` from PATH | native |
 
@@ -54,13 +55,16 @@ calls `cook_project`.
 |---|---|---|
 | glTF 2.0 | `<path>.ogb` (`og.Model`) + `<path>.tex<n>.ogb` per texture use | Per primitive (glTF order): positions, normals (flat when missing), uv0, colour0, tangents (MikkTSpace for normal-mapped primitives that lack them, via unwelding); weld; quantise (position u16×3 over the bounds, normal oct snorm16×2, uv u16×2 over the uv range, colour u8×4, tangent oct snorm16×2 + sign); weld again; meshopt vertex-cache and overdraw (1.05) ordering; LOD chain by `meshopt_simplify` (3 levels, each half the previous, max error 5 % of the extent, stops when a level saves < 5 %); vertex-fetch reorder over all LODs; meshopt vertex codec v1 and index codec v1. Materials (metallic-roughness, emissive strength, alpha mode, double-sided) plus a default material, nodes in topological order, scenes and their roots. Skins, animations and morph targets go to the `#anim` blob (next row). Welding keys skinned and morphed vertices by their skin and morph data, so it never merges vertices that deform apart. |
 | glTF skins, animations, morph targets | `<path>.anim.ogb` (`og.Animation`, id `<path>#anim`) | Only when the glTF has any. The node hierarchy in the model blob's order; skins (joints, inverse bind matrices, `skeleton`); per clip, every channel evaluated by the glTF sampler (STEP, LINEAR with shortest-arc slerp, CUBICSPLINE Hermite; f64; a key within 1 µs of a sample counts as reached) at `i / rate` and at the end, `rate` = the import settings' `animation { rate }` or the source's key rate rounded (1–120 Hz), the source rate kept; markers from `animations[i].extras."og.events"` (`[{"name", "time"}]`) and `animation { event "<clip>" "<name>" <s> }`; per skinned primitive joints u16×4 and weights unorm16×4 (summing to 65535) per cooked vertex; per morphed primitive the targets' position (and normal) deltas per cooked vertex, names from `mesh.extras.targetNames`, default weights; streams meshopt-encoded. |
-| PNG/JPEG | `<path>.ogb` (`og.Texture`) | Decoded to RGBA8, then KTX2: colour → ETC1S/BasisLZ, sRGB, quality 128; `kind normal` → UASTC level 1 + RDO 1.0 + Zstandard, linear, tuned for normal maps; `kind linear` → the same without the normal-map tuning. Full mip chain. `kind pixel` → RGBA8 + zlib, sRGB, lossless, one level; the runtime samples it nearest (sprite sheets, tilesets). In a glTF, base colour and emissive are colour, metallic-roughness and occlusion linear, normal normal. |
+| PNG/JPEG | `<path>.ogb` (`og.Texture`) | Decoded to RGBA8, then KTX2: colour → ETC1S/BasisLZ, sRGB, quality 128; `kind normal` → UASTC level 1 + RDO 1.0 + Zstandard, linear, tuned for normal maps, x y z in RGB and y again in alpha (Basis transcoders take BC5's and EAC RG11's second channel from alpha; `has_alpha` 1 says a map carries it, and the settings string's "normal y in alpha" recooks older maps); `kind linear` → the same without the normal-map tuning. Full mip chain. `kind pixel` → RGBA8 + zlib, sRGB, lossless, one level; the runtime samples it nearest (sprite sheets, tilesets). In a glTF, base colour and emissive are colour, metallic-roughness and occlusion linear, normal normal. |
 | WAV | `<path>.ogb` (`og.Sound`) | 8–32-bit integer or 32-bit float PCM, 1–8 channels, to 16-bit, then QOA (in-crate encoder: 3.2 bits per sample). |
 | TTF/OTF | `<path>.ogb` (`og.Font`) | The import settings' charset, rendered by fdsm as MTSDF (RGB multi-channel, A true SDF) at `em_px` with `px_range`, shelf-packed into pages, each page a lossless KTX2 (RGBA8 + zlib); a glyph table (advance, plane bounds in em, atlas rectangle) and ascender/descender/line gap. |
+| rig `.ogt` (`type rig`) | `<path>.ogb` (`og.Rig`) | A humanoid map (og-anim's README §Retargeting): `scheme` (auto, mixamo, vrm, unity, rigify, ue, blender) and standard bones named outright or `none`; validated and stored as canonical text, loaded with `og.load.rig`. A model's `animation { rig }` names it for the cook's retargeting. |
+| animation library (a glTF named by another model's `animation { library }`) | into the naming model's `#anim` | The library is cooked like any glTF (its own `#anim`, loadable with `og.load.animation`); the naming model's `#anim` gets the library's clips after its own, each rewritten by `og_anim::retarget` from the library's skeleton (its humanoid map from its own `animation { rig }` or detected) onto the model's (its `rig` or detected): rest corrections, the model's bone lengths, the hips' travel scaled by the leg ratio, the legs solved for the feet unless `footIk false`. A clip the model has of its own wins over a library's of the same name (a note says so); a library naming libraries is refused. |
 | flipbook `.ogt` (`type flipbook`) | `<path>.ogb` (`og.Flipbook`) | The canonical sheet text (og-anim's README): grid and `frame` lines, an `atlas` (Aseprite frames and tags, TexturePacker frames and pivots) resolved into frames and clips, the texture's size read from the image, paths relative to the sheet when the file exists. The stamp covers the texture's and the atlas's bytes. |
 | scene `.ogt` | `<path>.ogb` (`og.Scene`) | Entities depth-first (parent before child), `model` references checked against the project's assets, one packed table per component type keyed by its reflected name. |
 | tileset `.ogt` (`type tileset`) | `<path>.ogb` (`og.Tileset`) | Parsed and validated by og-tilemap (grid, solid and partial collision, animated tiles, blob47/bitmask16 terrains); its `texture` must be an asset. The canonical text is stored and parsed again at load. |
 | tilemap `.ogt` (`type tilemap`), Tiled `.tmj`, LDtk `.ldtk` | `<path>.ogb` (`og.Tilemap`) | One `og_tilemap::TilemapAsset` whatever the source (`src/cook/tilemap.rs`, native only). **Tiled**: orthogonal, finite maps; layer data as a JSON array or uncompressed base64 (zlib/gzip/zstd refused: save as CSV or Base64); flip bits kept (diagonal refused); `offsetx/y`, `parallaxx/y`, `opacity`, `visible`, `repeatx/y`, group layers flattened; custom properties `collision` (bool), `z` (int), `autotile` (a terrain of the layer's tileset: nonzero gids mean filled), `repeatx`/`repeaty`; an external tileset `x.tsx`/`x.tsj` is the sibling `x.ogt` (refused when missing, naming the path), an embedded one (single image) is imported with its tiles' `animation`, first `objectgroup` rectangle (collision) and boolean `solid` property; one tileset per layer; object layers become objects (`type` or `class` as kind, string-valued properties; tile objects anchored at their bottom). **LDtk**: one level (the first or `level`; separate level files refused), every layer on one grid size; `Tiles`/`AutoLayer`/IntGrid auto tiles become tile layers (tile id `t` or from `src`; flips from `f`; one tile per cell, the last of a stack wins), drawn in reverse list order (LDtk's first layer on top); IntGrid values listed in `solid` (default 1) become an invisible collision layer `<name>.collision` over an embedded one-tile solid tileset; a tileset image with a sibling `<stem>.ogt` uses that tileset, else one is embedded from `tileGridSize`, `__cWid`, `__cHei`, `padding`, `spacing`; `Entities` become objects at their top-left (pivot applied), kind the identifier, name the `name` field or the `iid`, fields as properties. Units: `unit` world units per tile width (default 1); object positions and offsets in map-local world units, y up from the top-left corner. Referenced tilesets and images must be assets. |
+| terrain `.ogt` (`type terrain`, phase 2) | `<path>.ogb` (`og.Terrain`) | `src/cook/terrain.rs`: its `heightmap` (a 16- or 8-bit grey PNG, its first channel at 16 bits; or an EXR, its first channel, through the `image` crate's `exr` feature) mapped by `height <min> <max>` (PNG default 0 100; EXR default 0 1, metres as stored), its `size` in metres (default one per sample), rows from -z (the image's top) and columns from -x; cut into `tile` × `tile` sample tiles (default 128; the last ones smaller), each quantised to 16 bits over its own range (finer than a 16-bit source's step over the whole range) and zlib'd; the `control` map (RGBA, one channel per layer) zlib'd; up to four `layer { albedo normal color roughness tile triplanar normalStrength slope slopeFade altitude altitudeFade }`, their textures assets of their own (give a normal map `texture { kind normal }`); `heightBlend`, `castShadows`, `collision`, `lod { spacing ring }`. The heightmap and control map are read beside the terrain file (else under `assets/`) and are the terrain's, not textures: the walk does not cook them, and the terrain's stamp covers their bytes. A navmesh `.ogt`'s `terrain "<file>" { position x y z step n }` bakes the terrain's surface (every `step`th sample, each cell split along the renderer's diagonal, only the cells inside the navmesh's `bounds`) with the agent's slope limit. |
 
 ### Import settings
 
@@ -74,6 +78,9 @@ texture {
 animation {
   rate 30                     # resampling rate for every clip; default: the source's key rate
   event "walk" "footL" 0.26   # a marker: clip, name, seconds (also glTF extras."og.events")
+  rig "rigs/strider.ogt"      # this model's humanoid map (`type rig`); default: detected from its node names
+  library "anims/humanoid-clips.glb"  # an animation library: its clips retargeted onto this model (repeatable)
+  footIk true                 # retargeting solves the legs so planted feet stay planted (default true)
 }
 font {
   charset latin cjk-punct   # ascii | latin | punct | cjk-punct | kana | all
@@ -135,6 +142,7 @@ type (`format::type_hash`); the schema version is the root's. All in
 | `og.Scene` | `SceneMeta` (counts, name) | `entities` `EntityRow` (name, parent, instance), `refs` `RefRow` (asset ids), `components` `ComponentRow` (name, layout hash, rows, inferred), `strings`, `c.<Type>` rows (`u32` entity index + packed fields), `s.<Type>` schema JSON |
 | `og.Tileset` | `TilesetMeta` (text bytes) | `text` (the canonical tileset `.ogt`) |
 | `og.Tilemap` | `TilemapMeta` (width, height, tile px, unit, layer/object/tileset/prop counts) | `layers` `MapLayerRow` (name, tileset, terrain name, parallax, offset, opacity, flags visible/collision/repeat x/repeat y/terrain, z, first cell), `cells` (u32 LE per cell, layer after layer, og-tilemap's cell encoding), `objects` `MapObjectRow` (name, kind, rect, property range), `props` `MapPropRow`, `tilesets` `MapTilesetRow` (asset id, or embedded canonical text), `strings` |
+| `og.Terrain` | `TerrainMeta` (size, samples, tile size and count, height range, layer count, control map size, height blend, lod, cast shadows, collision) | `tiles` `TerrainTileRow` (first sample, size, range, byte range in `heights`), `heights` (per tile u16 LE, zlib), `layers` `TerrainLayerRow` (texture names as ranges of `strings`, og-render's layer fields), `strings`, `control` (RGBA8, zlib) |
 
 KTX2 files are standard: ETC1S as BasisLZ with basisu's DFD and global-data
 layout, UASTC with Zstandard (scheme 2), lossless RGBA8 with zlib (scheme 3).
@@ -142,6 +150,21 @@ The basis-universal crate only emits `.basis`, so `ktx2::from_basis` rebuilds
 the KTX2 container from the `.basis` bits exactly as basisu's own
 `create_ktx2_file` lays it out, and `ktx2::to_basis` is the inverse the
 native transcoder needs (its Rust wrapper reads `.basis` only).
+
+At runtime a texture reaches the GPU in the encoding the renderer takes for
+its kind (`CookedTexture::target_format` over og-render's
+`RenderInfo::texture_formats`): colour and linear data as BC7, ASTC 4x4 or
+ETC2, normal maps as BC5, ASTC 4x4 or EAC RG11 (BC7 or ETC2 for a map cooked
+without y in alpha), with every cooked mip level
+(`CookedTexture::to_texture_source`, `CookedModel::add_to_with`). RGBA8
+level 0, with mips the GPU builds, is the last resort: pixel art, distance
+fields and other lossless cooks, sizes not in whole 4x4 blocks, a device
+with no block format, or no renderer attached yet. og-runtime's loaders
+pass the attached backend's formats to the host's texture hook; natively
+basisu transcodes here, on the web the engine Worker transcodes with
+Binomial's transcoder once the renderer is attached, to the format
+`og_web_texture_target` names. On the template's five Basis textures the
+GPU holds 2.5 MB instead of 10.1 MB (`tests/evidence/P2/render/compressed-textures.md`).
 
 ### Asset ids, the manifest and stamps
 
@@ -162,7 +185,8 @@ A stamp is FNV-1a 64 (`og_core::hash`) over the cooker version
 | Output | Stamp inputs |
 |---|---|
 | model | mesh options, the glTF bytes (and the files it references), its texture ids |
-| animation | mesh options (it re-cooks the primitives for their vertex order), the animation settings, the glTF bytes |
+| animation | mesh options (it re-cooks the primitives for their vertex order), the animation settings, the glTF bytes, and with `library` or `rig` the bytes of the rig file, each library, its import settings and its rig |
+| rig | the file |
 | glTF texture | texture options and encoder, the image's bytes, the texture kind |
 | texture | texture options and encoder, the file and its import settings, the kind |
 | sound | the file |
@@ -250,7 +274,9 @@ cargo run --release -p og-cook --bin og-cook -- templates/game --report report.m
 | `textures_decode_close_to_their_sources` | transcoded level 0 against the source pixels: ETC1S ≥ 30 dB (glTF base colour ≥ 27 dB), UASTC ≥ 35–38 dB; a row-flipped decode scores worse (orientation) |
 | `sounds_fonts_and_scenes_load_as_authored` | QOA SNR > 20 dB and the WAV's length; the charset, the extra characters, inside/outside of a glyph's distance field; scene entities, nesting, instances, the Transform rows' values |
 | `animation.rs` (separate file) | every cooked clip sample of `walker.glb` (source rates and 60 Hz) and `trickster.glb` equals an independent glTF sampler within 1e-5; skins, inverse binds, joints, weights and morph deltas follow the cooked vertices; markers from extras and import settings, bad ones refused; a cooked walker plays in og-anim; evidence `anim-cook-resample.json` |
+| `retarget.rs` (separate file) | fx-showcase's animation library retargeted at cook time into `strider.glb` (Mixamo names, armature scale 0.01, a rig file) and `stout.glb` (Unreal names, detected): the clips and markers arrive, and on every frame the library's walk plants a foot the character's foot is on its own ground within 2 mm and does not slide (0 m measured; 2.9 cm without foot IK); an edit of the rig file re-cooks only the model naming it, an edit of the library's settings both; a rig naming a missing node fails with the file and line; evidence `retarget-contacts.json` |
 | `cooked_models_render_the_gltf_reference_scene` | og-tests' `gltf-reference` scene with the models swapped for cooked ones renders within RMSE 0.02 of `crates/og-tests/references/<tier>/gltf-reference.png` (0.0043 on Metal) |
+| `compressed.rs` (separate file) | the template's Basis textures reach each block family the GPU takes (BC7/BC5, ASTC 4x4, ETC2/EAC RG11) by kind, with sRGB only on colour and every cooked level at its exact size; RGBA8 without a renderer or with compression off; stone boards near and far (small levels) draw within RMSE 0.012 and 0.5 % outliers of their RGBA8 frame, which the normal map read flipped exceeds; the cooked models with compressed textures stay within RMSE 0.02 and 1 % outliers of `gltf-reference`; `FrameStats::texture_bytes` shrinks (evidence under `tests/evidence/P2/render/`) |
 | `tilemap.rs` (separate file) | a tileset `.ogt`, a hand-written map, a Tiled `.tmj` (external and embedded tilesets, flips, base64 data, offsets, parallax, properties, an `autotile` layer, objects) and an LDtk project (tiles with flips, IntGrid collision, an entity at its pivot) cook and load into og-tilemap assets equal to the sources, with resolved terrain and merged collision; a compressed Tiled layer, a missing sibling tileset `.ogt` and an unknown LDtk level are refused by name; import settings pick the unit, the level and the solid IntGrid values |
 
 Each covered path was broken once and its test failed (font glyph order by
@@ -260,13 +286,6 @@ without base colour textures), then restored.
 
 ## What phase 2 owes
 
-- **GPU-compressed textures**: og-render now takes pre-encoded BC7/BC5,
-  ASTC and ETC2/EAC uploads with their mips and reports the tier's choice
-  (8d160fe), and the web host has Binomial's wasm transcoder
-  (`packages/engine/src/web/basis.ts`, 5c79c75). Still owed: the runtime
-  loaders transcode to the format `RenderInfo::texture_formats` names and
-  upload it (`CookedModel` still transcodes to RGBA8 natively, feature
-  `transcode`).
 - **Animation**: cooked (`#anim`, `crates/og-anim`); still owed: sample
   quantisation/compression (f32 today), sparse morph targets.
 - **Fonts**: kerning and shaping (rustybuzz), runtime glyph generation for
@@ -278,6 +297,6 @@ without base colour textures), then restored.
   cook's part (an incremental re-cook of one model in ~10–50 ms) is here.
 - Archetype templates (`runner`, `match3`) and their assets.
 - KTX2 orientation/swizzle metadata, texture arrays, cube maps (IBL
-  prefiltering at cook time), audio streaming chunks, navmesh baking.
+  prefiltering at cook time), audio streaming chunks; terrains loaded tile by tile (the runtime assembles every tile today).
 - `toktx` fallback is implemented but untested here (no `toktx` on this
   machine); with neither encoder the cook fails with a message naming both.

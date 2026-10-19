@@ -46,7 +46,7 @@ test("og.i18n: the host's locale picks the table, and t formats each language's 
   expect(info.fonts[0]).toBe("fonts/NotoSansJP-subset.otf");
   expect(info.fonts.length).toBe(4);
   expect(og.i18n.t(w, "menu.play")).toBe("プレイ");
-  expect(og.i18n.t(w, "confirm.message", { slot: 2 })).toBe("スロット2の進行状況は失われます。元に戻すことはできません。");
+  expect(og.i18n.t(w, "confirm.message", { slot: 2 })).toBe("スロット[b]2[/b]の進行状況は失われます。[color=danger]元に戻すことはできません。[/color]");
   expect(og.i18n.t(w, "hud.coins", { n: 1 })).toBe("コイン1枚");
   expect(og.i18n.has(w, "menu.play")).toBeTrue();
 

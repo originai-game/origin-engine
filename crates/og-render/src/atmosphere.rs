@@ -11,7 +11,8 @@
 //!   particle, strip and world-sprite shader of the main pass; the overlay
 //!   is not fogged.
 //! - [`SkyLook`]: the procedural sky's colours (zenith, horizon, ground),
-//!   sun disc and glow, stars at night and brightness, for
+//!   sun disc and glow, stars at night, a moon disc with its phase, and
+//!   brightness, for
 //!   [`crate::ProceduralSky::look`] (the image-based light) and
 //!   [`crate::Background::Procedural`] (the sky drawn per pixel, so a moving
 //!   sun moves smoothly while the lighting is regenerated in steps).
@@ -85,6 +86,18 @@ pub struct SkyLook {
     pub stars: f32,
     /// A multiplier on the whole sky.
     pub brightness: f32,
+    /// The moon disc's angular radius in degrees (0: no moon). It sets
+    /// below the horizon and hides the stars behind it.
+    pub moon_size: f32,
+    /// How much of the moon is lit: 0 new, 0.25 the first quarter (its
+    /// right half lit), 0.5 full, 0.75 the last quarter (its left half).
+    pub moon_phase: f32,
+    /// The lit moon's brightness (multiplies `moon_color`).
+    pub moon_intensity: f32,
+    /// The moon's linear colour.
+    pub moon_color: Vec3,
+    /// Towards the moon; zero: opposite the drawn sun.
+    pub moon_direction: Vec3,
 }
 
 impl Default for SkyLook {
@@ -106,6 +119,11 @@ impl SkyLook {
         glow_power: 24.0,
         stars: 0.0,
         brightness: 1.1,
+        moon_size: 0.0,
+        moon_phase: 0.5,
+        moon_intensity: 1.4,
+        moon_color: Vec3::new(0.9, 0.92, 1.0),
+        moon_direction: Vec3::ZERO,
     };
     /// The cosines of the sun disc's outer and inner edge.
     pub(crate) fn disc(&self) -> (f32, f32) {
@@ -143,8 +161,10 @@ pub(crate) struct AtmosphereGpu {
     pub fog_sun: [f32; 4],
     /// zenith (w: 1 when the sky pass draws the look), horizon (w:
     /// brightness), ground (w: stars), disc (outer cos, inner cos,
-    /// intensity, glow), glow power and sun colour, then the sun direction.
-    pub sky: [[f32; 4]; 6],
+    /// intensity, glow), glow power and sun colour, then the sun direction,
+    /// the moon's direction (w: its angular radius in radians, 0 none) and
+    /// its lit colour (w: the phase).
+    pub sky: [[f32; 4]; 8],
     /// x: seconds (tick / rate), y: the tick, z: ticks per second.
     pub time: [f32; 4],
 }
@@ -177,7 +197,16 @@ impl AtmosphereGpu {
         if let Some((look, sun, color)) = sky {
             let g = look.gpu(true, color);
             a.sky[..5].copy_from_slice(&g);
-            a.sky[5] = sun.normalize_or(Vec3::Y).extend(0.0).to_array();
+            let sun = sun.normalize_or(Vec3::Y);
+            a.sky[5] = sun.extend(0.0).to_array();
+            let size = look.moon_size.clamp(0.0, 20.0);
+            if size > 0.0 {
+                let moon = look.moon_direction.normalize_or(-sun);
+                a.sky[6] = moon.extend(size.to_radians()).to_array();
+                a.sky[7] = (look.moon_color * look.moon_intensity.max(0.0))
+                    .extend(look.moon_phase.rem_euclid(1.0))
+                    .to_array();
+            }
         }
         let rate = if rate > 0.0 { rate } else { 60.0 };
         // Seconds wrap every 2^16 ticks so f32 keeps sub-tick precision.
@@ -285,6 +314,7 @@ pub fn day_night(hours: f32, tilt: f32, azimuth: f32) -> DayNightLook {
         glow_power: 24.0 - 14.0 * (1.0 - day),
         stars: night,
         brightness: 1.1,
+        ..SkyLook::DEFAULT
     };
     DayNightLook {
         sun_direction: sun,

@@ -92,7 +92,10 @@ neon UI reads as two games.
   (`font: "mono"`), so digits do not jitter as they count; big scores in the
   display face. Count them with `og.ui.counter`, never by setting text.
 - **A ramp, not sizes**: use the skin's steps (`displayLg`, `xl`, `body`,
-  `meta`); three or four steps per screen at most.
+  `meta`); three or four steps per screen at most. Each step carries its
+  tracking (display sizes tighten, as the tokens do; a skin's `ramp` line
+  takes it as its fourth number after the CJK leading), and it is applied
+  to Latin text only.
 - Headings get `heading: true` so the skin's flourish frames them.
 
 ## 5. Motion

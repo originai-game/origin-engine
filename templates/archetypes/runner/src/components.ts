@@ -81,7 +81,7 @@ export const Hud = defineComponent("Hud", {
 });
 
 /** Sound requests: bits of Sounds.sfx that the Voices system plays once each. */
-export const Sound = { Jump: 1, Coin: 2, Crash: 4, Start: 8 } as const;
+export const Sound = { Jump: 1, Coin: 2, Crash: 4, Start: 8, Hold: 16 } as const;
 
 /** The sounds asked for this tick (a resource: the systems that ask see no voice rows). */
 export const Sounds = defineResource("Sounds", {

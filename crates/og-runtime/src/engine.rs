@@ -65,11 +65,17 @@ pub trait Hooks {
     fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
         Fetch::Failed(format!("{path}: this host reads no files"))
     }
-    /// A cooked texture as RGBA8 for the renderer: og-cook's transcoder
-    /// (native, feature `transcode`) by default; the web host transcodes with
-    /// Binomial's Basis transcoder.
-    fn texture(&self, texture: &og_cook::runtime::CookedTexture) -> Fetch<og_render::TextureData> {
-        match texture.to_texture_data() {
+    /// A cooked texture for the renderer, in the device's encoding when
+    /// `formats` (the attached renderer's) names one: og-cook's transcoder
+    /// (native, feature `transcode`) by default, every mip level; the web
+    /// host takes what its Worker transcoded with Binomial's Basis
+    /// transcoder. RGBA8 without a renderer.
+    fn texture(
+        &self,
+        texture: &og_cook::runtime::CookedTexture,
+        formats: Option<&og_render::TextureFormats>,
+    ) -> Fetch<og_render::TextureSource> {
+        match texture.to_texture_source(formats) {
             Ok(t) => Fetch::Ready(t),
             Err(e) => Fetch::Failed(e.to_string()),
         }
@@ -272,6 +278,8 @@ pub(crate) struct State {
     pub ui: Option<og_ui::SharedUi>,
     /// Every mesh registered with physics, replayed into a reload's physics.
     pub physics_meshes: BTreeMap<u64, og_physics::MeshDesc>,
+    /// Every terrain's height field registered with physics, likewise.
+    pub physics_heightfields: BTreeMap<u64, og_physics::HeightfieldDesc>,
     /// UI warnings already logged, so a repeated one is logged once.
     pub ui_warned: BTreeSet<String>,
     /// og-anim on this world, and its assets (replayed into a reload's world).
@@ -849,6 +857,8 @@ pub(crate) fn extract_layouts(eng: &Engine) -> (Option<Layout>, Option<Layout>, 
             spot: get("og.SpotLight"),
             fx: super::fx::FxLayouts::from(get),
             atmo: super::atmosphere::AtmoLayouts::from(get, st.physics.clone()),
+            terrain: get("og.Terrain"),
+            scatter: get("og.TerrainScatter"),
         },
     )
 }
@@ -899,6 +909,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         physics: Some(a.mounted.physics.clone()),
         ui: Some(a.mounted.ui.clone()),
         physics_meshes: BTreeMap::new(),
+        physics_heightfields: BTreeMap::new(),
         ui_warned: BTreeSet::new(),
         anim: Some(a.anim.clone()),
         anim_assets: Default::default(),

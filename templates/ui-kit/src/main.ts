@@ -20,6 +20,7 @@ import type { Entity, GameSettings, Viewport, World } from "@origingame/engine";
 export const SCREENS = [
   "gallery", "widgets", "mainMenu", "pause", "settings", "platformer", "shooter", "puzzle", "idle", "racing",
   "cutscene", "shop", "inventory", "levels", "results", "leaderboard", "tutorial", "loading", "confirm", "alert", "toasts",
+  "players",
 ] as const;
 export type Screen = (typeof SCREENS)[number];
 
@@ -50,6 +51,7 @@ const BLURBS: Record<Screen, string> = {
   confirm: "A destructive confirm",
   alert: "One-button alert",
   toasts: "The toast queue in every tone",
+  players: "Local multiplayer: four pads, four rings",
 };
 
 /** The demo's state: one entity named "demo" (dump_entity:demo reads it). */
@@ -97,6 +99,7 @@ export const Demo = defineComponent("Demo", {
   balance: f32(1250),
   owned: u32(0),
   bought: u32(0),
+  refused: u32(0),
   inv0: u32(0),
   inv1: u32(1),
   inv2: u32(2),
@@ -117,6 +120,20 @@ export const Demo = defineComponent("Demo", {
   // Dialogs.
   confirmed: u32(0),
   level: u32(0),
+  // Players: each pad's pick (HEROES index + 1, 0 none) and the hero its focus is on (index + 1).
+  pick0: u32(0),
+  pick1: u32(0),
+  pick2: u32(0),
+  pick3: u32(0),
+  focus0: u32(0),
+  focus1: u32(0),
+  focus2: u32(0),
+  focus3: u32(0),
+  // How many times the lobby hint's "How to join" link was followed.
+  rules: u32(0),
+  // The last frame's accessibility tree (og.ui.a11y): its nodes and its focus order's length.
+  a11yNodes: u32(0),
+  a11yFocus: u32(0),
   // Look: the style pack (SKINS index), the screen transition (WIPES index), UI sounds.
   skin: u32(0),
   wipe: u32(0),
@@ -124,7 +141,7 @@ export const Demo = defineComponent("Demo", {
 });
 type DemoState = { -readonly [K in keyof ReturnType<typeof demoDefaults>]: ReturnType<typeof demoDefaults>[K] };
 function demoDefaults() {
-  return { screen: 0, paused: false, font: 0, icons: 0, backdrop: 0, hp: 72, mana: 40, coins: 128, score: 4250, lives: 2, time: 95, masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false, quality: 1, showFps: false, reducedMotion: false, highContrast: false, vibration: true, invertY: false, sensitivity: 1, language: 0, saves: 0, tab: 0, difficulty: 1, amount: 3, mode: 0, optA: true, optB: false, chip: 0, stickX: 0, stickY: 0, line: 0, step: 0, balance: 1250, owned: 0, bought: 0, inv0: 0, inv1: 1, inv2: 2, inv3: 5, inv4: 9, inv5: 13, moves: 0, used: 0, gold: 40, gen0: 1, gen1: 0, gen2: 0, taps: 0, scope: 0, scopeTick: 0, confirmed: 0, level: 0, skin: 0, wipe: 0, sounds: true };
+  return { screen: 0, paused: false, font: 0, icons: 0, backdrop: 0, hp: 72, mana: 40, coins: 128, score: 4250, lives: 2, time: 95, masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false, quality: 1, showFps: false, reducedMotion: false, highContrast: false, vibration: true, invertY: false, sensitivity: 1, language: 0, saves: 0, tab: 0, difficulty: 1, amount: 3, mode: 0, optA: true, optB: false, chip: 0, stickX: 0, stickY: 0, line: 0, step: 0, balance: 1250, owned: 0, bought: 0, refused: 0, inv0: 0, inv1: 1, inv2: 2, inv3: 5, inv4: 9, inv5: 13, moves: 0, used: 0, gold: 40, gen0: 1, gen1: 0, gen2: 0, taps: 0, scope: 0, scopeTick: 0, confirmed: 0, level: 0, pick0: 0, pick1: 0, pick2: 0, pick3: 0, focus0: 0, focus1: 0, focus2: 0, focus3: 0, rules: 0, a11yNodes: 0, a11yFocus: 0, skin: 0, wipe: 0, sounds: true };
 }
 
 export const ICONS = [
@@ -190,6 +207,52 @@ const TUTORIAL = [
 
 /** Level cards: 12 levels, stars from a fixed pattern, the last three locked. */
 const LEVELS = Array.from({ length: 12 }, (_, i) => ({ name: `${i + 1}`, stars: i < 9 ? [3, 2, 3, 1, 3, 2, 0, 1, 2][i]! : 0, locked: i >= 9 }));
+
+/** The lobby's heroes, and each player's colour (the pad's focus ring). */
+const HEROES = ["Knight", "Ranger", "Mage", "Rogue", "Bard", "Monk", "Smith", "Thief"];
+const PLAYER_INKS = ["focus", "info", "success", "warn"] as const;
+
+/** A local-multiplayer lobby: up to four pads, each with its own focus ring; A picks a hero for that pad's player. */
+function playersScreen(d: DemoState): void {
+  og.ui.setPlayers(4);
+  const vp = og.ui.frameViewport();
+  const phone = vp.breakpoint === "phonePortrait" || vp.breakpoint === "phoneLandscape";
+  const t = og.ui.frameTheme();
+  const grow = { kind: "grow" } as const;
+  const picks = [d.pick0, d.pick1, d.pick2, d.pick3];
+  og.ui.anchor("Lobby", {
+    anchor: "center",
+    direction: "column",
+    gap: t.space.md,
+    width: phone ? grow : { kind: "fixed", px: 640 },
+    padding: { left: t.space.xl, top: t.space.xl, right: t.space.xl, bottom: t.space.xl },
+    background: { token: "surface" },
+    radius: t.radius.panel,
+  }, () => {
+    og.ui.label("Title", "Players", { step: "xl2", font: "display", heading: true });
+    // Rich text: the button in bold, a link (a child element Hint/join, focusable by every pad).
+    const hint = og.ui.richText("Hint", "Each pad moves its own ring; [b]A[/b] picks a hero for that player. [link=join]How to join[/link]", { color: { token: "fgMuted" }, width: grow });
+    if (hint.link === "join") d.rules += 1;
+    // The player cards sit on bgSubtle, darker than the panel, so each player's ink and "Press A" read at 4.5:1.
+    og.ui.row("Cards", { gap: t.space.sm, width: grow, wrap: phone }, () => {
+      for (let p = 0; p < 4; p++) {
+        og.ui.column(og.ui.idi("Player", p), { width: grow, gap: t.space.xxs, cross: "center", padding: { left: t.space.sm, top: t.space.sm, right: t.space.sm, bottom: t.space.sm }, background: { token: "bgSubtle" }, radius: t.radius.card }, () => {
+          og.ui.label("Name", `P${p + 1}`, { step: "lg", font: "display", color: { token: PLAYER_INKS[p]! }, nowrap: true });
+          og.ui.label("Pick", picks[p] ? HEROES[picks[p]! - 1]! : "Press A", { color: { token: picks[p] ? "fg" : "fgMuted" }, nowrap: true });
+        });
+      }
+    });
+    og.ui.row("Heroes", { gap: t.space.sm, wrap: true, width: grow }, () => {
+      HEROES.forEach((h, i) => {
+        const r = og.ui.button(og.ui.idi("Hero", i), h, { width: { kind: "fixed", px: phone ? 150 : 132 } });
+        if (r.clicked) picks[r.pad ?? 0] = i + 1;
+      });
+    });
+  });
+  [d.pick0, d.pick1, d.pick2, d.pick3] = picks as [number, number, number, number];
+  const focused = (pad: number) => Number(/Hero#(\d+)$/.exec(og.ui.focus(pad))?.[1] ?? -1) + 1;
+  [d.focus0, d.focus1, d.focus2, d.focus3] = [focused(0), focused(1), focused(2), focused(3)];
+}
 
 /** 64 leaderboard rows from a fixed formula; the player is rank 17. */
 const NAMES = ["Ash", "Bea", "Cyd", "Dov", "Eli", "Fen", "Gus", "Hal", "Ivy", "Jun", "Kit", "Lux", "Moe", "Nia", "Oz", "Pip"];
@@ -355,7 +418,7 @@ function widgetsScreen(world: World, d: DemoState): void {
     d.stickX = j.x;
     d.stickY = j.y;
     if (!phone) og.ui.dpad("Dpad", {});
-    if (og.ui.actionButton("Hit", "Hit", { primary: true }).clicked) d.hp = Math.max(0, d.hp - 15);
+    if (og.ui.actionButton("Hit", "Hit", { primary: true }).clicked) hurt(world, d, 15);
   });
   void world;
 }
@@ -377,6 +440,32 @@ function writeRow(cols: Record<string, { [n: number]: number }>, i: number, d: D
   }
 }
 
+/** A hit this tick, for the Thud system (set and taken within one tick). */
+let thud = false;
+
+/**
+ * A hit the HUDs show: the health drops and the hit is felt (og-feel §3,
+ * §4 and §7; og-audio §1): a short hit stop, a shake, the number floating
+ * up from the health bar and a thud on the sfx bus, on the hit's tick.
+ */
+function hurt(world: World, d: DemoState, n: number): void {
+  d.hp = Math.max(0, d.hp - n);
+  og.time.hitStop(world, 3);
+  og.camera.shake(world, 0.3);
+  og.render.floatingText(world, { text: `-${n}`, position: { x: -232, y: 128, z: 5 }, size: 22, color: { r: 1, g: 0.36, b: 0.33 }, rise: 36, spread: 6, lifetime: 0.7, pop: 0.5 });
+  thud = true;
+}
+
+/** Plays the hit's thud: the only og.AudioSource is the hit voice (spawned at start). */
+export const Thud = defineSystem("Thud", { writes: [og.AudioSource], after: ["Kit"] }, (q) => {
+  if (!thud) return;
+  thud = false;
+  for (const a of q.archetypes()) {
+    const src = a.column(og.AudioSource);
+    for (let i = 0; i < a.count; i++) src.playing[i] = 1;
+  }
+});
+
 export const Kit = defineSystem("Kit", { reads: [og.Input], writes: [Demo] }, (q, time, world) => {
   for (const a of q.archetypes()) {
     if (a.count === 0) continue;
@@ -390,6 +479,10 @@ export const Kit = defineSystem("Kit", { reads: [og.Input], writes: [Demo] }, (q
 
 /** One tick of the demo's UI over its state. */
 function kitFrame(world: World, dt: number, d: DemoState): void {
+  // The last frame's accessibility tree (the a11y playtest compares it with the probe's).
+  const tree = og.ui.a11y();
+  d.a11yNodes = tree.nodes.length;
+  d.a11yFocus = tree.focusOrder.length;
   let screen: Screen = SCREENS[d.screen] ?? "gallery";
   const wipe = WIPES[d.wipe] ?? "none";
   if (wipe !== "none") {
@@ -506,7 +599,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
         touch: true,
       });
       if (h.paused) d.screen = 0;
-      if (h.action === "fire") d.hp = Math.max(0, d.hp - 5);
+      if (h.action === "fire") hurt(world, d, 5);
       break;
     }
     case "puzzle": {
@@ -576,6 +669,8 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
         d.bought += 1;
         og.ui.toast(world, `Bought ${item.name}`, { tone: "success" });
       }
+      // Short of the price: the shop's Buy shook with the error sound (og.ui.shake).
+      if (r.refused !== null) d.refused += 1;
       if (r.closed) d.screen = 0;
       break;
     }
@@ -666,6 +761,10 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       if (og.ui.alertDialog("Notice", { open: true, title: "Connection lost", message: "Your progress is saved on this device and will sync when you are back online." })) d.screen = 0;
       break;
     }
+    case "players":
+      playersScreen(d);
+      back = og.ui.back();
+      break;
     case "toasts": {
       const t = og.ui.frameTheme();
       og.ui.anchor("ToastDemo", { anchor: "center", direction: "column", gap: t.space.sm, width: { kind: "fixed", px: 300 }, padding: { left: t.space.lg, top: t.space.lg, right: t.space.lg, bottom: t.space.lg }, background: { token: "surface" }, radius: t.radius.panel }, () => {
@@ -703,7 +802,7 @@ function current(world: World): DemoState | null {
 export default og.game({
   tick: 60,
   seed: 1,
-  systems: [Kit],
+  systems: [Kit, Thud],
   render: { antialias: "msaa4" },
   start(world) {
     const camera = world.resource(og.Camera);
@@ -723,6 +822,10 @@ export default og.game({
     }
     const e = world.spawn({ name: "demo" });
     if (!e.ok) throw new Error(e.reason);
+    // A hit's thud (og sfx's hit preset), on the sfx bus.
+    const sound = og.load.sound(world, "audio/hit.ogt");
+    const voice = world.spawn({ name: "hit" });
+    if (sound.ok && voice.ok) world.insert(voice.value, og.AudioSource, { sound: sound.value, bus: "sfx", playing: false, volume: 0.5 });
     // Every locale's strings; the active one is the host's (the browser's language, og run --locale).
     for (const l of LOCALES) {
       const loaded = og.i18n.load(world, `strings/${l}.ogt`);
@@ -745,7 +848,9 @@ export default og.game({
     },
     damage: (world, args) => {
       const d = current(world);
-      if (d) update(world, { hp: Math.max(0, d.hp - Number(args[0] ?? 10)) });
+      if (!d) return;
+      hurt(world, d, Number(args[0] ?? 10));
+      update(world, { hp: d.hp });
     },
     skin: (world, args) => {
       update(world, { skin: Math.max(0, SKINS.indexOf((args[0] ?? "tokens") as (typeof SKINS)[number])) });
@@ -776,6 +881,6 @@ export default og.game({
   },
   facts: (world) => {
     const d = current(world);
-    return d ? { screen: SCREENS[d.screen] ?? "gallery", skin: SKINS[d.skin] ?? "tokens", hp: d.hp, balance: d.balance, saves: d.saves } : {};
+    return d ? { screen: SCREENS[d.screen] ?? "gallery", skin: SKINS[d.skin] ?? "tokens", hp: d.hp, balance: d.balance, saves: d.saves, picks: [d.pick0, d.pick1, d.pick2, d.pick3], focus: [d.focus0, d.focus1, d.focus2, d.focus3] } : {};
   },
 });

@@ -1,0 +1,7 @@
+type import
+version 1
+---
+# A tangent-space normal map (glTF's frame: green up the image): UASTC, linear.
+texture {
+  kind normal
+}

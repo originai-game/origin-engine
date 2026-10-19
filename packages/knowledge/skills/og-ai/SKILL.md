@@ -120,6 +120,11 @@ tree {
 - A playtest per behaviour beat (`templates/archetypes/topdown/tests/ai.og.ts`
   and `flee.og.ts`, `templates/game/tests/guard.og.ts`): place the hero with
   a command, advance, dump, assert `node`, `state`, `sees` and positions.
+  `templates/archetypes/roguelike/tests/foes.og.ts` proves a turn-based
+  hunt (a tree that acts only on `Game.foesTurn`) and
+  `templates/archetypes/tower-defense/tests/maze.og.ts` a flow field
+  re-routed round placements and a placement refused because `findPath`
+  no longer reaches the goal.
   Include the negative: a wall that hides the hero, a target outside the
   cone.
 - Determinism: a playtest with `runs: 2` over a chase must end on one hash.

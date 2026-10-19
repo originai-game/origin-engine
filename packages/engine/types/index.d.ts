@@ -152,6 +152,8 @@ export interface ColumnKinds {
   Navigation: { readonly array: Uint32Array; readonly stride: 2; readonly value: Navigation };
   /** A Behaviour handle field. */
   Behaviour: { readonly array: Uint32Array; readonly stride: 2; readonly value: Behaviour };
+  /** A TerrainData handle field. */
+  TerrainData: { readonly array: Uint32Array; readonly stride: 2; readonly value: TerrainData };
 }
 
 // ── math ────────────────────────────────────────────────────────
@@ -2425,11 +2427,12 @@ export type Side = "front" | "back" | "double";
  * The backend the renderer runs on; the probe's hello reports it.
  * - `"webgpu"`: WebGPU in a browser: the full feature set.
  * - `"webgl2"`: The WebGL2 fallback: no compute, CPU culling and particles, tiled lights.
- * - `"vulkan"`: Native Vulkan, on lavapipe or a GPU.
+ * - `"vulkan"`: Native Vulkan on a GPU.
+ * - `"vulkan-cpu"`: Native Vulkan on a CPU rasterizer (Mesa lavapipe or llvmpipe, SwiftShader): the executors' sandboxes. Frame times there say nothing about a player's GPU.
  * - `"metal"`: Native Metal.
  * - `"none"`: No renderer: frames are not produced and capture refuses.
  */
-export type RenderTier = "webgpu" | "webgl2" | "vulkan" | "metal" | "none";
+export type RenderTier = "webgpu" | "webgl2" | "vulkan" | "vulkan-cpu" | "metal" | "none";
 
 /**
  * Antialiasing, as og-render's Antialias. RenderCapabilities.antialias reports what the device resolved.
@@ -2464,7 +2467,8 @@ export interface RenderOptions {
 /**
  * A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names.
  * It is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front.
- * The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults.
+ * The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults. clearcoat and clearcoatRoughness add MeshPhysicalMaterial's clear coat (no clearcoat maps).
+ * normalMap is read in glTF's tangent frame: red tilts towards +u, green up the image. The tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -2687,6 +2691,22 @@ export interface StandardMaterialDesc {
    * @range 0..31
    */
   readonly outlineWidth?: number;
+  /**
+   * A clear lacquer over the surface, as three.js MeshPhysicalMaterial.clearcoat: a second, 4 % reflective specular layer on the surface's normal before normalMap (car paint, varnished wood, wet plastic); 0 is none.
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly clearcoat?: number;
+  /**
+   * How rough the clear coat is, as three.js MeshPhysicalMaterial.clearcoatRoughness.
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly clearcoatRoughness?: number;
 }
 
 /**
@@ -2764,7 +2784,7 @@ export interface DirectionalLight {
 
 /**
  * A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance.
- * Up to MAX_LIGHTS point and spot lights are drawn per frame (the rest are counted, not drawn); the first two with castShadow get cube shadows.
+ * Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. The first two in view with castShadow get cube shadows.
  *
  * The value of the `PointLight` component (token `og.PointLight`).
  */
@@ -4356,8 +4376,15 @@ export interface SphereGeometryDesc {
 
 
 
-/** The most point and spot lights one frame draws. */
-export declare const MAX_LIGHTS: 8;
+/**
+ * The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept.
+ */
+export declare const MAX_LIGHTS: 256;
+
+/**
+ * The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there.
+ */
+export declare const MAX_CLUSTER_LIGHTS: 64;
 
 /**
  * What the renderer can do on this device. Backend limits are reported here, never by missing members.
@@ -4369,7 +4396,7 @@ export interface RenderCapabilities {
   readonly compute: boolean;
   /** The antialiasing the device resolved RenderOptions.antialias to. */
   readonly antialias: Antialias;
-  /** How many point and spot lights one frame draws. */
+  /** How many point and spot lights one frame draws (MAX_LIGHTS on every tier). */
   readonly maxLights: number;
   /** How many point and spot lights may cast shadows. */
   readonly maxShadowedLights: number;
@@ -4387,6 +4414,7 @@ export interface RenderCapabilities {
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
  */
 export type Shader = number & { readonly [handleType]: "Shader" };
+
 
 
 
@@ -4569,6 +4597,7 @@ export interface Model {
 
 
 
+
 /**
  * A load completed.
  *
@@ -4653,6 +4682,11 @@ export declare const SHAPE_CONVEX: 4;
 /** Collider.shape: the triangles of `mesh` (3D only; for static and kinematic bodies). */
 export declare const SHAPE_TRIMESH: 5;
 
+/**
+ * Collider.shape: the height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry).
+ */
+export declare const SHAPE_HEIGHTFIELD: 6;
+
 /** Physics.profile: rapier2d, bodies in the xy plane rotating about z. */
 export declare const PROFILE_2D: 2;
 
@@ -4726,9 +4760,9 @@ export interface RigidBody {
  */
 export interface Collider {
   /**
-   * One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (3D).
+   * One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (3D), 6 the height field `mesh` (3D: a terrain).
    *
-   * @range 0..5
+   * @range 0..6
    * @label Shape
    */
   shape: number;
@@ -4760,7 +4794,7 @@ export interface Collider {
    */
   height: number;
   /**
-   * The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh.
+   * The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh; for SHAPE_HEIGHTFIELD, a terrain's height field (og.terrain.load's TerrainInfo.geometry).
    */
   mesh: Geometry;
   /**
@@ -4844,14 +4878,13 @@ export interface Velocity {
  */
 export interface Physics {
   /**
-   * PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt.
+   * PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt. Set the other one at run time to change profile: the next step builds that profile's simulation from the components (contacts, joints' warm starts, ropes, cloth, fluids and ragdoll bodies start again), so a 3D game can play a 2D scene and back.
    *
    * @default 3
    * @range 2..3
    * @label Profile
-   * @readonly written by the engine
    */
-  readonly profile: number;
+  profile: number;
   /**
    * The acceleration of every dynamic body, times its gravityScale; 2D uses x and y.
    *
@@ -5856,7 +5889,7 @@ export declare const PIN_LEFT: 4;
 export declare const PIN_TOP_RINGS: 8;
 
 /**
- * A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind and collision against every solid collider. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour).
+ * A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour).
  *
  * The value of the `Cloth` component (token `og.Cloth`).
  */
@@ -5938,6 +5971,28 @@ export interface Cloth {
    * @tunable
    */
   radius: number;
+  /**
+   * Self-collision: how far apart its points keep from the points of the cloth that are not their near neighbours (0: none). About `spacing` keeps a cloth that folds or piles up from passing through itself.
+   *
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  thickness: number;
+  /**
+   * Simulation steps per tick, each integrating and then solving `iterations` passes; with self-collision enough that a point moves less than `thickness` per step (a point moves at most half the thickness a step).
+   *
+   * @default 1
+   * @range 1..16
+   */
+  substeps: number;
+  /**
+   * How much of its sliding a point touching a solid loses each step (0: it slides freely; near 1 it sticks where it lands, so a cloth lowered onto the floor folds instead of spreading).
+   *
+   * @range 0..1
+   * @tunable
+   */
+  friction: number;
   /** The material it is drawn with (og.render.standardMaterial); 0 is a plain cloth. */
   material: Material;
   /**
@@ -5949,7 +6004,7 @@ export interface Cloth {
 }
 
 /**
- * A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`.
+ * A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`.
  *
  * The value of the `Fluid2D` component (token `og.Fluid2D`).
  */
@@ -6015,6 +6070,25 @@ export interface Fluid2D {
    * @tunable
    */
   viscosity: number;
+  /**
+   * Fluids sharing a group above 0 push, drag and (by `mixing`) mix with each other as one fluid, at most four to a group (in entity order; a fifth is simulated alone), and are drawn as one surface whose colour follows the mix; 0 keeps the fluid to itself.
+   */
+  group: number;
+  /**
+   * How heavy its particles are against the group's other fluids: a heavier fluid sinks under a lighter one.
+   *
+   * @default 1
+   * @range 0.05..20
+   * @tunable
+   */
+  density: number;
+  /**
+   * How readily it mixes with the group's other fluids: 0 keeps them apart in layers (the boundary held), 1 blends them where they touch (their mix, colour and weight even out).
+   *
+   * @range 0..1
+   * @tunable
+   */
+  mixing: number;
   /**
    * Multiplies og.Physics.gravity.
    *
@@ -6242,7 +6316,7 @@ export interface Splash {
 }
 
 /**
- * A ragdoll over an og.Skeleton (3D): a capsule body per bone with a parent, ball joints with cone limits between them, built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state (the og.physics state block), not entities.
+ * A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy plane at their animated z, for a skeleton laid out in that plane), built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state (the og.physics state block), not entities.
  *
  * The value of the `Ragdoll` component (token `og.Ragdoll`).
  */
@@ -6851,10 +6925,43 @@ export interface Sky {
    * @tunable
    */
   brightness: number;
+  /**
+   * The moon disc's angular radius (0: no moon). It sets below the horizon and hides the stars behind it.
+   *
+   * @range 0..20
+   * @unit deg (degrees)
+   * @tunable
+   */
+  moonSize: number;
+  /**
+   * How much of the moon is lit: 0 new, 0.25 the first quarter (its right half), 0.5 full, 0.75 the last quarter (its left half).
+   *
+   * @default 0.5
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  moonPhase: number;
+  /**
+   * The lit moon's brightness.
+   *
+   * @default 1.4
+   * @range 0..
+   * @tunable
+   */
+  moonIntensity: number;
+  /**
+   * The moon's colour.
+   *
+   * @default { r: 0.9, g: 0.92, b: 1 }
+   */
+  moonColor: Color;
+  /** Towards the moon; zero puts it opposite sunDirection. */
+  moonDirection: Vector3;
 }
 
 /**
- * A day-night cycle: the time of day drives the sun's direction, the sky's colours and stars, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly.
+ * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly.
  *
  * The `DayNight` resource (token `og.DayNight`).
  */
@@ -6915,6 +7022,24 @@ export interface DayNight {
    * @tunable
    */
   step: number;
+  /**
+   * The moon disc's angular radius, opposite the sun so it rises as the sun sets (0: no moon).
+   *
+   * @default 1.6
+   * @range 0..20
+   * @unit deg (degrees)
+   * @tunable
+   */
+  moonSize: number;
+  /**
+   * How much of the moon is lit: 0 new, 0.25 the first quarter, 0.5 full, 0.75 the last quarter.
+   *
+   * @default 0.5
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  moonPhase: number;
 }
 
 /**
@@ -6979,7 +7104,7 @@ export interface Weather {
 }
 
 /**
- * A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space where the tier allows, the sky's cubemap on WebGL2). With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated).
+ * A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space where the tier allows, the sky's cubemap on WebGL2, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated).
  *
  * The value of the `Water` component (token `og.Water`).
  */
@@ -7083,6 +7208,51 @@ export interface Water {
    * @tunable
    */
   reflectivity: number;
+  /**
+   * Reflect the scene by drawing it again from the camera mirrored in the surface, at this fraction of the screen's resolution (0: off, the screen-space and sky reflections). One surface a frame, the first that asks; it costs about a second scene pass at that resolution.
+   *
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  planarReflection: number;
+  /**
+   * How much the sun's shadows darken the surface: its highlight, foam and colour (0: none).
+   *
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  shadows: number;
+  /**
+   * With the camera below the surface: the water's fog colour.
+   *
+   * @default { r: 0.03, g: 0.16, b: 0.2 }
+   */
+  underwaterColor: Color;
+  /**
+   * Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, and the surface seen from below shows the sky inside Snell's window.
+   *
+   * @default 0.09
+   * @range 0..2
+   * @tunable
+   */
+  underwaterDensity: number;
+  /**
+   * Caustics of the sunlight on everything below the surface (0: none). One surface a frame, the first that has them.
+   *
+   * @range 0..4
+   * @tunable
+   */
+  caustics: number;
+  /**
+   * The caustics' cells per metre.
+   *
+   * @default 0.6
+   * @range 0.01..10
+   * @tunable
+   */
+  causticsScale: number;
 }
 
 /**
@@ -7142,7 +7312,7 @@ export interface Water2D {
 // ── anim ────────────────────────────────────────────────────────
 // Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics.
 // Game code owns the components and sets players, graph parameters and IK targets; og.anim writes the pose (kept as world state in the `og.anim` state block, so snapshots, restore and the world hash cover it), the joint palette, root motion into og.Transform and the fields marked written. Asset handles are what og.load.animation and og.anim.graph answer; 0 is none.
-// Clips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names. Assets are not world state: a hot reload registers them again.
+// Clips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names; a rig with other names or proportions plays it retargeted (og.anim.retarget at run time, or a model's `animation { library }` import setting at cook time). Assets are not world state: a hot reload registers them again.
 
 /**
  * A rig: a glTF's nodes in topological order with their rest transforms, and its skins (joints and inverse bind matrices).
@@ -7651,6 +7821,99 @@ export interface GraphDesc {
    * @default []
    */
   readonly clips?: readonly ClipInfo[];
+}
+
+
+/**
+ * A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow and the standard bones it names outright.
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type Rig = number & { readonly [handleType]: "Rig" };
+
+/** One standard humanoid bone of a skeleton. */
+export interface HumanBone {
+  /**
+   * The standard bone: hips, spine, chest, upperChest, neck, head, then leftShoulder, leftUpperArm, leftLowerArm, leftHand, the right arm, leftUpperLeg, leftLowerLeg, leftFoot, leftToes and the right leg.
+   */
+  readonly bone: string;
+  /** The skeleton node that is that bone. */
+  readonly node: string;
+}
+
+/** Which node of a skeleton is each standard humanoid bone (what retargeting maps). */
+export interface Humanoid {
+  /**
+   * The naming scheme the bones were read in: mixamo, vrm, unity, rigify, ue or blender; custom when a rig named them, none when nothing matched.
+   */
+  readonly scheme: string;
+  /** The bones found, in the standard order (hips first). */
+  readonly bones: readonly HumanBone[];
+}
+
+/**
+ * A skeleton and, optionally, the rig that says how its bones are named.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface HumanoidDesc {
+  /**
+   * The skeleton (og.load.animation's `skeleton`).
+   *
+   * @default 0
+   */
+  readonly skeleton?: SkeletonAsset;
+  /**
+   * A humanoid map from og.load.rig; 0 detects the bones from the node names (Mixamo, VRM, Unity, Rigify, Unreal or Blender names).
+   *
+   * @default 0
+   */
+  readonly rig?: Rig;
+}
+
+
+/**
+ * A clip made for one skeleton, to play on another (other proportions, rest pose or bone names).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RetargetDesc {
+  /**
+   * The clip, made for `source`.
+   *
+   * @default 0
+   */
+  readonly clip?: ClipAsset;
+  /**
+   * The skeleton the clip was made for (og.load.animation's `skeleton`: a character's, or an animation library's).
+   *
+   * @default 0
+   */
+  readonly source?: SkeletonAsset;
+  /**
+   * The skeleton that will play it.
+   *
+   * @default 0
+   */
+  readonly target?: SkeletonAsset;
+  /**
+   * How the source's bones are named (og.load.rig); 0 detects them.
+   *
+   * @default 0
+   */
+  readonly sourceRig?: Rig;
+  /**
+   * How the target's bones are named; 0 detects them.
+   *
+   * @default 0
+   */
+  readonly targetRig?: Rig;
+  /**
+   * Solve the legs so a planted foot stays planted on the target's ground (and the hips lower when a leg cannot reach).
+   *
+   * @default true
+   */
+  readonly footIk?: boolean;
 }
 
 
@@ -9946,7 +10209,7 @@ export type FontRole = "body" | "display" | "mono";
  * - `"secondary"`: A neutral fill (the default).
  * - `"primary"`: The amber action: one per screen.
  * - `"quiet"`: Text until hovered.
- * - `"danger"`: A destructive action: danger ink on a neutral fill.
+ * - `"danger"`: A destructive action: danger ink on the danger tint.
  */
 export type ButtonVariant = "secondary" | "primary" | "quiet" | "danger";
 
@@ -10214,6 +10477,12 @@ export interface ElementDesc {
    */
   readonly scroll?: boolean;
   /**
+   * Scroll its content horizontally and clip it (with scroll: both ways).
+   *
+   * @default false
+   */
+  readonly scrollX?: boolean;
+  /**
    * Report a Response from close(), as a button does.
    *
    * @default false
@@ -10379,7 +10648,15 @@ export interface PanelDesc {
 }
 
 /**
- * A vertical scroll container: the wheel or a drag scrolls it, it clips its content, a capsule indicator shows the position.
+ * Which ways a scroll container scrolls.
+ * - `"vertical"`: Up and down (the default).
+ * - `"horizontal"`: Left and right.
+ * - `"both"`: Both ways.
+ */
+export type ScrollAxes = "vertical" | "horizontal" | "both";
+
+/**
+ * A scroll container: the wheel (both axes, deltaX and deltaY) or a drag scrolls it, and a released drag keeps its momentum, slowing over motion.spring.momentum's response (none under reduced motion); it clips its content; a scrollbar on each scrolling axis shows the position, and a press on one grabs and drags it. Nested containers hand off: what the innermost under the pointer cannot take (it reached its end, or does not scroll that way) goes to the one around it.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -10409,6 +10686,12 @@ export interface ScrollDesc {
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
    */
   readonly gap?: number;
+  /**
+   * Which ways it scrolls.
+   *
+   * @default "vertical"
+   */
+  readonly axes?: ScrollAxes;
 }
 
 /**
@@ -10544,6 +10827,14 @@ export interface Response {
    * A list row or grid cell a press started on was released over this one: that row's or cell's index (drag and drop).
    */
   readonly dropped: number | null;
+  /**
+   * The gamepad (0 to 3) whose A pressed it this tick; null when the pointer or the keyboard did. Pads 1 to 3 press only while og.ui.setPlayers allows them (local multiplayer).
+   */
+  readonly pad: number | null;
+  /**
+   * Bit k: pad k's focus is on it (bit 0 is the shared focus of the pointer, the keyboard and pad 0; bits 1 to 3 the other players' pads).
+   */
+  readonly focusedBy: number;
 }
 
 /** A slider's response and its value after this tick's input. */
@@ -10691,13 +10982,13 @@ export interface UiDesc {
  */
 export interface UiSounds {
   /**
-   * The pointer reaches a control.
+   * The pointer reaches a control, or keyboard or gamepad focus moves to one.
    *
    * @default null
    */
   readonly hover?: Sound | null;
   /**
-   * A control is pressed.
+   * A control is pressed: by the pointer, Enter, Space or the gamepad's A.
    *
    * @default null
    */
@@ -10847,6 +11138,61 @@ export type UiBuild = () => void;
 
 
 
+
+
+/**
+ * How a rich text paragraph draws: its defaults, which its markup's spans override.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RichTextDesc {
+  /**
+   * The type step; null is body.
+   *
+   * @default null
+   */
+  readonly step?: TypeStepName | null;
+  /**
+   * The ink; null is fg.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+  /**
+   * How the lines align.
+   *
+   * @default "start"
+   */
+  readonly align?: TextAlign;
+  /**
+   * Keep to one line (breaking only at `\n`).
+   *
+   * @default false
+   */
+  readonly nowrap?: boolean;
+  /**
+   * Its width; null fits the text.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Which font.
+   *
+   * @default "body"
+   */
+  readonly font?: FontRole;
+}
+
+/** What a rich text's links did this tick. */
+export interface RichTextResult {
+  /** Its links together: hovered while one is, clicked when one was. */
+  readonly response: Response;
+  /** The link clicked this tick: its `[link=…]` id. */
+  readonly link: string | null;
+  /** The link under the pointer. */
+  readonly hovered: string | null;
+}
 
 
 
@@ -11941,6 +12287,71 @@ export type UiItemBuild = (index: number) => void;
 
 
 
+
+
+
+
+/**
+ * One node of the accessibility tree: an element with a role (layout containers and spacers have none and are left out).
+ */
+export interface A11yNode {
+  /** Its path, as touch_move_to and og.ui.focus name it. */
+  readonly path: string;
+  /** The path of the nearest node above it in the tree; empty at the top. */
+  readonly parent: string;
+  /**
+   * Its role (probe.UiElement.role): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, dialog, tooltip, separator, group.
+   */
+  readonly role: string;
+  /** Its accessible name: what a screen reader says it is. */
+  readonly name: string;
+  /**
+   * Its value as text (a slider's number, a progress's percent, a field's text); empty for none.
+   */
+  readonly value: string;
+  /**
+   * Its states: disabled, focused, focusable, checked, selected, expanded, pressed, busy, offscreen (a scroll container cuts it out of view).
+   */
+  readonly states: readonly string[];
+  /**
+   * Left edge of the whole element.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly x: number;
+  /**
+   * Top edge of the whole element.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly y: number;
+  /**
+   * Width.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly width: number;
+  /**
+   * Height.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly height: number;
+}
+
+/**
+ * The last frame's accessibility tree, built from the same nodes the UI draws and takes input on.
+ */
+export interface A11yTree {
+  /** The nodes, in tree order: the page, then each layer over it (a dialog after the page). */
+  readonly nodes: readonly A11yNode[];
+  /**
+   * The paths keyboard Tab and the pads visit, in order: the nodes marked focusable, within the topmost dialog while one is open.
+   */
+  readonly focusOrder: readonly string[];
+  /** The path keyboard and pad 0's focus is on; empty for none. */
+  readonly focused: string;
+}
 
 
 
@@ -13103,6 +13514,10 @@ export interface ShopDesc {
 export interface ShopResult {
   /** The item bought this tick: take the price and grant it. */
   readonly bought: string | null;
+  /**
+   * The item whose Buy was pressed this tick while the balance was short: the button shook with the error sound (og.ui.shake) and nothing was bought.
+   */
+  readonly refused: string | null;
   /** Close was pressed (or Back). */
   readonly closed: boolean;
 }
@@ -13571,7 +13986,7 @@ export interface ConfirmDesc {
    */
   readonly title?: string;
   /**
-   * What will happen.
+   * What will happen, as rich text markup (og.ui.richText: [b], [color=…], [icon=…]…), so a translation carries its own emphasis.
    *
    * @default ""
    */
@@ -13623,7 +14038,7 @@ export interface AlertDesc {
    */
   readonly title?: string;
   /**
-   * The message.
+   * The message, as rich text markup (og.ui.richText).
    *
    * @default ""
    */
@@ -13671,7 +14086,7 @@ export interface AlertDesc {
  * - `"touch_end"`: `touch_end`: release the pointer.
  * - `"scroll"`: `scroll:dx,dy`: scroll at the pointer.
  * - `"touch"`: `touch:<id>:<down|move|up>:<x,y | ui id>`: a further touch (pointer 1 to 4) held while the pointer is busy elsewhere.
- * - `"gamepad"`: `gamepad:<a+b+...|->[:lx,ly[,rx,ry]][:lt,rt]`: set pad 0's whole state; `gamepad:off` disconnects it.
+ * - `"gamepad"`: `gamepad:<a+b+...|->[@pad][:lx,ly[,rx,ry]][:lt,rt]`: set a pad's whole state (pad 0 unless `@1` to `@3` follows the buttons); `gamepad:off` disconnects it.
  * - `"key_down"`: `key_down:<Key>`: hold a key by its code.
  * - `"key_up"`: `key_up:<Key>`: release a key.
  * - `"type"`: `type:<text>`: type text, one key press per character.
@@ -14184,6 +14599,22 @@ export interface UiElement {
   /** The text it shows, if any. */
   readonly text: string;
   /**
+   * Its accessibility role (og.ui.a11y): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, alert, dialog, tooltip, separator, group; empty for a presentational element (a layout container, a spacer).
+   */
+  readonly role: string;
+  /**
+   * Its accessible name: its text, a name the widget gives it (an icon's name, a dialog's title, Decrease and Increase for a stepper's buttons), a control's own text gathered from its children, or else its id.
+   */
+  readonly name: string;
+  /**
+   * Its value as text: a slider's or stepper's number, a progress's or meter's amount, a field's text, a select's choice; empty for none.
+   */
+  readonly value: string;
+  /**
+   * Its states: disabled, focused, focusable (keys and pads reach it now, in this order), checked, selected, expanded, pressed, busy.
+   */
+  readonly states: readonly string[];
+  /**
    * Left edge.
    *
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
@@ -14380,6 +14811,421 @@ export interface EngineProbe extends RuntimeProbe {
   listen(seconds?: number): Heard | null;
 }
 
+// ── terrain ─────────────────────────────────────────────────────
+// Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.
+// Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it centred on the entity's position (rotation and scale are ignored: terrain lies along world x and z), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere; og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are asset changes, like og.physics.setMesh: they are not world state, and a restored snapshot keeps the terrain as it is.
+
+/**
+ * A loaded terrain: its heights, control map and layers.
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type TerrainData = number & { readonly [handleType]: "TerrainData" };
+
+/**
+ * A TerrainData handle field.
+ *
+ * A `TerrainData` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function TerrainData(value?: TerrainData, options?: FieldOptions): FieldSpec<"TerrainData">;
+
+/**
+ * What og.terrain.edit does under its brush.
+ * - `"raise"`: Raise the heights by `strength` metres at the centre.
+ * - `"lower"`: Lower them by `strength` metres at the centre.
+ * - `"flatten"`: Pull them towards the brush centre's y, by `strength` (0 to 1) at the centre.
+ * - `"smooth"`: Pull each towards its neighbours' mean, by `strength` (0 to 1) at the centre.
+ * - `"paint"`: Paint `layer` into the control map, by `strength` (0 to 1) at the centre.
+ */
+export type TerrainBrushMode = "raise" | "lower" | "flatten" | "smooth" | "paint";
+
+/**
+ * Draws a loaded terrain centred on the entity's position, with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.
+ *
+ * The value of the `Terrain` component (token `og.Terrain`).
+ */
+export interface Terrain {
+  /** The terrain (og.terrain.load's TerrainInfo.data). */
+  data: TerrainData;
+  /**
+   * Cast the directional and local lights' shadows (it always receives them).
+   *
+   * @default true
+   */
+  castShadows: boolean;
+  /**
+   * The finest clipmap level's spacing (0: the terrain file's, or the samples' spacing).
+   *
+   * @range 0..64
+   * @unit m (metres)
+   * @tunable
+   */
+  lodSpacing: number;
+  /**
+   * Quads per side of every clipmap level (0: the terrain file's, else 64; 16 to 256, rounded to a multiple of 4).
+   *
+   * @range 0..256
+   */
+  lodRing: number;
+}
+
+/**
+ * Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies shrink to nothing over the outer `fade` of `distance`. The entity stands where the terrain does: the og.Terrain's entity itself, or a child of it at its origin. Drawn only: no colliders, and the copies are not entities.
+ *
+ * The value of the `TerrainScatter` component (token `og.TerrainScatter`).
+ */
+export interface TerrainScatter {
+  /** The terrain (og.terrain.load's TerrainInfo.data). */
+  data: TerrainData;
+  /** The mesh, its origin at its root. */
+  geometry: Geometry;
+  /** Its material. */
+  material: Material;
+  /**
+   * The terrain layer that places it, 0 to 3.
+   *
+   * @range ..3
+   */
+  layer: number;
+  /**
+   * Copies per square metre where the layer's weight is 1.
+   *
+   * @default 2
+   * @range 0..400
+   * @tunable
+   */
+  density: number;
+  /**
+   * How far from the camera, along x and z, copies are placed.
+   *
+   * @default 40
+   * @range 0..500
+   * @unit m (metres)
+   * @tunable
+   */
+  distance: number;
+  /**
+   * The outer part of `distance` over which copies shrink to nothing.
+   *
+   * @default 0.3
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  fade: number;
+  /**
+   * The smallest copy's uniform scale.
+   *
+   * @default 0.8
+   * @range 0..
+   * @tunable
+   */
+  minScale: number;
+  /**
+   * The largest copy's uniform scale.
+   *
+   * @default 1.2
+   * @range 0..
+   * @tunable
+   */
+  maxScale: number;
+  /**
+   * How far copies lean with the ground: 0 upright, 1 along its normal.
+   *
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  align: number;
+  /**
+   * Another seed places the copies elsewhere.
+   *
+   * @default 1
+   */
+  seed: number;
+}
+
+/** A loaded terrain. */
+export interface TerrainInfo {
+  /** Its handle, for og.Terrain.data and this module's functions. */
+  readonly data: TerrainData;
+  /**
+   * The height field registered with physics under this handle: the mesh of an og.Collider of shape SHAPE_HEIGHTFIELD.
+   */
+  readonly geometry: Geometry;
+  /**
+   * Its extent along x and z, centred on its entity.
+   *
+   * @unit m (metres)
+   */
+  readonly size: Vector2;
+  /** Height samples along x. */
+  readonly columns: number;
+  /** Height samples along z. */
+  readonly rows: number;
+  /**
+   * The lowest point above its entity.
+   *
+   * @unit m (metres)
+   */
+  readonly minHeight: number;
+  /**
+   * The highest.
+   *
+   * @unit m (metres)
+   */
+  readonly maxHeight: number;
+  /** Its material layers (up to 4). */
+  readonly layers: number;
+  /** Whether its terrain file asks for a collider (`collision`, default true). */
+  readonly collision: boolean;
+  /** Its terrain file's `castShadows`. */
+  readonly castShadows: boolean;
+}
+
+/**
+ * Where og.terrain.sample looks.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TerrainSampleDesc {
+  /**
+   * The terrain.
+   *
+   * @default 0
+   */
+  readonly data?: TerrainData;
+  /**
+   * Where it stands: its og.Terrain entity's position.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly origin?: Vector3;
+  /**
+   * The world x.
+   *
+   * @default 0
+   * @unit m (metres)
+   */
+  readonly x?: number;
+  /**
+   * The world z.
+   *
+   * @default 0
+   * @unit m (metres)
+   */
+  readonly z?: number;
+}
+
+/** The terrain under a point. */
+export interface TerrainSample {
+  /**
+   * The world y of the surface: the triangles drawn at the finest level and collided with.
+   *
+   * @unit m (metres)
+   */
+  readonly height: number;
+  /** The surface normal, smoothed between samples as the renderer shades it. */
+  readonly normal: Vector3;
+  /**
+   * The normal's angle from straight up.
+   *
+   * @unit deg (degrees)
+   */
+  readonly slope: number;
+  /** Whether the point is over the terrain (outside, the nearest edge answers). */
+  readonly inside: boolean;
+}
+
+/** A terrain's box in world space. */
+export interface TerrainBounds {
+  /**
+   * The lowest corner.
+   *
+   * @unit m (metres)
+   */
+  readonly min: Vector3;
+  /**
+   * The highest corner.
+   *
+   * @unit m (metres)
+   */
+  readonly max: Vector3;
+}
+
+/**
+ * One runtime edit of a terrain (og.terrain.edit).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TerrainBrush {
+  /**
+   * What it does.
+   *
+   * @default "raise"
+   */
+  readonly mode?: TerrainBrushMode;
+  /**
+   * Where the terrain stands: its og.Terrain entity's position.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly origin?: Vector3;
+  /**
+   * The brush's centre in world space; its y is flatten's target height.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly center?: Vector3;
+  /**
+   * The brush's radius.
+   *
+   * @default 8
+   * @range 0.01..
+   * @unit m (metres)
+   */
+  readonly radius?: number;
+  /**
+   * Metres at the centre (raise, lower), or how far to go, 0 to 1 (flatten, smooth, paint).
+   *
+   * @default 1
+   * @range 0..
+   */
+  readonly strength?: number;
+  /**
+   * The outer part of the radius over which it fades to nothing (0: a hard edge, 1: fading from the centre).
+   *
+   * @default 0.5
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly falloff?: number;
+  /**
+   * paint: the layer painted, 0 to 3.
+   *
+   * @default 0
+   * @range ..3
+   */
+  readonly layer?: number;
+}
+
+/** What an edit changed. */
+export interface TerrainEdit {
+  /** Height or control-map samples it touched. */
+  readonly samples: number;
+  /**
+   * The terrain's lowest point now.
+   *
+   * @unit m (metres)
+   */
+  readonly minHeight: number;
+  /**
+   * Its highest now.
+   *
+   * @unit m (metres)
+   */
+  readonly maxHeight: number;
+}
+
+/**
+ * One material layer of a terrain: its look and the rules that place it. A layer shows where its control-map channel (1 without a map) times its slope band times its altitude band is high; the layers' weights are normalised.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TerrainLayerDesc {
+  /**
+   * Multiplies the layer's texture (linear).
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  readonly color?: Color;
+  /**
+   * Its roughness.
+   *
+   * @default 0.9
+   * @range 0.04..1
+   */
+  readonly roughness?: number;
+  /**
+   * Metres per repeat of its textures.
+   *
+   * @default 4
+   * @range 0.01..1000
+   * @unit m (metres)
+   */
+  readonly tile?: number;
+  /**
+   * Sample by three projections blended by the normal (for cliffs).
+   *
+   * @default false
+   */
+  readonly triplanar?: boolean;
+  /**
+   * How strongly its normal map bends the surface.
+   *
+   * @default 1
+   * @range 0..4
+   */
+  readonly normalStrength?: number;
+  /**
+   * The flattest slope it shows on.
+   *
+   * @default 0
+   * @range 0..90
+   * @unit deg (degrees)
+   */
+  readonly slopeMin?: number;
+  /**
+   * The steepest.
+   *
+   * @default 90
+   * @range 0..90
+   * @unit deg (degrees)
+   */
+  readonly slopeMax?: number;
+  /**
+   * How far past its slopes it fades out.
+   *
+   * @default 4
+   * @range 0..90
+   * @unit deg (degrees)
+   */
+  readonly slopeFade?: number;
+  /**
+   * The lowest height above the terrain's origin it shows at.
+   *
+   * @default -1000000
+   * @unit m (metres)
+   */
+  readonly altitudeMin?: number;
+  /**
+   * The highest.
+   *
+   * @default 1000000
+   * @unit m (metres)
+   */
+  readonly altitudeMax?: number;
+  /**
+   * How far past its heights it fades out.
+   *
+   * @default 4
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly altitudeFade?: number;
+}
+
+
+
+
+
+
+
 // ── og ──────────────────────────────────────────────────────────
 
 /**
@@ -14557,7 +15403,7 @@ export declare namespace og {
   const DirectionalLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool">; readonly shadowDistance: FieldSpec<"f32"> }, DirectionalLight>;
   /**
    * A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance.
-   * Up to MAX_LIGHTS point and spot lights are drawn per frame (the rest are counted, not drawn); the first two with castShadow get cube shadows.
+   * Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. The first two in view with castShadow get cube shadows.
    */
   const PointLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool"> }, PointLight>;
   /** A cone of light along the entity's local -Z, as three.js SpotLight. */
@@ -14682,7 +15528,7 @@ export declare namespace og {
      */
     function updateMaterial(world: World, material: Material, desc?: StandardMaterialDesc): Result<void>;
     /**
-     * Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. Skinned meshes draw it without the hooks; shadows and the depth prepass use the undisplaced mesh.
+     * Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. The hooks apply to skinned meshes too, and shadows and the depth prepass (ambient occlusion, outlines, depth of field) see the mesh where vertex_offset moved it and cut where surface_color's alpha falls below alphaTest.
      *
      * @param world The world whose renderer owns the material.
      * @param shader The shader.
@@ -14691,10 +15537,19 @@ export declare namespace og {
      */
     function shaderMaterial(world: World, shader: Shader, desc?: StandardMaterialDesc): Result<Material>;
     /**
+     * Give an existing material a material shader, or take it away with null: a loaded model's material (GltfInfo.materials) draws its skinned or static meshes through the hooks, with the shader's parameters at their defaults. Every mesh drawn with that material changes.
+     *
+     * @param world The world whose renderer owns the material.
+     * @param material The material, from og.render.standardMaterial, og.render.shaderMaterial or a loaded glTF.
+     * @param shader The shader, or null to draw the material plain again.
+     * @returns Refused for a dead material or a shader not loaded in this world.
+     */
+    function setMaterialShader(world: World, material: Material, shader: Shader | null): Result<void>;
+    /**
      * Set a parameter of a shader material, by the name its shader declares: a number for float, two to four for vec2, vec3, vec4 and color.
      *
      * @param world The world whose renderer owns the material.
-     * @param material A material made by og.render.shaderMaterial.
+     * @param material A material made by og.render.shaderMaterial or given a shader by og.render.setMaterialShader.
      * @param name The parameter's name.
      * @param value Its value; missing components are 0.
      * @returns Refused for a material without a shader or a parameter its shader does not declare.
@@ -14869,6 +15724,14 @@ export declare namespace og {
      */
     function animation(world: World, path: string): Result<Animation>;
     /**
+     * Load a cooked humanoid map (an `.ogt` of `type rig`: a naming scheme and bones named outright) for og.anim.retarget and og.anim.humanoid. Loading the same path again answers the same handle.
+     *
+     * @param world The world whose animation uses it.
+     * @param path The rig's asset id, such as `rigs/strider.ogt`.
+     * @returns Refused for a path not in the bundle (run og cook) or a cook stamp mismatch.
+     */
+    function rig(world: World, path: string): Result<Rig>;
+    /**
      * Load a cooked flipbook sheet (an `.ogt` of `type flipbook`, with its Aseprite or TexturePacker atlas resolved by the cook) and its texture, and register it with og.flipbook. Loading the same path again answers the same handles.
      *
      * @param world The world whose animation and renderer own it.
@@ -14939,13 +15802,13 @@ export declare namespace og {
    */
   const Rope: ComponentType<{ readonly segments: FieldSpec<"u32">; readonly length: FieldSpec<"f32">; readonly offset: FieldSpec<"Vector3">; readonly end: FieldSpec<"Entity">; readonly endOffset: FieldSpec<"Vector3">; readonly iterations: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly width: FieldSpec<"f32">; readonly color: FieldSpec<"Vector3">; readonly visible: FieldSpec<"bool"> }, Rope>;
   /**
-   * A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind and collision against every solid collider. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour).
+   * A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour).
    */
-  const Cloth: ComponentType<{ readonly columns: FieldSpec<"u32">; readonly rows: FieldSpec<"u32">; readonly spacing: FieldSpec<"f32">; readonly pins: FieldSpec<"u32">; readonly iterations: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly gust: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly material: FieldSpec<"Material">; readonly visible: FieldSpec<"bool"> }, Cloth>;
+  const Cloth: ComponentType<{ readonly columns: FieldSpec<"u32">; readonly rows: FieldSpec<"u32">; readonly spacing: FieldSpec<"f32">; readonly pins: FieldSpec<"u32">; readonly iterations: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly gust: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly friction: FieldSpec<"f32">; readonly material: FieldSpec<"Material">; readonly visible: FieldSpec<"bool"> }, Cloth>;
   /**
-   * A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`.
+   * A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`.
    */
-  const Fluid2D: ComponentType<{ readonly count: FieldSpec<"u32">; readonly size: FieldSpec<"Vector2">; readonly bounds: FieldSpec<"Vector2">; readonly radius: FieldSpec<"f32">; readonly restDensity: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly nearStiffness: FieldSpec<"f32">; readonly viscosity: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly seed: FieldSpec<"u32">; readonly color: FieldSpec<"Vector3">; readonly opacity: FieldSpec<"f32">; readonly blobScale: FieldSpec<"f32">; readonly threshold: FieldSpec<"f32">; readonly layer: FieldSpec<"i32">; readonly visible: FieldSpec<"bool"> }, Fluid2D>;
+  const Fluid2D: ComponentType<{ readonly count: FieldSpec<"u32">; readonly size: FieldSpec<"Vector2">; readonly bounds: FieldSpec<"Vector2">; readonly radius: FieldSpec<"f32">; readonly restDensity: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly nearStiffness: FieldSpec<"f32">; readonly viscosity: FieldSpec<"f32">; readonly group: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly mixing: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly seed: FieldSpec<"u32">; readonly color: FieldSpec<"Vector3">; readonly opacity: FieldSpec<"f32">; readonly blobScale: FieldSpec<"f32">; readonly threshold: FieldSpec<"f32">; readonly layer: FieldSpec<"i32">; readonly visible: FieldSpec<"bool"> }, Fluid2D>;
   /**
    * Height-field water (3D): a `resolution` × `resolution` grid of heights over a `size` square centred on the entity (its y is the rest level), waves travelling at `waveSpeed` and fading by `damping`. Dynamic bodies crossing it push waves (splashes; og.Splash events) and float by `buoyancy`. The heights are world state; an og.Water on the same entity draws them.
    */
@@ -14959,7 +15822,7 @@ export declare namespace og {
    */
   const Splash: EventType<Splash>;
   /**
-   * A ragdoll over an og.Skeleton (3D): a capsule body per bone with a parent, ball joints with cone limits between them, built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state (the og.physics state block), not entities.
+   * A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy plane at their animated z, for a skeleton laid out in that plane), built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state (the og.physics state block), not entities.
    */
   const Ragdoll: ComponentType<{ readonly weight: FieldSpec<"f32">; readonly blendTime: FieldSpec<"f32">; readonly mass: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly jointLimit: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly impulse: FieldSpec<"Vector3">; readonly blend: FieldSpec<"f32"> }, Ragdoll>;
   /**
@@ -15075,19 +15938,19 @@ export declare namespace og {
   /**
    * A procedural sky of chosen colours, drawn behind the scene per pixel and lighting it (the image-based light follows it). Without it, RenderSettings.sky draws the built-in sky. A DayNight that is enabled sets the sky itself.
    */
-  const Sky: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly zenith: FieldSpec<"Color">; readonly horizon: FieldSpec<"Color">; readonly ground: FieldSpec<"Color">; readonly sunDirection: FieldSpec<"Vector3">; readonly sunColor: FieldSpec<"Color">; readonly sunSize: FieldSpec<"f32">; readonly sunIntensity: FieldSpec<"f32">; readonly glow: FieldSpec<"f32">; readonly glowPower: FieldSpec<"f32">; readonly stars: FieldSpec<"f32">; readonly brightness: FieldSpec<"f32"> }, Sky>;
+  const Sky: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly zenith: FieldSpec<"Color">; readonly horizon: FieldSpec<"Color">; readonly ground: FieldSpec<"Color">; readonly sunDirection: FieldSpec<"Vector3">; readonly sunColor: FieldSpec<"Color">; readonly sunSize: FieldSpec<"f32">; readonly sunIntensity: FieldSpec<"f32">; readonly glow: FieldSpec<"f32">; readonly glowPower: FieldSpec<"f32">; readonly stars: FieldSpec<"f32">; readonly brightness: FieldSpec<"f32">; readonly moonSize: FieldSpec<"f32">; readonly moonPhase: FieldSpec<"f32">; readonly moonIntensity: FieldSpec<"f32">; readonly moonColor: FieldSpec<"Color">; readonly moonDirection: FieldSpec<"Vector3"> }, Sky>;
   /**
-   * A day-night cycle: the time of day drives the sun's direction, the sky's colours and stars, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly.
+   * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly.
    */
-  const DayNight: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly start: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly tilt: FieldSpec<"f32">; readonly azimuth: FieldSpec<"f32">; readonly lightIntensity: FieldSpec<"f32">; readonly tintFog: FieldSpec<"bool">; readonly step: FieldSpec<"f32"> }, DayNight>;
+  const DayNight: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly start: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly tilt: FieldSpec<"f32">; readonly azimuth: FieldSpec<"f32">; readonly lightIntensity: FieldSpec<"f32">; readonly tintFog: FieldSpec<"bool">; readonly step: FieldSpec<"f32">; readonly moonSize: FieldSpec<"f32">; readonly moonPhase: FieldSpec<"f32"> }, DayNight>;
   /**
    * A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence) and dimmed sunlight. Particles are simulated by the renderer from the tick, so they look the same on every run; they never touch the simulation.
    */
   const Weather: ResourceType<{ readonly kind: FieldSpec<"u32">; readonly intensity: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly tint: FieldSpec<"Color">; readonly dim: FieldSpec<"f32">; readonly layer: FieldSpec<"i32"> }, Weather>;
   /**
-   * A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space where the tier allows, the sky's cubemap on WebGL2). With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated).
+   * A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space where the tier allows, the sky's cubemap on WebGL2, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated).
    */
-  const Water: ComponentType<{ readonly size: FieldSpec<"Vector2">; readonly segments: FieldSpec<"u32">; readonly shallow: FieldSpec<"Color">; readonly deep: FieldSpec<"Color">; readonly depthFade: FieldSpec<"f32">; readonly opacity: FieldSpec<"f32">; readonly foam: FieldSpec<"Color">; readonly foamWidth: FieldSpec<"f32">; readonly waveScale: FieldSpec<"f32">; readonly waveSpeed: FieldSpec<"f32">; readonly waveStrength: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32"> }, Water>;
+  const Water: ComponentType<{ readonly size: FieldSpec<"Vector2">; readonly segments: FieldSpec<"u32">; readonly shallow: FieldSpec<"Color">; readonly deep: FieldSpec<"Color">; readonly depthFade: FieldSpec<"f32">; readonly opacity: FieldSpec<"f32">; readonly foam: FieldSpec<"Color">; readonly foamWidth: FieldSpec<"f32">; readonly waveScale: FieldSpec<"f32">; readonly waveSpeed: FieldSpec<"f32">; readonly waveStrength: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32">; readonly planarReflection: FieldSpec<"f32">; readonly shadows: FieldSpec<"f32">; readonly underwaterColor: FieldSpec<"Color">; readonly underwaterDensity: FieldSpec<"f32">; readonly caustics: FieldSpec<"f32">; readonly causticsScale: FieldSpec<"f32"> }, Water>;
   /**
    * Draws the og.WaterLine on the same entity in the sprite order: the body from its surface down, a gradient from the top colour to the bottom one, and a bright lip along the surface.
    */
@@ -15140,7 +16003,7 @@ export declare namespace og {
   /**
    * Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics.
    * Game code owns the components and sets players, graph parameters and IK targets; og.anim writes the pose (kept as world state in the `og.anim` state block, so snapshots, restore and the world hash cover it), the joint palette, root motion into og.Transform and the fields marked written. Asset handles are what og.load.animation and og.anim.graph answer; 0 is none.
-   * Clips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names. Assets are not world state: a hot reload registers them again.
+   * Clips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names; a rig with other names or proportions plays it retargeted (og.anim.retarget at run time, or a model's `animation { library }` import setting at cook time). Assets are not world state: a hot reload registers them again.
    */
   namespace anim {
     /**
@@ -15151,6 +16014,22 @@ export declare namespace og {
      * @returns Refused for a parse error (the reason names the line), a clip name `clips` lacks, or an invalid graph.
      */
     function graph(world: World, desc?: GraphDesc): Result<GraphAsset>;
+    /**
+     * The standard humanoid bones of a skeleton, as retargeting sees them: to check a rig before retargeting onto it.
+     *
+     * @param world The world whose animation owns the skeleton.
+     * @param desc The skeleton and its rig.
+     * @returns Refused for an unregistered skeleton or rig, or a rig naming a node the skeleton lacks.
+     */
+    function humanoid(world: World, desc?: HumanoidDesc): Result<Humanoid>;
+    /**
+     * A new clip for `target` from a clip of `source`: each animated humanoid bone turns as the source's does from its rest pose (after a rest correction, so a T-pose drives an A-pose and other bone frames agree), the target keeps its bone lengths, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled. Same name, duration and markers. The cook does the same for a model's `animation { library }` import setting; this is for clips chosen at run time.
+     *
+     * @param world The world whose animation owns the skeletons and the clip.
+     * @param desc The clip, the two skeletons and their rigs.
+     * @returns The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip, skeleton or rig, a skeleton without recognisable hips (name them in a `type rig` file), or a rig naming a missing node.
+     */
+    function retarget(world: World, desc?: RetargetDesc): Result<ClipInfo>;
     /**
      * The index of a flipbook clip by name, for Flipbook.clip: `og.anim.clip(hero, "walk_down")`. -1 when the sheet has no such clip.
      *
@@ -15744,6 +16623,14 @@ export declare namespace og {
      */
     function scroll(id: string, desc: ScrollDesc, build: UiBuild): void;
     /**
+     * A paragraph of inline spans from markup, for a string-table message (og.i18n.t) so a translation carries its own emphasis: `[b]bold[/b]` (thickened in the distance field as far as it reaches, plus a second copy one device pixel right), `[color=danger]` or `[color=#ff8800]` (a ThemeColor follows the skin), `[size=xl]` (a TypeStepName), `[font=mono]`, `[icon=coin]` (a cell of the icon atlas, one em), `[link=shop]Open the shop[/link]` (accent ink, underlined, focusable by keys and pads; a child element `<id>/shop` of kind link for the probe) and per-glyph motion `[wave]`, `[shake]`, `[pulse]` (by the tick; still under reduced motion). `[[` is a literal bracket. Lines break between the spans' words (a word restyled mid-way stays whole), each as tall as its tallest span on one baseline. Markup it cannot read shows as text and logs a warning.
+     *
+     * @param id Its id.
+     * @param markup The markup.
+     * @param desc Defaults for its spans: type step, ink, alignment, wrapping, width and font.
+     */
+    function richText(id: string, markup: string, desc?: RichTextDesc): RichTextResult;
+    /**
      * MSDF text that wraps at its width (word breaks; between CJK characters under kinsoku, katakana words kept whole; long words between characters) unless nowrap. The probe reads its text.
      *
      * @param id Its id.
@@ -16143,6 +17030,22 @@ export declare namespace og {
      */
     function back(): boolean;
     /**
+     * Local multiplayer: how many players this screen takes (1 to 4; 1 by default). Pads 1 to count - 1 each move a focus of their own among the same controls, shown as a ring in the player's colour (info, success, warn), and their A presses the control under it (Response.pad says which pad); pad 0 shares the one focus with the keyboard and the pointer, and Back and adjusting a slider stay pad 0's. Declare it every tick the screen shows; it takes effect from the next tick, and a dialog's focus scope holds every pad's focus inside it.
+     *
+     * @param count Players, 1 to 4 (clamped).
+     */
+    function setPlayers(count: number): void;
+    /**
+     * The path of the control pad pad's focus is on in the last frame (pad 0: the shared focus of the pointer, keyboard and pad 0), as touch_move_to resolves it; empty when it is on none.
+     *
+     * @param pad The pad, 0 to 3; past 3 answers empty.
+     */
+    function focus(pad: number): string;
+    /**
+     * The accessibility tree of the last frame: every element with a role, its name, value, states and bounds, and the focus order Tab walks. A shell mirrors it into the page for screen readers; a playtest reads the same fields on dump_ui's elements.
+     */
+    function a11y(): A11yTree;
+    /**
      * Whether keyboard and gamepad navigation moves focus on this screen (on by default). A gameplay HUD whose keys move the player turns it off; an open dialog or menu turns it back on while it is open. Takes effect from the next tick.
      *
      * @param on On or off.
@@ -16371,5 +17274,72 @@ export declare namespace og {
      * @returns The report, or the first malformed step.
      */
     function schedule(world: World, script: string): Result<CommandsReport>;
+  }
+  /**
+   * Draws a loaded terrain centred on the entity's position, with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.
+   */
+  const Terrain: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly castShadows: FieldSpec<"bool">; readonly lodSpacing: FieldSpec<"f32">; readonly lodRing: FieldSpec<"u32"> }, Terrain>;
+  /**
+   * Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies shrink to nothing over the outer `fade` of `distance`. The entity stands where the terrain does: the og.Terrain's entity itself, or a child of it at its origin. Drawn only: no colliders, and the copies are not entities.
+   */
+  const TerrainScatter: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly layer: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly fade: FieldSpec<"f32">; readonly minScale: FieldSpec<"f32">; readonly maxScale: FieldSpec<"f32">; readonly align: FieldSpec<"f32">; readonly seed: FieldSpec<"u32"> }, TerrainScatter>;
+  /**
+   * Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.
+   * Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it centred on the entity's position (rotation and scale are ignored: terrain lies along world x and z), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere; og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are asset changes, like og.physics.setMesh: they are not world state, and a restored snapshot keeps the terrain as it is.
+   */
+  namespace terrain {
+    /**
+     * Load a cooked terrain (a `type terrain` .ogt under assets/) and its layers' textures, and register its height field with physics under TerrainInfo.geometry. Loading the same path again answers the same terrain.
+     *
+     * @param world The world.
+     * @param path The terrain file, such as `terrain/island.ogt`.
+     * @returns Refused for a path that is not a cooked terrain, or a layer texture that does not load.
+     */
+    function load(world: World, path: string): Result<TerrainInfo>;
+    /**
+     * The surface under a world point: its height, normal and slope. Callable inside systems (it reads the terrain, not the world).
+     *
+     * @param world The world.
+     * @param desc The terrain, where it stands and the point.
+     * @returns Refused for an unknown terrain.
+     */
+    function sample(world: World, desc?: TerrainSampleDesc): Result<TerrainSample>;
+    /**
+     * A terrain's box in world space when it stands at `origin`.
+     *
+     * @param world The world.
+     * @param data The terrain.
+     * @param origin Where it stands.
+     * @returns Refused for an unknown terrain.
+     */
+    function bounds(world: World, data: TerrainData, origin?: Vector3): Result<TerrainBounds>;
+    /**
+     * Change a terrain under a round brush: raise, lower, flatten or smooth its heights (the renderer, physics and og.terrain.sample see the change from the next frame and tick), or paint a layer into its control map (making one when it has none).
+     *
+     * @param world The world.
+     * @param data The terrain.
+     * @param brush What to do and where.
+     * @returns Refused for an unknown terrain, a layer beyond its layers, or a brush that misses it.
+     */
+    function edit(world: World, data: TerrainData, brush?: TerrainBrush): Result<TerrainEdit>;
+    /**
+     * A terrain's layer as it is now (for a tuning tool: read it, change it, setLayer it).
+     *
+     * @param world The world.
+     * @param data The terrain.
+     * @param index The layer, from 0.
+     * @returns Refused for an unknown terrain or layer.
+     */
+    function layer(world: World, data: TerrainData, index: number): Result<TerrainLayerDesc>;
+    /**
+     * Replace a terrain's layer look and rules (its textures stay). Drawn from the next frame.
+     *
+     * @param world The world.
+     * @param data The terrain.
+     * @param index The layer, from 0.
+     * @param layer The layer.
+     * @returns Refused for an unknown terrain or layer.
+     */
+    function setLayer(world: World, data: TerrainData, index: number, layer?: TerrainLayerDesc): Result<void>;
   }
 }

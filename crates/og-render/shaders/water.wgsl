@@ -5,8 +5,12 @@
 // water meets geometry, refraction of a copy of the scene drawn so far,
 // and reflection: screen-space on the full tier (a march through the
 // depth prepass), the sky's prefiltered cubemap where it misses and on
-// WebGL2. Drawn after the opaque scene and the sky, before transparent
-// meshes, writing depth. Prepended by frame.wgsl.
+// WebGL2, or the planar reflection pass's mirrored scene. Phase 2: the
+// directional light's shadows on the surface, and the view from below
+// (what is above inside Snell's window, the water's colour reflected
+// outside it). Drawn after the opaque scene and the sky, before
+// transparent meshes, writing depth. Prepended by frame.wgsl and
+// lighting.wgsl.
 
 struct WaterUniform {
   model: mat4x4<f32>,
@@ -17,6 +21,8 @@ struct WaterUniform {
   waves: vec4<f32>,       // x: scale (waves per metre), y: speed, z: strength, w: refraction (px)
   look: vec4<f32>,        // x: reflectivity, y: 1 for screen-space reflections, z: height field size (m), w: resolution
   screen: vec4<f32>,      // w, h, 1/w, 1/h
+  extra: vec4<f32>,       // x: shadows, y: 1 with the planar reflection
+  under: vec4<f32>,       // rgb: the underwater colour
 };
 
 @group(1) @binding(0) var<uniform> water: WaterUniform;
@@ -24,6 +30,9 @@ struct WaterUniform {
 @group(1) @binding(2) var scene_color: texture_2d<f32>;
 @group(1) @binding(3) var scene_depth: texture_2d<f32>;
 @group(1) @binding(4) var water_sampler: sampler;
+// The planar reflection pass's frame (the mirrored camera's view, flipped
+// left to right), when this surface is the one drawn with it.
+@group(1) @binding(5) var reflection_tex: texture_2d<f32>;
 
 struct WaterOut {
   @builtin(position) clip: vec4<f32>,
@@ -157,7 +166,15 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   let tangent_z = normalize((water.model * vec4<f32>(0.0, 0.0, 1.0, 0.0)).xyz);
   var n = normalize(in.normal - tangent_x * slope.x - tangent_z * slope.y);
   let v = select(normalize(frame.view_pos.xyz - in.world), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
+  // Seen from below: the camera is under the surface.
+  let below_view = dot(in.normal, v) < 0.0;
   if (dot(n, v) < 0.0) { n = -n; }
+  let l = normalize(frame.light_dir.xyz);
+  var sun = 1.0;
+  if (water.extra.x > 0.0 && frame.light_dir.w > 0.5) {
+    let up = select(in.normal, -in.normal, dot(in.normal, l) < 0.0);
+    sun = mix(1.0, cascade_shadow(in.world, up, max(dot(up, l), 0.0)), water.extra.x);
+  }
 
   let px = in.clip.xy;
   let uv = px * water.screen.zw;
@@ -173,32 +190,46 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     scene_at = scene_here;
   }
   let below = textureSampleLevel(scene_color, water_sampler, ruv, 0.0).rgb;
+  if (below_view) {
+    // From below: what is above shows inside Snell's window (the view
+    // steeper than the critical angle, about 49 degrees from the normal),
+    // outside it the surface reflects the water's own colour.
+    let window = smoothstep(0.6, 0.7, abs(dot(n, v)));
+    let colour = mix(water.under.rgb, below * water.shallow.rgb, window);
+    return vec4<f32>(apply_fog(colour, in.world), 1.0);
+  }
   let thickness = max(scene_at - here, 0.0);
   let absorb = 1.0 - exp(-thickness / max(water.shallow.w, 1e-3));
-  var color = mix(below * water.shallow.rgb, water.deep.rgb, clamp(absorb * water.deep.w, 0.0, 1.0));
+  // Shadowed water scatters less light: its deep colour darkens.
+  let deep = water.deep.rgb * mix(0.4, 1.0, sun);
+  var color = mix(below * water.shallow.rgb, deep, clamp(absorb * water.deep.w, 0.0, 1.0));
 
   // Reflection with Schlick's Fresnel.
   let r = reflect(-v, n);
   let fresnel = (0.02 + 0.98 * pow(1.0 - max(dot(n, v), 0.0), 5.0)) * water.look.x;
   var reflected = textureSampleLevel(prefiltered_map, ibl_sampler, r, 0.5).rgb * frame.params.x * 1.8;
-  if (water.look.y > 0.5) {
+  if (water.extra.y > 0.5) {
+    // The mirrored scene, flipped left to right, shifted by the waves.
+    let shift_r = (n - in.normal).xz * water.screen.zw * 60.0;
+    let puv = clamp(vec2<f32>(1.0 - uv.x, uv.y) + vec2<f32>(-shift_r.x, shift_r.y), vec2<f32>(0.0), vec2<f32>(1.0));
+    reflected = textureSampleLevel(reflection_tex, water_sampler, puv, 0.0).rgb;
+  } else if (water.look.y > 0.5) {
     let hit = ssr(in.world, r);
     reflected = mix(reflected, hit.rgb, hit.a);
   }
   color = mix(color, reflected, clamp(fresnel, 0.0, 1.0));
 
-  // The sun's highlight.
-  let l = normalize(frame.light_dir.xyz);
+  // The sun's highlight (none in shadow).
   let h = normalize(l + v);
   let spec = pow(max(dot(n, h), 0.0), 220.0) * 4.0;
-  color += frame.light_color.rgb * spec * fresnel * 4.0;
+  color += frame.light_color.rgb * spec * fresnel * 4.0 * sun;
 
   // Foam: a band where the water meets geometry, broken up by noise, and on steep crests.
   let edge = 1.0 - clamp(thickness / max(water.foam.w, 1e-3), 0.0, 1.0);
   let noise = foam_noise(in.local * 6.0 + vec2<f32>(t * 0.3, -t * 0.2));
   let crest = clamp((in.slope - 0.35) * 3.0, 0.0, 1.0);
   let foam = clamp(edge * edge * (0.55 + 0.6 * noise) + crest * noise, 0.0, 1.0);
-  let lit = max(dot(in.normal, l), 0.0) * frame.light_color.rgb + vec3<f32>(frame.params.x * 0.6);
+  let lit = max(dot(in.normal, l), 0.0) * frame.light_color.rgb * sun + vec3<f32>(frame.params.x * 0.6);
   color = mix(color, water.foam.rgb * lit, foam * step(0.001, water.foam.w));
   return vec4<f32>(apply_fog(color, in.world), 1.0);
 }

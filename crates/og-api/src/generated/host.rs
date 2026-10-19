@@ -264,6 +264,8 @@ pub trait RenderApi: Wire {
     fn og_render_update_material(&self, world: u32, material: f64, desc: Option<String>) -> String;
     /// `og.render.shaderMaterial`
     fn og_render_shader_material(&self, world: u32, shader: f64, desc: Option<String>) -> String;
+    /// `og.render.setMaterialShader`
+    fn og_render_set_material_shader(&self, world: u32, material: f64, shader: String) -> String;
     /// `og.render.setShaderParam`
     fn og_render_set_shader_param(&self, world: u32, material: f64, name: String, value: String) -> String;
     /// `og.render.capabilities`
@@ -310,6 +312,8 @@ pub trait LoadApi: Wire {
     fn og_load_gltf_info(&self, world: u32, asset: f64) -> String;
     /// `og.load.animation`
     fn og_load_animation(&self, world: u32, path: String) -> String;
+    /// `og.load.rig`
+    fn og_load_rig(&self, world: u32, path: String) -> String;
     /// `og.load.flipbook`
     fn og_load_flipbook(&self, world: u32, path: String) -> String;
     /// `og.load.tilemap`
@@ -354,6 +358,10 @@ pub trait AtmosphereApi: Wire {
 pub trait AnimApi: Wire {
     /// `og.anim.graph`
     fn og_anim_graph(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.anim.humanoid`
+    fn og_anim_humanoid(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.anim.retarget`
+    fn og_anim_retarget(&self, world: u32, desc: Option<String>) -> String;
 }
 
 /// `tween`: packages/knowledge/wiki/tween.md.
@@ -494,6 +502,8 @@ pub trait UiApi: Wire {
     fn og_ui_open_scroll(&self, id: String, desc: Option<String>);
     /// `og.ui.close`
     fn og_ui_close(&self) -> String;
+    /// `og.ui.richText`
+    fn og_ui_rich_text(&self, id: String, markup: String, desc: Option<String>) -> String;
     /// `og.ui.label`
     fn og_ui_label(&self, id: String, text: String, desc: Option<String>);
     /// `og.ui.button`
@@ -594,6 +604,12 @@ pub trait UiApi: Wire {
     fn og_ui_navigate(&self, world: u32, intent: String);
     /// `og.ui.back`
     fn og_ui_back(&self) -> bool;
+    /// `og.ui.setPlayers`
+    fn og_ui_set_players(&self, count: u32);
+    /// `og.ui.focus`
+    fn og_ui_focus(&self, pad: u32) -> String;
+    /// `og.ui.a11y`
+    fn og_ui_a11y(&self) -> String;
     /// `og.ui.setNavigation`
     fn og_ui_set_navigation(&self, on: bool);
     /// `og.ui.memory`
@@ -674,10 +690,26 @@ pub trait ProbeApi: Wire {
     fn og_engine_probe_listen(&self, engine_probe: u32, seconds: Option<f64>) -> String;
 }
 
-/// Every trait: a host is a type that implements all of them.
-pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi {}
+/// `terrain`: packages/knowledge/wiki/terrain.md.
+pub trait TerrainApi: Wire {
+    /// `og.terrain.load`
+    fn og_terrain_load(&self, world: u32, path: String) -> String;
+    /// `og.terrain.sample`
+    fn og_terrain_sample(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.terrain.bounds`
+    fn og_terrain_bounds(&self, world: u32, data: f64, origin: Option<String>) -> String;
+    /// `og.terrain.edit`
+    fn og_terrain_edit(&self, world: u32, data: f64, brush: Option<String>) -> String;
+    /// `og.terrain.layer`
+    fn og_terrain_layer(&self, world: u32, data: f64, index: u32) -> String;
+    /// `og.terrain.setLayer`
+    fn og_terrain_set_layer(&self, world: u32, data: f64, index: u32, layer: Option<String>) -> String;
+}
 
-impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi> Host for T {}
+/// Every trait: a host is a type that implements all of them.
+pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi {}
+
+impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi> Host for T {}
 
 /// Every binding symbol, in binding-table order (`bindings.json` ids).
 pub const SYMBOLS: &[&str] = &[
@@ -766,6 +798,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_render_standard_material",
     "og_render_update_material",
     "og_render_shader_material",
+    "og_render_set_material_shader",
     "og_render_set_shader_param",
     "og_render_capabilities",
     "og_render_text",
@@ -787,6 +820,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_load_error",
     "og_load_gltf_info",
     "og_load_animation",
+    "og_load_rig",
     "og_load_flipbook",
     "og_load_tilemap",
     "og_physics_raycast",
@@ -803,6 +837,8 @@ pub const SYMBOLS: &[&str] = &[
     "og_physics_ragdoll_pose",
     "og_atmosphere_time_of_day",
     "og_anim_graph",
+    "og_anim_humanoid",
+    "og_anim_retarget",
     "og_tween_to",
     "og_tween_sequence",
     "og_tween_parallel",
@@ -859,6 +895,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_open_panel",
     "og_ui_open_scroll",
     "og_ui_close",
+    "og_ui_rich_text",
     "og_ui_label",
     "og_ui_button",
     "og_ui_image",
@@ -909,6 +946,9 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_dismiss_toast",
     "og_ui_navigate",
     "og_ui_back",
+    "og_ui_set_players",
+    "og_ui_focus",
+    "og_ui_a11y",
     "og_ui_set_navigation",
     "og_ui_memory",
     "og_ui_remember",
@@ -944,6 +984,12 @@ pub const SYMBOLS: &[&str] = &[
     "og_engine_probe_dump",
     "og_engine_probe_commands",
     "og_engine_probe_listen",
+    "og_terrain_load",
+    "og_terrain_sample",
+    "og_terrain_bounds",
+    "og_terrain_edit",
+    "og_terrain_layer",
+    "og_terrain_set_layer",
 ];
 
 /// One field of an engine-owned record.
@@ -5931,11 +5977,11 @@ pub const RECORDS: &[RecordDecl] = &[
                 readonly: false,
                 tunable: false,
                 min: Some(0.0),
-                max: Some(5.0),
+                max: Some(6.0),
                 step: None,
                 unit: "",
                 label: "Shape",
-                doc: "One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (3D).",
+                doc: "One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (3D), 6 the height field `mesh` (3D: a terrain).",
                 variants: &[],
             },
             FieldDecl {
@@ -5991,7 +6037,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "",
                 label: "",
-                doc: "The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh.",
+                doc: "The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh; for SHAPE_HEIGHTFIELD, a terrain's height field (og.terrain.load's TerrainInfo.geometry).",
                 variants: &[],
             },
             FieldDecl {
@@ -6152,14 +6198,14 @@ pub const RECORDS: &[RecordDecl] = &[
                 name: "profile",
                 column: "u32",
                 default: "3",
-                readonly: true,
+                readonly: false,
                 tunable: false,
                 min: Some(2.0),
                 max: Some(3.0),
                 step: None,
                 unit: "",
                 label: "Profile",
-                doc: "PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt.",
+                doc: "PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt. Set the other one at run time to change profile: the next step builds that profile's simulation from the components (contacts, joints' warm starts, ropes, cloth, fluids and ragdoll bodies start again), so a 3D game can play a 2D scene and back.",
                 variants: &[],
             },
             FieldDecl {
@@ -8207,6 +8253,48 @@ pub const RECORDS: &[RecordDecl] = &[
                 variants: &[],
             },
             FieldDecl {
+                name: "thickness",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: None,
+                step: None,
+                unit: "m",
+                label: "",
+                doc: "Self-collision: how far apart its points keep from the points of the cloth that are not their near neighbours (0: none). About `spacing` keeps a cloth that folds or piles up from passing through itself.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "substeps",
+                column: "u32",
+                default: "1",
+                readonly: false,
+                tunable: false,
+                min: Some(1.0),
+                max: Some(16.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Simulation steps per tick, each integrating and then solving `iterations` passes; with self-collision enough that a point moves less than `thickness` per step (a point moves at most half the thickness a step).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "friction",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(1.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "How much of its sliding a point touching a solid loses each step (0: it slides freely; near 1 it sticks where it lands, so a cloth lowered onto the floor folds instead of spreading).",
+                variants: &[],
+            },
+            FieldDecl {
                 name: "material",
                 column: "Material",
                 default: "0",
@@ -8351,6 +8439,48 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 label: "",
                 doc: "Linear viscosity (honey above 1).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "group",
+                column: "u32",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Fluids sharing a group above 0 push, drag and (by `mixing`) mix with each other as one fluid, at most four to a group (in entity order; a fifth is simulated alone), and are drawn as one surface whose colour follows the mix; 0 keeps the fluid to itself.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "density",
+                column: "f32",
+                default: "1",
+                readonly: false,
+                tunable: true,
+                min: Some(0.05),
+                max: Some(20.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "How heavy its particles are against the group's other fluids: a heavier fluid sinks under a lighter one.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "mixing",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(1.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "How readily it mixes with the group's other fluids: 0 keeps them apart in layers (the boundary held), 1 blends them where they touch (their mix, colour and weight even out).",
                 variants: &[],
             },
             FieldDecl {
@@ -9249,6 +9379,76 @@ pub const RECORDS: &[RecordDecl] = &[
                 doc: "A multiplier on the whole sky.",
                 variants: &[],
             },
+            FieldDecl {
+                name: "moonSize",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(20.0),
+                step: None,
+                unit: "deg",
+                label: "",
+                doc: "The moon disc's angular radius (0: no moon). It sets below the horizon and hides the stars behind it.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "moonPhase",
+                column: "f32",
+                default: "0.5",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(1.0),
+                step: None,
+                unit: "ratio",
+                label: "",
+                doc: "How much of the moon is lit: 0 new, 0.25 the first quarter (its right half), 0.5 full, 0.75 the last quarter (its left half).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "moonIntensity",
+                column: "f32",
+                default: "1.4",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The lit moon's brightness.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "moonColor",
+                column: "Color",
+                default: "{\"r\":0.9,\"g\":0.92,\"b\":1}",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The moon's colour.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "moonDirection",
+                column: "Vector3",
+                default: "{\"x\":0,\"y\":0,\"z\":0}",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Towards the moon; zero puts it opposite sunDirection.",
+                variants: &[],
+            },
         ],
     },
     RecordDecl {
@@ -9366,6 +9566,34 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 label: "",
                 doc: "Game minutes between regenerations of the image-based light.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "moonSize",
+                column: "f32",
+                default: "1.6",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(20.0),
+                step: None,
+                unit: "deg",
+                label: "",
+                doc: "The moon disc's angular radius, opposite the sun so it rises as the sun sets (0: no moon).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "moonPhase",
+                column: "f32",
+                default: "0.5",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(1.0),
+                step: None,
+                unit: "ratio",
+                label: "",
+                doc: "How much of the moon is lit: 0 new, 0.25 the first quarter, 0.5 full, 0.75 the last quarter.",
                 variants: &[],
             },
         ],
@@ -9660,6 +9888,90 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 label: "",
                 doc: "How much it reflects.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "planarReflection",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(1.0),
+                step: None,
+                unit: "ratio",
+                label: "",
+                doc: "Reflect the scene by drawing it again from the camera mirrored in the surface, at this fraction of the screen's resolution (0: off, the screen-space and sky reflections). One surface a frame, the first that asks; it costs about a second scene pass at that resolution.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "shadows",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(1.0),
+                step: None,
+                unit: "ratio",
+                label: "",
+                doc: "How much the sun's shadows darken the surface: its highlight, foam and colour (0: none).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "underwaterColor",
+                column: "Color",
+                default: "{\"r\":0.03,\"g\":0.16,\"b\":0.2}",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "With the camera below the surface: the water's fog colour.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "underwaterDensity",
+                column: "f32",
+                default: "0.09",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(2.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, and the surface seen from below shows the sky inside Snell's window.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "caustics",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(4.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Caustics of the sunlight on everything below the surface (0: none). One surface a frame, the first that has them.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "causticsScale",
+                column: "f32",
+                default: "0.6",
+                readonly: false,
+                tunable: true,
+                min: Some(0.01),
+                max: Some(10.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The caustics' cells per metre.",
                 variants: &[],
             },
         ],
@@ -12810,6 +13122,230 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 label: "",
                 doc: "Whether it succeeded; og.platform.result has the data or the error.",
+                variants: &[],
+            },
+        ],
+    },
+    RecordDecl {
+        kind: "component",
+        name: "Terrain",
+        schema: "og.Terrain",
+        fields: &[
+            FieldDecl {
+                name: "data",
+                column: "TerrainData",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The terrain (og.terrain.load's TerrainInfo.data).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "castShadows",
+                column: "bool",
+                default: "true",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Cast the directional and local lights' shadows (it always receives them).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "lodSpacing",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(64.0),
+                step: None,
+                unit: "m",
+                label: "",
+                doc: "The finest clipmap level's spacing (0: the terrain file's, or the samples' spacing).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "lodRing",
+                column: "u32",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: Some(0.0),
+                max: Some(256.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Quads per side of every clipmap level (0: the terrain file's, else 64; 16 to 256, rounded to a multiple of 4).",
+                variants: &[],
+            },
+        ],
+    },
+    RecordDecl {
+        kind: "component",
+        name: "TerrainScatter",
+        schema: "og.TerrainScatter",
+        fields: &[
+            FieldDecl {
+                name: "data",
+                column: "TerrainData",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The terrain (og.terrain.load's TerrainInfo.data).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "geometry",
+                column: "Geometry",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The mesh, its origin at its root.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "material",
+                column: "Material",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Its material.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "layer",
+                column: "u32",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: Some(3.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The terrain layer that places it, 0 to 3.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "density",
+                column: "f32",
+                default: "2",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(400.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Copies per square metre where the layer's weight is 1.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "distance",
+                column: "f32",
+                default: "40",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(500.0),
+                step: None,
+                unit: "m",
+                label: "",
+                doc: "How far from the camera, along x and z, copies are placed.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "fade",
+                column: "f32",
+                default: "0.3",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(1.0),
+                step: None,
+                unit: "ratio",
+                label: "",
+                doc: "The outer part of `distance` over which copies shrink to nothing.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "minScale",
+                column: "f32",
+                default: "0.8",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The smallest copy's uniform scale.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "maxScale",
+                column: "f32",
+                default: "1.2",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The largest copy's uniform scale.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "align",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(1.0),
+                step: None,
+                unit: "ratio",
+                label: "",
+                doc: "How far copies lean with the ground: 0 upright, 1 along its normal.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "seed",
+                column: "u32",
+                default: "1",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Another seed places the copies elsewhere.",
                 variants: &[],
             },
         ],

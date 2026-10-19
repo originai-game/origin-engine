@@ -30,7 +30,8 @@ pub struct Pick {
 /// building the frame from the world as of the current tick. Rendering never
 /// feeds back into the world, so `capture` takes it shared.
 pub trait Capture {
-    /// The backend: `webgpu`, `webgl2`, `vulkan` or `metal` (IDL `RenderTier`).
+    /// The backend: `webgpu`, `webgl2`, `vulkan`, `vulkan-cpu` (a software
+    /// rasterizer) or `metal` (IDL `RenderTier`).
     fn tier(&self) -> &str;
     /// The render target's size in pixels.
     fn target_size(&self) -> (u32, u32);
@@ -63,6 +64,18 @@ pub struct UiElement {
     pub clipped: bool,
     /// The text it shows; empty for none.
     pub text: String,
+    /// Its accessibility role (`button`, `link`, `text`, `heading`,
+    /// `checkbox`, `slider`, `dialog`...); empty for a presentational
+    /// element (a layout container, a spacer).
+    pub role: String,
+    /// Its accessible name: what a screen reader says it is.
+    pub name: String,
+    /// Its current value as text (a slider's number, a progress's percent,
+    /// a field's text); empty for none.
+    pub value: String,
+    /// Its states: `disabled`, `focused`, `focusable` (keys and pads can
+    /// reach it now), `checked`, `selected`, `expanded`, `pressed`, `busy`.
+    pub states: Vec<String>,
     pub x: f32,
     pub y: f32,
     pub width: f32,
@@ -77,6 +90,7 @@ impl UiElement {
     pub fn to_json(&self) -> Value {
         json!({
             "id": self.id, "parent": self.parent, "kind": self.kind, "disabled": self.disabled, "clipped": self.clipped, "text": self.text,
+            "role": self.role, "name": self.name, "value": self.value, "states": self.states,
             "x": self.x, "y": self.y, "width": self.width, "height": self.height,
         })
     }
