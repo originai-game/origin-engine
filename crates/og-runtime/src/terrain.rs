@@ -464,7 +464,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         let ring = u(&v, "lodRing", 0);
         rs.scene.terrains.push(og_render::Terrain {
             terrain: t.render,
-            origin,
+            transform: glam::Mat4::from_translation(origin),
             layers: t.layers.clone(),
             height_blend: t.height_blend,
             cast_shadows: on(&v, "castShadows", true) && t.cast_shadows,
@@ -499,7 +499,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             continue;
         };
         let terrain = og_render::Terrain {
-            origin: h.world_of(e).transform_point3(Vec3::ZERO),
+            transform: glam::Mat4::from_translation(h.world_of(e).transform_point3(Vec3::ZERO)),
             layers: t.layers.clone(),
             ..og_render::Terrain::new(t.render)
         };

@@ -790,3 +790,190 @@ fn smooth(e0: f32, e1: f32, x: f32) -> f32 {
     let t = ((x - e0) / (e1 - e0)).clamp(0.0, 1.0);
     t * t * (3.0 - 2.0 * t)
 }
+
+/// A 64 × 16 m strip with a 6 m bump at its centre, one red layer, drawn
+/// against a magenta background without fog or shadows; looked at from
+/// 120 m straight above, or from the side at the bump.
+fn strip_scene(transform: Mat4, from_side: bool) -> RenderScene {
+    let (cols, rows) = (65u32, 17u32);
+    let size = Vec2::new(64.0, 16.0);
+    let mut heights = Vec::new();
+    for r in 0..rows {
+        for c in 0..cols {
+            let x = -size.x * 0.5 + c as f32;
+            let z = -size.y * 0.5 + r as f32;
+            heights.push(6.0 * (-(x * x + z * z) / 8.0).exp());
+        }
+    }
+    let mut scene = RenderScene::new();
+    let h = scene.add_terrain(TerrainData {
+        size,
+        columns: cols,
+        rows,
+        heights: Arc::from(heights),
+        control: None,
+    });
+    scene.terrains.push(Terrain {
+        transform,
+        layers: vec![TerrainLayer {
+            color: Vec3::new(0.8, 0.05, 0.05),
+            roughness: 1.0,
+            ..Default::default()
+        }],
+        cast_shadows: false,
+        ..Terrain::new(h)
+    });
+    scene.fog = None;
+    scene.environment.background = Background::Color(Vec3::new(1.0, 0.0, 1.0));
+    scene.post.tonemap = Tonemap::None;
+    scene.light = DirectionalLight {
+        direction_to_light: Vec3::new(0.3, 1.0, 0.2),
+        cast_shadows: false,
+        ..Default::default()
+    };
+    scene.camera = Camera {
+        position: if from_side {
+            Vec3::new(0.0, 6.0, 80.0)
+        } else {
+            Vec3::new(0.0, 120.0, 0.01)
+        },
+        target: if from_side {
+            Vec3::new(0.0, 6.0, 0.0)
+        } else {
+            Vec3::ZERO
+        },
+        near: 0.5,
+        far: 1000.0,
+        projection: Projection::Perspective {
+            fov_y_degrees: 55.0,
+        },
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    scene
+}
+
+fn is_background(img: &RgbaImage, at: (u32, u32)) -> bool {
+    let p = color_at(img, at);
+    p[0] > 220.0 && p[1] < 40.0 && p[2] > 220.0
+}
+
+/// A terrain is drawn where its transform puts it: turned a quarter about
+/// y its strip runs along world z, scaled twice along x it reaches twice as
+/// far, scaled three times along y its bump stands three times as tall,
+/// and a translation moves all of it; its flat part shades the same turned
+/// or not (normals follow the transform). Scattered copies stand on the
+/// transformed surface.
+#[test]
+fn a_terrain_honours_its_transform() {
+    let quarter = Mat4::from_rotation_y(std::f32::consts::FRAC_PI_2);
+    let cases: [(&str, Mat4, Vec3, bool); 7] = [
+        (
+            "identity along x",
+            Mat4::IDENTITY,
+            Vec3::new(24.0, 0.0, 0.0),
+            true,
+        ),
+        (
+            "identity not along z",
+            Mat4::IDENTITY,
+            Vec3::new(0.0, 0.0, 24.0),
+            false,
+        ),
+        ("turned along z", quarter, Vec3::new(0.0, 0.0, 24.0), true),
+        (
+            "turned not along x",
+            quarter,
+            Vec3::new(24.0, 0.0, 0.0),
+            false,
+        ),
+        (
+            "scaled along x",
+            Mat4::from_scale(Vec3::new(2.0, 1.0, 1.0)),
+            Vec3::new(48.0, 0.0, 0.0),
+            true,
+        ),
+        (
+            "unscaled not that far",
+            Mat4::IDENTITY,
+            Vec3::new(48.0, 0.0, 0.0),
+            false,
+        ),
+        (
+            "moved",
+            Mat4::from_translation(Vec3::new(0.0, 0.0, 30.0)),
+            Vec3::new(20.0, 0.0, 30.0),
+            true,
+        ),
+    ];
+    let mut flat = Vec::new();
+    for (label, transform, at, covered) in cases {
+        let scene = strip_scene(transform, false);
+        let (img, _) = render(&scene);
+        keep(&format!("transform-{}", label.replace(' ', "-")), &img);
+        let pixel = project(&scene.camera, at);
+        assert_eq!(
+            !is_background(&img, pixel),
+            covered,
+            "{label}: {at} at {pixel:?} is {:?}",
+            color_at(&img, pixel)
+        );
+        if covered && label != "moved" {
+            flat.push((label, color_at(&img, pixel)));
+        }
+    }
+    for (label, c) in &flat {
+        let d = (0..3)
+            .map(|i| (c[i] - flat[0].1[i]).abs())
+            .fold(0.0, f32::max);
+        assert!(
+            d < 6.0,
+            "{label}: the flat ground shades {c:?}, not {:?}",
+            flat[0].1
+        );
+    }
+    // From the side: the bump's top (6 m) is under 12 m, three times taller is over it.
+    let probe = Vec3::new(0.0, 12.0, 0.0);
+    let plain = strip_scene(Mat4::IDENTITY, true);
+    let (img, _) = render(&plain);
+    assert!(
+        is_background(&img, project(&plain.camera, probe)),
+        "6 m bump under 12 m"
+    );
+    let tall = strip_scene(Mat4::from_scale(Vec3::new(1.0, 3.0, 1.0)), true);
+    let (img, _) = render(&tall);
+    keep("transform-tall", &img);
+    assert!(
+        !is_background(&img, project(&tall.camera, probe)),
+        "18 m bump over 12 m"
+    );
+    // Scattered copies on the turned, raised and doubled strip lie on it.
+    let placed_transform = Mat4::from_scale_rotation_translation(
+        Vec3::new(2.0, 1.5, 2.0),
+        glam::Quat::from_rotation_y(0.7),
+        Vec3::new(5.0, 3.0, -4.0),
+    );
+    let scene = strip_scene(placed_transform, false);
+    let terrain = scene.terrains[0].clone();
+    let data = scene.terrain(terrain.terrain).cloned().expect("data");
+    let s = TerrainScatter {
+        density: 1.0,
+        distance: 300.0,
+        ..TerrainScatter::default()
+    };
+    let placed = terrain.scatter(&data, &s, Vec3::new(5.0, 50.0, -4.0));
+    assert!(placed.len() > 1_000, "{} copies", placed.len());
+    let back = placed_transform.inverse();
+    for (_, m) in &placed {
+        let local = back.transform_point3(m.w_axis.truncate());
+        assert!(
+            local.x.abs() <= 32.0 + 1e-3 && local.z.abs() <= 8.0 + 1e-3,
+            "{local}"
+        );
+        let ground = data.height(Vec2::new(local.x, local.z));
+        assert!(
+            (local.y - ground).abs() < 1e-3,
+            "{local} off the ground {ground}"
+        );
+    }
+}

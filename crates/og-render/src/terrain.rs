@@ -256,12 +256,15 @@ impl TerrainLod {
     }
 }
 
-/// A terrain drawn this frame: its data at `origin` (the centre of the
-/// height field at height 0) with its layers.
+/// A terrain drawn this frame: its data placed by `transform` (from the
+/// terrain's own space, whose origin is the centre of the height field at
+/// height 0 with x and z along its sides, to the world) with its layers.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Terrain {
     pub terrain: TerrainHandle,
-    pub origin: Vec3,
+    /// Rotation, scale and translation of the height field (identity: centred
+    /// on the world origin along world x and z).
+    pub transform: Mat4,
     /// Up to [`MAX_TERRAIN_LAYERS`] layers (more are ignored).
     pub layers: Vec<TerrainLayer>,
     /// How much the layers' heights (their albedo's alpha) sharpen their
@@ -275,7 +278,7 @@ impl Terrain {
     pub fn new(terrain: TerrainHandle) -> Terrain {
         Terrain {
             terrain,
-            origin: Vec3::ZERO,
+            transform: Mat4::IDENTITY,
             layers: vec![TerrainLayer::default()],
             height_blend: 0.0,
             cast_shadows: true,
@@ -298,6 +301,11 @@ struct LayerGpu {
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct TerrainGpu {
+    /// The terrain's space to the world.
+    model: [[f32; 4]; 4],
+    /// Normals from the terrain's space to the world (the inverse transpose
+    /// of `model`'s upper 3×3, as three padded columns).
+    normal: [[f32; 4]; 3],
     origin: [f32; 4],
     extent: [f32; 4],
     params: [f32; 4],
@@ -1015,8 +1023,16 @@ impl TerrainRenderer {
                     altitude: [l.altitude[0], l.altitude[1], l.altitude_fade.max(0.0), 0.0],
                 };
             }
+            let model = t.transform;
+            let n3 = glam::Mat3::from_mat4(model).inverse().transpose();
             let gpu = TerrainGpu {
-                origin: t.origin.extend(count as f32).to_array(),
+                model: model.to_cols_array_2d(),
+                normal: [
+                    n3.x_axis.extend(0.0).to_array(),
+                    n3.y_axis.extend(0.0).to_array(),
+                    n3.z_axis.extend(0.0).to_array(),
+                ],
+                origin: model.w_axis.truncate().extend(count as f32).to_array(),
                 extent: [
                     data.size.x,
                     data.size.y,
@@ -1043,11 +1059,15 @@ impl TerrainRenderer {
             } else {
                 cell.x.min(cell.y)
             };
-            let lo = Vec2::new(t.origin.x, t.origin.z) - data.size * 0.5;
-            let cam = (Vec2::new(camera.x, camera.z) - lo) / unit;
+            // The levels are laid out in the terrain's own space: the camera
+            // brought into it, the far plane by the terrain's horizontal scale.
+            let local_camera = model.inverse().transform_point3(camera);
+            let lo = -data.size * 0.5;
+            let cam = (Vec2::new(local_camera.x, local_camera.z) - lo) / unit;
             let extent = data.size / unit;
             let n = t.lod.ring();
-            let list = levels(cam, extent, n, (far / unit) as f64);
+            let along = horizontal_scale(model);
+            let list = levels(cam, extent, n, (far / along / unit) as f64);
             let morph_width = (n / 8).max(2) as f32;
             let morph_start = n as f32 * 0.5 - 2.0 - morph_width;
             let mut level_bytes = vec![0u8; LEVEL_STRIDE as usize * list.len().max(1)];
@@ -1086,13 +1106,14 @@ impl TerrainRenderer {
                     ((l.center[0] + half) * unit as f64).min(data.size.x as f64) as f32,
                     ((l.center[1] + half) * unit as f64).min(data.size.y as f64) as f32,
                 );
-                let box_min = Vec3::new(lo.x + a.x, t.origin.y + hmin, lo.y + a.y);
-                let box_max = Vec3::new(lo.x + b.x, t.origin.y + hmax, lo.y + b.y);
+                let box_min = Vec3::new(lo.x + a.x, hmin, lo.y + a.y);
+                let box_max = Vec3::new(lo.x + b.x, hmax, lo.y + b.y);
+                let (center, radius) = world_sphere(model, box_min, box_max);
                 out.push(LevelDraw {
                     offset: (k as u64 * LEVEL_STRIDE) as u32,
                     indices,
-                    center: (box_min + box_max) * 0.5,
-                    radius: (box_max - box_min).length() * 0.5,
+                    center,
+                    radius,
                 });
             }
             queue.write_buffer(&slot.levels, 0, &level_bytes);
@@ -1156,20 +1177,39 @@ impl TerrainRenderer {
             .iter()
             .filter_map(|t| {
                 let d = self.datas.get(t.terrain.index())?.as_ref()?;
-                let lo = Vec3::new(
-                    t.origin.x - d.size.x * 0.5,
-                    t.origin.y + d.range.0,
-                    t.origin.z - d.size.y * 0.5,
-                );
-                let hi = Vec3::new(
-                    t.origin.x + d.size.x * 0.5,
-                    t.origin.y + d.range.1,
-                    t.origin.z + d.size.y * 0.5,
-                );
-                Some(((lo + hi) * 0.5, (hi - lo).length() * 0.5))
+                let lo = Vec3::new(-d.size.x * 0.5, d.range.0, -d.size.y * 0.5);
+                let hi = Vec3::new(d.size.x * 0.5, d.range.1, d.size.y * 0.5);
+                Some(world_sphere(t.transform, lo, hi))
             })
             .collect()
     }
+}
+
+/// How far one metre along the terrain's x and z reaches in the world (the
+/// larger of the two): what the far plane is divided by in its own space.
+fn horizontal_scale(model: Mat4) -> f32 {
+    model
+        .x_axis
+        .truncate()
+        .length()
+        .max(model.z_axis.truncate().length())
+        .max(1e-6)
+}
+
+/// The world bounding sphere (centre, radius) of a box in the terrain's
+/// space.
+pub(crate) fn world_sphere(model: Mat4, lo: Vec3, hi: Vec3) -> (Vec3, f32) {
+    let center = model.transform_point3((lo + hi) * 0.5);
+    let mut radius: f32 = 0.0;
+    for i in 0..8 {
+        let corner = Vec3::new(
+            if i & 1 == 0 { lo.x } else { hi.x },
+            if i & 2 == 0 { lo.y } else { hi.y },
+            if i & 4 == 0 { lo.z } else { hi.z },
+        );
+        radius = radius.max(model.transform_point3(corner).distance(center));
+    }
+    (center, radius)
 }
 
 /// Draws the levels of `draws` that touch `visible` (group 1: the terrain;
@@ -1389,7 +1429,16 @@ impl Terrain {
         }
         let cell = 1.0 / s.density.clamp(1e-4, 400.0).sqrt();
         let half = data.size * 0.5;
-        let eye = Vec2::new(camera.x - self.origin.x, camera.z - self.origin.z);
+        // Placed in the terrain's own space; distances are the world's.
+        let model = self.transform;
+        let along = horizontal_scale(model);
+        let n3 = glam::Mat3::from_mat4(model).inverse().transpose();
+        let local_camera = model.inverse().transform_point3(camera);
+        let eye = Vec2::new(local_camera.x, local_camera.z);
+        let s = &TerrainScatter {
+            distance: s.distance / along,
+            ..*s
+        };
         let cells = (data.size / cell).ceil();
         let lo = ((eye - s.distance + half) / cell).floor().max(Vec2::ZERO);
         let hi = ((eye + s.distance + half) / cell).ceil().min(cells);
@@ -1436,12 +1485,13 @@ impl Terrain {
                 }
                 let t = unit(h4);
                 let size = (s.scale[0] + (s.scale[1] - s.scale[0]) * t) * shrink;
+                let normal = (n3 * data.normal(p)).normalize_or(Vec3::Y);
                 let up = Vec3::Y
-                    .lerp(data.normal(p), s.align.clamp(0.0, 1.0))
+                    .lerp(normal, s.align.clamp(0.0, 1.0))
                     .normalize_or(Vec3::Y);
                 let turn = glam::Quat::from_rotation_y(unit(hash(h0 ^ 4)) * std::f32::consts::TAU);
                 let rotation = glam::Quat::from_rotation_arc(Vec3::Y, up) * turn;
-                let at = self.origin + Vec3::new(p.x, data.height(p), p.y);
+                let at = model.transform_point3(Vec3::new(p.x, data.height(p), p.y));
                 out.push((
                     key,
                     Mat4::from_scale_rotation_translation(Vec3::splat(size), rotation, at),

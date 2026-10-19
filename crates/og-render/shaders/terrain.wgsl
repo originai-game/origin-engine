@@ -18,7 +18,9 @@ struct TerrainLayerGpu {
 };
 
 struct TerrainUniform {
-  origin: vec4<f32>,    // xyz: the centre of the terrain at height 0, w: layers
+  model: mat4x4<f32>,   // the terrain's space (its centre at height 0, x and z along its sides) to the world
+  normal: mat3x3<f32>,  // normals from the terrain's space to the world (inverse transpose)
+  origin: vec4<f32>,    // xyz: the terrain's centre in the world, w: layers
   extent: vec4<f32>,    // xy: size along x and z (m), zw: samples along x and z
   params: vec4<f32>,    // x: height blend, y: 1 with a control map
   view_proj: mat4x4<f32>,       // unjittered (prepass velocity)
@@ -51,12 +53,12 @@ struct TerrainLevel {
 @group(1) @binding(13) var layer_sampler: sampler;
 @group(1) @binding(14) var map_sampler: sampler;
 
-// The world xz of the terrain's -x, -z corner.
+// The -x, -z corner in the terrain's space.
 fn terrain_min() -> vec2<f32> {
-  return terrain.origin.xz - terrain.extent.xy * 0.5;
+  return -terrain.extent.xy * 0.5;
 }
 
-// The height (m above the origin) at world xz: bilinear between the four
+// The height (in the terrain's space) at its xz: bilinear between the four
 // samples around it, clamped to the edge.
 fn terrain_height(xz: vec2<f32>) -> f32 {
   let n = vec2<i32>(terrain.extent.zw);
@@ -72,9 +74,9 @@ fn terrain_height(xz: vec2<f32>) -> f32 {
   return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
 
-// The clipmap vertex `vi` of this level in world space (after the morph
-// and clamped to the terrain).
-fn terrain_vertex(vi: u32) -> vec3<f32> {
+// The clipmap vertex `vi` of this level in the terrain's space (after the
+// morph and clamped to the terrain).
+fn terrain_local_vertex(vi: u32) -> vec3<f32> {
   let n = u32(level.grid.x);
   let g = vec2<f32>(f32(vi % (n + 1u)), f32(vi / (n + 1u)));
   let s = level.center.z;
@@ -90,5 +92,15 @@ fn terrain_vertex(vi: u32) -> vec3<f32> {
   let unit = level.camera.z;
   c = clamp(c, vec2<f32>(0.0), terrain.extent.xy / unit);
   let xz = terrain_min() + c * unit;
-  return vec3<f32>(xz.x, terrain.origin.y + terrain_height(xz), xz.y);
+  return vec3<f32>(xz.x, terrain_height(xz), xz.y);
+}
+
+// A point of the terrain's space in the world.
+fn terrain_world(local: vec3<f32>) -> vec3<f32> {
+  return (terrain.model * vec4<f32>(local, 1.0)).xyz;
+}
+
+// The clipmap vertex `vi` in world space.
+fn terrain_vertex(vi: u32) -> vec3<f32> {
+  return terrain_world(terrain_local_vertex(vi));
 }
