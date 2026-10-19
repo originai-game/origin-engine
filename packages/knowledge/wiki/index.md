@@ -111,10 +111,12 @@ Field units the docs and Tune use.
 
 ## Every name
 
-820 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+829 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
+| [`A11yNode`](ui.md#type-A11yNode) | struct | ui | — |
+| [`A11yTree`](ui.md#type-A11yTree) | struct | ui | — |
 | [`Ability`](ui.md#type-Ability) | desc struct | ui | — |
 | [`ActionButtonDesc`](ui.md#type-ActionButtonDesc) | desc struct | ui | — |
 | [`AdvanceOperation`](probe.md#type-AdvanceOperation) | struct | probe | — |
@@ -582,6 +584,7 @@ Field units the docs and Tune use.
 | [`og.tween.squash`](tween.md#fn-squash) | function | tween | `og_tween_squash` |
 | [`og.tween.to`](tween.md#fn-to) | function | tween | `og_tween_to` |
 | [`og.TweenCompleted`](tween.md#record-TweenCompleted) | event | tween | — |
+| [`og.ui.a11y`](ui.md#fn-a11y) | function | ui | `og_ui_a11y` |
 | [`og.ui.actionButton`](ui.md#fn-actionButton) | function | ui | `og_ui_action_button` |
 | [`og.ui.alertDialog`](ui.md#fn-alertDialog) | function | ui | — |
 | [`og.ui.anchor`](ui.md#fn-anchor) | function | ui | — |
@@ -608,6 +611,7 @@ Field units the docs and Tune use.
 | [`og.ui.divider`](ui.md#fn-divider) | function | ui | `og_ui_divider` |
 | [`og.ui.dpad`](ui.md#fn-dpad) | function | ui | `og_ui_dpad` |
 | [`og.ui.dragging`](ui.md#fn-dragging) | function | ui | `og_ui_dragging` |
+| [`og.ui.focus`](ui.md#fn-focus) | function | ui | `og_ui_focus` |
 | [`og.ui.frameTheme`](ui.md#fn-frameTheme) | function | ui | `og_ui_frame_theme` |
 | [`og.ui.frameViewport`](ui.md#fn-frameViewport) | function | ui | `og_ui_frame_viewport` |
 | [`og.ui.grid`](ui.md#fn-grid) | function | ui | — |
@@ -650,12 +654,14 @@ Field units the docs and Tune use.
 | [`og.ui.radio`](ui.md#fn-radio) | function | ui | `og_ui_radio` |
 | [`og.ui.remember`](ui.md#fn-remember) | function | ui | `og_ui_remember` |
 | [`og.ui.resultsScreen`](ui.md#fn-resultsScreen) | function | ui | — |
+| [`og.ui.richText`](ui.md#fn-richText) | function | ui | `og_ui_rich_text` |
 | [`og.ui.row`](ui.md#fn-row) | function | ui | — |
 | [`og.ui.screenTransition`](ui.md#fn-screenTransition) | function | ui | `og_ui_screen_transition` |
 | [`og.ui.scroll`](ui.md#fn-scroll) | function | ui | — |
 | [`og.ui.seconds`](ui.md#fn-seconds) | function | ui | `og_ui_seconds` |
 | [`og.ui.select`](ui.md#fn-select) | function | ui | `og_ui_select` |
 | [`og.ui.setNavigation`](ui.md#fn-setNavigation) | function | ui | `og_ui_set_navigation` |
+| [`og.ui.setPlayers`](ui.md#fn-setPlayers) | function | ui | `og_ui_set_players` |
 | [`og.ui.settingsScreen`](ui.md#fn-settingsScreen) | function | ui | — |
 | [`og.ui.shake`](ui.md#fn-shake) | function | ui | `og_ui_shake` |
 | [`og.ui.shooterHud`](ui.md#fn-shooterHud) | function | ui | — |
@@ -754,6 +760,8 @@ Field units the docs and Tune use.
 | [`RetargetDesc`](anim.md#type-RetargetDesc) | desc struct | anim | — |
 | [`RibbonDesc`](render.md#type-RibbonDesc) | desc struct | render | — |
 | [`RibbonPoint`](render.md#type-RibbonPoint) | desc struct | render | — |
+| [`RichTextDesc`](ui.md#type-RichTextDesc) | desc struct | ui | — |
+| [`RichTextResult`](ui.md#type-RichTextResult) | struct | ui | — |
 | [`Rig`](anim.md#type-Rig) | handle | anim | — |
 | [`Rng.chance`](rng.md#member-Rng-chance) | method | rng | `og_rng_chance` |
 | [`Rng.fork`](rng.md#member-Rng-fork) | method | rng | `og_rng_fork` |
@@ -787,6 +795,7 @@ Field units the docs and Tune use.
 | [`ScreenTransitionDesc`](ui.md#type-ScreenTransitionDesc) | desc struct | ui | — |
 | [`ScreenTransitionResult`](ui.md#type-ScreenTransitionResult) | struct | ui | — |
 | [`ScreenWipe`](ui.md#type-ScreenWipe) | enum | ui | — |
+| [`ScrollAxes`](ui.md#type-ScrollAxes) | enum | ui | — |
 | [`ScrollDesc`](ui.md#type-ScrollDesc) | desc struct | ui | — |
 | [`SelectDesc`](ui.md#type-SelectDesc) | desc struct | ui | — |
 | [`SetTileDesc`](tilemap.md#type-SetTileDesc) | desc struct | tilemap | — |

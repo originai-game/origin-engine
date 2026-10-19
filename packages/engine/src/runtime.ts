@@ -1079,6 +1079,7 @@ export const ui = Object.freeze({
     within(() => abi().og_ui_open_scroll(id, json(desc)), build);
   },
   label: (id: string, text: string, desc?: unknown) => abi().og_ui_label(id, text, json(desc)),
+  richText: (id: string, markup: string, desc?: unknown) => parse(abi().og_ui_rich_text(id, markup, json(desc))),
   button: (id: string, text: string, desc?: unknown) => parse(abi().og_ui_button(id, text, json(desc))),
   image: (id: string, desc?: unknown) => abi().og_ui_image(id, json(desc)),
   progress: (id: string, value: number, desc?: unknown) => abi().og_ui_progress(id, value, json(desc)),

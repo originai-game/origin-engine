@@ -204,6 +204,18 @@ pub struct Tile {
     pub parts: u32,
 }
 
+/// A glass part: the frame under it blurred (og-render's glass), tinted by
+/// the part's fill, under the part's own frame drawn at `fill` opacity.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Glass {
+    /// The blur's radius in CSS px.
+    pub blur: f32,
+    /// How opaque the part's own nine-slice stays over the glass (0–1).
+    pub fill: f32,
+    /// How much of the part's fill colour tints the blur (0–1).
+    pub tint: f32,
+}
+
 /// A drop shadow (blur 0: hard).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Shadow {
@@ -223,7 +235,9 @@ pub struct Glow {
 }
 
 /// What a press does to a button: its fill scales by `sx`, `sy` and the
-/// button moves down `dy` CSS px.
+/// button moves down `dy` CSS px, on the skin's press spring
+/// (`motion.pressSpring`): in while held, back (past rest when the spring
+/// bounces) on release.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Press {
     pub sx: f32,
@@ -231,8 +245,9 @@ pub struct Press {
     pub dy: f32,
 }
 
-/// What hovering does to a button, eased in over `motion.duration.instant`:
-/// it moves `dy` CSS px (negative lifts) and scales by `scale`.
+/// What hovering does to a button, moving on the skin's hover spring
+/// (`motion.hoverSpring`): it moves `dy` CSS px (negative lifts) and
+/// scales by `scale`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Hover {
     pub dy: f32,
@@ -255,6 +270,12 @@ pub struct SkinMotion {
     pub shake: f32,
     /// Counters pop by this fraction when they finish (0: no pop).
     pub pop: f32,
+    /// The spring the hover lift moves on (`None`: `motion.spring.default`
+    /// of the tokens, damping 1 and 350 ms: it settles without overshoot).
+    pub hover_spring: Option<crate::theme::Spring>,
+    /// The spring the press squash moves on (`None`: damping 0.55 over
+    /// `motion.duration.instant`: in at once, a small bounce on release).
+    pub press_spring: Option<crate::theme::Spring>,
 }
 
 /// The UI events a skin can sound.
@@ -311,6 +332,8 @@ pub struct Skin {
     pub tile: Option<Tile>,
     pub shadows: [Option<Shadow>; PARTS],
     pub glows: [Option<Glow>; PARTS],
+    /// Parts drawn as glass over the blurred frame.
+    pub glass: [Option<Glass>; PARTS],
     /// Per font role (body, display, mono).
     pub text_shadows: [Option<Shadow>; 3],
     pub text_glows: [Option<Glow>; 3],
@@ -341,6 +364,11 @@ impl Skin {
     pub fn glow(&self, part: SkinPart) -> Option<Glow> {
         self.atlas?;
         self.glows[part.class().index()]
+    }
+
+    pub fn glass(&self, part: SkinPart) -> Option<Glass> {
+        self.atlas?;
+        self.glass[part.class().index()]
     }
 
     pub fn corners(&self, part: SkinPart) -> Option<Ornament> {
@@ -664,7 +692,7 @@ fn role_index(p: &P, w: &str) -> Result<usize, String> {
 /// textShadow display 0 2 0 "#000000a0"        # role dx dy blur colour
 /// textGlow display 3 accent 0.6
 /// press 1.04 0.92 2                           # sx sy dy
-/// hover -2 1.02                               # dy scale
+/// hover -2 1.02                               # dy scale (both move on springs: motion below)
 /// motion {
 ///   enter pop                                 # dialogs and screen panels
 ///   stagger 40                                # ms between their controls
@@ -672,6 +700,8 @@ fn role_index(p: &P, w: &str) -> Result<usize, String> {
 ///   progress 400                              # ms progress bars ease over
 ///   shake 6                                   # CSS px a refused press shakes
 ///   pop 0.12                                  # a landing count-up's bump
+///   hoverSpring 1 350                         # the hover lift's spring: damping ratio, response ms
+///   pressSpring 0.55 120                      # the press squash's
 /// }
 /// sound press "audio/ui/press.wav"
 /// ```
@@ -937,6 +967,16 @@ pub fn parse_skin(text: &str) -> Result<SkinFile, String> {
                     alpha: p.num(3)?.clamp(0.0, 1.0),
                 });
             }
+            "glass" => {
+                let w = p.word(0)?;
+                let part = SkinPart::from_name(w)
+                    .ok_or_else(|| p.err(&format!("names an unknown part '{w}'")))?;
+                theme.skin.glass[part.class().index()] = Some(Glass {
+                    blur: p.num(1)?.max(0.0),
+                    fill: p.num(2)?.clamp(0.0, 1.0),
+                    tint: p.num_or(3, 0.25)?.clamp(0.0, 1.0),
+                });
+            }
             "textShadow" => {
                 let i = role_index(&p, p.word(0)?)?;
                 theme.skin.text_shadows[i] = Some(Shadow {
@@ -989,8 +1029,19 @@ pub fn parse_skin(text: &str) -> Result<SkinFile, String> {
                         "progress" => m.progress_ms = q.num(0)?.max(0.0),
                         "shake" => m.shake = q.num(0)?.max(0.0),
                         "pop" => m.pop = q.num(0)?.clamp(0.0, 1.0),
+                        "hoverSpring" | "pressSpring" => {
+                            let spring = Some(crate::theme::Spring {
+                                damping: q.num(0)?.clamp(0.05, 4.0),
+                                response_ms: q.num(1)?.clamp(16.0, 4000.0),
+                            });
+                            if c.key == "hoverSpring" {
+                                m.hover_spring = spring;
+                            } else {
+                                m.press_spring = spring;
+                            }
+                        }
                         _ => return Err(q.err(
-                            "is a motion setting: enter, stagger, toast, progress, shake or pop",
+                            "is a motion setting: enter, stagger, toast, progress, shake, pop, hoverSpring or pressSpring",
                         )),
                     }
                 }

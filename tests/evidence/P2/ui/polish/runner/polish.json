@@ -1,0 +1,671 @@
+{
+ "project": "runner",
+ "date": "2026-10-19",
+ "scores": {
+  "contrast": null,
+  "textSize": null,
+  "hud": null,
+  "transitions": null,
+  "uiSounds": null,
+  "latency": 100,
+  "hitFeedback": null,
+  "idle": 100,
+  "frameTime": 80,
+  "inputSound": 100,
+  "locale": null,
+  "taste": null,
+  "feel": 95
+ },
+ "findings": [],
+ "playtests": [
+  {
+   "playtest": "coins",
+   "title": "a coin in reach is collected and scores; one out of reach is not",
+   "tier": "metal",
+   "ticks": 180,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 1,
+    "answered": 1,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 82.73,
+    "sound": 1
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 2.4,
+    "stepP95Ms": 6.54,
+    "renderMedianMs": 2.4,
+    "renderP95Ms": 7.45,
+    "frameP95Ms": 12.69,
+    "frameMaxMs": 41.71
+   },
+   "audio": {
+    "seconds": 3,
+    "peak": 0.14,
+    "rms": 0.0171,
+    "clipped": 0,
+    "silentShare": 77.78
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "flow",
+   "title": "title, run, crash on a crate, game over, run again",
+   "tier": "metal",
+   "ticks": 306,
+   "shots": [
+    {
+     "name": "title",
+     "tick": 18,
+     "frame": "frames/flow-title.png",
+     "menu": false,
+     "hud": 0,
+     "centre": 0,
+     "texts": 0,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "play",
+     "tick": 120,
+     "frame": null,
+     "menu": false,
+     "hud": 0,
+     "centre": 0,
+     "texts": 0,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "over",
+     "tick": 240,
+     "frame": null,
+     "menu": false,
+     "hud": 0,
+     "centre": 0,
+     "texts": 0,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 3,
+    "answered": 3,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 72.41,
+    "sound": 3
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 5.07
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 2.38,
+    "stepP95Ms": 7.51,
+    "renderMedianMs": 2.22,
+    "renderP95Ms": 6.6,
+    "frameP95Ms": 13.34,
+    "frameMaxMs": 180.02
+   },
+   "audio": {
+    "seconds": 5.1,
+    "peak": 0.43,
+    "rms": 0.0269,
+    "clipped": 0,
+    "silentShare": 76.14
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "frames",
+   "title": "reference frames: title, a coin's pickup, the crash",
+   "tier": "metal",
+   "ticks": 180,
+   "shots": [
+    {
+     "name": "title",
+     "tick": 18,
+     "frame": "frames/frames-title.png",
+     "menu": false,
+     "hud": 0,
+     "centre": 0,
+     "texts": 0,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "coin",
+     "tick": 96,
+     "frame": null,
+     "menu": false,
+     "hud": 0,
+     "centre": 0,
+     "texts": 0,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "crash",
+     "tick": 177,
+     "frame": null,
+     "menu": false,
+     "hud": 0,
+     "centre": 0,
+     "texts": 0,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 1,
+    "answered": 1,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 78.42,
+    "sound": 1
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 2.05,
+    "stepP95Ms": 6.11,
+    "renderMedianMs": 2.16,
+    "renderP95Ms": 5.58,
+    "frameP95Ms": 11.01,
+    "frameMaxMs": 151.6
+   },
+   "audio": {
+    "seconds": 3,
+    "peak": 0.43,
+    "rms": 0.03,
+    "clipped": 0,
+    "silentShare": 73.33
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "jump",
+   "title": "a full jump clears a crate and a fence; a hop clears a crate, not a fence",
+   "tier": "metal",
+   "ticks": 522,
+   "shots": [
+    {
+     "name": "jump",
+     "tick": 114,
+     "frame": "frames/jump-jump.png",
+     "menu": false,
+     "hud": 0,
+     "centre": 0,
+     "texts": 0,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 5,
+    "answered": 5,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 84.87,
+    "sound": 5
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0.98
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.96,
+    "stepP95Ms": 6.83,
+    "renderMedianMs": 2.17,
+    "renderP95Ms": 5.82,
+    "frameP95Ms": 12.4,
+    "frameMaxMs": 210.2
+   },
+   "audio": {
+    "seconds": 8.7,
+    "peak": 0.43,
+    "rms": 0.0197,
+    "clipped": 0,
+    "silentShare": 81.99
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "records",
+   "title": "the best score is read from the store, and a crash submits the score and saves the new best",
+   "tier": "metal",
+   "ticks": 228,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 1,
+    "answered": 1,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 83.96,
+    "sound": 1
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 2.02,
+    "stepP95Ms": 5.55,
+    "renderMedianMs": 2.2,
+    "renderP95Ms": 5.36,
+    "frameP95Ms": 9.49,
+    "frameMaxMs": 22.06
+   },
+   "audio": {
+    "seconds": 3.8,
+    "peak": 0.43,
+    "rms": 0.0278,
+    "clipped": 0,
+    "silentShare": 78.95
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "replay",
+   "title": "replay: two runs of jumps, coins and a crash end on one hash",
+   "tier": "metal",
+   "ticks": 546,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 5,
+    "answered": 5,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 83.46,
+    "sound": 5
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 1.31
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 2.04,
+    "stepP95Ms": 5,
+    "renderMedianMs": 2.18,
+    "renderP95Ms": 4.95,
+    "frameP95Ms": 9.06,
+    "frameMaxMs": 17.54
+   },
+   "audio": {
+    "seconds": 9.1,
+    "peak": 0.43,
+    "rms": 0.0213,
+    "clipped": 0,
+    "silentShare": 77.47
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "sounds",
+   "title": "a round's start, a jump, a coin and a crash each play their sound",
+   "tier": "metal",
+   "ticks": 180,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 2,
+    "answered": 2,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 75.93,
+    "sound": 2
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 2.27,
+    "stepP95Ms": 5.38,
+    "renderMedianMs": 2.21,
+    "renderP95Ms": 5.19,
+    "frameP95Ms": 9.26,
+    "frameMaxMs": 16.68
+   },
+   "audio": {
+    "seconds": 3,
+    "peak": 0.43,
+    "rms": 0.0326,
+    "clipped": 0,
+    "silentShare": 58.33
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "tune",
+   "title": "set writes Tuning: start speed and jump height change the run",
+   "tier": "metal",
+   "ticks": 150,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 0
+   },
+   "latency": {
+    "inputs": 2,
+    "answered": 2,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 75.64,
+    "sound": 2
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 2.21,
+    "stepP95Ms": 5.25,
+    "renderMedianMs": 2.15,
+    "renderP95Ms": 4.78,
+    "frameP95Ms": 10.07,
+    "frameMaxMs": 19.41
+   },
+   "audio": {
+    "seconds": 2.5,
+    "peak": 0.14,
+    "rms": 0.0184,
+    "clipped": 0,
+    "silentShare": 77.33
+   },
+   "warnings": []
+  }
+ ],
+ "warnings": []
+}

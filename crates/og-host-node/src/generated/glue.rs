@@ -1197,6 +1197,12 @@ pub fn og_ui_close(env: Env) -> String {
     <Host as UiApi>::og_ui_close(&Host)
 }
 
+#[napi(js_name = "og_ui_rich_text")]
+pub fn og_ui_rich_text(env: Env, id: String, markup: String, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_rich_text(&Host, id, markup, desc)
+}
+
 #[napi(js_name = "og_ui_label")]
 pub fn og_ui_label(env: Env, id: String, text: String, desc: Option<String>) {
     let _env = crate::EnvScope::enter(&env);
@@ -1495,6 +1501,24 @@ pub fn og_ui_navigate(env: Env, world: u32, intent: String) {
 pub fn og_ui_back(env: Env) -> bool {
     let _env = crate::EnvScope::enter(&env);
     <Host as UiApi>::og_ui_back(&Host)
+}
+
+#[napi(js_name = "og_ui_set_players")]
+pub fn og_ui_set_players(env: Env, count: u32) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_set_players(&Host, count)
+}
+
+#[napi(js_name = "og_ui_focus")]
+pub fn og_ui_focus(env: Env, pad: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_focus(&Host, pad)
+}
+
+#[napi(js_name = "og_ui_a11y")]
+pub fn og_ui_a11y(env: Env) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_a11y(&Host)
 }
 
 #[napi(js_name = "og_ui_set_navigation")]

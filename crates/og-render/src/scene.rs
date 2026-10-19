@@ -714,6 +714,31 @@ pub struct Text {
     /// [`Overlay::clips`] the text is cut to, per pixel (`None`: the whole
     /// output). Ignored for world text.
     pub clip: Option<u32>,
+    /// Added to every glyph's advance, in em (CSS `letter-spacing`: after
+    /// each character, the last included): a type ramp's tracking. 0 is the
+    /// font's own spacing.
+    pub tracking: f32,
+    /// In [`Overlay::texts`]: thickens the glyphs by this many CSS pixels at
+    /// their edge (a faux bold from the distance field; 0 is the font's
+    /// weight). Ignored for world text.
+    pub weight: f32,
+    /// In [`Overlay::texts`]: a soft glow around the glyphs read from the
+    /// font's true distance field (MTSDF alpha), drawn under every glyph of
+    /// the text. Ignored for world text (it has [`TextOutline`]).
+    pub glow: Option<TextGlow>,
+}
+
+/// A glow around overlay text ([`Text::glow`]): `color`'s alpha at the
+/// glyph's edge, falling to nothing `radius` CSS pixels out. Its reach is
+/// capped by the font's distance range: half `distance_range` atlas pixels
+/// at the size drawn (a font cooked with `px_range 12` glows four times as
+/// far as one with 3).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TextGlow {
+    /// Linear RGBA.
+    pub color: [f32; 4],
+    /// CSS pixels.
+    pub radius: f32,
 }
 
 impl Text {
@@ -728,6 +753,9 @@ impl Text {
             color: [1.0; 4],
             layer: 0,
             clip: None,
+            tracking: 0.0,
+            weight: 0.0,
+            glow: None,
         }
     }
 }
@@ -749,6 +777,8 @@ impl Text {
 pub struct Overlay {
     pub sprites: Vec<Sprite>,
     pub texts: Vec<Text>,
+    /// Glass panels: the frame under each, blurred ([`Glass`]).
+    pub glass: Vec<Glass>,
     /// The overlay's size in CSS pixels; with `scale` (device pixels per CSS
     /// pixel), CSS (0, 0)-(width, height) maps onto the output's (0, 0)-
     /// (width·scale, height·scale). A `scale` of 0 fits the height to the
@@ -769,6 +799,7 @@ impl Overlay {
         Overlay {
             sprites: Vec::new(),
             texts: Vec::new(),
+            glass: Vec::new(),
             width,
             height,
             scale,
@@ -781,6 +812,31 @@ impl Overlay {
         self.clips.push(rect);
         (self.clips.len() - 1) as u32
     }
+}
+
+/// A glass panel of the overlay: the finished frame under it (the scene,
+/// after every post effect; not other overlay content) blurred by `blur`
+/// CSS px, tinted, and masked to a rounded rectangle. Drawn in the overlay's
+/// order at `layer`, under what the layer draws over it. A frame with glass
+/// renders its tonemap into a texture of its own, copies it to the output
+/// and downsamples it into a six-level blur pyramid (src/glass.rs); a frame
+/// without pays nothing.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Glass {
+    /// The top left corner, CSS px.
+    pub position: glam::Vec2,
+    pub size: glam::Vec2,
+    /// The corner radius, CSS px.
+    pub radius: f32,
+    /// The blur's radius, CSS px (0: the frame as it is, frosted only by the tint).
+    pub blur: f32,
+    /// Linear RGB, and in alpha how much of it covers the blur.
+    pub tint: [f32; 4],
+    /// The panel's opacity.
+    pub alpha: f32,
+    pub layer: i32,
+    /// An index into [`Overlay::clips`].
+    pub clip: Option<u32>,
 }
 
 static NEXT_SCENE_ID: AtomicU64 = AtomicU64::new(1);

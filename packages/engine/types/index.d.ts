@@ -10542,6 +10542,12 @@ export interface ElementDesc {
    */
   readonly scroll?: boolean;
   /**
+   * Scroll its content horizontally and clip it (with scroll: both ways).
+   *
+   * @default false
+   */
+  readonly scrollX?: boolean;
+  /**
    * Report a Response from close(), as a button does.
    *
    * @default false
@@ -10707,7 +10713,15 @@ export interface PanelDesc {
 }
 
 /**
- * A vertical scroll container: the wheel or a drag scrolls it, it clips its content, a capsule indicator shows the position.
+ * Which ways a scroll container scrolls.
+ * - `"vertical"`: Up and down (the default).
+ * - `"horizontal"`: Left and right.
+ * - `"both"`: Both ways.
+ */
+export type ScrollAxes = "vertical" | "horizontal" | "both";
+
+/**
+ * A scroll container: the wheel (both axes, deltaX and deltaY) or a drag scrolls it, and a released drag keeps its momentum, slowing over motion.spring.momentum's response (none under reduced motion); it clips its content; a scrollbar on each scrolling axis shows the position, and a press on one grabs and drags it. Nested containers hand off: what the innermost under the pointer cannot take (it reached its end, or does not scroll that way) goes to the one around it.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -10737,6 +10751,12 @@ export interface ScrollDesc {
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
    */
   readonly gap?: number;
+  /**
+   * Which ways it scrolls.
+   *
+   * @default "vertical"
+   */
+  readonly axes?: ScrollAxes;
 }
 
 /**
@@ -10872,6 +10892,14 @@ export interface Response {
    * A list row or grid cell a press started on was released over this one: that row's or cell's index (drag and drop).
    */
   readonly dropped: number | null;
+  /**
+   * The gamepad (0 to 3) whose A pressed it this tick; null when the pointer or the keyboard did. Pads 1 to 3 press only while og.ui.setPlayers allows them (local multiplayer).
+   */
+  readonly pad: number | null;
+  /**
+   * Bit k: pad k's focus is on it (bit 0 is the shared focus of the pointer, the keyboard and pad 0; bits 1 to 3 the other players' pads).
+   */
+  readonly focusedBy: number;
 }
 
 /** A slider's response and its value after this tick's input. */
@@ -11019,13 +11047,13 @@ export interface UiDesc {
  */
 export interface UiSounds {
   /**
-   * The pointer reaches a control.
+   * The pointer reaches a control, or keyboard or gamepad focus moves to one.
    *
    * @default null
    */
   readonly hover?: Sound | null;
   /**
-   * A control is pressed.
+   * A control is pressed: by the pointer, Enter, Space or the gamepad's A.
    *
    * @default null
    */
@@ -11175,6 +11203,61 @@ export type UiBuild = () => void;
 
 
 
+
+
+/**
+ * How a rich text paragraph draws: its defaults, which its markup's spans override.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RichTextDesc {
+  /**
+   * The type step; null is body.
+   *
+   * @default null
+   */
+  readonly step?: TypeStepName | null;
+  /**
+   * The ink; null is fg.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+  /**
+   * How the lines align.
+   *
+   * @default "start"
+   */
+  readonly align?: TextAlign;
+  /**
+   * Keep to one line (breaking only at `\n`).
+   *
+   * @default false
+   */
+  readonly nowrap?: boolean;
+  /**
+   * Its width; null fits the text.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Which font.
+   *
+   * @default "body"
+   */
+  readonly font?: FontRole;
+}
+
+/** What a rich text's links did this tick. */
+export interface RichTextResult {
+  /** Its links together: hovered while one is, clicked when one was. */
+  readonly response: Response;
+  /** The link clicked this tick: its `[link=…]` id. */
+  readonly link: string | null;
+  /** The link under the pointer. */
+  readonly hovered: string | null;
+}
 
 
 
@@ -12269,6 +12352,71 @@ export type UiItemBuild = (index: number) => void;
 
 
 
+
+
+
+
+/**
+ * One node of the accessibility tree: an element with a role (layout containers and spacers have none and are left out).
+ */
+export interface A11yNode {
+  /** Its path, as touch_move_to and og.ui.focus name it. */
+  readonly path: string;
+  /** The path of the nearest node above it in the tree; empty at the top. */
+  readonly parent: string;
+  /**
+   * Its role (probe.UiElement.role): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, dialog, tooltip, separator, group.
+   */
+  readonly role: string;
+  /** Its accessible name: what a screen reader says it is. */
+  readonly name: string;
+  /**
+   * Its value as text (a slider's number, a progress's percent, a field's text); empty for none.
+   */
+  readonly value: string;
+  /**
+   * Its states: disabled, focused, focusable, checked, selected, expanded, pressed, busy, offscreen (a scroll container cuts it out of view).
+   */
+  readonly states: readonly string[];
+  /**
+   * Left edge of the whole element.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly x: number;
+  /**
+   * Top edge of the whole element.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly y: number;
+  /**
+   * Width.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly width: number;
+  /**
+   * Height.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly height: number;
+}
+
+/**
+ * The last frame's accessibility tree, built from the same nodes the UI draws and takes input on.
+ */
+export interface A11yTree {
+  /** The nodes, in tree order: the page, then each layer over it (a dialog after the page). */
+  readonly nodes: readonly A11yNode[];
+  /**
+   * The paths keyboard Tab and the pads visit, in order: the nodes marked focusable, within the topmost dialog while one is open.
+   */
+  readonly focusOrder: readonly string[];
+  /** The path keyboard and pad 0's focus is on; empty for none. */
+  readonly focused: string;
+}
 
 
 
@@ -13431,6 +13579,10 @@ export interface ShopDesc {
 export interface ShopResult {
   /** The item bought this tick: take the price and grant it. */
   readonly bought: string | null;
+  /**
+   * The item whose Buy was pressed this tick while the balance was short: the button shook with the error sound (og.ui.shake) and nothing was bought.
+   */
+  readonly refused: string | null;
   /** Close was pressed (or Back). */
   readonly closed: boolean;
 }
@@ -13899,7 +14051,7 @@ export interface ConfirmDesc {
    */
   readonly title?: string;
   /**
-   * What will happen.
+   * What will happen, as rich text markup (og.ui.richText: [b], [color=…], [icon=…]…), so a translation carries its own emphasis.
    *
    * @default ""
    */
@@ -13951,7 +14103,7 @@ export interface AlertDesc {
    */
   readonly title?: string;
   /**
-   * The message.
+   * The message, as rich text markup (og.ui.richText).
    *
    * @default ""
    */
@@ -13999,7 +14151,7 @@ export interface AlertDesc {
  * - `"touch_end"`: `touch_end`: release the pointer.
  * - `"scroll"`: `scroll:dx,dy`: scroll at the pointer.
  * - `"touch"`: `touch:<id>:<down|move|up>:<x,y | ui id>`: a further touch (pointer 1 to 4) held while the pointer is busy elsewhere.
- * - `"gamepad"`: `gamepad:<a+b+...|->[:lx,ly[,rx,ry]][:lt,rt]`: set pad 0's whole state; `gamepad:off` disconnects it.
+ * - `"gamepad"`: `gamepad:<a+b+...|->[@pad][:lx,ly[,rx,ry]][:lt,rt]`: set a pad's whole state (pad 0 unless `@1` to `@3` follows the buttons); `gamepad:off` disconnects it.
  * - `"key_down"`: `key_down:<Key>`: hold a key by its code.
  * - `"key_up"`: `key_up:<Key>`: release a key.
  * - `"type"`: `type:<text>`: type text, one key press per character.
@@ -14511,6 +14663,22 @@ export interface UiElement {
   readonly clipped: boolean;
   /** The text it shows, if any. */
   readonly text: string;
+  /**
+   * Its accessibility role (og.ui.a11y): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, alert, dialog, tooltip, separator, group; empty for a presentational element (a layout container, a spacer).
+   */
+  readonly role: string;
+  /**
+   * Its accessible name: its text, a name the widget gives it (an icon's name, a dialog's title, Decrease and Increase for a stepper's buttons), a control's own text gathered from its children, or else its id.
+   */
+  readonly name: string;
+  /**
+   * Its value as text: a slider's or stepper's number, a progress's or meter's amount, a field's text, a select's choice; empty for none.
+   */
+  readonly value: string;
+  /**
+   * Its states: disabled, focused, focusable (keys and pads reach it now, in this order), checked, selected, expanded, pressed, busy.
+   */
+  readonly states: readonly string[];
   /**
    * Left edge.
    *
@@ -16542,6 +16710,14 @@ export declare namespace og {
      */
     function scroll(id: string, desc: ScrollDesc, build: UiBuild): void;
     /**
+     * A paragraph of inline spans from markup, for a string-table message (og.i18n.t) so a translation carries its own emphasis: `[b]bold[/b]` (thickened in the distance field as far as it reaches, plus a second copy one device pixel right), `[color=danger]` or `[color=#ff8800]` (a ThemeColor follows the skin), `[size=xl]` (a TypeStepName), `[font=mono]`, `[icon=coin]` (a cell of the icon atlas, one em), `[link=shop]Open the shop[/link]` (accent ink, underlined, focusable by keys and pads; a child element `<id>/shop` of kind link for the probe) and per-glyph motion `[wave]`, `[shake]`, `[pulse]` (by the tick; still under reduced motion). `[[` is a literal bracket. Lines break between the spans' words (a word restyled mid-way stays whole), each as tall as its tallest span on one baseline. Markup it cannot read shows as text and logs a warning.
+     *
+     * @param id Its id.
+     * @param markup The markup.
+     * @param desc Defaults for its spans: type step, ink, alignment, wrapping, width and font.
+     */
+    function richText(id: string, markup: string, desc?: RichTextDesc): RichTextResult;
+    /**
      * MSDF text that wraps at its width (word breaks; between CJK characters under kinsoku, katakana words kept whole; long words between characters) unless nowrap. The probe reads its text.
      *
      * @param id Its id.
@@ -16940,6 +17116,22 @@ export declare namespace og {
      * Escape or gamepad B this tick, not taken by a dialog or menu: true once, then taken. A pause screen closes on it.
      */
     function back(): boolean;
+    /**
+     * Local multiplayer: how many players this screen takes (1 to 4; 1 by default). Pads 1 to count - 1 each move a focus of their own among the same controls, shown as a ring in the player's colour (info, success, warn), and their A presses the control under it (Response.pad says which pad); pad 0 shares the one focus with the keyboard and the pointer, and Back and adjusting a slider stay pad 0's. Declare it every tick the screen shows; it takes effect from the next tick, and a dialog's focus scope holds every pad's focus inside it.
+     *
+     * @param count Players, 1 to 4 (clamped).
+     */
+    function setPlayers(count: number): void;
+    /**
+     * The path of the control pad pad's focus is on in the last frame (pad 0: the shared focus of the pointer, keyboard and pad 0), as touch_move_to resolves it; empty when it is on none.
+     *
+     * @param pad The pad, 0 to 3; past 3 answers empty.
+     */
+    function focus(pad: number): string;
+    /**
+     * The accessibility tree of the last frame: every element with a role, its name, value, states and bounds, and the focus order Tab walks. A shell mirrors it into the page for screen readers; a playtest reads the same fields on dump_ui's elements.
+     */
+    function a11y(): A11yTree;
     /**
      * Whether keyboard and gamepad navigation moves focus on this screen (on by default). A gameplay HUD whose keys move the player turns it off; an open dialog or menu turns it back on while it is open. Takes effect from the next tick.
      *

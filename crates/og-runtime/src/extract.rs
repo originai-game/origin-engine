@@ -567,6 +567,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 color: t.color,
                 layer: t.layer,
                 clip: None,
+                tracking: 0.0,
+                weight: 0.0,
+                glow: None,
             };
             if t.screen {
                 let o = scene

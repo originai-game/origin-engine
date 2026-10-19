@@ -12,6 +12,8 @@ og-ecs = { path = "../og-ecs" }
 og-input = { path = "../og-input" }
 og-render = { path = "../og-render" }
 og-probe = { path = "../og-probe", default-features = false }
+# The damped spring the skin's hover and press move on.
+og-tween = { path = "../og-tween" }
 # Localization: text direction and shaped scripts (og-i18n), shaping (rustybuzz).
 og-i18n = { path = "../og-i18n" }
 rustybuzz = "0.20.1"

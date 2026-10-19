@@ -999,6 +999,11 @@ pub fn og_ui_close() -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_ui_rich_text(id: String, markup: String, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_rich_text(&Host, id, markup, desc)
+}
+
+#[wasm_bindgen]
 pub fn og_ui_label(id: String, text: String, desc: Option<String>) {
     <Host as UiApi>::og_ui_label(&Host, id, text, desc)
 }
@@ -1246,6 +1251,21 @@ pub fn og_ui_navigate(world: u32, intent: String) {
 #[wasm_bindgen]
 pub fn og_ui_back() -> bool {
     <Host as UiApi>::og_ui_back(&Host)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_set_players(count: u32) {
+    <Host as UiApi>::og_ui_set_players(&Host, count)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_focus(pad: u32) -> String {
+    <Host as UiApi>::og_ui_focus(&Host, pad)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_a11y() -> String {
+    <Host as UiApi>::og_ui_a11y(&Host)
 }
 
 #[wasm_bindgen]

@@ -22,6 +22,17 @@ use og_render::{ColorSpace, FontHandle, Mips, Overlay, Sprite, Text, TextureData
 /// One thing to draw, in CSS pixels.
 #[derive(Clone, Debug, PartialEq)]
 pub enum DrawCmd {
+    /// Glass: the frame under `rect` blurred by `blur` CSS px, tinted
+    /// (`tint`: linear RGB, alpha how much covers the blur), masked to the
+    /// rounded rectangle, at `alpha` (og-render's [`og_render::Glass`]).
+    Glass {
+        rect: Rect,
+        radius: f32,
+        blur: f32,
+        tint: [f32; 4],
+        alpha: f32,
+        clip: Rect,
+    },
     /// A rectangle with rounded corners (radius 0: square).
     Quad {
         rect: Rect,
@@ -70,6 +81,12 @@ pub enum DrawCmd {
         /// The line box, for overlap.
         bounds: Rect,
         clip: Rect,
+        /// Added to each glyph's advance, em (the type step's tracking).
+        tracking: f32,
+        /// Thickening at the glyphs' edge, CSS px (a faux bold).
+        weight: f32,
+        /// A glow from the font's distance field: linear RGBA and radius, CSS px.
+        glow: Option<([f32; 4], f32)>,
     },
 }
 
@@ -82,6 +99,7 @@ pub struct DrawItem {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Batch {
+    Glass,
     Atlas,
     Texture(TextureHandle),
     Font(FontHandle),
@@ -90,6 +108,7 @@ enum Batch {
 impl DrawCmd {
     fn batch(&self) -> Batch {
         match self {
+            DrawCmd::Glass { .. } => Batch::Glass,
             DrawCmd::Quad { .. }
             | DrawCmd::Bar { .. }
             | DrawCmd::Half { .. }
@@ -103,9 +122,9 @@ impl DrawCmd {
 
     fn bounds(&self) -> Rect {
         match self {
-            DrawCmd::Quad { rect, clip, .. } | DrawCmd::Image { rect, clip, .. } => {
-                rect.intersect(clip)
-            }
+            DrawCmd::Quad { rect, clip, .. }
+            | DrawCmd::Image { rect, clip, .. }
+            | DrawCmd::Glass { rect, clip, .. } => rect.intersect(clip),
             DrawCmd::Text { bounds, clip, .. } => bounds.intersect(clip),
             DrawCmd::Bar {
                 center, w, h, clip, ..
@@ -252,6 +271,26 @@ pub(crate) fn emit(items: &[DrawItem], desc: &EmitDesc, overlay: &mut Overlay) {
     for item in items {
         let layer = desc.layer + item.level;
         match &item.cmd {
+            DrawCmd::Glass {
+                rect,
+                radius,
+                blur,
+                tint,
+                alpha,
+                clip,
+            } => {
+                let c = clip_index(overlay, &mut known, clip);
+                overlay.glass.push(og_render::Glass {
+                    position: og_core::glam::Vec2::new(rect.x, rect.y),
+                    size: og_core::glam::Vec2::new(rect.width, rect.height),
+                    radius: *radius,
+                    blur: *blur,
+                    tint: *tint,
+                    alpha: *alpha,
+                    layer,
+                    clip: Some(c),
+                });
+            }
             DrawCmd::Quad {
                 rect,
                 radius,
@@ -332,6 +371,9 @@ pub(crate) fn emit(items: &[DrawItem], desc: &EmitDesc, overlay: &mut Overlay) {
                 color,
                 font,
                 clip,
+                tracking,
+                weight,
+                glow,
                 ..
             } => {
                 let c = clip_index(overlay, &mut known, clip);
@@ -344,6 +386,9 @@ pub(crate) fn emit(items: &[DrawItem], desc: &EmitDesc, overlay: &mut Overlay) {
                     color: *color,
                     layer,
                     clip: Some(c),
+                    tracking: *tracking,
+                    weight: *weight,
+                    glow: glow.map(|(color, radius)| og_render::TextGlow { color, radius }),
                 });
             }
         }

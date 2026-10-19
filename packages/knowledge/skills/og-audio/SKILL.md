@@ -42,8 +42,11 @@ game's style needs it; presets are a floor, not a style.
 `og.ui.configure(world, { sounds: { hover, press, open, close, success, error } })`
 (or the skin's `sound` lines) plays them on the `ui` bus: `click` for
 press, `select` for success, `back` for close, `error` for a refused press
-(and for `og.ui.shake({ sound: true })`, og-ui §6).
-Hover sounds only on desktop menus, and quiet (volume ≤ 0.3).
+(and for `og.ui.shake({ sound: true })`, og-ui §6). Each starts in the
+tick of its input. `hover` also answers keyboard and gamepad focus moving
+to a control, and `press` a press by Enter, Space or the pad's A, so a
+menu walked with a pad is heard step by step; keep `hover` short and quiet
+(volume ≤ 0.3).
 
 ## 4. Buses and the mix
 

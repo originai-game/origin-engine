@@ -17,6 +17,7 @@ export interface DemoState {
   balance: number;
   owned: number;
   bought: number;
+  refused: number;
   saves: number;
   masterVolume: number;
   inv0: number;
@@ -31,6 +32,17 @@ export interface DemoState {
   stickX: number;
   difficulty: number;
   used: number;
+  pick0: number;
+  pick1: number;
+  pick2: number;
+  pick3: number;
+  focus0: number;
+  focus1: number;
+  focus2: number;
+  focus3: number;
+  rules: number;
+  a11yNodes: number;
+  a11yFocus: number;
 }
 
 export const demo = (run: PlaytestRun, file: string): DemoState =>
@@ -39,7 +51,12 @@ export const demo = (run: PlaytestRun, file: string): DemoState =>
 export interface UiElement {
   id: string;
   parent: string;
+  kind: string;
   text: string;
+  role: string;
+  name: string;
+  value: string;
+  states: string[];
   x: number;
   y: number;
   width: number;
@@ -51,5 +68,5 @@ export const ui = (run: PlaytestRun, file: string): UiElement[] => run.json<{ el
 /** The screens' indices in the demo (src/main.ts SCREENS). */
 export const SCREEN = {
   gallery: 0, widgets: 1, mainMenu: 2, pause: 3, settings: 4, platformer: 5, shooter: 6, puzzle: 7, idle: 8, racing: 9,
-  cutscene: 10, shop: 11, inventory: 12, levels: 13, results: 14, leaderboard: 15, tutorial: 16, loading: 17, confirm: 18, alert: 19, toasts: 20,
+  cutscene: 10, shop: 11, inventory: 12, levels: 13, results: 14, leaderboard: 15, tutorial: 16, loading: 17, confirm: 18, alert: 19, toasts: 20, players: 21,
 } as const;

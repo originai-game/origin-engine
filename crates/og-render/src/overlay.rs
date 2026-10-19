@@ -18,6 +18,12 @@ pub(crate) struct OverlayInstance {
     uv_rect: [f32; 4],
     color: [f32; 4],
     clip: [f32; 4],
+    /// MSDF text: x the glow's radius in CSS px, y the weight (CSS px of
+    /// thickening), z 1 for a glow-only glyph (drawn under the text's fill),
+    /// w unused. Zero for sprites and plain text.
+    effect: [f32; 4],
+    /// The glow's linear RGBA.
+    effect_color: [f32; 4],
 }
 
 pub(crate) const OVERLAY_STRIDE: u64 = std::mem::size_of::<OverlayInstance>() as u64;
@@ -25,7 +31,7 @@ pub(crate) const OVERLAY_STRIDE: u64 = std::mem::size_of::<OverlayInstance>() as
 pub(crate) const OVERLAY_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
     array_stride: OVERLAY_STRIDE,
     step_mode: wgpu::VertexStepMode::Instance,
-    attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x4, 3 => Float32x4, 4 => Float32x4],
+    attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x4, 3 => Float32x4, 4 => Float32x4, 5 => Float32x4, 6 => Float32x4],
 };
 
 /// The overlay's sorted instances and runs for one frame.
@@ -80,6 +86,24 @@ pub(crate) fn build<'a>(
                 uv_rect: s.uv_rect,
                 color: s.color,
                 clip,
+                effect: [0.0; 4],
+                effect_color: [0.0; 4],
+            },
+        ));
+    }
+    for (i, g) in overlay.glass.iter().enumerate() {
+        let clip = clip_rect(overlay, g.clip, &format!("glass {i}"))?;
+        keyed.push((
+            g.layer,
+            RunSource::Glass,
+            OverlayInstance {
+                position_rotation: [g.position.x, g.position.y, 0.0, 0.0],
+                size_anchor: [g.size.x, g.size.y, 0.0, 0.0],
+                uv_rect: [0.0, 0.0, 1.0, 1.0],
+                color: g.tint,
+                clip,
+                effect: [g.radius.max(0.0), g.blur.max(0.0), g.size.x, g.size.y],
+                effect_color: [0.0, 0.0, 0.0, g.alpha.clamp(0.0, 1.0)],
             },
         ));
     }
@@ -94,48 +118,66 @@ pub(crate) fn build<'a>(
         // y down: a positive rotation turns clockwise on screen.
         let rotate = |v: Vec2| Vec2::new(v.x * cos - v.y * sin, v.x * sin + v.y * cos);
         let origin = text.position.truncate();
-        // The pen in em, y down from the first baseline.
-        let mut pen = Vec2::ZERO;
-        for ch in text.text.chars() {
-            if ch == '\n' {
-                pen = Vec2::new(0.0, pen.y + layout.line_height);
+        let glow = text.glow.filter(|g| g.radius > 0.0 && g.color[3] > 0.0);
+        let weight = text.weight.max(0.0);
+        // A glowing text draws every glyph's glow first, then every fill, so
+        // no glyph's glow lies over its neighbour's ink.
+        for pass in [true, false] {
+            if pass && glow.is_none() {
                 continue;
             }
-            let Some(g) = layout.glyphs.get(&ch) else {
-                if !ch.is_whitespace() {
-                    missing_glyphs += 1;
+            // The pen in em, y down from the first baseline.
+            let mut pen = Vec2::ZERO;
+            for ch in text.text.chars() {
+                if ch == '\n' {
+                    pen = Vec2::new(0.0, pen.y + layout.line_height);
+                    continue;
                 }
-                continue;
-            };
-            let [l, b, r, t] = g.plane_bounds;
-            if r > l && t > b {
-                // plane bounds are em y up from the baseline: the glyph's top
-                // left is (l, -t) in y-down em.
-                let corner = rotate((pen + Vec2::new(l, -t)) * text.size);
-                let [al, at, ar, ab] = g.atlas_bounds;
-                keyed.push((
-                    text.layer,
-                    RunSource::Font(text.font),
-                    OverlayInstance {
-                        position_rotation: [
-                            origin.x + corner.x,
-                            origin.y + corner.y,
-                            0.0,
-                            text.rotation,
-                        ],
-                        size_anchor: [(r - l) * text.size, (t - b) * text.size, 0.0, 0.0],
-                        uv_rect: [
-                            al / layout.atlas_size.x,
-                            at / layout.atlas_size.y,
-                            ar / layout.atlas_size.x,
-                            ab / layout.atlas_size.y,
-                        ],
-                        color: text.color,
-                        clip,
-                    },
-                ));
+                let Some(g) = layout.glyphs.get(&ch) else {
+                    if !ch.is_whitespace() && !pass {
+                        missing_glyphs += 1;
+                    }
+                    continue;
+                };
+                let [l, b, r, t] = g.plane_bounds;
+                if r > l && t > b {
+                    // plane bounds are em y up from the baseline: the glyph's top
+                    // left is (l, -t) in y-down em.
+                    let corner = rotate((pen + Vec2::new(l, -t)) * text.size);
+                    let [al, at, ar, ab] = g.atlas_bounds;
+                    let (effect, effect_color) = match glow {
+                        Some(gl) => (
+                            [gl.radius, weight, f32::from(u8::from(pass)), 0.0],
+                            gl.color,
+                        ),
+                        None => ([0.0, weight, 0.0, 0.0], [0.0; 4]),
+                    };
+                    keyed.push((
+                        text.layer,
+                        RunSource::Font(text.font),
+                        OverlayInstance {
+                            position_rotation: [
+                                origin.x + corner.x,
+                                origin.y + corner.y,
+                                0.0,
+                                text.rotation,
+                            ],
+                            size_anchor: [(r - l) * text.size, (t - b) * text.size, 0.0, 0.0],
+                            uv_rect: [
+                                al / layout.atlas_size.x,
+                                at / layout.atlas_size.y,
+                                ar / layout.atlas_size.x,
+                                ab / layout.atlas_size.y,
+                            ],
+                            color: text.color,
+                            clip,
+                            effect,
+                            effect_color,
+                        },
+                    ));
+                }
+                pen.x += g.advance + text.tracking;
             }
-            pen.x += g.advance;
         }
     }
     let glyphs = keyed.len() as u32 - sprites;
@@ -166,6 +208,7 @@ pub(crate) fn build<'a>(
 pub(crate) struct OverlayPipelines {
     pub sprite: wgpu::RenderPipeline,
     pub msdf: wgpu::RenderPipeline,
+    pub glass: wgpu::RenderPipeline,
 }
 
 /// The overlay's pipelines and buffers: in the output's format and, for a
@@ -258,6 +301,7 @@ impl OverlayRenderer {
         let pipelines = |format| OverlayPipelines {
             sprite: pipeline("overlay sprite", "fs", format),
             msdf: pipeline("overlay msdf", "fs_msdf", format),
+            glass: pipeline("overlay glass", "fs_glass", format),
         };
         OverlayRenderer {
             output: pipelines(output_format),
@@ -288,6 +332,8 @@ pub(crate) fn run_textures(
 ) -> impl Iterator<Item = Option<TextureHandle>> + '_ {
     frame.runs.iter().filter_map(|r| match r.source {
         RunSource::Sprite(_, t) => Some(t),
-        RunSource::Font(_) | RunSource::Strip(..) | RunSource::Metaballs(_) => None,
+        RunSource::Font(_) | RunSource::Strip(..) | RunSource::Metaballs(_) | RunSource::Glass => {
+            None
+        }
     })
 }

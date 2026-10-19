@@ -469,3 +469,124 @@ fn cook_defaults_the_engine_component_fields_a_scene_omits() {
     assert_eq!(lanes(1, "position"), [0.0, 0.0, 0.0]);
     assert_eq!(lanes(1, "scale"), [2.0, 2.0, 2.0]);
 }
+
+/// A copy of tests/fixtures/skin-pack (three nine-patches, a corner and a
+/// skin file) in a fresh directory.
+fn skin_fixture() -> PathBuf {
+    let dir = scratch_root().join("handmade");
+    std::fs::create_dir_all(&dir).unwrap();
+    let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/skin-pack");
+    for e in std::fs::read_dir(src).unwrap() {
+        let p = e.unwrap().path();
+        std::fs::copy(&p, dir.join(p.file_name().unwrap())).unwrap();
+    }
+    dir
+}
+
+/// `og skin pack` packs a skin drawn by hand: each nine-patch's art lands in
+/// the atlas pixel for pixel, its insets are what lies outside its stretch
+/// marks, the corner is packed as drawn, and the skin file keeps its own
+/// lines (the palette, a slice's tint and repeat words) while its atlas,
+/// slices, soft rectangle and corner region move to the new atlas; og-ui
+/// parses the result. A nine-patch with no stretch marks is refused by
+/// name.
+///
+/// Ways it could fail: the border is packed with the art, the insets are
+/// off by the border, images overlap or bleed into each other, the skin
+/// file loses lines it does not own, or a part's region points elsewhere.
+#[test]
+fn skin_pack_packs_nine_patches_and_rewrites_the_skin_file() {
+    let dir = skin_fixture();
+    let out = og()
+        .args(["skin", "pack", dir.to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "{}", text(&out));
+    let atlas = image::open(dir.join("atlas.png")).unwrap().to_rgba8();
+    let skin = std::fs::read_to_string(dir.join("skin.ogt")).unwrap();
+    let line = |key: &str, part: &str| -> Vec<String> {
+        skin.lines()
+            .map(|l| l.split_whitespace().map(String::from).collect::<Vec<_>>())
+            .find(|w| {
+                w.first().map(String::as_str) == Some(key)
+                    && (part.is_empty() || w.get(1).map(String::as_str) == Some(part))
+            })
+            .unwrap_or_else(|| panic!("no {key} {part} line in\n{skin}"))
+    };
+    let num = |w: &[String], i: usize| -> u32 { w[i].parse().unwrap() };
+    // Each nine-patch: its region is the art, its insets the marks'.
+    for (part, insets) in [("panel", [6, 5, 6, 5]), ("button", [4, 3, 4, 3])] {
+        let w = line("slice", part);
+        let (x, y, rw, rh) = (num(&w, 2), num(&w, 3), num(&w, 4), num(&w, 5));
+        assert_eq!(
+            [num(&w, 6), num(&w, 7), num(&w, 8), num(&w, 9)],
+            insets,
+            "{part}'s insets"
+        );
+        let src = image::open(dir.join(format!("{part}.9.png")))
+            .unwrap()
+            .to_rgba8();
+        assert_eq!(
+            (rw, rh),
+            (src.width() - 2, src.height() - 2),
+            "{part}'s region is its art"
+        );
+        for sy in 0..rh {
+            for sx in 0..rw {
+                assert_eq!(
+                    atlas.get_pixel(x + sx, y + sy),
+                    src.get_pixel(sx + 1, sy + 1),
+                    "{part}'s art at {sx},{sy}"
+                );
+            }
+        }
+    }
+    assert_eq!(
+        line("slice", "button")[10..].to_vec(),
+        vec!["tint".to_string(), "repeat".to_string()],
+        "the button keeps its words"
+    );
+    let soft = line("soft", "");
+    assert_eq!(
+        (num(&soft, 3), num(&soft, 4), num(&soft, 5)),
+        (12, 12, 5),
+        "the soft rectangle and its inset"
+    );
+    let corner = line("corner", "");
+    let src = image::open(dir.join("corner.png")).unwrap().to_rgba8();
+    let (cx, cy) = (num(&corner, 1), num(&corner, 2));
+    assert_eq!(
+        atlas.get_pixel(cx + 3, cy + 2),
+        src.get_pixel(3, 2),
+        "the corner is packed as drawn"
+    );
+    assert_eq!(
+        corner[5..].join(" "),
+        "12 12 accent 2",
+        "the corner keeps its size, ink and offset"
+    );
+    assert!(
+        skin.contains("accent \"#ffb000\"") && skin.contains("corners panel"),
+        "the skin's own lines stay:\n{skin}"
+    );
+    assert_eq!(
+        line("atlas", "")[2..].to_vec(),
+        vec![atlas.width().to_string(), atlas.height().to_string()],
+        "the atlas line names the packed size"
+    );
+    let parsed = og_ui::parse_skin(&skin).unwrap_or_else(|e| panic!("og-ui reads it: {e}\n{skin}"));
+    assert_eq!(parsed.name, "handmade");
+    // A nine-patch without marks is refused, by name.
+    let bad = image::RgbaImage::from_pixel(10, 10, image::Rgba([200, 200, 200, 255]));
+    bad.save(dir.join("card.9.png")).unwrap();
+    let out = og()
+        .args(["skin", "pack", dir.to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(1));
+    assert!(
+        text(&out).contains("card.9.png: its top border marks no column"),
+        "{}",
+        text(&out)
+    );
+}

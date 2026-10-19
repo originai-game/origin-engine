@@ -510,6 +510,8 @@ pub trait UiApi: Wire {
     fn og_ui_open_scroll(&self, id: String, desc: Option<String>);
     /// `og.ui.close`
     fn og_ui_close(&self) -> String;
+    /// `og.ui.richText`
+    fn og_ui_rich_text(&self, id: String, markup: String, desc: Option<String>) -> String;
     /// `og.ui.label`
     fn og_ui_label(&self, id: String, text: String, desc: Option<String>);
     /// `og.ui.button`
@@ -610,6 +612,12 @@ pub trait UiApi: Wire {
     fn og_ui_navigate(&self, world: u32, intent: String);
     /// `og.ui.back`
     fn og_ui_back(&self) -> bool;
+    /// `og.ui.setPlayers`
+    fn og_ui_set_players(&self, count: u32);
+    /// `og.ui.focus`
+    fn og_ui_focus(&self, pad: u32) -> String;
+    /// `og.ui.a11y`
+    fn og_ui_a11y(&self) -> String;
     /// `og.ui.setNavigation`
     fn og_ui_set_navigation(&self, on: bool);
     /// `og.ui.memory`
@@ -897,6 +905,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_open_panel",
     "og_ui_open_scroll",
     "og_ui_close",
+    "og_ui_rich_text",
     "og_ui_label",
     "og_ui_button",
     "og_ui_image",
@@ -947,6 +956,9 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_dismiss_toast",
     "og_ui_navigate",
     "og_ui_back",
+    "og_ui_set_players",
+    "og_ui_focus",
+    "og_ui_a11y",
     "og_ui_set_navigation",
     "og_ui_memory",
     "og_ui_remember",

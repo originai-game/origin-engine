@@ -47,7 +47,7 @@ and every style pack's screens on a phone `kit-skin-<pack>-phone.png`.
 | An idle or incremental HUD | `og.ui.idleHud(id, { currencies, generators, tapLabel })` | `action: "tap"` or `"buy:<id>"` |
 | A racing HUD | `og.ui.racingHud(id, { speed, gear, lap, laps, position, time, best, boost, map, touch })` | `paused`, steering, `held` |
 | Dialogue or a cutscene | `og.ui.cutscene(id, { open, lines, index })` | the next `index`, `finished`, `skipped` |
-| A shop | `og.ui.shopScreen(id, { balance, currency, items, categories })` | `bought`, `closed` |
+| A shop | `og.ui.shopScreen(id, { balance, currency, items, categories })` | `bought`, `refused` (Buy pressed short of the price: it shook with the error sound), `closed` |
 | An inventory | `og.ui.inventoryScreen(id, { slots, items })` | `selected`, `moved` (drag and drop), `used`, `closed` |
 | Level select | `og.ui.levelSelect(id, { levels })` | `chosen`, `closed` |
 | Results | `og.ui.resultsScreen(id, { open, score, best, newBest, stars, stats, shareText, onShare })` | `selected` (`retry`, `next`, `menu`, `share`) |
@@ -75,13 +75,32 @@ Layout (`row`, `column`, `panel`, `scroll`, `anchor`), text and controls
 follows a drop; `cooldown` rings; `minimap`; `dialogue` with typed text),
 touch (`joystick`, `dpad`, `actionButton`, each at least 44 CSS px), lists
 (`list` and `grid`, virtualised: only rows in view are built; items report
-drag and drop), layers (`anchor` for HUD corners, `modal` for dialogs,
+drag and drop; `scroll` with `axes: "horizontal"` or `"both"` for a strip
+of cards or a map, which hands the wheel and drags it cannot use to the
+scroller around it, keeps a flick's momentum and has grabbable
+scrollbars), layers (`anchor` for HUD corners, `modal` for dialogs,
 `transition` for fade, slide and scale by the tick, `spotlight`) and
 `toast`. Ids are stable strings: give every control a meaningful id so a
 playtest can `touch_move_to` it (`Shop/Panel/Detail/Buy` resolves as
 `Detail/Buy`).
 
+Mixed styles in one paragraph are `richText(id, markup)`: `[b]`,
+`[color=danger]` (a token, or `#rrggbb`), `[size=lg]`, `[font=mono]`,
+`[icon=coin]`, `[link=shop]…[/link]` and the per-glyph `[wave]`, `[shake]`,
+`[pulse]`. Write the markup in the string table, not in code, so each
+translation places its own emphasis (`confirmDialog` and `alertDialog`
+messages are markup). A link is a child element (`Hint/shop`, kind `link`)
+that keys, pads and touch reach like a button; the result's `link` names
+the one clicked. A typo in a tag stays visible as text and warns.
+
 ## 4. Focus: keyboard and gamepad
+
+Every element carries an accessibility role, name, value and states
+(`dump_ui`'s `role`, `name`, `value`, `states`; `og.ui.a11y()` answers the
+tree with its focus order). Give every control visible text or a meaningful
+id: an icon-only button is named by its icon, a card by the text inside it,
+else by its id, and a playtest can require that no `focusable` element has
+an empty name (ui-kit's `tests/a11y.og.ts`). Tab walks the tree's order.
 
 Arrows and the d-pad move focus to the nearest control that way (wrapping at
 the edges), Tab and Shift+Tab walk reading order, Enter, Space and A press,
@@ -90,9 +109,18 @@ Escape and B go back: the topmost dialog or menu closes, otherwise
 move the player calls `og.ui.setNavigation(false)` (the HUD templates do);
 dialogs turn navigation back on while open. The UI reads pad 0 from
 `og.Gamepad` itself (d-pad, A, B, the left stick); for a custom binding,
-queue intents with `og.ui.navigate(world, intent)`. Script a pad in a
+queue intents with `og.ui.navigate(world, intent)`. A focus move plays the
+`hover` sound and Enter, Space or A the `press` sound, as the pointer does
+(og-audio §3). Script a pad in a
 playtest with `gamepad:a` then `gamepad:-` (release), or `gamepad:-:0,0.9`
 for the stick.
+
+Local multiplayer on one screen (a lobby, a versus character select): call
+`og.ui.setPlayers(4)` every tick the screen shows. Pads 1 to 3 then each
+move a ring of their own (in the player's colour) among the same controls
+and press with A; `response.pad` says whose press it was (null for the
+pointer and keyboard, 0 for pad 0), `og.ui.focus(pad)` where each ring is.
+Script them with `gamepad:right@2` then `gamepad:-@2`.
 
 The touch controls (joystick, d-pad, action buttons) answer several fingers
 at once: a thumb holding the stick and another on a button both count. Test
@@ -142,7 +170,22 @@ A skin's `slice` line says how a frame's edges and centre fill: `stretch`
 (the default), `repeat` (tiled at the art's size from the corner, the last
 tile cut) or `round` (a whole number of tiles resized to fit, as CSS
 `round`): tile patterned borders (a rope, a rivet row, a pixel bevel),
-stretch plain ones.
+stretch plain ones. `glass <part> <blur> <fill> [tint]` makes a part glass:
+the game behind it blurred (`blur` CSS px), tinted by the part's fill, under
+its frame drawn at `fill` opacity (the scifi pack's dialogs:
+`glass panel 16 0.85 0.15`). Glass blurs the scene, not other UI under it;
+it costs a frame copy and a blur pyramid when any is on screen (about 0.8 ms
+at 1280×720 on an M4 Pro), nothing otherwise.
+
+A skin of the game's own art: draw each part as a nine-patch PNG
+(`panel.9.png`, `button.9.png`, `buttonHover.9.png`, ..., `soft.9.png`: the
+art inside a one-pixel border whose top row and left column mark in opaque
+black what stretches) and any ornament as a plain PNG (`corner.png`,
+`divider.png`, `flourish.png`, `tile.png`) in the skin's directory, then
+`og skin pack assets/skins/<name>`: it packs them into `atlas.png` and
+writes the skin file's `atlas`, `slice` and `soft` lines and the ornaments'
+regions, keeping every other line (palette, fonts, a slice's `tint` or
+`repeat`). Re-run it after redrawing a part.
 
 Never pass hex colours for chrome: use `{ token: "accent" }`, `"fgMuted"`,
 `"surface"` and the type steps (`displayLg`, `xl`, `meta`); the skin's
@@ -161,7 +204,8 @@ Motion and juice, all by the tick and in the UI state:
 | A wrong answer, a locked door, a refused purchase | `og.ui.shake({ sound: true })` right after the element, once, on the tick it happens: it swings three times and comes to rest by itself (the skin's `motion.shake`, else 6 px), with the `error` sound |
 
 Skins add the rest themselves: dialog and panel entrances with staggered
-controls, hover lift and press squash, eased progress bars, toasts flying in,
+controls, hover lift and press squash on springs (the `hoverSpring 1 350` and `pressSpring 0.55 120` lines of a
+skin's `motion` block: damping ratio and response in ms; below 1 bounces), eased progress bars, toasts flying in,
 a shake and the error sound on a press of a disabled button. Reduced motion
 keeps every shake still and turns the rest into fades. How long and how
 much is og-taste §5 and §6; camera shake is never for UI (og-feel §4).

@@ -647,6 +647,8 @@ impl Ui {
             },
         );
         self.stack.push(panel);
+        self.nodes[panel].a11y.role = Some("dialog");
+        self.nodes[panel].a11y.name = Some(desc.title.clone());
         if open && t.skin.motion.stagger_ms > 0.0 {
             let since = self.since(crate::id::child_key(key, "enter"));
             self.enter(panel, since, None);
@@ -1115,6 +1117,8 @@ impl Ui {
             },
         );
         self.stack.push(i);
+        self.nodes[i].a11y.role = Some("option");
+        self.nodes[i].a11y.selected = Some(selected);
         let mut r = self.nav_target(i, false);
         r.dropped = self.drag_and_drop(list, i, index);
         let p = &t.palette;
@@ -1288,6 +1292,8 @@ impl Ui {
             },
         );
         self.stack.push(i);
+        self.nodes[i].a11y.role = Some("option");
+        self.nodes[i].a11y.selected = Some(selected);
         let mut r = self.nav_target(i, false);
         r.dropped = self.drag_and_drop(grid, i, index);
         let p = &t.palette;
@@ -1370,6 +1376,8 @@ impl Ui {
                 ..Element::default()
             },
         );
+        let list = self.parent();
+        self.nodes[list].a11y.role = Some("tablist");
         let mut out = Response::default();
         for (k, label) in items.iter().enumerate() {
             let i = self.leaf(
@@ -1409,6 +1417,7 @@ impl Ui {
             };
             n.content = Content::Text(c);
             n.probe_text = (*label).to_owned();
+            n.a11y.selected = Some(on);
         }
         self.close();
         out
@@ -1501,6 +1510,9 @@ impl Ui {
             let n = &mut self.nodes[i];
             n.content = Content::Text(c);
             n.probe_text = text.to_owned();
+            n.a11y.name = Some(name.clone());
+            n.a11y.value = Some(shown.to_owned());
+            n.a11y.expanded = Some(open);
             if r.hovered && !desc.disabled {
                 n.el.background = Some(p.fill_strong);
             }
@@ -1547,6 +1559,7 @@ impl Ui {
             );
             let menu = self.parent();
             self.nodes[menu].scope = true;
+            self.nodes[menu].a11y.role = Some("listbox");
             self.nodes[menu].el.width = Size::Fit {
                 min: self.hit(key).map_or(160.0, |h| h.rect.width),
                 max: f32::INFINITY,
@@ -1573,6 +1586,7 @@ impl Ui {
                 let n = &mut self.nodes[o];
                 n.content = Content::Text(c);
                 n.probe_text = (*label).to_owned();
+                n.a11y.selected = Some(k == *selected);
                 n.el.background = if k == *selected || or.hovered {
                     Some(p.fill_strong)
                 } else {
@@ -1613,6 +1627,9 @@ impl Ui {
                 ..Element::default()
             },
         );
+        let spin = self.parent();
+        self.nodes[spin].a11y.role = Some("spinbutton");
+        self.nodes[spin].a11y.value = Some(format!("{:.*}", desc.decimals as usize, *value));
         let mut out = Response::default();
         let mut delta = 0i32;
         let digits = desc.decimals as usize;
@@ -1668,6 +1685,7 @@ impl Ui {
                 n.el.background = Some(p.fill_strong);
             }
             n.probe_text = if sign < 0 { "−".into() } else { "+".into() };
+            n.a11y.name = Some(if sign < 0 { "Decrease" } else { "Increase" }.into());
             let len = t.space.md;
             n.shapes.push(Shape::Rect {
                 frame: Frame::centered(0.0, 0.0, len, 2.0),
@@ -1695,6 +1713,7 @@ impl Ui {
                 out.changed = true;
             }
         }
+        self.nodes[spin].a11y.value = Some(format!("{:.*}", desc.decimals as usize, *value));
         out
     }
 
@@ -1724,6 +1743,8 @@ impl Ui {
                 ..Element::default()
             },
         );
+        let group = self.parent();
+        self.nodes[group].a11y.role = Some("radiogroup");
         let mut out = Response::default();
         for (k, label) in options.iter().enumerate() {
             let r = self.mark_control(
@@ -1770,6 +1791,8 @@ impl Ui {
                 ..Element::default()
             },
         );
+        let group = self.parent();
+        self.nodes[group].a11y.role = Some("group");
         let mut out = Response::default();
         for (k, label) in labels.iter().enumerate() {
             let mut v = values.get(k).copied().unwrap_or(false);
@@ -1812,6 +1835,7 @@ impl Ui {
         let n = &mut self.nodes[i];
         n.content = Content::Text(c);
         n.probe_text = label.to_owned();
+        n.a11y.checked = Some(on);
         let frame = Frame {
             fy: 0.5,
             y: -box_ / 2.0,
@@ -1934,6 +1958,7 @@ impl Ui {
         n.el.background = Some(bg);
         n.content = Content::Text(c);
         n.probe_text = text.to_owned();
+        n.a11y.selected = Some(desc.selected);
         r
     }
 
@@ -2121,6 +2146,8 @@ impl Ui {
                 ..Element::default()
             },
         );
+        self.nodes[i].a11y.busy = true;
+        self.nodes[i].a11y.name = Some("Loading".into());
         let period = self.ticks_for(t.durations_ms.slow * 2.0) as u64;
         let head = ((self.state.tick % period) * 8 / period) as i32;
         let dot = s / 5.0;
@@ -2301,6 +2328,7 @@ impl Ui {
             });
         }
         n.probe_text = desc.label.clone();
+        n.a11y.value = Some(format!("{} of {}", value.round(), max.round()));
     }
 
     /// A cooldown: a disc whose amber ring fills clockwise from the top as
@@ -2400,6 +2428,11 @@ impl Ui {
         let n = &mut self.nodes[i];
         n.shapes = shapes;
         n.probe_text = desc.label.clone();
+        n.a11y.value = Some(if remaining <= 0.0 {
+            "ready".into()
+        } else {
+            format!("{:.0}%", remaining.clamp(0.0, 1.0) * 100.0)
+        });
         r
     }
 
@@ -2924,7 +2957,10 @@ impl Ui {
         };
         let n = &mut self.nodes[i];
         n.el.background = Some(bg);
-        n.widget = Widget::Button { pressed: r.pressed };
+        n.widget = Widget::Button {
+            pressed: r.pressed,
+            press: if r.pressed { 1.0 } else { 0.0 },
+        };
         n.probe_text = text.to_owned();
         match icon {
             Some(s) => n.shapes.push(s),
