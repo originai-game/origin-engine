@@ -53,6 +53,11 @@ pub trait RenderBackend {
         width: u32,
         height: u32,
     ) -> Option<og_render::RgbaImage>;
+    /// Whether `capture` answers on a later call (the web host): a probe
+    /// waits for the frame instead of failing on the first `None`.
+    fn deferred(&self) -> bool {
+        false
+    }
 }
 
 /// One loaded font: a cooked MTSDF font as one `MsdfFont` per atlas page.

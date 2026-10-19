@@ -182,6 +182,14 @@ impl Inbox {
     pub(crate) fn take(&self) -> Vec<Queued> {
         std::mem::take(&mut *self.0.lock().unwrap_or_else(|e| e.into_inner()))
     }
+
+    /// Puts back, ahead of anything queued since, actions taken and not run.
+    pub(crate) fn requeue(&self, actions: Vec<Queued>) {
+        if !actions.is_empty() {
+            let mut queued = self.0.lock().unwrap_or_else(|e| e.into_inner());
+            queued.splice(0..0, actions);
+        }
+    }
 }
 
 /// One action as `help` lists it.

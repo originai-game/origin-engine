@@ -10,7 +10,7 @@ use og_core::glam::Vec3;
 use og_probe::command::{CORE_ACTIONS, parse};
 use og_probe::{CommandDesc, Input, Payload};
 use serde_json::{Value, json};
-use support::{Camera, Harness, Health, Stats, Transform, build};
+use support::{Camera, Harness, Health, ReadbackCapture, Stats, Transform, build};
 
 /// Run the host loop: one tick per frame until `quit` (or a bound).
 fn run(h: &mut Harness, max_ticks: u64) {
@@ -465,6 +465,37 @@ fn teleport_set_frame_and_dump_entity_write_through_the_schema() {
     bare.probe.schedule(&bare.world, "0:screenshot").unwrap();
     bare.probe.pump(&mut bare.world);
     assert!(bare.probe.take_log()[0].text.contains("no renderer"));
+}
+
+#[test]
+fn a_screenshot_whose_frame_lands_later_holds_the_clock_and_the_steps_after_it() {
+    let mut h = build(1, false);
+    h.probe.set_capture(Box::new(ReadbackCapture::default()));
+    h.probe
+        .schedule(&h.world, "0:screenshot:a.png;0:set:player.Health.hp=55")
+        .unwrap();
+    let player = h.probe.names().resolve(&h.world, "player").unwrap();
+
+    // The frame is asked for: no tick is taken and the step after it waits.
+    assert_eq!(h.probe.frame(&mut h.world, 3).unwrap(), 0);
+    assert!(h.probe.take_outputs().is_empty());
+    assert_eq!(h.world.get::<Health>(player).unwrap().hp, 100.0);
+
+    // It lands: written at the tick it was asked at, then the held step
+    // runs and the clock goes on.
+    assert_eq!(h.probe.frame(&mut h.world, 3).unwrap(), 3);
+    let outputs = h.probe.take_outputs();
+    assert_eq!(outputs.len(), 1);
+    assert_eq!(
+        (outputs[0].tick, outputs[0].file_name().as_str()),
+        (0, "a.png")
+    );
+    let Payload::Png { bytes, .. } = &outputs[0].payload else {
+        panic!()
+    };
+    assert!(String::from_utf8_lossy(bytes).starts_with("64x36 tick=0 "));
+    assert_eq!(h.world.get::<Health>(player).unwrap().hp, 55.0);
+    assert!(h.probe.take_log().iter().all(|l| !l.warning));
 }
 
 #[test]

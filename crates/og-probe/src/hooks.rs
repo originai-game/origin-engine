@@ -39,6 +39,12 @@ pub trait Capture {
     /// PNG of `width`×`height` (0×0 is the render target's size). `None`
     /// when no frame can be produced.
     fn capture(&mut self, world: &World, width: u32, height: u32) -> Option<Frame>;
+    /// Whether `capture` answers `None` until the readback lands and the
+    /// frame on a later call at the same size (the web): the probe then
+    /// waits for it (`screenshot`, `sweep`) instead of failing.
+    fn deferred(&self) -> bool {
+        false
+    }
     /// What is under a point of the play surface, in CSS pixels. `None` until
     /// the renderer provides picking: the probe answers `pick` with `null`.
     fn pick(&mut self, world: &World, x: f32, y: f32) -> Option<Pick> {

@@ -544,9 +544,22 @@ mod canvas {
         engine: u32,
         renderer: Renderer,
         tier: String,
-        /// A capture in flight and the size it was asked at.
-        pending: Option<(og_render::CaptureRequest, (u32, u32))>,
+        /// Captures in flight: one per size, at most [`MAX_CAPTURES`],
+        /// oldest first.
+        pending: Vec<Pending>,
     }
+
+    struct Pending {
+        req: og_render::CaptureRequest,
+        /// The size it was asked at.
+        size: (u32, u32),
+        /// Landed by a display frame and not taken since.
+        landed: bool,
+    }
+
+    /// The most captures of different sizes in flight at once; asking for
+    /// another drops the oldest.
+    const MAX_CAPTURES: usize = 4;
 
     impl RenderBackend for CanvasBackend {
         fn tier(&self) -> String {
@@ -568,11 +581,16 @@ mod canvas {
         }
         fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
             if let Some((w, h)) = super::take_resize(self.engine) {
-                // A capture in flight was asked at the old size; it restarts.
-                self.pending = None;
                 self.renderer.resize(w, h);
             }
             self.renderer.poll();
+            // Its asker takes a landed frame on its next call, before the
+            // next display frame; one left a whole display frame was given up on.
+            self.pending.retain_mut(|p| {
+                let kept = !p.landed;
+                p.landed = p.req.is_ready();
+                kept
+            });
             self.renderer
                 .render(scene, &RenderTarget::Surface)
                 .map(|_| ())
@@ -580,7 +598,8 @@ mod canvas {
         }
         /// Request on one call, answer on a later one: the first call draws
         /// offscreen and starts the readback; a later call at the same size
-        /// answers the frame once the copy has landed.
+        /// answers the frame once the copy has landed (the scene as it was
+        /// at the request). Captures of different sizes wait side by side.
         fn capture(&mut self, scene: &RenderScene, width: u32, height: u32) -> Option<RgbaImage> {
             let target = self.renderer.size();
             let size = if width == 0 || height == 0 {
@@ -588,15 +607,16 @@ mod canvas {
             } else {
                 (width, height)
             };
-            if let Some((mut req, asked)) = self.pending.take() {
-                self.renderer.poll();
-                match req.try_finish(&self.renderer) {
-                    Ok(Some(image)) if asked == size => return Some(image),
-                    Ok(None) if asked == size => {
-                        self.pending = Some((req, asked));
+            if let Some(i) = self.pending.iter().position(|p| p.size == size) {
+                let mut p = self.pending.remove(i);
+                match p.req.try_finish(&self.renderer) {
+                    Ok(Some(image)) => return Some(image),
+                    Ok(None) => {
+                        self.pending.push(p);
                         return None;
                     }
-                    _ => {}
+                    // A failed readback is asked again.
+                    Err(_) => {}
                 }
             }
             if size != target {
@@ -610,8 +630,20 @@ mod canvas {
             if size != target {
                 self.renderer.resize(target.0, target.1);
             }
-            self.pending = started.map(|r| (r, size));
+            if let Some(req) = started {
+                if self.pending.len() >= MAX_CAPTURES {
+                    self.pending.remove(0);
+                }
+                self.pending.push(Pending {
+                    req,
+                    size,
+                    landed: false,
+                });
+            }
             None
+        }
+        fn deferred(&self) -> bool {
+            true
         }
     }
 
@@ -661,7 +693,7 @@ mod canvas {
                 engine,
                 renderer,
                 tier: tier.clone(),
-                pending: None,
+                pending: Vec::new(),
             })),
         )
         .map_err(|e| JsValue::from_str(&e))?;
