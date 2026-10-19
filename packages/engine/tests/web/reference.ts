@@ -4,7 +4,8 @@
 // headless Chrome on WebGPU (or the WebGL2 fallback with --webgl) at
 // 1280×720, DPR 1, from the dev web export's engine Worker, and compared
 // with templates/fx-showcase/references/<tier>/ (`webgpu` or `webgl2`) when
-// that tier is committed, else with `metal`, under og-tests' rule
+// that frame is committed there, else with `metal` (a tier with no
+// directory is judged against metal throughout), under og-tests' rule
 // (crates/og-tests/src/compare.rs): a channel off by more than 32/255 is an
 // outlier; fail above 0.5 % outliers or an RGB RMSE above 0.01.
 //
@@ -42,8 +43,9 @@
 // Writes <out>/<tier>/<station>.png, <station>.diff.rgba on a mismatch (raw
 // RGBA, differences x4, outliers red) and reference-<tier>.json (default
 // dist/test-reference/out; on an error, with the engine's last log lines).
-// Exits 1 when a station does not match, the engine does not start or the
-// probe does not refuse. Needs Chrome (cdp.ts: a missing one is an error).
+// Exits 1 when a station does not match or has no reference (neither its
+// tier's nor metal's), the engine does not start or the probe does not
+// refuse. Needs Chrome (cdp.ts: a missing one is an error).
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -287,6 +289,12 @@ try {
     }
     const against = referenceOf(`${s.name}.png`);
     row["against"] = against.slice(repo.length + 1);
+    if (!existsSync(against)) {
+      failures++;
+      row["error"] = `no reference at ${join(own, `${s.name}.png`).slice(repo.length + 1)} or ${against.slice(repo.length + 1)}; record one with --record`;
+      console.log(`FAIL ${s.name} (${tier}): ${row["error"]}`);
+      continue;
+    }
     const d = compare(decodePng(bytes), decodePng(new Uint8Array(readFileSync(against))));
     const ok = d.outliers <= TOLERANCE.outliers && d.rmse <= TOLERANCE.rmse;
     Object.assign(row, { outliers: +(d.outliers * 100).toFixed(3), rmse: +d.rmse.toFixed(5), ok });

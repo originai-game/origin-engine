@@ -141,7 +141,13 @@ glob (row 12).
   the webgl2 beacon, the one over the harness's 0.01 against metal: the
   same scene, the hand in the bowl, fire, smoke and light alike; WebGL2
   draws the ember sparks as longer, wider streaks (about 1 % of the
-  pixels), so it keeps its own reference.
+  pixels), so it keeps its own reference. On 2026-10-20 the webgpu
+  references and the webgl2 title and dawn were dropped as duplicates of
+  metal (each within the tolerance against it; docs/ci.md: a tier gets its
+  own reference only for a difference it makes by design), so both tiers
+  are judged against `references/metal/` except the webgl2 beacon, whose
+  reference is under investigation (the tier's design or a defect).
+  `scripts/check.sh web-reference` now runs these frames on both tiers.
 - **vulkan-cpu**: not recorded (the gate does not run templates on it).
 - **og polish** (`tests/evidence/P2/showcase/`, metal, release addon):
   taste 95, feel 85. Seven findings, recorded and not fixed: six labels
@@ -821,7 +827,8 @@ rerun, `scripts/check.sh --only bun-test`, **PASSED** with the engine package's
 
 Branch `p2-ui-tiers` from 44d12a8 (evidence: `tests/evidence/P2/ui-tiers/`,
 `NOTES.md` there indexes it). Owed row 20 is done: every og-ui reference
-frame now exists on all four tiers.
+frame exists on vulkan-cpu, and the browser tiers are checked against
+metal (their recorded copies were later dropped as duplicates).
 
 - **vulkan-cpu** (2131b15): all 74 frames (og-ui's four scenes, 22 desktop
   and 21 phone kit screens, 15 locale screens, 12 skin sheets), recorded
@@ -830,8 +837,8 @@ frame now exists on all four tiers.
   `crates/og-ui/tests/support/scenes.rs` so the browser can build them too.
 - **Browser, og-ui's scenes** (de92f08): og-tests-web includes that file
   and draws `og-ui/<name>`; `reference-gfx.ts` judges them against
-  `crates/og-ui/references/<tier>/`. Both tiers match metal exactly except
-  widget-set (RMSE 0.00046, as the native metal run).
+  `crates/og-ui/references/<tier>/`, else metal. Both tiers match metal
+  exactly except widget-set (RMSE 0.00046, as the native metal run).
 - **Browser, the kit** (8f1d3af): reference.ts takes `--size`,
   `--references` and `--sheet`; `tests/web/reference-ui.ts` runs ui-kit's
   16 reference playtests through it (the full set, 70 frames; nothing left
@@ -847,6 +854,11 @@ frame now exists on all four tiers.
   gfx test on lavapipe; a wrong webgl2 locale frame, a wrong webgpu skin
   sheet and a mirrored webgpu glass fail the browser runners; restored,
   all pass.
+- **Afterwards**: the webgpu and webgl2 copies of all 74 frames were
+  dropped as duplicates of metal (none differs by the tier's design,
+  docs/ci.md §Browser reference tiers); both browser tiers are judged
+  against `crates/og-ui/references/metal/`, with the figures above as the
+  record of what they show against it.
 
 ### Gate
 
@@ -1292,7 +1304,7 @@ resource only the owner can give.
 | 17 | Per-glyph tracking from a skin's ramp (needs per-glyph spacing in og-render's text) | E3 | M | engine, P2 UI | done, 0df11b1 |
 | 18 | A real text glow (an MSDF outline in og-render; four offset copies today) | E3 | M | engine, P2 UI | done, 0df11b1 |
 | 19 | An atlas tool for skins drawn by hand, beyond `make-skins.py` | E3 | M | engine, P2 UI | done, f4c236b |
-| 20 | `vulkan-cpu` and browser references for og-ui's scenes, the UI kit, the skin packs and the locale screens (metal only) | E2, E3, E6 | M | engine, phase 2 | done, 2131b15, de92f08, 8f1d3af (all 74 frames on vulkan-cpu, webgpu and webgl2; the browser kit runner in web-reference) |
+| 20 | `vulkan-cpu` and browser references for og-ui's scenes, the UI kit, the skin packs and the locale screens (metal only) | E2, E3, E6 | M | engine, phase 2 | done, 2131b15, de92f08, 8f1d3af (all 74 frames on vulkan-cpu; the browser tiers, first recorded too, are judged against metal since their copies were dropped as duplicates; the browser kit runner in web-reference) |
 | 21 | Pads beyond the first in og-ui | E2 | M | engine, P2 UI | done, ca179c0 |
 | 22 | Browser runs of og-tests' own gfx scenes (a wasm harness) and GL-tier references (`msaa` among them) | M3, E2 | M | engine, phase 2 | done, 0ac7c34, c43947e, 9470fc3, eaf0517 |
 | 23 | Shader hooks on skinned meshes; shadows and the depth prepass displaced by `vertex_offset` | E5 | M | engine, phase 2 | done, 12e93b5, 49dfd0d (`og.render.setMaterialShader`), aa81258 |
@@ -1319,7 +1331,7 @@ resource only the owner can give.
 | 44 | A publish wasm per profile (measured 63.3 % 3D, 59.5 % 2D at opt-level 3): two shipping variants, `og build --publish` choosing by the game's profile, and the size budget read per download instead of as the sum of every wasm the gate builds | E7 | M | owner (the budget's meaning), then engine | open |
 | 45 | `og.ui.shake` shown in a template (ui-kit's shop refusing a purchase) | E7 | S | engine, P2 UI | done, d00f20c |
 | 46 | runner: a press during the game-over card's hold is silent (og polish: 1 of 3 inputs in `flow`) | E7 | S | engine, P2 UI | done, 54b59df |
-| 47 | vulkan-cpu references for the third-person archetype (metal, webgpu and webgl2 recorded) | P2 showcase | S | engine, phase 2 | open |
+| 47 | vulkan-cpu references for the third-person archetype (metal recorded; webgpu and webgl2 judged against metal except the webgl2 beacon, under investigation) | P2 showcase | S | engine, phase 2 | open |
 | 48 | The fantasy pack's labels under 4.5:1 (Set out 3.36, footer 3.5, Resume 3.84, Again 3.99, 完成 4.41, 语言 4.43 in Ember Vale's polish) and third-person's HUD Jump and Kindle without a ui-bus sound | P2 showcase | S | engine, phase 2 | open |
 | 49 | The IDL's og.IkChain docs: a `"world"` target is in the skeleton body's Transform parent's frame, not true world | P2 showcase | S | engine, phase 2 | open |
 

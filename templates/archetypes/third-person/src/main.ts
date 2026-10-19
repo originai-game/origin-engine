@@ -130,8 +130,8 @@ export default og.game({
     viewport: { usage: "<desktop|phone>", doc: "Lay the UI out for a phone in portrait (390×844 at 3×)." },
     language: { usage: "<en|zh-CN>", doc: "Switch the language as the settings do." },
     stale_record: { usage: "", doc: "Another device writes the record, so this one's next write is refused as stale and merged." },
-    alarm: { usage: "<sentinel>", doc: "A sentinel calls the alarm (its behaviour raises it on sight)." },
-    grab: { usage: "<sentinel>", doc: "A sentinel's grab (its behaviour raises it within reach): a heart, unless the hero is out of reach or was just grabbed." },
+    alarm: { usage: "<sentinel>", doc: "A sentinel (0 to 2: west, north, east; og.ai sends its entity) calls the alarm (its behaviour raises it on sight)." },
+    grab: { usage: "<sentinel>", doc: "A sentinel's grab (0 to 2: west, north, east; og.ai sends its entity; its behaviour raises it within reach): a heart, unless the hero is out of reach or was just grabbed." },
   },
   facts: (world) => {
     const game = world.resource(Game);

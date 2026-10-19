@@ -180,7 +180,9 @@ stages.
 4. **The characters**: another CC0 humanoid in `assets/models/` with the
    clip library retargeted onto it (`src/anim.ts`), the graphs' thresholds.
 5. **Words**: `assets/strings/*.ogt`; a new Chinese string needs the script
-   run again to subset the font.
+   run again to subset the font (with fontTools and the project template's
+   Noto Sans SC; without them the script fails naming the characters the
+   committed font lacks).
 
 ## Commands (for scripts and agents)
 
@@ -194,7 +196,7 @@ stages.
 | `stale_record` | another device writes the record, so this one's next write is refused as stale and merged |
 | `viewport:<desktop\|phone>` | lays the UI out for a phone in portrait (390 × 844 at 3×) |
 | `language:<en\|zh-CN>` | switches the language |
-| `alarm`, `grab` `:<sentinel>` | the sentinels' behaviour commands (og.ai sends them) |
+| `alarm:<sentinel>`, `grab:<sentinel>` | the sentinels' behaviour commands: sentinel 0 to 2 (west, north, east) calls the alarm or grabs (og.ai sends them with the sentinel's entity) |
 | core actions | `touch_move_to:play`, `Pause`, `Jump`, `Kindle`, `Stick`, `Again`, `Menu`; WASD, the arrows, Shift, Space, F, Q, E, Escape; `gamepad:a` … |
 
 `facts` (the probe's `state()`) reports the phase, the ending, hearts, lit

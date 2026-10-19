@@ -64,7 +64,7 @@ changed:
 | the GPU reference tests (nextest `-E 'not (package(og-tests) \| package(og-ui) \| package(og-render))'` in test and test-quick; `--exclude` under cargo test) | og-tests, og-ui, og-render and every workspace crate they build on (`cargo tree`, with dev-dependencies), `templates/ui-kit/assets` | the rest of the test step runs; the step's summary line says the GPU tests were skipped |
 | wasm-build, wasm-opt, size-gate | `crates/` | the last outputs in `target/og-wasm` are reused (only when every file they list exists; a step that ran upstream in this invocation always runs the next) |
 | drift | `crates/og-api` (`api.ogt`), og-idl and the crates it builds on, `crates/og-cli`, and every generated directory (`og_idl::OUTPUT_DIRS`), so a hand edit to a generated file is still caught | |
-| web-reference (`make web-reference`; in no lane) | og-host-web's and og-tests-web's crates for wasm32 (og-tests-web takes og-tests' scenes, assets and references), `packages/engine`, `templates/fx-showcase` | |
+| web-reference (`make web-reference`; in no lane) | og-host-web's and og-tests-web's crates for wasm32 (og-tests-web takes og-tests' scenes, assets and references and og-ui's, whose references hold ui-kit's frames), `packages/engine`, `templates/fx-showcase`, `templates/ui-kit`, `templates/archetypes/third-person` | |
 
 A change to `scripts/`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`,
 `.cargo/` or `.config/` reruns every one of them. Each skip prints its
@@ -146,7 +146,7 @@ had grown `target/` to 143 GB.
 | `bun-test` | `bun run test` in each `packages/*` with a `test` script (the engine's files in parallel workers, `bun test --parallel`; the engine's `typecheck` also checks the six templates' `src/` against the generated declarations, `packages/engine/tsconfig.templates.json`; their playtests run under bun in `og test`); `OG_GATE=1` makes `packages/engine/scripts/build.sh` take the dev addon and `og` and the gate's wasm instead of compiling release and wasm again (below) | full | | yes | |
 | `determinism` | `tools/wasm-determinism/run.sh`: the same math digest and world hash on the host and on wasm32 scalar and simd128 under node, and the host release once more with lanes off and once with lanes on (failing when the lanes run did no parallel work) | full | | yes | needs node |
 | perf | `cargo test -p og-tests --release -- --ignored perf` | `make perf` | | | yes |
-| `web-reference` | `bun tests/web/reference.ts` and `--webgl` in `packages/engine`: templates/fx-showcase's five stations, then `bun tests/web/reference-e5.ts` and `--webgl` for its eight E5 stations (each a fresh run like its playtest), then `bun tests/web/reference-gfx.ts` and `--webgl` for og-tests' gfx scenes and og-ui's four scenes, then `bun tests/web/reference-ui.ts` and `--webgl` for templates/ui-kit's 70 reference frames (§Browser reference tiers), in headless Chrome, compared with `references/webgpu`/`webgl2` or else `metal` under og-tests' tolerance (below); path-aware (§Lanes) | `scripts/check.sh web-reference` (`make web-reference`), in no lane | | | |
+| `web-reference` | `bun tests/web/reference.ts` and `--webgl` in `packages/engine`: templates/fx-showcase's five stations, then `bun tests/web/reference-e5.ts` and `--webgl` for its eight E5 stations (each a fresh run like its playtest), then `bun tests/web/reference-gfx.ts` and `--webgl` for og-tests' gfx scenes and og-ui's four scenes, then `bun tests/web/reference-ui.ts` and `--webgl` for templates/ui-kit's 70 reference frames, then `bun tests/web/reference.ts --project templates/archetypes/third-person` and `--webgl` for Ember Vale's three frames (§Browser reference tiers), in headless Chrome, compared with `references/webgpu`/`webgl2` or else `metal` under og-tests' tolerance (below); path-aware (§Lanes) | `scripts/check.sh web-reference` (`make web-reference`), in no lane | | | |
 
 `cargo nextest` runs test binaries in parallel, one process per test.
 Fixtures several tests read are made once across their processes under a
@@ -335,7 +335,8 @@ which runs `OG_RELEASE=1 build.sh` with its own arguments first, packs only
 
 og-tests' gfx references cover `metal` and `vulkan-cpu` (and `webgl2` for
 four scenes, §og-tests' gfx scenes in the browser); og-ui's 74 reference
-frames have all four tiers (§og-ui's kit frames in the browser);
+frames cover `metal` and `vulkan-cpu`, and the browser tiers are judged
+against `metal` (§og-ui's kit frames in the browser);
 fx-showcase's browser tiers
 come from `packages/engine/tests/web/reference.ts` (`make web-reference`): the dev
 export of `templates/fx-showcase` on a 1280×720 canvas at DPR 1 in headless
@@ -358,6 +359,28 @@ without screenshot and quit>" --shots start@30,crit@131,dash@168,east@216`
 compares (or with `--record` writes) `<project>/references/<tier>/`. The
 topdown archetype's four frames matched `metal` at RMSE ≤ 0.00009 on WebGPU
 and ≤ 0.00005 on WebGL2 (2026-10-18) and are committed for both tiers.
+
+A tier's references are looked up frame by frame: a frame with no file
+under `references/<tier>/` (or a tier with no directory at all) is judged
+against `references/metal/`, and a frame on neither fails the run
+("no reference at …; record one with --record"), never passes. A tier
+gets its own reference only for a difference the tier makes by design
+(§og-tests' gfx scenes in the browser).
+
+`web-reference` also runs Ember Vale (`templates/archetypes/third-person`)
+on both tiers: reference.ts with `--project
+templates/archetypes/third-person --out dist/test-reference/third-person`,
+`tests/frames.og.ts`'s commands without its screenshots and `quit`
+(`1.0:run;1.1:warp:0;1.3:key_down:KeyF;3.5:key_up:KeyF;3.6:light:1;3.7:light:2;3.8:light:3`)
+and `--shots title@54,beacon@204,dawn@432` (each at its screenshot's tick,
+60 t). A change to that playtest changes the step's command in
+`scripts/check.sh` with it. WebGPU has no references of its own: against
+`metal` (2026-10-19) title is at RMSE 0.00131, beacon 0.00475 with
+0.060 % outliers, dawn 0.00067. On WebGL2 title (0.00428) and dawn
+(0.00180) are judged against `metal` too; the beacon keeps a WebGL2
+reference (RMSE 0.0181 against `metal`: the ember sparks are drawn as
+longer, wider streaks, about 1 % of the pixels) while an investigation
+decides whether that is the tier's design or a defect.
 
 `bun tests/web/archetype-hashes.ts [--webgl]` compares the three
 archetypes' world hashes across hosts: each replay playtest's script runs
@@ -444,10 +467,10 @@ The same module carries og-ui's four reference scenes as `og-ui/<name>`
 `crates/og-ui/tests/support/scenes.rs`, the file og-ui's native `gfx` and
 `kit_gfx` tests build them with, included into og-tests-web by `#[path]`,
 and judged against `crates/og-ui/references/<tier>/<name>.png`, else
-`metal`. Both browser tiers have their own references for them, recorded
-2026-10-19. Against `metal` they match exactly (RMSE 0) on both tiers,
-except `widget-set` at RMSE 0.00046, which is also what the native metal
-run gives against that reference.
+`metal`. Neither browser tier has references of its own for them: they are
+judged against `metal`, which they match exactly (RMSE 0) on both tiers
+(2026-10-19), except `widget-set` at RMSE 0.00046, which is also what the
+native metal run gives against that reference.
 
 ### og-ui's kit frames in the browser
 
@@ -463,17 +486,20 @@ screenshot, quit and dump> --shots <file>@<round(60 t)>,…`, so each
 browser run is the same fresh run as the native playtest. A skin playtest
 adds `--sheet kit-skin-<pack>[-phone].png,<factor>,<cols>`: each shot is
 box-shrunk (2 on desktop, 3 on a phone, as `tests/skins.ts` does) and
-compared with its cell of the tier's sheet; the gallery shot that only
+compared with its cell of the sheet; the gallery shot that only
 proves the pack applied is not a cell. Frames are judged against
 `crates/og-ui/references/<webgpu|webgl2>/`, else `metal`, at og-tests'
-default tolerance, and the summary goes to
+default tolerance (neither tier has references of its own, so every frame
+and sheet is judged against `metal`), and the summary goes to
 `packages/engine/dist/test-reference/ui/reference-ui-<tier>.json`, one
 report per playtest beside it. `--only a,b` runs some playtests,
 `--record` writes the tier's frames and sheets.
 
-Both browser tiers have their own 70 frames, recorded 2026-10-19 (Chrome
-for Testing 150, Apple M4 Pro), and reproduce them exactly (RMSE 0 on every
-frame). Before recording, every frame passed against `metal` on both tiers.
+Both browser tiers are judged against `metal`'s 70 frames: per-tier
+copies, recorded 2026-10-19 and reproduced exactly (RMSE 0) by both tiers,
+were dropped as duplicates of `metal`, since no frame differs by the
+tier's design. Against `metal` (Chrome for Testing 150, Apple M4 Pro,
+2026-10-19) every frame passes on both tiers.
 Eleven frames have outliers there, all at most 0.038 % (RMSE ≤ 0.0089,
 `kit-desktop-settings`): the edges of the large MSDF titles ("Settings",
 "Paused", "Shop", "Levels", "Toasts", the puzzle score), eleven edge
