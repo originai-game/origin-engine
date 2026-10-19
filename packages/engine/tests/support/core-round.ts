@@ -12,6 +12,9 @@
 //               emit), each advanced 5 ticks: { [kind]: { ok, reason, log } }
 //   time        og.platform.now and the answers' time under a fixed clock
 //               (og run --clock) and under the system clock
+//   input       input events' `at` within the tick: from the probe's input
+//               (the host's stamp, clamped) and from the command channel's
+//               step times; every KeyDown, KeyUp and PointerDown seen
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -91,7 +94,7 @@ if (which === "rng") {
       const s = world.resource(Seen);
       if (!s.ok) return;
       s.value.tries += 1;
-      if (!world.emit(og.KeyUp, { key: "KeyA" }).ok) s.value.refused += 1;
+      if (!world.emit(og.KeyUp, { key: "KeyA", at: 0 }).ok) s.value.refused += 1;
     }),
   };
   for (const [kind, system] of Object.entries(kinds)) {
@@ -147,6 +150,30 @@ if (which === "rng") {
     systemClock: og.platform.info(system.world).clock,
     systemSkewMs: s.ok ? Math.abs(s.value.startNow - before) : -1,
   });
+} else if (which === "input") {
+  const seen: Array<{ tick: number; kind: string; key?: string; id?: number; at: number }> = [];
+  const Watch = defineSystem("CrWatch", { reads: [og.KeyDown, og.KeyUp, og.PointerDown] }, (_q, time, world) => {
+    for (const e of world.events(og.KeyDown)) seen.push({ tick: time.tick, kind: "down", key: e.key, at: e.at });
+    for (const e of world.events(og.KeyUp)) seen.push({ tick: time.tick, kind: "up", key: e.key, at: e.at });
+    for (const e of world.events(og.PointerDown)) seen.push({ tick: time.tick, kind: "pointer", id: e.id, at: e.at });
+  });
+  const engine = start(og.game({ tick: 60, systems: [Watch] }));
+  const p = engine.probe as unknown as { input(e: unknown): boolean; commands(s: string): unknown };
+  p.input({ kind: "key", key: "KeyA", action: "down", at: 0.25 });
+  engine.advance(1);
+  p.input({ kind: "key", key: "KeyA", action: "up", at: -0.5 });
+  p.input({ kind: "pointer", action: "down", x: 10, y: 20, button: "left", id: 2, at: 0.75 });
+  engine.advance(1);
+  p.input({ kind: "key", key: "KeyB", action: "press", at: 3 });
+  p.input({ kind: "key", key: "KeyC", action: "down" });
+  engine.advance(2);
+  // Scheduled at tick 4: 0.1 s is 6 ticks on, a boundary (tick 10, at 0); 0.1083 s is 6.498 ticks,
+  // which rounds to 6 (tick 10 reads it, half a tick into it); 0.125 s is 7.5, which rounds to 8
+  // (tick 12 reads it, half a tick before its start).
+  p.commands("0.1:key_down:KeyD;0.1083:key_down:KeyE;0.125:key_down:KeyF");
+  engine.advance(12);
+  out.seen = seen.map((e) => ({ ...e, at: Math.round(e.at * 1e4) / 1e4 }));
+  out.hash = host === "publish" ? "" : engine.hash();
 } else {
   throw new Error(`unknown --case ${which}`);
 }

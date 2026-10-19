@@ -1142,10 +1142,13 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
         Err(e) => return refuse(e),
     };
     let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
+    let behind = eng.state.borrow().accumulator_ms;
     let probe = eng.probe.borrow();
+    // `behind`: real time the accumulator holds that no tick has simulated
+    // yet, so a host can place an input event within the next tick.
     json!({
         "ok": true, "ticks": ticks, "tick": tick, "rendered": rendered,
-        "paused": probe.paused(), "quit": probe.quit_requested(),
+        "paused": probe.paused(), "quit": probe.quit_requested(), "behind": behind,
     })
     .to_string()
 }

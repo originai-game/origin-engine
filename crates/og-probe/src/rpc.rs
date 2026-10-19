@@ -223,7 +223,8 @@ impl Probe {
                 let event = p
                     .get("event")
                     .ok_or_else(|| RpcError::invalid("event is required"))?;
-                json!(InjectedInput::from_json(event).is_some_and(|e| self.input(world, &e)))
+                let at = crate::probe::stamp_of(event);
+                json!(InjectedInput::from_json(event).is_some_and(|e| self.input_at(world, &e, at)))
             }
             "pick" => match (coordinate(p, "x"), coordinate(p, "y")) {
                 (Some(x), Some(y)) => or_null(self.pick(world, x, y)),

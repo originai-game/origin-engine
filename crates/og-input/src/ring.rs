@@ -19,7 +19,11 @@
 //! 8–15); a pointer slot carries its pointer id (0 to 4) in word 8 instead.
 //! A gamepad slot is the pad's whole state: word 2 the pad, word 3
 //! connected (0 or 1), words 4–7 the axes (left x, y, right x, y), word 8
-//! the button mask, words 9–10 the triggers. Unused words are 0. The writer refuses an event when
+//! the button mask, words 9–10 the triggers. A key or pointer slot carries
+//! the event's time in words 6–7 (an f64: the page's
+//! `performance.timeOrigin + timeStamp`, ms; 0 unknown), which the Worker
+//! turns into the event's `at` (IDL `KeyInput.at`) before it injects it;
+//! [`decode_slot`] leaves it out. Unused words are 0. The writer refuses an event when
 //! `write - read ≥ 256` (the ring is full; the event is dropped), so a
 //! reader never sees an overwritten slot. Modifiers do not cross the ring.
 //!

@@ -760,6 +760,11 @@ module input {
     field modifiers Modifiers "Held modifiers; omitted means none." {
       optional true
     }
+    field at f32 "When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5." {
+      min -1
+      max 1
+      optional true
+    }
   }
 
   struct PointerInput {
@@ -774,6 +779,11 @@ module input {
     field button PointerButton "The button; `none` for a hover move."
     field id u32 "Which pointer: 0 the primary one (the mouse, the first touch; what protocol 5 means), 1 to 4 further touches held at the same time (an engine extension). Omitted is 0." {
       max 4
+      optional true
+    }
+    field at f32 "When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5." {
+      min -1
+      max 1
       optional true
     }
   }
@@ -1152,11 +1162,19 @@ module input {
     doc "A key went down (a down for a held key is a repeat and sets no edge). Input events are sent between ticks and read by the next tick's systems."
     field key String "The physical key code."
     field repeat bool "Whether this is an auto-repeat."
+    field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+      min -1
+      max 1
+    }
   }
 
   event KeyUp {
     doc "A key went up."
     field key String "The physical key code."
+    field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+      min -1
+      max 1
+    }
   }
 
   event PointerDown {
@@ -1165,6 +1183,10 @@ module input {
     field y f32 "Vertical position in CSS pixels."
     field button PointerButton "The button."
     field id u32 "Which pointer: 0 the primary one, 1 to 4 further touches (og.Pointers)."
+    field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+      min -1
+      max 1
+    }
   }
 
   event PointerUp {
@@ -1173,6 +1195,10 @@ module input {
     field y f32 "Vertical position in CSS pixels."
     field button PointerButton "The button."
     field id u32 "Which pointer: 0 the primary one, 1 to 4 further touches."
+    field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+      min -1
+      max 1
+    }
   }
 
   event PointerMove {

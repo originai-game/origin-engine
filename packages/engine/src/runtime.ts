@@ -792,7 +792,7 @@ export class Engine {
   }
 
   /** One display frame: tick by the wall clock (through the probe: due command steps run), then render. */
-  frame(elapsedMs: number): { ok: boolean; ticks?: number; tick?: number; rendered?: boolean; paused?: boolean; quit?: boolean; reason?: string } {
+  frame(elapsedMs: number): { ok: boolean; ticks?: number; tick?: number; rendered?: boolean; paused?: boolean; quit?: boolean; behind?: number; reason?: string } {
     this.pumpPlatform();
     const answer = parse<{ ok: boolean; ticks?: number }>(abi().og_engine_frame(this.id, elapsedMs));
     epoch++;

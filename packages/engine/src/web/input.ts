@@ -5,13 +5,23 @@
 // engine pointer id (0 the primary, 1 to 4 further touches) in word 8
 // instead. A gamepad slot (kind 3) is a pad's whole state: word 2 the pad,
 // word 3 connected, words 4-7 the axes, word 8 the button mask, words 9-10
-// the triggers. Without cross-origin isolation the shell posts the same
-// events as messages instead. crates/og-input/src/ring.rs decodes the same
-// layout.
+// the triggers. A key or pointer slot carries the event's time in words
+// 6-7 (an f64: performance.timeOrigin + the event's timeStamp, ms; 0 when
+// unknown), which the Worker turns into the event's `at` within the tick.
+// Without cross-origin isolation the shell posts the same events as
+// messages instead. crates/og-input/src/ring.rs decodes the same layout.
 
 /** An event as the probe's input() and the engine's input layer take it (IDL InjectedInput). */
 export type InjectedInput =
-  | { kind: "key"; key: string; action: "press" | "down" | "up" }
+  | {
+      kind: "key";
+      key: string;
+      action: "press" | "down" | "up";
+      /** The page's clock when it happened (performance.timeOrigin + timeStamp, ms): the Worker turns it into `at`. */
+      time?: number;
+      /** When it happened, in ticks from the start of the tick that reads it (-1 to 1; IDL KeyInput.at). */
+      at?: number;
+    }
   | {
       kind: "pointer";
       action: "click" | "move" | "down" | "up";
@@ -20,6 +30,8 @@ export type InjectedInput =
       button: "none" | "left" | "middle" | "right";
       /** Which pointer: 0 the primary (omitted), 1 to 4 further touches (multi-touch). */
       id?: number;
+      time?: number;
+      at?: number;
     }
   | { kind: "wheel"; x: number; y: number; deltaX: number; deltaY: number }
   | {
@@ -84,6 +96,7 @@ export function writeRing(buffer: SharedArrayBuffer, event: InjectedInput): bool
   floats[at + 7] = event.kind === "wheel" ? event.deltaY : 0;
   new Uint8Array(buffer, (at + 8) * 4, 32).fill(0).set(key);
   if (event.kind === "pointer") ints[at + 8] = event.id ?? 0;
+  if ((event.kind === "key" || event.kind === "pointer") && event.time !== undefined) new Float64Array(buffer, (at + 6) * 4, 1)[0] = event.time;
   Atomics.store(ints, 0, write + 1);
   return true;
 }
@@ -113,9 +126,11 @@ export function drainRing(buffer: SharedArrayBuffer): InjectedInput[] {
     const action = ACTIONS[ints[at + 1]!]!;
     const x = floats[at + 4]!;
     const y = floats[at + 5]!;
+    const time = kind === "key" || kind === "pointer" ? new Float64Array(buffer, (at + 6) * 4, 1)[0]! : 0;
+    const stamped = time > 0 ? { time } : {};
     if (kind === "key") {
       const bytes = new Uint8Array(buffer, (at + 8) * 4, ints[at + 3]!).slice();
-      out.push({ kind, key: new TextDecoder().decode(bytes), action: action as "press" | "down" | "up" });
+      out.push({ kind, key: new TextDecoder().decode(bytes), action: action as "press" | "down" | "up", ...stamped });
     } else if (kind === "pointer") {
       const id = ints[at + 8]!;
       out.push({
@@ -125,6 +140,7 @@ export function drainRing(buffer: SharedArrayBuffer): InjectedInput[] {
         y,
         button: BUTTONS[ints[at + 2]!]!,
         ...(id > 0 ? { id } : {}),
+        ...stamped,
       });
     } else if (kind === "wheel") {
       out.push({ kind, x, y, deltaX: floats[at + 6]!, deltaY: floats[at + 7]! });
@@ -132,4 +148,17 @@ export function drainRing(buffer: SharedArrayBuffer): InjectedInput[] {
   }
   Atomics.store(ints, 1, read);
   return out;
+}
+
+/**
+ * `at` of an event that happened at `time` (the page's clock, ms) and is
+ * injected now, before the tick that reads it: the sim clock is `behind` ms
+ * (the accumulator the last frame left, plus what elapsed since) ahead of the
+ * last tick's start, so the event falls at `(behind - age) / tickMs` ticks
+ * into the next tick, clamped to -1..1. 0 without a time.
+ */
+export function stampAt(time: number | undefined, now: number, behind: number, tickMs: number): number {
+  if (time === undefined || !(time > 0) || !(tickMs > 0)) return 0;
+  const at = (behind - (now - time)) / tickMs;
+  return Number.isFinite(at) ? Math.max(-1, Math.min(1, at)) : 0;
 }

@@ -7692,6 +7692,12 @@
         "modifiers": {
           "$ref": "#/$defs/Modifiers",
           "description": "Held modifiers; omitted means none."
+        },
+        "at": {
+          "type": "number",
+          "description": "When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5.",
+          "minimum": -1,
+          "maximum": 1
         }
       },
       "required": [
@@ -7730,6 +7736,12 @@
           "maximum": 4294967295,
           "description": "Which pointer: 0 the primary one (the mouse, the first touch; what protocol 5 means), 1 to 4 further touches held at the same time (an engine extension). Omitted is 0.",
           "maximum": 4
+        },
+        "at": {
+          "type": "number",
+          "description": "When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5.",
+          "minimum": -1,
+          "maximum": 1
         }
       },
       "required": [
@@ -7840,6 +7852,12 @@
             "modifiers": {
               "$ref": "#/$defs/Modifiers",
               "description": "Held modifiers; omitted means none."
+            },
+            "at": {
+              "type": "number",
+              "description": "When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5.",
+              "minimum": -1,
+              "maximum": 1
             }
           },
           "required": [
@@ -7881,6 +7899,12 @@
               "maximum": 4294967295,
               "description": "Which pointer: 0 the primary one (the mouse, the first touch; what protocol 5 means), 1 to 4 further touches held at the same time (an engine extension). Omitted is 0.",
               "maximum": 4
+            },
+            "at": {
+              "type": "number",
+              "description": "When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5.",
+              "minimum": -1,
+              "maximum": 1
             }
           },
           "required": [
@@ -8549,11 +8573,18 @@
         "repeat": {
           "type": "boolean",
           "description": "Whether this is an auto-repeat."
+        },
+        "at": {
+          "type": "number",
+          "description": "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.",
+          "minimum": -1,
+          "maximum": 1
         }
       },
       "required": [
         "key",
-        "repeat"
+        "repeat",
+        "at"
       ],
       "additionalProperties": false
     },
@@ -8566,10 +8597,17 @@
         "key": {
           "type": "string",
           "description": "The physical key code."
+        },
+        "at": {
+          "type": "number",
+          "description": "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.",
+          "minimum": -1,
+          "maximum": 1
         }
       },
       "required": [
-        "key"
+        "key",
+        "at"
       ],
       "additionalProperties": false
     },
@@ -8596,13 +8634,20 @@
           "minimum": 0,
           "maximum": 4294967295,
           "description": "Which pointer: 0 the primary one, 1 to 4 further touches (og.Pointers)."
+        },
+        "at": {
+          "type": "number",
+          "description": "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.",
+          "minimum": -1,
+          "maximum": 1
         }
       },
       "required": [
         "x",
         "y",
         "button",
-        "id"
+        "id",
+        "at"
       ],
       "additionalProperties": false
     },
@@ -8629,13 +8674,20 @@
           "minimum": 0,
           "maximum": 4294967295,
           "description": "Which pointer: 0 the primary one, 1 to 4 further touches."
+        },
+        "at": {
+          "type": "number",
+          "description": "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.",
+          "minimum": -1,
+          "maximum": 1
         }
       },
       "required": [
         "x",
         "y",
         "button",
-        "id"
+        "id",
+        "at"
       ],
       "additionalProperties": false
     },

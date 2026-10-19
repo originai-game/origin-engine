@@ -5453,6 +5453,11 @@
           "name": "repeat",
           "type": "bool",
           "default": false
+        },
+        {
+          "name": "at",
+          "type": "f32",
+          "default": 0
         }
       ]
     },
@@ -5466,6 +5471,11 @@
           "name": "key",
           "type": "String",
           "default": ""
+        },
+        {
+          "name": "at",
+          "type": "f32",
+          "default": 0
         }
       ]
     },
@@ -5494,6 +5504,11 @@
           "name": "id",
           "type": "u32",
           "default": 0
+        },
+        {
+          "name": "at",
+          "type": "f32",
+          "default": 0
         }
       ]
     },
@@ -5521,6 +5536,11 @@
         {
           "name": "id",
           "type": "u32",
+          "default": 0
+        },
+        {
+          "name": "at",
+          "type": "f32",
           "default": 0
         }
       ]

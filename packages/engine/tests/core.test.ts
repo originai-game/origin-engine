@@ -13,6 +13,9 @@
 // - og.platform.now is 0, reads the clock inside the tick (so it does not
 //   follow the ticks under a fixed clock), or an answer carries no time, or
 //   the hosts disagree → "og.platform.now and the answers' time …"
+// - an input event loses its time within the tick (the host's stamp or the
+//   command step's), keeps it on the edges the tick's end raises, is not
+//   clamped, or the hosts disagree → "input events carry their time …"
 // - `og test` forgets the store between a playtest's processes when asked to
 //   keep it, keeps it when not, ignores a step's clock, or never runs the
 //   `then` steps → "og test keeps the local store across a playtest's
@@ -141,3 +144,27 @@ test("og test keeps the local store across a playtest's processes with store: ke
   expect(out).toMatch(/PASS fresh \(2 checks/);
   expect(out).toContain("2 suite(s) passed");
 }, 300_000);
+
+type Seen = { seen: Array<{ tick: number; kind: string; key?: string; id?: number; at: number }>; hash: string };
+
+test("input events carry their time within the tick, from the host's stamp and from the command channel, alike on both hosts", () => {
+  const node = run<Seen>("node", "input");
+  const web = run<Seen>("web", "input");
+  expect(node.seen).toEqual([
+    { tick: 0, kind: "down", key: "KeyA", at: 0.25 },
+    { tick: 1, kind: "up", key: "KeyA", at: -0.5 },
+    { tick: 1, kind: "pointer", id: 2, at: 0.75 },
+    // Clamped to a tick; an event with no time is at the tick's start.
+    { tick: 2, kind: "down", key: "KeyB", at: 1 },
+    { tick: 2, kind: "down", key: "KeyC", at: 0 },
+    // A press's release comes from the tick's end, with no time of its own.
+    { tick: 3, kind: "up", key: "KeyB", at: 0 },
+    // Command steps: their time less the tick they land on.
+    { tick: 10, kind: "down", key: "KeyD", at: 0 },
+    { tick: 10, kind: "down", key: "KeyE", at: 0.498 },
+    { tick: 12, kind: "down", key: "KeyF", at: -0.5 },
+  ]);
+  expect(web.seen).toEqual(node.seen);
+  // The stamp is world state: both hosts hash the same world.
+  expect(web.hash).toBe(node.hash);
+}, 120_000);

@@ -1114,6 +1114,12 @@ export interface KeyInput {
   readonly action: KeyAction;
   /** Held modifiers; omitted means none. */
   readonly modifiers?: Modifiers;
+  /**
+   * When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5.
+   *
+   * @range -1..1
+   */
+  readonly at?: number;
 }
 
 /** A pointer event at a point in CSS pixels of the play surface. */
@@ -1140,6 +1146,12 @@ export interface PointerInput {
    * @range ..4
    */
   readonly id?: number;
+  /**
+   * When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5.
+   *
+   * @range -1..1
+   */
+  readonly at?: number;
 }
 
 /**
@@ -1742,6 +1754,12 @@ export interface KeyDown {
   readonly key: string;
   /** Whether this is an auto-repeat. */
   readonly repeat: boolean;
+  /**
+   * When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.
+   *
+   * @range -1..1
+   */
+  readonly at: number;
 }
 
 /**
@@ -1752,6 +1770,12 @@ export interface KeyDown {
 export interface KeyUp {
   /** The physical key code. */
   readonly key: string;
+  /**
+   * When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.
+   *
+   * @range -1..1
+   */
+  readonly at: number;
 }
 
 /**
@@ -1768,6 +1792,12 @@ export interface PointerDown {
   readonly button: PointerButton;
   /** Which pointer: 0 the primary one, 1 to 4 further touches (og.Pointers). */
   readonly id: number;
+  /**
+   * When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.
+   *
+   * @range -1..1
+   */
+  readonly at: number;
 }
 
 /**
@@ -1784,6 +1814,12 @@ export interface PointerUp {
   readonly button: PointerButton;
   /** Which pointer: 0 the primary one, 1 to 4 further touches. */
   readonly id: number;
+  /**
+   * When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.
+   *
+   * @range -1..1
+   */
+  readonly at: number;
 }
 
 /**
