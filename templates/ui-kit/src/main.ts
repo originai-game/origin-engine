@@ -20,6 +20,7 @@ import type { Entity, GameSettings, Viewport, World } from "@origingame/engine";
 export const SCREENS = [
   "gallery", "widgets", "mainMenu", "pause", "settings", "platformer", "shooter", "puzzle", "idle", "racing",
   "cutscene", "shop", "inventory", "levels", "results", "leaderboard", "tutorial", "loading", "confirm", "alert", "toasts",
+  "players",
 ] as const;
 export type Screen = (typeof SCREENS)[number];
 
@@ -50,6 +51,7 @@ const BLURBS: Record<Screen, string> = {
   confirm: "A destructive confirm",
   alert: "One-button alert",
   toasts: "The toast queue in every tone",
+  players: "Local multiplayer: four pads, four rings",
 };
 
 /** The demo's state: one entity named "demo" (dump_entity:demo reads it). */
@@ -118,6 +120,15 @@ export const Demo = defineComponent("Demo", {
   // Dialogs.
   confirmed: u32(0),
   level: u32(0),
+  // Players: each pad's pick (HEROES index + 1, 0 none) and the hero its focus is on (index + 1).
+  pick0: u32(0),
+  pick1: u32(0),
+  pick2: u32(0),
+  pick3: u32(0),
+  focus0: u32(0),
+  focus1: u32(0),
+  focus2: u32(0),
+  focus3: u32(0),
   // Look: the style pack (SKINS index), the screen transition (WIPES index), UI sounds.
   skin: u32(0),
   wipe: u32(0),
@@ -125,7 +136,7 @@ export const Demo = defineComponent("Demo", {
 });
 type DemoState = { -readonly [K in keyof ReturnType<typeof demoDefaults>]: ReturnType<typeof demoDefaults>[K] };
 function demoDefaults() {
-  return { screen: 0, paused: false, font: 0, icons: 0, backdrop: 0, hp: 72, mana: 40, coins: 128, score: 4250, lives: 2, time: 95, masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false, quality: 1, showFps: false, reducedMotion: false, highContrast: false, vibration: true, invertY: false, sensitivity: 1, language: 0, saves: 0, tab: 0, difficulty: 1, amount: 3, mode: 0, optA: true, optB: false, chip: 0, stickX: 0, stickY: 0, line: 0, step: 0, balance: 1250, owned: 0, bought: 0, refused: 0, inv0: 0, inv1: 1, inv2: 2, inv3: 5, inv4: 9, inv5: 13, moves: 0, used: 0, gold: 40, gen0: 1, gen1: 0, gen2: 0, taps: 0, scope: 0, scopeTick: 0, confirmed: 0, level: 0, skin: 0, wipe: 0, sounds: true };
+  return { screen: 0, paused: false, font: 0, icons: 0, backdrop: 0, hp: 72, mana: 40, coins: 128, score: 4250, lives: 2, time: 95, masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false, quality: 1, showFps: false, reducedMotion: false, highContrast: false, vibration: true, invertY: false, sensitivity: 1, language: 0, saves: 0, tab: 0, difficulty: 1, amount: 3, mode: 0, optA: true, optB: false, chip: 0, stickX: 0, stickY: 0, line: 0, step: 0, balance: 1250, owned: 0, bought: 0, refused: 0, inv0: 0, inv1: 1, inv2: 2, inv3: 5, inv4: 9, inv5: 13, moves: 0, used: 0, gold: 40, gen0: 1, gen1: 0, gen2: 0, taps: 0, scope: 0, scopeTick: 0, confirmed: 0, level: 0, pick0: 0, pick1: 0, pick2: 0, pick3: 0, focus0: 0, focus1: 0, focus2: 0, focus3: 0, skin: 0, wipe: 0, sounds: true };
 }
 
 export const ICONS = [
@@ -191,6 +202,49 @@ const TUTORIAL = [
 
 /** Level cards: 12 levels, stars from a fixed pattern, the last three locked. */
 const LEVELS = Array.from({ length: 12 }, (_, i) => ({ name: `${i + 1}`, stars: i < 9 ? [3, 2, 3, 1, 3, 2, 0, 1, 2][i]! : 0, locked: i >= 9 }));
+
+/** The lobby's heroes, and each player's colour (the pad's focus ring). */
+const HEROES = ["Knight", "Ranger", "Mage", "Rogue", "Bard", "Monk", "Smith", "Thief"];
+const PLAYER_INKS = ["focus", "info", "success", "warn"] as const;
+
+/** A local-multiplayer lobby: up to four pads, each with its own focus ring; A picks a hero for that pad's player. */
+function playersScreen(d: DemoState): void {
+  og.ui.setPlayers(4);
+  const vp = og.ui.frameViewport();
+  const phone = vp.breakpoint === "phonePortrait" || vp.breakpoint === "phoneLandscape";
+  const t = og.ui.frameTheme();
+  const grow = { kind: "grow" } as const;
+  const picks = [d.pick0, d.pick1, d.pick2, d.pick3];
+  og.ui.anchor("Lobby", {
+    anchor: "center",
+    direction: "column",
+    gap: t.space.md,
+    width: phone ? grow : { kind: "fixed", px: 640 },
+    padding: { left: t.space.xl, top: t.space.xl, right: t.space.xl, bottom: t.space.xl },
+    background: { token: "surface" },
+    radius: t.radius.panel,
+  }, () => {
+    og.ui.label("Title", "Players", { step: "xl2", font: "display", heading: true });
+    og.ui.label("Hint", "Each pad moves its own ring; A picks a hero for that player.", { color: { token: "fgMuted" }, width: grow });
+    og.ui.row("Cards", { gap: t.space.sm, width: grow, wrap: phone }, () => {
+      for (let p = 0; p < 4; p++) {
+        og.ui.column(og.ui.idi("Player", p), { width: grow, gap: t.space.xxs, cross: "center", padding: { left: t.space.sm, top: t.space.sm, right: t.space.sm, bottom: t.space.sm }, background: { token: "fill" }, radius: t.radius.card }, () => {
+          og.ui.label("Name", `P${p + 1}`, { step: "lg", font: "display", color: { token: PLAYER_INKS[p]! }, nowrap: true });
+          og.ui.label("Pick", picks[p] ? HEROES[picks[p]! - 1]! : "Press A", { color: { token: picks[p] ? "fg" : "fgMuted" }, nowrap: true });
+        });
+      }
+    });
+    og.ui.row("Heroes", { gap: t.space.sm, wrap: true, width: grow }, () => {
+      HEROES.forEach((h, i) => {
+        const r = og.ui.button(og.ui.idi("Hero", i), h, { width: { kind: "fixed", px: phone ? 150 : 132 } });
+        if (r.clicked) picks[r.pad ?? 0] = i + 1;
+      });
+    });
+  });
+  [d.pick0, d.pick1, d.pick2, d.pick3] = picks as [number, number, number, number];
+  const focused = (pad: number) => Number(/Hero#(\d+)$/.exec(og.ui.focus(pad))?.[1] ?? -1) + 1;
+  [d.focus0, d.focus1, d.focus2, d.focus3] = [focused(0), focused(1), focused(2), focused(3)];
+}
 
 /** 64 leaderboard rows from a fixed formula; the player is rank 17. */
 const NAMES = ["Ash", "Bea", "Cyd", "Dov", "Eli", "Fen", "Gus", "Hal", "Ivy", "Jun", "Kit", "Lux", "Moe", "Nia", "Oz", "Pip"];
@@ -669,6 +723,10 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       if (og.ui.alertDialog("Notice", { open: true, title: "Connection lost", message: "Your progress is saved on this device and will sync when you are back online." })) d.screen = 0;
       break;
     }
+    case "players":
+      playersScreen(d);
+      back = og.ui.back();
+      break;
     case "toasts": {
       const t = og.ui.frameTheme();
       og.ui.anchor("ToastDemo", { anchor: "center", direction: "column", gap: t.space.sm, width: { kind: "fixed", px: 300 }, padding: { left: t.space.lg, top: t.space.lg, right: t.space.lg, bottom: t.space.lg }, background: { token: "surface" }, radius: t.radius.panel }, () => {
@@ -779,6 +837,6 @@ export default og.game({
   },
   facts: (world) => {
     const d = current(world);
-    return d ? { screen: SCREENS[d.screen] ?? "gallery", skin: SKINS[d.skin] ?? "tokens", hp: d.hp, balance: d.balance, saves: d.saves } : {};
+    return d ? { screen: SCREENS[d.screen] ?? "gallery", skin: SKINS[d.skin] ?? "tokens", hp: d.hp, balance: d.balance, saves: d.saves, picks: [d.pick0, d.pick1, d.pick2, d.pick3], focus: [d.focus0, d.focus1, d.focus2, d.focus3] } : {};
   },
 });

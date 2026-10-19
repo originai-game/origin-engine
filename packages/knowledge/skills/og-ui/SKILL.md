@@ -96,6 +96,13 @@ queue intents with `og.ui.navigate(world, intent)`. A focus move plays the
 playtest with `gamepad:a` then `gamepad:-` (release), or `gamepad:-:0,0.9`
 for the stick.
 
+Local multiplayer on one screen (a lobby, a versus character select): call
+`og.ui.setPlayers(4)` every tick the screen shows. Pads 1 to 3 then each
+move a ring of their own (in the player's colour) among the same controls
+and press with A; `response.pad` says whose press it was (null for the
+pointer and keyboard, 0 for pad 0), `og.ui.focus(pad)` where each ring is.
+Script them with `gamepad:right@2` then `gamepad:-@2`.
+
 The touch controls (joystick, d-pad, action buttons) answer several fingers
 at once: a thumb holding the stick and another on a button both count. Test
 it with `touch_start` on the stick and `touch:1:down:<button id>` /

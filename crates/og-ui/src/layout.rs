@@ -571,6 +571,8 @@ pub(crate) struct Node {
     pub adjust: bool,
     /// Draw the focus ring (focused by keyboard or gamepad).
     pub ring: bool,
+    /// Bit k: pad k + 1's focus is on it (its ring in that player's colour).
+    pub pad_rings: u8,
     /// Built but not shown (a closed dialog's slot): no layout, drawing or input.
     pub hidden: bool,
     /// A modal backdrop: takes the pointer, never focus.
@@ -627,6 +629,7 @@ impl Node {
             nav: false,
             adjust: false,
             ring: false,
+            pad_rings: 0,
             hidden: false,
             backdrop: false,
             scope: false,

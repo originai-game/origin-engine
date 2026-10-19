@@ -772,10 +772,22 @@ impl Probe {
                 }
             }
             "gamepad" => {
-                let usage = "gamepad:<a+b+...|->[:lx,ly[,rx,ry]][:lt,rt]";
-                let first = arg(0, usage)?;
+                let usage = "gamepad:<a+b+...|->[@pad][:lx,ly[,rx,ry]][:lt,rt]";
+                let (first, pad) = match arg(0, usage)?.split_once('@') {
+                    Some((buttons, pad)) => (
+                        buttons,
+                        pad.parse::<u32>()
+                            .ok()
+                            .filter(|p| (*p as usize) < og_input::MAX_GAMEPADS)
+                            .ok_or_else(|| {
+                                format!("'@{pad}' is not a pad (0 to 3); write `{usage}`")
+                            })?,
+                    ),
+                    None => (arg(0, usage)?, 0),
+                };
                 let mut state = og_input::GamepadState {
                     connected: first != "off",
+                    pad,
                     ..Default::default()
                 };
                 if state.connected && first != "-" {

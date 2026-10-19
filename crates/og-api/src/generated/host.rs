@@ -594,6 +594,10 @@ pub trait UiApi: Wire {
     fn og_ui_navigate(&self, world: u32, intent: String);
     /// `og.ui.back`
     fn og_ui_back(&self) -> bool;
+    /// `og.ui.setPlayers`
+    fn og_ui_set_players(&self, count: u32);
+    /// `og.ui.focus`
+    fn og_ui_focus(&self, pad: u32) -> String;
     /// `og.ui.setNavigation`
     fn og_ui_set_navigation(&self, on: bool);
     /// `og.ui.memory`
@@ -909,6 +913,8 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_dismiss_toast",
     "og_ui_navigate",
     "og_ui_back",
+    "og_ui_set_players",
+    "og_ui_focus",
     "og_ui_set_navigation",
     "og_ui_memory",
     "og_ui_remember",

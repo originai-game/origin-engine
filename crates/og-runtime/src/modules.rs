@@ -754,7 +754,7 @@ fn response(r: Response) -> Value {
     json!({
         "hovered": r.hovered, "pressed": r.pressed, "clicked": r.clicked,
         "changed": r.changed, "focused": r.focused, "submitted": r.submitted,
-        "dropped": r.dropped,
+        "dropped": r.dropped, "pad": r.pad, "focusedBy": r.focused_by,
     })
 }
 
@@ -2032,6 +2032,14 @@ pub fn og_ui_back() -> bool {
 
 pub fn og_ui_set_navigation(on: bool) {
     with_ui("og.ui.setNavigation", |ui| ui.set_navigation(on));
+}
+
+pub fn og_ui_set_players(count: u32) {
+    with_ui("og.ui.setPlayers", |ui| ui.set_players(count));
+}
+
+pub fn og_ui_focus(pad: u32) -> String {
+    with_ui("og.ui.focus", |ui| ui.focus_path(pad).to_string()).unwrap_or_default()
 }
 
 pub fn og_ui_memory(id: String, initial: f64) -> f64 {

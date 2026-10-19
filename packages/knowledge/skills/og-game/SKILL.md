@@ -150,7 +150,7 @@ further touches: `down(id)`, `pressed(id)`, `position(id)`, `start(id)`)
 and `og.Gamepad` (up to four pads: `connected(pad)`, `down("a", pad)`,
 `pressed`, `released`, `axis("leftX", pad)`; sticks are y down). All three
 are world state, so playtests and replays reproduce them; script them with
-`touch:<id>:<down|move|up>:<x,y>` and `gamepad:<a+b+...|->[:lx,ly][:lt,rt]`
+`touch:<id>:<down|move|up>:<x,y>` and `gamepad:<a+b+...|->[@pad][:lx,ly][:lt,rt]`
 (og-build §1). The fields and methods are `reference/input.md`.
 
 ## 8. 2D: sprites, flipbooks, tilemaps

@@ -142,6 +142,22 @@ to keys too (A Space, B Escape, d-pad and stick arrows, Back Tab, Start
 Enter) as the fallback for a page without the resource; an intent that
 arrives both ways in one tick is taken once (`nav.rs`).
 
+**Several pads (local multiplayer).** `Ui::set_players(n)` (declared each
+tick, like `set_navigation`) gives pads 1 to `n - 1` (`InputFrame::extra_pads`,
+read from `og.Gamepad`) a focus of their own among the same controls: the
+d-pad and the stick move it (its first move lands on the control nearest the
+surface's centre), its A presses the control under it, its ring is drawn
+outside pad 0's in the player's colour (`info`, `success`, `warn`), and a
+dialog's scope holds it inside as it holds pad 0's. `Response::pad` names
+the pad whose A pressed a control (`None` for the pointer and the keyboard)
+and `Response::focused_by` has a bit per pad whose focus is on it;
+`Ui::focus_path(pad)` answers where each pad's focus is. Pad 0 keeps sharing
+its focus with the keyboard and the pointer; Back and adjusting a slider
+stay pad 0's. The pads' focus and sticks are in the UI state
+(`tests/widgets.rs` `pads_beyond_the_first_move_their_own_focus_and_press`;
+the kit's `players` screen and playtest). The probe's `gamepad` command
+addresses them with `@1` to `@3` after the buttons (`gamepad:a@2`).
+
 **Several touches.** `InputFrame::pointers` is og-input's `og.Pointers`
 (pointer 0 is `og.Input`'s pointer; 1 to 4 are further touches). The touch
 controls (`joystick`, `dpad`, `action_button`) answer any of them: a stick
@@ -500,8 +516,9 @@ font is og-tests' committed MSDF atlas (Noto Sans SC subset, OFL).
   light (skins have shadows and glows); icons (iconoir) as an MTSDF atlas.
 - Layout: horizontal and two-axis scrolling, nested scroll chaining,
   aspect-ratio images.
-- **Input**: pads beyond the first; several touches for widgets other than
-  the touch controls (two-finger scroll, pinch).
+- **Input**: several touches for widgets other than the touch controls
+  (two-finger scroll, pinch). (Pads beyond the first landed in the phase 2
+  UI round.)
 - `vulkan-cpu` references for og-ui's own scenes (`sample-screen`,
   `widget-set`) and the kit templates: only `metal` exists, other tiers
   compare with it.

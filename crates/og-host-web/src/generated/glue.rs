@@ -1219,6 +1219,16 @@ pub fn og_ui_back() -> bool {
 }
 
 #[wasm_bindgen]
+pub fn og_ui_set_players(count: u32) {
+    <Host as UiApi>::og_ui_set_players(&Host, count)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_focus(pad: u32) -> String {
+    <Host as UiApi>::og_ui_focus(&Host, pad)
+}
+
+#[wasm_bindgen]
 pub fn og_ui_set_navigation(on: bool) {
     <Host as UiApi>::og_ui_set_navigation(&Host, on)
 }

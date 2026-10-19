@@ -89,6 +89,9 @@ impl Ui {
         ] {
             if g.pressed & bit != 0 && !from_keys.contains(&nav) {
                 out.push(nav);
+                if nav == Nav::Activate {
+                    self.nav.pad0 = true;
+                }
             }
         }
         // The stick: past half-way on its dominant axis, once, then after the
@@ -192,6 +195,111 @@ impl Ui {
         }
         if moved {
             self.scroll_into_view(self.state.focus);
+        }
+    }
+
+    /// One extra pad's intents: its d-pad, A and B edges, and its stick
+    /// (past half-way once, then after the slow duration every fast one).
+    fn pad_intents(&self, g: crate::input::GamepadFrame, stick: &mut (u8, u64)) -> Vec<Nav> {
+        let mut out = Vec::new();
+        for (bit, nav) in [
+            (GamepadFrame::UP, Nav::Up),
+            (GamepadFrame::DOWN, Nav::Down),
+            (GamepadFrame::LEFT, Nav::Left),
+            (GamepadFrame::RIGHT, Nav::Right),
+            (GamepadFrame::A, Nav::Activate),
+            (GamepadFrame::B, Nav::Back),
+        ] {
+            if g.pressed & bit != 0 {
+                out.push(nav);
+            }
+        }
+        let s = g.stick;
+        let dir = if s.x.abs().max(s.y.abs()) < 0.5 {
+            0
+        } else if s.x.abs() > s.y.abs() {
+            1 + if s.x > 0.0 { Nav::Right } else { Nav::Left }.index()
+        } else {
+            1 + if s.y > 0.0 { Nav::Down } else { Nav::Up }.index()
+        };
+        let now = self.state.tick;
+        if dir == 0 {
+            *stick = (0, 0);
+        } else if stick.0 != dir {
+            *stick = (dir, now);
+            out.extend(Nav::from_index(dir - 1));
+        } else {
+            let held = now - stick.1;
+            let delay = u64::from(self.ticks_for(self.theme().durations_ms.slow));
+            let every = u64::from(self.ticks_for(self.theme().durations_ms.fast));
+            if held >= delay && (held - delay).is_multiple_of(every) {
+                out.extend(Nav::from_index(dir - 1));
+            }
+        }
+        out
+    }
+
+    /// Pads 1 to 3, while the last frame allowed their players
+    /// (`set_players`): each moves its own focus among the controls pad 0
+    /// can reach (inside the open scope), starting at the one nearest the
+    /// surface's centre, and presses the one under it with A. Back and
+    /// adjusting (a slider's left and right) are pad 0's.
+    pub(crate) fn apply_pads(&mut self, input: &InputFrame) {
+        let players = usize::from(self.state.players.clamp(1, 4));
+        for k in 1..players {
+            let mut stick = self.state.pad_stick[k - 1];
+            let intents = self.pad_intents(input.extra_pads[k - 1], &mut stick);
+            self.state.pad_stick[k - 1] = stick;
+            for nav in intents {
+                let focus = self.state.pad_focus[k - 1];
+                match nav {
+                    Nav::Back => continue,
+                    Nav::Activate => {
+                        if self.hit(focus).is_some_and(|h| h.has(HIT_NAV)) {
+                            self.nav.pad_activate[k - 1] = focus;
+                            self.sound(crate::skin::UiSound::Press);
+                        }
+                        continue;
+                    }
+                    _ => {}
+                }
+                let cands = self.focusables();
+                if cands.is_empty() {
+                    continue;
+                }
+                let current = cands.iter().position(|h| h.key == focus);
+                let next = match (nav, current) {
+                    // A pad's first move lands on the control nearest the
+                    // surface's centre (where a shared screen's choices are),
+                    // not on the first control of the reading order.
+                    (_, None) => {
+                        let (cx, cy) = (self.viewport.width / 2.0, self.viewport.height / 2.0);
+                        let d = |h: &Hit| {
+                            let (x, y) = h.full.center();
+                            (x - cx) * (x - cx) + (y - cy) * (y - cy)
+                        };
+                        cands
+                            .iter()
+                            .min_by(|a, b| d(a).total_cmp(&d(b)))
+                            .map(|h| h.key)
+                    }
+                    (Nav::Next, Some(i)) => Some(cands[(i + 1) % cands.len()].key),
+                    (Nav::Prev, Some(i)) => Some(cands[(i + cands.len() - 1) % cands.len()].key),
+                    (dir, Some(i)) => {
+                        let others: Vec<(u64, Rect)> = cands
+                            .iter()
+                            .filter(|h| h.key != cands[i].key)
+                            .map(|h| (h.key, h.full))
+                            .collect();
+                        neighbour(&cands[i].full, &others, dir)
+                    }
+                };
+                if let Some(next) = next.filter(|&n| n != focus) {
+                    self.state.pad_focus[k - 1] = next;
+                    self.sound(crate::skin::UiSound::Hover);
+                    self.scroll_into_view(next);
+                }
+            }
         }
     }
 

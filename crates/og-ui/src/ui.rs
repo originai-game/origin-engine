@@ -151,6 +151,12 @@ pub struct Response {
     /// A list row or grid cell a press started on was released over this
     /// one: the index of that row or cell (drag and drop).
     pub dropped: Option<u32>,
+    /// The gamepad whose A pressed it this tick (0 to 3); `None` when the
+    /// pointer or the keyboard did, or nothing.
+    pub pad: Option<u32>,
+    /// Bit `k`: pad `k`'s focus is on it (pad 0's is `focused`; pads 1 to 3
+    /// while [`Ui::set_players`] allows them).
+    pub focused_by: u32,
 }
 
 pub(crate) const HIT_SCROLL: u8 = 1;
@@ -246,6 +252,13 @@ pub(crate) struct State {
     pub screens: BTreeMap<u64, crate::juice::ScreenState>,
     /// The host's voice entity for each UI sound (bits; 0: none).
     pub voices: [u64; 6],
+    /// Players the last frame allowed (`set_players`): pads 1 to players - 1
+    /// each move a focus of their own.
+    pub players: u8,
+    /// Pads 1 to 3: the control each one's focus is on (0: none).
+    pub pad_focus: [u64; 3],
+    /// Pads 1 to 3: the stick's held direction and since which tick.
+    pub pad_stick: [(u8, u64); 3],
 }
 
 /// What navigation decided at the start of this frame.
@@ -257,6 +270,10 @@ pub(crate) struct NavFrame {
     pub back: bool,
     /// Left (-1) and right (+1) on an adjustable control.
     pub adjust: i32,
+    /// `activate` came from pad 0's A.
+    pub pad0: bool,
+    /// The control pads 1 to 3 pressed with A (0: none).
+    pub pad_activate: [u64; 3],
 }
 
 /// The icon atlas `Ui::icon` draws from: a grid of equal cells.
@@ -293,6 +310,9 @@ pub struct UiFrame {
     pub items: Vec<DrawItem>,
     /// Problems in this frame's tree (duplicate ids, unclosed elements), each naming the fix.
     pub warnings: Vec<String>,
+    /// The path of the control each pad's focus is on (pad 0: the shared
+    /// focus), or empty.
+    pub focus_paths: [String; 4],
 }
 
 impl UiFrame {
@@ -451,6 +471,8 @@ pub struct Ui {
     pub(crate) touched: std::collections::BTreeSet<u64>,
     /// Navigation declared for this frame (`set_navigation`).
     pub(crate) nav_on: bool,
+    /// Players declared for this frame (`set_players`).
+    pub(crate) players: u32,
     /// The control a widget asked to focus this frame.
     pub(crate) request_focus: u64,
     /// Open focus scopes this frame, in build order.
@@ -474,7 +496,7 @@ impl Default for Ui {
     }
 }
 
-const STATE_VERSION: u32 = 3;
+const STATE_VERSION: u32 = 4;
 
 /// A skin's `textGlow` size is how far the old four offset copies reached;
 /// the distance-field glow fades to nothing over this many times it.
@@ -504,6 +526,7 @@ impl Ui {
             nav: NavFrame::default(),
             touched: Default::default(),
             nav_on: true,
+            players: 1,
             request_focus: 0,
             scopes: Vec::new(),
             icons: IconAtlas::default(),
@@ -564,6 +587,25 @@ impl Ui {
     /// from the next tick.
     pub fn set_navigation(&mut self, on: bool) {
         self.nav_on = on;
+    }
+
+    /// Local multiplayer: how many players this screen takes. Pads 1 to
+    /// `count - 1` each move a focus of their own (a ring in their player
+    /// colour) among the same controls, and their A presses the control
+    /// under it ([`Response::pad`] says which pad); pad 0 shares the one
+    /// focus with the keyboard and the pointer. 1 by default; declared every
+    /// tick, like [`Ui::set_navigation`], and read from the next.
+    pub fn set_players(&mut self, count: u32) {
+        self.players = count.clamp(1, 4);
+    }
+
+    /// The path of the control pad `pad`'s focus is on in the last frame
+    /// (pad 0: the shared focus), or `""`.
+    pub fn focus_path(&self, pad: u32) -> &str {
+        self.frame
+            .focus_paths
+            .get(pad as usize)
+            .map_or("", String::as_str)
     }
 
     /// Queues a navigation intent for the next tick (a gamepad the input
@@ -683,6 +725,7 @@ impl Ui {
         self.request_focus = 0;
         self.scopes.clear();
         self.nav_on = true;
+        self.players = 1;
         self.cover = None;
 
         // Hit test against last frame's rectangles, topmost first.
@@ -750,6 +793,7 @@ impl Ui {
         }
         let intents = self.intents(&input);
         self.apply_nav(&intents);
+        self.apply_pads(&input);
         self.state.pointer = p;
         self.input = input;
 
@@ -868,12 +912,29 @@ impl Ui {
     pub(crate) fn respond(&self, key: u64) -> Response {
         let s = &self.state;
         let hovered = s.hot == key && (s.active == 0 || s.active == key);
+        let by_pad = (key != 0)
+            .then(|| self.nav.pad_activate.iter().position(|&k| k == key))
+            .flatten();
+        let pad = match by_pad {
+            Some(k) => Some(k as u32 + 1),
+            None if self.nav.activate == key && key != 0 && self.nav.pad0 => Some(0),
+            None => None,
+        };
+        let mut focused_by = u32::from(s.focus == key && key != 0);
+        for (k, &f) in s.pad_focus.iter().enumerate() {
+            if f == key && key != 0 && (k as u8) + 1 < s.players {
+                focused_by |= 2 << k;
+            }
+        }
         Response {
             hovered,
             pressed: s.active == key && self.input.down,
             clicked: (s.active == key && self.input.released && s.hot == key)
-                || (self.nav.activate == key && key != 0),
+                || (self.nav.activate == key && key != 0)
+                || by_pad.is_some(),
             focused: s.focus == key,
+            pad,
+            focused_by,
             ..Response::default()
         }
     }
@@ -882,11 +943,13 @@ impl Ui {
     /// response; the ring shows while navigation put focus on it.
     pub(crate) fn nav_target(&mut self, i: usize, adjust: bool) -> Response {
         let key = self.nodes[i].key;
+        let r = self.respond(key);
         let n = &mut self.nodes[i];
         n.nav = true;
         n.adjust = adjust;
         n.ring = self.state.focus == key && self.state.focus_visible;
-        self.respond(key)
+        n.pad_rings = (r.focused_by >> 1) as u8;
+        r
     }
 
     /// Opens a container; children follow until [`Ui::close`].
@@ -1912,6 +1975,23 @@ impl Ui {
         if !alive(self.state.focus) {
             self.state.focus = 0;
         }
+        // Pads 1 to 3: a focus whose control left is dropped; one outside a
+        // scope that opened moves to its first control.
+        for k in 0..3 {
+            let f = self.state.pad_focus[k];
+            let inside =
+                |f: u64| top_scope == 0 || hits.iter().any(|h| h.key == f && h.scope == top_scope);
+            if (k as u32) + 1 >= self.players {
+                self.state.pad_focus[k] = 0;
+            } else if f != 0 && (!alive(f) || !inside(f)) {
+                self.state.pad_focus[k] = if top_scope != 0 {
+                    first_in(top_scope)
+                } else {
+                    0
+                };
+            }
+        }
+        self.state.players = self.players as u8;
         self.state.scope = top_scope;
         self.state.nav_off = !self.nav_on;
         self.state.hits = hits;
@@ -1920,11 +2000,26 @@ impl Ui {
         if let Some(c) = self.cover {
             self.cover_commands(&c, &mut cmds);
         }
+        let mut focus_paths: [String; 4] = Default::default();
+        let focused = [
+            self.state.focus,
+            self.state.pad_focus[0],
+            self.state.pad_focus[1],
+            self.state.pad_focus[2],
+        ];
+        for (slot, key) in focused.into_iter().enumerate() {
+            if key != 0
+                && let Some(&i) = present.get(&key)
+            {
+                focus_paths[slot] = self.path_of(i);
+            }
+        }
         self.frame = UiFrame {
             viewport: vp,
             elements,
             items: assign_levels(cmds),
             warnings: std::mem::take(&mut self.warnings),
+            focus_paths,
         };
         &self.frame
     }
@@ -2111,6 +2206,19 @@ impl Ui {
             color: color.fade(alpha).linear(),
             clip,
         };
+        if n.pad_rings != 0 {
+            // Pads 1 to 3: a ring each in the player's colour, outside where
+            // pad 0's ring goes, outermost first (each cut from the next by
+            // what is behind).
+            let behind = self.behind(i);
+            let w = t.space.xxs;
+            for k in (0..3).rev().filter(|k| n.pad_rings & (1 << k) != 0) {
+                let at = w * (2.0 * k as f32 + 3.0);
+                let color = [p.info, p.success, p.warn][k];
+                cmds.push(quad(rect.outset(at + w), n.el.radius + at + w, color));
+                cmds.push(quad(rect.outset(at), n.el.radius + at, behind));
+            }
+        }
         let field_ring = matches!(n.widget, Widget::Field { focused: true, .. });
         let outline = t.outline && (n.nav || n.focusable) && n.el.background.is_some();
         if field_ring || n.ring || outline {
@@ -2726,6 +2834,12 @@ impl Ui {
         for v in s.voices {
             u64_(&mut b, v);
         }
+        b.push(s.players);
+        for k in 0..3 {
+            u64_(&mut b, s.pad_focus[k]);
+            b.push(s.pad_stick[k].0);
+            u64_(&mut b, s.pad_stick[k].1);
+        }
         b
     }
 
@@ -2984,6 +3098,11 @@ impl Reader<'_> {
         }
         for v in s.voices.iter_mut() {
             *v = self.u64()?;
+        }
+        s.players = self.u8()?;
+        for k in 0..3 {
+            s.pad_focus[k] = self.u64()?;
+            s.pad_stick[k] = (self.u8()?, self.u64()?);
         }
         Some(s)
     }

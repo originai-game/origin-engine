@@ -5577,6 +5577,34 @@
           "publish": true
         },
         {
+          "name": "setPlayers",
+          "doc": "Local multiplayer: how many players this screen takes (1 to 4; 1 by default). Pads 1 to count - 1 each move a focus of their own among the same controls, shown as a ring in the player's colour (info, success, warn), and their A presses the control under it (Response.pad says which pad); pad 0 shares the one focus with the keyboard and the pointer, and Back and adjusting a slider stay pad 0's. Declare it every tick the screen shows; it takes effect from the next tick, and a dialog's focus scope holds every pad's focus inside it.",
+          "params": [
+            {
+              "name": "count",
+              "type": "u32",
+              "optional": false,
+              "doc": "Players, 1 to 4 (clamped)."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "focus",
+          "doc": "The path of the control pad pad's focus is on in the last frame (pad 0: the shared focus of the pointer, keyboard and pad 0), as touch_move_to resolves it; empty when it is on none.",
+          "params": [
+            {
+              "name": "pad",
+              "type": "u32",
+              "optional": false,
+              "doc": "The pad, 0 to 3; past 3 answers empty."
+            }
+          ],
+          "returns": "String",
+          "publish": true
+        },
+        {
           "name": "setNavigation",
           "doc": "Whether keyboard and gamepad navigation moves focus on this screen (on by default). A gameplay HUD whose keys move the player turns it off; an open dialog or menu turns it back on while it is open. Takes effect from the next tick.",
           "params": [
@@ -19055,6 +19083,25 @@
             }
           ],
           "description": "A list row or grid cell a press started on was released over this one: that row's or cell's index (drag and drop)."
+        },
+        "pad": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The gamepad (0 to 3) whose A pressed it this tick; null when the pointer or the keyboard did. Pads 1 to 3 press only while og.ui.setPlayers allows them (local multiplayer)."
+        },
+        "focusedBy": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Bit k: pad k's focus is on it (bit 0 is the shared focus of the pointer, the keyboard and pad 0; bits 1 to 3 the other players' pads)."
         }
       },
       "required": [
@@ -19064,7 +19111,9 @@
         "changed",
         "focused",
         "submitted",
-        "dropped"
+        "dropped",
+        "pad",
+        "focusedBy"
       ],
       "additionalProperties": false
     },
@@ -23146,7 +23195,7 @@
         "touch_end": "`touch_end`: release the pointer.",
         "scroll": "`scroll:dx,dy`: scroll at the pointer.",
         "touch": "`touch:<id>:<down|move|up>:<x,y | ui id>`: a further touch (pointer 1 to 4) held while the pointer is busy elsewhere.",
-        "gamepad": "`gamepad:<a+b+...|->[:lx,ly[,rx,ry]][:lt,rt]`: set pad 0's whole state; `gamepad:off` disconnects it.",
+        "gamepad": "`gamepad:<a+b+...|->[@pad][:lx,ly[,rx,ry]][:lt,rt]`: set a pad's whole state (pad 0 unless `@1` to `@3` follows the buttons); `gamepad:off` disconnects it.",
         "key_down": "`key_down:<Key>`: hold a key by its code.",
         "key_up": "`key_up:<Key>`: release a key.",
         "type": "`type:<text>`: type text, one key press per character.",

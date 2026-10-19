@@ -110,11 +110,16 @@ pub struct GamepadFrame {
 impl GamepadFrame {
     /// Pad 0 of the world's `og.Gamepad` (og-input's resource).
     pub fn from_gamepad(pad: &og_input::Gamepad) -> GamepadFrame {
+        GamepadFrame::from_pad(pad, 0)
+    }
+
+    /// Pad `n` (0 to 3) of the world's `og.Gamepad`.
+    pub fn from_pad(pad: &og_input::Gamepad, n: u32) -> GamepadFrame {
         GamepadFrame {
-            pressed: pad.masks(0).1,
+            pressed: pad.masks(n).1,
             stick: Vec2::new(
-                pad.axis(og_input::GamepadAxis::LeftX, 0),
-                pad.axis(og_input::GamepadAxis::LeftY, 0),
+                pad.axis(og_input::GamepadAxis::LeftX, n),
+                pad.axis(og_input::GamepadAxis::LeftY, n),
             ),
         }
     }
@@ -233,6 +238,9 @@ pub struct InputFrame {
     pub shift: bool,
     /// The first gamepad.
     pub gamepad: GamepadFrame,
+    /// Pads 1 to 3 (`og.Gamepad`): each moves a focus of its own while the
+    /// screen allows that many players ([`crate::Ui::set_players`]).
+    pub extra_pads: [GamepadFrame; 3],
     /// Every pointer at once (og-input's `og.Pointers`): touch controls
     /// (joystick, d-pad, action buttons) also answer pointers 1 to 4, so a
     /// stick and a button can be held together.
@@ -257,11 +265,13 @@ impl InputFrame {
             text,
             shift: source.shift(),
             gamepad: source.gamepad(),
+            extra_pads: [GamepadFrame::default(); 3],
             pointers: og_input::Pointers::default(),
         }
     }
 
-    /// Adds the world's `og.Gamepad` (pad 0) and `og.Pointers` to a frame.
+    /// Adds the world's `og.Gamepad` (pad 0, and pads 1 to 3 as
+    /// `extra_pads`) and `og.Pointers` to a frame.
     pub fn with(
         mut self,
         gamepad: Option<&og_input::Gamepad>,
@@ -269,6 +279,9 @@ impl InputFrame {
     ) -> InputFrame {
         if let Some(g) = gamepad {
             self.gamepad = GamepadFrame::from_gamepad(g);
+            for (k, pad) in self.extra_pads.iter_mut().enumerate() {
+                *pad = GamepadFrame::from_pad(g, k as u32 + 1);
+            }
         }
         if let Some(p) = pointers {
             self.pointers = *p;

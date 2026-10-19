@@ -237,8 +237,8 @@ pub const CORE_ACTIONS: &[(&str, &str, &str)] = &[
     ),
     (
         "gamepad",
-        "gamepad:<a+b+...|->[:lx,ly[,rx,ry]][:lt,rt]",
-        "Set pad 0's whole state (og.Gamepad): the standard buttons held, joined by `+` (`-` none), the stick axes (y down) and the triggers; `gamepad:off` disconnects it.",
+        "gamepad:<a+b+...|->[@pad][:lx,ly[,rx,ry]][:lt,rt]",
+        "Set a pad's whole state (og.Gamepad; pad 0 unless `@1` to `@3` follows the buttons): the standard buttons held, joined by `+` (`-` none), the stick axes (y down) and the triggers; `gamepad:off` disconnects it (`gamepad:off@2` pad 2).",
     ),
     (
         "key_down",

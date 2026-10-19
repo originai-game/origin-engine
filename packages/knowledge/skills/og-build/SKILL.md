@@ -26,7 +26,7 @@ needs a browser or a Rust toolchain. The command channel is
    Core actions: `screenshot[:path][:full|:N]`, `listen[:path][:seconds]`,
    `touch_move_to:<ui id>`, `move_to_text:[=]text[@N]`, `touch_move:x,y`,
    `touch_start`, `touch_end`, `touch:<id>:<down|move|up>:<x,y | ui id>`
-   (a second finger), `gamepad:<a+b+...|->[:lx,ly][:lt,rt]`, `scroll:dx,dy`,
+   (a second finger), `gamepad:<a+b+...|->[@pad][:lx,ly][:lt,rt]`, `scroll:dx,dy`,
    `key_down:<Key>`, `key_up:<Key>`, `type:<text>`,
    `teleport:<entity>:x,y,z`, `frame_entity:<entity>`, `dump_world[:path]`,
    `dump_entity:<entity>[:path]`, `dump_ui[:path]`,

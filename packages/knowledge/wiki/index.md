@@ -110,7 +110,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-789 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+791 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -589,6 +589,7 @@ Field units the docs and Tune use.
 | [`og.ui.divider`](ui.md#fn-divider) | function | ui | `og_ui_divider` |
 | [`og.ui.dpad`](ui.md#fn-dpad) | function | ui | `og_ui_dpad` |
 | [`og.ui.dragging`](ui.md#fn-dragging) | function | ui | `og_ui_dragging` |
+| [`og.ui.focus`](ui.md#fn-focus) | function | ui | `og_ui_focus` |
 | [`og.ui.frameTheme`](ui.md#fn-frameTheme) | function | ui | `og_ui_frame_theme` |
 | [`og.ui.frameViewport`](ui.md#fn-frameViewport) | function | ui | `og_ui_frame_viewport` |
 | [`og.ui.grid`](ui.md#fn-grid) | function | ui | — |
@@ -637,6 +638,7 @@ Field units the docs and Tune use.
 | [`og.ui.seconds`](ui.md#fn-seconds) | function | ui | `og_ui_seconds` |
 | [`og.ui.select`](ui.md#fn-select) | function | ui | `og_ui_select` |
 | [`og.ui.setNavigation`](ui.md#fn-setNavigation) | function | ui | `og_ui_set_navigation` |
+| [`og.ui.setPlayers`](ui.md#fn-setPlayers) | function | ui | `og_ui_set_players` |
 | [`og.ui.settingsScreen`](ui.md#fn-settingsScreen) | function | ui | — |
 | [`og.ui.shake`](ui.md#fn-shake) | function | ui | `og_ui_shake` |
 | [`og.ui.shooterHud`](ui.md#fn-shooterHud) | function | ui | — |

@@ -958,3 +958,133 @@ fn a_steps_tracking_spaces_latin_glyphs_and_not_cjk() {
     assert_eq!(cjk_plain, cjk_wide, "CJK keeps the font's spacing");
     assert_eq!(cjk_drawn, 0.0);
 }
+
+/// A 3×3 grid of buttons for local multiplayer: who pressed what.
+#[derive(Default)]
+struct Lobby {
+    players: u32,
+    presses: Vec<(String, Option<u32>)>,
+    rings: Vec<(String, u32)>,
+}
+
+fn lobby(ui: &mut Ui, s: &mut Lobby) {
+    ui.set_players(s.players);
+    s.rings.clear();
+    ui.column(
+        "Lobby",
+        Element {
+            gap: 8.0,
+            ..Element::column()
+        },
+        |ui| {
+            for r in 0..3u32 {
+                ui.row(
+                    ui_idi("R", r),
+                    Element {
+                        gap: 8.0,
+                        ..Element::default()
+                    },
+                    |ui| {
+                        for c in 0..3u32 {
+                            let name = format!("B{r}{c}");
+                            let resp = ui.button(name.as_str(), &name, ButtonDesc::default());
+                            if resp.clicked {
+                                s.presses.push((name.clone(), resp.pad));
+                            }
+                            if resp.focused_by != 0 {
+                                s.rings.push((name, resp.focused_by));
+                            }
+                        }
+                    },
+                );
+            }
+        },
+    );
+}
+
+fn pad(n: usize, bit: u32) -> InputFrame {
+    let mut f = InputFrame::default();
+    if n == 0 {
+        f.gamepad.pressed = bit;
+    } else {
+        f.extra_pads[n - 1].pressed = bit;
+    }
+    f
+}
+
+/// Pads beyond the first: with `set_players(3)`, pads 1 and 2 each move a
+/// focus of their own and press with A (the response names the pad); pad 0
+/// keeps the shared focus; `focus_path` answers each; their rings are
+/// drawn; the state replays after a restore. Ways it could fail: an extra
+/// pad moves the shared focus, presses the shared focus's control, is heard
+/// while the screen takes one player, or loses its place after a restore.
+#[test]
+fn pads_beyond_the_first_move_their_own_focus_and_press() {
+    let mut rig = Rig::new(Lobby {
+        players: 1,
+        ..Lobby::default()
+    });
+    let b = &mut lobby;
+    rig.idle(2, b);
+    // One player: pad 1 does nothing.
+    rig.step(pad(1, GamepadFrame::RIGHT), b);
+    rig.step(pad(1, GamepadFrame::A), b);
+    rig.idle(1, b);
+    assert!(rig.state.presses.is_empty(), "pad 1 is not a player yet");
+    assert_eq!(rig.ui.focus_path(1), "");
+    rig.state.players = 3;
+    rig.idle(2, b);
+    // Pad 1: its first move lands on the control nearest the surface's
+    // centre (B22, the grid sits top left), then left to B21.
+    rig.step(pad(1, GamepadFrame::RIGHT), b);
+    rig.step(pad(1, GamepadFrame::LEFT), b);
+    // Pad 2: onto B22 the same way, then up to B12.
+    rig.step(pad(2, GamepadFrame::DOWN), b);
+    rig.step(pad(2, GamepadFrame::UP), b);
+    // Pad 0: the shared focus, its own place.
+    rig.step(pad(0, GamepadFrame::DOWN), b);
+    rig.idle(1, b);
+    assert_eq!(rig.ui.focus_path(1), "Lobby/R#2/B21");
+    assert_eq!(rig.ui.focus_path(2), "Lobby/R#1/B12");
+    assert_eq!(rig.ui.focus_path(0), "Lobby/R#0/B00");
+    assert_eq!(rig.ui.focus_path(3), "", "pad 3 has not moved");
+    let saved = rig.ui.save_state();
+    rig.step(pad(1, GamepadFrame::A), b);
+    rig.step(pad(2, GamepadFrame::A), b);
+    rig.step(pad(0, GamepadFrame::A), b);
+    rig.idle(1, b);
+    assert_eq!(
+        rig.state.presses,
+        vec![
+            ("B21".to_string(), Some(1)),
+            ("B12".to_string(), Some(2)),
+            ("B00".to_string(), Some(0)),
+        ],
+        "each pad pressed the control under its own focus"
+    );
+    let ring = |name: &str| rig.state.rings.iter().find(|r| r.0 == name).map(|r| r.1);
+    assert_eq!(ring("B21"), Some(2), "B21 shows pad 1's ring");
+    assert_eq!(ring("B12"), Some(4), "B12 shows pad 2's ring");
+    let info = rig.ui.theme().palette.info.linear();
+    assert!(
+        rig.ui
+            .frame()
+            .items
+            .iter()
+            .any(|i| matches!(&i.cmd, DrawCmd::Quad { color, .. } if *color == info)),
+        "pad 1's ring is drawn in its player colour"
+    );
+    // A restore before the presses replays them identically.
+    let before = rig.state.presses.clone();
+    rig.state.presses.clear();
+    rig.ui.restore_state(&saved).expect("restore");
+    rig.step(pad(1, GamepadFrame::A), b);
+    rig.step(pad(2, GamepadFrame::A), b);
+    rig.step(pad(0, GamepadFrame::A), b);
+    rig.idle(1, b);
+    assert_eq!(rig.state.presses, before, "the pads' focus is UI state");
+    // Back to one player: the extra focus is dropped.
+    rig.state.players = 1;
+    rig.idle(2, b);
+    assert_eq!(rig.ui.focus_path(1), "");
+}
