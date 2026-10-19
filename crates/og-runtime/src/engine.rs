@@ -1569,7 +1569,13 @@ pub fn answer_call(id: u32, call: &og_probe::rpc::Call) -> String {
             return json!({ "jsonrpc": "2.0", "id": call.id, "error": { "code": og_probe::rpc::INTERNAL_ERROR, "message": e } }).to_string()
         }
     };
-    tick_boundary(&eng);
+    // `hello` only says who is speaking. The runtime asks it while creating
+    // an engine (packages/engine/src/runtime.ts learnBuild), so with
+    // `deferStart` it must not run GameDesc.start before the host has
+    // attached its renderer and handed over its textures.
+    if call.method != "hello" {
+        tick_boundary(&eng);
+    }
     let answer = rprobe::with_probe(&eng, true, |p, w| rprobe::answer(p, w, call));
     let swapped = answer.as_ref().is_ok_and(|a| a.1);
     rprobe::after_reload(&eng, swapped);

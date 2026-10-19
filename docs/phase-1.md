@@ -466,6 +466,53 @@ and rhythm's `textGlow`. Each reason and the three-build attribution are in
 web-reference was not run, because no og-ui reference changed. The publish
 wasm is 3,061,786 B brotli, 72 %.
 
+### Fix on main (`p2-ui-webgl`, from 7a5e320)
+
+The tooling agent's web-reference run found two failures on main.
+
+**Every WebGL2 renderer panicked, from 42d7294 (the overlay glass).** wgpu's GL
+backend translates each shader to GLSL ES 3.0 when it creates a pipeline.
+`fs_glass` asked its pyramid for its level count with `textureNumLevels`, which
+GLSL ES 3.0 lacks (`Features(TEXTURE_LEVELS)`), so the overlay pipeline could
+not be created. fx-showcase on WebGL2 reported "engine did not start:
+unreachable", and every graphics scene failed there. The design's §8 reduced
+tier has no texture queries.
+
+Now the glass pass hands the shader the level count. The pyramid's own sprite
+params, `[0, 0, 0, LEVELS]`, are bound in place of the zero params (`glass.rs`
+`pyramid_params`), and `fs_glass` reads `sprite_params.msdf.w`. The level of
+detail is the same number as before, so the WebGPU and native images are
+unchanged. New test: `crates/og-render/tests/webgl2.rs` runs wgpu's own naga
+translation (WGSL to GLSL ES 300, WebGL flags) over every entry point of
+`overlay.wgsl` and `glass.wgsl`, so a texture query or other GLSL ES 3.0 gap
+fails natively without a browser. Broken once (break-and-restore.md).
+
+**fx-showcase on WebGPU failed every station at b2532cd, and still did on
+7a5e320.** Its start threw `models/trickster.glb#tex0: not transcoded`, so the
+scene was never built (post 99.5 % outliers, RMSE 0.75). It is not the UI round
+or the texture streaming round. Since d2bd748 (undeclared access is loud), the
+TypeScript `Engine` constructor learns the build from the probe's `hello`, and
+every probe call ran a tick boundary. With `deferStart`, the tick boundary is
+where GameDesc.start runs. So start ran inside `createEngine`, before the Worker
+attached its renderer and transcoded the bundle's Basis textures, and `og run`
+with a renderer started before its offscreen surface was attached. Now `hello`,
+which only says who is speaking, runs no tick boundary (`engine.rs`
+`answer_call`). New test: `packages/engine/tests/runtime.test.ts`, with
+deferStart, start waits for the first tick boundary and `hello` is not one.
+Written before the fix and failing on it (break-and-restore.md).
+
+`scripts/check.sh --only web-reference` **PASSED in 65 s**:
+- fx-showcase 5 of 5 stations on WebGPU and 5 of 5 on WebGL2;
+- E5 17 of 17 on each tier.
+
+No reference was re-recorded.
+
+`OG_GATE_JOBS=2 scripts/check.sh` passed fmt, clippy, wasm-build, test, wasm-opt,
+size-gate and drift. bun-test timed out once, at load 140, in web-export's
+`the same inputs give the same bytes`; that test passes alone in 0.2 s. A
+rerun, `scripts/check.sh --only bun-test`, **PASSED** with the engine package's
+108 tests. The publish wasm is 3,151,777 B brotli, 75 %.
+
 ## Status 2026-10-19, phase 2, render round
 
 Branch `p2-render`; it closes owed rows 23, 28, 30, 31 and 32 (the table

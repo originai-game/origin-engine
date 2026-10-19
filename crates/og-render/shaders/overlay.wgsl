@@ -13,7 +13,10 @@ struct OverlayFrame {
 @group(0) @binding(0) var<uniform> overlay: OverlayFrame;
 
 struct SpriteParams {
-  // x: MSDF distance range in atlas pixels (0: a plain sprite), yz: atlas size in pixels.
+  // x: MSDF distance range in atlas pixels (0: a plain sprite), yz: atlas
+  // size in pixels; w: the glass pyramid's mip levels (src/glass.rs). The
+  // shader cannot ask the texture: textureNumLevels has no GLSL ES 3.0 form,
+  // and the WebGL2 tier has no texture queries.
   msdf: vec4<f32>,
 };
 @group(1) @binding(0) var sprite_tex: texture_2d<f32>;
@@ -134,7 +137,7 @@ fn fs_glass(in: OverlayOut) -> @location(0) vec4<f32> {
   let d = length(max(q, vec2<f32>(0.0))) + min(max(q.x, q.y), 0.0) - r;
   let mask = clamp(0.5 - d, 0.0, 1.0);
   // Level k of the pyramid is a blur of about 2^(k+1) device pixels.
-  let levels = f32(textureNumLevels(sprite_tex));
+  let levels = sprite_params.msdf.w;
   let lod = clamp(log2(max(in.effect.y, 1.0)) - 1.0, 0.0, levels - 1.0);
   let at = in.position.xy / overlay.output.xy;
   let behind = textureSampleLevel(sprite_tex, sprite_sampler, at, lod).rgb;
