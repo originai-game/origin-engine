@@ -4,7 +4,7 @@
 // plurals in each language's rules, a key a locale lacks comes from the
 // base, a key no table has answers itself with one warning, and the active
 // locale sets the UI's font chain and direction (Arabic: right to left).
-import { beforeAll, expect, test } from "bun:test";
+import { expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,13 +17,15 @@ declare const Bun: { spawnSync(cmd: string[]): { exitCode: number; stderr: Uint8
 
 const kit = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "templates", "ui-kit");
 
-beforeAll(() => {
+// At module level, not in a hook: a hook's 5 s would not cover a cook on a
+// loaded machine (b2532cd's gate).
+{
   loadNativeHost();
   // The kit's tables and fonts, cooked (incrementally) by the og this package built.
   const cooked = Bun.spawnSync([ogBin(), "cook", kit]);
   if (cooked.exitCode !== 0) throw new Error(new TextDecoder().decode(cooked.stderr));
   if (!existsSync(join(kit, "cooked"))) throw new Error(`og cook ${kit} wrote no cooked/`);
-}, 120_000);
+}
 
 function start(locale?: string): Engine {
   const r = createEngine(og.game({}) as GameToken, { root: kit, ...(locale ? { locale } : {}) });
