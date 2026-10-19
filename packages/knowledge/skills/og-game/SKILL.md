@@ -270,7 +270,7 @@ damage number or a pickup that rises and fades by itself (amounts: og-feel
   cost frame time and are off until set: `planarReflection` (0.25 to 1, the
   share of the screen's resolution) mirrors the scene in a still lake or a
   pool you look across, where the sky reflection alone looks fake;
-  `shadows` darkens it under the cascaded shadow (a pier, a cliff);
+  `shadows` (0 to 1) darkens it under the cascaded shadow (a pier, a cliff);
   `caustics` throws rippling light on what lies below it. With the camera
   below the surface the frame's fog becomes `underwaterColor` at
   `underwaterDensity` and the surface from below shows the sky only

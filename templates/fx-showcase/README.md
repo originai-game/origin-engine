@@ -11,12 +11,14 @@ atmosphere, weather, water, material shaders and the physics beyond rigid
 bodies, each with its own playtest. An E5 station's world is built when it
 is first shown (a marker entity `e5-<station>` records it), so a run that
 never shows one never simulates its fluid, cloth, ropes and ragdoll.
+Phase 2 adds the `terrain` station (`src/p2.ts`), built the same way.
 
 ```sh
 og run templates/fx-showcase                        # the window
 og test templates/fx-showcase                       # the playtest below
 OG_FX_CAPTURE=1 og test templates/fx-showcase       # re-record this tier's references
 python3 templates/fx-showcase/tools/make-assets.py templates/fx-showcase/assets   # regenerate textures and the LUT
+python3 templates/fx-showcase/tools/make-terrain.py templates/fx-showcase/assets  # regenerate the valley's maps and layer textures
 ```
 
 ## What it demonstrates, and the skills it exercises
@@ -26,7 +28,7 @@ and the physics beyond rigid bodies, each declared from TypeScript as data
 and proved by a reference frame on four tiers: og-game §9 (the walker's
 clip, blendshapes, the ragdoll that follows its walk), §10 (post, particles,
 trails and beams, decals, 2D lighting, materials, the HUD layer), §11 (fog,
-sky, day and night, weather, water), §12 (a dissolve and wind-swayed grass in
+sky, day and night, weather, water, terrain), §12 (a dissolve and wind-swayed grass in
 WGSL) and §13 (joints, a character controller, a vehicle, ropes, cloth, a 2D
 fluid, a ragdoll); og-taste §8 for the looks; og-build §3, §4 for the frames
 as evidence. `og polish .` (2026-10-19): taste 100, feel 97.
@@ -47,6 +49,7 @@ as evidence. `og polish .` (2026-10-19): taste 100, feel 97.
 | `joints` | `og.Joint`: a motorised hinge, a chain of ball joints, a spring; the walker as an `og.Ragdoll` (rig from its skeleton) going limp from its walk at 0.67 s |
 | `rope` | `og.Rope` drawn to a ball on a rope joint, a slack rope in the wind, two `og.Cloth` flags in gusts (pinned on the top edge and at the top corners) |
 | `fluid` | an orthographic view of `og.Fluid2D` water and a viscous orange fluid drawn as metaballs in a basin, and an `og.WaterLine` pond drawn by `og.Water2D` where a dropped crate floats |
+| `terrain` | `terrain/valley.ogt`, a 256 m valley loaded with `og.terrain.load` and drawn by `og.Terrain` as a clipmap: grass, a path painted in the control map, triplanar rock on every slope steeper than 32° and sand below the shore by altitude, blended by the layers' heights; a lake (`og.Water` with `planarReflection` 0.5, `shadows` and `caustics`) mirroring the mountain behind it; a character (`og.CharacterController` on a `SHAPE_HEIGHTFIELD` collider) walking the path up a knoll, its ground read with `og.terrain.sample` |
 
 `tests/frames.og.ts` shows each station, waits for its effects (TAA,
 particles) to settle, takes its frame at 1280×720 and compares it with

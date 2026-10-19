@@ -65,3 +65,9 @@ Each edit made to `crates/og-runtime/src/terrain.rs`, the addon rebuilt (`sh scr
 | a brush that misses | the bounds check before an edit removed | `og.terrain refusals name the fix`: a brush 500 m away is accepted |
 
 The character test was first written expecting x > -12 after 240 ticks at 3 m/s from -24; the climb costs it about a metre, so it now requires x > -15 and the ground under it 2 m higher than at the start (the walk up the flank), not a distance that only a flat run reaches.
+
+## fx-showcase's terrain station (`templates/fx-showcase/tests/terrain.og.ts`)
+
+| Broken | Edit | Failed |
+|---|---|---|
+| the hero stands on the terrain | `src/p2.ts`: the valley's SHAPE_HEIGHTFIELD collider not inserted | `it stands on the terrain`, `its feet are on the sampled ground (y -111.77, ground 7.98)`: it fell through |

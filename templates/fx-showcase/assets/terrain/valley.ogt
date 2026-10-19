@@ -1,0 +1,42 @@
+type terrain
+version 1
+---
+# The terrain station's valley (tools/make-terrain.py makes the maps):
+# 256 m square, one sample a metre, a mountain to the north, a lake basin
+# (og.Water at y 2.5 fills it) and a knoll the character walks over.
+heightmap "valley.png"
+height -10 50
+size 256 256
+control "valley-control.png"
+heightBlend 0.15
+# Grass on the flats above the shore (control R).
+layer {
+  albedo "textures/terrain-grass.png"
+  tile 5
+  slope 0 30
+  slopeFade 6
+  altitude 3.4 1000
+  altitudeFade 0.8
+}
+# The path over the knoll (control G).
+layer {
+  albedo "textures/terrain-path.png"
+  tile 3
+  slope 0 45
+}
+# Rock on every slope steeper than 32 degrees, projected three ways (control B).
+layer {
+  albedo "textures/terrain-rock.png"
+  tile 9
+  triplanar true
+  slope 32 90
+  slopeFade 6
+}
+# Sand on the lake's shore and bed (control A).
+layer {
+  albedo "textures/terrain-sand.png"
+  tile 4
+  slope 0 36
+  altitude -100 3.6
+  altitudeFade 0.8
+}
