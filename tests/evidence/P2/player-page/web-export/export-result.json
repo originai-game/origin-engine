@@ -52,17 +52,17 @@
    "check": "runner webgpu: the engine reports tier webgpu",
    "ok": true,
    "detail": {
-    "firstFrame": 377,
-    "ready": 253,
+    "firstFrame": 237,
+    "ready": 144,
     "tier": "webgpu"
    }
   },
   {
-   "check": "runner webgpu: first frame at 377 ms after navigation",
+   "check": "runner webgpu: first frame at 237 ms after navigation",
    "ok": true,
    "detail": {
-    "firstFrame": 377,
-    "ready": 253,
+    "firstFrame": 237,
+    "ready": 144,
     "tier": "webgpu"
    }
   },
@@ -92,17 +92,17 @@
    "check": "runner webgl2: the engine reports tier webgl2",
    "ok": true,
    "detail": {
-    "firstFrame": 1230,
-    "ready": 1063,
+    "firstFrame": 486,
+    "ready": 372,
     "tier": "webgl2"
    }
   },
   {
-   "check": "runner webgl2: first frame at 1230 ms after navigation",
+   "check": "runner webgl2: first frame at 486 ms after navigation",
    "ok": true,
    "detail": {
-    "firstFrame": 1230,
-    "ready": 1063,
+    "firstFrame": 486,
+    "ready": 372,
     "tier": "webgl2"
    }
   },
@@ -120,7 +120,7 @@
    "ok": true,
    "detail": {
     "before": 1,
-    "after": 91
+    "after": 90
    }
   },
   {
@@ -132,17 +132,17 @@
    "check": "match3 webgpu: the engine reports tier webgpu",
    "ok": true,
    "detail": {
-    "firstFrame": 460,
-    "ready": 313,
+    "firstFrame": 277,
+    "ready": 194,
     "tier": "webgpu"
    }
   },
   {
-   "check": "match3 webgpu: first frame at 460 ms after navigation",
+   "check": "match3 webgpu: first frame at 277 ms after navigation",
    "ok": true,
    "detail": {
-    "firstFrame": 460,
-    "ready": 313,
+    "firstFrame": 277,
+    "ready": 194,
     "tier": "webgpu"
    }
   },
@@ -172,17 +172,17 @@
    "check": "match3 webgl2: the engine reports tier webgl2",
    "ok": true,
    "detail": {
-    "firstFrame": 785,
-    "ready": 630,
+    "firstFrame": 454,
+    "ready": 350,
     "tier": "webgl2"
    }
   },
   {
-   "check": "match3 webgl2: first frame at 785 ms after navigation",
+   "check": "match3 webgl2: first frame at 454 ms after navigation",
    "ok": true,
    "detail": {
-    "firstFrame": 785,
-    "ready": 630,
+    "firstFrame": 454,
+    "ready": 350,
     "tier": "webgl2"
    }
   },
@@ -285,8 +285,8 @@
    "check": "offline: the game starts from the service worker's cache",
    "ok": true,
    "detail": {
-    "firstFrame": 600,
-    "ready": 483,
+    "firstFrame": 257,
+    "ready": 173,
     "tier": "webgpu"
    }
   },
@@ -334,8 +334,8 @@
  ],
  "results": {
   "runner webgpu": {
-   "firstFrame": 377,
-   "ready": 253,
+   "firstFrame": 237,
+   "ready": 144,
    "tier": "webgpu",
    "isolated": true,
    "ticksAfterTap": 90,
@@ -343,17 +343,17 @@
    "play": "runner-webgpu-play.png"
   },
   "runner webgl2": {
-   "firstFrame": 1230,
-   "ready": 1063,
+   "firstFrame": 486,
+   "ready": 372,
    "tier": "webgl2",
    "isolated": true,
-   "ticksAfterTap": 90,
+   "ticksAfterTap": 89,
    "gate": "runner-webgl2-gate.png",
    "play": "runner-webgl2-play.png"
   },
   "match3 webgpu": {
-   "firstFrame": 460,
-   "ready": 313,
+   "firstFrame": 277,
+   "ready": 194,
    "tier": "webgpu",
    "isolated": true,
    "ticksAfterTap": 89,
@@ -361,8 +361,8 @@
    "play": "match3-webgpu-play.png"
   },
   "match3 webgl2": {
-   "firstFrame": 785,
-   "ready": 630,
+   "firstFrame": 454,
+   "ready": 350,
    "tier": "webgl2",
    "isolated": true,
    "ticksAfterTap": 90,
@@ -380,8 +380,8 @@
     "now": "20"
    },
    "offline": {
-    "firstFrame": 600,
-    "ready": 483,
+    "firstFrame": 257,
+    "ready": 173,
     "tier": "webgpu",
     "shot": "runner-offline.png"
    }
@@ -400,8 +400,8 @@
  "sizes": {
   "runner": {
    "total": {
-    "bytes": 12480511,
-    "compressed": 3759010
+    "bytes": 12480644,
+    "compressed": 3759046
    },
    "files": [
     {
@@ -562,7 +562,7 @@
     {
      "path": "og-build.json",
      "bytes": 6915,
-     "brotli": 2161
+     "brotli": 2150
     },
     {
      "path": "origin-engine.js",
@@ -586,15 +586,15 @@
     },
     {
      "path": "sw.js",
-     "bytes": 1676,
-     "brotli": 658
+     "bytes": 1809,
+     "brotli": 705
     }
    ]
   },
   "match3": {
    "total": {
-    "bytes": 12652387,
-    "compressed": 3927143
+    "bytes": 12652520,
+    "compressed": 3927185
    },
    "files": [
     {
@@ -750,7 +750,7 @@
     {
      "path": "og-build.json",
      "bytes": 6774,
-     "brotli": 2119
+     "brotli": 2120
     },
     {
      "path": "origin-engine.js",
@@ -774,8 +774,8 @@
     },
     {
      "path": "sw.js",
-     "bytes": 1660,
-     "brotli": 649
+     "bytes": 1793,
+     "brotli": 690
     }
    ]
   }

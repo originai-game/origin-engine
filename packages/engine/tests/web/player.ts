@@ -158,7 +158,9 @@ const origin = Bun.serve({
     const headers: Record<string, string> = { "cache-control": "no-store", ...isolation };
     for (const r of rules) if (r.pattern === rel || (r.pattern.startsWith("/*.") && rel.endsWith(r.pattern.slice(2)))) Object.assign(headers, Object.fromEntries(Object.entries(r.headers).map(([k, v]) => [k.toLowerCase(), v])));
     headers["content-type"] = TYPES[rel.slice(rel.lastIndexOf("."))] ?? "application/octet-stream";
-    if (rel === "/index.html") {
+    // Like the platform, the derived entry only to a document or frame load (a plain read gets the stored bytes).
+    const opening = ["document", "iframe", "frame"].includes(req.headers.get("sec-fetch-dest") ?? "");
+    if (rel === "/index.html" && opening) {
       // What the platform's publication adds to the entry (origingame server/src/play/entry.ts).
       const html = readFileSync(path, "utf8").replace(/<head[^>]*>/, (m) => `${m}<script id="__og-game-config">window.__OG_GAME=${JSON.stringify({ id: GAME.id, version: 1, releaseId: GAME.releaseId, protocol: 2 })}</script>`);
       return new Response(html, { headers });
@@ -224,11 +226,33 @@ for (const view of [{ name: "desktop", width: 1280, height: 720, mobile: false }
     const kinds = reports.map((m) => m["kind"]);
     check(kinds[0] === "start" && kinds.includes("ready") && reports.every((m) => /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(String(m["id"]))), `${v}: start is reported first, then ready, with UUID v7 ids`, kinds);
     save(`top-level-${v}-playing.png`, await page.screenshot());
+    // The release's service worker is in charge of the next open.
+    const worker = await Promise.race([page.eval<boolean>("navigator.serviceWorker.ready.then(() => true)"), wait(10_000).then(() => false)]);
+    check(worker === true, `${v}: the release's service worker is active`, worker);
     await page.eval("document.getElementById('og-back').click()");
     await page.until("location.pathname === '/portal/games/runner'", 10_000).catch(() => null);
     const after = await page.eval<string>("location.pathname");
     check(after === "/portal/games/runner", `${v}: Back with no Portal referrer goes to the game's page`, after);
-    top[v] = { address, best, reports: kinds, chrome };
+    // A second open in the same browser, now under the release's own service worker: the
+    // navigation must still reach the play origin as a document (the derived entry, with
+    // window.__OG_GAME), so the page speaks the transport again.
+    await page.send("Page.close").catch(() => {});
+    requests.length = 0;
+    const again = await browser2.open("about:blank");
+    if (view.mobile) {
+      await again.send("Emulation.setDeviceMetricsOverride", { width: view.width, height: view.height, deviceScaleFactor: 3, mobile: true });
+      await again.send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
+    }
+    const CODE2 = "k".repeat(43);
+    await again.send("Page.navigate", { url: `http://127.0.0.1:${origin.port}${ROOT}?level=2#og-h=${CODE2}` });
+    await again.until("document.querySelector('#og-gate') && !document.getElementById('og-gate').hidden", 60_000).catch(() => null);
+    const revisit = await again.eval<{ controlled: boolean; game: boolean; address: string }>("({ controlled: !!navigator.serviceWorker.controller, game: !!window.__OG_GAME, address: location.pathname + location.search + location.hash })");
+    check(revisit.controlled && revisit.game, `${v}: the second open is under the service worker and still gets the platform's entry`, revisit);
+    for (let i = 0; i < 50 && !requests.some((r) => r.path === "hello"); i++) await wait(100);
+    const hello2 = requests.find((r) => r.path === "hello");
+    check(hello2?.body?.["handoff"] === CODE2 && revisit.address === `${ROOT}?level=2`, `${v}: the second open redeems its own code and takes it out of the address`, { hello: hello2?.body, address: revisit.address });
+    save(`top-level-${v}-revisit-gate.png`, await again.screenshot());
+    top[v] = { address, best, reports: kinds, chrome, revisit };
   } finally {
     await browser2.close();
   }

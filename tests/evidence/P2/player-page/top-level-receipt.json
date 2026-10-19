@@ -45,7 +45,19 @@
    "ok": true
   },
   {
+   "check": "desktop: the release's service worker is active",
+   "ok": true
+  },
+  {
    "check": "desktop: Back with no Portal referrer goes to the game's page",
+   "ok": true
+  },
+  {
+   "check": "desktop: the second open is under the service worker and still gets the platform's entry",
+   "ok": true
+  },
+  {
+   "check": "desktop: the second open redeems its own code and takes it out of the address",
    "ok": true
   },
   {
@@ -93,7 +105,19 @@
    "ok": true
   },
   {
+   "check": "phone: the release's service worker is active",
+   "ok": true
+  },
+  {
    "check": "phone: Back with no Portal referrer goes to the game's page",
+   "ok": true
+  },
+  {
+   "check": "phone: the second open is under the service worker and still gets the platform's entry",
+   "ok": true
+  },
+  {
+   "check": "phone: the second open redeems its own code and takes it out of the address",
    "ok": true
   }
  ],
@@ -108,9 +132,14 @@
    ],
    "chrome": {
     "back": true,
-    "backdrop": "http://127.0.0.1:59089/cover.png",
+    "backdrop": "http://127.0.0.1:57357/cover.png",
     "meta": "frame page",
     "iso": true
+   },
+   "revisit": {
+    "controlled": true,
+    "game": true,
+    "address": "/play/runner01/release_page01/?level=2"
    }
   },
   "phone": {
@@ -123,9 +152,14 @@
    ],
    "chrome": {
     "back": true,
-    "backdrop": "http://127.0.0.1:59089/cover.png",
+    "backdrop": "http://127.0.0.1:57357/cover.png",
     "meta": "frame page",
     "iso": true
+   },
+   "revisit": {
+    "controlled": true,
+    "game": true,
+    "address": "/play/runner01/release_page01/?level=2"
    }
   }
  },
@@ -133,8 +167,10 @@
   "../../tests/evidence/P2/player-page/top-level-desktop-boot.png",
   "../../tests/evidence/P2/player-page/top-level-desktop-gate.png",
   "../../tests/evidence/P2/player-page/top-level-desktop-playing.png",
+  "../../tests/evidence/P2/player-page/top-level-desktop-revisit-gate.png",
   "../../tests/evidence/P2/player-page/top-level-phone-boot.png",
   "../../tests/evidence/P2/player-page/top-level-phone-gate.png",
-  "../../tests/evidence/P2/player-page/top-level-phone-playing.png"
+  "../../tests/evidence/P2/player-page/top-level-phone-playing.png",
+  "../../tests/evidence/P2/player-page/top-level-phone-revisit-gate.png"
  ]
 }

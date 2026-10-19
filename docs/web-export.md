@@ -172,6 +172,13 @@ player members and a dev build every member, whatever it says.
   scope's other `og-*` caches on activation,
   serves the page from the network first (so a host's additions to it are
   current) and from the cache offline, and every other file from the cache.
+  The network page is the browser's own navigation request (navigation
+  preload, enabled when the worker activates): a worker's own
+  `fetch(event.request)` of a navigation leaves as `Sec-Fetch-Dest: empty`,
+  and a host that answers documents differently (the platform gives its
+  derived entry, with `window.__OG_GAME`, only to a document or frame load)
+  would hand a revisit its stored bytes; the worker fetches the page itself
+  only where the browser has no navigation preload.
   The install hint appears only when the criteria hold: not framed, not
   installed, a manifest and a service worker, and either Chromium's
   `beforeinstallprompt` (an Install button) or iOS Safari (Share, then Add to
