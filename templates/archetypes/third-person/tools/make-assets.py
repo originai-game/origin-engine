@@ -332,7 +332,8 @@ def font():
     for name in sorted(os.listdir(strings)):
         if name.endswith(".ogt"):
             need.update(ch for ch in open(os.path.join(strings, name), encoding="utf-8").read() if ord(ch) > 0x2E7F)
-    missing = "".join(sorted(ch for ch in need if ord(ch) not in cmap_chars(dst)))
+    have = cmap_chars(dst)
+    missing = "".join(sorted(ch for ch in need if ord(ch) not in have))
     if missing:
         sys.exit(f"{os.path.relpath(dst, root)} has no glyph for {missing} (used in assets/strings); "
                  "install fontTools and the project template's font and run tools/make-assets.py again")

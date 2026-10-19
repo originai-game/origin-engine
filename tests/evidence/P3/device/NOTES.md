@@ -64,4 +64,16 @@ for `--cert`/`--key`, and the phone must trust mkcert's root CA (AirDrop
 About > Certificate Trust Settings). Without `--cert` the run warns and
 measures an unisolated page.
 
+For the iPhone og serves on 0.0.0.0 and picks the LAN address the phone
+opens from this machine's IPv4 addresses: link-local 169.254.x.x dropped,
+tunnel, bridge, VM and container interfaces (utun, tun, tap, ppp, ipsec, gif,
+stf, bridge, vmnet, vboxnet, docker, veth, awdl, llw, anpi, zt, tailscale,
+wg and the like) last, RFC 1918 addresses before public ones, and Ethernet or
+Wi-Fi names (en, eth, wlan, wl) before others; the run prints the URL and the
+interface it chose. When a VPN or several interfaces make that pick wrong, or
+the phone can reach only one particular interface, `--host <ip>` names the
+address instead, and the mkcert certificate has to name that same address.
+`--host`, like `--cert`/`--key`, is the iPhone's only: `--device chrome` and
+`--device android` open the page at localhost and refuse it.
+
 Owed row 40 (the measurement on a real phone) remains the owner's.
