@@ -23,7 +23,7 @@ beforeAll(() => {
   const cooked = Bun.spawnSync([ogBin(), "cook", kit]);
   if (cooked.exitCode !== 0) throw new Error(new TextDecoder().decode(cooked.stderr));
   if (!existsSync(join(kit, "cooked"))) throw new Error(`og cook ${kit} wrote no cooked/`);
-});
+}, 120_000);
 
 function start(locale?: string): Engine {
   const r = createEngine(og.game({}) as GameToken, { root: kit, ...(locale ? { locale } : {}) });

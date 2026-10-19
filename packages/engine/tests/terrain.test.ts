@@ -26,7 +26,7 @@ beforeAll(() => {
   const cooked = Bun.spawnSync([ogBin(), "cook", fixture]);
   if (cooked.exitCode !== 0) throw new Error(new TextDecoder().decode(cooked.stderr));
   if (!existsSync(join(fixture, "cooked"))) throw new Error(`og cook ${fixture} wrote no cooked/`);
-});
+}, 120_000);
 
 function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
   if (!r.ok) throw new Error(r.reason);
