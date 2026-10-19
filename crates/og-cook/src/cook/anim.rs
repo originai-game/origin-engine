@@ -16,17 +16,73 @@ use super::model::{self, GltfSource, Strings};
 use super::{CookError, MeshOptions};
 use crate::format::{self, *};
 use og_blob::BlobWriter;
+use og_core::ogt::Document;
+use std::path::Path;
 
 /// Per-vertex deltas of one morph target.
 type Deltas = Vec<[f32; 3]>;
 
+/// The `.ogt` type of a humanoid rig map.
+pub const RIG_TYPE: &str = "rig";
+
+/// Cooks a `type rig` .ogt: validated by og-anim and stored as its
+/// canonical text (the `og.Rig` blob).
+pub fn cook_rig(bytes: &[u8], stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
+    let text = std::str::from_utf8(bytes).map_err(|_| CookError("a rig is text (UTF-8)".into()))?;
+    let rig = og_anim::RigAsset::parse(text).map_err(|e| CookError(e.reason().to_string()))?;
+    let canonical = rig.to_text();
+    let mut w = BlobWriter::new(
+        format::Rig::type_hash(),
+        format::Rig::schema_version(),
+        stamp,
+    );
+    w.table(
+        "meta",
+        &[format::RigMeta {
+            text_bytes: canonical.len() as u32,
+        }],
+        format::row_hash::<format::RigMeta>(),
+    )
+    .raw("text", canonical.into_bytes(), 16);
+    Ok((
+        w.finish(),
+        vec![format!(
+            "rig: scheme {}, {} bone(s) named",
+            rig.scheme.as_deref().unwrap_or("auto"),
+            rig.bones.len()
+        )],
+    ))
+}
+
 /// `animation { … }` import settings of a glTF.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AnimSettings {
     /// Resampling rate for every clip (Hz); the source's own rate when absent.
     pub rate: Option<f32>,
     /// Extra markers: (clip name, marker name, seconds).
     pub events: Vec<(String, String, f32)>,
+    /// The `type rig` .ogt of this model's humanoid map (a path under
+    /// `assets/`); detected from the node names when absent.
+    pub rig: Option<String>,
+    /// Animation library glTFs (paths under `assets/`) whose clips are
+    /// retargeted onto this model's skeleton and written into its `#anim`
+    /// after its own clips (a clip of its own wins over a library's of the
+    /// same name).
+    pub libraries: Vec<String>,
+    /// Retargeting solves the legs so planted feet stay on the ground.
+    pub foot_ik: bool,
+}
+
+impl Default for AnimSettings {
+    fn default() -> Self {
+        AnimSettings {
+            rate: None,
+            events: Vec::new(),
+            rig: None,
+            libraries: Vec::new(),
+            foot_ik: true,
+        }
+    }
 }
 
 impl AnimSettings {
@@ -38,7 +94,132 @@ impl AnimSettings {
         for (c, n, t) in &self.events {
             s.push_str(&format!(" event {c:?} {n:?} {t}"));
         }
+        if let Some(r) = &self.rig {
+            s.push_str(&format!(" rig {r:?}"));
+        }
+        for l in &self.libraries {
+            s.push_str(&format!(
+                " library {l:?} retarget-v1 footIk {}",
+                self.foot_ik
+            ));
+        }
         s
+    }
+
+    /// The settings of an `animation { … }` block (none: the defaults).
+    pub fn parse(block: Option<&og_core::ogt::Block>) -> Result<AnimSettings, String> {
+        let mut a = AnimSettings::default();
+        let Some(b) = block else {
+            return Ok(a);
+        };
+        for e in &b.entries {
+            let err = |x: og_core::Error| format!("line {}: {x}", e.line);
+            match e.key.as_str() {
+                "rate" => {
+                    let r = e.f32(0).map_err(err)?;
+                    if !(1.0..=120.0).contains(&r) {
+                        return Err(format!(
+                            "line {}: animation rate must be 1..=120 Hz",
+                            e.line
+                        ));
+                    }
+                    a.rate = Some(r);
+                }
+                "event" => a.events.push((
+                    e.string(0).map_err(err)?.to_string(),
+                    e.string(1).map_err(err)?.to_string(),
+                    e.f32(2).map_err(err)?,
+                )),
+                "rig" => a.rig = Some(asset_path(e.string(0).map_err(err)?, e.line)?),
+                "library" => a
+                    .libraries
+                    .push(asset_path(e.string(0).map_err(err)?, e.line)?),
+                "footIk" => {
+                    a.foot_ik = e
+                        .values
+                        .first()
+                        .and_then(|v| v.as_bool())
+                        .ok_or_else(|| format!("line {}: footIk takes true or false", e.line))?
+                }
+                k => {
+                    return Err(format!(
+                        "line {}: unknown animation setting '{k}' (rate, event, rig, library, footIk)",
+                        e.line
+                    ));
+                }
+            }
+        }
+        Ok(a)
+    }
+}
+
+/// `rel` when it is a path under `assets/`.
+fn asset_path(rel: &str, line: usize) -> Result<String, String> {
+    if rel.is_empty() || rel.starts_with('/') || rel.split('/').any(|c| c == ".." || c.is_empty()) {
+        return Err(format!("line {line}: '{rel}' is not a path under assets/"));
+    }
+    Ok(rel.to_string())
+}
+
+/// The import settings document of `rel` under `root` (`<rel>.ogt`), if any.
+fn import_settings(root: &Path, rel: &str) -> Result<Option<Document>, String> {
+    let path = root.join(format!("{rel}.ogt"));
+    let Ok(text) = std::fs::read_to_string(&path) else {
+        return Ok(None);
+    };
+    let doc = Document::parse(&text).map_err(|e| format!("{rel}.ogt: {e}"))?;
+    Ok((doc.ty == "import").then_some(doc))
+}
+
+fn settings_of(doc: Option<&Document>) -> Result<AnimSettings, String> {
+    AnimSettings::parse(
+        doc.and_then(|d| d.body.get("animation"))
+            .and_then(|e| e.block.as_ref()),
+    )
+}
+
+/// What a model's retargeting reads besides the model: its rig file, each
+/// library with its import settings and rig, as `path=hash` lines (a file
+/// that is missing is `path=missing`), for the cook stamp.
+pub fn dependencies(root: &Path, settings: &AnimSettings) -> String {
+    let mut files: Vec<String> = settings.rig.iter().cloned().collect();
+    for l in &settings.libraries {
+        files.push(l.clone());
+        files.push(format!("{l}.ogt"));
+        if let Ok(Some(d)) = import_settings(root, l)
+            && let Ok(a) = settings_of(Some(&d))
+        {
+            files.extend(a.rig);
+        }
+    }
+    files
+        .iter()
+        .map(|f| match std::fs::read(root.join(f)) {
+            Ok(b) => format!("{f}={:016x}", og_core::hash::hash_bytes(&b)),
+            Err(_) => format!("{f}=missing"),
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// The humanoid map of `skeleton`: from the rig file at `rig` (under
+/// `root`), else detected from its names.
+fn humanoid(
+    root: &Path,
+    rig: Option<&str>,
+    skeleton: &og_anim::SkeletonAsset,
+) -> Result<og_anim::HumanoidMap, String> {
+    match rig {
+        None => Ok(og_anim::HumanoidMap::detect(skeleton)),
+        Some(r) => {
+            let text =
+                std::fs::read_to_string(root.join(r)).map_err(|e| format!("rig '{r}': {e}"))?;
+            let asset =
+                og_anim::RigAsset::parse(&text).map_err(|e| format!("{r}: {}", e.reason()))?;
+            asset
+                .map(skeleton)
+                .map_err(|e| format!("{r}: {}", e.reason()))
+        }
     }
 }
 
@@ -292,13 +473,86 @@ fn quantize_weights(w: [f32; 4]) -> [u16; 4] {
 }
 
 /// Cooks the animation blob of a parsed glTF. `bytes` is the source file
-/// (for `extras`).
+/// (for `extras`); `root` is `assets/`, where the settings' rig and
+/// libraries are read from. A library's clips are retargeted onto the
+/// model's skeleton (`og_anim::retarget`, each rig's humanoid map from its
+/// `rig` setting or detected) and written after the model's own clips.
 pub fn cook(
     src: &GltfSource,
     bytes: &[u8],
     mesh: &MeshOptions,
     settings: &AnimSettings,
     stamp: u64,
+    root: &Path,
+) -> Result<(Vec<u8>, Vec<String>), CookError> {
+    if settings.libraries.is_empty() {
+        return cook_with(src, bytes, mesh, settings, stamp, &[]);
+    }
+    let (own_blob, _) = cook_with(src, bytes, mesh, settings, stamp, &[])?;
+    let own = crate::runtime::CookedAnimation::from_bytes("model#anim", &own_blob)
+        .map_err(|e| CookError(e.to_string()))?;
+    let target_map = humanoid(root, settings.rig.as_deref(), &own.skeleton).map_err(CookError)?;
+    let mut extra: Vec<og_anim::ClipAsset> = Vec::new();
+    let mut notes = Vec::new();
+    let options = og_anim::RetargetOptions {
+        foot_ik: settings.foot_ik,
+    };
+    for lib in &settings.libraries {
+        let fail = |e: String| CookError(format!("library '{lib}': {e}"));
+        let lib_bytes = std::fs::read(root.join(lib)).map_err(|e| fail(e.to_string()))?;
+        let dir = root.join(lib);
+        let dir = dir.parent().unwrap_or(root);
+        let lib_src = model::load(&lib_bytes, dir).map_err(fail)?;
+        let lib_doc = import_settings(root, lib).map_err(fail)?;
+        let lib_settings = settings_of(lib_doc.as_ref()).map_err(fail)?;
+        if !lib_settings.libraries.is_empty() {
+            return Err(fail(
+                "an animation library cannot name libraries of its own".into(),
+            ));
+        }
+        let (lib_blob, _) = cook_with(&lib_src, &lib_bytes, mesh, &lib_settings, 0, &[])?;
+        let library = crate::runtime::CookedAnimation::from_bytes("library#anim", &lib_blob)
+            .map_err(|e| fail(e.to_string()))?;
+        let source_map =
+            humanoid(root, lib_settings.rig.as_deref(), &library.skeleton).map_err(fail)?;
+        for c in &library.clips {
+            if own.clip(&c.name).is_some() || extra.iter().any(|x| x.name == c.name) {
+                notes.push(format!(
+                    "library '{lib}': clip '{}' skipped, the model already has a clip of that name",
+                    c.name
+                ));
+                continue;
+            }
+            let r = og_anim::retarget(
+                &library.skeleton,
+                &source_map,
+                &own.skeleton,
+                &target_map,
+                c,
+                &options,
+            )
+            .map_err(|e| fail(format!("clip '{}': {}", c.name, e.reason())))?;
+            notes.push(format!(
+                "library '{lib}': clip '{}' retargeted ({} -> {} names, {} bones, {} legs solved, travel x{:.3})",
+                c.name, source_map.scheme, target_map.scheme, r.bones, r.legs, r.scale
+            ));
+            extra.push(r.clip);
+        }
+    }
+    let (blob, mut own_notes) = cook_with(src, bytes, mesh, settings, stamp, &extra)?;
+    own_notes.extend(notes);
+    Ok((blob, own_notes))
+}
+
+/// The blob of a glTF with `extra` clips (already bound to its nodes)
+/// after its own.
+fn cook_with(
+    src: &GltfSource,
+    bytes: &[u8],
+    mesh: &MeshOptions,
+    settings: &AnimSettings,
+    stamp: u64,
+    extra: &[og_anim::ClipAsset],
 ) -> Result<(Vec<u8>, Vec<String>), CookError> {
     let doc = &src.doc;
     let json = json(bytes);
@@ -440,6 +694,46 @@ pub fn cook(
             source_rate,
             events.len() as u32 - event_first
         ));
+    }
+    for clip in extra {
+        let channel_first = channels.len() as u32;
+        for ch in &clip.channels {
+            channels.push(ChannelRow {
+                node: ch.node,
+                path: ch.path.code(),
+                interpolation: if ch.step {
+                    interpolation::STEP
+                } else {
+                    interpolation::LINEAR
+                },
+                lanes: ch.lanes,
+                sample_offset: samples.len() as u32,
+            });
+            samples.extend_from_slice(&ch.samples);
+        }
+        let event_first = events.len() as u32;
+        for e in &clip.events {
+            let (name_offset, name_len) = strings.add(&e.name);
+            events.push(EventRow {
+                clip: clips.len() as u32,
+                time: e.time,
+                name_offset,
+                name_len,
+            });
+        }
+        let (name_offset, name_len) = strings.add(&clip.name);
+        clips.push(ClipRow {
+            name_offset,
+            name_len,
+            duration: clip.duration,
+            rate: clip.rate,
+            source_rate: clip.source_rate,
+            frames: clip.frames,
+            channel_first,
+            channel_count: channels.len() as u32 - channel_first,
+            event_first,
+            event_count: events.len() as u32 - event_first,
+        });
     }
     for (c, n, _) in &settings.events {
         if !clip_names.contains(c) {

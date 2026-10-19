@@ -10,6 +10,7 @@
 //! | [`AnimationEvent`] | a clip marker passed in the last tick |
 //! | [`Flipbook`], [`FlipbookEvent`], [`FlipbookSheet`], [`install_flipbook`] | sprite animation: sheets of frames, clips with fps, loop / ping-pong / once and frame events, played by `og.flipbook` |
 //! | [`SkeletonAsset`], [`ClipAsset`], [`GraphAsset`] | the assets (the cook's `<model>#anim` blob, an `animgraph` `.ogt`) |
+//! | [`HumanoidMap`], [`RigAsset`], [`retarget`] | humanoid bone maps (detected from Mixamo, VRM, Unity, Rigify, Unreal or Blender names, or a `type rig` .ogt) and clips rewritten from one rig to another (rest correction, bone lengths, scaled root travel, foot IK) |
 //! | [`AnimationSystem`] | asset registration, the final pose, the per-entity [`AnimOutput`] (joint palette, blendshape weights) and [`PaletteSink`], the renderer contract |
 //!
 //! **Determinism.** f32 with `+ - * /` and `sqrt` only (no trigonometry:
@@ -27,6 +28,7 @@ mod flipbook;
 mod graph;
 mod ik;
 mod pose;
+mod retarget;
 mod schema;
 mod system;
 mod xform;
@@ -44,6 +46,10 @@ pub use graph::{
 };
 pub use ik::{IkResult, chain as ik_chain, fabrik, two_bone};
 pub use pose::{Pose, sample};
+pub use retarget::{
+    HUMAN_BONE_COUNT, HUMAN_BONES, HumanoidMap, RetargetOptions, Retargeted, RigAsset, SCHEMES,
+    human_bone, retarget,
+};
 pub use schema::*;
 pub use system::{AnimOutput, AnimationSystem, JointPalette, PaletteSink, SYSTEM_NAME, install};
 pub use xform::{Trs, nlerp, rotation_arc, twist_y, unit};

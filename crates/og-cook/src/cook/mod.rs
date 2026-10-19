@@ -397,6 +397,7 @@ enum Kind {
     Behaviour,
     NavMesh,
     Strings,
+    Rig,
 }
 
 impl Kind {
@@ -417,6 +418,7 @@ impl Kind {
             Kind::Behaviour => "behaviour",
             Kind::NavMesh => "navmesh",
             Kind::Strings => "strings",
+            Kind::Rig => "rig",
         }
     }
 }
@@ -448,6 +450,7 @@ enum Work<'a> {
     Behaviour(&'a Source),
     NavMesh(&'a Source),
     Strings(&'a Source),
+    Rig(&'a Source),
     Font(&'a Source, FontSettings),
     Scene(&'a Source),
 }
@@ -527,36 +530,16 @@ fn texture_kind(s: &Source) -> Result<u32, String> {
 }
 
 fn anim_settings(s: &Source) -> Result<anim::AnimSettings, String> {
-    let mut a = anim::AnimSettings::default();
-    if let Some(b) = settings_block(s, "animation") {
-        for e in &b.entries {
-            let err = |x: og_core::Error| format!("line {}: {x}", e.line);
-            match e.key.as_str() {
-                "rate" => {
-                    let r = e.f32(0).map_err(err)?;
-                    if !(1.0..=120.0).contains(&r) {
-                        return Err(format!(
-                            "line {}: animation rate must be 1..=120 Hz",
-                            e.line
-                        ));
-                    }
-                    a.rate = Some(r);
-                }
-                "event" => a.events.push((
-                    e.string(0).map_err(err)?.to_string(),
-                    e.string(1).map_err(err)?.to_string(),
-                    e.f32(2).map_err(err)?,
-                )),
-                k => {
-                    return Err(format!(
-                        "line {}: unknown animation setting '{k}' (rate, event)",
-                        e.line
-                    ));
-                }
-            }
-        }
+    anim::AnimSettings::parse(settings_block(s, "animation"))
+}
+
+/// `assets/`, from a source's path and its path under it.
+fn assets_root(s: &Source) -> PathBuf {
+    let mut root = s.path.clone();
+    for _ in s.rel.split('/') {
+        root.pop();
     }
-    Ok(a)
+    root
 }
 
 fn font_settings(s: &Source, base: &FontSettings) -> Result<FontSettings, String> {
@@ -650,12 +633,13 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     Ok(doc) if doc.ty == e6::BEHAVIOUR_TYPE => Kind::Behaviour,
                     Ok(doc) if doc.ty == og_i18n::STRINGS_TYPE => Kind::Strings,
                     Ok(doc) if doc.ty == e6::NAVMESH_TYPE => Kind::NavMesh,
+                    Ok(doc) if doc.ty == anim::RIG_TYPE => Kind::Rig,
                     Ok(doc) => {
                         early_errors.push((
                             rel.clone(),
                             "scene",
                             format!(
-                                "an .ogt of type '{}' is not a cookable asset (scene, particles, skin, tileset, tilemap, flipbook, shader, behaviour, navmesh, sfx, strings or import)",
+                                "an .ogt of type '{}' is not a cookable asset (scene, particles, skin, tileset, tilemap, flipbook, shader, behaviour, navmesh, sfx, strings, rig or import)",
                                 doc.ty
                             ),
                         ));
@@ -789,11 +773,13 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                 if anim::wanted(g) {
                     match anim_settings(s) {
                         Ok(a) => {
+                            let deps = anim::dependencies(&assets_root(s), &a);
                             let st = stamp(&[
                                 b"animation",
                                 mesh_desc.as_bytes(),
                                 a.describe().as_bytes(),
                                 &hash,
+                                deps.as_bytes(),
                             ]);
                             outs.insert(
                                 1,
@@ -906,6 +892,10 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
             Kind::Strings => {
                 let st = stamp(&[b"strings", &hash]);
                 outs.push((s.rel.clone(), format::Strings::NAME, st, Work::Strings(s)));
+            }
+            Kind::Rig => {
+                let st = stamp(&[b"rig", &hash]);
+                outs.push((s.rel.clone(), format::Rig::NAME, st, Work::Rig(s)));
             }
             Kind::NavMesh => {
                 let deps = e6::navmesh_dependencies(s);
@@ -1146,7 +1136,7 @@ fn run(
         }
         Work::Animation(s, a) => {
             let g = s.gltf.as_ref().expect("loaded");
-            anim::cook(g, &s.bytes, &options.mesh, a, p.stamp)
+            anim::cook(g, &s.bytes, &options.mesh, a, p.stamp, &assets_root(s))
         }
         Work::GltfTexture(s, image, k) => {
             let g = s.gltf.as_ref().expect("loaded");
@@ -1306,6 +1296,7 @@ fn run(
         Work::Flipbook(s) => flipbook::cook(s, p.stamp),
         Work::Behaviour(s) => e6::cook_behaviour(s, p.stamp),
         Work::Strings(s) => e6::cook_strings(s, p.stamp),
+        Work::Rig(s) => anim::cook_rig(&s.bytes, p.stamp),
         Work::NavMesh(s) => e6::cook_navmesh(s, p.stamp),
         Work::Font(s, f) => {
             font::cook(&s.bytes, f, threads, p.stamp).map(|(b, n)| (b, vec![n.note]))
