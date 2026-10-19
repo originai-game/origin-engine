@@ -7,6 +7,128 @@ the platform can run it in an `engine`-class sandbox. Spike findings
 (`docs/spike-results.md`) are the baseline; the spike crate is the seed
 of `og-render` and is deleted once its code has moved.
 
+## Status 2026-10-19, Phase 2, showcase round
+
+Branch `p2-showcase` from main at b2532cd. The phase 2 deliverable "one
+mid-size 3D showcase" is `templates/archetypes/third-person`, **Ember
+Vale** (1253988, assets 20dc944, `create --archetype third-person`
+314e252): a lamplighter on og.CharacterController walks, runs, wades and
+jumps over a 128 m terrain vale with an og.Water lake; holding F by a
+beacon walks it to the plinth and an og.IkChain reaches its right hand into
+the bowl until the beacon catches (fire, smoke and ember particles, a
+light, a scorch decal and a rune that glows, bloom, AO, god rays, the LUT
+and grain under og.DayNight as the run's clock). Three sentinels on
+og.NavAgent think with og.ai behaviours and og.Perception: patrol, alarm,
+chase, grab (a heart, a hit stop, a shake). Both characters play an
+og.AnimationGraph (a 1D idle, walk and run blend by speed, the hero's air
+state). Four beacons before night win; the hearts or night lose; the
+summary, Again or Title. Screens are og.ui on the fantasy pack's tokens
+with MSDF text (Cinzel, Newsreader, a Noto Sans SC subset), English and
+简体中文, touch controls on a phone; every `Tuning` field is Tune's; a
+voice per event with ducked music; settings and a best-run record go
+through `og.platform` (the win merges against a stale write from another
+device). The publish build plays behind the tap gate. Only the public
+`@origingame/engine` API; the characters, clips, textures, LUT and
+emitters are the engine's own CC0 assets from fx-showcase, the rest is
+written by `tools/make-assets.py` (no download; not trickster.glb or
+dropship.glb). It typechecks in the gate through
+`packages/engine/tsconfig.templates.json`'s `templates/archetypes/*/src`
+glob (row 12).
+
+### Evidence
+
+- **metal**: `og test templates/archetypes/third-person` passes 8 suites
+  (flow, frames, lose, pause, phone, replay, sentinels, win; 109 checks)
+  through real input; frames title, beacon and dawn at 0.000 % against
+  `references/metal/`.
+- **webgpu and webgl2**: `tests/web/reference.ts --project
+  templates/archetypes/third-person` (Chrome for Testing, the release
+  `dist/web`) matches the same three frames against `references/webgpu/`
+  and `references/webgl2/` at 0.000 %. Against the metal references:
+  webgpu RMSE 0.00131 (title), 0.00475 with 0.060 % outliers (beacon),
+  0.00067 (dawn); webgl2 RMSE 0.00428, 0.0181 and 0.00180. Frame read of
+  the webgl2 beacon, the one over the harness's 0.01 against metal: the
+  same scene, the hand in the bowl, fire, smoke and light alike; WebGL2
+  draws the ember sparks as longer, wider streaks (about 1 % of the
+  pixels), so it keeps its own reference.
+- **vulkan-cpu**: not recorded (the gate does not run templates on it).
+- **og polish** (`tests/evidence/P2/showcase/`, metal, release addon):
+  taste 95, feel 85. Seven findings, recorded and not fixed: six labels
+  under 4.5:1 on the fantasy pack's shared palette (Set out 3.36:1, the
+  footer 3.5, Resume 3.84, Again 3.99, 完成 4.41, 语言 4.43), and on the
+  phone 2 of 3 presses without a ui-bus sound (the HUD's Jump and Kindle
+  answer on sfx). Frame time 67: the phone playtest at 1170×2532 (render
+  p95 14.6 ms) under a load average of 20–30; 6.8 ms p95 or less at
+  1280×720.
+- **Wasm**: the publish wasm is **3,061,324 B brotli, 73.0 % of
+  4,194,304 B** (main 3,061,522 B, 73.0 %): the game adds nothing to the
+  engine and the two fixes below cost nothing.
+
+### Engine fixes
+
+- **og-nav** (d947221): a bake panicked on a triangle wholly above the
+  bake box (the vale's cliffs over the navmesh bounds); such cells are
+  skipped like those below it, with a test.
+- **og-runtime, deferred start** (f58417a): since d2bd748 the runtime asks
+  the probe's `hello` in the Engine constructor (`learnBuild`), and every
+  probe call crossed the tick boundary, so `GameDesc.start` ran at
+  creation even with `deferStart`. On the web it ran before the Worker
+  attached the renderer and transcoded the bundle's textures: a textured
+  game's start failed ("not transcoded"; fx-showcase's trickster and this
+  game's skin atlas). Natively, `og run` with a render and `og polish`
+  started before attaching again, undoing 85c2bd0. `hello` no longer
+  crosses the boundary; `tests/core.test.ts` checks a deferred and an
+  undeferred start on the dev addon, the release wasm and the publish wasm
+  (it fails on the old `answer_call`). Ember Vale's metal references were
+  recorded after it: the start after the attach moves them towards webgpu
+  (beacon 0.268 % to 0.060 % outliers against it).
+- **og-render, glass on WebGL2** (c5ab008): fs_glass read
+  `textureNumLevels`, which GLSL ES 3.0 lacks, so any overlay panicked
+  creating its pipeline on WebGL2 since the UI round's glass (42d7294).
+  The pyramid's level count is glass.rs's `LEVELS`, prepended as a
+  constant; metal and webgpu frames are unchanged and fx-showcase's webgl2
+  references pass again.
+
+A documentation gap, left as is: an og.IkChain target in `"world"` space
+is in the frame of the skeleton body's Transform parent (here the hero's
+unrotated capsule), not true world; `src/hero.ts` subtracts the hero's
+position.
+
+### Gate
+
+`OG_GATE_JOBS=2 scripts/check.sh --all` on b74ba1b's code (484f2e0 adds
+evidence and this commit documents only), 2026-10-19, Apple M4 Pro with
+other rounds building (load average 60 to 230): 313 s, fmt 2 s, clippy
+1 s, wasm-build 22 s, test 174 s, wasm-opt 159 s, drift 2 s, determinism
+18 s; bun-test failed on one test, `tests/render.test.ts`'s "trails, beams
+and ribbons draw strips" at 5,566 ms against bun's 5,000 ms timeout under
+twelve workers, and cancelled size-gate. `--only bun-test` then passed (58 s,
+93 engine tests) and `--all size-gate` passed (40 s, 3,061,324 B). The
+path-aware run before it passed every step but bun-test, whose i18n hook
+(`og cook` of ui-kit) timed out at 5 s the same way; its rerun with
+determinism passed (55 s and 704 s at load 78). `scripts/check.sh
+web-reference` (in no lane) **PASSED in 384 s**: fx-showcase's five frames
+on WebGPU and WebGL2 and the 17 E5 stations, with both fixes in.
+
+`og test` on metal with the release addon: third-person 8 suites, ui-kit
+29, fx-showcase 18, runner 8, match3 6, topdown 7, game 2, every
+reference frame passing with the deferred start fix; only Ember Vale's
+were recorded after it. idle, rhythm
+and roguelike fail their `frames` suite and tower-defense five suites
+(frames, lose, pad, pause, replay), the same suites with the addon built
+without the fix (idle's title 0.397 % outliers and RMSE 0.0283 with it,
+0.387 % and 0.0282 without): pre-existing, left to `p2-ui-fix`.
+
+### Not done
+
+Owed rows 47–49: vulkan-cpu references for Ember Vale, the polish findings
+above (the fantasy pack's palette is shared by every game that uses it;
+the HUD buttons' bus is the template's), the IkChain space note in the
+IDL's docs.
+
+- Pre-existing, not touched: the idle, rhythm, roguelike and tower-defense
+  archetype playtests fail since the UI round (fixed on `p2-ui-fix`).
+
 ## Status 2026-10-19, player-page round
 
 The engine's page is the play page itself (design §4): `og build` writes
@@ -591,6 +713,9 @@ animation and physics round (cf932f8).
 After the phase 2 animation and physics round: rows 25, 26, 27 and 43 done
 too; 29 (3D SPH) still open.
 
+After the phase 2 showcase round: three new rows open (47–49), row 12 now
+covers the archetypes' typecheck too.
+
 Every item a round's status left owed or out, in one place; the round
 sections below point here instead of repeating them. Size: S a day or
 less, M a few days, L a workstream. Owner: **engine** is this repository
@@ -611,7 +736,7 @@ resource only the owner can give.
 | 9 | Japanese line breaking with kinsoku rules in og-ui (CJK breaks between any two characters) | E6 | S | engine, E7 | done, ba1042a |
 | 10 | `og polish`'s text measures count icon names and disabled buttons | E6 | S | engine, E7 | done, 891b4b6 |
 | 11 | fx-showcase's E5 stations built lazily per station (its playtests and polish frame time dropped to 100/88) | E6 | S | engine, E7 | done, 93d86e1 |
-| 12 | `templates/fx-showcase/src/main.ts`'s type errors; templates are not typechecked in the gate | E6 | S | engine, E7 | done, c5295be |
+| 12 | `templates/fx-showcase/src/main.ts`'s type errors; templates are not typechecked in the gate | E6 | S | engine, E7 | done, c5295be; the archetypes too, through `tsconfig.templates.json`'s `templates/archetypes/*/src` glob, third-person (Ember Vale) among them |
 | 13 | Native and Chrome world hashes of the three archetypes compared (match3 differed, not investigated) | E6 | S | engine, E7 | done, 85c2bd0 |
 | 14 | The publish wasm under 65 % of the 4 MB brotli budget without removing features (71 % before E7) | E7 | M | engine, E7 | partly: 72.0 % to 70.2 % (fcca471); under 65 % is row 44 |
 | 15 | UI sounds start one tick after the input (`og.ui.sound` runs after `og.audio`) | E3 | S | engine, P2 UI | done, 59ce0b4 |
@@ -646,6 +771,9 @@ resource only the owner can give.
 | 44 | A publish wasm per profile (measured 63.3 % 3D, 59.5 % 2D at opt-level 3): two shipping variants, `og build --publish` choosing by the game's profile, and the size budget read per download instead of as the sum of every wasm the gate builds | E7 | M | owner (the budget's meaning), then engine | open |
 | 45 | `og.ui.shake` shown in a template (ui-kit's shop refusing a purchase) | E7 | S | engine, P2 UI | done, d00f20c |
 | 46 | runner: a press during the game-over card's hold is silent (og polish: 1 of 3 inputs in `flow`) | E7 | S | engine, P2 UI | done, 54b59df |
+| 47 | vulkan-cpu references for the third-person archetype (metal, webgpu and webgl2 recorded) | P2 showcase | S | engine, phase 2 | open |
+| 48 | The fantasy pack's labels under 4.5:1 (Set out 3.36, footer 3.5, Resume 3.84, Again 3.99, 完成 4.41, 语言 4.43 in Ember Vale's polish) and third-person's HUD Jump and Kindle without a ui-bus sound | P2 showcase | S | engine, phase 2 | open |
+| 49 | The IDL's og.IkChain docs: a `"world"` target is in the skeleton body's Transform parent's frame, not true world | P2 showcase | S | engine, phase 2 | open |
 
 ## 0. Rules that shape the plan
 
