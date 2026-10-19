@@ -20,7 +20,9 @@ substeps, and groups, layering, mixing, emitters and sinks carry over from
 2D with the same semantics. PBF's incompressibility would matter for deep
 columns of water; the engine's scenes are pools, pours and splashes of a
 few thousand particles, where the relaxation's slight compressibility does
-not show and its cost is about half. The reasoning is in
+not show, and it does less work a substep (one relaxation pass against
+PBF's usual three or four constraint iterations; reasoned, PBF was not
+built or measured). The reasoning is in
 `crates/og-physics/README.md` §Phase 2: 3D particle fluids.
 
 ## The surface: screen space, not marching cubes
@@ -76,3 +78,14 @@ How they were made:
   packages/engine, in Chrome for Testing with the gate's publish wasm.
   Afterwards `scripts/check.sh web-reference` passed (168 s): 18 of 18
   stations on both tiers, fluids3d at RMSE 0 against its own references.
+
+## Gate
+
+`OG_GATE_JOBS=2 scripts/check.sh --all` on 8658977: PASSED, 9 of 9 steps
+in 412 s (fmt 1 s, clippy 0 s, drift 2 s, wasm-build 27 s, wasm-opt
+123 s, test 125 s, size-gate 47 s, bun-test 27 s, determinism 407 s). A
+first run at load average 96 failed at bun-test on two timeouts outside
+this round's code (i18n's `og cook` hook at 5 s, web-export at 120 s; both
+pass alone in 4 s). Publish wasm: 3,052,777 B brotli, 72.8 % of the
+4 MB budget, +24,048 B from 3,028,729 B. The details are in
+`docs/phase-1.md` §Status 2026-10-19, phase 2, 3D SPH round.
