@@ -23,6 +23,7 @@
 mod support;
 
 use og_anim::*;
+use og_core::glam::Vec3;
 use og_ecs::{World, WorldDesc};
 use support::tall;
 
