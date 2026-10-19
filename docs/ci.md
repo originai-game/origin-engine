@@ -146,7 +146,7 @@ had grown `target/` to 143 GB.
 | `bun-test` | `bun run test` in each `packages/*` with a `test` script (the engine's files in parallel workers, `bun test --parallel`; the engine's `typecheck` also checks the six templates' `src/` against the generated declarations, `packages/engine/tsconfig.templates.json`; their playtests run under bun in `og test`); `OG_GATE=1` makes `packages/engine/scripts/build.sh` take the dev addon and `og` and the gate's wasm instead of compiling release and wasm again (below) | full | | yes | |
 | `determinism` | `tools/wasm-determinism/run.sh`: the same math digest and world hash on the host and on wasm32 scalar and simd128 under node, and the host release once more with lanes off and once with lanes on (failing when the lanes run did no parallel work) | full | | yes | needs node |
 | perf | `cargo test -p og-tests --release -- --ignored perf` | `make perf` | | | yes |
-| `web-reference` | `bun tests/web/reference.ts` and `--webgl` in `packages/engine`: templates/fx-showcase's five stations, then `bun tests/web/reference-e5.ts` and `--webgl` for its eight E5 stations (each a fresh run like its playtest), then `bun tests/web/reference-gfx.ts` and `--webgl` for og-tests' gfx scenes (§Browser reference tiers), in headless Chrome, compared with `references/webgpu`/`webgl2` or else `metal` under og-tests' tolerance (below); path-aware (§Lanes) | `scripts/check.sh web-reference` (`make web-reference`), in no lane | | | |
+| `web-reference` | `bun tests/web/reference.ts` and `--webgl` in `packages/engine`: templates/fx-showcase's five stations, then `bun tests/web/reference-e5.ts` and `--webgl` for its eight E5 stations (each a fresh run like its playtest), then `bun tests/web/reference-gfx.ts` and `--webgl` for og-tests' gfx scenes and og-ui's four scenes, then `bun tests/web/reference-ui.ts` and `--webgl` for templates/ui-kit's 70 reference frames (§Browser reference tiers), in headless Chrome, compared with `references/webgpu`/`webgl2` or else `metal` under og-tests' tolerance (below); path-aware (§Lanes) | `scripts/check.sh web-reference` (`make web-reference`), in no lane | | | |
 
 `cargo nextest` runs test binaries in parallel, one process per test.
 Fixtures several tests read are made once across their processes under a
@@ -333,8 +333,10 @@ which runs `OG_RELEASE=1 build.sh` with its own arguments first, packs only
 
 ## Browser reference tiers
 
-gfx references cover `metal` and `vulkan-cpu` (and `webgl2` for four
-scenes, §og-tests' gfx scenes in the browser); fx-showcase's browser tiers
+og-tests' gfx references cover `metal` and `vulkan-cpu` (and `webgl2` for
+four scenes, §og-tests' gfx scenes in the browser); og-ui's 74 reference
+frames have all four tiers (§og-ui's kit frames in the browser);
+fx-showcase's browser tiers
 come from `packages/engine/tests/web/reference.ts` (`make web-reference`): the dev
 export of `templates/fx-showcase` on a 1280×720 canvas at DPR 1 in headless
 Chrome for Testing, driven one tick and one render per `frame` call as
@@ -430,6 +432,53 @@ particles take the CPU path without compute; RMSE 0.0107 and 0.0103 against
 reflects instead; RMSE 0.0258). A WebGL2 reference is recorded only for a
 difference the tier makes by design, never to absorb a defect. Each tier
 takes 30 to 50 s after the module build.
+
+The same module carries og-ui's four reference scenes as `og-ui/<name>`
+(`sample-screen`, `text-glow`, `glass`, `widget-set`). They are built by
+`crates/og-ui/tests/support/scenes.rs`, the file og-ui's native `gfx` and
+`kit_gfx` tests build them with, included into og-tests-web by `#[path]`,
+and judged against `crates/og-ui/references/<tier>/<name>.png`, else
+`metal`. Both browser tiers have their own references for them, recorded
+2026-10-19. Against `metal` they match exactly (RMSE 0) on both tiers,
+except `widget-set` at RMSE 0.00046, which is also what the native metal
+run gives against that reference.
+
+### og-ui's kit frames in the browser
+
+`packages/engine/tests/web/reference-ui.ts` runs templates/ui-kit's
+reference playtests in headless Chrome: `frames-desktop`, `frames-phone`,
+`players`, `locales` and the twelve `skin-<pack>[-phone]` playtests, all of
+them (70 frames: 22 desktop, 21 phone, 15 locale screens, 12 skin sheets of
+20 cells). It bundles each playtest (`bundleGame`, as `og test` does), reads
+its size, commands and screenshot times, and runs reference.ts once per
+playtest with `--project templates/ui-kit --references
+crates/og-ui/references --size <w>x<h> --script <the commands without
+screenshot, quit and dump> --shots <file>@<round(60 t)>,…`, so each
+browser run is the same fresh run as the native playtest. A skin playtest
+adds `--sheet kit-skin-<pack>[-phone].png,<factor>,<cols>`: each shot is
+box-shrunk (2 on desktop, 3 on a phone, as `tests/skins.ts` does) and
+compared with its cell of the tier's sheet; the gallery shot that only
+proves the pack applied is not a cell. Frames are judged against
+`crates/og-ui/references/<webgpu|webgl2>/`, else `metal`, at og-tests'
+default tolerance, and the summary goes to
+`packages/engine/dist/test-reference/ui/reference-ui-<tier>.json`, one
+report per playtest beside it. `--only a,b` runs some playtests,
+`--record` writes the tier's frames and sheets.
+
+Both browser tiers have their own 70 frames, recorded 2026-10-19 (Chrome
+for Testing 150, Apple M4 Pro), and reproduce them exactly (RMSE 0 on every
+frame). Before recording, every frame passed against `metal` on both tiers.
+Eleven frames have outliers there, all at most 0.038 % (RMSE ≤ 0.0089,
+`kit-desktop-settings`): the edges of the large MSDF titles ("Settings",
+"Paused", "Shop", "Levels", "Toasts", the puzzle score), eleven edge
+pixels on `idle` and the gallery's scrollbar thumb, whose coverage
+differs by a fraction of a pixel. lavapipe, WebGPU and WebGL2
+all agree there (no outliers between any two of them, RMSE ≤ 0.0019); the
+difference is metal's. Every other frame is within RMSE 0.0025 of `metal`,
+except the paper pack's phone sheet at 0.0040.
+A tier takes 100 to 140 s (about 7 to 9 minutes while another heavy job
+shares the machine), so the full set runs in `web-reference` rather than
+a subset.
 
 ## Updating a budget
 

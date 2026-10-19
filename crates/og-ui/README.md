@@ -533,10 +533,10 @@ Maker which to pick and how to theme it.
 ## Tests
 
 ```sh
-export CARGO_TARGET_DIR=$PWD/target/agent-ui
 cargo test -p og-ui                                   # everything below
 OG_UI_GOLDEN=1  cargo test -p og-ui --test layout     # re-record the layout golden
-OG_UI_CAPTURE=1 cargo test -p og-ui --test gfx        # re-record this tier's reference frame
+OG_UI_CAPTURE=1 cargo test -p og-ui --test gfx --test kit_gfx  # re-record this tier's reference frames
+OG_UI_CAPTURE=1 og test templates/ui-kit              # re-record this tier's kit frames and sheets
 cargo check --target wasm32-unknown-unknown -p og-ui
 ```
 
@@ -544,6 +544,7 @@ cargo check --target wasm32-unknown-unknown -p og-ui
 |---|---|
 | `tests/layout.rs` | a nested tree (grow with a cap, wrap with a growing child, shrink-and-wrap, percent, centre, space-between, stretch, the safe area) gives the rectangles reasoned in the test and `tests/golden/layout.json` |
 | `tests/probe.rs` | through og-probe's command channel only: a click needs press and release inside (press-inside-release-outside, press-outside-release-inside and held presses do not click); `dump_ui` lists every visible element with bounds and text, in draw order; `move_to_text` exact, substring, `@N`, `@-N` and misses (which cancel the next touch); wheel scrolling moves rows, clips them to the list and stops at the content's end; the text field, toggle and slider edit game state; restoring the world and `save_state` replays identical frames |
+| `tests/support/scenes.rs` | not a test: builds the four reference scenes (`sample-screen`, `text-glow`, `glass`, `widget-set`) for `gfx.rs`, `kit_gfx.rs` and, through `#[path]`, `crates/og-tests-web`, so the browser draws the same scenes |
 | `tests/gfx.rs` | the sample screen rendered headless matches `references/<tier>/sample-screen.png` (og-tests' tolerance: 32/255 per channel, ≤ 0.5 % outliers, RMSE ≤ 0.01) in at most 2 sprite draws per painter level, no missing glyph; a scroll container cuts every sprite and text line it draws to its rectangle |
 | `tests/theme.rs` | `src/theme.rs` equals the generator's output for the vendored tokens |
 | `tests/widgets.rs` | focus: arrows pick the aligned neighbour and wrap, Tab/Shift+Tab walk reading order and wrap, Enter and Space press, the gamepad d-pad and A, the stick at once then after 24 and every 11 ticks; a dialog takes focus, keeps Tab inside, blocks presses to what is under it, closes on the backdrop and Back (not when locked) and returns focus; a select opens, chooses (mouse and keys) and closes on a press outside; a 1000-row list builds at most 13 rows, reaches its last row and scrolls a keyboard-focused row into view; toasts cap at three, leave after 3.2 s and come back with a restored state; a transition advances 1/15 per tick, is inert while moving, leaves; a meter's trail follows a drop and two runs draw identical frames; the dialogue types 15 characters in 30 ticks at 30/s, a press finishes, the next advances; anchors keep to the safe area and touch controls to 44 px; a joystick answers (1, 0) at its edge; amber in gives the token palette back, a hue accent derives lighter hovers in dark, high contrast takes `fg` for muted ink; a drag from cell 0 to cell 6 drops once and a click is no drop |
@@ -556,10 +557,22 @@ Each was checked by breaking the code it covers (the kit round's breaks are
 in `tests/evidence/E1/ui-break-and-restore.md`; earlier: grow caps, the
 release-inside rule, label probe text, element order, scroll clipping, wheel
 scrolling, a theme constant, the primary colour, the saved scroll state,
-Backspace, the toggle's click). A tier without its own reference compares
-with the `metal` one and says so; the `vulkan-cpu` reference (CI's lavapipe)
-is recorded with `OG_UI_CAPTURE=1` in the sandbox og-tests uses. The test
-font is og-tests' committed MSDF atlas (Noto Sans SC subset, OFL).
+Backspace, the toggle's click). Every reference frame (74: the four scenes,
+22 desktop and 21 phone kit screens, 15 locale screens, 12 skin sheets) is
+committed for four tiers: `metal`, `vulkan-cpu` (Mesa lavapipe, CI's tier),
+`webgpu` and `webgl2`. A tier without its own reference compares with the
+`metal` one and says so. `vulkan-cpu` is recorded with `OG_UI_CAPTURE=1`
+in the `og-lavapipe` image with Linux binaries from `cargo zigbuild
+--target x86_64-unknown-linux-gnu.2.31` (the commands are in
+`tests/evidence/P2/ui-tiers/NOTES.md`). The browser tiers come from
+`packages/engine/tests/web/reference-gfx.ts` (the four scenes, compiled
+into og-tests-web) and `reference-ui.ts` (the kit playtests through
+reference.ts), both in `scripts/check.sh web-reference`, `--record` to
+re-record (`docs/ci.md` §Browser reference tiers). The other tiers match
+`metal` within the tolerance everywhere; the largest gap is the large
+titles' edge coverage (0.038 % outliers, RMSE 0.0089 on `kit-desktop-settings`),
+which lavapipe and both browser tiers share. The test font is og-tests'
+committed MSDF atlas (Noto Sans SC subset, OFL).
 
 ## What phase 2 owes
 
@@ -584,9 +597,6 @@ font is og-tests' committed MSDF atlas (Noto Sans SC subset, OFL).
 - **Input**: several touches for widgets other than the touch controls
   (two-finger scroll, pinch). (Pads beyond the first landed in the phase 2
   UI round.)
-- `vulkan-cpu` references for og-ui's own scenes (`sample-screen`,
-  `widget-set`) and the kit templates: only `metal` exists, other tiers
-  compare with it.
 - og-probe re-exports og-input since 5c79c75, so the `ProbeInput` bridge in
   `tests/support/mod.rs` and the "og-probe still ships its interim
   `og.Input`" note in §Input are out of date; the bridge can go.

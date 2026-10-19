@@ -10,6 +10,10 @@
 // outlier; by default fail above 0.5 % outliers or an RGB RMSE above 0.01).
 // Every frame is also compared with its metal reference, reported and kept
 // in the JSON whether or not it is the frame the run is judged against.
+// og-ui's reference scenes ride along as `og-ui/<name>` (sample-screen,
+// text-glow, glass, widget-set: crates/og-ui/tests/support/scenes.rs, the
+// code og-ui's native gfx tests draw them with), judged the same way against
+// crates/og-ui/references/<tier>/<name>.png, else metal.
 //
 //   bun tests/web/reference-gfx.ts [--webgl] [--record] [--scene a,b] [--time <frames>] [--out <dir>] [--chrome <path>]
 //
@@ -54,6 +58,12 @@ const work = join(pkg, "dist", "test-gfx");
 const out = resolve(opt("--out") ?? join(work, "out"));
 const chrome = chromePath(args);
 const refs = join(repo, "crates", "og-tests", "references");
+/** Where a scene's references live: og-ui's under crates/og-ui/references. */
+function referencesOf(scene: string): { root: string; name: string } {
+  return scene.startsWith("og-ui/")
+    ? { root: join(repo, "crates", "og-ui", "references"), name: scene.slice("og-ui/".length) }
+    : { root: refs, name: scene };
+}
 /** The scenes crates/og-tests/tests/perf.rs times natively. */
 // The scenes crates/og-tests/tests/perf.rs times natively (tilemap-256 is
 // built for timing only, not in scenes::SCENES), timed the same way: 7 runs.
@@ -154,7 +164,7 @@ async function page() {
 }
 try {
   let tab = await page();
-  const all = await tab.eval<string[]>("__gfx.og_gfx_scenes()");
+  const all = [...(await tab.eval<string[]>("__gfx.og_gfx_scenes()")), ...(await tab.eval<string[]>("__gfx.og_gfx_ui_scenes()"))];
   const only = opt("--scene")?.split(",");
   const timed = Number(opt("--time") ?? 0);
   const scenes = only ?? (timed > 0 ? [...all, ...PERF.filter((p) => !all.includes(p))] : all);
@@ -191,8 +201,10 @@ try {
       const img: Image = { width: o.width, height: o.height, rgba: Uint8Array.from(atob(shot.rgba!), (c) => c.charCodeAt(0)) };
       const png = encodePng(img);
       const file = join(dir, `${scene}.png`);
+      mkdirSync(dirname(file), { recursive: true });
       writeFileSync(file, png);
-      const metal = join(refs, "metal", `${scene}.png`);
+      const where = referencesOf(scene);
+      const metal = join(where.root, "metal", `${where.name}.png`);
       if (existsSync(metal)) {
         const m = compare(img, decodePng(new Uint8Array(readFileSync(metal))), o.tolerance.channel);
         row["metal"] = { outliers: +(m.outliers * 100).toFixed(3), rmse: +m.rmse.toFixed(5), ok: m.outliers <= o.tolerance.outliers && m.rmse <= o.tolerance.rmse };
@@ -200,11 +212,12 @@ try {
       if (!all.includes(scene)) {
         console.log(`--   ${scene} (${tier}): timed only (not in scenes::SCENES, no reference)`);
       } else if (record) {
-        mkdirSync(join(refs, tier), { recursive: true });
-        copyFileSync(file, join(refs, tier, `${scene}.png`));
-        console.log(`rec  ${scene} (${tier}) -> crates/og-tests/references/${tier}/${scene}.png; against metal ${JSON.stringify(row["metal"] ?? "none")}`);
+        mkdirSync(join(where.root, tier), { recursive: true });
+        const to = join(where.root, tier, `${where.name}.png`);
+        copyFileSync(file, to);
+        console.log(`rec  ${scene} (${tier}) -> ${to.slice(repo.length + 1)}; against metal ${JSON.stringify(row["metal"] ?? "none")}`);
       } else {
-        const own = join(refs, tier, `${scene}.png`);
+        const own = join(where.root, tier, `${where.name}.png`);
         const against = existsSync(own) ? own : metal;
         if (!existsSync(against)) throw new Error(`no reference at ${own} or ${metal}; record one with --record --scene ${scene}`);
         const d = compare(img, decodePng(new Uint8Array(readFileSync(against))), o.tolerance.channel);

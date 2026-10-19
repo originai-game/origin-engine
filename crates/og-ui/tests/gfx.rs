@@ -12,63 +12,6 @@ use og_ui::*;
 use std::path::PathBuf;
 use support::*;
 
-/// Ticks of the sample session: focus the search field and type, scroll the
-/// list a little, then rest the pointer on a Buy button until its tooltip shows.
-fn session(ui: &mut Ui, s: &mut Sample) {
-    let vp = viewport();
-    let step = |ui: &mut Ui, s: &mut Sample, input: InputFrame| {
-        ui.begin(input, vp);
-        sample_screen(ui, s);
-        ui.end();
-    };
-    step(ui, s, InputFrame::default());
-    let at = |ui: &Ui, path: &str| {
-        let e = ui
-            .frame()
-            .element(path)
-            .unwrap_or_else(|| panic!("no element {path}"));
-        let (x, y) = e.center();
-        Vec2::new(x, y)
-    };
-    let field = at(ui, "Search");
-    let press = |p: Vec2| InputFrame {
-        pointer: p,
-        pointer_inside: true,
-        down: true,
-        pressed: true,
-        ..InputFrame::default()
-    };
-    let release = |p: Vec2| InputFrame {
-        pointer: p,
-        pointer_inside: true,
-        released: true,
-        ..InputFrame::default()
-    };
-    step(ui, s, press(field));
-    step(ui, s, release(field));
-    step(
-        ui,
-        s,
-        InputFrame {
-            text: "pot".into(),
-            ..InputFrame::hover(field.x, field.y)
-        },
-    );
-    let list = at(ui, "List");
-    step(
-        ui,
-        s,
-        InputFrame {
-            wheel: Vec2::new(0.0, 22.0),
-            ..InputFrame::hover(list.x, list.y)
-        },
-    );
-    let buy = at(ui, "Row#2/Buy");
-    for _ in 0..40 {
-        step(ui, s, InputFrame::hover(buy.x, buy.y));
-    }
-}
-
 fn reference_dir(tier: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("references")
@@ -77,14 +20,8 @@ fn reference_dir(tier: &str) -> PathBuf {
 
 #[test]
 fn sample_screen_matches_its_reference_frame() {
-    let vp = viewport();
-    let mut scene = RenderScene::new();
-    let font = add_test_font(&mut scene);
-    let atlas = scene.add_texture(atlas_texture());
-    let mut ui = ui_with_font(font);
-    let mut s = Sample::default();
-    session(&mut ui, &mut s);
-    let frame = ui.frame();
+    let (shot, s) = with_test_font(sample_screen_shot);
+    let frame = shot.ui.frame();
     assert!(frame.warnings.is_empty(), "{:?}", frame.warnings);
     assert_eq!(s.search, "pot", "the focused field took the typed text");
     assert!(
@@ -92,21 +29,9 @@ fn sample_screen_matches_its_reference_frame() {
         "the tooltip shows after the pointer rests on Buy"
     );
 
-    let mut overlay = og_render::Overlay::new(vp.width, vp.height, vp.dpr);
-    frame.emit(&EmitDesc { atlas, layer: 0 }, &mut overlay);
-    scene.overlay = Some(overlay);
-    let bg = ui.theme().palette.bg.linear();
-    scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
-    scene.post.tonemap = Tonemap::None;
-
-    let desc = RenderDesc {
-        width: (vp.width * vp.dpr) as u32,
-        height: (vp.height * vp.dpr) as u32,
-        ..RenderDesc::default()
-    };
-    let mut renderer = Renderer::new_blocking(&desc).expect("a headless adapter");
+    let mut renderer = Renderer::new_blocking(&shot.desc).expect("a headless adapter");
     let stats = renderer
-        .render(&scene, &RenderTarget::Offscreen)
+        .render(&shot.scene, &RenderTarget::Offscreen)
         .expect("render");
     let image = renderer.read_offscreen().expect("read back");
     let tier = renderer.info().backend_tier();
@@ -272,69 +197,6 @@ fn a_scroll_container_clips_everything_it_draws() {
     );
 }
 
-/// A dark card of display-size labels, with or without a skin's text
-/// glow, as a scene ready to render.
-fn glow_scene(glow: bool, labels: usize) -> (RenderScene, RenderDesc) {
-    let vp = Viewport {
-        dpr: 1.0,
-        ..Viewport::new(480.0, 200.0f32.max(16.0 + 40.0 * labels as f32))
-    };
-    let mut scene = RenderScene::new();
-    let font = add_test_font(&mut scene);
-    let atlas = scene.add_texture(atlas_texture());
-    let mut ui = ui_with_font(font);
-    let mut theme = *ui.theme();
-    // Tight tracking: glyph quads overlap their neighbours.
-    theme.type_ramp.display_md.tracking_em = -0.1;
-    if glow {
-        theme.skin.text_glows[0] = Some(og_ui::skin::Glow {
-            size: 2.0,
-            ink: og_ui::skin::Ink::Accent,
-            alpha: 0.8,
-        });
-    }
-    ui.set_theme(theme);
-    for _ in 0..2 {
-        ui.begin(InputFrame::default(), vp);
-        let t = *ui.theme();
-        ui.column(
-            "Card",
-            Element {
-                width: Size::grow(),
-                height: Size::grow(),
-                padding: Insets::all(t.space.lg),
-                background: Some(t.palette.bg),
-                ..Element::default()
-            },
-            |ui| {
-                for k in 0..labels {
-                    ui.label(
-                        ui_idi("Title", k as u32),
-                        "Wall 42",
-                        LabelDesc {
-                            step: Some(t.type_ramp.display_md),
-                            ..LabelDesc::default()
-                        },
-                    );
-                }
-            },
-        );
-        ui.end();
-    }
-    let mut overlay = og_render::Overlay::new(vp.width, vp.height, vp.dpr);
-    ui.frame().emit(&EmitDesc { atlas, layer: 0 }, &mut overlay);
-    scene.overlay = Some(overlay);
-    let bg = ui.theme().palette.bg.linear();
-    scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
-    scene.post.tonemap = Tonemap::None;
-    let desc = RenderDesc {
-        width: vp.width as u32,
-        height: vp.height as u32,
-        ..RenderDesc::default()
-    };
-    (scene, desc)
-}
-
 /// A skin's text glow is one soft halo read from the font's distance field
 /// (og-render's MSDF shader), not offset copies of the text: the ink is the
 /// same with and without it, the pixels just outside the glyphs take the
@@ -349,7 +211,7 @@ fn glow_scene(glow: bool, labels: usize) -> (RenderScene, RenderDesc) {
 #[test]
 fn a_text_glow_is_a_halo_from_the_distance_field() {
     let render = |glow: bool| {
-        let (scene, desc) = glow_scene(glow, 1);
+        let (scene, desc) = with_test_font(|f| glow_scene(f, glow, 1));
         let mut renderer = Renderer::new_blocking(&desc).expect("a headless adapter");
         let stats = renderer
             .render(&scene, &RenderTarget::Offscreen)
@@ -567,37 +429,16 @@ fn bold_rich_text_is_heavier_ink_never_a_box() {
     }
 }
 
-/// A scene of fine vertical stripes (4 px black, 4 px white) under an
-/// overlay holding `glass` panels, 320×200 at 1×.
+/// The stripes scene (`stripes_scene`) under `glass` panels, rendered and
+/// read back.
 fn stripes_frame(glass: &[og_render::Glass]) -> (Vec<u8>, usize, usize, og_render::FrameStats) {
-    let (w, h) = (320u32, 200u32);
-    let mut scene = RenderScene::new();
-    scene.camera =
-        og_render::Camera::orthographic_2d(Vec2::new(w as f32 / 2.0, h as f32 / 2.0), h as f32);
-    for k in 0..(w / 8) {
-        scene.sprites.push(og_render::Sprite {
-            position: Vec3::new(k as f32 * 8.0 + 2.0, h as f32 / 2.0, 0.0),
-            size: Vec2::new(4.0, h as f32),
-            color: [1.0, 1.0, 1.0, 1.0],
-            ..og_render::Sprite::default()
-        });
-    }
-    scene.environment.background = Background::Color(Vec3::ZERO);
-    scene.post.tonemap = Tonemap::None;
-    let mut overlay = og_render::Overlay::new(w as f32, h as f32, 1.0);
-    overlay.glass.extend_from_slice(glass);
-    scene.overlay = Some(overlay);
-    let desc = RenderDesc {
-        width: w,
-        height: h,
-        ..RenderDesc::default()
-    };
+    let (scene, desc) = stripes_scene(glass);
     let mut renderer = Renderer::new_blocking(&desc).expect("a headless adapter");
     let stats = renderer
         .render(&scene, &RenderTarget::Offscreen)
         .expect("render");
     let img = renderer.read_offscreen().expect("read back");
-    (img.pixels, w as usize, h as usize, stats)
+    (img.pixels, desc.width as usize, desc.height as usize, stats)
 }
 
 /// A glass panel shows the frame under it blurred, inside its rounded
@@ -614,16 +455,7 @@ fn stripes_frame(glass: &[og_render::Glass]) -> (Vec<u8>, usize, usize, og_rende
 /// ignored.
 #[test]
 fn a_glass_panel_blurs_the_frame_under_it_and_nothing_else() {
-    let panel = og_render::Glass {
-        position: Vec2::new(80.0, 40.0),
-        size: Vec2::new(160.0, 120.0),
-        radius: 24.0,
-        blur: 16.0,
-        tint: [0.0, 0.0, 0.0, 0.0],
-        alpha: 1.0,
-        layer: 0,
-        clip: None,
-    };
+    let panel = glass_panel();
     let (plain, w, h, _) = stripes_frame(&[]);
     let (glass, _, _, stats) = stripes_frame(&[panel]);
     let px = |p: &[u8], x: usize, y: usize| -> [i32; 3] {
@@ -789,7 +621,7 @@ fn text_glow_cost() {
     let mut best = [f64::INFINITY; 2];
     for round in 0..6 {
         let glow = round % 2 == 1;
-        let (scene, desc) = glow_scene(glow, 24);
+        let (scene, desc) = with_test_font(|f| glow_scene(f, glow, 24));
         let desc = RenderDesc {
             width: 1280,
             height: 1040,
