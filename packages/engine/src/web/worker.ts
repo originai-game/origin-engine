@@ -272,7 +272,7 @@ export function installInflater(glue: Pick<WebExtras, "og_web_set_inflater" | "o
   const { og_web_set_inflater: set, og_web_put_inflated: put, og_web_fail_inflated: fail } = glue;
   if (!Stream || !set || !put || !fail) return false;
   set((key: number, bytes: Uint8Array) => {
-    new Response(new Blob([bytes]).stream().pipeThrough(new Stream("deflate")))
+    new Response(new Blob([new Uint8Array(bytes)]).stream().pipeThrough(new Stream("deflate")))
       .arrayBuffer()
       .then(
         (b) => put(key, new Uint8Array(b)),
