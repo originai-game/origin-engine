@@ -7,6 +7,110 @@ the platform can run it in an `engine`-class sandbox. Spike findings
 (`docs/spike-results.md`) are the baseline; the spike crate is the seed
 of `og-render` and is deleted once its code has moved.
 
+## Status 2026-10-19, Phase 2, core round
+
+Branch `p2-core`, 11d6820..71dabed. It closes the engine defects and gaps
+the archetypes round (below) found. Each public addition went through the
+IDL in its own commit, with its skill text and the generated wiki.
+
+- **og.Rng from reads, loud undeclared access** (d2bd748, 71dabed): a fork
+  reads the seed and the label and moves nothing, so a system with og.Rng
+  in `reads` forks the same streams as one that writes it, where it used to
+  answer NaN. The reproduction is `packages/engine/tests/fixtures/rng-readonly`.
+  An undeclared resource or event read or write throws in og run and
+  og test, naming the system and the record. A publish build refuses it
+  and logs it once per system and access through the probe's diagnostics.
+  og-core states both rules.
+- **The host's clock** (fc97734): `og.platform.now`, a `time` on every
+  og.platform answer, and `og.platform.info(world).clock` (`player`,
+  `browser`, `system`, `fixed` or `none`). These are host input between ticks, so a replay
+  records them. Natively the clock is the system's; `og run --clock` and
+  `og test` fix it. On the web the Worker uses the browser's clock until
+  the Player's hello and answers carry `time` (`docs/platform-asks.md`,
+  open ask 9). An answer that already carries a `time` is taken as is.
+- **A kept store** (cd1f0d3): an `og test` spec with `store: "keep"` runs
+  each `then` step as a new process over one local platform store, on a
+  host clock the spec moves. `relaunch:<seconds>` stays for one-process
+  tests.
+- **Input `at`** (56fc770): key and pointer events carry when they happened
+  within the tick that reads them (-1 to 1 of a tick). The time is handed
+  in with the event, so the world stays deterministic on both hosts.
+- **og.audio.outputLatency** (094df16): the time from world time to the
+  speaker. On the web it is the AudioContext's output and base latency
+  plus the ring's prime. Natively it is the device's latency (cpal's playback
+  instant less its callback instant) and the mixer's buffer, and headless it
+  is 0.
+- **AudioSource.startOffset** (f3fb31f): a clip can start part-way, to the
+  sample (og-audio's `mix.rs` asserts the PCM).
+- **Archetypes** (d2bd748, 4868361, b6d889a): their workarounds are gone.
+  - The roguelike's Foes and Loot declare og.Rng in their reads.
+  - The idle game stamps its save with og.platform.now and credits the
+    time away from the store answer's `time`. `tests/away.og.ts`
+    relaunches two hours later in a second process.
+  - The rhythm game judges a press at its `at`, against what was heard
+    (the output latency, plus the player's own offset), and resumes from
+    the beat it paused on (`tests/timing.og.ts`, `tests/pause.og.ts`).
+  - Each README's Known limits keeps only what is still open.
+- **Playtests**: every template's `og test` passes.
+
+  | Template | Suites |
+  |---|---|
+  | game | 2 |
+  | ui-kit | 25 |
+  | fx-showcase | 10 |
+  | idle | 10 |
+  | match3 | 6 |
+  | rhythm | 11 |
+  | roguelike | 9 |
+  | runner | 8 |
+  | topdown | 7 |
+  | tower-defense | 9 |
+
+- **og polish** (`tests/evidence/P2/core/polish/`):
+
+  | Archetype | Taste | Feel |
+  |---|---|---|
+  | idle | 97 | 74 |
+  | roguelike | 99 | 80 |
+  | rhythm | 99 | 74 |
+
+  Taste is unchanged from the archetypes round, and every feel row but
+  frame time reads 92 to 100. The frame-time row is 0 because these runs
+  used the debug og at load 28. The archetypes round's runs used a release
+  og. Run og polish on the rhythm game from its own directory: its tests'
+  chart lookup falls back to the working directory.
+- **Gate**: `OG_GATE_JOBS=2 scripts/check.sh --all` at 71dabed,
+  2026-10-19, at load 16–29, **PASSED, 9 of 9 steps in 147 s**. The steps
+  took fmt 1 s, clippy 1 s, wasm-build 9 s, test 105 s, wasm-opt 104 s,
+  size-gate 31 s, drift 1 s, bun-test 25 s and determinism 2 s. Builds were
+  warm from the path-aware run before it.
+
+  Two earlier runs did not count. The first `--all` stopped at clippy on
+  a `manual_contains` lint in the undeclared-access check, which 71dabed
+  fixes. The path-aware run before this gate timed out e5's every-feature
+  hash test at 5 s under twelve parallel files. That test passes alone in
+  0.66 s and in this gate.
+
+  Path-aware runs after the gate, with only this section and the evidence
+  changed, hit two timing bounds at load 28–36. e5's hash test timed out
+  again. og-audio's `one_second_of_a_busy_mix_renders_in_bounded_time` took
+  1,621.9 ms against its 1,000 ms debug bound. Both pass when run alone,
+  and both tests predate this round. The round's mixer change touches only
+  a voice that has not started yet.
+- **Wasm**: the publish wasm is 2,982,720 B brotli, 71 % of the budget,
+  +4,259 B over 2,978,461 B.
+- **Evidence**: `tests/evidence/P2/core/break-and-restore.md` breaks every
+  new check once.
+- **Not done**:
+  - The TS types do not restrict `world.resource` to the declared set.
+    IDL callbacks carry no generics, so that needs an og-idl generator
+    change; the runtime check is the guard meanwhile.
+  - A gamepad press carries no `at`, because the shell polls pads once a
+    display frame.
+  - The native device latency is not tested: the gate has no audio
+    device and builds without `native-audio`. The web value is tested.
+  - The Player's own clock waits on ask 9.
+
 ## Phase 2, terrain and water round (2026-10-19)
 
 Branch `p2-terrain-water`, 0ee78f1..HEAD on 2dae5fa. Closes owed row 24.
@@ -106,20 +210,22 @@ wasm-opt 62 s, size-gate 28 s, drift 1 s, bun-test 22 s, determinism
 archetypes' `og test` runs (9, 9, 9 and 10 suites) pass beside it.
 
 Engine gaps the games work around, each in its README's Known limits:
-og.platform's answers carry no time, so the idle game cannot know how long
-it was closed (`relaunch:<seconds>` stands in for the host); og.audio
-reports no output latency and og.Input no time within the tick, so the
-rhythm game calibrates the whole chain from the player's taps; an
-AudioSource cannot start part-way (a resume restarts the two-bar phrase);
 og.ui's `settingsScreen`, `resultsScreen` and `idleHud` carry English
 words and number formats of their own, so the settings, end cards and the
 idle HUD are built from widgets; `og polish` reads og.ui's phone title
-menu (a bottom sheet) as HUD. Two engine defects met on the way: a system
-with `og.Rng` in `reads` only gets streams that answer NaN
-(`world.resource(og.Rng).value.fork("x").next()`; declared in `writes`
-it answers 0.6868…), so the roguelike's systems declare it written; and a
-system that reads a resource it did not declare gets a refusal it can
-only notice by checking `ok`.
+menu (a bottom sheet) as HUD. Closed by the Phase 2 core round (above):
+og.platform's answers carry the host's time and og.platform.now reads it,
+so the idle game credits the time away from the save's stamp (a second
+`og test` process over a kept store is its test; `relaunch:<seconds>`
+stays for tests in one process); og.audio.outputLatency and the input
+events' `at` let the rhythm game judge a press when it happened and as it
+was heard (the taps' calibration stays, as the player's own offset); an
+AudioSource's `startOffset` starts a clip part-way to the sample, so a
+resume carries on from the beat it paused on. The two engine defects met
+on the way are fixed there too: a system with `og.Rng` in `reads` only
+forks the same streams as one that writes it (the roguelike's Foes and
+Loot declare it in their reads), and an undeclared resource or event access throws in og run
+and og test and is refused and logged once per system in a publish build.
 
 ## Status 2026-10-19, E7 round
 
