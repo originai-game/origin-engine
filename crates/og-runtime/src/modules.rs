@@ -12,7 +12,8 @@
 //! 3. the game's systems (declaration order, then `after`/`before`);
 //! 4. `og.ui.end`: lays the frame out (the probe and the renderer read it);
 //! 5. `og.physics`: steps the simulation and writes the dynamic bodies back;
-//! 6. `og.audio`: turns the tick's AudioSource changes into commands.
+//! 6. `og.ui.sound`: starts a voice for each UI event of the tick;
+//! 7. `og.audio`: turns the tick's AudioSource changes into commands.
 //!
 //! The UI's interaction state is the `og.ui` state block, so snapshots and
 //! the world hash carry it with the physics world (`og.physics`) and the
@@ -46,7 +47,8 @@ pub const UI_BEGIN: &str = "og.ui.begin";
 pub const UI_END: &str = "og.ui.end";
 /// The state block that carries the UI's interaction state.
 pub const UI_STATE: &str = "og.ui";
-/// The system that plays the UI's event sounds (after og.audio).
+/// The system that plays the UI's event sounds (before og.audio, so they
+/// start in the tick of their input).
 pub const UI_SOUND: &str = "og.ui.sound";
 /// The sprite layer the UI's painter level 0 draws on: above game sprites.
 pub const UI_LAYER: i32 = 1 << 20;
@@ -165,18 +167,11 @@ pub(crate) fn mount_back(
         .map_err(err)?;
     super::physics_ext::schedule_ragdoll_targets(world, engine_id, &physics)?;
     physics.schedule(world).map_err(err)?;
-    let audio = og_audio::install(
-        world,
-        &og_audio::AudioDesc {
-            link,
-            occluder: Some(super::e6::occluder(&physics)),
-            ..og_audio::AudioDesc::default()
-        },
-    )
-    .map_err(err)?;
-    // UI sounds: the events og.ui.end queued, played on the ui bus. A
-    // voice per event (its entity kept in the UI state) restarts on a
-    // repeat; the sources start in og.audio's next pass, one tick on.
+    // UI sounds: the events this tick's UI queued (its begin, from the
+    // input, and its widgets), played on the ui bus. A voice per event
+    // (its entity kept in the UI state) restarts on a repeat. This runs
+    // before og.audio, so og.audio turns the new sources into this tick's
+    // commands: the sound starts in the tick of the input that caused it.
     let shared = ui.clone();
     world
         .add_system(
@@ -205,6 +200,15 @@ pub(crate) fn mount_back(
             },
         )
         .map_err(err)?;
+    let audio = og_audio::install(
+        world,
+        &og_audio::AudioDesc {
+            link,
+            occluder: Some(super::e6::occluder(&physics)),
+            ..og_audio::AudioDesc::default()
+        },
+    )
+    .map_err(err)?;
     world
         .add_state_block(UI_STATE, Box::new(UiState(ui.clone())))
         .map_err(err)?;

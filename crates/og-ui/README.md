@@ -223,9 +223,12 @@ has a sound for it: `Hover` (the pointer reaches a navigable control),
 `Press`, `Open` and `Close` (a dialog's first tick each way), `Success`
 (a success toast), `Error` (a danger toast or a refused press).
 `Ui::take_sounds()` hands them to the host; the runtime's `og.ui.sound`
-system (after `og.audio`) plays each through og-audio on the `ui` bus, one
-voice per event kept in the UI state (`Ui::voices_mut`), restarted on a
-repeat. The source starts in og-audio's next pass, one tick after the input.
+system (after the physics step, before `og.audio`) plays each through
+og-audio on the `ui` bus, one voice per event kept in the UI state
+(`Ui::voices_mut`), restarted on a repeat. So `og.audio` turns it into the
+same tick's commands and the sound's first sample lies in the tick of the
+input that caused it (`packages/engine/tests/ui-sound.test.ts` reads it
+from the mix `og run --audio` renders).
 
 ## Responsive layout and the safe area
 
