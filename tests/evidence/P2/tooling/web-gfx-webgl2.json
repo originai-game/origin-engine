@@ -1,0 +1,811 @@
+{
+  "tier": "webgl2",
+  "buildMs": 620,
+  "scenes": {
+    "gltf-reference": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 76.2,
+      "metal": {
+        "outliers": 0.003,
+        "rmse": 0.00344,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/gltf-reference.png",
+      "outliers": 0.003,
+      "rmse": 0.00344,
+      "ok": true,
+      "ms": 910
+    },
+    "spheres-20k": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 40.2,
+      "metal": {
+        "outliers": 0.093,
+        "rmse": 0.00567,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/spheres-20k.png",
+      "outliers": 0.093,
+      "rmse": 0.00567,
+      "ok": true,
+      "ms": 609
+    },
+    "cascades-200m": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 36.5,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/cascades-200m.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 517
+    },
+    "point-spot-lights": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 26.7,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/point-spot-lights.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 767
+    },
+    "taa": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Msaa4",
+      "frames": 16,
+      "applies": false,
+      "ms": 213
+    },
+    "msaa": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Msaa4",
+      "frames": 1,
+      "renderMs": 26.9,
+      "against": "crates/og-tests/references/webgl2/msaa.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 452
+    },
+    "bloom": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 22,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/bloom.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 933
+    },
+    "exposure": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 31.3,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/exposure.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 440
+    },
+    "sprites-20k": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 25.3,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/sprites-20k.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 548
+    },
+    "text-msdf": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 24.7,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/text-msdf.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 433
+    },
+    "sky-only": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 19.3,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/sky-only.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 460
+    },
+    "showcase": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Msaa4",
+      "frames": 16,
+      "renderMs": 153.9,
+      "metal": {
+        "outliers": 0.181,
+        "rmse": 0.01072,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/webgl2/showcase.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 990
+    },
+    "overlay": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Msaa4",
+      "frames": 16,
+      "renderMs": 113.2,
+      "metal": {
+        "outliers": 0.167,
+        "rmse": 0.01028,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/webgl2/overlay.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 1317
+    },
+    "particles": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 120,
+      "renderMs": 174.6,
+      "metal": {
+        "outliers": 0.063,
+        "rmse": 0.00751,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/particles.png",
+      "outliers": 0.063,
+      "rmse": 0.00751,
+      "ok": true,
+      "ms": 1904
+    },
+    "particles-cpu": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 120,
+      "renderMs": 176.2,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/particles-cpu.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 1860
+    },
+    "fx-2d": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 60,
+      "renderMs": 52,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00004,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/fx-2d.png",
+      "outliers": 0,
+      "rmse": 0.00004,
+      "ok": true,
+      "ms": 1876
+    },
+    "trails-beams": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 50,
+      "renderMs": 64,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/trails-beams.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 1446
+    },
+    "decals": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 44.5,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/decals.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 1181
+    },
+    "post-grade": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 42.5,
+      "metal": {
+        "outliers": 0.007,
+        "rmse": 0.00353,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/post-grade.png",
+      "outliers": 0.007,
+      "rmse": 0.00353,
+      "ok": true,
+      "ms": 678
+    },
+    "ao-gtao": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 46.6,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/ao-gtao.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 755
+    },
+    "ao-ssao": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 46.5,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/ao-ssao.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 581
+    },
+    "dof-low": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 47.7,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00001,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/dof-low.png",
+      "outliers": 0,
+      "rmse": 0.00001,
+      "ok": true,
+      "ms": 1212
+    },
+    "dof-high": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 55.7,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00001,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/dof-high.png",
+      "outliers": 0,
+      "rmse": 0.00001,
+      "ok": true,
+      "ms": 1298
+    },
+    "god-rays": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 28.3,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/god-rays.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 1657
+    },
+    "motion-blur": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 4,
+      "renderMs": 37.6,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/motion-blur.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 1436
+    },
+    "stylised": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 66.2,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/stylised.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 484
+    },
+    "skinning": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 303,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/skinning.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 1667
+    },
+    "atmosphere-fog": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 30.6,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/atmosphere-fog.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 911
+    },
+    "atmosphere-dusk": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 30.6,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/atmosphere-dusk.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 732
+    },
+    "atmosphere-night": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 35.7,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/atmosphere-night.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 668
+    },
+    "water-3d": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 31.4,
+      "metal": {
+        "outliers": 1.446,
+        "rmse": 0.02577,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/webgl2/water-3d.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 906
+    },
+    "water-2d": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 35.5,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/water-2d.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 691
+    },
+    "fluid-2d": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 24.3,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/fluid-2d.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 391
+    },
+    "fluid-groups": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 28.9,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/fluid-groups.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 407
+    },
+    "shader-hooks": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 299.5,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00036,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/shader-hooks.png",
+      "outliers": 0,
+      "rmse": 0.00036,
+      "ok": true,
+      "ms": 1471
+    },
+    "weather-rain": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 240,
+      "renderMs": 268.4,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00001,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/weather-rain.png",
+      "outliers": 0,
+      "rmse": 0.00001,
+      "ok": true,
+      "ms": 1385
+    },
+    "weather-snow": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 240,
+      "renderMs": 252.9,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00001,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/weather-snow.png",
+      "outliers": 0,
+      "rmse": 0.00001,
+      "ok": true,
+      "ms": 1624
+    },
+    "terrain-near": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 48.3,
+      "metal": {
+        "outliers": 0.025,
+        "rmse": 0.00625,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/terrain-near.png",
+      "outliers": 0.025,
+      "rmse": 0.00625,
+      "ok": true,
+      "ms": 1449
+    },
+    "terrain-mid": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 56.6,
+      "metal": {
+        "outliers": 0.009,
+        "rmse": 0.00246,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/terrain-mid.png",
+      "outliers": 0.009,
+      "rmse": 0.00246,
+      "ok": true,
+      "ms": 1197
+    },
+    "terrain-far": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 40,
+      "metal": {
+        "outliers": 0.001,
+        "rmse": 0.00067,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/terrain-far.png",
+      "outliers": 0.001,
+      "rmse": 0.00067,
+      "ok": true,
+      "ms": 1048
+    },
+    "water-planar": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 33.6,
+      "metal": {
+        "outliers": 0.002,
+        "rmse": 0.00084,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/water-planar.png",
+      "outliers": 0.002,
+      "rmse": 0.00084,
+      "ok": true,
+      "ms": 1466
+    },
+    "water-shadows": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 45.2,
+      "metal": {
+        "outliers": 0.004,
+        "rmse": 0.00725,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/water-shadows.png",
+      "outliers": 0.004,
+      "rmse": 0.00725,
+      "ok": true,
+      "ms": 2382
+    },
+    "water-underwater": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 55,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.0004,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/water-underwater.png",
+      "outliers": 0,
+      "rmse": 0.0004,
+      "ok": true,
+      "ms": 700
+    },
+    "terrain-grass": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 46.1,
+      "metal": {
+        "outliers": 0.015,
+        "rmse": 0.00516,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/terrain-grass.png",
+      "outliers": 0.015,
+      "rmse": 0.00516,
+      "ok": true,
+      "ms": 1260
+    },
+    "lights-256": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 39.4,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/lights-256.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 1201
+    },
+    "atmosphere-moon": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 41.7,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/atmosphere-moon.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 662
+    },
+    "materials": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 40.7,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/materials.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 823
+    },
+    "skinned-hooks": {
+      "tier": "webgl2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 614.6,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/skinned-hooks.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 3037
+    }
+  },
+  "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+  "ms": 51622,
+  "log": []
+}

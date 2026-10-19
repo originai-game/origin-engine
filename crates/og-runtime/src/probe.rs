@@ -319,6 +319,11 @@ pub(crate) fn after_reload(eng: &Engine, swapped: bool) {
     rs.draw = draw;
     rs.fx.anim = Some(a.anim.clone());
     rs.feel.feel = Some((a.feel.clone(), a.feel_records.clone()));
+    drop(rs);
+    // `og dev` cooks an asset edit before it rebuilds the bundle: a model
+    // whose cooked output changed loads again under the handle it had.
+    let (_, failed) = super::assets::refresh(eng);
+    eng.state.borrow_mut().warnings.extend(failed);
 }
 
 /// One JSON-RPC call through the probe, with the runtime's additions to

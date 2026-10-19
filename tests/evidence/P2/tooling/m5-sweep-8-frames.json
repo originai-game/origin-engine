@@ -1,0 +1,11 @@
+{
+ "machine": "Apple M4 Pro (14 cores), macOS, release og and native addon",
+ "load_average_1m": 84.83,
+ "targetMs": 1000,
+ "params": {"id": "trickster", "parameter": "Spin.speed", "values": [-3, -2, -1, 0, 1, 2, 3, 4], "steps": 30},
+ "size": "1280x720 (the render target's)",
+ "runs_ms": [559, 298, 422, 450, 405],
+ "frames_per_run": 8,
+ "distinct_frames_per_run": 8,
+ "note": "Each figure is the wall clock round trip of one `og probe sweep` process: start-up, the WebSocket call, 8 x (restore the snapshot, set the value, 30 ticks, capture and PNG-encode the frame), the base64 answer and the restore of the world afterwards. The frames are sweep-1's, at quarter size in m5-sweep-8-frames.png."
+}

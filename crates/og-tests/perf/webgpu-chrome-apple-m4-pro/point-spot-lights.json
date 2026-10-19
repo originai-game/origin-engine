@@ -1,0 +1,26 @@
+{
+  "scene": "point-spot-lights",
+  "tier": "webgpu",
+  "browser": "Chrome for Testing (cdp.ts)",
+  "adapter": "",
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 100,
+  "runs_ms": [
+    0.427,
+    0.428,
+    0.431,
+    0.455,
+    0.469,
+    0.532,
+    0.549
+  ],
+  "frame_ms": 0.427,
+  "submit_median_ms": 0.1,
+  "load": [
+    132.7,
+    59.2,
+    39.7
+  ],
+  "note": "each run ends in one capture (its readback waits for the GPU to finish the run's frames)"
+}
