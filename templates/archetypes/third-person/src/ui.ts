@@ -2,7 +2,8 @@
 // engine's fantasy pack): the title over an orbit of the vale, the HUD
 // (hearts and beacons top-left, the dusk clock and pause top-right, the
 // kindling prompt and its progress at the bottom; on a touch screen a
-// joystick and Jump and Kindle), the pause menu, the settings dialog and
+// joystick, Jump and Kindle, and a drag on the right half turning the
+// view), the pause menu, the settings dialog and
 // the run's summary. Screens change through a dissolve (a fade with
 // reduced motion). Every string is a key of assets/strings/*.ogt.
 //
@@ -74,10 +75,24 @@ export function toTitle(world: World, g: GameV): void {
   setHour(world, g.hour);
 }
 
-/** The record ({runs, wins, best}) written at the revision it was read at. */
+/**
+ * The record ({runs, wins, best}) written at the revision last read or
+ * written. One call at a time: while a read or a write is in flight the
+ * newer record waits (recordDirty) and goes out when that answers, at the
+ * revision the answer gives, so a late answer never stands for a newer
+ * local record.
+ */
 function saveRecord(world: World, g: GameV): void {
+  if (g.recordRequest !== 0 || g.recordWrite !== 0) {
+    g.recordDirty = true;
+    return;
+  }
+  g.recordDirty = false;
   const r = og.platform.storeSet(world, { key: "record", value: { runs: g.runs, wins: g.wins, best: g.best }, revision: g.recordRevision });
-  if (r.ok) g.recordWrite = r.value;
+  if (!r.ok) return;
+  g.recordWrite = r.value;
+  g.recordSentRuns = g.runs;
+  g.recordSentWins = g.wins;
 }
 
 function applyPrefs(world: World, p: PrefsV): void {
@@ -143,7 +158,7 @@ function platform(world: World, g: GameV, p: PrefsV): void {
       g.recordRuns = runs;
       g.recordWins = wins;
       if (typeof d?.revision === "number") g.recordRevision = d.revision;
-      if (g.recordMerge) {
+      if (g.recordMerge || g.recordDirty) {
         g.recordMerge = false;
         saveRecord(world, g);
       }
@@ -154,16 +169,18 @@ function platform(world: World, g: GameV, p: PrefsV): void {
     if (r !== null) {
       g.recordWrite = 0;
       if (r.ok) {
+        // The store now holds what was sent, at the revision it answers.
         g.recordRevision = (r.data as { revision: number }).revision;
-        g.recordRuns = g.runs;
-        g.recordWins = g.wins;
+        g.recordRuns = g.recordSentRuns;
+        g.recordWins = g.recordSentWins;
+        if (g.recordDirty) saveRecord(world, g);
       } else if (r.error?.code === "conflict") {
         // Someone else wrote the record: read it again and write the merge.
         g.recordConflicts += 1;
         g.recordMerge = true;
         const again = og.platform.storeGet(world, "record");
         g.recordRequest = again.ok ? again.value : 0;
-      }
+      } else if (g.recordDirty) saveRecord(world, g);
     }
   }
 }
@@ -171,6 +188,8 @@ function platform(world: World, g: GameV, p: PrefsV): void {
 /** The clock and the endings: night at HOURS.night, the hearts gone, or (the Beacons system) every beacon lit. */
 function clock(world: World, g: GameV, dt: number): void {
   const t = lazyTuning(world);
+  // The summary's moments (its burst) count on from the run's end.
+  if (g.phase === Phase.Over) g.overTicks += 1;
   if (g.phase !== Phase.Play) return;
   if (g.ending === Ending.None) {
     g.time += dt;
@@ -261,6 +280,44 @@ function hud(world: World, g: GameV): void {
   if (stickX !== g.stickX) g.stickX = stickX;
   if (stickY !== g.stickY) g.stickY = stickY;
   if (kindle !== g.padKindle) g.padKindle = kindle;
+  look(world, g, touch ? vp : null);
+}
+
+/** Radians the view turns per CSS px a finger drags across the look zone. */
+const LOOK_RAD_PER_PX = 0.008;
+
+/**
+ * The touch view turn: a finger that lands in the look zone (the right
+ * half, below the clock and above Jump and Kindle) turns the view as it
+ * drags sideways, alongside the stick's thumb, until it lifts. The turn
+ * goes to View through Game.lookTurn.
+ */
+function look(world: World, g: GameV, vp: ReturnType<typeof og.ui.frameViewport> | null): void {
+  let turn = 0;
+  let id = g.lookId;
+  if (vp === null) id = -1;
+  else {
+    const ptr = must(world.resource(og.Pointers));
+    if (id >= 0 && !ptr.down(id)) id = -1;
+    if (id >= 0) {
+      const x = ptr.position(id).x;
+      turn = (x - g.lookX) * LOOK_RAD_PER_PX;
+      if (x !== g.lookX) g.lookX = x;
+    } else {
+      const top = vp.safeArea.top + 96;
+      const bottom = vp.height - vp.safeArea.bottom - 220;
+      for (let n = 0; n < ptr.count(); n++) {
+        if (!ptr.pressed(n)) continue;
+        const at = ptr.start(n);
+        if (at.x < vp.width / 2 || at.y < top || at.y > bottom) continue;
+        id = n;
+        g.lookX = ptr.position(n).x;
+        break;
+      }
+    }
+  }
+  if (id !== g.lookId) g.lookId = id;
+  if (turn !== g.lookTurn) g.lookTurn = turn;
 }
 
 function settings(world: World, g: GameV, p: PrefsV): void {
@@ -309,7 +366,8 @@ function summary(world: World, g: GameV): "again" | "menu" | null {
   og.ui.modal("Summary", g.phase === Phase.Over, { title: say(world, title), locked: true, width: px(Math.min(400, og.ui.frameViewport().width - 32)) }, () => {
     og.ui.row("Mark", { width: grow, align: "center" }, () => {
       og.ui.transition("Icon", true, { kind: "pop" }, () => og.ui.icon("Glyph", won ? "fire" : g.ending === Ending.Caught ? "skull" : "clock", { size: 48, tint: { token: won ? "accent" : "fgMuted" } }));
-      if (won && g.overTicks === OVER_DELAY + 20) og.ui.burst({ count: 14 });
+      // From a third of a second into the summary, every frame: a burst plays only while it is called.
+      if (won && g.overTicks >= OVER_DELAY + 20) og.ui.burst({ count: 14 });
     });
     og.ui.column("Stats", { width: grow, gap: 0 }, () => {
       og.ui.keyValue("Time", say(world, "over.time"), seconds(g.time), true);
@@ -327,7 +385,7 @@ function summary(world: World, g: GameV): "again" | "menu" | null {
 }
 
 /** The screens, the run's start, clock and end, the hold, the buses, the platform's answers. */
-export const Ui = defineSystem("Ui", { reads: [Tuning, og.Gamepad], writes: [Game, Prefs, og.Audio, og.DayNight] }, (_q, time, world) => {
+export const Ui = defineSystem("Ui", { reads: [Tuning, og.Gamepad, og.Pointers], writes: [Game, Prefs, og.Audio, og.DayNight] }, (_q, time, world) => {
   const g = must(world.resource(Game));
   const p = must(world.resource(Prefs));
   platform(world, g, p);

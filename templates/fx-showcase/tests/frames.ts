@@ -109,14 +109,14 @@ export function checkFrames(run: PlaytestRun, t: PlaytestChecks, files: readonly
   const own = join(refs, run.tier);
   const asked = process.env.OG_FX_CAPTURE;
   const records = (f: string) => asked !== undefined && (asked === "1" || asked.split(",").includes(prefix + f));
-  const capture = files.some(records);
-  const dir = capture || existsSync(join(own, prefix + files[0]!)) ? own : join(refs, "metal");
-  if (dir !== own) process.stdout.write(`  note: no ${run.tier} references; comparing with metal\n`);
   for (const f of files) {
     const actual = join(outDir(), f);
-    const ref = join(dir, prefix + f);
+    // Each file on its own: this tier's reference where it has one (or is being recorded), metal's otherwise.
+    const mine = join(own, prefix + f);
+    const ref = records(f) || existsSync(mine) ? mine : join(refs, "metal", prefix + f);
+    if (ref !== mine) process.stdout.write(`  note: no ${run.tier} reference for ${prefix}${f}; comparing with metal\n`);
     if (records(f)) {
-      mkdirSync(dir, { recursive: true });
+      mkdirSync(own, { recursive: true });
       copyFileSync(actual, ref);
       t.ok(true, `recorded ${ref}`);
       continue;
