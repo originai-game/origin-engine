@@ -18,7 +18,7 @@ module platform {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 6357</sub>
+<sub>`api.ogt` line 6358</sub>
 
 ## Contents
 
@@ -78,7 +78,7 @@ fn storeGet {
 }
 ```
 
-<sub>`api.ogt` line 6453</sub>
+<sub>`api.ogt` line 6454</sub>
 
 <a id="fn-storeSet"></a>
 
@@ -108,7 +108,7 @@ fn storeSet {
 }
 ```
 
-<sub>`api.ogt` line 6460</sub>
+<sub>`api.ogt` line 6461</sub>
 
 <a id="fn-storeList"></a>
 
@@ -136,7 +136,7 @@ fn storeList {
 }
 ```
 
-<sub>`api.ogt` line 6467</sub>
+<sub>`api.ogt` line 6468</sub>
 
 <a id="fn-leaderboardSubmit"></a>
 
@@ -166,7 +166,7 @@ fn leaderboardSubmit {
 }
 ```
 
-<sub>`api.ogt` line 6473</sub>
+<sub>`api.ogt` line 6474</sub>
 
 <a id="fn-leaderboardTop"></a>
 
@@ -196,7 +196,7 @@ fn leaderboardTop {
 }
 ```
 
-<sub>`api.ogt` line 6480</sub>
+<sub>`api.ogt` line 6481</sub>
 
 <a id="fn-leaderboardAround"></a>
 
@@ -226,7 +226,7 @@ fn leaderboardAround {
 }
 ```
 
-<sub>`api.ogt` line 6487</sub>
+<sub>`api.ogt` line 6488</sub>
 
 <a id="fn-telemetry"></a>
 
@@ -260,7 +260,7 @@ fn telemetry {
 }
 ```
 
-<sub>`api.ogt` line 6494</sub>
+<sub>`api.ogt` line 6495</sub>
 
 <a id="fn-point"></a>
 
@@ -290,7 +290,7 @@ fn point {
 }
 ```
 
-<sub>`api.ogt` line 6504</sub>
+<sub>`api.ogt` line 6505</sub>
 
 <a id="fn-aiMark"></a>
 
@@ -320,7 +320,7 @@ fn aiMark {
 }
 ```
 
-<sub>`api.ogt` line 6511</sub>
+<sub>`api.ogt` line 6512</sub>
 
 <a id="fn-loadSettings"></a>
 
@@ -348,7 +348,7 @@ fn loadSettings {
 }
 ```
 
-<sub>`api.ogt` line 6518</sub>
+<sub>`api.ogt` line 6519</sub>
 
 <a id="fn-saveSettings"></a>
 
@@ -378,7 +378,7 @@ fn saveSettings {
 }
 ```
 
-<sub>`api.ogt` line 6524</sub>
+<sub>`api.ogt` line 6525</sub>
 
 <a id="fn-result"></a>
 
@@ -408,7 +408,7 @@ fn result {
 }
 ```
 
-<sub>`api.ogt` line 6531</sub>
+<sub>`api.ogt` line 6532</sub>
 
 <a id="fn-info"></a>
 
@@ -436,7 +436,7 @@ fn info {
 }
 ```
 
-<sub>`api.ogt` line 6538</sub>
+<sub>`api.ogt` line 6539</sub>
 
 ## Components, resources and events
 
@@ -461,7 +461,7 @@ event PlatformAnswered {
 }
 ```
 
-<sub>`api.ogt` line 6369</sub>
+<sub>`api.ogt` line 6370</sub>
 
 ## Types
 
@@ -486,7 +486,7 @@ enum PlatformOrder {
 }
 ```
 
-<sub>`api.ogt` line 6363</sub>
+<sub>`api.ogt` line 6364</sub>
 
 <a id="type-StoreSetDesc"></a>
 
@@ -514,7 +514,7 @@ struct StoreSetDesc {
 }
 ```
 
-<sub>`api.ogt` line 6375</sub>
+<sub>`api.ogt` line 6376</sub>
 
 <a id="type-LeaderboardSubmitDesc"></a>
 
@@ -542,7 +542,7 @@ struct LeaderboardSubmitDesc {
 }
 ```
 
-<sub>`api.ogt` line 6384</sub>
+<sub>`api.ogt` line 6385</sub>
 
 <a id="type-LeaderboardQueryDesc"></a>
 
@@ -572,7 +572,7 @@ struct LeaderboardQueryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6394</sub>
+<sub>`api.ogt` line 6395</sub>
 
 <a id="type-PointDesc"></a>
 
@@ -600,7 +600,7 @@ struct PointDesc {
 }
 ```
 
-<sub>`api.ogt` line 6407</sub>
+<sub>`api.ogt` line 6408</sub>
 
 <a id="type-AiMarkDesc"></a>
 
@@ -626,7 +626,7 @@ struct AiMarkDesc {
 }
 ```
 
-<sub>`api.ogt` line 6418</sub>
+<sub>`api.ogt` line 6419</sub>
 
 <a id="type-PlatformError"></a>
 
@@ -651,7 +651,7 @@ struct PlatformError {
 }
 ```
 
-<sub>`api.ogt` line 6426</sub>
+<sub>`api.ogt` line 6427</sub>
 
 <a id="type-PlatformResult"></a>
 
@@ -682,7 +682,7 @@ struct PlatformResult {
 }
 ```
 
-<sub>`api.ogt` line 6434</sub>
+<sub>`api.ogt` line 6435</sub>
 
 <a id="type-PlatformInfo"></a>
 
@@ -705,4 +705,4 @@ struct PlatformInfo {
 }
 ```
 
-<sub>`api.ogt` line 6446</sub>
+<sub>`api.ogt` line 6447</sub>

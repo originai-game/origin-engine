@@ -2425,11 +2425,12 @@ export type Side = "front" | "back" | "double";
  * The backend the renderer runs on; the probe's hello reports it.
  * - `"webgpu"`: WebGPU in a browser: the full feature set.
  * - `"webgl2"`: The WebGL2 fallback: no compute, CPU culling and particles, tiled lights.
- * - `"vulkan"`: Native Vulkan, on lavapipe or a GPU.
+ * - `"vulkan"`: Native Vulkan on a GPU.
+ * - `"vulkan-cpu"`: Native Vulkan on a CPU rasterizer (Mesa lavapipe or llvmpipe, SwiftShader): the executors' sandboxes. Frame times there say nothing about a player's GPU.
  * - `"metal"`: Native Metal.
  * - `"none"`: No renderer: frames are not produced and capture refuses.
  */
-export type RenderTier = "webgpu" | "webgl2" | "vulkan" | "metal" | "none";
+export type RenderTier = "webgpu" | "webgl2" | "vulkan" | "vulkan-cpu" | "metal" | "none";
 
 /**
  * Antialiasing, as og-render's Antialias. RenderCapabilities.antialias reports what the device resolved.

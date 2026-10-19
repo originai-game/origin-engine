@@ -1583,7 +1583,8 @@ module render {
     doc "The backend the renderer runs on; the probe's hello reports it."
     variant webgpu "WebGPU in a browser: the full feature set."
     variant webgl2 "The WebGL2 fallback: no compute, CPU culling and particles, tiled lights."
-    variant vulkan "Native Vulkan, on lavapipe or a GPU."
+    variant vulkan "Native Vulkan on a GPU."
+    variant vulkan-cpu "Native Vulkan on a CPU rasterizer (Mesa lavapipe or llvmpipe, SwiftShader): the executors' sandboxes. Frame times there say nothing about a player's GPU."
     variant metal "Native Metal."
     variant none "No renderer: frames are not produced and capture refuses."
   }
