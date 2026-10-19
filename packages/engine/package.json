@@ -53,7 +53,7 @@
     "typecheck": "bun x --package typescript@7.0.2 tsc --noEmit -p tsconfig.json & p=$!; bun x --package typescript@7.0.2 tsc --noEmit -p tsconfig.runtime.json; r=$?; wait $p && [ $r -eq 0 ] && bun x --package typescript@7.0.2 tsc --noEmit -p tsconfig.templates.json",
     "test": "bun run typecheck && sh scripts/build.sh && bun test --parallel tests/",
     "pack": "sh scripts/pack.sh",
-    "test:browser": "bun tests/web/wire.ts && bun tests/web/player.ts && bun tests/web/export.ts",
+    "test:browser": "bun tests/web/wire.ts && bun tests/web/player.ts && bun tests/web/export.ts && bun tests/web/device.ts",
     "test:reference": "bun tests/web/reference.ts && bun tests/web/reference.ts --webgl"
   }
 }

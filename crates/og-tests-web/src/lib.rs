@@ -6,7 +6,9 @@
 //! or WebGL2 (an OffscreenCanvas, which WebGL2 needs for its context),
 //! [`og_gfx_render`] draws frames to the renderer's offscreen target exactly
 //! as `og_tests::gfx::render_built` does natively (the scene's update before
-//! each), and [`og_gfx_capture`] reads the last one back as RGBA8. The
+//! each), and [`og_gfx_capture`] reads the last one back as RGBA8.
+//! [`og_gfx_cpu_culling`] makes the scenes opened after it cull on the CPU
+//! (`Culling::Cpu`, as `OG_GFX_CULLING=cpu` does natively). The
 //! comparison and the timing are the runner's
 //! (`packages/engine/tests/web/reference-gfx.ts`).
 
@@ -20,7 +22,7 @@ mod web {
     use og_render::{Backend, RenderTarget, Renderer};
     use og_tests::compare::Tolerance;
     use og_tests::scenes::{self, Applies, GfxScene};
-    use std::cell::RefCell;
+    use std::cell::{Cell, RefCell};
     use wasm_bindgen::prelude::*;
 
     struct Open {
@@ -31,6 +33,7 @@ mod web {
 
     thread_local! {
         static OPEN: RefCell<Option<Open>> = const { RefCell::new(None) };
+        static CPU_CULLING: Cell<bool> = const { Cell::new(false) };
     }
 
     fn err(e: impl std::fmt::Display) -> JsValue {
@@ -76,6 +79,14 @@ mod web {
         })
     }
 
+
+    /// Whether the scenes opened from now on cull on the CPU on every tier
+    /// (`Culling::Cpu`) rather than on the GPU where the adapter can.
+    #[wasm_bindgen]
+    pub fn og_gfx_cpu_culling(cpu: bool) {
+        CPU_CULLING.with(|c| c.set(cpu));
+    }
+
     /// Builds `scene` (an og-tests scene, or `og-ui/<name>`) and its renderer (WebGL2 when `webgl`, on `canvas`; else
     /// WebGPU, headless). Resolves to a JSON description: tier, adapter,
     /// antialiasing, whether the scene has a reference on this tier, the
@@ -105,6 +116,9 @@ mod web {
         } else {
             Backend::WebGpu
         };
+        if CPU_CULLING.with(Cell::get) {
+            built.desc.culling = og_render::Culling::Cpu;
+        }
         canvas.set_width(built.desc.width);
         canvas.set_height(built.desc.height);
         let renderer = if webgl {
@@ -143,23 +157,36 @@ mod web {
     }
 
     /// Draws `n` frames of the open scene, each after its update (frame
-    /// indices continue across calls).
+    /// indices continue across calls). Returns the last frame's counts as
+    /// JSON; with GPU culling they are `counts_lag` frames old (the browser
+    /// cannot wait for the frame's own).
     #[wasm_bindgen]
-    pub fn og_gfx_render(n: u32) -> Result<(), JsValue> {
+    pub fn og_gfx_render(n: u32) -> Result<String, JsValue> {
         OPEN.with(|o| {
             let mut o = o.borrow_mut();
             let open = o.as_mut().ok_or_else(|| err("no scene open"))?;
             let renderer = &mut open.renderer;
+            let mut stats = og_render::FrameStats::default();
             for _ in 0..n {
                 if let Some(update) = open.built.update {
                     update(&mut open.built.scene, open.frame);
                 }
                 open.frame += 1;
-                renderer
+                stats = renderer
                     .render(&open.built.scene, &RenderTarget::Offscreen)
                     .map_err(err)?;
             }
-            Ok(())
+            Ok(format!(
+                "{{\"gpu_culling\":{},\"draws\":{},\"instances\":{},\"culled\":{},\"occluded\":{},\"triangles\":{},\"shadow_casters\":{},\"counts_lag\":{}}}",
+                stats.gpu_culling,
+                stats.draw_calls,
+                stats.instances,
+                stats.culled,
+                stats.occluded,
+                stats.triangles,
+                stats.shadow_casters,
+                stats.counts_lag,
+            ))
         })
     }
 

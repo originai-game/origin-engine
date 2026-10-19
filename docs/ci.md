@@ -419,7 +419,13 @@ that frame is committed, else with `metal`, under the scene's own tolerance
 (`scenes::Applies`: `taa` is full tier only, `msaa` the no-compute tier's
 4x path) is listed, not rendered. `--record` writes the tier's references;
 `--time <n>` writes per-frame times of the perf scenes to
-`crates/og-tests/perf/<tier>-chrome-<adapter>/` beside the native ones. It
+`crates/og-tests/perf/<tier>-chrome-<adapter>/` beside the native ones.
+The perf-only city scenes (`city-street`, `city-aerial`) are timed only when
+`--scene` names them. `--cpu-culling` makes WebGPU cull on the CPU
+(`Culling::Cpu`; WebGL2 always does). `--perf-out <dir>` writes the timing
+JSON to `<dir>/<tier>[-cpu-culling]/` instead, with the last frame's culling
+counts (`tests/evidence/P3/culling/`). The native counterpart is
+`og-gfx <scene> --frames <n>`, with `OG_GFX_CULLING=cpu` for the CPU path. It
 builds in `target/wasm-gfx` so the gate's og-render artifacts stay put.
 
 On 2026-10-19 (Chrome for Testing 150, ANGLE Metal on the Apple M4 Pro,

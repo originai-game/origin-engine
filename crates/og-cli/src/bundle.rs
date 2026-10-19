@@ -82,18 +82,7 @@ pub fn run(args: &[&str]) -> ExitCode {
         }
     }
     let out = out.unwrap_or_else(|| p.root.join(&p.out).display().to_string());
-    let mut cmd = project::bun(&package, "src/node/web-build.ts");
-    cmd.arg("--project")
-        .arg(&p.root)
-        .arg("--entry")
-        .arg(&p.entry)
-        .arg("--out")
-        .arg(&out)
-        .arg("--settings")
-        .arg(settings.to_string());
-    if publish {
-        cmd.arg("--publish");
-    }
+    let mut cmd = web_build(&p, &package, &settings, Path::new(&out), publish);
     if json {
         cmd.arg("--json");
     }
@@ -104,4 +93,28 @@ pub fn run(args: &[&str]) -> ExitCode {
             ExitCode::FAILURE
         }
     }
+}
+
+/// `web-build.ts` writing the export of `p` (cooked already) into `out`,
+/// with project.ogt's checked `settings` (`og build`, `og run --device`).
+pub fn web_build(
+    p: &Project,
+    package: &Path,
+    settings: &serde_json::Value,
+    out: &Path,
+    publish: bool,
+) -> std::process::Command {
+    let mut cmd = project::bun(package, "src/node/web-build.ts");
+    cmd.arg("--project")
+        .arg(&p.root)
+        .arg("--entry")
+        .arg(&p.entry)
+        .arg("--out")
+        .arg(out)
+        .arg("--settings")
+        .arg(settings.to_string());
+    if publish {
+        cmd.arg("--publish");
+    }
+    cmd
 }

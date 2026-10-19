@@ -30,6 +30,7 @@
 mod atmosphere;
 mod capture;
 mod clusters;
+mod cull_gpu;
 mod effects;
 mod fluid3d;
 mod frame;
@@ -303,6 +304,24 @@ pub struct RenderDesc {
     /// Where particles simulate: compute on the full tier, or the CPU path
     /// everywhere ([`ParticleSimulation::Cpu`]).
     pub particles: ParticleSimulation,
+    /// Where instances are culled: in compute with indirect draws on the
+    /// full tier (frustum and occlusion), or the CPU path everywhere
+    /// ([`Culling::Cpu`], the no-compute tier's).
+    pub culling: Culling,
+}
+
+/// Where instances are culled ([`RenderDesc::culling`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum Culling {
+    /// On the GPU where the adapter has compute and indirect draws (each
+    /// pass's frustum, and for the camera the depth of last frame's
+    /// visible occluders), else on the CPU. A frame with object motion
+    /// blur, or more instances than one storage binding holds, is culled
+    /// on the CPU.
+    #[default]
+    Auto,
+    /// Always on the CPU (frustum only; the no-compute tier's path).
+    Cpu,
 }
 
 impl Default for RenderDesc {
@@ -317,6 +336,7 @@ impl Default for RenderDesc {
             shadow_cascades: MAX_CASCADES,
             texture_compression: TextureCompression::Auto,
             particles: ParticleSimulation::Auto,
+            culling: Culling::Auto,
         }
     }
 }
@@ -503,6 +523,18 @@ pub struct FrameStats {
     pub reflection_draws: u32,
     /// Frames rendered by this renderer before this one (drives the TAA jitter).
     pub frame: u64,
+    /// Whether the GPU culled this frame ([`RenderDesc::culling`]).
+    pub gpu_culling: bool,
+    /// Opaque instances in view that nearer occluders hid (GPU culling).
+    pub occluded: u32,
+    /// Draws of the GPU culling's occluder depth pass (also in `draw_calls`).
+    pub occluder_draws: u32,
+    /// With GPU culling, `culled`, `occluded`, `triangles` and
+    /// `shadow_casters` hold the GPU's counts of the newest frame read back
+    /// by then, this many frames old (`u32::MAX`: none yet); natively
+    /// [`Renderer::finish_stats`] puts the frame's own in their place (0).
+    /// 0 on the CPU path.
+    pub counts_lag: u32,
 }
 
 /// An RGBA8 frame, rows top to bottom.
@@ -560,6 +592,9 @@ struct GpuMaterial {
     effects: bool,
     /// Its material shader (the scene's index).
     shader: Option<usize>,
+    /// Writes exactly the depth of its triangles (opaque, no alpha cut,
+    /// dissolve or shader): GPU culling may draw it as an occluder.
+    occluder: bool,
 }
 
 struct GpuTexture {
@@ -665,6 +700,24 @@ struct DrawList {
     ranges: Vec<(u32, u32, u32)>,
     instances: u32,
     triangles: u64,
+    /// GPU culling's pass: the ranges are in its `instances` and each draw's
+    /// count is in its `args` (`instances` and `triangles` are 0 here).
+    indirect: Option<u32>,
+}
+
+/// GPU culling's list for pass `g`: every `include`d batch, drawn indirect
+/// from the pass's region.
+fn indirect_list(batches: &[Batch], n: u32, g: u32, include: impl Fn(&Batch) -> bool) -> DrawList {
+    DrawList {
+        ranges: batches
+            .iter()
+            .enumerate()
+            .filter(|(_, b)| include(b))
+            .map(|(i, b)| (i as u32, (g + 1) * n + b.first, b.count))
+            .collect(),
+        indirect: Some(g),
+        ..DrawList::default()
+    }
 }
 
 /// A shadow map: one R32Float array the lit shaders read, a view per layer,
@@ -834,6 +887,12 @@ pub struct Renderer {
     frame_index: u64,
     /// Where particles simulate ([`RenderDesc::particles`]).
     desc_particles: ParticleSimulation,
+    /// Where instances are culled ([`RenderDesc::culling`]), whether the
+    /// adapter can on the GPU (compute and indirect draws), and the GPU
+    /// path's state once a frame used it.
+    desc_culling: Culling,
+    indirect: bool,
+    gpu_cull: Option<cull_gpu::GpuCulling>,
     /// The previous frame's unjittered view-projection, when TAA history is valid.
     taa_history: Option<Mat4>,
 }
@@ -1317,6 +1376,11 @@ impl Renderer {
         } else {
             Tier::NoCompute
         };
+        let indirect = tier == Tier::Full
+            && adapter
+                .get_downlevel_capabilities()
+                .flags
+                .contains(wgpu::DownlevelFlags::INDIRECT_EXECUTION);
         let msaa_ok = supports_msaa(&adapter);
         let antialias = match desc.antialias {
             Antialias::Off => Antialias::Off,
@@ -1919,6 +1983,9 @@ impl Renderer {
             cache: SceneCache::default(),
             frame_index: 0,
             desc_particles: desc.particles,
+            desc_culling: desc.culling,
+            indirect,
+            gpu_cull: None,
             taa_history: None,
         })
     }
@@ -2168,6 +2235,10 @@ impl Renderer {
                     || material.dissolves(),
                 outline: material.outlineWidth > 0.0,
                 shader: hooked.map(|h| h.0.index()),
+                occluder: !material.is_transparent()
+                    && !material.dissolves()
+                    && material.alphaTest <= 0.0
+                    && hooked.is_none(),
             };
             if i < self.cache.materials.len() {
                 self.cache.materials[i] = gpu;
@@ -3203,15 +3274,52 @@ impl Renderer {
         }
         let glow = post_fx.glow.is_some() && !sprite_frame.glow_runs.is_empty();
 
-        let (main_list, mut culled) = self.cull(
-            &batches,
-            &spheres,
-            &mut transforms,
-            &mut origins,
-            &view_frustum,
-            |b| !b.transparent,
-        );
-        let (blended_list, blended_culled) = self.sort_transparent(
+        // GPU-driven culling (cull_gpu.rs): each pass's list is indirect
+        // draws the compute fills; the CPU sorts the transparent instances
+        // and culls the skinned ones as before.
+        let object_motion = motion_blur.is_some()
+            && !scene.previous_transforms.is_empty()
+            && scene.previous_transforms.len() == scene.instances.len();
+        let sorted = transforms.len() as u32;
+        let gpu_cull = self.indirect
+            && self.desc_culling == Culling::Auto
+            && !object_motion
+            && !batches.is_empty()
+            && {
+                let limits = self.device.limits();
+                let gc = self.gpu_cull.get_or_insert_with(|| {
+                    cull_gpu::GpuCulling::new(
+                        &self.device,
+                        limits
+                            .max_storage_buffer_binding_size
+                            .min(limits.max_buffer_size),
+                    )
+                });
+                gc.fits(sorted, cull_gpu::MAX_PASSES)
+            };
+        let mut cull_passes: Vec<cull_gpu::CullPass> = Vec::new();
+        let mut gpu_pass = |kind, frustum: &Frustum| {
+            cull_passes.push(cull_gpu::CullPass {
+                kind,
+                planes: frustum.planes().to_vec(),
+            });
+            cull_passes.len() as u32 - 1
+        };
+        let (main_list, mut culled) = if gpu_cull {
+            let g = gpu_pass(cull_gpu::PassKind::Main, &view_frustum);
+            gpu_pass(cull_gpu::PassKind::Occluders, &view_frustum);
+            (indirect_list(&batches, sorted, g, |b| !b.transparent), 0)
+        } else {
+            self.cull(
+                &batches,
+                &spheres,
+                &mut transforms,
+                &mut origins,
+                &view_frustum,
+                |b| !b.transparent,
+            )
+        };
+        let (mut blended_list, blended_culled) = self.sort_transparent(
             &batches,
             &spheres,
             &submission,
@@ -3223,15 +3331,21 @@ impl Renderer {
         );
         culled += blended_culled + skinned_culled;
         let reflection_list = reflection.as_ref().map(|r| {
-            self.cull(
-                &batches,
-                &spheres,
-                &mut transforms,
-                &mut origins,
-                &Frustum::from_view_proj(r.3),
-                |b| !b.transparent,
-            )
-            .0
+            let frustum = Frustum::from_view_proj(r.3);
+            if gpu_cull {
+                let g = gpu_pass(cull_gpu::PassKind::Reflection, &frustum);
+                indirect_list(&batches, sorted, g, |b| !b.transparent)
+            } else {
+                self.cull(
+                    &batches,
+                    &spheres,
+                    &mut transforms,
+                    &mut origins,
+                    &frustum,
+                    |b| !b.transparent,
+                )
+                .0
+            }
         });
 
         // Terrains: new or edited data uploaded, this frame's clipmap levels.
@@ -3313,15 +3427,20 @@ impl Renderer {
         let cascade_lists: Vec<DrawList> = cascades
             .iter()
             .map(|c| {
-                self.cull(
-                    &batches,
-                    &spheres,
-                    &mut transforms,
-                    &mut origins,
-                    &c.frustum,
-                    |_| true,
-                )
-                .0
+                if gpu_cull {
+                    let g = gpu_pass(cull_gpu::PassKind::Shadow, &c.frustum);
+                    indirect_list(&batches, sorted, g, |_| true)
+                } else {
+                    self.cull(
+                        &batches,
+                        &spheres,
+                        &mut transforms,
+                        &mut origins,
+                        &c.frustum,
+                        |_| true,
+                    )
+                    .0
+                }
             })
             .collect();
 
@@ -3392,26 +3511,63 @@ impl Renderer {
         for ls in &local_shadows {
             for (face, (_, f)) in ls.faces.iter().enumerate() {
                 local_frustums[ls.slot * 6 + face] = Some(f.clone());
-                let list = self
-                    .cull(&batches, &spheres, &mut transforms, &mut origins, f, |_| {
+                let list = if gpu_cull {
+                    let g = gpu_pass(cull_gpu::PassKind::Shadow, f);
+                    indirect_list(&batches, sorted, g, |_| true)
+                } else {
+                    self.cull(&batches, &spheres, &mut transforms, &mut origins, f, |_| {
                         true
                     })
-                    .0;
+                    .0
+                };
                 local_lists[ls.slot * 6 + face] = Some(list);
             }
         }
 
-        // Upload instances, previous transforms, skinned data, strips and sprites.
+        // Upload instances, previous transforms, skinned data, strips and
+        // sprites. With GPU culling the sorted instances go to its buffer and
+        // this one holds only the transparent draws.
+        let mut gpu_counts = None;
+        let cull_commands = if gpu_cull {
+            let _ = self.device.poll(wgpu::PollType::Poll);
+            let gc = self
+                .gpu_cull
+                .as_mut()
+                .expect("made when gpu_cull was decided");
+            let lagged = gc.poll_counts();
+            let (commands, occluder_draws) = gc.encode(
+                &self.device,
+                &self.queue,
+                &transforms[..sorted as usize],
+                &batches,
+                &self.cache.meshes,
+                &self.cache.materials,
+                &cull_passes,
+                cam.jittered_view_proj,
+                (self.width, self.height, self.samples),
+                self.frame_index,
+                lagged.unwrap_or_default(),
+            );
+            gpu_counts = Some((lagged, occluder_draws));
+            for r in &mut blended_list.ranges {
+                r.1 -= sorted;
+            }
+            Some(commands)
+        } else {
+            None
+        };
+        let cpu_instances = if gpu_cull {
+            &transforms[sorted as usize..]
+        } else {
+            &transforms[..]
+        };
         grow_and_write(
             &self.device,
             &self.queue,
             &mut self.instance_buffer,
             "instances",
-            bytemuck::cast_slice(&transforms),
+            bytemuck::cast_slice(cpu_instances),
         );
-        let object_motion = motion_blur.is_some()
-            && !scene.previous_transforms.is_empty()
-            && scene.previous_transforms.len() == scene.instances.len();
         if object_motion {
             let prev: Vec<[[f32; 4]; 4]> = origins
                 .iter()
@@ -3896,6 +4052,17 @@ impl Renderer {
             joints: joint_matrices.len() as u32,
             ..Default::default()
         };
+        if let Some((lagged, occluder_draws)) = gpu_counts {
+            let c = lagged.unwrap_or_default();
+            stats.gpu_culling = true;
+            stats.culled += c.culled;
+            stats.occluded = c.occluded;
+            stats.triangles += c.triangles;
+            stats.shadow_casters += c.shadow_casters;
+            stats.counts_lag = lagged.map_or(u32::MAX, |l| (self.frame_index - l.frame) as u32);
+            stats.occluder_draws = occluder_draws;
+            stats.draw_calls += occluder_draws;
+        }
         if let Some(of) = &overlay_frame {
             stats.overlay_sprites = of.sprites;
             stats.overlay_glyphs = of.glyphs;
@@ -4065,6 +4232,7 @@ impl Renderer {
         } else {
             Vec::new()
         };
+        let culled_gpu = self.gpu_cull.as_ref().filter(|_| gpu_cull);
         // Draws a list's ranges. Lit passes switch the pipeline when the
         // batch's (side, blending) changes and bind each batch's material;
         // shadow passes switch on the side and dissolve (with the material).
@@ -4119,13 +4287,21 @@ impl Renderer {
                     pass.set_vertex_buffer(0, mesh.vertices.slice(..));
                     // A buffer slice, not first_instance: WebGL2 has no base instance.
                     let start = first as u64 * INSTANCE_STRIDE;
+                    let instances = match (list.indirect, culled_gpu) {
+                        (Some(_), Some(gc)) => &gc.instances,
+                        _ => &self.instance_buffer,
+                    };
                     pass.set_vertex_buffer(
                         1,
-                        self.instance_buffer
-                            .slice(start..start + count as u64 * INSTANCE_STRIDE),
+                        instances.slice(start..start + count as u64 * INSTANCE_STRIDE),
                     );
                     pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
-                    pass.draw_indexed(0..mesh.index_count, 0, 0..count);
+                    match (list.indirect, culled_gpu) {
+                        (Some(g), Some(gc)) => {
+                            pass.draw_indexed_indirect(&gc.args, gc.draw_offset(g, b))
+                        }
+                        _ => pass.draw_indexed(0..mesh.index_count, 0, 0..count),
+                    }
                 }
             };
         // The skinned batches (`transparent`: which of them) with the
@@ -4310,10 +4486,14 @@ impl Renderer {
                     });
                     p.set_bind_group(0, frame_bind_group, &[]);
                     p.set_bind_group(2, fx_group, &[]);
+                    let instances = match (main_list.indirect, culled_gpu) {
+                        (Some(_), Some(gc)) => &gc.instances,
+                        _ => &self.instance_buffer,
+                    };
                     let prev = if object_motion {
                         &self.prev_instance_buffer
                     } else {
-                        &self.instance_buffer
+                        instances
                     };
                     let mut current = None;
                     for &(b, first, count) in &main_list.ranges {
@@ -4332,10 +4512,15 @@ impl Renderer {
                         let start = first as u64 * INSTANCE_STRIDE;
                         let end = start + count as u64 * INSTANCE_STRIDE;
                         p.set_vertex_buffer(0, mesh.vertices.slice(..));
-                        p.set_vertex_buffer(1, self.instance_buffer.slice(start..end));
+                        p.set_vertex_buffer(1, instances.slice(start..end));
                         p.set_vertex_buffer(2, prev.slice(start..end));
                         p.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
-                        p.draw_indexed(0..mesh.index_count, 0, 0..count);
+                        match (main_list.indirect, culled_gpu) {
+                            (Some(g), Some(gc)) => {
+                                p.draw_indexed_indirect(&gc.args, gc.draw_offset(g, b))
+                            }
+                            _ => p.draw_indexed(0..mesh.index_count, 0, 0..count),
+                        }
                         stats.prepass_draws += 1;
                     }
                     stats.prepass_draws +=
@@ -4898,7 +5083,11 @@ impl Renderer {
                 stats.draw_calls += 1;
             }
         }
-        self.queue.submit(Some(encoder.finish()));
+        self.queue
+            .submit(cull_commands.into_iter().chain(Some(encoder.finish())));
+        if let Some(gc) = self.gpu_cull.as_mut().filter(|_| gpu_cull) {
+            gc.after_submit();
+        }
         if let Some((frame, ..)) = surface_frame {
             self.queue.present(frame);
         }
@@ -4908,6 +5097,31 @@ impl Renderer {
         self.prev_view_proj = Some(cam.view_proj);
         self.frame_index += 1;
         Ok(stats)
+    }
+
+    /// Natively: waits for the GPU culling counts of the frame `stats` came
+    /// from and puts them in place of the older ones it was given
+    /// ([`FrameStats::counts_lag`] becomes 0). Whether it could: false on
+    /// the CPU path, or for a frame that found no readback free and was
+    /// not the last one rendered.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn finish_stats(&mut self, stats: &mut FrameStats) -> bool {
+        if !stats.gpu_culling {
+            return false;
+        }
+        let Some((exact, given)) = self
+            .gpu_cull
+            .as_mut()
+            .and_then(|gc| gc.finish(&self.device, &self.queue, stats.frame))
+        else {
+            return false;
+        };
+        stats.culled = stats.culled - given.culled + exact.culled;
+        stats.occluded = exact.occluded;
+        stats.triangles = stats.triangles - given.triangles + exact.triangles;
+        stats.shadow_casters = stats.shadow_casters - given.shadow_casters + exact.shadow_casters;
+        stats.counts_lag = 0;
+        true
     }
 
     /// A copy of a particle system's slots after the last frame (the GPU

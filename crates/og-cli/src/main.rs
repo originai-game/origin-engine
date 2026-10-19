@@ -1,7 +1,7 @@
 //! The `og` tool. See docs/design.md §2.1 and docs/phase-1.md.
 //!
 //! One binary for the author's loop: `og run` (native host, probe, command
-//! channel), `og probe` (a WebSocket client of the probe), `og dev` (watch,
+//! channel; `--device` times the publish build in a real browser), `og probe` (a WebSocket client of the probe), `og dev` (watch,
 //! rebuild, hot reload), `og test` (bun tests and playtests), `og polish`
 //! (playtests scored against og-taste and og-feel), `og build`
 //! (the play page), `og cook`, `og doctor` and `og api` (the IDL outputs).
@@ -10,6 +10,7 @@ mod api;
 mod bundle;
 mod cook;
 mod dev;
+mod device;
 mod doctor;
 mod polish;
 mod probe;
@@ -36,6 +37,11 @@ commands:
       [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--json]
                       cook, bundle and run the game on the native host with the probe; outputs of
                       screenshot/dump_* land in --out (default <project>/og-out)
+  run --device chrome|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR]
+      [--size WxH] [--headed] [--webgl] [--chrome <path>] [--cert <pem> --key <pem>] [--json]
+                      play the publish build in a real browser (served on 0.0.0.0 with COOP/COEP,
+                      the LAN URL printed), pass the play gate and time the first frame and the
+                      frames; report.md and device.json in --out (default <project>/og-out/device)
   probe <method> [params-json] [--port P] [--out file.png] [--raw]
                       one probe call to a running `og run --port P` / `og dev` (JSON-RPC over WebSocket)
   dev [project] [--port P] [--exit-after N] [--json]

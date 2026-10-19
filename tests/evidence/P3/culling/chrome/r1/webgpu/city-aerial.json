@@ -1,0 +1,37 @@
+{
+  "scene": "city-aerial",
+  "tier": "webgpu",
+  "browser": "Chrome for Testing (cdp.ts)",
+  "adapter": "",
+  "culling": "auto",
+  "last_frame": {
+    "gpu_culling": true,
+    "draws": 87,
+    "instances": 40001,
+    "culled": 2854,
+    "occluded": 178,
+    "triangles": 443618,
+    "shadow_casters": 108,
+    "counts_lag": 237
+  },
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 120,
+  "runs_ms": [
+    1.044,
+    1.136,
+    1.157,
+    1.158,
+    1.169,
+    1.172,
+    1.173
+  ],
+  "frame_ms": 1.044,
+  "submit_median_ms": 0.9,
+  "load": [
+    25.5,
+    83.4,
+    109.4
+  ],
+  "note": "each run ends in one capture (its readback waits for the GPU to finish the run's frames)"
+}

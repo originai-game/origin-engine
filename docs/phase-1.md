@@ -204,6 +204,112 @@ IDL's docs. Unverified after the merge: the rest of web-reference's
 WebGL2 run, Ember Vale on webgpu and webgl2, and `og test` of ui-kit,
 fx-showcase, runner, match3, topdown and game (all passed before it).
 
+## Phase 3, culling and device round (2026-10-19)
+
+Branch `p3-culling`, off 211fc40, with main merged in at cf6aeaf (acaf7e2).
+The round covered GPU-driven culling, `og run --device`, and the shore foam
+the streaming round left. Evidence is in `tests/evidence/P3/culling/`,
+`tests/evidence/P3/device/` and `tests/evidence/P3/streaming/foam/`.
+
+- **GPU-driven culling** (7d845e1, 53cdc86): on an adapter with compute and
+  indirect draws (native Metal, Vulkan and DX12, and the browser's WebGPU),
+  og-render culls every mesh pass in compute: the camera, the planar
+  reflection, the cascades and the local shadow faces.
+  - The visible instances are compacted in sorted order by a deterministic
+    prefix sum, and each batch is one `draw_indexed_indirect`.
+  - The camera pass also drops instances whose box lies behind a depth
+    pyramid. The pyramid is built from last frame's visible occluders, drawn
+    at this frame's camera.
+  - WebGL2, `Culling::Cpu`, object motion blur and frames over the
+    storage-binding limit keep the CPU path.
+  - `FrameStats` gains `gpu_culling`, `occluded`, `occluder_draws` and
+    `counts_lag`, and `og-gfx` takes `OG_GFX_CULLING=cpu`.
+  - `crates/og-tests/tests/culling.rs` renders eight scenes both ways over
+    several frames. It checks for the same picture, the same frustum counts
+    and never more drawn.
+  - On lavapipe, all 47 og-gfx scenes then present (48 with main's fluid-3d, which the merged gate covers) compare with their references exactly
+    as the CPU path does. That needed one fix first, 53cdc86: llvmpipe
+    reports level 0's size for every pyramid level, so each level's size is
+    now computed from the screen's.
+- **Culling measured** (1f94224, b026d89, 757eca0) on og-gfx's perf-only
+  city scenes, 40,000 instanced buildings at 1280x720.
+  - **Metal**: over 40 interleaved rounds, `Renderer::render` takes 5.27 ms
+    against 6.28 ms before on city-street, a paired ratio of 0.81. On
+    city-aerial it takes 5.13 against 5.09 (0.97). Against the same binary
+    culling on the CPU, the ratios are 0.83 and 0.86.
+  - On the street, occlusion leaves 8,150 of 129,938 triangles.
+  - Process CPU time per frame (user+sys) does not separate the paths beyond
+    the noise: 3.0 to 3.6 ms for every variant.
+  - The CPU saving is modest because both paths share the larger work:
+    sorting, the instance upload, the bounds and encoding. The GPU saving is
+    in the triangles.
+  - **Chrome**: WebGPU with GPU culling takes 0.94 to 1.26 ms per frame,
+    against 1.55 to 1.81 ms culling on the CPU, about 35 % less. WebGL2
+    takes 1.84 to 2.27 ms.
+  - `reference-gfx.ts` gains `--cpu-culling` and `--perf-out`, and times the
+    city scenes when `--scene` names them.
+  - Every native figure was measured on a machine shared at load averages
+    of 25 to 200, so read the medians and ratios, not single runs
+    (`culling/NOTES.md`).
+- **`og run --device chrome|android[:serial]|iphone[:udid]`** (c8a0b9f,
+  05e2df6) cooks and serves the publish build with COOP/COEP. It opens the
+  page in Chrome over the DevTools protocol (Android through adb) or in
+  Safari through safaridriver, taps the gate, and times the first frame and
+  the played frames. It writes `og-out/device/{report.md,device.json}` in
+  og polish's shape.
+  - Chrome on WebGPU: first frame 270 ms, display p95 9.82 ms at 120 Hz.
+  - Chrome on WebGL2, run again after main's glass fix: first frame
+    1125 ms, engine work p95 1.41 ms.
+  - `packages/engine/tests/web/device.ts` passes 27 of 27 checks.
+  - The phone paths are written, and their prerequisites documented, but
+    they are not exercised (owed row 40 remains the owner's).
+- **Shore foam on vulkan-cpu** (ec54c60): large water now draws in cells of
+  at most 256 m (`MAX_CELL`), so `terrain-far`'s 24 km sea is 94 x 94
+  cells, not one quad. llvmpipe draws the foam line and the lake again, and
+  Metal's foam band narrows to the same thin line. Metal against vulkan-cpu
+  goes from RMSE 0.01771 to 0.00534. The sin/cos hypothesis was refuted,
+  and `water.wgsl` is unchanged.
+  - Re-recorded: `metal/terrain-far.png`, where the band is now a thin
+    line and the old reference fails at 0.01561.
+  - Re-recorded: `vulkan-cpu/terrain-far.png`, where the foam line and the
+    lake edge appear (0.00944).
+  - No other reference moved.
+- **web-reference** (`scripts/check.sh --only web-reference`, after the
+  render changes): PASSED on both tiers. That covers fx-showcase's
+  stations, the E5 stations and og-tests' 47 gfx scenes, with GPU culling
+  on WebGPU.
+- **Gate** (`OG_GATE_JOBS=2 scripts/check.sh --all` on 6a99ead, at load
+  averages of 150 to 300): fmt, clippy, wasm-build, test (535 passed, 9
+  skipped), wasm-opt, size-gate and drift passed. bun-test failed on three
+  tests over bun's 5 s default timeout. A rerun failed on one, the trails
+  test (5.6 s). With `--timeout 60000`, all eight render tests pass in
+  15.4 s. Determinism did not run, because the gate stops at bun-test. The
+  final gate is run on main after the merge.
+  - On the debug addon, the GPU path makes render.test.ts's small
+    multi-renderer tests about 30 % slower: trails 1.8 s against 1.4 s with
+    `Culling::Cpu`. Release og-gfx shows the same on small scenes:
+    point-spot-lights 1.0 to 1.6 ms per frame against 0.6 ms, and showcase
+    3.5 to 3.7 ms against 3.15 ms.
+  - Pipeline creation is not the cost (`GpuCulling::new` takes 2 to 5 ms).
+    The overhead is per frame, and below some instance count the CPU path
+    is cheaper.
+- **Wasm**: the publish build is 3,168,670 B brotli (75 % of the 4 MiB
+  budget). That is +103,727 B over the streaming round's 3,064,943 B, for
+  the cull shaders and pipelines, the depth pyramid and `--device`'s
+  host-side code.
+- **Left**:
+  - Natively, GPU culling's CPU saving is about a fifth on an occluded view
+    and about nothing on an open one, until the shared per-instance work
+    (sorting and the whole-buffer upload; dirty tracking is still owed)
+    shrinks.
+  - In a browser loop that never yields, the GPU counts arrive late
+    (`counts_lag` 237 in the timing loop). The frame is unaffected.
+  - The phone paths of `og run --device` have not been run on a phone.
+  - On small scenes the GPU path costs more per frame than the CPU path.
+    A threshold that sends small frames to the CPU path is still to do.
+  - `vulkan-cpu` `terrain-grass` fails at RMSE 0.01488, on main as well as
+    here. It predates this round.
+
 ## Phase 3, streaming round (2026-10-19)
 
 Branch `p3-streaming`, 932dc00..HEAD. Terrain streaming, asset streaming
@@ -273,8 +379,9 @@ groups and the phase 2 terrain round's leftovers. Evidence:
   replaced-texture pass.
 - **Shore foam on vulkan-cpu**: traced to the sea's single 24 km
   triangle, which llvmpipe interpolates metres off once the near plane
-  clips it; any tessellation brings the foam and the lake back. Left for
-  the water path (`foam/NOTES.md`, 58c2466).
+  clips it; any tessellation brings the foam and the lake back
+  (`foam/NOTES.md`, 58c2466). Fixed in the culling round, which draws large
+  water in cells of at most 256 m (ec54c60).
 
 ## Status 2026-10-19, shell own-window round
 
@@ -953,8 +1060,9 @@ Branch `p2-terrain-water`, 0ee78f1..HEAD on 2dae5fa. Closes owed row 24.
   asset changes outside snapshots (now world state, 9024a12); scattered
   copies shrank instead of fading and were rebuilt on the CPU every frame
   (now dithered and placed once per cached chunk, 1ced372); lavapipe draws
-  no shore foam on `terrain-far`'s 24 km single-quad sea (cause found,
-  not fixed: `tests/evidence/P3/streaming/foam/NOTES.md`).
+  no shore foam on `terrain-far`'s 24 km single-quad sea (fixed by
+  ec54c60, which draws large water in cells of at most 256 m:
+  `tests/evidence/P3/streaming/foam/NOTES.md`).
 
 ## Status 2026-10-19, Phase 2, archetypes round
 

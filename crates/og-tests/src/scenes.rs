@@ -221,6 +221,14 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = tilemap_256();
             g.scene.camera = Camera::orthographic_2d(Vec2::new(128.0, 128.0), 260.0);
         }
+        // Phase 3: 40,000 buildings in sixteen batches from the street
+        // (walking down the avenue) and from the air. Perf only (no
+        // reference; tests/evidence/P3/culling/).
+        "city-street" => {
+            g.scene = crate::culling_scenes::city_street();
+            g.update = Some(crate::culling_scenes::walk);
+        }
+        "city-aerial" => g.scene = crate::culling_scenes::city_aerial(),
         // Only the sky, the sun in view.
         "sky-only" => g.scene = sky_only(),
         // Everything at once: models, CSM, local lights, bloom, auto exposure,

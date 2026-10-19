@@ -29,6 +29,11 @@ declare module "node:fs" {
   export function watch(path: string, listener: (event: string, file: string | null) => void): { close(): void };
 }
 
+declare module "node:os" {
+  export function networkInterfaces(): Record<string, Array<{ address: string; family: string | number; internal: boolean }> | undefined>;
+  export function tmpdir(): string;
+}
+
 declare module "node:crypto" {
   export function createHash(algorithm: string): { update(data: Uint8Array | string): { digest(encoding: "hex"): string } };
 }

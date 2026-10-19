@@ -292,6 +292,11 @@ player members and a dev build every member, whatever it says.
 - **URL parameters**: `webgl=1` (the WebGL2 fallback; also taken when WebGPU
   has no adapter), `replay-seed=<u32>`, `autoplay=0` (a harness drives the
   clock through the probe: no gate, no first tick, no service worker).
+  On WebGPU og-render culls on the GPU: frustum and occlusion tests in
+  compute and indirect draws. The WebGL2 fallback culls on the CPU, and both
+  give the same frame. On og-tests' 40,000-building city scenes in Chrome,
+  WebGPU's frame takes about 35 % less time than with CPU culling
+  (`tests/evidence/P3/culling/`).
 
 ## The Player and Stage contract
 
@@ -534,6 +539,32 @@ icons) is.
   the signal), whether its probe had been serving (`--port`: it stops
   answering), and its last stderr lines, and exits with the process's code
   (128 + the signal).
+- `og run --device chrome|android[:serial]|iphone[:udid] [project]
+  [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--webgl]
+  [--chrome <path>] [--cert <pem> --key <pem>] [--json]` exports the
+  publish build into `<project>/.og/device`, serves it on 0.0.0.0 with its
+  `_headers` and COOP/COEP/CORP (no-store, so every load is cold), prints
+  the LAN URL, opens it in the target, passes the play gate with a real
+  tap and times the page. `chrome` is this machine's Chrome over the
+  DevTools protocol (`--chrome`, `CHROME`, `CHROME_PATH`, the agent-browser
+  install, /Applications, PATH; headless unless `--headed`); `android` is
+  Chrome on a phone over adb (`adb reverse` puts the page at the phone's own
+  localhost, a secure context, and `adb forward` reaches its DevTools);
+  `iphone` (or `ios`) is Safari over safaridriver at the LAN URL, which is
+  a secure context only over HTTPS (`--cert`/`--key`, from mkcert). It
+  reads `og:first-frame` (navigation to the first frame behind the gate),
+  `__runtime_probe__.hello()`'s tier and, after a second of play,
+  `__og_timings__` over `--seconds` (default 5): the Worker's display
+  interval and engine work per played frame as count, mean, p50, p95, p99
+  and max. `report.md` and `device.json` (default `<project>/og-out/device`)
+  have og polish's shape: a first-frame score against the §7 budget (2.0 s,
+  1.5 s on the iPhone), a frame-time score (p95 interval, 17 ms: 100,
+  33.3 ms: 0), findings with a fix each (over budget, missed frames, work
+  over 16.7 ms, no isolation, console errors), the device (user agent,
+  platform, tier, WebGPU adapter, WebGL renderer, DPR, viewport, canvas,
+  cores, memory, isolation) and the headers served. A missing Chrome, adb
+  or safaridriver is told in one line before the build; the phone paths'
+  prerequisites are in tests/evidence/P3/device/NOTES.md.
 - `og doctor` (no arguments) checks what the author's loop needs: bun
   (node is optional when bun is present), the engine package, its native
   addon, both web host wasm files, and a 64×64 frame rendered headless

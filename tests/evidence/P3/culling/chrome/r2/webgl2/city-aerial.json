@@ -1,0 +1,37 @@
+{
+  "scene": "city-aerial",
+  "tier": "webgl2",
+  "browser": "Chrome for Testing (cdp.ts)",
+  "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+  "culling": "cpu",
+  "last_frame": {
+    "gpu_culling": false,
+    "draws": 36,
+    "instances": 40001,
+    "culled": 2854,
+    "occluded": 0,
+    "triangles": 480002,
+    "shadow_casters": 108,
+    "counts_lag": 0
+  },
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 120,
+  "runs_ms": [
+    2.274,
+    2.331,
+    2.368,
+    2.413,
+    2.422,
+    2.436,
+    2.501
+  ],
+  "frame_ms": 2.274,
+  "submit_median_ms": 2.3,
+  "load": [
+    52.3,
+    81.3,
+    107.1
+  ],
+  "note": "each run ends in one capture (its readback waits for the GPU to finish the run's frames)"
+}
