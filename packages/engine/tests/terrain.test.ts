@@ -4,8 +4,8 @@
 // texture and its height field registered with physics; og.terrain.sample
 // answers the surface a ball comes to rest on and a character walks up;
 // an edit raises the ground under the renderer, physics and sample alike;
-// a layer reads back and retunes; og.Terrain draws it; refusals name the
-// fix.
+// a layer reads back and retunes; og.Terrain draws it; og.TerrainScatter
+// grows copies of a mesh over it near the camera; refusals name the fix.
 import { beforeAll, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -184,6 +184,41 @@ test("og.Terrain draws the terrain, and a layer reads back and retunes", () => {
   expect(engine.advance(1).ok).toBeTrue();
   const gone = pixel(decodeCapture(engine.probe.capture(160, 90)), 80, 70);
   expect(Math.abs(gone[0]! - red[0]!) + Math.abs(gone[1]! - red[1]!)).toBeGreaterThan(20);
+});
+
+test("og.TerrainScatter grows copies of a mesh over the terrain near the camera", () => {
+  const { engine, info, terrain } = start({ x: 0, y: 0, z: 0 }, [160, 90]);
+  const w = engine.world;
+  view(w, { x: 0, y: 30, z: 36 }, { x: 0, y: 0, z: 0 });
+  const red = must(og.render.standardMaterial(w, { color: { r: 1, g: 0, b: 0 }, roughness: 1 }));
+  const box = must(og.render.boxGeometry(w, { width: 2, height: 2, depth: 2 }));
+  const reds = () => {
+    expect(engine.advance(1).ok).toBeTrue();
+    const img = decodeCapture(engine.probe.capture(160, 90));
+    let n = 0;
+    for (let y = 0; y < 90; y++) {
+      for (let x = 0; x < 160; x++) {
+        const [r, g, b] = pixel(img, x, y);
+        if (r! > 110 && g! < 60 && b! < 60) n++;
+      }
+    }
+    return n;
+  };
+  expect(reds()).toBe(0);
+  must(w.insert(terrain, og.TerrainScatter, { data: info.data as never, geometry: box, material: red, density: 0.05, distance: 80, fade: 0 }));
+  const many = reds();
+  expect(many).toBeGreaterThan(300);
+  // Within 6 m of the camera's xz (36 m south of the hill, past the
+  // terrain's edge): nothing in view.
+  w.set(terrain, og.TerrainScatter, { distance: 6 });
+  expect(reds()).toBe(0);
+  // Half the density, about half the copies.
+  w.set(terrain, og.TerrainScatter, { distance: 80, density: 0.025 });
+  const half = reds();
+  expect(half).toBeGreaterThan(many * 0.3);
+  expect(half).toBeLessThan(many * 0.7);
+  w.set(terrain, og.TerrainScatter, { density: 0 });
+  expect(reds()).toBe(0);
 });
 
 test("og.terrain refusals name the fix", () => {

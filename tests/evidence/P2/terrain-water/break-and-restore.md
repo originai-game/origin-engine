@@ -81,3 +81,10 @@ The character test was first written expecting x > -12 after 240 ticks at 3 m/s 
 | copies stay put | `scatter`: cells keyed from the camera's corner, not the terrain's | the same test: `cell 491589 moved` after a 7 m step; and the reference |
 | align | `scatter`: always upright | the same test (a stone's up against the slope's normal) and the reference |
 | the control map | `layer_weights`: every channel 1 | the same test: grass weight on the sand track the control map paints (the first version of the test passed this break: it checked only the meadow, so the track check was added) |
+
+## og.TerrainScatter through the native host (`packages/engine/tests/terrain.test.ts`)
+
+| Broken | Edit | Failed |
+|---|---|---|
+| copies drawn | `terrain::extract` adds no instances | `og.TerrainScatter grows copies of a mesh over the terrain near the camera` |
+| the component's density | `terrain::extract` reads density as 0.05 whatever is set | the same test: half the density draws as many |

@@ -111,7 +111,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-807 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+808 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -548,6 +548,7 @@ Field units the docs and Tune use.
 | [`og.terrain.load`](terrain.md#fn-load) | function | terrain | `og_terrain_load` |
 | [`og.terrain.sample`](terrain.md#fn-sample) | function | terrain | `og_terrain_sample` |
 | [`og.terrain.setLayer`](terrain.md#fn-setLayer) | function | terrain | `og_terrain_set_layer` |
+| [`og.TerrainScatter`](terrain.md#record-TerrainScatter) | component | terrain | — |
 | [`og.Tilemap`](tilemap.md#record-Tilemap) | component | tilemap | — |
 | [`og.tilemap.cellAt`](tilemap.md#fn-cellAt) | function | tilemap | `og_tilemap_cell_at` |
 | [`og.tilemap.cellCenter`](tilemap.md#fn-cellCenter) | function | tilemap | `og_tilemap_cell_center` |

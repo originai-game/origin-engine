@@ -304,8 +304,9 @@ pub(crate) struct DrawLayouts {
     pub fx: super::fx::FxLayouts,
     /// The atmosphere's and the physics extras' records (`super::atmosphere`).
     pub atmo: super::atmosphere::AtmoLayouts,
-    /// og.Terrain (`super::terrain`).
+    /// og.Terrain and og.TerrainScatter (`super::terrain`).
     pub terrain: Option<Layout>,
+    pub scatter: Option<Layout>,
 }
 
 /// Rebuild the per-frame part of `rs.scene` from the world as of its tick.
@@ -529,7 +530,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     super::fx::components(world, rs, &mut h, tick);
     // Cloth meshes are instances too: keyed for per-object motion.
     keys.extend(super::atmosphere::extract(world, rs, &mut h));
-    super::terrain::extract(world, rs, &mut h);
+    // Scattered copies are instances too, keyed by their terrain cell.
+    keys.extend(super::terrain::extract(world, rs, &mut h));
     let vp = super::fx::viewport(rs);
     // The camera's shake, punch, kick and zones (on the frame only), then
     // og.Sprite rows, floating texts and tile layers.

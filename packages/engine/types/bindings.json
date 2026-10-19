@@ -3892,6 +3892,75 @@
           "default": 0
         }
       ]
+    },
+    {
+      "id": 53,
+      "name": "TerrainScatter",
+      "schema": "og.TerrainScatter",
+      "module": "terrain",
+      "fields": [
+        {
+          "name": "data",
+          "column": "TerrainData",
+          "default": 0
+        },
+        {
+          "name": "geometry",
+          "column": "Geometry",
+          "default": 0
+        },
+        {
+          "name": "material",
+          "column": "Material",
+          "default": 0
+        },
+        {
+          "name": "layer",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "density",
+          "column": "f32",
+          "default": 2,
+          "tunable": true
+        },
+        {
+          "name": "distance",
+          "column": "f32",
+          "default": 40,
+          "tunable": true
+        },
+        {
+          "name": "fade",
+          "column": "f32",
+          "default": 0.3,
+          "tunable": true
+        },
+        {
+          "name": "minScale",
+          "column": "f32",
+          "default": 0.8,
+          "tunable": true
+        },
+        {
+          "name": "maxScale",
+          "column": "f32",
+          "default": 1.2,
+          "tunable": true
+        },
+        {
+          "name": "align",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "seed",
+          "column": "u32",
+          "default": 1
+        }
+      ]
     }
   ],
   "resources": [

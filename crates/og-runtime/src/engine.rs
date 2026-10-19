@@ -852,6 +852,7 @@ pub(crate) fn extract_layouts(eng: &Engine) -> (Option<Layout>, Option<Layout>, 
             fx: super::fx::FxLayouts::from(get),
             atmo: super::atmosphere::AtmoLayouts::from(get, st.physics.clone()),
             terrain: get("og.Terrain"),
+            scatter: get("og.TerrainScatter"),
         },
     )
 }

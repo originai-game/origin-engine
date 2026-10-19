@@ -6686,7 +6686,7 @@
     },
     {
       "name": "terrain",
-      "doc": "Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.\nLoad it with og.terrain.load, then place it: an og.Terrain on an entity draws it centred on the entity's position (rotation and scale are ignored: terrain lies along world x and z), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.terrain.sample answers the surface's height and normal anywhere; og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are asset changes, like og.physics.setMesh: they are not world state, and a restored snapshot keeps the terrain as it is.",
+      "doc": "Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.\nLoad it with og.terrain.load, then place it: an og.Terrain on an entity draws it centred on the entity's position (rotation and scale are ignored: terrain lies along world x and z), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere; og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are asset changes, like og.physics.setMesh: they are not world state, and a restored snapshot keeps the terrain as it is.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -6694,6 +6694,7 @@
         "TerrainData",
         "TerrainBrushMode",
         "Terrain",
+        "TerrainScatter",
         "TerrainInfo",
         "TerrainSampleDesc",
         "TerrainSample",
@@ -24824,6 +24825,94 @@
           "default": 0,
           "minimum": 0,
           "maximum": 256
+        }
+      },
+      "additionalProperties": false
+    },
+    "TerrainScatter": {
+      "x-og-kind": "component",
+      "x-og-module": "terrain",
+      "description": "Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies shrink to nothing over the outer `fade` of `distance`. The entity stands where the terrain does: the og.Terrain's entity itself, or a child of it at its origin. Drawn only: no colliders, and the copies are not entities.",
+      "type": "object",
+      "properties": {
+        "data": {
+          "$ref": "#/$defs/TerrainData",
+          "description": "The terrain (og.terrain.load's TerrainInfo.data).",
+          "default": 0
+        },
+        "geometry": {
+          "$ref": "#/$defs/Geometry",
+          "description": "The mesh, its origin at its root.",
+          "default": 0
+        },
+        "material": {
+          "$ref": "#/$defs/Material",
+          "description": "Its material.",
+          "default": 0
+        },
+        "layer": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The terrain layer that places it, 0 to 3.",
+          "default": 0,
+          "maximum": 3
+        },
+        "density": {
+          "type": "number",
+          "description": "Copies per square metre where the layer's weight is 1.",
+          "default": 2,
+          "minimum": 0,
+          "maximum": 400,
+          "x-og-tunable": true
+        },
+        "distance": {
+          "type": "number",
+          "description": "How far from the camera, along x and z, copies are placed.",
+          "default": 40,
+          "minimum": 0,
+          "maximum": 500,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "fade": {
+          "type": "number",
+          "description": "The outer part of `distance` over which copies shrink to nothing.",
+          "default": 0.3,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "minScale": {
+          "type": "number",
+          "description": "The smallest copy's uniform scale.",
+          "default": 0.8,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "maxScale": {
+          "type": "number",
+          "description": "The largest copy's uniform scale.",
+          "default": 1.2,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "align": {
+          "type": "number",
+          "description": "How far copies lean with the ground: 0 upright, 1 along its normal.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Another seed places the copies elsewhere.",
+          "default": 1
         }
       },
       "additionalProperties": false

@@ -14434,7 +14434,7 @@ export interface EngineProbe extends RuntimeProbe {
 
 // ── terrain ─────────────────────────────────────────────────────
 // Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.
-// Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it centred on the entity's position (rotation and scale are ignored: terrain lies along world x and z), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.terrain.sample answers the surface's height and normal anywhere; og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are asset changes, like og.physics.setMesh: they are not world state, and a restored snapshot keeps the terrain as it is.
+// Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it centred on the entity's position (rotation and scale are ignored: terrain lies along world x and z), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere; og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are asset changes, like og.physics.setMesh: they are not world state, and a restored snapshot keeps the terrain as it is.
 
 /**
  * A loaded terrain: its heights, control map and layers.
@@ -14490,6 +14490,82 @@ export interface Terrain {
    * @range 0..256
    */
   lodRing: number;
+}
+
+/**
+ * Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies shrink to nothing over the outer `fade` of `distance`. The entity stands where the terrain does: the og.Terrain's entity itself, or a child of it at its origin. Drawn only: no colliders, and the copies are not entities.
+ *
+ * The value of the `TerrainScatter` component (token `og.TerrainScatter`).
+ */
+export interface TerrainScatter {
+  /** The terrain (og.terrain.load's TerrainInfo.data). */
+  data: TerrainData;
+  /** The mesh, its origin at its root. */
+  geometry: Geometry;
+  /** Its material. */
+  material: Material;
+  /**
+   * The terrain layer that places it, 0 to 3.
+   *
+   * @range ..3
+   */
+  layer: number;
+  /**
+   * Copies per square metre where the layer's weight is 1.
+   *
+   * @default 2
+   * @range 0..400
+   * @tunable
+   */
+  density: number;
+  /**
+   * How far from the camera, along x and z, copies are placed.
+   *
+   * @default 40
+   * @range 0..500
+   * @unit m (metres)
+   * @tunable
+   */
+  distance: number;
+  /**
+   * The outer part of `distance` over which copies shrink to nothing.
+   *
+   * @default 0.3
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  fade: number;
+  /**
+   * The smallest copy's uniform scale.
+   *
+   * @default 0.8
+   * @range 0..
+   * @tunable
+   */
+  minScale: number;
+  /**
+   * The largest copy's uniform scale.
+   *
+   * @default 1.2
+   * @range 0..
+   * @tunable
+   */
+  maxScale: number;
+  /**
+   * How far copies lean with the ground: 0 upright, 1 along its normal.
+   *
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  align: number;
+  /**
+   * Another seed places the copies elsewhere.
+   *
+   * @default 1
+   */
+  seed: number;
 }
 
 /** A loaded terrain. */
@@ -16768,8 +16844,12 @@ export declare namespace og {
    */
   const Terrain: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly castShadows: FieldSpec<"bool">; readonly lodSpacing: FieldSpec<"f32">; readonly lodRing: FieldSpec<"u32"> }, Terrain>;
   /**
+   * Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies shrink to nothing over the outer `fade` of `distance`. The entity stands where the terrain does: the og.Terrain's entity itself, or a child of it at its origin. Drawn only: no colliders, and the copies are not entities.
+   */
+  const TerrainScatter: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly layer: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly fade: FieldSpec<"f32">; readonly minScale: FieldSpec<"f32">; readonly maxScale: FieldSpec<"f32">; readonly align: FieldSpec<"f32">; readonly seed: FieldSpec<"u32"> }, TerrainScatter>;
+  /**
    * Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.
-   * Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it centred on the entity's position (rotation and scale are ignored: terrain lies along world x and z), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.terrain.sample answers the surface's height and normal anywhere; og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are asset changes, like og.physics.setMesh: they are not world state, and a restored snapshot keeps the terrain as it is.
+   * Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it centred on the entity's position (rotation and scale are ignored: terrain lies along world x and z), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere; og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are asset changes, like og.physics.setMesh: they are not world state, and a restored snapshot keeps the terrain as it is.
    */
   namespace terrain {
     /**

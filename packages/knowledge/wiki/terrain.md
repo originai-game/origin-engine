@@ -4,7 +4,7 @@
 
 Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.
 
-Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it centred on the entity's position (rotation and scale are ignored: terrain lies along world x and z), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.terrain.sample answers the surface's height and normal anywhere; og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are asset changes, like og.physics.setMesh: they are not world state, and a restored snapshot keeps the terrain as it is.
+Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it centred on the entity's position (rotation and scale are ignored: terrain lies along world x and z), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere; og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are asset changes, like og.physics.setMesh: they are not world state, and a restored snapshot keeps the terrain as it is.
 
 - **TypeScript**: functions are the namespace `og.terrain`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
@@ -26,6 +26,7 @@ module terrain {
 | [`TerrainData()`](#column-TerrainData) | column kind | A TerrainData handle field. |
 | [`TerrainBrushMode`](#type-TerrainBrushMode) | enum | What og.terrain.edit does under its brush. |
 | [`og.Terrain`](#record-Terrain) | component | Draws a loaded terrain centred on the entity's position, with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to. |
+| [`og.TerrainScatter`](#record-TerrainScatter) | component | Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies shrink to nothing over the outer `fade` of `distance`. The entity stands where the terrain does: the og.Terrain's entity itself, or a child of it at its origin. Drawn only: no colliders, and the copies are not entities. |
 | [`TerrainInfo`](#type-TerrainInfo) | struct | A loaded terrain. |
 | [`TerrainSampleDesc`](#type-TerrainSampleDesc) | desc struct | Where og.terrain.sample looks. |
 | [`TerrainSample`](#type-TerrainSample) | struct | The terrain under a point. |
@@ -70,7 +71,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 9567</sub>
+<sub>`api.ogt` line 9616</sub>
 
 <a id="fn-sample"></a>
 
@@ -100,7 +101,7 @@ fn sample {
 }
 ```
 
-<sub>`api.ogt` line 9574</sub>
+<sub>`api.ogt` line 9623</sub>
 
 <a id="fn-bounds"></a>
 
@@ -134,7 +135,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 9581</sub>
+<sub>`api.ogt` line 9630</sub>
 
 <a id="fn-edit"></a>
 
@@ -166,7 +167,7 @@ fn edit {
 }
 ```
 
-<sub>`api.ogt` line 9591</sub>
+<sub>`api.ogt` line 9640</sub>
 
 <a id="fn-layer"></a>
 
@@ -198,7 +199,7 @@ fn layer {
 }
 ```
 
-<sub>`api.ogt` line 9599</sub>
+<sub>`api.ogt` line 9648</sub>
 
 <a id="fn-setLayer"></a>
 
@@ -232,7 +233,7 @@ fn setLayer {
 }
 ```
 
-<sub>`api.ogt` line 9607</sub>
+<sub>`api.ogt` line 9656</sub>
 
 ## Components, resources and events
 
@@ -272,6 +273,81 @@ component Terrain {
 ```
 
 <sub>`api.ogt` line 9396</sub>
+
+<a id="record-TerrainScatter"></a>
+
+### `og.TerrainScatter` (component)
+
+Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies shrink to nothing over the outer `fade` of `distance`. The entity stands where the terrain does: the og.Terrain's entity itself, or a child of it at its origin. Drawn only: no colliders, and the copies are not entities.
+
+Token `og.TerrainScatter`, registered under the schema name `og.TerrainScatter`; its value type is `TerrainScatter`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `data` | `TerrainData` | `0` | — | — | — | The terrain (og.terrain.load's TerrainInfo.data). |
+| `geometry` | `Geometry` | `0` | — | — | — | The mesh, its origin at its root. |
+| `material` | `Material` | `0` | — | — | — | Its material. |
+| `layer` | `number` | `0` | ≤ 3 | — | — | The terrain layer that places it, 0 to 3. |
+| `density` | `number` | `2` | 0 … 400 | — | tunable | Copies per square metre where the layer's weight is 1. |
+| `distance` | `number` | `40` | 0 … 500 | `m` | tunable | How far from the camera, along x and z, copies are placed. |
+| `fade` | `number` | `0.3` | 0 … 1 | `ratio` | tunable | The outer part of `distance` over which copies shrink to nothing. |
+| `minScale` | `number` | `0.8` | ≥ 0 | — | tunable | The smallest copy's uniform scale. |
+| `maxScale` | `number` | `1.2` | ≥ 0 | — | tunable | The largest copy's uniform scale. |
+| `align` | `number` | `0` | 0 … 1 | `ratio` | tunable | How far copies lean with the ground: 0 upright, 1 along its normal. |
+| `seed` | `number` | `1` | — | — | — | Another seed places the copies elsewhere. |
+
+```ogt
+component TerrainScatter {
+  doc "Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies shrink to nothing over the outer `fade` of `distance`. The entity stands where the terrain does: the og.Terrain's entity itself, or a child of it at its origin. Drawn only: no colliders, and the copies are not entities."
+  field data TerrainData "The terrain (og.terrain.load's TerrainInfo.data)."
+  field geometry Geometry "The mesh, its origin at its root."
+  field material Material "Its material."
+  field layer u32 "The terrain layer that places it, 0 to 3." {
+    max 3
+  }
+  field density f32 "Copies per square metre where the layer's weight is 1." {
+    default 2
+    min 0
+    max 400
+    tunable true
+  }
+  field distance f32 "How far from the camera, along x and z, copies are placed." {
+    default 40
+    min 0
+    max 500
+    unit m
+    tunable true
+  }
+  field fade f32 "The outer part of `distance` over which copies shrink to nothing." {
+    default 0.3
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+  field minScale f32 "The smallest copy's uniform scale." {
+    default 0.8
+    min 0
+    tunable true
+  }
+  field maxScale f32 "The largest copy's uniform scale." {
+    default 1.2
+    min 0
+    tunable true
+  }
+  field align f32 "How far copies lean with the ground: 0 upright, 1 along its normal." {
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+  field seed u32 "Another seed places the copies elsewhere." {
+    default 1
+  }
+}
+```
+
+<sub>`api.ogt` line 9414</sub>
 
 ## Types
 
@@ -359,7 +435,7 @@ struct TerrainInfo {
 }
 ```
 
-<sub>`api.ogt` line 9414</sub>
+<sub>`api.ogt` line 9463</sub>
 
 <a id="type-TerrainSampleDesc"></a>
 
@@ -393,7 +469,7 @@ struct TerrainSampleDesc {
 }
 ```
 
-<sub>`api.ogt` line 9434</sub>
+<sub>`api.ogt` line 9483</sub>
 
 <a id="type-TerrainSample"></a>
 
@@ -422,7 +498,7 @@ struct TerrainSample {
 }
 ```
 
-<sub>`api.ogt` line 9449</sub>
+<sub>`api.ogt` line 9498</sub>
 
 <a id="type-TerrainBounds"></a>
 
@@ -447,7 +523,7 @@ struct TerrainBounds {
 }
 ```
 
-<sub>`api.ogt` line 9461</sub>
+<sub>`api.ogt` line 9510</sub>
 
 <a id="type-TerrainBrush"></a>
 
@@ -499,7 +575,7 @@ struct TerrainBrush {
 }
 ```
 
-<sub>`api.ogt` line 9471</sub>
+<sub>`api.ogt` line 9520</sub>
 
 <a id="type-TerrainEdit"></a>
 
@@ -526,7 +602,7 @@ struct TerrainEdit {
 }
 ```
 
-<sub>`api.ogt` line 9501</sub>
+<sub>`api.ogt` line 9550</sub>
 
 <a id="type-TerrainLayerDesc"></a>
 
@@ -607,7 +683,7 @@ struct TerrainLayerDesc {
 }
 ```
 
-<sub>`api.ogt` line 9512</sub>
+<sub>`api.ogt` line 9561</sub>
 
 ## Column kinds
 
