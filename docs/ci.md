@@ -193,11 +193,16 @@ The path-aware state is `<target>/og-gate/` (the green trees) and
 across runs and are only ever bypassed with `--all`, never deleted to force
 a step.
 
-One gate per target directory: `scripts/check.sh` (and a release
-`packages/engine/scripts/build.sh`) holds `<target>/og-gate.lock` for its
-whole run (`scripts/lock.sh`: a mkdir lock with the holder's pid, taken over
-when that pid no longer runs a gate); a second one prints `another gate
-(pid N: …) is running on <target>, waiting` and starts when the first ends.
+One gate per machine, and one per target directory: `scripts/check.sh`
+holds `~/.cache/og-gate/og-gate.lock` (`OG_GATE_MACHINE_DIR` moves it;
+`OG_GATE_MACHINE_LOCK=0` skips it, as CI does with one gate per runner) and
+then `<target>/og-gate.lock` (a release `packages/engine/scripts/build.sh`
+holds the target's) for its whole run (`scripts/lock.sh`: mkdir locks with
+the holder's pid, taken over when that pid no longer runs a gate); a second
+one prints `another gate (pid N: …) is running on <dir>, waiting` and starts
+when the first ends. The machine lock is there because the worktrees' gates
+are not independent: four at once took a 12-core machine to load 228 and
+every one of them past its test timeouts, so they are faster in a queue.
 
 The steps run concurrently, each as soon as the steps whose outputs it
 reads have passed or been skipped (`step_needs` in the script): test and

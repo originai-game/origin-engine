@@ -6,6 +6,10 @@
 #
 #   og_lock_acquire TARGET_DIR WHAT   waits for the lock, then holds it until exit
 #
+# A process may hold more than one (the gate holds the machine lock, then the
+# target's): og_lock_dirs lists them and og_lock_release frees every one it
+# owns.
+#
 # The lock is the directory TARGET_DIR/og-gate.lock (mkdir is atomic on every
 # filesystem) holding the owner's "pid what". A holder that no longer runs
 # (`kill -0` fails, or the pid now belongs to something that is not a
@@ -21,6 +25,7 @@ og_lock_acquire() {
   while :; do
     if mkdir "$og_lock_dir" 2>/dev/null; then
       printf '%s %s\n' "$$" "$2" > "$og_lock_dir/owner"
+      og_lock_dirs="${og_lock_dirs:-}${og_lock_dirs:+ }$og_lock_dir"
       OG_LOCK_OWNER=$$
       export OG_LOCK_OWNER
       trap 'og_lock_release' EXIT
@@ -73,9 +78,10 @@ og_lock_steal() {
 }
 
 og_lock_release() {
-  if [ -n "${og_lock_dir:-}" ]; then
-    og_lock_holder="$(cat "$og_lock_dir/owner" 2>/dev/null || true)"
-    [ "${og_lock_holder%% *}" = "$$" ] && rm -rf "$og_lock_dir"
-  fi
+  for og_lock_held in ${og_lock_dirs:-}; do
+    og_lock_holder="$(cat "$og_lock_held/owner" 2>/dev/null || true)"
+    [ "${og_lock_holder%% *}" = "$$" ] && rm -rf "$og_lock_held"
+  done
+  og_lock_dirs=""
   return 0
 }

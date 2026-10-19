@@ -585,8 +585,14 @@ fi
 GATE_JOBS="${OG_GATE_JOBS:-0}"   # steps at once; 0: as many as their inputs allow
 case "$GATE_JOBS" in ''|*[!0-9]*) og_err "OG_GATE_JOBS must be a number (0: no cap)"; exit 2 ;; esac
 
-# One gate (or release build.sh) per target directory: a second one waits
-# here instead of thrashing beside the first (scripts/lock.sh).
+# One gate per machine, then one per target directory: a second one waits
+# here instead of thrashing beside the first (scripts/lock.sh). Four
+# worktrees' gates at once took a 12-core machine to load 228 and every one
+# of them past its timeouts. OG_GATE_MACHINE_LOCK=0 skips the machine lock
+# (CI runs one gate per runner and needs no shared directory).
+if [ "${OG_GATE_MACHINE_LOCK:-1}" != "0" ]; then
+  og_lock_acquire "${OG_GATE_MACHINE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/og-gate}" "scripts/check.sh ${selected} ($PWD)" || exit 1
+fi
 og_lock_acquire "$OG_TARGET_DIR" "scripts/check.sh ${selected}" || exit 1
 # Running steps stop with the gate (Ctrl-C, a FAIL, a kill), then the lock goes.
 trap 'gate_cancel; og_lock_release' EXIT

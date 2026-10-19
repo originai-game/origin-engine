@@ -72,8 +72,11 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   main one's): a stale crate is cleaned with `cargo clean -p <crate>`,
   never wholesale. A worktree is removed only when its stream of work is
   over for good.
-- **One gate at a time.** `scripts/check.sh` and a release `build.sh` hold
-  `target/og-gate.lock` (`scripts/lock.sh`); a second one waits, never runs beside it.
+- **One gate at a time, on the whole machine.** `scripts/check.sh` holds
+  `~/.cache/og-gate/og-gate.lock` and then `target/og-gate.lock` (a release
+  `build.sh` holds the target's); a second one, in any worktree, waits
+  (`scripts/lock.sh`, `docs/ci.md`). Never bypass it to run gates beside each
+  other: they are slower together than in a queue.
 - **One profile per lane.** Everything in the gate that runs native code
   (tests, `og` for drift, cook, the addon the bun tests load) is the `dev`
   profile, whose heavy dependencies are already optimised per package in
