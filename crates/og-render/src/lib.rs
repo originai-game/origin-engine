@@ -444,7 +444,8 @@ pub struct FrameStats {
     pub batches: u32,
     /// Instances submitted.
     pub instances: u32,
-    /// Instances outside the camera's view, not drawn in the main pass.
+    /// Instances outside the camera's view, not drawn in the main pass
+    /// (with GPU culling, an earlier frame's count: see `counts_lag`).
     pub culled: u32,
     /// Triangles drawn in the main pass.
     pub triangles: u64,
@@ -533,7 +534,9 @@ pub struct FrameStats {
     /// `shadow_casters` hold the GPU's counts of the newest frame read back
     /// by then, this many frames old (`u32::MAX`: none yet); natively
     /// [`Renderer::finish_stats`] puts the frame's own in their place (0).
-    /// 0 on the CPU path.
+    /// 0 on the CPU path. While they lag, `culled`, `occluded` and the
+    /// instances drawn come from different frames and need not add up to
+    /// `instances`.
     pub counts_lag: u32,
 }
 
@@ -3281,6 +3284,27 @@ impl Renderer {
             && !scene.previous_transforms.is_empty()
             && scene.previous_transforms.len() == scene.instances.len();
         let sorted = transforms.len() as u32;
+        // The passes this frame can cull at most: the camera, the
+        // occluders, the planar reflection, the cascades and the shadowed
+        // local lights' faces. The buffers must fit them; `encode` sizes
+        // them for the frame's actual passes and regrows when that grows.
+        let max_passes = 2
+            + reflection.is_some() as usize
+            + if scene.light.cast_shadows {
+                (self.info.shadow_cascades as usize).clamp(1, CASCADES)
+            } else {
+                0
+            }
+            + scene
+                .lights
+                .iter()
+                .filter(|l| l.cast_shadows)
+                .map(|l| match l.kind {
+                    LightKind::Point => 6,
+                    LightKind::Spot { .. } => 1,
+                })
+                .sum::<usize>()
+                .min(LOCAL_SHADOW_LAYERS);
         let gpu_cull = self.indirect
             && self.desc_culling == Culling::Auto
             && !object_motion
@@ -3295,7 +3319,7 @@ impl Renderer {
                             .min(limits.max_buffer_size),
                     )
                 });
-                gc.fits(sorted, cull_gpu::MAX_PASSES)
+                gc.fits(sorted, max_passes)
             };
         let mut cull_passes: Vec<cull_gpu::CullPass> = Vec::new();
         let mut gpu_pass = |kind, frustum: &Frustum| {
@@ -3535,6 +3559,7 @@ impl Renderer {
                 .as_mut()
                 .expect("made when gpu_cull was decided");
             let lagged = gc.poll_counts();
+            debug_assert!(cull_passes.len() <= max_passes);
             let (commands, occluder_draws) = gc.encode(
                 &self.device,
                 &self.queue,

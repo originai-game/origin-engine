@@ -33,8 +33,9 @@ const HIZ_WGSL: &str = include_str!("../shaders/hiz.wgsl");
 const DEPTH_WGSL: &str = include_str!("../shaders/cull_depth.wgsl");
 
 /// Passes one frame may cull: three cascades, twelve local light faces,
-/// the planar reflection, the occluders and the camera.
-pub(crate) const MAX_PASSES: usize = 18;
+/// the planar reflection, the occluders and the camera (the size of
+/// `Params`; the buffers are sized for the frame's own passes).
+const MAX_PASSES: usize = 18;
 /// Planes per pass (a cascade's box and the slice planes facing the light).
 const MAX_PLANES: usize = 12;
 const WORKGROUP: u32 = 256;
@@ -104,7 +105,11 @@ struct BatchGpu {
     extent: [f32; 4],
 }
 
-/// The GPU's counts for one frame (see the module docs).
+/// The GPU's counts for one frame (see the module docs). They are
+/// counted after the frame's draws are encoded, so a frame's stats carry
+/// an earlier frame's (`counts_lag`): with the instances moving between
+/// frames, `culled` plus what was drawn need not add up to the frame's
+/// instances.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) struct GpuCounts {
     pub frame: u64,
@@ -446,8 +451,8 @@ impl GpuCulling {
             | wgpu::BufferUsages::COPY_DST
     }
 
-    /// Whether `n` instances in `passes` passes fit the device's storage
-    /// binding limit.
+    /// Whether `n` instances in `passes` passes (the most the frame can
+    /// have) fit the device's storage binding limit.
     pub fn fits(&self, n: u32, passes: usize) -> bool {
         (passes as u64 + 1) * n as u64 * INSTANCE_STRIDE <= self.max_binding
             && Self::scan_words(n, passes) * 4 <= self.max_binding
@@ -518,8 +523,11 @@ impl GpuCulling {
                 // Every readback in flight lands and is taken.
                 device.poll(wgpu::PollType::wait_indefinitely()).ok()?;
                 self.poll_counts();
-                let r = self.readbacks.iter_mut().find(|r| r.layout.is_none())?;
                 let words = layout.kinds.len() as u64 * (layout.batches as u64 * 5 + 1);
+                let r = self
+                    .readbacks
+                    .iter_mut()
+                    .find(|r| r.layout.is_none() && r.buffer.size() >= words * 4)?;
                 let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
                     label: Some("cull counts"),
                 });
@@ -761,6 +769,7 @@ impl GpuCulling {
         let n = transforms.len() as u32;
         let b = batches.len() as u32;
         let p = passes.len();
+        debug_assert!(p <= MAX_PASSES);
         self.n = n;
         self.b = b;
         self.ensure_pyramid(device, width, height, samples);
@@ -818,15 +827,13 @@ impl GpuCulling {
             self.max_binding,
             Self::args_usage(),
         );
-        let readback_size = (args_words * 4).next_power_of_two().max(256);
-        if self
-            .readbacks
-            .first()
-            .is_some_and(|r| r.buffer.size() < args_words * 4)
-        {
-            // Mapped or in-flight ones are dropped (their counts lost).
-            self.readbacks.clear();
-        }
+        let count_bytes = args_words * 4;
+        let readback_size = count_bytes.next_power_of_two().max(256);
+        // A readback too small for this frame's counts is replaced once it
+        // is free; one in flight keeps its frame's counts (its layout says
+        // how many words it holds) until they are read.
+        self.readbacks
+            .retain(|r| r.layout.is_some() || r.buffer.size() >= count_bytes);
         while self.readbacks.len() < READBACKS {
             self.readbacks.push(Readback {
                 buffer: buffer(
@@ -1032,12 +1039,12 @@ impl GpuCulling {
                 .map(|x| x.count)
                 .sum(),
         };
-        if let Some(r) = self
-            .readbacks
-            .iter_mut()
-            .find(|r| r.layout.is_none() && r.mapped.lock().map(|m| m.is_none()).unwrap_or(false))
-        {
-            encoder.copy_buffer_to_buffer(&self.args, 0, &r.buffer, 0, args_words * 4);
+        if let Some(r) = self.readbacks.iter_mut().find(|r| {
+            r.layout.is_none()
+                && r.buffer.size() >= count_bytes
+                && r.mapped.lock().map(|m| m.is_none()).unwrap_or(false)
+        }) {
+            encoder.copy_buffer_to_buffer(&self.args, 0, &r.buffer, 0, count_bytes);
             r.layout = Some(layout.clone());
             r.unmapped = true;
             r.applied = stats_given;
