@@ -379,16 +379,35 @@ export function installInflater(glue: Pick<WebExtras, "og_web_set_inflater" | "o
   return true;
 }
 
-/** A `capture` answered null: on the web the readback finishes on a later call. */
+/**
+ * A `capture` or `sweep` answered null: on the web the readback finishes on
+ * a later call, and a sweep goes on from the frames it has each time it is
+ * asked again. (A sweep refused outright, an unknown entity, answers null
+ * too: it is asked again until its budget runs out.)
+ */
 function isPendingCapture(frame: string, answer: string): boolean {
   try {
     const request = JSON.parse(frame) as { method?: string };
-    if (request.method !== "capture") return false;
+    if (request.method !== "capture" && request.method !== "sweep") return false;
     const response = JSON.parse(answer) as { result?: unknown; error?: unknown };
     return response.error === undefined && response.result === null;
   } catch {
     return false;
   }
+}
+
+/** Display frames a pending `capture` is asked again on before it is given up on. */
+const CAPTURE_RETRIES = 60;
+
+/** Frames a `sweep` may wait: each value needs at least one call, at most 64 values. */
+function retriesOf(frame: string): number {
+  try {
+    const request = JSON.parse(frame) as { method?: string; params?: { values?: unknown[] } };
+    if (request.method === "sweep") return 2 * (request.params?.values?.length ?? 0) + CAPTURE_RETRIES;
+  } catch {
+    /* not a sweep */
+  }
+  return CAPTURE_RETRIES;
 }
 
 /** The most log lines the Worker keeps for a crash card. */
@@ -504,7 +523,7 @@ export function startWorker(game: GameToken): void {
       return;
     }
     if (rendering && isPendingCapture(frame, out)) {
-      retries.push({ frame, left: 60, viaRing });
+      retries.push({ frame, left: retriesOf(frame), viaRing });
       schedule();
     } else answer(out, viaRing);
   };
