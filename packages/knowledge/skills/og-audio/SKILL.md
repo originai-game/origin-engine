@@ -42,8 +42,11 @@ game's style needs it; presets are a floor, not a style.
 `og.ui.configure(world, { sounds: { hover, press, open, close, success, error } })`
 (or the skin's `sound` lines) plays them on the `ui` bus: `click` for
 press, `select` for success, `back` for close, `error` for a refused press
-(and for `og.ui.shake({ sound: true })`, og-ui §6).
-Hover sounds only on desktop menus, and quiet (volume ≤ 0.3).
+(and for `og.ui.shake({ sound: true })`, og-ui §6). Each starts in the
+tick of its input. `hover` also answers keyboard and gamepad focus moving
+to a control, and `press` a press by Enter, Space or the pad's A, so a
+menu walked with a pad is heard step by step; keep `hover` short and quiet
+(volume ≤ 0.3).
 
 ## 4. Buses and the mix
 
@@ -76,9 +79,22 @@ at 1.0 is a mix bug, not loudness.
 - Bar-length stems started bar by bar: on the last beat of each bar
   `og.MusicBeat` brings, start the next bar's stems at that event's `time`
   plus a beat. og.audio runs on the world's ticks, which keep going at
-  time scale 0, so a pause stops the stems and a resume starts them again
-  on a bar line. `templates/archetypes/rhythm` (its `Band` system, and
+  time scale 0, so a pause stops the stems and a resume starts them again.
+  `templates/archetypes/rhythm` (its `Band` system, and
   `tests/band.og.ts`, which asserts every `startAt`) does this.
+- Part-way starts: `startOffset` (seconds into the clip) with `startAt`
+  starts a source that far in, to the sample, so a resume carries on from
+  the beat it paused on: each stem sounding then starts at the count-in's
+  end with `startOffset` how far into it that beat is (the rhythm's
+  `tests/pause.og.ts` asserts both).
+- What the player hears lags the mix by the device's output latency:
+  `og.audio.outputLatency(world)` (seconds; the Web Audio context's
+  `outputLatency` or `baseLatency` plus the engine's buffer on the web, the
+  device's callback-to-playback time natively, 0 headless; the system
+  declares `og.Audio` among its reads). A rhythm game judges a press at
+  its tick's time plus its event's `at` (og-game, input) less this and a
+  calibrated offset for the rest of the chain (the rhythm's `Play` system,
+  `tests/timing.og.ts`).
 - A crossfade: the new track `startAt: nextBar` with `fade: 2`, the old one
   `playing: false` with the same `fade`.
 

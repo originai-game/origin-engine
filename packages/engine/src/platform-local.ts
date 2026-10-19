@@ -15,9 +15,13 @@ export interface PlatformCall {
 }
 
 /** An answer, as og_platform_answer takes it. */
-export type PlatformAnswer =
+export type PlatformAnswer = (
   | { readonly ok: true; readonly data: unknown }
-  | { readonly ok: false; readonly error: { readonly code: string; readonly message: string; readonly retryable: boolean; readonly revision?: number } };
+  | { readonly ok: false; readonly error: { readonly code: string; readonly message: string; readonly retryable: boolean; readonly revision?: number } }
+) & {
+  /** The answering host's clock, UTC ms (a Player that sends its time); the engine's host clock fills it in otherwise. */
+  readonly time?: number;
+};
 
 /** What answers an engine's platform calls. */
 export interface PlatformHost {

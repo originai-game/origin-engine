@@ -68,6 +68,9 @@ test("og-build.json names every file beside it, with bytes and sha256, and the P
   expect(m.game).toEqual({ name: "Runner", id: "runner", profile: "2d" });
   const html = read(dir, "index.html");
   expect(html).toContain(`<meta name="og-engine" content="${m.engine.version}">`);
+  // The Player transports: what the platform reads to open the page at the top level.
+  expect(m.player).toEqual({ protocol: 2, transports: ["frame", "page"] });
+  expect(html).toContain('<meta name="og-player" content="frame page">');
   expect(html).toContain('data-motion="genesis"');
   expect(html).toContain("Made with Origin Engine");
   // The service worker precaches what the page fetches, under a cache named by content.
@@ -98,6 +101,9 @@ test("publish settings: isolation, the badge and the service worker's version", 
   expect(req.manifest!.build).toBe("dev");
   expect(req.manifest!.probe.members).toContain("commands");
   expect(existsSync(join(work, "req", "sw.js"))).toBe(false);
+  // A dev (Stage) build declares the same transports: the Stage page reads them too.
+  expect(req.manifest!.player).toEqual({ protocol: 2, transports: ["frame", "page"] });
+  expect(read(join(work, "req"), "index.html")).toContain('<meta name="og-player" content="frame page">');
   expect(JSON.parse(/<script type="application\/json" id="og-config">(.*?)<\/script>/.exec(read(join(work, "req"), "index.html"))![1]!).aspect).toBeCloseTo(16 / 9, 6);
 }, 120_000);
 

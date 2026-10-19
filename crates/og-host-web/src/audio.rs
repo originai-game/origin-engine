@@ -54,6 +54,17 @@ fn no_link(engine: u32) -> String {
     ))
 }
 
+/// The output latency the page reports (the AudioContext's `baseLatency`
+/// and `outputLatency` and the worklet ring's buffer, in seconds), written to
+/// og.Audio.outputLatency before the next tick: host input. A Result.
+#[wasm_bindgen]
+pub fn og_web_audio_latency(engine: u32, seconds: f64) -> String {
+    match og_runtime::set_audio_latency(engine, seconds) {
+        Ok(()) => r#"{"ok":true}"#.to_string(),
+        Err(e) => refuse(&e),
+    }
+}
+
 /// Open engine `engine`'s mixer at `sample_rate` (the AudioContext's) and
 /// attach it to the engine's command stream; the next tick resyncs it, so
 /// what is already playing is heard. Replaces an open mixer. A Result.

@@ -56,6 +56,12 @@ export const ENGINE_VERSION = (JSON.parse(readFileSync(join(ENGINE_ROOT, "packag
 
 /** The manifest's file name (the platform's Player reads it). */
 export const BUILD_MANIFEST = "og-build.json";
+/**
+ * The Player transports the shell speaks: `frame` (protocol 2 over postMessage to a
+ * framing Player) and `page` (protocol 2 over same-origin HTTP when the page is the
+ * top-level document). Written as `<meta name="og-player">` and og-build.json `player`.
+ */
+export const PLAYER_TRANSPORTS = ["frame", "page"] as const;
 
 export interface SizeRow {
   readonly path: string;
@@ -146,6 +152,8 @@ export interface BuildManifest {
   };
   readonly icons: ReadonlyArray<{ readonly src: string; readonly sizes: string; readonly type: "image/png"; readonly source: "project" | "brand" }>;
   readonly pwa: { readonly manifest: string; readonly serviceWorker: string } | null;
+  /** The Player protocol the shell speaks and over which transports (origingame docs/player-protocol.md §The top-level engine page). */
+  readonly player: { readonly protocol: 2; readonly transports: readonly ("frame" | "page")[] };
   /** sha256 over the files' paths and hashes: the build's identity (the service worker's cache name). */
   readonly version: string;
   readonly files: readonly BuildFile[];
@@ -290,6 +298,7 @@ export function pageHtml(o: { settings: ProjectSettings; publish: boolean; confi
 <meta name="og-engine" content="${escapeHtml(ENGINE_VERSION)}">
 <meta name="og-build" content="${o.publish ? "publish" : "dev"}">
 <meta name="og-profile" content="${o.settings.profile}">
+<meta name="og-player" content="${PLAYER_TRANSPORTS.join(" ")}">
 <meta name="theme-color" content="#14161b">
 <meta name="color-scheme" content="dark">
 <meta name="mobile-web-app-capable" content="yes">
@@ -307,6 +316,7 @@ ${css}
 <body>
 <div id="og-stage"><canvas id="og-canvas" tabindex="0" aria-label="${title}"></canvas></div>
 <div id="og-boot" class="og-layer" role="progressbar" aria-label="Loading" aria-valuemin="0" aria-valuemax="100">
+<div id="og-backdrop" aria-hidden="true"></div>
 ${bootMark()}
 <div class="og-boot-label" id="og-boot-label" aria-live="polite"></div>
 </div>
@@ -321,6 +331,7 @@ ${bootMark()}
 </div>
 </div>
 <div id="og-install" role="dialog" aria-label="Install" hidden><span></span><button type="button"></button><button type="button"></button></div>
+<button id="og-back" type="button" aria-label="Back" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m15 6-6 6 6 6"/></svg><span>Back</span></button>
 <a id="og-made-with" href="https://origingame.ai" target="_blank" rel="noopener"${o.settings.publish.madeWith ? "" : " hidden"}>${engineMark()}<span>Made with Origin Engine</span></a>
 <script type="application/json" id="og-config">${config}</script>
 <script type="module" src="./play.js"></script>
@@ -482,6 +493,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
     display: { fit: p.fit, aspect: p.aspect, orientation: p.orientation, dprCap: p.dprCap, fullscreen: p.fullscreen, gate: p.gate, madeWith: p.madeWith },
     icons,
     pwa: publish ? { manifest: "manifest.webmanifest", serviceWorker: "sw.js" } : null,
+    player: { protocol: 2, transports: PLAYER_TRANSPORTS },
     version,
     files: rows,
     total: { files: rows.length, bytes: rows.reduce((n, f) => n + f.bytes, 0) },

@@ -64,7 +64,7 @@ export function confirmDialog(id: string, desc: Api.ConfirmDesc = {}): Api.Confi
   let confirmed = false;
   let cancelled = false;
   const m = kit.modal(id, desc.open ?? false, { title: desc.title ?? "" }, () => {
-    if (desc.message) kit.label("Message", desc.message, { step: "reading", color: token("fgMuted"), width: grow() });
+    if (desc.message) kit.richText("Message", desc.message, { step: "reading", color: token("fgMuted"), width: grow() });
     kit.row("Actions", { width: grow(), gap: t.sm, align: "end", padding: { left: 0, top: t.sm, right: 0, bottom: 0 } }, () => {
       if ((kit.button("Cancel", desc.cancelLabel ?? "Cancel", {}) as Api.Response).clicked) cancelled = true;
       if ((kit.button("Confirm", desc.confirmLabel ?? "Confirm", { variant: desc.danger ? "danger" : "primary" }) as Api.Response).clicked) confirmed = true;
@@ -78,7 +78,7 @@ export function alertDialog(id: string, desc: Api.AlertDesc = {}): boolean {
   const { t } = frame();
   let done = false;
   const m = kit.modal(id, desc.open ?? false, { title: desc.title ?? "" }, () => {
-    if (desc.message) kit.label("Message", desc.message, { step: "reading", color: token("fgMuted"), width: grow() });
+    if (desc.message) kit.richText("Message", desc.message, { step: "reading", color: token("fgMuted"), width: grow() });
     kit.row("Actions", { width: grow(), align: "end", padding: { left: 0, top: t.sm, right: 0, bottom: 0 } }, () => {
       if ((kit.button("Ok", desc.okLabel ?? "OK", { variant: "primary" }) as Api.Response).clicked) done = true;
     });

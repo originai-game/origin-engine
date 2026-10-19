@@ -396,6 +396,12 @@ pub trait TilemapApi: Wire {
     fn og_tilemap_cell_center(&self, world: u32, entity: f64, x: u32, y: u32) -> String;
 }
 
+/// `audio`: packages/knowledge/wiki/audio.md.
+pub trait AudioApi: Wire {
+    /// `og.audio.outputLatency`
+    fn og_audio_output_latency(&self, world: u32) -> f64;
+}
+
 /// `nav`: packages/knowledge/wiki/nav.md.
 pub trait NavApi: Wire {
     /// `og.nav.grid`
@@ -470,6 +476,8 @@ pub trait PlatformApi: Wire {
     fn og_platform_result(&self, world: u32, request: u32) -> String;
     /// `og.platform.info`
     fn og_platform_info(&self, world: u32) -> String;
+    /// `og.platform.now`
+    fn og_platform_now(&self, world: u32) -> f64;
 }
 
 /// `i18n`: packages/knowledge/wiki/i18n.md.
@@ -502,6 +510,8 @@ pub trait UiApi: Wire {
     fn og_ui_open_scroll(&self, id: String, desc: Option<String>);
     /// `og.ui.close`
     fn og_ui_close(&self) -> String;
+    /// `og.ui.richText`
+    fn og_ui_rich_text(&self, id: String, markup: String, desc: Option<String>) -> String;
     /// `og.ui.label`
     fn og_ui_label(&self, id: String, text: String, desc: Option<String>);
     /// `og.ui.button`
@@ -602,6 +612,12 @@ pub trait UiApi: Wire {
     fn og_ui_navigate(&self, world: u32, intent: String);
     /// `og.ui.back`
     fn og_ui_back(&self) -> bool;
+    /// `og.ui.setPlayers`
+    fn og_ui_set_players(&self, count: u32);
+    /// `og.ui.focus`
+    fn og_ui_focus(&self, pad: u32) -> String;
+    /// `og.ui.a11y`
+    fn og_ui_a11y(&self) -> String;
     /// `og.ui.setNavigation`
     fn og_ui_set_navigation(&self, on: bool);
     /// `og.ui.memory`
@@ -699,9 +715,9 @@ pub trait TerrainApi: Wire {
 }
 
 /// Every trait: a host is a type that implements all of them.
-pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi {}
+pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi {}
 
-impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi> Host for T {}
+impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi> Host for T {}
 
 /// Every binding symbol, in binding-table order (`bindings.json` ids).
 pub const SYMBOLS: &[&str] = &[
@@ -843,6 +859,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_tilemap_get_tile",
     "og_tilemap_cell_at",
     "og_tilemap_cell_center",
+    "og_audio_output_latency",
     "og_nav_grid",
     "og_nav_grid_from_tilemap",
     "og_nav_set_cost",
@@ -875,6 +892,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_platform_save_settings",
     "og_platform_result",
     "og_platform_info",
+    "og_platform_now",
     "og_i18n_load",
     "og_i18n_set_locale",
     "og_i18n_locale",
@@ -887,6 +905,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_open_panel",
     "og_ui_open_scroll",
     "og_ui_close",
+    "og_ui_rich_text",
     "og_ui_label",
     "og_ui_button",
     "og_ui_image",
@@ -937,6 +956,9 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_dismiss_toast",
     "og_ui_navigate",
     "og_ui_back",
+    "og_ui_set_players",
+    "og_ui_focus",
+    "og_ui_a11y",
     "og_ui_set_navigation",
     "og_ui_memory",
     "og_ui_remember",
@@ -2185,6 +2207,20 @@ pub const RECORDS: &[RecordDecl] = &[
                 doc: "Whether this is an auto-repeat.",
                 variants: &[],
             },
+            FieldDecl {
+                name: "at",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: Some(-1.0),
+                max: Some(1.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.",
+                variants: &[],
+            },
         ],
     },
     RecordDecl {
@@ -2204,6 +2240,20 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 label: "",
                 doc: "The physical key code.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "at",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: Some(-1.0),
+                max: Some(1.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.",
                 variants: &[],
             },
         ],
@@ -2269,6 +2319,20 @@ pub const RECORDS: &[RecordDecl] = &[
                 doc: "Which pointer: 0 the primary one, 1 to 4 further touches (og.Pointers).",
                 variants: &[],
             },
+            FieldDecl {
+                name: "at",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: Some(-1.0),
+                max: Some(1.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.",
+                variants: &[],
+            },
         ],
     },
     RecordDecl {
@@ -2330,6 +2394,20 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 label: "",
                 doc: "Which pointer: 0 the primary one, 1 to 4 further touches.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "at",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: Some(-1.0),
+                max: Some(1.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it.",
                 variants: &[],
             },
         ],
@@ -11447,6 +11525,20 @@ pub const RECORDS: &[RecordDecl] = &[
                 variants: &[],
             },
             FieldDecl {
+                name: "startOffset",
+                column: "f64",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: Some(0.0),
+                max: None,
+                step: None,
+                unit: "s",
+                label: "",
+                doc: "Where in the sound it starts, in seconds of the sound: started at startAt (or at once) from this far in, to the sample and at full gain, so a resumed phrase continues instead of restarting. Past a one-shot's end it plays nothing; a loop wraps into its region.",
+                variants: &[],
+            },
+            FieldDecl {
                 name: "fade",
                 column: "f32",
                 default: "0",
@@ -11612,6 +11704,20 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 label: "",
                 doc: "The shared reverb's damping of high frequencies.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "outputLatency",
+                column: "f64",
+                default: "0",
+                readonly: true,
+                tunable: false,
+                min: Some(0.0),
+                max: None,
+                step: None,
+                unit: "s",
+                label: "",
+                doc: "Seconds from a sample's world time to the speaker, as the host reports it (og.audio.outputLatency).",
                 variants: &[],
             },
         ],

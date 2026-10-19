@@ -769,6 +769,11 @@ pub fn og_tilemap_cell_center(world: u32, entity: f64, x: u32, y: u32) -> String
 }
 
 #[wasm_bindgen]
+pub fn og_audio_output_latency(world: u32) -> f64 {
+    <Host as AudioApi>::og_audio_output_latency(&Host, world)
+}
+
+#[wasm_bindgen]
 pub fn og_nav_grid(world: u32, desc: Option<String>) -> String {
     <Host as NavApi>::og_nav_grid(&Host, world, desc)
 }
@@ -929,6 +934,11 @@ pub fn og_platform_info(world: u32) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_platform_now(world: u32) -> f64 {
+    <Host as PlatformApi>::og_platform_now(&Host, world)
+}
+
+#[wasm_bindgen]
 pub fn og_i18n_load(world: u32, path: String) -> String {
     <Host as I18nApi>::og_i18n_load(&Host, world, path)
 }
@@ -986,6 +996,11 @@ pub fn og_ui_open_scroll(id: String, desc: Option<String>) {
 #[wasm_bindgen]
 pub fn og_ui_close() -> String {
     <Host as UiApi>::og_ui_close(&Host)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_rich_text(id: String, markup: String, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_rich_text(&Host, id, markup, desc)
 }
 
 #[wasm_bindgen]
@@ -1236,6 +1251,21 @@ pub fn og_ui_navigate(world: u32, intent: String) {
 #[wasm_bindgen]
 pub fn og_ui_back() -> bool {
     <Host as UiApi>::og_ui_back(&Host)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_set_players(count: u32) {
+    <Host as UiApi>::og_ui_set_players(&Host, count)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_focus(pad: u32) -> String {
+    <Host as UiApi>::og_ui_focus(&Host, pad)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_a11y() -> String {
+    <Host as UiApi>::og_ui_a11y(&Host)
 }
 
 #[wasm_bindgen]

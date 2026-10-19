@@ -87,21 +87,25 @@ pub enum KeySet {
 }
 
 /// A key went down (IDL `input.KeyDown`).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Reflect)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
 #[reflect(name = "og.KeyDown")]
 pub struct KeyDown {
     /// The physical key code (`KeyboardEvent.code`).
     pub key: Str64,
     /// Whether this is an auto-repeat (a down for a key already held).
     pub repeat: bool,
+    /// When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`.
+    pub at: f32,
 }
 
 /// A key went up (IDL `input.KeyUp`).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Reflect)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
 #[reflect(name = "og.KeyUp")]
 pub struct KeyUp {
     /// The physical key code.
     pub key: Str64,
+    /// When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`.
+    pub at: f32,
 }
 
 /// A pointer button went down (IDL `input.PointerDown`).
@@ -119,6 +123,8 @@ pub struct PointerDown {
     pub button: u32,
     /// Which pointer ([`crate::Pointers`]): 0 the primary, 1 to 4 further touches.
     pub id: u32,
+    /// When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`.
+    pub at: f32,
 }
 
 /// A pointer button went up (IDL `input.PointerUp`).
@@ -136,6 +142,8 @@ pub struct PointerUp {
     pub button: u32,
     /// Which pointer ([`crate::Pointers`]): 0 the primary, 1 to 4 further touches.
     pub id: u32,
+    /// When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`.
+    pub at: f32,
 }
 
 /// The pointer moved (IDL `input.PointerMove`).
@@ -355,12 +363,16 @@ impl Input {
                         }
                         self.put(KeySet::Down, index, true);
                         self.put(KeySet::ReleaseNext, index, *action == KeyAction::Press);
-                        out.push(InputEvent::KeyDown(KeyDown { key, repeat: held }));
+                        out.push(InputEvent::KeyDown(KeyDown {
+                            key,
+                            repeat: held,
+                            at: 0.0,
+                        }));
                     }
                     KeyAction::Up => {
                         if held {
                             self.put(KeySet::Released, index, true);
-                            out.push(InputEvent::KeyUp(KeyUp { key }));
+                            out.push(InputEvent::KeyUp(KeyUp { key, at: 0.0 }));
                         }
                         self.put(KeySet::Down, index, false);
                         self.put(KeySet::ReleaseNext, index, false);
@@ -390,6 +402,7 @@ impl Input {
                                 y: *y,
                                 button: button.index(),
                                 id: 0,
+                                at: 0.0,
                             }));
                         }
                         self.buttons |= b;
@@ -407,6 +420,7 @@ impl Input {
                                 y: *y,
                                 button: button.index(),
                                 id: 0,
+                                at: 0.0,
                             }));
                         }
                         self.buttons &= !b;
@@ -458,6 +472,7 @@ impl Input {
                     if index < KEY_CODES.len() {
                         out.push(InputEvent::KeyUp(KeyUp {
                             key: code_str(index),
+                            at: 0.0,
                         }));
                     }
                 }
@@ -479,6 +494,7 @@ impl Input {
                     y: self.pointer.y,
                     button: button.index(),
                     id: 0,
+                    at: 0.0,
                 }));
             }
         }
@@ -643,6 +659,7 @@ impl Pointers {
                             y: *y,
                             button: button.index(),
                             id: *id,
+                            at: 0.0,
                         }));
                     }
                 }
@@ -662,6 +679,7 @@ impl Pointers {
                             y: *y,
                             button: button.index(),
                             id: *id,
+                            at: 0.0,
                         }));
                     }
                 }
@@ -690,6 +708,7 @@ impl Pointers {
                     y: p.y,
                     button: PointerButton::Left.index(),
                     id,
+                    at: 0.0,
                 })
             })
             .collect()

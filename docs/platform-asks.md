@@ -24,5 +24,22 @@ asks for each where the Player's hello lists it (`docs/web-export.md`
 | 7 | `hello.capabilities` lists the new methods, and a verification run answers `store.*` against a throwaway store | A game reads capabilities instead of trying calls; a verification run should exercise the save path. | The shell derives its capabilities from `save.get`/`save.set`/`leaderboard.*`. | `hello.capabilities` lists what the Player answers; a verification run answers `save.*` and `store.*` from a throwaway store. |
 | 8 | Telemetry names: accept `game.custom.<name>` with `.` and `_` in `<name>` (64 characters) and up to 16 scalar attributes | `og.platform.telemetry` validates exactly this before it posts the `event`. | Posted as `event` `game.custom.<name>`; the server's validation is the platform's. | `game.custom.<name>`: 1–64 of letters, digits, `.` and `_`, at most 16 scalar attributes. |
 
+## Open
+
+| # | Ask | Why | Until then (the engine's stand-in) |
+|---|---|---|---|
+| 9 | The Player's `hello` carries `time` (UTC ms, the Player's clock), and every answer carries `time` when the Player answered it | `og.platform.now` and `PlatformResult.time` (Phase 2, core round) are the host's clock handed to the game as host input, recorded in replays like a key press; an idle game credits the time away from a store answer's `time`. The Player's clock (one the platform can correct, the same for every device of a player) should be the one games read, not each browser's. | The engine's Worker (`packages/engine/src/web/worker.ts`) gives og.platform the browser's clock (`Date.now()` when the platform attaches and when each answer arrives) and says so: `og.platform.info(world).clock` is `browser`. An answer the page hands back with its own `time` is taken as is and `clock` reads `player`, so when this lands the shell's bridge (`packages/engine/shell/platform.ts`) only passes the field on. |
+
 Nothing here carries a credential: every method is a name and arguments,
 and the Player owns the session, as protocol 2 already requires.
+
+## The top-level page (player-page, 2026-10-19)
+
+| # | Ask | Why | Before | State |
+|---|---|---|---|---|
+| 9 | Player protocol 2 over same-origin HTTP for a top-level engine page: `POST /__player/v2/<game>/<release>/{hello,call,report}` on the game's own origin, the hand-off code redeemed from the hello's body, the framed Player's answers and errors, the session reports filed as the Player filed them; and Play (the game host's `/`, `/g/:slug`) opening a release whose entry says `<meta name="og-player" content="frame page">` as its own top-level document (307 to the release entry), the Stage page likewise for a Stage build (the creator overlay injected into the engine's document) | design §4: the shell is the play page and the brand surface; a frame costs the viewport, gestures, audio unlocking and the PWA on phones | every engine page is framed by the Player page or the Stage page | The contract is origingame `docs/player-protocol.md` §The top-level engine page (platform commit `4f5d40850`). The shell speaks it (`shell/transport.ts`, `docs/web-export.md` §The top-level page). The platform side is built on its branch `player-page`; on the platform it also needs the game-host ingress to admit `POST` with `Authorization` (never `Cookie`) on `/__player/v2/` (today those hosts take only GET and HEAD and strip both), which is a production topology change the platform owns. Until the platform's pin moves past this round, every engine release stays framed (the pinned `cf3cb0b` shell has no `og-player` meta). |
+
+Nothing in this ask carries a credential to game code beyond what a game
+on its own origin can already read: the game-scoped player credential the
+page holds (design §4: the page has nothing beyond the game's own scope to
+steal; the host ABI is the only route to platform APIs).

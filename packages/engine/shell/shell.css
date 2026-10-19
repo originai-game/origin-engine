@@ -46,6 +46,11 @@ body { position: fixed; inset: 0; overflow: hidden; height: 100dvh; }
 .og-layer[hidden] { display: none; }
 #og-boot { background: var(--og-ink); color: var(--og-paper); transition: opacity 240ms var(--ease-out); }
 #og-boot[data-done] { opacity: 0; pointer-events: none; }
+/* The cover's 32 px derivative, upscaled behind the boot splash (a top-level platform page). */
+#og-backdrop { position: absolute; inset: 0; overflow: hidden; opacity: 0; transition: opacity 240ms var(--ease-out); pointer-events: none; }
+#og-backdrop[data-shown] { opacity: 0.45; }
+#og-backdrop img { width: 100%; height: 100%; object-fit: cover; filter: blur(24px) saturate(1.1); transform: scale(1.15); }
+#og-boot > :not(#og-backdrop) { position: relative; }
 .og-boot-mark { width: 72px; height: 72px; color: var(--og-paper); }
 .og-mark:not([data-motion="progress"]) :is([data-part="ghost"], [data-part="fill"]),
 .og-mark[data-motion="progress"] [data-part="arms"] { display: none; }
@@ -137,6 +142,33 @@ body { position: fixed; inset: 0; overflow: hidden; height: 100dvh; }
 #og-made-with[data-playing] { opacity: 0.3; }
 #og-made-with[data-playing] span { display: none; }
 .og-engine-mark { width: 14px; height: 14px; }
+/* Back to the Portal page that opened the game: full on boot, gate and error, a small handle while playing. */
+#og-back {
+  position: absolute;
+  z-index: 2;
+  left: max(10px, env(safe-area-inset-left));
+  top: max(10px, env(safe-area-inset-top));
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  appearance: none;
+  border: 1px solid rgb(255 255 255 / 0.18);
+  background: rgb(20 22 27 / 0.55);
+  color: var(--og-paper);
+  font: 500 13px/1 var(--font-sans);
+  padding: 8px 12px 8px 8px;
+  border-radius: var(--radius-button);
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: opacity 240ms var(--ease-out);
+}
+#og-back[hidden] { display: none; }
+#og-back svg { width: 18px; height: 18px; }
+#og-back:focus-visible { outline: 2px solid var(--og-paper); outline-offset: 2px; }
+#og-back[data-playing] { opacity: 0.35; padding: 6px; }
+#og-back[data-playing] span { display: none; }
+#og-back[data-playing]:hover, #og-back[data-playing]:focus-visible { opacity: 0.9; }
 @media (prefers-reduced-motion: reduce) {
-  #og-boot, #og-made-with { transition: none; }
+  #og-boot, #og-made-with, #og-backdrop, #og-back { transition: none; }
 }

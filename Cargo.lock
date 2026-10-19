@@ -1683,10 +1683,12 @@ dependencies = [
 name = "og-cli"
 version = "0.0.1"
 dependencies = [
+ "image",
  "og-api",
  "og-cook",
  "og-core",
  "og-idl",
+ "og-ui",
  "serde_json",
  "tungstenite",
 ]
@@ -1934,6 +1936,7 @@ dependencies = [
  "og-input",
  "og-probe",
  "og-render",
+ "og-tween",
  "rustybuzz",
  "serde_json",
 ]

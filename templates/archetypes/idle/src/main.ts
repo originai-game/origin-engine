@@ -4,7 +4,8 @@
 // tenth of a kind doubles that kind. When the run has made enough, the orb
 // can collapse into a supernova: sparks and generators go, stardust stays,
 // and each stardust makes everything 10 % stronger. The save lives in
-// og.platform's store; on a relaunch the time away is credited at half
+// og.platform's store with the host's time it was written at; on a launch
+// the time away (the save's answer's time less that) is credited at half
 // the rate.
 //
 // `start` loads the skin, the strings, the sounds and the orb's art and
@@ -146,7 +147,12 @@ function supernova(world: World): void {
   nova(world, gameOf(world), lazyTuning(world));
 }
 
-/** `relaunch:<seconds away>`: the game closed and opened again that much later: the run forgotten, the save read again, the time away credited. */
+/**
+ * `relaunch:<seconds away>`: the game closed and opened again that much later, in this process:
+ * the run forgotten, the save read again, the time away credited. For tests: a real launch reads
+ * the time away from the host's clock (the save's `at` against its answer's time; tests/away.og.ts
+ * runs it across two processes).
+ */
 function relaunch(world: World, args: readonly string[]): void {
   const g = gameOf(world);
   const away = num(args[0], "seconds");
@@ -207,7 +213,7 @@ export default og.game({
     sparks: { usage: "<n>", doc: "Set the sparks (the rise counts as made this run)." },
     own: { usage: "<generator 0-3>:<n>", doc: "Set how many of a generator are owned." },
     supernova: { usage: "", doc: "Collapse now, as the dialog's Collapse does (refused under one stardust)." },
-    relaunch: { usage: "<seconds away>", doc: "Close and reopen the game that much later: the save read again, the time away credited." },
+    relaunch: { usage: "<seconds away>", doc: "Close and reopen the game that much later in this process (for tests; a real launch reads the time away from the host's clock): the save read again, the time away credited." },
     stale_save: { usage: "", doc: "Another device writes a save with more progress, so this one's next write is refused as stale and merged." },
     viewport: { usage: "<desktop|phone>", doc: "Lay the UI out for a phone in portrait (390×844 at 3×)." },
     language: { usage: "<en|zh-CN>", doc: "Switch the language as the settings do." },

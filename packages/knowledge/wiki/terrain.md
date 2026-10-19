@@ -16,7 +16,7 @@ module terrain {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 9511</sub>
+<sub>`api.ogt` line 9653</sub>
 
 ## Contents
 
@@ -71,7 +71,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 9754</sub>
+<sub>`api.ogt` line 9896</sub>
 
 <a id="fn-sample"></a>
 
@@ -101,7 +101,7 @@ fn sample {
 }
 ```
 
-<sub>`api.ogt` line 9761</sub>
+<sub>`api.ogt` line 9903</sub>
 
 <a id="fn-bounds"></a>
 
@@ -135,7 +135,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 9768</sub>
+<sub>`api.ogt` line 9910</sub>
 
 <a id="fn-edit"></a>
 
@@ -167,7 +167,7 @@ fn edit {
 }
 ```
 
-<sub>`api.ogt` line 9778</sub>
+<sub>`api.ogt` line 9920</sub>
 
 <a id="fn-layer"></a>
 
@@ -199,7 +199,7 @@ fn layer {
 }
 ```
 
-<sub>`api.ogt` line 9786</sub>
+<sub>`api.ogt` line 9928</sub>
 
 <a id="fn-setLayer"></a>
 
@@ -233,7 +233,7 @@ fn setLayer {
 }
 ```
 
-<sub>`api.ogt` line 9794</sub>
+<sub>`api.ogt` line 9936</sub>
 
 ## Components, resources and events
 
@@ -272,7 +272,7 @@ component Terrain {
 }
 ```
 
-<sub>`api.ogt` line 9534</sub>
+<sub>`api.ogt` line 9676</sub>
 
 <a id="record-TerrainScatter"></a>
 
@@ -347,7 +347,7 @@ component TerrainScatter {
 }
 ```
 
-<sub>`api.ogt` line 9552</sub>
+<sub>`api.ogt` line 9694</sub>
 
 ## Types
 
@@ -363,7 +363,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TerrainData "A loaded terrain: its heights, control map and layers."
 ```
 
-<sub>`api.ogt` line 9516</sub>
+<sub>`api.ogt` line 9658</sub>
 
 <a id="type-TerrainBrushMode"></a>
 
@@ -392,7 +392,7 @@ enum TerrainBrushMode {
 }
 ```
 
-<sub>`api.ogt` line 9525</sub>
+<sub>`api.ogt` line 9667</sub>
 
 <a id="type-TerrainInfo"></a>
 
@@ -435,7 +435,7 @@ struct TerrainInfo {
 }
 ```
 
-<sub>`api.ogt` line 9601</sub>
+<sub>`api.ogt` line 9743</sub>
 
 <a id="type-TerrainSampleDesc"></a>
 
@@ -469,7 +469,7 @@ struct TerrainSampleDesc {
 }
 ```
 
-<sub>`api.ogt` line 9621</sub>
+<sub>`api.ogt` line 9763</sub>
 
 <a id="type-TerrainSample"></a>
 
@@ -498,7 +498,7 @@ struct TerrainSample {
 }
 ```
 
-<sub>`api.ogt` line 9636</sub>
+<sub>`api.ogt` line 9778</sub>
 
 <a id="type-TerrainBounds"></a>
 
@@ -523,7 +523,7 @@ struct TerrainBounds {
 }
 ```
 
-<sub>`api.ogt` line 9648</sub>
+<sub>`api.ogt` line 9790</sub>
 
 <a id="type-TerrainBrush"></a>
 
@@ -575,7 +575,7 @@ struct TerrainBrush {
 }
 ```
 
-<sub>`api.ogt` line 9658</sub>
+<sub>`api.ogt` line 9800</sub>
 
 <a id="type-TerrainEdit"></a>
 
@@ -602,7 +602,7 @@ struct TerrainEdit {
 }
 ```
 
-<sub>`api.ogt` line 9688</sub>
+<sub>`api.ogt` line 9830</sub>
 
 <a id="type-TerrainLayerDesc"></a>
 
@@ -683,7 +683,7 @@ struct TerrainLayerDesc {
 }
 ```
 
-<sub>`api.ogt` line 9699</sub>
+<sub>`api.ogt` line 9841</sub>
 
 ## Column kinds
 
@@ -702,4 +702,4 @@ column TerrainData {
 }
 ```
 
-<sub>`api.ogt` line 9518</sub>
+<sub>`api.ogt` line 9660</sub>

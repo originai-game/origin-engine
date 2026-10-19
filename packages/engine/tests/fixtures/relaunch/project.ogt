@@ -1,0 +1,10 @@
+type project
+version 1
+---
+name "Relaunch"
+id "relaunch"
+engine "0.0.1"
+entry "src/main.ts"
+profile "2d"
+tick 60
+seed 1

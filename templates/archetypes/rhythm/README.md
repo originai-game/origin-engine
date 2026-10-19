@@ -35,10 +35,12 @@ og build . --publish         # dist/: the play page as it ships
   events schedule the notes: each beat brings every note up to two beats
   ahead (`Tuning.scrollBeats`) onto the highway.
 - **Hit windows in time, not ticks**: a note's time is
-  `songStart + beat × 60 / bpm` exactly; a press is judged at its tick's
-  world time less the calibrated offset, against that time, in
-  milliseconds (Perfect ±45, Great ±90, Good ±135, `Tuning`). Early and
-  late are shown under Great and Good.
+  `songStart + beat × 60 / bpm` exactly; a press is judged at the time it
+  happened (its tick's world time plus its og.KeyDown's or
+  og.PointerDown's `at`, the host's event time within the tick) less the
+  output's latency (`og.audio.outputLatency`) and the calibrated offset,
+  against that time, in milliseconds (Perfect ±45, Great ±90, Good ±135,
+  `Tuning`). Early and late are shown under Great and Good.
 - **Judgement text, a combo meter, the groove**: the judgement rises from
   the lane in its colour; the combo counts beside the highway with its
   multiplier (×1 to ×4, one more every ten) and an `og.ui.meter` to the
@@ -47,8 +49,9 @@ og build . --publish         # dist/: the play page as it ships
 - **Latency calibration**: Calibrate (on the title or in the settings)
   clicks every beat; eight taps on the clicks give the mean error, saved
   as `Prefs.offsetMs` with the settings; the settings also take it by
-  hand (±200 ms). og.audio gives no output latency (see Known limits), so
-  the calibration measures the whole chain a player perceives.
+  hand (±200 ms). The output's latency is og.audio's to report and is
+  taken off before the offset, so the calibration measures the rest of
+  the chain a player perceives (the display, the hand).
 - **A chart format in .ogt** (og-game §8): a chart is a scene,
   `assets/charts/neon-pulse.ogt`: one entity with a `Song` (tempo, metre,
   bars, notes) and an entity per note with a `Note` (index, lane 0–2,
@@ -57,8 +60,9 @@ og build . --publish         # dist/: the play page as it ships
   this one from the same note lists as the stems.
 - **Pause and resume in time**: pausing freezes the play's clock where it
   is and stops the band (og.audio runs on the world's ticks, which keep
-  going); Resume counts in again and restarts the two-bar phrase it
-  paused in, notes already judged staying judged.
+  going); Resume counts in again and carries on from the beat it paused
+  on: the stems sounding then start part-way (`AudioSource.startOffset`)
+  on the count-in's end, notes already judged staying judged.
 - **Feel** (og-feel §4–§7): a press squashes its lane's receptor and
   plays its lane's tick (on the ui bus); a hit flashes the receptor in the
   lane's colour, bursts sparks from it and nudges the camera down; every
@@ -199,7 +203,8 @@ best and the language. The playtests read the same values from the
 | `tests/band.og.ts` | the four clicks on the beats before bar 1, the drums on bar 1's line, the bass and chords on bar 5's, the lead on bar 9's, each `startAt` the exact bar time |
 | `tests/clear.og.ts` | from bar 21 every note hit: cleared, grade S, 100 %, the best kept at the revision read and submitted, the telemetry, Play again |
 | `tests/fail.og.ts` | five notes let pass empty the groove: failed, the band stopped, the results without a grade |
-| `tests/pause.og.ts` | Escape freezes the clock (nothing missed while paused), stops the band, holds the time scale; 简体中文 saved; Resume counts in and restarts the phrase; the next notes hit at their new times |
+| `tests/pause.og.ts` | Escape freezes the clock (nothing missed while paused), stops the band, holds the time scale; 简体中文 saved; Resume counts in and carries on from the paused beat, the stems sounding then started part-way to the sample; the next notes hit at their new times |
+| `tests/timing.og.ts` | bars 1–2 pressed 44, 7 and 89 ms late and early, 20 ms late and 30 ms early (command step times within their ticks, as a page's event times are): each judgement's error is the press's to a tenth of a millisecond, Perfect within 45 and Great within 90, where a tick's start would read 44 ms as 50 |
 | `tests/calibrate.og.ts` | eight taps 67 ms after the clicks calibrate 67 ms, saved; a play 67 ms late is then all Perfect |
 | `tests/pad.og.ts` | the d-pad and the face buttons start the song and hit the lanes; Start pauses, A resumes |
 | `tests/phone.og.ts` | 390 × 844 at 3×: the HUD inside the safe area, three lanes across, fingers hit eight notes on time |
@@ -221,18 +226,8 @@ are in `assets/skins/lanebeat/LICENSES.md`.
 
 ## Known limits (engine gaps, not design)
 
-- **No output latency from og.audio.** Neither `og.Audio` nor any
-  og.audio call reports the device's output latency (the Web Audio
-  context's `outputLatency`, a native device's buffer), so the game cannot
-  correct for it alone; the calibration measures it with the player's
-  taps (which also takes in the display and the input).
-- **Input has no time within the tick.** og.Input reports a key, a button
-  or a pointer as pressed in the tick it arrived, with no timestamp, so a
-  press is judged at its tick's time: at 60 ticks a second a press can be
-  read up to 16.7 ms late, a constant part of which the calibration
-  absorbs. The notes, the stems and the windows are exact.
-- **No seek in an AudioSource.** A source starts from its beginning
-  (`startAt` says when, not where), so a resume restarts the two-bar
-  phrase it paused in rather than the exact beat.
+- A gamepad's press has no time within the tick: the shell polls the
+  pads once a display frame, so a pad press is judged at its tick's start
+  (keys and fingers carry the host's event time).
 - og.ui's `resultsScreen` and `settingsScreen` carry English labels of
   their own, so this game builds its results and settings from widgets.

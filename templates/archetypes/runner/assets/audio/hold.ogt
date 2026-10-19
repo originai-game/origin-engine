@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# a tiny tick: a press while the game-over card holds is heard, not ignored.
+preset "click"
+seed 0
+pitch 1
+length 1
+volume 1

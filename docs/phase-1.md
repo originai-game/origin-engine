@@ -62,6 +62,275 @@ native (it reads scenes from disk; the browser harness replaces it there);
 browser frame times were taken with other agents' gates on the machine, so
 they are upper bounds.
 
+## Status 2026-10-19, player-page round
+
+The engine's page is the play page itself (design §4): `og build` writes
+`<meta name="og-player" content="frame page">` and og-build.json's
+`player { protocol: 2, transports: [frame, page] }` into every build, and a
+top-level page the platform published (`window.__OG_GAME`) speaks Player
+protocol 2 to its play origin over same-origin HTTP (`shell/transport.ts`:
+`/__player/v2/<game>/<release>/{hello,call,report}`, the hand-off code from
+the fragment redeemed in the hello's body, the Player's credential keys and
+outbox, session reports from the person's start), as origingame
+`docs/player-protocol.md` §The top-level engine page specifies. Framed pages
+keep the `postMessage` path unchanged, so a release built now plays under
+today's Player too. At the top level the shell draws what the Player page
+drew: the cover's backdrop behind the boot splash and Back (with its own
+gate, `100dvh`, the safe areas, one audio unlock, fullscreen on the gesture
+and the PWA hint, which it already had). The og-probe wire also answers the
+page's own window when told its own origin, for the Stage overlay the
+platform injects into a top-level Stage build. Details:
+`docs/web-export.md` §The top-level page; the platform's side is ask 9 in
+`docs/platform-asks.md`.
+
+Proof: `tests/platform-page.test.ts` (6 tests against a stand-in play
+origin), `tests/web/player.ts` (37 checks in Chrome: the framed Player, then
+the top-level page at desktop and phone sizes), `tests/web/wire.ts` (125,
+with the in-page host; its Tune checks moved off `Tuning.gravity`, which
+the runner dropped in E7), `tests/web/export.ts` (40). Transcripts,
+screenshots and receipts: `tests/evidence/P2/player-page/`.
+
+What the platform's pin round must do: move
+`agent-server/scripts/e2b/origin-engine.json` to this round's merge,
+rebuild the layout and remount the knowledge (`og-platform-sdk` changed),
+and have the platform's player-page work live first: the
+`/__player/v2/` routes on game hosts, the game-host ingress admitting `POST`
+with `Authorization` there, Play's 307 to a `page` release's entry, and the
+Stage page's in-document mode. Until then a release built from this shell
+is framed exactly as before.
+
+Owed to that pin round from this side: the platform's Stage page now
+answers a framed build's Player protocol as a stand-in Player (play
+started, saves in its own memory), but a top-level Stage build has no
+parent, so this shell plays it alone, draws its own gate and keeps
+`og.platform` in the Stage origin's browser storage, which every Game's
+builds share. Before the pin moves, the shell must also speak protocol 2
+to its own window when `window.__OG_STAGE_HOST__` is its own origin (as
+the og-probe wire already does), and the Stage overlay answer it there.
+
+## Status 2026-10-19, Phase 2, core round
+
+Branch `p2-core`, 11d6820..71dabed. It closes the engine defects and gaps
+the archetypes round (below) found. Each public addition went through the
+IDL in its own commit, with its skill text and the generated wiki.
+
+- **og.Rng from reads, loud undeclared access** (d2bd748, 71dabed): a fork
+  reads the seed and the label and moves nothing, so a system with og.Rng
+  in `reads` forks the same streams as one that writes it, where it used to
+  answer NaN. The reproduction is `packages/engine/tests/fixtures/rng-readonly`.
+  An undeclared resource or event read or write throws in og run and
+  og test, naming the system and the record. A publish build refuses it
+  and logs it once per system and access through the probe's diagnostics.
+  og-core states both rules.
+- **The host's clock** (fc97734): `og.platform.now`, a `time` on every
+  og.platform answer, and `og.platform.info(world).clock` (`player`,
+  `browser`, `system`, `fixed` or `none`). These are host input between ticks, so a replay
+  records them. Natively the clock is the system's; `og run --clock` and
+  `og test` fix it. On the web the Worker uses the browser's clock until
+  the Player's hello and answers carry `time` (`docs/platform-asks.md`,
+  open ask 9). An answer that already carries a `time` is taken as is.
+- **A kept store** (cd1f0d3): an `og test` spec with `store: "keep"` runs
+  each `then` step as a new process over one local platform store, on a
+  host clock the spec moves. `relaunch:<seconds>` stays for one-process
+  tests.
+- **Input `at`** (56fc770): key and pointer events carry when they happened
+  within the tick that reads them (-1 to 1 of a tick). The time is handed
+  in with the event, so the world stays deterministic on both hosts.
+- **og.audio.outputLatency** (094df16): the time from world time to the
+  speaker. On the web it is the AudioContext's output and base latency
+  plus the ring's prime. Natively it is the device's latency (cpal's playback
+  instant less its callback instant) and the mixer's buffer, and headless it
+  is 0.
+- **AudioSource.startOffset** (f3fb31f): a clip can start part-way, to the
+  sample (og-audio's `mix.rs` asserts the PCM).
+- **Archetypes** (d2bd748, 4868361, b6d889a): their workarounds are gone.
+  - The roguelike's Foes and Loot declare og.Rng in their reads.
+  - The idle game stamps its save with og.platform.now and credits the
+    time away from the store answer's `time`. `tests/away.og.ts`
+    relaunches two hours later in a second process.
+  - The rhythm game judges a press at its `at`, against what was heard
+    (the output latency, plus the player's own offset), and resumes from
+    the beat it paused on (`tests/timing.og.ts`, `tests/pause.og.ts`).
+  - Each README's Known limits keeps only what is still open.
+- **Playtests**: every template's `og test` passes.
+
+  | Template | Suites |
+  |---|---|
+  | game | 2 |
+  | ui-kit | 25 |
+  | fx-showcase | 10 |
+  | idle | 10 |
+  | match3 | 6 |
+  | rhythm | 11 |
+  | roguelike | 9 |
+  | runner | 8 |
+  | topdown | 7 |
+  | tower-defense | 9 |
+
+- **og polish** (`tests/evidence/P2/core/polish/`):
+
+  | Archetype | Taste | Feel |
+  |---|---|---|
+  | idle | 97 | 74 |
+  | roguelike | 99 | 80 |
+  | rhythm | 99 | 74 |
+
+  Taste is unchanged from the archetypes round, and every feel row but
+  frame time reads 92 to 100. The frame-time row is 0 because these runs
+  used the debug og at load 28. The archetypes round's runs used a release
+  og. Run og polish on the rhythm game from its own directory: its tests'
+  chart lookup falls back to the working directory.
+- **Gate**: `OG_GATE_JOBS=2 scripts/check.sh --all` at 71dabed,
+  2026-10-19, at load 16–29, **PASSED, 9 of 9 steps in 147 s**. The steps
+  took fmt 1 s, clippy 1 s, wasm-build 9 s, test 105 s, wasm-opt 104 s,
+  size-gate 31 s, drift 1 s, bun-test 25 s and determinism 2 s. Builds were
+  warm from the path-aware run before it.
+
+  Two earlier runs did not count. The first `--all` stopped at clippy on
+  a `manual_contains` lint in the undeclared-access check, which 71dabed
+  fixes. The path-aware run before this gate timed out e5's every-feature
+  hash test at 5 s under twelve parallel files. That test passes alone in
+  0.66 s and in this gate.
+
+  Path-aware runs after the gate, with only this section and the evidence
+  changed, hit two timing bounds at load 28–36. e5's hash test timed out
+  again. og-audio's `one_second_of_a_busy_mix_renders_in_bounded_time` took
+  1,621.9 ms against its 1,000 ms debug bound. Both pass when run alone,
+  and both tests predate this round. The round's mixer change touches only
+  a voice that has not started yet.
+- **Wasm**: the publish wasm is 2,982,720 B brotli, 71 % of the budget,
+  +4,259 B over 2,978,461 B.
+- **Merge of main** (44df5d7: the animation and physics round and the
+  render round): only the generated files (bindings.json and the wiki,
+  regenerated by `og api gen`) and this document conflicted. api.ogt,
+  shell.ts and worker.ts merged cleanly, keeping both the input `at` and
+  the compressed-texture Worker. `OG_GATE_JOBS=2 scripts/check.sh --all`
+  on the merge, 2026-10-19, at load 38–194: **PASSED, 9 of 9 steps in
+  423 s**. The steps took fmt 3 s, clippy 1 s, wasm-build 27 s, test 58 s,
+  wasm-opt 69 s, size-gate 53 s, drift 2 s, bun-test 126 s and determinism
+  416 s. Before it, the path-aware run at load 148 failed the audio-mix
+  timing bound again (1,606.1 ms). The publish wasm is 3,033,764 B brotli,
+  72 %, +5,035 B over the render round's merge (3,028,729 B).
+- **Merge of main** (7438978: the UI round): again only the generated
+  bindings and wiki (regenerated) and this document conflicted.
+  `OG_GATE_JOBS=2 scripts/check.sh --all` on the merge **PASSED, 9 of 9
+  steps in 246 s**. The steps took fmt 3 s, clippy 1 s, wasm-build 25 s,
+  test 166 s, wasm-opt 150 s, size-gate 69 s, drift 2 s, bun-test 41 s and
+  determinism 14 s. The publish wasm is 3,061,522 B brotli, 72 %.
+
+  The archetypes' `og test` fails on main at 7438978 alone (built from
+  `git archive`), with the same failures as on this merge, so it is not the
+  merge:
+  - Every `frames` suite misses its Metal references (the UI round's
+    restyle, for example tower-defense's title at RMSE 0.033).
+  - Tower-defense's title takes no tap or pad press before about 0.35 s,
+    so `lose`, `pad`, `pause` and `replay`, which press Play at 0.3 to
+    0.4 s, never start a round. A tap at 0.4 s starts one.
+- **Evidence**: `tests/evidence/P2/core/break-and-restore.md` breaks every
+  new check once.
+- **Not done**:
+  - The TS types do not restrict `world.resource` to the declared set.
+    IDL callbacks carry no generics, so that needs an og-idl generator
+    change; the runtime check is the guard meanwhile.
+  - A gamepad press carries no `at`, because the shell polls pads once a
+    display frame.
+  - The native device latency is not tested: the gate has no audio
+    device and builds without `native-audio`. The web value is tested.
+  - The Player's own clock waits on ask 9.
+
+## Status 2026-10-19, Phase 2, UI round
+
+Branch `p2-ui` from main at 2dae5fa (`phase1-e7` and the gate-speed
+work). It closes owed rows 15–19, 21, 33, 41, 42, 45 and 46 (the table
+below names each commit) and nothing else:
+
+- **Rich text** (row 33, 6139efe): `og.ui.richText` lays out markup from
+  the string table: `[b]`, `[color=]`, `[size=]`, `[font=]`, `[icon=]`,
+  `[link=]` (a child element keys, pads and touch reach) and per-glyph
+  `[wave]`, `[shake]`, `[pulse]`; shaped and right-to-left pieces in visual
+  order. The kit's confirm and alert messages carry it in five locales.
+- **Accessibility tree** (row 33, 38694c6): each element's role, name,
+  value and states in `dump_ui` and `og.ui.a11y()`; focus order is the
+  tree's.
+- **Glass** (row 33, 42d7294): og-render blurs the frame under overlay
+  panels through a six-level pyramid; skin line `glass <part> <blur> <fill>
+  [tint]`; the scifi pack's dialogs and panels are glass (+0.83 ms a frame
+  for four large panels, `tests/evidence/P2/ui/glass-cost.md`).
+- **Scrolling both ways** (row 33, 79efd08): `ScrollDesc.axes`, the handoff
+  to the outer scroller, a fling, a draggable scrollbar.
+- **Text**: per-glyph tracking from the ramp and a distance-field glow
+  (17, 18, 0df11b1); the kit's small type at 9 px (42, f9bad51).
+- **Input and feel**: UI sounds in their input's tick (15, 59ce0b4),
+  spring hover and press (16, 814fdad), focus moves heard (41, ca81fb8),
+  pads 1–3 with focus of their own (21, ca179c0), the shop's refusal
+  shaken and heard (45, d00f20c), the kit's hits felt (ffc0eb3), runner's
+  held press heard (46, 54b59df).
+- **`og skin pack`** (19, f4c236b): nine-patch PNGs to a skin's atlas and
+  lines.
+
+Row 43's engine side (the platform's danger tokens in og-ui's tokens and
+a button contrast test) is cf932f8 and 5d982db from `p2-anim-physics`;
+this round does not repeat it, and the merge of main keeps both.
+
+### Gate
+
+`OG_GATE_JOBS=2 scripts/check.sh --all` on f4c236b (this commit adds
+documents and polish evidence only), 2026-10-19, Apple M4 Pro with four
+other rounds building on the machine (load average 30): 169 s, fmt 2 s,
+clippy 2 s, wasm-build 14 s, test 107 s, wasm-opt 108 s, drift 2 s,
+determinism 2 s; bun-test failed on one test,
+`tests/e5.test.ts`'s every-feature hash at 5,265 ms against bun's 5,000 ms
+timeout under twelve parallel workers (the file takes 756 ms alone), and
+cancelled size-gate. `--only bun-test size-gate` then passed both (19 s;
+72 engine tests in 13.8 s). `og test templates/ui-kit` passes 29 suites and
+runner 8; references this round re-recorded say why in their commits, with
+before and after images in `tests/evidence/P2/ui/rerecord/`, and
+`tests/evidence/P2/ui/break-and-restore.md` has how each new test was broken
+once.
+
+### Wasm
+
+**2,974,147 B brotli, 70.9 % of the 4,194,304 B budget**, from 2,943,180 B
+(70.2 %): +30,967 B for rich text, the accessibility tree, glass (its
+shaders and pyramid), two-axis scrolling, extra pads, springs and the glow.
+
+After merging main (44df5d7: terrain and water, the archetypes, the
+animation and physics round with og-ui's danger tokens, the render round),
+19 kit references and og-ui's sample-screen, changed on both sides, are
+re-recorded with this round's text and main's danger ink together (0.04 to
+0.50 % outliers against main's, 3.2 and 6.6 % for the scifi sheets' glass;
+RMSE 0.006 to 0.045; before and after in
+`tests/evidence/P2/ui/rerecord/merge-main-*.png`), and the IDL's outputs
+regenerated. `OG_GATE_JOBS=2 scripts/check.sh` **PASSED, 9 of 9 in 965 s**
+at load 40–70, then `--all` **PASSED, 9 of 9 steps in 111 s**: fmt 2 s,
+clippy 1 s, wasm-build 10 s, test 82 s, wasm-opt 74 s, size-gate 25 s,
+drift 2 s, bun-test 18 s, determinism 8 s. `og test` passes ui-kit (29
+suites) and runner (8, now `templates/archetypes/runner`). The publish wasm
+is **3,057,601 B brotli, 72.9 %** for all the rounds together.
+
+### Polish
+
+`og polish` before (E7) and after (`tests/evidence/P2/ui/polish/`), on
+metal with other rounds' builds on the machine:
+
+| Template | Taste | Feel | Findings |
+|---|---|---|---|
+| ui-kit | 90 → 91 | 62 → 70 | hit feedback 0 → 100, sound on input 38 → 73, UI sounds 62 → 65, text size → 98; frame time 0 under load (E7 read it 0 too); contrast 84 is row 43's default primary and danger labels, until `p2-anim-physics` merges |
+| runner | n/a | 99 → 95 | 0 (row 46's flow input closed; sound on input 100); frame time 80 under load, not a regression in the game |
+
+### Left out
+
+- A shell mirroring `og.ui.a11y()` into the DOM for screen readers: the
+  tree is there to mirror; the web shell's mirror is the Player round's.
+- Glass over other overlay content (it blurs the scene only) and bidi
+  reordering inside one rich-text span (pieces are reordered, not runs
+  within a piece).
+- The touch HUD's action buttons sound on the sfx bus, not the ui bus, so
+  ui-kit's UI sounds stays at 65; the sounds-off playtest is silent by
+  intent.
+- Packs whose fonts have small x-heights still measure 7–8 px on some
+  labels; a pack's ramp line for base raises them.
+
 ## Status 2026-10-19, phase 2, render round
 
 Branch `p2-render`; it closes owed rows 23, 28, 30, 31 and 32 (the table
@@ -223,20 +492,22 @@ wasm-opt 62 s, size-gate 28 s, drift 1 s, bun-test 22 s, determinism
 archetypes' `og test` runs (9, 9, 9 and 10 suites) pass beside it.
 
 Engine gaps the games work around, each in its README's Known limits:
-og.platform's answers carry no time, so the idle game cannot know how long
-it was closed (`relaunch:<seconds>` stands in for the host); og.audio
-reports no output latency and og.Input no time within the tick, so the
-rhythm game calibrates the whole chain from the player's taps; an
-AudioSource cannot start part-way (a resume restarts the two-bar phrase);
 og.ui's `settingsScreen`, `resultsScreen` and `idleHud` carry English
 words and number formats of their own, so the settings, end cards and the
 idle HUD are built from widgets; `og polish` reads og.ui's phone title
-menu (a bottom sheet) as HUD. Two engine defects met on the way: a system
-with `og.Rng` in `reads` only gets streams that answer NaN
-(`world.resource(og.Rng).value.fork("x").next()`; declared in `writes`
-it answers 0.6868…), so the roguelike's systems declare it written; and a
-system that reads a resource it did not declare gets a refusal it can
-only notice by checking `ok`.
+menu (a bottom sheet) as HUD. Closed by the Phase 2 core round (above):
+og.platform's answers carry the host's time and og.platform.now reads it,
+so the idle game credits the time away from the save's stamp (a second
+`og test` process over a kept store is its test; `relaunch:<seconds>`
+stays for tests in one process); og.audio.outputLatency and the input
+events' `at` let the rhythm game judge a press when it happened and as it
+was heard (the taps' calibration stays, as the player's own offset); an
+AudioSource's `startOffset` starts a clip part-way to the sample, so a
+resume carries on from the beat it paused on. The two engine defects met
+on the way are fixed there too: a system with `og.Rng` in `reads` only
+forks the same streams as one that writes it (the roguelike's Foes and
+Loot declare it in their reads), and an undeclared resource or event access throws in og run
+and og test and is refused and logged once per system in a publish build.
 
 ## Status 2026-10-19, phase 2, animation and physics round
 
@@ -368,7 +639,9 @@ where the HUD is screen-space text rather than og.ui):
 After E7: 14 rows done (1–13 and the platform asks, 37), row 14 partly (the
 wasm at 70.2 %, not under 65 %), and open 25 for the engine's phase 2
 (15–35, 41, 42, 45, 46), 3 for the platform (36, 38, 43) and 3 for the
-owner (39, 40, 44).
+owner (39, 40, 44). After the phase 2 UI round (P2 UI below): 11 more done
+(15–19, 21, 33, 41, 42, 45, 46); row 43's engine side came with the
+animation and physics round (cf932f8).
 
 After the phase 2 animation and physics round: rows 25, 26, 27 and 43 done
 too; 29 (3D SPH) still open.
@@ -396,13 +669,13 @@ resource only the owner can give.
 | 12 | `templates/fx-showcase/src/main.ts`'s type errors; templates are not typechecked in the gate | E6 | S | engine, E7 | done, c5295be |
 | 13 | Native and Chrome world hashes of the three archetypes compared (match3 differed, not investigated) | E6 | S | engine, E7 | done, 85c2bd0 |
 | 14 | The publish wasm under 65 % of the 4 MB brotli budget without removing features (71 % before E7) | E7 | M | engine, E7 | partly: 72.0 % to 70.2 % (fcca471); under 65 % is row 44 |
-| 15 | UI sounds start one tick after the input (`og.ui.sound` runs after `og.audio`) | E3 | S | engine, phase 2 | open |
-| 16 | Springs for the skin's hover and press (eased curves today) | E3 | S | engine, phase 2 | open |
-| 17 | Per-glyph tracking from a skin's ramp (needs per-glyph spacing in og-render's text) | E3 | M | engine, phase 2 | open |
-| 18 | A real text glow (an MSDF outline in og-render; four offset copies today) | E3 | M | engine, phase 2 | open |
-| 19 | An atlas tool for skins drawn by hand, beyond `make-skins.py` | E3 | M | engine, phase 2 | open |
+| 15 | UI sounds start one tick after the input (`og.ui.sound` runs after `og.audio`) | E3 | S | engine, P2 UI | done, 59ce0b4 |
+| 16 | Springs for the skin's hover and press (eased curves today) | E3 | S | engine, P2 UI | done, 814fdad |
+| 17 | Per-glyph tracking from a skin's ramp (needs per-glyph spacing in og-render's text) | E3 | M | engine, P2 UI | done, 0df11b1 |
+| 18 | A real text glow (an MSDF outline in og-render; four offset copies today) | E3 | M | engine, P2 UI | done, 0df11b1 |
+| 19 | An atlas tool for skins drawn by hand, beyond `make-skins.py` | E3 | M | engine, P2 UI | done, f4c236b |
 | 20 | `vulkan-cpu` and browser references for og-ui's scenes, the UI kit, the skin packs and the locale screens (metal only) | E2, E3, E6 | M | engine, phase 2 | open |
-| 21 | Pads beyond the first in og-ui | E2 | M | engine, phase 2 | open |
+| 21 | Pads beyond the first in og-ui | E2 | M | engine, P2 UI | done, ca179c0 |
 | 22 | Browser runs of og-tests' own gfx scenes (a wasm harness) and GL-tier references (`msaa` among them) | M3, E2 | M | engine, phase 2 | done, 0ac7c34, c43947e, 9470fc3, eaf0517 |
 | 23 | Shader hooks on skinned meshes; shadows and the depth prepass displaced by `vertex_offset` | E5 | M | engine, phase 2 | done, 12e93b5, 49dfd0d (`og.render.setMaterialShader`), aa81258 |
 | 24 | Planar water reflection, shadowed water, an underwater view | E5 | L | engine, phase 2 | done, 0ee78f1 (og-render), 5be9281 (og.Water fields), 15ff230 (fx-showcase terrain station) |
@@ -414,7 +687,7 @@ resource only the owner can give.
 | 30 | Forward+ clustered lights beyond the 8-light uniform loop (CPU tile table on WebGL2) | M3, M6 | L | engine, phase 2 | done, a061113, 1296a02, f381a66 |
 | 31 | A normal matrix for non-uniform scale, vertex tangents, clearcoat, and a gfx scene of the M6 material features | M6 | M | engine, phase 2 | done, 12e93b5, 49dfd0d, eb869b8, aa81258 |
 | 32 | The runtime loaders transcode to the tier's compressed texture format and upload it (RGBA8 today) | M4, M6 | M | engine, phase 2 | done, 028c2fc |
-| 33 | og-ui's rich text, accessibility tree, glass, two-axis scrolling (`crates/og-ui/README.md` §What phase 2 owes) | M6 | L | engine, phase 2 | open |
+| 33 | og-ui's rich text, accessibility tree, glass, two-axis scrolling (`crates/og-ui/README.md` §What phase 2 owes) | M6 | L | engine, P2 UI | done, 79efd08, 6139efe, 38694c6, 42d7294 |
 | 34 | The M4 "glTF edit to reload in 300 ms" run and the M5 timed 8-frame `sweep`, filed as evidence (`og dev` prints the first) | M4, M5 | S | engine, phase 2 | done, 3d7ad18, 5119a09 |
 | 35 | wgpu and naga 31 when published, kept only if every reference frame passes unchanged | Toolchain | S | engine, phase 2 | open: not published (2026-10-19 the newest on crates.io is 30.0.1, of 2026-08-22) |
 | 36 | `og polish` measures frame time on the tier it runs on (metal here), not on the executors' lavapipe | E6 | S | platform | open |
@@ -422,12 +695,12 @@ resource only the owner can give.
 | 38 | The platform side of the cutover: merge `origin-engine-cutover`, pin this revision | E1 | S | platform | done: the platform merged the cutover (origingame `7e5789d89`) and pins `cf3cb0b` (`agent-server/scripts/e2b/origin-engine.json`), with the knowledge mount, local layout, runner tests and workspace stack checked on it; the next pin bump moves to this main |
 | 39 | A third native tier beside `metal` and `vulkan-cpu` (the browser tiers stand in) | E4 | M | owner | open |
 | 40 | Mobile measurements: the iPhone first frame and frame times (Safari, WebGPU), the mid-range Android view benchmark | M6, E1 | S | owner (devices) | open |
-| 41 | og-ui plays no sound when keyboard or gamepad focus moves (ui-kit's sound on input 38 in og polish) | E7 | S | engine, phase 2 | open |
-| 42 | The kit's small type: the shop cards' item names (`caption`, 7 CSS px of ink), the idle HUD's generator names and the `meta` units, under og polish's 9 px | E7 | S | engine, phase 2 | open |
+| 41 | og-ui plays no sound when keyboard or gamepad focus moves (ui-kit's sound on input 38 in og polish) | E7 | S | engine, P2 UI | done, ca81fb8 |
+| 42 | The kit's small type: the shop cards' item names (`caption`, 7 CSS px of ink), the idle HUD's generator names and the `meta` units, under og polish's 9 px | E7 | S | engine, P2 UI | done, f9bad51 |
 | 43 | The default tokens' primary and danger button labels at 3.2:1 and 2.9:1 against their fill (og polish wants 4.5:1; WCAG's large text 3:1) | E7 | S | platform (the design tokens) | done: the platform's tokens of b71ae8fac, og-ui synced with the danger tint in cf932f8 (every role 4.5:1 or more, `crates/og-ui/tests/button_contrast.rs`) |
 | 44 | A publish wasm per profile (measured 63.3 % 3D, 59.5 % 2D at opt-level 3): two shipping variants, `og build --publish` choosing by the game's profile, and the size budget read per download instead of as the sum of every wasm the gate builds | E7 | M | owner (the budget's meaning), then engine | open |
-| 45 | `og.ui.shake` shown in a template (ui-kit's shop refusing a purchase) | E7 | S | engine, phase 2 | open |
-| 46 | runner: a press during the game-over card's hold is silent (og polish: 1 of 3 inputs in `flow`) | E7 | S | engine, phase 2 | open |
+| 45 | `og.ui.shake` shown in a template (ui-kit's shop refusing a purchase) | E7 | S | engine, P2 UI | done, d00f20c |
+| 46 | runner: a press during the game-over card's hold is silent (og polish: 1 of 3 inputs in `flow`) | E7 | S | engine, P2 UI | done, 54b59df |
 
 ## 0. Rules that shape the plan
 

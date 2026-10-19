@@ -1,4 +1,4 @@
-//! Phase 2's modules' trait implementations (TerrainApi): every member is
+//! Phase 2's modules' trait implementations (TerrainApi, AudioApi): every member is
 //! the host-neutral runtime's.
 
 use crate::WebHost;
@@ -29,5 +29,11 @@ impl TerrainApi for WebHost {
         layer: Option<String>,
     ) -> String {
         rt::og_terrain_set_layer(world, data, index, layer)
+    }
+}
+
+impl AudioApi for WebHost {
+    fn og_audio_output_latency(&self, world: u32) -> f64 {
+        rt::og_audio_output_latency(world)
     }
 }

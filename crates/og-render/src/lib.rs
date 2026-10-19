@@ -33,6 +33,7 @@ mod clusters;
 mod effects;
 mod frame;
 mod fx;
+mod glass;
 pub mod graph;
 mod hooks;
 mod ibl;
@@ -792,6 +793,9 @@ pub struct Renderer {
     instance_buffer: wgpu::Buffer,
     sprite_buffer: wgpu::Buffer,
     overlay: overlay::OverlayRenderer,
+    /// The overlay's glass: its passes, and its textures for the output's size.
+    glass: glass::GlassPasses,
+    glass_targets: Option<glass::GlassTargets>,
     cache: SceneCache,
     /// Frames rendered so far.
     frame_index: u64,
@@ -1766,6 +1770,7 @@ impl Renderer {
             offscreen_linear.or(surface_linear),
             &sprite_layout,
         );
+        let glass = glass::GlassPasses::new(&device, output_format);
 
         Ok(Renderer {
             device,
@@ -1841,6 +1846,8 @@ impl Renderer {
             instance_buffer,
             sprite_buffer,
             overlay,
+            glass,
+            glass_targets: None,
             cache: SceneCache::default(),
             frame_index: 0,
             desc_particles: desc.particles,
@@ -2958,6 +2965,23 @@ impl Renderer {
             for t in textures {
                 self.sprite_group(t);
             }
+        }
+        // Glass: the tonemap renders into the glass source, which becomes
+        // the output and the blur pyramid after the post passes.
+        let glass_on = scene.overlay.as_ref().is_some_and(|o| !o.glass.is_empty());
+        if glass_on
+            && self
+                .glass_targets
+                .as_ref()
+                .is_none_or(|g| g.size != (self.width, self.height))
+        {
+            self.glass_targets = Some(self.glass.targets(
+                &self.device,
+                self.output_format,
+                self.width,
+                self.height,
+                &self.sprite_layout,
+            ));
         }
         let mut ribbon_frame = self
             .trails
@@ -4505,6 +4529,7 @@ impl Renderer {
                             RunSource::Strip(..) | RunSource::Metaballs(_) => {
                                 unreachable!("drawn above")
                             }
+                            RunSource::Glass => unreachable!("glass is the overlay's only"),
                             RunSource::Sprite(blend, None) => {
                                 (false, blend, &self.white_sprite_group)
                             }
@@ -4579,17 +4604,30 @@ impl Renderer {
                     }
                 }
                 post_pass => {
+                    let post_output = match (&self.glass_targets, glass_on) {
+                        (Some(g), true) => &g.source_view,
+                        _ => output,
+                    };
                     stats.draw_calls += self.graph.encode_post(
                         &mut encoder,
                         &self.post,
                         &self.persistent,
                         post_pass,
                         slot,
-                        output,
+                        post_output,
                         gtao,
                     );
                 }
             }
+        }
+        if let (Some(g), true) = (&self.glass_targets, glass_on) {
+            stats.draw_calls += self.glass.encode(
+                &self.queue,
+                &mut encoder,
+                g,
+                output,
+                !self.output_format.is_srgb(),
+            );
         }
         // The overlay: over the finished frame, in the output (or its sRGB view).
         if let Some(of) = overlay_frame.as_ref().filter(|f| !f.runs.is_empty()) {
@@ -4618,28 +4656,37 @@ impl Renderer {
                 multiview_mask: None,
             });
             pass.set_bind_group(0, &self.overlay.group, &[]);
-            let mut msdf_bound: Option<bool> = None;
+            let mut bound: Option<u8> = None;
             for run in &of.runs {
-                let (msdf, group) = match run.source {
-                    RunSource::Sprite(_, None) => (false, &self.white_sprite_group),
+                // 0 sprite, 1 MSDF text, 2 glass.
+                let (kind, group) = match run.source {
+                    RunSource::Sprite(_, None) => (0u8, &self.white_sprite_group),
                     RunSource::Sprite(_, Some(t)) => (
-                        false,
+                        0,
                         self.cache.sprite_groups[t.index()]
                             .as_ref()
                             .expect("made before the pass"),
                     ),
-                    RunSource::Font(f) => (true, &self.cache.fonts[f.index()].bind_group),
+                    RunSource::Font(f) => (1, &self.cache.fonts[f.index()].bind_group),
+                    RunSource::Glass => (
+                        2,
+                        &self
+                            .glass_targets
+                            .as_ref()
+                            .expect("made with the overlay's glass")
+                            .overlay_group,
+                    ),
                     RunSource::Strip(..) | RunSource::Metaballs(_) => {
                         unreachable!("the overlay has no strips or fluids")
                     }
                 };
-                if msdf_bound != Some(msdf) {
-                    pass.set_pipeline(if msdf {
-                        &pipelines.msdf
-                    } else {
-                        &pipelines.sprite
+                if bound != Some(kind) {
+                    pass.set_pipeline(match kind {
+                        0 => &pipelines.sprite,
+                        1 => &pipelines.msdf,
+                        _ => &pipelines.glass,
                     });
-                    msdf_bound = Some(msdf);
+                    bound = Some(kind);
                 }
                 pass.set_bind_group(1, group, &[]);
                 let start = run.first as u64 * overlay::OVERLAY_STRIDE;

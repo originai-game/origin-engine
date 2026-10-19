@@ -1,6 +1,7 @@
 // Runs one playtest (`tests/*.og.ts`) for `og test`: the script's commands
-// through `og run --headless --commands` in a fresh process, then its checks
-// over the files the run wrote. A playtest that made no check fails.
+// through `og run --headless --commands` in a fresh process (its `runs` and
+// `then` steps in more), then its checks over the files the runs wrote. A
+// playtest that made no check fails.
 //
 //   bun src/node/playtest-run.ts --file <tests/x.og.ts> --entry <game bundle> [--root <project>] [--out <dir>] [--json]
 
@@ -8,7 +9,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { bundleGame } from "./build.ts";
-import type { PlaytestChecks, PlaytestDesc, PlaytestRun } from "../playtest.ts";
+import { PLAYTEST_CLOCK, type PlaytestChecks, type PlaytestDesc, type PlaytestRun } from "../playtest.ts";
 
 declare const Bun: {
   spawnSync(cmd: string[], o?: { cwd?: string; stdout?: string; stderr?: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
@@ -64,78 +65,100 @@ if (!desc || typeof desc.check !== "function") {
 }
 result.title = desc!.name;
 
-const cmd = ["bun", join(here, "run.ts"), "--entry", entry!, "--commands", desc!.commands, "--out", out, "--json"];
-if (root) cmd.push("--root", root);
-if (desc!.seed !== undefined) cmd.push("--seed", String(desc!.seed));
-if (desc!.size) cmd.push("--size", desc!.size);
-const r = Bun.spawnSync(cmd, { stdout: "pipe", stderr: "pipe" });
-const stdout = new TextDecoder().decode(r.stdout);
-const stderr = new TextDecoder().decode(r.stderr);
-let summary: { tick: number; hash: string; entities: number; quit: boolean; tier: string; outputs: string[]; warnings: string[] } | null = null;
-try {
-  summary = JSON.parse(stdout.trim().split("\n").pop() ?? "");
-} catch {
-  summary = null;
-}
-if (r.exitCode !== 0 || !summary) {
-  failures.push(`og run failed (exit ${r.exitCode}): ${stderr.trim() || stdout.trim()}`);
-  finish();
-}
+// Every process of the playtest: the script, its `runs` and its `then` steps.
+// The host's clock is pinned (PlaytestDesc.clock), so og.platform.now is
+// reproducible; `store: "keep"` shares one local store file between them.
+const store = desc!.store === "keep" ? join(out, "platform.json") : undefined;
+const command = (commands: string, dir: string, clock: number) => {
+  const c = ["bun", join(here, "run.ts"), "--entry", entry!, "--commands", commands, "--out", dir, "--json", "--clock", String(clock)];
+  if (root) c.push("--root", root);
+  if (desc!.seed !== undefined) c.push("--seed", String(desc!.seed));
+  if (desc!.size) c.push("--size", desc!.size);
+  if (store) c.push("--platform-store", store);
+  return c;
+};
+type Summary = { tick: number; hash: string; entities: number; quit: boolean; tier: string; outputs: string[]; warnings: string[] };
+const spawn = (c: string[], what: string): Summary | null => {
+  const r = Bun.spawnSync(c, { stdout: "pipe", stderr: "pipe" });
+  const stdout = new TextDecoder().decode(r.stdout);
+  const stderr = new TextDecoder().decode(r.stderr);
+  let summary: Summary | null = null;
+  try {
+    summary = JSON.parse(stdout.trim().split("\n").pop() ?? "");
+  } catch {
+    summary = null;
+  }
+  if (r.exitCode !== 0 || !summary) {
+    failures.push(`${what} failed (exit ${r.exitCode}): ${stderr.trim() || stdout.trim()}`);
+    return null;
+  }
+  return summary;
+};
+const clock = desc!.clock ?? PLAYTEST_CLOCK;
+const summary = spawn(command(desc!.commands, out, clock), "og run");
+if (!summary) finish();
 result = { ...result, tick: summary!.tick, hash: summary!.hash, tier: summary!.tier, warnings: summary!.warnings };
 // More runs of the same script (desc.runs), each in a fresh process into its
 // own directory: only their end hashes are kept.
 const hashes = [summary!.hash];
 for (let i = 1; i < Math.max(1, Math.floor(desc!.runs ?? 1)); i++) {
-  const again = cmd.map((a, k) => (cmd[k - 1] === "--out" ? join(out, `.run-${i + 1}`) : a));
-  const r2 = Bun.spawnSync(again, { stdout: "pipe", stderr: "pipe" });
-  const s2 = new TextDecoder().decode(r2.stdout).trim().split("\n").pop() ?? "";
-  try {
-    hashes.push((JSON.parse(s2) as { hash: string }).hash);
-  } catch {
-    failures.push(`run ${i + 1} of ${desc!.runs} failed (exit ${r2.exitCode}): ${new TextDecoder().decode(r2.stderr).trim()}`);
-  }
+  const again = spawn(command(desc!.commands, join(out, `.run-${i + 1}`), clock), `run ${i + 1} of ${desc!.runs}`);
+  if (again) hashes.push(again.hash);
 }
 result = { ...result, hashes };
 
-const path = (f: string) => {
-  const p = resolve(out, f);
-  if (!existsSync(p)) throw new Error(`the run wrote no ${f} (it wrote ${summary!.outputs.map((o) => o.slice(out.length + 1)).join(", ") || "nothing"})`);
-  return p;
+const runOf = (s: Summary, dir: string, later: readonly PlaytestRun[]): PlaytestRun => {
+  const path = (f: string) => {
+    const p = resolve(dir, f);
+    if (!existsSync(p)) throw new Error(`the run wrote no ${f} (it wrote ${s.outputs.map((o) => o.slice(dir.length + 1)).join(", ") || "nothing"})`);
+    return p;
+  };
+  return {
+    tick: s.tick,
+    hash: s.hash,
+    hashes: dir === out ? hashes : [s.hash],
+    entities: s.entities,
+    quit: s.quit,
+    tier: s.tier,
+    files: s.outputs.map((o) => o.slice(dir.length + 1)),
+    warnings: s.warnings,
+    then: later,
+    json: <T>(f: string) => JSON.parse(readFileSync(path(f), "utf8")) as T,
+    text: (f: string) => readFileSync(path(f), "utf8"),
+    png: (f: string) => {
+      const bytes = readFileSync(path(f));
+      const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+      if (bytes.length < 24 || view.getUint32(12) !== 0x49484452) throw new Error(`${f} is not a PNG`);
+      return { width: view.getUint32(16), height: view.getUint32(20), bytes: bytes.length };
+    },
+    wav: (f: string) => {
+      const bytes = readFileSync(path(f));
+      const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+      if (bytes.length < 44 || view.getUint32(0) !== 0x52494646 || view.getUint32(8) !== 0x57415645) throw new Error(`${f} is not a WAV`);
+      const rate = view.getUint32(24, true);
+      const channels = view.getUint16(22, true);
+      const samples = (bytes.length - 44) >> 1;
+      let peak = 0;
+      let sum = 0;
+      for (let i = 0; i < samples; i++) {
+        const x = view.getInt16(44 + i * 2, true) / 32767;
+        peak = Math.max(peak, Math.abs(x));
+        sum += x * x;
+      }
+      return { rate, frames: samples / Math.max(1, channels), peak, rms: samples > 0 ? Math.sqrt(sum / samples) : 0 };
+    },
+  };
 };
-const run: PlaytestRun = {
-  tick: summary!.tick,
-  hash: summary!.hash,
-  hashes,
-  entities: summary!.entities,
-  quit: summary!.quit,
-  tier: summary!.tier,
-  files: summary!.outputs.map((o) => o.slice(out.length + 1)),
-  warnings: summary!.warnings,
-  json: <T>(f: string) => JSON.parse(readFileSync(path(f), "utf8")) as T,
-  text: (f: string) => readFileSync(path(f), "utf8"),
-  png: (f: string) => {
-    const bytes = readFileSync(path(f));
-    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-    if (bytes.length < 24 || view.getUint32(12) !== 0x49484452) throw new Error(`${f} is not a PNG`);
-    return { width: view.getUint32(16), height: view.getUint32(20), bytes: bytes.length };
-  },
-  wav: (f: string) => {
-    const bytes = readFileSync(path(f));
-    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-    if (bytes.length < 44 || view.getUint32(0) !== 0x52494646 || view.getUint32(8) !== 0x57415645) throw new Error(`${f} is not a WAV`);
-    const rate = view.getUint32(24, true);
-    const channels = view.getUint16(22, true);
-    const samples = (bytes.length - 44) >> 1;
-    let peak = 0;
-    let sum = 0;
-    for (let i = 0; i < samples; i++) {
-      const x = view.getInt16(44 + i * 2, true) / 32767;
-      peak = Math.max(peak, Math.abs(x));
-      sum += x * x;
-    }
-    return { rate, frames: samples / Math.max(1, channels), peak, rms: samples > 0 ? Math.sqrt(sum / samples) : 0 };
-  },
-};
+// The later processes (desc.then), in order, after the script and its runs.
+const later: PlaytestRun[] = [];
+for (const [i, step] of (desc!.then ?? []).entries()) {
+  const dir = join(out, `then-${i + 1}`);
+  mkdirSync(dir, { recursive: true });
+  const s = spawn(command(step.commands, dir, step.clock ?? clock), `then[${i}]`);
+  if (!s) finish();
+  later.push(runOf(s!, dir, []));
+}
+const run = runOf(summary!, out, later);
 const t: PlaytestChecks = {
   ok(condition, what) {
     checks++;
