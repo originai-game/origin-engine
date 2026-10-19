@@ -1,9 +1,10 @@
 // Pause and settings: Escape holds the orb (time scale 0, the embers make
 // nothing); Settings switch to 简体中文 and move the music; Done saves the
 // settings through og.platform; Resume lets the orb make sparks again; the
-// numbers now read in the Chinese units (万, 亿).
+// numbers now read in the Chinese units (万, 亿); Escape pauses again and
+// Quit goes back to the title, writing the save once more there.
 import { playtest } from "@origingame/engine/playtest";
-import { game, type PlatformDump, press, tap, text } from "./lib.ts";
+import { game, type PlatformDump, press, tap, text, TITLE } from "./lib.ts";
 
 export default playtest({
   name: "Escape pauses, settings switch to 简体中文 and save, numbers read in 万 and 亿",
@@ -32,7 +33,11 @@ export default playtest({
     "4.8:get:Game:resumed.json",
     "4.85:screenshot:play-zh.png",
     "5.4:get:Game:running.json",
-    "5.5:quit",
+    press("Escape", 5.5),
+    "6.0:get:Game:repaused.json",
+    tap("quit", 6.2),
+    "6.8:get:Game:quit.json",
+    "6.9:quit",
   ].join(";"),
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
@@ -52,6 +57,10 @@ export default playtest({
     t.equal(text(run, "play-zh.json", "Name", "Head"), "余烬", "the first card is 余烬");
     t.equal(game(run, "resumed.json").paused, false, "Resume closed the pause menu");
     t.ok(game(run, "running.json").sparks > game(run, "resumed.json").sparks, "and the embers make sparks again");
+    const repaused = game(run, "repaused.json");
+    const quit = game(run, "quit.json");
+    t.equal(quit.phase, TITLE, "Quit went back to the title");
+    t.equal(quit.saves, repaused.saves + 1, "and wrote the save there, after the pause's");
     for (const f of ["pause.png", "settings-zh.png", "play-zh.png"]) t.equal(run.png(f).width, 1280, `${f} captured`);
   },
 });
