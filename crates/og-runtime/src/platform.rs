@@ -33,8 +33,15 @@ pub struct PlatformAnswered {
 
 /// The most calls kept in the log (the oldest answered ones go first).
 const MAX_LOG: usize = 512;
+/// The most calls waiting for an answer: a call past it is refused, so
+/// unanswered calls (which the log cannot drop) stay under [`MAX_LOG`].
+const MAX_PENDING: usize = 256;
 /// The largest stored value, encoded.
 const MAX_VALUE: usize = 64 * 1024;
+/// The largest answer a host may give, encoded: a stored value or a
+/// leaderboard page with room to spare. A longer one answers its call
+/// with a `too_large` error.
+const MAX_ANSWER: usize = 4 * MAX_VALUE;
 
 const RETRYABLE: &[&str] = &["offline", "timeout", "unavailable", "rate_limited"];
 
@@ -83,7 +90,19 @@ fn tick_now(world: u32) -> Result<u64, String> {
 
 fn call(world: u32, method: &str, args: Value, oneway: bool) -> Result<u32, String> {
     let tick = tick_now(world)?;
-    Ok(with(world, |p| {
+    with(world, |p| {
+        if !oneway {
+            let waiting = p
+                .log
+                .values()
+                .filter(|r| r.answer.is_none() && !r.oneway)
+                .count();
+            if waiting >= MAX_PENDING {
+                return Err(format!(
+                    "{method}: {waiting} platform calls are waiting for the host's answers; at most {MAX_PENDING} wait at once"
+                ));
+            }
+        }
         p.next = p.next.wrapping_add(1).max(1);
         let id = p.next;
         p.log.insert(
@@ -108,9 +127,12 @@ fn call(world: u32, method: &str, args: Value, oneway: bool) -> Result<u32, Stri
             for k in old {
                 p.log.remove(&k);
             }
+            // A one-way call dropped before the host took it is not sent.
+            let log = &p.log;
+            p.outbox.retain(|id| log.contains_key(id));
         }
-        id
-    }))
+        Ok(id)
+    })
 }
 
 fn request(world: u32, method: &str, args: Value) -> String {
@@ -384,6 +406,20 @@ fn tick_ms(world: u32) -> f64 {
     })
 }
 
+/// Moves the clock's base to a time the host gave at `tick`. The same
+/// clock never goes back: a time older than the base moved on by the ticks
+/// since (a harness that advanced faster than the host's clock, or answers
+/// stamped by the Player and by the browser in turn) keeps the moved-on
+/// base. A different clock (`clock` names another kind) starts afresh.
+fn rebase(p: &mut Platform, time: f64, tick: u64, clock: Option<&str>, tick_ms: f64) {
+    let switched = clock.is_some_and(|c| p.clock.as_deref() != Some(c));
+    let time = match p.base {
+        Some((t, at)) if !switched => time.max(t + tick.saturating_sub(at) as f64 * tick_ms),
+        _ => time,
+    };
+    p.base = Some((time, tick));
+}
+
 pub fn og_platform_now(world: u32) -> f64 {
     let Some((time, at)) = with(world, |p| p.base) else {
         return 0.0;
@@ -412,9 +448,19 @@ pub fn og_platform_take(engine: u32) -> String {
 
 /// Answers one call; applied at the next tick's start. False for an
 /// unknown, one-way or already answered request, or a malformed answer.
+/// An answer longer than [`MAX_ANSWER`] answers the call with a
+/// `too_large` error instead.
 pub fn og_platform_answer(engine: u32, request: u32, answer: String) -> bool {
-    let Ok(v) = serde_json::from_str::<Value>(&answer) else {
-        return false;
+    let v = if answer.len() > MAX_ANSWER {
+        json!({ "ok": false, "error": { "code": "too_large", "message": format!(
+            "the host's answer is {} bytes encoded; an answer is at most {MAX_ANSWER}",
+            answer.len()
+        ) } })
+    } else {
+        let Ok(v) = serde_json::from_str::<Value>(&answer) else {
+            return false;
+        };
+        v
     };
     if v["ok"].as_bool().is_none() {
         return false;
@@ -438,9 +484,10 @@ pub fn og_platform_answer(engine: u32, request: u32, answer: String) -> bool {
 pub fn og_platform_set_host(engine: u32, info: String) {
     let v: Value = serde_json::from_str(&info).unwrap_or(Value::Null);
     let tick = tick_now(engine).unwrap_or(0);
+    let ms = tick_ms(engine);
     with(engine, |p| {
         if let Some(t) = time_of(&v) {
-            p.base = Some((t, tick));
+            rebase(p, t, tick, v["clock"].as_str(), ms);
         }
         if let Some(c) = v["clock"].as_str() {
             p.clock = Some(c.to_string());
@@ -469,20 +516,23 @@ pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
             SystemDesc::new(PLATFORM_SYSTEM).write::<PlatformAnswered>(),
             move |ctx| {
                 let tick = ctx.time().tick;
+                let ms = tick_ms(engine_id);
                 let arrived = with(engine_id, |p| {
                     let inbox = std::mem::take(&mut p.inbox);
                     inbox
                         .into_iter()
                         .filter_map(|(id, v)| {
-                            let r = p.log.get_mut(&id)?;
+                            if !p.log.contains_key(&id) {
+                                return None;
+                            }
                             let ok = v["ok"].as_bool() == Some(true);
                             if let Some(t) = time_of(&v) {
-                                p.base = Some((t, tick));
+                                rebase(p, t, tick, v["clock"].as_str(), ms);
                             }
                             if let Some(c) = v["clock"].as_str() {
                                 p.clock = Some(c.to_string());
                             }
-                            r.answer = Some((v, tick));
+                            p.log.get_mut(&id)?.answer = Some((v, tick));
                             Some((id, ok))
                         })
                         .collect::<Vec<_>>()
@@ -520,4 +570,101 @@ pub(crate) fn dump(engine: u32) -> Value {
             }).collect::<Vec<_>>(),
         })
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn value(answer: &str) -> Value {
+        let v: Value = serde_json::from_str(answer).expect("JSON");
+        assert_eq!(v["ok"], json!(true), "{answer}");
+        v["value"].clone()
+    }
+
+    fn engine_at_60() -> u32 {
+        let game = crate::og_game_game(Some(json!({ "tick": 60 }).to_string()));
+        value(&crate::og_engine_create(game, "{}".into()))
+            .as_u64()
+            .expect("an engine id") as u32
+    }
+
+    fn host(engine: u32, time: f64, clock: &str) {
+        og_platform_set_host(
+            engine,
+            json!({ "host": "test", "capabilities": ["store"], "time": time, "clock": clock })
+                .to_string(),
+        );
+    }
+
+    fn advance(engine: u32, steps: u32) {
+        value(&crate::og_engine_advance(engine, steps));
+    }
+
+    #[test]
+    fn now_never_goes_back_on_one_clock_and_starts_afresh_on_another() {
+        let e = engine_at_60();
+        host(e, 1_000_000.0, "browser");
+        assert_eq!(og_platform_now(e), 1_000_000.0);
+        // A harness advance runs ahead of the host's clock.
+        advance(e, 600);
+        let ahead = og_platform_now(e);
+        assert!(ahead >= 1_009_999.0, "{ahead}");
+        // The host retells an older time on the same clock.
+        host(e, 1_000_500.0, "browser");
+        let retold = og_platform_now(e);
+        assert!(
+            retold >= ahead,
+            "set_host moved now back: {ahead} → {retold}"
+        );
+        // An answer stamped earlier still (browser-stamped: no clock).
+        let id = value(&og_platform_store_get(e, "k".into()))
+            .as_u64()
+            .unwrap() as u32;
+        assert!(og_platform_answer(
+            e,
+            id,
+            json!({ "ok": true, "data": null, "time": 1_000_600.0 }).to_string()
+        ));
+        advance(e, 1);
+        let answered = og_platform_now(e);
+        assert!(
+            answered >= retold,
+            "an answer moved now back: {retold} → {answered}"
+        );
+        let result: Value = serde_json::from_str(&og_platform_result(e, id)).unwrap();
+        assert_eq!(result["ok"], json!(true), "{result}");
+        // Another clock is another time line: it is taken as told.
+        host(e, 5.0, "fixed");
+        assert_eq!(og_platform_now(e), 5.0);
+    }
+
+    #[test]
+    fn calls_waiting_and_answers_are_bounded() {
+        let e = engine_at_60();
+        host(e, 1.0, "fixed");
+        let first = value(&og_platform_store_get(e, "k".into()))
+            .as_u64()
+            .unwrap() as u32;
+        // An answer past MAX_ANSWER answers its call with too_large.
+        let long = json!({ "ok": true, "data": "x".repeat(MAX_ANSWER) }).to_string();
+        assert!(og_platform_answer(e, first, long));
+        advance(e, 1);
+        let result: Value = serde_json::from_str(&og_platform_result(e, first)).unwrap();
+        assert_eq!(result["ok"], json!(false), "{result}");
+        assert_eq!(result["error"]["code"], json!("too_large"), "{result}");
+        // MAX_PENDING calls wait; the next is refused by name.
+        for _ in 0..MAX_PENDING {
+            value(&og_platform_store_get(e, "k".into()));
+        }
+        let refused: Value = serde_json::from_str(&og_platform_store_get(e, "k".into())).unwrap();
+        assert_eq!(refused["ok"], json!(false), "{refused}");
+        let reason = refused["reason"].as_str().unwrap_or_default();
+        assert!(reason.contains("waiting"), "{reason}");
+        assert_eq!(og_platform_store_list(e), 0);
+        // One-way telemetry is not held back by them.
+        let sent: Value =
+            serde_json::from_str(&og_platform_telemetry(e, "t".into(), None)).unwrap();
+        assert_eq!(sent["ok"], json!(true), "{sent}");
+    }
 }
