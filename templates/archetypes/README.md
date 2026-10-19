@@ -15,6 +15,7 @@ and add a top-down room built for the engine's 2D and game-feel modules.
 | `tower-defense/` | Path Guard | 2d | taps, or the arrows and Space, or a pad | pick a plant, set it on the lawn, watch the visitors re-route round it, hold five waves |
 | `roguelike/` | Lamp Dive | 2d | the arrows or WASD, a tap on the next cell, a pad, or the HUD's d-pad | step a turn at a time through a fresh tomb, strike what the lamp shows, take what it finds, reach the relic on floor 2 with one life |
 | `idle/` | Spark Orb | 2d | taps or Space on the orb, 1–4 or the cards to buy, a pad | tap for sparks, buy generators that make them, double each kind every tenth, collapse into a supernova for stardust, come back to what it made while away |
+| `rhythm/` | Three-Lane Beat | 2d | A S D or the arrows, fingers on the lanes, a pad | read the notes falling to the line, hit each on its time, keep the combo and the groove, clear the song |
 
 Each archetype's README has its rules, components, systems, tunables, the
 commands its playtests use and what a Maker changes first.
@@ -40,7 +41,19 @@ commands its playtests use and what a Maker changes first.
   the round's state and tuning ride on every row with one row (the runner,
   the board) as the authority: a system sees one query and cannot reach
   another entity or a game resource yet. Each README says how this changes
-  once it can.
+  once it can. The four later archetypes (tower-defense, roguelike, idle,
+  rhythm) keep the play in game resources (`Game`, `Tuning`, `Prefs`)
+  that every system reads and writes; a system still writes only the rows
+  its query declares, so what another system's rows must show is asked for
+  through a resource field and done by the owner the same tick.
+- **The platform and the screens.** The later four keep their settings
+  through `og.platform.loadSettings`/`saveSettings` and a record (a best,
+  a save) in the store at the revision read, merged after a stale write;
+  their title, pause, settings and end cards are og-ui widgets on a
+  recoloured style pack from `templates/ui-kit`, with every string in
+  `assets/strings/en.ogt` and `zh-CN.ogt`, and a phone layout inside the
+  safe area. Their `og polish` reports are in the engine repository's
+  `tests/evidence/P2/archetypes/`.
 - **Pools, not spawning in systems.** Obstacles, coins and tiles are spawned
   in `start` and recycled by systems.
 - **Tunables.** The `Tuning` block (the scene's, or the component's
@@ -56,12 +69,15 @@ commands its playtests use and what a Maker changes first.
 
 ## Scaffolding one
 
-`@origingame/create` scaffolds `templates/game` only. Until it takes an
-archetype, copy the directory:
+`@origingame/create` scaffolds `templates/game`, or an archetype with
+`--archetype <directory>`:
 
 ```sh
-cp -R templates/archetypes/runner my-runner && cd my-runner
-og test . && og run .
+bun packages/create/bin/create.ts my-dive --archetype roguelike --name "My Dive"   # in the engine repository
+cd my-dive && bun install && og test . && og run .
 ```
 
-then change `name` and `id` in `project.ogt` and `package.json`.
+It copies the directory (without `cooked/`, `dist/`, `og-out/` and
+`.og/`), sets `name` and `id` in `project.ogt` and `package.json`, and
+writes the archetype's `gitattributes` (media through Git LFS) as
+`.gitattributes`.

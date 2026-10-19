@@ -76,8 +76,11 @@ og build . --publish         # dist/: the play page as it ships
   `loadSettings`/`saveSettings`, the best score read on tick 0 and written
   at the revision read, the board and a `round.over` event.
 
-`og polish .` (2026-10-19): taste and feel in
+`og polish .` (2026-10-19, og and the native addon built release from
+this checkout, load 16–18): taste 99, feel 100, in
 `tests/evidence/P2/archetypes/tower-defense/` of the engine repository.
+The same playtests at load 25–50 scored feel 80–89, frame time's p95
+following the machine's load (`tests/evidence/P2/archetypes/frame-time.md`).
 
 ## Rules
 

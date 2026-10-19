@@ -81,3 +81,27 @@ Restore: the line reverted, `offline` passes again:
 ```
 PASS offline (15 checks, 5473 ms): the save, two hours away credited at half the rate, a stale write merged
 ```
+
+## rhythm (Three-Lane Beat)
+
+Break: the Play system in `templates/archetypes/rhythm/src/systems.ts`
+ignores the calibrated offset when it judges a press:
+
+```diff
+-    const offset = prefs.value.offsetMs / 1000;
++    const offset = 0;
+```
+
+`tests/calibrate.og.ts` failed: the eight presses 67 ms late, Perfect with
+the 67 ms the calibration measured, were each judged without it:
+
+```
+FAIL calibrate (8 checks, 4812 ms): eight taps 67 ms late calibrate a 67 ms offset, and a late play is judged Perfect
+  - eight presses 67 ms late were all Perfect: expected 8, got 0
+```
+
+Restore: the line reverted, `calibrate` passes again:
+
+```
+PASS calibrate (8 checks, 8283 ms): eight taps 67 ms late calibrate a 67 ms offset, and a late play is judged Perfect
+```

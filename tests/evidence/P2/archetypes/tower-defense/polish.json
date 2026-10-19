@@ -10,11 +10,11 @@
   "latency": 100,
   "hitFeedback": 100,
   "idle": 100,
-  "frameTime": 0,
+  "frameTime": 100,
   "inputSound": 98,
   "locale": 100,
   "taste": 99,
-  "feel": 80
+  "feel": 100
  },
  "findings": [
   {
@@ -60,34 +60,16 @@
    "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
   },
   {
-   "measure": "frame time",
-   "where": "phone",
-   "detail": "p95 step + render 25.3 ms on metal (the frame is 16.7 ms)",
-   "fix": "og-game §14 (performance): fewer draws and particles, cheaper systems; og run --json measures"
-  },
-  {
    "measure": "hit feedback",
    "where": "replay",
    "detail": "3 of 3 damage moments (kills) had no shake within 8 ticks",
    "fix": "og-feel §4 (trauma, not offsets)"
   },
   {
-   "measure": "frame time",
-   "where": "replay",
-   "detail": "p95 step + render 40.47 ms on metal (the frame is 16.7 ms)",
-   "fix": "og-game §14 (performance): fewer draws and particles, cheaper systems; og run --json measures"
-  },
-  {
    "measure": "hit feedback",
    "where": "win",
    "detail": "18 of 18 damage moments (kills) had no shake within 8 ticks",
    "fix": "og-feel §4 (trauma, not offsets)"
-  },
-  {
-   "measure": "frame time",
-   "where": "win",
-   "detail": "p95 step + render 44.42 ms on metal (the frame is 16.7 ms)",
-   "fix": "og-game §14 (performance): fewer draws and particles, cheaper systems; og run --json measures"
   }
  ],
  "playtests": [
@@ -220,12 +202,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 4.6,
-    "stepP95Ms": 7.82,
-    "renderMedianMs": 3.84,
-    "renderP95Ms": 6.16,
-    "frameP95Ms": 13.53,
-    "frameMaxMs": 397.98
+    "stepMedianMs": 0.57,
+    "stepP95Ms": 0.88,
+    "renderMedianMs": 0.44,
+    "renderP95Ms": 0.63,
+    "frameP95Ms": 1.48,
+    "frameMaxMs": 31.59
    },
    "audio": {
     "seconds": 13.1,
@@ -363,12 +345,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 4.26,
-    "stepP95Ms": 5.9,
-    "renderMedianMs": 3.61,
-    "renderP95Ms": 4.12,
-    "frameP95Ms": 9.93,
-    "frameMaxMs": 246.42
+    "stepMedianMs": 0.57,
+    "stepP95Ms": 0.98,
+    "renderMedianMs": 0.46,
+    "renderP95Ms": 0.63,
+    "frameP95Ms": 1.57,
+    "frameMaxMs": 31.6
    },
    "audio": {
     "seconds": 8.1,
@@ -486,12 +468,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 4.36,
-    "stepP95Ms": 8.29,
-    "renderMedianMs": 3.71,
-    "renderP95Ms": 6.68,
-    "frameP95Ms": 14.64,
-    "frameMaxMs": 166.12
+    "stepMedianMs": 0.59,
+    "stepP95Ms": 0.88,
+    "renderMedianMs": 0.49,
+    "renderP95Ms": 0.67,
+    "frameP95Ms": 1.52,
+    "frameMaxMs": 18.35
    },
    "audio": {
     "seconds": 17.9,
@@ -607,12 +589,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 4.21,
-    "stepP95Ms": 6.11,
-    "renderMedianMs": 3.6,
-    "renderP95Ms": 4.36,
-    "frameP95Ms": 10.23,
-    "frameMaxMs": 249.33
+    "stepMedianMs": 0.64,
+    "stepP95Ms": 1.07,
+    "renderMedianMs": 0.51,
+    "renderP95Ms": 0.71,
+    "frameP95Ms": 1.79,
+    "frameMaxMs": 33.13
    },
    "audio": {
     "seconds": 8.1,
@@ -678,12 +660,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 4.24,
-    "stepP95Ms": 6.08,
-    "renderMedianMs": 3.52,
-    "renderP95Ms": 4.01,
-    "frameP95Ms": 9.87,
-    "frameMaxMs": 11.25
+    "stepMedianMs": 0.68,
+    "stepP95Ms": 1.1,
+    "renderMedianMs": 0.5,
+    "renderP95Ms": 0.7,
+    "frameP95Ms": 1.69,
+    "frameMaxMs": 3.46
    },
    "audio": {
     "seconds": 3.1,
@@ -832,12 +814,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 4.34,
-    "stepP95Ms": 6.88,
-    "renderMedianMs": 3.65,
-    "renderP95Ms": 5.44,
-    "frameP95Ms": 12.35,
-    "frameMaxMs": 420.16
+    "stepMedianMs": 0.62,
+    "stepP95Ms": 1.01,
+    "renderMedianMs": 0.48,
+    "renderP95Ms": 0.7,
+    "frameP95Ms": 1.95,
+    "frameMaxMs": 53.18
    },
    "audio": {
     "seconds": 8.8,
@@ -964,12 +946,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 6.59,
-    "stepP95Ms": 15.49,
-    "renderMedianMs": 4.7,
-    "renderP95Ms": 10.98,
-    "frameP95Ms": 25.3,
-    "frameMaxMs": 1470.57
+    "stepMedianMs": 0.76,
+    "stepP95Ms": 2.63,
+    "renderMedianMs": 0.56,
+    "renderP95Ms": 0.81,
+    "frameP95Ms": 3.32,
+    "frameMaxMs": 79.91
    },
    "audio": {
     "seconds": 1.9,
@@ -1037,12 +1019,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 5.28,
-    "stepP95Ms": 22.22,
-    "renderMedianMs": 4.28,
-    "renderP95Ms": 20.86,
-    "frameP95Ms": 40.47,
-    "frameMaxMs": 136.77
+    "stepMedianMs": 0.59,
+    "stepP95Ms": 1.11,
+    "renderMedianMs": 0.47,
+    "renderP95Ms": 0.7,
+    "frameP95Ms": 1.87,
+    "frameMaxMs": 8.34
    },
    "audio": {
     "seconds": 9.1,
@@ -1160,12 +1142,12 @@
    },
    "frame": {
     "tier": "metal",
-    "stepMedianMs": 6.16,
-    "stepP95Ms": 27.43,
-    "renderMedianMs": 4.76,
-    "renderP95Ms": 21.35,
-    "frameP95Ms": 44.42,
-    "frameMaxMs": 250.03
+    "stepMedianMs": 0.8,
+    "stepP95Ms": 2.34,
+    "renderMedianMs": 0.62,
+    "renderP95Ms": 1.76,
+    "frameP95Ms": 4.14,
+    "frameMaxMs": 52.7
    },
    "audio": {
     "seconds": 24.5,

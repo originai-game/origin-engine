@@ -13,11 +13,11 @@
 | Screen transitions | 100 | screen changes with UI motion around them |
 | UI sounds | 100 | UI presses answered on the ui bus |
 | Locale keys | 100 | string tables without missing keys (og cook) |
-| **Feel** | **80** | mean of the feel rows |
+| **Feel** | **100** | mean of the feel rows |
 | Input latency | 100 | inputs answered, by the median ticks to the answer (0–1: 100) |
 | Hit feedback | 100 | damage moments with hit stop, shake, floating text or a sound (three of four: 100) |
 | Idle frames | 100 | ticks where nothing new is seen or heard (10 %: 100, 60 %: 0) |
-| Frame time | 0 | p95 step + render (8.3 ms: 100, 33 ms: 0), worst playtest |
+| Frame time | 100 | p95 step + render (8.3 ms: 100, 33 ms: 0), worst playtest |
 | Sound on input | 98 | inputs answered by a sound within 6 ticks |
 
 ## Fixes
@@ -31,11 +31,8 @@
 | contrast | pause pause-zh: `resume` "继续" | 3.51:1 between ink and ground (body text wants 4.5:1) | og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call |
 | contrast | pause play-zh: `Pick` "荆棘" | 4.2:1 between ink and ground (body text wants 4.5:1) | og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call |
 | contrast | phone play: `Pick` "Hedge" | 2.51:1 between ink and ground (body text wants 4.5:1) | og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call |
-| frame time | phone | p95 step + render 25.3 ms on metal (the frame is 16.7 ms) | og-game §14 (performance): fewer draws and particles, cheaper systems; og run --json measures |
 | hit feedback | replay | 3 of 3 damage moments (kills) had no shake within 8 ticks | og-feel §4 (trauma, not offsets) |
-| frame time | replay | p95 step + render 40.47 ms on metal (the frame is 16.7 ms) | og-game §14 (performance): fewer draws and particles, cheaper systems; og run --json measures |
 | hit feedback | win | 18 of 18 damage moments (kills) had no shake within 8 ticks | og-feel §4 (trauma, not offsets) |
-| frame time | win | p95 step + render 44.42 ms on metal (the frame is 16.7 ms) | og-game §14 (performance): fewer draws and particles, cheaper systems; og run --json measures |
 
 ## Playtests
 
@@ -54,7 +51,7 @@ title, plants set by tap and by keys, the first wave walks in and is shot down (
 | Damage | 5 moment(s) from `kills`: hit stop 5, shake 0, floating text 5, sound 5, tween 5, particles 5 |
 | Idle | 0 % of ticks |
 | Particles | peak 2 system(s), 5 burst(s) |
-| Frame (metal) | step 4.6 ms median, 7.82 p95; render 3.84 median, 6.16 p95; frame p95 13.53, max 397.98 |
+| Frame (metal) | step 0.57 ms median, 0.88 p95; render 0.44 median, 0.63 p95; frame p95 1.48, max 31.59 |
 | Audio | 13.1 s, peak 0.38, RMS 0.026, 0 clipped, 0 % silent ticks |
 
 ![flow title](frames/flow-title.png) 
@@ -76,7 +73,7 @@ the title, a wave in the maze and the end card match their reference frames (486
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 1 system(s), 0 burst(s) |
-| Frame (metal) | step 4.26 ms median, 5.9 p95; render 3.61 median, 4.12 p95; frame p95 9.93, max 246.42 |
+| Frame (metal) | step 0.57 ms median, 0.98 p95; render 0.46 median, 0.63 p95; frame p95 1.57, max 31.6 |
 | Audio | 8.1 s, peak 0.37, RMS 0.0351, 0 clipped, 0 % silent ticks |
 
 ![frames title](frames/frames-title.png) 
@@ -98,7 +95,7 @@ unguarded, visitors reach the doorstep, the lantern goes out, the end card offer
 | Damage | 2 moment(s) from `lives`: hit stop 2, shake 2, floating text 2, sound 2, tween 2, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 1 system(s), 0 burst(s) |
-| Frame (metal) | step 4.36 ms median, 8.29 p95; render 3.71 median, 6.68 p95; frame p95 14.64, max 166.12 |
+| Frame (metal) | step 0.59 ms median, 0.88 p95; render 0.49 median, 0.67 p95; frame p95 1.52, max 18.35 |
 | Audio | 17.9 s, peak 0.44, RMS 0.0556, 0 clipped, 0 % silent ticks |
 
 ![lose lost](frames/lose-lost.png) 
@@ -120,7 +117,7 @@ hedges route the visitors through the gap; a closed path, a stone, a taken cell 
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 1 system(s), 0 burst(s) |
-| Frame (metal) | step 4.21 ms median, 6.11 p95; render 3.6 median, 4.36 p95; frame p95 10.23, max 249.33 |
+| Frame (metal) | step 0.64 ms median, 1.07 p95; render 0.51 median, 0.71 p95; frame p95 1.79, max 33.13 |
 | Audio | 8.1 s, peak 0.4, RMS 0.0566, 0 clipped, 0 % silent ticks |
 
 ![maze maze](frames/maze-maze.png) 
@@ -140,7 +137,7 @@ the d-pad, A, X, Y, Start and B play a round (186 ticks)
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 1 system(s), 0 burst(s) |
-| Frame (metal) | step 4.24 ms median, 6.08 p95; render 3.52 median, 4.01 p95; frame p95 9.87, max 11.25 |
+| Frame (metal) | step 0.68 ms median, 1.1 p95; render 0.5 median, 0.7 p95; frame p95 1.69, max 3.46 |
 | Audio | 3.1 s, peak 0.36, RMS 0.0429, 0 clipped, 0 % silent ticks |
 
 ### pause
@@ -158,7 +155,7 @@ Escape pauses, settings switch the language and save, Resume runs the garden aga
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 1 system(s), 0 burst(s) |
-| Frame (metal) | step 4.34 ms median, 6.88 p95; render 3.65 median, 5.44 p95; frame p95 12.35, max 420.16 |
+| Frame (metal) | step 0.62 ms median, 1.01 p95; render 0.48 median, 0.7 p95; frame p95 1.95, max 53.18 |
 | Audio | 8.8 s, peak 0.42, RMS 0.0348, 0 clipped, 0 % silent ticks |
 
 ![pause pause](frames/pause-pause.png) 
@@ -180,7 +177,7 @@ the phone layout: title, HUD and a bottom tray of touch-sized buttons inside the
 | Damage | 0 moment(s): hit stop 0, shake 0, floating text 0, sound 0, tween 0, particles 0 |
 | Idle | 0 % of ticks |
 | Particles | peak 1 system(s), 0 burst(s) |
-| Frame (metal) | step 6.59 ms median, 15.49 p95; render 4.7 median, 10.98 p95; frame p95 25.3, max 1470.57 |
+| Frame (metal) | step 0.76 ms median, 2.63 p95; render 0.56 median, 0.81 p95; frame p95 3.32, max 79.91 |
 | Audio | 1.9 s, peak 0.34, RMS 0.0307, 0 clipped, 0 % silent ticks |
 
 ![phone title](frames/phone-title.png) 
@@ -200,7 +197,7 @@ a round with plants, shots, pops and frost replays to the same hash (546 ticks)
 | Damage | 3 moment(s) from `kills`: hit stop 3, shake 0, floating text 3, sound 3, tween 3, particles 3 |
 | Idle | 0 % of ticks |
 | Particles | peak 2 system(s), 3 burst(s) |
-| Frame (metal) | step 5.28 ms median, 22.22 p95; render 4.28 median, 20.86 p95; frame p95 40.47, max 136.77 |
+| Frame (metal) | step 0.59 ms median, 1.11 p95; render 0.47 median, 0.7 p95; frame p95 1.87, max 8.34 |
 | Audio | 9.1 s, peak 0.4, RMS 0.0264, 0 clipped, 0 % silent ticks |
 
 ### win
@@ -218,7 +215,7 @@ a strong stand holds the last wave, the end card shows the win, the best is save
 | Damage | 18 moment(s) from `kills`: hit stop 18, shake 0, floating text 18, sound 18, tween 18, particles 18 |
 | Idle | 0 % of ticks |
 | Particles | peak 3 system(s), 18 burst(s) |
-| Frame (metal) | step 6.16 ms median, 27.43 p95; render 4.76 median, 21.35 p95; frame p95 44.42, max 250.03 |
+| Frame (metal) | step 0.8 ms median, 2.34 p95; render 0.62 median, 1.76 p95; frame p95 4.14, max 52.7 |
 | Audio | 24.5 s, peak 0.45, RMS 0.0301, 0 clipped, 0 % silent ticks |
 
 ![win won](frames/win-won.png) 
