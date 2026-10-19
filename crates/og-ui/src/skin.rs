@@ -204,6 +204,18 @@ pub struct Tile {
     pub parts: u32,
 }
 
+/// A glass part: the frame under it blurred (og-render's glass), tinted by
+/// the part's fill, under the part's own frame drawn at `fill` opacity.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Glass {
+    /// The blur's radius in CSS px.
+    pub blur: f32,
+    /// How opaque the part's own nine-slice stays over the glass (0–1).
+    pub fill: f32,
+    /// How much of the part's fill colour tints the blur (0–1).
+    pub tint: f32,
+}
+
 /// A drop shadow (blur 0: hard).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Shadow {
@@ -320,6 +332,8 @@ pub struct Skin {
     pub tile: Option<Tile>,
     pub shadows: [Option<Shadow>; PARTS],
     pub glows: [Option<Glow>; PARTS],
+    /// Parts drawn as glass over the blurred frame.
+    pub glass: [Option<Glass>; PARTS],
     /// Per font role (body, display, mono).
     pub text_shadows: [Option<Shadow>; 3],
     pub text_glows: [Option<Glow>; 3],
@@ -350,6 +364,11 @@ impl Skin {
     pub fn glow(&self, part: SkinPart) -> Option<Glow> {
         self.atlas?;
         self.glows[part.class().index()]
+    }
+
+    pub fn glass(&self, part: SkinPart) -> Option<Glass> {
+        self.atlas?;
+        self.glass[part.class().index()]
     }
 
     pub fn corners(&self, part: SkinPart) -> Option<Ornament> {
@@ -946,6 +965,16 @@ pub fn parse_skin(text: &str) -> Result<SkinFile, String> {
                         p.err(&format!("ink '{iw}' is accent, fg, muted, border or focus"))
                     })?,
                     alpha: p.num(3)?.clamp(0.0, 1.0),
+                });
+            }
+            "glass" => {
+                let w = p.word(0)?;
+                let part = SkinPart::from_name(w)
+                    .ok_or_else(|| p.err(&format!("names an unknown part '{w}'")))?;
+                theme.skin.glass[part.class().index()] = Some(Glass {
+                    blur: p.num(1)?.max(0.0),
+                    fill: p.num(2)?.clamp(0.0, 1.0),
+                    tint: p.num_or(3, 0.25)?.clamp(0.0, 1.0),
                 });
             }
             "textShadow" => {

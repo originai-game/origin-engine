@@ -2851,10 +2851,26 @@ impl Ui {
             let c = g.ink.color(p).fade(g.alpha * fade);
             nine(atlas, soft, rect.outset(g.size), c, clip, cmds);
         }
+        // Glass: the blurred frame under the part, then its own frame
+        // thinned to the glass's fill.
+        let glass = skin.glass(part);
+        if let Some(g) = glass {
+            let mut tint = bg.linear();
+            tint[3] = g.tint;
+            cmds.push(DrawCmd::Glass {
+                rect,
+                radius,
+                blur: g.blur,
+                tint,
+                alpha,
+                clip,
+            });
+        }
+        let thin = glass.map_or(1.0, |g| g.fill);
         let tint = if slice.tint {
-            bg.fade(alpha)
+            bg.fade(alpha * thin)
         } else {
-            Srgba::WHITE.fade(fade)
+            Srgba::WHITE.fade(fade * thin)
         };
         nine(atlas, slice, rect, tint, clip, cmds);
         if let Some(tile) = skin.tile(part) {

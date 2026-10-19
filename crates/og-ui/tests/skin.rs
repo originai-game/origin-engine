@@ -780,3 +780,92 @@ fn the_probe_names_each_elements_kind_and_a_disabled_control() {
     assert_eq!(f.element("Menu/Title").unwrap().kind, "label");
     assert_eq!(f.element("Heart").unwrap().kind, "icon");
 }
+
+/// A skin's `glass <part> <blur> <fill> <tint>` line (here the card a
+/// panel is dressed as): the part draws a
+/// glass panel (og-render's blurred frame) of its own rectangle and
+/// radius under its nine-slice, tinted by its fill colour, and its
+/// nine-slice at `fill` of its opacity; a skin without it draws no glass.
+///
+/// Ways it could fail: the line is not read, the glass is drawn over the
+/// panel's frame (a later painter level) or at another rectangle, or the
+/// frame keeps its full opacity and hides the glass.
+#[test]
+fn a_glass_part_draws_the_blurred_frame_under_its_thinned_nine_slice() {
+    let frame_of = |skin: &str| {
+        let file = parse_skin(skin).expect("the skin parses");
+        let tex = atlas();
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.set_theme(file.theme(Some(tex), [0; 6]));
+        for _ in 0..30 {
+            step(&mut ui, InputFrame::default(), false);
+        }
+        let menu = ui.frame().element("Menu").expect("the panel").clone();
+        let glass: Vec<(i32, Rect, f32, f32, [f32; 4])> = ui
+            .frame()
+            .items
+            .iter()
+            .filter_map(|i| match &i.cmd {
+                DrawCmd::Glass {
+                    rect,
+                    radius,
+                    blur,
+                    tint,
+                    ..
+                } => Some((i.level, *rect, *radius, *blur, *tint)),
+                _ => None,
+            })
+            .collect();
+        // The panel's centre piece: the atlas image filling most of it, inside
+        // it (the shadow's soft centre lies 6 px lower).
+        let centre = ui
+            .frame()
+            .items
+            .iter()
+            .filter_map(|i| match &i.cmd {
+                DrawCmd::Image {
+                    rect,
+                    texture: Some(t),
+                    color,
+                    ..
+                } if *t == tex
+                    && rect.width > menu.width * 0.5
+                    && rect.height > menu.height * 0.5
+                    && rect.x >= menu.x - 0.01
+                    && rect.y >= menu.y - 0.01
+                    && rect.right() <= menu.x + menu.width + 0.01
+                    && rect.bottom() <= menu.y + menu.height + 0.01 =>
+                {
+                    Some((i.level, color[3]))
+                }
+                _ => None,
+            })
+            .next()
+            .expect("the panel's centre piece");
+        (menu, glass, centre, ui.theme().radius.card)
+    };
+    let (_, none, (_, solid), _) = frame_of(SKIN);
+    assert!(none.is_empty(), "no glass without the line");
+    let glassy = SKIN.replace("glow button", "glass card 16 0.5 0.2\nglow button");
+    let (menu, glass, (level, thin), card_radius) = frame_of(&glassy);
+    assert_eq!(glass.len(), 1, "one glass panel: {glass:?}");
+    let (glevel, rect, radius, blur, tint) = glass[0];
+    assert!(
+        (rect.x - menu.x).abs() < 0.01
+            && (rect.y - menu.y).abs() < 0.01
+            && (rect.width - menu.width).abs() < 0.01
+            && (rect.height - menu.height).abs() < 0.01,
+        "the glass is the panel's rectangle: {rect:?} against {menu:?}"
+    );
+    assert_eq!(
+        (radius, blur),
+        (card_radius, 16.0),
+        "the card's radius and the line's blur"
+    );
+    assert!((tint[3] - 0.2).abs() < 1e-6, "the line's tint share");
+    assert!(glevel < level, "the glass is under the panel's frame");
+    assert!(
+        (thin - solid * 0.5).abs() < 1e-3,
+        "the frame is drawn at the line's fill: {thin} against {solid}"
+    );
+}

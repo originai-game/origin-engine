@@ -91,6 +91,22 @@ pub(crate) fn build<'a>(
             },
         ));
     }
+    for (i, g) in overlay.glass.iter().enumerate() {
+        let clip = clip_rect(overlay, g.clip, &format!("glass {i}"))?;
+        keyed.push((
+            g.layer,
+            RunSource::Glass,
+            OverlayInstance {
+                position_rotation: [g.position.x, g.position.y, 0.0, 0.0],
+                size_anchor: [g.size.x, g.size.y, 0.0, 0.0],
+                uv_rect: [0.0, 0.0, 1.0, 1.0],
+                color: g.tint,
+                clip,
+                effect: [g.radius.max(0.0), g.blur.max(0.0), g.size.x, g.size.y],
+                effect_color: [0.0, 0.0, 0.0, g.alpha.clamp(0.0, 1.0)],
+            },
+        ));
+    }
     let sprites = keyed.len() as u32;
     let mut missing_glyphs = 0;
     for (i, text) in overlay.texts.iter().enumerate() {
@@ -192,6 +208,7 @@ pub(crate) fn build<'a>(
 pub(crate) struct OverlayPipelines {
     pub sprite: wgpu::RenderPipeline,
     pub msdf: wgpu::RenderPipeline,
+    pub glass: wgpu::RenderPipeline,
 }
 
 /// The overlay's pipelines and buffers: in the output's format and, for a
@@ -284,6 +301,7 @@ impl OverlayRenderer {
         let pipelines = |format| OverlayPipelines {
             sprite: pipeline("overlay sprite", "fs", format),
             msdf: pipeline("overlay msdf", "fs_msdf", format),
+            glass: pipeline("overlay glass", "fs_glass", format),
         };
         OverlayRenderer {
             output: pipelines(output_format),
@@ -314,6 +332,8 @@ pub(crate) fn run_textures(
 ) -> impl Iterator<Item = Option<TextureHandle>> + '_ {
     frame.runs.iter().filter_map(|r| match r.source {
         RunSource::Sprite(_, t) => Some(t),
-        RunSource::Font(_) | RunSource::Strip(..) | RunSource::Metaballs(_) => None,
+        RunSource::Font(_) | RunSource::Strip(..) | RunSource::Metaballs(_) | RunSource::Glass => {
+            None
+        }
     })
 }

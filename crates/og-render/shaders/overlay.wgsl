@@ -27,7 +27,7 @@ struct OverlayIn {
   @location(3) color: vec4<f32>,
   @location(4) clip: vec4<f32>,               // x0, y0, x1, y1 in CSS px
   @location(5) effect: vec4<f32>,             // MSDF text: x glow radius (CSS px), y weight (CSS px), z 1: the glow pass
-  @location(6) effect_color: vec4<f32>,       // the glow's colour
+  @location(6) effect_color: vec4<f32>,       // the glow's colour; glass: a its opacity
 };
 
 struct OverlayOut {
@@ -118,4 +118,26 @@ fn fs_msdf(in: OverlayOut) -> @location(0) vec4<f32> {
     return finish(in.effect_color.rgb, a, in.position.xy, in.clip);
   }
   return finish(in.color.rgb, fill * in.color.a, in.position.xy, in.clip);
+}
+
+@fragment
+fn fs_glass(in: OverlayOut) -> @location(0) vec4<f32> {
+  // A glass panel (src/glass.rs): the blurred frame under it, tinted by its
+  // colour (rgb, mixed in by alpha), masked to its rounded rectangle. uv
+  // spans the quad 0..1; effect: x the corner radius and y the blur radius
+  // in device pixels, zw the quad's size in CSS pixels; effect_color.a the
+  // panel's opacity.
+  let size = in.effect.zw * overlay.output.z;
+  let p = (in.uv - vec2<f32>(0.5)) * size;
+  let r = min(in.effect.x, 0.5 * min(size.x, size.y));
+  let q = abs(p) - (0.5 * size - vec2<f32>(r));
+  let d = length(max(q, vec2<f32>(0.0))) + min(max(q.x, q.y), 0.0) - r;
+  let mask = clamp(0.5 - d, 0.0, 1.0);
+  // Level k of the pyramid is a blur of about 2^(k+1) device pixels.
+  let levels = f32(textureNumLevels(sprite_tex));
+  let lod = clamp(log2(max(in.effect.y, 1.0)) - 1.0, 0.0, levels - 1.0);
+  let at = in.position.xy / overlay.output.xy;
+  let behind = textureSampleLevel(sprite_tex, sprite_sampler, at, lod).rgb;
+  let rgb = mix(behind, in.color.rgb, in.color.a);
+  return finish(rgb, mask * in.effect_color.a, in.position.xy, in.clip);
 }

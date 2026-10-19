@@ -567,6 +567,219 @@ fn bold_rich_text_is_heavier_ink_never_a_box() {
     }
 }
 
+/// A scene of fine vertical stripes (4 px black, 4 px white) under an
+/// overlay holding `glass` panels, 320×200 at 1×.
+fn stripes_frame(glass: &[og_render::Glass]) -> (Vec<u8>, usize, usize, og_render::FrameStats) {
+    let (w, h) = (320u32, 200u32);
+    let mut scene = RenderScene::new();
+    scene.camera =
+        og_render::Camera::orthographic_2d(Vec2::new(w as f32 / 2.0, h as f32 / 2.0), h as f32);
+    for k in 0..(w / 8) {
+        scene.sprites.push(og_render::Sprite {
+            position: Vec3::new(k as f32 * 8.0 + 2.0, h as f32 / 2.0, 0.0),
+            size: Vec2::new(4.0, h as f32),
+            color: [1.0, 1.0, 1.0, 1.0],
+            ..og_render::Sprite::default()
+        });
+    }
+    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.post.tonemap = Tonemap::None;
+    let mut overlay = og_render::Overlay::new(w as f32, h as f32, 1.0);
+    overlay.glass.extend_from_slice(glass);
+    scene.overlay = Some(overlay);
+    let desc = RenderDesc {
+        width: w,
+        height: h,
+        ..RenderDesc::default()
+    };
+    let mut renderer = Renderer::new_blocking(&desc).expect("a headless adapter");
+    let stats = renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("render");
+    let img = renderer.read_offscreen().expect("read back");
+    (img.pixels, w as usize, h as usize, stats)
+}
+
+/// A glass panel shows the frame under it blurred, inside its rounded
+/// rectangle only, and leaves every other pixel exactly as it was: the
+/// fine stripes under it smooth to their average while the stripes beside
+/// it keep their contrast, its corners stay sharp stripes, a tint covers
+/// the blur by its alpha, and the frame matches
+/// `references/<tier>/glass.png`.
+///
+/// Ways it could fail: the frame moves through the glass source and back
+/// changed (the copy is not exact), the blur never reaches the panel
+/// (sharp stripes inside), it spills past the rounded rectangle, the
+/// pyramid is not decoded (a darker or brighter average), or the tint is
+/// ignored.
+#[test]
+fn a_glass_panel_blurs_the_frame_under_it_and_nothing_else() {
+    let panel = og_render::Glass {
+        position: Vec2::new(80.0, 40.0),
+        size: Vec2::new(160.0, 120.0),
+        radius: 24.0,
+        blur: 16.0,
+        tint: [0.0, 0.0, 0.0, 0.0],
+        alpha: 1.0,
+        layer: 0,
+        clip: None,
+    };
+    let (plain, w, h, _) = stripes_frame(&[]);
+    let (glass, _, _, stats) = stripes_frame(&[panel]);
+    let px = |p: &[u8], x: usize, y: usize| -> [i32; 3] {
+        let i = (y * w + x) * 4;
+        [p[i] as i32, p[i + 1] as i32, p[i + 2] as i32]
+    };
+    let lum = |c: [i32; 3]| (c[0] + c[1] + c[2]) / 3;
+    // Outside the panel, every pixel is the plain frame's.
+    let mut moved = 0;
+    for y in 0..h {
+        for x in 0..w {
+            let inside = (80..240).contains(&x) && (40..160).contains(&y);
+            if !inside && px(&plain, x, y) != px(&glass, x, y) {
+                moved += 1;
+            }
+        }
+    }
+    assert_eq!(moved, 0, "the glass leaves the frame outside it untouched");
+    // The plain stripes run from black to white along a row.
+    let row = |p: &[u8], y: usize, x0: usize, x1: usize| -> (i32, i32, f64) {
+        let v: Vec<i32> = (x0..x1).map(|x| lum(px(p, x, y))).collect();
+        let mean = v.iter().sum::<i32>() as f64 / v.len() as f64;
+        (*v.iter().min().unwrap(), *v.iter().max().unwrap(), mean)
+    };
+    let (lo, hi, plain_mean) = row(&plain, 100, 120, 200);
+    assert!(lo < 10 && hi > 245, "the stripes are sharp ({lo}..{hi})");
+    let (glo, ghi, glass_mean) = row(&glass, 100, 120, 200);
+    assert!(
+        ghi - glo < 24,
+        "under the glass the stripes blur to their average ({glo}..{ghi})"
+    );
+    // The average of linear light: half-white in linear is ~188 in sRGB.
+    assert!(
+        (glass_mean - 188.0).abs() < 16.0,
+        "the blur averages light, not encoded values ({glass_mean:.0}; the plain row's mean {plain_mean:.0})"
+    );
+    // The rounded corner: its outer pixel shows the sharp stripes.
+    assert_eq!(
+        px(&glass, 81, 41),
+        px(&plain, 81, 41),
+        "outside the rounded corner the frame shows as it is"
+    );
+    assert!(stats.overlay_sprites >= 1, "the panel is drawn");
+    // A tint covers the blur by its alpha.
+    let red = og_render::Glass {
+        tint: [1.0, 0.0, 0.0, 1.0],
+        ..panel
+    };
+    let (tinted, ..) = stripes_frame(&[red]);
+    let c = px(&tinted, 160, 100);
+    assert!(
+        c[0] > 245 && c[1] < 10 && c[2] < 10,
+        "a full tint is the tint ({c:?})"
+    );
+    // The reference frame.
+    let tier = Renderer::new_blocking(&RenderDesc::default())
+        .expect("a headless adapter")
+        .info()
+        .backend_tier();
+    let out = out_dir().join(format!("glass-{tier}.png"));
+    image::save_buffer(&out, &glass, w as u32, h as u32, image::ColorType::Rgba8)
+        .expect("write frame");
+    let own = reference_dir(&tier).join("glass.png");
+    if std::env::var_os("OG_UI_CAPTURE").is_some() {
+        std::fs::create_dir_all(own.parent().expect("dir")).expect("reference dir");
+        std::fs::copy(&out, &own).expect("record reference");
+    }
+    let reference = if own.exists() {
+        own
+    } else {
+        reference_dir("metal").join("glass.png")
+    };
+    let expected = image::open(&reference)
+        .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", reference.display()))
+        .to_rgba8();
+    if let Err(e) = compare(&glass, expected.as_raw()) {
+        panic!(
+            "{} differs from {}: {e}",
+            out.display(),
+            reference.display()
+        );
+    }
+}
+
+/// The glass's cost on this machine's GPU at 1280×720: a frame with four
+/// dialog-sized glass panels against the same frame without
+/// (`cargo test -p og-ui --release --test gfx -- --ignored glass_cost
+/// --nocapture`; tests/evidence/P2/ui/glass-cost.md).
+#[test]
+#[ignore]
+fn glass_cost() {
+    let (w, h) = (1280u32, 720u32);
+    let mut best = [f64::INFINITY; 2];
+    for round in 0..6 {
+        let on = round % 2 == 1;
+        let mut scene = RenderScene::new();
+        scene.camera = og_render::Camera::orthographic_2d(Vec2::new(640.0, 360.0), 720.0);
+        for k in 0..160 {
+            scene.sprites.push(og_render::Sprite {
+                position: Vec3::new(k as f32 * 8.0 + 2.0, 360.0, 0.0),
+                size: Vec2::new(4.0, 720.0),
+                ..og_render::Sprite::default()
+            });
+        }
+        scene.environment.background = Background::Color(Vec3::ZERO);
+        scene.post.tonemap = Tonemap::None;
+        let mut overlay = og_render::Overlay::new(w as f32, h as f32, 1.0);
+        if on {
+            for k in 0..4 {
+                overlay.glass.push(og_render::Glass {
+                    position: Vec2::new(40.0 + k as f32 * 300.0, 160.0),
+                    size: Vec2::new(280.0, 400.0),
+                    radius: 24.0,
+                    blur: 16.0,
+                    tint: [0.1, 0.1, 0.12, 0.2],
+                    alpha: 1.0,
+                    layer: 0,
+                    clip: None,
+                });
+            }
+        }
+        scene.overlay = Some(overlay);
+        let desc = RenderDesc {
+            width: w,
+            height: h,
+            ..RenderDesc::default()
+        };
+        let mut renderer = Renderer::new_blocking(&desc).expect("a headless adapter");
+        renderer
+            .render(&scene, &RenderTarget::Offscreen)
+            .expect("render");
+        renderer.read_offscreen().expect("read back");
+        let n = 600;
+        let start = std::time::Instant::now();
+        for _ in 0..n {
+            renderer
+                .render(&scene, &RenderTarget::Offscreen)
+                .expect("render");
+        }
+        renderer.read_offscreen().expect("read back");
+        let ms = start.elapsed().as_secs_f64() * 1000.0 / n as f64;
+        best[usize::from(on)] = best[usize::from(on)].min(ms);
+        println!("round {round}: glass {on}: {ms:.3} ms per frame");
+    }
+    println!(
+        "best: without {:.3} ms, with four panels {:.3} ms, cost {:+.3} ms per frame ({})",
+        best[0],
+        best[1],
+        best[1] - best[0],
+        Renderer::new_blocking(&RenderDesc::default())
+            .expect("a headless adapter")
+            .info()
+            .backend_tier()
+    );
+}
+
 /// The glow's cost on this machine's GPU: 24 display-size labels rendered
 /// 300 times with and without it (`cargo test -p og-ui --release --test gfx
 /// -- --ignored text_glow_cost --nocapture`; tests/evidence/P2/ui/text-glow-cost.md).

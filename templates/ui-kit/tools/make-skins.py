@@ -619,6 +619,8 @@ def scifi_pack():
         scale=1, corner=(18, 18, "accent", 4), corners=["panel", "card", "slot"], divider=(128, 24, "accent"), flourish=(32, 14, "accent", 0),
         tile=(64, 64, 0.08, 3, ["panel"]),
         shadows=dict(panel=(0, 0, 18, 0, "#000000aa")),
+        # Glass panels: the game behind blurred 16 px, the panel's frame at 85 %.
+        glass=dict(panel=(16, 0.85, 0.15)),
         glows=dict(button=(5, "accent", 0.22), panel=(10, "accent", 0.12), capsule=(4, "accent", 0.18)),
         text=dict(textGlow=[("display", 1.5, "accent", 0.55)]),
         press=(0.98, 0.98, 0), hover=(0, 1.02),
@@ -874,6 +876,8 @@ def skin_text(s, d):
         L.append(f'shadow {part} {dx} {dy} {blur} {spread} "{c}"')
     for part, (size, ink, a) in s.get("glows", {}).items():
         L.append(f"glow {part} {size} {ink} {a}")
+    for part, (blur, fill, tint) in s.get("glass", {}).items():
+        L.append(f"glass {part} {blur} {fill} {tint}")
     for role, dx, dy, blur, c in s["text"].get("textShadow", []):
         L.append(f'textShadow {role} {dx} {dy} {blur} "{c}"')
     for role, size, ink, a in s["text"].get("textGlow", []):

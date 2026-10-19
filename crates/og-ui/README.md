@@ -258,6 +258,7 @@ comment; og-cook validates it and cooks it as an `og.UiSkin` blob,
 | `corner` + `corners <parts>`, `divider`, `flourish` | ornaments: four mirrored corners on the named parts, an ornament over `Ui::divider`, a flourish beside a heading (`LabelDesc::heading`; both sides when centred). Ink `authored`, `accent`, `fg`, `muted`, `border` or `focus` |
 | `tile x y w h <tw> <th> <alpha> [inset] <parts>` | a texture tiled over the parts' fill (parchment, scanlines, grain) |
 | `shadow <part> dx dy blur spread "#rrggbbaa"`, `glow <part> size ink alpha` | per class (button states share the button's); blur 0 is a hard shadow |
+| `glass <part> blur fill [tint]` | the part is glass: og-render's blurred frame under it (`DrawCmd::Glass`, `og_render::Glass`: the scene behind the overlay blurred by `blur` CSS px, tinted by the part's fill colour at `tint`, default 0.25), under its nine-slice drawn at `fill` of its opacity. The scifi pack's dialogs are glass (`glass panel 16 0.85 0.15`) |
 | `textShadow <role> dx dy blur colour`, `textGlow <role> size ink alpha` | per font role (`body`, `display`, `numeric`); the text glow is og-render's distance-field halo (`Text::glow`, one instance per glyph under its ink) reaching twice `size` CSS px, as far as the font's distance range allows: cook a glowing role's font with a wider `px_range` (the neon and scifi packs' display and numeric fonts take 12) |
 | `press sx sy dy`, `hover dy scale` | the press squash and sink, the hover lift, each on a damped spring (og-tween's `Spring`, arithmetic only, in the UI state): the hover on `motion.hoverSpring` (default the tokens' `motion.spring.default`, damping 1 and 350 ms: no overshoot), the press on `motion.pressSpring` (default damping 0.55 over `motion.duration.instant`: in at once, a small bounce past rest on release) |
 | `fonts { body display numeric fallback }`, `icons "<id>" cols rows { names … }` | fonts per role (numeric is the `Mono` role) and the CJK `fallback`: a text whose role font lacks one of its characters is measured and drawn in the fallback (`Fonts::for_text`); the icon set |
@@ -570,8 +571,9 @@ font is og-tests' committed MSDF atlas (Noto Sans SC subset, OFL).
   the canvas UI; `prefers-reduced-motion` and `prefers-contrast` read from
   the shell into `UiDesc` (the theme flags exist; nothing sets them from the
   page yet). (The tree itself landed in the phase 2 UI round.)
-- Materials: glass (blur needs a render-graph pass) and the dark edge
-  light (skins have shadows and glows); icons (iconoir) as an MTSDF atlas.
+- Materials: the dark edge light (skins have shadows and glows); glass
+  over other overlay content (it blurs the scene only); icons (iconoir) as
+  an MTSDF atlas. (Glass landed in the phase 2 UI round.)
 - Layout: aspect-ratio images. (Two-axis scrolling, nested handoff,
   momentum and draggable scrollbars landed in the phase 2 UI round.)
 - **Input**: several touches for widgets other than the touch controls

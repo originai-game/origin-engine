@@ -137,7 +137,20 @@ atlas pixels at the size drawn, so a font cooked with `px_range 12` glows
 three times as far as one with 4); og-ui's skins use it for `textGlow`
 (og-ui's `tests/gfx.rs` `a_text_glow_is_a_halo_from_the_distance_field`
 and `references/<tier>/text-glow.png`; the cost is
-`tests/evidence/P2/ui/text-glow-cost.md`). Every
+`tests/evidence/P2/ui/text-glow-cost.md`). The weight stays within the
+field's reach too, so a thin field never fills the glyph's quad.
+`Overlay::glass` holds glass panels (`Glass`: a rounded rectangle, a blur
+radius, a tint and its share, an opacity, a layer and a clip): a frame with
+any renders its tonemap into a texture of its own (`src/glass.rs`), copies
+it into the output exactly, and downsamples it into a six-level
+`Rgba16Float` pyramid of 13-tap blurs (decoding an sRGB-encoded source);
+each panel samples the level its blur asks for, trilinear between levels,
+tints it and masks it to its rounded rectangle, sorted with the overlay's
+other runs at its layer. It blurs the scene under the overlay, not other
+overlay content; the pyramid is a render target of `Rgba16Float`, which WebGL2 renders to only with `EXT_color_buffer_float` (WebGPU, Metal, Vulkan and DX12 always); a frame without glass pays nothing (og-ui's `tests/gfx.rs`
+`a_glass_panel_blurs_the_frame_under_it_and_nothing_else` and
+`references/<tier>/glass.png`; the cost is
+`tests/evidence/P2/ui/glass-cost.md`). Every
 tier runs it (render passes only); screenshots, `capture` and
 `read_offscreen` include it; `FrameStats` counts `overlay_sprites`,
 `overlay_glyphs` and `overlay_draws`. Tests: `tests/gfx.rs`

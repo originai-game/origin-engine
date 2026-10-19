@@ -170,7 +170,12 @@ A skin's `slice` line says how a frame's edges and centre fill: `stretch`
 (the default), `repeat` (tiled at the art's size from the corner, the last
 tile cut) or `round` (a whole number of tiles resized to fit, as CSS
 `round`): tile patterned borders (a rope, a rivet row, a pixel bevel),
-stretch plain ones.
+stretch plain ones. `glass <part> <blur> <fill> [tint]` makes a part glass:
+the game behind it blurred (`blur` CSS px), tinted by the part's fill, under
+its frame drawn at `fill` opacity (the scifi pack's dialogs:
+`glass panel 16 0.85 0.15`). Glass blurs the scene, not other UI under it;
+it costs a frame copy and a blur pyramid when any is on screen (about 0.8 ms
+at 1280×720 on an M4 Pro), nothing otherwise.
 
 Never pass hex colours for chrome: use `{ token: "accent" }`, `"fgMuted"`,
 `"surface"` and the type steps (`displayLg`, `xl`, `meta`); the skin's
