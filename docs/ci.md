@@ -18,7 +18,7 @@ absent.
 
 | Tool | Version | Pinned by |
 |---|---|---|
-| Rust (rustc, rustfmt, clippy; wasm32 and x86_64-linux-gnu targets) | 1.99.1, edition 2024, `rust-version` 1.99 | `rust-toolchain.toml`, `Cargo.toml` `[workspace.package]` |
+| Rust (rustc, rustfmt, clippy, rust-src for the lanes wasm's `-Z build-std`; wasm32 and x86_64-linux-gnu targets) | 1.99.1, edition 2024, `rust-version` 1.99 | `rust-toolchain.toml`, `Cargo.toml` `[workspace.package]` |
 | wgpu / naga | 30.0.1 | `Cargo.toml` `[workspace.dependencies]` |
 | wasm-bindgen (crate and CLI), js-sys, web-sys, wasm-bindgen-futures | 0.2.129, 0.3.106, 0.3.106, 0.4.79 | `crates/og-host-web/Cargo.toml` (exact), the CLI from `Cargo.lock` |
 | binaryen (`wasm-opt`) | 133 | `BINARYEN_VERSION` in `scripts/install-tools.sh` (release archive on Linux and macOS) |
@@ -138,13 +138,13 @@ had grown `target/` to 143 GB.
 | `clippy` | `cargo clippy --workspace --all-targets -- -D warnings` | both | yes | yes | |
 | `test-quick` | `cargo nextest run --workspace --exclude og-tests` (`cargo test` without nextest); og-ui's and og-render's GPU tests left out when their inputs did not change (§Lanes) | quick | yes, on lavapipe | | |
 | `test` | `cargo nextest run --workspace && cargo test --workspace --doc` (`cargo test --workspace` without nextest); gfx tests in `og-tests`, left out with og-ui's and og-render's when their inputs did not change (§Lanes). Runs after `wasm-build`, whose og-render artifact `og-tests::wasm` takes when it is newer than og-render's sources (else that test runs `cargo check --target wasm32-unknown-unknown -p og-render` itself) | full | | yes, on lavapipe | |
-| `wasm-build` | `cargo build --profile wasm --target wasm32-unknown-unknown -p <crate> --lib` (`Cargo.toml`'s `[profile.wasm]`: release, the load-time crates at opt-level z) for `scripts/wasm-crates.txt`, plus the `publish` feature variant of crates marked `publish`; copies to `target/og-wasm/raw/` | full | | yes | |
-| `wasm-opt` | `wasm-bindgen --target web --out-name origin-engine` (when the module uses it) then `scripts/wasm-opt.sh`, the one wasm-opt invocation (`-Oz --enable-bulk-memory --enable-nontrapping-float-to-int --low-memory-unused`; rustc links wasm32 stack-first, so the low 1 KiB is only the bottom of an overflowing stack), which `packages/engine/scripts/build.sh` also ships with; `opt.txt` lists the shipping (publish) variants, `opt-all.txt` every one | full | | yes | |
-| `size-gate` | `scripts/size-gate.sh`: brotli `-q 11` sum of `opt.txt` ≤ `wasm_core_brotli_bytes` | full | | yes | |
+| `wasm-build` | `cargo build --profile wasm --target wasm32-unknown-unknown -p <crate> --lib` (`Cargo.toml`'s `[profile.wasm]`: release, the load-time crates at opt-level z) for `scripts/wasm-crates.txt`, plus the `publish` feature variant of crates marked `publish` and the lanes variant (`publish` with wasm atomics, `scripts/wasm-lanes.sh`, §The lanes wasm) of crates marked `publish lanes`; copies to `target/og-wasm/raw/` | full | | yes | |
+| `wasm-opt` | `wasm-bindgen --target web --out-name origin-engine` (`origin-engine-lanes` for a lanes variant; when the module uses it) then `scripts/wasm-opt.sh`, the one wasm-opt invocation (`-Oz --enable-bulk-memory --enable-nontrapping-float-to-int --low-memory-unused`; rustc links wasm32 stack-first, so the low 1 KiB is only the bottom of an overflowing stack), which `packages/engine/scripts/build.sh` also ships with (`--threads` adds `--enable-threads` for the lanes variant); `opt.txt` lists the shipping (publish and lanes) variants, `opt-all.txt` every one | full | | yes | |
+| `size-gate` | `scripts/size-gate.sh`: brotli `-q 11` of each file in `opt.txt` ≤ `wasm_core_brotli_bytes` (a page downloads one variant; the table also prints the sum and the largest) | full | | yes | |
 | `drift` | `og api check` (generated `.d.ts`, wiki, JSON schema, Rust glue vs `crates/og-api/api.ogt`), the dev `og` the test step built | both | yes | yes | |
 | `bun-quick` | `bun run test` in `packages/knowledge` and `packages/create` (no native build) | quick | yes | | |
 | `bun-test` | `bun run test` in each `packages/*` with a `test` script (the engine's files in parallel workers, `bun test --parallel`; the engine's `typecheck` also checks the six templates' `src/` against the generated declarations, `packages/engine/tsconfig.templates.json`; their playtests run under bun in `og test`); `OG_GATE=1` makes `packages/engine/scripts/build.sh` take the dev addon and `og` and the gate's wasm instead of compiling release and wasm again (below) | full | | yes | |
-| `determinism` | `tools/wasm-determinism/run.sh`: the same math digest and world hash on the host and on wasm32 scalar and simd128 under node | full | | yes | needs node |
+| `determinism` | `tools/wasm-determinism/run.sh`: the same math digest and world hash on the host and on wasm32 scalar and simd128 under node, and the host release once more with lanes off and once with lanes on (failing when the lanes run did no parallel work) | full | | yes | needs node |
 | perf | `cargo test -p og-tests --release -- --ignored perf` | `make perf` | | | yes |
 | `web-reference` | `bun tests/web/reference.ts` and `--webgl` in `packages/engine`: templates/fx-showcase's five stations, then `bun tests/web/reference-e5.ts` and `--webgl` for its eight E5 stations (each a fresh run like its playtest), in headless Chrome, compared with `references/webgpu`/`webgl2` or else `metal` under og-tests' tolerance (below); path-aware (§Lanes) | `scripts/check.sh web-reference` (`make web-reference`), in no lane | | | |
 
@@ -270,6 +270,26 @@ The gate costs a round minutes only when it is run too often:
   wasm-build and wasm-opt, skipped when `crates/` did not change),
   `scripts/check.sh web-reference` for the browser tiers. Then `--all` once
   at the end of the round as above.
+
+## The lanes wasm
+
+The lanes variant of og-host-web (docs/web-export.md §Lanes) is the
+publish build compiled for wasm atomics and shared memory, which stable
+Rust can only do by rebuilding std: `scripts/wasm-lanes.sh <cargo args>`
+runs `cargo build --target wasm32-unknown-unknown -Z
+build-std=panic_abort,std` with `RUSTC_BOOTSTRAP=1`, `RUSTFLAGS` adding
+`+atomics,+bulk-memory` and the shared, imported memory
+(at most 2 GiB) with wasm-bindgen's TLS exports, into its own target
+directory, `<target>/wasm-mt` (`scripts/wasm-lanes.sh --target-dir`
+prints it), so the flags never invalidate the single-threaded build. It
+needs the `rust-src` component (`rust-toolchain.toml`). The first build
+compiles std and every dependency again: 9 min on the M4 Pro at a load
+average around 30; afterwards a change costs about 30 s. rustc warns
+`unstable feature specified for -Ctarget-feature: atomics` for every
+crate; that is expected. wasm-bindgen writes `snippets/` (the pool's
+Worker script) beside `origin-engine-lanes.js`; build.sh copies it into
+`dist/web-publish`, and `scripts/pack.sh` refuses a package without the
+lanes files.
 
 ## `packages/engine/scripts/build.sh` outside the gate
 

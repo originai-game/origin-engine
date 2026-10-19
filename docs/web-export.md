@@ -22,6 +22,7 @@ og build . --publish    # what ships: the player probe members, minified, the PW
 | `game.js` | The engine Worker: the runtime and the game. |
 | `audio-worklet.js` | The AudioWorklet, loaded on the first gesture. |
 | `origin-engine.js`, `origin-engine_bg.wasm` | The web host. `--publish` takes `dist/web-publish` (probe trimmed to hello, tick, state, pick, entity, input, capture; `wasm-opt -Oz`). |
+| `origin-engine-lanes.js`, `origin-engine-lanes_bg.wasm`, `snippets/` | `--publish` with `isolation` not `off`: the lanes variant of the web host (§Lanes), the same engine built with wasm atomics and shared memory, and wasm-bindgen-rayon's Worker script. |
 | `basis/` | Binomial's Basis transcoder and its licence. |
 | `cooked/` | The project's cooked bundle (`og cook`, run by `og build`), split by streaming group: the first group (everything no scene's `stream` block holds, the `#proxy` stand-ins included) and one pack per streaming group, `cooked/stream/<name>.ogb`. A grouped output's own file is left out, because the engine reads it from its pack. |
 | `icons/` | `publish.icon` as `icons/icon.png`, or the brand tile at 192 and 512 px. |
@@ -120,7 +121,79 @@ textures transcoded, and the visited groups loading offline.
   rest may be cached forever once a host names files by content.
 - Without isolation everything still works: input and probe calls cross
   `postMessage` instead of the SharedArrayBuffer rings; audio uses a
-  MessagePort to the worklet.
+  MessagePort to the worklet; the engine runs single-threaded (§Lanes).
+- The lanes pool's Workers are started from a `blob:` URL
+  (wasm-bindgen-rayon), so a host that sends a Content-Security-Policy
+  must allow `worker-src blob:` (or send no `worker-src`/`script-src`).
+
+## Lanes
+
+Parallel systems (docs/design.md §2.2, phase 3 lanes round). Rayon runs the
+engine's data-parallel work on a pool of threads: one a core up to 8
+natively (the addon and `og`), Workers sharing the wasm memory on the web.
+What runs on lanes (`crates/og-lanes`, `og_lanes::map` and `for_each_mut`,
+both keeping the input order): the animation graph's evaluation and
+skinning palettes per character (og-anim, 64 skeletons a task),
+extraction's per-row decoding (og-runtime, 512 rows a task) and frustum
+culling per view (og-render, 1024 bounds a task; scheduling only: the
+recording stays on the engine thread, on the web the engine Worker), and
+rapier's solver natively (its `parallel` feature, bit for bit what the
+sequential build computes under enhanced-determinism; the wasm keeps the
+sequential build, so physics is single-threaded on the web). A call splits
+only from two tasks' worth of items: waking the pool costs tens of
+microseconds on an idle machine and milliseconds on a loaded one, while a
+character evaluates in about a microsecond and a row decodes in less, so
+the §7 reference scene (500 objects, 20 characters) stays under every
+grain and only crowds of 128 characters or scenes of thousands of objects
+split (`tests/evidence/P3/lanes/`). Particles simulate in a compute pass
+on the full tier and navigation queries are synchronous calls from TS
+systems, so neither is split this round. TS systems keep their
+deterministic order on the engine thread. Every lane writes back in input
+order, so the world hash, captures and replays are identical with lanes
+on and off (`packages/engine/tests/lanes.test.ts`, the gate's
+determinism step `tools/wasm-determinism/run.sh`).
+
+**One wasm or two.** Two. A wasm module built with atomics needs shared
+memory, which needs cross-origin isolation; without isolation such a module
+cannot be instantiated at all, and most hosts a game is shared on are not
+isolated. So the default `origin-engine_bg.wasm` stays single-threaded
+(the module every page can load), and a `--publish` build whose
+`isolation` is not `off` also ships `origin-engine-lanes_bg.wasm`. A page
+downloads one of them, so the 4 MiB brotli budget holds per file: the size
+gate measures each (`scripts/size-gate.sh`; on 2026-10-19 the publish wasm
+is 3,153,927 B and the lanes wasm 3,156,913 B brotli, 75 % of the budget;
+the lanes round grew the single-threaded wasm by about 4 KB). The
+lanes build needs nightly-only flags on the stable toolchain
+(`scripts/wasm-lanes.sh`: `RUSTC_BOOTSTRAP=1`, `-Z build-std` with
+`rust-src`; docs/ci.md).
+
+**The choice at boot.** The shell (`src/web/shell.ts` `laneChoice`) takes
+the lanes variant when the build offers it, `crossOriginIsolated` is true
+and `navigator.hardwareConcurrency` is above 2, with
+`min(cores - 1, 8)` Workers beside the engine Worker. The engine Worker
+starts the pool (`initThreadPool`) and tells the engine (`og_lanes_ready`);
+if the lanes module or the pool fails to start, the Worker starts the
+single-threaded module instead, so a page always plays. The API is the
+same either way. The mode is reported: the ready message's `lanes`
+(`{ on, threads, why }`, `why` saying why it is off), a log line
+(`lanes: on, 7 Workers` or `lanes: off (…)`), the page's
+`__runtime_probe__.lanes`, and the Worker's `call("lanes")`
+(`og_web_lanes`: threads, pool, and how many parallel calls and items ran).
+
+**Service worker.** `OG_SW` lists both variants (`single`, `lanes`); the
+worker precaches the one its own `crossOriginIsolated` predicts (`sw.js` is
+served with the build's COEP) and serves the other from the network into
+the same cache the first time it is asked, so a wrong guess costs one
+download, never a failed boot.
+
+**Locally.** `og dev` and `og run` run the native host, whose lanes are a
+rayon pool (`OG_LANES`: `off`, `0` or `1` serial, `N` threads, unset the
+cores up to 8); no isolation is involved. A browser page of a build is
+isolated when its server sends the build's `_headers` (the browser tests'
+`tests/web/serve.ts` does, as the platform's play origin does for a
+release with `origingame.runtime.json`); `og run --device`, which serves a
+build to a phone, is on another branch this round and has to send them
+too (docs/phase-1.md, lanes round, left).
 
 ## project.ogt `publish`
 
@@ -192,7 +265,8 @@ player members and a dev build every member, whatever it says.
 - **PWA** (publish builds, in a secure context): the service worker
   precaches `./` and every file of the build except `og-build.json`,
   `_headers`, `origingame.runtime.json`, licence and README files, the
-  streaming groups' packs and itself under `og-<version>` (a failed install
+  streaming groups' packs, the engine variant the page will not take
+  (§Lanes) and itself under `og-<version>` (a failed install
   keeps the old build), drops the scope's other `og-*` caches on activation,
   serves the page from the network first (so a host's additions to it are
   current) and from the cache offline, and every other file from the cache.
