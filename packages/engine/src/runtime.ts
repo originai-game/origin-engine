@@ -64,6 +64,7 @@ export function bindHost(binding: HostBinding): void {
     throw new Error(`the ${binding.name} host lacks ${missing.length} binding symbol(s): ${missing.join(", ")}; rebuild it from the same api.ogt`);
   }
   host = binding;
+  publishBuild = null;
   binding.abi.og_host_set_dispatcher(dispatch);
   for (const declare of queue.splice(0)) declare(binding.abi);
 }
@@ -413,6 +414,31 @@ class QueryImpl {
   }
 }
 
+// ── declared access ───────────────────────────────────────────────────────
+
+/** Whether the bound host is a publish build (the probe's hello says), learnt when the first engine is made. */
+let publishBuild: boolean | null = null;
+
+function learnBuild(engine: number): void {
+  publishBuild ??= (parse<{ build?: string } | null>(abi().og_engine_probe_hello(engine))?.build ?? "dev") === "publish";
+}
+
+/**
+ * Inside a system, a resource or event it did not declare (`read`: among its
+ * reads or writes; `write`: among its writes). Outside a publish build that
+ * throws with the system's name and the record, failing the tick; a publish
+ * build lets the engine refuse it, which logs it once per system.
+ */
+function checkAccess(access: "read" | "write", name: string): boolean {
+  const r = running;
+  if (!r) return true;
+  const s = r.system;
+  if (access === "write" ? s.writes.has(name) : s.reads.has(name) || s.writes.has(name)) return true;
+  if (publishBuild === true) return false;
+  const list = access === "write" ? "writes" : "reads or writes";
+  throw new Error(`system '${s.name}' did not declare '${name}' among its ${list} (${access} refused): add it to the system's ${list}`);
+}
+
 // ── resources as live values ──────────────────────────────────────────────
 
 function liveResource(world: WorldImpl, token: Token, value: Record<string, unknown>): object {
@@ -421,11 +447,12 @@ function liveResource(world: WorldImpl, token: Token, value: Record<string, unkn
     return Object.freeze({
       get seed() { return parse<{ ok: boolean; value?: { seed: number } }>(abi().og_world_resource(id, "og.Rng")).value?.seed ?? 0; },
       get state() { return parse<{ ok: boolean; value?: { state: number } }>(abi().og_world_resource(id, "og.Rng")).value?.state ?? 0; },
-      next: () => abi().og_rng_next(id),
-      range: (low: number, high: number) => abi().og_rng_range(id, low, high),
-      integer: (low: number, high: number) => abi().og_rng_integer(id, low, high),
-      chance: (p: number) => abi().og_rng_chance(id, p),
-      fork: (label: string) => rngStream(abi().og_rng_fork(id, label)),
+      // A draw moves the stream: it needs og.Rng among the system's writes. A fork reads the seed only.
+      next: () => (checkAccess("write", "og.Rng"), abi().og_rng_next(id)),
+      range: (low: number, high: number) => (checkAccess("write", "og.Rng"), abi().og_rng_range(id, low, high)),
+      integer: (low: number, high: number) => (checkAccess("write", "og.Rng"), abi().og_rng_integer(id, low, high)),
+      chance: (p: number) => (checkAccess("write", "og.Rng"), abi().og_rng_chance(id, p)),
+      fork: (label: string) => (checkAccess("read", "og.Rng"), rngStream(abi().og_rng_fork(id, label))),
     });
   }
   if (token.name === "og.Time") return Object.freeze({ ...value });
@@ -437,6 +464,8 @@ function liveResource(world: WorldImpl, token: Token, value: Record<string, unkn
   );
   for (const key of Object.keys(value)) {
     const setter = (v: unknown) => {
+      // Undeclared in a publish build: the engine refuses and logs it once; the game keeps running.
+      if (!checkAccess("write", token.name)) return void abi().og_engine_write_resource(id, token.name, JSON.stringify({ [key]: v }));
       const answer = parse<Result<void>>(abi().og_engine_write_resource(id, token.name, JSON.stringify({ [key]: v })));
       if (!answer.ok) throw new Error(`${token.name}.${key}: ${answer.reason}`);
       value[key] = v;
@@ -551,6 +580,7 @@ export class WorldImpl {
   }
 
   resource(resource: Token): Result<object> {
+    if (resource.name !== "og.Time") checkAccess("read", resource.name);
     const answer = parse<Result<Record<string, unknown>>>(abi().og_world_resource(this.id, resource.name));
     if (!answer.ok) return answer;
     return { ok: true, value: liveResource(this, resource, answer.value) };
@@ -572,10 +602,12 @@ export class WorldImpl {
   }
 
   events(event: Token): readonly unknown[] {
+    checkAccess("read", event.name);
     return parse(abi().og_world_events(this.id, event.name));
   }
 
   emit(event: Token, payload: unknown): Result<void> {
+    checkAccess("write", event.name);
     return parse(abi().og_world_emit(this.id, event.name, JSON.stringify(payload ?? {})));
   }
 
@@ -691,6 +723,7 @@ export class Engine {
     this.world = worldFor(id) as unknown as Api.World;
     this.probe = makeProbe(id) as unknown as Api.EngineProbe;
     rates.set(id, game.tick);
+    learnBuild(id);
     this.attachPlatform(noPlatform);
   }
 

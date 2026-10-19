@@ -336,7 +336,7 @@
             },
             {
               "name": "resource",
-              "doc": "A resource's live value. Inside a system, the resource must be among the system's reads or writes.",
+              "doc": "A resource's live value. Inside a system, the resource must be among the system's reads or writes (writes to set a field): an undeclared one throws in a dev or release build, naming the system and the resource, and fails the tick; a publish build refuses it and logs it once per system in the engine log.",
               "generics": [
                 {
                   "name": "R",
@@ -352,7 +352,7 @@
                 }
               ],
               "returns": "Result<Value<R>>",
-              "returnsDoc": "Refused for an unregistered resource or one the running system did not declare.",
+              "returnsDoc": "Refused for an unregistered resource (or, in a publish build, one the running system did not declare).",
               "publish": true
             },
             {
@@ -401,7 +401,7 @@
             },
             {
               "name": "events",
-              "doc": "The events of one type emitted during the previous tick and this one, oldest first.",
+              "doc": "The events of one type emitted during the previous tick and this one, oldest first. Inside a system the event must be among its reads or writes (undeclared: thrown, or in a publish build refused and logged once).",
               "generics": [
                 {
                   "name": "E",
@@ -421,7 +421,7 @@
             },
             {
               "name": "emit",
-              "doc": "Emit an event; readers see it this tick and the next.",
+              "doc": "Emit an event; readers see it this tick and the next. Inside a system the event must be among its writes (undeclared: thrown, or in a publish build refused and logged once).",
               "generics": [
                 {
                   "name": "E",
@@ -571,7 +571,7 @@
     },
     {
       "name": "system",
-      "doc": "Systems: functions the engine calls once per tick with their matched archetypes.\nA system declares what it reads and writes; a write to an undeclared component is refused at registration with the field name.",
+      "doc": "Systems: functions the engine calls once per tick with their matched archetypes.\nA system declares what it reads and writes; a write to an undeclared component is refused at registration with the field name.\nResources and events it reaches through the world must be declared too: in a dev or release build (og run, og test) an undeclared read or write throws with the system's name and the record and fails the tick; a publish build refuses it and logs it once per system in the engine log, and the game keeps running. og.Rng among the reads may fork (a fork reads the seed only and leaves the stream as it is); a draw moves the stream, so it needs og.Rng among the writes.",
       "place": "top",
       "publish": true,
       "types": [
@@ -893,7 +893,7 @@
     },
     {
       "name": "rng",
-      "doc": "Deterministic randomness. Every random draw comes from an Rng stream; the sequence for a seed is identical on every host and in the Web scaffold's rng.ts.",
+      "doc": "Deterministic randomness. Every random draw comes from an Rng stream; the sequence for a seed is identical on every host and in the Web scaffold's rng.ts.\nInside a system: forking needs og.Rng among the reads (a fork is derived from the seed and the label, and leaves the main stream where it is); drawing from og.Rng itself (next, range, integer, chance) moves its state, so it needs og.Rng among the writes. A stream a fork returned is the system's own to draw from.",
       "place": "namespace",
       "publish": true,
       "types": [

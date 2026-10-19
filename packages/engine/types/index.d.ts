@@ -541,10 +541,10 @@ export interface World {
    */
   set<C extends AnyComponent>(entity: Entity, component: C, value: Partial<Value<C>>): Result<void>;
   /**
-   * A resource's live value. Inside a system, the resource must be among the system's reads or writes.
+   * A resource's live value. Inside a system, the resource must be among the system's reads or writes (writes to set a field): an undeclared one throws in a dev or release build, naming the system and the resource, and fails the tick; a publish build refuses it and logs it once per system in the engine log.
    *
    * @param resource The resource token.
-   * @returns Refused for an unregistered resource or one the running system did not declare.
+   * @returns Refused for an unregistered resource (or, in a publish build, one the running system did not declare).
    */
   resource<R extends AnyResource>(resource: R): Result<Value<R>>;
   /**
@@ -568,13 +568,13 @@ export interface World {
    */
   query(desc?: QueryDesc): Result<Query>;
   /**
-   * The events of one type emitted during the previous tick and this one, oldest first.
+   * The events of one type emitted during the previous tick and this one, oldest first. Inside a system the event must be among its reads or writes (undeclared: thrown, or in a publish build refused and logged once).
    *
    * @param event The event token.
    */
   events<E extends AnyEvent>(event: E): readonly Value<E>[];
   /**
-   * Emit an event; readers see it this tick and the next.
+   * Emit an event; readers see it this tick and the next. Inside a system the event must be among its writes (undeclared: thrown, or in a publish build refused and logged once).
    *
    * @param event The event token.
    * @param payload The event's fields.
@@ -633,6 +633,7 @@ export interface ArchetypeView {
 // ── system ──────────────────────────────────────────────────────
 // Systems: functions the engine calls once per tick with their matched archetypes.
 // A system declares what it reads and writes; a write to an undeclared component is refused at registration with the field name.
+// Resources and events it reaches through the world must be declared too: in a dev or release build (og run, og test) an undeclared read or write throws with the system's name and the record and fails the tick; a publish build refuses it and logs it once per system in the engine log, and the game keeps running. og.Rng among the reads may fork (a fork reads the seed only and leaves the stream as it is); a draw moves the stream, so it needs og.Rng among the writes.
 
 /**
  * A system's declared access and order.
@@ -935,6 +936,7 @@ export interface Time {
 
 // ── rng ─────────────────────────────────────────────────────────
 // Deterministic randomness. Every random draw comes from an Rng stream; the sequence for a seed is identical on every host and in the Web scaffold's rng.ts.
+// Inside a system: forking needs og.Rng among the reads (a fork is derived from the seed and the label, and leaves the main stream where it is); drawing from og.Rng itself (next, range, integer, chance) moves its state, so it needs og.Rng among the writes. A stream a fork returned is the system's own to draw from.
 
 /**
  * One generator stream, forked from the Rng resource for a subsystem that must not perturb the main sequence.
@@ -1013,7 +1015,7 @@ export interface Rng {
    */
   chance(p: number): boolean;
   /**
-   * A stream for a subsystem, derived from the seed and a label, so drawing from it leaves the main sequence alone.
+   * A stream for a subsystem, derived from the seed and a label, so drawing from it leaves the main sequence alone. The same label gives the same stream every time, on every host, wherever the main stream is; og.Rng among a system's reads is enough.
    *
    * @param label The subsystem's name, such as `spawner`.
    */
