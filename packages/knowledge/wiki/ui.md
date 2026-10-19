@@ -3246,7 +3246,7 @@ A string: one of the variants below. The zero value is `"secondary"`.
 | `"secondary"` | A neutral fill (the default). |
 | `"primary"` | The amber action: one per screen. |
 | `"quiet"` | Text until hovered. |
-| `"danger"` | A destructive action: danger ink on a neutral fill. |
+| `"danger"` | A destructive action: danger ink on the danger tint. |
 
 ```ogt
 enum ButtonVariant {
@@ -3254,7 +3254,7 @@ enum ButtonVariant {
   variant secondary "A neutral fill (the default)."
   variant primary "The amber action: one per screen."
   variant quiet "Text until hovered."
-  variant danger "A destructive action: danger ink on a neutral fill."
+  variant danger "A destructive action: danger ink on the danger tint."
 }
 ```
 

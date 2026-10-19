@@ -6689,7 +6689,7 @@ module ui {
     variant secondary "A neutral fill (the default)."
     variant primary "The amber action: one per screen."
     variant quiet "Text until hovered."
-    variant danger "A destructive action: danger ink on a neutral fill."
+    variant danger "A destructive action: danger ink on the danger tint."
   }
 
   enum ControlSize {

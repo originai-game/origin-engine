@@ -10080,7 +10080,7 @@ export type FontRole = "body" | "display" | "mono";
  * - `"secondary"`: A neutral fill (the default).
  * - `"primary"`: The amber action: one per screen.
  * - `"quiet"`: Text until hovered.
- * - `"danger"`: A destructive action: danger ink on a neutral fill.
+ * - `"danger"`: A destructive action: danger ink on the danger tint.
  */
 export type ButtonVariant = "secondary" | "primary" | "quiet" | "danger";
 
