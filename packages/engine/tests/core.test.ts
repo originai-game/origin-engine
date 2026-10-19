@@ -19,6 +19,10 @@
 // - og.audio.outputLatency is not 0 headless, or the web Worker's report of
 //   an AudioContext's latency (and its prime) does not reach it, or a later
 //   report does not move it → "og.audio.outputLatency …"
+// - GameDesc.start runs while the engine is created though the host asked
+//   to defer it (the runtime's own probe hello crossed the tick boundary),
+//   so it runs before a renderer is attached and the web Worker's textures
+//   are transcoded → "a deferred start waits for the first tick boundary …"
 // - `og test` forgets the store between a playtest's processes when asked to
 //   keep it, keeps it when not, ignores a step's clock, or never runs the
 //   `then` steps → "og test keeps the local store across a playtest's
@@ -184,4 +188,15 @@ test("og.audio.outputLatency is 0 headless and the web host's report of its Audi
   expect(web.reported).toBeCloseTo(web.expected!, 9);
   expect(web.expected).toBeCloseTo(0.012 + 2048 / 48000, 9);
   expect(web.moved).toBeCloseTo(web.expectedMoved!, 9);
+}, 120_000);
+
+type Defer = { afterCreate: number[]; afterAdvance: number[]; undeferred: number[] };
+
+test("a deferred start waits for the first tick boundary on every host; an undeferred one runs at creation", () => {
+  for (const host of ["node", "web", "publish"]) {
+    const r = run<Defer>(host, "defer");
+    expect(r.afterCreate).toEqual([]);
+    expect(r.afterAdvance).toEqual([1]);
+    expect(r.undeferred).toEqual([1, 2]);
+  }
 }, 120_000);

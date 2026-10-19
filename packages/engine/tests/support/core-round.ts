@@ -15,6 +15,7 @@
 //   input       input events' `at` within the tick: from the probe's input
 //               (the host's stamp, clamped) and from the command channel's
 //               step times; every KeyDown, KeyUp and PointerDown seen
+//   defer       when GameDesc.start runs with and without deferStart
 //   latency     og.audio.outputLatency: 0 headless, then (web) what the
 //               Worker reports for an AudioContext's latency
 
@@ -176,6 +177,20 @@ if (which === "rng") {
   engine.advance(12);
   out.seen = seen.map((e) => ({ ...e, at: Math.round(e.at * 1e4) / 1e4 }));
   out.hash = host === "publish" ? "" : engine.hash();
+} else if (which === "defer") {
+  // GameDesc.start with deferStart (the web Worker, og run and og polish
+  // rendering): not while the engine is created, but at the first tick
+  // boundary; without it, at creation.
+  const runs: number[] = [];
+  const game = (label: number) => og.game({ tick: 60, systems: [], start() { runs.push(label); } });
+  const deferred = createEngine(game(1) as unknown as GameToken, { deferStart: true });
+  if (!deferred.ok) throw new Error(deferred.reason);
+  out.afterCreate = [...runs];
+  deferred.value.advance(1);
+  out.afterAdvance = [...runs];
+  const now = start(game(2));
+  void now;
+  out.undeferred = [...runs];
 } else if (which === "latency") {
   const Heard = defineResource("CrHeard", { latency: f64(-1) });
   const Listen = defineSystem("CrListen", { reads: [og.Audio], writes: [Heard] }, (_q, _t, world) => {
