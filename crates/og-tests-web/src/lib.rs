@@ -79,7 +79,6 @@ mod web {
         })
     }
 
-
     /// Whether the scenes opened from now on cull on the CPU on every tier
     /// (`Culling::Cpu`) rather than on the GPU where the adapter can.
     #[wasm_bindgen]
