@@ -650,10 +650,7 @@ pub fn og_world_emit(world: u32, event: String, payload: String) -> String {
         return result_void((|| {
             let eng = engine(world)?;
             let (layout, id) = running_record(&eng, &event, RecordKind::Event)?;
-            let declared = eng.state.borrow().systems[f.system]
-                .writes
-                .iter()
-                .any(|w| *w == event);
+            let declared = eng.state.borrow().systems[f.system].writes.contains(&event);
             if !declared {
                 return Err(undeclared(&eng, f.system, "write", &event));
             }
