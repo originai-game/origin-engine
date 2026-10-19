@@ -8,7 +8,7 @@ The stream, not the PCM, is world state: snapshots, restore and the world hash c
 
 Spatial gain and pan are computed in the tick from the source's og.Transform relative to the first AudioListener (three.js convention: the listener looks down -Z, +X is right; with none, the origin looking down -Z).
 
-- **TypeScript**: functions are none at module level (its members live on the types below); components, resources and events are tokens on `og`.
+- **TypeScript**: functions are the namespace `og.audio`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
 - **Skill**: `og-audio`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
@@ -39,6 +39,40 @@ module audio {
 | [`og.MusicBeat`](#record-MusicBeat) | event | A beat of a Music clock, sent in the tick whose interval holds it (systems read it the tick after). |
 | [`og.SoundStarted`](#record-SoundStarted) | event | A source started, sent in the tick it happens (systems read it the tick after). |
 | [`og.SoundEnded`](#record-SoundEnded) | event | A sound ended, sent in the tick it happens (systems read it the tick after). |
+| [`og.audio.outputLatency`](#fn-outputLatency) | function | How long after its world time a sample leaves the speaker, as the host reports it: on the web the AudioContext's baseLatency and outputLatency and the worklet ring's buffer, natively the device's latency (cpal's playback less callback instant) and the mixer's buffer; 0 headless (the null and capture sinks are driven to the tick). Host input, written to og.Audio between ticks, so a replay carries it. A rhythm game hears a note at its time plus this: judge a press against the note's time plus the latency, then a calibrated rest (the display, the hand). |
+
+## Functions
+
+<a id="fn-outputLatency"></a>
+
+### `og.audio.outputLatency`
+
+How long after its world time a sample leaves the speaker, as the host reports it: on the web the AudioContext's baseLatency and outputLatency and the worklet ring's buffer, natively the device's latency (cpal's playback less callback instant) and the mixer's buffer; 0 headless (the null and capture sinks are driven to the tick). Host input, written to og.Audio between ticks, so a replay carries it. A rhythm game hears a note at its time plus this: judge a press against the note's time plus the latency, then a calibrated rest (the display, the hand).
+
+Inside a system og.Audio must be among its reads or writes.
+
+```ts
+og.audio.outputLatency(world: World): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+
+**Returns** `number`: Seconds; 0 headless.
+
+Binding symbol `og_audio_output_latency` · publish builds: kept
+
+```ogt
+fn outputLatency {
+  doc "How long after its world time a sample leaves the speaker, as the host reports it: on the web the AudioContext's baseLatency and outputLatency and the worklet ring's buffer, natively the device's latency (cpal's playback less callback instant) and the mixer's buffer; 0 headless (the null and capture sinks are driven to the tick). Host input, written to og.Audio between ticks, so a replay carries it. A rhythm game hears a note at its time plus this: judge a press against the note's time plus the latency, then a calibrated rest (the display, the hand)."
+  doc "Inside a system og.Audio must be among its reads or writes."
+  param world World "The world."
+  returns f64 "Seconds; 0 headless."
+}
+```
+
+<sub>`api.ogt` line 5700</sub>
 
 ## Components, resources and events
 
@@ -207,6 +241,7 @@ Token `og.Audio`, registered under the schema name `og.Audio`; its value type is
 | `occlusionCutoff` | `number` | `900` | 20 … 20000 | `hz` | tunable | The low-pass cutoff of an occluded source. |
 | `reverbRoom` | `number` | `0.6` | 0 … 1 | — | tunable | The shared reverb's room size (the AudioBusFx.reverb sends feed it). |
 | `reverbDamping` | `number` | `0.4` | 0 … 1 | — | tunable | The shared reverb's damping of high frequencies. |
+| `outputLatency` | `number` | `0` | ≥ 0 | `s` | read only | Seconds from a sample's world time to the speaker, as the host reports it (og.audio.outputLatency). |
 
 ```ogt
 resource Audio {
@@ -264,6 +299,11 @@ resource Audio {
     min 0
     max 1
     tunable true
+  }
+  field outputLatency f64 "Seconds from a sample's world time to the speaker, as the host reports it (og.audio.outputLatency)." {
+    min 0
+    unit s
+    readonly true
   }
 }
 ```
@@ -389,7 +429,7 @@ component AudioBusFx {
 }
 ```
 
-<sub>`api.ogt` line 5549</sub>
+<sub>`api.ogt` line 5554</sub>
 
 <a id="record-Music"></a>
 
@@ -445,7 +485,7 @@ component Music {
 }
 ```
 
-<sub>`api.ogt` line 5638</sub>
+<sub>`api.ogt` line 5643</sub>
 
 <a id="record-MusicBeat"></a>
 
@@ -472,7 +512,7 @@ event MusicBeat {
 }
 ```
 
-<sub>`api.ogt` line 5672</sub>
+<sub>`api.ogt` line 5677</sub>
 
 <a id="record-SoundStarted"></a>
 
@@ -497,7 +537,7 @@ event SoundStarted {
 }
 ```
 
-<sub>`api.ogt` line 5680</sub>
+<sub>`api.ogt` line 5685</sub>
 
 <a id="record-SoundEnded"></a>
 
@@ -524,7 +564,7 @@ event SoundEnded {
 }
 ```
 
-<sub>`api.ogt` line 5687</sub>
+<sub>`api.ogt` line 5692</sub>
 
 ## Types
 

@@ -79,6 +79,14 @@ at 1.0 is a mix bug, not loudness.
   time scale 0, so a pause stops the stems and a resume starts them again
   on a bar line. `templates/archetypes/rhythm` (its `Band` system, and
   `tests/band.og.ts`, which asserts every `startAt`) does this.
+- What the player hears lags the mix by the device's output latency:
+  `og.audio.outputLatency(world)` (seconds; the Web Audio context's
+  `outputLatency` or `baseLatency` plus the engine's buffer on the web, the
+  device's callback-to-playback time natively, 0 headless; the system
+  declares `og.Audio` among its reads). A rhythm game judges a press at
+  its tick's time plus its event's `at` (og-game, input) less this and a
+  calibrated offset for the rest of the chain (the rhythm's `Play` system,
+  `tests/timing.og.ts`).
 - A crossfade: the new track `startAt: nextBar` with `fade: 2`, the old one
   `playing: false` with the same `fade`.
 

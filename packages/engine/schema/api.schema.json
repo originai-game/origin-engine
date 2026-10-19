@@ -3017,7 +3017,23 @@
           "doc": "SoundEnded.reason: more sources played than Audio.maxVoices and this one stood lowest (priority, then volume, then age)."
         }
       ],
-      "functions": [],
+      "functions": [
+        {
+          "name": "outputLatency",
+          "doc": "How long after its world time a sample leaves the speaker, as the host reports it: on the web the AudioContext's baseLatency and outputLatency and the worklet ring's buffer, natively the device's latency (cpal's playback less callback instant) and the mixer's buffer; 0 headless (the null and capture sinks are driven to the tick). Host input, written to og.Audio between ticks, so a replay carries it. A rhythm game hears a note at its time plus this: judge a press against the note's time plus the latency, then a calibrated rest (the display, the hand).\nInside a system og.Audio must be among its reads or writes.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "f64",
+          "returnsDoc": "Seconds; 0 headless.",
+          "publish": true
+        }
+      ],
       "interfaces": [],
       "callbacks": []
     },
@@ -16547,6 +16563,14 @@
           "minimum": 0,
           "maximum": 1,
           "x-og-tunable": true
+        },
+        "outputLatency": {
+          "type": "number",
+          "description": "Seconds from a sample's world time to the speaker, as the host reports it (og.audio.outputLatency).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s",
+          "readOnly": true
         }
       },
       "additionalProperties": false

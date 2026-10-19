@@ -16,6 +16,9 @@
 // - an input event loses its time within the tick (the host's stamp or the
 //   command step's), keeps it on the edges the tick's end raises, is not
 //   clamped, or the hosts disagree → "input events carry their time …"
+// - og.audio.outputLatency is not 0 headless, or the web Worker's report of
+//   an AudioContext's latency (and its prime) does not reach it, or a later
+//   report does not move it → "og.audio.outputLatency …"
 // - `og test` forgets the store between a playtest's processes when asked to
 //   keep it, keeps it when not, ignores a step's clock, or never runs the
 //   `then` steps → "og test keeps the local store across a playtest's
@@ -167,4 +170,18 @@ test("input events carry their time within the tick, from the host's stamp and f
   expect(web.seen).toEqual(node.seen);
   // The stamp is world state: both hosts hash the same world.
   expect(web.hash).toBe(node.hash);
+}, 120_000);
+
+type Latency = { headless: number; outside: number; reported?: number; expected?: number; moved?: number; expectedMoved?: number };
+
+test("og.audio.outputLatency is 0 headless and the web host's report of its AudioContext reaches it between ticks", () => {
+  for (const host of ["node", "web"]) {
+    const r = run<Latency>(host, "latency");
+    expect(r.headless).toBe(0);
+    expect(r.outside).toBe(0);
+  }
+  const web = run<Latency>("web", "latency");
+  expect(web.reported).toBeCloseTo(web.expected!, 9);
+  expect(web.expected).toBeCloseTo(0.012 + 2048 / 48000, 9);
+  expect(web.moved).toBeCloseTo(web.expectedMoved!, 9);
 }, 120_000);

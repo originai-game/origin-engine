@@ -8622,6 +8622,14 @@ export interface Audio {
    * @tunable
    */
   reverbDamping: number;
+  /**
+   * Seconds from a sample's world time to the speaker, as the host reports it (og.audio.outputLatency).
+   *
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   * @readonly written by the engine
+   */
+  readonly outputLatency: number;
 }
 
 /**
@@ -8852,6 +8860,7 @@ export interface SoundEnded {
    */
   readonly reason: number;
 }
+
 
 // ── nav ─────────────────────────────────────────────────────────
 // Navigation: grids (A* and jump point search with eight-way moves that never cut a blocked corner, line-of-sight smoothing), flow fields for crowds, and navmeshes (baked at cook time from a level's static colliders and models, or built at runtime for a flat procedural level) with funnel paths and box obstacles that rebuild only the tiles they touch.
@@ -15803,7 +15812,7 @@ export declare namespace og {
    */
   const AudioListener: ComponentType<{ readonly volume: FieldSpec<"f32"> }, AudioListener>;
   /** Bus volumes; master scales every bus. A change ramps over 256 frames in the mixer. */
-  const Audio: ResourceType<{ readonly master: FieldSpec<"f32">; readonly music: FieldSpec<"f32">; readonly sfx: FieldSpec<"f32">; readonly ui: FieldSpec<"f32">; readonly maxVoices: FieldSpec<"u32">; readonly occlusionGain: FieldSpec<"f32">; readonly occlusionCutoff: FieldSpec<"f32">; readonly reverbRoom: FieldSpec<"f32">; readonly reverbDamping: FieldSpec<"f32"> }, Audio>;
+  const Audio: ResourceType<{ readonly master: FieldSpec<"f32">; readonly music: FieldSpec<"f32">; readonly sfx: FieldSpec<"f32">; readonly ui: FieldSpec<"f32">; readonly maxVoices: FieldSpec<"u32">; readonly occlusionGain: FieldSpec<"f32">; readonly occlusionCutoff: FieldSpec<"f32">; readonly reverbRoom: FieldSpec<"f32">; readonly reverbDamping: FieldSpec<"f32">; readonly outputLatency: FieldSpec<"f64"> }, Audio>;
   /**
    * A bus's insert effects: a high- and low-pass (12 dB/octave), a compressor, side-chain ducking by another bus, and a send to the shared reverb, whose return joins master. One entity per bus (the first in query order counts); without one a bus passes straight through.
    * Changes reach the mixer through the command stream, so they are deterministic and in the world hash; the PCM is the mixer's.
@@ -15821,6 +15830,21 @@ export declare namespace og {
   const SoundStarted: EventType<SoundStarted>;
   /** A sound ended, sent in the tick it happens (systems read it the tick after). */
   const SoundEnded: EventType<SoundEnded>;
+  /**
+   * Sound: inside the tick, the engine's og.audio system (after the game's systems and physics) turns AudioSource changes into a deterministic, time-stamped command stream; outside the tick the host's mixer renders it (an AudioWorklet on the web, the output device, a capture or a null sink natively).
+   * The stream, not the PCM, is world state: snapshots, restore and the world hash cover it, and nothing a sink does reaches the world. Load sounds with og.load.sound; inserting a source plays it, setting `playing` false stops it, and a one-shot sets `playing` back to false when it ends.
+   * Spatial gain and pan are computed in the tick from the source's og.Transform relative to the first AudioListener (three.js convention: the listener looks down -Z, +X is right; with none, the origin looking down -Z).
+   */
+  namespace audio {
+    /**
+     * How long after its world time a sample leaves the speaker, as the host reports it: on the web the AudioContext's baseLatency and outputLatency and the worklet ring's buffer, natively the device's latency (cpal's playback less callback instant) and the mixer's buffer; 0 headless (the null and capture sinks are driven to the tick). Host input, written to og.Audio between ticks, so a replay carries it. A rhythm game hears a note at its time plus this: judge a press against the note's time plus the latency, then a calibrated rest (the display, the hand).
+     * Inside a system og.Audio must be among its reads or writes.
+     *
+     * @param world The world.
+     * @returns Seconds; 0 headless.
+     */
+    function outputLatency(world: World): number;
+  }
   /**
    * An entity that moves itself towards `target` while `seeking`, by a path over `nav` (a grid, navmesh or flow field; 0 goes straight). og.nav re-plans when the target moved more than repathDistance, every repathTicks, or when the grid or navmesh changed, at most 32 plans a tick across agents.
    */

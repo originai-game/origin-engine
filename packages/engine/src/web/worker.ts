@@ -38,7 +38,7 @@ import { createEngine, systemClock, type Engine, type GameToken } from "../runti
 import type { PlatformAnswer, PlatformHost } from "../platform-local.ts";
 import { loadWebHost, type WebGlue } from "./host.ts";
 import { drainRing, stampAt, type InjectedInput } from "./input.ts";
-import { WorkerAudio, type AudioMessage, type WebAudioGlue } from "./audio.ts";
+import { WorkerAudio, type AudioLatencyMessage, type AudioMessage, type WebAudioGlue } from "./audio.ts";
 import { readFrames, waitForFrames, writeFrame, type RpcRings } from "./rpc-ring.ts";
 import {
   compressionsFromWebGl2,
@@ -96,7 +96,8 @@ type Message =
   | { type: "resize"; width: number; height: number; viewport: Viewport }
   | { type: "platform-answer"; request: number; answer: PlatformAnswer }
   | { type: "platform-host"; host: string; capabilities: string[] }
-  | AudioMessage;
+  | AudioMessage
+  | AudioLatencyMessage;
 
 /** og.platform's host in the Worker: the calls go to the page, whose answers come back as `platform-answer`. */
 function toPage(host: string, capabilities: readonly string[]): PlatformHost {
@@ -582,6 +583,7 @@ export function startWorker(game: GameToken): void {
       glueRef.og_web_set_viewport(engine.id, JSON.stringify(data.viewport));
       if (!playing) present();
     }
+    if (data.type === "audio-latency") audio?.latency(data.latency);
     if (data.type === "audio" && glueRef && !audio) {
       const attached = WorkerAudio.attach(glueRef, engine.id, data);
       if (attached.ok) audio = attached.value;

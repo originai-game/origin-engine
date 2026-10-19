@@ -1060,6 +1060,56 @@ pub fn og_rng_fork(world: u32, label: String) -> u32 {
     }
 }
 
+// ── audio ───────────────────────────────────────────────────────────────────
+
+/// `og.audio.outputLatency`: og.Audio's `outputLatency`, which the host's
+/// sink reports between ticks (`set_audio_latency`). Inside a system og.Audio
+/// must be among its reads or writes (refused and logged once otherwise: 0).
+pub fn og_audio_output_latency(world: u32) -> f64 {
+    if let Some(frame) = running(world) {
+        // SAFETY: the frame is published while its system runs.
+        return match unsafe { frame.ctx() }.resource::<og_audio::Audio>() {
+            Ok(a) => a.output_latency,
+            Err(_) => {
+                if let Ok(eng) = engine(world) {
+                    undeclared(&eng, frame.system, "read", "og.Audio");
+                }
+                0.0
+            }
+        };
+    }
+    engine(world)
+        .and_then(|e| {
+            e.world().and_then(|w| {
+                w.resource::<og_audio::Audio>()
+                    .map_err(err)
+                    .map(|a| a.output_latency)
+            })
+        })
+        .unwrap_or(0.0)
+}
+
+/// The host's sink reports its output latency (seconds from a sample's world
+/// time to the speaker: the device's own and the buffering in front of it),
+/// between ticks; it is host input, written to og.Audio like an input event.
+pub fn set_audio_latency(engine_id: u32, seconds: f64) -> Result<(), String> {
+    if running(engine_id).is_some() {
+        return Err("the audio latency is host input: report it between ticks".into());
+    }
+    let seconds = if seconds.is_finite() {
+        seconds.clamp(0.0, 10.0)
+    } else {
+        0.0
+    };
+    let eng = engine(engine_id)?;
+    let w = eng.world()?;
+    let a = w.resource_mut::<og_audio::Audio>().map_err(err)?;
+    if a.output_latency != seconds {
+        a.output_latency = seconds;
+    }
+    Ok(())
+}
+
 // ── input ───────────────────────────────────────────────────────────────────
 
 /// The `og.Input` resource as of this tick (inside a system, through its

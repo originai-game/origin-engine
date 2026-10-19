@@ -83,6 +83,20 @@ export interface AudioMessage {
   readonly sampleRate: number;
   readonly ring?: SharedArrayBuffer;
   readonly port?: MessagePort;
+  /** The context's baseLatency plus outputLatency, seconds (what the device adds after the worklet). */
+  readonly latency?: number;
+}
+
+/** A later report of the context's latency (outputLatency moves as the device settles). */
+export interface AudioLatencyMessage {
+  readonly type: "audio-latency";
+  readonly latency: number;
+}
+
+/** The context's own latency after the worklet: baseLatency and outputLatency, seconds (0 where a browser reports none). */
+export function contextLatency(context: { baseLatency?: number; outputLatency?: number }): number {
+  const n = (v: number | undefined) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? v : 0);
+  return n(context.baseLatency) + n(context.outputLatency);
 }
 
 export interface AudioShellOptions {
@@ -160,9 +174,21 @@ export class AudioShell {
     });
     if (channel) this.#node.port.postMessage({ type: "port", port: channel.port1 }, [channel.port1]);
     this.#node.connect(context.destination);
+    message = { ...message, latency: contextLatency(context) };
     this.#options.worker.postMessage(message, message.port ? [message.port] : []);
     await resumed;
     this.#context = context;
+    // outputLatency is known once the context runs and moves with the device: report changes.
+    let told = message.latency ?? 0;
+    const report = () => {
+      const now = contextLatency(context);
+      if (Math.abs(now - told) < 0.0005) return;
+      told = now;
+      this.#options.worker.postMessage({ type: "audio-latency", latency: now } satisfies AudioLatencyMessage);
+    };
+    report();
+    const timer = setInterval(report, 2000);
+    this.#off.push(() => clearInterval(timer));
     return context;
   }
 
@@ -205,6 +231,7 @@ export interface WebAudioGlue {
   og_web_audio_stats(engine: number): string;
   og_web_audio_close(engine: number): boolean;
   og_web_audio_insert_qoa(engine: number, id: string, qoa: Uint8Array): string;
+  og_web_audio_latency(engine: number, seconds: number): string;
 }
 
 type Wire<T> = { ok: true; value: T } | { ok: false; reason: string };
@@ -221,18 +248,33 @@ export class WorkerAudio {
   /** Frames the ring had no room for (the worklet is behind). */
   overflow = 0;
 
+  readonly #sampleRate: number;
+
   private constructor(glue: WebAudioGlue, engine: number, message: AudioMessage) {
     this.#glue = glue;
     this.#engine = engine;
     this.#ring = message.ring ?? null;
     this.#port = message.port ?? null;
+    this.#sampleRate = message.sampleRate;
   }
 
   /** Open the engine's mixer at the context's rate, on the shell's `audio` message. */
   static attach(glue: WebAudioGlue, engine: number, message: AudioMessage): Wire<WorkerAudio> {
     const opened = JSON.parse(glue.og_web_audio_open(engine, message.sampleRate)) as Wire<number>;
     if (!opened.ok) return opened;
-    return { ok: true, value: new WorkerAudio(glue, engine, message) };
+    const audio = new WorkerAudio(glue, engine, message);
+    audio.latency(message.latency ?? 0);
+    return { ok: true, value: audio };
+  }
+
+  /**
+   * The context's latency (`contextLatency`) arrived: og.audio.outputLatency
+   * is it plus the worklet's prime (the frames it buffers before it plays),
+   * written before the next tick. Call between frames.
+   */
+  latency(context: number): void {
+    const seconds = context + AUDIO_PRIME_FRAMES / Math.max(1, this.#sampleRate);
+    this.#glue.og_web_audio_latency(this.#engine, seconds);
   }
 
   /** After a frame's ticks: ship the audio they cover. Returns the frames shipped. */

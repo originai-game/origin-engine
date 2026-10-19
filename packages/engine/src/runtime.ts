@@ -1035,6 +1035,10 @@ export const physics = Object.freeze({
   ragdollPose: (world: WorldImpl, entity: number) => parse(abi().og_physics_ragdoll_pose(world.id, entity)),
 });
 
+export const audio = Object.freeze({
+  outputLatency: (world: WorldImpl) => (checkAccess("read", "og.Audio"), abi().og_audio_output_latency(world.id)),
+});
+
 export const atmosphere = Object.freeze({
   timeOfDay: (world: WorldImpl) => abi().og_atmosphere_time_of_day(world.id),
 });

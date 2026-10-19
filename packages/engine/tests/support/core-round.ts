@@ -15,6 +15,8 @@
 //   input       input events' `at` within the tick: from the probe's input
 //               (the host's stamp, clamped) and from the command channel's
 //               step times; every KeyDown, KeyUp and PointerDown seen
+//   latency     og.audio.outputLatency: 0 headless, then (web) what the
+//               Worker reports for an AudioContext's latency
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -174,6 +176,35 @@ if (which === "rng") {
   engine.advance(12);
   out.seen = seen.map((e) => ({ ...e, at: Math.round(e.at * 1e4) / 1e4 }));
   out.hash = host === "publish" ? "" : engine.hash();
+} else if (which === "latency") {
+  const Heard = defineResource("CrHeard", { latency: f64(-1) });
+  const Listen = defineSystem("CrListen", { reads: [og.Audio], writes: [Heard] }, (_q, _t, world) => {
+    const h = world.resource(Heard);
+    if (h.ok) h.value.latency = og.audio.outputLatency(world);
+  });
+  const engine = start(og.game({ tick: 60, resources: [Heard], systems: [Listen] }));
+  engine.advance(1);
+  const read = () => {
+    const h = engine.world.resource(Heard);
+    return h.ok ? h.value.latency : null;
+  };
+  out.headless = read();
+  out.outside = og.audio.outputLatency(engine.world);
+  if (host !== "node") {
+    // The Worker's side of the web host's audio: an AudioContext that says 12 ms (base 5, output 7) at 48 kHz.
+    const { WorkerAudio, AUDIO_PRIME_FRAMES } = await import("../../src/web/audio.ts");
+    const dir = host === "publish" ? "web-publish" : "web";
+    const glue = await import(join(pkg, "dist", dir, "origin-engine.js"));
+    const attached = WorkerAudio.attach(glue as never, engine.id, { type: "audio", sampleRate: 48000, latency: 0.012 });
+    if (!attached.ok) throw new Error(attached.reason);
+    engine.advance(1);
+    out.reported = read();
+    out.expected = 0.012 + AUDIO_PRIME_FRAMES / 48000;
+    attached.value.latency(0.02);
+    engine.advance(1);
+    out.moved = read();
+    out.expectedMoved = 0.02 + AUDIO_PRIME_FRAMES / 48000;
+  }
 } else {
   throw new Error(`unknown --case ${which}`);
 }

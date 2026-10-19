@@ -182,6 +182,9 @@ pub struct Audio {
     /// The shared reverb's damping of high frequencies.
     #[reflect(name = "reverbDamping", min = 0, max = 1, default = 0.4, tunable)]
     pub reverb_damping: f32,
+    /// Seconds from a sample's world time to the speaker, as the host reports it between ticks (og.audio.outputLatency); 0 headless.
+    #[reflect(name = "outputLatency", min = 0, unit = "s")]
+    pub output_latency: f64,
 }
 
 impl Default for Audio {
@@ -196,6 +199,7 @@ impl Default for Audio {
             occlusion_cutoff: 900.0,
             reverb_room: 0.6,
             reverb_damping: 0.4,
+            output_latency: 0.0,
         }
     }
 }

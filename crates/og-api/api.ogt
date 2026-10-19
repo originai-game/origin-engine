@@ -5544,6 +5544,11 @@ module audio {
       max 1
       tunable true
     }
+    field outputLatency f64 "Seconds from a sample's world time to the speaker, as the host reports it (og.audio.outputLatency)." {
+      min 0
+      unit s
+      readonly true
+    }
   }
 
   component AudioBusFx {
@@ -5690,6 +5695,13 @@ module audio {
     field sound Sound "The sound."
     field voice u32 "The voice id in the command stream."
     field reason u32 "Why: SOUND_FINISHED (0), SOUND_STOPPED (1), SOUND_REMOVED (2), SOUND_REPLACED (3) or SOUND_CULLED (4)."
+  }
+
+  fn outputLatency {
+    doc "How long after its world time a sample leaves the speaker, as the host reports it: on the web the AudioContext's baseLatency and outputLatency and the worklet ring's buffer, natively the device's latency (cpal's playback less callback instant) and the mixer's buffer; 0 headless (the null and capture sinks are driven to the tick). Host input, written to og.Audio between ticks, so a replay carries it. A rhythm game hears a note at its time plus this: judge a press against the note's time plus the latency, then a calibrated rest (the display, the hand)."
+    doc "Inside a system og.Audio must be among its reads or writes."
+    param world World "The world."
+    returns f64 "Seconds; 0 headless."
   }
 }
 

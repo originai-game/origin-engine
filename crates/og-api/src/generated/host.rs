@@ -388,6 +388,12 @@ pub trait TilemapApi: Wire {
     fn og_tilemap_cell_center(&self, world: u32, entity: f64, x: u32, y: u32) -> String;
 }
 
+/// `audio`: packages/knowledge/wiki/audio.md.
+pub trait AudioApi: Wire {
+    /// `og.audio.outputLatency`
+    fn og_audio_output_latency(&self, world: u32) -> f64;
+}
+
 /// `nav`: packages/knowledge/wiki/nav.md.
 pub trait NavApi: Wire {
     /// `og.nav.grid`
@@ -693,9 +699,9 @@ pub trait TerrainApi: Wire {
 }
 
 /// Every trait: a host is a type that implements all of them.
-pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi {}
+pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi {}
 
-impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi> Host for T {}
+impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi> Host for T {}
 
 /// Every binding symbol, in binding-table order (`bindings.json` ids).
 pub const SYMBOLS: &[&str] = &[
@@ -833,6 +839,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_tilemap_get_tile",
     "og_tilemap_cell_at",
     "og_tilemap_cell_center",
+    "og_audio_output_latency",
     "og_nav_grid",
     "og_nav_grid_from_tilemap",
     "og_nav_set_cost",
@@ -11477,6 +11484,20 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 label: "",
                 doc: "The shared reverb's damping of high frequencies.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "outputLatency",
+                column: "f64",
+                default: "0",
+                readonly: true,
+                tunable: false,
+                min: Some(0.0),
+                max: None,
+                step: None,
+                unit: "s",
+                label: "",
+                doc: "Seconds from a sample's world time to the speaker, as the host reports it (og.audio.outputLatency).",
                 variants: &[],
             },
         ],
