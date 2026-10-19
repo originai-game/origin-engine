@@ -53,6 +53,7 @@ pub const SCENES: &[&str] = &[
     "weather-rain",
     "weather-snow",
     "lights-256",
+    "atmosphere-moon",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -252,6 +253,8 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "shader-hooks" => g.scene = crate::atmo_scenes::hooks_scene(45),
         // Phase 2: 256 point and spot lights over a night plaza (Forward+).
         "lights-256" => g.scene = crate::p2_scenes::many_lights(256),
+        // Phase 2: the night colonnade with a waxing gibbous moon in view.
+        "atmosphere-moon" => g.scene = crate::p2_scenes::moon_scene(0.35, 2.4),
         // Weather presets over the colonnade: particles, fog, dimmed light.
         "weather-rain" | "weather-snow" => {
             g.scene = crate::atmo_scenes::weather_scene(if name == "weather-rain" {

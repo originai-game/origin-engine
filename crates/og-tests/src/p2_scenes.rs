@@ -111,3 +111,26 @@ pub fn many_lights(count: u32) -> RenderScene {
     };
     scene
 }
+
+/// Where [`moon_scene`] puts the moon: up and to the right of the
+/// colonnade camera's view.
+pub fn moon_direction() -> Vec3 {
+    let cam = crate::atmo_scenes::colonnade_camera();
+    let forward = (cam.target - cam.position).normalize();
+    let right = forward.cross(Vec3::Y).normalize();
+    (forward + Vec3::Y * 0.24 + right * 0.18).normalize()
+}
+
+/// The colonnade at 23:00 (the day-night look) with a moon of `size`
+/// degrees and `phase` in view, lighting the scene from where it hangs.
+pub fn moon_scene(phase: f32, size: f32) -> RenderScene {
+    let mut scene = crate::atmo_scenes::day_night_scene(23.0, false);
+    let moon = moon_direction();
+    if let Some(look) = scene.environment.sky.look.as_mut() {
+        look.moon_size = size;
+        look.moon_phase = phase;
+        look.moon_direction = moon;
+    }
+    scene.light.direction_to_light = moon;
+    scene
+}

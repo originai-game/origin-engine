@@ -14,7 +14,7 @@ use og_render::{
 use std::sync::Arc;
 
 /// Pillars and boulders receding into the distance, for fog to swallow.
-fn colonnade(scene: &mut RenderScene) {
+pub(crate) fn colonnade(scene: &mut RenderScene) {
     terrain(scene, 400.0);
     let pillar = scene.add_mesh(shapes::cuboid(Vec3::new(1.0, 8.0, 1.0)));
     let rock = scene.add_mesh(shapes::sphere(20, 14));
@@ -46,7 +46,7 @@ fn colonnade(scene: &mut RenderScene) {
     }
 }
 
-fn colonnade_camera() -> Camera {
+pub(crate) fn colonnade_camera() -> Camera {
     Camera {
         position: Vec3::new(0.0, 2.2, 4.0),
         target: Vec3::new(0.0, 3.4, -40.0),

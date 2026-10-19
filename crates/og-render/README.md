@@ -399,8 +399,13 @@ it drew before (every earlier reference is unchanged).
   in the lit, sky, particle, strip and world-sprite shaders (blended
   effects fade into it by `fog_keep`); the overlay is never fogged.
 - **Sky** (`SkyLook` on `ProceduralSky::look`, `Background::Procedural`):
-  zenith, horizon and ground colours, sun disc and glow, hashed stars, drawn
-  per pixel so a moving sun moves smoothly; the image-based light is
+  zenith, horizon and ground colours, sun disc and glow, hashed stars, a
+  moon disc (phase 2, owed row 28: `moon_size`, `moon_phase` 0 new to 0.5
+  full, `moon_intensity`, `moon_color`, `moon_direction`, zero meaning
+  opposite the sun; lit from the right while waxing, darker maria, a faint
+  earthshine and halo, hiding the stars behind it, set below the horizon;
+  off at size 0, so every earlier frame is unchanged), drawn per pixel so a
+  moving sun moves smoothly; the image-based light is
   generated from the same look (`IblGenerator` keeps its pipelines and
   textures, so regenerating it for a day-night step allocates nothing).
   `day_night(hours, tilt, azimuth)` gives the sun or moon light, the sky,
@@ -439,7 +444,9 @@ it drew before (every earlier reference is unchanged).
 References on `metal` and `vulkan-cpu`: `og-tests/references/*/{atmosphere-fog,
 atmosphere-dusk,atmosphere-night,water-3d,water-2d,fluid-2d,shader-hooks,
 weather-rain,weather-snow}.png`, with behaviour tests in
-`og-tests/tests/atmosphere.rs`. Costs: `tests/evidence/E5/feature-costs.md`.
+`og-tests/tests/atmosphere.rs`; the moon's `atmosphere-moon` (a waxing
+gibbous moon over the night colonnade) with `og-tests/tests/moon.rs`
+(phases, size, the horizon). Costs: `tests/evidence/E5/feature-costs.md`.
 
 ## What phase 2 owes
 
