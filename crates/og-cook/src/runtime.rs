@@ -17,7 +17,7 @@ use og_blob::{Blob, BlobError, Expect};
 use og_core::ogt::{Block, Document};
 use og_render::{
     AlphaMode, ColorSpace, Material, MaterialHandle, MeshData, MeshHandle, Mips, RenderScene,
-    TextureData, Vertex,
+    TextureData, TextureHandle, Vertex,
 };
 use std::collections::BTreeMap;
 use std::fmt;
@@ -1075,6 +1075,33 @@ impl CookedModel {
         out
     }
 
+    /// Material `index` as the renderer draws it, sampling `textures` (the
+    /// handles of [`CookedModel::textures`], in order; a missing one is
+    /// drawn without its texture). A streamed model's full material over
+    /// its proxy's.
+    pub fn material(&self, index: usize, textures: &[TextureHandle]) -> Material {
+        let m = &self.materials[index];
+        let tex = |i: Option<usize>| i.and_then(|i| textures.get(i).copied());
+        Material {
+            base_color: m.base_color,
+            base_color_texture: tex(m.base_color_texture),
+            metallic: m.metallic,
+            roughness: m.roughness,
+            metallic_roughness_texture: tex(m.metallic_roughness_texture),
+            normal_texture: tex(m.normal_texture),
+            normal_scale: m.normal_scale,
+            emissive: m.emissive,
+            emissive_texture: tex(m.emissive_texture),
+            alpha_mode: if m.alpha_mode == alpha::MASK {
+                AlphaMode::Mask {
+                    cutoff: m.alpha_cutoff,
+                }
+            } else {
+                AlphaMode::Opaque
+            },
+        }
+    }
+
     /// Adds the model's textures, materials and LOD-0 meshes to `scene` and
     /// returns the parts of its default scene (every mesh node's primitives
     /// with the node's transform). `textures` are the decoded
@@ -1084,30 +1111,8 @@ impl CookedModel {
             .iter()
             .map(|t| scene.add_texture(t.clone()))
             .collect();
-        let tex = |i: Option<usize>| i.and_then(|i| handles.get(i).copied());
-        let materials: Vec<MaterialHandle> = self
-            .materials
-            .iter()
-            .map(|m| {
-                scene.add_material(Material {
-                    base_color: m.base_color,
-                    base_color_texture: tex(m.base_color_texture),
-                    metallic: m.metallic,
-                    roughness: m.roughness,
-                    metallic_roughness_texture: tex(m.metallic_roughness_texture),
-                    normal_texture: tex(m.normal_texture),
-                    normal_scale: m.normal_scale,
-                    emissive: m.emissive,
-                    emissive_texture: tex(m.emissive_texture),
-                    alpha_mode: if m.alpha_mode == alpha::MASK {
-                        AlphaMode::Mask {
-                            cutoff: m.alpha_cutoff,
-                        }
-                    } else {
-                        AlphaMode::Opaque
-                    },
-                })
-            })
+        let materials: Vec<MaterialHandle> = (0..self.materials.len())
+            .map(|i| scene.add_material(self.material(i, &handles)))
             .collect();
         let meshes: Vec<MeshHandle> = self
             .primitives

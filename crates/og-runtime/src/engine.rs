@@ -653,6 +653,7 @@ pub(crate) fn assemble(
             || REGISTERED_BY_MODULES.contains(&decl.schema)
             || super::anim::REGISTERED_BY_ANIM.contains(&decl.schema)
             || super::feel::REGISTERED_BY_FEEL.contains(&decl.schema)
+            || decl.schema == super::stream::EVENT
         {
             continue;
         }
@@ -679,6 +680,15 @@ pub(crate) fn assemble(
     {
         world.register::<og_anim::FlipbookEvent>().map_err(err)?;
         let id = world.id_by_name("og.FlipbookEvent").map_err(err)?;
+        let layout = Layout::from_schema(world.schema(id).map_err(err)?, RecordKind::Event);
+        layouts.insert(layout.schema.clone(), layout);
+    }
+    // og.stream's event (its group is a str64), registered as it is sent.
+    {
+        world
+            .register::<super::stream::StreamEvent>()
+            .map_err(err)?;
+        let id = world.id_by_name(super::stream::EVENT).map_err(err)?;
         let layout = Layout::from_schema(world.schema(id).map_err(err)?, RecordKind::Event);
         layouts.insert(layout.schema.clone(), layout);
     }
@@ -1064,6 +1074,7 @@ pub fn render_options(id: u32) -> Value {
 /// At a tick boundary: pending bundles, a scene waiting for its bundle.
 fn tick_boundary(eng: &Engine) {
     eng.assets.borrow_mut().poll();
+    super::stream::update(eng);
     if eng.state.borrow().boot_scene.is_some() {
         boot_scene(eng);
     }
