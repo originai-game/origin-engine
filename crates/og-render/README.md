@@ -59,6 +59,25 @@ object; see below). Passes whose feature is off are not recorded.
    copy); otherwise its visible transforms are appended to the instance
    buffer. Draws bind a buffer slice, never `first_instance` (WebGL2).
    Sprites and glyphs are sorted by (layer, kind, texture or font) into runs.
+   **GPU culling** (`cull_gpu.rs`; `RenderDesc::culling`, `Culling::Auto`
+   by default) replaces the per-pass lists on an adapter with compute and
+   indirect draws (native Metal, Vulkan, DX12 and the browser's WebGPU):
+   the sorted instances are uploaded once, a compute stage tests them
+   against every shadow face, the planar reflection and the camera, last
+   frame's visible opaque occluders are drawn at this frame's camera into
+   a depth buffer of their own, a depth pyramid (farthest depth per texel,
+   each level's size taken from the screen's, not `textureDimensions`,
+   which llvmpipe answers wrongly) is built from it, and a second stage
+   drops camera instances whose box lies behind it. Each pass's visible
+   instances are compacted in sorted order by a deterministic prefix sum
+   and every batch is one `draw_indexed_indirect`, so both paths draw the
+   same frame. WebGL2, `Culling::Cpu`, object motion blur and frames over
+   the storage-binding limit keep the CPU path. The counts come back
+   through a readback ring: `FrameStats::gpu_culling`, `occluded`,
+   `occluder_draws` and `counts_lag` (frames old; `finish_stats` waits for
+   the frame's own natively). `og-gfx` takes `OG_GFX_CULLING=cpu`;
+   `og-tests/tests/culling.rs` renders eight scenes both ways
+   (`tests/evidence/P3/culling/`).
 3. **Cascaded shadows** for the directional light (`frame.rs`): splits
    between the near plane and the nearer of `max_shadow_distance` and the
    far side of `shadow_bounds`, λ = 0.8 between logarithmic and uniform.
@@ -651,6 +670,11 @@ Each off by default on `Water` (every earlier water frame is unchanged):
 - **Caustics** (`caustics`, `caustics_scale`): two scrolling cell patterns
   multiplied, added to the sunlight of every lit and terrain surface below
   the first surface that has them, inside its rectangle, fading with depth.
+- **Tessellation**: a surface is drawn as a grid of at most 256 m cells
+  (`MAX_CELL`, at least `segments` a side, at most 256), so a 24 km sea is
+  94 x 94 cells, not two triangles; a clipped giant triangle is
+  interpolated metres off on llvmpipe, which moved the shore foam
+  (`tests/evidence/P3/streaming/foam/NOTES.md`).
 
 Tests and references (`metal`, `vulkan-cpu`): `og-tests/tests/terrain.rs`
 and the scenes `terrain-near`, `terrain-mid`, `terrain-far` (the 2 km
@@ -690,7 +714,8 @@ with their mips, chosen per tier and reported in
 - Post: AgX, temporal exposure adaptation (deterministic per tick), fog.
 - 2D: per-texture filtering (nearest for pixel art), billboards, kerning and
   RTL shaping (rustybuzz), CJK fallback atlases.
-- Instance upload is the whole buffer every frame; dirty tracking, GPU
-  culling on the full tier. Resources cannot be removed. No anisotropy.
+- Instance upload is the whole buffer every frame; dirty tracking is still
+  to do (GPU culling on the full tier landed in phase 3). Resources cannot
+  be removed. No anisotropy.
   Shaders are WGSL compiled by naga at pipeline creation; cooking per
   backend at build time is still to do.

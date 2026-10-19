@@ -218,6 +218,11 @@ player members and a dev build every member, whatever it says.
 - **URL parameters**: `webgl=1` (the WebGL2 fallback; also taken when WebGPU
   has no adapter), `replay-seed=<u32>`, `autoplay=0` (a harness drives the
   clock through the probe: no gate, no first tick, no service worker).
+  On WebGPU og-render culls on the GPU: frustum and occlusion tests in
+  compute and indirect draws. The WebGL2 fallback culls on the CPU, and both
+  give the same frame. On og-tests' 40,000-building city scenes in Chrome,
+  WebGPU's frame takes about 35 % less time than with CPU culling
+  (`tests/evidence/P3/culling/`).
 
 ## The Player and Stage contract
 
