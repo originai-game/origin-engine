@@ -175,7 +175,9 @@ struct WaterGpu {
     under: [f32; 4],
 }
 
-/// The most grid cells per side.
+/// The most grid cells per side (256² cells, 131,072 triangles per
+/// surface). It caps [`MAX_CELL`]'s split: a surface longer than 65.5 km
+/// (256 × 256 m) gets cells longer than 256 m again.
 const MAX_SEGMENTS: u32 = 256;
 /// The largest height field accepted.
 const MAX_RESOLUTION: u32 = 512;

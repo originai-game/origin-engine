@@ -305,24 +305,40 @@ pub struct RenderDesc {
     /// everywhere ([`ParticleSimulation::Cpu`]).
     pub particles: ParticleSimulation,
     /// Where instances are culled: in compute with indirect draws on the
-    /// full tier (frustum and occlusion), or the CPU path everywhere
-    /// ([`Culling::Cpu`], the no-compute tier's).
+    /// full tier for large scenes (frustum and occlusion), or the CPU path
+    /// ([`Culling`]).
     pub culling: Culling,
 }
 
 /// Where instances are culled ([`RenderDesc::culling`]).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Culling {
-    /// On the GPU where the adapter has compute and indirect draws (each
-    /// pass's frustum, and for the camera the depth of last frame's
-    /// visible occluders), else on the CPU. A frame with object motion
-    /// blur, or more instances than one storage binding holds, is culled
-    /// on the CPU.
+    /// As [`Culling::Gpu`] for a frame of at least
+    /// [`GPU_CULLING_MIN_INSTANCES`] instances (not skinned), else on the
+    /// CPU: a small frame's CPU culling costs less than the GPU path's
+    /// fixed per-frame work.
     #[default]
     Auto,
+    /// On the GPU where the adapter has compute and indirect draws (each
+    /// pass's frustum, and for the camera the depth of last frame's
+    /// visible occluders), whatever the frame's size, else on the CPU. A
+    /// frame with object motion blur, or more instances than one storage
+    /// binding holds, is culled on the CPU.
+    Gpu,
     /// Always on the CPU (frustum only; the no-compute tier's path).
     Cpu,
 }
+
+/// The instances (not skinned) from which [`Culling::Auto`] culls a frame
+/// on the GPU. Measured on an M4 Pro (tests/evidence/P3/culling/NOTES.md):
+/// at 40,000 instances the GPU path saved about 1.1 ms of `render` per
+/// frame natively (city-street, median 6.40 to 5.27 ms) and 0.6 ms on
+/// WebGPU, while on scenes of tens of instances it cost 0.4 to 1 ms more
+/// per frame (point-spot-lights 1.0 to 1.6 ms against 0.6 ms, showcase
+/// 3.5 to 6.1 against 3.2). The CPU test costs about 40 ns per instance
+/// at that size, so the fixed cost breaks even between about 10,000 and
+/// 25,000 instances; 16,384 sits between, below the city's 40,000.
+pub const GPU_CULLING_MIN_INSTANCES: u32 = 16_384;
 
 impl Default for RenderDesc {
     fn default() -> Self {
@@ -444,7 +460,8 @@ pub struct FrameStats {
     pub batches: u32,
     /// Instances submitted.
     pub instances: u32,
-    /// Instances outside the camera's view, not drawn in the main pass.
+    /// Instances outside the camera's view, not drawn in the main pass
+    /// (with GPU culling, an earlier frame's count: see `counts_lag`).
     pub culled: u32,
     /// Triangles drawn in the main pass.
     pub triangles: u64,
@@ -527,13 +544,27 @@ pub struct FrameStats {
     pub gpu_culling: bool,
     /// Opaque instances in view that nearer occluders hid (GPU culling).
     pub occluded: u32,
+    /// Their triangles, counted on the GPU per hidden instance (GPU
+    /// culling; 0 on the CPU path).
+    pub occluded_triangles: u64,
+    /// Triangles of the opaque instances inside the camera's view, before
+    /// occlusion: every one is drawn in the main pass or counted in
+    /// `occluded_triangles`. The CPU path counts the instances in view
+    /// (it may draw a whole batch, so `triangles` can exceed it); GPU
+    /// culling adds its main-pass instance triangles and
+    /// `occluded_triangles`.
+    pub in_view_triangles: u64,
     /// Draws of the GPU culling's occluder depth pass (also in `draw_calls`).
     pub occluder_draws: u32,
-    /// With GPU culling, `culled`, `occluded`, `triangles` and
-    /// `shadow_casters` hold the GPU's counts of the newest frame read back
-    /// by then, this many frames old (`u32::MAX`: none yet); natively
+    /// With GPU culling, `culled`, `occluded`, `occluded_triangles`,
+    /// `in_view_triangles`, `triangles` and `shadow_casters` hold the
+    /// GPU's counts of the newest frame read back
+    /// by then, this many frames old (`u32::MAX`: none yet). Only frames
+    /// after [`Renderer::request_culling_counts`] are read back; natively
     /// [`Renderer::finish_stats`] puts the frame's own in their place (0).
-    /// 0 on the CPU path.
+    /// 0 on the CPU path. While they lag, `culled`, `occluded` and the
+    /// instances drawn come from different frames and need not add up to
+    /// `instances`.
     pub counts_lag: u32,
 }
 
@@ -700,6 +731,9 @@ struct DrawList {
     ranges: Vec<(u32, u32, u32)>,
     instances: u32,
     triangles: u64,
+    /// Triangles of the instances inside the planes ([`Renderer::cull`];
+    /// `triangles` counts whole batches drawn past 90 % in view).
+    in_view_triangles: u64,
     /// GPU culling's pass: the ranges are in its `instances` and each draw's
     /// count is in its `args` (`instances` and `triangles` are 0 here).
     indirect: Option<u32>,
@@ -896,6 +930,9 @@ pub struct Renderer {
     desc_culling: Culling,
     indirect: bool,
     gpu_cull: Option<cull_gpu::GpuCulling>,
+    /// Whether the next frame's GPU culling counts are read back
+    /// ([`Renderer::request_culling_counts`]).
+    culling_counts: bool,
     /// The previous frame's unjittered view-projection, when TAA history is valid.
     taa_history: Option<Mat4>,
 }
@@ -1990,6 +2027,7 @@ impl Renderer {
             desc_culling: desc.culling,
             indirect,
             gpu_cull: None,
+            culling_counts: false,
             taa_history: None,
         })
     }
@@ -2713,6 +2751,7 @@ impl Renderer {
             visible.extend(range.clone().filter(|&k| inside[k]));
             culled += b.count - visible.len() as u32;
             let index_count = self.cache.meshes[b.mesh].index_count;
+            list.in_view_triangles += (index_count / 3) as u64 * visible.len() as u64;
             let (first, count) = if visible.is_empty() {
                 continue;
             } else if visible.len() as u32 * 10 >= b.count * 9 {
@@ -3298,8 +3337,33 @@ impl Renderer {
             && !scene.previous_transforms.is_empty()
             && scene.previous_transforms.len() == scene.instances.len();
         let sorted = transforms.len() as u32;
+        // The passes this frame can cull at most: the camera, the
+        // occluders, the planar reflection, the cascades and the shadowed
+        // local lights' faces. The buffers must fit them; `encode` sizes
+        // them for the frame's actual passes and regrows when that grows.
+        let max_passes = 2
+            + reflection.is_some() as usize
+            + if scene.light.cast_shadows {
+                (self.info.shadow_cascades as usize).clamp(1, CASCADES)
+            } else {
+                0
+            }
+            + scene
+                .lights
+                .iter()
+                .filter(|l| l.cast_shadows)
+                .map(|l| match l.kind {
+                    LightKind::Point => 6,
+                    LightKind::Spot { .. } => 1,
+                })
+                .sum::<usize>()
+                .min(LOCAL_SHADOW_LAYERS);
         let gpu_cull = self.indirect
-            && self.desc_culling == Culling::Auto
+            && match self.desc_culling {
+                Culling::Auto => sorted >= GPU_CULLING_MIN_INSTANCES,
+                Culling::Gpu => true,
+                Culling::Cpu => false,
+            }
             && !object_motion
             && !batches.is_empty()
             && {
@@ -3312,7 +3376,7 @@ impl Renderer {
                             .min(limits.max_buffer_size),
                     )
                 });
-                gc.fits(sorted, cull_gpu::MAX_PASSES)
+                gc.fits(sorted, max_passes)
             };
         let mut cull_passes: Vec<cull_gpu::CullPass> = Vec::new();
         let mut gpu_pass = |kind, frustum: &Frustum| {
@@ -3324,9 +3388,19 @@ impl Renderer {
         };
         // Lent to every CPU cull of this frame, given back after the last.
         let mut cull_inside = std::mem::take(&mut self.cull_inside);
+        // Occlusion needs a batch that can occlude and an earlier frame's
+        // camera visibility (its visible occluders); without them the
+        // occluders' depth, the pyramid and the occlusion test are skipped.
+        let occlusion = gpu_cull
+            && self.gpu_cull.as_ref().is_some_and(|gc| gc.primed())
+            && batches
+                .iter()
+                .any(|b| self.cache.materials[b.material].occluder);
         let (main_list, mut culled) = if gpu_cull {
             let g = gpu_pass(cull_gpu::PassKind::Main, &view_frustum);
-            gpu_pass(cull_gpu::PassKind::Occluders, &view_frustum);
+            if occlusion {
+                gpu_pass(cull_gpu::PassKind::Occluders, &view_frustum);
+            }
             (indirect_list(&batches, sorted, g, |b| !b.transparent), 0)
         } else {
             self.cull(
@@ -3557,13 +3631,17 @@ impl Renderer {
         // sprites. With GPU culling the sorted instances go to its buffer and
         // this one holds only the transparent draws.
         let mut gpu_counts = None;
+        let copy_counts = std::mem::take(&mut self.culling_counts);
         let cull_commands = if gpu_cull {
-            let _ = self.device.poll(wgpu::PollType::Poll);
             let gc = self
                 .gpu_cull
                 .as_mut()
                 .expect("made when gpu_cull was decided");
+            if gc.in_flight() {
+                let _ = self.device.poll(wgpu::PollType::Poll);
+            }
             let lagged = gc.poll_counts();
+            debug_assert!(cull_passes.len() <= max_passes);
             let (commands, occluder_draws) = gc.encode(
                 &self.device,
                 &self.queue,
@@ -3576,6 +3654,7 @@ impl Renderer {
                 (self.width, self.height, self.samples),
                 self.frame_index,
                 lagged.unwrap_or_default(),
+                copy_counts,
             );
             gpu_counts = Some((lagged, occluder_draws));
             for r in &mut blended_list.ranges {
@@ -4049,6 +4128,7 @@ impl Renderer {
             instances: scene.instances.len() as u32,
             culled,
             triangles: main_list.triangles + blended_list.triangles,
+            in_view_triangles: main_list.in_view_triangles,
             lights: self.clusters.kept.len() as u32,
             lights_dropped: cluster_stats.dropped,
             lights_culled: cluster_stats.culled,
@@ -4086,6 +4166,8 @@ impl Renderer {
             stats.gpu_culling = true;
             stats.culled += c.culled;
             stats.occluded = c.occluded;
+            stats.occluded_triangles = c.occluded_triangles;
+            stats.in_view_triangles = c.triangles + c.occluded_triangles;
             stats.triangles += c.triangles;
             stats.shadow_casters += c.shadow_casters;
             stats.counts_lag = lagged.map_or(u32::MAX, |l| (self.frame_index - l.frame) as u32);
@@ -5128,9 +5210,21 @@ impl Renderer {
         Ok(stats)
     }
 
+    /// Reads the next frame's GPU culling counts back (`culled`,
+    /// `occluded`, `triangles`, `shadow_casters` and the triangle counts
+    /// in and out of view; see
+    /// [`FrameStats::counts_lag`]), for one frame: a frame rendered
+    /// without a request copies none, so the stats keep the newest
+    /// requested frame's. Natively [`Renderer::finish_stats`] needs no
+    /// request for the last frame rendered.
+    pub fn request_culling_counts(&mut self) {
+        self.culling_counts = true;
+    }
+
     /// Natively: waits for the GPU culling counts of the frame `stats` came
     /// from and puts them in place of the older ones it was given
-    /// ([`FrameStats::counts_lag`] becomes 0). Whether it could: false on
+    /// ([`FrameStats::counts_lag`] becomes 0); for the last frame rendered
+    /// they are copied now when it copied none. Whether it could: false on
     /// the CPU path, or for a frame that found no readback free and was
     /// not the last one rendered.
     #[cfg(not(target_arch = "wasm32"))]
@@ -5147,6 +5241,8 @@ impl Renderer {
         };
         stats.culled = stats.culled - given.culled + exact.culled;
         stats.occluded = exact.occluded;
+        stats.occluded_triangles = exact.occluded_triangles;
+        stats.in_view_triangles = exact.triangles + exact.occluded_triangles;
         stats.triangles = stats.triangles - given.triangles + exact.triangles;
         stats.shadow_casters = stats.shadow_casters - given.shadow_casters + exact.shadow_casters;
         stats.counts_lag = 0;

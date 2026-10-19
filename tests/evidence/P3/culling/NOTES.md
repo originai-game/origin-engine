@@ -12,7 +12,8 @@ The three variants:
 - **before**: `og-gfx` built at 1f94224, the commit before GPU culling
   (7d845e1). Kept as `target/evidence/culling/og-gfx-before`.
 - **gpu**: `og-gfx` on this branch, `Culling::Auto`, which takes the GPU
-  path on Metal and on WebGPU.
+  path on Metal and on WebGPU (the city's 40,000 instances are above the
+  later threshold, so `Auto` still does; `OG_GFX_CULLING=gpu` forces it).
 - **cpu**: the same binary with `OG_GFX_CULLING=cpu` (`Culling::Cpu`, the
   WebGL2 path), or `--cpu-culling` in the browser.
 
@@ -144,17 +145,28 @@ exact.
 ## Same frame on both paths
 
 `crates/og-tests/tests/culling.rs` renders eight scenes with
-`Culling::Auto` and with `Culling::Cpu` over several frames each. The scenes
-are city-street, city-aerial, gltf-reference, point-spot-lights,
-water-planar, msaa, shader-hooks and showcase. The
-checks are:
+`Culling::Gpu` (the GPU path at any size) and with `Culling::Cpu` over
+several frames each. The scenes are city-street, city-aerial,
+gltf-reference, point-spot-lights, water-planar, msaa, shader-hooks and
+showcase. The checks are:
 
-- the same picture, within the gfx references' tolerance
+- the same picture: no channel off by more than 2 outside 0.01 % of the
+  pixels, RMSE at most 0.002 (the review tightened this from the gfx
+  references' tolerance, which would hide a missing object)
+- the GPU path on every frame exactly on the full tier, the CPU path on
+  every frame with `Culling::Cpu`
 - the same frustum-culled count
 - never more triangles drawn on the GPU path
+- the triangles the GPU draws plus those it hides (`occluded_triangles`,
+  counted per hidden instance) no fewer than the CPU path's
+  `in_view_triangles`
 - on city-street, most of what is in view occluded
 
-It passes on Metal. Broken once each:
+A second test checks that `Culling::Auto` culls city-street on the GPU and
+the showcase on the CPU.
+
+The original checks passed on Metal; the tightened ones were added after
+this record and have not been run here. Broken once each:
 
 - With the occlusion margin made permissive (`near > farthest - 0.002` in
   `cull.wgsl`), it failed: city-street RMSE 0.036, city-aerial 0.079,
@@ -198,5 +210,20 @@ Release og-gfx, three interleaved rounds at load about 160 to 220:
 
 The frames are small, so the fixed per-frame cost of the compute passes
 (clears, pyramid, prefix sum, indirect args and the count readback) is
-larger than the CPU culling it replaces. A threshold that sends small frames
-to the CPU path is still to do.
+larger than the CPU culling it replaces.
+
+What followed (branch `fix-culling`):
+
+- `Culling::Auto` culls on the GPU only from `GPU_CULLING_MIN_INSTANCES`
+  (16,384) instances. The city saves about 1.1 ms at 40,000 instances, the
+  small scenes lose 0.4 to 1 ms, and the CPU test costs about 40 ns per
+  instance, so the break-even lies between about 10,000 and 25,000.
+  `Culling::Gpu` keeps the GPU path at any size.
+- A frame with no occluder material, or no earlier camera visibility,
+  skips the occluders' pass, their depth and the pyramid, and runs one
+  compute pass.
+- The count readback is copied only for frames after
+  `Renderer::request_culling_counts`.
+
+The threshold was not measured again after these cuts, which lower the
+GPU path's fixed cost.

@@ -10,7 +10,10 @@
 //! times, and the comparison with the committed reference when one exists.
 //! Frame times run the scene's per-frame update (moving sprites) each frame.
 //! `OG_GFX_DEBUG_CASCADES=1` draws the cascade debug view instead.
-//! `OG_GFX_CULLING=cpu` culls on the CPU on every tier (`Culling::Cpu`).
+//! `OG_GFX_CULLING=cpu|gpu|auto` sets the scene's `Culling`: `cpu` culls on
+//! the CPU on every tier, `gpu` on the GPU on the full tier whatever the
+//! scene's size, `auto` (the default) on the GPU from
+//! `og_render::GPU_CULLING_MIN_INSTANCES` instances.
 
 use og_render::{Antialias, Bloom, Exposure, FrameStats, Light, LightKind, RenderTarget, Renderer};
 use og_tests::scenes::GfxScene;
@@ -142,8 +145,11 @@ fn run(
     capture: Option<&Path>,
 ) -> Result<String, String> {
     let mut built = scenes::build(name)?;
-    if std::env::var("OG_GFX_CULLING").is_ok_and(|v| v == "cpu") {
-        built.desc.culling = og_render::Culling::Cpu;
+    match std::env::var("OG_GFX_CULLING").as_deref() {
+        Ok("cpu") => built.desc.culling = og_render::Culling::Cpu,
+        Ok("gpu") => built.desc.culling = og_render::Culling::Gpu,
+        Ok("auto") | Err(_) => {}
+        Ok(other) => return Err(format!("OG_GFX_CULLING={other}: cpu, gpu or auto")),
     }
     if std::env::var_os("OG_GFX_DEBUG_CASCADES").is_some() {
         built.scene.debug = og_render::DebugView::Cascades;

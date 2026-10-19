@@ -17,11 +17,21 @@
 //! batch in sorted order, in its own region (a deterministic prefix sum,
 //! not atomics, decides where).
 //!
+//! A frame with no batch that can occlude, or with no earlier frame's
+//! camera visibility in `scan` (the first frame, or after the buffer
+//! grew), has no occluders to draw: it skips the occluders' pass, their
+//! depth, the pyramid and the camera pass's occlusion test, and culls
+//! every pass against its planes in one compute pass.
+//!
 //! The counts the CPU path knows at once (culled, occluded, triangles,
-//! shadow casters) come back through a small readback ring: a frame's
+//! shadow casters), and the triangles of the instances the occluders hid
+//! (counted per instance, so the camera pass's drawn and hidden triangles
+//! can be checked against the CPU path's in view), come back through a small readback ring, for the frames
+//! after [`crate::Renderer::request_culling_counts`] only: a frame's
 //! [`crate::FrameStats`] carries those of the newest frame that has
 //! landed (`counts_lag` frames old), and [`crate::Renderer::finish_stats`]
-//! waits for the frame's own natively.
+//! waits for the frame's own natively (copying them late for the last
+//! frame encoded).
 
 use crate::{Batch, DEPTH_FORMAT, GpuMaterial, GpuMesh, INSTANCE_STRIDE, Side, cull_mode};
 use glam::{Mat4, Vec4};
@@ -33,8 +43,9 @@ const HIZ_WGSL: &str = include_str!("../shaders/hiz.wgsl");
 const DEPTH_WGSL: &str = include_str!("../shaders/cull_depth.wgsl");
 
 /// Passes one frame may cull: three cascades, twelve local light faces,
-/// the planar reflection, the occluders and the camera.
-pub(crate) const MAX_PASSES: usize = 18;
+/// the planar reflection, the occluders and the camera (the size of
+/// `Params`; the buffers are sized for the frame's own passes).
+const MAX_PASSES: usize = 18;
 /// Planes per pass (a cascade's box and the slice planes facing the light).
 const MAX_PLANES: usize = 12;
 const WORKGROUP: u32 = 256;
@@ -104,7 +115,11 @@ struct BatchGpu {
     extent: [f32; 4],
 }
 
-/// The GPU's counts for one frame (see the module docs).
+/// The GPU's counts for one frame (see the module docs). They are
+/// counted after the frame's draws are encoded, so a frame's stats carry
+/// an earlier frame's (`counts_lag`): with the instances moving between
+/// frames, `culled` plus what was drawn need not add up to the frame's
+/// instances.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) struct GpuCounts {
     pub frame: u64,
@@ -114,6 +129,9 @@ pub(crate) struct GpuCounts {
     pub occluded: u32,
     /// Triangles of the camera pass's instance draws.
     pub triangles: u64,
+    /// Triangles of the instances counted in `occluded`, counted on their
+    /// own (not as the difference of two other counts).
+    pub occluded_triangles: u64,
     /// Instance draws across the shadow passes.
     pub shadow_casters: u32,
 }
@@ -130,10 +148,18 @@ struct CountLayout {
 }
 
 impl CountLayout {
+    /// The words of the draws buffer the counts are read from: per (pass,
+    /// batch) a draw, per pass its inside count, per batch its hidden count.
+    fn words(passes: usize, batches: u32) -> u64 {
+        passes as u64 * (batches as u64 * 5 + 1) + batches as u64
+    }
+
     fn counts(&self, words: &[u32]) -> GpuCounts {
         let b = self.batches as usize;
+        let p = self.kinds.len();
         let draws = |g: usize| (0..b).map(move |i| (i, words[(g * b + i) * 5 + 1]));
-        let inside = |g: usize| words[self.kinds.len() * b * 5 + g];
+        let inside = |g: usize| words[p * b * 5 + g];
+        let hidden = |i: usize| words[p * b * 5 + p + i];
         let mut c = GpuCounts {
             frame: self.frame,
             ..GpuCounts::default()
@@ -148,6 +174,8 @@ impl CountLayout {
                     c.triangles = draws(g).map(|(i, n)| self.triangles[i] * n as u64).sum();
                     c.culled = self.opaque.saturating_sub(inside(g));
                     c.occluded = inside(g).saturating_sub(drawn);
+                    c.occluded_triangles =
+                        (0..b).map(|i| self.triangles[i] * hidden(i) as u64).sum();
                 }
                 PassKind::Reflection | PassKind::Occluders => {}
             }
@@ -201,6 +229,12 @@ pub(crate) struct GpuCulling {
     pub args: wgpu::Buffer,
     groups: Option<[wgpu::BindGroup; 2]>,
     pyramid: Option<Pyramid>,
+    /// Bound in the pyramid's place until a frame needs one.
+    no_pyramid: wgpu::TextureView,
+    /// Whether `scan` holds a frame's camera visibility (the occluders a
+    /// frame may draw): false until a frame culled its camera pass, and
+    /// again when the buffer is replaced.
+    primed: bool,
     readbacks: Vec<Readback>,
     latest: Option<GpuCounts>,
     /// The last encoded frame's layout and given counts (`finish` copies
@@ -424,6 +458,23 @@ impl GpuCulling {
             layout,
             groups: None,
             pyramid: None,
+            no_pyramid: device
+                .create_texture(&wgpu::TextureDescriptor {
+                    label: Some("no depth pyramid"),
+                    size: wgpu::Extent3d {
+                        width: 1,
+                        height: 1,
+                        depth_or_array_layers: 1,
+                    },
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: wgpu::TextureFormat::R32Float,
+                    usage: wgpu::TextureUsages::TEXTURE_BINDING,
+                    view_formats: &[],
+                })
+                .create_view(&Default::default()),
+            primed: false,
             readbacks,
             latest: None,
             last: None,
@@ -446,8 +497,8 @@ impl GpuCulling {
             | wgpu::BufferUsages::COPY_DST
     }
 
-    /// Whether `n` instances in `passes` passes fit the device's storage
-    /// binding limit.
+    /// Whether `n` instances in `passes` passes (the most the frame can
+    /// have) fit the device's storage binding limit.
     pub fn fits(&self, n: u32, passes: usize) -> bool {
         (passes as u64 + 1) * n as u64 * INSTANCE_STRIDE <= self.max_binding
             && Self::scan_words(n, passes) * 4 <= self.max_binding
@@ -466,6 +517,19 @@ impl GpuCulling {
     /// Where pass `g`'s instances of the batch starting at `first` begin.
     pub fn region(&self, g: u32, first: u32) -> u32 {
         (g + 1) * self.n + first
+    }
+
+    /// Whether a frame can test its camera pass against occluders: an
+    /// earlier frame left its visibility in `scan`. Until then a frame
+    /// passes no `Occluders` pass, and `encode` skips the occluders'
+    /// depth, the pyramid and the camera pass's occlusion test.
+    pub fn primed(&self) -> bool {
+        self.primed
+    }
+
+    /// Whether a readback holds a frame's counts not yet read.
+    pub fn in_flight(&self) -> bool {
+        self.readbacks.iter().any(|r| r.layout.is_some())
     }
 
     /// Takes every landed readback; the newest frame's counts are kept.
@@ -518,8 +582,11 @@ impl GpuCulling {
                 // Every readback in flight lands and is taken.
                 device.poll(wgpu::PollType::wait_indefinitely()).ok()?;
                 self.poll_counts();
-                let r = self.readbacks.iter_mut().find(|r| r.layout.is_none())?;
-                let words = layout.kinds.len() as u64 * (layout.batches as u64 * 5 + 1);
+                let words = CountLayout::words(layout.kinds.len(), layout.batches);
+                let r = self
+                    .readbacks
+                    .iter_mut()
+                    .find(|r| r.layout.is_none() && r.buffer.size() >= words * 4)?;
                 let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
                     label: Some("cull counts"),
                 });
@@ -717,6 +784,7 @@ impl GpuCulling {
     }
 
     /// Grows a buffer to at least `size` bytes (dropping its bind groups).
+    /// Whether it was replaced (a new buffer starts zeroed).
     #[allow(clippy::too_many_arguments)]
     fn grow(
         device: &wgpu::Device,
@@ -726,8 +794,9 @@ impl GpuCulling {
         size: u64,
         cap: u64,
         usage: wgpu::BufferUsages,
-    ) {
-        if size > buf.size() {
+    ) -> bool {
+        let grown = size > buf.size();
+        if grown {
             // Bound whole: never past the binding limit.
             *buf = buffer(
                 device,
@@ -737,12 +806,17 @@ impl GpuCulling {
             );
             *groups = None;
         }
+        grown
     }
 
     /// The frame's culling: uploads the sorted `transforms` and the batch
     /// table, and encodes both stages, the occluders' depth and the
-    /// pyramid. Returns the commands to submit before the frame's own and
-    /// the occluder depth pass's draws.
+    /// pyramid. Without an `Occluders` pass (see [`Self::primed`]) the
+    /// occluders' depth and the pyramid are skipped and the camera pass is
+    /// tested against its frustum alone. With `copy_counts` the counts
+    /// are copied to a free readback (`stats_given`: those the frame's
+    /// stats carry in their place). Returns the commands to submit before
+    /// the frame's own and the occluder depth pass's draws.
     #[allow(clippy::too_many_arguments)]
     pub fn encode(
         &mut self,
@@ -757,31 +831,36 @@ impl GpuCulling {
         (width, height, samples): (u32, u32, u32),
         frame: u64,
         stats_given: GpuCounts,
+        copy_counts: bool,
     ) -> (wgpu::CommandBuffer, u32) {
         let n = transforms.len() as u32;
         let b = batches.len() as u32;
         let p = passes.len();
+        debug_assert!(p <= MAX_PASSES);
         self.n = n;
         self.b = b;
-        self.ensure_pyramid(device, width, height, samples);
-        let occluder_sides: Vec<Side> = {
-            let mut s: Vec<Side> = batches
-                .iter()
-                .filter(|x| materials[x.material].occluder)
-                .map(|x| x.side)
-                .collect();
-            s.sort();
-            s.dedup();
-            s
-        };
-        for side in occluder_sides {
-            self.depth_pipeline(device, side, samples);
+        let occlusion = passes.iter().any(|x| x.kind == PassKind::Occluders);
+        if occlusion {
+            self.ensure_pyramid(device, width, height, samples);
+            let occluder_sides: Vec<Side> = {
+                let mut s: Vec<Side> = batches
+                    .iter()
+                    .filter(|x| materials[x.material].occluder)
+                    .map(|x| x.side)
+                    .collect();
+                s.sort();
+                s.dedup();
+                s
+            };
+            for side in occluder_sides {
+                self.depth_pipeline(device, side, samples);
+            }
         }
 
         // Buffers (grown as needed; new ones start zeroed: nothing was
         // visible last frame).
         let blocks = n.div_ceil(WORKGROUP);
-        let args_words = (p as u64 * b as u64 * 5) + p as u64;
+        let args_words = CountLayout::words(p, b);
         Self::grow(
             device,
             &mut self.instances,
@@ -800,7 +879,7 @@ impl GpuCulling {
             self.max_binding,
             Self::storage_usage(),
         );
-        Self::grow(
+        let scan_replaced = Self::grow(
             device,
             &mut self.scan,
             &mut self.groups,
@@ -809,6 +888,9 @@ impl GpuCulling {
             self.max_binding,
             Self::storage_usage(),
         );
+        if scan_replaced {
+            self.primed = false;
+        }
         Self::grow(
             device,
             &mut self.args,
@@ -818,15 +900,13 @@ impl GpuCulling {
             self.max_binding,
             Self::args_usage(),
         );
-        let readback_size = (args_words * 4).next_power_of_two().max(256);
-        if self
-            .readbacks
-            .first()
-            .is_some_and(|r| r.buffer.size() < args_words * 4)
-        {
-            // Mapped or in-flight ones are dropped (their counts lost).
-            self.readbacks.clear();
-        }
+        let count_bytes = args_words * 4;
+        let readback_size = count_bytes.next_power_of_two().max(256);
+        // A readback too small for this frame's counts is replaced once it
+        // is free; one in flight keeps its frame's counts (its layout says
+        // how many words it holds) until they are read.
+        self.readbacks
+            .retain(|r| r.layout.is_some() || r.buffer.size() >= count_bytes);
         while self.readbacks.len() < READBACKS {
             self.readbacks.push(Readback {
                 buffer: buffer(
@@ -867,11 +947,13 @@ impl GpuCulling {
             0,
             bytemuck::cast_slice(&view_proj.to_cols_array()),
         );
-        let pyramid = self.pyramid.as_ref().expect("made above");
+        let pyramid = self.pyramid.as_ref().filter(|_| occlusion);
+        // Pyramid levels 0: the camera pass tests no occlusion.
+        let levels = pyramid.map_or(0, |x| x.levels);
         let stage = |which: &[usize]| {
             let mut params = Params {
                 counts: [n, b, which.len() as u32, p as u32],
-                sizes: [blocks, pyramid.levels, width, height],
+                sizes: [blocks, levels, width, height],
                 view_proj: view_proj.to_cols_array_2d(),
                 passes: [bytemuck::Zeroable::zeroed(); MAX_PASSES],
             };
@@ -891,8 +973,15 @@ impl GpuCulling {
         let others: Vec<usize> = (0..p)
             .filter(|&g| passes[g].kind != PassKind::Main)
             .collect();
-        queue.write_buffer(&self.params[0], 0, bytemuck::bytes_of(&stage(&others)));
-        queue.write_buffer(&self.params[1], 0, bytemuck::bytes_of(&stage(&main)));
+        // Only the stage's passes are uploaded (the shader reads no others).
+        let used = |which: &[usize]| {
+            std::mem::offset_of!(Params, passes) + which.len() * std::mem::size_of::<PassGpu>()
+        };
+        for (buffer, which) in self.params.iter().zip([&others, &main]) {
+            if !which.is_empty() {
+                queue.write_buffer(buffer, 0, &bytemuck::bytes_of(&stage(which))[..used(which)]);
+            }
+        }
         if self.groups.is_none() {
             let group = |params: &wgpu::Buffer| {
                 device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -921,7 +1010,9 @@ impl GpuCulling {
                         },
                         wgpu::BindGroupEntry {
                             binding: 5,
-                            resource: wgpu::BindingResource::TextureView(&pyramid.full),
+                            resource: wgpu::BindingResource::TextureView(
+                                self.pyramid.as_ref().map_or(&self.no_pyramid, |x| &x.full),
+                            ),
                         },
                     ],
                 })
@@ -933,8 +1024,12 @@ impl GpuCulling {
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("cull"),
         });
-        // The inside counters start at zero.
-        encoder.clear_buffer(&self.args, p as u64 * b as u64 * 20, Some(p as u64 * 4));
+        // The inside and hidden counters start at zero.
+        encoder.clear_buffer(
+            &self.args,
+            p as u64 * b as u64 * 20,
+            Some((p as u64 + b as u64) * 4),
+        );
         let run = |pass: &mut wgpu::ComputePass, group: &wgpu::BindGroup, stage_passes: u32| {
             pass.set_bind_group(0, group, &[]);
             pass.set_pipeline(&self.visibility);
@@ -946,56 +1041,59 @@ impl GpuCulling {
             pass.set_pipeline(&self.scatter);
             pass.dispatch_workgroups(blocks, stage_passes, 1);
         };
-        if !others.is_empty() {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("cull: shadows, reflection, occluders"),
-                timestamp_writes: None,
-            });
-            run(&mut pass, &groups[0], others.len() as u32);
-        }
         let mut occluder_draws = 0;
-        {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("occluder depth"),
-                color_attachments: &[],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &pyramid.depth,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(1.0),
-                        store: wgpu::StoreOp::Store,
+        if let Some(pyramid) = pyramid {
+            if !others.is_empty() {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("cull: shadows, reflection, occluders"),
+                    timestamp_writes: None,
+                });
+                run(&mut pass, &groups[0], others.len() as u32);
+            }
+            {
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("occluder depth"),
+                    color_attachments: &[],
+                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                        view: &pyramid.depth,
+                        depth_ops: Some(wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(1.0),
+                            store: wgpu::StoreOp::Store,
+                        }),
+                        stencil_ops: None,
                     }),
-                    stencil_ops: None,
-                }),
-                timestamp_writes: None,
-                occlusion_query_set: None,
-                multiview_mask: None,
-            });
-            if let Some(g) = passes.iter().position(|x| x.kind == PassKind::Occluders) {
-                pass.set_bind_group(0, &self.view_group, &[]);
-                let mut side = None;
-                for (i, x) in batches.iter().enumerate() {
-                    if !materials[x.material].occluder {
-                        continue;
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
+                    multiview_mask: None,
+                });
+                if let Some(g) = passes.iter().position(|x| x.kind == PassKind::Occluders) {
+                    pass.set_bind_group(0, &self.view_group, &[]);
+                    let mut side = None;
+                    for (i, x) in batches.iter().enumerate() {
+                        if !materials[x.material].occluder {
+                            continue;
+                        }
+                        if side != Some(x.side) {
+                            pass.set_pipeline(&self.depth_pipelines[&(x.side, samples)]);
+                            side = Some(x.side);
+                        }
+                        let mesh = &meshes[x.mesh];
+                        let start = self.region(g as u32, x.first) as u64 * INSTANCE_STRIDE;
+                        pass.set_vertex_buffer(0, mesh.vertices.slice(..));
+                        pass.set_vertex_buffer(
+                            1,
+                            self.instances
+                                .slice(start..start + x.count as u64 * INSTANCE_STRIDE),
+                        );
+                        pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
+                        pass.draw_indexed_indirect(
+                            &self.args,
+                            self.draw_offset(g as u32, i as u32),
+                        );
+                        occluder_draws += 1;
                     }
-                    if side != Some(x.side) {
-                        pass.set_pipeline(&self.depth_pipelines[&(x.side, samples)]);
-                        side = Some(x.side);
-                    }
-                    let mesh = &meshes[x.mesh];
-                    let start = self.region(g as u32, x.first) as u64 * INSTANCE_STRIDE;
-                    pass.set_vertex_buffer(0, mesh.vertices.slice(..));
-                    pass.set_vertex_buffer(
-                        1,
-                        self.instances
-                            .slice(start..start + x.count as u64 * INSTANCE_STRIDE),
-                    );
-                    pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
-                    pass.draw_indexed_indirect(&self.args, self.draw_offset(g as u32, i as u32));
-                    occluder_draws += 1;
                 }
             }
-        }
-        {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("cull: depth pyramid, camera"),
                 timestamp_writes: None,
@@ -1016,8 +1114,22 @@ impl GpuCulling {
             if !main.is_empty() {
                 run(&mut pass, &groups[1], main.len() as u32);
             }
+        } else {
+            // No occluders: both stages in one pass, the camera's against
+            // its frustum alone.
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("cull: every pass, frustum only"),
+                timestamp_writes: None,
+            });
+            if !others.is_empty() {
+                run(&mut pass, &groups[0], others.len() as u32);
+            }
+            if !main.is_empty() {
+                run(&mut pass, &groups[1], main.len() as u32);
+            }
         }
-        // The counts, when a readback is free.
+        self.primed |= !main.is_empty();
+        // The counts, when asked for and a readback is free.
         let layout = CountLayout {
             frame,
             batches: b,
@@ -1032,12 +1144,13 @@ impl GpuCulling {
                 .map(|x| x.count)
                 .sum(),
         };
-        if let Some(r) = self
-            .readbacks
-            .iter_mut()
-            .find(|r| r.layout.is_none() && r.mapped.lock().map(|m| m.is_none()).unwrap_or(false))
-        {
-            encoder.copy_buffer_to_buffer(&self.args, 0, &r.buffer, 0, args_words * 4);
+        if let Some(r) = self.readbacks.iter_mut().find(|r| {
+            copy_counts
+                && r.layout.is_none()
+                && r.buffer.size() >= count_bytes
+                && r.mapped.lock().map(|m| m.is_none()).unwrap_or(false)
+        }) {
+            encoder.copy_buffer_to_buffer(&self.args, 0, &r.buffer, 0, count_bytes);
             r.layout = Some(layout.clone());
             r.unmapped = true;
             r.applied = stats_given;

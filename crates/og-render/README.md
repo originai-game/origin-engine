@@ -59,9 +59,11 @@ object; see below). Passes whose feature is off are not recorded.
    copy); otherwise its visible transforms are appended to the instance
    buffer. Draws bind a buffer slice, never `first_instance` (WebGL2).
    Sprites and glyphs are sorted by (layer, kind, texture or font) into runs.
-   **GPU culling** (`cull_gpu.rs`; `RenderDesc::culling`, `Culling::Auto`
-   by default) replaces the per-pass lists on an adapter with compute and
-   indirect draws (native Metal, Vulkan, DX12 and the browser's WebGPU):
+   **GPU culling** (`cull_gpu.rs`; `RenderDesc::culling`: `Culling::Auto`
+   by default, which takes it from `GPU_CULLING_MIN_INSTANCES` (16,384)
+   instances, `Culling::Gpu` at any size) replaces the per-pass lists on an
+   adapter with compute and indirect draws (native Metal, Vulkan, DX12 and
+   the browser's WebGPU):
    the sorted instances are uploaded once, a compute stage tests them
    against every shadow face, the planar reflection and the camera, last
    frame's visible opaque occluders are drawn at this frame's camera into
@@ -71,11 +73,15 @@ object; see below). Passes whose feature is off are not recorded.
    drops camera instances whose box lies behind it. Each pass's visible
    instances are compacted in sorted order by a deterministic prefix sum
    and every batch is one `draw_indexed_indirect`, so both paths draw the
-   same frame. WebGL2, `Culling::Cpu`, object motion blur and frames over
-   the storage-binding limit keep the CPU path. The counts come back
-   through a readback ring: `FrameStats::gpu_culling`, `occluded`,
-   `occluder_draws` and `counts_lag` (frames old; `finish_stats` waits for
-   the frame's own natively). `og-gfx` takes `OG_GFX_CULLING=cpu`;
+   same frame. A frame with no occluder material, or no earlier camera
+   visibility, skips the occluders, their depth and the pyramid. WebGL2,
+   `Culling::Cpu`, object motion blur and frames over the storage-binding
+   limit keep the CPU path. The counts come back through a readback ring
+   for frames after `Renderer::request_culling_counts`:
+   `FrameStats::gpu_culling`, `occluded`, `occluded_triangles`,
+   `in_view_triangles`, `occluder_draws` and `counts_lag` (the GPU totals
+   lag by that many frames; `finish_stats` waits for the frame's own
+   natively). `og-gfx` takes `OG_GFX_CULLING=gpu|cpu|auto`;
    `og-tests/tests/culling.rs` renders eight scenes both ways
    (`tests/evidence/P3/culling/`).
 3. **Cascaded shadows** for the directional light (`frame.rs`): splits
