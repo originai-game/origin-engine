@@ -1089,6 +1089,12 @@ pub fn og_platform_info(env: Env, world: u32) -> String {
     <Host as PlatformApi>::og_platform_info(&Host, world)
 }
 
+#[napi(js_name = "og_platform_now")]
+pub fn og_platform_now(env: Env, world: u32) -> f64 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_now(&Host, world)
+}
+
 #[napi(js_name = "og_i18n_load")]
 pub fn og_i18n_load(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);

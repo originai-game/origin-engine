@@ -3874,6 +3874,21 @@
           ],
           "returns": "PlatformInfo",
           "publish": true
+        },
+        {
+          "name": "now",
+          "doc": "The host's wall-clock time, UTC milliseconds since 1970, as of this tick: what the host last told the engine (when it attached, and with every answer, applied at a tick's start like the answers) moved on by the ticks since. The one wall-clock read game code may make: it is host input, so a replay with the same answers gives the same values. Use it to know how long the game was closed (a save's time against a launch's), never to time play (that is og.Time).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "f64",
+          "returnsDoc": "UTC milliseconds; 0 until a host has told the time (`none`).",
+          "publish": true
         }
       ],
       "interfaces": [],
@@ -18135,6 +18150,11 @@
           "minimum": 0,
           "maximum": 4294967295,
           "description": "The tick it was answered at."
+        },
+        "time": {
+          "type": "number",
+          "description": "The host's clock when it answered, UTC milliseconds since 1970 (PlatformInfo.clock says whose); 0 when the host gave none.",
+          "x-og-unit": "ms"
         }
       },
       "required": [
@@ -18142,7 +18162,8 @@
         "method",
         "ok",
         "data",
-        "tick"
+        "tick",
+        "time"
       ],
       "additionalProperties": false
     },
@@ -18168,12 +18189,17 @@
           "minimum": 0,
           "maximum": 4294967295,
           "description": "Calls not answered yet."
+        },
+        "clock": {
+          "type": "string",
+          "description": "Whose clock og.platform.now and the answers' `time` read: `player` (the Player's answers carry its time), `browser` (the web host's own clock: the Player gives no time yet, docs/platform-asks.md), `system` (the native host's system clock), `fixed` (`og run --clock` and playtests: a clock that starts where it is told and moves with the ticks) or `none`."
         }
       },
       "required": [
         "host",
         "capabilities",
-        "pending"
+        "pending",
+        "clock"
       ],
       "additionalProperties": false
     },

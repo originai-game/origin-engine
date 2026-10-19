@@ -10,6 +10,9 @@
 //   names neither the system nor the record → "an undeclared access throws …"
 // - a publish build crashes on one instead, logs it every tick, or not at
 //   all → "a publish build refuses an undeclared access and logs it once …"
+// - og.platform.now is 0, reads the clock inside the tick (so it does not
+//   follow the ticks under a fixed clock), or an answer carries no time, or
+//   the hosts disagree → "og.platform.now and the answers' time …"
 import { expect, test } from "bun:test";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -86,4 +89,35 @@ test("a publish build refuses an undeclared access and logs it once per system, 
   expect(r.draw.seen.refused).toBe(5);
   expect(r.emit.seen.refused).toBe(5);
   expect(r.write.shared).toBe(7);
+}, 120_000);
+
+type Time = {
+  T: number;
+  fixed: { startNow: number; answerTick: number; answerTime: number; nowThen: number; nowAt5: number };
+  clock: string;
+  nowAfter: number;
+  systemClock: string;
+  systemSkewMs: number;
+};
+
+test("og.platform.now and the answers' time follow the host's clock, as host input, alike on both hosts", () => {
+  const node = run<Time>("node", "time");
+  const web = run<Time>("web", "time");
+  for (const r of [node, web]) {
+    const tick = 1000 / 60;
+    expect(r.clock).toBe("fixed");
+    // Told when the platform attached: tick 0 reads the clock's start.
+    expect(r.fixed.startNow).toBe(r.T);
+    // The call on tick 1 is answered between ticks 1 and 2 and applied at tick 2's start, with the host's time then.
+    expect(r.fixed.answerTick).toBe(2);
+    expect(r.fixed.answerTime).toBeCloseTo(r.T + 2 * tick, 6);
+    expect(r.fixed.nowThen).toBeCloseTo(r.fixed.answerTime, 6);
+    // Between answers now() moves with the ticks.
+    expect(r.fixed.nowAt5).toBeCloseTo(r.T + 5 * tick, 6);
+    expect(r.nowAfter).toBeCloseTo(r.T + 8 * tick, 6);
+    // Without a fixed clock it is the machine's.
+    expect(r.systemClock).toBe("system");
+    expect(r.systemSkewMs).toBeLessThan(5000);
+  }
+  expect(web.fixed).toEqual(node.fixed);
 }, 120_000);

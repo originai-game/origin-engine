@@ -35,6 +35,15 @@ if (answer.ok && typeof answer.data.value === "number") run.best[i] = Math.max(r
   never in a closure.
 - Answers are host input, like key presses: a replay records them, so the
   same answers give the same world.
+- Every answer carries `time` (UTC ms): the host's clock when it was
+  answered. `og.platform.now(world)` is the host's clock at the last
+  answer (or when the platform attached) advanced by the ticks since, so
+  it is the one wall clock a game may read: the time away is a store
+  answer's `time` less the time the save wrote down
+  (`templates/archetypes/idle`, `tests/away.og.ts`). `info(world).clock`
+  says whose it is: `player`, `browser` (the web host's own, until the
+  Player sends its time), `system` (native), `fixed` (`og run --clock`,
+  playtests), `none` before the platform attaches (`now` answers 0).
 - An error has a stable `code` (`offline`, `timeout`, `invalid`,
   `unauthorized`, `not_found`, `conflict`, `too_large`, `rate_limited`,
   `unavailable`, `failed`) and `retryable`. Handle `unavailable` as
@@ -89,7 +98,10 @@ The engine maps what the Player's protocol 2 offers and answers the rest
 `docs/platform-asks.md`: the keyed store with per-key revisions,
 `leaderboard.around`, the best on submit, `point.award`, `ai.mark`,
 capabilities for a verification run, telemetry names) landed on
-2026-10-19; an older Player answers what its hello lists. When a game
+2026-10-19; an older Player answers what its hello lists. One is open:
+the Player's `hello` and answers carrying its `time` (until then the web
+host's answers carry the browser's clock and `info(world).clock` says
+`browser`). When a game
 needs something none of them gives, do not work around it with a server of
 your own or by reaching the page: write the ask (the method, its arguments,
 its answer, why a game needs it) for the platform owners and keep the

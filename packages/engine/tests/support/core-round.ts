@@ -10,12 +10,15 @@
 //   undeclared  one game per kind of undeclared access (a resource read, a
 //               resource write, an og.Rng draw from reads, an event read, an
 //               emit), each advanced 5 ticks: { [kind]: { ok, reason, log } }
+//   time        og.platform.now and the answers' time under a fixed clock
+//               (og run --clock) and under the system clock
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { og, defineResource, defineSystem, defineComponent, f64, u32 } from "@origingame/engine";
-import { createEngine, type Engine, type GameToken } from "../../src/runtime.ts";
+import { createEngine, fixedClock, type Engine, type GameToken } from "../../src/runtime.ts";
+import { localPlatform, memoryPersistence } from "../../src/platform-local.ts";
 
 const argv = process.argv.slice(2);
 const opt = (name: string) => argv[argv.indexOf(name) + 1] ?? "";
@@ -106,6 +109,44 @@ if (which === "rng") {
     };
     engine.destroy();
   }
+} else if (which === "time") {
+  const Clock = defineResource("CrClock", { startNow: f64(), request: u32(), answerTime: f64(), answerTick: u32(), nowThen: f64(), nowAt5: f64() });
+  const Ask = defineSystem("CrAsk", { writes: [Clock] }, (_q, time, world) => {
+    const c = world.resource(Clock);
+    if (!c.ok) return;
+    if (time.tick === 0) c.value.startNow = og.platform.now(world);
+    if (time.tick === 1) {
+      const asked = og.platform.storeGet(world, "save");
+      c.value.request = asked.ok ? asked.value : 0;
+    }
+    const r = c.value.request === 0 ? null : og.platform.result(world, c.value.request);
+    if (r !== null && c.value.answerTick === 0) {
+      c.value.answerTime = r.time;
+      c.value.answerTick = time.tick;
+      c.value.nowThen = og.platform.now(world);
+    }
+    if (time.tick === 5) c.value.nowAt5 = og.platform.now(world);
+  });
+  const T = 1767225600000;
+  const fixed = start(og.game({ tick: 60, resources: [Clock], systems: [Ask] }));
+  fixed.setClock(fixedClock(fixed, T));
+  fixed.attachPlatform(localPlatform(memoryPersistence()));
+  for (let i = 0; i < 8; i++) fixed.advance(1);
+  const c = fixed.world.resource(Clock);
+  const info = og.platform.info(fixed.world);
+  const system = start(og.game({ tick: 60, resources: [Clock], systems: [Ask] }));
+  system.attachPlatform(localPlatform(memoryPersistence()));
+  const before = Date.now();
+  system.advance(1);
+  const s = system.world.resource(Clock);
+  Object.assign(out, {
+    T,
+    fixed: c.ok ? { ...c.value } : c.reason,
+    clock: info.clock,
+    nowAfter: og.platform.now(fixed.world),
+    systemClock: og.platform.info(system.world).clock,
+    systemSkewMs: s.ok ? Math.abs(s.value.startNow - before) : -1,
+  });
 } else {
   throw new Error(`unknown --case ${which}`);
 }

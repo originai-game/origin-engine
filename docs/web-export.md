@@ -239,6 +239,14 @@ that answers the protocol's calls (and an older one, and none);
 `tests/web/player.ts` checks the `store.get` round trip in Chrome (the
 runner's stored best becomes its best).
 
+The host's clock (`og.platform.now`, every answer's `time`, Phase 2 core
+round) is the Worker's `Date.now()` when the platform attaches and when an
+answer arrives, between ticks, and `og.platform.info(world).clock` reads
+`browser`: protocol 2's `hello` and `result` carry no time
+(`docs/platform-asks.md` #9). An answer the page hands back with its own
+`time` is taken as the Player's (`clock` then reads `player`), so when the
+ask lands the shell's bridge only passes the field on.
+
 ### The og-probe wire (`origin/packages/contracts/src/probe-wire.ts`)
 
 The shell serves the wire itself (`shell/wire.ts`) over the engine's probe,

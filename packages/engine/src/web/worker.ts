@@ -34,7 +34,7 @@
 // Worker's animation frames while the clock played, so isolated pages never
 // answered.
 
-import { createEngine, type Engine, type GameToken } from "../runtime.ts";
+import { createEngine, systemClock, type Engine, type GameToken } from "../runtime.ts";
 import type { PlatformAnswer, PlatformHost } from "../platform-local.ts";
 import { loadWebHost, type WebGlue } from "./host.ts";
 import { drainRing, type InjectedInput } from "./input.ts";
@@ -516,6 +516,8 @@ export function startWorker(game: GameToken): void {
         if (!created.ok) throw new Error(created.reason);
         engine = created.value;
         // og.platform: calls go to the page, which answers them (the Player, or the browser's storage).
+        // The time is the browser's until the Player's answers carry its own (docs/platform-asks.md).
+        engine.setClock(systemClock("browser"));
         engine.attachPlatform(toPage("none", []));
         if (data.viewport) glue.og_web_set_viewport(engine.id, JSON.stringify(data.viewport));
         ring = data.ring;

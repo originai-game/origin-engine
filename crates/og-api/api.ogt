@@ -6439,6 +6439,9 @@ module platform {
       optional true
     }
     field tick u32 "The tick it was answered at."
+    field time f64 "The host's clock when it answered, UTC milliseconds since 1970 (PlatformInfo.clock says whose); 0 when the host gave none." {
+      unit ms
+    }
   }
 
   struct PlatformInfo {
@@ -6446,6 +6449,7 @@ module platform {
     field host String "`player` (a Player frames the game), `local` (the native host's JSON store or the browser's own storage) or `none`."
     field capabilities List.String "The methods it answers: store.get, store.set, store.list, leaderboard.submit, leaderboard.top, leaderboard.around, telemetry, point, ai.mark."
     field pending u32 "Calls not answered yet."
+    field clock String "Whose clock og.platform.now and the answers' `time` read: `player` (the Player's answers carry its time), `browser` (the web host's own clock: the Player gives no time yet, docs/platform-asks.md), `system` (the native host's system clock), `fixed` (`og run --clock` and playtests: a clock that starts where it is told and moves with the ticks) or `none`."
   }
 
   fn storeGet {
@@ -6537,6 +6541,12 @@ module platform {
     doc "What answers platform calls here, and what it answers."
     param world World "The world."
     returns PlatformInfo
+  }
+
+  fn now {
+    doc "The host's wall-clock time, UTC milliseconds since 1970, as of this tick: what the host last told the engine (when it attached, and with every answer, applied at a tick's start like the answers) moved on by the ticks since. The one wall-clock read game code may make: it is host input, so a replay with the same answers gives the same values. Use it to know how long the game was closed (a save's time against a launch's), never to time play (that is og.Time)."
+    param world World "The world."
+    returns f64 "UTC milliseconds; 0 until a host has told the time (`none`)."
   }
 }
 

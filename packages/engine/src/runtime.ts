@@ -706,6 +706,26 @@ export function beginBundle(): void {
   abi().og_host_begin_bundle();
 }
 
+/**
+ * The host's wall clock as og.platform hands it to the game (og.platform.now,
+ * PlatformResult.time): read only between ticks, when the platform attaches
+ * and when an answer arrives, so it reaches the world as host input.
+ */
+export interface HostClock {
+  /** PlatformInfo.clock: `system`, `browser`, `fixed` or `player`. */
+  readonly kind: string;
+  /** UTC milliseconds since 1970. */
+  now(): number;
+}
+
+/** The machine's clock: the native host's (`system`), the web host's (`browser`). */
+export const systemClock = (kind = "system"): HostClock => ({ kind, now: () => Date.now() });
+
+/** A clock that starts at `startMs` on tick 0 and moves with the engine's ticks (`og run --clock`, playtests): reproducible. */
+export function fixedClock(engine: Engine, startMs: number): HostClock {
+  return { kind: "fixed", now: () => startMs + (engine.world.tick * 1000) / (rates.get(engine.id) ?? 60) };
+}
+
 /** A running engine: one world, its probe, and the host's lifecycle calls. */
 export class Engine {
   readonly id: number;
@@ -716,6 +736,7 @@ export class Engine {
   readonly probe: Api.EngineProbe;
 
   #platform: PlatformHost = noPlatform;
+  #clock: HostClock = systemClock();
 
   constructor(id: number, game: GameToken) {
     this.id = id;
@@ -730,7 +751,13 @@ export class Engine {
   /** Attach what answers og.platform's calls: the native host's local store, the web shell's Player bridge. */
   attachPlatform(host: PlatformHost): void {
     this.#platform = host;
-    abi().og_platform_set_host(this.id, JSON.stringify({ host: host.host, capabilities: host.capabilities }));
+    abi().og_platform_set_host(this.id, JSON.stringify({ host: host.host, capabilities: host.capabilities, time: this.#clock.now(), clock: this.#clock.kind }));
+  }
+
+  /** Set the clock og.platform tells the game (before attachPlatform, which tells it the time). */
+  setClock(clock: HostClock): void {
+    this.#clock = clock;
+    abi().og_platform_set_host(this.id, JSON.stringify({ host: this.#platform.host, capabilities: this.#platform.capabilities, time: clock.now(), clock: clock.kind }));
   }
 
   /** Hand the platform calls made since the last pump to the attached host (before and after every advance and frame, after a command). */
@@ -741,7 +768,9 @@ export class Engine {
 
   /** Answer one platform call; applied at the start of the next tick. */
   answerPlatform(request: number, answer: PlatformAnswer): boolean {
-    return abi().og_platform_answer(this.id, request, JSON.stringify(answer));
+    // An answer that carries no time (a Player before the time ask, the local platform) gets the host clock's.
+    const timed = typeof answer.time === "number" ? { ...answer, clock: "player" } : { ...answer, time: this.#clock.now() };
+    return abi().og_platform_answer(this.id, request, JSON.stringify(timed));
   }
 
   /** Take fixed steps: the tick reached, or the first failing system with its tick. */

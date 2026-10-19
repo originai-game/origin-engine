@@ -9897,6 +9897,12 @@ export interface PlatformResult {
   readonly error?: PlatformError;
   /** The tick it was answered at. */
   readonly tick: number;
+  /**
+   * The host's clock when it answered, UTC milliseconds since 1970 (PlatformInfo.clock says whose); 0 when the host gave none.
+   *
+   * @unit ms (milliseconds)
+   */
+  readonly time: number;
 }
 
 /** What answers platform calls here. */
@@ -9911,7 +9917,12 @@ export interface PlatformInfo {
   readonly capabilities: readonly string[];
   /** Calls not answered yet. */
   readonly pending: number;
+  /**
+   * Whose clock og.platform.now and the answers' `time` read: `player` (the Player's answers carry its time), `browser` (the web host's own clock: the Player gives no time yet, docs/platform-asks.md), `system` (the native host's system clock), `fixed` (`og run --clock` and playtests: a clock that starts where it is told and moves with the ticks) or `none`.
+   */
+  readonly clock: string;
 }
+
 
 
 
@@ -16082,6 +16093,13 @@ export declare namespace og {
      * @param world The world.
      */
     function info(world: World): PlatformInfo;
+    /**
+     * The host's wall-clock time, UTC milliseconds since 1970, as of this tick: what the host last told the engine (when it attached, and with every answer, applied at a tick's start like the answers) moved on by the ticks since. The one wall-clock read game code may make: it is host input, so a replay with the same answers gives the same values. Use it to know how long the game was closed (a save's time against a launch's), never to time play (that is og.Time).
+     *
+     * @param world The world.
+     * @returns UTC milliseconds; 0 until a host has told the time (`none`).
+     */
+    function now(world: World): number;
   }
   /**
    * Localization: one string table per locale (`.ogt` of `type strings`: `locale "ja"`, its font chain `fonts "..."`, `string "key" "message"`), messages in a subset of ICU MessageFormat (`{name}`, `{n, number}`, `{n, plural, =0 {..} one {..} other {..}}` with `#`, `{g, select, a {..} other {..}}`), CLDR plural rules, and the locale the host asks for (the browser's `navigator.language` on the web, `og run --locale` natively).

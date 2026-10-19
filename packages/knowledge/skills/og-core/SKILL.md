@@ -32,6 +32,10 @@ is an engine feature request, not something to work around in the game.
   `fork` reads the seed alone and moves nothing, so a system that only
   forks declares `og.Rng` in `reads` (its forks are the same on every host
   and in every system).
+- The wall clock reaches the game only as host input, between ticks:
+  `og.platform.now(world)` (UTC ms, the host's clock when the platform
+  attached or last answered, advanced by the ticks since) and the `time`
+  on every og.platform answer. A replay records them like a key press.
 - Rendering never feeds back into simulation: do not read camera or screen
   state to decide game logic.
 

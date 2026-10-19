@@ -111,7 +111,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-808 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+809 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -497,6 +497,7 @@ Field units the docs and Tune use.
 | [`og.platform.leaderboardSubmit`](platform.md#fn-leaderboardSubmit) | function | platform | `og_platform_leaderboard_submit` |
 | [`og.platform.leaderboardTop`](platform.md#fn-leaderboardTop) | function | platform | `og_platform_leaderboard_top` |
 | [`og.platform.loadSettings`](platform.md#fn-loadSettings) | function | platform | `og_platform_load_settings` |
+| [`og.platform.now`](platform.md#fn-now) | function | platform | `og_platform_now` |
 | [`og.platform.point`](platform.md#fn-point) | function | platform | `og_platform_point` |
 | [`og.platform.result`](platform.md#fn-result) | function | platform | `og_platform_result` |
 | [`og.platform.saveSettings`](platform.md#fn-saveSettings) | function | platform | `og_platform_save_settings` |

@@ -462,6 +462,8 @@ pub trait PlatformApi: Wire {
     fn og_platform_result(&self, world: u32, request: u32) -> String;
     /// `og.platform.info`
     fn og_platform_info(&self, world: u32) -> String;
+    /// `og.platform.now`
+    fn og_platform_now(&self, world: u32) -> f64;
 }
 
 /// `i18n`: packages/knowledge/wiki/i18n.md.
@@ -863,6 +865,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_platform_save_settings",
     "og_platform_result",
     "og_platform_info",
+    "og_platform_now",
     "og_i18n_load",
     "og_i18n_set_locale",
     "og_i18n_locale",

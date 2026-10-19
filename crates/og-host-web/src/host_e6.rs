@@ -120,6 +120,9 @@ impl PlatformApi for WebHost {
     fn og_platform_info(&self, world: u32) -> String {
         rt::og_platform_info(world)
     }
+    fn og_platform_now(&self, world: u32) -> f64 {
+        rt::og_platform_now(world)
+    }
 }
 
 impl I18nApi for WebHost {

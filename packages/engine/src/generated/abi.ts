@@ -367,6 +367,8 @@ export interface HostAbi<A, V> {
   og_platform_result(world: number, request: number): string;
   /** `og.platform.info` */
   og_platform_info(world: number): string;
+  /** `og.platform.now` */
+  og_platform_now(world: number): number;
   /** `og.i18n.load` */
   og_i18n_load(world: number, path: string): string;
   /** `og.i18n.setLocale` */
@@ -743,6 +745,7 @@ export const SYMBOLS: readonly string[] = [
   "og_platform_save_settings",
   "og_platform_result",
   "og_platform_info",
+  "og_platform_now",
   "og_i18n_load",
   "og_i18n_set_locale",
   "og_i18n_locale",
