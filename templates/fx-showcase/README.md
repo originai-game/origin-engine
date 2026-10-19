@@ -10,7 +10,10 @@ badge over every frame. The E5 round adds eight stations (`src/e5.ts`):
 atmosphere, weather, water, material shaders and the physics beyond rigid
 bodies, each with its own playtest. An E5 station's world is built when it
 is first shown (a marker entity `e5-<station>` records it), so a run that
-never shows one never simulates its fluid, cloth, ropes and ragdoll.
+never shows one never simulates its fluid, cloth, ropes and ragdoll. The
+phase 2 animation and physics round adds four more (`src/anim-physics.ts`,
+built the same way): retargeting, a 2D ragdoll, cloth that folds on itself
+and fluids that layer and blend.
 
 ```sh
 og run templates/fx-showcase                        # the window
@@ -47,6 +50,10 @@ as evidence. `og polish .` (2026-10-19): taste 100, feel 97.
 | `joints` | `og.Joint`: a motorised hinge, a chain of ball joints, a spring; the walker as an `og.Ragdoll` (rig from its skeleton) going limp from its walk at 0.67 s |
 | `rope` | `og.Rope` drawn to a ball on a rope joint, a slack rope in the wind, two `og.Cloth` flags in gusts (pinned on the top edge and at the top corners) |
 | `fluid` | an orthographic view of `og.Fluid2D` water and a viscous orange fluid drawn as metaballs in a basin, and an `og.WaterLine` pond drawn by `og.Water2D` where a dropped crate floats |
+| `retarget` | one walk from `anims/humanoid-clips.glb` on three characters of other proportions and bone names: the walker (Blender names) and the stout (Unreal names) retargeted at run time with `og.anim.retarget`, the strider (Mixamo names, `rigs/strider.ogt`) by the cook from `models/strider.glb.ogt`'s `animation { library }`; each strides at its legs' length with its feet planted (foot IK) |
+| `ragdoll2d` | a 2D world (`og.Physics.profile` 2): the side-on `models/puppet2d.glb` walks on a ledge, then goes limp as an `og.Ragdoll` of rapier2d bones on hinges about z and is knocked off it |
+| `cloth` | an `og.Cloth` sheet with `thickness` (self-collision), `substeps` and `friction`, lowered onto the floor while its bar sweeps back and forth, laid in folds layer on layer without passing through itself |
+| `fluids` | eight `og.Fluid2D` in one frame: a heavy blue fluid (`density` 3) released beside a light orange one slides under it (one `group`, `mixing` 0), red poured on yellow blends into one orange (`mixing` 1), and four cups of lone fluids |
 
 `tests/frames.og.ts` shows each station, waits for its effects (TAA,
 particles) to settle, takes its frame at 1280×720 and compares it with

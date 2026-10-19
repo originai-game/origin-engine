@@ -14,6 +14,9 @@
                                    Armature node scaled by 0.01, each bone's
                                    +Y along the bone, arms in an A-pose, a
                                    thigh of 0.70 and a shin of 0.44 m; no clips.
+  assets/models/puppet2d.glb       a side-on 2D figure for the 2D ragdoll: every
+                                   bone in the xy plane, near limbs light and far
+                                   ones dark, a walk in place turning about z.
   assets/models/stout.glb          a short wide character with Unreal
                                    mannequin names (pelvis, thigh_l, calf_l,
                                    ...), each bone's +X along the bone, a thigh
@@ -464,3 +467,140 @@ character(os.path.join(ROOT, "assets/models/stout.glb"), stout, index, pos, chil
           [0.85, 0.5, 0.15, 1], {"hips": 0.2, "spine": 0.22, "chest": 0.24, "neck": 0.07, "head": 0.16,
                                    "shoulder": 0.07, "upper_arm": 0.075, "forearm": 0.07, "hand": 0.06,
                                    "thigh": 0.1, "shin": 0.085, "foot": 0.07, "toe": 0.06}, "stout")
+
+
+# ── a side-on 2D puppet for the 2D ragdoll ────────────────────────────────
+
+def puppet(path):
+    """A side-on figure facing +x with every bone in the xy plane (identity
+    rest rotations, Blender names), the near limbs at z +0.06 and the far
+    ones at -0.06, skinned flat boxes in two materials (near light, far
+    dark), and a walk in place whose rotations are all about z."""
+    r = Rig(1.0)
+    root = r.node("Puppet", None, (0, 0, 0))
+    pos = {"hips": (0, 0.95, 0), "spine": (0, 1.2, 0), "head": (0, 1.55, 0)}
+    for side, z in (("L", 0.06), ("R", -0.06)):
+        pos.update({f"upper_arm.{side}": (0, 1.5, z), f"forearm.{side}": (0, 1.22, z), f"hand.{side}": (0, 0.97, z),
+                    f"thigh.{side}": (0, 0.92, z * 0.6), f"shin.{side}": (0, 0.5, z * 0.6), f"foot.{side}": (0, 0.1, z * 0.6)})
+    parent = {"hips": None, "spine": "hips", "head": "spine"}
+    for s_ in "LR":
+        parent.update({f"upper_arm.{s_}": "spine", f"forearm.{s_}": f"upper_arm.{s_}", f"hand.{s_}": f"forearm.{s_}",
+                       f"thigh.{s_}": "hips", f"shin.{s_}": f"thigh.{s_}", f"foot.{s_}": f"shin.{s_}"})
+    order = ["hips", "spine", "head"] + [f"{b}.{s_}" for s_ in "LR" for b in ("upper_arm", "forearm", "hand")] \
+        + [f"{b}.{s_}" for s_ in "LR" for b in ("thigh", "shin", "foot")]
+    index = {}
+    for b in order:
+        index[b] = r.node(b, root if parent[b] is None else index[parent[b]], pos[b])
+    g = Gltf()
+    joints = list(range(1, len(r.names)))
+    joint_of = {n: j for j, n in enumerate(joints)}
+    # Segments: (bone, from, to, half width).
+    ends = {"hips": ("hips", "spine", 0.13), "spine": ("spine", "head", 0.12)}
+    for s_ in "LR":
+        ends.update({f"upper_arm.{s_}": (f"upper_arm.{s_}", f"forearm.{s_}", 0.05),
+                     f"forearm.{s_}": (f"forearm.{s_}", f"hand.{s_}", 0.045),
+                     f"thigh.{s_}": (f"thigh.{s_}", f"shin.{s_}", 0.07),
+                     f"shin.{s_}": (f"shin.{s_}", f"foot.{s_}", 0.055)})
+    prims = []
+    for near in (True, False):
+        P, N, J, W, I = [], [], [], [], []
+
+        def quad(cx, cy, cz, hx, hy, joint):
+            """A flat box (2 cm deep) centred on (cx, cy, cz)."""
+            for n, u, v in FACES:
+                base = len(P) // 3
+                for su, sv in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
+                    half = (hx, hy, 0.01)
+                    p = [(cx, cy, cz)[k] + half[k] * (n[k] + su * u[k] + sv * v[k]) for k in range(3)]
+                    P.extend(r6(p))
+                    N.extend(n)
+                    J.extend((joint, 0, 0, 0))
+                    W.extend((1.0, 0.0, 0.0, 0.0))
+                a, b, c, d = base, base + 1, base + 2, base + 3
+                cross = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]]
+                if sum(cross[k] * n[k] for k in range(3)) > 0:
+                    I.extend((a, b, c, a, c, d))
+                else:
+                    I.extend((a, c, b, a, d, c))
+
+        for bone, (a, b, w) in ends.items():
+            if bone.endswith(".R") == near:
+                continue
+            pa, pb = pos[a], pos[b]
+            quad(pa[0], (pa[1] + pb[1]) / 2, pa[2], w, abs(pa[1] - pb[1]) / 2 + 0.02, joint_of[index[bone]])
+        if near:
+            quad(0.02, 1.68, 0.0, 0.13, 0.14, joint_of[index["head"]])
+            for s_ in "L":
+                h = pos[f"hand.{s_}"]
+                quad(0.0, h[1] - 0.05, h[2], 0.045, 0.06, joint_of[index[f"hand.{s_}"]])
+                f = pos[f"foot.{s_}"]
+                quad(0.07, f[1] - 0.05, f[2], 0.12, 0.045, joint_of[index[f"foot.{s_}"]])
+        else:
+            for s_ in "R":
+                h = pos[f"hand.{s_}"]
+                quad(0.0, h[1] - 0.05, h[2], 0.045, 0.06, joint_of[index[f"hand.{s_}"]])
+                f = pos[f"foot.{s_}"]
+                quad(0.07, f[1] - 0.05, f[2], 0.12, 0.045, joint_of[index[f"foot.{s_}"]])
+        nv = len(P) // 3
+        lo = [min(P[k::3]) for k in range(3)]
+        hi = [max(P[k::3]) for k in range(3)]
+        prims.append({
+            "attributes": {"POSITION": g.add(P, "f", nv, 5126, "VEC3", (lo, hi), 34962),
+                           "NORMAL": g.add(N, "f", nv, 5126, "VEC3", None, 34962),
+                           "JOINTS_0": g.add(J, "H", nv, 5123, "VEC4", None, 34962),
+                           "WEIGHTS_0": g.add(W, "f", nv, 5126, "VEC4", None, 34962)},
+            "indices": g.add(I, "I", len(I), 5125, "SCALAR", None, 34963),
+            "material": 0 if near else 1,
+        })
+    ibm = []
+    for n in joints:
+        ibm.extend(r.inverse_bind(n))
+    a_ibm = g.add(ibm, "f", len(joints), 5126, "MAT4")
+    # The walk in place: every rotation about z (the plane's normal).
+    animations = []
+    Z = (0, 0, 1)
+    rate, duration = 30, 1.0
+    n = int(round(duration * rate)) + 1
+    times = [i / rate for i in range(n)]
+    ph = lambda t: t / duration * TAU
+    chans = [
+        (index["hips"], "translation", lambda t: (0.0, 0.95 + 0.02 * math.cos(2 * ph(t)), 0.0)),
+        (index["spine"], "rotation", lambda t: qaxis(Z, -0.06 + 0.03 * math.cos(2 * ph(t)))),
+    ]
+    for s_, o in (("L", 0.0), ("R", math.pi)):
+        chans += [
+            (index[f"thigh.{s_}"], "rotation", (lambda oo: lambda t: qaxis(Z, 0.45 * math.sin(ph(t) + oo)))(o)),
+            (index[f"shin.{s_}"], "rotation", (lambda oo: lambda t: qaxis(Z, -0.6 * max(0.0, math.cos(ph(t) + oo)) ** 2))(o)),
+            (index[f"upper_arm.{s_}"], "rotation", (lambda oo: lambda t: qaxis(Z, -0.4 * math.sin(ph(t) + oo)))(o)),
+            (index[f"forearm.{s_}"], "rotation", (lambda oo: lambda t: qaxis(Z, 0.35 + 0.15 * math.sin(ph(t) + oo)))(o)),
+        ]
+    samplers, channels = [], []
+    for node, path_, f in chans:
+        vals = []
+        for t in times:
+            vals.extend(r6(f(t)))
+        lanes = len(f(0.0))
+        ti = g.add(times, "f", n, 5126, "SCALAR", ([min(times)], [max(times)]))
+        vi = g.add(vals, "f", n, 5126, {3: "VEC3", 4: "VEC4"}[lanes])
+        samplers.append({"input": ti, "output": vi, "interpolation": "LINEAR"})
+        channels.append({"sampler": len(samplers) - 1, "target": {"node": node, "path": path_}})
+    animations.append({"name": "walk", "samplers": samplers, "channels": channels})
+    body = len(r.names)
+    doc = {
+        "asset": {"version": "2.0", "generator": "og-anim make_humanoids.py", "copyright": "CC0 1.0, Origin Engine authors"},
+        "scene": 0,
+        "scenes": [{"name": "puppet", "nodes": [0]}],
+        "nodes": nodes_of(r, {0: [body]}) + [{"name": "body", "mesh": 0, "skin": 0}],
+        "meshes": [{"name": "puppet", "primitives": prims}],
+        "materials": [
+            {"name": "near", "pbrMetallicRoughness": {"baseColorFactor": [0.95, 0.62, 0.25, 1], "metallicFactor": 0, "roughnessFactor": 0.8}},
+            {"name": "far", "pbrMetallicRoughness": {"baseColorFactor": [0.55, 0.32, 0.14, 1], "metallicFactor": 0, "roughnessFactor": 0.8}},
+        ],
+        "skins": [{"name": "puppet", "joints": joints, "inverseBindMatrices": a_ibm, "skeleton": joints[0]}],
+        "animations": animations,
+    }
+    size = g.write(path, doc)
+    print(f"{path}: {size} bytes, {len(r.names)} nodes, 1 clip")
+
+
+puppet(os.path.join(ROOT, "assets/models/puppet2d.glb"))

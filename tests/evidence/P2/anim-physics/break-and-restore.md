@@ -17,3 +17,7 @@ was changed to make it pass.
 | `og-physics` `tests/fluid_groups.rs` `with_mixing_the_two_fluids_blend_into_one` | the mixing rate 0 | "the mix evened out (±0.5)" |
 | `og-tests` `tests/atmosphere.rs` `ten_fluids_draw_in_one_frame_and_a_group_blends_its_colours` | a group's particles drawn into their own fluid's channel instead of by their mix | the frame against its reference: "RMSE 0.02016 > 0.01000; 17517 pixels (1.901%) differ by more than 32" |
 | `og-ui` `tests/button_contrast.rs` `every_button_role_reads_at_4_5_to_1_on_its_fill_in_both_themes_and_every_state` | the danger button's old fill (the neutral `fill`, `fillStrong` hovered) with the platform's new danger ink | "under 4.5:1": ten dark-theme danger rows, worst "dark Danger hovered on surfaceRaised: 3.42:1" |
+| fx-showcase `tests/retarget.og.ts` | og-anim's leg ratio forced to 1 (hips travel not scaled) | "the stout's stride is its legs' (1.007 of the walker's)" and the frame (RMSE 0.03194) |
+| fx-showcase `tests/ragdoll2d.og.ts` | the station left in the 3D profile | "its bones kept their layers in the plane (largest \|z\| 0.923)" and the frame (RMSE 0.03148) |
+| fx-showcase `tests/cloth.og.ts` | the sheet's thickness 0 (no self-collision) | "no layer passed through another (closest pair 0.00 × the thickness)", "the sheet piled up in layers (38 points …)" and the frame (RMSE 0.06831) |
+| fx-showcase `tests/fluids.og.ts` | the heavy fluid's density 1 | "the heavy fluid sank under the light one (heavy -1.60 m, light -1.59 m)" and the frame (RMSE 0.06378) |
