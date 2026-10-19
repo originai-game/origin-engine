@@ -99,6 +99,23 @@ test("the dispatcher refuses a system id it has no system for", () => {
   expect(advanced.reason).toMatch(/tick 0, system 'RtGhost': the dispatcher has no system with callback id 9999/);
 });
 
+test("with deferStart, GameDesc.start waits for the first tick boundary; asking the probe who is speaking is not one", () => {
+  let starts = 0;
+  const game = og.game({ start: () => void starts++ }) as unknown as GameToken;
+  const created = createEngine(game, { deferStart: true });
+  if (!created.ok) throw new Error(created.reason);
+  const engine = created.value;
+  // The web Worker attaches its renderer and hands over the transcoded
+  // textures here, between createEngine and the first tick boundary.
+  expect(starts).toBe(0);
+  expect((engine.probe.hello() as { substrate?: string }).substrate).toBe("origin-engine");
+  expect(starts).toBe(0);
+  expect(engine.advance(0).ok).toBeTrue();
+  expect(starts).toBe(1);
+  expect(engine.advance(2).ok).toBeTrue();
+  expect(starts).toBe(1);
+});
+
 test("after/before order systems regardless of declaration order", () => {
   const engine = start(og.game({ systems: [CopyB, SetA], commands: { spawn: spawnMovers } }) as unknown as GameToken);
   engine.command("spawn", ["1"]);
