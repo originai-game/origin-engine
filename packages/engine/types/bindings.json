@@ -2276,6 +2276,23 @@
           "tunable": true
         },
         {
+          "name": "thickness",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "substeps",
+          "column": "u32",
+          "default": 1
+        },
+        {
+          "name": "friction",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
           "name": "material",
           "column": "Material",
           "default": 0
@@ -2342,6 +2359,23 @@
           "name": "viscosity",
           "column": "f32",
           "default": 0.15,
+          "tunable": true
+        },
+        {
+          "name": "group",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "density",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "mixing",
+          "column": "f32",
+          "default": 0,
           "tunable": true
         },
         {

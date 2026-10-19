@@ -13179,7 +13179,7 @@
     "Cloth": {
       "x-og-kind": "component",
       "x-og-module": "physics",
-      "description": "A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind and collision against every solid collider. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour).",
+      "description": "A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour).",
       "type": "object",
       "properties": {
         "columns": {
@@ -13268,6 +13268,31 @@
           "x-og-unit": "m",
           "x-og-tunable": true
         },
+        "thickness": {
+          "type": "number",
+          "description": "Self-collision: how far apart its points keep from the points of the cloth that are not their near neighbours (0: none). About `spacing` keeps a cloth that folds or piles up from passing through itself.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "substeps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Simulation steps per tick, each integrating and then solving `iterations` passes; with self-collision enough that a point moves less than `thickness` per step (a point moves at most half the thickness a step).",
+          "default": 1,
+          "minimum": 1,
+          "maximum": 16
+        },
+        "friction": {
+          "type": "number",
+          "description": "How much of its sliding a point touching a solid loses each step (0: it slides freely; near 1 it sticks where it lands, so a cloth lowered onto the floor folds instead of spreading).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
         "material": {
           "$ref": "#/$defs/Material",
           "description": "The material it is drawn with (og.render.standardMaterial); 0 is a plain cloth.",
@@ -13284,7 +13309,7 @@
     "Fluid2D": {
       "x-og-kind": "component",
       "x-og-module": "physics",
-      "description": "A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`.",
+      "description": "A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`.",
       "type": "object",
       "properties": {
         "count": {
@@ -13349,6 +13374,29 @@
           "default": 0.15,
           "minimum": 0,
           "maximum": 4,
+          "x-og-tunable": true
+        },
+        "group": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Fluids sharing a group above 0 push, drag and (by `mixing`) mix with each other as one fluid, at most four to a group (in entity order; a fifth is simulated alone), and are drawn as one surface whose colour follows the mix; 0 keeps the fluid to itself.",
+          "default": 0
+        },
+        "density": {
+          "type": "number",
+          "description": "How heavy its particles are against the group's other fluids: a heavier fluid sinks under a lighter one.",
+          "default": 1,
+          "minimum": 0.05,
+          "maximum": 20,
+          "x-og-tunable": true
+        },
+        "mixing": {
+          "type": "number",
+          "description": "How readily it mixes with the group's other fluids: 0 keeps them apart in layers (the boundary held), 1 blends them where they touch (their mix, colour and weight even out).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
           "x-og-tunable": true
         },
         "gravityScale": {
@@ -13598,7 +13646,7 @@
     "Ragdoll": {
       "x-og-kind": "component",
       "x-og-module": "physics",
-      "description": "A ragdoll over an og.Skeleton (3D): a capsule body per bone with a parent, ball joints with cone limits between them, built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state (the og.physics state block), not entities.",
+      "description": "A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy plane at their animated z, for a skeleton laid out in that plane), built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state (the og.physics state block), not entities.",
       "type": "object",
       "properties": {
         "weight": {
