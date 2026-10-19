@@ -75,11 +75,18 @@ fn spheres_20k_are_batched_automatically() {
     assert_eq!(s.instances, 20_001, "20,000 spheres and the ground");
     assert_eq!(s.batches, 2, "one batch per (mesh, material)");
     assert_eq!(s.shadow_passes, 3, "three cascades");
-    // At most one draw per batch per pass: 3 cascades + main, then sky and post.
+    // At most one draw per batch per pass: 3 cascades + main, then sky and
+    // post; GPU culling adds one occluder depth draw per opaque batch.
     assert!(
-        s.draw_calls <= 2 * 4 + 2,
-        "{} draw calls for 2 batches",
-        s.draw_calls
+        s.occluder_draws <= 2,
+        "{} occluder draws for 2 batches",
+        s.occluder_draws
+    );
+    assert!(
+        s.draw_calls - s.occluder_draws <= 2 * 4 + 2,
+        "{} draw calls ({} occluder) for 2 batches",
+        s.draw_calls,
+        s.occluder_draws
     );
     assert!(s.triangles > 0 && s.triangles <= 20_000 * 384 + 2);
 }

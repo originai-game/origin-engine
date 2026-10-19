@@ -103,6 +103,8 @@ pub fn render_built(built: &mut GfxScene) -> Result<Rendered, String> {
             .render(&built.scene, &RenderTarget::Offscreen)
             .map_err(|e| e.to_string())?;
     }
+    // The GPU culling's counts of this frame, not an earlier one's.
+    renderer.finish_stats(&mut stats);
     let image = renderer.read_offscreen().map_err(|e| e.to_string())?;
     Ok(Rendered {
         image,

@@ -130,6 +130,11 @@ impl Frustum {
         Frustum(frustum_planes(m).to_vec())
     }
 
+    /// Its planes (inside: `dot(xyz, p) + w >= 0`).
+    pub fn planes(&self) -> &[Vec4] {
+        &self.0
+    }
+
     /// Whether a sphere touches the volume (conservative).
     #[inline]
     pub fn intersects_sphere(&self, center: Vec3, radius: f32) -> bool {

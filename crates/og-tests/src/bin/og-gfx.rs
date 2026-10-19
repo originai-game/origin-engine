@@ -10,6 +10,7 @@
 //! times, and the comparison with the committed reference when one exists.
 //! Frame times run the scene's per-frame update (moving sprites) each frame.
 //! `OG_GFX_DEBUG_CASCADES=1` draws the cascade debug view instead.
+//! `OG_GFX_CULLING=cpu` culls on the CPU on every tier (`Culling::Cpu`).
 
 use og_render::{Antialias, Bloom, Exposure, FrameStats, Light, LightKind, RenderTarget, Renderer};
 use og_tests::scenes::GfxScene;
@@ -107,30 +108,31 @@ fn main() {
 }
 
 /// Renders `frames` frames of a built scene (after its warm-up frames) and
-/// returns the mean wall time and CPU-submit time per frame in ms.
+/// returns the mean wall time and CPU-submit time per frame in ms, and the
+/// last frame's statistics (exact, after the timing).
 fn time_frames(
     renderer: &mut Renderer,
     built: &mut GfxScene,
     first_frame: u32,
     frames: u32,
-) -> Result<(f64, f64), String> {
+) -> Result<(f64, f64, FrameStats), String> {
     let t = Instant::now();
     let mut cpu = 0.0;
+    let mut stats = FrameStats::default();
     for f in 0..frames {
         if let Some(update) = built.update {
             update(&mut built.scene, first_frame + f);
         }
         let c = Instant::now();
-        renderer
+        stats = renderer
             .render(&built.scene, &RenderTarget::Offscreen)
             .map_err(|e| e.to_string())?;
         cpu += c.elapsed().as_secs_f64();
     }
     renderer.wait_idle().map_err(|e| e.to_string())?;
-    Ok((
-        t.elapsed().as_secs_f64() * 1000.0 / frames as f64,
-        cpu * 1000.0 / frames as f64,
-    ))
+    let ms = t.elapsed().as_secs_f64() * 1000.0 / frames as f64;
+    renderer.finish_stats(&mut stats);
+    Ok((ms, cpu * 1000.0 / frames as f64, stats))
 }
 
 fn run(
@@ -140,6 +142,9 @@ fn run(
     capture: Option<&Path>,
 ) -> Result<String, String> {
     let mut built = scenes::build(name)?;
+    if std::env::var("OG_GFX_CULLING").is_ok_and(|v| v == "cpu") {
+        built.desc.culling = og_render::Culling::Cpu;
+    }
     if std::env::var_os("OG_GFX_DEBUG_CASCADES").is_some() {
         built.scene.debug = og_render::DebugView::Cascades;
     }
@@ -157,6 +162,7 @@ fn run(
             .render(&built.scene, &RenderTarget::Offscreen)
             .map_err(|e| e.to_string())?;
     }
+    renderer.finish_stats(&mut stats);
     renderer.wait_idle().map_err(|e| e.to_string())?;
     let setup_ms = t0.elapsed().as_secs_f64() * 1000.0;
     // The reference frame is the last of the scene's own frames.
@@ -187,8 +193,24 @@ fn run(
         stats.glyphs,
         stats.sprite_draws
     );
-    if let Some((ms, cpu)) = timing {
+    if stats.gpu_culling {
+        let _ = write!(
+            line,
+            " gpu_culling occluded={} occluder_draws={}",
+            stats.occluded, stats.occluder_draws
+        );
+    }
+    if let Some((ms, cpu, last)) = &timing {
         let _ = write!(line, " frame={ms:.3}ms cpu={cpu:.3}ms ({frames} frames)");
+        // GPU culling's occlusion uses the frame before's visibility: the
+        // last timed frame shows it settled.
+        if last.gpu_culling {
+            let _ = write!(
+                line,
+                " last: draws={} triangles={} occluded={} shadow_casters={}",
+                last.draw_calls, last.triangles, last.occluded, last.shadow_casters
+            );
+        }
     }
     if !built.applies.includes(info.tier) {
         let _ = write!(line, " (no reference on this tier)");
