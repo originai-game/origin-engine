@@ -125,6 +125,11 @@ registered schema and refuses a model path that does not exist.
   into MSDF atlases, scenes into component tables. Import settings live next
   to the source as `<file>.ogt` (`texture { kind normal }`,
   `font { charset latin chars "开始游戏" }`).
+- At load a cooked texture reaches the GPU block-compressed in the device's
+  format with its mips (BC7, and BC5 for normal maps, on desktop GPUs; ASTC
+  on Apple and most Android; ETC2 and EAC elsewhere), a quarter of RGBA8's
+  memory. Give textures sizes in multiples of 4 (powers of two are best): a
+  size that is not, pixel art (`kind pixel`) and fonts stay RGBA8.
 - Declare the characters a font must show (`chars`) rather than cooking a
   whole CJK charset: the full set is several times the size of the font.
 - Reusable production assets come through the platform's asset catalog into
@@ -213,6 +218,30 @@ target after the clips, `og.Blendshapes` weighs morph targets, and
 `og.AnimationEvent` reports a clip's named frames. Root motion is a
 `Skeleton` field. `templates/fx-showcase`'s walker is the pattern.
 
+**Retargeting** — one clip on characters of other proportions and bone
+names. Keep shared clips in an animation library (a glTF with a skeleton
+and clips, no mesh). At cook time, a character's import settings
+(`models/hero.glb.ogt`, `type import`) pull them in:
+
+```text
+animation {
+  library "anims/humanoid-clips.glb"   # its clips land in hero's #anim, retargeted
+  rig "rigs/hero.ogt"                  # optional: how hero's bones are named
+}
+```
+
+At run time, `og.anim.retarget(world, { clip, source, target })` answers a
+new clip for `target` (both skeletons from `og.load.animation`). The bones
+are found from the node names (Mixamo, VRM, Unity, Rigify, Unreal, Blender);
+when they are not, write a `type rig` .ogt (`scheme mixamo`, or
+`hips "Root_Pelvis"` per bone), load it with `og.load.rig` and pass it as
+`sourceRig`/`targetRig`. `og.anim.humanoid(world, { skeleton })` says which
+bones were found. The target keeps its bone lengths, its hips travel the
+source's distance scaled by the leg ratio (so root motion matches its
+stride), and its legs are solved so planted feet stay on the ground
+(`footIk`, on by default). The fx-showcase `retarget` station is the
+pattern.
+
 ## 10. Effects
 
 Every effect is off until the game turns it on, as data:
@@ -240,7 +269,11 @@ Every effect is off until the game turns it on, as data:
   sprites also take `flash`, `glow` and `blend`.
 - **Materials** — toon, rim, dissolve, hit flash and outline are
   `og.render.standardMaterial` fields; animate them with
-  `og.render.updateMaterial(world, material, { dissolve: t })`.
+  `og.render.updateMaterial(world, material, { dissolve: t })`. Beside
+  three.js's standard fields (metalness, roughness, emissive, `normalMap` in
+  glTF's tangent frame, `alphaTest`, `transparent`, `side: "double"`,
+  `unlit`), `clearcoat` and `clearcoatRoughness` lay a glossy lacquer over a
+  rough base (car paint, varnish). A non-uniform `scale` shades correctly.
 - **HUD** — `og.render.sprite` / `og.render.text` with `screen: true` draw
   in CSS pixels from the top-left over the finished frame, untouched by
   post effects, with an optional `clip`; `og.ui` uses the same layer.
@@ -261,11 +294,14 @@ damage number or a pickup that rises and fades by itself (amounts: og-feel
   the glow looking into the sun, `sky` for how much of the sky it covers.
 - **Sky** — `og.Sky { enabled, zenith, horizon, ground, sunDirection,
   sunColor, sunSize, glow, stars }` draws the sky per pixel and lights the
-  scene by it.
-- **Day and night** — `og.DayNight { enabled, start, speed, tilt, azimuth }`:
-  the clock is `start + seconds × speed` hours from the tick, so it replays;
-  it drives the first `og.DirectionalLight` (the sun by day, a dim moon by
-  night), the sky, the ambient light and the fog's tint. Read the clock with
+  scene by it; `moonSize` (degrees, 0 none), `moonPhase` (0 new, 0.25 first
+  quarter, 0.5 full, 0.75 last quarter), `moonIntensity`, `moonColor` and
+  `moonDirection` (zero: opposite the sun) add a moon disc over the stars.
+- **Day and night** — `og.DayNight { enabled, start, speed, tilt, azimuth,
+  moonSize, moonPhase }`: the clock is `start + seconds × speed` hours from
+  the tick, so it replays; it drives the first `og.DirectionalLight` (the
+  sun by day, a dim moon by night, where the moon disc hangs), the sky, the
+  ambient light and the fog's tint. Read the clock with
   `og.atmosphere.timeOfDay(world)` (declare `og.DayNight` among the system's
   reads) to light lamps at dusk.
 - **Weather** — `og.Weather { kind: WEATHER_RAIN | WEATHER_SNOW |
@@ -366,10 +402,12 @@ message, its lines counted in your hooks. In the game:
 `og.render.shaderMaterial(world, must(og.load.shader(world,
 "shaders/dissolve.ogt")), { color, alphaTest: 0.5 })` makes the material,
 `og.render.setShaderParam(world, material, "amount", [0.4])` sets a
-parameter. Alpha below `alphaTest` discards the fragment (a dissolve);
-shadows and the depth prepass use the mesh undisplaced; skinned meshes draw
-without the hooks. `templates/fx-showcase/assets/shaders/` has a dissolve
-and wind-swayed grass.
+parameter, and `og.render.setMaterialShader(world, material, shader)` gives
+an existing material (a loaded model's, from `GltfInfo.materials`) the
+hooks. Alpha below `alphaTest` discards the fragment (a dissolve). Skinned
+meshes run the hooks too, and shadows and the depth prepass see the mesh
+where `vertex_offset` moved it. `templates/fx-showcase/assets/shaders/` has a
+dissolve, wind-swayed grass and a ripple on the walking walker.
 
 ## 13. Physics
 
@@ -393,14 +431,25 @@ deterministic and part of snapshots (`reference/physics.md`):
   `templates/archetypes/runner`'s courier is one.
 - `og.Vehicle` — a raycast car (3D, `throttle`, `steer`, `brake`; wheels
   from `og.physics.vehicleWheels`) or a car on wheel joints (2D).
-- `og.Rope` and `og.Cloth` — Verlet, drawn by the engine when `visible`;
-  `og.Fluid2D` — a particle fluid drawn as metaballs on a sprite layer.
+- `og.Rope` and `og.Cloth` — Verlet, drawn by the engine when `visible`.
+  A cloth that folds or piles up (a dropped sheet, a cape on the ground)
+  wants `thickness` about its `spacing` so it never passes through
+  itself, `substeps` 2–4 and `friction` near 1 so it lies where it lands
+  (self-collision costs about 1 ms a tick per 1,000 points).
+- `og.Fluid2D` — a particle fluid drawn as metaballs on a sprite layer.
+  Give two or more fluids the same `group` and they interact: by
+  `density` the heavier sinks under the lighter (oil on water), by
+  `mixing` 0 they stay in layers and by 1 they blend, colour and weight
+  evening out where they touch; a group draws as one surface. Up to
+  sixteen fluids draw a frame (four to a group).
 - `og.Ragdoll` — give the entity a rig
   (`og.physics.setRagdollRig(world, e, must(og.physics.ragdollRigFromSkeleton(world, anim.skeleton)))`),
   then set `weight` 1 to go limp. At weight 0 its bodies follow the
   animation's pose every tick, so the fall starts from the pose and its
   velocity; the model is drawn blended from the animation to the bones over
-  `blendTime`.
+  `blendTime`. In a 2D world (`og.Physics.profile` 2) the same works for a
+  side-on skinned model whose bones lie in the xy plane: the bones are
+  rapier2d bodies on hinges about z (the fx-showcase `ragdoll2d` station).
 
 Readouts (`ropePoints`, `clothPoints`, `fluidParticles`, `waterHeight`,
 `vehicleWheels`, `ragdollPose`) show the last step. `templates/fx-showcase`
@@ -416,6 +465,12 @@ draws (share geometry and one material per look), particle systems (cap
 per-tick TypeScript over many entities (iterate archetype columns, never
 `world.get` per entity; spread expensive work over ticks, as og.ai's
 `thinkEvery` does), and loads in the middle of play (load in `start`).
+Point and spot lights are clustered (Forward+): a pixel shades only the
+lights whose `distance` reaches it, so a few hundred lamps, torches or
+neon signs cost little; keep each `distance` as short as the look allows.
+Up to `MAX_LIGHTS` (256) in view are drawn, the brightest kept past that,
+and the first two in view with `castShadow` cast shadows (shadows are the
+expensive part).
 
 ## 15. Where to look things up
 

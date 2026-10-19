@@ -241,6 +241,7 @@ pub(crate) fn load_gltf(eng: &Engine, path: &str) -> Result<usize, String> {
     if let Some(&i) = eng.assets.borrow().by_path.get(&format!("gltf:{id}")) {
         return Ok(i);
     }
+    let formats = texture_formats(eng);
     let (model, textures) = {
         let assets = eng.assets.borrow();
         let (bytes, bundle) = assets.blob(&id)?;
@@ -253,7 +254,7 @@ pub(crate) fn load_gltf(eng: &Engine, path: &str) -> Result<usize, String> {
             let tex = bundle
                 .texture(&t.id, tb.bytes())
                 .map_err(|e| e.to_string())?;
-            let data = match hooks().map(|h| h.texture(&tex)) {
+            let data = match hooks().map(|h| h.texture(&tex, formats.as_ref())) {
                 Some(Fetch::Ready(d)) => d,
                 Some(Fetch::Pending) => {
                     return Err(format!("{}: the texture is still being transcoded", t.id));
@@ -276,7 +277,7 @@ pub(crate) fn load_gltf(eng: &Engine, path: &str) -> Result<usize, String> {
             }
         }
     }
-    let parts = model.add_to(&mut rs.scene, &textures);
+    let parts = model.add_to_with(&mut rs.scene, &textures);
     let mut geometries = Vec::new();
     let mut materials = Vec::new();
     for &(mesh, material, _) in &parts.parts {
@@ -387,6 +388,16 @@ pub(crate) fn load_font(eng: &Engine, path: &str) -> Result<usize, String> {
     Ok(assets.fonts.len() - 1)
 }
 
+/// The encodings the attached renderer takes (`None` before one is attached:
+/// textures then load as RGBA8).
+fn texture_formats(eng: &Engine) -> Option<og_render::TextureFormats> {
+    eng.render
+        .borrow()
+        .backend
+        .as_ref()
+        .and_then(|b| b.texture_formats())
+}
+
 /// `og.load.texture`: a cooked texture added to the renderer once; the
 /// answer is its index in the render state's textures.
 pub(crate) fn load_texture(eng: &Engine, path: &str) -> Result<usize, String> {
@@ -395,6 +406,7 @@ pub(crate) fn load_texture(eng: &Engine, path: &str) -> Result<usize, String> {
         return Ok(i);
     }
     let pixel;
+    let formats = texture_formats(eng);
     let data = {
         let assets = eng.assets.borrow();
         let (bytes, bundle) = assets.blob(&id)?;
@@ -402,7 +414,7 @@ pub(crate) fn load_texture(eng: &Engine, path: &str) -> Result<usize, String> {
             .texture(&id, bytes.bytes())
             .map_err(|e| e.to_string())?;
         pixel = tex.is_pixel_art();
-        match hooks().map(|h| h.texture(&tex)) {
+        match hooks().map(|h| h.texture(&tex, formats.as_ref())) {
             Some(Fetch::Ready(d)) => d,
             Some(Fetch::Pending) => {
                 return Err(format!("{id}: the texture is still being transcoded"));
@@ -412,7 +424,7 @@ pub(crate) fn load_texture(eng: &Engine, path: &str) -> Result<usize, String> {
         }
     };
     let mut rs = eng.render.borrow_mut();
-    let handle = rs.scene.add_texture(data);
+    let handle = rs.scene.add_texture_source(data);
     if pixel {
         rs.scene
             .set_texture_filter(handle, og_render::TextureFilter::Nearest);

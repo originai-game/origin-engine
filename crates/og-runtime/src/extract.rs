@@ -10,8 +10,8 @@
 //!   transform, composed from `og.Transform` down the `og.Parent` chain;
 //! - entities with `og.Mesh` (geometry and material handles), when og-core
 //!   can register its bool fields;
-//! - the first `og.DirectionalLight` (else the renderer's default sun), up to
-//!   `MAX_LIGHTS` `og.PointLight` / `og.SpotLight`;
+//! - the first `og.DirectionalLight` (else the renderer's default sun), the
+//!   `og.PointLight` / `og.SpotLight` (og-render culls and clusters them);
 //! - the `og.Camera` and `og.RenderSettings` resources;
 //! - the text `og.render.text` queued during the tick, with cooked
 //!   multi-page MSDF fonts mapped to one `MsdfFont` per page.
@@ -26,14 +26,20 @@ use std::collections::BTreeMap;
 /// A renderer the host attached to an engine (an OffscreenCanvas surface on
 /// the web, an offscreen target on native).
 pub trait RenderBackend {
-    /// The IDL `RenderTier` (`webgpu`, `webgl2`, `metal`, `vulkan`), or the
-    /// reference-frame tier name (`vulkan-cpu`).
+    /// The IDL `RenderTier` (`webgpu`, `webgl2`, `metal`, `vulkan`,
+    /// `vulkan-cpu`), og-render's `tier_name`, which also names the
+    /// reference frames.
     fn tier(&self) -> String;
     /// The render target in device pixels.
     fn size(&self) -> (u32, u32);
     /// What `RenderOptions.antialias` resolved to: `off`, `msaa4` or `taa`.
     fn antialias(&self) -> String {
         "off".into()
+    }
+    /// The texture encodings the device takes (og-render's
+    /// `RenderInfo::texture_formats`): loads transcode to them. `None`: RGBA8.
+    fn texture_formats(&self) -> Option<og_render::TextureFormats> {
+        None
     }
     /// Draw one frame of the scene to the display target.
     fn render(&mut self, scene: &RenderScene) -> Result<(), String>;
@@ -467,7 +473,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         }
     }
     // Lights: the first directional light, then point and spot lights in
-    // entity order (deterministic), at most MAX_LIGHTS of them drawn.
+    // entity order (deterministic); og-render culls them to the view and
+    // keeps at most MAX_LIGHTS.
     let forward = |m: Mat4| m.transform_vector3(Vec3::NEG_Z).normalize_or_zero();
     let layouts = &rs.draw;
     if let Some(dl) = &layouts.directional

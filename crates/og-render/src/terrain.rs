@@ -478,6 +478,8 @@ pub(crate) struct TerrainPipelines<'a> {
     pub shadow_layout: &'a wgpu::BindGroupLayout,
     pub frame_wgsl: &'a str,
     pub lighting_wgsl: &'a str,
+    /// The local lights' cluster tables (`clusters.rs`), after the frame.
+    pub light_tables_wgsl: &'a str,
     pub samples: u32,
     pub white: wgpu::TextureView,
     pub flat_normal: wgpu::TextureView,
@@ -524,8 +526,9 @@ impl TerrainRenderer {
             label: Some("terrain"),
             source: wgpu::ShaderSource::Wgsl(
                 format!(
-                    "{}{}{common}{}",
+                    "{}{}{}{common}{}",
                     p.frame_wgsl,
+                    p.light_tables_wgsl,
                     p.lighting_wgsl,
                     include_str!("../shaders/terrain_lit.wgsl")
                 )

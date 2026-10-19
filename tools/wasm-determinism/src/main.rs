@@ -6,4 +6,6 @@ fn main() {
         "bouncing_boxes_hash {}",
         wasm_determinism::bouncing_boxes_hash()
     );
+    println!("physics_hash {}", wasm_determinism::physics_hash());
+    println!("anim_hash {}", wasm_determinism::anim_hash());
 }

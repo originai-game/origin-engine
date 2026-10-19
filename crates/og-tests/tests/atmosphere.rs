@@ -133,6 +133,57 @@ fn water_scenes_match_their_references() {
     check("fluid-2d");
 }
 
+/// The pixel of world point (x, y) in the fluid-groups scene's camera
+/// (orthographic, centred on (-0.4, 0.4), 7 units tall over 720 pixels).
+fn group_px(img: &RgbaImage, x: f32, y: f32) -> [f32; 3] {
+    let k = 720.0 / 7.0;
+    px(
+        img,
+        (640.0 + (x + 0.4) * k) as u32,
+        (360.0 - (y - 0.4) * k) as u32,
+    )
+}
+
+#[test]
+fn ten_fluids_draw_in_one_frame_and_a_group_blends_its_colours() {
+    check("fluid-groups");
+    let img = frame(&atmo::fluid_groups_scene());
+    // Six lone pools, each its own colour: more than the four of one field.
+    // Red, amber, green, blue, purple, pink: (a brighter, a darker channel).
+    let pools = [[0, 1], [0, 2], [1, 2], [2, 0], [2, 1], [0, 1]];
+    for (i, [hi, lo]) in pools.iter().enumerate() {
+        let c = group_px(&img, -5.0 + i as f32 * 2.0, 2.4);
+        assert!(
+            c[*hi] > c[*lo] + 60.0,
+            "pool {i} is drawn in its colour: {c:?}"
+        );
+    }
+    // The blended group: water blue on the left, oil orange on the right,
+    // and between them a blend of the two, not one or the other.
+    let (water, oil, mid) = (
+        group_px(&img, -4.8, -1.0),
+        group_px(&img, 0.2, -1.0),
+        group_px(&img, -2.5, -1.0),
+    );
+    assert!(
+        water[2] > water[0] + 60.0 && oil[0] > oil[2] + 60.0,
+        "water {water:?}, oil {oil:?}"
+    );
+    for k in [0, 2] {
+        let (lo, hi) = (water[k].min(oil[k]), water[k].max(oil[k]));
+        assert!(
+            mid[k] > lo + 30.0 && mid[k] < hi - 30.0,
+            "the band blends channel {k}: {mid:?} between {water:?} and {oil:?}"
+        );
+    }
+    // The layered group: purple under green, one surface with a boundary.
+    let (heavy, light) = (group_px(&img, 3.6, -1.35), group_px(&img, 3.6, -0.55));
+    assert!(
+        heavy[2] > heavy[1] + 40.0 && light[1] > light[2] + 40.0,
+        "heavy {heavy:?}, light {light:?}"
+    );
+}
+
 #[test]
 fn shader_hooks_match_their_reference() {
     check("shader-hooks");
@@ -440,6 +491,7 @@ fn a_replaced_mesh_draws_its_new_shape() {
         vertices: [(x - w, -1.0), (x + w, -1.0), (x + w, 1.0), (x - w, 1.0)]
             .iter()
             .map(|&(px, py)| og_render::Vertex {
+                tangent: [0.0; 4],
                 position: [px, py, 0.0],
                 normal: [0.0, 0.0, 1.0],
                 ..Default::default()

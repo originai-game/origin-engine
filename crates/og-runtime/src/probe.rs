@@ -356,16 +356,8 @@ pub(crate) fn attach(eng: &Engine, backend: Option<Box<dyn super::RenderBackend>
     if let (Some(tier), Ok(mut probe)) = (tier, eng.probe.try_borrow_mut()) {
         probe.set_capture(Box::new(RuntimeCapture {
             render: eng.render.clone(),
-            tier: ide_tier(&tier),
+            tier,
         }));
-    }
-}
-
-/// The IDL `RenderTier` of a backend tier name (`vulkan-cpu` is `vulkan`).
-fn ide_tier(tier: &str) -> String {
-    match tier {
-        "vulkan-cpu" => "vulkan".into(),
-        t => t.into(),
     }
 }
 

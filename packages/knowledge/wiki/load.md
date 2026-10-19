@@ -18,7 +18,7 @@ module load {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 2767</sub>
+<sub>`api.ogt` line 2788</sub>
 
 ## Contents
 
@@ -55,6 +55,7 @@ module load {
 | [`og.load.error`](#fn-error) | function | Why a load failed. |
 | [`og.load.gltfInfo`](#fn-gltfInfo) | function | What a ready glTF holds. |
 | [`og.load.animation`](#fn-animation) | function | Load a cooked glTF's animation (its `<model>#anim` blob: the rig, the clips, the skin and morph streams) and register its skeleton and clips with og.anim. Loading the same model again answers the same handles. |
+| [`og.load.rig`](#fn-rig) | function | Load a cooked humanoid map (an `.ogt` of `type rig`: a naming scheme and bones named outright) for og.anim.retarget and og.anim.humanoid. Loading the same path again answers the same handle. |
 | [`og.load.flipbook`](#fn-flipbook) | function | Load a cooked flipbook sheet (an `.ogt` of `type flipbook`, with its Aseprite or TexturePacker atlas resolved by the cook) and its texture, and register it with og.flipbook. Loading the same path again answers the same handles. |
 | [`og.load.tilemap`](#fn-tilemap) | function | Load a cooked map (a tilemap `.ogt`, a Tiled `.tmj` or an LDtk `.ldtk`), its tilesets and their textures. Loading the same path again answers the same handles. |
 | [`og.AssetReady`](#record-AssetReady) | event | A load completed. |
@@ -90,7 +91,7 @@ fn bundle {
 }
 ```
 
-<sub>`api.ogt` line 2850</sub>
+<sub>`api.ogt` line 2871</sub>
 
 <a id="fn-bundleInfo"></a>
 
@@ -120,7 +121,7 @@ fn bundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 2857</sub>
+<sub>`api.ogt` line 2878</sub>
 
 <a id="fn-defaultBundle"></a>
 
@@ -148,7 +149,7 @@ fn defaultBundle {
 }
 ```
 
-<sub>`api.ogt` line 2864</sub>
+<sub>`api.ogt` line 2885</sub>
 
 <a id="fn-gltf"></a>
 
@@ -180,7 +181,7 @@ fn gltf {
 }
 ```
 
-<sub>`api.ogt` line 2870</sub>
+<sub>`api.ogt` line 2891</sub>
 
 <a id="fn-scene"></a>
 
@@ -210,7 +211,7 @@ fn scene {
 }
 ```
 
-<sub>`api.ogt` line 2878</sub>
+<sub>`api.ogt` line 2899</sub>
 
 <a id="fn-font"></a>
 
@@ -240,7 +241,7 @@ fn font {
 }
 ```
 
-<sub>`api.ogt` line 2885</sub>
+<sub>`api.ogt` line 2906</sub>
 
 <a id="fn-fontInfo"></a>
 
@@ -270,7 +271,7 @@ fn fontInfo {
 }
 ```
 
-<sub>`api.ogt` line 2892</sub>
+<sub>`api.ogt` line 2913</sub>
 
 <a id="fn-sound"></a>
 
@@ -300,7 +301,7 @@ fn sound {
 }
 ```
 
-<sub>`api.ogt` line 2899</sub>
+<sub>`api.ogt` line 2920</sub>
 
 <a id="fn-lut"></a>
 
@@ -330,7 +331,7 @@ fn lut {
 }
 ```
 
-<sub>`api.ogt` line 2906</sub>
+<sub>`api.ogt` line 2927</sub>
 
 <a id="fn-emitter"></a>
 
@@ -360,7 +361,7 @@ fn emitter {
 }
 ```
 
-<sub>`api.ogt` line 2913</sub>
+<sub>`api.ogt` line 2934</sub>
 
 <a id="fn-shader"></a>
 
@@ -390,7 +391,7 @@ fn shader {
 }
 ```
 
-<sub>`api.ogt` line 2920</sub>
+<sub>`api.ogt` line 2941</sub>
 
 <a id="fn-texture"></a>
 
@@ -420,7 +421,7 @@ fn texture {
 }
 ```
 
-<sub>`api.ogt` line 2927</sub>
+<sub>`api.ogt` line 2948</sub>
 
 <a id="fn-skin"></a>
 
@@ -450,7 +451,7 @@ fn skin {
 }
 ```
 
-<sub>`api.ogt` line 2934</sub>
+<sub>`api.ogt` line 2955</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -480,7 +481,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 2941</sub>
+<sub>`api.ogt` line 2962</sub>
 
 <a id="fn-status"></a>
 
@@ -510,7 +511,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 2948</sub>
+<sub>`api.ogt` line 2969</sub>
 
 <a id="fn-error"></a>
 
@@ -540,7 +541,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 2955</sub>
+<sub>`api.ogt` line 2976</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -570,7 +571,7 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 2962</sub>
+<sub>`api.ogt` line 2983</sub>
 
 <a id="fn-animation"></a>
 
@@ -600,7 +601,37 @@ fn animation {
 }
 ```
 
-<sub>`api.ogt` line 2969</sub>
+<sub>`api.ogt` line 2990</sub>
+
+<a id="fn-rig"></a>
+
+### `og.load.rig`
+
+Load a cooked humanoid map (an `.ogt` of `type rig`: a naming scheme and bones named outright) for og.anim.retarget and og.anim.humanoid. Loading the same path again answers the same handle.
+
+```ts
+og.load.rig(world: World, path: string): Result<Rig>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose animation uses it. |
+| `path` | `string` | no | The rig's asset id, such as `rigs/strider.ogt`. |
+
+**Returns** `Result<Rig>`: Refused for a path not in the bundle (run og cook) or a cook stamp mismatch.
+
+Binding symbol `og_load_rig` · publish builds: kept
+
+```ogt
+fn rig {
+  doc "Load a cooked humanoid map (an `.ogt` of `type rig`: a naming scheme and bones named outright) for og.anim.retarget and og.anim.humanoid. Loading the same path again answers the same handle."
+  param world World "The world whose animation uses it."
+  param path String "The rig's asset id, such as `rigs/strider.ogt`."
+  returns Result.Rig "Refused for a path not in the bundle (run og cook) or a cook stamp mismatch."
+}
+```
+
+<sub>`api.ogt` line 2997</sub>
 
 <a id="fn-flipbook"></a>
 
@@ -630,7 +661,7 @@ fn flipbook {
 }
 ```
 
-<sub>`api.ogt` line 2976</sub>
+<sub>`api.ogt` line 3004</sub>
 
 <a id="fn-tilemap"></a>
 
@@ -660,7 +691,7 @@ fn tilemap {
 }
 ```
 
-<sub>`api.ogt` line 2983</sub>
+<sub>`api.ogt` line 3011</sub>
 
 ## Components, resources and events
 
@@ -683,7 +714,7 @@ component Model {
 }
 ```
 
-<sub>`api.ogt` line 2845</sub>
+<sub>`api.ogt` line 2866</sub>
 
 <a id="record-AssetReady"></a>
 
@@ -706,7 +737,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 2990</sub>
+<sub>`api.ogt` line 3018</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -731,7 +762,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 2996</sub>
+<sub>`api.ogt` line 3024</sub>
 
 ## Types
 
@@ -747,7 +778,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Asset "A loaded bundle, scene or glTF asset."
 ```
 
-<sub>`api.ogt` line 2773</sub>
+<sub>`api.ogt` line 2794</sub>
 
 <a id="type-Font"></a>
 
@@ -761,7 +792,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Font "A cooked MSDF font: its glyph table and one or more atlas pages."
 ```
 
-<sub>`api.ogt` line 2774</sub>
+<sub>`api.ogt` line 2795</sub>
 
 <a id="type-Sound"></a>
 
@@ -775,7 +806,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Sound "A cooked sound: QOA-encoded PCM the audio module plays."
 ```
 
-<sub>`api.ogt` line 2775</sub>
+<sub>`api.ogt` line 2796</sub>
 
 <a id="type-Skin"></a>
 
@@ -789,7 +820,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Skin "A cooked UI skin: its atlas, fonts, icons and sounds loaded with it, for og.ui.configure."
 ```
 
-<sub>`api.ogt` line 2776</sub>
+<sub>`api.ogt` line 2797</sub>
 
 <a id="type-LoadStatus"></a>
 
@@ -814,7 +845,7 @@ enum LoadStatus {
 }
 ```
 
-<sub>`api.ogt` line 2792</sub>
+<sub>`api.ogt` line 2813</sub>
 
 <a id="type-GltfDesc"></a>
 
@@ -840,7 +871,7 @@ struct GltfDesc {
 }
 ```
 
-<sub>`api.ogt` line 2799</sub>
+<sub>`api.ogt` line 2820</sub>
 
 <a id="type-GltfInfo"></a>
 
@@ -865,7 +896,7 @@ struct GltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 2807</sub>
+<sub>`api.ogt` line 2828</sub>
 
 <a id="type-BundleInfo"></a>
 
@@ -888,7 +919,7 @@ struct BundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 2815</sub>
+<sub>`api.ogt` line 2836</sub>
 
 <a id="type-FontInfo"></a>
 
@@ -919,7 +950,7 @@ struct FontInfo {
 }
 ```
 
-<sub>`api.ogt` line 2822</sub>
+<sub>`api.ogt` line 2843</sub>
 
 <a id="type-SoundInfo"></a>
 
@@ -948,7 +979,7 @@ struct SoundInfo {
 }
 ```
 
-<sub>`api.ogt` line 2833</sub>
+<sub>`api.ogt` line 2854</sub>
 
 ## Column kinds
 
@@ -968,7 +999,7 @@ column Asset {
 }
 ```
 
-<sub>`api.ogt` line 2778</sub>
+<sub>`api.ogt` line 2799</sub>
 
 ```ogt
 column Sound {
@@ -979,4 +1010,4 @@ column Sound {
 }
 ```
 
-<sub>`api.ogt` line 2785</sub>
+<sub>`api.ogt` line 2806</sub>

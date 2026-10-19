@@ -162,9 +162,45 @@ test("a UASTC normal map transcodes linear and close to its source", () => {
   expect(psnrRgb(t.levels[0]!, src.rgba)).toBeGreaterThan(35);
 });
 
+/** BC5 level → the red and green it decodes to (two BC4 blocks per 4x4 block, red first). */
+function decodeBc5(data: Uint8Array, width: number, height: number): Uint8Array {
+  const out = new Uint8Array(width * height * 4);
+  const bw = Math.ceil(width / 4);
+  for (let b = 0; b < data.length / 16; b++) {
+    const bx = (b % bw) * 4, by = Math.floor(b / bw) * 4;
+    for (let ch = 0; ch < 2; ch++) {
+      const at = b * 16 + ch * 8;
+      const e0 = data[at]!, e1 = data[at + 1]!;
+      const palette = e0 > e1
+        ? [e0, e1, ...[1, 2, 3, 4, 5, 6].map((i) => ((7 - i) * e0 + i * e1) / 7)]
+        : [e0, e1, ...[1, 2, 3, 4].map((i) => ((5 - i) * e0 + i * e1) / 5), 0, 255];
+      let bits = 0n;
+      for (let k = 0; k < 6; k++) bits |= BigInt(data[at + 2 + k]!) << BigInt(8 * k);
+      for (let t = 0; t < 16; t++) {
+        const x = bx + (t % 4), y = by + Math.floor(t / 4);
+        if (x < width && y < height) out[(y * width + x) * 4 + ch] = Math.round(palette[Number((bits >> BigInt(3 * t)) & 7n)]!);
+      }
+    }
+  }
+  return out;
+}
+
+test("a normal map's BC5 holds its x and y (the cook puts y in alpha, where the transcoder reads it)", () => {
+  const rgba = transcodeKtx2(basis, ktx2["stone_n.png"]!, "rgba8").levels[0]!;
+  const t = transcodeKtx2(basis, ktx2["stone_n.png"]!, "bc5");
+  const rg = decodeBc5(t.levels[0]!, t.width, t.height);
+  const channel = (img: Uint8Array, ch: number) => img.filter((_, i) => i % 4 === ch);
+  const psnr = (a: Uint8Array, b: Uint8Array) => 10 * Math.log10((255 * 255) / (a.reduce((s, v, i) => s + (v - b[i]!) ** 2, 0) / a.length));
+  const [x, y] = [psnr(channel(rg, 0), channel(rgba, 0)), psnr(channel(rg, 1), channel(rgba, 1))];
+  expect(x).toBeGreaterThan(35);
+  expect(y).toBeGreaterThan(35);
+});
+
 test("block formats have exactly one 16-byte block per 4x4 pixels per level", () => {
   for (const file of ["stone.png", "stone_n.png"]) {
-    for (const format of ["bc7", "astc4x4", "etc2"] as const) {
+    // The two-channel formats are for normal maps (UASTC) only.
+    const formats = file === "stone_n.png" ? (["bc7", "bc5", "astc4x4", "etc2", "eacrg11"] as const) : (["bc7", "astc4x4", "etc2"] as const);
+    for (const format of formats) {
       const t = transcodeKtx2(basis, ktx2[file]!, format);
       expect(t.format).toBe(format);
       t.levels.forEach((level, i) => {
@@ -190,4 +226,6 @@ test("the format follows the device's compressions; WebGPU names follow the form
   expect(wgpuFormatName("astc4x4", false)).toBe("astc-4x4-unorm");
   expect(wgpuFormatName("etc2", true)).toBe("etc2-rgba8unorm-srgb");
   expect(wgpuFormatName("rgba8", false)).toBe("rgba8unorm");
+  expect(wgpuFormatName("bc5", false)).toBe("bc5-rg-unorm");
+  expect(wgpuFormatName("eacrg11", false)).toBe("eac-rg11unorm");
 });

@@ -205,6 +205,8 @@ export interface HostAbi<A, V> {
   og_render_update_material(world: number, material: number, desc: string | undefined): string;
   /** `og.render.shaderMaterial` */
   og_render_shader_material(world: number, shader: number, desc: string | undefined): string;
+  /** `og.render.setMaterialShader` */
+  og_render_set_material_shader(world: number, material: number, shader: string): string;
   /** `og.render.setShaderParam` */
   og_render_set_shader_param(world: number, material: number, name: string, value: string): string;
   /** `og.render.capabilities` */
@@ -247,6 +249,8 @@ export interface HostAbi<A, V> {
   og_load_gltf_info(world: number, asset: number): string;
   /** `og.load.animation` */
   og_load_animation(world: number, path: string): string;
+  /** `og.load.rig` */
+  og_load_rig(world: number, path: string): string;
   /** `og.load.flipbook` */
   og_load_flipbook(world: number, path: string): string;
   /** `og.load.tilemap` */
@@ -279,6 +283,10 @@ export interface HostAbi<A, V> {
   og_atmosphere_time_of_day(world: number): number;
   /** `og.anim.graph` */
   og_anim_graph(world: number, desc: string | undefined): string;
+  /** `og.anim.humanoid` */
+  og_anim_humanoid(world: number, desc: string | undefined): string;
+  /** `og.anim.retarget` */
+  og_anim_retarget(world: number, desc: string | undefined): string;
   /** `og.tween.to` */
   og_tween_to(world: number, desc: string | undefined): string;
   /** `og.tween.sequence` */
@@ -666,6 +674,7 @@ export const SYMBOLS: readonly string[] = [
   "og_render_standard_material",
   "og_render_update_material",
   "og_render_shader_material",
+  "og_render_set_material_shader",
   "og_render_set_shader_param",
   "og_render_capabilities",
   "og_render_text",
@@ -687,6 +696,7 @@ export const SYMBOLS: readonly string[] = [
   "og_load_error",
   "og_load_gltf_info",
   "og_load_animation",
+  "og_load_rig",
   "og_load_flipbook",
   "og_load_tilemap",
   "og_physics_raycast",
@@ -703,6 +713,8 @@ export const SYMBOLS: readonly string[] = [
   "og_physics_ragdoll_pose",
   "og_atmosphere_time_of_day",
   "og_anim_graph",
+  "og_anim_humanoid",
+  "og_anim_retarget",
   "og_tween_to",
   "og_tween_sequence",
   "og_tween_parallel",

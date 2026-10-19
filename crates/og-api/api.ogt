@@ -1611,7 +1611,8 @@ module render {
     doc "The backend the renderer runs on; the probe's hello reports it."
     variant webgpu "WebGPU in a browser: the full feature set."
     variant webgl2 "The WebGL2 fallback: no compute, CPU culling and particles, tiled lights."
-    variant vulkan "Native Vulkan, on lavapipe or a GPU."
+    variant vulkan "Native Vulkan on a GPU."
+    variant vulkan-cpu "Native Vulkan on a CPU rasterizer (Mesa lavapipe or llvmpipe, SwiftShader): the executors' sandboxes. Frame times there say nothing about a player's GPU."
     variant metal "Native Metal."
     variant none "No renderer: frames are not produced and capture refuses."
   }
@@ -1638,7 +1639,8 @@ module render {
   struct StandardMaterialDesc {
     doc "A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names."
     doc "It is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front."
-    doc "The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults."
+    doc "The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults. clearcoat and clearcoatRoughness add MeshPhysicalMaterial's clear coat (no clearcoat maps)."
+    doc "normalMap is read in glTF's tangent frame: red tilts towards +u, green up the image. The tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly."
     desc true
     field color Color "The base colour." {
       default 1 1 1
@@ -1728,6 +1730,16 @@ module render {
       min 0
       max 31
     }
+    field clearcoat f32 "A clear lacquer over the surface, as three.js MeshPhysicalMaterial.clearcoat: a second, 4 % reflective specular layer on the surface's normal before normalMap (car paint, varnished wood, wet plastic); 0 is none." {
+      min 0
+      max 1
+      unit ratio
+    }
+    field clearcoatRoughness f32 "How rough the clear coat is, as three.js MeshPhysicalMaterial.clearcoatRoughness." {
+      min 0
+      max 1
+      unit ratio
+    }
   }
 
   component Mesh {
@@ -1773,7 +1785,7 @@ module render {
 
   component PointLight {
     doc "A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance."
-    doc "Up to MAX_LIGHTS point and spot lights are drawn per frame (the rest are counted, not drawn); the first two with castShadow get cube shadows."
+    doc "Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. The first two in view with castShadow get cube shadows."
     field color Color "The light's linear colour." {
       default 1 1 1
     }
@@ -2701,14 +2713,15 @@ module render {
     returns Result.Geometry
   }
 
-  const MAX_LIGHTS u32 8 "The most point and spot lights one frame draws."
+  const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
+  const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 
   struct RenderCapabilities {
     doc "What the renderer can do on this device. Backend limits are reported here, never by missing members."
     field tier RenderTier "The backend."
     field compute bool "Whether compute passes run (GPU culling, GPU particles)."
     field antialias Antialias "The antialiasing the device resolved RenderOptions.antialias to."
-    field maxLights u32 "How many point and spot lights one frame draws."
+    field maxLights u32 "How many point and spot lights one frame draws (MAX_LIGHTS on every tier)."
     field maxShadowedLights u32 "How many point and spot lights may cast shadows."
     field width u32 "The render target width in device pixels."
     field height u32 "The render target height in device pixels."
@@ -2732,17 +2745,25 @@ module render {
   handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read."
 
   fn shaderMaterial {
-    doc "Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. Skinned meshes draw it without the hooks; shadows and the depth prepass use the undisplaced mesh."
+    doc "Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. The hooks apply to skinned meshes too, and shadows and the depth prepass (ambient occlusion, outlines, depth of field) see the mesh where vertex_offset moved it and cut where surface_color's alpha falls below alphaTest."
     param world World "The world whose renderer owns the material."
     param shader Shader "The shader."
     param desc StandardMaterialDesc "The base material; omitted parameters take three.js defaults. A dissolve sets alphaTest so that alpha below it is cut."
     returns Result.Material "Refused for a shader not loaded in this world."
   }
 
+  fn setMaterialShader {
+    doc "Give an existing material a material shader, or take it away with null: a loaded model's material (GltfInfo.materials) draws its skinned or static meshes through the hooks, with the shader's parameters at their defaults. Every mesh drawn with that material changes."
+    param world World "The world whose renderer owns the material."
+    param material Material "The material, from og.render.standardMaterial, og.render.shaderMaterial or a loaded glTF."
+    param shader Option.Shader "The shader, or null to draw the material plain again."
+    returns Result.Void "Refused for a dead material or a shader not loaded in this world."
+  }
+
   fn setShaderParam {
     doc "Set a parameter of a shader material, by the name its shader declares: a number for float, two to four for vec2, vec3, vec4 and color."
     param world World "The world whose renderer owns the material."
-    param material Material "A material made by og.render.shaderMaterial."
+    param material Material "A material made by og.render.shaderMaterial or given a shader by og.render.setMaterialShader."
     param name String "The parameter's name."
     param value List.f32 "Its value; missing components are 0."
     returns Result.Void "Refused for a material without a shader or a parameter its shader does not declare."
@@ -2973,6 +2994,13 @@ module load {
     returns Result.Animation "Refused for an uncooked path, a model the cook wrote no `#anim` blob for (no skins, clips or morph targets), a cook stamp mismatch or an invalid rig."
   }
 
+  fn rig {
+    doc "Load a cooked humanoid map (an `.ogt` of `type rig`: a naming scheme and bones named outright) for og.anim.retarget and og.anim.humanoid. Loading the same path again answers the same handle."
+    param world World "The world whose animation uses it."
+    param path String "The rig's asset id, such as `rigs/strider.ogt`."
+    returns Result.Rig "Refused for a path not in the bundle (run og cook) or a cook stamp mismatch."
+  }
+
   fn flipbook {
     doc "Load a cooked flipbook sheet (an `.ogt` of `type flipbook`, with its Aseprite or TexturePacker atlas resolved by the cook) and its texture, and register it with og.flipbook. Loading the same path again answers the same handles."
     param world World "The world whose animation and renderer own it."
@@ -3142,12 +3170,11 @@ module physics {
 
   resource Physics {
     doc "The physics settings of the world. The profile is the project's; the same components serve both profiles."
-    field profile u32 "PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt." {
+    field profile u32 "PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt. Set the other one at run time to change profile: the next step builds that profile's simulation from the components (contacts, joints' warm starts, ropes, cloth, fluids and ragdoll bodies start again), so a 3D game can play a 2D scene and back." {
       default 3
       min 2
       max 3
       label "Profile"
-      readonly true
     }
     field gravity Vector3 "The acceleration of every dynamic body, times its gravityScale; 2D uses x and y." {
       default 0 -9.81 0
@@ -3748,7 +3775,7 @@ module physics {
   const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
 
   component Cloth {
-    doc "A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind and collision against every solid collider. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour)."
+    doc "A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's position (its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour)."
     field columns u32 "Points across." {
       default 12
       min 2
@@ -3802,6 +3829,21 @@ module physics {
       unit m
       tunable true
     }
+    field thickness f32 "Self-collision: how far apart its points keep from the points of the cloth that are not their near neighbours (0: none). About `spacing` keeps a cloth that folds or piles up from passing through itself." {
+      min 0
+      unit m
+      tunable true
+    }
+    field substeps u32 "Simulation steps per tick, each integrating and then solving `iterations` passes; with self-collision enough that a point moves less than `thickness` per step (a point moves at most half the thickness a step)." {
+      default 1
+      min 1
+      max 16
+    }
+    field friction f32 "How much of its sliding a point touching a solid loses each step (0: it slides freely; near 1 it sticks where it lands, so a cloth lowered onto the floor folds instead of spreading)." {
+      min 0
+      max 1
+      tunable true
+    }
     field material Material "The material it is drawn with (og.render.standardMaterial); 0 is a plain cloth."
     field visible bool "Whether the renderer draws it." {
       default true
@@ -3809,7 +3851,7 @@ module physics {
   }
 
   component Fluid2D {
-    doc "A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`."
+    doc "A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`."
     field count u32 "How many particles (spawned when the component appears or count changes)." {
       default 1000
       min 1
@@ -3847,6 +3889,18 @@ module physics {
       default 0.15
       min 0
       max 4
+      tunable true
+    }
+    field group u32 "Fluids sharing a group above 0 push, drag and (by `mixing`) mix with each other as one fluid, at most four to a group (in entity order; a fifth is simulated alone), and are drawn as one surface whose colour follows the mix; 0 keeps the fluid to itself."
+    field density f32 "How heavy its particles are against the group's other fluids: a heavier fluid sinks under a lighter one." {
+      default 1
+      min 0.05
+      max 20
+      tunable true
+    }
+    field mixing f32 "How readily it mixes with the group's other fluids: 0 keeps them apart in layers (the boundary held), 1 blends them where they touch (their mix, colour and weight even out)." {
+      min 0
+      max 1
       tunable true
     }
     field gravityScale f32 "Multiplies og.Physics.gravity." {
@@ -3994,7 +4048,7 @@ module physics {
   }
 
   component Ragdoll {
-    doc "A ragdoll over an og.Skeleton (3D): a capsule body per bone with a parent, ball joints with cone limits between them, built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state (the og.physics state block), not entities."
+    doc "A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy plane at their animated z, for a skeleton laid out in that plane), built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state (the og.physics state block), not entities."
     field weight f32 "0 animated, 1 ragdoll. Set it to 1 on a hit; back to 0 to recover." {
       min 0
       max 1
@@ -4401,10 +4455,32 @@ module atmosphere {
       min 0
       tunable true
     }
+    field moonSize f32 "The moon disc's angular radius (0: no moon). It sets below the horizon and hides the stars behind it." {
+      min 0
+      max 20
+      unit deg
+      tunable true
+    }
+    field moonPhase f32 "How much of the moon is lit: 0 new, 0.25 the first quarter (its right half), 0.5 full, 0.75 the last quarter (its left half)." {
+      default 0.5
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field moonIntensity f32 "The lit moon's brightness." {
+      default 1.4
+      min 0
+      tunable true
+    }
+    field moonColor Color "The moon's colour." {
+      default 0.9 0.92 1
+    }
+    field moonDirection Vector3 "Towards the moon; zero puts it opposite sunDirection."
   }
 
   resource DayNight {
-    doc "A day-night cycle: the time of day drives the sun's direction, the sky's colours and stars, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly."
+    doc "A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly."
     field enabled bool "Run the cycle."
     field start f32 "The time of day at tick 0, in hours (6 sunrise, 12 noon, 18 sunset)." {
       default 9
@@ -4442,6 +4518,20 @@ module atmosphere {
       default 10
       min 1
       max 120
+      tunable true
+    }
+    field moonSize f32 "The moon disc's angular radius, opposite the sun so it rises as the sun sets (0: no moon)." {
+      default 1.6
+      min 0
+      max 20
+      unit deg
+      tunable true
+    }
+    field moonPhase f32 "How much of the moon is lit: 0 new, 0.25 the first quarter, 0.5 full, 0.75 the last quarter." {
+      default 0.5
+      min 0
+      max 1
+      unit ratio
       tunable true
     }
   }
@@ -4631,7 +4721,7 @@ module anim {
   skill og-game
   doc "Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics."
   doc "Game code owns the components and sets players, graph parameters and IK targets; og.anim writes the pose (kept as world state in the `og.anim` state block, so snapshots, restore and the world hash cover it), the joint palette, root motion into og.Transform and the fields marked written. Asset handles are what og.load.animation and og.anim.graph answer; 0 is none."
-  doc "Clips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names. Assets are not world state: a hot reload registers them again."
+  doc "Clips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names; a rig with other names or proportions plays it retargeted (og.anim.retarget at run time, or a model's `animation { library }` import setting at cook time). Assets are not world state: a hot reload registers them again."
 
   handle SkeletonAsset "A rig: a glTF's nodes in topological order with their rest transforms, and its skins (joints and inverse bind matrices)."
   handle ClipAsset "An animation clip, resampled at the cook's rate, with its markers."
@@ -4942,6 +5032,54 @@ module anim {
     param world World "The world whose animation owns the graph."
     param desc GraphDesc "The text and the clips it may name."
     returns Result.GraphAsset "Refused for a parse error (the reason names the line), a clip name `clips` lacks, or an invalid graph."
+  }
+
+  handle Rig "A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow and the standard bones it names outright."
+
+  struct HumanBone {
+    doc "One standard humanoid bone of a skeleton."
+    field bone String "The standard bone: hips, spine, chest, upperChest, neck, head, then leftShoulder, leftUpperArm, leftLowerArm, leftHand, the right arm, leftUpperLeg, leftLowerLeg, leftFoot, leftToes and the right leg."
+    field node String "The skeleton node that is that bone."
+  }
+
+  struct Humanoid {
+    doc "Which node of a skeleton is each standard humanoid bone (what retargeting maps)."
+    field scheme String "The naming scheme the bones were read in: mixamo, vrm, unity, rigify, ue or blender; custom when a rig named them, none when nothing matched."
+    field bones List.HumanBone "The bones found, in the standard order (hips first)."
+  }
+
+  struct HumanoidDesc {
+    doc "A skeleton and, optionally, the rig that says how its bones are named."
+    desc true
+    field skeleton SkeletonAsset "The skeleton (og.load.animation's `skeleton`)."
+    field rig Rig "A humanoid map from og.load.rig; 0 detects the bones from the node names (Mixamo, VRM, Unity, Rigify, Unreal or Blender names)."
+  }
+
+  fn humanoid {
+    doc "The standard humanoid bones of a skeleton, as retargeting sees them: to check a rig before retargeting onto it."
+    param world World "The world whose animation owns the skeleton."
+    param desc HumanoidDesc "The skeleton and its rig."
+    returns Result.Humanoid "Refused for an unregistered skeleton or rig, or a rig naming a node the skeleton lacks."
+  }
+
+  struct RetargetDesc {
+    doc "A clip made for one skeleton, to play on another (other proportions, rest pose or bone names)."
+    desc true
+    field clip ClipAsset "The clip, made for `source`."
+    field source SkeletonAsset "The skeleton the clip was made for (og.load.animation's `skeleton`: a character's, or an animation library's)."
+    field target SkeletonAsset "The skeleton that will play it."
+    field sourceRig Rig "How the source's bones are named (og.load.rig); 0 detects them."
+    field targetRig Rig "How the target's bones are named; 0 detects them."
+    field footIk bool "Solve the legs so a planted foot stays planted on the target's ground (and the hips lower when a leg cannot reach)." {
+      default true
+    }
+  }
+
+  fn retarget {
+    doc "A new clip for `target` from a clip of `source`: each animated humanoid bone turns as the source's does from its rest pose (after a rest correction, so a T-pose drives an A-pose and other bone frames agree), the target keeps its bone lengths, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled. Same name, duration and markers. The cook does the same for a model's `animation { library }` import setting; this is for clips chosen at run time."
+    param world World "The world whose animation owns the skeletons and the clip."
+    param desc RetargetDesc "The clip, the two skeletons and their rigs."
+    returns Result.ClipInfo "The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip, skeleton or rig, a skeleton without recognisable hips (name them in a `type rig` file), or a rig naming a missing node."
   }
 
   handle FlipbookSheet "A sprite sheet's frames and clips (a cooked `.ogt` of `type flipbook`), from og.load.flipbook."
@@ -6695,7 +6833,7 @@ module ui {
     variant secondary "A neutral fill (the default)."
     variant primary "The amber action: one per screen."
     variant quiet "Text until hovered."
-    variant danger "A destructive action: danger ink on a neutral fill."
+    variant danger "A destructive action: danger ink on the danger tint."
   }
 
   enum ControlSize {

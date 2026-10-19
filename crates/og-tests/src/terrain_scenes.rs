@@ -470,6 +470,7 @@ pub fn grass_tuft() -> MeshData {
                     normal: (n * face.max(0.6)).normalize().into(),
                     uv: [u, v],
                     color: [shade, shade, shade, 1.0],
+                    tangent: [0.0; 4],
                 });
             }
             if face > 0.0 {

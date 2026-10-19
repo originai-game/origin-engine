@@ -940,6 +940,8 @@ export const render = Object.freeze({
   sphereGeometry: (world: WorldImpl, desc?: unknown) => parse(abi().og_render_sphere_geometry(world.id, json(desc))),
   shaderMaterial: (world: WorldImpl, shader: number, desc?: unknown) =>
     parse(abi().og_render_shader_material(world.id, shader, json(desc))),
+  setMaterialShader: (world: WorldImpl, material: number, shader: number | null) =>
+    parse(abi().og_render_set_material_shader(world.id, material, JSON.stringify(shader ?? null))),
   setShaderParam: (world: WorldImpl, material: number, name: string, value: ReadonlyArray<number>) =>
     parse(abi().og_render_set_shader_param(world.id, material, name, JSON.stringify(value))),
 });
@@ -964,11 +966,14 @@ export const load = Object.freeze({
   gltfInfo: (world: WorldImpl, asset: number) => parse(abi().og_load_gltf_info(world.id, asset)),
   animation: (world: WorldImpl, path: string) => parse(abi().og_load_animation(world.id, path)),
   flipbook: (world: WorldImpl, path: string) => parse(abi().og_load_flipbook(world.id, path)),
+  rig: (world: WorldImpl, path: string) => parse(abi().og_load_rig(world.id, path)),
   tilemap: (world: WorldImpl, path: string) => parse(abi().og_load_tilemap(world.id, path)),
 });
 
 export const anim = Object.freeze({
   graph: (world: WorldImpl, desc?: unknown) => parse(abi().og_anim_graph(world.id, json(desc))),
+  humanoid: (world: WorldImpl, desc?: unknown) => parse(abi().og_anim_humanoid(world.id, json(desc))),
+  retarget: (world: WorldImpl, desc?: unknown) => parse(abi().og_anim_retarget(world.id, json(desc))),
   clip: (info: { clips?: ReadonlyArray<{ clip: number; name: string }> }, name: string): number =>
     info?.clips?.find((c) => c.name === name)?.clip ?? -1,
 });

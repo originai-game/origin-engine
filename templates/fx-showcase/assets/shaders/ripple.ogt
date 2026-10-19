@@ -1,0 +1,9 @@
+type shader
+version 1
+---
+# A ripple up a body and bands that climb it (ripple.wgsl): on the skinned
+# walker in the phase 2 skinned station, its shadow displaced with it.
+source "shaders/ripple.wgsl"
+param offset vec3 0 0 0
+param bulge float 0.04
+param stripe color 0.95 0.85 0.2

@@ -603,6 +603,12 @@ pub fn og_render_shader_material(env: Env, world: u32, shader: f64, desc: Option
     <Host as RenderApi>::og_render_shader_material(&Host, world, shader, desc)
 }
 
+#[napi(js_name = "og_render_set_material_shader")]
+pub fn og_render_set_material_shader(env: Env, world: u32, material: f64, shader: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_set_material_shader(&Host, world, material, shader)
+}
+
 #[napi(js_name = "og_render_set_shader_param")]
 pub fn og_render_set_shader_param(env: Env, world: u32, material: f64, name: String, value: String) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -729,6 +735,12 @@ pub fn og_load_animation(env: Env, world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_animation(&Host, world, path)
 }
 
+#[napi(js_name = "og_load_rig")]
+pub fn og_load_rig(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_rig(&Host, world, path)
+}
+
 #[napi(js_name = "og_load_flipbook")]
 pub fn og_load_flipbook(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -823,6 +835,18 @@ pub fn og_atmosphere_time_of_day(env: Env, world: u32) -> f64 {
 pub fn og_anim_graph(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as AnimApi>::og_anim_graph(&Host, world, desc)
+}
+
+#[napi(js_name = "og_anim_humanoid")]
+pub fn og_anim_humanoid(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as AnimApi>::og_anim_humanoid(&Host, world, desc)
+}
+
+#[napi(js_name = "og_anim_retarget")]
+pub fn og_anim_retarget(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as AnimApi>::og_anim_retarget(&Host, world, desc)
 }
 
 #[napi(js_name = "og_tween_to")]

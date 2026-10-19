@@ -72,13 +72,15 @@ pub fn shared(name: &str, sources: &[PathBuf], stage: impl FnOnce(&Path)) -> Sha
     let lock = std::fs::File::create(base.join(format!("{name}.lock"))).unwrap();
     lock.lock().unwrap();
     if !dir.join(".shared/ok").exists() {
-        // Earlier keys of this name are stale.
+        // Earlier keys of this name are stale (exactly `<name>-<16 hex>`: a
+        // longer name sharing the prefix belongs to another test binary).
         for e in std::fs::read_dir(&base).unwrap() {
             let p = e.unwrap().path();
             let stale = p
                 .file_name()
                 .and_then(|n| n.to_str())
-                .is_some_and(|n| n.starts_with(&format!("{name}-")));
+                .and_then(|n| n.strip_prefix(&format!("{name}-")))
+                .is_some_and(|k| k.len() == 16 && k.bytes().all(|b| b.is_ascii_hexdigit()));
             if stale && p.is_dir() {
                 let _ = std::fs::remove_dir_all(&p);
             }

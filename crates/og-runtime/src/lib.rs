@@ -48,12 +48,12 @@ mod probe;
 mod terrain;
 
 pub use ai::{og_ai_describe, og_ai_get, og_ai_load, og_ai_noise, og_ai_parse, og_ai_set};
-pub use anim::{og_anim_graph, og_load_animation};
+pub use anim::{og_anim_graph, og_anim_humanoid, og_anim_retarget, og_load_animation, og_load_rig};
 pub use api::*;
 pub use assets::Fetch;
 pub use atmosphere::{
-    og_atmosphere_time_of_day, og_load_shader, og_render_set_shader_param,
-    og_render_shader_material,
+    og_atmosphere_time_of_day, og_load_shader, og_render_set_material_shader,
+    og_render_set_shader_param, og_render_shader_material,
 };
 pub use codec::{Kind, Layout, RecordKind};
 pub use engine::{

@@ -1,6 +1,7 @@
-# Cross-target determinism check: the same og-core math and the same
-# og-ecs world on the host and on wasm32, compared bit for bit. Not a
-# workspace member (its own [workspace] below); run it with ./run.sh.
+# Cross-target determinism check: the same og-core math, the same og-ecs
+# world, the same og-physics and og-anim worlds on the host and on wasm32,
+# compared bit for bit. Not a workspace member (its own [workspace] below);
+# run it with ./run.sh.
 [package]
 name = "wasm-determinism"
 version = "0.0.0"
@@ -18,8 +19,30 @@ path = "src/main.rs"
 [dependencies]
 og-core = { path = "../../crates/og-core" }
 og-ecs = { path = "../../crates/og-ecs" }
+og-physics = { path = "../../crates/og-physics" }
+og-anim = { path = "../../crates/og-anim" }
 
 [workspace]
+
+# As in the workspace: physics at -O0 would take minutes in the debug run.
+[profile.dev.package.og-physics]
+opt-level = 3
+[profile.dev.package.rapier2d]
+opt-level = 3
+[profile.dev.package.rapier3d]
+opt-level = 3
+[profile.dev.package.parry2d]
+opt-level = 3
+[profile.dev.package.parry3d]
+opt-level = 3
+[profile.dev.package.glamx]
+opt-level = 3
+[profile.dev.package.nalgebra]
+opt-level = 3
+[profile.dev.package.simba]
+opt-level = 3
+[profile.dev.package.wide]
+opt-level = 3
 
 [profile.release]
 opt-level = 3

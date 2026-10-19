@@ -142,6 +142,9 @@ try {
   const failed = await tab.eval<string | undefined>("globalThis.__og_shell_error__");
   if (failed) throw new Error(`the engine did not start: ${failed}\n${(await tab.eval<string[]>("globalThis.__og_log__ ?? []")).slice(-20).join("\n")}`);
   result["renderer"] = await tab.eval<string>("__og_shell__.tier");
+  // The encodings the bundle's Basis textures reached the renderer in (bc7+bc5, astc4x4, etc2+eacrg11, rgba8).
+  result["textureFormat"] = await tab.eval<string | null>("__og_shell__.ready.textureFormat");
+  result["textures"] = await tab.eval<number>("__og_shell__.ready.textures");
   // A wrong argument through the Worker's call is answered with the probe's
   // error (it used to trap the wasm), and the same Worker runs the stations.
   const refused = await tab.eval<string>(`__og_shell__.call("probe", "commands", { script: ${JSON.stringify(SCRIPT)} }).then((v) => "answered " + JSON.stringify(v), (e) => String(e && e.message || e))`);
@@ -169,6 +172,8 @@ try {
     return tick;
   })()`);
   result["ticks"] = frames;
+  // The engine's own log (wgpu's validation errors land there).
+  result["engine"] = (await tab.eval<string[]>("globalThis.__og_log__ ?? []")).slice(-40);
   const timed = Number(opt("--time") ?? 0);
   if (timed > 0) {
     const t = await tab.eval<{ each: number[]; total: number }>(`(async () => {

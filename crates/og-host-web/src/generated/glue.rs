@@ -504,6 +504,11 @@ pub fn og_render_shader_material(world: u32, shader: f64, desc: Option<String>) 
 }
 
 #[wasm_bindgen]
+pub fn og_render_set_material_shader(world: u32, material: f64, shader: String) -> String {
+    <Host as RenderApi>::og_render_set_material_shader(&Host, world, material, shader)
+}
+
+#[wasm_bindgen]
 pub fn og_render_set_shader_param(world: u32, material: f64, name: String, value: String) -> String {
     <Host as RenderApi>::og_render_set_shader_param(&Host, world, material, name, value)
 }
@@ -609,6 +614,11 @@ pub fn og_load_animation(world: u32, path: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_load_rig(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_rig(&Host, world, path)
+}
+
+#[wasm_bindgen]
 pub fn og_load_flipbook(world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_flipbook(&Host, world, path)
 }
@@ -686,6 +696,16 @@ pub fn og_atmosphere_time_of_day(world: u32) -> f64 {
 #[wasm_bindgen]
 pub fn og_anim_graph(world: u32, desc: Option<String>) -> String {
     <Host as AnimApi>::og_anim_graph(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_anim_humanoid(world: u32, desc: Option<String>) -> String {
+    <Host as AnimApi>::og_anim_humanoid(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_anim_retarget(world: u32, desc: Option<String>) -> String {
+    <Host as AnimApi>::og_anim_retarget(&Host, world, desc)
 }
 
 #[wasm_bindgen]

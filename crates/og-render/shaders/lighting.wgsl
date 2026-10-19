@@ -109,6 +109,11 @@ struct Surface {
   metallic: f32,
   roughness: f32,
   f0: vec3<f32>,
+  // Clearcoat: a clear specular layer over the base (0: none), its
+  // roughness and its normal (the surface's before the normal map).
+  coat: f32,
+  coat_roughness: f32,
+  coat_normal: vec3<f32>,
 };
 
 fn brdf(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>) -> vec3<f32> {
@@ -123,7 +128,17 @@ fn brdf(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>) -> vec3<f32> {
   let f = f_schlick(h_dot_v, s.f0);
   let spec = (d * g * f) / (4.0 * n_dot_v * n_dot_l + 1e-4);
   let kd = (vec3<f32>(1.0) - f) * (1.0 - s.metallic);
-  return (kd * s.albedo / PI + spec) * n_dot_l;
+  let base = (kd * s.albedo / PI + spec) * n_dot_l;
+  if (s.coat <= 0.0) { return base; }
+  // The coat (Filament's clear coat): GGX with a fixed 4 % reflectance and
+  // Kelemen's visibility; what it reflects never reaches the base.
+  let nc = s.coat_normal;
+  let c_dot_l = max(dot(nc, l), 0.0);
+  let ac = s.coat_roughness * s.coat_roughness;
+  let fc = f_schlick(h_dot_v, vec3<f32>(0.04)).x * s.coat;
+  let dc = d_ggx(max(dot(nc, h), 0.0), ac);
+  let vc = 0.25 / max(h_dot_v * h_dot_v, 1e-4);
+  return base * (1.0 - fc) + vec3<f32>(dc * vc * fc * c_dot_l);
 }
 
 // Octahedral encoding of a unit vector into -1..1 (two channels).

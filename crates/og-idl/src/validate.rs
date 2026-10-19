@@ -59,10 +59,15 @@ fn screaming(s: &str) -> bool {
         && c.all(|ch| ch.is_ascii_uppercase() || ch.is_ascii_digit() || ch == '_')
 }
 
+/// A variant is a string value everywhere it is generated (a TypeScript
+/// literal, a JSON schema enum, a Rust string), so `-` may join words
+/// (`vulkan-cpu`, as the reference tiers are named).
 fn variant_name(s: &str) -> bool {
     let mut c = s.chars();
     matches!(c.next(), Some(ch) if ch.is_ascii_lowercase())
-        && c.all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
+        && c.all(|ch| ch.is_ascii_alphanumeric() || ch == '_' || ch == '-')
+        && !s.ends_with('-')
+        && !s.contains("--")
 }
 
 impl<'a> Validator<'a, '_> {
@@ -336,7 +341,7 @@ impl<'a> Validator<'a, '_> {
                 &v.name,
                 v.line,
                 "variant",
-                "lowercase first, then letters, digits or `_`",
+                "lowercase first, then letters, digits, `_` or single `-` between them",
             );
             if !seen.insert(v.name.as_str()) {
                 self.error(
@@ -363,7 +368,7 @@ impl<'a> Validator<'a, '_> {
                 &c.name,
                 c.line,
                 "case",
-                "lowercase first, then letters, digits or `_`",
+                "lowercase first, then letters, digits, `_` or single `-` between them",
             );
             if !seen.insert(c.name.as_str()) {
                 self.error(
