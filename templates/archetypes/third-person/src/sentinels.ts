@@ -93,10 +93,16 @@ export const Sentinels = defineSystem(
   },
 );
 
+/**
+ * The sentinel a command names: its index, 0 to 2 (SENTINELS' order, as a
+ * playtest types it), or its entity handle (what og.ai's `command` sends
+ * first; no sentinel's handle is that small).
+ */
 function sentinel(world: World, args: readonly string[]): { me: Entity; at: { x: number; y: number; z: number } } {
-  const me = Number(args[0]) as Entity;
+  const n = Number(args[0]);
+  const me = (Number.isInteger(n) && n >= 0 && n < SENTINELS.length ? entity(world, `sentinel-${n}`) : n) as Entity;
   const t = world.get(me, og.Transform);
-  if (!t.ok || !world.get(me, Sentinel).ok) throw new Error(`${args[0]} is not a sentinel`);
+  if (!t.ok || !world.get(me, Sentinel).ok) throw new Error(`${args[0]} is not a sentinel (0 to ${SENTINELS.length - 1}, or a sentinel's entity)`);
   return { me, at: t.value.position };
 }
 

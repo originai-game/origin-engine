@@ -196,7 +196,7 @@ stages.
 | `stale_record` | another device writes the record, so this one's next write is refused as stale and merged |
 | `viewport:<desktop\|phone>` | lays the UI out for a phone in portrait (390 × 844 at 3×) |
 | `language:<en\|zh-CN>` | switches the language |
-| `alarm`, `grab` `:<sentinel>` | the sentinels' behaviour commands (og.ai sends them) |
+| `alarm:<sentinel>`, `grab:<sentinel>` | the sentinels' behaviour commands: sentinel 0 to 2 (west, north, east) calls the alarm or grabs (og.ai sends them with the sentinel's entity) |
 | core actions | `touch_move_to:play`, `Pause`, `Jump`, `Kindle`, `Stick`, `Again`, `Menu`; WASD, the arrows, Shift, Space, F, Q, E, Escape; `gamepad:a` … |
 
 `facts` (the probe's `state()`) reports the phase, the ending, hearts, lit
