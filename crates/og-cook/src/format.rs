@@ -28,6 +28,7 @@
 //! | navmesh (`og.NavMesh`, an `.ogt` of `type navmesh`) | [`NavMeshMeta`] | `columns` [`NavColumnRow`], `spans` [`NavSpanRow`] (the walkable heightfield), `tiles` [`NavTileRow`], `verts` [`NavVertRow`], `polys` [`NavPolyRow`], `poly_verts` (u32) |
 //! | string table (`og.Strings`, an `.ogt` of `type strings`) | [`StringsMeta`] | `text` (the validated table) |
 //! | humanoid rig (`og.Rig`, an `.ogt` of `type rig`) | [`RigMeta`] | `text` (the canonical rig: its scheme and the bones it names) |
+//! | terrain (`og.Terrain`, an `.ogt` of `type terrain`) | [`TerrainMeta`] | `tiles` [`TerrainTileRow`], `heights` (each tile's u16 heights over its own range, zlib), `layers` [`TerrainLayerRow`], `strings` (the layers' texture ids), `control` (the control map, RGBA8, zlib) |
 
 use og_core::hash::StableHasher;
 use og_core::{Reflect, Schema};
@@ -923,5 +924,91 @@ impl BlobKind for Strings {
     const NAME: &'static str = "og.Strings";
     fn schemas() -> Vec<Schema> {
         vec![StringsMeta::schema()]
+    }
+}
+
+// ── phase 2: terrain ─────────────────────────────────────────────────────
+
+row!(
+    /// The root of a terrain blob (an `.ogt` of `type terrain`).
+    TerrainMeta, "og.Terrain", 1 {
+        /// Extent along x and z in metres, centred on the terrain's origin.
+        size_x: f32,
+        size_z: f32,
+        /// Height samples along x and z.
+        columns: u32,
+        rows: u32,
+        /// Samples per tile side, and the tiles along x and z.
+        tile: u32,
+        tiles_x: u32,
+        tiles_z: u32,
+        /// The lowest and highest height (metres above the origin).
+        height_min: f32,
+        height_max: f32,
+        layers: u32,
+        /// The control map's size (0: none).
+        control_width: u32,
+        control_height: u32,
+        height_blend: f32,
+        /// The clipmap's finest spacing (0: the samples') and quads per side (0: 64).
+        lod_spacing: f32,
+        lod_ring: u32,
+        /// 1: casts shadows; 1: the game gets a collider.
+        cast_shadows: u32,
+        collision: u32,
+    }
+);
+
+row!(
+    /// One tile of heights: its first sample, its size in samples, the
+    /// range its 16-bit values span, and its zlib bytes in `heights`.
+    TerrainTileRow, "og.Terrain.tile", 1 {
+        column: u32,
+        row: u32,
+        columns: u32,
+        rows: u32,
+        min: f32,
+        max: f32,
+        offset: u32,
+        bytes: u32,
+    }
+);
+
+row!(
+    /// One layer: its textures (ranges of `strings`; [`NONE`] for none)
+    /// and og-render's `TerrainLayer` fields.
+    TerrainLayerRow, "og.Terrain.layer", 1 {
+        albedo_at: u32,
+        albedo_len: u32,
+        normal_at: u32,
+        normal_len: u32,
+        r: f32,
+        g: f32,
+        b: f32,
+        roughness: f32,
+        tile: f32,
+        triplanar: u32,
+        normal_strength: f32,
+        slope_min: f32,
+        slope_max: f32,
+        slope_fade: f32,
+        altitude_min: f32,
+        altitude_max: f32,
+        altitude_fade: f32,
+    }
+);
+
+/// The terrain blob: `meta`, `tiles` with their zlib'd heights in
+/// `heights`, `layers` naming textures in `strings`, and the control map
+/// (zlib'd RGBA8) in `control`.
+pub struct Terrain;
+impl BlobKind for Terrain {
+    const NAME: &'static str = "og.Terrain";
+    fn schemas() -> Vec<Schema> {
+        vec![
+            TerrainMeta::schema(),
+            TerrainTileRow::schema(),
+            TerrainLayerRow::schema(),
+        ]
     }
 }

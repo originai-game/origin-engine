@@ -5,9 +5,9 @@
 // cup above shows its own colour.
 import { mean, stationPlaytest } from "./station.ts";
 
-export default stationPlaytest("fluids", 4, ["p2"], ({ t, frame, field }) => {
-  const heavy = field<number>("p2", "P2", "heavyY");
-  const light = field<number>("p2", "P2", "lightY");
+export default stationPlaytest("fluids", 4, ["anim-physics"], ({ t, frame, field }) => {
+  const heavy = field<number>("anim-physics", "AnimPhysics", "heavyY");
+  const light = field<number>("anim-physics", "AnimPhysics", "lightY");
   t.ok(heavy + 0.2 < light, `the heavy fluid sank under the light one (heavy ${heavy.toFixed(2)} m, light ${light.toFixed(2)} m)`);
   // World (x, y) to the 1280 × 720 frame: orthographic, 7.4 m tall, centred on (1700, 0.4).
   const k = 720 / 7.4;

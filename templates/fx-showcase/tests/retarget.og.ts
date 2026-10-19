@@ -6,10 +6,10 @@
 // (0.689 times) least, in the ratio of their legs.
 import { stationPlaytest } from "./station.ts";
 
-export default stationPlaytest("retarget", 2.5, ["p2", "rt-walker", "rt-strider", "rt-stout"], ({ t, field }) => {
-  t.equal(field<number>("p2", "P2", "walkerBones"), 12, "the walker's bones were found");
-  t.equal(field<number>("p2", "P2", "striderBones"), 21, "the strider's bones were found (its rig file)");
-  t.equal(field<number>("p2", "P2", "stoutBones"), 21, "the stout's bones were found");
+export default stationPlaytest("retarget", 2.5, ["anim-physics", "rt-walker", "rt-strider", "rt-stout"], ({ t, field }) => {
+  t.equal(field<number>("anim-physics", "AnimPhysics", "walkerBones"), 12, "the walker's bones were found");
+  t.equal(field<number>("anim-physics", "AnimPhysics", "striderBones"), 21, "the strider's bones were found (its rig file)");
+  t.equal(field<number>("anim-physics", "AnimPhysics", "stoutBones"), 21, "the stout's bones were found");
   const start = 1400 - 5;
   const went = (e: string) => field<number[]>(e, "Transform", "position")[0]! - start;
   const [walker, strider, stout] = [went("rt-walker"), went("rt-strider"), went("rt-stout")];

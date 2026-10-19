@@ -2074,6 +2074,12 @@
           "doc": "Collider.shape: the triangles of `mesh` (3D only; for static and kinematic bodies)."
         },
         {
+          "name": "SHAPE_HEIGHTFIELD",
+          "type": "u32",
+          "value": 6,
+          "doc": "Collider.shape: the height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry)."
+        },
+        {
           "name": "PROFILE_2D",
           "type": "u32",
           "value": 2,
@@ -6744,6 +6750,187 @@
           ]
         }
       ],
+      "callbacks": []
+    },
+    {
+      "name": "terrain",
+      "doc": "Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.\nLoad it with og.terrain.load, then place it: an og.Terrain on an entity draws it centred on the entity's position (rotation and scale are ignored: terrain lies along world x and z), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere; og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are asset changes, like og.physics.setMesh: they are not world state, and a restored snapshot keeps the terrain as it is.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "TerrainData",
+        "TerrainData",
+        "TerrainBrushMode",
+        "Terrain",
+        "TerrainScatter",
+        "TerrainInfo",
+        "TerrainSampleDesc",
+        "TerrainSample",
+        "TerrainBounds",
+        "TerrainBrush",
+        "TerrainEdit",
+        "TerrainLayerDesc"
+      ],
+      "consts": [],
+      "functions": [
+        {
+          "name": "load",
+          "doc": "Load a cooked terrain (a `type terrain` .ogt under assets/) and its layers' textures, and register its height field with physics under TerrainInfo.geometry. Loading the same path again answers the same terrain.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The terrain file, such as `terrain/island.ogt`."
+            }
+          ],
+          "returns": "Result<TerrainInfo>",
+          "returnsDoc": "Refused for a path that is not a cooked terrain, or a layer texture that does not load.",
+          "publish": true
+        },
+        {
+          "name": "sample",
+          "doc": "The surface under a world point: its height, normal and slope. Callable inside systems (it reads the terrain, not the world).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "TerrainSampleDesc",
+              "optional": true,
+              "doc": "The terrain, where it stands and the point."
+            }
+          ],
+          "returns": "Result<TerrainSample>",
+          "returnsDoc": "Refused for an unknown terrain.",
+          "publish": true
+        },
+        {
+          "name": "bounds",
+          "doc": "A terrain's box in world space when it stands at `origin`.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "data",
+              "type": "TerrainData",
+              "optional": false,
+              "doc": "The terrain."
+            },
+            {
+              "name": "origin",
+              "type": "Vector3",
+              "optional": true,
+              "doc": "Where it stands."
+            }
+          ],
+          "returns": "Result<TerrainBounds>",
+          "returnsDoc": "Refused for an unknown terrain.",
+          "publish": true
+        },
+        {
+          "name": "edit",
+          "doc": "Change a terrain under a round brush: raise, lower, flatten or smooth its heights (the renderer, physics and og.terrain.sample see the change from the next frame and tick), or paint a layer into its control map (making one when it has none).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "data",
+              "type": "TerrainData",
+              "optional": false,
+              "doc": "The terrain."
+            },
+            {
+              "name": "brush",
+              "type": "TerrainBrush",
+              "optional": true,
+              "doc": "What to do and where."
+            }
+          ],
+          "returns": "Result<TerrainEdit>",
+          "returnsDoc": "Refused for an unknown terrain, a layer beyond its layers, or a brush that misses it.",
+          "publish": true
+        },
+        {
+          "name": "layer",
+          "doc": "A terrain's layer as it is now (for a tuning tool: read it, change it, setLayer it).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "data",
+              "type": "TerrainData",
+              "optional": false,
+              "doc": "The terrain."
+            },
+            {
+              "name": "index",
+              "type": "u32",
+              "optional": false,
+              "doc": "The layer, from 0."
+            }
+          ],
+          "returns": "Result<TerrainLayerDesc>",
+          "returnsDoc": "Refused for an unknown terrain or layer.",
+          "publish": true
+        },
+        {
+          "name": "setLayer",
+          "doc": "Replace a terrain's layer look and rules (its textures stay). Drawn from the next frame.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "data",
+              "type": "TerrainData",
+              "optional": false,
+              "doc": "The terrain."
+            },
+            {
+              "name": "index",
+              "type": "u32",
+              "optional": false,
+              "doc": "The layer, from 0."
+            },
+            {
+              "name": "layer",
+              "type": "TerrainLayerDesc",
+              "optional": true,
+              "doc": "The layer."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an unknown terrain or layer.",
+          "publish": true
+        }
+      ],
+      "interfaces": [],
       "callbacks": []
     }
   ],
@@ -11949,10 +12136,10 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (3D).",
+          "description": "One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (3D), 6 the height field `mesh` (3D: a terrain).",
           "default": 0,
           "minimum": 0,
-          "maximum": 5,
+          "maximum": 6,
           "x-og-label": "Shape"
         },
         "size": {
@@ -11985,7 +12172,7 @@
         },
         "mesh": {
           "$ref": "#/$defs/Geometry",
-          "description": "The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh.",
+          "description": "The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh; for SHAPE_HEIGHTFIELD, a terrain's height field (og.terrain.load's TerrainInfo.geometry).",
           "default": 0
         },
         "offset": {
@@ -14500,7 +14687,7 @@
     "Water": {
       "x-og-kind": "component",
       "x-og-module": "atmosphere",
-      "description": "A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space where the tier allows, the sky's cubemap on WebGL2). With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated).",
+      "description": "A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space where the tier allows, the sky's cubemap on WebGL2, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated).",
       "type": "object",
       "properties": {
         "size": {
@@ -14608,6 +14795,57 @@
           "default": 1,
           "minimum": 0,
           "maximum": 2,
+          "x-og-tunable": true
+        },
+        "planarReflection": {
+          "type": "number",
+          "description": "Reflect the scene by drawing it again from the camera mirrored in the surface, at this fraction of the screen's resolution (0: off, the screen-space and sky reflections). One surface a frame, the first that asks; it costs about a second scene pass at that resolution.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "shadows": {
+          "type": "number",
+          "description": "How much the sun's shadows darken the surface: its highlight, foam and colour (0: none).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "underwaterColor": {
+          "$ref": "#/$defs/Color",
+          "description": "With the camera below the surface: the water's fog colour.",
+          "default": {
+            "r": 0.03,
+            "g": 0.16,
+            "b": 0.2
+          }
+        },
+        "underwaterDensity": {
+          "type": "number",
+          "description": "Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, and the surface seen from below shows the sky inside Snell's window.",
+          "default": 0.09,
+          "minimum": 0,
+          "maximum": 2,
+          "x-og-tunable": true
+        },
+        "caustics": {
+          "type": "number",
+          "description": "Caustics of the sunlight on everything below the surface (0: none). One surface a frame, the first that has them.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 4,
+          "x-og-tunable": true
+        },
+        "causticsScale": {
+          "type": "number",
+          "description": "The caustics' cells per metre.",
+          "default": 0.6,
+          "minimum": 0.01,
+          "maximum": 10,
           "x-og-tunable": true
         }
       },
@@ -24751,6 +24989,501 @@
           "x-og-payload": "UiDump"
         }
       ]
+    },
+    "TerrainData": {
+      "x-og-kind": "handle",
+      "x-og-module": "terrain",
+      "description": "A loaded terrain: its heights, control map and layers.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "TerrainBrushMode": {
+      "x-og-kind": "enum",
+      "x-og-module": "terrain",
+      "description": "What og.terrain.edit does under its brush.",
+      "type": "string",
+      "enum": [
+        "raise",
+        "lower",
+        "flatten",
+        "smooth",
+        "paint"
+      ],
+      "x-og-variants": {
+        "raise": "Raise the heights by `strength` metres at the centre.",
+        "lower": "Lower them by `strength` metres at the centre.",
+        "flatten": "Pull them towards the brush centre's y, by `strength` (0 to 1) at the centre.",
+        "smooth": "Pull each towards its neighbours' mean, by `strength` (0 to 1) at the centre.",
+        "paint": "Paint `layer` into the control map, by `strength` (0 to 1) at the centre."
+      }
+    },
+    "Terrain": {
+      "x-og-kind": "component",
+      "x-og-module": "terrain",
+      "description": "Draws a loaded terrain centred on the entity's position, with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.",
+      "type": "object",
+      "properties": {
+        "data": {
+          "$ref": "#/$defs/TerrainData",
+          "description": "The terrain (og.terrain.load's TerrainInfo.data).",
+          "default": 0
+        },
+        "castShadows": {
+          "type": "boolean",
+          "description": "Cast the directional and local lights' shadows (it always receives them).",
+          "default": true
+        },
+        "lodSpacing": {
+          "type": "number",
+          "description": "The finest clipmap level's spacing (0: the terrain file's, or the samples' spacing).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 64,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "lodRing": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Quads per side of every clipmap level (0: the terrain file's, else 64; 16 to 256, rounded to a multiple of 4).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 256
+        }
+      },
+      "additionalProperties": false
+    },
+    "TerrainScatter": {
+      "x-og-kind": "component",
+      "x-og-module": "terrain",
+      "description": "Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies shrink to nothing over the outer `fade` of `distance`. The entity stands where the terrain does: the og.Terrain's entity itself, or a child of it at its origin. Drawn only: no colliders, and the copies are not entities.",
+      "type": "object",
+      "properties": {
+        "data": {
+          "$ref": "#/$defs/TerrainData",
+          "description": "The terrain (og.terrain.load's TerrainInfo.data).",
+          "default": 0
+        },
+        "geometry": {
+          "$ref": "#/$defs/Geometry",
+          "description": "The mesh, its origin at its root.",
+          "default": 0
+        },
+        "material": {
+          "$ref": "#/$defs/Material",
+          "description": "Its material.",
+          "default": 0
+        },
+        "layer": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The terrain layer that places it, 0 to 3.",
+          "default": 0,
+          "maximum": 3
+        },
+        "density": {
+          "type": "number",
+          "description": "Copies per square metre where the layer's weight is 1.",
+          "default": 2,
+          "minimum": 0,
+          "maximum": 400,
+          "x-og-tunable": true
+        },
+        "distance": {
+          "type": "number",
+          "description": "How far from the camera, along x and z, copies are placed.",
+          "default": 40,
+          "minimum": 0,
+          "maximum": 500,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "fade": {
+          "type": "number",
+          "description": "The outer part of `distance` over which copies shrink to nothing.",
+          "default": 0.3,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "minScale": {
+          "type": "number",
+          "description": "The smallest copy's uniform scale.",
+          "default": 0.8,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "maxScale": {
+          "type": "number",
+          "description": "The largest copy's uniform scale.",
+          "default": 1.2,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "align": {
+          "type": "number",
+          "description": "How far copies lean with the ground: 0 upright, 1 along its normal.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Another seed places the copies elsewhere.",
+          "default": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "TerrainInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "terrain",
+      "description": "A loaded terrain.",
+      "type": "object",
+      "properties": {
+        "data": {
+          "$ref": "#/$defs/TerrainData",
+          "description": "Its handle, for og.Terrain.data and this module's functions."
+        },
+        "geometry": {
+          "$ref": "#/$defs/Geometry",
+          "description": "The height field registered with physics under this handle: the mesh of an og.Collider of shape SHAPE_HEIGHTFIELD."
+        },
+        "size": {
+          "$ref": "#/$defs/Vector2",
+          "description": "Its extent along x and z, centred on its entity.",
+          "x-og-unit": "m"
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Height samples along x."
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Height samples along z."
+        },
+        "minHeight": {
+          "type": "number",
+          "description": "The lowest point above its entity.",
+          "x-og-unit": "m"
+        },
+        "maxHeight": {
+          "type": "number",
+          "description": "The highest.",
+          "x-og-unit": "m"
+        },
+        "layers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its material layers (up to 4)."
+        },
+        "collision": {
+          "type": "boolean",
+          "description": "Whether its terrain file asks for a collider (`collision`, default true)."
+        },
+        "castShadows": {
+          "type": "boolean",
+          "description": "Its terrain file's `castShadows`."
+        }
+      },
+      "required": [
+        "data",
+        "geometry",
+        "size",
+        "columns",
+        "rows",
+        "minHeight",
+        "maxHeight",
+        "layers",
+        "collision",
+        "castShadows"
+      ],
+      "additionalProperties": false
+    },
+    "TerrainSampleDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "terrain",
+      "description": "Where og.terrain.sample looks.",
+      "type": "object",
+      "properties": {
+        "data": {
+          "$ref": "#/$defs/TerrainData",
+          "description": "The terrain.",
+          "default": 0
+        },
+        "origin": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where it stands: its og.Terrain entity's position.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "x": {
+          "type": "number",
+          "description": "The world x.",
+          "default": 0,
+          "x-og-unit": "m"
+        },
+        "z": {
+          "type": "number",
+          "description": "The world z.",
+          "default": 0,
+          "x-og-unit": "m"
+        }
+      },
+      "additionalProperties": false
+    },
+    "TerrainSample": {
+      "x-og-kind": "struct",
+      "x-og-module": "terrain",
+      "description": "The terrain under a point.",
+      "type": "object",
+      "properties": {
+        "height": {
+          "type": "number",
+          "description": "The world y of the surface: the triangles drawn at the finest level and collided with.",
+          "x-og-unit": "m"
+        },
+        "normal": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The surface normal, smoothed between samples as the renderer shades it."
+        },
+        "slope": {
+          "type": "number",
+          "description": "The normal's angle from straight up.",
+          "x-og-unit": "deg"
+        },
+        "inside": {
+          "type": "boolean",
+          "description": "Whether the point is over the terrain (outside, the nearest edge answers)."
+        }
+      },
+      "required": [
+        "height",
+        "normal",
+        "slope",
+        "inside"
+      ],
+      "additionalProperties": false
+    },
+    "TerrainBounds": {
+      "x-og-kind": "struct",
+      "x-og-module": "terrain",
+      "description": "A terrain's box in world space.",
+      "type": "object",
+      "properties": {
+        "min": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The lowest corner.",
+          "x-og-unit": "m"
+        },
+        "max": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The highest corner.",
+          "x-og-unit": "m"
+        }
+      },
+      "required": [
+        "min",
+        "max"
+      ],
+      "additionalProperties": false
+    },
+    "TerrainBrush": {
+      "x-og-kind": "desc",
+      "x-og-module": "terrain",
+      "description": "One runtime edit of a terrain (og.terrain.edit).",
+      "type": "object",
+      "properties": {
+        "mode": {
+          "$ref": "#/$defs/TerrainBrushMode",
+          "description": "What it does.",
+          "default": "raise"
+        },
+        "origin": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where the terrain stands: its og.Terrain entity's position.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "center": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The brush's centre in world space; its y is flatten's target height.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "radius": {
+          "type": "number",
+          "description": "The brush's radius.",
+          "default": 8,
+          "minimum": 0.01,
+          "x-og-unit": "m"
+        },
+        "strength": {
+          "type": "number",
+          "description": "Metres at the centre (raise, lower), or how far to go, 0 to 1 (flatten, smooth, paint).",
+          "default": 1,
+          "minimum": 0
+        },
+        "falloff": {
+          "type": "number",
+          "description": "The outer part of the radius over which it fades to nothing (0: a hard edge, 1: fading from the centre).",
+          "default": 0.5,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "layer": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "paint: the layer painted, 0 to 3.",
+          "default": 0,
+          "maximum": 3
+        }
+      },
+      "additionalProperties": false
+    },
+    "TerrainEdit": {
+      "x-og-kind": "struct",
+      "x-og-module": "terrain",
+      "description": "What an edit changed.",
+      "type": "object",
+      "properties": {
+        "samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Height or control-map samples it touched."
+        },
+        "minHeight": {
+          "type": "number",
+          "description": "The terrain's lowest point now.",
+          "x-og-unit": "m"
+        },
+        "maxHeight": {
+          "type": "number",
+          "description": "Its highest now.",
+          "x-og-unit": "m"
+        }
+      },
+      "required": [
+        "samples",
+        "minHeight",
+        "maxHeight"
+      ],
+      "additionalProperties": false
+    },
+    "TerrainLayerDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "terrain",
+      "description": "One material layer of a terrain: its look and the rules that place it. A layer shows where its control-map channel (1 without a map) times its slope band times its altitude band is high; the layers' weights are normalised.",
+      "type": "object",
+      "properties": {
+        "color": {
+          "$ref": "#/$defs/Color",
+          "description": "Multiplies the layer's texture (linear).",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "roughness": {
+          "type": "number",
+          "description": "Its roughness.",
+          "default": 0.9,
+          "minimum": 0.04,
+          "maximum": 1
+        },
+        "tile": {
+          "type": "number",
+          "description": "Metres per repeat of its textures.",
+          "default": 4,
+          "minimum": 0.01,
+          "maximum": 1000,
+          "x-og-unit": "m"
+        },
+        "triplanar": {
+          "type": "boolean",
+          "description": "Sample by three projections blended by the normal (for cliffs).",
+          "default": false
+        },
+        "normalStrength": {
+          "type": "number",
+          "description": "How strongly its normal map bends the surface.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 4
+        },
+        "slopeMin": {
+          "type": "number",
+          "description": "The flattest slope it shows on.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 90,
+          "x-og-unit": "deg"
+        },
+        "slopeMax": {
+          "type": "number",
+          "description": "The steepest.",
+          "default": 90,
+          "minimum": 0,
+          "maximum": 90,
+          "x-og-unit": "deg"
+        },
+        "slopeFade": {
+          "type": "number",
+          "description": "How far past its slopes it fades out.",
+          "default": 4,
+          "minimum": 0,
+          "maximum": 90,
+          "x-og-unit": "deg"
+        },
+        "altitudeMin": {
+          "type": "number",
+          "description": "The lowest height above the terrain's origin it shows at.",
+          "default": -1000000,
+          "x-og-unit": "m"
+        },
+        "altitudeMax": {
+          "type": "number",
+          "description": "The highest.",
+          "default": 1000000,
+          "x-og-unit": "m"
+        },
+        "altitudeFade": {
+          "type": "number",
+          "description": "How far past its heights it fades out.",
+          "default": 4,
+          "minimum": 0,
+          "x-og-unit": "m"
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

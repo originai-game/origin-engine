@@ -82,6 +82,19 @@ pub struct MeshDesc {
     pub indices: Vec<[u32; 3]>,
 }
 
+/// A height field for [`SHAPE_HEIGHTFIELD`] colliders, registered under the
+/// handle the colliders name ([`Collider::mesh`]): `columns` × `rows`
+/// heights over a `size` rectangle centred on the collider, row-major from
+/// -z to +z and -x to +x (og-render's `TerrainData`). Each cell is split
+/// along its (-x, -z) to (+x, +z) diagonal, as the renderer draws it.
+#[derive(Clone, Debug, PartialEq)]
+pub struct HeightfieldDesc {
+    pub columns: u32,
+    pub rows: u32,
+    pub size: Vec2,
+    pub heights: Arc<[f32]>,
+}
+
 /// The shape of a shape cast or an overlap test: the shape fields of a
 /// [`Collider`]. `Default` is a 1 m box.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -208,6 +221,8 @@ pub(crate) struct Shared {
     /// built from them are rebuilt.
     pub stale_meshes: BTreeSet<u64>,
     pub meshes: BTreeMap<u64, Arc<MeshDesc>>,
+    /// Height fields by handle (assets, like meshes).
+    pub heightfields: BTreeMap<u64, Arc<HeightfieldDesc>>,
     #[cfg(feature = "physics3d")]
     pub shapes3: BTreeMap<ShapeKey, rapier3d::prelude::SharedShape>,
     #[cfg(feature = "physics2d")]
@@ -592,10 +607,61 @@ impl PhysicsSystem {
         Ok(())
     }
 
+    /// Registers (or replaces) the height field `handle` that
+    /// [`SHAPE_HEIGHTFIELD`] colliders name (a terrain; 3D only). An asset
+    /// like a mesh: a world restored into a fresh engine needs it
+    /// registered again. New heights (a terrain edit) rebuild the colliders
+    /// made from it at the next step; the same heights change nothing.
+    pub fn set_heightfield(&self, handle: u64, field: HeightfieldDesc) -> Result<()> {
+        if field.columns < 2 || field.rows < 2 {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!(
+                    "height field {handle} needs at least 2 × 2 heights, got {} × {}",
+                    field.columns, field.rows
+                ),
+            ));
+        }
+        if field.heights.len() != (field.columns * field.rows) as usize {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!(
+                    "height field {handle}: {} × {} needs {} heights, got {}",
+                    field.columns,
+                    field.rows,
+                    field.columns * field.rows,
+                    field.heights.len()
+                ),
+            ));
+        }
+        if !(field.size.x > 0.0 && field.size.y > 0.0 && field.size.is_finite())
+            || field.heights.iter().any(|h| !h.is_finite())
+        {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!("height field {handle}: its size must be positive and its heights finite"),
+            ));
+        }
+        let mut shared = lock(&self.shared);
+        if shared
+            .heightfields
+            .get(&handle)
+            .is_some_and(|f| **f == field)
+        {
+            return Ok(());
+        }
+        shared.heightfields.insert(handle, Arc::new(field));
+        shared.stale_meshes.insert(handle);
+        #[cfg(feature = "physics3d")]
+        shared.shapes3.retain(|k, _| k.mesh != handle);
+        Ok(())
+    }
+
     /// Removes mesh `handle`; colliders still naming it fail the next step.
     pub fn remove_mesh(&self, handle: u64) {
         let mut shared = lock(&self.shared);
         shared.meshes.remove(&handle);
+        shared.heightfields.remove(&handle);
         shared.stale_meshes.insert(handle);
         #[cfg(feature = "physics3d")]
         shared.shapes3.retain(|k, _| k.mesh != handle);

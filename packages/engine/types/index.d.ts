@@ -152,6 +152,8 @@ export interface ColumnKinds {
   Navigation: { readonly array: Uint32Array; readonly stride: 2; readonly value: Navigation };
   /** A Behaviour handle field. */
   Behaviour: { readonly array: Uint32Array; readonly stride: 2; readonly value: Behaviour };
+  /** A TerrainData handle field. */
+  TerrainData: { readonly array: Uint32Array; readonly stride: 2; readonly value: TerrainData };
 }
 
 // ── math ────────────────────────────────────────────────────────
@@ -4654,6 +4656,11 @@ export declare const SHAPE_CONVEX: 4;
 /** Collider.shape: the triangles of `mesh` (3D only; for static and kinematic bodies). */
 export declare const SHAPE_TRIMESH: 5;
 
+/**
+ * Collider.shape: the height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry).
+ */
+export declare const SHAPE_HEIGHTFIELD: 6;
+
 /** Physics.profile: rapier2d, bodies in the xy plane rotating about z. */
 export declare const PROFILE_2D: 2;
 
@@ -4727,9 +4734,9 @@ export interface RigidBody {
  */
 export interface Collider {
   /**
-   * One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (3D).
+   * One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (3D), 6 the height field `mesh` (3D: a terrain).
    *
-   * @range 0..5
+   * @range 0..6
    * @label Shape
    */
   shape: number;
@@ -4761,7 +4768,7 @@ export interface Collider {
    */
   height: number;
   /**
-   * The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh.
+   * The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh; for SHAPE_HEIGHTFIELD, a terrain's height field (og.terrain.load's TerrainInfo.geometry).
    */
   mesh: Geometry;
   /**
@@ -7020,7 +7027,7 @@ export interface Weather {
 }
 
 /**
- * A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space where the tier allows, the sky's cubemap on WebGL2). With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated).
+ * A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space where the tier allows, the sky's cubemap on WebGL2, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated).
  *
  * The value of the `Water` component (token `og.Water`).
  */
@@ -7124,6 +7131,51 @@ export interface Water {
    * @tunable
    */
   reflectivity: number;
+  /**
+   * Reflect the scene by drawing it again from the camera mirrored in the surface, at this fraction of the screen's resolution (0: off, the screen-space and sky reflections). One surface a frame, the first that asks; it costs about a second scene pass at that resolution.
+   *
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  planarReflection: number;
+  /**
+   * How much the sun's shadows darken the surface: its highlight, foam and colour (0: none).
+   *
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  shadows: number;
+  /**
+   * With the camera below the surface: the water's fog colour.
+   *
+   * @default { r: 0.03, g: 0.16, b: 0.2 }
+   */
+  underwaterColor: Color;
+  /**
+   * Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, and the surface seen from below shows the sky inside Snell's window.
+   *
+   * @default 0.09
+   * @range 0..2
+   * @tunable
+   */
+  underwaterDensity: number;
+  /**
+   * Caustics of the sunlight on everything below the surface (0: none). One surface a frame, the first that has them.
+   *
+   * @range 0..4
+   * @tunable
+   */
+  caustics: number;
+  /**
+   * The caustics' cells per metre.
+   *
+   * @default 0.6
+   * @range 0.01..10
+   * @tunable
+   */
+  causticsScale: number;
 }
 
 /**
@@ -14514,6 +14566,421 @@ export interface EngineProbe extends RuntimeProbe {
   listen(seconds?: number): Heard | null;
 }
 
+// ── terrain ─────────────────────────────────────────────────────
+// Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.
+// Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it centred on the entity's position (rotation and scale are ignored: terrain lies along world x and z), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere; og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are asset changes, like og.physics.setMesh: they are not world state, and a restored snapshot keeps the terrain as it is.
+
+/**
+ * A loaded terrain: its heights, control map and layers.
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type TerrainData = number & { readonly [handleType]: "TerrainData" };
+
+/**
+ * A TerrainData handle field.
+ *
+ * A `TerrainData` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function TerrainData(value?: TerrainData, options?: FieldOptions): FieldSpec<"TerrainData">;
+
+/**
+ * What og.terrain.edit does under its brush.
+ * - `"raise"`: Raise the heights by `strength` metres at the centre.
+ * - `"lower"`: Lower them by `strength` metres at the centre.
+ * - `"flatten"`: Pull them towards the brush centre's y, by `strength` (0 to 1) at the centre.
+ * - `"smooth"`: Pull each towards its neighbours' mean, by `strength` (0 to 1) at the centre.
+ * - `"paint"`: Paint `layer` into the control map, by `strength` (0 to 1) at the centre.
+ */
+export type TerrainBrushMode = "raise" | "lower" | "flatten" | "smooth" | "paint";
+
+/**
+ * Draws a loaded terrain centred on the entity's position, with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.
+ *
+ * The value of the `Terrain` component (token `og.Terrain`).
+ */
+export interface Terrain {
+  /** The terrain (og.terrain.load's TerrainInfo.data). */
+  data: TerrainData;
+  /**
+   * Cast the directional and local lights' shadows (it always receives them).
+   *
+   * @default true
+   */
+  castShadows: boolean;
+  /**
+   * The finest clipmap level's spacing (0: the terrain file's, or the samples' spacing).
+   *
+   * @range 0..64
+   * @unit m (metres)
+   * @tunable
+   */
+  lodSpacing: number;
+  /**
+   * Quads per side of every clipmap level (0: the terrain file's, else 64; 16 to 256, rounded to a multiple of 4).
+   *
+   * @range 0..256
+   */
+  lodRing: number;
+}
+
+/**
+ * Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies shrink to nothing over the outer `fade` of `distance`. The entity stands where the terrain does: the og.Terrain's entity itself, or a child of it at its origin. Drawn only: no colliders, and the copies are not entities.
+ *
+ * The value of the `TerrainScatter` component (token `og.TerrainScatter`).
+ */
+export interface TerrainScatter {
+  /** The terrain (og.terrain.load's TerrainInfo.data). */
+  data: TerrainData;
+  /** The mesh, its origin at its root. */
+  geometry: Geometry;
+  /** Its material. */
+  material: Material;
+  /**
+   * The terrain layer that places it, 0 to 3.
+   *
+   * @range ..3
+   */
+  layer: number;
+  /**
+   * Copies per square metre where the layer's weight is 1.
+   *
+   * @default 2
+   * @range 0..400
+   * @tunable
+   */
+  density: number;
+  /**
+   * How far from the camera, along x and z, copies are placed.
+   *
+   * @default 40
+   * @range 0..500
+   * @unit m (metres)
+   * @tunable
+   */
+  distance: number;
+  /**
+   * The outer part of `distance` over which copies shrink to nothing.
+   *
+   * @default 0.3
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  fade: number;
+  /**
+   * The smallest copy's uniform scale.
+   *
+   * @default 0.8
+   * @range 0..
+   * @tunable
+   */
+  minScale: number;
+  /**
+   * The largest copy's uniform scale.
+   *
+   * @default 1.2
+   * @range 0..
+   * @tunable
+   */
+  maxScale: number;
+  /**
+   * How far copies lean with the ground: 0 upright, 1 along its normal.
+   *
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  align: number;
+  /**
+   * Another seed places the copies elsewhere.
+   *
+   * @default 1
+   */
+  seed: number;
+}
+
+/** A loaded terrain. */
+export interface TerrainInfo {
+  /** Its handle, for og.Terrain.data and this module's functions. */
+  readonly data: TerrainData;
+  /**
+   * The height field registered with physics under this handle: the mesh of an og.Collider of shape SHAPE_HEIGHTFIELD.
+   */
+  readonly geometry: Geometry;
+  /**
+   * Its extent along x and z, centred on its entity.
+   *
+   * @unit m (metres)
+   */
+  readonly size: Vector2;
+  /** Height samples along x. */
+  readonly columns: number;
+  /** Height samples along z. */
+  readonly rows: number;
+  /**
+   * The lowest point above its entity.
+   *
+   * @unit m (metres)
+   */
+  readonly minHeight: number;
+  /**
+   * The highest.
+   *
+   * @unit m (metres)
+   */
+  readonly maxHeight: number;
+  /** Its material layers (up to 4). */
+  readonly layers: number;
+  /** Whether its terrain file asks for a collider (`collision`, default true). */
+  readonly collision: boolean;
+  /** Its terrain file's `castShadows`. */
+  readonly castShadows: boolean;
+}
+
+/**
+ * Where og.terrain.sample looks.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TerrainSampleDesc {
+  /**
+   * The terrain.
+   *
+   * @default 0
+   */
+  readonly data?: TerrainData;
+  /**
+   * Where it stands: its og.Terrain entity's position.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly origin?: Vector3;
+  /**
+   * The world x.
+   *
+   * @default 0
+   * @unit m (metres)
+   */
+  readonly x?: number;
+  /**
+   * The world z.
+   *
+   * @default 0
+   * @unit m (metres)
+   */
+  readonly z?: number;
+}
+
+/** The terrain under a point. */
+export interface TerrainSample {
+  /**
+   * The world y of the surface: the triangles drawn at the finest level and collided with.
+   *
+   * @unit m (metres)
+   */
+  readonly height: number;
+  /** The surface normal, smoothed between samples as the renderer shades it. */
+  readonly normal: Vector3;
+  /**
+   * The normal's angle from straight up.
+   *
+   * @unit deg (degrees)
+   */
+  readonly slope: number;
+  /** Whether the point is over the terrain (outside, the nearest edge answers). */
+  readonly inside: boolean;
+}
+
+/** A terrain's box in world space. */
+export interface TerrainBounds {
+  /**
+   * The lowest corner.
+   *
+   * @unit m (metres)
+   */
+  readonly min: Vector3;
+  /**
+   * The highest corner.
+   *
+   * @unit m (metres)
+   */
+  readonly max: Vector3;
+}
+
+/**
+ * One runtime edit of a terrain (og.terrain.edit).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TerrainBrush {
+  /**
+   * What it does.
+   *
+   * @default "raise"
+   */
+  readonly mode?: TerrainBrushMode;
+  /**
+   * Where the terrain stands: its og.Terrain entity's position.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly origin?: Vector3;
+  /**
+   * The brush's centre in world space; its y is flatten's target height.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly center?: Vector3;
+  /**
+   * The brush's radius.
+   *
+   * @default 8
+   * @range 0.01..
+   * @unit m (metres)
+   */
+  readonly radius?: number;
+  /**
+   * Metres at the centre (raise, lower), or how far to go, 0 to 1 (flatten, smooth, paint).
+   *
+   * @default 1
+   * @range 0..
+   */
+  readonly strength?: number;
+  /**
+   * The outer part of the radius over which it fades to nothing (0: a hard edge, 1: fading from the centre).
+   *
+   * @default 0.5
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly falloff?: number;
+  /**
+   * paint: the layer painted, 0 to 3.
+   *
+   * @default 0
+   * @range ..3
+   */
+  readonly layer?: number;
+}
+
+/** What an edit changed. */
+export interface TerrainEdit {
+  /** Height or control-map samples it touched. */
+  readonly samples: number;
+  /**
+   * The terrain's lowest point now.
+   *
+   * @unit m (metres)
+   */
+  readonly minHeight: number;
+  /**
+   * Its highest now.
+   *
+   * @unit m (metres)
+   */
+  readonly maxHeight: number;
+}
+
+/**
+ * One material layer of a terrain: its look and the rules that place it. A layer shows where its control-map channel (1 without a map) times its slope band times its altitude band is high; the layers' weights are normalised.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TerrainLayerDesc {
+  /**
+   * Multiplies the layer's texture (linear).
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  readonly color?: Color;
+  /**
+   * Its roughness.
+   *
+   * @default 0.9
+   * @range 0.04..1
+   */
+  readonly roughness?: number;
+  /**
+   * Metres per repeat of its textures.
+   *
+   * @default 4
+   * @range 0.01..1000
+   * @unit m (metres)
+   */
+  readonly tile?: number;
+  /**
+   * Sample by three projections blended by the normal (for cliffs).
+   *
+   * @default false
+   */
+  readonly triplanar?: boolean;
+  /**
+   * How strongly its normal map bends the surface.
+   *
+   * @default 1
+   * @range 0..4
+   */
+  readonly normalStrength?: number;
+  /**
+   * The flattest slope it shows on.
+   *
+   * @default 0
+   * @range 0..90
+   * @unit deg (degrees)
+   */
+  readonly slopeMin?: number;
+  /**
+   * The steepest.
+   *
+   * @default 90
+   * @range 0..90
+   * @unit deg (degrees)
+   */
+  readonly slopeMax?: number;
+  /**
+   * How far past its slopes it fades out.
+   *
+   * @default 4
+   * @range 0..90
+   * @unit deg (degrees)
+   */
+  readonly slopeFade?: number;
+  /**
+   * The lowest height above the terrain's origin it shows at.
+   *
+   * @default -1000000
+   * @unit m (metres)
+   */
+  readonly altitudeMin?: number;
+  /**
+   * The highest.
+   *
+   * @default 1000000
+   * @unit m (metres)
+   */
+  readonly altitudeMax?: number;
+  /**
+   * How far past its heights it fades out.
+   *
+   * @default 4
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly altitudeFade?: number;
+}
+
+
+
+
+
+
+
 // ── og ──────────────────────────────────────────────────────────
 
 /**
@@ -15227,9 +15694,9 @@ export declare namespace og {
    */
   const Weather: ResourceType<{ readonly kind: FieldSpec<"u32">; readonly intensity: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly tint: FieldSpec<"Color">; readonly dim: FieldSpec<"f32">; readonly layer: FieldSpec<"i32"> }, Weather>;
   /**
-   * A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space where the tier allows, the sky's cubemap on WebGL2). With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated).
+   * A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space where the tier allows, the sky's cubemap on WebGL2, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated).
    */
-  const Water: ComponentType<{ readonly size: FieldSpec<"Vector2">; readonly segments: FieldSpec<"u32">; readonly shallow: FieldSpec<"Color">; readonly deep: FieldSpec<"Color">; readonly depthFade: FieldSpec<"f32">; readonly opacity: FieldSpec<"f32">; readonly foam: FieldSpec<"Color">; readonly foamWidth: FieldSpec<"f32">; readonly waveScale: FieldSpec<"f32">; readonly waveSpeed: FieldSpec<"f32">; readonly waveStrength: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32"> }, Water>;
+  const Water: ComponentType<{ readonly size: FieldSpec<"Vector2">; readonly segments: FieldSpec<"u32">; readonly shallow: FieldSpec<"Color">; readonly deep: FieldSpec<"Color">; readonly depthFade: FieldSpec<"f32">; readonly opacity: FieldSpec<"f32">; readonly foam: FieldSpec<"Color">; readonly foamWidth: FieldSpec<"f32">; readonly waveScale: FieldSpec<"f32">; readonly waveSpeed: FieldSpec<"f32">; readonly waveStrength: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32">; readonly planarReflection: FieldSpec<"f32">; readonly shadows: FieldSpec<"f32">; readonly underwaterColor: FieldSpec<"Color">; readonly underwaterDensity: FieldSpec<"f32">; readonly caustics: FieldSpec<"f32">; readonly causticsScale: FieldSpec<"f32"> }, Water>;
   /**
    * Draws the og.WaterLine on the same entity in the sprite order: the body from its surface down, a gradient from the top colour to the bottom one, and a bright lip along the surface.
    */
@@ -16529,5 +16996,72 @@ export declare namespace og {
      * @returns The report, or the first malformed step.
      */
     function schedule(world: World, script: string): Result<CommandsReport>;
+  }
+  /**
+   * Draws a loaded terrain centred on the entity's position, with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.
+   */
+  const Terrain: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly castShadows: FieldSpec<"bool">; readonly lodSpacing: FieldSpec<"f32">; readonly lodRing: FieldSpec<"u32"> }, Terrain>;
+  /**
+   * Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies shrink to nothing over the outer `fade` of `distance`. The entity stands where the terrain does: the og.Terrain's entity itself, or a child of it at its origin. Drawn only: no colliders, and the copies are not entities.
+   */
+  const TerrainScatter: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly layer: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly fade: FieldSpec<"f32">; readonly minScale: FieldSpec<"f32">; readonly maxScale: FieldSpec<"f32">; readonly align: FieldSpec<"f32">; readonly seed: FieldSpec<"u32"> }, TerrainScatter>;
+  /**
+   * Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.
+   * Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it centred on the entity's position (rotation and scale are ignored: terrain lies along world x and z), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere; og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Edits are asset changes, like og.physics.setMesh: they are not world state, and a restored snapshot keeps the terrain as it is.
+   */
+  namespace terrain {
+    /**
+     * Load a cooked terrain (a `type terrain` .ogt under assets/) and its layers' textures, and register its height field with physics under TerrainInfo.geometry. Loading the same path again answers the same terrain.
+     *
+     * @param world The world.
+     * @param path The terrain file, such as `terrain/island.ogt`.
+     * @returns Refused for a path that is not a cooked terrain, or a layer texture that does not load.
+     */
+    function load(world: World, path: string): Result<TerrainInfo>;
+    /**
+     * The surface under a world point: its height, normal and slope. Callable inside systems (it reads the terrain, not the world).
+     *
+     * @param world The world.
+     * @param desc The terrain, where it stands and the point.
+     * @returns Refused for an unknown terrain.
+     */
+    function sample(world: World, desc?: TerrainSampleDesc): Result<TerrainSample>;
+    /**
+     * A terrain's box in world space when it stands at `origin`.
+     *
+     * @param world The world.
+     * @param data The terrain.
+     * @param origin Where it stands.
+     * @returns Refused for an unknown terrain.
+     */
+    function bounds(world: World, data: TerrainData, origin?: Vector3): Result<TerrainBounds>;
+    /**
+     * Change a terrain under a round brush: raise, lower, flatten or smooth its heights (the renderer, physics and og.terrain.sample see the change from the next frame and tick), or paint a layer into its control map (making one when it has none).
+     *
+     * @param world The world.
+     * @param data The terrain.
+     * @param brush What to do and where.
+     * @returns Refused for an unknown terrain, a layer beyond its layers, or a brush that misses it.
+     */
+    function edit(world: World, data: TerrainData, brush?: TerrainBrush): Result<TerrainEdit>;
+    /**
+     * A terrain's layer as it is now (for a tuning tool: read it, change it, setLayer it).
+     *
+     * @param world The world.
+     * @param data The terrain.
+     * @param index The layer, from 0.
+     * @returns Refused for an unknown terrain or layer.
+     */
+    function layer(world: World, data: TerrainData, index: number): Result<TerrainLayerDesc>;
+    /**
+     * Replace a terrain's layer look and rules (its textures stay). Drawn from the next frame.
+     *
+     * @param world The world.
+     * @param data The terrain.
+     * @param index The layer, from 0.
+     * @param layer The layer.
+     * @returns Refused for an unknown terrain or layer.
+     */
+    function setLayer(world: World, data: TerrainData, index: number, layer?: TerrainLayerDesc): Result<void>;
   }
 }

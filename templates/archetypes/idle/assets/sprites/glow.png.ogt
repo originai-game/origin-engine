@@ -1,0 +1,8 @@
+type import
+version 1
+---
+# A slow gradient or single-texel stars: kept exact (RGBA8, no block
+# compression, which shows 4 x 4 blocks in dark gradients), sampled nearest.
+texture {
+  kind pixel
+}

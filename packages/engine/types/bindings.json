@@ -212,6 +212,12 @@
       "array": "Uint32Array",
       "stride": 2,
       "value": "Behaviour"
+    },
+    {
+      "name": "TerrainData",
+      "array": "Uint32Array",
+      "stride": 2,
+      "value": "TerrainData"
     }
   ],
   "components": [
@@ -2693,6 +2699,45 @@
           "column": "f32",
           "default": 1,
           "tunable": true
+        },
+        {
+          "name": "planarReflection",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "shadows",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "underwaterColor",
+          "column": "Color",
+          "default": {
+            "r": 0.03,
+            "g": 0.16,
+            "b": 0.2
+          }
+        },
+        {
+          "name": "underwaterDensity",
+          "column": "f32",
+          "default": 0.09,
+          "tunable": true
+        },
+        {
+          "name": "caustics",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "causticsScale",
+          "column": "f32",
+          "default": 0.6,
+          "tunable": true
         }
       ]
     },
@@ -3850,6 +3895,104 @@
           "name": "eyeHeight",
           "column": "f32",
           "default": 0
+        }
+      ]
+    },
+    {
+      "id": 52,
+      "name": "Terrain",
+      "schema": "og.Terrain",
+      "module": "terrain",
+      "fields": [
+        {
+          "name": "data",
+          "column": "TerrainData",
+          "default": 0
+        },
+        {
+          "name": "castShadows",
+          "column": "bool",
+          "default": true
+        },
+        {
+          "name": "lodSpacing",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "lodRing",
+          "column": "u32",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 53,
+      "name": "TerrainScatter",
+      "schema": "og.TerrainScatter",
+      "module": "terrain",
+      "fields": [
+        {
+          "name": "data",
+          "column": "TerrainData",
+          "default": 0
+        },
+        {
+          "name": "geometry",
+          "column": "Geometry",
+          "default": 0
+        },
+        {
+          "name": "material",
+          "column": "Material",
+          "default": 0
+        },
+        {
+          "name": "layer",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "density",
+          "column": "f32",
+          "default": 2,
+          "tunable": true
+        },
+        {
+          "name": "distance",
+          "column": "f32",
+          "default": 40,
+          "tunable": true
+        },
+        {
+          "name": "fade",
+          "column": "f32",
+          "default": 0.3,
+          "tunable": true
+        },
+        {
+          "name": "minScale",
+          "column": "f32",
+          "default": 0.8,
+          "tunable": true
+        },
+        {
+          "name": "maxScale",
+          "column": "f32",
+          "default": 1.2,
+          "tunable": true
+        },
+        {
+          "name": "align",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "seed",
+          "column": "u32",
+          "default": 1
         }
       ]
     }
@@ -11579,6 +11722,163 @@
       ],
       "returns": "Option<Heard>",
       "publish": false
+    },
+    {
+      "id": 266,
+      "kind": "fn",
+      "path": "og.terrain.load",
+      "symbol": "og_terrain_load",
+      "module": "terrain",
+      "name": "load",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<TerrainInfo>",
+      "publish": true
+    },
+    {
+      "id": 267,
+      "kind": "fn",
+      "path": "og.terrain.sample",
+      "symbol": "og_terrain_sample",
+      "module": "terrain",
+      "name": "sample",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "TerrainSampleDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<TerrainSample>",
+      "publish": true
+    },
+    {
+      "id": 268,
+      "kind": "fn",
+      "path": "og.terrain.bounds",
+      "symbol": "og_terrain_bounds",
+      "module": "terrain",
+      "name": "bounds",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "data",
+          "type": "TerrainData",
+          "optional": false
+        },
+        {
+          "name": "origin",
+          "type": "Vector3",
+          "optional": true
+        }
+      ],
+      "returns": "Result<TerrainBounds>",
+      "publish": true
+    },
+    {
+      "id": 269,
+      "kind": "fn",
+      "path": "og.terrain.edit",
+      "symbol": "og_terrain_edit",
+      "module": "terrain",
+      "name": "edit",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "data",
+          "type": "TerrainData",
+          "optional": false
+        },
+        {
+          "name": "brush",
+          "type": "TerrainBrush",
+          "optional": true
+        }
+      ],
+      "returns": "Result<TerrainEdit>",
+      "publish": true
+    },
+    {
+      "id": 270,
+      "kind": "fn",
+      "path": "og.terrain.layer",
+      "symbol": "og_terrain_layer",
+      "module": "terrain",
+      "name": "layer",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "data",
+          "type": "TerrainData",
+          "optional": false
+        },
+        {
+          "name": "index",
+          "type": "u32",
+          "optional": false
+        }
+      ],
+      "returns": "Result<TerrainLayerDesc>",
+      "publish": true
+    },
+    {
+      "id": 271,
+      "kind": "fn",
+      "path": "og.terrain.setLayer",
+      "symbol": "og_terrain_set_layer",
+      "module": "terrain",
+      "name": "setLayer",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "data",
+          "type": "TerrainData",
+          "optional": false
+        },
+        {
+          "name": "index",
+          "type": "u32",
+          "optional": false
+        },
+        {
+          "name": "layer",
+          "type": "TerrainLayerDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
     }
   ],
   "callbacks": [

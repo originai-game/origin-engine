@@ -22,11 +22,11 @@
 import { og, defineComponent, defineSystem, f32, f64, u32, PIN_TOP, PROFILE_2D, PROFILE_3D, SHAPE_BOX } from "@origingame/engine";
 import type { Asset, Entity, Geometry, Material, Quaternion, Value, Vector3 as Vec3, World } from "@origingame/engine";
 
-export const P2_STATIONS = ["retarget", "ragdoll2d", "cloth", "fluids"] as const;
-export type P2Station = (typeof P2_STATIONS)[number];
+export const AP_STATIONS = ["retarget", "ragdoll2d", "cloth", "fluids"] as const;
+export type APStation = (typeof AP_STATIONS)[number];
 
 /** Where each station lives along x. */
-export const P2_ORIGIN: Record<P2Station, number> = {
+export const AP_ORIGIN: Record<APStation, number> = {
   retarget: 1400,
   ragdoll2d: 1500,
   cloth: 1600,
@@ -42,12 +42,12 @@ const SHEET = { n: 20, spacing: 0.06 };
  */
 function sheetAt(shown: number): Vec3 {
   const s = Math.min(shown / 150, 1);
-  return { x: P2_ORIGIN.cloth - 0.57, y: 1.6 - 1.48 * s, z: 0.3 * Math.sin(shown * 0.07) };
+  return { x: AP_ORIGIN.cloth - 0.57, y: 1.6 - 1.48 * s, z: 0.3 * Math.sin(shown * 0.07) };
 }
 
-/** The round's state, on the entity "p2". */
-export const P2 = defineComponent("P2", {
-  /** Index into P2_STATIONS + 1 (0: another station). */
+/** The round's state, on the entity "anim-physics". */
+export const AP = defineComponent("AnimPhysics", {
+  /** Index into AP_STATIONS + 1 (0: another station). */
   station: u32(0),
   /** Ticks since the station was shown. */
   shown: u32(0),
@@ -97,14 +97,14 @@ function closest(points: ReadonlyArray<Vec3>): number {
 }
 
 /** Per tick on the shown station: the puppet's fall, the sheet's lowering, the fluids' heights. */
-export const P2Show = defineSystem("P2Show", { writes: [P2, og.Ragdoll, og.Transform] }, (_q, _time, world) => {
-  const e = world.find("p2");
+export const APShow = defineSystem("APShow", { writes: [AP, og.Ragdoll, og.Transform] }, (_q, _time, world) => {
+  const e = world.find("anim-physics");
   if (e === null) return;
-  const s = must(world.get(e, P2));
+  const s = must(world.get(e, AP));
   const shown = s.shown + 1;
-  world.set(e, P2, { shown });
+  world.set(e, AP, { shown });
   if (s.station === 0) return;
-  switch (P2_STATIONS[s.station - 1]) {
+  switch (AP_STATIONS[s.station - 1]) {
     case "ragdoll2d": {
       // It walks for half a second, then goes limp, knocked off its ledge.
       const puppet = s.puppet as unknown as Entity;
@@ -117,7 +117,7 @@ export const P2Show = defineSystem("P2Show", { writes: [P2, og.Ragdoll, og.Trans
           low = Math.min(low, b.position.y);
           z = Math.max(z, Math.abs(b.position.z));
         }
-        world.set(e, P2, { ragdollLow: low, ragdollZ: z });
+        world.set(e, AP, { ragdollLow: low, ragdollZ: z });
       }
       break;
     }
@@ -126,11 +126,11 @@ export const P2Show = defineSystem("P2Show", { writes: [P2, og.Ragdoll, og.Trans
       const top = sheetAt(shown);
       world.set(sheet, og.Transform, { position: top });
       const bar = world.find("sheet-bar");
-      if (bar !== null) world.set(bar, og.Transform, { position: { x: P2_ORIGIN.cloth, y: top.y + 0.02, z: top.z } });
+      if (bar !== null) world.set(bar, og.Transform, { position: { x: AP_ORIGIN.cloth, y: top.y + 0.02, z: top.z } });
       const pts = og.physics.clothPoints(world, sheet);
       if (pts.ok) {
         const above = pts.value.filter((p) => p.y > 0.08 && p.y < 0.4).length;
-        world.set(e, P2, { clothClosest: Math.min(s.clothClosest, closest(pts.value)), clothAbove: above });
+        world.set(e, AP, { clothClosest: Math.min(s.clothClosest, closest(pts.value)), clothAbove: above });
       }
       break;
     }
@@ -139,7 +139,7 @@ export const P2Show = defineSystem("P2Show", { writes: [P2, og.Ragdoll, og.Trans
         const p = og.physics.fluidParticles(world, f as unknown as Entity);
         return p.ok && p.value.length > 0 ? p.value.reduce((a, q) => a + q.y, 0) / p.value.length : 0;
       };
-      world.set(e, P2, { heavyY: mean(s.heavy), lightY: mean(s.light) });
+      world.set(e, AP, { heavyY: mean(s.heavy), lightY: mean(s.light) });
       break;
     }
   }
@@ -152,28 +152,28 @@ interface Kit {
   ground: (x: number, color: Vec3) => void;
 }
 
-let builders: Partial<Record<P2Station, (world: World) => void>> = {};
+let builders: Partial<Record<APStation, (world: World) => void>> = {};
 
 /** Marks a station of this round as not shown (another station is), back in the 3D profile. */
-export function resetP2(world: World): void {
-  const e = world.find("p2");
-  if (e !== null) world.set(e, P2, { station: 0, shown: 0 });
+export function resetAP(world: World): void {
+  const e = world.find("anim-physics");
+  if (e !== null) world.set(e, AP, { station: 0, shown: 0 });
   const physics = must(world.resource(og.Physics));
   if (physics.profile !== PROFILE_3D) physics.profile = PROFILE_3D;
 }
 
 /** Shows a station of this round: built when first shown, then its camera and light. */
-export function showP2(world: World, station: P2Station): void {
+export function showAP(world: World, station: APStation): void {
   if (world.find(`p2-${station}`) === null) {
     builders[station]?.(world);
     must(world.spawn({ name: `p2-${station}` }));
   }
-  const e = world.find("p2");
-  if (e !== null) world.set(e, P2, { station: P2_STATIONS.indexOf(station) + 1, shown: 0 });
+  const e = world.find("anim-physics");
+  if (e !== null) world.set(e, AP, { station: AP_STATIONS.indexOf(station) + 1, shown: 0 });
   const cam = must(world.resource(og.Camera));
   const settings = must(world.resource(og.RenderSettings));
   const sun = world.find("sun");
-  const x = P2_ORIGIN[station];
+  const x = AP_ORIGIN[station];
   const look = (eye: Vec3, target: Vec3) => {
     cam.position = eye;
     cam.quaternion = og.transform.lookAt(eye, target);
@@ -226,13 +226,13 @@ const WALKERS = [
 ] as const;
 
 /** Prepares this round's stations (each built when first shown). */
-export function buildP2(world: World, k: Kit, walkerModel: Asset): void {
-  const p2 = must(world.spawn({ name: "p2" }));
-  world.insert(p2, P2);
+export function buildAP(world: World, k: Kit, walkerModel: Asset): void {
+  const ap = must(world.spawn({ name: "anim-physics" }));
+  world.insert(ap, AP);
   builders = {
     // retarget: a library's walk on three characters, walking along +x.
     retarget: (world: World) => {
-      const x = P2_ORIGIN.retarget;
+      const x = AP_ORIGIN.retarget;
       k.ground(x, { x: 0.3, y: 0.31, z: 0.3 });
       const lane = k.mat({ color: { r: 0.55, g: 0.53, b: 0.48 }, roughness: 0.9 });
       const library = must(og.load.animation(world, "anims/humanoid-clips.glb"));
@@ -257,11 +257,11 @@ export function buildP2(world: World, k: Kit, walkerModel: Asset): void {
         world.insert(e, og.Skeleton, { asset: anim.skeleton, rootMotion: "planar" });
         world.insert(e, og.AnimationPlayer, { clip, speed: 1, loop: true, fade: 0 });
       }
-      world.set(world.find("p2")!, P2, { walkerBones: bones[1]!, striderBones: bones[0]!, stoutBones: bones[2]! });
+      world.set(world.find("anim-physics")!, AP, { walkerBones: bones[1]!, striderBones: bones[0]!, stoutBones: bones[2]! });
     },
     // ragdoll2d: a puppet on a ledge above a step and the floor.
     ragdoll2d: (world: World) => {
-      const x = P2_ORIGIN.ragdoll2d;
+      const x = AP_ORIGIN.ragdoll2d;
       const stone = k.mat({ color: { r: 0.42, g: 0.44, b: 0.48 }, roughness: 0.9 });
       for (const [name, cx, cy, w, h] of [
         ["rd-floor", x, -0.25, 12, 0.5],
@@ -280,11 +280,11 @@ export function buildP2(world: World, k: Kit, walkerModel: Asset): void {
       world.insert(puppet, og.AnimationPlayer, { clip: anim.clips[0]!.clip, loop: true, fade: 0 });
       world.insert(puppet, og.Ragdoll, { weight: 0, blendTime: 0.3, impulse: { x: 110, y: 40, z: 0 } });
       must(og.physics.setRagdollRig(world, puppet, must(og.physics.ragdollRigFromSkeleton(world, anim.skeleton))));
-      world.set(world.find("p2")!, P2, { puppet });
+      world.set(world.find("anim-physics")!, AP, { puppet });
     },
     // cloth: a sheet hung from its top row, laid on the floor in folds.
     cloth: (world: World) => {
-      const x = P2_ORIGIN.cloth;
+      const x = AP_ORIGIN.cloth;
       k.ground(x, { x: 0.36, y: 0.37, z: 0.4 });
       // The floor the sheet lands on (the ground plane is only drawn).
       const floor = must(world.spawn({ name: "cloth-floor", position: { x, y: -0.5, z: 0 } }));
@@ -307,11 +307,11 @@ export function buildP2(world: World, k: Kit, walkerModel: Asset): void {
         gust: 0,
         material: red,
       });
-      world.set(world.find("p2")!, P2, { sheet });
+      world.set(world.find("anim-physics")!, AP, { sheet });
     },
     // fluids: a layering tank, a blending tank and four cups.
     fluids: (world: World) => {
-      const x = P2_ORIGIN.fluids;
+      const x = AP_ORIGIN.fluids;
       const stone = k.mat({ color: { r: 0.4, g: 0.38, b: 0.36 }, roughness: 0.9 });
       // A wall: its box drawn behind the fluids' plane, its collider deep
       // around it (a collider whose face lay on the plane would leave the
@@ -352,7 +352,7 @@ export function buildP2(world: World, k: Kit, walkerModel: Asset): void {
       // The cups: four lone fluids (eight fluids drawn this frame).
       const colors = [{ x: 0.2, y: 0.85, z: 0.3 }, { x: 0.2, y: 0.85, z: 0.9 }, { x: 0.95, y: 0.35, z: 0.75 }, { x: 0.9, y: 0.9, z: 0.92 }];
       cups.forEach((cx, i) => fluid(`cup-${i}`, { x: x + cx, y: 2.75, z: 0 }, { count: 45, size: { x: 0.9, y: 0.5 }, color: colors[i]!, seed: 10 + i }));
-      world.set(world.find("p2")!, P2, { heavy, light });
+      world.set(world.find("anim-physics")!, AP, { heavy, light });
     },
   };
 }

@@ -9,9 +9,13 @@ bun packages/create/bin/create.ts my-game --name "My Game"   # in the engine rep
 cd my-game && bun install && og cook && og run .
 ```
 
-`create [dir] [--name "Name"] [--id slug] [--force]`: the id defaults to the
-name in lowercase-hyphen form (or the directory's name); a directory that is
-not empty is refused unless `--force` is given.
+`create [dir] [--name "Name"] [--id slug] [--archetype name] [--force]`: the
+id defaults to the name in lowercase-hyphen form (or the directory's name);
+a directory that is not empty is refused unless `--force` is given.
+`--archetype` starts from a complete game of `templates/archetypes/`
+instead of the template: `runner`, `match3`, `topdown`, `tower-defense`,
+`roguelike`, `idle` or `rhythm` (the published package carries them under
+`archetypes/`).
 
 The published package carries the template under `template/`, copied by the
 `prepack` script (`scripts/pack-template.ts`); build output (`cooked/`,

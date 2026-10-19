@@ -272,6 +272,8 @@ pub(crate) struct State {
     pub ui: Option<og_ui::SharedUi>,
     /// Every mesh registered with physics, replayed into a reload's physics.
     pub physics_meshes: BTreeMap<u64, og_physics::MeshDesc>,
+    /// Every terrain's height field registered with physics, likewise.
+    pub physics_heightfields: BTreeMap<u64, og_physics::HeightfieldDesc>,
     /// UI warnings already logged, so a repeated one is logged once.
     pub ui_warned: BTreeSet<String>,
     /// og-anim on this world, and its assets (replayed into a reload's world).
@@ -849,6 +851,8 @@ pub(crate) fn extract_layouts(eng: &Engine) -> (Option<Layout>, Option<Layout>, 
             spot: get("og.SpotLight"),
             fx: super::fx::FxLayouts::from(get),
             atmo: super::atmosphere::AtmoLayouts::from(get, st.physics.clone()),
+            terrain: get("og.Terrain"),
+            scatter: get("og.TerrainScatter"),
         },
     )
 }
@@ -899,6 +903,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         physics: Some(a.mounted.physics.clone()),
         ui: Some(a.mounted.ui.clone()),
         physics_meshes: BTreeMap::new(),
+        physics_heightfields: BTreeMap::new(),
         ui_warned: BTreeSet::new(),
         anim: Some(a.anim.clone()),
         anim_assets: Default::default(),

@@ -305,6 +305,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 size: w.size,
                 heights: Arc::from(w.heights),
             }),
+            planar_reflection: f(&v, "planarReflection", 0.0),
+            shadows: f(&v, "shadows", 0.0),
+            underwater_color: color(&v["underwaterColor"], Vec3::new(0.03, 0.16, 0.2)),
+            underwater_density: f(&v, "underwaterDensity", 0.09),
+            caustics: f(&v, "caustics", 0.0),
+            caustics_scale: f(&v, "causticsScale", 0.6),
         });
     }
     // 2D water over its spring line.

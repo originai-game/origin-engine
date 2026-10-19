@@ -1,6 +1,6 @@
 ---
 name: og-game
-description: Building a game on Origin Engine — the project layout, components and systems on the ECS, the game entry, scenes as .ogt text, assets cooked from assets/ to cooked/, the og.load loaders, effects, fog, sky, day and night, weather and water, material shaders in WGSL, physics beyond rigid bodies (joints, character and platformer controllers, vehicles, ropes, cloth, 2D fluids, ragdolls), skeletal animation, and the performance budget; the entry point, with the map of the other nine skills and the modules each teaches. Use first, and when creating, structuring or extending a TypeScript Origin Engine game (a project with a project.ogt; not a Godot project.godot).
+description: Building a game on Origin Engine — the project layout, components and systems on the ECS, the game entry, scenes as .ogt text, assets cooked from assets/ to cooked/, the og.load loaders, effects, fog, sky, day and night, weather and water, terrain, material shaders in WGSL, physics beyond rigid bodies (joints, character and platformer controllers, vehicles, ropes, cloth, 2D fluids, ragdolls), skeletal animation, and the performance budget; the entry point, with the map of the other nine skills and the modules each teaches. Use first, and when creating, structuring or extending a TypeScript Origin Engine game (a project with a project.ogt; not a Godot project.godot).
 ---
 
 An Origin Engine project is plain files: TypeScript in `src/`, source assets
@@ -14,7 +14,7 @@ next for each part.
 | Skill | Read it for | Its modules (`reference/<module>.md`) |
 |---|---|---|
 | **og-core** | the rules every line obeys: TypeScript only, the fixed tick, Results, archetype views, reflection | math, reflect, world, system, rng |
-| **og-game** (this one) | the project, scenes, assets and loading, input, 2D, animation, effects, atmosphere, shaders, physics, performance | game, transform, input, load, render, physics, atmosphere, anim, tilemap |
+| **og-game** (this one) | the project, scenes, assets and loading, input, 2D, animation, effects, atmosphere, terrain, shaders, physics, performance | game, transform, input, load, render, physics, atmosphere, anim, tilemap, terrain |
 | **og-build** | the loop: cook, run with a script, read frames and dumps, hot reload, playtests, `og polish` (§5 there: the one list of what it scores), shipping | commands, probe |
 | **og-feel** | how much: hit stop, shake, squash, easing, floating text, the camera, frame rates, sorting, parallax, controller tunables | time, tween, camera, systems |
 | **og-ui** | screens and HUDs: templates, widgets, focus, phones, skins and motion | ui |
@@ -187,7 +187,9 @@ with auto-tiled walls and collision, a four-direction flipbook hero on a
 top-down character controller, an enemy with a hurt flash and knockback,
 pickups with floating text, a door to a second room the camera scrolls to),
 `templates/archetypes/runner` and `templates/archetypes/match3` use all of
-this.
+this; `templates/archetypes/roguelike` carves a tilemap at run time from
+og.Rng and keeps its fog of war on a layer, and
+`templates/archetypes/tower-defense` writes placements to a map's layer.
 
 ## 9. Animation
 
@@ -264,7 +266,7 @@ every field is in `reference/render.md`. Floating text,
 damage number or a pickup that rises and fades by itself (amounts: og-feel
 §7).
 
-## 11. Atmosphere and water
+## 11. Atmosphere, water and terrain
 
 `og.atmosphere` is data too, and off until set (`reference/atmosphere.md`):
 
@@ -290,7 +292,61 @@ damage number or a pickup that rises and fades by itself (amounts: og-feel
   meets geometry, `waveStrength`, `reflectivity`); with an
   `og.WaterSurface` on the same entity its waves move the surface and bodies
   splash it (`og.Splash` events) and float. In 2D, `og.WaterLine` with
-  `og.Water2D` is a side-on pool drawn in the sprite order.
+  `og.Water2D` is a side-on pool drawn in the sprite order. Three more
+  cost frame time and are off until set: `planarReflection` (0.25 to 1, the
+  share of the screen's resolution) mirrors the scene in a still lake or a
+  pool you look across, where the sky reflection alone looks fake;
+  `shadows` (0 to 1) darkens it under the cascaded shadow (a pier, a cliff);
+  `caustics` throws rippling light on what lies below it. With the camera
+  below the surface the frame's fog becomes `underwaterColor` at
+  `underwaterDensity` and the surface from below shows the sky only
+  straight up (on by default; set the density to 0 to see through).
+
+**Terrain** (`reference/terrain.md`) is a height field cooked from a
+`type terrain` .ogt beside a 16-bit grey PNG (or an EXR in metres):
+
+```text
+type terrain
+version 1
+---
+heightmap "island.png"     # 16-bit grey: black and white are `height`'s ends
+height -20 120             # metres
+size 2048 2048             # metres along x and z, centred on the entity
+control "island-control.png"  # optional RGBA: layer 0 in R, 1 in G, 2 in B, 3 in A
+heightBlend 0.15           # sharpen the blends by each albedo's alpha (its height)
+layer { albedo "textures/grass.png" normal "textures/grass-n.png" tile 6 slope 0 30 }
+layer { albedo "textures/rock.png" tile 12 triplanar true slope 28 90 }
+layer { albedo "textures/snow.png" altitude 90 1000 altitudeFade 10 }
+```
+
+A layer shows where its control channel (1 without a map) times its slope
+band (degrees) times its altitude band (metres above the terrain's entity)
+is high; give cliffs a `triplanar` layer so the texture does not stretch.
+In the game, load it in `start` and place it:
+
+```ts
+const info = must(og.terrain.load(world, "terrain/island.ogt"));
+const ground = must(world.spawn({ name: "island", position: { x: 0, y: 0, z: 0 } }));
+world.insert(ground, og.Terrain, { data: info.data });
+world.insert(ground, og.Collider, { shape: SHAPE_HEIGHTFIELD, mesh: info.geometry });
+```
+
+It is drawn around the camera at finer detail nearby (casting and
+receiving shadows, under the fog), and `og.CharacterController` walks on it
+up to `maxSlope`. `og.terrain.sample(world, { data, origin, x, z })` gives
+the height, normal and slope anywhere (to place trees, spawn on the
+ground, or check a slope); `og.terrain.edit` raises, lowers, flattens,
+smooths or paints under a round brush (craters, building pads, a paint
+tool) and `og.terrain.layer` / `setLayer` retune a layer live. Edits are
+asset changes, not world state: a restored snapshot keeps the edited
+ground. Grass, flowers and stones are an `og.TerrainScatter` on the
+terrain's entity: `{ data, geometry, material, layer, density, distance }`
+grows copies of the mesh where that layer shows, within `distance` of the
+camera (they shrink away over its outer `fade`), each fixed to its spot
+as the camera moves. Keep `density × distance²` modest: 4 a square metre
+within 60 m is about 36,000 copies. A navmesh .ogt's `terrain "terrain/island.ogt" { step 4 }` bakes
+the walkable slopes for og-ai. Lower `lodRing` on og.Terrain to trade
+detail for frame time.
 
 Which look for which mood is og-taste §8.
 

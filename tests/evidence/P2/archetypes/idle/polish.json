@@ -1,0 +1,1129 @@
+{
+ "project": "idle",
+ "date": "2026-10-19",
+ "scores": {
+  "contrast": 91,
+  "textSize": 100,
+  "hud": 100,
+  "transitions": 100,
+  "uiSounds": 92,
+  "latency": 100,
+  "hitFeedback": null,
+  "idle": 100,
+  "frameTime": 81,
+  "inputSound": 95,
+  "locale": 100,
+  "taste": 97,
+  "feel": 94
+ },
+ "findings": [
+  {
+   "measure": "UI sounds",
+   "where": "flow",
+   "detail": "2 of 13 UI presses played no sound on the ui bus",
+   "fix": "og-taste §6 (feedback) and og-audio §3: give the skin or og.ui.configure its press and open sounds"
+  },
+  {
+   "measure": "contrast",
+   "where": "frames orbit: `Cost` \"81\"",
+   "detail": "3.98:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "frames orbit: `Cost` \"19.8K\"",
+   "detail": "4.44:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "milestone milestone: `Cost` \"1,200\"",
+   "detail": "3.68:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "milestone milestone: `Cost` \"15\"",
+   "detail": "4.1:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "offline welcome: `Collect` \"Collect\"",
+   "detail": "3.05:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "pause settings-zh: `Done` \"完成\"",
+   "detail": "2.97:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "pause play-zh: `Name` \"晶簇\"",
+   "detail": "3.1:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "pause play-zh: `Cost` \"1,200\"",
+   "detail": "3.68:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "phone play: `Cost` \"18\"",
+   "detail": "4.13:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "phone play: `Amount` \"85\"",
+   "detail": "4.3:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call"
+  },
+  {
+   "measure": "UI sounds",
+   "where": "phone",
+   "detail": "1 of 4 UI presses played no sound on the ui bus",
+   "fix": "og-taste §6 (feedback) and og-audio §3: give the skin or og.ui.configure its press and open sounds"
+  }
+ ],
+ "playtests": [
+  {
+   "playtest": "flow",
+   "title": "taps make sparks, sparks buy embers, embers make sparks, a purchase too dear is refused",
+   "tier": "metal",
+   "ticks": 390,
+   "shots": [
+    {
+     "name": "tapped",
+     "tick": 213,
+     "frame": "frames/flow-tapped.png",
+     "menu": false,
+     "hud": 2.08,
+     "centre": 0,
+     "texts": 20,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 20,
+    "passing": 20,
+    "worst": [
+     {
+      "shot": "tapped",
+      "id": "Cost",
+      "text": "1,200",
+      "ratio": 4.61
+     },
+     {
+      "shot": "tapped",
+      "id": "Amount",
+      "text": "12",
+      "ratio": 4.73
+     },
+     {
+      "shot": "tapped",
+      "id": "Owned",
+      "text": "×0",
+      "ratio": 4.9
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 20,
+    "passing": 20,
+    "smallest": [
+     {
+      "shot": "tapped",
+      "id": "Rate",
+      "text": "+0 a second",
+      "ink": 11
+     },
+     {
+      "shot": "tapped",
+      "id": "Name",
+      "text": "Ember",
+      "ink": 11
+     },
+     {
+      "shot": "tapped",
+      "id": "Name",
+      "text": "Storm",
+      "ink": 11
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 1,
+    "worstShare": 2.08,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 1,
+    "withMotion": 1,
+    "presses": 13,
+    "pressesWithSound": 11,
+    "motionTicks": 388
+   },
+   "latency": {
+    "inputs": 17,
+    "answered": 17,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 16
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 8,
+    "bursts": 6
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 2.08,
+    "stepP95Ms": 6.92,
+    "renderMedianMs": 1.57,
+    "renderP95Ms": 4.7,
+    "frameP95Ms": 10.74,
+    "frameMaxMs": 61.96
+   },
+   "audio": {
+    "seconds": 6.5,
+    "peak": 0.21,
+    "rms": 0.035,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "frames",
+   "title": "the title, the orb with its motes and the supernova's card match their reference frames",
+   "tier": "metal",
+   "ticks": 246,
+   "shots": [
+    {
+     "name": "title",
+     "tick": 54,
+     "frame": "frames/frames-title.png",
+     "menu": true,
+     "hud": 5.25,
+     "centre": 47.55,
+     "texts": 5,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "orbit",
+     "tick": 132,
+     "frame": null,
+     "menu": false,
+     "hud": 2.04,
+     "centre": 0,
+     "texts": 21,
+     "lowContrast": 2,
+     "small": 0
+    },
+    {
+     "name": "card",
+     "tick": 240,
+     "frame": null,
+     "menu": true,
+     "hud": 4.38,
+     "centre": 28.87,
+     "texts": 12,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 38,
+    "passing": 36,
+    "worst": [
+     {
+      "shot": "orbit",
+      "id": "Cost",
+      "text": "81",
+      "ratio": 3.98
+     },
+     {
+      "shot": "orbit",
+      "id": "Cost",
+      "text": "19.8K",
+      "ratio": 4.44
+     },
+     {
+      "shot": "orbit",
+      "id": "Cost",
+      "text": "337",
+      "ratio": 4.71
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 38,
+    "passing": 38,
+    "smallest": [
+     {
+      "shot": "title",
+      "id": "Footer",
+      "text": "Space taps · 1–4 buy · N for the superno",
+      "ink": 11
+     },
+     {
+      "shot": "orbit",
+      "id": "Rate",
+      "text": "+654 a second",
+      "ink": 11
+     },
+     {
+      "shot": "orbit",
+      "id": "Name",
+      "text": "Ember",
+      "ink": 11
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 1,
+    "worstShare": 2.04,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 3,
+    "withMotion": 3,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 244
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 3,
+    "bursts": 1
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.27,
+    "stepP95Ms": 5.5,
+    "renderMedianMs": 1.15,
+    "renderP95Ms": 4.88,
+    "frameP95Ms": 9.23,
+    "frameMaxMs": 132.48
+   },
+   "audio": {
+    "seconds": 4.1,
+    "peak": 0.53,
+    "rms": 0.0638,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "milestone",
+   "title": "the tenth of a kind doubles it; big numbers read 1.23M",
+   "tier": "metal",
+   "ticks": 90,
+   "shots": [
+    {
+     "name": "milestone",
+     "tick": 87,
+     "frame": "frames/milestone-milestone.png",
+     "menu": false,
+     "hud": 1.99,
+     "centre": 0,
+     "texts": 21,
+     "lowContrast": 2,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 21,
+    "passing": 19,
+    "worst": [
+     {
+      "shot": "milestone",
+      "id": "Cost",
+      "text": "1,200",
+      "ratio": 3.68
+     },
+     {
+      "shot": "milestone",
+      "id": "Cost",
+      "text": "15",
+      "ratio": 4.1
+     },
+     {
+      "shot": "milestone",
+      "id": "Cost",
+      "text": "446",
+      "ratio": 4.5
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 21,
+    "passing": 21,
+    "smallest": [
+     {
+      "shot": "milestone",
+      "id": "Rate",
+      "text": "+80 a second",
+      "ink": 11
+     },
+     {
+      "shot": "milestone",
+      "id": "Name",
+      "text": "Ember",
+      "ink": 11
+     },
+     {
+      "shot": "milestone",
+      "id": "Name",
+      "text": "Storm",
+      "ink": 11
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 1,
+    "worstShare": 1.99,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 2,
+    "withMotion": 2,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 88
+   },
+   "latency": {
+    "inputs": 1,
+    "answered": 1,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 1
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 3,
+    "bursts": 1
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.05,
+    "stepP95Ms": 2.15,
+    "renderMedianMs": 0.82,
+    "renderP95Ms": 1.52,
+    "frameP95Ms": 3.23,
+    "frameMaxMs": 38.15
+   },
+   "audio": {
+    "seconds": 1.5,
+    "peak": 0.25,
+    "rms": 0.0291,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "nova",
+   "title": "a supernova: asked, declined, collapsed, the run's card, the next run stronger",
+   "tier": "metal",
+   "ticks": 282,
+   "shots": [
+    {
+     "name": "card",
+     "tick": 201,
+     "frame": "frames/nova-card.png",
+     "menu": true,
+     "hud": 4.28,
+     "centre": 28.05,
+     "texts": 12,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 12,
+    "passing": 12,
+    "worst": [
+     {
+      "shot": "card",
+      "id": "Value",
+      "text": "300K",
+      "ratio": 5.89
+     },
+     {
+      "shot": "card",
+      "id": "Again",
+      "text": "Ignite again",
+      "ratio": 5.89
+     },
+     {
+      "shot": "card",
+      "id": "Value",
+      "text": "+10%",
+      "ratio": 7.13
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 12,
+    "passing": 12,
+    "smallest": [
+     {
+      "shot": "card",
+      "id": "Key",
+      "text": "Run time",
+      "ink": 11
+     },
+     {
+      "shot": "card",
+      "id": "Key",
+      "text": "Stardust",
+      "ink": 11
+     },
+     {
+      "shot": "card",
+      "id": "Value",
+      "text": "300K",
+      "ink": 12
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 10,
+    "withMotion": 10,
+    "presses": 4,
+    "pressesWithSound": 4,
+    "motionTicks": 275
+   },
+   "latency": {
+    "inputs": 6,
+    "answered": 6,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 6
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 3,
+    "bursts": 1
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.86,
+    "stepP95Ms": 6.56,
+    "renderMedianMs": 1.38,
+    "renderP95Ms": 4.38,
+    "frameP95Ms": 11.15,
+    "frameMaxMs": 63.52
+   },
+   "audio": {
+    "seconds": 4.7,
+    "peak": 0.74,
+    "rms": 0.068,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "offline",
+   "title": "the save, two hours away credited at half the rate, a stale write merged",
+   "tier": "metal",
+   "ticks": 264,
+   "shots": [
+    {
+     "name": "welcome",
+     "tick": 195,
+     "frame": "frames/offline-welcome.png",
+     "menu": true,
+     "hud": 5.4,
+     "centre": 28.87,
+     "texts": 3,
+     "lowContrast": 1,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 3,
+    "passing": 2,
+    "worst": [
+     {
+      "shot": "welcome",
+      "id": "Collect",
+      "text": "Collect",
+      "ratio": 3.05
+     },
+     {
+      "shot": "welcome",
+      "id": "Title",
+      "text": "Welcome back",
+      "ratio": 14.39
+     },
+     {
+      "shot": "welcome",
+      "id": "Body",
+      "text": "While you were away (2 h 0 min) the orb ",
+      "ratio": 14.81
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 3,
+    "passing": 3,
+    "smallest": [
+     {
+      "shot": "welcome",
+      "id": "Body",
+      "text": "While you were away (2 h 0 min) the orb ",
+      "ink": 13
+     },
+     {
+      "shot": "welcome",
+      "id": "Title",
+      "text": "Welcome back",
+      "ink": 16
+     },
+     {
+      "shot": "welcome",
+      "id": "Collect",
+      "text": "Collect",
+      "ink": 26
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 8,
+    "withMotion": 8,
+    "presses": 2,
+    "pressesWithSound": 2,
+    "motionTicks": 262
+   },
+   "latency": {
+    "inputs": 4,
+    "answered": 4,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 4
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 2,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 2.32,
+    "stepP95Ms": 6.93,
+    "renderMedianMs": 1.9,
+    "renderP95Ms": 5.08,
+    "frameP95Ms": 10.58,
+    "frameMaxMs": 60.27
+   },
+   "audio": {
+    "seconds": 4.4,
+    "peak": 0.36,
+    "rms": 0.0475,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "pad",
+   "title": "A, the d-pad, X, Y, Start and B play the orb",
+   "tier": "metal",
+   "ticks": 294,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 6,
+    "withMotion": 6,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 292
+   },
+   "latency": {
+    "inputs": 14,
+    "answered": 14,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 12
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 5,
+    "bursts": 3
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.61,
+    "stepP95Ms": 4.46,
+    "renderMedianMs": 1.29,
+    "renderP95Ms": 4.14,
+    "frameP95Ms": 7.88,
+    "frameMaxMs": 17.07
+   },
+   "audio": {
+    "seconds": 4.9,
+    "peak": 0.23,
+    "rms": 0.0462,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "pause",
+   "title": "Escape pauses, settings switch to 简体中文 and save, numbers read in 万 and 亿",
+   "tier": "metal",
+   "ticks": 330,
+   "shots": [
+    {
+     "name": "pause",
+     "tick": 120,
+     "frame": "frames/pause-pause.png",
+     "menu": true,
+     "hud": 6.8,
+     "centre": 43.77,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "settings-zh",
+     "tick": 204,
+     "frame": null,
+     "menu": true,
+     "hud": 7.52,
+     "centre": 46.48,
+     "texts": 12,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "play-zh",
+     "tick": 291,
+     "frame": null,
+     "menu": false,
+     "hud": 1.83,
+     "centre": 0,
+     "texts": 21,
+     "lowContrast": 6,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 37,
+    "passing": 30,
+    "worst": [
+     {
+      "shot": "settings-zh",
+      "id": "Done",
+      "text": "完成",
+      "ratio": 2.97
+     },
+     {
+      "shot": "play-zh",
+      "id": "Name",
+      "text": "晶簇",
+      "ratio": 3.1
+     },
+     {
+      "shot": "play-zh",
+      "id": "Cost",
+      "text": "1,200",
+      "ratio": 3.68
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 37,
+    "passing": 37,
+    "smallest": [
+     {
+      "shot": "pause",
+      "id": "resume",
+      "text": "Resume",
+      "ink": 11
+     },
+     {
+      "shot": "pause",
+      "id": "quit",
+      "text": "Title",
+      "ink": 12
+     },
+     {
+      "shot": "settings-zh",
+      "id": "Value",
+      "text": "100",
+      "ink": 12
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 1,
+    "worstShare": 1.83,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 8,
+    "withMotion": 8,
+    "presses": 5,
+    "pressesWithSound": 5,
+    "motionTicks": 328
+   },
+   "latency": {
+    "inputs": 6,
+    "answered": 6,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 6
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 2,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.78,
+    "stepP95Ms": 7.06,
+    "renderMedianMs": 1.44,
+    "renderP95Ms": 6.11,
+    "frameP95Ms": 12.98,
+    "frameMaxMs": 63.62
+   },
+   "audio": {
+    "seconds": 5.5,
+    "peak": 0.41,
+    "rms": 0.0367,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "phone",
+   "title": "the phone layout: a HUD inside the safe area, the orb tapped, a card bought",
+   "tier": "metal",
+   "ticks": 168,
+   "shots": [
+    {
+     "name": "play",
+     "tick": 165,
+     "frame": "frames/phone-play.png",
+     "menu": false,
+     "hud": 6.62,
+     "centre": 0,
+     "texts": 20,
+     "lowContrast": 2,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 20,
+    "passing": 18,
+    "worst": [
+     {
+      "shot": "play",
+      "id": "Cost",
+      "text": "18",
+      "ratio": 4.13
+     },
+     {
+      "shot": "play",
+      "id": "Amount",
+      "text": "85",
+      "ratio": 4.3
+     },
+     {
+      "shot": "play",
+      "id": "Owned",
+      "text": "×0",
+      "ratio": 5.11
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 20,
+    "passing": 20,
+    "smallest": [
+     {
+      "shot": "play",
+      "id": "Rate",
+      "text": "+0 a second",
+      "ink": 10.33
+     },
+     {
+      "shot": "play",
+      "id": "Name",
+      "text": "Storm",
+      "ink": 10.33
+     },
+     {
+      "shot": "play",
+      "id": "Name",
+      "text": "Star",
+      "ink": 10.33
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 1,
+    "worstShare": 6.62,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 1,
+    "withMotion": 1,
+    "presses": 4,
+    "pressesWithSound": 3,
+    "motionTicks": 166
+   },
+   "latency": {
+    "inputs": 4,
+    "answered": 4,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 4
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 4,
+    "bursts": 2
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 1.63,
+    "stepP95Ms": 4.99,
+    "renderMedianMs": 1.26,
+    "renderP95Ms": 4.26,
+    "frameP95Ms": 7.48,
+    "frameMaxMs": 116.48
+   },
+   "audio": {
+    "seconds": 2.8,
+    "peak": 0.23,
+    "rms": 0.0239,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "replay",
+   "title": "a run with taps, purchases and a milestone replays to the same hash",
+   "tier": "metal",
+   "ticks": 216,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 1,
+    "withMotion": 1,
+    "presses": 9,
+    "pressesWithSound": 9,
+    "motionTicks": 214
+   },
+   "latency": {
+    "inputs": 13,
+    "answered": 13,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 13
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 9,
+    "bursts": 7
+   },
+   "frame": {
+    "tier": "metal",
+    "stepMedianMs": 2.19,
+    "stepP95Ms": 8.49,
+    "renderMedianMs": 1.37,
+    "renderP95Ms": 5.77,
+    "frameP95Ms": 12.55,
+    "frameMaxMs": 25.43
+   },
+   "audio": {
+    "seconds": 3.6,
+    "peak": 0.22,
+    "rms": 0.0376,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  }
+ ],
+ "warnings": []
+}

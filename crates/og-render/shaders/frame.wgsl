@@ -39,6 +39,9 @@ struct Frame {
   sky_glow: vec4<f32>,        // x: glow power, yzw: sun colour
   sky_sun_dir: vec4<f32>,     // xyz: towards the drawn sun
   time: vec4<f32>,            // x: seconds, y: tick, z: ticks per second
+  // Water (`water.rs`): caustics on what lies below the first surface that has them.
+  caustics: vec4<f32>,        // x: the surface's height, y: strength (0: none), z: cells per metre, w: fade per metre of depth
+  caustics_area: vec4<f32>,   // xy: the surface's min xz, zw: its max xz
 };
 
 @group(0) @binding(0) var<uniform> frame: Frame;

@@ -1,0 +1,253 @@
+// The terrain's lit, prepass and normal-map passes. Prepended by
+// frame.wgsl, lighting.wgsl and terrain.wgsl.
+//
+// Shading: the normal from the terrain's normal map (built from the
+// heights on the GPU, mipmapped), up to four layers weighted by the
+// control map's channels times each layer's slope and altitude rule,
+// optionally sharpened by the layers' heights (their albedo's alpha),
+// each layer sampled by world xz (UV-scaled) or triplanar, lit like a
+// StandardMaterial (cascaded shadows, local lights, image-based light),
+// caustics under the frame's water, then fog.
+
+struct TerrainOut {
+  @builtin(position) clip: vec4<f32>,
+  @location(0) world: vec3<f32>,
+  @location(1) cur_clip: vec4<f32>,
+  @location(2) prev_clip: vec4<f32>,
+};
+
+@vertex
+fn vs(@builtin(vertex_index) vi: u32) -> TerrainOut {
+  let p = terrain_vertex(vi);
+  var o: TerrainOut;
+  o.clip = frame.view_proj * vec4<f32>(p, 1.0);
+  o.world = p;
+  o.cur_clip = terrain.view_proj * vec4<f32>(p, 1.0);
+  o.prev_clip = terrain.prev_view_proj * vec4<f32>(p, 1.0);
+  return o;
+}
+
+// The terrain's normal at world xz, from the normal map (x and z).
+fn terrain_normal_at(p: vec2<f32>) -> vec3<f32> {
+  let n = terrain.extent.zw;
+  let cell = terrain.extent.xy / max(n - 1.0, vec2<f32>(1.0));
+  let uv = ((p - terrain_min()) / cell + 0.5) / n;
+  let xz = textureSample(terrain_normals, map_sampler, uv).rg;
+  return normalize(vec3<f32>(xz.x, sqrt(max(1.0 - dot(xz, xz), 0.0)), xz.y));
+}
+
+fn layer_albedo(i: u32, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> vec4<f32> {
+  switch i {
+    case 0u: { return textureSampleGrad(albedo0, layer_sampler, uv, dx, dy); }
+    case 1u: { return textureSampleGrad(albedo1, layer_sampler, uv, dx, dy); }
+    case 2u: { return textureSampleGrad(albedo2, layer_sampler, uv, dx, dy); }
+    default: { return textureSampleGrad(albedo3, layer_sampler, uv, dx, dy); }
+  }
+}
+
+fn layer_normal_map(i: u32, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> vec3<f32> {
+  var t: vec4<f32>;
+  switch i {
+    case 0u: { t = textureSampleGrad(normal0, layer_sampler, uv, dx, dy); }
+    case 1u: { t = textureSampleGrad(normal1, layer_sampler, uv, dx, dy); }
+    case 2u: { t = textureSampleGrad(normal2, layer_sampler, uv, dx, dy); }
+    default: { t = textureSampleGrad(normal3, layer_sampler, uv, dx, dy); }
+  }
+  return t.xyz * 2.0 - 1.0;
+}
+
+// The weight of a rule over [lo, hi] faded over `fade` on both sides.
+fn band(x: f32, lo: f32, hi: f32, fade: f32) -> f32 {
+  let f = max(fade, 1e-4);
+  return smoothstep(lo - f, lo, x) * (1.0 - smoothstep(hi, hi + f, x));
+}
+
+struct LayerSample {
+  albedo: vec4<f32>,   // rgb colour, a: height
+  normal: vec3<f32>,   // world normal with the layer's detail
+};
+
+// One layer at a point: planar over world xz, or triplanar (three
+// projections blended by the normal, whiteout normal blending).
+fn sample_layer(i: u32, p: vec3<f32>, n: vec3<f32>, dpx: vec3<f32>, dpy: vec3<f32>) -> LayerSample {
+  let l = terrain.layers[i];
+  let k = l.mapping.x;
+  let has_albedo = (u32(l.mapping.w) & 1u) != 0u;
+  let has_normal = (u32(l.mapping.w) & 2u) != 0u;
+  var s: LayerSample;
+  s.albedo = vec4<f32>(1.0);
+  s.normal = n;
+  if (l.mapping.y < 0.5) {
+    let uv = p.xz * k;
+    if (has_albedo) { s.albedo = layer_albedo(i, uv, dpx.xz * k, dpy.xz * k); }
+    if (has_normal) {
+      let m = layer_normal_map(i, uv, dpx.xz * k, dpy.xz * k);
+      let t = normalize(vec3<f32>(1.0, 0.0, 0.0) - n * n.x);
+      let b = normalize(vec3<f32>(0.0, 0.0, 1.0) - n * n.z);
+      let d = vec3<f32>(m.xy * l.mapping.z, m.z);
+      s.normal = normalize(t * d.x + b * d.y + n * d.z);
+    }
+  } else {
+    var w = pow(abs(n), vec3<f32>(4.0));
+    w = w / max(w.x + w.y + w.z, 1e-5);
+    let ux = p.zy * k;
+    let uy = p.xz * k;
+    let uz = p.xy * k;
+    if (has_albedo) {
+      s.albedo = layer_albedo(i, ux, dpx.zy * k, dpy.zy * k) * w.x
+        + layer_albedo(i, uy, dpx.xz * k, dpy.xz * k) * w.y
+        + layer_albedo(i, uz, dpx.xy * k, dpy.xy * k) * w.z;
+    }
+    if (has_normal) {
+      let st = l.mapping.z;
+      var tx = layer_normal_map(i, ux, dpx.zy * k, dpy.zy * k);
+      var ty = layer_normal_map(i, uy, dpx.xz * k, dpy.xz * k);
+      var tz = layer_normal_map(i, uz, dpx.xy * k, dpy.xy * k);
+      tx = vec3<f32>(tx.xy * st + n.zy, abs(tx.z) * n.x);
+      ty = vec3<f32>(ty.xy * st + n.xz, abs(ty.z) * n.y);
+      tz = vec3<f32>(tz.xy * st + n.xy, abs(tz.z) * n.z);
+      s.normal = normalize(tx.zyx * w.x + ty.xzy * w.y + tz.xyz * w.z);
+    }
+  }
+  return s;
+}
+
+// The layers' weights at a point (summing to 1): control map times the
+// slope and altitude rules, sharpened by the layers' heights.
+fn layer_weights(p: vec3<f32>, n: vec3<f32>, heights_of: vec4<f32>) -> vec4<f32> {
+  let count = u32(terrain.origin.w);
+  var c = vec4<f32>(1.0);
+  if (terrain.params.y > 0.5) {
+    let uv = (p.xz - terrain_min()) / terrain.extent.xy;
+    c = textureSample(control_map, map_sampler, uv);
+  }
+  let angle = degrees(acos(clamp(n.y, -1.0, 1.0)));
+  let altitude = p.y - terrain.origin.y;
+  var w = vec4<f32>(0.0);
+  for (var i = 0u; i < 4u; i++) {
+    if (i >= count) { break; }
+    let l = terrain.layers[i];
+    w[i] = c[i] * band(angle, l.slope.x, l.slope.y, l.slope.z) * band(altitude, l.altitude.x, l.altitude.y, l.altitude.z);
+  }
+  let hb = terrain.params.x;
+  if (hb > 0.0) {
+    var ha = vec4<f32>(-1e9);
+    var top = -1e9;
+    for (var i = 0u; i < 4u; i++) {
+      if (w[i] > 1e-3) {
+        ha[i] = w[i] + heights_of[i] * hb;
+        top = max(top, ha[i]);
+      }
+    }
+    w = max(ha - vec4<f32>(top - 0.15), vec4<f32>(0.0));
+  }
+  let sum = w.x + w.y + w.z + w.w;
+  if (sum < 1e-4) { return vec4<f32>(1.0, 0.0, 0.0, 0.0); }
+  return w / sum;
+}
+
+fn terrain_local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>) -> vec3<f32> {
+  let to_light = light.position_range.xyz - p;
+  let d2 = max(dot(to_light, to_light), 1e-4);
+  let range = light.position_range.w;
+  let ratio = d2 / (range * range);
+  let window = clamp(1.0 - ratio * ratio, 0.0, 1.0);
+  var atten = window * window / d2;
+  let l = to_light * inverseSqrt(d2);
+  if (light.color_kind.w > 0.5) {
+    let cos_angle = dot(-l, light.direction_slot.xyz);
+    let t = clamp((cos_angle - light.cone.x) * light.cone.y, 0.0, 1.0);
+    atten *= t * t;
+  }
+  if (atten <= 0.0 || dot(n, l) <= 0.0) { return vec3<f32>(0.0); }
+  return brdf(s, n, v, l) * light.color_kind.rgb * atten * local_shadow(light, p, n);
+}
+
+@fragment
+fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
+  let p = in.world;
+  let dpx = dpdx(p);
+  let dpy = dpdy(p);
+  let n_geo = terrain_normal_at(p.xz);
+  let count = u32(terrain.origin.w);
+  // Each layer's colour and normal (layers of weight 0 skip their maps).
+  var samples: array<LayerSample, 4>;
+  var heights_of = vec4<f32>(1.0);
+  for (var i = 0u; i < 4u; i++) {
+    if (i < count) {
+      samples[i] = sample_layer(i, p, n_geo, dpx, dpy);
+      heights_of[i] = samples[i].albedo.a;
+    }
+  }
+  let w = layer_weights(p, n_geo, heights_of);
+  var albedo = vec3<f32>(0.0);
+  var normal = vec3<f32>(0.0);
+  var roughness = 0.0;
+  for (var i = 0u; i < 4u; i++) {
+    if (i < count && w[i] > 0.0) {
+      let l = terrain.layers[i];
+      albedo += samples[i].albedo.rgb * l.color.rgb * w[i];
+      normal += samples[i].normal * w[i];
+      roughness += l.color.w * w[i];
+    }
+  }
+  if (count == 0u) {
+    albedo = vec3<f32>(0.5);
+    normal = n_geo;
+    roughness = 0.9;
+  }
+  var n = normalize(normal);
+  var s: Surface;
+  s.albedo = albedo;
+  s.metallic = 0.0;
+  s.roughness = clamp(roughness, 0.04, 1.0);
+  s.f0 = vec3<f32>(0.04);
+  let v = select(normalize(frame.view_pos.xyz - p), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
+
+  let l = normalize(frame.light_dir.xyz);
+  let n_dot_l = max(dot(n, l), 0.0);
+  var shadow = 1.0;
+  if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) { shadow = cascade_shadow(p, n_geo, n_dot_l); }
+  var color = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
+  color += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(p);
+  let light_count = u32(frame.params.z);
+  for (var i = 0u; i < light_count; i++) {
+    color += terrain_local_light(frame.lights[i], s, p, n, v);
+  }
+  let n_dot_v = max(dot(n, v), 1e-4);
+  let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);
+  let kd_ibl = vec3<f32>(1.0) - f_ibl;
+  let irradiance = textureSample(irradiance_map, ibl_sampler, n).rgb;
+  let r = reflect(-v, n);
+  let prefiltered = textureSampleLevel(prefiltered_map, ibl_sampler, r, s.roughness * frame.params.y).rgb;
+  let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
+  color += (kd_ibl * irradiance * s.albedo + prefiltered * (f_ibl * lut.x + lut.y)) * frame.params.x;
+
+  if (frame.light_color.w > 0.5 && frame.light_color.w < 1.5) {
+    let c = cascade_index(p);
+    var tint = vec3<f32>(0.0);
+    if (c == 0u) { tint = vec3<f32>(1.0, 0.0, 0.0); }
+    if (c == 1u) { tint = vec3<f32>(0.0, 1.0, 0.0); }
+    if (c == 2u) { tint = vec3<f32>(0.0, 0.0, 1.0); }
+    return vec4<f32>(tint * 4.0, 1.0);
+  }
+  return vec4<f32>(apply_fog(color, p), 1.0);
+}
+
+struct TerrainPrepass {
+  @location(0) gbuffer: vec4<f32>,
+  @location(1) depth: vec4<f32>,
+  @location(2) outline: vec4<f32>,
+};
+
+@fragment
+fn fs_prepass(in: TerrainOut) -> TerrainPrepass {
+  let n = terrain_normal_at(in.world.xz);
+  let cur = in.cur_clip.xy / in.cur_clip.w;
+  let prev = in.prev_clip.xy / max(in.prev_clip.w, 1e-6);
+  var o: TerrainPrepass;
+  o.gbuffer = vec4<f32>(oct_encode(n), (cur - prev) * vec2<f32>(0.5, -0.5));
+  o.depth = vec4<f32>(dot(in.world - frame.view_pos.xyz, frame.view_forward.xyz), 0.0, 0.0, 1.0);
+  o.outline = vec4<f32>(0.0);
+  return o;
+}

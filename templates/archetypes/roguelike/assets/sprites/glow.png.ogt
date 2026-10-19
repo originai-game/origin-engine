@@ -1,0 +1,7 @@
+type import
+version 1
+---
+# A soft light: lossless, sampled linear.
+texture {
+  kind color
+}

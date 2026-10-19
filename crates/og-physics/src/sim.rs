@@ -4,8 +4,8 @@
 //! (`v`, `pose`, `unpose`, `angvel`, ...) defined beside it.
 
 use super::{
-    PROFILE_NAME, ShapeCastOptions, angvel, cache, flat, from_mesh, pose, primitive, rp, unangvel,
-    unpose, unv, v,
+    PROFILE_NAME, ShapeCastOptions, angvel, cache, flat, from_heightfield, from_mesh, pose,
+    primitive, rp, unangvel, unpose, unv, v,
 };
 use super::{VehicleState, ext};
 use crate::gather::{Body, Scene};
@@ -58,6 +58,24 @@ fn shape(c: &Collider, scale: Vec3, shared: &mut Shared) -> Result<rp::SharedSha
     };
     if let Some(shape) = cache(shared).get(&key) {
         return Ok(shape.clone());
+    }
+    if c.shape == SHAPE_HEIGHTFIELD {
+        let field = shared.heightfields.get(&c.mesh).cloned().ok_or_else(|| {
+            Error::new(
+                ErrorKind::NotFound,
+                format!(
+                    "og.Collider.mesh {} is not a height field registered with PhysicsSystem::set_heightfield",
+                    c.mesh
+                ),
+            )
+        })?;
+        let built = from_heightfield(&field, s)?;
+        let cached = cache(shared);
+        if cached.len() >= SHAPE_CACHE_LIMIT {
+            cached.clear();
+        }
+        cached.insert(key, built.clone());
+        return Ok(built);
     }
     let mesh = shared.meshes.get(&c.mesh).cloned().ok_or_else(|| {
         Error::new(
@@ -398,8 +416,10 @@ fn sync(
     });
 
     let stale = std::mem::take(&mut shared.stale_meshes);
-    let stale_mesh =
-        |c: &Collider| matches!(c.shape, SHAPE_CONVEX | SHAPE_TRIMESH) && stale.contains(&c.mesh);
+    let stale_mesh = |c: &Collider| {
+        matches!(c.shape, SHAPE_CONVEX | SHAPE_TRIMESH | SHAPE_HEIGHTFIELD)
+            && stale.contains(&c.mesh)
+    };
 
     let mut handles = BTreeMap::new();
     for b in &scene.bodies {

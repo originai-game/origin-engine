@@ -671,6 +671,8 @@ pub(crate) enum FramePass {
     Light2d,
     /// The 2D fluids' metaball field.
     Metaballs,
+    /// The scene mirrored in a water surface (its planar reflection).
+    Reflection,
     /// Opaque meshes, sky, transparent meshes, particles, strips, sprites
     /// and text into the HDR target.
     Main,
@@ -706,6 +708,7 @@ impl FramePass {
             FramePass::Particles => "particles".into(),
             FramePass::Light2d => "lights-2d".into(),
             FramePass::Metaballs => "metaballs".into(),
+            FramePass::Reflection => "reflection".into(),
             FramePass::Main => "main".into(),
             FramePass::Glow => "glow".into(),
             FramePass::Outline => "outline".into(),
@@ -742,6 +745,8 @@ pub(crate) struct GraphConfig {
     /// Metaball field targets the frame's fluids need (1 to
     /// `metaballs::FIELDS` when it draws any).
     pub fluid_fields: u32,
+    /// The planar reflection's size (`Some` with [`FramePass::Reflection`]).
+    pub reflection: Option<(u32, u32)>,
 }
 
 /// The metaball field targets, by field.
@@ -888,6 +893,31 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             g.transient(*name, desc(w, h, HDR_FORMAT, 1, attach_bind));
         }
     }
+    if let (true, Some((rw, rh))) = (has(FramePass::Reflection), cfg.reflection) {
+        g.transient("reflection", desc(rw, rh, HDR_FORMAT, 1, attach_bind))
+            .transient(
+                "reflection-depth",
+                desc(
+                    rw,
+                    rh,
+                    DEPTH_FORMAT,
+                    cfg.samples,
+                    wgpu::TextureUsages::RENDER_ATTACHMENT,
+                ),
+            );
+        if msaa {
+            g.transient(
+                "reflection-msaa",
+                desc(
+                    rw,
+                    rh,
+                    HDR_FORMAT,
+                    cfg.samples,
+                    wgpu::TextureUsages::RENDER_ATTACHMENT,
+                ),
+            );
+        }
+    }
     if has(FramePass::Glow) {
         g.transient("glow", desc(hw, hh, HDR_FORMAT, 1, attach_bind));
     }
@@ -954,6 +984,13 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             FramePass::Particles => g.pass(name, &[], &["particles"]),
             FramePass::Light2d => g.pass(name, &[], &["lightmap"]),
             FramePass::Metaballs => g.pass(name, &[], fields),
+            FramePass::Reflection => {
+                let mut writes = vec!["reflection", "reflection-depth"];
+                if msaa {
+                    writes.push("reflection-msaa");
+                }
+                g.pass(name, &["cascades", "local-shadows"], &writes)
+            }
             FramePass::Main => {
                 let mut reads = vec!["cascades", "local-shadows"];
                 if has(FramePass::AoBlur) {
@@ -970,6 +1007,9 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 }
                 if has(FramePass::Metaballs) {
                     reads.extend_from_slice(fields);
+                }
+                if has(FramePass::Reflection) {
+                    reads.push("reflection");
                 }
                 let mut writes = vec!["hdr", "depth"];
                 if msaa {
@@ -1496,6 +1536,7 @@ impl FrameGraph {
             | FramePass::Particles
             | FramePass::Light2d
             | FramePass::Metaballs
+            | FramePass::Reflection
             | FramePass::Main
             | FramePass::Glow => 0,
         }
@@ -1520,6 +1561,9 @@ fn transient_names(cfg: &GraphConfig) -> Vec<String> {
         "metaballs.1",
         "metaballs.2",
         "metaballs.3",
+        "reflection",
+        "reflection-depth",
+        "reflection-msaa",
         "glow",
         "hdr.outline",
         "hdr.dof",

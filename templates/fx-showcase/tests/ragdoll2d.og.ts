@@ -5,10 +5,10 @@
 // (near limbs at +0.06, far ones at -0.06).
 import { stationPlaytest } from "./station.ts";
 
-export default stationPlaytest("ragdoll2d", 2, ["p2", "puppet"], ({ t, field }) => {
+export default stationPlaytest("ragdoll2d", 2, ["anim-physics", "puppet"], ({ t, field }) => {
   t.equal(field<number>("puppet", "Ragdoll", "blend"), 1, "the puppet went fully limp");
-  const low = field<number>("p2", "P2", "ragdollLow");
+  const low = field<number>("anim-physics", "AnimPhysics", "ragdollLow");
   t.ok(low < 0.6, `it fell off the ledge (lowest bone at ${low.toFixed(2)} m)`);
-  const z = field<number>("p2", "P2", "ragdollZ");
+  const z = field<number>("anim-physics", "AnimPhysics", "ragdollZ");
   t.ok(z > 0.01 && z < 0.07, `its bones kept their layers in the plane (largest |z| ${z.toFixed(3)})`);
 });

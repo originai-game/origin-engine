@@ -1,0 +1,14 @@
+type terrain
+version 1
+---
+# A 64 m hill (6 m high) on a gentle slope, for packages/engine's
+# terrain.test.ts: 129 × 129 samples (half a metre apart), heights 0 to 10 m (0.4 to 8.0 used).
+heightmap "hill.png"
+height 0 10
+size 64 64
+tile 64
+layer {
+  albedo "textures/grass.png"
+  tile 4
+  roughness 0.9
+}

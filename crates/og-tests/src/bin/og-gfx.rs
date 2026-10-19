@@ -4,6 +4,7 @@
 //!   og-gfx --all --capture DIR [--frames N]   frames to DIR/<tier>/<scene>.png, stats to DIR/report.txt
 //!   og-gfx --costs [--frames N]               the feature-cost table (markdown)
 //!   og-gfx --costs-e5 [--frames N]            the E5 rows alone (slow tiers: lavapipe)
+//!   og-gfx --costs-p2 [--frames N]            the phase 2 rows alone (terrain, water)
 //!
 //! Prints the backend tier, the frame stats, setup, CPU-submit and frame
 //! times, and the comparison with the committed reference when one exists.
@@ -21,7 +22,7 @@ fn main() {
     let mut args = std::env::args().skip(1);
     let (mut names, mut out, mut frames, mut capture, mut costs) =
         (Vec::new(), None, 0u32, None, false);
-    let mut e5_only = false;
+    let mut only: Option<&str> = None;
     while let Some(a) = args.next() {
         match a.as_str() {
             "--all" => names.extend(scenes::SCENES.iter().map(|s| s.to_string())),
@@ -30,7 +31,11 @@ fn main() {
             "--costs" => costs = true,
             "--costs-e5" => {
                 costs = true;
-                e5_only = true;
+                only = Some("E5");
+            }
+            "--costs-p2" => {
+                costs = true;
+                only = Some("P2");
             }
             "--frames" => {
                 frames = args
@@ -49,8 +54,8 @@ fn main() {
         }
     }
     if costs {
-        let table = if e5_only {
-            effect_table(frames.max(10), true)
+        let table = if let Some(only) = only {
+            effect_table(frames.max(10), Some(only))
         } else {
             cost_table(frames.max(100))
         };
@@ -347,22 +352,23 @@ fn best_ms(built: &mut GfxScene, frames: u32) -> Result<(f64, FrameStats), Strin
     Ok((best, stats))
 }
 
-/// The effect scenes, each against itself with the effect removed (`e5_only`:
-/// the E5 rows, with their own header).
-fn effect_table(frames: u32, e5_only: bool) -> Result<String, String> {
+/// The effect scenes, each against itself with the effect removed (`only`:
+/// the rows of one round, "E5" or "P2", with their own header).
+fn effect_table(frames: u32, only: Option<&str>) -> Result<String, String> {
     let mut table = String::new();
-    if e5_only {
+    if let Some(round) = only {
         let probe = Renderer::new_blocking(&scenes::base_desc()).map_err(|e| e.to_string())?;
         let _ = writeln!(
             table,
-            "E5 feature costs on {} ({}), 1280x720, best of 5 runs of {frames} frames (`og-gfx --costs-e5`).\n",
+            "{round} feature costs on {} ({}), 1280x720, best of 5 runs of {frames} frames (`og-gfx --costs-{}`).\n",
             probe.info().adapter,
-            probe.info().backend_tier()
+            probe.info().backend_tier(),
+            round.to_lowercase()
         );
     } else {
         let _ = writeln!(
             table,
-            "\nEffect scenes of E1 and E5 (each against itself with the effect removed):\n"
+            "\nEffect scenes of E1, E5 and phase 2 (each against itself with the effect removed):\n"
         );
     }
     let _ = writeln!(table, "| Scene | ms | without the effect | Δ | draws |");
@@ -448,9 +454,63 @@ fn effect_table(frames: u32, e5_only: bool) -> Result<String, String> {
                 g.scene.fog = None;
             },
         ),
+        // Phase 2: terrain and water.
+        (
+            "terrain-near",
+            "P2: terrain from 1.7 m (2 km, 4 layers, clipmap)",
+            |g| g.scene.terrains.clear(),
+        ),
+        ("terrain-mid", "P2: terrain from 120 m", |g| {
+            g.scene.terrains.clear()
+        }),
+        ("terrain-far", "P2: terrain from 1.5 km", |g| {
+            g.scene.terrains.clear()
+        }),
+        (
+            "terrain-mid",
+            "P2: terrain casting shadows (its shadow passes)",
+            |g| {
+                for t in &mut g.scene.terrains {
+                    t.cast_shadows = false;
+                }
+            },
+        ),
+        (
+            "water-planar",
+            "P2: planar reflection (half resolution)",
+            |g| {
+                for w in &mut g.scene.water {
+                    w.planar_reflection = 0.0;
+                }
+            },
+        ),
+        ("water-shadows", "P2: shadows received on water", |g| {
+            for w in &mut g.scene.water {
+                w.shadows = 0.0;
+            }
+        }),
+        ("water-underwater", "P2: caustics on the bed", |g| {
+            for w in &mut g.scene.water {
+                w.caustics = 0.0;
+            }
+        }),
+        (
+            "water-underwater",
+            "P2: underwater view (fog, the surface from below; vs no water)",
+            |g| g.scene.water.clear(),
+        ),
+        (
+            "terrain-grass",
+            "P2: grass scatter (36,000 tufts, shadowed)",
+            |g| {
+                // The tufts are the last mesh the scene added.
+                let tuft = g.scene.instances.last().map(|i| i.mesh);
+                g.scene.instances.retain(|i| Some(i.mesh) != tuft);
+            },
+        ),
     ];
     for (scene, label, strip) in effect_rows {
-        if e5_only && !label.starts_with("E5") {
+        if only.is_some_and(|round| !label.starts_with(round)) {
             continue;
         }
         let mut with = scenes::build(scene)?;
@@ -522,7 +582,7 @@ fn cost_table(frames: u32) -> Result<String, String> {
         "\n`sprites-20k` (20,000 sprites moved and resubmitted every frame, orthographic): {ms:.3} ms per frame, {} draws ({} sprite draws).",
         stats.draw_calls, stats.sprite_draws
     );
-    table.push_str(&effect_table(frames, false)?);
+    table.push_str(&effect_table(frames, None)?);
     let mut text = scenes::build("text-msdf")?;
     let (ms, stats) = best_ms(&mut text, frames)?;
     let _ = writeln!(

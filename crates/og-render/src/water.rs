@@ -8,6 +8,17 @@
 //! reflection: a march through the depth prepass on the full tier, the
 //! sky's prefiltered cubemap where that misses and everywhere on WebGL2.
 //!
+//! Phase 2 adds, each off by default: a **planar reflection** (the scene
+//! drawn again from the camera mirrored in the surface, clipped at the
+//! surface by an oblique near plane, at a fraction of the output's
+//! resolution: one surface a frame), the directional light's **shadows**
+//! on the surface, **caustics** on what lies below it (the lit and terrain
+//! shaders read them from the frame), and the **underwater view**: with
+//! the camera below the surface the frame's fog becomes the water's
+//! (`underwater_color`, `underwater_density`) and the surface, seen from
+//! below, shows what is above inside Snell's window and reflects the
+//! water's colour outside it.
+//!
 //! [`Water2d`]: a side-on water body (og-physics' `og.WaterLine`), drawn
 //! through the sprite order as a strip: the surface line's columns over a
 //! body that darkens with depth and a bright lip along the top.
@@ -60,6 +71,21 @@ pub struct Water {
     pub reflectivity: f32,
     /// The wave simulation's heights (`None`: flat).
     pub heights: Option<WaterHeights>,
+    /// Reflect the scene by drawing it again mirrored in the surface, at
+    /// this fraction of the output's resolution (0: off; the screen-space
+    /// and cubemap reflections). One surface a frame: the first that asks.
+    pub planar_reflection: f32,
+    /// How much the directional light's shadows darken the surface's
+    /// highlight, foam and colour (0: none, 1: fully).
+    pub shadows: f32,
+    /// With the camera below the surface: the water's fog colour and its
+    /// density per metre (0: no underwater view).
+    pub underwater_color: Vec3,
+    pub underwater_density: f32,
+    /// Caustics on what lies below the surface (0: none) and their size
+    /// (cells per metre). One surface a frame: the first that has them.
+    pub caustics: f32,
+    pub caustics_scale: f32,
 }
 
 impl Default for Water {
@@ -80,6 +106,12 @@ impl Default for Water {
             refraction: 1.0,
             reflectivity: 1.0,
             heights: None,
+            planar_reflection: 0.0,
+            shadows: 0.0,
+            underwater_color: Vec3::new(0.03, 0.16, 0.2),
+            underwater_density: 0.09,
+            caustics: 0.0,
+            caustics_scale: 0.6,
         }
     }
 }
@@ -136,6 +168,10 @@ struct WaterGpu {
     waves: [f32; 4],
     look: [f32; 4],
     screen: [f32; 4],
+    /// x: shadows, y: 1 drawn with the planar reflection, zw: unused.
+    extra: [f32; 4],
+    /// rgb: the underwater colour, w: unused.
+    under: [f32; 4],
 }
 
 /// The most grid cells per side.
@@ -169,6 +205,7 @@ impl WaterRenderer {
         device: &wgpu::Device,
         frame_layout: &wgpu::BindGroupLayout,
         frame_wgsl: &str,
+        lighting_wgsl: &str,
         samples: u32,
     ) -> WaterRenderer {
         let tex = |binding, filterable| wgpu::BindGroupLayoutEntry {
@@ -203,12 +240,17 @@ impl WaterRenderer {
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                     count: None,
                 },
+                tex(5, true),
             ],
         });
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("water"),
             source: wgpu::ShaderSource::Wgsl(
-                format!("{frame_wgsl}{}", include_str!("../shaders/water.wgsl")).into(),
+                format!(
+                    "{frame_wgsl}{lighting_wgsl}{}",
+                    include_str!("../shaders/water.wgsl")
+                )
+                .into(),
             ),
         });
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -249,7 +291,9 @@ impl WaterRenderer {
     }
 
     /// Writes this frame's uniforms and height fields and makes the bind
-    /// groups (the scene copy and the depth prepass are this frame's).
+    /// groups (the scene copy and the depth prepass are this frame's;
+    /// `planar`: the surface drawn with this frame's planar reflection and
+    /// its texture, `fallback` bound where there is none).
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn prepare(
         &mut self,
@@ -260,6 +304,8 @@ impl WaterRenderer {
         ssr: bool,
         scene_color: &wgpu::TextureView,
         scene_depth: &wgpu::TextureView,
+        planar: Option<(usize, &wgpu::TextureView)>,
+        fallback: &wgpu::TextureView,
     ) -> Vec<WaterDraw> {
         while self.slots.len() < waters.len() {
             self.slots.push(Slot {
@@ -274,7 +320,8 @@ impl WaterRenderer {
         }
         let (w, h) = (screen.0 as f32, screen.1 as f32);
         let mut draws = Vec::with_capacity(waters.len());
-        for (water, slot) in waters.iter().zip(&mut self.slots) {
+        for (index, (water, slot)) in waters.iter().zip(&mut self.slots).enumerate() {
+            let reflection = planar.filter(|(i, _)| *i == index).map(|(_, v)| v);
             let segments = water.segments.clamp(1, MAX_SEGMENTS);
             let field = water.heights.as_ref().filter(|f| {
                 f.resolution >= 2
@@ -331,6 +378,13 @@ impl WaterRenderer {
                     field.map_or(2.0, |f| f.resolution as f32),
                 ],
                 screen: [w, h, 1.0 / w.max(1.0), 1.0 / h.max(1.0)],
+                extra: [
+                    water.shadows.clamp(0.0, 1.0),
+                    f32::from(reflection.is_some()),
+                    0.0,
+                    0.0,
+                ],
+                under: water.underwater_color.extend(0.0).to_array(),
             };
             queue.write_buffer(&slot.uniform, 0, bytemuck::bytes_of(&gpu));
             let heights = match (&slot.heights, field) {
@@ -361,6 +415,12 @@ impl WaterRenderer {
                         binding: 4,
                         resource: wgpu::BindingResource::Sampler(&self.sampler),
                     },
+                    wgpu::BindGroupEntry {
+                        binding: 5,
+                        resource: wgpu::BindingResource::TextureView(
+                            reflection.unwrap_or(fallback),
+                        ),
+                    },
                 ],
             });
             draws.push(WaterDraw {
@@ -380,6 +440,123 @@ impl WaterRenderer {
         }
         draws.len() as u32
     }
+}
+
+/// The surface's plane in world space: (unit normal facing up out of the
+/// water, a point on it).
+pub(crate) fn plane(water: &Water) -> (Vec3, Vec3) {
+    let up = water
+        .transform
+        .transform_vector3(Vec3::Y)
+        .normalize_or(Vec3::Y);
+    (up, water.transform.transform_point3(Vec3::ZERO))
+}
+
+/// The surface's height above its rest plane at local xz (the height
+/// field, bilinear; 0 without one).
+fn local_height(water: &Water, local: Vec2) -> f32 {
+    let Some(f) = water
+        .heights
+        .as_ref()
+        .filter(|f| f.resolution >= 2 && f.heights.len() == (f.resolution * f.resolution) as usize)
+    else {
+        return 0.0;
+    };
+    let n = f.resolution as usize;
+    let cell = f.size / (n - 1) as f32;
+    let g =
+        ((local + Vec2::splat(f.size * 0.5)) / cell).clamp(Vec2::ZERO, Vec2::splat((n - 1) as f32));
+    let i = g.floor().min(Vec2::splat((n - 2) as f32));
+    let t = g - i;
+    let (x, z) = (i.x as usize, i.y as usize);
+    let at = |x: usize, z: usize| f.heights[z * n + x];
+    let lo = at(x, z) + (at(x + 1, z) - at(x, z)) * t.x;
+    let hi = at(x, z + 1) + (at(x + 1, z + 1) - at(x, z + 1)) * t.x;
+    lo + (hi - lo) * t.y
+}
+
+/// The surface the camera at `eye` is below (inside its extent, under its
+/// waves), if any, among those with an underwater view.
+pub(crate) fn underwater(waters: &[Water], eye: Vec3) -> Option<usize> {
+    waters.iter().position(|w| {
+        if w.underwater_density.is_nan() || w.underwater_density <= 0.0 {
+            return false;
+        }
+        let local = w.transform.inverse().transform_point3(eye);
+        local.x.abs() <= w.size.x * 0.5
+            && local.z.abs() <= w.size.y * 0.5
+            && local.y < local_height(w, Vec2::new(local.x, local.z))
+    })
+}
+
+/// The fog of the underwater view: the water's colour, thickening by its
+/// density from the eye, the sky left clear (Snell's window shows it).
+pub(crate) fn underwater_fog(w: &Water) -> crate::Fog {
+    crate::Fog {
+        color: w.underwater_color,
+        density: w.underwater_density,
+        start: 0.0,
+        end: 0.0,
+        max_opacity: 1.0,
+        height_density: 0.0,
+        sky: 0.0,
+        sun_color: w.underwater_color,
+        sun_power: 8.0,
+        ..Default::default()
+    }
+}
+
+/// The frame's caustics: the first surface that has them, as
+/// `FrameUniform::caustics` (height, strength, scale, fade; then the xz
+/// rectangle). Zero without one.
+pub(crate) fn caustics(waters: &[Water]) -> [[f32; 4]; 2] {
+    let Some(w) = waters.iter().find(|w| w.caustics > 0.0) else {
+        return [[0.0; 4]; 2];
+    };
+    let (_, at) = plane(w);
+    let mut lo = Vec2::splat(f32::MAX);
+    let mut hi = Vec2::splat(f32::MIN);
+    for (x, z) in [(-0.5f32, -0.5f32), (0.5, -0.5), (-0.5, 0.5), (0.5, 0.5)] {
+        let p = w
+            .transform
+            .transform_point3(Vec3::new(x * w.size.x, 0.0, z * w.size.y));
+        lo = lo.min(Vec2::new(p.x, p.z));
+        hi = hi.max(Vec2::new(p.x, p.z));
+    }
+    [
+        [at.y, w.caustics, w.caustics_scale.max(1e-3), 0.15],
+        [lo.x, lo.y, hi.x, hi.y],
+    ]
+}
+
+/// The camera mirrored in the plane through `at` with unit normal `n`.
+pub(crate) fn mirrored_camera(camera: &crate::Camera, n: Vec3, at: Vec3) -> crate::Camera {
+    let point = |p: Vec3| p - n * (2.0 * (p - at).dot(n));
+    let dir = |d: Vec3| d - n * (2.0 * d.dot(n));
+    crate::Camera {
+        position: point(camera.position),
+        target: point(camera.target),
+        up: dir(camera.up),
+        ..*camera
+    }
+}
+
+/// `proj` with its near plane replaced by the world plane (`n`, `at`)
+/// seen through `view` (Lengyel's oblique near-plane clipping, for depth
+/// 0..1): what lies below the plane is clipped and the far plane is
+/// tilted to keep the depth range. `lift` raises the plane (m) to hide
+/// the seam where geometry meets the water.
+pub(crate) fn oblique(proj: Mat4, view: Mat4, n: Vec3, at: Vec3, lift: f32) -> Mat4 {
+    let world = n.extend(-(n.dot(at) + lift));
+    // Planes transform by the inverse transpose.
+    let c = view.inverse().transpose() * world;
+    let q = proj.inverse() * Vec4::new(c.x.signum(), c.y.signum(), 1.0, 1.0);
+    let c = c * (1.0 / c.dot(q));
+    let mut rows = [proj.row(0), proj.row(1), c, proj.row(3)];
+    if !rows[2].is_finite() {
+        rows[2] = proj.row(2);
+    }
+    Mat4::from_cols(rows[0], rows[1], rows[2], rows[3]).transpose()
 }
 
 fn height_texture(device: &wgpu::Device, n: u32) -> (wgpu::Texture, wgpu::TextureView) {
