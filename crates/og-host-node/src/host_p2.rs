@@ -1,4 +1,4 @@
-//! Phase 2's modules' trait implementations (TerrainApi): every member is
+//! Phase 2's modules' trait implementations (TerrainApi, StreamApi): every member is
 //! the host-neutral runtime's.
 
 use crate::NodeHost;
@@ -36,5 +36,23 @@ impl TerrainApi for NodeHost {
         layer: Option<String>,
     ) -> String {
         rt::og_terrain_set_layer(world, data, index, layer)
+    }
+}
+
+impl StreamApi for NodeHost {
+    fn og_stream_status(&self, world: u32, group: String) -> String {
+        rt::og_stream_status(world, group)
+    }
+    fn og_stream_request(&self, world: u32, group: String) -> String {
+        rt::og_stream_request(world, group)
+    }
+    fn og_stream_release(&self, world: u32, group: String) -> String {
+        rt::og_stream_release(world, group)
+    }
+    fn og_stream_budget(&self, world: u32) -> String {
+        rt::og_stream_budget(world)
+    }
+    fn og_stream_set_budget(&self, world: u32, bytes: f64) -> String {
+        rt::og_stream_set_budget(world, bytes)
     }
 }

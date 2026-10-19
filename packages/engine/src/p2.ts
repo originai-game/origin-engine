@@ -25,3 +25,11 @@ export const terrain = Object.freeze({
   setLayer: (world: W, data: number, index: number, layer?: unknown) =>
     parse(abi().og_terrain_set_layer(world.id, data, index, json(layer))),
 });
+
+export const stream = Object.freeze({
+  status: (world: W, group: string) => parse(abi().og_stream_status(world.id, group)),
+  request: (world: W, group: string) => parse(abi().og_stream_request(world.id, group)),
+  release: (world: W, group: string) => parse(abi().og_stream_release(world.id, group)),
+  budget: (world: W) => parse(abi().og_stream_budget(world.id)),
+  setBudget: (world: W, bytes: number) => parse(abi().og_stream_set_budget(world.id, bytes)),
+});

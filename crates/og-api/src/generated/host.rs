@@ -690,10 +690,24 @@ pub trait TerrainApi: Wire {
     fn og_terrain_set_layer(&self, world: u32, data: f64, index: u32, layer: Option<String>) -> String;
 }
 
-/// Every trait: a host is a type that implements all of them.
-pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi {}
+/// `stream`: packages/knowledge/wiki/stream.md.
+pub trait StreamApi: Wire {
+    /// `og.stream.status`
+    fn og_stream_status(&self, world: u32, group: String) -> String;
+    /// `og.stream.request`
+    fn og_stream_request(&self, world: u32, group: String) -> String;
+    /// `og.stream.release`
+    fn og_stream_release(&self, world: u32, group: String) -> String;
+    /// `og.stream.budget`
+    fn og_stream_budget(&self, world: u32) -> String;
+    /// `og.stream.setBudget`
+    fn og_stream_set_budget(&self, world: u32, bytes: f64) -> String;
+}
 
-impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi> Host for T {}
+/// Every trait: a host is a type that implements all of them.
+pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi {}
+
+impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi> Host for T {}
 
 /// Every binding symbol, in binding-table order (`bindings.json` ids).
 pub const SYMBOLS: &[&str] = &[
@@ -966,6 +980,11 @@ pub const SYMBOLS: &[&str] = &[
     "og_terrain_edit",
     "og_terrain_layer",
     "og_terrain_set_layer",
+    "og_stream_status",
+    "og_stream_request",
+    "og_stream_release",
+    "og_stream_budget",
+    "og_stream_set_budget",
 ];
 
 /// One field of an engine-owned record.
@@ -13140,6 +13159,41 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 label: "",
                 doc: "Another seed places the copies elsewhere.",
+                variants: &[],
+            },
+        ],
+    },
+    RecordDecl {
+        kind: "event",
+        name: "StreamEvent",
+        schema: "og.StreamEvent",
+        fields: &[
+            FieldDecl {
+                name: "group",
+                column: "String",
+                default: "\"\"",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The group's name (at most 63 bytes).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "state",
+                column: "u32",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Its new state: STREAM_UNLOADED, STREAM_QUEUED, STREAM_LOADING, STREAM_RESIDENT or STREAM_FAILED (StreamState's order).",
                 variants: &[],
             },
         ],

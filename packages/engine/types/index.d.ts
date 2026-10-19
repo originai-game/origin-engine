@@ -14871,6 +14871,117 @@ export interface TerrainLayerDesc {
 
 
 
+// ── stream ──────────────────────────────────────────────────────
+// Asset streaming groups (phase 3): a scene's `stream "<name>" { asset ...; distance x y z r [unload d] | volume "<entity>"; priority n }` blocks name glTF models (without skins or morph targets), textures and sounds that load and unload together, and what loads them: the camera within `r` of the anchor (kept until it is past `unload`, 1.25 r by default), the camera inside the named entity's box (its position ± half its scale, turned with it), or neither (og.stream.request only). `og cook` packs each group's files into `cooked/stream/<name>.ogb`; `og build --publish` ships the packs beside the boot bundle, which the shell and the service worker fetch first, and fetches a pack only when its group loads.
+// At every tick boundary the engine decides which groups are wanted, admits them by priority (then name) within the memory budget (256 MiB by default; GPU textures and meshes and decoded audio, as the cook measured them), evicting lower-priority resident groups to make room for a higher one, and reads and puts in place at most one group's assets per boundary. A group that cannot fit waits, queued; one larger than the whole budget fails. Until its group is resident, a model draws its proxy (its coarsest LOD, untextured), a texture is a 1x1 grey placeholder and a sound plays as silence of its own length; then the real ones take over the same handles. Physics always collides with the proxy's meshes and a sound's length never changes, so nothing a tick reads depends on what is resident: a run's world hash is the same streamed or not.
+// Every change of a group's state sends StreamEvent at the start of the next tick; og.stream.status and og.stream.budget answer at once, and the probe's `dump_stream` lists the budget, the memory used and its peak, every group (trigger, state, why, since which tick) and the recent changes.
+
+/**
+ * Where a streaming group is.
+ * - `"unloaded"`: Not wanted; its assets draw and play their stand-ins.
+ * - `"queued"`: Wanted, waiting for room in the memory budget.
+ * - `"loading"`: Admitted: its pack is being read (its memory already counts).
+ * - `"resident"`: Its assets are in place of their stand-ins.
+ * - `"failed"`: Its pack could not be read, or it alone needs more than the budget (StreamStatus.reason says which).
+ */
+export type StreamState = "unloaded" | "queued" | "loading" | "resident" | "failed";
+
+/** `StreamEvent.state`: the group is unloaded (StreamState unloaded). */
+export declare const STREAM_UNLOADED: 0;
+
+/** `StreamEvent.state`: the group waits for room in the budget (StreamState queued). */
+export declare const STREAM_QUEUED: 1;
+
+/** `StreamEvent.state`: the group's pack is being read (StreamState loading). */
+export declare const STREAM_LOADING: 2;
+
+/** `StreamEvent.state`: the group's assets are in place (StreamState resident). */
+export declare const STREAM_RESIDENT: 3;
+
+/** `StreamEvent.state`: the group failed (StreamState failed; og.stream.status says why). */
+export declare const STREAM_FAILED: 4;
+
+/**
+ * A group changed state: sent by og.stream at the start of the tick after the change.
+ *
+ * The payload of the `StreamEvent` event (token `og.StreamEvent`).
+ */
+export interface StreamEvent {
+  /** The group's name (at most 63 bytes). */
+  readonly group: string;
+  /**
+   * Its new state: STREAM_UNLOADED, STREAM_QUEUED, STREAM_LOADING, STREAM_RESIDENT or STREAM_FAILED (StreamState's order).
+   */
+  readonly state: number;
+}
+
+/** One streaming group. */
+export interface StreamStatus {
+  /** Its name. */
+  readonly name: string;
+  /** The scene that declares it. */
+  readonly scene: string;
+  /** Where it is. */
+  readonly state: StreamState;
+  /** Whether its trigger or a request wants it now. */
+  readonly wanted: boolean;
+  /** Whether og.stream.request asked for it (until og.stream.release). */
+  readonly requested: boolean;
+  /** Higher loads first and is evicted last. */
+  readonly priority: number;
+  /** manual, distance or volume. */
+  readonly trigger: string;
+  /**
+   * What its assets take once loaded, in bytes.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly memory: number;
+  /**
+   * Its pack's size, in bytes.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly bytes: number;
+  /** Its asset ids. */
+  readonly assets: readonly string[];
+  /** Why it is queued or failed; empty otherwise. */
+  readonly reason: string;
+  /** The tick of its last change. */
+  readonly since: number;
+  /** How many times it became resident. */
+  readonly loads: number;
+}
+
+/** The streaming memory budget and every group. */
+export interface StreamBudget {
+  /**
+   * The bytes resident and loading groups may take.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly budget: number;
+  /**
+   * The bytes they take now.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly used: number;
+  /**
+   * The most they ever took (never above the budget at the time).
+   *
+   * @unit bytes (bytes)
+   */
+  readonly peak: number;
+  /** Every group, by name. */
+  readonly groups: readonly StreamStatus[];
+}
+
+
+
+
+
+
 // ── og ──────────────────────────────────────────────────────────
 
 /**
@@ -16931,5 +17042,53 @@ export declare namespace og {
      * @returns Refused for an unknown terrain or layer.
      */
     function setLayer(world: World, data: TerrainData, index: number, layer?: TerrainLayerDesc): Result<void>;
+  }
+  /** A group changed state: sent by og.stream at the start of the tick after the change. */
+  const StreamEvent: EventType<StreamEvent>;
+  /**
+   * Asset streaming groups (phase 3): a scene's `stream "<name>" { asset ...; distance x y z r [unload d] | volume "<entity>"; priority n }` blocks name glTF models (without skins or morph targets), textures and sounds that load and unload together, and what loads them: the camera within `r` of the anchor (kept until it is past `unload`, 1.25 r by default), the camera inside the named entity's box (its position ± half its scale, turned with it), or neither (og.stream.request only). `og cook` packs each group's files into `cooked/stream/<name>.ogb`; `og build --publish` ships the packs beside the boot bundle, which the shell and the service worker fetch first, and fetches a pack only when its group loads.
+   * At every tick boundary the engine decides which groups are wanted, admits them by priority (then name) within the memory budget (256 MiB by default; GPU textures and meshes and decoded audio, as the cook measured them), evicting lower-priority resident groups to make room for a higher one, and reads and puts in place at most one group's assets per boundary. A group that cannot fit waits, queued; one larger than the whole budget fails. Until its group is resident, a model draws its proxy (its coarsest LOD, untextured), a texture is a 1x1 grey placeholder and a sound plays as silence of its own length; then the real ones take over the same handles. Physics always collides with the proxy's meshes and a sound's length never changes, so nothing a tick reads depends on what is resident: a run's world hash is the same streamed or not.
+   * Every change of a group's state sends StreamEvent at the start of the next tick; og.stream.status and og.stream.budget answer at once, and the probe's `dump_stream` lists the budget, the memory used and its peak, every group (trigger, state, why, since which tick) and the recent changes.
+   */
+  namespace stream {
+    /**
+     * One streaming group's state.
+     *
+     * @param world The world.
+     * @param group The group's name, as its scene declares it.
+     * @returns Refused for a group no scene declares.
+     */
+    function status(world: World, group: string): Result<StreamStatus>;
+    /**
+     * Ask for a group (any trigger) until og.stream.release: it loads from the next tick boundary, within the budget by its priority.
+     *
+     * @param world The world.
+     * @param group The group's name.
+     * @returns Refused for a group no scene declares.
+     */
+    function request(world: World, group: string): Result<void>;
+    /**
+     * Stop asking for a group; it unloads at the next tick boundary unless its trigger still wants it.
+     *
+     * @param world The world.
+     * @param group The group's name.
+     * @returns Refused for a group no scene declares.
+     */
+    function release(world: World, group: string): Result<void>;
+    /**
+     * The memory budget, what the groups take now, the peak and every group.
+     *
+     * @param world The world.
+     * @returns The budget and the groups; refused only for a world that does not exist.
+     */
+    function budget(world: World): Result<StreamBudget>;
+    /**
+     * Set the memory budget from the next tick boundary; a lower one evicts the lowest-priority groups until the rest fit.
+     *
+     * @param world The world.
+     * @param bytes The bytes resident groups may take.
+     * @returns Refused for a negative or non-finite size.
+     */
+    function setBudget(world: World, bytes: number): Result<void>;
   }
 }

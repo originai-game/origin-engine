@@ -25,7 +25,7 @@ import {
 } from "./runtime.ts";
 import { cameras } from "./systems/cameras.ts";
 import { ai, i18n, nav, platform } from "./e6.ts";
-import { terrain } from "./p2.ts";
+import { stream, terrain } from "./p2.ts";
 import { uiKit } from "./ui-kit/index.ts";
 
 const spec = (kind: string, value: unknown, options: unknown): FieldSpec =>
@@ -136,6 +136,11 @@ export const PIN_TOP: typeof Api.PIN_TOP = 1;
 export const PIN_TOP_CORNERS: typeof Api.PIN_TOP_CORNERS = 2;
 export const PIN_LEFT: typeof Api.PIN_LEFT = 4;
 export const PIN_TOP_RINGS: typeof Api.PIN_TOP_RINGS = 8;
+export const STREAM_UNLOADED: typeof Api.STREAM_UNLOADED = 0;
+export const STREAM_QUEUED: typeof Api.STREAM_QUEUED = 1;
+export const STREAM_LOADING: typeof Api.STREAM_LOADING = 2;
+export const STREAM_RESIDENT: typeof Api.STREAM_RESIDENT = 3;
+export const STREAM_FAILED: typeof Api.STREAM_FAILED = 4;
 
 export const og: typeof Api.og = Object.freeze({
   ...BUILTINS,
@@ -156,6 +161,7 @@ export const og: typeof Api.og = Object.freeze({
   platform,
   i18n,
   terrain,
+  stream,
   ui: Object.freeze({ ...ui, ...uiKit }),
   systems: Object.freeze({ cameras }),
 }) as unknown as typeof Api.og;

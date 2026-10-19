@@ -1724,3 +1724,33 @@ pub fn og_terrain_set_layer(env: Env, world: u32, data: f64, index: u32, layer: 
     let _env = crate::EnvScope::enter(&env);
     <Host as TerrainApi>::og_terrain_set_layer(&Host, world, data, index, layer)
 }
+
+#[napi(js_name = "og_stream_status")]
+pub fn og_stream_status(env: Env, world: u32, group: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StreamApi>::og_stream_status(&Host, world, group)
+}
+
+#[napi(js_name = "og_stream_request")]
+pub fn og_stream_request(env: Env, world: u32, group: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StreamApi>::og_stream_request(&Host, world, group)
+}
+
+#[napi(js_name = "og_stream_release")]
+pub fn og_stream_release(env: Env, world: u32, group: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StreamApi>::og_stream_release(&Host, world, group)
+}
+
+#[napi(js_name = "og_stream_budget")]
+pub fn og_stream_budget(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StreamApi>::og_stream_budget(&Host, world)
+}
+
+#[napi(js_name = "og_stream_set_budget")]
+pub fn og_stream_set_budget(env: Env, world: u32, bytes: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StreamApi>::og_stream_set_budget(&Host, world, bytes)
+}

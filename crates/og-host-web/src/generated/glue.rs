@@ -1440,3 +1440,28 @@ pub fn og_terrain_layer(world: u32, data: f64, index: u32) -> String {
 pub fn og_terrain_set_layer(world: u32, data: f64, index: u32, layer: Option<String>) -> String {
     <Host as TerrainApi>::og_terrain_set_layer(&Host, world, data, index, layer)
 }
+
+#[wasm_bindgen]
+pub fn og_stream_status(world: u32, group: String) -> String {
+    <Host as StreamApi>::og_stream_status(&Host, world, group)
+}
+
+#[wasm_bindgen]
+pub fn og_stream_request(world: u32, group: String) -> String {
+    <Host as StreamApi>::og_stream_request(&Host, world, group)
+}
+
+#[wasm_bindgen]
+pub fn og_stream_release(world: u32, group: String) -> String {
+    <Host as StreamApi>::og_stream_release(&Host, world, group)
+}
+
+#[wasm_bindgen]
+pub fn og_stream_budget(world: u32) -> String {
+    <Host as StreamApi>::og_stream_budget(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_stream_set_budget(world: u32, bytes: f64) -> String {
+    <Host as StreamApi>::og_stream_set_budget(&Host, world, bytes)
+}
