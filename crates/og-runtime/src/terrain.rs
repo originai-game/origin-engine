@@ -1,9 +1,15 @@
 //! The IDL's `terrain` module (phase 2): cooked terrains loaded into the
-//! renderer (`og_render::TerrainData` and the layers' textures) and into
-//! physics (a height field under a Geometry handle of its own), drawn from
-//! og.Terrain components at extraction, sampled and edited from game code.
-//! The registry is the render state's: terrains are assets, kept across a
-//! hot reload, and their edits are asset changes, not world state.
+//! renderer and into physics (a height field under a Geometry handle of
+//! its own), drawn from og.Terrain components at extraction, sampled and
+//! edited from game code. The registry is the render state's: terrains are
+//! assets, kept across a hot reload.
+//!
+//! Phase 3: a terrain is not decoded whole at load. The renderer is handed
+//! its tiles as the camera needs them (`super::terrain_stream`); physics
+//! decodes the whole field only for a terrain whose file asks for a
+//! collider; `og.terrain.sample` decodes the level-0 tiles it reads. The
+//! first edit decodes the whole field (heights and control map), and from
+//! then on the renderer draws that field in memory.
 
 use super::engine::{Engine, engine};
 use super::extract::{Hierarchy, RenderState};
@@ -23,8 +29,15 @@ const GEOMETRY_BASE: u64 = 0x7e << 32;
 /// One loaded terrain.
 pub(crate) struct LoadedTerrain {
     pub render: og_render::TerrainHandle,
-    /// The heights and control map as they are now (edits applied).
-    pub data: TerrainData,
+    /// The cooked tiles, still compressed.
+    pub cooked: og_cook::runtime::CookedTerrain,
+    /// The whole field in memory: physics' (a collider terrain) or an
+    /// edited one's. `None`: only the tiles below are decoded.
+    pub field: Option<TerrainData>,
+    /// Edited: `field` holds the edits and the renderer draws it.
+    pub edited: bool,
+    /// Level-0 tiles' heights decoded for sampling, by tile index.
+    pub tiles: std::cell::RefCell<BTreeMap<u32, Arc<[f32]>>>,
     pub layers: Vec<TerrainLayer>,
     pub height_blend: f32,
     pub lod: TerrainLod,
@@ -38,6 +51,65 @@ pub(crate) struct LoadedTerrain {
 pub(crate) struct TerrainState {
     pub loaded: Vec<LoadedTerrain>,
     pub by_id: BTreeMap<String, usize>,
+    pub streamer: super::terrain_stream::Streamer,
+    /// Every wanted tile decoded and shown each frame (no streaming).
+    pub resident: bool,
+    /// Bytes of tiles each terrain keeps on the GPU (0: its lod's).
+    pub budget: u64,
+    /// The next extraction is a capture's: settle the tiles first.
+    pub settle: bool,
+}
+
+impl LoadedTerrain {
+    /// The field's extent, samples and current height range.
+    fn size(&self) -> Vec2 {
+        self.cooked.layout.size
+    }
+
+    pub(crate) fn range(&self) -> (f32, f32) {
+        match (&self.field, self.edited) {
+            (Some(f), true) => f.range(),
+            _ => self.cooked.range,
+        }
+    }
+
+    /// Calls `f` with a sampler of the heights as they are now: the field
+    /// in memory, or the level-0 tiles decoded as they are read.
+    fn with_sampler<R>(&self, f: impl FnOnce(&dyn Fn(Vec2) -> (f32, Vec3)) -> R) -> R {
+        if let Some(d) = &self.field {
+            return f(&|p| (d.height(p), d.normal(p)));
+        }
+        let l = self.cooked.layout;
+        let t = l.tile;
+        let side = l.heights_side();
+        let sampler = og_render::TerrainSampler {
+            size: l.size,
+            columns: l.columns,
+            rows: l.rows,
+            sample: |c: u32, r: u32| {
+                let (tx, tz) = l.tiles(0);
+                let (x, z) = ((c / t).min(tx - 1), (r / t).min(tz - 1));
+                let index = l.index(0, x, z);
+                let tile = {
+                    let mut cache = self.tiles.borrow_mut();
+                    match cache.get(&index) {
+                        Some(h) => h.clone(),
+                        None => {
+                            let h: Arc<[f32]> = self
+                                .cooked
+                                .tile_heights(index)
+                                .map(Arc::from)
+                                .unwrap_or_else(|_| Arc::from(vec![0.0; (side * side) as usize]));
+                            cache.insert(index, h.clone());
+                            h
+                        }
+                    }
+                };
+                tile[((r - z * t + 1) * side + (c - x * t + 1)) as usize]
+            },
+        };
+        f(&|p| (sampler.height(p), sampler.normal(p)))
+    }
 }
 
 fn wire(r: Result<Value, String>) -> String {
@@ -121,13 +193,14 @@ fn set_heightfield(eng: &Engine, geometry: u64, d: &TerrainData) -> Result<(), S
 }
 
 fn info(index: usize, t: &LoadedTerrain) -> Value {
-    let (lo, hi) = t.data.range();
+    let (lo, hi) = t.range();
+    let size = t.size();
     json!({
         "data": handle(index),
         "geometry": GEOMETRY_BASE + index as u64,
-        "size": { "x": t.data.size.x, "y": t.data.size.y },
-        "columns": t.data.columns,
-        "rows": t.data.rows,
+        "size": { "x": size.x, "y": size.y },
+        "columns": t.cooked.layout.columns,
+        "rows": t.cooked.layout.rows,
         "minHeight": lo,
         "maxHeight": hi,
         "layers": t.layers.len(),
@@ -166,12 +239,22 @@ pub(crate) fn load(eng: &Engine, path: &str) -> Result<Value, String> {
         layers.push(layer);
     }
     let index = eng.render.borrow().terrain.loaded.len();
-    set_heightfield(eng, GEOMETRY_BASE + index as u64, &cooked.data)?;
+    // Physics needs the whole field (one height field); nothing else does.
+    let field = if cooked.collision {
+        let f = cooked.field().map_err(|e| e.to_string())?;
+        set_heightfield(eng, GEOMETRY_BASE + index as u64, &f)?;
+        Some(f)
+    } else {
+        None
+    };
     let mut rs = eng.render.borrow_mut();
-    let render = rs.scene.add_terrain(cooked.data.clone());
+    let render = rs.scene.add_terrain_stream(cooked.layout, cooked.range);
     let t = LoadedTerrain {
         render,
-        data: cooked.data,
+        cooked: cooked.clone(),
+        field,
+        edited: false,
+        tiles: Default::default(),
         layers,
         height_blend: cooked.height_blend,
         lod: cooked.lod,
@@ -189,12 +272,12 @@ pub fn og_terrain_load(world: u32, path: String) -> String {
 }
 
 /// The point in the terrain's space (relative to its centre) of world `x`,
-/// `z` for a terrain placed by `m` (taken at the terrain's centre height, so
-/// along its up axis), and whether it is over the terrain.
-fn local(d: &TerrainData, m: Mat4, x: f32, z: f32) -> (Vec2, bool) {
+/// `z` for a terrain of `size` placed by `m` (taken at the terrain's centre
+/// height, so along its up axis), and whether it is over the terrain.
+fn local(size: Vec2, m: Mat4, x: f32, z: f32) -> (Vec2, bool) {
     let l = m.inverse().transform_point3(Vec3::new(x, m.w_axis.y, z));
     let p = Vec2::new(l.x, l.z);
-    let half = d.size * 0.5;
+    let half = size * 0.5;
     (p, p.x.abs() <= half.x && p.y.abs() <= half.y)
 }
 
@@ -204,11 +287,12 @@ pub fn og_terrain_sample(world: u32, desc: Option<String>) -> String {
         let d = parse(desc.as_deref())?;
         let i = index_of(&eng, d["data"].as_f64().unwrap_or(0.0))?;
         let rs = eng.render.borrow();
-        let t = &rs.terrain.loaded[i].data;
+        let t = &rs.terrain.loaded[i];
         let m = placement(&d["origin"], &d["quaternion"], &d["scale"]);
-        let (p, inside) = local(t, m, f(&d, "x", 0.0), f(&d, "z", 0.0));
-        let n = (Mat3::from_mat4(m).inverse().transpose() * t.normal(p)).normalize_or(Vec3::Y);
-        let surface = m.transform_point3(Vec3::new(p.x, t.height(p), p.y));
+        let (p, inside) = local(t.size(), m, f(&d, "x", 0.0), f(&d, "z", 0.0));
+        let (h, n) = t.with_sampler(|s| s(p));
+        let n = (Mat3::from_mat4(m).inverse().transpose() * n).normalize_or(Vec3::Y);
+        let surface = m.transform_point3(Vec3::new(p.x, h, p.y));
         Ok(json!({
             "height": surface.y,
             "normal": j3(n),
@@ -234,9 +318,9 @@ pub fn og_terrain_bounds(
             &parse(scale.as_deref())?,
         );
         let rs = eng.render.borrow();
-        let t = &rs.terrain.loaded[i].data;
+        let t = &rs.terrain.loaded[i];
         let (lo, hi) = t.range();
-        let half = t.size * 0.5;
+        let half = t.size() * 0.5;
         let (mut min, mut max) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
         for k in 0..8 {
             let corner = m.transform_point3(Vec3::new(
@@ -296,7 +380,11 @@ pub(crate) fn apply(t: &mut LoadedTerrain, brush: &Value) -> Result<u32, String>
     {
         return Err("TerrainBrush.radius must be positive and strength at least 0".into());
     }
-    let d = &mut t.data;
+    if t.field.is_none() {
+        t.field = Some(t.cooked.field().map_err(|e| e.to_string())?);
+    }
+    t.edited = true;
+    let d = t.field.as_mut().expect("decoded above");
     let c = Vec2::new(center.x, center.z);
     let half = d.size * 0.5;
     if c.x + radius < -half.x
@@ -424,19 +512,22 @@ pub fn og_terrain_edit(world: u32, data: f64, brush: Option<String>) -> String {
         let eng = engine(world)?;
         let i = index_of(&eng, data)?;
         let b = parse(brush.as_deref())?;
-        let (touched, snapshot) = {
+        let (touched, snapshot, collision) = {
             let mut rs = eng.render.borrow_mut();
             let t = &mut rs.terrain.loaded[i];
             let n = apply(t, &b)?;
-            let snapshot = (t.render, t.data.clone());
-            (n, snapshot)
+            let snapshot = (t.render, t.field.clone().expect("edited"));
+            (n, snapshot, t.collision)
         };
         let (render, data) = snapshot;
-        eng.render
-            .borrow_mut()
-            .scene
-            .set_terrain(render, data.clone());
-        set_heightfield(&eng, GEOMETRY_BASE + i as u64, &data)?;
+        {
+            let mut rs = eng.render.borrow_mut();
+            rs.scene.set_terrain(render, data.clone());
+            rs.terrain.streamer.forget(i);
+        }
+        if collision {
+            set_heightfield(&eng, GEOMETRY_BASE + i as u64, &data)?;
+        }
         let (lo, hi) = data.range();
         Ok(json!({ "samples": touched, "minHeight": lo, "maxHeight": hi }))
     })())
@@ -510,6 +601,9 @@ pub fn og_terrain_set_layer(world: u32, data: f64, index: u32, layer: Option<Str
 pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) -> Vec<(u64, u32)> {
     rs.scene.terrains.clear();
     let layout = rs.draw.terrain.clone();
+    let settle = std::mem::take(&mut rs.terrain.settle) || rs.terrain.resident;
+    let budget = rs.terrain.budget;
+    let mut streamed = Vec::new();
     for (e, v) in rows(world, layout.as_ref()) {
         let Some(i) = super::assets::index_of(v["data"].as_f64().unwrap_or(0.0)) else {
             continue;
@@ -535,9 +629,41 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                     t.lod.spacing
                 },
                 ring: if ring > 0 { ring } else { t.lod.ring },
-                budget: t.lod.budget,
+                budget: if budget > 0 { budget } else { t.lod.budget },
             },
+            fade_in: !settle,
         });
+        if !t.edited {
+            streamed.push((i, rs.scene.terrains.len() - 1));
+        }
+    }
+    // The unedited terrains' tiles, as the camera needs them.
+    if !streamed.is_empty() {
+        let height = match rs.backend.as_ref().map(|b| b.size()) {
+            Some((_, ht)) if ht > 0 => ht,
+            _ => super::fx::viewport(rs).1 as u32,
+        };
+        let view = og_render::TerrainView::of(&rs.scene.camera, height);
+        let terrains = rs.scene.terrains.clone();
+        let st = &mut rs.terrain;
+        let drawn: Vec<super::terrain_stream::Drawn> = streamed
+            .iter()
+            .map(|&(i, k)| super::terrain_stream::Drawn {
+                index: i,
+                render: st.loaded[i].render,
+                cooked: &st.loaded[i].cooked,
+                terrain: &terrains[k],
+            })
+            .collect();
+        let hooks = super::engine::hooks();
+        st.streamer.update(
+            &drawn,
+            &mut rs.scene,
+            view,
+            settle,
+            hooks.as_deref(),
+            &mut rs.notes,
+        );
     }
     let mut keys = Vec::new();
     let layout = rs.draw.scatter.clone();
@@ -546,12 +672,22 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         let Some(i) = super::assets::index_of(v["data"].as_f64().unwrap_or(0.0)) else {
             continue;
         };
-        let Some(t) = rs.terrain.loaded.get(i) else {
+        let Some(t) = rs.terrain.loaded.get_mut(i) else {
             rs.notes.push(format!(
                 "og.TerrainScatter on entity {e} names no loaded terrain"
             ));
             continue;
         };
+        if t.field.is_none() {
+            match t.cooked.field() {
+                Ok(f) => t.field = Some(f),
+                Err(err) => {
+                    rs.notes.push(err.to_string());
+                    continue;
+                }
+            }
+        }
+        let t = &rs.terrain.loaded[i];
         let index = |key: &str| (v[key].as_f64().unwrap_or(0.0) as u64 & 0xffff_ffff) as usize;
         let (Some(&mesh), Some(&material)) = (
             rs.geometries.get(index("geometry")),
@@ -573,7 +709,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             align: f(&v, "align", 0.0),
             seed: u(&v, "seed", 1),
         };
-        for (cell, m) in terrain.scatter(&t.data, &scatter, eye) {
+        for (cell, m) in terrain.scatter(t.field.as_ref().expect("decoded above"), &scatter, eye) {
             rs.scene.add_instance(mesh, material, m);
             keys.push((e, cell));
         }

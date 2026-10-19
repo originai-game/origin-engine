@@ -43,6 +43,8 @@ impl Capture for RuntimeCapture {
 
     fn capture(&mut self, world: &World, width: u32, height: u32) -> Option<Frame> {
         let mut rs = self.render.try_borrow_mut().ok()?;
+        // Captured frames show every wanted terrain tile, whatever the decode timing.
+        rs.terrain.settle = true;
         extract(world, &mut rs);
         let rs = &mut *rs;
         let image = rs.backend.as_mut()?.capture(&rs.scene, width, height)?;

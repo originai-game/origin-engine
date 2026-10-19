@@ -46,6 +46,7 @@ mod platform;
 mod polish;
 mod probe;
 mod terrain;
+mod terrain_stream;
 
 pub use ai::{og_ai_describe, og_ai_get, og_ai_load, og_ai_noise, og_ai_parse, og_ai_set};
 pub use anim::{og_anim_graph, og_load_animation};

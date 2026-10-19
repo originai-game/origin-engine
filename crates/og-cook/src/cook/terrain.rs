@@ -1,10 +1,14 @@
-//! The terrain cook step (phase 2): a `type terrain` .ogt names its
-//! heightmap, the heights its black and white stand for, its size, an
-//! optional control map and up to four layered materials. The heights are
-//! cooked into tiles (each `tile` × `tile` samples quantised to 16 bits
-//! over the tile's own range, then zlib), the control map into zlib'd
-//! RGBA8, the layers into rows naming their textures (assets cooked on
-//! their own).
+//! The terrain cook step (phase 2; tiles for streaming in phase 3): a
+//! `type terrain` .ogt names its heightmap, the heights its black and
+//! white stand for, its size, an optional control map and up to four
+//! layered materials. The field is cooked into og-render's tile pyramid
+//! (`og_render::TerrainLayout`: level k every 2^k-th sample, tiles of
+//! `tile` quads): each tile's `(tile + 3)²` heights quantised to 16 bits
+//! over the terrain's whole range (so a sample has the same value in every
+//! tile and level that holds it) and zlib'd on its own, and with a control
+//! map its `(control + 2)²` texels of the map resampled for the tiles, zlib'd
+//! on their own; the layers into rows naming their textures (assets cooked
+//! on their own). Each tile can be read and decoded without the others.
 //!
 //! ```text
 //! type terrain
@@ -14,7 +18,7 @@
 //! height 0 320                    # the metres black and white stand for (EXR: 0 1, metres as stored)
 //! size 2048 2048                  # metres along x and z (default: one metre per sample)
 //! control "island-control.png"    # optional: RGBA, one channel per layer
-//! tile 128                        # samples per cooked tile side (16 to 1024)
+//! tile 128                        # quads per tile side (16 to 1024)
 //! heightBlend 0.6
 //! castShadows true
 //! lod {
@@ -264,10 +268,10 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, St
         }
         Some(_) => return Err("'size' takes two positive numbers (metres along x and z)".into()),
     };
-    let tile = number(body, "tile", 128.0)?;
+    let tile = number(body, "tile", og_render::TERRAIN_TILE as f32)?;
     if !(16.0..=1024.0).contains(&tile) || tile.fract() != 0.0 {
         return Err(format!(
-            "'tile' is a whole number of samples from 16 to 1024, got {tile}"
+            "'tile' is a whole number of quads from 16 to 1024, got {tile}"
         ));
     }
     let lod = body.get("lod").and_then(|e| e.block.as_ref());
@@ -383,63 +387,76 @@ pub(super) fn cook_terrain(
         )));
     }
 
-    // Tiles of `tile` × `tile` samples (the last ones smaller), each
-    // quantised over its own range.
-    let t = doc.tile;
-    let (tx, tz) = (columns.div_ceil(t), rows.div_ceil(t));
-    let mut tiles = Vec::new();
-    let mut packed = Vec::new();
-    let (mut lo_all, mut hi_all) = (f32::MAX, f32::MIN);
-    for z in 0..tz {
-        for x in 0..tx {
-            let (c0, r0) = (x * t, z * t);
-            let (c1, r1) = ((c0 + t).min(columns), (r0 + t).min(rows));
-            let mut lo = f32::MAX;
-            let mut hi = f32::MIN;
-            for r in r0..r1 {
-                for c in c0..c1 {
-                    let v = h[(r * columns + c) as usize];
-                    lo = lo.min(v);
-                    hi = hi.max(v);
-                }
-            }
-            lo_all = lo_all.min(lo);
-            hi_all = hi_all.max(hi);
-            let span = (hi - lo).max(f32::MIN_POSITIVE);
-            let mut q = Vec::with_capacity(((c1 - c0) * (r1 - r0) * 2) as usize);
-            for r in r0..r1 {
-                for c in c0..c1 {
-                    let v = h[(r * columns + c) as usize];
-                    let n = (((v - lo) / span) * 65535.0).round().clamp(0.0, 65535.0) as u16;
-                    q.extend_from_slice(&n.to_le_bytes());
-                }
-            }
-            let z = miniz_oxide::deflate::compress_to_vec_zlib(&q, 6);
-            tiles.push(format::TerrainTileRow {
-                column: c0,
-                row: r0,
-                columns: c1 - c0,
-                rows: r1 - r0,
-                min: lo,
-                max: hi,
-                offset: packed.len() as u32,
-                bytes: z.len() as u32,
-            });
-            packed.extend_from_slice(&z);
-        }
-    }
-    let (control_w, control_h, control) = match &doc.control {
-        None => (0, 0, Vec::new()),
+    let control = match &doc.control {
+        None => None,
         Some(c) => {
             let img = super::texture::decode(&read(c, "control map")?)
                 .map_err(|e| CookError(format!("{c}: {e}")))?;
-            (
-                img.width,
-                img.height,
-                miniz_oxide::deflate::compress_to_vec_zlib(&img.rgba, 6),
-            )
+            Some(og_render::TerrainControl {
+                width: img.width,
+                height: img.height,
+                rgba: img.rgba.into(),
+            })
         }
     };
+    let (control_w, control_h) = control.as_ref().map_or((0, 0), |c| (c.width, c.height));
+    let field = og_render::TerrainData {
+        size: glam::Vec2::new(size[0], size[1]),
+        columns,
+        rows,
+        heights: h.into(),
+        control,
+    };
+    field.check().map_err(CookError)?;
+    let layout = field.layout(doc.tile).map_err(CookError)?;
+    let (lo_all, hi_all) = field.range();
+    let span = (hi_all - lo_all).max(f32::MIN_POSITIVE);
+    let pyramid = field
+        .control
+        .as_ref()
+        .and_then(|c| og_render::ControlPyramid::new(&layout, c));
+    // Every tile of every level: its heights quantised over the terrain's
+    // range, its control texels, each zlib'd on its own.
+    let mut tiles = Vec::new();
+    let mut packed = Vec::new();
+    let mut control_packed = Vec::new();
+    for index in 0..layout.tile_count() {
+        let (level, x, z) = layout.locate(index).expect("in the layout");
+        let heights = field.tile_heights(&layout, index);
+        let (mut lo, mut hi) = (f32::MAX, f32::MIN);
+        let mut q = Vec::with_capacity(heights.len() * 2);
+        for v in &heights {
+            lo = lo.min(*v);
+            hi = hi.max(*v);
+            let n = (((v - lo_all) / span) * 65535.0)
+                .round()
+                .clamp(0.0, 65535.0) as u16;
+            q.extend_from_slice(&n.to_le_bytes());
+        }
+        let z_heights = miniz_oxide::deflate::compress_to_vec_zlib(&q, 6);
+        let (control_offset, control_bytes) = match &pyramid {
+            Some(p) => {
+                let zc = miniz_oxide::deflate::compress_to_vec_zlib(&p.tile(&layout, index), 6);
+                let at = control_packed.len() as u32;
+                control_packed.extend_from_slice(&zc);
+                (at, zc.len() as u32)
+            }
+            None => (0, 0),
+        };
+        tiles.push(format::TerrainTileRow {
+            index,
+            level,
+            x,
+            z,
+            min: lo,
+            max: hi,
+            offset: packed.len() as u32,
+            bytes: z_heights.len() as u32,
+            control_offset,
+            control_bytes,
+        });
+        packed.extend_from_slice(&z_heights);
+    }
     let mut strings = String::new();
     let mut put = |s: &Option<String>| -> (u32, u32) {
         match s {
@@ -483,9 +500,9 @@ pub(super) fn cook_terrain(
         size_z: size[1],
         columns,
         rows,
-        tile: t,
-        tiles_x: tx,
-        tiles_z: tz,
+        tile: layout.tile,
+        control: layout.control,
+        levels: layout.levels,
         height_min: lo_all,
         height_max: hi_all,
         layers: layers.len() as u32,
@@ -515,12 +532,14 @@ pub(super) fn cook_terrain(
         )
         .raw("strings", strings.into_bytes(), 16)
         .raw("heights", packed, 16)
-        .raw("control", control, 16);
+        .raw("control", control_packed, 16);
     let mut notes = vec![format!(
-        "terrain: {columns} × {rows} samples over {} × {} m, heights {lo_all:.2} to {hi_all:.2} m, {} tiles of {t}, {} layer(s){}",
+        "terrain: {columns} × {rows} samples over {} × {} m, heights {lo_all:.2} to {hi_all:.2} m, {} tiles of {} quads in {} levels, {} layer(s){}",
         size[0],
         size[1],
         tiles.len(),
+        layout.tile,
+        layout.levels,
         layers.len(),
         if control_w > 0 {
             format!(", control map {control_w} × {control_h}")

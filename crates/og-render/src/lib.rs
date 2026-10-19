@@ -82,7 +82,7 @@ pub use skin::{
 };
 pub use terrain::{
     DEFAULT_TERRAIN_BUDGET, MAX_SCATTER_INSTANCES, MAX_TERRAIN_LAYERS, MAX_TERRAIN_LEVELS, Terrain,
-    TerrainControl, TerrainData, TerrainLayer, TerrainLod, TerrainScatter,
+    TerrainControl, TerrainData, TerrainLayer, TerrainLod, TerrainSampler, TerrainScatter,
 };
 pub use terrain_tiles::{
     ControlPyramid, MAX_TERRAIN_PYRAMID, MAX_TERRAIN_TILES, TERRAIN_TILE, TerrainLayout,

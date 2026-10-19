@@ -74,6 +74,18 @@ pub trait Hooks {
             Err(e) => Fetch::Failed(e.to_string()),
         }
     }
+    /// Starts inflating zlib bytes away from the engine's thread (the web
+    /// host's DecompressionStream), answered later by
+    /// [`Hooks::inflate_take`] under `key`. `false`: this host cannot, and
+    /// the runtime inflates on its own (a worker thread natively).
+    fn inflate_start(&self, key: u64, zlib: &[u8]) -> bool {
+        let _ = (key, zlib);
+        false
+    }
+    /// The bytes a started inflate answered, once (`Pending` until then).
+    fn inflate_take(&self, key: u64) -> Fetch<Vec<u8>> {
+        Fetch::Failed(format!("inflate {key} was never started"))
+    }
 }
 
 pub use super::extract::RenderBackend;

@@ -127,10 +127,62 @@ impl TerrainData {
         Ok(())
     }
 
-    fn sample(&self, c: u32, r: u32) -> f32 {
-        let c = c.min(self.columns - 1);
-        let r = r.min(self.rows - 1);
-        self.heights[(r * self.columns + c) as usize]
+    /// The height at `local` (x and z relative to the terrain's centre) on
+    /// the triangles the renderer draws at its finest level and physics
+    /// collides with: each cell split along its (-x, -z) to (+x, +z)
+    /// diagonal; clamped to the edge.
+    pub fn height(&self, local: Vec2) -> f32 {
+        TerrainSampler::of(self).height(local)
+    }
+
+    /// The surface normal at `local`: the samples' normals (central
+    /// differences, as the renderer's normal map) interpolated bilinearly.
+    pub fn normal(&self, local: Vec2) -> Vec3 {
+        TerrainSampler::of(self).normal(local)
+    }
+
+    /// The lowest and highest height.
+    pub fn range(&self) -> (f32, f32) {
+        self.heights
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(lo, hi), &h| (lo.min(h), hi.max(h)))
+    }
+}
+
+/// [`TerrainData::height`] and [`TerrainData::normal`] over a field read
+/// sample by sample (`sample(column, row)`, both in range): the runtime
+/// samples a streamed terrain's decoded tiles with it, and gets the same
+/// answers as from the whole field.
+pub struct TerrainSampler<F: Fn(u32, u32) -> f32> {
+    pub size: Vec2,
+    pub columns: u32,
+    pub rows: u32,
+    pub sample: F,
+}
+
+impl TerrainSampler<fn(u32, u32) -> f32> {
+    /// A sampler over a field in memory.
+    pub fn of(d: &TerrainData) -> TerrainSampler<impl Fn(u32, u32) -> f32 + '_> {
+        TerrainSampler {
+            size: d.size,
+            columns: d.columns,
+            rows: d.rows,
+            sample: move |c: u32, r: u32| d.heights[(r * d.columns + c) as usize],
+        }
+    }
+}
+
+impl<F: Fn(u32, u32) -> f32> TerrainSampler<F> {
+    fn at(&self, c: u32, r: u32) -> f32 {
+        (self.sample)(c.min(self.columns - 1), r.min(self.rows - 1))
+    }
+
+    fn cell(&self) -> Vec2 {
+        self.size
+            / Vec2::new(
+                self.columns.max(2) as f32 - 1.0,
+                self.rows.max(2) as f32 - 1.0,
+            )
     }
 
     /// Sample coordinates of a point given relative to the terrain's centre.
@@ -142,10 +194,7 @@ impl TerrainData {
         )
     }
 
-    /// The height at `local` (x and z relative to the terrain's centre) on
-    /// the triangles the renderer draws at its finest level and physics
-    /// collides with: each cell split along its (-x, -z) to (+x, +z)
-    /// diagonal; clamped to the edge.
+    /// As [`TerrainData::height`].
     pub fn height(&self, local: Vec2) -> f32 {
         let t = self.grid(local);
         let i = t
@@ -153,10 +202,10 @@ impl TerrainData {
             .min(Vec2::new(self.columns as f32 - 2.0, self.rows as f32 - 2.0));
         let f = (t - i).clamp(Vec2::ZERO, Vec2::ONE);
         let (c, r) = (i.x as u32, i.y as u32);
-        let h00 = self.sample(c, r);
-        let h10 = self.sample(c + 1, r);
-        let h01 = self.sample(c, r + 1);
-        let h11 = self.sample(c + 1, r + 1);
+        let h00 = self.at(c, r);
+        let h10 = self.at(c + 1, r);
+        let h01 = self.at(c, r + 1);
+        let h11 = self.at(c + 1, r + 1);
         if f.y >= f.x {
             h00 + (h11 - h01) * f.x + (h01 - h00) * f.y
         } else {
@@ -168,13 +217,12 @@ impl TerrainData {
         let cell = self.cell();
         let (c0, c1) = (c.saturating_sub(1), (c + 1).min(self.columns - 1));
         let (r0, r1) = (r.saturating_sub(1), (r + 1).min(self.rows - 1));
-        let hx = (self.sample(c1, r) - self.sample(c0, r)) / ((c1 - c0).max(1) as f32 * cell.x);
-        let hz = (self.sample(c, r1) - self.sample(c, r0)) / ((r1 - r0).max(1) as f32 * cell.y);
+        let hx = (self.at(c1, r) - self.at(c0, r)) / ((c1 - c0).max(1) as f32 * cell.x);
+        let hz = (self.at(c, r1) - self.at(c, r0)) / ((r1 - r0).max(1) as f32 * cell.y);
         Vec3::new(-hx, 1.0, -hz).normalize()
     }
 
-    /// The surface normal at `local`: the samples' normals (central
-    /// differences, as the renderer's normal map) interpolated bilinearly.
+    /// As [`TerrainData::normal`].
     pub fn normal(&self, local: Vec2) -> Vec3 {
         let t = self.grid(local);
         let i = t
@@ -189,13 +237,6 @@ impl TerrainData {
             .sample_normal(c, r + 1)
             .lerp(self.sample_normal(c + 1, r + 1), f.x);
         lo.lerp(hi, f.y).normalize_or(Vec3::Y)
-    }
-
-    /// The lowest and highest height.
-    pub fn range(&self) -> (f32, f32) {
-        self.heights
-            .iter()
-            .fold((f32::MAX, f32::MIN), |(lo, hi), &h| (lo.min(h), hi.max(h)))
     }
 }
 
@@ -292,6 +333,9 @@ pub struct Terrain {
     pub height_blend: f32,
     pub cast_shadows: bool,
     pub lod: TerrainLod,
+    /// Streamed tiles fade in over their parents as they arrive; `false`
+    /// shows what has arrived at once (a capture after the tiles settled).
+    pub fade_in: bool,
 }
 
 impl Terrain {
@@ -303,6 +347,7 @@ impl Terrain {
             height_blend: 0.0,
             cast_shadows: true,
             lod: TerrainLod::default(),
+            fade_in: true,
         }
     }
 }
@@ -1092,7 +1137,21 @@ impl TerrainRenderer {
                     gpu.by_tile.remove(&st.tile);
                 }
             }
-            let fresh_fade = if streamed && gpu.drawn { 0.0 } else { 1.0 };
+            let fade_in = scene
+                .terrains
+                .iter()
+                .filter(|t| t.terrain.index() == i)
+                .all(|t| t.fade_in);
+            let fresh_fade = if streamed && gpu.drawn && fade_in {
+                0.0
+            } else {
+                1.0
+            };
+            if !fade_in {
+                for st in gpu.slots.iter_mut().flatten() {
+                    st.fade = 1.0;
+                }
+            }
             for (tile, data) in &target {
                 if gpu.by_tile.contains_key(tile) {
                     continue;

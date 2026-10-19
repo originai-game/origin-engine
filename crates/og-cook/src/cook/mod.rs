@@ -925,7 +925,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
             }
             Kind::Terrain => {
                 let deps = terrain::terrain_dependencies(s, &|id| known.contains(id));
-                let st = stamp(&[b"terrain", &hash, deps.as_bytes()]);
+                let st = stamp(&[b"terrain 2", &hash, deps.as_bytes()]);
                 outs.push((s.rel.clone(), format::Terrain::NAME, st, Work::Terrain(s)));
             }
             Kind::NavMesh => {

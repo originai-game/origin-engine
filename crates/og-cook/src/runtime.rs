@@ -1772,78 +1772,260 @@ pub struct CookedTerrainLayer {
     pub layer: og_render::TerrainLayer,
 }
 
-/// A cooked terrain (`og.Terrain`): the heights in metres (decoded from its
-/// tiles) and the control map as og-render takes them, its layers and its
-/// settings.
-#[derive(Clone, Debug, PartialEq)]
+/// A cooked terrain (`og.Terrain`): og-render's tile layout, the range of
+/// its heights, its layers and settings, and its tiles still compressed,
+/// each decoded on its own ([`CookedTerrain::tile`], or inflated elsewhere
+/// and finished by [`CookedTerrain::tile_from`]): a streamer decodes the
+/// tiles a camera needs, physics the whole field ([`CookedTerrain::field`]).
+/// Cloning shares the compressed tiles.
+#[derive(Clone, Debug)]
 pub struct CookedTerrain {
-    pub data: og_render::TerrainData,
+    /// The asset id.
+    pub id: String,
+    pub layout: og_render::TerrainLayout,
+    /// The lowest and highest height (metres above the origin).
+    pub range: (f32, f32),
     pub layers: Vec<CookedTerrainLayer>,
     pub height_blend: f32,
     pub lod: og_render::TerrainLod,
     pub cast_shadows: bool,
     /// Whether the game gets a height-field collider for it.
     pub collision: bool,
-    /// The tiles it was cooked into (`tiles_x`, `tiles_z`).
-    pub tiles: (u32, u32),
+    tiles: std::sync::Arc<TerrainTiles>,
+}
+
+#[derive(Debug)]
+struct TerrainTiles {
+    rows: Vec<format::TerrainTileRow>,
+    heights: Vec<u8>,
+    control: Vec<u8>,
+}
+
+impl CookedTerrain {
+    fn bad(&self, reason: impl Into<String>) -> LoadError {
+        LoadError::Invalid {
+            path: self.id.clone(),
+            reason: reason.into(),
+        }
+    }
+
+    /// The compressed bytes of a tile: its zlib'd 16-bit heights and, with
+    /// a control map, its zlib'd texels (for an inflater elsewhere: the
+    /// web host's DecompressionStream).
+    pub fn tile_zlib(&self, index: u32) -> Option<(&[u8], Option<&[u8]>)> {
+        let t = self.tiles.rows.get(index as usize)?;
+        let h = self
+            .tiles
+            .heights
+            .get(t.offset as usize..(t.offset + t.bytes) as usize)?;
+        let c =
+            if self.layout.control > 0 {
+                Some(self.tiles.control.get(
+                    t.control_offset as usize..(t.control_offset + t.control_bytes) as usize,
+                )?)
+            } else {
+                None
+            };
+        Some((h, c))
+    }
+
+    /// A tile's heights in metres from its inflated 16-bit values.
+    pub fn heights_from(&self, index: u32, raw: &[u8]) -> Result<Vec<f32>, LoadError> {
+        let side = self.layout.heights_side() as usize;
+        if raw.len() != side * side * 2 {
+            return Err(self.bad(format!("tile {index} holds the wrong number of heights")));
+        }
+        let (lo, hi) = self.range;
+        let span = hi - lo;
+        Ok(raw
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|v| lo + u16::from_le_bytes(*v) as f32 / 65535.0 * span)
+            .collect())
+    }
+
+    /// A tile ready to draw from its inflated bytes (normals and mips
+    /// built here).
+    pub fn tile_from(
+        &self,
+        index: u32,
+        heights: &[u8],
+        control: Option<&[u8]>,
+    ) -> Result<og_render::TerrainTile, LoadError> {
+        let h = self.heights_from(index, heights)?;
+        let c = match (self.layout.control, control) {
+            (0, _) => None,
+            (_, Some(c)) => {
+                let side = self.layout.control_side() as usize;
+                if c.len() != side * side * 4 {
+                    return Err(
+                        self.bad(format!("tile {index}'s control texels are the wrong size"))
+                    );
+                }
+                Some(c.to_vec())
+            }
+            (_, None) => return Err(self.bad(format!("tile {index} has no control texels"))),
+        };
+        Ok(og_render::TerrainTile::build(&self.layout, index, h, c))
+    }
+
+    fn inflate(&self, index: u32) -> Result<(Vec<u8>, Option<Vec<u8>>), LoadError> {
+        let (h, c) = self
+            .tile_zlib(index)
+            .ok_or_else(|| self.bad(format!("tile {index} is out of range")))?;
+        let side = self.layout.heights_side() as usize;
+        let h = miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(h, side * side * 2)
+            .map_err(|_| self.bad(format!("tile {index} does not inflate")))?;
+        let c = match c {
+            None => None,
+            Some(c) => {
+                let side = self.layout.control_side() as usize;
+                Some(
+                    miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(c, side * side * 4)
+                        .map_err(|_| {
+                            self.bad(format!("tile {index}'s control does not inflate"))
+                        })?,
+                )
+            }
+        };
+        Ok((h, c))
+    }
+
+    /// Inflates and decodes a tile.
+    pub fn tile(&self, index: u32) -> Result<og_render::TerrainTile, LoadError> {
+        let (h, c) = self.inflate(index)?;
+        self.tile_from(index, &h, c.as_deref())
+    }
+
+    /// A tile's `(tile + 3)²` heights in metres (no normals, no control).
+    pub fn tile_heights(&self, index: u32) -> Result<Vec<f32>, LoadError> {
+        let (h, _) = self.inflate(index)?;
+        self.heights_from(index, &h)
+    }
+
+    /// The whole field from its level-0 tiles: every height, and the
+    /// control map at the tiles' resolution.
+    pub fn field(&self) -> Result<og_render::TerrainData, LoadError> {
+        let l = &self.layout;
+        let (cols, rows) = (l.columns as usize, l.rows as usize);
+        let t = l.tile as usize;
+        let side = l.heights_side() as usize;
+        let (tx, tz) = l.tiles(0);
+        let mut heights = vec![0.0f32; cols * rows];
+        let c = l.control as usize;
+        let cside = l.control_side() as usize;
+        let (cw, ch) = (c * tx as usize, c * tz as usize);
+        let mut rgba = vec![0u8; cw * ch * 4];
+        for z in 0..tz as usize {
+            for x in 0..tx as usize {
+                let index = l.index(0, x as u32, z as u32);
+                let (h, cz) = self.inflate(index)?;
+                let h = self.heights_from(index, &h)?;
+                for j in 0..=t {
+                    let r = z * t + j;
+                    if r >= rows {
+                        break;
+                    }
+                    for i in 0..=t {
+                        let col = x * t + i;
+                        if col >= cols {
+                            break;
+                        }
+                        heights[r * cols + col] = h[(j + 1) * side + i + 1];
+                    }
+                }
+                if let Some(cz) = cz {
+                    for j in 0..c {
+                        for i in 0..c {
+                            let src = ((j + 1) * cside + i + 1) * 4;
+                            let dst = ((z * c + j) * cw + x * c + i) * 4;
+                            rgba[dst..dst + 4].copy_from_slice(&cz[src..src + 4]);
+                        }
+                    }
+                }
+            }
+        }
+        // The tiles' control texels cover whole tiles, which may reach past
+        // the terrain: the map is their texels over its own extent.
+        let control = (c > 0).then(|| {
+            let quads = ((l.columns - 1) as f32, (l.rows - 1) as f32);
+            let per = c as f32 / t as f32;
+            let w = ((quads.0 * per).round() as usize).max(1);
+            let hgt = ((quads.1 * per).round() as usize).max(1);
+            let texel = |x: i64, y: i64, k: usize| {
+                let x = x.clamp(0, cw as i64 - 1) as usize;
+                let y = y.clamp(0, ch as i64 - 1) as usize;
+                rgba[(y * cw + x) * 4 + k] as f32
+            };
+            let mut out = vec![0u8; w * hgt * 4];
+            for j in 0..hgt {
+                for i in 0..w {
+                    let gx = (i as f32 + 0.5) / w as f32 * quads.0 * per - 0.5;
+                    let gy = (j as f32 + 0.5) / hgt as f32 * quads.1 * per - 0.5;
+                    let (x0, y0) = (gx.floor(), gy.floor());
+                    let (fx, fy) = (gx - x0, gy - y0);
+                    let (x0, y0) = (x0 as i64, y0 as i64);
+                    for k in 0..4 {
+                        let a = texel(x0, y0, k) + (texel(x0 + 1, y0, k) - texel(x0, y0, k)) * fx;
+                        let b = texel(x0, y0 + 1, k)
+                            + (texel(x0 + 1, y0 + 1, k) - texel(x0, y0 + 1, k)) * fx;
+                        out[(j * w + i) * 4 + k] =
+                            (a + (b - a) * fy).round().clamp(0.0, 255.0) as u8;
+                    }
+                }
+            }
+            og_render::TerrainControl {
+                width: w as u32,
+                height: hgt as u32,
+                rgba: out.into(),
+            }
+        });
+        let data = og_render::TerrainData {
+            size: l.size,
+            columns: l.columns,
+            rows: l.rows,
+            heights: heights.into(),
+            control,
+        };
+        data.check().map_err(|e| self.bad(e))?;
+        Ok(data)
+    }
 }
 
 impl Bundle {
-    /// Decodes a terrain blob: every tile inflated and dequantised into
-    /// one height field, the control map inflated.
+    /// Reads a terrain blob: its layout, layers and settings, and its tiles
+    /// still compressed (each checked to lie inside the blob).
     pub fn terrain(&self, id: &str, bytes: &[u8]) -> Result<CookedTerrain, LoadError> {
         let blob = self.blob::<format::Terrain>(id, bytes)?;
         let m = one::<format::TerrainMeta>(&blob)?;
         let tiles = table::<format::TerrainTileRow>(&blob, "tiles")?;
         let layers = table::<format::TerrainLayerRow>(&blob, "layers")?;
         let strings = blob.raw("strings")?;
-        let packed = blob.raw("heights")?;
-        let (columns, rows) = (m.columns, m.rows);
-        if columns < 2 || rows < 2 || tiles.len() != (m.tiles_x * m.tiles_z) as usize {
-            return Err(invalid(&blob, "the tiles do not cover the height field"));
+        let heights = blob.raw("heights")?.to_vec();
+        let control = blob.raw("control")?.to_vec();
+        let control_size = (m.control_width > 0).then_some((m.control_width, m.control_height));
+        let layout = og_render::TerrainLayout::new(
+            glam::Vec2::new(m.size_x, m.size_z),
+            m.columns,
+            m.rows,
+            m.tile,
+            control_size,
+        )
+        .map_err(|e| invalid(&blob, e))?;
+        if layout.control != m.control || layout.levels != m.levels {
+            return Err(invalid(&blob, "the tile layout does not match its cook"));
         }
-        let mut heights = vec![0.0f32; (columns * rows) as usize];
-        let mut covered = 0u64;
-        for t in &tiles {
-            if t.column + t.columns > columns || t.row + t.rows > rows {
-                return Err(invalid(&blob, "a tile lies outside the height field"));
-            }
-            let z = packed
-                .get(t.offset as usize..(t.offset + t.bytes) as usize)
-                .ok_or_else(|| invalid(&blob, "a tile's bytes are out of range"))?;
-            let n = (t.columns * t.rows) as usize;
-            let q = miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(z, n * 2)
-                .map_err(|_| invalid(&blob, "a tile does not inflate"))?;
-            if q.len() != n * 2 {
-                return Err(invalid(&blob, "a tile holds the wrong number of heights"));
-            }
-            let span = t.max - t.min;
-            for (k, v) in q.as_chunks::<2>().0.iter().enumerate() {
-                let (c, r) = (k as u32 % t.columns, k as u32 / t.columns);
-                let at = ((t.row + r) * columns + t.column + c) as usize;
-                heights[at] = t.min + u16::from_le_bytes(*v) as f32 / 65535.0 * span;
-            }
-            covered += n as u64;
+        if tiles.len() != layout.tile_count() as usize {
+            return Err(invalid(&blob, "the tiles do not cover the pyramid"));
         }
-        if covered != (columns as u64) * (rows as u64) {
-            return Err(invalid(&blob, "the tiles do not cover the height field"));
-        }
-        let control = if m.control_width > 0 {
-            let n = (m.control_width * m.control_height * 4) as usize;
-            let rgba =
-                miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(blob.raw("control")?, n)
-                    .map_err(|_| invalid(&blob, "the control map does not inflate"))?;
-            if rgba.len() != n {
-                return Err(invalid(&blob, "the control map is the wrong size"));
+        for (i, t) in tiles.iter().enumerate() {
+            let inside = (t.offset as usize + t.bytes as usize) <= heights.len()
+                && (t.control_offset as usize + t.control_bytes as usize) <= control.len();
+            if t.index != i as u32 || !inside {
+                return Err(invalid(&blob, format!("tile {i} is out of place or range")));
             }
-            Some(og_render::TerrainControl {
-                width: m.control_width,
-                height: m.control_height,
-                rgba: rgba.into(),
-            })
-        } else {
-            None
-        };
+        }
         let text = |at: u32, len: u32| -> Result<Option<String>, LoadError> {
             if at == format::NONE {
                 return Ok(None);
@@ -1874,16 +2056,10 @@ impl Bundle {
                 },
             });
         }
-        let data = og_render::TerrainData {
-            size: glam::Vec2::new(m.size_x, m.size_z),
-            columns,
-            rows,
-            heights: heights.into(),
-            control,
-        };
-        data.check().map_err(|e| invalid(&blob, &e))?;
         Ok(CookedTerrain {
-            data,
+            id: id.to_string(),
+            layout,
+            range: (m.height_min, m.height_max),
             layers: out,
             height_blend: m.height_blend,
             lod: og_render::TerrainLod {
@@ -1893,7 +2069,11 @@ impl Bundle {
             },
             cast_shadows: m.cast_shadows != 0,
             collision: m.collision != 0,
-            tiles: (m.tiles_x, m.tiles_z),
+            tiles: std::sync::Arc::new(TerrainTiles {
+                rows: tiles,
+                heights,
+                control,
+            }),
         })
     }
 
