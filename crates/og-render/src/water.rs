@@ -45,6 +45,7 @@ pub struct Water {
     /// The extent along local x and z, in metres.
     pub size: Vec2,
     /// Grid cells per side (the height field's detail; 1 for a flat sheet).
+    /// The renderer draws more where a cell would be longer than 256 m.
     pub segments: u32,
     /// Linear colour of shallow water (tints what is seen through it).
     pub shallow: Vec3,
@@ -178,6 +179,29 @@ struct WaterGpu {
 const MAX_SEGMENTS: u32 = 256;
 /// The largest height field accepted.
 const MAX_RESOLUTION: u32 = 512;
+
+/// The longest a grid cell may be, in world metres. A rasterizer
+/// interpolates a triangle's attributes and depth from its corners in f32,
+/// so on a kilometres-long triangle that the near plane clips both land
+/// metres off at the far side: the 24 km sea of og-tests' `terrain-far`
+/// lost its shore foam and the lake on llvmpipe and drew a foam band some
+/// pixels too wide on Metal. Cells of at most 256 m draw the same thin band
+/// everywhere.
+const MAX_CELL: f32 = 256.0;
+
+/// Grid cells per side: the surface's own `segments`, or more where a cell
+/// would be longer than [`MAX_CELL`] (at most [`MAX_SEGMENTS`]).
+fn grid_segments(water: &Water) -> u32 {
+    let scale = |axis: Vec4| axis.truncate().length();
+    let extent = (water.size.x * scale(water.transform.x_axis))
+        .max(water.size.y * scale(water.transform.z_axis));
+    let wanted = if extent.is_finite() {
+        (extent / MAX_CELL).ceil() as u32
+    } else {
+        1
+    };
+    water.segments.max(wanted).clamp(1, MAX_SEGMENTS)
+}
 
 struct Slot {
     uniform: wgpu::Buffer,
@@ -322,7 +346,7 @@ impl WaterRenderer {
         let mut draws = Vec::with_capacity(waters.len());
         for (index, (water, slot)) in waters.iter().zip(&mut self.slots).enumerate() {
             let reflection = planar.filter(|(i, _)| *i == index).map(|(_, v)| v);
-            let segments = water.segments.clamp(1, MAX_SEGMENTS);
+            let segments = grid_segments(water);
             let field = water.heights.as_ref().filter(|f| {
                 f.resolution >= 2
                     && f.resolution <= MAX_RESOLUTION
