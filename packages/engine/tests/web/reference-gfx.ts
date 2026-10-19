@@ -128,11 +128,32 @@ const result: Record<string, unknown> = { tier, buildMs, scenes: {} as Record<st
 const rows = result["scenes"] as Record<string, Record<string, unknown>>;
 let failures = 0;
 const t1 = performance.now();
-try {
-  const tab = await browser.open(`http://127.0.0.1:${server.port}/gfx.html`, log);
-  await tab.until("globalThis.__gfx || globalThis.__gfx_error", 60_000);
-  const failed = await tab.eval<string | undefined>("globalThis.__gfx_error");
+// A scene that panics inside the module (a wgpu validation error, say)
+// leaves its promise unsettled and the module unusable: a scene fails at
+// the page's first uncaught exception after it started, or after SCENE_MS,
+// and after a failure the next scene starts on a fresh page.
+const SCENE_MS = 120_000;
+function bounded<T>(p: Promise<T>, what: string): Promise<T> {
+  const from = log.length;
+  let timer: ReturnType<typeof setInterval> | undefined;
+  const t0 = performance.now();
+  const late = new Promise<never>((_, reject) => {
+    timer = setInterval(() => {
+      if (log.slice(from).some((l) => l.startsWith("exception:"))) reject(new Error(`${what} threw in the page`));
+      else if (performance.now() - t0 > SCENE_MS) reject(new Error(`${what} did not finish in ${SCENE_MS / 1000} s`));
+    }, 100);
+  });
+  return Promise.race([p, late]).finally(() => clearInterval(timer));
+}
+async function page() {
+  const t = await browser.open(`http://127.0.0.1:${server.port}/gfx.html`, log);
+  await t.until("globalThis.__gfx || globalThis.__gfx_error", 60_000);
+  const failed = await t.eval<string | undefined>("globalThis.__gfx_error");
   if (failed) throw new Error(`the module did not load: ${failed}`);
+  return t;
+}
+try {
+  let tab = await page();
   const all = await tab.eval<string[]>("__gfx.og_gfx_scenes()");
   const only = opt("--scene")?.split(",");
   const timed = Number(opt("--time") ?? 0);
@@ -142,9 +163,10 @@ try {
     const row: Record<string, unknown> = {};
     rows[scene] = row;
     const ts = performance.now();
+    const seen = log.length;
     try {
       // Open, draw the scene's frames, read the last one back (base64 RGBA).
-      const shot = await tab.eval<{ opened: Opened; rgba?: string; renderMs?: number }>(`(async () => {
+      const shot = await bounded(tab.eval<{ opened: Opened; rgba?: string; renderMs?: number }>(`(async () => {
         const gfx = globalThis.__gfx;
         const opened = JSON.parse(await gfx.og_gfx_open(${JSON.stringify(scene)}, ${webgl}, new OffscreenCanvas(1, 1)));
         if (!opened.applies) { gfx.og_gfx_close(); return { opened }; }
@@ -155,7 +177,7 @@ try {
         let bin = "";
         for (let i = 0; i < px.length; i += 0x8000) bin += String.fromCharCode.apply(null, px.subarray(i, i + 0x8000));
         return { opened, rgba: btoa(bin), renderMs };
-      })()`);
+      })()`), scene);
       const o = shot.opened;
       Object.assign(row, { tier: o.tier, adapter: o.adapter, antialias: o.antialias, frames: o.frames });
       result["adapter"] ??= o.adapter;
@@ -198,7 +220,7 @@ try {
         );
       }
       if (timed > 0 && PERF.includes(scene)) {
-        const t = await tab.eval<{ runs: number[]; each: number[] }>(`(async () => {
+        const t = await bounded(tab.eval<{ runs: number[]; each: number[] }>(`(async () => {
           const gfx = globalThis.__gfx;
           const runs = [], each = [];
           gfx.og_gfx_render(10);
@@ -214,7 +236,7 @@ try {
             runs.push((performance.now() - start) / ${timed});
           }
           return { runs, each };
-        })()`);
+        })()`), `timing ${scene}`);
         const runs = [...t.runs].sort((a, b) => a - b).map((v) => +v.toFixed(3));
         const each = [...t.each].sort((a, b) => a - b);
         const perf = {
@@ -243,9 +265,11 @@ try {
       await tab.eval("globalThis.__gfx.og_gfx_close()");
     } catch (e) {
       failures++;
-      row["error"] = String(e instanceof Error ? e.message : e);
+      // What the page logged meanwhile names the cause (a panic's message).
+      const said = log.slice(seen).filter((l) => l.includes("panicked:")).join("\n");
+      row["error"] = String(e instanceof Error ? e.message : e) + (said ? `\n${said}` : "");
       console.log(`FAIL ${scene} (${tier}): ${row["error"]}`);
-      await tab.eval("globalThis.__gfx.og_gfx_close()").catch(() => {});
+      tab = await page();
     } finally {
       row["ms"] = Math.round(performance.now() - ts);
     }

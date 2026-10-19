@@ -45,6 +45,14 @@ mod web {
         webgl: bool,
         canvas: web_sys::OffscreenCanvas,
     ) -> Result<String, JsValue> {
+        // A panic aborts with only "unreachable" in the console; its message
+        // (a wgpu validation error, say) is what the runner reports.
+        static HOOK: std::sync::Once = std::sync::Once::new();
+        HOOK.call_once(|| {
+            std::panic::set_hook(Box::new(|info| {
+                web_sys::console::error_1(&format!("og-tests-web panicked: {info}").into());
+            }))
+        });
         OPEN.with(|o| o.borrow_mut().take());
         let mut built = scenes::build(&scene).map_err(err)?;
         built.desc.backend = if webgl {
