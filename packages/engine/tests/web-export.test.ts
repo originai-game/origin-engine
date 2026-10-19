@@ -135,3 +135,28 @@ test("a project icon must be a square PNG of at least 192 px", async () => {
   expect(good.ok).toBe(true);
   expect(good.manifest!.icons).toEqual([{ src: "icons/icon.png", sizes: "512x512", type: "image/png", source: "project" }]);
 }, 120_000);
+
+test("og build never replaces the project, an ancestor of it or a directory it did not write", async () => {
+  const guarded = join(work, "guarded");
+  mkdirSync(join(guarded, "notes"), { recursive: true });
+  writeFileSync(join(guarded, "project.ogt"), "type project\n");
+  writeFileSync(join(guarded, "notes", "keep.txt"), "mine\n");
+  const other = join(work, "other-project");
+  mkdirSync(other, { recursive: true });
+  writeFileSync(join(other, "project.ogt"), "type project\n");
+  writeFileSync(join(other, "og-build.json"), "{}\n");
+  const cases: Array<[string, RegExp]> = [
+    [guarded, /is the project or contains it/],
+    [work, /is the project or contains it/],
+    [join(guarded, "notes"), /holds no og-build\.json/],
+    [other, /holds a project\.ogt/],
+  ];
+  for (const [out, reason] of cases) {
+    const b = await webBuild(guarded, join(guarded, "main.ts"), out, true, settings());
+    expect([out, b.ok]).toEqual([out, false]);
+    expect(b.reason).toMatch(reason);
+  }
+  expect(readFileSync(join(guarded, "notes", "keep.txt"), "utf8")).toBe("mine\n");
+  expect(existsSync(join(guarded, "project.ogt"))).toBe(true);
+  expect(existsSync(join(other, "project.ogt"))).toBe(true);
+});
