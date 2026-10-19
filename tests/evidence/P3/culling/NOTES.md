@@ -176,3 +176,27 @@ The gate's determinism step compares the math digest and the world hash
 between the host and wasm32 (`tools/wasm-determinism/run.sh`). Rendering is
 not part of either, and the step stays green. The full gate result is in
 docs/phase-1.md's round section.
+
+## Small scenes: the GPU path's per-frame overhead
+
+The full gate on 6a99ead failed bun-test on 5 s timeouts in render.test.ts
+(load 150 to 300). On the debug addon, the trails test takes 1.80 to 1.89 s
+with GPU culling and 1.37 to 1.41 s with `Culling::Cpu` as the default. The
+hit-flash test takes 1.07 to 1.32 s against 0.81 to 0.86 s. The cause is not
+setup: `GpuCulling::new` takes 2 to 5 ms and the first pyramid 0.75 ms.
+
+Release og-gfx, three interleaved rounds at load about 160 to 220:
+
+    for s in showcase point-spot-lights; do for v in gpu cpu; do
+      e=""; [ $v = cpu ] && e="OG_GFX_CULLING=cpu"
+      env $e target/release/og-gfx $s --frames 200; done; done
+
+| scene             | gpu frame ms        | cpu frame ms        |
+|-------------------|---------------------|---------------------|
+| showcase          | 6.12 / 3.53 / 3.75  | 3.15 / 3.17 / 3.15  |
+| point-spot-lights | 1.22 / 1.64 / 1.04  | 0.58 / 0.60 / 0.62  |
+
+The frames are small, so the fixed per-frame cost of the compute passes
+(clears, pyramid, prefix sum, indirect args and the count readback) is
+larger than the CPU culling it replaces. A threshold that sends small frames
+to the CPU path is still to do.
