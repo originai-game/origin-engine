@@ -97,6 +97,7 @@ export const Demo = defineComponent("Demo", {
   balance: f32(1250),
   owned: u32(0),
   bought: u32(0),
+  refused: u32(0),
   inv0: u32(0),
   inv1: u32(1),
   inv2: u32(2),
@@ -124,7 +125,7 @@ export const Demo = defineComponent("Demo", {
 });
 type DemoState = { -readonly [K in keyof ReturnType<typeof demoDefaults>]: ReturnType<typeof demoDefaults>[K] };
 function demoDefaults() {
-  return { screen: 0, paused: false, font: 0, icons: 0, backdrop: 0, hp: 72, mana: 40, coins: 128, score: 4250, lives: 2, time: 95, masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false, quality: 1, showFps: false, reducedMotion: false, highContrast: false, vibration: true, invertY: false, sensitivity: 1, language: 0, saves: 0, tab: 0, difficulty: 1, amount: 3, mode: 0, optA: true, optB: false, chip: 0, stickX: 0, stickY: 0, line: 0, step: 0, balance: 1250, owned: 0, bought: 0, inv0: 0, inv1: 1, inv2: 2, inv3: 5, inv4: 9, inv5: 13, moves: 0, used: 0, gold: 40, gen0: 1, gen1: 0, gen2: 0, taps: 0, scope: 0, scopeTick: 0, confirmed: 0, level: 0, skin: 0, wipe: 0, sounds: true };
+  return { screen: 0, paused: false, font: 0, icons: 0, backdrop: 0, hp: 72, mana: 40, coins: 128, score: 4250, lives: 2, time: 95, masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false, quality: 1, showFps: false, reducedMotion: false, highContrast: false, vibration: true, invertY: false, sensitivity: 1, language: 0, saves: 0, tab: 0, difficulty: 1, amount: 3, mode: 0, optA: true, optB: false, chip: 0, stickX: 0, stickY: 0, line: 0, step: 0, balance: 1250, owned: 0, bought: 0, refused: 0, inv0: 0, inv1: 1, inv2: 2, inv3: 5, inv4: 9, inv5: 13, moves: 0, used: 0, gold: 40, gen0: 1, gen1: 0, gen2: 0, taps: 0, scope: 0, scopeTick: 0, confirmed: 0, level: 0, skin: 0, wipe: 0, sounds: true };
 }
 
 export const ICONS = [
@@ -576,6 +577,8 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
         d.bought += 1;
         og.ui.toast(world, `Bought ${item.name}`, { tone: "success" });
       }
+      // Short of the price: the shop's Buy shook with the error sound (og.ui.shake).
+      if (r.refused !== null) d.refused += 1;
       if (r.closed) d.screen = 0;
       break;
     }

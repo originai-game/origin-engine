@@ -13103,6 +13103,10 @@ export interface ShopDesc {
 export interface ShopResult {
   /** The item bought this tick: take the price and grant it. */
   readonly bought: string | null;
+  /**
+   * The item whose Buy was pressed this tick while the balance was short: the button shook with the error sound (og.ui.shake) and nothing was bought.
+   */
+  readonly refused: string | null;
   /** Close was pressed (or Back). */
   readonly closed: boolean;
 }

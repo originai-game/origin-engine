@@ -2575,7 +2575,7 @@ fn mainMenu {
 }
 ```
 
-<sub>`api.ogt` line 8649</sub>
+<sub>`api.ogt` line 8650</sub>
 
 <a id="fn-pauseMenu"></a>
 
@@ -2606,7 +2606,7 @@ fn pauseMenu {
 }
 ```
 
-<sub>`api.ogt` line 8657</sub>
+<sub>`api.ogt` line 8658</sub>
 
 <a id="fn-settingsScreen"></a>
 
@@ -2637,7 +2637,7 @@ fn settingsScreen {
 }
 ```
 
-<sub>`api.ogt` line 8665</sub>
+<sub>`api.ogt` line 8666</sub>
 
 <a id="fn-platformerHud"></a>
 
@@ -2668,7 +2668,7 @@ fn platformerHud {
 }
 ```
 
-<sub>`api.ogt` line 8673</sub>
+<sub>`api.ogt` line 8674</sub>
 
 <a id="fn-shooterHud"></a>
 
@@ -2699,7 +2699,7 @@ fn shooterHud {
 }
 ```
 
-<sub>`api.ogt` line 8681</sub>
+<sub>`api.ogt` line 8682</sub>
 
 <a id="fn-puzzleHud"></a>
 
@@ -2730,7 +2730,7 @@ fn puzzleHud {
 }
 ```
 
-<sub>`api.ogt` line 8689</sub>
+<sub>`api.ogt` line 8690</sub>
 
 <a id="fn-idleHud"></a>
 
@@ -2761,7 +2761,7 @@ fn idleHud {
 }
 ```
 
-<sub>`api.ogt` line 8697</sub>
+<sub>`api.ogt` line 8698</sub>
 
 <a id="fn-racingHud"></a>
 
@@ -2792,7 +2792,7 @@ fn racingHud {
 }
 ```
 
-<sub>`api.ogt` line 8705</sub>
+<sub>`api.ogt` line 8706</sub>
 
 <a id="fn-cutscene"></a>
 
@@ -2823,7 +2823,7 @@ fn cutscene {
 }
 ```
 
-<sub>`api.ogt` line 8713</sub>
+<sub>`api.ogt` line 8714</sub>
 
 <a id="fn-shopScreen"></a>
 
@@ -2854,7 +2854,7 @@ fn shopScreen {
 }
 ```
 
-<sub>`api.ogt` line 8721</sub>
+<sub>`api.ogt` line 8722</sub>
 
 <a id="fn-inventoryScreen"></a>
 
@@ -2885,7 +2885,7 @@ fn inventoryScreen {
 }
 ```
 
-<sub>`api.ogt` line 8729</sub>
+<sub>`api.ogt` line 8730</sub>
 
 <a id="fn-levelSelect"></a>
 
@@ -2916,7 +2916,7 @@ fn levelSelect {
 }
 ```
 
-<sub>`api.ogt` line 8737</sub>
+<sub>`api.ogt` line 8738</sub>
 
 <a id="fn-resultsScreen"></a>
 
@@ -2947,7 +2947,7 @@ fn resultsScreen {
 }
 ```
 
-<sub>`api.ogt` line 8745</sub>
+<sub>`api.ogt` line 8746</sub>
 
 <a id="fn-leaderboardScreen"></a>
 
@@ -2978,7 +2978,7 @@ fn leaderboardScreen {
 }
 ```
 
-<sub>`api.ogt` line 8753</sub>
+<sub>`api.ogt` line 8754</sub>
 
 <a id="fn-tutorialOverlay"></a>
 
@@ -3009,7 +3009,7 @@ fn tutorialOverlay {
 }
 ```
 
-<sub>`api.ogt` line 8761</sub>
+<sub>`api.ogt` line 8762</sub>
 
 <a id="fn-loadingScreen"></a>
 
@@ -3040,7 +3040,7 @@ fn loadingScreen {
 }
 ```
 
-<sub>`api.ogt` line 8769</sub>
+<sub>`api.ogt` line 8770</sub>
 
 <a id="fn-confirmDialog"></a>
 
@@ -3071,7 +3071,7 @@ fn confirmDialog {
 }
 ```
 
-<sub>`api.ogt` line 8777</sub>
+<sub>`api.ogt` line 8778</sub>
 
 <a id="fn-alertDialog"></a>
 
@@ -3102,7 +3102,7 @@ fn alertDialog {
 }
 ```
 
-<sub>`api.ogt` line 8785</sub>
+<sub>`api.ogt` line 8786</sub>
 
 ## Types
 
@@ -6677,12 +6677,14 @@ A shop's answer this tick.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `bought` | `string \| null` | `null` | — | — | — | The item bought this tick: take the price and grant it. |
+| `refused` | `string \| null` | `null` | — | — | — | The item whose Buy was pressed this tick while the balance was short: the button shook with the error sound (og.ui.shake) and nothing was bought. |
 | `closed` | `boolean` | `false` | — | — | — | Close was pressed (or Back). |
 
 ```ogt
 struct ShopResult {
   doc "A shop's answer this tick."
   field bought Option.String "The item bought this tick: take the price and grant it."
+  field refused Option.String "The item whose Buy was pressed this tick while the balance was short: the button shook with the error sound (og.ui.shake) and nothing was bought."
   field closed bool "Close was pressed (or Back)."
 }
 ```
@@ -6719,7 +6721,7 @@ struct InventoryItem {
 }
 ```
 
-<sub>`api.ogt` line 8455</sub>
+<sub>`api.ogt` line 8456</sub>
 
 <a id="type-InventoryDesc"></a>
 
@@ -6755,7 +6757,7 @@ struct InventoryDesc {
 }
 ```
 
-<sub>`api.ogt` line 8466</sub>
+<sub>`api.ogt` line 8467</sub>
 
 <a id="type-SlotMove"></a>
 
@@ -6776,7 +6778,7 @@ struct SlotMove {
 }
 ```
 
-<sub>`api.ogt` line 8482</sub>
+<sub>`api.ogt` line 8483</sub>
 
 <a id="type-InventoryResult"></a>
 
@@ -6801,7 +6803,7 @@ struct InventoryResult {
 }
 ```
 
-<sub>`api.ogt` line 8488</sub>
+<sub>`api.ogt` line 8489</sub>
 
 <a id="type-LevelInfo"></a>
 
@@ -6829,7 +6831,7 @@ struct LevelInfo {
 }
 ```
 
-<sub>`api.ogt` line 8496</sub>
+<sub>`api.ogt` line 8497</sub>
 
 <a id="type-LevelSelectDesc"></a>
 
@@ -6857,7 +6859,7 @@ struct LevelSelectDesc {
 }
 ```
 
-<sub>`api.ogt` line 8505</sub>
+<sub>`api.ogt` line 8506</sub>
 
 <a id="type-LevelSelectResult"></a>
 
@@ -6878,7 +6880,7 @@ struct LevelSelectResult {
 }
 ```
 
-<sub>`api.ogt` line 8515</sub>
+<sub>`api.ogt` line 8516</sub>
 
 <a id="type-StatRow"></a>
 
@@ -6902,7 +6904,7 @@ struct StatRow {
 }
 ```
 
-<sub>`api.ogt` line 8521</sub>
+<sub>`api.ogt` line 8522</sub>
 
 <a id="type-ResultsDesc"></a>
 
@@ -6948,7 +6950,7 @@ struct ResultsDesc {
 }
 ```
 
-<sub>`api.ogt` line 8528</sub>
+<sub>`api.ogt` line 8529</sub>
 
 <a id="type-LeaderboardEntry"></a>
 
@@ -6976,7 +6978,7 @@ struct LeaderboardEntry {
 }
 ```
 
-<sub>`api.ogt` line 8548</sub>
+<sub>`api.ogt` line 8549</sub>
 
 <a id="type-LeaderboardDesc"></a>
 
@@ -7012,7 +7014,7 @@ struct LeaderboardDesc {
 }
 ```
 
-<sub>`api.ogt` line 8557</sub>
+<sub>`api.ogt` line 8558</sub>
 
 <a id="type-LeaderboardResult"></a>
 
@@ -7037,7 +7039,7 @@ struct LeaderboardResult {
 }
 ```
 
-<sub>`api.ogt` line 8572</sub>
+<sub>`api.ogt` line 8573</sub>
 
 <a id="type-TutorialStep"></a>
 
@@ -7063,7 +7065,7 @@ struct TutorialStep {
 }
 ```
 
-<sub>`api.ogt` line 8580</sub>
+<sub>`api.ogt` line 8581</sub>
 
 <a id="type-TutorialDesc"></a>
 
@@ -7089,7 +7091,7 @@ struct TutorialDesc {
 }
 ```
 
-<sub>`api.ogt` line 8588</sub>
+<sub>`api.ogt` line 8589</sub>
 
 <a id="type-TutorialResult"></a>
 
@@ -7112,7 +7114,7 @@ struct TutorialResult {
 }
 ```
 
-<sub>`api.ogt` line 8596</sub>
+<sub>`api.ogt` line 8597</sub>
 
 <a id="type-LoadingDesc"></a>
 
@@ -7145,7 +7147,7 @@ struct LoadingDesc {
 }
 ```
 
-<sub>`api.ogt` line 8603</sub>
+<sub>`api.ogt` line 8604</sub>
 
 <a id="type-ConfirmDesc"></a>
 
@@ -7181,7 +7183,7 @@ struct ConfirmDesc {
 }
 ```
 
-<sub>`api.ogt` line 8617</sub>
+<sub>`api.ogt` line 8618</sub>
 
 <a id="type-ConfirmResult"></a>
 
@@ -7202,7 +7204,7 @@ struct ConfirmResult {
 }
 ```
 
-<sub>`api.ogt` line 8632</sub>
+<sub>`api.ogt` line 8633</sub>
 
 <a id="type-AlertDesc"></a>
 
@@ -7232,4 +7234,4 @@ struct AlertDesc {
 }
 ```
 
-<sub>`api.ogt` line 8638</sub>
+<sub>`api.ogt` line 8639</sub>

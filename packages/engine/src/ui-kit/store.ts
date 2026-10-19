@@ -21,7 +21,7 @@ function picture(id: string, icon: string | undefined, name: string, size: numbe
 
 export function shopScreen(id: string, desc: Api.ShopDesc = {}): Api.ShopResult {
   const { t, phone } = frame();
-  const out: { bought: string | null; closed: boolean } = { bought: null, closed: false };
+  const out: { bought: string | null; refused: string | null; closed: boolean } = { bought: null, refused: null, closed: false };
   const cats = desc.categories ?? [];
   let cat = Math.min(kit.memory(`${id}.cat`, 0), Math.max(0, cats.length - 1));
   const all = desc.items ?? [];
@@ -62,7 +62,12 @@ export function shopScreen(id: string, desc: Api.ShopDesc = {}): Api.ShopResult 
         if (it.description) kit.label("Description", it.description, { step: "meta", color: token("fgMuted"), width: grow() });
         kit.keyValue("Price", "Price", `${fmt(it.price ?? 0)} ${desc.currency ?? "coins"}`, true);
         const short = balance < (it.price ?? 0);
-        const r = kit.button("Buy", it.owned ? "Owned" : short ? "Not enough" : "Buy", { variant: "primary", width: grow(), disabled: it.owned || short }) as Api.Response;
+        // Short of the price, Buy still answers: it refuses, shaking with the error sound.
+        const r = kit.button("Buy", it.owned ? "Owned" : short ? "Not enough" : "Buy", { variant: short ? "secondary" : "primary", width: grow(), disabled: it.owned }) as Api.Response;
+        if (r.clicked && !it.owned && short) {
+          kit.shake({ sound: true });
+          out.refused = it.id ?? null;
+        }
         if (r.clicked && !it.owned && !short) out.bought = it.id ?? null;
       });
     };

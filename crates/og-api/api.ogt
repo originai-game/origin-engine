@@ -8449,6 +8449,7 @@ module ui {
   struct ShopResult {
     doc "A shop's answer this tick."
     field bought Option.String "The item bought this tick: take the price and grant it."
+    field refused Option.String "The item whose Buy was pressed this tick while the balance was short: the button shook with the error sound (og.ui.shake) and nothing was bought."
     field closed bool "Close was pressed (or Back)."
   }
 

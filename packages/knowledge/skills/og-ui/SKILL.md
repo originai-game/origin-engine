@@ -47,7 +47,7 @@ and every style pack's screens on a phone `kit-skin-<pack>-phone.png`.
 | An idle or incremental HUD | `og.ui.idleHud(id, { currencies, generators, tapLabel })` | `action: "tap"` or `"buy:<id>"` |
 | A racing HUD | `og.ui.racingHud(id, { speed, gear, lap, laps, position, time, best, boost, map, touch })` | `paused`, steering, `held` |
 | Dialogue or a cutscene | `og.ui.cutscene(id, { open, lines, index })` | the next `index`, `finished`, `skipped` |
-| A shop | `og.ui.shopScreen(id, { balance, currency, items, categories })` | `bought`, `closed` |
+| A shop | `og.ui.shopScreen(id, { balance, currency, items, categories })` | `bought`, `refused` (Buy pressed short of the price: it shook with the error sound), `closed` |
 | An inventory | `og.ui.inventoryScreen(id, { slots, items })` | `selected`, `moved` (drag and drop), `used`, `closed` |
 | Level select | `og.ui.levelSelect(id, { levels })` | `chosen`, `closed` |
 | Results | `og.ui.resultsScreen(id, { open, score, best, newBest, stars, stats, shareText, onShare })` | `selected` (`retry`, `next`, `menu`, `share`) |

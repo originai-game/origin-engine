@@ -60,6 +60,7 @@ tier without its own references compares with `metal` and says so.
 | `touch` | `move_to_text:=shop` opens the shop from the scrolled gallery, `Detail/Buy` spends the price and toasts, Escape closes; Share calls the share hook; Tap counts; a generator buys; the dialogue box finishes, then advances a line |
 | `keys` | Tab, Tab, Enter opens the second row; in Settings, Down reaches the Master slider, Left twice steps it to 0.9, Escape closes and the save hook runs once |
 | `pad` | gamepad intents: down ×4 and A open Settings, B closes; Tab order reaches the select, A opens its menu, down and A choose Hard |
+| `refuse` | the Crown (2,400) with 1,250 coins: Buy reads "Not enough", a press shakes it three times back to rest with the error sound on the ui bus (`og.ui.shake`), spends nothing and reports `refused` |
 | `drag` | a press on slot 0 dragged to slot 7 moves the potion; Use runs for it |
 | `phone` | on a phone the HUD corners sit in the safe area, every touch control is at least 44 CSS px, a tap on Jump answers once |
 | `tutorial` | the spotlight's hole contains each step's target, a press on the dimmed part changes nothing, Next walks to Done |

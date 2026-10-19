@@ -17,6 +17,7 @@ export interface DemoState {
   balance: number;
   owned: number;
   bought: number;
+  refused: number;
   saves: number;
   masterVolume: number;
   inv0: number;
