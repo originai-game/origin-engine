@@ -830,7 +830,8 @@ fn budget_json(s: &Streams) -> Value {
 }
 
 /// `dump_stream`'s JSON: the budget, the memory used and its peak, every
-/// group (its trigger, state, why and since when) and the recent events.
+/// group (its trigger, state, why and since when), the recent events and
+/// the terrain streamer's tiles.
 pub(crate) fn dump(engine_id: u32) -> Value {
     let Ok(eng) = engine(engine_id) else {
         return json!({ "error": "no engine" });
@@ -852,6 +853,8 @@ pub(crate) fn dump(engine_id: u32) -> Value {
             .collect::<Vec<_>>()
     );
     v["events"] = json!(s.log);
+    drop(a);
+    v["terrain"] = super::terrain::stream_json(engine_id);
     v
 }
 

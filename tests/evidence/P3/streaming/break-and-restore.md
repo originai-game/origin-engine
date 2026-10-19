@@ -71,3 +71,9 @@ near the edge keep their full size where it asserted they had shrunk
 | Broken | Edit | Failed |
 |---|---|---|
 | the service worker's lazy cache | `packages/engine/shell/sw.ts` fetch: a fetched pack never put in the cache (`cache.put` removed) | "the service worker keeps every pack the engine fetched" (no pack cached) and "offline, every group the player has been to loads from the service worker's cache" (every zone `grey`, its proxy) |
+
+## Terrain streaming and the world hash (`packages/engine/tests/terrain-stream.test.ts`)
+
+| Broken | Edit | Failed |
+|---|---|---|
+| a tick reading the streamer | `og-runtime/src/terrain.rs` `og_terrain_sample`: the height answered raised by 1 cm per tile the streamer was waiting for (`h + rs.terrain.streamer.stats.waiting as f32 * 0.01`) | `the fx-showcase terrain station hashes the same over 600 ticks...`: `streamed.hashes` differed from `resident.hashes` in one of the 600 per-tick hashes (the tick whose og.terrain.sample ran while the streamed run's five tiles were still decoding); the 1-second hashes the first draft compared all matched, so the test now dumps the hash every tick |

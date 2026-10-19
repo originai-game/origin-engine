@@ -263,10 +263,18 @@ pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine: u32) {
         "dump_stream",
         og_probe::CommandDesc {
             usage: "dump_stream[:path]".into(),
-            doc: "the streaming groups: the memory budget, what is used and its peak, every group's trigger, state, why and since which tick, and the recent state changes".into(),
+            doc: "the streaming groups: the memory budget, what is used and its peak, every group's trigger, state, why and since which tick, and the recent state changes; and the terrain streamer: its mode, tiles resident, waiting, decoding and cached".into(),
         },
         0,
         move |_world, _args| Ok(super::stream::dump(engine)),
+    );
+    let _ = probe.register_command(
+        "terrain_stream",
+        og_probe::CommandDesc {
+            usage: "terrain_stream:<stream|resident>[:<MiB>]".into(),
+            doc: "stream terrain tiles as the view needs them (the default) or decode and show every wanted tile each frame (resident), with each terrain's tile budget in MiB".into(),
+        },
+        move |_world, args| super::terrain::set_streaming(engine, args),
     );
     let _ = probe.register_dump(
         "dump_nav",

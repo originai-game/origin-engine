@@ -77,6 +77,64 @@ pub(crate) fn retire(id: u32) {
     LOGS.with(|l| l.borrow_mut().remove(&id));
 }
 
+/// The probe's `terrain_stream:<stream|resident>[:<MiB>]`: `resident`
+/// decodes and shows every tile the view wants each frame, `stream` (the
+/// default) streams them; the MiB are each terrain's tile budget on the GPU
+/// (0 or none: its lod's).
+pub(crate) fn set_streaming(engine_id: u32, args: &[String]) -> Result<(), String> {
+    const USAGE: &str = "write terrain_stream:<stream|resident>[:<MiB>], such as terrain_stream:resident or terrain_stream:stream:4";
+    let resident = match args.first().map(String::as_str) {
+        Some("resident") => true,
+        Some("stream") => false,
+        _ => return Err(USAGE.into()),
+    };
+    let budget = match args.get(1).filter(|a| !a.is_empty()) {
+        None => 0,
+        Some(m) => match m.parse::<f64>() {
+            Ok(mib) if mib.is_finite() && mib >= 0.0 => (mib * 1048576.0) as u64,
+            _ => {
+                return Err(format!(
+                    "terrain_stream: '{m}' is not a number of MiB; {USAGE}"
+                ));
+            }
+        },
+    };
+    let eng = engine(engine_id)?;
+    let mut rs = eng
+        .render
+        .try_borrow_mut()
+        .map_err(|_| "terrain_stream: the renderer is busy".to_string())?;
+    rs.terrain.resident = resident;
+    rs.terrain.budget = budget;
+    Ok(())
+}
+
+/// The terrain streamer for `dump_stream`: its mode, the tile budget asked
+/// for (0: each terrain's own), and its last frame's tiles.
+pub(crate) fn stream_json(engine_id: u32) -> Value {
+    let Ok(eng) = engine(engine_id) else {
+        return Value::Null;
+    };
+    let Ok(rs) = eng.render.try_borrow() else {
+        return Value::Null;
+    };
+    let t = &rs.terrain;
+    let s = t.streamer.stats;
+    json!({
+        "mode": if t.resident { "resident" } else { "stream" },
+        "budget": t.budget as f64,
+        "terrains": t.loaded.len(),
+        "resident": s.resident,
+        "waiting": s.waiting,
+        "inFlight": s.in_flight,
+        "cached": s.cached,
+        "cachedBytes": s.cached_bytes as f64,
+        "decoded": s.decoded as f64,
+        "handed": s.handed,
+        "worstFrameMs": (s.worst_frame_ms * 1000.0).round() / 1000.0,
+    })
+}
+
 /// The edit log as world state.
 struct TerrainBlock(SharedLog);
 
