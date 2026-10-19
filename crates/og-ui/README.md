@@ -267,7 +267,12 @@ comment; og-cook validates it and cooks it as an `og.UiSkin` blob,
 
 Six packs to start from live in `templates/ui-kit/assets/skins/` (pixel,
 cartoon, fantasy, scifi, paper, neon), drawn by
-`templates/ui-kit/tools/make-skins.py`; `tests/packs.rs` holds each to 4.5:1
+`templates/ui-kit/tools/make-skins.py`; art drawn by hand is packed by
+`og skin pack <dir>` (og-cli's `src/skin.rs`: `<part>.9.png` nine-patches,
+whose one-pixel border marks what stretches, and plain PNGs for ornaments,
+into `atlas.png` and the skin file's atlas, slice, soft and ornament-region
+lines, every other line kept; `crates/og-cli/tests/cli.rs` packs
+`tests/fixtures/skin-pack`); `tests/packs.rs` holds each to 4.5:1
 for every ink a template puts on a skinned surface, measured over the frame
 art really under the text.
 

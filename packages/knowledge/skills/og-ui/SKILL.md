@@ -177,6 +177,16 @@ its frame drawn at `fill` opacity (the scifi pack's dialogs:
 it costs a frame copy and a blur pyramid when any is on screen (about 0.8 ms
 at 1280×720 on an M4 Pro), nothing otherwise.
 
+A skin of the game's own art: draw each part as a nine-patch PNG
+(`panel.9.png`, `button.9.png`, `buttonHover.9.png`, ..., `soft.9.png`: the
+art inside a one-pixel border whose top row and left column mark in opaque
+black what stretches) and any ornament as a plain PNG (`corner.png`,
+`divider.png`, `flourish.png`, `tile.png`) in the skin's directory, then
+`og skin pack assets/skins/<name>`: it packs them into `atlas.png` and
+writes the skin file's `atlas`, `slice` and `soft` lines and the ornaments'
+regions, keeping every other line (palette, fonts, a slice's `tint` or
+`repeat`). Re-run it after redrawing a part.
+
 Never pass hex colours for chrome: use `{ token: "accent" }`, `"fgMuted"`,
 `"surface"` and the type steps (`displayLg`, `xl`, `meta`); the skin's
 palette answers them. A container that should look like a HUD capsule or a

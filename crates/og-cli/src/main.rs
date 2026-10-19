@@ -17,6 +17,7 @@ mod project;
 mod publish;
 mod run;
 mod sfx;
+mod skin;
 mod test;
 
 use std::path::{Path, PathBuf};
@@ -58,6 +59,9 @@ commands:
                       the procedural sound presets (coin, jump, hit, click, ...): list them,
                       write one as an asset `og cook` synthesises (or render it to a WAV),
                       or write the whole library
+  skin pack <dir> [--out <dir>]
+                      pack a skin drawn by hand (<part>.9.png nine-patches, other PNGs) into
+                      atlas.png and the skin file's atlas, slice and ornament lines
   doctor              check bun, the engine package, the native addon, the wasm, a headless
                       renderer, and (in the engine repository) the build toolchain, naming each fix
   api gen [--wiki] [--root <dir>]
@@ -92,6 +96,7 @@ fn main() -> ExitCode {
         ["cook", rest @ ..] => cook::run(rest),
         ["api", rest @ ..] => api::run(rest),
         ["sfx", rest @ ..] => sfx::run(rest),
+        ["skin", rest @ ..] => skin::run(rest),
         [] => {
             eprint!("{USAGE}");
             ExitCode::from(2)
