@@ -50,3 +50,18 @@ time, so cargo rebuilds what it restored).
 | the stamp | the terrain's stamp leaves out its heightmap | `the_terrain_cook_is_deterministic_and_incremental`: the edited heightmap is not cooked again |
 | EXR heights | an EXR's default range 0 to 100 like a PNG's | `an_exr_heightmap_is_metres_as_stored`: (0, 0) 12.46 vs 0.125 |
 | a terrain in a navmesh | the terrain's triangles wound clockwise (facing down) | `a_navmesh_bakes_a_terrains_walkable_surface`: nothing walkable at x -30 |
+
+## og.terrain through the native host (`packages/engine/tests/terrain.test.ts`)
+
+Each edit made to `crates/og-runtime/src/terrain.rs`, the addon rebuilt (`sh scripts/build.sh`), the file run, the edit undone and the addon rebuilt (5 of 5 pass).
+
+| Broken | Edit | Failed |
+|---|---|---|
+| sample's world height | `og_terrain_sample` answers the height without the origin's y | `og.terrain.load answers the terrain, and sample its surface` |
+| the collider at load | `load` registers no height field with physics | every test: the og.Collider of shape SHAPE_HEIGHTFIELD names an unknown field, so the first tick is refused (including `a ball rests on the terrain and a character walks up the hill`) |
+| edits reach physics | `og_terrain_edit` does not register the edited heights | `an edit raises the ground for sample, physics and the renderer`: the ray meets the old ground |
+| edits reach the renderer | `og_terrain_edit` does not call `set_terrain` | the same test: the frame does not change around the mound |
+| setLayer | `og_terrain_set_layer` keeps the layer's old colour | `og.Terrain draws the terrain, and a layer reads back and retunes` |
+| a brush that misses | the bounds check before an edit removed | `og.terrain refusals name the fix`: a brush 500 m away is accepted |
+
+The character test was first written expecting x > -12 after 240 ticks at 3 m/s from -24; the climb costs it about a metre, so it now requires x > -15 and the ground under it 2 m higher than at the start (the walk up the flank), not a distance that only a flat run reaches.

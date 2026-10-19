@@ -561,6 +561,18 @@ export interface HostAbi<A, V> {
   og_engine_probe_commands(engine_probe: number, script: string): string;
   /** `EngineProbe.listen` */
   og_engine_probe_listen(engine_probe: number, seconds: number | undefined): string;
+  /** `og.terrain.load` */
+  og_terrain_load(world: number, path: string): string;
+  /** `og.terrain.sample` */
+  og_terrain_sample(world: number, desc: string | undefined): string;
+  /** `og.terrain.bounds` */
+  og_terrain_bounds(world: number, data: number, origin: string | undefined): string;
+  /** `og.terrain.edit` */
+  og_terrain_edit(world: number, data: number, brush: string | undefined): string;
+  /** `og.terrain.layer` */
+  og_terrain_layer(world: number, data: number, index: number): string;
+  /** `og.terrain.setLayer` */
+  og_terrain_set_layer(world: number, data: number, index: number, layer: string | undefined): string;
 }
 
 /** Every binding symbol, in binding-table order, then the lifecycle members. */
@@ -828,6 +840,12 @@ export const SYMBOLS: readonly string[] = [
   "og_engine_probe_dump",
   "og_engine_probe_commands",
   "og_engine_probe_listen",
+  "og_terrain_load",
+  "og_terrain_sample",
+  "og_terrain_bounds",
+  "og_terrain_edit",
+  "og_terrain_layer",
+  "og_terrain_set_layer",
   "og_host_set_dispatcher",
   "og_engine_create",
   "og_engine_destroy",

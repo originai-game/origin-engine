@@ -1688,3 +1688,39 @@ pub fn og_engine_probe_listen(env: Env, engine_probe: u32, seconds: Option<f64>)
     let _env = crate::EnvScope::enter(&env);
     <Host as ProbeApi>::og_engine_probe_listen(&Host, engine_probe, seconds)
 }
+
+#[napi(js_name = "og_terrain_load")]
+pub fn og_terrain_load(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TerrainApi>::og_terrain_load(&Host, world, path)
+}
+
+#[napi(js_name = "og_terrain_sample")]
+pub fn og_terrain_sample(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TerrainApi>::og_terrain_sample(&Host, world, desc)
+}
+
+#[napi(js_name = "og_terrain_bounds")]
+pub fn og_terrain_bounds(env: Env, world: u32, data: f64, origin: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TerrainApi>::og_terrain_bounds(&Host, world, data, origin)
+}
+
+#[napi(js_name = "og_terrain_edit")]
+pub fn og_terrain_edit(env: Env, world: u32, data: f64, brush: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TerrainApi>::og_terrain_edit(&Host, world, data, brush)
+}
+
+#[napi(js_name = "og_terrain_layer")]
+pub fn og_terrain_layer(env: Env, world: u32, data: f64, index: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TerrainApi>::og_terrain_layer(&Host, world, data, index)
+}
+
+#[napi(js_name = "og_terrain_set_layer")]
+pub fn og_terrain_set_layer(env: Env, world: u32, data: f64, index: u32, layer: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TerrainApi>::og_terrain_set_layer(&Host, world, data, index, layer)
+}

@@ -674,10 +674,26 @@ pub trait ProbeApi: Wire {
     fn og_engine_probe_listen(&self, engine_probe: u32, seconds: Option<f64>) -> String;
 }
 
-/// Every trait: a host is a type that implements all of them.
-pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi {}
+/// `terrain`: packages/knowledge/wiki/terrain.md.
+pub trait TerrainApi: Wire {
+    /// `og.terrain.load`
+    fn og_terrain_load(&self, world: u32, path: String) -> String;
+    /// `og.terrain.sample`
+    fn og_terrain_sample(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.terrain.bounds`
+    fn og_terrain_bounds(&self, world: u32, data: f64, origin: Option<String>) -> String;
+    /// `og.terrain.edit`
+    fn og_terrain_edit(&self, world: u32, data: f64, brush: Option<String>) -> String;
+    /// `og.terrain.layer`
+    fn og_terrain_layer(&self, world: u32, data: f64, index: u32) -> String;
+    /// `og.terrain.setLayer`
+    fn og_terrain_set_layer(&self, world: u32, data: f64, index: u32, layer: Option<String>) -> String;
+}
 
-impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi> Host for T {}
+/// Every trait: a host is a type that implements all of them.
+pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi {}
+
+impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi> Host for T {}
 
 /// Every binding symbol, in binding-table order (`bindings.json` ids).
 pub const SYMBOLS: &[&str] = &[
@@ -944,6 +960,12 @@ pub const SYMBOLS: &[&str] = &[
     "og_engine_probe_dump",
     "og_engine_probe_commands",
     "og_engine_probe_listen",
+    "og_terrain_load",
+    "og_terrain_sample",
+    "og_terrain_bounds",
+    "og_terrain_edit",
+    "og_terrain_layer",
+    "og_terrain_set_layer",
 ];
 
 /// One field of an engine-owned record.
@@ -5931,11 +5953,11 @@ pub const RECORDS: &[RecordDecl] = &[
                 readonly: false,
                 tunable: false,
                 min: Some(0.0),
-                max: Some(5.0),
+                max: Some(6.0),
                 step: None,
                 unit: "",
                 label: "Shape",
-                doc: "One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (3D).",
+                doc: "One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (3D), 6 the height field `mesh` (3D: a terrain).",
                 variants: &[],
             },
             FieldDecl {
@@ -5991,7 +6013,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "",
                 label: "",
-                doc: "The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh.",
+                doc: "The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh; for SHAPE_HEIGHTFIELD, a terrain's height field (og.terrain.load's TerrainInfo.geometry).",
                 variants: &[],
             },
             FieldDecl {
@@ -9662,6 +9684,90 @@ pub const RECORDS: &[RecordDecl] = &[
                 doc: "How much it reflects.",
                 variants: &[],
             },
+            FieldDecl {
+                name: "planarReflection",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(1.0),
+                step: None,
+                unit: "ratio",
+                label: "",
+                doc: "Reflect the scene by drawing it again from the camera mirrored in the surface, at this fraction of the screen's resolution (0: off, the screen-space and sky reflections). One surface a frame, the first that asks; it costs about a second scene pass at that resolution.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "shadows",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(1.0),
+                step: None,
+                unit: "ratio",
+                label: "",
+                doc: "How much the sun's shadows darken the surface: its highlight, foam and colour (0: none).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "underwaterColor",
+                column: "Color",
+                default: "{\"r\":0.03,\"g\":0.16,\"b\":0.2}",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "With the camera below the surface: the water's fog colour.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "underwaterDensity",
+                column: "f32",
+                default: "0.09",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(2.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, and the surface seen from below shows the sky inside Snell's window.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "caustics",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(4.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Caustics of the sunlight on everything below the surface (0: none). One surface a frame, the first that has them.",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "causticsScale",
+                column: "f32",
+                default: "0.6",
+                readonly: false,
+                tunable: true,
+                min: Some(0.01),
+                max: Some(10.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The caustics' cells per metre.",
+                variants: &[],
+            },
         ],
     },
     RecordDecl {
@@ -12810,6 +12916,69 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 label: "",
                 doc: "Whether it succeeded; og.platform.result has the data or the error.",
+                variants: &[],
+            },
+        ],
+    },
+    RecordDecl {
+        kind: "component",
+        name: "Terrain",
+        schema: "og.Terrain",
+        fields: &[
+            FieldDecl {
+                name: "data",
+                column: "TerrainData",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The terrain (og.terrain.load's TerrainInfo.data).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "castShadows",
+                column: "bool",
+                default: "true",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Cast the directional and local lights' shadows (it always receives them).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "lodSpacing",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(64.0),
+                step: None,
+                unit: "m",
+                label: "",
+                doc: "The finest clipmap level's spacing (0: the terrain file's, or the samples' spacing).",
+                variants: &[],
+            },
+            FieldDecl {
+                name: "lodRing",
+                column: "u32",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: Some(0.0),
+                max: Some(256.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Quads per side of every clipmap level (0: the terrain file's, else 64; 16 to 256, rounded to a multiple of 4).",
                 variants: &[],
             },
         ],

@@ -2,7 +2,7 @@
 
 # The Origin Engine API
 
-`@origingame/engine`, API version 1: 26 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
+`@origingame/engine`, API version 1: 27 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
 
 The Origin Engine API. Game code declares components and systems, and reads the world through typed views over engine memory.
 
@@ -35,6 +35,7 @@ Grouped by the skill that teaches them: the skill says how much of each to use a
 | [`atmosphere`](atmosphere.md) | `og.atmosphere.*` | kept | Fog, a procedural sky, the day-night cycle, weather and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before. |
 | [`anim`](anim.md) | `og.anim.*` | kept | Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics. |
 | [`tilemap`](tilemap.md) | `og.tilemap.*` | kept | Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component. |
+| [`terrain`](terrain.md) | `og.terrain.*` | kept | Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry. |
 
 ### `og-feel`
 
@@ -110,7 +111,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-789 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+807 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -540,6 +541,13 @@ Field units the docs and Tune use.
 | [`og.Sprite`](render.md#record-Sprite) | component | render | — |
 | [`og.Steering`](nav.md#record-Steering) | component | nav | — |
 | [`og.systems.cameras`](systems.md#value-cameras) | value | systems | — |
+| [`og.Terrain`](terrain.md#record-Terrain) | component | terrain | — |
+| [`og.terrain.bounds`](terrain.md#fn-bounds) | function | terrain | `og_terrain_bounds` |
+| [`og.terrain.edit`](terrain.md#fn-edit) | function | terrain | `og_terrain_edit` |
+| [`og.terrain.layer`](terrain.md#fn-layer) | function | terrain | `og_terrain_layer` |
+| [`og.terrain.load`](terrain.md#fn-load) | function | terrain | `og_terrain_load` |
+| [`og.terrain.sample`](terrain.md#fn-sample) | function | terrain | `og_terrain_sample` |
+| [`og.terrain.setLayer`](terrain.md#fn-setLayer) | function | terrain | `og_terrain_set_layer` |
 | [`og.Tilemap`](tilemap.md#record-Tilemap) | component | tilemap | — |
 | [`og.tilemap.cellAt`](tilemap.md#fn-cellAt) | function | tilemap | `og_tilemap_cell_at` |
 | [`og.tilemap.cellCenter`](tilemap.md#fn-cellCenter) | function | tilemap | `og_tilemap_cell_center` |
@@ -778,6 +786,7 @@ Field units the docs and Tune use.
 | [`SHAPE_CAPSULE`](physics.md#const-SHAPE_CAPSULE) | constant | physics | — |
 | [`SHAPE_CONVEX`](physics.md#const-SHAPE_CONVEX) | constant | physics | — |
 | [`SHAPE_CYLINDER`](physics.md#const-SHAPE_CYLINDER) | constant | physics | — |
+| [`SHAPE_HEIGHTFIELD`](physics.md#const-SHAPE_HEIGHTFIELD) | constant | physics | — |
 | [`SHAPE_SPHERE`](physics.md#const-SHAPE_SPHERE) | constant | physics | — |
 | [`SHAPE_TRIMESH`](physics.md#const-SHAPE_TRIMESH) | constant | physics | — |
 | [`ShapeCastDesc`](physics.md#type-ShapeCastDesc) | desc struct | physics | — |
@@ -833,6 +842,16 @@ Field units the docs and Tune use.
 | [`SystemDump`](probe.md#type-SystemDump) | struct | probe | — |
 | [`SystemRun`](system.md#type-SystemRun) | callback | system | — |
 | [`TabsDesc`](ui.md#type-TabsDesc) | desc struct | ui | — |
+| [`TerrainBounds`](terrain.md#type-TerrainBounds) | struct | terrain | — |
+| [`TerrainBrush`](terrain.md#type-TerrainBrush) | desc struct | terrain | — |
+| [`TerrainBrushMode`](terrain.md#type-TerrainBrushMode) | enum | terrain | — |
+| [`TerrainData`](terrain.md#type-TerrainData) | handle | terrain | — |
+| [`TerrainData()`](terrain.md#column-TerrainData) | column kind | terrain | — |
+| [`TerrainEdit`](terrain.md#type-TerrainEdit) | struct | terrain | — |
+| [`TerrainInfo`](terrain.md#type-TerrainInfo) | struct | terrain | — |
+| [`TerrainLayerDesc`](terrain.md#type-TerrainLayerDesc) | desc struct | terrain | — |
+| [`TerrainSample`](terrain.md#type-TerrainSample) | struct | terrain | — |
+| [`TerrainSampleDesc`](terrain.md#type-TerrainSampleDesc) | desc struct | terrain | — |
 | [`TextAlign`](ui.md#type-TextAlign) | enum | ui | — |
 | [`TextDesc`](render.md#type-TextDesc) | desc struct | render | — |
 | [`TextMeasureDesc`](render.md#type-TextMeasureDesc) | desc struct | render | — |

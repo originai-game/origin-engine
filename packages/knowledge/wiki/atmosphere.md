@@ -16,7 +16,7 @@ module atmosphere {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 4251</sub>
+<sub>`api.ogt` line 4252</sub>
 
 ## Contents
 
@@ -31,7 +31,7 @@ module atmosphere {
 | [`og.Sky`](#record-Sky) | resource | A procedural sky of chosen colours, drawn behind the scene per pixel and lighting it (the image-based light follows it). Without it, RenderSettings.sky draws the built-in sky. A DayNight that is enabled sets the sky itself. |
 | [`og.DayNight`](#record-DayNight) | resource | A day-night cycle: the time of day drives the sun's direction, the sky's colours and stars, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly. |
 | [`og.Weather`](#record-Weather) | resource | A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence) and dimmed sunlight. Particles are simulated by the renderer from the tick, so they look the same on every run; they never touch the simulation. |
-| [`og.Water`](#record-Water) | component | A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space where the tier allows, the sky's cubemap on WebGL2). With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated). |
+| [`og.Water`](#record-Water) | component | A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space where the tier allows, the sky's cubemap on WebGL2, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated). |
 | [`og.Water2D`](#record-Water2D) | component | Draws the og.WaterLine on the same entity in the sprite order: the body from its surface down, a gradient from the top colour to the bottom one, and a bright lip along the surface. |
 | [`og.atmosphere.timeOfDay`](#fn-timeOfDay) | function | The DayNight clock at the current tick, in hours from 0 to 24 (its start when the cycle is off): for lamps that light at dusk and shops that close at night. Inside a system, declare og.DayNight among its reads. |
 
@@ -63,7 +63,7 @@ fn timeOfDay {
 }
 ```
 
-<sub>`api.ogt` line 4560</sub>
+<sub>`api.ogt` line 4593</sub>
 
 ## Components, resources and events
 
@@ -154,7 +154,7 @@ resource Fog {
 }
 ```
 
-<sub>`api.ogt` line 4262</sub>
+<sub>`api.ogt` line 4263</sub>
 
 <a id="record-Sky"></a>
 
@@ -234,7 +234,7 @@ resource Sky {
 }
 ```
 
-<sub>`api.ogt` line 4324</sub>
+<sub>`api.ogt` line 4325</sub>
 
 <a id="record-DayNight"></a>
 
@@ -300,7 +300,7 @@ resource DayNight {
 }
 ```
 
-<sub>`api.ogt` line 4377</sub>
+<sub>`api.ogt` line 4378</sub>
 
 <a id="record-Weather"></a>
 
@@ -362,13 +362,13 @@ resource Weather {
 }
 ```
 
-<sub>`api.ogt` line 4420</sub>
+<sub>`api.ogt` line 4421</sub>
 
 <a id="record-Water"></a>
 
 ### `og.Water` (component)
 
-A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space where the tier allows, the sky's cubemap on WebGL2). With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated).
+A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space where the tier allows, the sky's cubemap on WebGL2, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated).
 
 Token `og.Water`, registered under the schema name `og.Water`; its value type is `Water`.
 
@@ -387,10 +387,16 @@ Token `og.Water`, registered under the schema name `og.Water`; its value type is
 | `waveStrength` | `number` | `0.35` | 0 … 4 | — | tunable | How strongly they bend the surface (0: a mirror). |
 | `refraction` | `number` | `1` | ≥ 0 | — | tunable | How far refraction shifts what is seen through the water. |
 | `reflectivity` | `number` | `1` | 0 … 2 | — | tunable | How much it reflects. |
+| `planarReflection` | `number` | `0` | 0 … 1 | `ratio` | tunable | Reflect the scene by drawing it again from the camera mirrored in the surface, at this fraction of the screen's resolution (0: off, the screen-space and sky reflections). One surface a frame, the first that asks; it costs about a second scene pass at that resolution. |
+| `shadows` | `number` | `0` | 0 … 1 | `ratio` | tunable | How much the sun's shadows darken the surface: its highlight, foam and colour (0: none). |
+| `underwaterColor` | `Color` | `{ r: 0.03, g: 0.16, b: 0.2 }` | — | — | — | With the camera below the surface: the water's fog colour. |
+| `underwaterDensity` | `number` | `0.09` | 0 … 2 | — | tunable | Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, and the surface seen from below shows the sky inside Snell's window. |
+| `caustics` | `number` | `0` | 0 … 4 | — | tunable | Caustics of the sunlight on everything below the surface (0: none). One surface a frame, the first that has them. |
+| `causticsScale` | `number` | `0.6` | 0.01 … 10 | — | tunable | The caustics' cells per metre. |
 
 ```ogt
 component Water {
-  doc "A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space where the tier allows, the sky's cubemap on WebGL2). With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated)."
+  doc "A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space where the tier allows, the sky's cubemap on WebGL2, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated)."
   field size Vector2 "The extent along the entity's x and z." {
     default 16 16
     unit m
@@ -455,10 +461,42 @@ component Water {
     max 2
     tunable true
   }
+  field planarReflection f32 "Reflect the scene by drawing it again from the camera mirrored in the surface, at this fraction of the screen's resolution (0: off, the screen-space and sky reflections). One surface a frame, the first that asks; it costs about a second scene pass at that resolution." {
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+  field shadows f32 "How much the sun's shadows darken the surface: its highlight, foam and colour (0: none)." {
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+  field underwaterColor Color "With the camera below the surface: the water's fog colour." {
+    default 0.03 0.16 0.2
+  }
+  field underwaterDensity f32 "Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, and the surface seen from below shows the sky inside Snell's window." {
+    default 0.09
+    min 0
+    max 2
+    tunable true
+  }
+  field caustics f32 "Caustics of the sunlight on everything below the surface (0: none). One surface a frame, the first that has them." {
+    min 0
+    max 4
+    tunable true
+  }
+  field causticsScale f32 "The caustics' cells per metre." {
+    default 0.6
+    min 0.01
+    max 10
+    tunable true
+  }
 }
 ```
 
-<sub>`api.ogt` line 4460</sub>
+<sub>`api.ogt` line 4461</sub>
 
 <a id="record-Water2D"></a>
 
@@ -512,7 +550,7 @@ component Water2D {
 }
 ```
 
-<sub>`api.ogt` line 4528</sub>
+<sub>`api.ogt` line 4561</sub>
 
 ## Constants
 
@@ -528,28 +566,28 @@ component Water2D {
 const WEATHER_NONE u32 0 "Weather.kind: clear."
 ```
 
-<sub>`api.ogt` line 4256</sub>
+<sub>`api.ogt` line 4257</sub>
 
 ```ogt
 const WEATHER_RAIN u32 1 "Weather.kind: rain streaks falling with the wind, the light dimmed and a grey distance fog."
 ```
 
-<sub>`api.ogt` line 4257</sub>
+<sub>`api.ogt` line 4258</sub>
 
 ```ogt
 const WEATHER_SNOW u32 2 "Weather.kind: flakes drifting down on gusts, a pale fog."
 ```
 
-<sub>`api.ogt` line 4258</sub>
+<sub>`api.ogt` line 4259</sub>
 
 ```ogt
 const WEATHER_DUST u32 3 "Weather.kind: dust blowing along the wind near the ground, a warm thick fog."
 ```
 
-<sub>`api.ogt` line 4259</sub>
+<sub>`api.ogt` line 4260</sub>
 
 ```ogt
 const WEATHER_MIST u32 4 "Weather.kind: no particles, a dense low height fog."
 ```
 
-<sub>`api.ogt` line 4260</sub>
+<sub>`api.ogt` line 4261</sub>

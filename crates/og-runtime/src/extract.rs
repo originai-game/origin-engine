@@ -119,6 +119,8 @@ pub(crate) struct RenderState {
     pub feel: super::feel::FeelRender,
     /// The atmosphere's and the physics extras' drawing state (`super::atmosphere`).
     pub atmo: super::atmosphere::AtmoState,
+    /// The terrains loaded (`super::terrain`).
+    pub terrain: super::terrain::TerrainState,
 }
 
 impl RenderState {
@@ -145,6 +147,7 @@ impl RenderState {
             notes: Vec::new(),
             feel: Default::default(),
             atmo: Default::default(),
+            terrain: Default::default(),
         }
     }
 }
@@ -301,6 +304,8 @@ pub(crate) struct DrawLayouts {
     pub fx: super::fx::FxLayouts,
     /// The atmosphere's and the physics extras' records (`super::atmosphere`).
     pub atmo: super::atmosphere::AtmoLayouts,
+    /// og.Terrain (`super::terrain`).
+    pub terrain: Option<Layout>,
 }
 
 /// Rebuild the per-frame part of `rs.scene` from the world as of its tick.
@@ -524,6 +529,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     super::fx::components(world, rs, &mut h, tick);
     // Cloth meshes are instances too: keyed for per-object motion.
     keys.extend(super::atmosphere::extract(world, rs, &mut h));
+    super::terrain::extract(world, rs, &mut h);
     let vp = super::fx::viewport(rs);
     // The camera's shake, punch, kick and zones (on the frame only), then
     // og.Sprite rows, floating texts and tile layers.

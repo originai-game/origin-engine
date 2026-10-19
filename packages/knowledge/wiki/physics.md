@@ -39,6 +39,7 @@ module physics {
 | [`SHAPE_CYLINDER`](#const-SHAPE_CYLINDER) | constant | Collider.shape: a cylinder along y of `radius` and `height` (3D only). |
 | [`SHAPE_CONVEX`](#const-SHAPE_CONVEX) | constant | Collider.shape: the convex hull of the vertices of `mesh` (3D), or of their xy (a convex polygon, 2D). |
 | [`SHAPE_TRIMESH`](#const-SHAPE_TRIMESH) | constant | Collider.shape: the triangles of `mesh` (3D only; for static and kinematic bodies). |
+| [`SHAPE_HEIGHTFIELD`](#const-SHAPE_HEIGHTFIELD) | constant | Collider.shape: the height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry). |
 | [`PROFILE_2D`](#const-PROFILE_2D) | constant | Physics.profile: rapier2d, bodies in the xy plane rotating about z. |
 | [`PROFILE_3D`](#const-PROFILE_3D) | constant | Physics.profile: rapier3d. |
 | [`og.RigidBody`](#record-RigidBody) | component | A body the physics step simulates. It needs an og.Transform and usually has an og.Collider; a dynamic body without an og.Velocity gets one. |
@@ -139,7 +140,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 4114</sub>
+<sub>`api.ogt` line 4115</sub>
 
 <a id="fn-shapeCast"></a>
 
@@ -169,7 +170,7 @@ fn shapeCast {
 }
 ```
 
-<sub>`api.ogt` line 4121</sub>
+<sub>`api.ogt` line 4122</sub>
 
 <a id="fn-overlap"></a>
 
@@ -199,7 +200,7 @@ fn overlap {
 }
 ```
 
-<sub>`api.ogt` line 4128</sub>
+<sub>`api.ogt` line 4129</sub>
 
 <a id="fn-setMesh"></a>
 
@@ -231,7 +232,7 @@ fn setMesh {
 }
 ```
 
-<sub>`api.ogt` line 4135</sub>
+<sub>`api.ogt` line 4136</sub>
 
 <a id="fn-ropePoints"></a>
 
@@ -261,7 +262,7 @@ fn ropePoints {
 }
 ```
 
-<sub>`api.ogt` line 4189</sub>
+<sub>`api.ogt` line 4190</sub>
 
 <a id="fn-clothPoints"></a>
 
@@ -291,7 +292,7 @@ fn clothPoints {
 }
 ```
 
-<sub>`api.ogt` line 4196</sub>
+<sub>`api.ogt` line 4197</sub>
 
 <a id="fn-fluidParticles"></a>
 
@@ -321,7 +322,7 @@ fn fluidParticles {
 }
 ```
 
-<sub>`api.ogt` line 4203</sub>
+<sub>`api.ogt` line 4204</sub>
 
 <a id="fn-waterHeight"></a>
 
@@ -355,7 +356,7 @@ fn waterHeight {
 }
 ```
 
-<sub>`api.ogt` line 4210</sub>
+<sub>`api.ogt` line 4211</sub>
 
 <a id="fn-vehicleWheels"></a>
 
@@ -385,7 +386,7 @@ fn vehicleWheels {
 }
 ```
 
-<sub>`api.ogt` line 4219</sub>
+<sub>`api.ogt` line 4220</sub>
 
 <a id="fn-ragdollRigFromSkeleton"></a>
 
@@ -415,7 +416,7 @@ fn ragdollRigFromSkeleton {
 }
 ```
 
-<sub>`api.ogt` line 4226</sub>
+<sub>`api.ogt` line 4227</sub>
 
 <a id="fn-setRagdollRig"></a>
 
@@ -447,7 +448,7 @@ fn setRagdollRig {
 }
 ```
 
-<sub>`api.ogt` line 4233</sub>
+<sub>`api.ogt` line 4234</sub>
 
 <a id="fn-ragdollPose"></a>
 
@@ -477,7 +478,7 @@ fn ragdollPose {
 }
 ```
 
-<sub>`api.ogt` line 4241</sub>
+<sub>`api.ogt` line 4242</sub>
 
 ## Components, resources and events
 
@@ -544,7 +545,7 @@ component RigidBody {
 }
 ```
 
-<sub>`api.ogt` line 3002</sub>
+<sub>`api.ogt` line 3003</sub>
 
 <a id="record-Collider"></a>
 
@@ -556,11 +557,11 @@ Token `og.Collider`, registered under the schema name `og.Collider`; its value t
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `shape` | `number` | `0` | 0 … 5 | — | label “Shape” | One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (3D). |
+| `shape` | `number` | `0` | 0 … 6 | — | label “Shape” | One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (3D), 6 the height field `mesh` (3D: a terrain). |
 | `size` | `Vector3` | `{ x: 1, y: 1, z: 1 }` | ≥ 0 | `m` | tunable | Full extents of a box, as three.js BoxGeometry(width, height, depth). |
 | `radius` | `number` | `0.5` | ≥ 0 | `m` | tunable | Radius of a sphere, circle, capsule or cylinder. |
 | `height` | `number` | `1` | ≥ 0 | `m` | tunable | A capsule's distance between its cap centres (three.js CapsuleGeometry length); a cylinder's height. |
-| `mesh` | `Geometry` | `0` | — | — | — | The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh. |
+| `mesh` | `Geometry` | `0` | — | — | — | The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh; for SHAPE_HEIGHTFIELD, a terrain's height field (og.terrain.load's TerrainInfo.geometry). |
 | `offset` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Position of the shape relative to the entity. |
 | `rotation` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | — | Rotation of the shape relative to the entity. |
 | `friction` | `number` | `0.5` | 0 … 2 | — | tunable | Coulomb friction (0 is ice, 1 rubber); a pair uses the mean of both colliders. |
@@ -573,9 +574,9 @@ Token `og.Collider`, registered under the schema name `og.Collider`; its value t
 ```ogt
 component Collider {
   doc "The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale."
-  field shape u32 "One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (3D)." {
+  field shape u32 "One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (3D), 6 the height field `mesh` (3D: a terrain)." {
     min 0
-    max 5
+    max 6
     label "Shape"
   }
   field size Vector3 "Full extents of a box, as three.js BoxGeometry(width, height, depth)." {
@@ -596,7 +597,7 @@ component Collider {
     unit m
     tunable true
   }
-  field mesh Geometry "The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh."
+  field mesh Geometry "The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh; for SHAPE_HEIGHTFIELD, a terrain's height field (og.terrain.load's TerrainInfo.geometry)."
   field offset Vector3 "Position of the shape relative to the entity." {
     unit m
   }
@@ -631,7 +632,7 @@ component Collider {
 }
 ```
 
-<sub>`api.ogt` line 3043</sub>
+<sub>`api.ogt` line 3044</sub>
 
 <a id="record-Velocity"></a>
 
@@ -660,7 +661,7 @@ component Velocity {
 }
 ```
 
-<sub>`api.ogt` line 3102</sub>
+<sub>`api.ogt` line 3103</sub>
 
 <a id="record-Physics"></a>
 
@@ -715,7 +716,7 @@ resource Physics {
 }
 ```
 
-<sub>`api.ogt` line 3114</sub>
+<sub>`api.ogt` line 3115</sub>
 
 <a id="record-CollisionStarted"></a>
 
@@ -742,7 +743,7 @@ event CollisionStarted {
 }
 ```
 
-<sub>`api.ogt` line 3149</sub>
+<sub>`api.ogt` line 3150</sub>
 
 <a id="record-CollisionEnded"></a>
 
@@ -765,7 +766,7 @@ event CollisionEnded {
 }
 ```
 
-<sub>`api.ogt` line 3157</sub>
+<sub>`api.ogt` line 3158</sub>
 
 <a id="record-SensorEntered"></a>
 
@@ -788,7 +789,7 @@ event SensorEntered {
 }
 ```
 
-<sub>`api.ogt` line 3163</sub>
+<sub>`api.ogt` line 3164</sub>
 
 <a id="record-SensorExited"></a>
 
@@ -811,7 +812,7 @@ event SensorExited {
 }
 ```
 
-<sub>`api.ogt` line 3169</sub>
+<sub>`api.ogt` line 3170</sub>
 
 <a id="record-Contact"></a>
 
@@ -836,7 +837,7 @@ event Contact {
 }
 ```
 
-<sub>`api.ogt` line 3175</sub>
+<sub>`api.ogt` line 3176</sub>
 
 <a id="record-Joint"></a>
 
@@ -941,7 +942,7 @@ component Joint {
 }
 ```
 
-<sub>`api.ogt` line 3192</sub>
+<sub>`api.ogt` line 3193</sub>
 
 <a id="record-CharacterController"></a>
 
@@ -1055,7 +1056,7 @@ component CharacterController {
 }
 ```
 
-<sub>`api.ogt` line 3262</sub>
+<sub>`api.ogt` line 3263</sub>
 
 <a id="record-PlatformerController"></a>
 
@@ -1292,7 +1293,7 @@ component PlatformerController {
 }
 ```
 
-<sub>`api.ogt` line 3343</sub>
+<sub>`api.ogt` line 3344</sub>
 
 <a id="record-CharacterEvent"></a>
 
@@ -1322,7 +1323,7 @@ event CharacterEvent {
 }
 ```
 
-<sub>`api.ogt` line 3533</sub>
+<sub>`api.ogt` line 3534</sub>
 
 <a id="record-Vehicle"></a>
 
@@ -1463,7 +1464,7 @@ component Vehicle {
 }
 ```
 
-<sub>`api.ogt` line 3549</sub>
+<sub>`api.ogt` line 3550</sub>
 
 <a id="record-Rope"></a>
 
@@ -1552,7 +1553,7 @@ component Rope {
 }
 ```
 
-<sub>`api.ogt` line 3655</sub>
+<sub>`api.ogt` line 3656</sub>
 
 <a id="record-Cloth"></a>
 
@@ -1640,7 +1641,7 @@ component Cloth {
 }
 ```
 
-<sub>`api.ogt` line 3721</sub>
+<sub>`api.ogt` line 3722</sub>
 
 <a id="record-Fluid2D"></a>
 
@@ -1749,7 +1750,7 @@ component Fluid2D {
 }
 ```
 
-<sub>`api.ogt` line 3782</sub>
+<sub>`api.ogt` line 3783</sub>
 
 <a id="record-WaterSurface"></a>
 
@@ -1814,7 +1815,7 @@ component WaterSurface {
 }
 ```
 
-<sub>`api.ogt` line 3859</sub>
+<sub>`api.ogt` line 3860</sub>
 
 <a id="record-WaterLine"></a>
 
@@ -1891,7 +1892,7 @@ component WaterLine {
 }
 ```
 
-<sub>`api.ogt` line 3902</sub>
+<sub>`api.ogt` line 3903</sub>
 
 <a id="record-Splash"></a>
 
@@ -1922,7 +1923,7 @@ event Splash {
 }
 ```
 
-<sub>`api.ogt` line 3955</sub>
+<sub>`api.ogt` line 3956</sub>
 
 <a id="record-Ragdoll"></a>
 
@@ -1990,7 +1991,7 @@ component Ragdoll {
 }
 ```
 
-<sub>`api.ogt` line 3967</sub>
+<sub>`api.ogt` line 3968</sub>
 
 ## Types
 
@@ -2018,7 +2019,7 @@ struct QueryFilter {
 }
 ```
 
-<sub>`api.ogt` line 4012</sub>
+<sub>`api.ogt` line 4013</sub>
 
 <a id="type-RaycastDesc"></a>
 
@@ -2053,7 +2054,7 @@ struct RaycastDesc {
 }
 ```
 
-<sub>`api.ogt` line 4020</sub>
+<sub>`api.ogt` line 4021</sub>
 
 <a id="type-RaycastHit"></a>
 
@@ -2080,7 +2081,7 @@ struct RaycastHit {
 }
 ```
 
-<sub>`api.ogt` line 4036</sub>
+<sub>`api.ogt` line 4037</sub>
 
 <a id="type-ShapeDesc"></a>
 
@@ -2122,7 +2123,7 @@ struct ShapeDesc {
 }
 ```
 
-<sub>`api.ogt` line 4046</sub>
+<sub>`api.ogt` line 4047</sub>
 
 <a id="type-ShapeCastDesc"></a>
 
@@ -2161,7 +2162,7 @@ struct ShapeCastDesc {
 }
 ```
 
-<sub>`api.ogt` line 4068</sub>
+<sub>`api.ogt` line 4069</sub>
 
 <a id="type-ShapeCastHit"></a>
 
@@ -2188,7 +2189,7 @@ struct ShapeCastHit {
 }
 ```
 
-<sub>`api.ogt` line 4086</sub>
+<sub>`api.ogt` line 4087</sub>
 
 <a id="type-OverlapDesc"></a>
 
@@ -2218,7 +2219,7 @@ struct OverlapDesc {
 }
 ```
 
-<sub>`api.ogt` line 4096</sub>
+<sub>`api.ogt` line 4097</sub>
 
 <a id="type-MeshDesc"></a>
 
@@ -2242,7 +2243,7 @@ struct MeshDesc {
 }
 ```
 
-<sub>`api.ogt` line 4107</sub>
+<sub>`api.ogt` line 4108</sub>
 
 <a id="type-WheelPose"></a>
 
@@ -2267,7 +2268,7 @@ struct WheelPose {
 }
 ```
 
-<sub>`api.ogt` line 4143</sub>
+<sub>`api.ogt` line 4144</sub>
 
 <a id="type-RagdollBoneDesc"></a>
 
@@ -2310,7 +2311,7 @@ struct RagdollBoneDesc {
 }
 ```
 
-<sub>`api.ogt` line 4152</sub>
+<sub>`api.ogt` line 4153</sub>
 
 <a id="type-RagdollRigDesc"></a>
 
@@ -2334,7 +2335,7 @@ struct RagdollRigDesc {
 }
 ```
 
-<sub>`api.ogt` line 4174</sub>
+<sub>`api.ogt` line 4175</sub>
 
 <a id="type-BonePose"></a>
 
@@ -2357,7 +2358,7 @@ struct BonePose {
 }
 ```
 
-<sub>`api.ogt` line 4181</sub>
+<sub>`api.ogt` line 4182</sub>
 
 ## Constants
 
@@ -2378,6 +2379,7 @@ struct BonePose {
 | <a id="const-SHAPE_CYLINDER"></a>`SHAPE_CYLINDER` | `number` | `3` | Collider.shape: a cylinder along y of `radius` and `height` (3D only). |
 | <a id="const-SHAPE_CONVEX"></a>`SHAPE_CONVEX` | `number` | `4` | Collider.shape: the convex hull of the vertices of `mesh` (3D), or of their xy (a convex polygon, 2D). |
 | <a id="const-SHAPE_TRIMESH"></a>`SHAPE_TRIMESH` | `number` | `5` | Collider.shape: the triangles of `mesh` (3D only; for static and kinematic bodies). |
+| <a id="const-SHAPE_HEIGHTFIELD"></a>`SHAPE_HEIGHTFIELD` | `number` | `6` | Collider.shape: the height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry). |
 | <a id="const-PROFILE_2D"></a>`PROFILE_2D` | `number` | `2` | Physics.profile: rapier2d, bodies in the xy plane rotating about z. |
 | <a id="const-PROFILE_3D"></a>`PROFILE_3D` | `number` | `3` | Physics.profile: rapier3d. |
 | <a id="const-JOINT_FIXED"></a>`JOINT_FIXED` | `number` | `0` | `Joint.kind`: the two bodies move as one. |
@@ -2494,145 +2496,151 @@ const SHAPE_TRIMESH u32 5 "Collider.shape: the triangles of `mesh` (3D only; for
 <sub>`api.ogt` line 2998</sub>
 
 ```ogt
-const PROFILE_2D u32 2 "Physics.profile: rapier2d, bodies in the xy plane rotating about z."
+const SHAPE_HEIGHTFIELD u32 6 "Collider.shape: the height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry)."
 ```
 
 <sub>`api.ogt` line 2999</sub>
 
 ```ogt
-const PROFILE_3D u32 3 "Physics.profile: rapier3d."
+const PROFILE_2D u32 2 "Physics.profile: rapier2d, bodies in the xy plane rotating about z."
 ```
 
 <sub>`api.ogt` line 3000</sub>
 
 ```ogt
-const JOINT_FIXED u32 0 "`Joint.kind`: the two bodies move as one."
+const PROFILE_3D u32 3 "Physics.profile: rapier3d."
 ```
 
-<sub>`api.ogt` line 3182</sub>
+<sub>`api.ogt` line 3001</sub>
 
 ```ogt
-const JOINT_REVOLUTE u32 1 "`Joint.kind`: a hinge about `axis` (2D: about z), with optional limits and a motor."
+const JOINT_FIXED u32 0 "`Joint.kind`: the two bodies move as one."
 ```
 
 <sub>`api.ogt` line 3183</sub>
 
 ```ogt
-const JOINT_PRISMATIC u32 2 "`Joint.kind`: a slider along `axis`, with optional limits and a motor."
+const JOINT_REVOLUTE u32 1 "`Joint.kind`: a hinge about `axis` (2D: about z), with optional limits and a motor."
 ```
 
 <sub>`api.ogt` line 3184</sub>
 
 ```ogt
-const JOINT_SPRING u32 3 "`Joint.kind`: a damped spring pulling the anchors to `restLength` apart."
+const JOINT_PRISMATIC u32 2 "`Joint.kind`: a slider along `axis`, with optional limits and a motor."
 ```
 
 <sub>`api.ogt` line 3185</sub>
 
 ```ogt
-const JOINT_ROPE u32 4 "`Joint.kind`: a rope: the anchors stay at most `length` apart, free inside it."
+const JOINT_SPRING u32 3 "`Joint.kind`: a damped spring pulling the anchors to `restLength` apart."
 ```
 
 <sub>`api.ogt` line 3186</sub>
 
 ```ogt
-const JOINT_BALL u32 5 "`Joint.kind`: a ball and socket (3D; the 2D profile treats it as a hinge)."
+const JOINT_ROPE u32 4 "`Joint.kind`: a rope: the anchors stay at most `length` apart, free inside it."
 ```
 
 <sub>`api.ogt` line 3187</sub>
 
 ```ogt
-const MOTOR_NONE u32 0 "`Joint.motor`: no motor."
+const JOINT_BALL u32 5 "`Joint.kind`: a ball and socket (3D; the 2D profile treats it as a hinge)."
 ```
 
 <sub>`api.ogt` line 3188</sub>
 
 ```ogt
-const MOTOR_VELOCITY u32 1 "`Joint.motor`: drive towards `motorTarget` speed (rad/s or m/s)."
+const MOTOR_NONE u32 0 "`Joint.motor`: no motor."
 ```
 
 <sub>`api.ogt` line 3189</sub>
 
 ```ogt
-const MOTOR_POSITION u32 2 "`Joint.motor`: spring towards `motorTarget` angle or position (a servo)."
+const MOTOR_VELOCITY u32 1 "`Joint.motor`: drive towards `motorTarget` speed (rad/s or m/s)."
 ```
 
 <sub>`api.ogt` line 3190</sub>
 
 ```ogt
-const CHARACTER_JUMPED u32 1 "`CharacterEvent.kind`: a jump from the ground (or in coyote time)."
+const MOTOR_POSITION u32 2 "`Joint.motor`: spring towards `motorTarget` angle or position (a servo)."
 ```
 
-<sub>`api.ogt` line 3526</sub>
+<sub>`api.ogt` line 3191</sub>
 
 ```ogt
-const CHARACTER_LANDED u32 2 "`CharacterEvent.kind`: touched the ground after being in the air."
+const CHARACTER_JUMPED u32 1 "`CharacterEvent.kind`: a jump from the ground (or in coyote time)."
 ```
 
 <sub>`api.ogt` line 3527</sub>
 
 ```ogt
-const CHARACTER_WALL_JUMPED u32 3 "`CharacterEvent.kind`: a jump off a wall."
+const CHARACTER_LANDED u32 2 "`CharacterEvent.kind`: touched the ground after being in the air."
 ```
 
 <sub>`api.ogt` line 3528</sub>
 
 ```ogt
-const CHARACTER_AIR_JUMPED u32 4 "`CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps)."
+const CHARACTER_WALL_JUMPED u32 3 "`CharacterEvent.kind`: a jump off a wall."
 ```
 
 <sub>`api.ogt` line 3529</sub>
 
 ```ogt
-const CHARACTER_LEFT_GROUND u32 5 "`CharacterEvent.kind`: left the ground without jumping (ran off an edge)."
+const CHARACTER_AIR_JUMPED u32 4 "`CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps)."
 ```
 
 <sub>`api.ogt` line 3530</sub>
 
 ```ogt
-const CHARACTER_BUMPED u32 6 "`CharacterEvent.kind`: hit a ceiling while rising."
+const CHARACTER_LEFT_GROUND u32 5 "`CharacterEvent.kind`: left the ground without jumping (ran off an edge)."
 ```
 
 <sub>`api.ogt` line 3531</sub>
 
 ```ogt
-const DRIVE_REAR u32 0 "`Vehicle.drive`: the rear wheels drive."
+const CHARACTER_BUMPED u32 6 "`CharacterEvent.kind`: hit a ceiling while rising."
 ```
 
-<sub>`api.ogt` line 3545</sub>
+<sub>`api.ogt` line 3532</sub>
 
 ```ogt
-const DRIVE_FRONT u32 1 "`Vehicle.drive`: the front wheels drive."
+const DRIVE_REAR u32 0 "`Vehicle.drive`: the rear wheels drive."
 ```
 
 <sub>`api.ogt` line 3546</sub>
 
 ```ogt
-const DRIVE_ALL u32 2 "`Vehicle.drive`: every wheel drives."
+const DRIVE_FRONT u32 1 "`Vehicle.drive`: the front wheels drive."
 ```
 
 <sub>`api.ogt` line 3547</sub>
 
 ```ogt
-const PIN_TOP u32 1 "`Cloth.pins` bit: the whole top row is pinned."
+const DRIVE_ALL u32 2 "`Vehicle.drive`: every wheel drives."
 ```
 
-<sub>`api.ogt` line 3716</sub>
+<sub>`api.ogt` line 3548</sub>
 
 ```ogt
-const PIN_TOP_CORNERS u32 2 "`Cloth.pins` bit: the top-left and top-right corners are pinned."
+const PIN_TOP u32 1 "`Cloth.pins` bit: the whole top row is pinned."
 ```
 
 <sub>`api.ogt` line 3717</sub>
 
 ```ogt
-const PIN_LEFT u32 4 "`Cloth.pins` bit: the whole left column is pinned (a flag on a pole)."
+const PIN_TOP_CORNERS u32 2 "`Cloth.pins` bit: the top-left and top-right corners are pinned."
 ```
 
 <sub>`api.ogt` line 3718</sub>
 
 ```ogt
-const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
+const PIN_LEFT u32 4 "`Cloth.pins` bit: the whole left column is pinned (a flag on a pole)."
 ```
 
 <sub>`api.ogt` line 3719</sub>
+
+```ogt
+const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
+```
+
+<sub>`api.ogt` line 3720</sub>
