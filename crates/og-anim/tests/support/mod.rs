@@ -322,3 +322,145 @@ pub fn near_identity(m: &Mat4, eps: f32) -> bool {
         .zip(Mat4::IDENTITY.to_cols_array())
         .all(|(a, b)| (a - b).abs() <= eps)
 }
+
+// ---- the tall rig retargeting reads (tests/retarget.rs, tools/wasm-determinism) ----
+
+/// (name, parent, model position in metres, model rotation)
+pub type NodeDef = (&'static str, u32, Vec3, Quat);
+
+pub fn rz(deg: f32) -> Quat {
+    math::quat_from_axis_angle(Vec3::Z, deg.to_radians())
+}
+
+/// A skeleton from model-space rest transforms under a root scaled by `scale`.
+pub fn skeleton_from_model(defs: &[NodeDef], scale: f32) -> SkeletonAsset {
+    let mut model: Vec<Trs> = Vec::new();
+    let mut nodes = Vec::new();
+    for (i, &(name, parent, p, r)) in defs.iter().enumerate() {
+        let m = if i == 0 {
+            Trs::new(Vec3::ZERO, Quat::IDENTITY, Vec3::splat(scale))
+        } else {
+            Trs::new(p, r, Vec3::splat(scale))
+        };
+        let local = if parent == NONE {
+            m
+        } else {
+            let pm = model[parent as usize];
+            let l = pm.inverse().mul(&m);
+            Trs::new(l.translation, l.rotation, Vec3::ONE)
+        };
+        model.push(m);
+        nodes.push(SkeletonNode {
+            name: name.into(),
+            parent,
+            rest: local,
+            mesh: NONE,
+        });
+    }
+    let mut s = SkeletonAsset {
+        nodes,
+        skins: Vec::new(),
+    };
+    let mm = s.model_matrices(&s.rest_pose());
+    let joints: Vec<u32> = (1..s.nodes.len() as u32).collect();
+    let inverse_bind = joints.iter().map(|&j| mm[j as usize].inverse()).collect();
+    s.skins.push(Skin {
+        name: "tall".into(),
+        joints,
+        inverse_bind,
+    });
+    s
+}
+
+/// The retargeting target: Mixamo names, an armature scaled by 0.01,
+/// Mixamo-style rest rotations (+Y along each bone), A-posed arms, and
+/// thigh 0.70, shin 0.44, hips at 1.30: a leg 1.14 m against the walker's 0.90.
+pub fn tall() -> SkeletonAsset {
+    let down = rz(180.0);
+    let toe = rotation_to(Vec3::new(0.0, -0.12, 0.12));
+    let defs: Vec<NodeDef> = vec![
+        ("Armature", NONE, Vec3::ZERO, Quat::IDENTITY),
+        (
+            "mixamorig:Hips",
+            0,
+            Vec3::new(0.0, 1.3, 0.0),
+            Quat::IDENTITY,
+        ),
+        (
+            "mixamorig:Spine",
+            1,
+            Vec3::new(0.0, 1.5, 0.0),
+            Quat::IDENTITY,
+        ),
+        (
+            "mixamorig:Spine1",
+            2,
+            Vec3::new(0.0, 1.65, 0.0),
+            Quat::IDENTITY,
+        ),
+        (
+            "mixamorig:Neck",
+            3,
+            Vec3::new(0.0, 1.85, 0.0),
+            Quat::IDENTITY,
+        ),
+        (
+            "mixamorig:Head",
+            4,
+            Vec3::new(0.0, 1.97, 0.0),
+            Quat::IDENTITY,
+        ),
+        (
+            "mixamorig:LeftShoulder",
+            3,
+            Vec3::new(0.08, 1.8, 0.0),
+            rz(-90.0),
+        ),
+        ("mixamorig:LeftArm", 6, Vec3::new(0.2, 1.8, 0.0), rz(-135.0)),
+        (
+            "mixamorig:LeftForeArm",
+            7,
+            Vec3::new(
+                0.2 + 0.3 * std::f32::consts::FRAC_1_SQRT_2,
+                1.8 - 0.3 * std::f32::consts::FRAC_1_SQRT_2,
+                0.0,
+            ),
+            rz(-135.0),
+        ),
+        (
+            "mixamorig:LeftHand",
+            8,
+            Vec3::new(
+                0.2 + 0.55 * std::f32::consts::FRAC_1_SQRT_2,
+                1.8 - 0.55 * std::f32::consts::FRAC_1_SQRT_2,
+                0.0,
+            ),
+            rz(-135.0),
+        ),
+        ("mixamorig:LeftUpLeg", 1, Vec3::new(0.12, 1.3, 0.0), down),
+        ("mixamorig:LeftLeg", 10, Vec3::new(0.12, 0.6, 0.0), down),
+        ("mixamorig:LeftFoot", 11, Vec3::new(0.12, 0.16, 0.0), toe),
+        (
+            "mixamorig:LeftToeBase",
+            12,
+            Vec3::new(0.12, 0.04, 0.12),
+            toe,
+        ),
+        ("mixamorig:RightUpLeg", 1, Vec3::new(-0.12, 1.3, 0.0), down),
+        ("mixamorig:RightLeg", 14, Vec3::new(-0.12, 0.6, 0.0), down),
+        ("mixamorig:RightFoot", 15, Vec3::new(-0.12, 0.16, 0.0), toe),
+        (
+            "mixamorig:RightToeBase",
+            16,
+            Vec3::new(-0.12, 0.04, 0.12),
+            toe,
+        ),
+    ];
+    skeleton_from_model(&defs, 0.01)
+}
+
+/// The rotation taking +Y to `dir`.
+pub fn rotation_to(dir: Vec3) -> Quat {
+    og_anim::rotation_arc(Vec3::Y, dir)
+}
+
